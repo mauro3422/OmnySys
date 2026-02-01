@@ -1,5 +1,53 @@
 # CHANGELOG - OmnySys
 
+## [0.3.1] - 2026-02-01
+
+### Added - Phase 3.1: Import Quality Analysis (COMPLETE ✓)
+
+#### New Analysis Functions
+- **Unresolved Imports**: Detects imports that fail to resolve (broken paths, typos, missing files)
+  - Marked as CRITICAL severity
+  - Helps prevent "runtime surprises" when AI doesn't see broken code
+  - Example: `import { nonExistent } from './file.js'` when file doesn't exist
+
+- **Unused Imports**: Finds imports in file that are never actually used
+  - Prevents cognitive overload for AI (confusion about what's used vs what's imported)
+  - Example: `import { CONSTANT_C } from './fileC.js'` but never referenced in file
+  - High penalty: Reduces quality score by up to 15 points
+
+- **Reexport Chains**: Tracks barrel files and re-export patterns
+  - Identifies complex re-export chains (A→B→C)
+  - Helps AI understand true dependency sources
+  - Example: `index.js` re-exports everything from 5 other files
+
+#### Problem Solved: Import Tunnel Vision
+These gaps in Phase 3.0 could confuse AI:
+1. **Broken imports** - AI might try to use non-existent code
+2. **Dead imports** - AI confused about what's actually available
+3. **Complex re-exports** - AI loses track of where code comes from
+
+#### Implementation
+- **graph-builder.js**: Now captures `unresolvedImports` object during dependency resolution
+- **analyzer.js**: Three new analysis functions (~40 lines each, independent)
+- **Quality Metrics**: Updated penalties and breakdown to include new issues
+- **Recommendations Engine**: CRITICAL priority for unresolved imports
+
+#### Test Validation
+- **scenario-1-simple-import**:
+  - Unused Imports: 1 detected (CONSTANT_C) ✓
+  - Unresolved Imports: 0 (all valid) ✓
+  - Re-export Chains: 0 (simple structure) ✓
+  - Quality Score: 97/100 (down 1pt from unused import penalty) ✓
+
+#### Why This Matters for AI
+When passing systemMap to AI editors:
+- ✅ AI knows which imports are broken (won't use them)
+- ✅ AI sees which imports are dead weight (won't reference them)
+- ✅ AI understands re-export flow (knows where code really comes from)
+- ✅ Faster AI analysis (fewer false paths to explore)
+
+---
+
 ## [0.3.0] - 2026-02-01
 
 ### Added - Phase 3: Automated Analysis & Quality Reporting (COMPLETE ✓)
