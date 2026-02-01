@@ -1,5 +1,52 @@
 # CHANGELOG - OmnySys
 
+## [0.3.2] - 2026-02-01
+
+### Added - Phase 3.2: Circular Import Detection (COMPLETE ✓)
+
+#### New Analysis
+- **Circular Imports Detection**: Identifies A→B→A file-level import cycles
+  - Uses DFS traversal on dependency graph
+  - Different from circular function dependencies (file-level vs function-level)
+  - Marked as CRITICAL severity (breaks module loading at runtime)
+  - Heavy penalty: -35 points per cycle (severe impact on quality score)
+
+#### Problem Solved: Circular Import Tunnel Vision
+When files depend on each other in cycles:
+- JavaScript module loaders can't determine initialization order
+- Undefined symbols errors at runtime
+- AI has no way to detect this without analyzing the full graph
+- Example: `utils.js` imports from `helpers.js`, `helpers.js` imports from `utils.js`
+
+#### Why This Matters
+- ✅ Prevents AI from generating code that references undefined symbols
+- ✅ Helps identify architecture problems early
+- ✅ Clear actionable recommendation: extract shared code to utility module
+- ✅ Faster AI analysis (knows to avoid circular patterns)
+
+#### Implementation
+- **analyzer.js**: `findCircularImports()` function (~50 lines)
+  - DFS traversal with recursion stack
+  - Detects both direct cycles and complex cycles
+  - Reports cycle pairs and recommendation
+- **Quality Metrics**: -35 point penalty per circular import
+- **Recommendations**: CRITICAL priority with refactoring guidance
+
+#### Test Validation
+- **scenario-1-simple-import**:
+  - Circular Imports: 0 detected ✓
+  - Quality Score: 97/100 (Grade A) - maintained ✓
+  - All analyses working correctly ✓
+
+#### Complete Import Tunnel Vision Prevention
+Pipeline now detects and prevents:
+1. **Unresolved Imports** - Broken paths (import from non-existent files)
+2. **Circular Imports** - Module loading failures (A→B→A)
+3. **Unused Imports** - Cognitive overload (imported but never used)
+4. **Reexport Chains** - Lost context (where code really comes from)
+
+---
+
 ## [0.3.1] - 2026-02-01
 
 ### Added - Phase 3.1: Import Quality Analysis (COMPLETE ✓)
