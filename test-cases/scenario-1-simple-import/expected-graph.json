@@ -1,0 +1,57 @@
+{
+  "files": {
+    "fileA.js": {
+      "path": "fileA.js",
+      "exports": ["functionA", "displayConstant"],
+      "imports": [
+        {
+          "source": "./fileB.js",
+          "specifiers": ["functionB", "getConstant"]
+        }
+      ],
+      "usedBy": [],
+      "calls": ["functionB", "getConstant", "console.log"]
+    },
+    "fileB.js": {
+      "path": "fileB.js",
+      "exports": ["functionB", "getConstant"],
+      "imports": [
+        {
+          "source": "./fileC.js",
+          "specifiers": ["functionC", "CONSTANT_C"]
+        }
+      ],
+      "usedBy": ["fileA.js"],
+      "calls": ["functionC"]
+    },
+    "fileC.js": {
+      "path": "fileC.js",
+      "exports": ["functionC", "CONSTANT_C"],
+      "imports": [],
+      "usedBy": ["fileB.js"],
+      "calls": []
+    }
+  },
+  "dependencies": [
+    {
+      "from": "fileA.js",
+      "to": "fileB.js",
+      "type": "import",
+      "symbols": ["functionB", "getConstant"]
+    },
+    {
+      "from": "fileB.js",
+      "to": "fileC.js",
+      "type": "import",
+      "symbols": ["functionC", "CONSTANT_C"]
+    }
+  ],
+  "transitiveConnections": [
+    {
+      "from": "fileA.js",
+      "to": "fileC.js",
+      "path": ["fileA.js", "fileB.js", "fileC.js"],
+      "note": "A usa C indirectamente a través de B"
+    }
+  ]
+}
