@@ -21,9 +21,13 @@ export function buildGraph(parsedFiles, resolvedImports) {
   const systemMap = {
     files: {},
     dependencies: [],
+    functions: {},           // NUEVO: Funciones por archivo
+    function_links: [],      // NUEVO: Enlaces entre funciones
     metadata: {
       totalFiles: 0,
       totalDependencies: 0,
+      totalFunctions: 0,     // NUEVO
+      totalFunctionLinks: 0, // NUEVO
       cyclesDetected: []
     }
   };
@@ -127,9 +131,45 @@ export function buildGraph(parsedFiles, resolvedImports) {
     fileNode.transitiveDependents = Array.from(transitive);
   }
 
+  // NUEVO: Procesar funciones y crear function_links
+  for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
+    const normalized = normalizePath(filePath);
+
+    if (fileInfo.functions && Array.isArray(fileInfo.functions)) {
+      systemMap.functions[normalized] = fileInfo.functions;
+
+      // Crear enlaces entre funciones
+      for (const func of fileInfo.functions) {
+        for (const call of func.calls) {
+          // Resolver qué archivo contiene la función llamada
+          const targetFunc = findFunctionInResolution(
+            call.name,
+            fileInfo,
+            resolvedImports,
+            parsedFiles,
+            normalized
+          );
+
+          if (targetFunc) {
+            systemMap.function_links.push({
+              from: func.id,
+              to: targetFunc.id,
+              type: 'call',
+              line: call.line,
+              file_from: normalized,
+              file_to: targetFunc.file
+            });
+          }
+        }
+      }
+    }
+  }
+
   // Calcular métricas
   systemMap.metadata.totalFiles = allFilePaths.size;
   systemMap.metadata.totalDependencies = systemMap.dependencies.length;
+  systemMap.metadata.totalFunctions = countTotalFunctions(systemMap.functions);
+  systemMap.metadata.totalFunctionLinks = systemMap.function_links.length;
 
   return systemMap;
 }
@@ -330,4 +370,69 @@ function generateRecommendation(affectedCount, riskLevel) {
   }
 
   return `🚨 HIGH RISK - Review all ${affectedCount} affected file(s) before making changes`;
+}
+
+/**
+ * Busca una función en los imports resueltos
+ *
+ * @param {string} functionName - Nombre de la función a buscar
+ * @param {object} fileInfo - Info del archivo actual
+ * @param {object} resolvedImports - Imports resueltos
+ * @param {object} parsedFiles - Archivos parseados
+ * @param {string} currentFile - Archivo actual normalizado
+ * @returns {object|null} - { id, file } de la función encontrada
+ */
+function findFunctionInResolution(
+  functionName,
+  fileInfo,
+  resolvedImports,
+  parsedFiles,
+  currentFile
+) {
+  // 1. Buscar en imports del archivo actual
+  const imports = resolvedImports[currentFile] || [];
+
+  for (const importInfo of imports) {
+    if (!importInfo.resolved) continue;
+
+    const resolvedFile = normalizePath(importInfo.resolved);
+    const targetFileInfo = parsedFiles[resolvedFile];
+
+    if (targetFileInfo && targetFileInfo.functions) {
+      const foundFunc = targetFileInfo.functions.find(f => f.name === functionName);
+      if (foundFunc) {
+        return {
+          id: foundFunc.id,
+          file: resolvedFile
+        };
+      }
+    }
+  }
+
+  // 2. Buscar en funciones locales (misma archivo)
+  if (fileInfo.functions) {
+    const localFunc = fileInfo.functions.find(f => f.name === functionName);
+    if (localFunc) {
+      return {
+        id: localFunc.id,
+        file: currentFile
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Cuenta el total de funciones en todos los archivos
+ *
+ * @param {object} functions - Mapa de functions por archivo
+ * @returns {number}
+ */
+function countTotalFunctions(functions) {
+  let total = 0;
+  for (const funcs of Object.values(functions)) {
+    total += funcs.length;
+  }
+  return total;
 }

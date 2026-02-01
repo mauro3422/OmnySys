@@ -29,7 +29,8 @@ export function parseFile(filePath, code) {
     imports: [],
     exports: [],
     definitions: [],
-    calls: []
+    calls: [],
+    functions: []  // NUEVO: Array de funciones con calls
   };
 
   try {
@@ -171,6 +172,20 @@ export function parseFile(filePath, code) {
             name: node.id.name,
             params: node.params.length
           });
+
+          // NUEVO: Extraer función con calls
+          const functionCalls = findCallsInFunction(nodePath);
+          const isExported = isExportedFunction(node, fileInfo);
+
+          fileInfo.functions.push({
+            id: `${getFileId(filePath)}:${node.id.name}`,
+            name: node.id.name,
+            line: node.loc?.start.line || 0,
+            endLine: node.loc?.end.line || 0,
+            params: node.params.map(p => p.name || ''),
+            isExported: isExported,
+            calls: functionCalls
+          });
         }
       },
 
@@ -229,4 +244,64 @@ export async function parseFileFromDisk(filePath) {
 export async function parseFiles(filePaths) {
   const promises = filePaths.map(filePath => parseFileFromDisk(filePath));
   return Promise.all(promises);
+}
+
+/**
+ * Encuentra todas las llamadas a funciones dentro de una función
+ *
+ * @param {Object} functionPath - Path de Babel para la función
+ * @returns {Array} - Array de calls con { name, type, line }
+ */
+function findCallsInFunction(functionPath) {
+  const calls = [];
+  const seen = new Set();
+
+  functionPath.traverse({
+    CallExpression(innerPath) {
+      const node = innerPath.node;
+      if (node.callee.type === 'Identifier') {
+        const callKey = `${node.callee.name}:${node.loc?.start.line || 0}`;
+        if (!seen.has(callKey)) {
+          seen.add(callKey);
+          calls.push({
+            name: node.callee.name,
+            type: 'direct_call',
+            line: node.loc?.start.line || 0
+          });
+        }
+      }
+    }
+  });
+
+  return calls;
+}
+
+/**
+ * Verifica si una función está exportada
+ *
+ * @param {Object} node - Nodo de Babel
+ * @param {Object} fileInfo - Info del archivo
+ * @returns {boolean}
+ */
+function isExportedFunction(node, fileInfo) {
+  if (!node.id) return false;
+  return fileInfo.exports.some(exp => exp.name === node.id.name);
+}
+
+/**
+ * Genera un ID único para el archivo (FA, FB, FC, etc.)
+ *
+ * @param {string} filePath - Ruta del archivo
+ * @returns {string}
+ */
+function getFileId(filePath) {
+  // Obtener nombre del archivo sin extensión
+  const fileName = path.basename(filePath, path.extname(filePath));
+  // Convertir a mayúsculas y simplificar (fileA.js → FA)
+  const simplified = fileName
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+    .substring(0, 2);
+
+  return simplified || 'F';
 }
