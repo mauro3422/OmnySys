@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "totalFiles": 3,
+    "totalDependencies": 2,
+    "totalFunctions": 5,
+    "totalFunctionLinks": 3,
+    "totalUnresolved": 0,
+    "totalReexports": 0,
+    "cyclesDetected": []
+  },
+  "unusedExports": {
+    "totalUnused": 2,
+    "byFile": {
+      "src/fileA.js": [
+        {
+          "name": "functionA",
+          "line": 8,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "displayConstant",
+          "line": 16,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ]
+    },
+    "impact": "Removing unused exports could reduce: 2 functions"
+  },
+  "orphanFiles": {
+    "total": 0,
+    "files": [],
+    "deadCodeCount": 0
+  },
+  "hotspots": {
+    "total": 0,
+    "functions": [],
+    "criticalCount": 0
+  },
+  "circularFunctionDeps": {
+    "total": 0,
+    "cycles": [],
+    "hasMutualRecursion": false,
+    "recommendation": "No circular function dependencies detected"
+  },
+  "deepDependencyChains": {
+    "totalDeepChains": 0,
+    "maxDepth": 0,
+    "chains": [],
+    "recommendation": "No very deep dependency chains detected"
+  },
+  "sideEffectMarkers": {
+    "total": 0,
+    "functions": [],
+    "note": "These are pattern-based guesses - verify manually"
+  },
+  "reachabilityAnalysis": {
+    "totalFiles": 3,
+    "reachable": 3,
+    "unreachable": 0,
+    "reachablePercent": "100.0",
+    "likelyEntryPoints": [
+      "src/fileA.js"
+    ],
+    "deadCodeFiles": [],
+    "concern": "LOW"
+  },
+  "couplingAnalysis": {
+    "total": 2,
+    "coupledFiles": [
+      {
+        "file": "src/fileA.js",
+        "coupledWith": [
+          "src/fileB.js"
+        ],
+        "couplingStrength": 1,
+        "recommendation": "Moderate coupling"
+      },
+      {
+        "file": "src/fileB.js",
+        "coupledWith": [
+          "src/fileC.js"
+        ],
+        "couplingStrength": 1,
+        "recommendation": "Moderate coupling"
+      }
+    ],
+    "maxCoupling": 1,
+    "concern": "LOW"
+  },
+  "unresolvedImports": {
+    "total": 0,
+    "byFile": {},
+    "recommendation": "All imports resolved"
+  },
+  "unusedImports": {
+    "total": 1,
+    "byFile": {
+      "src/fileB.js": [
+        {
+          "name": "CONSTANT_C",
+          "source": "./fileC.js",
+          "type": "named",
+          "severity": "warning"
+        }
+      ]
+    },
+    "recommendation": "Remove 1 unused import(s) to reduce confusion"
+  },
+  "reexportChains": {
+    "total": 0,
+    "chains": [],
+    "recommendation": "No complex re-export chains"
+  },
+  "qualityMetrics": {
+    "score": 97,
+    "grade": "A",
+    "totalIssues": 3,
+    "breakdown": {
+      "unusedExports": 2,
+      "orphanFiles": 0,
+      "hotspots": 0,
+      "circularDeps": 0,
+      "deepChains": 0,
+      "coupling": 2,
+      "unresolvedImports": 0,
+      "unusedImports": 1,
+      "reexportChains": 0
+    }
+  },
+  "recommendations": {
+    "total": 1,
+    "byPriority": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 1,
+      "LOW": 0
+    },
+    "recommendations": [
+      {
+        "priority": "MEDIUM",
+        "category": "Code Cleanup",
+        "message": "1 unused import(s) - adds confusion",
+        "action": "Remove unused imports to reduce cognitive load for AI"
+      }
+    ]
+  }
+}

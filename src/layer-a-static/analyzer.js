@@ -26,7 +26,11 @@ export function generateAnalysisReport(systemMap) {
     deepDependencyChains: findDeepDependencyChains(systemMap),
     sideEffectMarkers: detectSideEffectMarkers(systemMap),
     reachabilityAnalysis: analyzeReachability(systemMap),
-    couplingAnalysis: analyzeCoupling(systemMap)
+    couplingAnalysis: analyzeCoupling(systemMap),
+    // NUEVOS: Para evitar trabajo innecesario de IA
+    unresolvedImports: findUnresolvedImports(systemMap),
+    unusedImports: findUnusedImports(systemMap),
+    reexportChains: analyzeReexportChains(systemMap)
   };
 
   // Ahora calcular métricas y recomendaciones basadas en análisis
@@ -391,6 +395,116 @@ function analyzeCoupling(systemMap) {
   };
 }
 
+/**
+ * Encuentra imports que no se resolvieron (rotos o externos sin tracking)
+ */
+function findUnresolvedImports(systemMap) {
+  const unresolvedByFile = systemMap.unresolvedImports || {};
+  const total = Object.values(unresolvedByFile).flat().length;
+
+  return {
+    total: total,
+    byFile: unresolvedByFile,
+    recommendation: total > 0 ? `Fix ${total} unresolved import(s) - they may break at runtime` : 'All imports resolved'
+  };
+}
+
+/**
+ * Encuentra imports que se hacen pero no se usan en ese archivo
+ */
+function findUnusedImports(systemMap) {
+  const unusedByFile = {};
+  let totalUnused = 0;
+
+  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+    const unusedInFile = [];
+
+    // Obtener symbols importados
+    for (const importStmt of fileNode.imports) {
+      for (const spec of importStmt.specifiers || []) {
+        const importedName = spec.local || spec.imported;
+
+        // Buscar si esta función se llama en este archivo
+        const isUsedLocally = (systemMap.functions[filePath] || []).some(func => {
+          return func.calls.some(call => call.name === importedName);
+        });
+
+        // Buscar si se usa en function_links
+        const isUsedAsTarget = systemMap.function_links.some(link => {
+          return link.file_to === filePath && link.to.endsWith(`:${importedName}`);
+        });
+
+        if (!isUsedLocally && !isUsedAsTarget) {
+          unusedInFile.push({
+            name: importedName,
+            source: importStmt.source,
+            type: spec.type,
+            severity: 'warning'
+          });
+          totalUnused++;
+        }
+      }
+    }
+
+    if (unusedInFile.length > 0) {
+      unusedByFile[filePath] = unusedInFile;
+    }
+  }
+
+  return {
+    total: totalUnused,
+    byFile: unusedByFile,
+    recommendation: totalUnused > 0 ? `Remove ${totalUnused} unused import(s) to reduce confusion` : 'All imports are used'
+  };
+}
+
+/**
+ * Rastrea cadenas de re-exports (A→B→C)
+ */
+function analyzeReexportChains(systemMap) {
+  const chains = [];
+  const visited = new Set();
+
+  // Buscar archivos que solo reexportan (no tienen funciones originales)
+  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+    const functions = systemMap.functions[filePath] || [];
+    const isBarrel = functions.length === 0 && fileNode.exports.length > 0 && fileNode.imports.length > 0;
+
+    if (isBarrel && !visited.has(filePath)) {
+      // Seguir la cadena
+      const chain = [filePath];
+      let current = filePath;
+      visited.add(current);
+
+      while (true) {
+        const currentNode = systemMap.files[current];
+        if (!currentNode || currentNode.dependsOn.length === 0) break;
+
+        const next = currentNode.dependsOn[0];
+        if (visited.has(next)) break;
+
+        chain.push(next);
+        visited.add(next);
+        current = next;
+      }
+
+      if (chain.length > 1) {
+        chains.push({
+          chain: chain,
+          depth: chain.length,
+          recommendation: chain.length > 2 ? 'MEDIUM' : 'LOW'
+        });
+      }
+    }
+  }
+
+  return {
+    total: chains.length,
+    chains: chains,
+    recommendation: chains.length > 0 ? `Simplify ${chains.length} re-export chain(s) for clarity` : 'No complex re-export chains'
+  };
+}
+
 // ============================================================================
 // MÉTRICAS Y RECOMENDACIONES
 // ============================================================================
@@ -415,6 +529,11 @@ function calculateQualityMetrics(analyses) {
   if (analyses.deepDependencyChains.totalDeepChains > 0)
     score -= Math.min(20, analyses.deepDependencyChains.totalDeepChains * 2);
   if (analyses.couplingAnalysis.concern === 'HIGH') score -= 15;
+  // NUEVOS: Penalizar imports problemáticos
+  if (analyses.unresolvedImports.total > 0)
+    score -= Math.min(25, analyses.unresolvedImports.total * 5);
+  if (analyses.unusedImports.total > 0)
+    score -= Math.min(15, Math.ceil(analyses.unusedImports.total / 2));
 
   score = Math.max(0, Math.min(100, score));
 
@@ -428,14 +547,19 @@ function calculateQualityMetrics(analyses) {
       analyses.unusedExports.totalUnused +
       analyses.orphanFiles.total +
       analyses.hotspots.total +
-      analyses.circularFunctionDeps.total,
+      analyses.circularFunctionDeps.total +
+      analyses.unresolvedImports.total +
+      analyses.unusedImports.total,
     breakdown: {
       unusedExports: analyses.unusedExports.totalUnused,
       orphanFiles: analyses.orphanFiles.deadCodeCount,
       hotspots: analyses.hotspots.criticalCount,
       circularDeps: analyses.circularFunctionDeps.total,
       deepChains: analyses.deepDependencyChains.totalDeepChains,
-      coupling: analyses.couplingAnalysis.total
+      coupling: analyses.couplingAnalysis.total,
+      unresolvedImports: analyses.unresolvedImports.total,
+      unusedImports: analyses.unusedImports.total,
+      reexportChains: analyses.reexportChains.total
     }
   };
 }
@@ -515,6 +639,43 @@ function generateRecommendations(analyses) {
       category: 'Code Health',
       message: `Only ${reach.reachablePercent}% of code is reachable from entry points`,
       action: 'Remove unreachable code or link it to entry points'
+    });
+  }
+
+  // Recomendación 8: Imports no resueltos (NUEVOS)
+  if (analyses.unresolvedImports.total > 0) {
+    recommendations.push({
+      priority: 'CRITICAL',
+      category: 'Broken Code',
+      message: `${analyses.unresolvedImports.total} unresolved import(s) - may break at runtime`,
+      action: 'Fix missing files or incorrect paths in imports'
+    });
+  }
+
+  // Recomendación 9: Imports sin usar (NUEVOS)
+  if (analyses.unusedImports.total > 5) {
+    recommendations.push({
+      priority: 'HIGH',
+      category: 'Code Cleanup',
+      message: `${analyses.unusedImports.total} unused import(s) - adds confusion`,
+      action: 'Remove unused imports to reduce cognitive load for AI'
+    });
+  } else if (analyses.unusedImports.total > 0) {
+    recommendations.push({
+      priority: 'MEDIUM',
+      category: 'Code Cleanup',
+      message: `${analyses.unusedImports.total} unused import(s) - adds confusion`,
+      action: 'Remove unused imports to reduce cognitive load for AI'
+    });
+  }
+
+  // Recomendación 10: Cadenas de re-exports (NUEVOS)
+  if (analyses.reexportChains.total > 2) {
+    recommendations.push({
+      priority: 'MEDIUM',
+      category: 'Architecture',
+      message: `${analyses.reexportChains.total} complex re-export chain(s) found`,
+      action: 'Simplify re-export chains or add comments explaining the flow'
     });
   }
 

@@ -23,11 +23,15 @@ export function buildGraph(parsedFiles, resolvedImports) {
     dependencies: [],
     functions: {},           // NUEVO: Funciones por archivo
     function_links: [],      // NUEVO: Enlaces entre funciones
+    unresolvedImports: {},   // NUEVO: Imports no resueltos
+    reexportChains: [],      // NUEVO: Cadenas de re-exports
     metadata: {
       totalFiles: 0,
       totalDependencies: 0,
       totalFunctions: 0,     // NUEVO
       totalFunctionLinks: 0, // NUEVO
+      totalUnresolved: 0,    // NUEVO
+      totalReexports: 0,     // NUEVO
       cyclesDetected: []
     }
   };
@@ -66,8 +70,18 @@ export function buildGraph(parsedFiles, resolvedImports) {
     }
 
     for (const importInfo of imports) {
+      // NUEVO: Capturar imports no resueltos
       if (!importInfo.resolved) {
-        continue; // Import no resuelto (externo, error, etc.)
+        if (!systemMap.unresolvedImports[normalizedFrom]) {
+          systemMap.unresolvedImports[normalizedFrom] = [];
+        }
+        systemMap.unresolvedImports[normalizedFrom].push({
+          source: importInfo.source || importInfo.importSource,
+          type: importInfo.type,
+          reason: importInfo.reason,
+          severity: importInfo.type === 'unresolved' ? 'HIGH' : 'LOW'
+        });
+        continue;
       }
 
       const normalizedTo = normalizePath(importInfo.resolved);
@@ -170,6 +184,8 @@ export function buildGraph(parsedFiles, resolvedImports) {
   systemMap.metadata.totalDependencies = systemMap.dependencies.length;
   systemMap.metadata.totalFunctions = countTotalFunctions(systemMap.functions);
   systemMap.metadata.totalFunctionLinks = systemMap.function_links.length;
+  systemMap.metadata.totalUnresolved = Object.values(systemMap.unresolvedImports).flat().length;
+  systemMap.metadata.totalReexports = systemMap.reexportChains.length;
 
   return systemMap;
 }
