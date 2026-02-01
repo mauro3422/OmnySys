@@ -94,6 +94,12 @@
     "byFile": {},
     "recommendation": "All imports resolved"
   },
+  "circularImports": {
+    "total": 0,
+    "cycles": [],
+    "circularPairs": [],
+    "recommendation": "No circular imports detected"
+  },
   "unusedImports": {
     "total": 1,
     "byFile": {
@@ -125,6 +131,7 @@
       "deepChains": 0,
       "coupling": 2,
       "unresolvedImports": 0,
+      "circularImports": 0,
       "unusedImports": 1,
       "reexportChains": 0
     }

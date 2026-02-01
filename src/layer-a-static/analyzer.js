@@ -29,6 +29,7 @@ export function generateAnalysisReport(systemMap) {
     couplingAnalysis: analyzeCoupling(systemMap),
     // NUEVOS: Para evitar trabajo innecesario de IA
     unresolvedImports: findUnresolvedImports(systemMap),
+    circularImports: findCircularImports(systemMap),
     unusedImports: findUnusedImports(systemMap),
     reexportChains: analyzeReexportChains(systemMap)
   };
@@ -410,6 +411,82 @@ function findUnresolvedImports(systemMap) {
 }
 
 /**
+ * Encuentra circular imports (A imports B, B imports A)
+ */
+function findCircularImports(systemMap) {
+  const cycles = systemMap.metadata.cyclesDetected || [];
+  const circularImportPairs = [];
+
+  // Procesar ciclos detectados
+  for (const cycle of cycles) {
+    if (cycle && Array.isArray(cycle) && cycle.length >= 2) {
+      // Verificar que sea un ciclo directo (A -> B -> A)
+      for (let i = 0; i < cycle.length; i++) {
+        const current = cycle[i];
+        const next = cycle[(i + 1) % cycle.length];
+
+        // Solo reportar ciclos de 2 (importación directa circular)
+        if (cycle.length === 2) {
+          const pair = [current, next].sort().join(' <-> ');
+          if (!circularImportPairs.includes(pair)) {
+            circularImportPairs.push(pair);
+          }
+        }
+      }
+    }
+  }
+
+  // Verificar ciclos de archivo usando DFS
+  const visited = new Set();
+  const recursionStack = new Set();
+  const foundCycles = [];
+
+  function hasCycle(filePath) {
+    visited.add(filePath);
+    recursionStack.add(filePath);
+
+    const fileNode = systemMap.files[filePath];
+    if (fileNode && fileNode.dependsOn) {
+      for (const dependency of fileNode.dependsOn) {
+        if (!visited.has(dependency)) {
+          if (hasCycle(dependency)) {
+            return true;
+          }
+        } else if (recursionStack.has(dependency)) {
+          // Ciclo encontrado
+          if (!foundCycles.some(c => c.includes(filePath) && c.includes(dependency))) {
+            foundCycles.push([filePath, dependency]);
+          }
+          return true;
+        }
+      }
+    }
+
+    recursionStack.delete(filePath);
+    return false;
+  }
+
+  // Buscar ciclos
+  for (const filePath of Object.keys(systemMap.files)) {
+    if (!visited.has(filePath)) {
+      visited.clear();
+      recursionStack.clear();
+      hasCycle(filePath);
+    }
+  }
+
+  return {
+    total: Math.max(foundCycles.length, cycles.length),
+    cycles: foundCycles.length > 0 ? foundCycles : cycles,
+    circularPairs: circularImportPairs,
+    recommendation:
+      foundCycles.length > 0 || cycles.length > 0
+        ? `Found circular imports - breaks module loading`
+        : 'No circular imports detected'
+  };
+}
+
+/**
  * Encuentra imports que se hacen pero no se usan en ese archivo
  */
 function findUnusedImports(systemMap) {
@@ -532,6 +609,8 @@ function calculateQualityMetrics(analyses) {
   // NUEVOS: Penalizar imports problemáticos
   if (analyses.unresolvedImports.total > 0)
     score -= Math.min(25, analyses.unresolvedImports.total * 5);
+  if (analyses.circularImports.total > 0)
+    score -= Math.min(35, analyses.circularImports.total * 20);
   if (analyses.unusedImports.total > 0)
     score -= Math.min(15, Math.ceil(analyses.unusedImports.total / 2));
 
@@ -549,6 +628,7 @@ function calculateQualityMetrics(analyses) {
       analyses.hotspots.total +
       analyses.circularFunctionDeps.total +
       analyses.unresolvedImports.total +
+      analyses.circularImports.total +
       analyses.unusedImports.total,
     breakdown: {
       unusedExports: analyses.unusedExports.totalUnused,
@@ -558,6 +638,7 @@ function calculateQualityMetrics(analyses) {
       deepChains: analyses.deepDependencyChains.totalDeepChains,
       coupling: analyses.couplingAnalysis.total,
       unresolvedImports: analyses.unresolvedImports.total,
+      circularImports: analyses.circularImports.total,
       unusedImports: analyses.unusedImports.total,
       reexportChains: analyses.reexportChains.total
     }
@@ -649,6 +730,16 @@ function generateRecommendations(analyses) {
       category: 'Broken Code',
       message: `${analyses.unresolvedImports.total} unresolved import(s) - may break at runtime`,
       action: 'Fix missing files or incorrect paths in imports'
+    });
+  }
+
+  // Recomendación 8.5: Circular imports (NUEVOS)
+  if (analyses.circularImports.total > 0) {
+    recommendations.push({
+      priority: 'CRITICAL',
+      category: 'Architecture',
+      message: `${analyses.circularImports.total} circular import(s) detected - breaks module loading`,
+      action: 'Refactor to break circular dependencies (move shared code to utility)'
     });
   }
 
