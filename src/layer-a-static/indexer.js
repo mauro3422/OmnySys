@@ -4,6 +4,7 @@ import { scanProject, detectProjectInfo } from './scanner.js';
 import { parseFileFromDisk } from './parser.js';
 import { resolveImport, getResolutionConfig } from './resolver.js';
 import { buildGraph, getImpactMap } from './graph-builder.js';
+import { generateAnalysisReport } from './analyzer.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -149,14 +150,33 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
     if (verbose) console.log(`  ✓ Saved to: ${outputPath}\n`);
 
+    // Paso 9: NUEVO - Generar análisis automático
+    if (verbose) console.log('🔍 Analyzing code quality...');
+    const analysisReport = generateAnalysisReport(systemMap);
+    const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
+    const analysisFullPath = path.join(absoluteRootPath, analysisOutputPath);
+    await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
+    if (verbose) console.log(`  ✓ Analysis saved to: ${analysisOutputPath}\n`);
+
     // Resumen
     if (verbose) {
       console.log('✅ Layer A Complete!');
       console.log(`
 📊 Summary:
   - Files analyzed: ${systemMap.metadata.totalFiles}
+  - Functions analyzed: ${systemMap.metadata.totalFunctions}
   - Dependencies: ${systemMap.metadata.totalDependencies}
+  - Function links: ${systemMap.metadata.totalFunctionLinks}
   - Average deps per file: ${(systemMap.metadata.totalDependencies / systemMap.metadata.totalFiles).toFixed(2)}
+
+🔍 Code Quality Analysis:
+  - Quality Score: ${analysisReport.qualityMetrics.score}/100 (Grade: ${analysisReport.qualityMetrics.grade})
+  - Total Issues: ${analysisReport.qualityMetrics.totalIssues}
+  - Unused Exports: ${analysisReport.unusedExports.totalUnused}
+  - Dead Code Files: ${analysisReport.orphanFiles.deadCodeCount}
+  - Critical Hotspots: ${analysisReport.hotspots.criticalCount}
+  - Circular Dependencies: ${analysisReport.circularFunctionDeps.total}
+  - Recommendations: ${analysisReport.recommendations.total}
       `);
     }
 
