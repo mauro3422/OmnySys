@@ -5,6 +5,10 @@ import { parseFileFromDisk } from './parser.js';
 import { resolveImport, getResolutionConfig } from './resolver.js';
 import { buildGraph } from './graph-builder.js';
 import { generateAnalysisReport } from './analyzer.js';
+import { detectSharedState, generateSharedStateConnections } from './analyses/tier3/shared-state-detector.js';
+import { detectEventPatterns, generateEventConnections } from './analyses/tier3/event-pattern-detector.js';
+import { detectSideEffects } from './analyses/tier3/side-effects-detector.js';
+import { calculateAllRiskScores, generateRiskReport } from './analyses/tier3/risk-scorer.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -14,6 +18,170 @@ import { generateAnalysisReport } from './analyzer.js';
  * - Coordinar scanner → parser → resolver → graph-builder
  * - Guardar resultados en JSON
  */
+
+/**
+ * Genera enhanced system map con análisis semántico estático
+ *
+ * @param {string} absoluteRootPath - Raíz del proyecto
+ * @param {object} parsedFiles - Mapa de filePath -> fileInfo
+ * @param {object} systemMap - System map generado por buildGraph
+ * @param {boolean} verbose - Mostrar output detallado
+ * @returns {Promise<object>} - Enhanced system map
+ */
+async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose = true) {
+  if (verbose) console.log('\n🔍 Performing semantic analysis (static)...');
+
+  const enhancedFiles = {};
+  const allSharedStateConnections = [];
+  const allEventConnections = [];
+  const allSideEffects = {};
+  const fileSourceCode = {};
+
+  // Paso 1: Analizar shared state y event patterns para cada archivo
+  if (verbose) console.log('  📊 Analyzing global state and event patterns...');
+
+  for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
+    const projectRelative = path.relative(absoluteRootPath, filePath).replace(/\\/g, '/');
+
+    try {
+      // Leer código fuente para los detectores
+      const code = await fs.readFile(filePath, 'utf-8');
+      fileSourceCode[projectRelative] = code;
+
+      // Detectar shared state
+      const sharedState = detectSharedState(code, filePath);
+
+      // Detectar event patterns
+      const eventPatterns = detectEventPatterns(code, filePath);
+
+      // Detectar side effects
+      const sideEffects = detectSideEffects(code, filePath);
+
+      // Guardar análisis por archivo
+      enhancedFiles[projectRelative] = {
+        ...fileInfo,
+        semanticAnalysis: {
+          sharedState,
+          eventPatterns,
+          sideEffects: sideEffects.sideEffects,
+          sideEffectDetails: sideEffects.details
+        }
+      };
+
+      allSideEffects[projectRelative] = sideEffects;
+
+    } catch (error) {
+      console.warn(`  ⚠️  Error analyzing ${projectRelative}:`, error.message);
+      enhancedFiles[projectRelative] = fileInfo;
+    }
+  }
+
+  if (verbose) console.log('  ✓ Semantic analysis complete');
+
+  // Paso 2: Generar conexiones semánticas globales
+  if (verbose) console.log('  🔗 Generating semantic connections...');
+
+  const sharedStateConnections = generateSharedStateConnections(
+    Object.entries(enhancedFiles).reduce((acc, [file, analysis]) => {
+      acc[file] = analysis.semanticAnalysis.sharedState;
+      return acc;
+    }, {})
+  );
+
+  const eventConnections = generateEventConnections(
+    Object.entries(enhancedFiles).reduce((acc, [file, analysis]) => {
+      acc[file] = {
+        eventListeners: analysis.semanticAnalysis.eventPatterns.eventListeners,
+        eventEmitters: analysis.semanticAnalysis.eventPatterns.eventEmitters
+      };
+      return acc;
+    }, {})
+  );
+
+  const allConnections = [...sharedStateConnections, ...eventConnections];
+
+  if (verbose) {
+    console.log(`  ✓ ${sharedStateConnections.length} shared state connections`);
+    console.log(`  ✓ ${eventConnections.length} event listener connections`);
+  }
+
+  // Paso 3: Agrupar conexiones por archivo
+  const semanticConnectionsByFile = {};
+  for (const conn of allConnections) {
+    if (!semanticConnectionsByFile[conn.sourceFile]) {
+      semanticConnectionsByFile[conn.sourceFile] = [];
+    }
+    semanticConnectionsByFile[conn.sourceFile].push(conn);
+  }
+
+  // Paso 4: Calcular risk scores
+  if (verbose) console.log('  📈 Calculating risk scores...');
+
+  // Preparar métricas del grafo para cada archivo
+  const graphMetrics = {};
+  for (const [filePath, fileData] of Object.entries(systemMap.files || {})) {
+    graphMetrics[filePath] = {
+      inDegree: (fileData.usedBy || []).length,
+      outDegree: (fileData.dependsOn || []).length,
+      circularDependencies: systemMap.metadata.cyclesDetected.filter(
+        cycle => cycle.includes(filePath)
+      ).length,
+      coupledFiles: (fileData.usedBy || []).filter(f =>
+        (systemMap.files[f]?.dependsOn || []).includes(filePath)
+      ).length
+    };
+  }
+
+  const riskScores = calculateAllRiskScores(
+    systemMap,
+    semanticConnectionsByFile,
+    allSideEffects,
+    graphMetrics
+  );
+
+  if (verbose) console.log('  ✓ Risk scores calculated');
+
+  // Paso 5: Construir enhanced system map
+  if (verbose) console.log('  🏗️  Building enhanced system map...');
+
+  const enhancedSystemMap = {
+    metadata: {
+      ...systemMap.metadata,
+      enhanced: true,
+      enhancedAt: new Date().toISOString(),
+      analysisVersion: '3.5.0',
+      includes: ['static', 'semantic-static', 'risk-scoring']
+    },
+    files: {},
+    connections: {
+      sharedState: sharedStateConnections,
+      eventListeners: eventConnections,
+      total: allConnections.length
+    },
+    riskAssessment: {
+      scores: riskScores,
+      report: generateRiskReport(riskScores)
+    }
+  };
+
+  // Enriquecer cada archivo con sus análisis
+  for (const [filePath, fileInfo] of Object.entries(enhancedFiles)) {
+    const riskScore = riskScores[filePath];
+    const connections = semanticConnectionsByFile[filePath] || [];
+
+    enhancedSystemMap.files[filePath] = {
+      ...systemMap.files[filePath],
+      semanticConnections: connections,
+      riskScore: riskScore,
+      sideEffects: allSideEffects[filePath]?.sideEffects || {},
+      sideEffectDetails: allSideEffects[filePath]?.details || {}
+    };
+  }
+
+  if (verbose) console.log('  ✓ Enhanced system map built');
+
+  return enhancedSystemMap;
+}
 
 /**
  * Indexa un proyecto completo
@@ -150,7 +318,7 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
     if (verbose) console.log(`  ✓ Saved to: ${outputPath}\n`);
 
-    // Paso 9: NUEVO - Generar análisis automático
+    // Paso 9: Generar análisis automático
     if (verbose) console.log('🔍 Analyzing code quality...');
     const analysisReport = generateAnalysisReport(systemMap);
     const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
@@ -158,18 +326,31 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
     if (verbose) console.log(`  ✓ Analysis saved to: ${analysisOutputPath}\n`);
 
+    // Paso 10: NUEVO - Generar enhanced system map con análisis semántico estático
+    if (verbose) console.log('🧠 Performing Phase 3.5: Semantic Detection (Static)...');
+    const enhancedSystemMap = await generateEnhancedSystemMap(
+      absoluteRootPath,
+      parsedFiles,
+      systemMap,
+      verbose
+    );
+    const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
+    const enhancedFullPath = path.join(absoluteRootPath, enhancedOutputPath);
+    await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
+    if (verbose) console.log(`  ✓ Enhanced map saved to: ${enhancedOutputPath}\n`);
+
     // Resumen
     if (verbose) {
       console.log('✅ Layer A Complete!');
       console.log(`
-📊 Summary:
+📊 STATIC ANALYSIS Summary:
   - Files analyzed: ${systemMap.metadata.totalFiles}
   - Functions analyzed: ${systemMap.metadata.totalFunctions}
   - Dependencies: ${systemMap.metadata.totalDependencies}
   - Function links: ${systemMap.metadata.totalFunctionLinks}
   - Average deps per file: ${(systemMap.metadata.totalDependencies / systemMap.metadata.totalFiles).toFixed(2)}
 
-🔍 Code Quality Analysis:
+🔍 CODE QUALITY Analysis:
   - Quality Score: ${analysisReport.qualityMetrics.score}/100 (Grade: ${analysisReport.qualityMetrics.grade})
   - Total Issues: ${analysisReport.qualityMetrics.totalIssues}
   - Unused Exports: ${analysisReport.unusedExports.totalUnused}
@@ -177,6 +358,13 @@ export async function indexProject(rootPath, options = {}) {
   - Critical Hotspots: ${analysisReport.hotspots.criticalCount}
   - Circular Dependencies: ${analysisReport.circularFunctionDeps.total}
   - Recommendations: ${analysisReport.recommendations.total}
+
+🧠 SEMANTIC ANALYSIS (Phase 3.5):
+  - Shared state connections: ${enhancedSystemMap.connections.sharedState.length}
+  - Event listener connections: ${enhancedSystemMap.connections.eventListeners.length}
+  - Total semantic connections: ${enhancedSystemMap.connections.total}
+  - High-risk files: ${enhancedSystemMap.riskAssessment.report.summary.highCount + enhancedSystemMap.riskAssessment.report.summary.criticalCount}
+  - Average risk score: ${enhancedSystemMap.riskAssessment.report.summary.averageScore}
       `);
     }
 
