@@ -1,5 +1,82 @@
 # CHANGELOG - OmnySys
 
+## [0.3.4] - 2026-02-02
+
+### Added - Phase 3.4: Semantic Layer Data Architecture (COMPLETE ✓)
+
+#### Schema Design
+- **Created comprehensive JSON Schema**: `schema/enhanced-system-map.schema.json`
+  - Defines structure for combining static + semantic analysis
+  - Includes semantic connections, side effects, risk scores
+  - Validation rules for confidence, severity, and data types
+  - 400+ lines of formal schema specification
+
+- **TypeScript Types**: `schema/types.d.ts`
+  - Full type definitions for enhanced system map
+  - Improves developer experience and IDE autocomplete
+  - Matches JSON Schema 1:1
+
+#### Test Cases for Semantic Analysis
+- **Created scenario-2-semantic**: `test-cases/scenario-2-semantic/`
+  - 6 files with semantic connections (NO static imports)
+  - **GameStore.js** → Creates `window.gameState`
+  - **Player.js** → Modifies `window.gameState` (no import)
+  - **UI.js** → Reads `window.gameState` (no import)
+  - **EventBus.js** → Creates `window.eventBus`
+  - **Analytics.js** → Listens to `window.eventBus` (no import)
+  - **GameEvents.js** → Emits to `window.eventBus` (no import)
+
+- **Expected Connections**: `expected-semantic-connections.json`
+  - 6 semantic connections (3 shared_state, 3 event_listener)
+  - Side effects for all 6 files
+  - Risk scores (4.0 - 7.5 range)
+  - Used for validating AI output accuracy
+
+#### Schema Validator
+- **Created validator**: `src/layer-b-semantic/schema-validator.js`
+  - Validates semantic connections (type, confidence, severity)
+  - Validates side effects (hasGlobalAccess, modifiesDOM, etc.)
+  - Validates risk scores (0-10 scale)
+  - Filters low-confidence connections (configurable threshold)
+  - Generates validation reports
+
+#### Data Architecture Decisions
+- **Scope**: File-level analysis with function-level metadata
+  - Analyze entire file for context
+  - Track exact location (function, line) for precision
+  - NOT block-level (too granular, low value)
+
+- **Connection Types**:
+  - `shared_state`: window.x, globalThis, shared objects
+  - `event_listener`: addEventListener, on(), emit()
+  - `callback`: Functions passed as parameters
+  - `side_effect`: DOM, network, localStorage
+  - `global_access`: Access to globals
+  - `mutation`: Modifies shared state
+
+- **Confidence & Severity**:
+  - Confidence: 0-1 (AI certainty)
+  - Severity: low | medium | high | critical
+  - Default threshold: 0.7 confidence minimum
+
+- **Risk Scoring**:
+  - Total: 0-10 scale
+  - Breakdown: staticComplexity, semanticConnections, hotspotRisk, sideEffectRisk
+  - Used for prioritizing refactoring
+
+#### Why This Phase
+- **Problem**: Can't implement AI without knowing output structure
+- **Solution**: Define schema first, validate with mocks
+- **Benefit**: Fast iteration, clear validation criteria
+
+#### Impact
+- ✅ Complete data model for semantic layer
+- ✅ Validation system prevents garbage output
+- ✅ Test cases define success criteria
+- ✅ Ready for Phase 5 (AI implementation)
+
+---
+
 ## [0.3.3] - 2026-02-02
 
 ### Changed - Modular Architecture Refactor (COMPLETE ✓)
