@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
 import path from 'path';
 import { getAverPath } from './storage-manager.js';
 
@@ -226,31 +227,140 @@ export async function getProjectStats(rootPath) {
 }
 
 /**
- * Reconstruye el enhanced system map completo desde datos particionados
- * (Solo para compatibilidad - no recomendado para proyectos grandes)
+ * DEPRECADO: reconstructFullSystemMap()
  *
- * @param {string} rootPath - Raíz del proyecto
- * @returns {Promise<object>} - Enhanced system map completo
+ * Esta función cargaba TODO en memoria - ineficiente y no escalable.
+ * En su lugar, usa:
+ * - exportFullSystemMapToFile() → para generar un JSON completo en disco (debugging)
+ * - getProjectMetadata() → metadata rápida
+ * - getFileAnalysis() → archivos individuales bajo demanda
+ * - getAllConnections() → conexiones
+ * - getRiskAssessment() → evaluación de riesgos
+ *
+ * @deprecated Use exportFullSystemMapToFile() instead
  */
 export async function reconstructFullSystemMap(rootPath) {
-  const [metadata, connections, assessment] = await Promise.all([
-    getProjectMetadata(rootPath),
-    getAllConnections(rootPath),
-    getRiskAssessment(rootPath)
-  ]);
+  console.warn(
+    'WARNING: reconstructFullSystemMap() is deprecated. Use exportFullSystemMapToFile() instead.\n' +
+    'This function loads everything into memory, which is inefficient.\n' +
+    'Instead, use the partitioned query API: getProjectMetadata(), getFileAnalysis(), etc.'
+  );
 
-  // Cargar todos los archivos
+  throw new Error(
+    'reconstructFullSystemMap() has been deprecated to prevent memory overflow.\n' +
+    'Use exportFullSystemMapToFile(rootPath, outputPath) to export a complete system map to disk.\n' +
+    'This is a debug-only function - for normal usage, query individual components.'
+  );
+}
+
+/**
+ * Exporta el enhanced system map COMPLETO a un archivo JSON (DEBUG ONLY)
+ *
+ * Esta función escribe el system map COMPLETO a un archivo sin cargar TODO en memoria.
+ * Usa un enfoque de escritura progresiva (streaming) para evitar sobrecarga.
+ *
+ * ⚠️ IMPORTANTE: Este es un archivo de DEBUG - puede ser muy grande
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} outputPath - Ruta donde guardar el JSON (ej: '.aver/debug/system-map-full.json')
+ * @returns {Promise<object>} - { success: true, filePath: string, sizeKB: number, filesExported: number }
+ */
+export async function exportFullSystemMapToFile(rootPath, outputPath = null) {
+  // Ruta por defecto: .aver/debug/system-map-full.json
+  if (!outputPath) {
+    const averPath = getAverPath(rootPath);
+    const debugPath = path.join(averPath, 'debug');
+    await fs.mkdir(debugPath, { recursive: true });
+    outputPath = path.join(debugPath, 'system-map-full.json');
+  }
+
+  // Crear directorio si no existe
+  const outputDir = path.dirname(outputPath);
+  await fs.mkdir(outputDir, { recursive: true });
+
+  // Leer metadata
+  const metadata = await getProjectMetadata(rootPath);
   const allFilePaths = Object.keys(metadata.fileIndex);
-  const files = await getMultipleFiles(rootPath, allFilePaths);
 
-  return {
-    metadata: metadata.metadata,
-    files: files,
-    connections: {
-      sharedState: connections.sharedState,
-      eventListeners: connections.eventListeners,
-      total: connections.total
-    },
-    riskAssessment: assessment
-  };
+  // Abrir stream de escritura
+  const writeStream = createWriteStream(outputPath, { encoding: 'utf8' });
+
+  return new Promise((resolve, reject) => {
+    writeStream.on('error', reject);
+
+    // Escribir inicio del JSON
+    writeStream.write('{\n  "metadata": ');
+    writeStream.write(JSON.stringify(metadata.metadata, null, 2));
+    writeStream.write(',\n\n  "files": {\n');
+
+    // Escribir archivos conforme se cargan (NO todo en memoria)
+    (async () => {
+      try {
+        let fileCount = 0;
+        const totalFiles = allFilePaths.length;
+
+        for (const filePath of allFilePaths) {
+          try {
+            const fileData = await getFileAnalysis(rootPath, filePath);
+
+            // Escribir coma separadora (excepto para el primero)
+            if (fileCount > 0) {
+              writeStream.write(',\n');
+            }
+
+            writeStream.write(`    "${filePath}": `);
+            writeStream.write(JSON.stringify(fileData, null, 2).replace(/\n/g, '\n    '));
+
+            fileCount++;
+
+            // Log de progreso cada 10 archivos
+            if (fileCount % 10 === 0) {
+              console.log(`  Exported ${fileCount}/${totalFiles} files...`);
+            }
+          } catch (error) {
+            console.warn(`  Warning: Could not export ${filePath}: ${error.message}`);
+          }
+        }
+
+        // Escribir cierre de files
+        writeStream.write('\n  },\n\n  "connections": ');
+
+        // Escribir conexiones
+        const connections = await getAllConnections(rootPath);
+        writeStream.write(JSON.stringify(connections, null, 2).replace(/\n/g, '\n  '));
+
+        // Escribir risk assessment
+        writeStream.write(',\n\n  "riskAssessment": ');
+        const assessment = await getRiskAssessment(rootPath);
+        writeStream.write(JSON.stringify(assessment, null, 2).replace(/\n/g, '\n  '));
+
+        // Escribir cierre del JSON
+        writeStream.write('\n}\n');
+
+        // Finalizar stream
+        writeStream.end();
+
+        // Obtener tamaño del archivo
+        writeStream.on('finish', async () => {
+          try {
+            const stats = await fs.stat(outputPath);
+            const sizeKB = Math.round(stats.size / 1024);
+
+            resolve({
+              success: true,
+              filePath: outputPath,
+              sizeKB: sizeKB,
+              filesExported: fileCount,
+              message: `System map exported: ${sizeKB} KB (${fileCount} files)`
+            });
+          } catch (error) {
+            reject(error);
+          }
+        });
+      } catch (error) {
+        writeStream.destroy();
+        reject(error);
+      }
+    })();
+  });
 }

@@ -1,0 +1,262 @@
+#!/usr/bin/env node
+
+/**
+ * OmnySysData Generator
+ *
+ * Crea la carpeta omnysysdata/ en el proyecto del usuario
+ * y guarda toda la estructura de análisis + datos recolectados
+ *
+ * Uso:
+ *   node omnysysdata-generator.js /ruta/proyecto
+ */
+
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const OMNYSYSDATA_DIR = 'omnysysdata';
+
+/**
+ * Crea la estructura omnysysdata/ en la raíz del proyecto
+ */
+export async function createOmnySysDataStructure(projectPath) {
+  const omnysyspath = path.join(projectPath, OMNYSYSDATA_DIR);
+
+  console.log('📊 Creating OmnySysData structure...');
+  console.log(`   Location: ${omnysyspath}\n`);
+
+  // Crear directorios
+  const dirs = [
+    omnysyspath,
+    path.join(omnysyspath, 'files'),
+    path.join(omnysyspath, 'connections'),
+    path.join(omnysyspath, 'risks'),
+    path.join(omnysyspath, 'cache'),
+    path.join(omnysyspath, 'mcp-tools')
+  ];
+
+  for (const dir of dirs) {
+    await fs.mkdir(dir, { recursive: true });
+    console.log(`   ✓ ${path.relative(projectPath, dir)}/`);
+  }
+
+  console.log('\n📝 Creating metadata files...\n');
+
+  // 1. project-meta.json
+  const projectMeta = {
+    name: path.basename(projectPath),
+    path: projectPath,
+    createdAt: new Date().toISOString(),
+    version: '1.0.0',
+    omnysysDataVersion: '1.0.0',
+    description: 'Project analysis and structure data'
+  };
+
+  await fs.writeFile(
+    path.join(omnysyspath, 'project-meta.json'),
+    JSON.stringify(projectMeta, null, 2)
+  );
+  console.log('   ✓ project-meta.json');
+
+  // 2. system-structure.json (placeholder)
+  const systemStructure = {
+    metadata: {
+      totalFiles: 0,
+      totalDependencies: 0,
+      totalFunctions: 0,
+      analyzedAt: new Date().toISOString()
+    },
+    status: 'empty',
+    message: 'Awaiting analysis data from .aver/'
+  };
+
+  await fs.writeFile(
+    path.join(omnysyspath, 'system-structure.json'),
+    JSON.stringify(systemStructure, null, 2)
+  );
+  console.log('   ✓ system-structure.json');
+
+  // 3. README.md
+  const readme = `# OmnySysData - Project Analysis Hub
+
+## 📋 What's Inside
+
+This directory contains all the collected system analysis data for your project.
+
+### Directory Structure
+
+\`\`\`
+omnysysdata/
+├── project-meta.json          # Project metadata
+├── system-structure.json      # Complete system map
+├── files/                     # Individual file analysis
+│   └── *.json
+├── connections/               # Connection data
+│   ├── shared-state.json
+│   └── event-listeners.json
+├── risks/                     # Risk assessment
+│   └── assessment.json
+├── cache/                     # MCP Server cache
+│   ├── metadata.cache
+│   ├── connections.cache
+│   └── files.cache
+└── mcp-tools/                 # MCP tool definitions
+    └── tools.json
+\`\`\`
+
+## 📊 File Descriptions
+
+### project-meta.json
+- Project name and path
+- Creation timestamp
+- Version information
+
+### system-structure.json
+- Complete system map from analysis
+- All file relationships
+- Dependencies and connections
+- Risk scores
+
+### files/
+- Individual analysis for each file
+- Function definitions
+- Imports/exports
+- Side effects
+
+### connections/
+- shared-state.json: Global state access patterns
+- event-listeners.json: Event system connections
+
+### risks/
+- Risk assessment results
+- Severity scoring
+- File-level risk metrics
+
+### cache/
+- MCP Server runtime cache
+- Frequently accessed data
+- Performance optimization
+
+### mcp-tools/
+- MCP tool definitions
+- Available operations
+- Tool signatures
+
+## 🔄 Data Flow
+
+\`\`\`
+Project Source Code
+    ↓
+Layer A (Static Analysis) → generates .aver/
+    ↓
+Layer B (Semantic Analysis) → enhances data
+    ↓
+Layer C (OmnySysData) → collects in this folder
+    ↓
+MCP Server → uses omnysysdata/ as source
+    ↓
+Claude → accesses via MCP tools
+\`\`\`
+
+## 💾 Usage
+
+The MCP Server will automatically populate this directory with analysis data.
+
+For local development:
+\`\`\`bash
+node populate-omnysysdata.js /path/to/project
+\`\`\`
+
+## ⚙️ Configuration
+
+Edit omnysysdata.config.json to customize:
+- Cache settings
+- Analysis scope
+- Tool definitions
+- Auto-update intervals
+`;
+
+  await fs.writeFile(path.join(omnysyspath, 'README.md'), readme);
+  console.log('   ✓ README.md');
+
+  // 4. omnysysdata.config.json
+  const config = {
+    version: '1.0.0',
+    cache: {
+      enabled: true,
+      ttlMinutes: 5,
+      maxSizeKB: 10240
+    },
+    analysis: {
+      includeMetadata: true,
+      includeConnections: true,
+      includeRisks: true,
+      includeFunctionLevel: false
+    },
+    mcp: {
+      enabled: true,
+      tools: [
+        'get_impact_map',
+        'analyze_change',
+        'explain_connection',
+        'get_risk_assessment',
+        'search_files'
+      ]
+    },
+    autoSync: {
+      enabled: true,
+      intervalSeconds: 60
+    }
+  };
+
+  await fs.writeFile(
+    path.join(omnysyspath, 'omnysysdata.config.json'),
+    JSON.stringify(config, null, 2)
+  );
+  console.log('   ✓ omnysysdata.config.json');
+
+  // 5. .gitignore for cache
+  const gitignore = `# OmnySysData runtime cache
+cache/
+*.cache
+*.tmp
+
+# Don't ignore analysis data
+!project-meta.json
+!system-structure.json
+!connections/
+!files/
+!risks/
+!mcp-tools/
+`;
+
+  await fs.writeFile(path.join(omnysyspath, '.gitignore'), gitignore);
+  console.log('   ✓ .gitignore');
+
+  console.log('\n' + '='.repeat(50));
+  console.log('✅ OmnySysData structure created successfully!');
+  console.log('='.repeat(50));
+  console.log(`\n📂 Location: omnysysdata/`);
+  console.log('\n📋 Next steps:');
+  console.log('   1. Populate with analysis data');
+  console.log('   2. Start MCP Server');
+  console.log('   3. Connect Claude Code');
+  console.log('\n');
+
+  return omnysyspath;
+}
+
+// CLI
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const projectPath = process.argv[2] || process.cwd();
+
+  try {
+    await createOmnySysDataStructure(projectPath);
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+    process.exit(1);
+  }
+}
