@@ -21,17 +21,29 @@ export function buildGraph(parsedFiles, resolvedImports) {
   const systemMap = {
     files: {},
     dependencies: [],
-    functions: {},           // NUEVO: Funciones por archivo
-    function_links: [],      // NUEVO: Enlaces entre funciones
-    unresolvedImports: {},   // NUEVO: Imports no resueltos
-    reexportChains: [],      // NUEVO: Cadenas de re-exports
+    functions: {},           // Funciones por archivo
+    function_links: [],      // Enlaces entre funciones
+    unresolvedImports: {},   // Imports no resueltos
+    reexportChains: [],      // Cadenas de re-exports
+    exportIndex: {},         // Índice de exports (incluyendo re-exports)
+    // TIER 3: Deep static analysis
+    typeDefinitions: {},     // Types/Interfaces por archivo
+    enumDefinitions: {},     // Enums por archivo
+    constantExports: {},     // Constantes exportadas por archivo
+    objectExports: {},       // Objetos exportados (mutable state) por archivo
+    typeUsages: {},          // Usos de types por archivo
     metadata: {
       totalFiles: 0,
       totalDependencies: 0,
-      totalFunctions: 0,     // NUEVO
-      totalFunctionLinks: 0, // NUEVO
-      totalUnresolved: 0,    // NUEVO
-      totalReexports: 0,     // NUEVO
+      totalFunctions: 0,
+      totalFunctionLinks: 0,
+      totalUnresolved: 0,
+      totalReexports: 0,
+      // TIER 3 metadata
+      totalTypes: 0,
+      totalEnums: 0,
+      totalConstants: 0,
+      totalSharedObjects: 0,
       cyclesDetected: []
     }
   };
@@ -55,8 +67,54 @@ export function buildGraph(parsedFiles, resolvedImports) {
       definitions: fileInfo.definitions || [],
       usedBy: [], // Se llena después
       calls: fileInfo.calls || [],
+      identifierRefs: fileInfo.identifierRefs || [], // Referencias a identificadores
       dependsOn: [] // Se llena después
     };
+  }
+
+  // Construir índice de exports (incluyendo re-exports)
+  // Esto permite rastrear barrel exports: export { x } from './file'
+  for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
+    const normalized = normalizePath(filePath);
+
+    if (!fileInfo.exports || fileInfo.exports.length === 0) continue;
+
+    systemMap.exportIndex[normalized] = {};
+
+    for (const exportItem of fileInfo.exports) {
+      if (exportItem.type === 'reexport' && exportItem.source) {
+        // Re-export: resolver el path relativo desde el archivo actual
+        // export { findHotspots } from './hotspots.js'
+        const sourceRelative = exportItem.source;
+
+        // Usar path.join en lugar de path.resolve para mantener paths relativos
+        const currentDir = path.dirname(filePath);
+        let joinedPath = path.join(currentDir, sourceRelative);
+
+        // Si no tiene extensión, agregar .js
+        if (!path.extname(joinedPath)) {
+          joinedPath += '.js';
+        }
+
+        const normalizedSource = normalizePath(joinedPath);
+
+        // Solo agregar si el archivo fuente existe en el grafo
+        if (filesByPath[normalizedSource] || allFilePaths.has(normalizedSource)) {
+          systemMap.exportIndex[normalized][exportItem.name] = {
+            type: 'reexport',
+            sourceFile: normalizedSource,
+            sourceName: exportItem.local
+          };
+        }
+      } else{
+        // Export directo
+        systemMap.exportIndex[normalized][exportItem.name] = {
+          type: 'direct',
+          sourceFile: normalized,
+          sourceName: exportItem.name
+        };
+      }
+    }
   }
 
   // Procesar imports y crear dependencies
@@ -145,7 +203,7 @@ export function buildGraph(parsedFiles, resolvedImports) {
     fileNode.transitiveDependents = Array.from(transitive);
   }
 
-  // NUEVO: Procesar funciones y crear function_links
+  // Procesar funciones y crear function_links
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     const normalized = normalizePath(filePath);
 
@@ -177,6 +235,23 @@ export function buildGraph(parsedFiles, resolvedImports) {
         }
       }
     }
+
+    // TIER 3: Procesar types, interfaces, enums, constants, objects
+    if (fileInfo.typeDefinitions && fileInfo.typeDefinitions.length > 0) {
+      systemMap.typeDefinitions[normalized] = fileInfo.typeDefinitions;
+    }
+    if (fileInfo.enumDefinitions && fileInfo.enumDefinitions.length > 0) {
+      systemMap.enumDefinitions[normalized] = fileInfo.enumDefinitions;
+    }
+    if (fileInfo.constantExports && fileInfo.constantExports.length > 0) {
+      systemMap.constantExports[normalized] = fileInfo.constantExports;
+    }
+    if (fileInfo.objectExports && fileInfo.objectExports.length > 0) {
+      systemMap.objectExports[normalized] = fileInfo.objectExports;
+    }
+    if (fileInfo.typeUsages && fileInfo.typeUsages.length > 0) {
+      systemMap.typeUsages[normalized] = fileInfo.typeUsages;
+    }
   }
 
   // Calcular métricas
@@ -186,6 +261,11 @@ export function buildGraph(parsedFiles, resolvedImports) {
   systemMap.metadata.totalFunctionLinks = systemMap.function_links.length;
   systemMap.metadata.totalUnresolved = Object.values(systemMap.unresolvedImports).flat().length;
   systemMap.metadata.totalReexports = systemMap.reexportChains.length;
+  // TIER 3 metrics
+  systemMap.metadata.totalTypes = countTotalItems(systemMap.typeDefinitions);
+  systemMap.metadata.totalEnums = countTotalItems(systemMap.enumDefinitions);
+  systemMap.metadata.totalConstants = countTotalItems(systemMap.constantExports);
+  systemMap.metadata.totalSharedObjects = countTotalItems(systemMap.objectExports);
 
   return systemMap;
 }
@@ -449,6 +529,22 @@ function countTotalFunctions(functions) {
   let total = 0;
   for (const funcs of Object.values(functions)) {
     total += funcs.length;
+  }
+  return total;
+}
+
+/**
+ * Cuenta el total de items en un mapa (types, enums, constants, etc.)
+ *
+ * @param {object} itemsMap - Mapa de items por archivo
+ * @returns {number}
+ */
+function countTotalItems(itemsMap) {
+  let total = 0;
+  for (const items of Object.values(itemsMap)) {
+    if (Array.isArray(items)) {
+      total += items.length;
+    }
   }
   return total;
 }

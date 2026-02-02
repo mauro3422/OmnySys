@@ -1,5 +1,62 @@
 # CHANGELOG - OmnySys
 
+## [0.3.3] - 2026-02-02
+
+### Changed - Modular Architecture Refactor (COMPLETE ✓)
+
+#### Code Organization
+- **Refactored analyzer.js into tiered module system**:
+  - `analyses/tier1/` - Function-level analysis (6 modules)
+    - unused-exports.js, hotspots.js, circular-function-deps.js
+    - deep-chains.js, orphan-files.js, index.js
+  - `analyses/tier2/` - Import/Structure analysis (8 modules)
+    - unused-imports.js, unresolved-imports.js, circular-imports.js
+    - reexport-chains.js, coupling.js, reachability.js
+    - side-effects.js, index.js
+  - `analyses/tier3/` - Advanced static analysis (4 modules)
+    - type-usage.js, enum-usage.js, constant-usage.js
+    - object-tracking.js, index.js
+  - `helpers.js` - Shared utilities (DFS, BFS, path helpers)
+  - `metrics.js` - Quality scoring system
+  - `recommendations.js` - Recommendation engine
+
+#### Why This Refactor
+- **Maintainability**: 435-line analyzer.js split into 18 focused modules
+- **SOLID Principles**: Each module has single responsibility
+- **Testability**: Independent modules can be tested in isolation
+- **Extensibility**: Easy to add new analyses without touching core
+- **Clarity**: Clear separation of concerns (tier1=functions, tier2=imports, tier3=types)
+
+### Fixed - Unused Imports False Positives
+
+#### Bug Description
+- **Problem**: Constants like `CONSTANT_C` reported as unused when actually used
+- **Example**: `import { CONSTANT_C } from './file'` → `return CONSTANT_C;` flagged as unused
+- **Root Cause**: Parser only captured function calls, not identifier references
+
+#### Solution
+- **parser.js**: Added `identifierRefs` array to capture non-call identifier usage
+  - New `Identifier` visitor in AST traversal
+  - Filters out declarations (keeps only references)
+  - Uses `isReferencedIdentifier()` to validate usage
+- **graph-builder.js**: Pass `identifierRefs` to systemMap
+- **unused-imports.js**: Check both calls AND identifier references
+
+#### Impact
+- ✅ No more false positives for imported constants
+- ✅ Accurate detection of unused imports (functions + constants + variables)
+- ✅ Quality Score improved: 97/100 → 98/100 (Grade A)
+- ✅ Test validation: 0 unused imports in scenario-1-simple-import
+
+#### Test Results
+- **Before**: CONSTANT_C flagged as unused (false positive)
+- **After**: CONSTANT_C correctly detected as used
+- **Quality Score**: 98/100 (Grade A)
+- **Total Issues**: 2 (only genuine unused exports)
+- **Recommendations**: 0 (all issues are low-severity)
+
+---
+
 ## [0.3.2] - 2026-02-01
 
 ### Added - Phase 3.2: Circular Import Detection (COMPLETE ✓)

@@ -3,7 +3,7 @@ import path from 'path';
 import { scanProject, detectProjectInfo } from './scanner.js';
 import { parseFileFromDisk } from './parser.js';
 import { resolveImport, getResolutionConfig } from './resolver.js';
-import { buildGraph, getImpactMap } from './graph-builder.js';
+import { buildGraph } from './graph-builder.js';
 import { generateAnalysisReport } from './analyzer.js';
 
 /**
