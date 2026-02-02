@@ -9,6 +9,7 @@ import { detectSharedState, generateSharedStateConnections } from './analyses/ti
 import { detectEventPatterns, generateEventConnections } from './analyses/tier3/event-pattern-detector.js';
 import { detectSideEffects } from './analyses/tier3/side-effects-detector.js';
 import { calculateAllRiskScores, generateRiskReport } from './analyses/tier3/risk-scorer.js';
+import { savePartitionedSystemMap } from './storage/storage-manager.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -339,6 +340,16 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
     if (verbose) console.log(`  ✓ Enhanced map saved to: ${enhancedOutputPath}\n`);
 
+    // Paso 11: NUEVO - Guardar datos particionados en .aver/
+    if (verbose) console.log('💾 Saving partitioned data to .aver/...');
+    const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
+    if (verbose) {
+      console.log(`  ✓ Metadata saved to: .aver/index.json`);
+      console.log(`  ✓ ${partitionedPaths.files.length} files saved to: .aver/files/`);
+      console.log(`  ✓ Connections saved to: .aver/connections/`);
+      console.log(`  ✓ Risk assessment saved to: .aver/risks/\n`);
+    }
+
     // Resumen
     if (verbose) {
       console.log('✅ Layer A Complete!');
@@ -365,6 +376,11 @@ export async function indexProject(rootPath, options = {}) {
   - Total semantic connections: ${enhancedSystemMap.connections.total}
   - High-risk files: ${enhancedSystemMap.riskAssessment.report.summary.highCount + enhancedSystemMap.riskAssessment.report.summary.criticalCount}
   - Average risk score: ${enhancedSystemMap.riskAssessment.report.summary.averageScore}
+
+💾 STORAGE:
+  - Monolithic JSON: ${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
+  - Partitioned data: .aver/ directory (${partitionedPaths.files.length} files)
+  - Query API available via query-service.js
       `);
     }
 
