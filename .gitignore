@@ -8,9 +8,11 @@ yarn.lock
 
 # CogniSystem generated files
 system-map.json
+system-map-*.json
 enhanced-system-map.json
 .cogni-system/
 .aver/
+omnysysdata/
 
 # IDEs
 .vscode/
