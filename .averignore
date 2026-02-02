@@ -1,0 +1,71 @@
+# .averignore - CogniSystem Analysis Exclusion Rules
+#
+# Similar to .gitignore, but controls what gets analyzed by CogniSystem
+# Lines starting with # are comments
+# Patterns use gitignore syntax (glob patterns)
+
+# ============================================================
+# AUTO-IGNORED (hardcoded in scanner.js)
+# ============================================================
+# These are ALWAYS ignored, no need to add them here:
+#
+# - node_modules/
+# - dist/
+# - build/
+# - .git/
+# - .aver/
+# - omnysysdata/
+# - .next/
+# - .nuxt/
+# - coverage/
+# - .idea/
+# - .vscode/
+
+# ============================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# ============================================================
+# Add custom patterns below:
+
+# Test files (if you don't want to analyze them)
+# __tests__/
+# *.test.js
+# *.test.ts
+# *.spec.js
+# *.spec.ts
+
+# Vendor code
+# vendor/
+# third-party/
+
+# Large libraries
+# src/lib/legacy-code/
+
+# Generated code
+# src/generated/
+# src/graphql/generated/
+
+# Documentation
+# docs/examples/
+# stories/
+
+# Config-only files (rarely have dependencies)
+# webpack.config.js
+# rollup.config.js
+# gulpfile.js
+# Gruntfile.js
+
+# ============================================================
+# FILE PATTERNS (advanced)
+# ============================================================
+#
+# # Ignore specific directories:
+# my-temp-folder/
+#
+# # Ignore files with specific extension:
+# *.generated.ts
+#
+# # Ignore files in specific path:
+# src/old-code/**
+#
+# # Negate a pattern (include despite exclusion):
+# !important-code.ts

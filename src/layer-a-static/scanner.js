@@ -17,19 +17,77 @@ const SUPPORTED_EXTENSIONS = ['js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs'];
 
 // Carpetas que siempre ignoramos
 const IGNORED_DIRS = [
+  // Generated/build
   'node_modules',
   'dist',
   'build',
   'out',
-  '.git',
-  '.next',
-  '.nuxt',
   'coverage',
   'tmp',
   'temp',
+  '.next',
+  '.nuxt',
+  '.turbo',
+
+  // CogniSystem analysis data (no re-analyze)
+  '.aver',
+  'omnysysdata',
+
+  // Version control
+  '.git',
+  '.gitignore',
+
+  // IDE/editor
   '.idea',
-  '.vscode'
+  '.vscode',
+  '.vscode-insiders',
+  '.sublime-project',
+  '.sublime-workspace',
+  '.DS_Store',
+
+  // OS/env
+  'node_modules/.bin',
+  '.env',
+  '.env.local',
+  '.env.*.local',
+
+  // Package managers
+  '.pnp',
+  '.pnp.js',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+
+  // Caches
+  '.eslintcache',
+  '.prettierignore',
+  '.cache',
+  '.parcel-cache',
+  '.next/cache',
+  '.nuxt/.cache'
 ];
+
+/**
+ * Lee el archivo .averignore y retorna los patrones de exclusión
+ *
+ * @param {string} rootPath - Ruta del proyecto
+ * @returns {Promise<string[]>} - Array de patrones de exclusión
+ */
+async function readAverIgnore(rootPath) {
+  const averignorePath = path.join(rootPath, '.averignore');
+
+  try {
+    const content = await fs.readFile(averignorePath, 'utf-8');
+    const lines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#')); // Ignorar comentarios y líneas vacías
+
+    return lines;
+  } catch {
+    // .averignore no existe o no puede leerse, retornar array vacío
+    return [];
+  }
+}
 
 /**
  * Escanea un proyecto y retorna lista de archivos
@@ -39,13 +97,15 @@ const IGNORED_DIRS = [
  *   - includePatterns: string[] - Patrones adicionales a incluir
  *   - excludePatterns: string[] - Patrones a excluir
  *   - returnAbsolute: boolean - Si retornar rutas absolutas (default: false, retorna proyecto-relativas)
+ *   - readAverIgnore: boolean - Leer .averignore del proyecto (default: true)
  * @returns {Promise<string[]>} - Array de rutas de archivos encontrados
  */
 export async function scanProject(rootPath, options = {}) {
   const {
     includePatterns = [],
     excludePatterns = [],
-    returnAbsolute = false
+    returnAbsolute = false,
+    readAverIgnore: shouldReadAverIgnore = true
   } = options;
 
   // Convertir rootPath a absoluto
@@ -62,8 +122,18 @@ export async function scanProject(rootPath, options = {}) {
   // Patrones a excluir
   const defaultExclude = IGNORED_DIRS.map(dir => `**/${dir}/**`);
 
+  // Leer .averignore si está habilitado
+  let userExcludePatterns = [];
+  if (shouldReadAverIgnore) {
+    userExcludePatterns = await readAverIgnore(absoluteRootPath);
+  }
+
   const includePatterns_final = [...defaultInclude, ...includePatterns];
-  const excludePatterns_final = [...defaultExclude, ...excludePatterns];
+  const excludePatterns_final = [
+    ...defaultExclude,
+    ...userExcludePatterns.map(p => p.startsWith('!') ? p : `**/${p}/**`),
+    ...excludePatterns
+  ];
 
   try {
     // Usar fast-glob para encontrar archivos
