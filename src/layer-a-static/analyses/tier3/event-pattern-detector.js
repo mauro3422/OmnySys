@@ -184,12 +184,14 @@ function getConfidence(arg) {
 export function generateEventConnections(fileAnalysisMap) {
   const connections = [];
   const eventIndex = new Map(); // Mapa de eventName -> { listeners: [], emitters: [] }
+  const busObjectIndex = new Map(); // Mapa de busObject (ej: 'window.eventBus') -> files que lo usan
 
-  // Indexar todos los eventos
+  // Indexar todos los eventos y buses
   for (const [filePath, analysis] of Object.entries(fileAnalysisMap)) {
     if (!analysis.eventListeners) analysis.eventListeners = [];
     if (!analysis.eventEmitters) analysis.eventEmitters = [];
 
+    // Indexar listeners
     for (const listener of analysis.eventListeners) {
       if (!eventIndex.has(listener.eventName)) {
         eventIndex.set(listener.eventName, { listeners: [], emitters: [] });
@@ -198,8 +200,16 @@ export function generateEventConnections(fileAnalysisMap) {
         file: filePath,
         listener
       });
+
+      // Registrar qué file accede a qué bus object
+      const busKey = listener.objectName || 'window';
+      if (!busObjectIndex.has(busKey)) {
+        busObjectIndex.set(busKey, { listeners: [], emitters: [], ownerFile: null });
+      }
+      busObjectIndex.get(busKey).listeners.push(filePath);
     }
 
+    // Indexar emitters
     for (const emitter of analysis.eventEmitters) {
       if (!eventIndex.has(emitter.eventName)) {
         eventIndex.set(emitter.eventName, { listeners: [], emitters: [] });
@@ -208,10 +218,44 @@ export function generateEventConnections(fileAnalysisMap) {
         file: filePath,
         emitter
       });
+
+      // Registrar qué file accede a qué bus object
+      const busKey = emitter.objectName || 'window';
+      if (!busObjectIndex.has(busKey)) {
+        busObjectIndex.set(busKey, { listeners: [], emitters: [], ownerFile: null });
+      }
+      busObjectIndex.get(busKey).emitters.push(filePath);
     }
   }
 
-  // Generar conexiones: emitter -> listener
+  // Identificar archivos propietarios del bus (heurística: nombre contiene EventBus, events, etc.)
+  const busOwners = new Map(); // busKey -> ownerFile
+  for (const [busKey, busData] of busObjectIndex.entries()) {
+    const allAccessors = [...new Set([...busData.listeners, ...busData.emitters])];
+
+    // Heurística: el propietario es el archivo que:
+    // 1. Tiene 'EventBus' o 'events' en el nombre (buscar entre TODOS los archivos)
+    // 2. Si no se encuentra, usar el primer accessor
+
+    // Primero buscar entre todos los archivos del mapa (fileAnalysisMap tiene todos los archivos)
+    const allFiles = Object.keys(fileAnalysisMap);
+    const possibleOwners = allFiles.filter(f => {
+      const fileName = f.toLowerCase();
+      return fileName.includes('eventbus') || fileName.includes('event-bus') || fileName.includes('/events.js');
+    });
+
+    if (possibleOwners.length > 0) {
+      busOwners.set(busKey, possibleOwners[0]);
+    } else if (allAccessors.length > 0) {
+      // Fallback: usar el primer accessor como dueño
+      busOwners.set(busKey, allAccessors[0]);
+    }
+  }
+
+  // Consolidar conexiones por (sourceFile, targetFile) pair
+  const consolidatedMap = new Map(); // Key: `${sourceFile}→${targetFile}`, Value: connection data
+
+  // Patrón 1: Generar conexiones: emitter -> listener
   for (const [eventName, { listeners, emitters }] of eventIndex.entries()) {
     for (const { file: emitterFile, emitter } of emitters) {
       for (const { file: listenerFile, listener } of listeners) {
@@ -220,23 +264,100 @@ export function generateEventConnections(fileAnalysisMap) {
           const minConfidence = Math.min(emitter.confidence, listener.confidence);
 
           if (minConfidence >= 0.7) {
-            connections.push({
-              id: `event_${eventName}_${emitterFile}_to_${listenerFile}`,
-              type: 'event_listener',
-              sourceFile: emitterFile,
-              targetFile: listenerFile,
-              eventName,
-              reason: `${emitterFile} emits '${eventName}' and ${listenerFile} listens to it`,
-              confidence: minConfidence,
-              severity: calculateEventSeverity(eventName, listeners.length, emitters.length),
-              evidence: {
-                emitterCode: emitter,
-                listenerCode: listener
-              }
-            });
+            const key = `${emitterFile}→${listenerFile}`;
+
+            if (!consolidatedMap.has(key)) {
+              consolidatedMap.set(key, {
+                sourceFile: emitterFile,
+                targetFile: listenerFile,
+                eventNames: [],
+                avgConfidence: 0,
+                evidences: []
+              });
+            }
+
+            const data = consolidatedMap.get(key);
+            data.eventNames.push(eventName);
+            data.evidences.push({ eventName, emitter, listener });
+            data.avgConfidence = (data.avgConfidence + minConfidence) / 2;
           }
         }
       }
+    }
+  }
+
+  // Patrón 2: Crear conexiones listeners → event bus owner
+  for (const [busKey, busData] of busObjectIndex.entries()) {
+    const ownerFile = busOwners.get(busKey);
+    if (!ownerFile) continue;
+
+    for (const listenerFile of busData.listeners) {
+      if (listenerFile !== ownerFile) {
+        const key = `${listenerFile}→${ownerFile}`;
+        if (!consolidatedMap.has(key)) {
+          consolidatedMap.set(key, {
+            sourceFile: listenerFile,
+            targetFile: ownerFile,
+            eventNames: [],
+            avgConfidence: 0.95,
+            evidences: [],
+            isBusConnection: true
+          });
+        }
+      }
+    }
+  }
+
+  // Patrón 3: Crear conexiones emitters → event bus owner
+  for (const [busKey, busData] of busObjectIndex.entries()) {
+    const ownerFile = busOwners.get(busKey);
+    if (!ownerFile) continue;
+
+    for (const emitterFile of busData.emitters) {
+      if (emitterFile !== ownerFile) {
+        const key = `${emitterFile}→${ownerFile}`;
+        if (!consolidatedMap.has(key)) {
+          consolidatedMap.set(key, {
+            sourceFile: emitterFile,
+            targetFile: ownerFile,
+            eventNames: [],
+            avgConfidence: 0.95,
+            evidences: [],
+            isBusConnection: true
+          });
+        }
+      }
+    }
+  }
+
+  // Crear conexiones consolidadas
+  for (const [_, data] of consolidatedMap.entries()) {
+    if (data.isBusConnection) {
+      connections.push({
+        id: `event_${data.sourceFile}_to_${data.targetFile}`,
+        type: 'event_listener',
+        sourceFile: data.sourceFile,
+        targetFile: data.targetFile,
+        eventNames: data.eventNames || [],
+        eventCount: data.eventNames?.length || 0,
+        reason: `${data.sourceFile} uses event bus created by ${data.targetFile}.`,
+        confidence: data.avgConfidence,
+        severity: 'high',
+        evidence: data.evidences
+      });
+    } else {
+      connections.push({
+        id: `event_${data.sourceFile}_to_${data.targetFile}`,
+        type: 'event_listener',
+        sourceFile: data.sourceFile,
+        targetFile: data.targetFile,
+        eventNames: data.eventNames,
+        eventCount: data.eventNames.length,
+        reason: `${data.sourceFile} emits events that ${data.targetFile} listens to`,
+        confidence: data.avgConfidence,
+        severity: calculateEventSeverity('', data.eventNames.length, 1),
+        evidence: data.evidences
+      });
     }
   }
 

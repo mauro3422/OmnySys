@@ -1,0 +1,354 @@
+{
+  "metadata": {
+    "totalFiles": 6,
+    "totalDependencies": 0,
+    "totalFunctions": 18,
+    "totalFunctionLinks": 7,
+    "totalUnresolved": 0,
+    "totalReexports": 0,
+    "totalTypes": 0,
+    "totalEnums": 0,
+    "totalConstants": 3,
+    "totalSharedObjects": 0,
+    "cyclesDetected": []
+  },
+  "unusedExports": {
+    "totalUnused": 14,
+    "byFile": {
+      "src/Analytics.js": [
+        {
+          "name": "initAnalytics",
+          "line": 21,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "disableAnalytics",
+          "line": 45,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ],
+      "src/GameEvents.js": [
+        {
+          "name": "notifyGameStart",
+          "line": 8,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "notifyScoreChange",
+          "line": 17,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "notifyLevelUp",
+          "line": 26,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "notifyGameEnd",
+          "line": 35,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ],
+      "src/GameStore.js": [
+        {
+          "name": "initGameState",
+          "line": 8,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "resetGameState",
+          "line": 20,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "getGameState",
+          "line": 31,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ],
+      "src/Player.js": [
+        {
+          "name": "incrementScore",
+          "line": 9,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "levelUp",
+          "line": 19,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "startGame",
+          "line": 30,
+          "callers": 0,
+          "severity": "warning"
+        },
+        {
+          "name": "endGame",
+          "line": 40,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ],
+      "src/UI.js": [
+        {
+          "name": "updateUI",
+          "line": 43,
+          "callers": 0,
+          "severity": "warning"
+        }
+      ]
+    },
+    "impact": "Removing unused exports could reduce: 14 functions"
+  },
+  "orphanFiles": {
+    "total": 6,
+    "files": [
+      {
+        "file": "src/Analytics.js",
+        "type": "DEAD_CODE",
+        "functions": 3,
+        "recommendation": "Consider removing or linking this file"
+      },
+      {
+        "file": "src/EventBus.js",
+        "type": "DEAD_CODE",
+        "functions": 0,
+        "recommendation": "Consider removing or linking this file"
+      },
+      {
+        "file": "src/GameEvents.js",
+        "type": "DEAD_CODE",
+        "functions": 4,
+        "recommendation": "Consider removing or linking this file"
+      },
+      {
+        "file": "src/GameStore.js",
+        "type": "DEAD_CODE",
+        "functions": 3,
+        "recommendation": "Consider removing or linking this file"
+      },
+      {
+        "file": "src/Player.js",
+        "type": "DEAD_CODE",
+        "functions": 4,
+        "recommendation": "Consider removing or linking this file"
+      },
+      {
+        "file": "src/UI.js",
+        "type": "DEAD_CODE",
+        "functions": 4,
+        "recommendation": "Consider removing or linking this file"
+      }
+    ],
+    "deadCodeCount": 6
+  },
+  "hotspots": {
+    "total": 0,
+    "functions": [],
+    "criticalCount": 0
+  },
+  "circularFunctionDeps": {
+    "total": 0,
+    "cycles": [],
+    "recursiveFunctions": [],
+    "mutualRecursion": [],
+    "problematicCycles": [],
+    "legitimateCount": 0,
+    "problematicCount": 0,
+    "hasMutualRecursion": false,
+    "recommendation": "No circular function dependencies detected"
+  },
+  "deepDependencyChains": {
+    "totalDeepChains": 0,
+    "maxDepth": 0,
+    "chains": [],
+    "recommendation": "No very deep dependency chains detected"
+  },
+  "sideEffectMarkers": {
+    "total": 4,
+    "functions": [
+      {
+        "file": "src/Analytics.js",
+        "function": "initAnalytics",
+        "suspectedSideEffect": true,
+        "marker": "init",
+        "recommendation": "Verify this function has no hidden side effects"
+      },
+      {
+        "file": "src/GameEvents.js",
+        "function": "notifyGameStart",
+        "suspectedSideEffect": true,
+        "marker": "start",
+        "recommendation": "Verify this function has no hidden side effects"
+      },
+      {
+        "file": "src/GameStore.js",
+        "function": "initGameState",
+        "suspectedSideEffect": true,
+        "marker": "init",
+        "recommendation": "Verify this function has no hidden side effects"
+      },
+      {
+        "file": "src/Player.js",
+        "function": "startGame",
+        "suspectedSideEffect": true,
+        "marker": "start",
+        "recommendation": "Verify this function has no hidden side effects"
+      }
+    ],
+    "note": "These are pattern-based guesses - verify manually"
+  },
+  "reachabilityAnalysis": {
+    "totalFiles": 6,
+    "reachable": 6,
+    "unreachable": 0,
+    "reachablePercent": "100.0",
+    "likelyEntryPoints": [
+      "src/Analytics.js",
+      "src/EventBus.js",
+      "src/GameEvents.js",
+      "src/GameStore.js",
+      "src/Player.js",
+      "src/UI.js"
+    ],
+    "deadCodeFiles": [],
+    "concern": "LOW"
+  },
+  "couplingAnalysis": {
+    "total": 0,
+    "coupledFiles": [],
+    "maxCoupling": 0,
+    "concern": "LOW"
+  },
+  "unresolvedImports": {
+    "total": 0,
+    "byFile": {},
+    "recommendation": "All imports resolved"
+  },
+  "circularImports": {
+    "total": 0,
+    "cycles": [],
+    "circularPairs": [],
+    "recommendation": "No circular imports detected"
+  },
+  "unusedImports": {
+    "total": 0,
+    "byFile": {},
+    "recommendation": "All imports are used"
+  },
+  "reexportChains": {
+    "total": 0,
+    "chains": [],
+    "recommendation": "No complex re-export chains"
+  },
+  "typeUsage": {
+    "total": 0,
+    "types": {},
+    "interfaces": {},
+    "recommendation": "No TypeScript types/interfaces detected (JavaScript project or no types exported)"
+  },
+  "constantUsage": {
+    "total": 3,
+    "constants": {
+      "src/UI.js:scoreElement": {
+        "name": "scoreElement",
+        "definedIn": "src/UI.js",
+        "line": 11,
+        "valueType": "CallExpression",
+        "importedBy": [],
+        "totalUsages": 0,
+        "riskLevel": "low",
+        "recommendation": "Exported but not imported elsewhere"
+      },
+      "src/UI.js:levelElement": {
+        "name": "levelElement",
+        "definedIn": "src/UI.js",
+        "line": 22,
+        "valueType": "CallExpression",
+        "importedBy": [],
+        "totalUsages": 0,
+        "riskLevel": "low",
+        "recommendation": "Exported but not imported elsewhere"
+      },
+      "src/UI.js:nameElement": {
+        "name": "nameElement",
+        "definedIn": "src/UI.js",
+        "line": 33,
+        "valueType": "CallExpression",
+        "importedBy": [],
+        "totalUsages": 0,
+        "riskLevel": "low",
+        "recommendation": "Exported but not imported elsewhere"
+      }
+    },
+    "hotspotConstants": [],
+    "recommendation": "No heavily-used constants detected"
+  },
+  "sharedObjects": {
+    "total": 0,
+    "sharedObjects": {},
+    "criticalObjects": [],
+    "recommendation": "No exported mutable objects detected - good practice!"
+  },
+  "enumUsage": {
+    "total": 0,
+    "enums": {},
+    "recommendation": "No enums detected (JavaScript project or no enums exported)"
+  },
+  "qualityMetrics": {
+    "score": 71,
+    "grade": "C",
+    "totalIssues": 20,
+    "breakdown": {
+      "unusedExports": 14,
+      "orphanFiles": 6,
+      "hotspots": 0,
+      "circularDeps": 0,
+      "deepChains": 0,
+      "coupling": 0,
+      "unresolvedImports": 0,
+      "circularImports": 0,
+      "unusedImports": 0,
+      "reexportChains": 0,
+      "sharedObjects": 0,
+      "highRiskTypes": 0,
+      "hotspotConstants": 0,
+      "highRiskEnums": 0
+    }
+  },
+  "recommendations": {
+    "total": 2,
+    "byPriority": {
+      "CRITICAL": 0,
+      "HIGH": 2,
+      "MEDIUM": 0,
+      "LOW": 0
+    },
+    "recommendations": [
+      {
+        "priority": "HIGH",
+        "category": "Dead Code",
+        "message": "Remove 14 unused exports to reduce tunnel vision",
+        "action": "Review and delete unused functions"
+      },
+      {
+        "priority": "HIGH",
+        "category": "Dead Code",
+        "message": "Found 6 orphan files - potential dead code",
+        "action": "Link or remove orphan files"
+      }
+    ]
+  }
+}

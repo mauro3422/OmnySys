@@ -15,7 +15,8 @@
       "Bash(tree:*)",
       "WebFetch(domain:www.liquid.ai)",
       "Bash(cd:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

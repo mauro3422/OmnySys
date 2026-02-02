@@ -69,6 +69,7 @@ export function detectSharedState(code, filePath = '') {
       MemberExpression(nodePath) {
         const node = nodePath.node;
         const parent = nodePath.parent;
+        const grandparent = nodePath.parent?.parent;
 
         // Verificar si es window.X o global.X
         if (
@@ -79,21 +80,49 @@ export function detectSharedState(code, filePath = '') {
           const propName = node.property.name;
           const fullRef = `${objectName}.${propName}`;
 
+          // SKIP: Si es parte de una llamada a método (window.x.method() es method call, no property access)
+          // Detectar si el parent es MemberExpression que forma parte de CallExpression
+          if (parent.type === 'MemberExpression' && grandparent?.type === 'CallExpression' && grandparent.callee === parent) {
+            return; // Ignore method calls like window.eventBus.on()
+          }
+
           // Determinar si es READ o WRITE
           let accessType = 'read';
           let confidence = 1.0;
 
-          // Si es parte de una asignación (lado derecho = write)
-          if (parent.type === 'AssignmentExpression' && parent.left === node) {
+          // Función helper: verifica si el nodo actual es parte de la mano izquierda de una asignación
+          function isPartOfAssignmentLeft(nodePath) {
+            let current = nodePath;
+            while (current) {
+              const currentNode = current.node;
+              const parentNode = current.parent;
+
+              // Si encontramos AssignmentExpression y estamos en el lado izquierdo
+              if (parentNode?.type === 'AssignmentExpression' && parentNode.left === currentNode) {
+                return true;
+              }
+
+              // Si el parent es MemberExpression, seguir subiendo (puede ser parte de propiedad anidada)
+              if (parentNode?.type === 'MemberExpression') {
+                current = current.parentPath;
+              } else {
+                break;
+              }
+            }
+            return false;
+          }
+
+          // Verificar si es asignación (directa o anidada)
+          if (isPartOfAssignmentLeft(nodePath)) {
             accessType = 'write';
           }
 
-          // Si es argumento de una llamada a función (podría ser ambos)
+          // Si es argumento de una llamada a función (read)
           if (parent.type === 'CallExpression' && parent.arguments.includes(node)) {
-            accessType = 'read'; // Por defecto leer
+            accessType = 'read';
           }
 
-          // Si es el objeto de una llamada a método (read)
+          // Si es el objeto de una llamada a método directa (read)
           if (parent.type === 'CallExpression' && parent.callee === node) {
             accessType = 'read';
           }
@@ -169,32 +198,54 @@ export function generateSharedStateConnections(fileAnalysisMap) {
     }
   }
 
-  // Generar conexiones para propiedades que tienen writers y readers en diferentes archivos
+  // Generar conexiones para propiedades que tienen acceso en diferentes archivos
   for (const [propName, accesses] of propertyIndex.entries()) {
-    // Separar readers y writers
-    const uniqueWriters = new Set(accesses.filter(a => a.type === 'write').map(a => a.file));
-    const uniqueReaders = new Set(accesses.filter(a => a.type === 'read').map(a => a.file));
+    // Skip event-related properties - those should be handled by event-pattern-detector
+    if (propName.toLowerCase().includes('bus') || propName.toLowerCase().includes('emitter') || propName.toLowerCase().includes('event')) {
+      continue;
+    }
 
-    // Solo crear conexiones si hay writers (caso principal: writer → reader)
-    if (uniqueWriters.size > 0) {
+    const allAccessors = [...new Set(accesses.map(a => a.file))];
+    if (allAccessors.length < 2) continue; // No hay conexión si solo un archivo accede
+
+    // Extraer writers y readers
+    const uniqueWriters = [...new Set(accesses.filter(a => a.type === 'write').map(a => a.file))];
+    const allFileAccessors = [...new Set(accesses.map(a => a.file))];
+
+    // SOLO Patrón: accessor → writer (todas las dependencias apuntan a los writers)
+    // Esto captura todas las dependencias semánticas hacia los que escriben/crean el estado
+    for (const sourceFile of allFileAccessors) {
       for (const writerFile of uniqueWriters) {
-        for (const readerFile of uniqueReaders) {
-          if (writerFile !== readerFile) {
-            // Evitar duplicados
-            const connId = `shared_state_${propName}_${writerFile}_to_${readerFile}`;
-            if (!connections.some(c => c.id === connId)) {
+        if (sourceFile !== writerFile) {
+          // No crear si ya existe una conexión inversa
+          const forwardConnId = `shared_state_${propName}_${writerFile}_to_${sourceFile}`;
+          const backwardConnId = `shared_state_${propName}_${sourceFile}_to_${writerFile}`;
+
+          if (!connections.some(c => c.id === forwardConnId) && !connections.some(c => c.id === backwardConnId)) {
+            // Determinar razón basada en tipo de acceso
+            const sourceAccess = accesses.find(a => a.file === sourceFile);
+            const writerAccess = accesses.find(a => a.file === writerFile && a.type === 'write');
+            let reason = '';
+
+            if (sourceAccess?.type === 'read') {
+              reason = `${sourceFile} reads ${propName} modified by ${writerFile}.`;
+            } else if (sourceAccess?.type === 'write') {
+              reason = `Both files access ${propName}. ${sourceFile} writes, ${writerFile} writes.`;
+            }
+
+            if (reason) {
               connections.push({
-                id: connId,
+                id: backwardConnId,
                 type: 'shared_state',
-                sourceFile: writerFile,
-                targetFile: readerFile,
+                sourceFile: sourceFile,
+                targetFile: writerFile,
                 globalProperty: propName,
-                reason: `Both files access ${propName}. ${writerFile} writes, ${readerFile} reads.`,
-                confidence: 1.0, // 100% seguro (determinístico)
-                severity: calculateSeverity(writerFile, readerFile, accesses, propName),
+                reason,
+                confidence: sourceAccess?.type === 'read' ? 0.95 : 1.0,
+                severity: calculateSeverity(sourceFile, writerFile, accesses, propName),
                 evidence: {
-                  writerAccess: accesses.find(a => a.file === writerFile && a.type === 'write')?.access,
-                  readerAccess: accesses.find(a => a.file === readerFile && a.type === 'read')?.access
+                  sourceAccess: sourceAccess?.access,
+                  writerAccess: writerAccess?.access
                 }
               });
             }

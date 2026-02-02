@@ -1,0 +1,873 @@
+{
+  "files": {
+    "src/Analytics.js": {
+      "path": "src/Analytics.js",
+      "displayPath": "Analytics.js",
+      "exports": [
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "initAnalytics"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "disableAnalytics"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "function",
+          "name": "sendAnalytics",
+          "params": 2
+        },
+        {
+          "type": "function",
+          "name": "initAnalytics",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "disableAnalytics",
+          "params": 0
+        }
+      ],
+      "usedBy": [],
+      "calls": [
+        {
+          "name": "fetch",
+          "type": "function"
+        },
+        {
+          "name": "JSON",
+          "type": "namespace_access"
+        },
+        {
+          "name": "JSON.stringify",
+          "type": "member_call"
+        },
+        {
+          "name": "Date",
+          "type": "namespace_access"
+        },
+        {
+          "name": "Date.now",
+          "type": "member_call"
+        },
+        {
+          "name": "console",
+          "type": "namespace_access"
+        },
+        {
+          "name": "console.error",
+          "type": "member_call"
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "function"
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "function"
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "function"
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "function"
+        }
+      ],
+      "identifierRefs": [
+        "fetch",
+        "JSON",
+        "eventName",
+        "data",
+        "Date",
+        "err",
+        "window",
+        "sendAnalytics"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    },
+    "src/EventBus.js": {
+      "path": "src/EventBus.js",
+      "displayPath": "EventBus.js",
+      "exports": [
+        {
+          "type": "named",
+          "name": "EventBus",
+          "local": "EventBus"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "class",
+          "name": "EventBus"
+        }
+      ],
+      "usedBy": [],
+      "calls": [
+        {
+          "name": "callback",
+          "type": "function"
+        }
+      ],
+      "identifierRefs": [
+        "event",
+        "callback",
+        "data",
+        "cb",
+        "window",
+        "EventBus"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    },
+    "src/GameEvents.js": {
+      "path": "src/GameEvents.js",
+      "displayPath": "GameEvents.js",
+      "exports": [
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "notifyGameStart"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "notifyScoreChange"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "notifyLevelUp"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "notifyGameEnd"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "function",
+          "name": "notifyGameStart",
+          "params": 1
+        },
+        {
+          "type": "function",
+          "name": "notifyScoreChange",
+          "params": 2
+        },
+        {
+          "type": "function",
+          "name": "notifyLevelUp",
+          "params": 1
+        },
+        {
+          "type": "function",
+          "name": "notifyGameEnd",
+          "params": 2
+        }
+      ],
+      "usedBy": [],
+      "calls": [
+        {
+          "name": "Date",
+          "type": "namespace_access"
+        },
+        {
+          "name": "Date.now",
+          "type": "member_call"
+        },
+        {
+          "name": "Date",
+          "type": "namespace_access"
+        },
+        {
+          "name": "Date.now",
+          "type": "member_call"
+        },
+        {
+          "name": "Date",
+          "type": "namespace_access"
+        },
+        {
+          "name": "Date.now",
+          "type": "member_call"
+        },
+        {
+          "name": "Date",
+          "type": "namespace_access"
+        },
+        {
+          "name": "Date.now",
+          "type": "member_call"
+        }
+      ],
+      "identifierRefs": [
+        "window",
+        "playerName",
+        "Date",
+        "score",
+        "level",
+        "newLevel",
+        "finalScore"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    },
+    "src/GameStore.js": {
+      "path": "src/GameStore.js",
+      "displayPath": "GameStore.js",
+      "exports": [
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "initGameState"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "resetGameState"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "getGameState"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "function",
+          "name": "initGameState",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "resetGameState",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "getGameState",
+          "params": 0
+        }
+      ],
+      "usedBy": [],
+      "calls": [],
+      "identifierRefs": [
+        "window"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    },
+    "src/Player.js": {
+      "path": "src/Player.js",
+      "displayPath": "Player.js",
+      "exports": [
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "incrementScore"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "levelUp"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "startGame"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "endGame"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "function",
+          "name": "incrementScore",
+          "params": 1
+        },
+        {
+          "type": "function",
+          "name": "levelUp",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "startGame",
+          "params": 1
+        },
+        {
+          "type": "function",
+          "name": "endGame",
+          "params": 0
+        }
+      ],
+      "usedBy": [],
+      "calls": [],
+      "identifierRefs": [
+        "window",
+        "points",
+        "playerName"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    },
+    "src/UI.js": {
+      "path": "src/UI.js",
+      "displayPath": "UI.js",
+      "exports": [
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "displayScore"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "displayLevel"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "displayPlayerName"
+        },
+        {
+          "type": "declaration",
+          "kind": "FunctionDeclaration",
+          "name": "updateUI"
+        }
+      ],
+      "imports": [],
+      "definitions": [
+        {
+          "type": "function",
+          "name": "displayScore",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "displayLevel",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "displayPlayerName",
+          "params": 0
+        },
+        {
+          "type": "function",
+          "name": "updateUI",
+          "params": 0
+        }
+      ],
+      "usedBy": [],
+      "calls": [
+        {
+          "name": "document",
+          "type": "namespace_access"
+        },
+        {
+          "name": "document.getElementById",
+          "type": "member_call"
+        },
+        {
+          "name": "document",
+          "type": "namespace_access"
+        },
+        {
+          "name": "document.getElementById",
+          "type": "member_call"
+        },
+        {
+          "name": "document",
+          "type": "namespace_access"
+        },
+        {
+          "name": "document.getElementById",
+          "type": "member_call"
+        },
+        {
+          "name": "displayScore",
+          "type": "function"
+        },
+        {
+          "name": "displayLevel",
+          "type": "function"
+        },
+        {
+          "name": "displayPlayerName",
+          "type": "function"
+        }
+      ],
+      "identifierRefs": [
+        "document",
+        "scoreElement",
+        "window",
+        "levelElement",
+        "nameElement",
+        "displayScore",
+        "displayLevel",
+        "displayPlayerName"
+      ],
+      "dependsOn": [],
+      "transitiveDepends": [],
+      "transitiveDependents": []
+    }
+  },
+  "dependencies": [],
+  "functions": {
+    "src/Analytics.js": [
+      {
+        "id": "AN:sendAnalytics",
+        "name": "sendAnalytics",
+        "line": 10,
+        "endLine": 15,
+        "params": [
+          "eventName",
+          "data"
+        ],
+        "isExported": false,
+        "calls": [
+          {
+            "name": "fetch",
+            "type": "direct_call",
+            "line": 11
+          }
+        ]
+      },
+      {
+        "id": "AN:initAnalytics",
+        "name": "initAnalytics",
+        "line": 21,
+        "endLine": 40,
+        "params": [],
+        "isExported": true,
+        "calls": [
+          {
+            "name": "sendAnalytics",
+            "type": "direct_call",
+            "line": 25
+          },
+          {
+            "name": "sendAnalytics",
+            "type": "direct_call",
+            "line": 29
+          },
+          {
+            "name": "sendAnalytics",
+            "type": "direct_call",
+            "line": 33
+          },
+          {
+            "name": "sendAnalytics",
+            "type": "direct_call",
+            "line": 37
+          }
+        ]
+      },
+      {
+        "id": "AN:disableAnalytics",
+        "name": "disableAnalytics",
+        "line": 45,
+        "endLine": 52,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      }
+    ],
+    "src/EventBus.js": [],
+    "src/GameEvents.js": [
+      {
+        "id": "GA:notifyGameStart",
+        "name": "notifyGameStart",
+        "line": 8,
+        "endLine": 12,
+        "params": [
+          "playerName"
+        ],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "GA:notifyScoreChange",
+        "name": "notifyScoreChange",
+        "line": 17,
+        "endLine": 21,
+        "params": [
+          "score",
+          "level"
+        ],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "GA:notifyLevelUp",
+        "name": "notifyLevelUp",
+        "line": 26,
+        "endLine": 30,
+        "params": [
+          "newLevel"
+        ],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "GA:notifyGameEnd",
+        "name": "notifyGameEnd",
+        "line": 35,
+        "endLine": 39,
+        "params": [
+          "finalScore",
+          "level"
+        ],
+        "isExported": true,
+        "calls": []
+      }
+    ],
+    "src/GameStore.js": [
+      {
+        "id": "GA:initGameState",
+        "name": "initGameState",
+        "line": 8,
+        "endLine": 15,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "GA:resetGameState",
+        "name": "resetGameState",
+        "line": 20,
+        "endLine": 26,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "GA:getGameState",
+        "name": "getGameState",
+        "line": 31,
+        "endLine": 33,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      }
+    ],
+    "src/Player.js": [
+      {
+        "id": "PL:incrementScore",
+        "name": "incrementScore",
+        "line": 9,
+        "endLine": 13,
+        "params": [
+          "points"
+        ],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "PL:levelUp",
+        "name": "levelUp",
+        "line": 19,
+        "endLine": 24,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "PL:startGame",
+        "name": "startGame",
+        "line": 30,
+        "endLine": 35,
+        "params": [
+          "playerName"
+        ],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "PL:endGame",
+        "name": "endGame",
+        "line": 40,
+        "endLine": 44,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      }
+    ],
+    "src/UI.js": [
+      {
+        "id": "UI:displayScore",
+        "name": "displayScore",
+        "line": 10,
+        "endLine": 15,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "UI:displayLevel",
+        "name": "displayLevel",
+        "line": 21,
+        "endLine": 26,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "UI:displayPlayerName",
+        "name": "displayPlayerName",
+        "line": 32,
+        "endLine": 37,
+        "params": [],
+        "isExported": true,
+        "calls": []
+      },
+      {
+        "id": "UI:updateUI",
+        "name": "updateUI",
+        "line": 43,
+        "endLine": 47,
+        "params": [],
+        "isExported": true,
+        "calls": [
+          {
+            "name": "displayScore",
+            "type": "direct_call",
+            "line": 44
+          },
+          {
+            "name": "displayLevel",
+            "type": "direct_call",
+            "line": 45
+          },
+          {
+            "name": "displayPlayerName",
+            "type": "direct_call",
+            "line": 46
+          }
+        ]
+      }
+    ]
+  },
+  "function_links": [
+    {
+      "from": "AN:initAnalytics",
+      "to": "AN:sendAnalytics",
+      "type": "call",
+      "line": 25,
+      "file_from": "src/Analytics.js",
+      "file_to": "src/Analytics.js"
+    },
+    {
+      "from": "AN:initAnalytics",
+      "to": "AN:sendAnalytics",
+      "type": "call",
+      "line": 29,
+      "file_from": "src/Analytics.js",
+      "file_to": "src/Analytics.js"
+    },
+    {
+      "from": "AN:initAnalytics",
+      "to": "AN:sendAnalytics",
+      "type": "call",
+      "line": 33,
+      "file_from": "src/Analytics.js",
+      "file_to": "src/Analytics.js"
+    },
+    {
+      "from": "AN:initAnalytics",
+      "to": "AN:sendAnalytics",
+      "type": "call",
+      "line": 37,
+      "file_from": "src/Analytics.js",
+      "file_to": "src/Analytics.js"
+    },
+    {
+      "from": "UI:updateUI",
+      "to": "UI:displayScore",
+      "type": "call",
+      "line": 44,
+      "file_from": "src/UI.js",
+      "file_to": "src/UI.js"
+    },
+    {
+      "from": "UI:updateUI",
+      "to": "UI:displayLevel",
+      "type": "call",
+      "line": 45,
+      "file_from": "src/UI.js",
+      "file_to": "src/UI.js"
+    },
+    {
+      "from": "UI:updateUI",
+      "to": "UI:displayPlayerName",
+      "type": "call",
+      "line": 46,
+      "file_from": "src/UI.js",
+      "file_to": "src/UI.js"
+    }
+  ],
+  "unresolvedImports": {},
+  "reexportChains": [],
+  "exportIndex": {
+    "src/Analytics.js": {
+      "initAnalytics": {
+        "type": "direct",
+        "sourceFile": "src/Analytics.js",
+        "sourceName": "initAnalytics"
+      },
+      "disableAnalytics": {
+        "type": "direct",
+        "sourceFile": "src/Analytics.js",
+        "sourceName": "disableAnalytics"
+      }
+    },
+    "src/EventBus.js": {
+      "EventBus": {
+        "type": "direct",
+        "sourceFile": "src/EventBus.js",
+        "sourceName": "EventBus"
+      }
+    },
+    "src/GameEvents.js": {
+      "notifyGameStart": {
+        "type": "direct",
+        "sourceFile": "src/GameEvents.js",
+        "sourceName": "notifyGameStart"
+      },
+      "notifyScoreChange": {
+        "type": "direct",
+        "sourceFile": "src/GameEvents.js",
+        "sourceName": "notifyScoreChange"
+      },
+      "notifyLevelUp": {
+        "type": "direct",
+        "sourceFile": "src/GameEvents.js",
+        "sourceName": "notifyLevelUp"
+      },
+      "notifyGameEnd": {
+        "type": "direct",
+        "sourceFile": "src/GameEvents.js",
+        "sourceName": "notifyGameEnd"
+      }
+    },
+    "src/GameStore.js": {
+      "initGameState": {
+        "type": "direct",
+        "sourceFile": "src/GameStore.js",
+        "sourceName": "initGameState"
+      },
+      "resetGameState": {
+        "type": "direct",
+        "sourceFile": "src/GameStore.js",
+        "sourceName": "resetGameState"
+      },
+      "getGameState": {
+        "type": "direct",
+        "sourceFile": "src/GameStore.js",
+        "sourceName": "getGameState"
+      }
+    },
+    "src/Player.js": {
+      "incrementScore": {
+        "type": "direct",
+        "sourceFile": "src/Player.js",
+        "sourceName": "incrementScore"
+      },
+      "levelUp": {
+        "type": "direct",
+        "sourceFile": "src/Player.js",
+        "sourceName": "levelUp"
+      },
+      "startGame": {
+        "type": "direct",
+        "sourceFile": "src/Player.js",
+        "sourceName": "startGame"
+      },
+      "endGame": {
+        "type": "direct",
+        "sourceFile": "src/Player.js",
+        "sourceName": "endGame"
+      }
+    },
+    "src/UI.js": {
+      "displayScore": {
+        "type": "direct",
+        "sourceFile": "src/UI.js",
+        "sourceName": "displayScore"
+      },
+      "displayLevel": {
+        "type": "direct",
+        "sourceFile": "src/UI.js",
+        "sourceName": "displayLevel"
+      },
+      "displayPlayerName": {
+        "type": "direct",
+        "sourceFile": "src/UI.js",
+        "sourceName": "displayPlayerName"
+      },
+      "updateUI": {
+        "type": "direct",
+        "sourceFile": "src/UI.js",
+        "sourceName": "updateUI"
+      }
+    }
+  },
+  "typeDefinitions": {},
+  "enumDefinitions": {},
+  "constantExports": {
+    "src/UI.js": [
+      {
+        "name": "scoreElement",
+        "line": 11,
+        "valueType": "CallExpression"
+      },
+      {
+        "name": "levelElement",
+        "line": 22,
+        "valueType": "CallExpression"
+      },
+      {
+        "name": "nameElement",
+        "line": 33,
+        "valueType": "CallExpression"
+      }
+    ]
+  },
+  "objectExports": {},
+  "typeUsages": {},
+  "metadata": {
+    "totalFiles": 6,
+    "totalDependencies": 0,
+    "totalFunctions": 18,
+    "totalFunctionLinks": 7,
+    "totalUnresolved": 0,
+    "totalReexports": 0,
+    "totalTypes": 0,
+    "totalEnums": 0,
+    "totalConstants": 3,
+    "totalSharedObjects": 0,
+    "cyclesDetected": []
+  }
+}
