@@ -247,9 +247,256 @@ aunque no hay imports directos.
 2. Schema definido permite iterar rápido con mocks
 3. Test cases validan que el esquema cubre todos los casos
 
+### 3.5: Semantic Detection - Static (Hybrid Approach) ⏭️ PRÓXIMO
+
+**Objetivo**: Detectar conexiones semánticas usando análisis estático (scripts puros). IA solo para casos complejos.
+
+**Filosofía Híbrida**:
+```
+Layer A-Extended (Scripts)      Layer B (IA - Optional)
+├─ 80% de casos                 ├─ 20% de casos complejos
+├─ Patterns obvios              ├─ Código dinámico
+├─ Zero cost                    ├─ Indirección compleja
+├─ Instantáneo (<100ms)         ├─ Context understanding
+└─ 100% reproducible            └─ Síntesis y verificación
+```
+
+#### 3.5.1: Detección Estática de Shared State
+
+**Entregables**:
+- `src/layer-a-static/analyses/tier3/shared-state-detector.js`
+- Detecta `window.*`, `globalThis.*`, `global.*`
+- AST traversal para encontrar reads/writes
+- Genera conexiones con confidence = 1.0 (determinístico)
+
+**Algoritmo**:
+```javascript
+1. Para cada archivo:
+   a. Traverse AST buscando MemberExpression con object = "window"
+   b. Clasificar como READ o WRITE
+   c. Guardar línea y función donde ocurre
+
+2. Para cada propiedad global:
+   a. Si tiene WRITERS y READERS en archivos distintos
+   b. Crear semantic connection: writer → reader
+   c. Confidence: 1.0 (100% seguro)
+   d. Severity: calculado por scoring rules
+```
+
+**Casos detectados**:
+```javascript
+// DETECTA:
+window.gameState = { score: 0 };           // Write
+const score = window.gameState.score;      // Read
+window.eventBus.emit('event');             // Write (method call)
+
+// NO DETECTA (requiere IA):
+const state = window.gameState;
+state.score = 10;                          // Indirección
+window[propName] = value;                  // Dynamic property
+```
+
+#### 3.5.2: Detección Estática de Event Patterns
+
+**Entregables**:
+- `src/layer-a-static/analyses/tier3/event-pattern-detector.js`
+- Detecta event emitters y listeners
+- Matching automático entre emisores y receptores
+
+**Patterns detectados**:
+```javascript
+// Event Bus Pattern
+window.eventBus.on('event:name', handler);    // Listener
+window.eventBus.emit('event:name', data);     // Emitter
+
+// DOM Events
+element.addEventListener('click', handler);    // Listener
+element.dispatchEvent(new Event('click'));    // Emitter
+
+// Custom Emitters
+EventEmitter.on('custom', handler);
+EventEmitter.emit('custom', data);
+```
+
+**Algoritmo**:
+```javascript
+1. Detectar listeners:
+   a. Buscar CallExpression con método "on", "addEventListener"
+   b. Extraer event name (primer argumento)
+   c. Guardar: { file, line, eventName, type: 'listener' }
+
+2. Detectar emitters:
+   a. Buscar CallExpression con método "emit", "dispatchEvent"
+   b. Extraer event name
+   c. Guardar: { file, line, eventName, type: 'emitter' }
+
+3. Matching:
+   a. Para cada eventName que tiene listeners Y emitters
+   b. Crear conexiones: emitter → listener
+   c. Confidence: 1.0 si string literal, 0.8 si variable
+```
+
+#### 3.5.3: Side Effects Detection
+
+**Entregables**:
+- `src/layer-a-static/analyses/tier3/side-effects-detector.js`
+- Detecta todas las categorías de side effects
+
+**Detecciones**:
+```javascript
+{
+  "hasGlobalAccess": detectGlobalAccess(),      // window.*, global.*
+  "modifiesDOM": detectDOMCalls(),              // document.*, querySelector, etc.
+  "makesNetworkCalls": detectNetworkAPIs(),     // fetch, XMLHttpRequest, axios
+  "usesLocalStorage": detectStorageCalls(),     // localStorage, sessionStorage
+  "accessesWindow": detectWindowAccess(),       // window object usage
+  "modifiesGlobalState": detectGlobalWrites(),  // window.x = ..., global.y = ...
+  "hasEventListeners": detectEventListeners(),  // addEventListener, on()
+  "usesTimers": detectTimerCalls()              // setTimeout, setInterval
+}
+```
+
+**Implementación por categoría**:
+```javascript
+// 1. DOM Manipulation
+function detectDOMCalls(ast) {
+  const domAPIs = ['document', 'querySelector', 'getElementById',
+                   'appendChild', 'removeChild', 'innerHTML', 'textContent'];
+  return hasCallToAny(ast, domAPIs);
+}
+
+// 2. Network Calls
+function detectNetworkAPIs(ast) {
+  const networkAPIs = ['fetch', 'XMLHttpRequest', 'axios', 'request'];
+  return hasCallToAny(ast, networkAPIs);
+}
+
+// 3. Storage
+function detectStorageCalls(ast) {
+  const storageAPIs = ['localStorage', 'sessionStorage', 'indexedDB'];
+  return hasAccessToAny(ast, storageAPIs);
+}
+```
+
+#### 3.5.4: Rule-Based Scoring (Sin IA)
+
+**Entregables**:
+- `src/layer-a-static/analyses/tier3/risk-scorer.js`
+- Sistema de scoring basado en reglas (no IA)
+- Rápido, determinístico, explicable
+
+**Scoring Rules**:
+```javascript
+function calculateRiskScore(file, connections, sideEffects, analysis) {
+  let score = 0;
+
+  // 1. Static Complexity (0-3 points)
+  score += Math.min(3, file.functions.length / 10);  // Más funciones = más riesgo
+  score += Math.min(2, file.imports.length / 20);    // Muchas dependencias
+
+  // 2. Semantic Connections (0-3 points)
+  const connectionCount = connections.length;
+  if (connectionCount >= 5) score += 3;
+  else if (connectionCount >= 3) score += 2;
+  else if (connectionCount >= 1) score += 1;
+
+  // 3. Side Effects (0-3 points)
+  const sideEffectCount = Object.values(sideEffects).filter(Boolean).length;
+  if (sideEffectCount >= 4) score += 3;
+  else if (sideEffectCount >= 2) score += 2;
+  else if (sideEffectCount >= 1) score += 1;
+
+  // 4. Hotspot Risk (0-1 point)
+  const isHotspot = analysis.hotspots.some(h => h.file === file.path);
+  if (isHotspot) score += 1;
+
+  return Math.min(10, score);
+}
+```
+
+**Severity Calculation**:
+```javascript
+function calculateSeverity(connection, fileRisk) {
+  // Shared state + high risk file = CRITICAL
+  if (connection.type === 'shared_state' && fileRisk >= 7) {
+    return 'critical';
+  }
+
+  // Event listener + hotspot = HIGH
+  if (connection.type === 'event_listener' && fileRisk >= 5) {
+    return 'high';
+  }
+
+  // Multiple readers/writers = HIGH
+  if (connection.readers?.length > 3 || connection.writers?.length > 3) {
+    return 'high';
+  }
+
+  // Default
+  return connection.type === 'side_effect' ? 'low' : 'medium';
+}
+```
+
+#### 3.5.5: Integration con Static Analysis
+
+**Entregables**:
+- Integrar semantic detection en pipeline existente
+- Generar `enhanced-system-map.json` con resultados
+
+**Flujo actualizado**:
+```javascript
+// indexer.js (main pipeline)
+async function analyzeProject(projectPath) {
+  // 1. Static Analysis (existente)
+  const systemMap = await buildSystemMap(projectPath);
+  const analysis = await analyzeSystemMap(systemMap);
+
+  // 2. Semantic Detection - STATIC (nuevo)
+  const semanticConnections = {
+    sharedState: detectSharedState(systemMap),
+    eventPatterns: detectEventPatterns(systemMap),
+    sideEffects: detectSideEffects(systemMap)
+  };
+
+  // 3. Risk Scoring (nuevo)
+  const riskScores = calculateRiskScores(systemMap, semanticConnections, analysis);
+
+  // 4. Merge everything
+  const enhanced = mergeAnalyses(systemMap, analysis, semanticConnections, riskScores);
+
+  // 5. Save
+  fs.writeFileSync('enhanced-system-map.json', JSON.stringify(enhanced, null, 2));
+
+  return enhanced;
+}
+```
+
+#### 3.5.6: Validación en Test Cases
+
+**Validar en scenario-2-semantic**:
+```bash
+# Ejecutar análisis estático
+node src/layer-a-static/indexer.js test-cases/scenario-2-semantic/src
+
+# Expected results:
+✅ 3 shared_state connections detectadas
+✅ 3 event_listener connections detectadas
+✅ 6 files con side effects
+✅ Risk scores: 4.0-7.5 range
+✅ Confidence: 1.0 (todas detectadas por scripts)
+
+# Comparar contra expected-semantic-connections.json
+✅ 100% match (scripts detectan TODO en este caso simple)
+```
+
+**Performance esperado**:
+- Análisis completo: <200ms para 6 archivos
+- Escalabilidad: ~30ms por archivo (lineal)
+- Zero external dependencies (sin modelo IA)
+
 ---
 
-## FASE 4: MCP Server + Context Delivery System ⏭️ PRÓXIMO
+## FASE 4: MCP Server + Context Delivery System
 
 **Objetivo**: Hacer que la IA reciba contexto relevante ANTES de editar código.
 
@@ -509,25 +756,104 @@ fileWatcher.on('change', (file) => {
 
 ---
 
-## FASE 5: Semantic Layer - IA Local para Conexiones No Obvias
+## FASE 5: Semantic Layer - IA para Casos Complejos y Síntesis
 
-**Objetivo**: Usar modelo local (Liquid, Qwen, etc.) para detectar conexiones que análisis estático no puede ver.
+**Objetivo**: Usar IA local (LFM2.5-Thinking) SOLO para casos complejos y síntesis/verificación.
 
-### 5.1: Evaluación de Modelos
+**Estrategia Híbrida - 80/20 Rule**:
+```
+Phase 3.5 (Scripts)             Phase 5 (IA)
+├─ 80% de detección             ├─ 20% casos complejos
+├─ Zero cost                    ├─ Síntesis de resultados
+├─ <200ms                       ├─ Verificación de findings
+└─ Patterns obvios              └─ Context understanding
+```
 
-**Candidatos a evaluar**:
-1. **Liquid LMF 2.5** - Nuevo modelo con "thinking", texto estructurado, rápido
-2. **Qwen2.5-Coder-7B** - Especializado en código, open source
-3. **DeepSeek-Coder-6.7B** - Alternativa ligera
-4. **GPT-4o-mini** - Opción cloud como fallback
+### 5.1: Casos que Requieren IA
 
-**Criterios de evaluación**:
-- Velocidad de inferencia (objetivo: <2s por análisis)
-- Calidad de detección (falsos positivos vs falsos negativos)
-- Costo computacional (RAM, GPU requerida)
-- Facilidad de setup
+**Cuándo usar IA (no scripts)**:
 
-### 5.2: Detector de Conexiones Semánticas
+```javascript
+// ❌ Scripts NO pueden detectar:
+
+// 1. Indirección
+const state = window.gameState;
+state.score = 10;  // ¿state === window.gameState?
+
+// 2. Código dinámico
+const propName = config.stateProp;
+window[propName] = { score: 0 };  // Runtime value
+
+// 3. Chains complejas
+const obj = getStateObject();  // ¿Qué devuelve?
+obj.score = 10;
+
+// 4. Template strings
+const eventName = `game:${action}`;  // ¿Qué valor tiene action?
+window.eventBus.on(eventName, handler);
+```
+
+**Triggers para análisis con IA**:
+```javascript
+function shouldUseAI(file, staticAnalysis) {
+  return (
+    file.hasIndirection ||              // Variables como proxies
+    file.hasDynamicProperties ||        // window[varName]
+    file.complexityScore > 7 ||         // Alto riesgo
+    staticAnalysis.lowConfidence ||     // Scripts no seguros
+    file.isHotspot && hasSemanticRisk   // Crítico + sospechoso
+  );
+}
+```
+
+### 5.2: IA para Síntesis y Verificación
+
+**Uso principal**: Enriquecer resultados de scripts, no reemplazarlos.
+
+**Tareas de IA**:
+```javascript
+// 1. Síntesis
+"Estos 5 archivos acceden a window.gameState. Resumen:
+ - Player.js ESCRIBE score (high impact)
+ - UI.js LEE score (medium impact)
+ - Analytics.js LEE para metrics (low impact)
+ Riesgo: Race condition si Player modifica mientras UI lee."
+
+// 2. Verificación de false positives
+StaticAnalysis: "Detecté shared state en A.js y B.js"
+AI: "Verificado. B.js efectivamente depende del estado de A.
+     Confidence: 0.95"
+
+// 3. Context understanding
+StaticAnalysis: "window.eventBus.emit('user:login', data)"
+AI: "Este evento es crítico para autenticación. Impacta:
+     - Session management
+     - Authorization flow
+     - Analytics tracking
+     Severity: CRITICAL (no solo 'high')"
+
+// 4. Recommendations
+"Refactoring suggestion: Considera usar un state manager
+ en lugar de window.gameState para mejor testability."
+```
+
+### 5.3: Evaluación de Modelos (Actualizado)
+
+**Modelo seleccionado**: **LFM2.5-1.2B-Thinking** (ver docs/SEMANTIC_LAYER_MODELS.md)
+
+**Por qué:**
+- ✅ +39% mejor razonamiento que Instruct
+- ✅ +16% mejor tool use (JSON output)
+- ✅ Thinking traces para debug
+- ✅ <900MB memoria
+- ✅ Ya evaluado y documentado
+
+**Uso limitado**:
+- Solo 10-20% de archivos (casos complejos)
+- Síntesis al final del análisis
+- Verificación bajo demanda
+
+### 5.4: Detector de Casos Complejos
 
 **Casos que análisis estático NO detecta**:
 
@@ -547,54 +873,257 @@ function displayScore() {
 }
 ```
 
-**Prompt para IA semántica**:
+**Prompt para IA (casos complejos)**:
 ```
-Analiza este código y detecta conexiones NO OBVIAS:
-- Estado compartido (global, window, localStorage)
-- Event listeners (addEventListener, on, emit)
-- Callbacks pasados como parámetros
-- Side effects (DOM manipulation, fetch calls)
-- Configuración global (process.env, config objects)
+Análisis estático ya detectó:
+- window.gameState accedido en Player.js (línea 15) y UI.js (línea 23)
+- Confidence: 1.0 (determinístico)
 
-File: Player.js
-Code: [código aquí]
+Tu tarea:
+1. Verificar si hay conexiones ADICIONALES no detectadas
+2. Analizar IMPACTO de estas conexiones
+3. Sugerir severity ajustada por contexto
 
-Output formato JSON:
+Code context:
+[código relevante aquí]
+
+Output JSON:
 {
-  "semanticConnections": [
-    {
-      "type": "shared_state",
-      "target": "UI.js",
-      "reason": "Both access window.gameState.score",
-      "confidence": 0.95
-    }
-  ]
+  "additionalConnections": [...],  // Solo si encontrás algo nuevo
+  "verification": {
+    "staticFindingsCorrect": true,
+    "contextAnalysis": "Player modifica score, UI lo lee en tiempo real...",
+    "suggestedSeverity": "critical",  // vs "high" del static
+    "reasoning": "UI puede mostrar datos stale si..."
+  },
+  "recommendations": [...]
 }
 ```
 
-### 5.3: Enhanced System Map
+### 5.5: Flujo Híbrido Completo (Static + AI)
 
-**Entregables**:
-- Combinar análisis estático + análisis semántico
-- Generar `enhanced-system-map.json`
+**Pipeline integrado**:
 
-```json
-{
-  "files": {
-    "Player.js": {
-      "staticDependencies": ["Input.js"],
-      "semanticDependencies": [
-        {
-          "file": "UI.js",
-          "type": "shared_state",
-          "confidence": 0.95,
-          "detected_by": "liquid-lmf-2.5"
-        }
-      ]
+```javascript
+async function analyzeProjectHybrid(projectPath) {
+  // ========== PHASE 1: STATIC ANALYSIS (100% files, <200ms) ==========
+  console.log('🔍 Phase 1: Static analysis...');
+
+  const systemMap = await buildSystemMap(projectPath);
+  const staticAnalysis = await analyzeSystemMap(systemMap);
+
+  // ========== PHASE 2: SEMANTIC - STATIC (100% files, <200ms) ==========
+  console.log('🔍 Phase 2: Semantic detection (scripts)...');
+
+  const semanticStatic = {
+    sharedState: detectSharedState(systemMap),          // window.*, global.*
+    eventPatterns: detectEventPatterns(systemMap),      // on(), emit()
+    sideEffects: detectSideEffects(systemMap),          // DOM, network, storage
+    riskScores: calculateRiskScores(systemMap, analysis) // Rule-based
+  };
+
+  // ========== PHASE 3: IDENTIFY COMPLEX CASES (~10-20% files) ==========
+  console.log('🔍 Phase 3: Identify complex cases...');
+
+  const complexFiles = identifyComplexCases(systemMap, semanticStatic);
+
+  console.log(`  → ${complexFiles.length} files need AI analysis`);
+  console.log(`  → ${systemMap.files.length - complexFiles.length} files done with scripts`);
+
+  // ========== PHASE 4: AI ANALYSIS (only complex, 2s each) ==========
+  let aiResults = {};
+
+  if (complexFiles.length > 0 && config.enableAI) {
+    console.log('🤖 Phase 4: AI analysis for complex cases...');
+    aiResults = await analyzeWithAI(complexFiles, semanticStatic);
+  }
+
+  // ========== PHASE 5: SYNTHESIS (optional, 5s total) ==========
+  let synthesis = null;
+
+  if (config.enableAISynthesis) {
+    console.log('🤖 Phase 5: AI synthesis...');
+    synthesis = await synthesizeFindings(semanticStatic, aiResults);
+  }
+
+  // ========== PHASE 6: MERGE & SAVE ==========
+  console.log('💾 Phase 6: Merge and save...');
+
+  const enhanced = mergeAllAnalyses(
+    systemMap,
+    staticAnalysis,
+    semanticStatic,
+    aiResults,
+    synthesis
+  );
+
+  fs.writeFileSync('enhanced-system-map.json', JSON.stringify(enhanced, null, 2));
+
+  return enhanced;
+}
+```
+
+**Identificación de casos complejos**:
+
+```javascript
+function identifyComplexCases(systemMap, semanticStatic) {
+  const complexFiles = [];
+
+  for (const [filePath, fileInfo] of Object.entries(systemMap.files)) {
+    const needsAI =
+      // 1. Alto riesgo + bajo confidence
+      (fileInfo.riskScore > 7 && hasLowConfidencePatterns(fileInfo)) ||
+
+      // 2. Hotspot con semantic connections
+      (isHotspot(filePath, analysis) && semanticStatic.connections[filePath]?.length > 0) ||
+
+      // 3. Código dinámico detectado
+      hasDynamicPatterns(fileInfo) ||
+
+      // 4. Indirección compleja
+      hasIndirection(fileInfo) ||
+
+      // 5. Configuración manual (flags en código)
+      fileInfo.forceAIAnalysis;
+
+    if (needsAI) {
+      complexFiles.push({
+        path: filePath,
+        reason: getComplexityReason(fileInfo),
+        staticFindings: semanticStatic.connections[filePath] || []
+      });
     }
   }
+
+  return complexFiles;
 }
 ```
+
+**Merge de resultados**:
+
+```javascript
+function mergeAllAnalyses(systemMap, staticAnalysis, semanticStatic, aiResults, synthesis) {
+  const enhanced = {
+    metadata: {
+      version: '0.4.0',
+      generated: new Date().toISOString(),
+      analyzers: {
+        static: 'layer-a-v0.3.4',
+        semanticStatic: 'layer-a-extended-v0.3.5',
+        semanticAI: aiResults ? 'layer-b-lfm2.5-thinking-v1' : null
+      },
+      stats: {
+        totalFiles: Object.keys(systemMap.files).length,
+        analyzedWithScripts: Object.keys(systemMap.files).length - (aiResults ? Object.keys(aiResults).length : 0),
+        analyzedWithAI: aiResults ? Object.keys(aiResults).length : 0,
+        aiUsagePercentage: aiResults ? (Object.keys(aiResults).length / Object.keys(systemMap.files).length * 100).toFixed(1) + '%' : '0%'
+      }
+    },
+    files: {},
+    synthesis: synthesis || null
+  };
+
+  for (const [filePath, fileInfo] of Object.entries(systemMap.files)) {
+    enhanced.files[filePath] = {
+      // Static analysis
+      ...fileInfo,
+
+      // Semantic - Static
+      semanticConnections: semanticStatic.connections[filePath] || [],
+      sideEffects: semanticStatic.sideEffects[filePath] || {},
+      riskScore: semanticStatic.riskScores[filePath] || { total: 0 },
+
+      // AI results (if analyzed)
+      aiEnhancement: aiResults[filePath] || null,
+
+      // Analysis metadata
+      analysis: {
+        staticAnalyzed: true,
+        semanticStaticAnalyzed: true,
+        aiAnalyzed: !!aiResults[filePath],
+        needsReanalysis: false
+      }
+    };
+  }
+
+  return enhanced;
+}
+```
+
+**Performance esperado**:
+
+```
+Project: 100 files
+
+Phase 1: Static analysis           → 2s
+Phase 2: Semantic (scripts)        → 2s
+Phase 3: Identify complex          → 0.1s
+Phase 4: AI (10 files @ 2s each)   → 20s
+Phase 5: Synthesis                 → 5s
+Phase 6: Merge & save              → 0.5s
+
+TOTAL: ~30s (vs 200s si TODO fuera con IA)
+Savings: 85% faster
+```
+
+**Configuración**:
+
+```javascript
+// cognisystem.config.js
+module.exports = {
+  semantic: {
+    // Static detection (always enabled)
+    staticDetection: true,
+
+    // AI analysis (optional)
+    enableAI: false,  // Default: false (zero cost)
+    aiThreshold: {
+      riskScore: 7,           // Analizar con IA si risk >= 7
+      hotspotConnections: 3,  // Hotspot + 3+ connections
+      complexityScore: 8      // Complexity >= 8
+    },
+
+    // AI synthesis (optional)
+    enableAISynthesis: false,  // Default: false
+
+    // Model
+    aiModel: 'lfm2.5-thinking',
+    aiModelPath: '~/.cache/lm-studio/models/lfm2.5-1.2b-thinking'
+  }
+};
+```
+
+### 5.6: Validación del Enfoque Híbrido
+
+**Test en scenario-2-semantic**:
+
+```bash
+# 1. Solo scripts (sin IA)
+npm run analyze:semantic-static test-cases/scenario-2-semantic/src
+
+# Expected:
+✅ 3 shared_state connections (100% detected)
+✅ 3 event_listener connections (100% detected)
+✅ 6 side effects (100% detected)
+✅ Risk scores: 4.0-7.5
+✅ Time: <200ms
+✅ Cost: $0
+
+# 2. Con IA (casos complejos)
+npm run analyze:semantic-hybrid test-cases/scenario-2-semantic/src
+
+# Expected:
+✅ Same connections (AI confirma, no agrega)
+✅ Enhanced severity (AI ajusta por contexto)
+✅ Synthesis: "Player-UI connection is critical due to real-time updates"
+✅ Time: ~5s (solo synthesis)
+✅ Cost: $0 (modelo local)
+```
+
+**Resultado esperado**:
+- Scripts detectan 100% en caso simple
+- IA agrega valor en synthesis y context understanding
+- No hay diferencia en detección (validación del enfoque)
 
 ---
 
@@ -753,8 +1282,18 @@ Si inyectamos todas las dependencias, saturamos el contexto de la IA.
 
 **✅ COMPLETADO**: Phase 1, 2, 3.0, 3.1, 3.2, 3.3, 3.4
 **📍 ACTUAL**: Phase 3.4 - Semantic Layer Data Architecture (v0.3.4)
-**⏭️ SIGUIENTE**: Phase 4 - MCP Server + Context Delivery System
+**⏭️ SIGUIENTE**: Phase 3.5 - Semantic Detection Static (Hybrid Approach)
+
+**Estrategia**: Enfoque híbrido 80/20
+- 80% detección con scripts (zero cost, <200ms)
+- 20% casos complejos con IA (cuando sea necesario)
+- IA para síntesis y verificación (opcional)
 
 **Versión**: v0.3.4
 **Quality Score**: 98/100 (Grade A)
 **Última actualización**: 2026-02-02
+
+**Próximas implementaciones**:
+1. Phase 3.5: Static semantic detection (scripts puros)
+2. Phase 4: MCP Server
+3. Phase 5: AI layer (casos complejos solo)

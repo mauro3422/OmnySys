@@ -1,5 +1,80 @@
 # CHANGELOG - OmnySys
 
+## [Unreleased] - 2026-02-02
+
+### Changed - Strategic Pivot: Hybrid Approach (Static + AI)
+
+#### Decision
+- **Before**: Phase 5 would use AI for ALL semantic detection
+- **After**: Phase 3.5 uses scripts for 80%, AI for 20% (complex cases only)
+
+#### Rationale
+**Analysis revealed**:
+- ✅ Scripts CAN detect patterns like `window.gameState`, `eventBus.on()`
+- ✅ Scripts are instant (<200ms), zero cost, 100% reproducible
+- ⚠️ AI needed only for: indirection, dynamic code, context understanding
+- ⚠️ Using AI for everything is overkill (200s vs 30s for 100 files)
+
+#### New Architecture: 80/20 Rule
+```
+Layer A-Extended (Scripts)      Layer B (AI - Optional)
+├─ 80% de casos                 ├─ 20% casos complejos
+├─ Patterns obvios              ├─ Código dinámico
+├─ Zero cost                    ├─ Indirección compleja
+├─ Instantáneo (<200ms)         ├─ Síntesis y verificación
+└─ 100% reproducible            └─ Context understanding
+```
+
+#### Updated Roadmap
+- **Phase 3.5 (NEW)**: Semantic Detection - Static
+  - Detect shared state (window.*, global.*)
+  - Detect event patterns (on(), emit())
+  - Detect side effects (DOM, network, storage)
+  - Rule-based risk scoring
+  - Expected: 80% coverage with scripts alone
+
+- **Phase 5 (UPDATED)**: AI for Complex Cases Only
+  - Indirection (const state = window.gameState; state.x = 10)
+  - Dynamic properties (window[propName])
+  - Synthesis and verification
+  - Context understanding (severity adjustment)
+
+#### Performance Impact
+```
+100 files project:
+
+ALL AI (original plan):
+- Time: 200s (2s per file)
+- Cost: Model inference for all files
+
+HYBRID (new plan):
+- Static: 4s (all files)
+- AI: 20s (10 complex files only)
+- Total: 24s
+- Savings: 88% faster
+```
+
+#### Configuration
+```javascript
+// cognisystem.config.js
+{
+  semantic: {
+    staticDetection: true,      // Always enabled
+    enableAI: false,             // Optional (default: false)
+    enableAISynthesis: false     // Optional synthesis
+  }
+}
+```
+
+#### Benefits
+- ✅ Faster (88% reduction in time)
+- ✅ Zero cost by default (AI optional)
+- ✅ Deterministic (scripts = reproducible)
+- ✅ Scalable (scripts handle 80%)
+- ✅ Flexible (enable AI when needed)
+
+---
+
 ## [0.3.4] - 2026-02-02
 
 ### Added - Phase 3.4: Semantic Layer Data Architecture (COMPLETE ✓)
