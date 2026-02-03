@@ -5,14 +5,93 @@
  */
 
 import * as http from 'http';
+import * as vscode from 'vscode';
 
 export class CogniSystemAPI {
   private orchestratorPort: number;
   private bridgePort: number;
+  private eventSource: any; // EventSource for SSE
+  private onMessageCallbacks: ((data: any) => void)[] = [];
 
   constructor(orchestratorPort: number = 9999, bridgePort: number = 9998) {
     this.orchestratorPort = orchestratorPort;
     this.bridgePort = bridgePort;
+  }
+
+  /**
+   * Connect to Server-Sent Events for real-time updates
+   */
+  connectToEvents(onMessage: (data: any) => void) {
+    this.onMessageCallbacks.push(onMessage);
+
+    // Try to connect to SSE endpoint
+    const url = `http://localhost:${this.bridgePort}/api/events`;
+
+    try {
+      // Note: In a real implementation, you'd use the 'eventsource' npm package
+      // For now, we use a simple polling fallback
+      this.startPollingEvents(onMessage);
+    } catch (error) {
+      console.warn('Failed to connect to events, using polling fallback');
+      this.startPollingEvents(onMessage);
+    }
+  }
+
+  /**
+   * Poll for events (fallback when SSE not available)
+   */
+  private startPollingEvents(onMessage: (data: any) => void) {
+    let lastWatcherStats: any = null;
+
+    const poll = async () => {
+      try {
+        const stats = await this.getWatcherStats();
+
+        // Detect changes by comparing stats
+        if (lastWatcherStats && stats.processedChanges > lastWatcherStats.processedChanges) {
+          onMessage({
+            type: 'file:modified',
+            timestamp: Date.now(),
+            stats: stats
+          });
+        }
+
+        lastWatcherStats = stats;
+      } catch (error) {
+        // Server not available, ignore
+      }
+    };
+
+    // Poll every 2 seconds
+    setInterval(poll, 2000);
+  }
+
+  /**
+   * Notify server of file change (for manual trigger)
+   */
+  async notifyChange(filePath: string, changeType: 'created' | 'modified' | 'deleted' = 'modified') {
+    return this.post(this.bridgePort, '/api/watcher/notify', {
+      filePath,
+      changeType
+    });
+  }
+
+  /**
+   * Get file watcher statistics
+   */
+  async getWatcherStats() {
+    return this.get(this.bridgePort, '/api/watcher');
+  }
+
+  /**
+   * Disconnect from events
+   */
+  disconnect() {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+    this.onMessageCallbacks = [];
   }
 
   /**

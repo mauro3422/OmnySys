@@ -26,6 +26,7 @@ import { EventEmitter } from 'events';
 import { AnalysisQueue } from './analysis-queue.js';
 import { AnalysisWorker } from './analysis-worker.js';
 import { StateManager } from './state-manager.js';
+import { FileWatcher } from './file-watcher.js';
 
 // MCP components
 import {
@@ -77,6 +78,10 @@ class CogniSystemUnifiedServer extends EventEmitter {
       orchestrator: process.env.ORCHESTRATOR_PORT || 9999,
       bridge: process.env.BRIDGE_PORT || 9998
     };
+
+    // File Watcher
+    this.fileWatcher = null;
+    this.wsClients = new Set(); // WebSocket clients for real-time updates
   }
 
   // ============================================================
@@ -99,7 +104,10 @@ class CogniSystemUnifiedServer extends EventEmitter {
       // Step 3: Start HTTP APIs
       await this.startHTTPServers();
 
-      // Step 4: Start processing loop
+      // Step 4: Initialize File Watcher
+      await this.initializeFileWatcher();
+
+      // Step 5: Start processing loop
       this.processNext();
 
       this.initialized = true;
@@ -418,6 +426,64 @@ class CogniSystemUnifiedServer extends EventEmitter {
         res.status(500).json({ error: error.message });
       }
     });
+
+    // GET /api/watcher - File watcher stats
+    this.bridgeApp.get('/api/watcher', async (req, res) => {
+      try {
+        const stats = this.fileWatcher?.getStats() || { error: 'File watcher not initialized' };
+        res.json(stats);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // POST /api/watcher/notify - Manual file change notification
+    this.bridgeApp.post('/api/watcher/notify', async (req, res) => {
+      try {
+        const { filePath, changeType = 'modified' } = req.body;
+        if (!filePath) {
+          return res.status(400).json({ error: 'filePath required' });
+        }
+
+        // Notify file watcher of external change (e.g., from VS Code)
+        await this.fileWatcher?.notifyChange(
+          path.join(this.projectPath, filePath),
+          changeType
+        );
+
+        res.json({ status: 'notified', filePath, changeType });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // GET /api/ws - WebSocket endpoint for real-time updates
+    this.setupWebSocket();
+  }
+
+  /**
+   * Setup WebSocket server for real-time updates
+   */
+  setupWebSocket() {
+    // Note: In a real implementation, you'd use the 'ws' library
+    // For now, we use Server-Sent Events (SSE) as a simpler alternative
+    this.bridgeApp.get('/api/events', (req, res) => {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      // Send initial connection message
+      res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+
+      // Add to broadcast list
+      const client = { send: (data) => res.write(`data: ${JSON.stringify(data)}\n\n`) };
+      this.wsClients.add(client);
+
+      // Remove on disconnect
+      req.on('close', () => {
+        this.wsClients.delete(client);
+      });
+    });
   }
 
   // ============================================================
@@ -715,6 +781,10 @@ class CogniSystemUnifiedServer extends EventEmitter {
     console.log('\n👋 Shutting down Unified Server...');
 
     this.isRunning = false;
+
+    if (this.fileWatcher) {
+      await this.fileWatcher.stop();
+    }
 
     if (this.worker) {
       await this.worker.stop();
