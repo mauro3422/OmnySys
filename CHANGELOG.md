@@ -1,616 +1,73 @@
 # CHANGELOG - OmnySys
 
-## [Unreleased] - 2026-02-02
-
-### Changed - Strategic Pivot: Hybrid Approach (Static + AI)
-
-#### Decision
-- **Before**: Phase 5 would use AI for ALL semantic detection
-- **After**: Phase 3.5 uses scripts for 80%, AI for 20% (complex cases only)
-
-#### Rationale
-**Analysis revealed**:
-- ✅ Scripts CAN detect patterns like `window.gameState`, `eventBus.on()`
-- ✅ Scripts are instant (<200ms), zero cost, 100% reproducible
-- ⚠️ AI needed only for: indirection, dynamic code, context understanding
-- ⚠️ Using AI for everything is overkill (200s vs 30s for 100 files)
-
-#### New Architecture: 80/20 Rule
-```
-Layer A-Extended (Scripts)      Layer B (AI - Optional)
-├─ 80% de casos                 ├─ 20% casos complejos
-├─ Patterns obvios              ├─ Código dinámico
-├─ Zero cost                    ├─ Indirección compleja
-├─ Instantáneo (<200ms)         ├─ Síntesis y verificación
-└─ 100% reproducible            └─ Context understanding
-```
-
-#### Updated Roadmap
-- **Phase 3.5 (NEW)**: Semantic Detection - Static
-  - Detect shared state (window.*, global.*)
-  - Detect event patterns (on(), emit())
-  - Detect side effects (DOM, network, storage)
-  - Rule-based risk scoring
-  - Expected: 80% coverage with scripts alone
-
-- **Phase 5 (UPDATED)**: AI for Complex Cases Only
-  - Indirection (const state = window.gameState; state.x = 10)
-  - Dynamic properties (window[propName])
-  - Synthesis and verification
-  - Context understanding (severity adjustment)
-
-#### Performance Impact
-```
-100 files project:
-
-ALL AI (original plan):
-- Time: 200s (2s per file)
-- Cost: Model inference for all files
-
-HYBRID (new plan):
-- Static: 4s (all files)
-- AI: 20s (10 complex files only)
-- Total: 24s
-- Savings: 88% faster
-```
-
-#### Configuration
-```javascript
-// cognisystem.config.js
-{
-  semantic: {
-    staticDetection: true,      // Always enabled
-    enableAI: false,             // Optional (default: false)
-    enableAISynthesis: false     // Optional synthesis
-  }
-}
-```
-
-#### Benefits
-- ✅ Faster (88% reduction in time)
-- ✅ Zero cost by default (AI optional)
-- ✅ Deterministic (scripts = reproducible)
-- ✅ Scalable (scripts handle 80%)
-- ✅ Flexible (enable AI when needed)
-
----
-
-## [0.3.4] - 2026-02-02
-
-### Added - Phase 3.4: Semantic Layer Data Architecture (COMPLETE ✓)
-
-#### Schema Design
-- **Created comprehensive JSON Schema**: `schema/enhanced-system-map.schema.json`
-  - Defines structure for combining static + semantic analysis
-  - Includes semantic connections, side effects, risk scores
-  - Validation rules for confidence, severity, and data types
-  - 400+ lines of formal schema specification
-
-- **TypeScript Types**: `schema/types.d.ts`
-  - Full type definitions for enhanced system map
-  - Improves developer experience and IDE autocomplete
-  - Matches JSON Schema 1:1
-
-#### Test Cases for Semantic Analysis
-- **Created scenario-2-semantic**: `test-cases/scenario-2-semantic/`
-  - 6 files with semantic connections (NO static imports)
-  - **GameStore.js** → Creates `window.gameState`
-  - **Player.js** → Modifies `window.gameState` (no import)
-  - **UI.js** → Reads `window.gameState` (no import)
-  - **EventBus.js** → Creates `window.eventBus`
-  - **Analytics.js** → Listens to `window.eventBus` (no import)
-  - **GameEvents.js** → Emits to `window.eventBus` (no import)
-
-- **Expected Connections**: `expected-semantic-connections.json`
-  - 6 semantic connections (3 shared_state, 3 event_listener)
-  - Side effects for all 6 files
-  - Risk scores (4.0 - 7.5 range)
-  - Used for validating AI output accuracy
-
-#### Schema Validator
-- **Created validator**: `src/layer-b-semantic/schema-validator.js`
-  - Validates semantic connections (type, confidence, severity)
-  - Validates side effects (hasGlobalAccess, modifiesDOM, etc.)
-  - Validates risk scores (0-10 scale)
-  - Filters low-confidence connections (configurable threshold)
-  - Generates validation reports
-
-#### Data Architecture Decisions
-- **Scope**: File-level analysis with function-level metadata
-  - Analyze entire file for context
-  - Track exact location (function, line) for precision
-  - NOT block-level (too granular, low value)
-
-- **Connection Types**:
-  - `shared_state`: window.x, globalThis, shared objects
-  - `event_listener`: addEventListener, on(), emit()
-  - `callback`: Functions passed as parameters
-  - `side_effect`: DOM, network, localStorage
-  - `global_access`: Access to globals
-  - `mutation`: Modifies shared state
-
-- **Confidence & Severity**:
-  - Confidence: 0-1 (AI certainty)
-  - Severity: low | medium | high | critical
-  - Default threshold: 0.7 confidence minimum
-
-- **Risk Scoring**:
-  - Total: 0-10 scale
-  - Breakdown: staticComplexity, semanticConnections, hotspotRisk, sideEffectRisk
-  - Used for prioritizing refactoring
-
-#### Why This Phase
-- **Problem**: Can't implement AI without knowing output structure
-- **Solution**: Define schema first, validate with mocks
-- **Benefit**: Fast iteration, clear validation criteria
-
-#### Impact
-- ✅ Complete data model for semantic layer
-- ✅ Validation system prevents garbage output
-- ✅ Test cases define success criteria
-- ✅ Ready for Phase 5 (AI implementation)
-
----
-
-## [0.3.3] - 2026-02-02
-
-### Changed - Modular Architecture Refactor (COMPLETE ✓)
-
-#### Code Organization
-- **Refactored analyzer.js into tiered module system**:
-  - `analyses/tier1/` - Function-level analysis (6 modules)
-    - unused-exports.js, hotspots.js, circular-function-deps.js
-    - deep-chains.js, orphan-files.js, index.js
-  - `analyses/tier2/` - Import/Structure analysis (8 modules)
-    - unused-imports.js, unresolved-imports.js, circular-imports.js
-    - reexport-chains.js, coupling.js, reachability.js
-    - side-effects.js, index.js
-  - `analyses/tier3/` - Advanced static analysis (4 modules)
-    - type-usage.js, enum-usage.js, constant-usage.js
-    - object-tracking.js, index.js
-  - `helpers.js` - Shared utilities (DFS, BFS, path helpers)
-  - `metrics.js` - Quality scoring system
-  - `recommendations.js` - Recommendation engine
-
-#### Why This Refactor
-- **Maintainability**: 435-line analyzer.js split into 18 focused modules
-- **SOLID Principles**: Each module has single responsibility
-- **Testability**: Independent modules can be tested in isolation
-- **Extensibility**: Easy to add new analyses without touching core
-- **Clarity**: Clear separation of concerns (tier1=functions, tier2=imports, tier3=types)
-
-### Fixed - Unused Imports False Positives
-
-#### Bug Description
-- **Problem**: Constants like `CONSTANT_C` reported as unused when actually used
-- **Example**: `import { CONSTANT_C } from './file'` → `return CONSTANT_C;` flagged as unused
-- **Root Cause**: Parser only captured function calls, not identifier references
-
-#### Solution
-- **parser.js**: Added `identifierRefs` array to capture non-call identifier usage
-  - New `Identifier` visitor in AST traversal
-  - Filters out declarations (keeps only references)
-  - Uses `isReferencedIdentifier()` to validate usage
-- **graph-builder.js**: Pass `identifierRefs` to systemMap
-- **unused-imports.js**: Check both calls AND identifier references
-
-#### Impact
-- ✅ No more false positives for imported constants
-- ✅ Accurate detection of unused imports (functions + constants + variables)
-- ✅ Quality Score improved: 97/100 → 98/100 (Grade A)
-- ✅ Test validation: 0 unused imports in scenario-1-simple-import
-
-#### Test Results
-- **Before**: CONSTANT_C flagged as unused (false positive)
-- **After**: CONSTANT_C correctly detected as used
-- **Quality Score**: 98/100 (Grade A)
-- **Total Issues**: 2 (only genuine unused exports)
-- **Recommendations**: 0 (all issues are low-severity)
-
----
-
-## [0.3.2] - 2026-02-01
-
-### Added - Phase 3.2: Circular Import Detection (COMPLETE ✓)
-
-#### New Analysis
-- **Circular Imports Detection**: Identifies A→B→A file-level import cycles
-  - Uses DFS traversal on dependency graph
-  - Different from circular function dependencies (file-level vs function-level)
-  - Marked as CRITICAL severity (breaks module loading at runtime)
-  - Heavy penalty: -35 points per cycle (severe impact on quality score)
-
-#### Problem Solved: Circular Import Tunnel Vision
-When files depend on each other in cycles:
-- JavaScript module loaders can't determine initialization order
-- Undefined symbols errors at runtime
-- AI has no way to detect this without analyzing the full graph
-- Example: `utils.js` imports from `helpers.js`, `helpers.js` imports from `utils.js`
-
-#### Why This Matters
-- ✅ Prevents AI from generating code that references undefined symbols
-- ✅ Helps identify architecture problems early
-- ✅ Clear actionable recommendation: extract shared code to utility module
-- ✅ Faster AI analysis (knows to avoid circular patterns)
-
-#### Implementation
-- **analyzer.js**: `findCircularImports()` function (~50 lines)
-  - DFS traversal with recursion stack
-  - Detects both direct cycles and complex cycles
-  - Reports cycle pairs and recommendation
-- **Quality Metrics**: -35 point penalty per circular import
-- **Recommendations**: CRITICAL priority with refactoring guidance
-
-#### Test Validation
-- **scenario-1-simple-import**:
-  - Circular Imports: 0 detected ✓
-  - Quality Score: 97/100 (Grade A) - maintained ✓
-  - All analyses working correctly ✓
-
-#### Complete Import Tunnel Vision Prevention
-Pipeline now detects and prevents:
-1. **Unresolved Imports** - Broken paths (import from non-existent files)
-2. **Circular Imports** - Module loading failures (A→B→A)
-3. **Unused Imports** - Cognitive overload (imported but never used)
-4. **Reexport Chains** - Lost context (where code really comes from)
-
----
-
-## [0.3.1] - 2026-02-01
-
-### Added - Phase 3.1: Import Quality Analysis (COMPLETE ✓)
-
-#### New Analysis Functions
-- **Unresolved Imports**: Detects imports that fail to resolve (broken paths, typos, missing files)
-  - Marked as CRITICAL severity
-  - Helps prevent "runtime surprises" when AI doesn't see broken code
-  - Example: `import { nonExistent } from './file.js'` when file doesn't exist
-
-- **Unused Imports**: Finds imports in file that are never actually used
-  - Prevents cognitive overload for AI (confusion about what's used vs what's imported)
-  - Example: `import { CONSTANT_C } from './fileC.js'` but never referenced in file
-  - High penalty: Reduces quality score by up to 15 points
-
-- **Reexport Chains**: Tracks barrel files and re-export patterns
-  - Identifies complex re-export chains (A→B→C)
-  - Helps AI understand true dependency sources
-  - Example: `index.js` re-exports everything from 5 other files
-
-#### Problem Solved: Import Tunnel Vision
-These gaps in Phase 3.0 could confuse AI:
-1. **Broken imports** - AI might try to use non-existent code
-2. **Dead imports** - AI confused about what's actually available
-3. **Complex re-exports** - AI loses track of where code comes from
-
-#### Implementation
-- **graph-builder.js**: Now captures `unresolvedImports` object during dependency resolution
-- **analyzer.js**: Three new analysis functions (~40 lines each, independent)
-- **Quality Metrics**: Updated penalties and breakdown to include new issues
-- **Recommendations Engine**: CRITICAL priority for unresolved imports
-
-#### Test Validation
-- **scenario-1-simple-import**:
-  - Unused Imports: 1 detected (CONSTANT_C) ✓
-  - Unresolved Imports: 0 (all valid) ✓
-  - Re-export Chains: 0 (simple structure) ✓
-  - Quality Score: 97/100 (down 1pt from unused import penalty) ✓
-
-#### Why This Matters for AI
-When passing systemMap to AI editors:
-- ✅ AI knows which imports are broken (won't use them)
-- ✅ AI sees which imports are dead weight (won't reference them)
-- ✅ AI understands re-export flow (knows where code really comes from)
-- ✅ Faster AI analysis (fewer false paths to explore)
-
----
-
-## [0.3.0] - 2026-02-01
-
-### Added - Phase 3: Automated Analysis & Quality Reporting (COMPLETE ✓)
-
-#### Core Features
-- **Automated Code Quality Analysis**: 8 independent analysis algorithms
-  - Unused Exports: Functions exported but never imported (dead code)
-  - Orphan Files: Files with no dependencies (entry points or dead code)
-  - Hotspots: Functions called from 5+ places (critical/risky)
-  - Circular Dependencies: Cycles in function call graph (infinite loops)
-  - Deep Dependency Chains: Patterns A→B→C→D→E (complexity/impact)
-  - Side Effect Markers: Pattern-based detection (init, setup, configure, etc)
-  - Reachability Analysis: % of code reachable from entry points
-  - Coupling Analysis: Bidirectional dependencies (tight coupling detection)
-
-- **Quality Scoring System**:
-  - Automatic grade: 0-100 → A/B/C/D/F
-  - Weighted penalties for each issue type
-  - Total issues count and breakdown
-
-- **Prioritized Recommendations**:
-  - CRITICAL: Circular deps, hotspots with 15+ callers
-  - HIGH: Unused exports (>3), orphan files (>2), circular deps
-  - MEDIUM: Deep chains (>2), high coupling, low reachability (<70%)
-  - Sorted by priority, actionable suggestions
-
-#### Implementation
-- **analyzer.js** (435 lines) - Modular analysis engine
-  - `generateAnalysisReport()`: Main orchestrator
-  - 8 analysis functions (each ~30-50 lines)
-  - `calculateQualityMetrics()`: Scoring algorithm
-  - `generateRecommendations()`: Suggestion engine
-
-- **indexer.js integration**:
-  - Paso 9: Automatic analysis generation
-  - Output: `system-map-analysis.json` (parallel to system-map.json)
-  - Enhanced console output with quality metrics
-
-#### Design Principles
-- **KISS**: Simple, iterative algorithms (no complex logic)
-- **SOLID**: Single Responsibility - each analysis does ONE thing
-- **No Recursion**: Prevents stack overflow (all iterative)
-- **Independent**: Analyses don't depend on each other
-- **Safe**: No shared state or side effects
-
-#### Tunnel Vision Prevention
-1. **Unused Code**: Reduces context noise
-2. **Hotspot Warning**: "This has 23 callers - test carefully"
-3. **Complexity Warning**: "Deep chain A→B→C→D→E affects 5 files"
-4. **Dead Code**: "Only 55% reachable from entry points"
-5. **Risk Assessment**: Automatic prioritization of what matters
-6. **Coupling Alert**: "High bidirectional dependency - refactor?"
-
-#### Output Structure
-```json
-{
-  "metadata": { totalFiles, totalFunctions, totalFunctionLinks },
-  "unusedExports": { totalUnused, byFile: { file: [{ name, line }] } },
-  "orphanFiles": { total, deadCodeCount, files[] },
-  "hotspots": { total, functions[{ functionId, callers, severity }] },
-  "circularFunctionDeps": { total, cycles[], hasMutualRecursion },
-  "deepDependencyChains": { totalDeepChains, maxDepth, chains[] },
-  "sideEffectMarkers": { total, functions[] },
-  "reachabilityAnalysis": { reachable, unreachable, reachablePercent },
-  "couplingAnalysis": { total, coupledFiles[] },
-  "qualityMetrics": { score, grade, totalIssues, breakdown },
-  "recommendations": { total, byPriority: {CRITICAL, HIGH, MEDIUM}, recommendations[] }
-}
+## 📋 **Index of Version-Specific Changelogs**
+
+This repository uses a modular changelog structure for better organization and maintainability. Each major version has its own dedicated file in the `changelog/` directory.
+
+### **📁 Version Files**
+
+| Version | File | Description |
+|---------|------|-------------|
+| **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** (Latest) |
+| **[0.4.0-0.4.1]** | `changelog/v0.4.0.md` | **Phase 3.8: Capa B - Semantic Enrichment** |
+| **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
+| **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
+| **[0.3.1-0.3.4]** | `changelog/v0.3.1-v0.3.4.md` | **Import Quality Analysis & Modular Architecture** |
+| **[0.3.0]** | `changelog/v0.3.0.md` | **Core Automated Analysis & Quality Reporting** |
+| **[0.2.0]** | `changelog/v0.2.0.md` | **Phase 2: Function-Level Tracking** |
+| **[0.1.0]** | `changelog/v0.1.0.md` | **Phase 1: Layer A - Static Analysis** |
+| **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
+| **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
+
+### **🚀 Latest Release: v0.4.2 (2026-02-03)**
+
+**Major Milestone**: Context optimization and function-level analysis preparation
+
+**Key Features**:
+- ✅ **Optimized LLM Context** (only relevant data, no noise)
+- ✅ **Complete Import Analysis** (all imports with metadata, not just 3)
+- ✅ **Function-Level Analysis** (prepared for future granular analysis)
+- ✅ **Semantic-Enricher Refactoring** (6 modules, <400 lines each)
+- ✅ **8GB VRAM Optimized** (2 slots × 16K tokens)
+
+**Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
+
+**🔗 Quick Links**:
+- [View Latest Changes](changelog/v0.4.2.md)
+- [View v0.4.0 Changes](changelog/v0.4.0.md)
+- [View All Version Files](changelog/)
+- [Project Documentation](README.md)
+
+### **📈 Project Evolution**
+
+| Phase | Version | Focus | Status |
+|-------|---------|-------|--------|
+| **Phase 1** | 0.1.0 | Static Analysis Foundation | ✅ Complete |
+| **Phase 2** | 0.2.0 | Function-Level Tracking | ✅ Complete |
+| **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | ✅ Complete |
+| **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | ✅ Complete |
+| **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
+
+### **💡 Why This Structure?**
+
+- **🎯 Focused**: Each file covers specific milestones
+- **🔍 Searchable**: Easy to find changes by version
+- **📝 Maintainable**: No more 700+ line files
+- **🔄 Scalable**: Easy to add new versions
+- **👥 Collaborative**: Multiple developers can work on different versions
+
+### **📋 Usage**
+
+To view changes for a specific version:
+```bash
+# View latest changes
+cat changelog/v0.4.0.md
+
+# View all version files
+ls changelog/
+
+# View combined early phases
+cat changelog/v0.1.0-v0.2.0.md
 ```
 
-#### Test Validation
-- **scenario-1-simple-import**:
-  - Quality Score: 98/100 (Grade A) ✓
-  - Unused Exports: 2 detected ✓
-  - Orphan Files: 0 ✓
-  - Hotspots: 0 ✓
-  - Circular Deps: 0 ✓
-  - Reachability: 100% ✓
-  - Analysis time: <100ms ✓
-
-#### Quality Improvements
-- Prevents tunnel vision through automatic detection
-- Highlights architectural issues (circular deps, high coupling)
-- Identifies dead code (unused exports, orphan files, unreachable code)
-- Prioritizes effort (hotspots, deep chains, breaking changes)
-- Automates code quality scoring (no manual assessment needed)
-
----
-
-## [0.2.0] - 2026-02-01
-
-### Added - Phase 2: Function-Level Tracking (COMPLETE ✓)
-
-#### Core Features
-- **Function Extraction**: parser.js now extracts individual functions with metadata
-  - Function ID: `FILEID:functionName` format (e.g., `FI:functionA`)
-  - Metadata tracked: name, line number, endLine, parameters, isExported flag
-  - Call tracking: Detects all direct function calls within each function with line numbers
-
-- **Function Linking**: graph-builder.js creates bidirectional function call graph
-  - `function_links` array: Tracks function-to-function calls across files
-  - Format: `{ from, to, type, line, file_from, file_to }`
-  - Cross-file call resolution using import tracking
-
-- **Enhanced Metadata**:
-  - Added `totalFunctions` counter
-  - Added `totalFunctionLinks` counter
-
-#### Implementation Details
-- **parser.js changes** (288 → 350 lines):
-  - Added `functions` array to FileInfo output
-  - New helper: `findCallsInFunction()` - traverses function body for CallExpressions
-  - New helper: `isExportedFunction()` - checks if function appears in exports
-  - New helper: `getFileId()` - generates unique file prefix for IDs
-
-- **graph-builder.js changes** (334 → 410 lines):
-  - New `functions` key in systemMap (maps file → functions array)
-  - New `function_links` array (all function-to-function calls)
-  - New helper: `findFunctionInResolution()` - resolves function calls across import boundaries
-  - New helper: `countTotalFunctions()` - calculates total function count
-
-#### Test Results
-- **scenario-1-simple-import validation**: ✓ PASS
-  - Extracted functions: 5 (functionA, displayConstant, functionB, getConstant, functionC)
-  - Function links detected: 3
-  - Cross-file resolution: ✓ All calls correctly matched
-  - Line numbers: ✓ Accurate (file A calls file B at line 9, etc.)
-
-#### Output Example
-```json
-{
-  "functions": {
-    "src/fileA.js": [
-      {
-        "id": "FI:functionA",
-        "name": "functionA",
-        "line": 8,
-        "endLine": 11,
-        "params": ["value"],
-        "isExported": true,
-        "calls": [
-          { "name": "functionB", "type": "direct_call", "line": 9 }
-        ]
-      }
-    ]
-  },
-  "function_links": [
-    {
-      "from": "FI:functionA",
-      "to": "FI:functionB",
-      "type": "call",
-      "line": 9,
-      "file_from": "src/fileA.js",
-      "file_to": "src/fileB.js"
-    }
-  ]
-}
-```
-
-#### Backward Compatibility
-- ✓ File-level graph still intact
-- ✓ All existing metadata preserved
-- ✓ Dependencies array unchanged
-- ✓ Purely additive: function tracking is new feature layer
-
-#### Next Steps
-- **Phase 2.5**: AI Editor Integration using function-level graph
-  - Query: "What functions depend on this?"
-  - Query: "What's the impact of editing this function?"
-  - Utilize function_links for impact analysis
-
----
-
-## [0.1.0] - 2026-01-31
-
-### Added - Phase 1: Layer A - Static Analysis (COMPLETE ✓)
-
-#### Core Components
-
-1. **scanner.js** (156 lines)
-   - Discovers all project files matching supported extensions
-   - Handles TypeScript, JSX, and standard JS files
-   - Returns project-relative paths with forward slashes (Windows compatible)
-   - Excludes node_modules, .git, dist, build, etc.
-
-2. **parser.js** (232 lines)
-   - Parses individual files using @babel/parser AST generation
-   - Extracts:
-     - **Imports**: ES6 modules and CommonJS requires with source info
-     - **Exports**: Named, default, and declaration exports
-     - **Definitions**: Function and class declarations
-     - **Calls**: All function calls at file level
-   - Handles JSX, TypeScript, Flow, async/await, optional chaining, etc.
-
-3. **resolver.js** (254 lines)
-   - Converts relative imports to project-relative absolute paths
-   - Features:
-     - Relative path resolution (`./utils` → `src/utils.js`)
-     - Alias resolution (tsconfig.json / jsconfig.json support)
-     - External module detection (node_modules, npm packages)
-     - File extension resolution (`.js`, `.ts`, `.tsx`, `.jsx`, etc.)
-     - Index file detection (`import from './dir'` → `./dir/index.js`)
-   - Returns standardized `{ resolved, type, reason }` format
-
-4. **graph-builder.js** (334 lines)
-   - Constructs complete dependency graph from parsed files
-   - Builds bidirectional relationships:
-     - `dependsOn`: Files this file imports from
-     - `usedBy`: Files that import this file
-     - `transitiveDepends`: All indirect dependencies (recursive)
-     - `transitiveDependents`: All files affected by this file
-   - Features:
-     - Circular dependency detection via DFS traversal
-     - Transitive dependency calculation
-     - Risk level calculation based on affected files
-     - Impact assessment via `getImpactMap()` function
-
-5. **indexer.js** (192 lines)
-   - Orchestrates complete Layer A pipeline
-   - 8-step process:
-     1. Project detection (TypeScript/JavaScript)
-     2. File scanning
-     3. File parsing with AST
-     4. Import resolution configuration
-     5. Import resolution execution
-     6. Path normalization (critical fix)
-     7. Dependency graph construction
-     8. Output serialization to JSON
-   - CLI interface: `node src/layer-a-static/indexer.js /path/to/project [output-file]`
-
-#### Key Features
-
-- **Complete Dependency Analysis**
-  - File-level import tracking
-  - Symbol-level import tracking (what's imported, not just module)
-  - Bidirectional graph (dependencies and dependents)
-  - Transitive dependency calculation
-
-- **Error Handling**
-  - Graceful parsing errors (continues on syntax errors)
-  - Unresolved import tracking
-  - Path escape detection (imports outside project)
-
-- **Output Format**
-  - Standardized JSON system map
-  - Normalized paths (project-relative, forward slashes)
-  - Rich metadata about graph (file count, dependency count, cycles)
-
-#### Path Normalization (Critical Architecture Decision)
-
-The entire system normalizes to **project-relative, forward-slash paths**:
-- Scanner returns: `src/fileA.js` (not absolute Windows paths)
-- Parser stores: Keys as absolute, values as-is
-- Resolver returns: Project-relative paths via `normalizeToProjectRelative()`
-- Indexer Paso 6: Converts all keys to project-relative before graph-builder
-- Graph-builder expects: All keys already project-relative
-
-This ensures consistent graph construction across Windows/Unix systems.
-
-#### Test Validation
-
-**scenario-1-simple-import** (3 files: A→B→C)
-- ✓ 3 files detected
-- ✓ 2 direct dependencies found (A→B, B→C)
-- ✓ Transitive dependencies correct (A depends on B and C transitively)
-- ✓ Circular dependency detection: none detected ✓
-
-#### Bug Fixes
-
-1. **CLI Detection** (parser.js, scanner.js, indexer.js)
-   - Issue: `import.meta.url` not reliable for ESM module detection
-   - Fix: Changed to `process.argv[1].includes('filename.js')`
-
-2. **Path Normalization** (resolver.js)
-   - Issue: Resolver returning absolute Windows paths vs scanner's relative paths
-   - Fix: Added `normalizeToProjectRelative()` function to ensure consistency
-
-3. **Graph Construction** (indexer.js Paso 6)
-   - Issue: 0 dependencies despite successful import resolution
-   - Fix: Added path normalization step before graph-builder to ensure all paths match
-
-#### Architecture Decisions
-
-- **Babel for AST**: Chose Babel over alternatives for maximum JavaScript variant support
-- **File-level first**: Start with file-level analysis before function-level (Phase 2)
-- **JSON for storage**: Start with JSON, plan SQLite for Phase 3, vectorial DB later
-- **Project-relative paths**: Consistent, portable, easy to understand
-
-#### Future Phases
-
-- **Phase 2**: Function-level tracking (currently in progress)
-- **Phase 2.5**: AI Editor integration using function-level graph
-- **Phase 3**: MCP Server (Model Context Protocol) for AI integration
-- **Phase 4**: Semantic analysis (non-obvious dependencies, patterns)
-
-#### Documentation
-
-- README.md: User guide and quick start
-- PHASE-2-PLAN.md: Detailed implementation plan for function-level tracking
-- ARCHITECTURE.md: System design and component interaction
-
----
-
-## [0.0.0] - Initial Setup
-
-- Project initialization
-- Dependency installation (@babel/parser, @babel/traverse, fast-glob)
-- Git repository setup
-- GitHub remote configuration
-
+This modular approach ensures the changelog remains organized, maintainable, and easy to navigate as the project continues to grow!
