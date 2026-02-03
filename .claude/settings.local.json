@@ -16,7 +16,36 @@
       "WebFetch(domain:www.liquid.ai)",
       "Bash(cd:*)",
       "Bash(ls:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(find:*)",
+      "Bash(test:*)",
+      "Bash(start /B cmd /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat\")",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(start_brain_gpu.bat)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat\")",
+      "Bash(cmd /c \"if exist src\\\\ai\\\\models\\\\LFM2.5-1.2B-Instruct-Q8_0.gguf \\(echo Model found\\) else \\(echo Model NOT found\\)\")",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -Command \"cd ''c:\\\\Users\\\\mauro\\\\OneDrive\\\\Escritorio\\\\📁 PROYECTOS\\\\Desarrollo\\\\OmnySystem''; if \\(Test-Path ''src\\\\ai\\\\models\\\\LFM2.5-1.2B-Instruct-Q8_0.gguf''\\) { Write-Host ''✓ Model found'' } else { Write-Host ''✗ Model NOT found'' }\")",
+      "Bash(srcaiserverllama-server.exe:*)",
+      "Bash(./src/ai/server/llama-server.exe:*)",
+      "Bash(cmd.exe /c \"taskkill /IM llama-server.exe /F\")",
+      "Bash(start cmd.exe /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat\")",
+      "Bash(timeout /t 30 /nobreak)",
+      "Bash(cmd.exe /c \"taskkill /F /IM llama-server.exe 2>nul\")",
+      "Bash(src/ai/scripts/start_brain_gpu.bat)",
+      "WebFetch(domain:docs.liquid.ai)",
+      "Bash(cmd.exe /c \"taskkill /F /IM llama-server.exe && timeout /t 2 /nobreak >nul && start src\\\\ai\\\\scripts\\\\start_brain_gpu.bat\")",
+      "Bash(})",
+      "Bash(],)",
+      "Bash(\"temperature\": 0.0,)",
+      "Bash(\"max_tokens\": 200)",
+      "Bash(} ')",
+      "Bash(grep:*)",
+      "Bash(start /B cmd /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat > nul 2>&1\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"
     ]
   }
 }

@@ -313,6 +313,28 @@ function inferConnections(patterns) {
 
 ## Configuración del LLM
 
+### Implementación Actual ✅
+
+**llama-server (Local - Implementado)**
+- Servidor local con LFM2.5-1.2B-Instruct
+- Binarios optimizados con Vulkan (GPU) y CPU
+- Continuous batching para paralelismo
+- Ver [src/ai/README.md](../ai/README.md) para setup completo
+
+**Configuración**:
+```bash
+# Iniciar servidor
+omnysystem ai start gpu
+
+# Habilitar en config
+# Editar src/ai/ai-config.json: "enabled": true
+
+# Analizar con LLM
+omnysystem analyze /path/to/project
+```
+
+### Alternativas (No implementadas)
+
 **Opción A: Ollama (Local)**
 ```bash
 ollama pull qwen2.5-coder:7b
@@ -328,16 +350,101 @@ const response = await openai.chat.completions.create({
 });
 ```
 
-**Decisión**: Priorizar Ollama (privacidad), fallback a API si falla
+---
+
+## Estado de Implementación
+
+### ✅ Implementado
+
+1. **pattern-matchers.js** - Detección estática de patrones (eventos, storage, CSS)
+2. **llm-analyzer.js** - Wrapper para análisis LLM local
+3. **semantic-enricher.js** - Orquestador static + LLM
+4. **schema-validator.js** - Validación de resultados
+5. **Integración con indexer.js** - Pipeline completo
+
+### ⏭️ Pendiente (Opcional)
+
+1. **connection-inference.js** - Inferencia avanzada de conexiones
+   - Actualmente se hace en shared-state-detector y event-pattern-detector
+2. **Fallback a OpenAI API** - Si servidor local falla
+3. **Caché de resultados LLM** - Para evitar re-análisis
+
+---
+
+## Uso
+
+### Análisis Básico (Solo Static)
+
+```bash
+# LLM deshabilitado por defecto
+omnysystem analyze /path/to/project
+```
+
+Usa solo:
+- Pattern matching (regex)
+- AST traversal
+- Heurísticas estáticas
+
+**Ventajas**: Instantáneo, zero costo
+**Limitaciones**: No detecta indirección ni código dinámico
+
+### Análisis Avanzado (Static + LLM)
+
+```bash
+# 1. Habilitar LLM en config
+# Editar src/ai/ai-config.json: "enabled": true
+
+# 2. Iniciar servidor
+omnysystem ai start gpu
+
+# 3. Analizar
+omnysystem analyze /path/to/project
+```
+
+Output:
+```
+🤖 LLM enrichment phase...
+📊 Analyzing 12 complex files with LLM...
+✓ Enhanced 10/12 files with LLM insights
+```
+
+**Ventajas**: Detecta casos complejos, indirección, razonamiento contextual
+**Limitaciones**: Más lento (200-500ms por archivo), requiere recursos
+
+### ¿Cuándo Usar LLM?
+
+LLM se activa automáticamente solo para:
+1. **Código dinámico**: `window[prop] = value`, `eval()`
+2. **Baja confianza**: Patrones ambiguos detectados por static
+3. **Complejidad alta**: >3 eventos, >3 shared state writes
+
+Configurar en `src/ai/ai-config.json`:
+```json
+{
+  "analysis": {
+    "llmOnlyForComplex": true,  // Solo casos complejos
+    "complexityThreshold": 0.7,
+    "confidenceThreshold": 0.8
+  }
+}
+```
 
 ---
 
 ## Siguientes Pasos
 
-1. Implementar `pattern-matchers.js` (eventos, storage)
-2. Implementar `connection-inference.js` (conectar patterns)
-3. Implementar `enricher.js` (combinar A + B)
-4. Validar con test-cases
-5. *Opcional*: Implementar `llm-analyzer.js` si es necesario
+1. ✅ Validar con test-cases existentes
+2. ✅ Transferir archivos de Giteach (binarios + modelo)
+3. ⏭️ Crear test-cases específicos para LLM (código dinámico, indirección)
+4. ⏭️ Benchmark de performance (GPU vs CPU)
+5. ⏭️ Fine-tuning de prompts para mejor precisión
 
-**Estado actual**: Por implementar (estructura creada)
+---
+
+## Referencias
+
+- [src/ai/README.md](../ai/README.md) - Setup completo de AI
+- [../ai/llm-client.js](../ai/llm-client.js) - Cliente HTTP
+- [llm-analyzer.js](llm-analyzer.js) - Implementación del analyzer
+- [semantic-enricher.js](semantic-enricher.js) - Orquestador
+- [docs/ai_architecture/AI_SETUP_GUIDE.md](../../docs/ai_architecture/AI_SETUP_GUIDE.md) - Arquitectura Vulkan
