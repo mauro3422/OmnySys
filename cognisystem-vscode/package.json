@@ -1,103 +1,167 @@
 {
   "name": "cognisystem",
   "displayName": "CogniSystem - Code Intelligence",
-  "description": "Visualiza dependencias y conexiones semánticas de tu código",
-  "version": "0.1.0",
+  "description": "AI-powered code analysis for JavaScript/TypeScript projects",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Visualization",
     "Debuggers",
-    "Programming Languages"
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "code analysis",
+    "dependencies",
+    "impact analysis",
+    "ai",
+    "local llm"
   ],
   "activationEvents": [
-    "onCommand:cognisystem.showGraph",
-    "onCommand:cognisystem.analyzeProject",
-    "workspaceContains:**/*.js"
+    "onCommand:cognisystem.analyzeFile",
+    "onCommand:cognisystem.showImpact",
+    "onCommand:cognisystem.startServer",
+    "workspaceContains:**/*.js",
+    "workspaceContains:**/*.ts"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "cognisystem.showGraph",
-        "title": "CogniSystem: Mostrar Grafo de Dependencias",
+        "command": "cognisystem.analyzeFile",
+        "title": "Analyze File",
+        "category": "CogniSystem",
+        "icon": "$(play)"
+      },
+      {
+        "command": "cognisystem.showImpact",
+        "title": "Show Impact Map",
+        "category": "CogniSystem",
         "icon": "$(graph)"
       },
       {
-        "command": "cognisystem.analyzeProject",
-        "title": "CogniSystem: Analizar Proyecto"
-      },
-      {
-        "command": "cognisystem.showImpactMap",
-        "title": "CogniSystem: Mapa de Impacto del Archivo Actual"
-      },
-      {
         "command": "cognisystem.refresh",
-        "title": "CogniSystem: Refrescar Análisis",
+        "title": "Refresh",
+        "category": "CogniSystem",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cognisystem.startServer",
+        "title": "Start Server",
+        "category": "CogniSystem",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "cognisystem.stopServer",
+        "title": "Stop Server",
+        "category": "CogniSystem",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "cognisystem.openSettings",
+        "title": "Open Settings",
+        "category": "CogniSystem",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "cognisystem.showImpactMap",
+          "command": "cognisystem.showImpact",
           "group": "navigation",
-          "when": "resourceExtname == .js || resourceExtname == .ts"
+          "when": "resourceExtname == .js || resourceExtname == .ts || resourceExtname == .jsx || resourceExtname == .tsx"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "cognisystem.analyzeFile",
+          "when": "resourceExtname == .js || resourceExtname == .ts || resourceExtname == .jsx || resourceExtname == .tsx",
+          "group": "2_workspace@10"
+        },
+        {
+          "command": "cognisystem.showImpact",
+          "when": "resourceExtname == .js || resourceExtname == .ts || resourceExtname == .jsx || resourceExtname == .tsx",
+          "group": "2_workspace@11"
         }
       ],
       "explorer/context": [
         {
-          "command": "cognisystem.showImpactMap",
-          "when": "resourceExtname == .js || resourceExtname == .ts",
+          "command": "cognisystem.analyzeFile",
+          "when": "resourceExtname == .js || resourceExtname == .ts || resourceExtname == .jsx || resourceExtname == .tsx",
           "group": "2_workspace@10"
+        },
+        {
+          "command": "cognisystem.showImpact",
+          "when": "resourceExtname == .js || resourceExtname == .ts || resourceExtname == .jsx || resourceExtname == .tsx",
+          "group": "2_workspace@11"
         }
       ],
       "commandPalette": [
         {
-          "command": "cognisystem.showGraph"
+          "command": "cognisystem.analyzeFile"
         },
         {
-          "command": "cognisystem.analyzeProject"
+          "command": "cognisystem.showImpact"
         },
         {
-          "command": "cognisystem.showImpactMap"
+          "command": "cognisystem.startServer"
+        },
+        {
+          "command": "cognisystem.stopServer"
         }
       ]
     },
     "views": {
       "explorer": [
         {
-          "id": "cognisystemPanel",
+          "id": "cognisystemExplorer",
           "name": "CogniSystem",
-          "when": "cognisystem:enabled"
+          "when": "workspaceHasJSOrTS"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "cognisystemPanel",
-        "contents": "No se ha analizado el proyecto todavía.\n[Analizar Proyecto](command:cognisystem.analyzeProject)"
+        "view": "cognisystemExplorer",
+        "contents": "CogniSystem provides AI-powered code analysis.\n\n[Start Server](command:cognisystem.startServer)\n[Analyze Current File](command:cognisystem.analyzeFile)\n[Show Impact Map](command:cognisystem.showImpact)"
       }
     ],
     "configuration": {
       "title": "CogniSystem",
       "properties": {
-        "cognisystem.autoAnalyzeOnOpen": {
-          "type": "boolean",
-          "default": false,
-          "description": "Analizar automáticamente al abrir un proyecto"
+        "cognisystem.orchestratorPort": {
+          "type": "number",
+          "default": 9999,
+          "description": "Port for Orchestrator API"
         },
-        "cognisystem.showHighRiskIndicator": {
+        "cognisystem.bridgePort": {
+          "type": "number",
+          "default": 9998,
+          "description": "Port for VS Code Bridge API"
+        },
+        "cognisystem.analyzeOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Mostrar indicador de riesgo alto en el explorador"
+          "description": "Automatically analyze files on save"
         },
-        "cognisystem.graph.layout": {
-          "type": "string",
-          "default": "cose",
-          "enum": ["cose", "circle", "grid", "concentric"],
-          "description": "Layout del grafo"
+        "cognisystem.showImpactOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show impact info when opening files"
+        },
+        "cognisystem.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show impact info on hover"
+        },
+        "cognisystem.pollInterval": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 1000,
+          "maximum": 60000,
+          "description": "Status polling interval in milliseconds"
         }
       }
     }
@@ -105,12 +169,19 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.74.0",
     "typescript": "^5.3.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mauro3422/OmnySys"
+  },
+  "author": "Mauro Amaya",
+  "license": "MIT"
 }

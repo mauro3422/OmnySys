@@ -25,6 +25,7 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { indexProject } from './src/layer-a-static/indexer.js';
 import { CogniSystemMCPServer } from './src/layer-c-memory/mcp-server.js';
+import { CogniSystemUnifiedServer } from './src/core/unified-server.js';
 import { getProjectStats, exportFullSystemMapToFile } from './src/layer-a-static/storage/query-service.js';
 import { hasExistingAnalysis } from './src/layer-a-static/storage/storage-manager.js';
 import { LLMClient, loadAIConfig } from './src/ai/llm-client.js';
@@ -389,10 +390,29 @@ async function consolidate(projectPath) {
  * 3. Iterative AI consolidation
  * 4. MCP server initialization
  */
-async function serve(projectPath) {
+async function serve(projectPath, options = {}) {
   const absolutePath = resolveProjectPath(projectPath);
+  const { unified = true } = options;
 
-  console.log('\n🚀 OmniSystem MCP Server - Auto Mode\n');
+  if (unified) {
+    // Use new Unified Server (Orchestrator + MCP + Bridge)
+    const server = new CogniSystemUnifiedServer(absolutePath);
+    
+    process.on('SIGTERM', () => server.shutdown());
+    process.on('SIGINT', () => server.shutdown());
+    
+    try {
+      await server.initialize();
+      await new Promise(() => {}); // Keep alive
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Legacy MCP-only mode
+  console.log('\n🚀 OmniSystem MCP Server - Auto Mode (Legacy)\n');
   console.log(`📁 Project: ${absolutePath}\n`);
 
   try {

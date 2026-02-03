@@ -1,197 +1,126 @@
-# 🧠 CogniSystem para VS Code
+# CogniSystem VS Code Extension
 
-Extensión de Visual Studio Code para visualizar dependencias y conexiones semánticas de tu código JavaScript/TypeScript.
+Extensión de VS Code para [CogniSystem](https://github.com/mauro3422/OmnySys) - Análisis de código impulsado por IA local.
 
-![Demo](https://via.placeholder.com/800x400?text=CogniSystem+Graph+Demo)
+## Features
 
-## ✨ Características
+- 🔍 **Análisis de Impacto**: Ver qué archivos se ven afectados antes de hacer cambios
+- 🧠 **Conexiones Semánticas**: Detecta dependencias invisibles (localStorage, eventos, estado global)
+- ⚡ **Priorización**: Cola de análisis con prioridad (Critical > High > Medium > Low)
+- 📊 **Risk Score**: Cada archivo tiene un score de riesgo basado en conectividad
+- 🎯 **Subsistemas**: Detección automática de módulos independientes
 
-- 🔥 **Visualización de Grafo Interactivo** - Ve todas las dependencias de tu proyecto
-- 🎯 **Mapa de Impacto** - Descubre qué archivos se ven afectados al modificar uno
-- ⚠️ **Detección de Riesgo** - Identifica automáticamente archivos de alto riesgo
-- 🔗 **Conexiones Semánticas** - Detecta estado compartido, eventos y side effects
-- 📊 **Panel Lateral** - Acceso rápido a archivos críticos
+## Requisitos
 
-## 🚀 Instalación
+1. **CogniSystem instalado**:
+   ```bash
+   npm install -g omnysystem
+   # o
+   git clone https://github.com/mauro3422/OmnySys
+   cd OmnySys && npm link
+   ```
 
-### Paso 1: Compilar la Extensión
+2. **Servidor CogniSystem corriendo**:
+   ```bash
+   omnysystem serve /ruta/a/tu/proyecto
+   ```
 
-```bash
-cd cognisystem-vscode
-npm install
-npm run compile
-```
+## Uso
 
-### Paso 2: Instalar en VS Code
+### Iniciar Servidor
 
-**Opción A: Modo Desarrollo (Recomendado para probar)**
+1. Abre la paleta de comandos (`Ctrl+Shift+P`)
+2. Ejecuta `CogniSystem: Start Server`
+3. O manualmente en terminal: `omnysystem serve .`
 
-1. Abre VS Code
-2. Presiona `Ctrl+Shift+P` (o `Cmd+Shift+P` en Mac)
-3. Escribe: `Extensions: Install from VSIX`
-4. Selecciona el archivo (primero debes empaquetarlo, ver abajo)
+### Analizar Archivo
 
-**O más fácil - Modo Desarrollo Directo:**
+- **Desde editor**: Click derecho → "Analyze File"
+- **Desde explorador**: Click derecho en archivo → "Analyze File"
+- **Comando**: `Ctrl+Shift+P` → "CogniSystem: Analyze File"
 
-1. Abre la carpeta `cognisystem-vscode` en VS Code
-2. Presiona `F5` (o `Run > Start Debugging`)
-3. Se abrirá una nueva ventana de VS Code con la extensión cargada
+### Ver Mapa de Impacto
 
-### Paso 3: Empaquetar (Opcional - para distribución)
+- **Click en status bar**: Click en "CogniSystem" en la barra de estado
+- **Comando**: `Ctrl+Shift+P` → "CogniSystem: Show Impact Map"
+- **Auto-hover**: Pasa el mouse sobre imports para ver conexiones
 
-```bash
-npm install -g @vscode/vsce
-vsce package
-```
+### Configuración
 
-Esto genera un archivo `.vsix` que puedes instalar en cualquier VS Code.
-
-## 📖 Uso
-
-### 1. Analizar tu Proyecto
-
-Primero necesitas generar los datos de CogniSystem:
-
-**Opción A: Desde VS Code**
-- Presiona `Ctrl+Shift+P`
-- Escribe: `CogniSystem: Analizar Proyecto`
-- Esto ejecuta el indexer en un terminal integrado
-
-**Opción B: Manual**
-```bash
-node src/layer-a-static/indexer.js .
-```
-
-Verás que se crea una carpeta `.aver/` en tu proyecto con todos los datos.
-
-### 2. Abrir el Grafo
-
-- Presiona `Ctrl+Shift+P`
-- Escribe: `CogniSystem: Mostrar Grafo de Dependencias`
-- O haz clic en el botón del grafo en la barra de título del editor
-
-### 3. Ver Mapa de Impacto
-
-Haz clic derecho en cualquier archivo `.js` o `.ts` en el explorador:
-- Selecciona `CogniSystem: Mapa de Impacto del Archivo Actual`
-- O usa el botón en la barra de título cuando tengas un archivo abierto
-
-### 4. Panel Lateral
-
-Mira el panel "CogniSystem" en el explorador lateral:
-- Lista de archivos de alto riesgo 🔴
-- Acceso rápido al grafo
-- Botón de refrescar
-
-## 🎨 Controles del Grafo
-
-| Acción | Descripción |
-|--------|-------------|
-| **Click en nodo** | Ver información del archivo |
-| **Doble click** | Abrir archivo en editor |
-| **Drag** | Mover nodos |
-| **Scroll** | Zoom in/out |
-| **Botones superiores** | Resetear vista, cambiar layout, filtrar |
-
-### Layouts Disponibles
-
-- **COSE** (default) - Layout de fuerza dirigida
-- **Circle** - Disposición circular
-- **Grid** - Cuadrícula ordenada
-- **Concentric** - Círculos concéntricos por riesgo
-
-### Leyenda de Colores
-
-| Color | Significado |
-|-------|-------------|
-| 🔴 Rojo | Riesgo Crítico (8-10) |
-| 🟠 Naranja | Riesgo Alto (6-7) |
-| 🟡 Amarillo | Riesgo Medio (4-5) |
-| 🟢 Verde | Riesgo Bajo (0-3) |
-| ➖ Línea gris | Import/Dependencia |
-| ➖ Línea morada | Conexión Semántica |
-
-## ⚙️ Configuración
-
-Abre `settings.json` (`Ctrl+,` → busca "CogniSystem"):
+Abre configuración (`Ctrl+,`) y busca "CogniSystem":
 
 ```json
 {
-  "cognisystem.autoAnalyzeOnOpen": false,
-  "cognisystem.showHighRiskIndicator": true,
-  "cognisystem.graph.layout": "cose"
+  "cognisystem.orchestratorPort": 9999,
+  "cognisystem.bridgePort": 9998,
+  "cognisystem.analyzeOnSave": true,
+  "cognisystem.enableHover": true
 }
 ```
 
-| Configuración | Descripción | Default |
-|---------------|-------------|---------|
-| `autoAnalyzeOnOpen` | Analizar automáticamente al abrir proyecto | `false` |
-| `showHighRiskIndicator` | Mostrar indicadores de riesgo en explorador | `true` |
-| `graph.layout` | Layout por defecto del grafo | `"cose"` |
+## API Endpoints
 
-## 🔧 Comandos Disponibles
+La extensión se conecta a dos puertos:
 
-| Comando | Atajo | Descripción |
-|---------|-------|-------------|
-| `CogniSystem: Analizar Proyecto` | - | Genera/actualiza el análisis |
-| `CogniSystem: Mostrar Grafo` | - | Abre el grafo interactivo |
-| `CogniSystem: Mapa de Impacto` | - | Muestra impacto del archivo actual |
-| `CogniSystem: Refrescar Análisis` | - | Recarga datos desde disco |
+- **Puerto 9999** (Orchestrator): Cola de prioridad, análisis async
+- **Puerto 9998** (Bridge): Queries sincrónicas, estado del sistema
 
-## 🐛 Solución de Problemas
+### Endpoints disponibles:
 
-### "Primero analiza el proyecto"
+```
+POST http://localhost:9999/command     # Priorizar archivo
+GET  http://localhost:9999/status      # Estado de la cola
+GET  http://localhost:9999/health      # Health check
 
-Necesitas correr el indexer antes de usar la extensión:
+GET  http://localhost:9998/api/status  # Estado completo
+GET  http://localhost:9998/api/files   # Lista de archivos
+GET  http://localhost:9998/api/impact/* # Impacto de archivo
+POST http://localhost:9998/api/analyze # Analizar archivo
+```
+
+## Troubleshooting
+
+### "CogniSystem disconnected"
+
+El servidor no está corriendo. Inícialo con:
 ```bash
-node src/layer-a-static/indexer.js .
+omnysystem serve /ruta/a/tu/proyecto
 ```
 
-### El grafo aparece vacío
+### "Failed to analyze"
 
-1. Verifica que exista la carpeta `.aver/` en tu proyecto
-2. Asegúrate de que tenga archivos dentro (files/, connections/, etc.)
-3. Usa el comando "Refrescar Análisis"
+1. Verifica que el proyecto tenga análisis previo:
+   ```bash
+   omnysystem analyze /ruta/a/tu/proyecto
+   ```
 
-### El grafo no se abre
+2. Verifica que el servidor LLM esté activo:
+   ```bash
+   curl http://localhost:8000/health
+   ```
 
-1. Abre la consola de desarrollador: `Help > Toggle Developer Tools`
-2. Busca errores en la consola
-3. Verifica que la extensión esté activada en el panel de extensiones
+### Puerto ocupado
 
-## 🗺️ Roadmap
-
-- [ ] Indicadores de riesgo en el explorador de archivos
-- [ ] CodeLens (anotaciones inline en el código)
-- [ ] Autocompletado con contexto de dependencias
-- [ ] Comparación de versiones del análisis
-- [ ] Filtros avanzados en el grafo
-- [ ] Exportar grafo como PNG/SVG
-
-## 📄 Estructura del Proyecto
-
-```
-cognisystem-vscode/
-├── package.json          # Configuración de la extensión
-├── tsconfig.json         # Configuración TypeScript
-├── src/
-│   └── extension.ts      # Código principal
-├── out/                  # Archivos compilados (generado)
-└── README.md             # Este archivo
+Si los puertos 9998 o 9999 están ocupados, cámbialos en la configuración:
+```json
+{
+  "cognisystem.orchestratorPort": 9997,
+  "cognisystem.bridgePort": 9996
+}
 ```
 
-## 🤝 Contribuir
+## Changelog
 
-1. Fork el repositorio
-2. Crea una rama: `git checkout -b feature/nueva-funcionalidad`
-3. Commit: `git commit -am 'Agrega nueva funcionalidad'`
-4. Push: `git push origin feature/nueva-funcionalidad`
-5. Abre un Pull Request
+### 0.2.0
+- Integración con Unified Server
+- Soporte para cola de prioridad
+- Panel de explorador con archivos de alto riesgo
+- Indicador de estado en barra de estado
 
-## 📜 Licencia
+### 0.1.0
+- Versión inicial
+- Visualización básica de grafo
+
+## Licencia
 
 MIT
-
----
-
-**Hecho con ❤️ para la comunidad CogniSystem**
