@@ -27,6 +27,8 @@ import { AnalysisQueue } from './analysis-queue.js';
 import { AnalysisWorker } from './analysis-worker.js';
 import { StateManager } from './state-manager.js';
 import { FileWatcher } from './file-watcher.js';
+import { WebSocketManager, MessageTypes } from './websocket/index.js';
+import { BatchProcessor, Priority } from './batch-processor/index.js';
 
 // MCP components
 import {
@@ -81,7 +83,12 @@ class CogniSystemUnifiedServer extends EventEmitter {
 
     // File Watcher
     this.fileWatcher = null;
-    this.wsClients = new Set(); // WebSocket clients for real-time updates
+
+    // WebSocket Manager (nativo)
+    this.wsManager = null;
+
+    // Batch Processor para cambios concurrentes
+    this.batchProcessor = null;
   }
 
   // ============================================================
@@ -107,7 +114,13 @@ class CogniSystemUnifiedServer extends EventEmitter {
       // Step 4: Initialize File Watcher
       await this.initializeFileWatcher();
 
-      // Step 5: Start processing loop
+      // Step 5: Initialize Batch Processor
+      await this.initializeBatchProcessor();
+
+      // Step 6: Initialize WebSocket Manager
+      await this.initializeWebSocket();
+
+      // Step 7: Start processing loop
       this.processNext();
 
       this.initialized = true;
@@ -462,11 +475,10 @@ class CogniSystemUnifiedServer extends EventEmitter {
   }
 
   /**
-   * Setup WebSocket server for real-time updates
+   * Setup legacy SSE endpoint (fallback for clients without WebSocket support)
    */
   setupWebSocket() {
-    // Note: In a real implementation, you'd use the 'ws' library
-    // For now, we use Server-Sent Events (SSE) as a simpler alternative
+    // Server-Sent Events como fallback
     this.bridgeApp.get('/api/events', (req, res) => {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -475,14 +487,46 @@ class CogniSystemUnifiedServer extends EventEmitter {
       // Send initial connection message
       res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
 
-      // Add to broadcast list
-      const client = { send: (data) => res.write(`data: ${JSON.stringify(data)}\n\n`) };
-      this.wsClients.add(client);
+      // Handler para enviar mensajes
+      const sendMessage = (data) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // Escuchar eventos del batch processor
+      const onBatchCompleted = (batch) => {
+        sendMessage({ type: 'batch:completed', batchId: batch.id });
+      };
+
+      this.batchProcessor?.on('batch:completed', onBatchCompleted);
 
       // Remove on disconnect
       req.on('close', () => {
-        this.wsClients.delete(client);
+        this.batchProcessor?.off('batch:completed', onBatchCompleted);
       });
+    });
+
+    // GET /api/batch - Batch processor stats
+    this.bridgeApp.get('/api/batch', async (req, res) => {
+      try {
+        const stats = this.batchProcessor?.getStats() || { error: 'Batch processor not initialized' };
+        res.json(stats);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // GET /api/batch/:id - Specific batch info
+    this.bridgeApp.get('/api/batch/:id', async (req, res) => {
+      try {
+        const batchInfo = this.batchProcessor?.getBatchInfo(req.params.id);
+        if (batchInfo) {
+          res.json(batchInfo);
+        } else {
+          res.status(404).json({ error: 'Batch not found' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
     });
   }
 
@@ -781,6 +825,14 @@ class CogniSystemUnifiedServer extends EventEmitter {
     console.log('\n👋 Shutting down Unified Server...');
 
     this.isRunning = false;
+
+    if (this.wsManager) {
+      await this.wsManager.stop();
+    }
+
+    if (this.batchProcessor) {
+      this.batchProcessor.stop();
+    }
 
     if (this.fileWatcher) {
       await this.fileWatcher.stop();
