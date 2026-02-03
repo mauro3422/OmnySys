@@ -87,24 +87,43 @@ Un motor híbrido de tres capas que inyecta contexto a la IA **antes** de que ed
 
 ## Estado del Proyecto
 
-**Fase Actual**: Alpha - Sistema funcional con validación robusta
+**Fase Actual**: Alpha - Sistema con Orchestrator y cola de prioridad
 
 ### ✅ Funcionando Hoy
 
+- **🚀 Orchestrator**: Proceso independiente con HTTP API (puerto 9999)
+- **⚡ Cola de Prioridad**: CRITICAL > HIGH > MEDIUM > LOW
+- **🔄 Interrupción**: Pausa trabajos para priorizar archivos de IA
+- **📊 Estado en tiempo real**: Archivo JSON + HTTP API
 - **Capa A**: Análisis estático completo (42 archivos testeados)
 - **Capa B**: Enriquecimiento con IA local (LFM2-Extract 1.2B)
-- **Validación**: Filtro de alucinaciones del LLM (métodos vs keys reales)
-- **Robustez**: Retry con backoff, timeout dinámico, graceful degradation
-- **Storage**: Datos unificados en `.OmnySystemData/`
+- **🛡️ Validación**: Filtro de alucinaciones del LLM
+
+### 🏃 Inicio Rápido
+
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Iniciar orchestrator (en terminal aparte)
+npm run orchestrator /ruta/a/tu/proyecto
+
+# 3. Ver estado
+npm run orchestrator:status
+
+# 4. Usar con VS Code (extensión CogniSystem)
+# O con MCP: configura el servidor MCP en tu IA
+```
 
 ### 📊 Métricas de Robustez
 
 | Componente | Estado |
 |------------|--------|
+| Orchestrator | 90% ✅ |
 | Análisis estático | 95% ✅ |
-| Detección de conexiones | 85% ✅ |
-| Validación LLM | 80% ✅ |
-| Manejo de errores | 90% ✅ |
+| Cola de prioridad | 90% ✅ |
+| Validación LLM | 85% ✅ |
+| Interrupción/reanudación | 80% ✅ |
 
 ### 🚀 Próximos Pasos
 

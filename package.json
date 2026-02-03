@@ -7,6 +7,9 @@
   "scripts": {
     "test": "echo \"Error: no test runner configured yet\" && exit 1",
     "dev": "node src/index.js",
+    "orchestrator": "node scripts/start-orchestrator.js",
+    "orchestrator:stop": "echo 'Use Ctrl+C to stop orchestrator'",
+    "orchestrator:status": "curl http://localhost:9999/health 2>/dev/null || echo 'Orchestrator not running'",
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\""
   },
@@ -29,6 +32,8 @@
     "@babel/traverse": "^7.23.0",
     "chokidar": "^3.5.3",
     "commander": "^11.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
     "fast-glob": "^3.3.2"
   },
   "devDependencies": {
