@@ -8,7 +8,7 @@
  * Flujo:
  * 1. Usuario inicia: node mcp-server.js /ruta/proyecto
  * 2. Server crea omnysysdata/ (si no existe)
- * 3. Server popula datos desde .aver/
+ * 3. Server popula datos desde .OmnySystemData/
  * 4. Server cachea en RAM
  * 5. Server expone herramientas a Claude
  *
@@ -20,6 +20,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import {
   getProjectMetadata,
   getFileAnalysis,
@@ -31,6 +32,7 @@ import {
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 import { populateOmnySysData } from './populate-omnysysdata.js';
 import { QueryCache, globalCache } from './query-cache.js';
+import { loadAIConfig, LLMClient } from '../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +50,80 @@ class CogniSystemMCPServer {
   }
 
   /**
+   * Auto-inicia servidor LLM si está configurado
+   * @private
+   */
+  async autoStartLLM() {
+    try {
+      const aiConfig = await loadAIConfig();
+
+      if (!aiConfig.llm.enabled) {
+        console.log('   ℹ️  LLM disabled in config\n');
+        return false;
+      }
+
+      // Verificar si ya está corriendo
+      const client = new LLMClient(aiConfig);
+      const health = await client.healthCheck();
+
+      if (health.gpu || health.cpu) {
+        console.log('   ✓ LLM server already running\n');
+        return true;
+      }
+
+      // Iniciar servidor
+      console.log('   🚀 Starting LLM server...');
+
+      const scriptPath = path.resolve(this.projectPath, 'src/ai/scripts');
+      const mode = aiConfig.llm.mode || 'gpu';
+
+      if (mode === 'gpu' || mode === 'both') {
+        const gpuScript = path.join(scriptPath, 'start_brain_gpu.bat');
+        try {
+          await fs.access(gpuScript);
+          spawn('cmd.exe', ['/c', 'start', '/min', gpuScript], {
+            detached: true,
+            stdio: 'ignore'
+          }).unref();
+          console.log('   ✓ GPU server starting (port 8000)...');
+        } catch (err) {
+          console.log('   ⚠️  GPU script not found');
+        }
+      }
+
+      if (mode === 'cpu' || mode === 'both') {
+        const cpuScript = path.join(scriptPath, 'start_brain_cpu.bat');
+        try {
+          await fs.access(cpuScript);
+          spawn('cmd.exe', ['/c', 'start', '/min', cpuScript], {
+            detached: true,
+            stdio: 'ignore'
+          }).unref();
+          console.log('   ✓ CPU server starting (port 8002)...');
+        } catch (err) {
+          console.log('   ⚠️  CPU script not found');
+        }
+      }
+
+      // Esperar 3 segundos para que inicie
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Verificar nuevamente
+      const healthAfter = await client.healthCheck();
+      if (healthAfter.gpu || healthAfter.cpu) {
+        console.log('   ✓ LLM server started successfully\n');
+        return true;
+      } else {
+        console.log('   ⚠️  LLM server failed to start (check logs/)\n');
+        return false;
+      }
+    } catch (error) {
+      console.log(`   ⚠️  LLM auto-start failed: ${error.message}\n`);
+      return false;
+    }
+  }
+
+  /**
    * Inicia el servidor
    */
   async initialize() {
@@ -55,6 +131,12 @@ class CogniSystemMCPServer {
     console.log(`📂 Project: ${this.projectPath}\n`);
 
     try {
+      // Paso 0: Auto-iniciar LLM server
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('STEP 0: AI Server Setup');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      await this.autoStartLLM();
+
       // Paso 1: Crear estructura omnysysdata
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('STEP 1: Initialize OmnySysData structure');
@@ -70,9 +152,9 @@ class CogniSystemMCPServer {
         await createOmnySysDataStructure(this.projectPath);
       }
 
-      // Paso 2: Popular datos desde .aver/
+      // Paso 2: Popular datos desde .OmnySystemData/
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('STEP 2: Populate data from .aver/');
+      console.log('STEP 2: Populate data from .OmnySystemData/');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       const populateResult = await populateOmnySysData(this.projectPath);

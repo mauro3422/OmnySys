@@ -69,7 +69,7 @@ export async function createOmnySysDataStructure(projectPath) {
       analyzedAt: new Date().toISOString()
     },
     status: 'empty',
-    message: 'Awaiting analysis data from .aver/'
+    message: 'Awaiting analysis data from .OmnySystemData/'
   };
 
   await fs.writeFile(
@@ -149,7 +149,7 @@ omnysysdata/
 \`\`\`
 Project Source Code
     ↓
-Layer A (Static Analysis) → generates .aver/
+Layer A (Static Analysis) → generates .OmnySystemData/
     ↓
 Layer B (Semantic Analysis) → enhances data
     ↓
