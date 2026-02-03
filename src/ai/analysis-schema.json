@@ -1,0 +1,66 @@
+{
+  "type": "object",
+  "properties": {
+    "sharedState": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "property": { "type": "string" },
+          "type": { "type": "string", "enum": ["read", "write"] },
+          "line": { "type": "number" }
+        },
+        "required": ["property", "type"]
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["emit", "listen"] },
+          "line": { "type": "number" }
+        },
+        "required": ["name", "type"]
+      }
+    },
+    "hiddenConnections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "targetFile": { "type": "string" },
+          "reason": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["targetFile", "reason", "confidence"]
+      }
+    },
+    "suggestedConnections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "targetFile": { "type": "string" },
+          "reason": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["targetFile", "reason", "confidence"]
+      }
+    },
+    "subsystemStatus": {
+      "type": "string",
+      "enum": ["isolated", "connected", "orphan", "unknown"]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reasoning": {
+      "type": "string"
+    }
+  },
+  "required": ["sharedState", "events", "hiddenConnections", "suggestedConnections", "subsystemStatus", "confidence", "reasoning"]
+}

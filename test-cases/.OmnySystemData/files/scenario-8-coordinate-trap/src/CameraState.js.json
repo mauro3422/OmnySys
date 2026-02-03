@@ -1,0 +1,283 @@
+{
+  "path": "scenario-8-coordinate-trap/src/CameraState.js",
+  "displayPath": "src/CameraState.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "VariableDeclaration",
+      "name": "camera"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "updateCamera"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "updateCamera",
+      "params": 3
+    }
+  ],
+  "usedBy": [
+    "scenario-8-coordinate-trap/src/MinimapUI.js",
+    "scenario-8-coordinate-trap/src/MouseTransformer.js"
+  ],
+  "calls": [
+    {
+      "name": "Math",
+      "type": "namespace_access"
+    },
+    {
+      "name": "Math.pow",
+      "type": "member_call"
+    },
+    {
+      "name": "window",
+      "type": "namespace_access"
+    },
+    {
+      "name": "window.dispatchEvent",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "Math",
+    "camera",
+    "dx",
+    "dy",
+    "dZoom",
+    "window",
+    "CustomEvent"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [
+    "scenario-8-coordinate-trap/src/MinimapUI.js",
+    "scenario-8-coordinate-trap/src/MouseTransformer.js"
+  ],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-8-coordinate-trap\\src\\CameraState.js",
+  "fileName": "CameraState.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "CA:updateCamera",
+      "name": "updateCamera",
+      "line": 15,
+      "endLine": 22,
+      "params": [
+        "dx",
+        "dy",
+        "dZoom"
+      ],
+      "isExported": true,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [
+    {
+      "name": "camera",
+      "line": 7,
+      "isMutable": true,
+      "properties": 4,
+      "warning": "Exported mutable object - potential shared state"
+    }
+  ],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-8-coordinate-trap\\src\\CameraState.js",
+          "line": 21,
+          "column": 4,
+          "functionContext": "updateCamera",
+          "type": "read",
+          "objectName": "window",
+          "propName": "dispatchEvent",
+          "fullReference": "window.dispatchEvent",
+          "confidence": 1
+        }
+      ],
+      "readProperties": [
+        "dispatchEvent"
+      ],
+      "writeProperties": [],
+      "propertyAccessMap": {
+        "dispatchEvent": {
+          "reads": [
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-8-coordinate-trap\\src\\CameraState.js",
+              "line": 21,
+              "column": 4,
+              "functionContext": "updateCamera",
+              "type": "read",
+              "objectName": "window",
+              "propName": "dispatchEvent",
+              "fullReference": "window.dispatchEvent",
+              "confidence": 1
+            }
+          ],
+          "writes": []
+        }
+      }
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": true,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": true,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [
+        {
+          "line": 21,
+          "function": "updateCamera",
+          "object": "window",
+          "property": "dispatchEvent"
+        }
+      ],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "CameraState.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "event_camera_changed_scenario-8-coordinate-trap/src/CameraState.js_to_scenario-8-coordinate-trap/src/MinimapUI.js",
+      "sourceFile": "scenario-8-coordinate-trap/src/CameraState.js",
+      "targetFile": "scenario-8-coordinate-trap/src/MinimapUI.js",
+      "type": "eventListener",
+      "via": "event",
+      "event": "camera_changed",
+      "direction": "emits → listens",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use event 'camera_changed'"
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 1,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 1,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Some side effects (2)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 2,
+      "connectionCount": 1,
+      "sideEffectCount": 2,
+      "inDegree": 2,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": true,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": true,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [
+      {
+        "line": 21,
+        "function": "updateCamera",
+        "object": "window",
+        "property": "dispatchEvent"
+      }
+    ],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

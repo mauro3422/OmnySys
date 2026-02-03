@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-6-god-object/src/Module07.js",
+  "cacheKey": "2e9881240ead635419364af7ef0e964d38b0b27d847448abbc78f34740c5fb94",
+  "timestamp": 1770154335416,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

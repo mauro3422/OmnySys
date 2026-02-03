@@ -1,0 +1,274 @@
+{
+  "path": "scenario-4-localStorage-bridge/src/AuthService.js",
+  "displayPath": "src/AuthService.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "login"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "logout"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "login",
+      "params": 2
+    },
+    {
+      "type": "function",
+      "name": "logout",
+      "params": 0
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "localStorage",
+      "type": "namespace_access"
+    },
+    {
+      "name": "localStorage.setItem",
+      "type": "member_call"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "localStorage",
+      "type": "namespace_access"
+    },
+    {
+      "name": "localStorage.removeItem",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "username",
+    "localStorage",
+    "fakeToken"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-4-localStorage-bridge\\src\\AuthService.js",
+  "fileName": "AuthService.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "AU:login",
+      "name": "login",
+      "line": 8,
+      "endLine": 18,
+      "params": [
+        "username",
+        "password"
+      ],
+      "isExported": true,
+      "calls": []
+    },
+    {
+      "id": "AU:logout",
+      "name": "logout",
+      "line": 20,
+      "endLine": 22,
+      "params": [],
+      "isExported": true,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [
+    {
+      "name": "fakeToken",
+      "line": 12,
+      "valueType": "StringLiteral"
+    }
+  ],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": true,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [
+        {
+          "line": 15,
+          "function": "login",
+          "storage": "localStorage"
+        },
+        {
+          "line": 21,
+          "function": "logout",
+          "storage": "localStorage"
+        }
+      ],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 1,
+          "description": "AuthService.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "AuthService.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 1,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 1,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Some side effects (1)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 2,
+      "connectionCount": 0,
+      "sideEffectCount": 1,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": true,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [
+      {
+        "line": 15,
+        "function": "login",
+        "storage": "localStorage"
+      },
+      {
+        "line": 21,
+        "function": "logout",
+        "storage": "localStorage"
+      }
+    ],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

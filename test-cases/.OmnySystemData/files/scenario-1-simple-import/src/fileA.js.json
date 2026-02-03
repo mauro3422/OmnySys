@@ -1,0 +1,313 @@
+{
+  "path": "scenario-1-simple-import/src/fileA.js",
+  "displayPath": "src/fileA.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "functionA"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "displayConstant"
+    }
+  ],
+  "imports": [
+    {
+      "source": "./fileB.js",
+      "specifiers": [
+        {
+          "type": "named",
+          "imported": "functionB",
+          "local": "functionB"
+        },
+        {
+          "type": "named",
+          "imported": "getConstant",
+          "local": "getConstant"
+        }
+      ],
+      "type": "esm"
+    }
+  ],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "functionA",
+      "params": 1
+    },
+    {
+      "type": "function",
+      "name": "displayConstant",
+      "params": 0
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "functionB",
+      "type": "function"
+    },
+    {
+      "name": "getConstant",
+      "type": "function"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "functionA",
+      "type": "function"
+    },
+    {
+      "name": "displayConstant",
+      "type": "function"
+    }
+  ],
+  "identifierRefs": [
+    "functionB",
+    "value",
+    "result",
+    "getConstant",
+    "constant",
+    "process",
+    "functionA",
+    "displayConstant"
+  ],
+  "dependsOn": [
+    "scenario-1-simple-import/src/fileB.js"
+  ],
+  "transitiveDepends": [
+    "scenario-1-simple-import/src/fileB.js",
+    "scenario-1-simple-import/src/fileC.js"
+  ],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-1-simple-import\\src\\fileA.js",
+  "fileName": "fileA.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "FI:functionA",
+      "name": "functionA",
+      "line": 8,
+      "endLine": 11,
+      "params": [
+        "value"
+      ],
+      "isExported": true,
+      "calls": [
+        {
+          "name": "functionB",
+          "type": "direct_call",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "id": "FI:displayConstant",
+      "name": "displayConstant",
+      "line": 16,
+      "endLine": 20,
+      "params": [],
+      "isExported": true,
+      "calls": [
+        {
+          "name": "getConstant",
+          "type": "direct_call",
+          "line": 17
+        }
+      ]
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [
+    {
+      "name": "result",
+      "line": 9,
+      "valueType": "CallExpression"
+    },
+    {
+      "name": "constant",
+      "line": 17,
+      "valueType": "CallExpression"
+    }
+  ],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 5,
+          "description": "Función principal que usa functionB",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 13,
+          "description": "Función que obtiene el valor constante a través de B",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 5,
+          "description": "Función principal que usa functionB",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 13,
+          "description": "Función que obtiene el valor constante a través de B",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 0,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 0,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Low risk baseline",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 1,
+      "exportCount": 2,
+      "connectionCount": 0,
+      "sideEffectCount": 0,
+      "inDegree": 0,
+      "outDegree": 1
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

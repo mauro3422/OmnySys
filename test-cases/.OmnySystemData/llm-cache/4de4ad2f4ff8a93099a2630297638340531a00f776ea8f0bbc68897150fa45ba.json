@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-13-singleton-trap/src/ComponentA.js",
+  "cacheKey": "4de4ad2f4ff8a93099a2630297638340531a00f776ea8f0bbc68897150fa45ba",
+  "timestamp": 1770154335401,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-8-coordinate-trap/src/MouseTransformer.js",
+  "cacheKey": "2c779f9fb624e49df457144a8e391971a22840e3bcb4ca102567e828c025e7a3",
+  "timestamp": 1770154335422,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

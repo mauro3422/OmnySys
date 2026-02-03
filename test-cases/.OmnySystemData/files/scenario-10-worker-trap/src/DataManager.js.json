@@ -1,0 +1,253 @@
+{
+  "path": "scenario-10-worker-trap/src/DataManager.js",
+  "displayPath": "src/DataManager.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "dispatchNodes"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "dispatchNodes",
+      "params": 1
+    },
+    {
+      "type": "function",
+      "name": "updateUI",
+      "params": 1
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "worker",
+      "type": "namespace_access"
+    },
+    {
+      "name": "worker.postMessage",
+      "type": "member_call"
+    },
+    {
+      "name": "updateUI",
+      "type": "function"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "Worker",
+    "worker",
+    "nodes",
+    "e",
+    "updateUI",
+    "processedNodes"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-10-worker-trap\\src\\DataManager.js",
+  "fileName": "DataManager.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "DA:dispatchNodes",
+      "name": "dispatchNodes",
+      "line": 9,
+      "endLine": 19,
+      "params": [
+        "nodes"
+      ],
+      "isExported": true,
+      "calls": []
+    },
+    {
+      "id": "DA:updateUI",
+      "name": "updateUI",
+      "line": 26,
+      "endLine": 28,
+      "params": [
+        "nodes"
+      ],
+      "isExported": false,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 1,
+          "description": "DataManager.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "DataManager.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "worker_ProcessorWorker.js_scenario-10-worker-trap/src/DataManager.js_to_scenario-10-worker-trap/src/ProcessorWorker.js",
+      "sourceFile": "scenario-10-worker-trap/src/DataManager.js",
+      "targetFile": "scenario-10-worker-trap/src/ProcessorWorker.js",
+      "type": "webWorker",
+      "via": "webWorker",
+      "workerPath": "./ProcessorWorker.js",
+      "confidence": 1,
+      "detectedBy": "advanced-extractor",
+      "reason": "'scenario-10-worker-trap/src/DataManager.js' creates Worker 'ProcessorWorker.js'"
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 0,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 0,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Low risk baseline",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 1,
+      "connectionCount": 1,
+      "sideEffectCount": 0,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

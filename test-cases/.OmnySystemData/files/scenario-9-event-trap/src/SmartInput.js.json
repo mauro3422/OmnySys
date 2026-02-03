@@ -1,0 +1,223 @@
+{
+  "path": "scenario-9-event-trap/src/SmartInput.js",
+  "displayPath": "src/SmartInput.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "ClassDeclaration",
+      "name": "SmartInput"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "class",
+      "name": "SmartInput"
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "e",
+      "type": "namespace_access"
+    },
+    {
+      "name": "e.stopPropagation",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "element",
+    "e",
+    "key"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\SmartInput.js",
+  "fileName": "SmartInput.js",
+  "ext": ".js",
+  "functions": [],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\SmartInput.js",
+          "line": 14,
+          "column": 8,
+          "functionContext": "module-level",
+          "eventName": "keydown",
+          "pattern": "addEventListener",
+          "confidence": 1,
+          "handlerLine": 14
+        }
+      ],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": true,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [
+        {
+          "line": 14,
+          "function": "module-level",
+          "method": "addEventListener"
+        }
+      ],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "SmartInput.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "event_scenario-9-event-trap/src/SmartInput.js_to_scenario-2-semantic/src/EventBus.js",
+      "type": "event_listener",
+      "sourceFile": "scenario-9-event-trap/src/SmartInput.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "eventNames": [],
+      "eventCount": 0,
+      "reason": "scenario-9-event-trap/src/SmartInput.js uses event bus created by scenario-2-semantic/src/EventBus.js.",
+      "confidence": 0.95,
+      "severity": "high",
+      "evidence": []
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 3,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 2,
+      "sideEffects": 1,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "medium",
+    "explanation": "High severity connections (1); Some side effects (1)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 1,
+      "connectionCount": 1,
+      "sideEffectCount": 1,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": true,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [
+      {
+        "line": 14,
+        "function": "module-level",
+        "method": "addEventListener"
+      }
+    ],
+    "timerLocations": []
+  }
+}

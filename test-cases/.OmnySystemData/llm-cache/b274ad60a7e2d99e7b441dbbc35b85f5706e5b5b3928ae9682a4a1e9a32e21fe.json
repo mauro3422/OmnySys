@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-1-simple-import/src/fileA.js",
+  "cacheKey": "b274ad60a7e2d99e7b441dbbc35b85f5706e5b5b3928ae9682a4a1e9a32e21fe",
+  "timestamp": 1770154335393,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

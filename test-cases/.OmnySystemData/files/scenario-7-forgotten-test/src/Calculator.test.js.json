@@ -1,0 +1,300 @@
+{
+  "path": "scenario-7-forgotten-test/src/Calculator.test.js",
+  "displayPath": "src/Calculator.test.js",
+  "exports": [],
+  "imports": [
+    {
+      "source": "./Calculator.js",
+      "specifiers": [
+        {
+          "type": "named",
+          "imported": "add",
+          "local": "add"
+        },
+        {
+          "type": "named",
+          "imported": "subtract",
+          "local": "subtract"
+        },
+        {
+          "type": "named",
+          "imported": "multiply",
+          "local": "multiply"
+        }
+      ],
+      "type": "esm"
+    }
+  ],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "testAdd",
+      "params": 0
+    },
+    {
+      "type": "function",
+      "name": "testSubtract",
+      "params": 0
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "add",
+      "type": "function"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "subtract",
+      "type": "function"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "testAdd",
+      "type": "function"
+    },
+    {
+      "name": "testSubtract",
+      "type": "function"
+    }
+  ],
+  "identifierRefs": [
+    "add",
+    "result",
+    "Error",
+    "subtract",
+    "testAdd",
+    "testSubtract"
+  ],
+  "dependsOn": [
+    "scenario-7-forgotten-test/src/Calculator.js"
+  ],
+  "transitiveDepends": [
+    "scenario-7-forgotten-test/src/Calculator.js"
+  ],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-7-forgotten-test\\src\\Calculator.test.js",
+  "fileName": "Calculator.test.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "CA:testAdd",
+      "name": "testAdd",
+      "line": 7,
+      "endLine": 11,
+      "params": [],
+      "isExported": false,
+      "calls": [
+        {
+          "name": "add",
+          "type": "direct_call",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "id": "CA:testSubtract",
+      "name": "testSubtract",
+      "line": 13,
+      "endLine": 17,
+      "params": [],
+      "isExported": false,
+      "calls": [
+        {
+          "name": "subtract",
+          "type": "direct_call",
+          "line": 14
+        }
+      ]
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "Calculator.test.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [
+        {
+          "type": "throw",
+          "errorType": "Error",
+          "message": "Add failed",
+          "line": 9
+        },
+        {
+          "type": "throw",
+          "errorType": "Error",
+          "message": "Subtract failed",
+          "line": 15
+        }
+      ],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [
+        {
+          "type": "error_message",
+          "message": "Add failed",
+          "line": 9
+        },
+        {
+          "type": "error_message",
+          "message": "Subtract failed",
+          "line": 15
+        }
+      ],
+      "catchBlocks": [],
+      "all": [
+        {
+          "type": "throw",
+          "errorType": "Error",
+          "message": "Add failed",
+          "line": 9
+        },
+        {
+          "type": "throw",
+          "errorType": "Error",
+          "message": "Subtract failed",
+          "line": 15
+        }
+      ]
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 0,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 0,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Low risk baseline",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 1,
+      "exportCount": 0,
+      "connectionCount": 0,
+      "sideEffectCount": 0,
+      "inDegree": 0,
+      "outDegree": 1
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

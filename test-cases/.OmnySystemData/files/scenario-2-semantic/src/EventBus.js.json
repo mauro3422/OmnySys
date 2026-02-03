@@ -1,0 +1,399 @@
+{
+  "path": "scenario-2-semantic/src/EventBus.js",
+  "displayPath": "src/EventBus.js",
+  "exports": [
+    {
+      "type": "named",
+      "name": "EventBus",
+      "local": "EventBus"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "class",
+      "name": "EventBus"
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "callback",
+      "type": "function"
+    }
+  ],
+  "identifierRefs": [
+    "event",
+    "callback",
+    "data",
+    "cb",
+    "window",
+    "EventBus"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\EventBus.js",
+  "fileName": "EventBus.js",
+  "ext": ".js",
+  "functions": [],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\EventBus.js",
+          "line": 43,
+          "column": 0,
+          "functionContext": "anonymous-arrow",
+          "type": "write",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        }
+      ],
+      "readProperties": [],
+      "writeProperties": [
+        "eventBus"
+      ],
+      "propertyAccessMap": {
+        "eventBus": {
+          "reads": [],
+          "writes": [
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\EventBus.js",
+              "line": 43,
+              "column": 0,
+              "functionContext": "anonymous-arrow",
+              "type": "write",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            }
+          ]
+        }
+      }
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": true,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": true,
+      "modifiesGlobalState": true,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [
+        {
+          "line": 43,
+          "function": "anonymous-arrow",
+          "object": "window",
+          "property": "eventBus"
+        }
+      ],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [
+        {
+          "line": 43,
+          "function": "anonymous-arrow",
+          "target": "window.eventBus"
+        }
+      ],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 12,
+          "description": "Registra un listener para un evento",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 22,
+          "description": "Emite un evento",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 31,
+          "description": "Remueve un listener",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 4,
+          "description": "Simple event bus implementation",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 12,
+          "description": "Registra un listener para un evento",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 22,
+          "description": "Emite un evento",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 31,
+          "description": "Remueve un listener",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/EventBus.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/EventBus.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 5,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 3,
+      "sideEffects": 2,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "medium",
+    "explanation": "Multiple semantic connections (9); Multiple side effects (3)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 1,
+      "connectionCount": 9,
+      "sideEffectCount": 3,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": true,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": true,
+    "modifiesGlobalState": true,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [
+      {
+        "line": 43,
+        "function": "anonymous-arrow",
+        "object": "window",
+        "property": "eventBus"
+      }
+    ],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [
+      {
+        "line": 43,
+        "function": "anonymous-arrow",
+        "target": "window.eventBus"
+      }
+    ],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

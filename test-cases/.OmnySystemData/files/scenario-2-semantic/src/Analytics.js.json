@@ -1,0 +1,959 @@
+{
+  "path": "scenario-2-semantic/src/Analytics.js",
+  "displayPath": "src/Analytics.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "initAnalytics"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "disableAnalytics"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "sendAnalytics",
+      "params": 2
+    },
+    {
+      "type": "function",
+      "name": "initAnalytics",
+      "params": 0
+    },
+    {
+      "type": "function",
+      "name": "disableAnalytics",
+      "params": 0
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "fetch",
+      "type": "function"
+    },
+    {
+      "name": "JSON",
+      "type": "namespace_access"
+    },
+    {
+      "name": "JSON.stringify",
+      "type": "member_call"
+    },
+    {
+      "name": "Date",
+      "type": "namespace_access"
+    },
+    {
+      "name": "Date.now",
+      "type": "member_call"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.error",
+      "type": "member_call"
+    },
+    {
+      "name": "sendAnalytics",
+      "type": "function"
+    },
+    {
+      "name": "sendAnalytics",
+      "type": "function"
+    },
+    {
+      "name": "sendAnalytics",
+      "type": "function"
+    },
+    {
+      "name": "sendAnalytics",
+      "type": "function"
+    }
+  ],
+  "identifierRefs": [
+    "fetch",
+    "JSON",
+    "eventName",
+    "data",
+    "Date",
+    "err",
+    "window",
+    "sendAnalytics"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+  "fileName": "Analytics.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "AN:sendAnalytics",
+      "name": "sendAnalytics",
+      "line": 10,
+      "endLine": 15,
+      "params": [
+        "eventName",
+        "data"
+      ],
+      "isExported": false,
+      "calls": [
+        {
+          "name": "fetch",
+          "type": "direct_call",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "id": "AN:initAnalytics",
+      "name": "initAnalytics",
+      "line": 21,
+      "endLine": 40,
+      "params": [],
+      "isExported": true,
+      "calls": [
+        {
+          "name": "sendAnalytics",
+          "type": "direct_call",
+          "line": 25
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "direct_call",
+          "line": 29
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "direct_call",
+          "line": 33
+        },
+        {
+          "name": "sendAnalytics",
+          "type": "direct_call",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "id": "AN:disableAnalytics",
+      "name": "disableAnalytics",
+      "line": 45,
+      "endLine": 52,
+      "params": [],
+      "isExported": true,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 22,
+          "column": 6,
+          "functionContext": "initAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 24,
+          "column": 4,
+          "functionContext": "initAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 28,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 32,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 36,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 46,
+          "column": 6,
+          "functionContext": "disableAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 47,
+          "column": 4,
+          "functionContext": "disableAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 48,
+          "column": 4,
+          "functionContext": "disableAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 49,
+          "column": 4,
+          "functionContext": "disableAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 50,
+          "column": 4,
+          "functionContext": "disableAnalytics",
+          "type": "read",
+          "objectName": "window",
+          "propName": "eventBus",
+          "fullReference": "window.eventBus",
+          "confidence": 1
+        }
+      ],
+      "readProperties": [
+        "eventBus"
+      ],
+      "writeProperties": [],
+      "propertyAccessMap": {
+        "eventBus": {
+          "reads": [
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 22,
+              "column": 6,
+              "functionContext": "initAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 24,
+              "column": 4,
+              "functionContext": "initAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 28,
+              "column": 4,
+              "functionContext": "anonymous-arrow",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 32,
+              "column": 4,
+              "functionContext": "anonymous-arrow",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 36,
+              "column": 4,
+              "functionContext": "anonymous-arrow",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 46,
+              "column": 6,
+              "functionContext": "disableAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 47,
+              "column": 4,
+              "functionContext": "disableAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 48,
+              "column": 4,
+              "functionContext": "disableAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 49,
+              "column": 4,
+              "functionContext": "disableAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            },
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+              "line": 50,
+              "column": 4,
+              "functionContext": "disableAnalytics",
+              "type": "read",
+              "objectName": "window",
+              "propName": "eventBus",
+              "fullReference": "window.eventBus",
+              "confidence": 1
+            }
+          ],
+          "writes": []
+        }
+      }
+    },
+    "eventPatterns": {
+      "eventListeners": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 24,
+          "column": 4,
+          "functionContext": "initAnalytics",
+          "eventName": "game:start",
+          "pattern": "on",
+          "objectName": "window",
+          "confidence": 1,
+          "handlerLine": 24
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 28,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "eventName": "game:score",
+          "pattern": "on",
+          "objectName": "window",
+          "confidence": 1,
+          "handlerLine": 28
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 32,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "eventName": "game:levelup",
+          "pattern": "on",
+          "objectName": "window",
+          "confidence": 1,
+          "handlerLine": 32
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-2-semantic\\src\\Analytics.js",
+          "line": 36,
+          "column": 4,
+          "functionContext": "anonymous-arrow",
+          "eventName": "game:end",
+          "pattern": "on",
+          "objectName": "window",
+          "confidence": 1,
+          "handlerLine": 36
+        }
+      ],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": true,
+      "modifiesDOM": false,
+      "makesNetworkCalls": true,
+      "usesLocalStorage": false,
+      "accessesWindow": true,
+      "modifiesGlobalState": false,
+      "hasEventListeners": true,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [
+        {
+          "line": 22,
+          "function": "initAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 24,
+          "function": "initAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 28,
+          "function": "anonymous-arrow",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 32,
+          "function": "anonymous-arrow",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 36,
+          "function": "anonymous-arrow",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 46,
+          "function": "disableAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 47,
+          "function": "disableAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 48,
+          "function": "disableAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 49,
+          "function": "disableAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        },
+        {
+          "line": 50,
+          "function": "disableAnalytics",
+          "object": "window",
+          "property": "eventBus"
+        }
+      ],
+      "domModificationLocations": [],
+      "networkCallLocations": [
+        {
+          "line": 11,
+          "function": "sendAnalytics",
+          "api": "fetch"
+        }
+      ],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [
+        {
+          "line": 24,
+          "function": "initAnalytics",
+          "method": "on"
+        },
+        {
+          "line": 28,
+          "function": "anonymous-arrow",
+          "method": "on"
+        },
+        {
+          "line": 32,
+          "function": "anonymous-arrow",
+          "method": "on"
+        },
+        {
+          "line": 36,
+          "function": "anonymous-arrow",
+          "method": "on"
+        }
+      ],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 6,
+          "description": "Envía evento de analítica al servidor",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 17,
+          "description": "Inicializa el sistema de analíticas",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 42,
+          "description": "Desactiva analíticas",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 6,
+          "description": "Envía evento de analítica al servidor",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 17,
+          "description": "Inicializa el sistema de analíticas",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        },
+        {
+          "line": 42,
+          "description": "Desactiva analíticas",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "event_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/EventBus.js",
+      "type": "event_listener",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "eventNames": [],
+      "eventCount": 0,
+      "reason": "scenario-2-semantic/src/Analytics.js uses event bus created by scenario-2-semantic/src/EventBus.js.",
+      "confidence": 0.95,
+      "severity": "high",
+      "evidence": []
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/EventBus.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/EventBus.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/EventBus.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/EventBus.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/EventBus.js → writes, scenario-2-semantic/src/EventBus.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    },
+    {
+      "id": "global_eventBus_scenario-2-semantic/src/Analytics.js_to_scenario-2-semantic/src/GameEvents.js",
+      "sourceFile": "scenario-2-semantic/src/Analytics.js",
+      "targetFile": "scenario-2-semantic/src/GameEvents.js",
+      "type": "globalVariable",
+      "via": "global",
+      "property": "eventBus",
+      "direction": "scenario-2-semantic/src/Analytics.js → reads, scenario-2-semantic/src/GameEvents.js → reads",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use global variable 'eventBus'"
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 5,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 3,
+      "sideEffects": 2,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "medium",
+    "explanation": "Multiple semantic connections (14); High severity connections (1); Multiple side effects (4)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 2,
+      "connectionCount": 14,
+      "sideEffectCount": 4,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": true,
+    "modifiesDOM": false,
+    "makesNetworkCalls": true,
+    "usesLocalStorage": false,
+    "accessesWindow": true,
+    "modifiesGlobalState": false,
+    "hasEventListeners": true,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [
+      {
+        "line": 22,
+        "function": "initAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 24,
+        "function": "initAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 28,
+        "function": "anonymous-arrow",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 32,
+        "function": "anonymous-arrow",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 36,
+        "function": "anonymous-arrow",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 46,
+        "function": "disableAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 47,
+        "function": "disableAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 48,
+        "function": "disableAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 49,
+        "function": "disableAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      },
+      {
+        "line": 50,
+        "function": "disableAnalytics",
+        "object": "window",
+        "property": "eventBus"
+      }
+    ],
+    "domModificationLocations": [],
+    "networkCallLocations": [
+      {
+        "line": 11,
+        "function": "sendAnalytics",
+        "api": "fetch"
+      }
+    ],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [
+      {
+        "line": 24,
+        "function": "initAnalytics",
+        "method": "on"
+      },
+      {
+        "line": 28,
+        "function": "anonymous-arrow",
+        "method": "on"
+      },
+      {
+        "line": 32,
+        "function": "anonymous-arrow",
+        "method": "on"
+      },
+      {
+        "line": 36,
+        "function": "anonymous-arrow",
+        "method": "on"
+      }
+    ],
+    "timerLocations": []
+  }
+}

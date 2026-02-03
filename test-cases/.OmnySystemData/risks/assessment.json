@@ -1,0 +1,1121 @@
+{
+  "scores": {
+    "scenario-1-simple-import/src/fileA.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-1-simple-import/src/fileB.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 1,
+        "outDegree": 1
+      }
+    },
+    "scenario-1-simple-import/src/fileC.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 1,
+        "outDegree": 0
+      }
+    },
+    "scenario-10-worker-trap/src/DataManager.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-10-worker-trap/src/ProcessorWorker.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 0,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-11-css-trap/src/DiagramCanvas.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-11-css-trap/src/ThemeManager.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-12-dynamic-prop-trap/src/CommandDispatcher.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-12-dynamic-prop-trap/src/StateModel.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 1,
+        "outDegree": 0
+      }
+    },
+    "scenario-13-singleton-trap/src/ComponentA.js": {
+      "total": 3,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "High severity connections (1); Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-13-singleton-trap/src/LegacyPlugin.js": {
+      "total": 2,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some semantic connections (3); High severity connections (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 3,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-13-singleton-trap/src/ServiceManager.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 2,
+        "outDegree": 0
+      }
+    },
+    "scenario-14-broken-worker/src/Main.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-15-jsdoc-async/src/api.js": {
+      "total": 2,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/Analytics.js": {
+      "total": 5,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 3,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Multiple semantic connections (14); High severity connections (1); Multiple side effects (4)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 14,
+        "sideEffectCount": 4,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/EventBus.js": {
+      "total": 5,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 3,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Multiple semantic connections (9); Multiple side effects (3)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 9,
+        "sideEffectCount": 3,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/GameEvents.js": {
+      "total": 3,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Several semantic connections (6); High severity connections (2); Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 4,
+        "connectionCount": 6,
+        "sideEffectCount": 2,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/GameStore.js": {
+      "total": 5,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 3,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Multiple semantic connections (25); High severity connections (1); Multiple side effects (3)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 3,
+        "connectionCount": 25,
+        "sideEffectCount": 3,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/Player.js": {
+      "total": 4,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 3,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Multiple semantic connections (10); Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 4,
+        "connectionCount": 10,
+        "sideEffectCount": 2,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-2-semantic/src/UI.js": {
+      "total": 4,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Some semantic connections (2); High severity connections (2); Multiple side effects (3)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 4,
+        "connectionCount": 2,
+        "sideEffectCount": 3,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-4-localStorage-bridge/src/ApiClient.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-4-localStorage-bridge/src/AuthService.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-5-shader-bridge/src/FragmentShader.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 1,
+        "outDegree": 0
+      }
+    },
+    "scenario-5-shader-bridge/src/WebGLRenderer.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 2,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Core.js": {
+      "total": 2,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 1,
+        "couplingRisk": 1
+      },
+      "severity": "low",
+      "explanation": "Hotspot file (used by 10 files); Tightly coupled with other files",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 3,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 10,
+        "outDegree": 0
+      }
+    },
+    "scenario-6-god-object/src/Module01.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module02.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module03.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module04.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module05.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module06.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module07.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module08.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module09.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-6-god-object/src/Module10.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-7-forgotten-test/src/Calculator.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 3,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 1,
+        "outDegree": 0
+      }
+    },
+    "scenario-7-forgotten-test/src/Calculator.test.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 0,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-8-coordinate-trap/src/CameraState.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 1,
+        "sideEffectCount": 2,
+        "inDegree": 2,
+        "outDegree": 0
+      }
+    },
+    "scenario-8-coordinate-trap/src/MinimapUI.js": {
+      "total": 4,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "High severity connections (1); Multiple side effects (3)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 3,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-8-coordinate-trap/src/MouseTransformer.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 1,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 1
+      }
+    },
+    "scenario-9-event-trap/src/GlobalShortcuts.js": {
+      "total": 4,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "Some semantic connections (2); High severity connections (1); Multiple side effects (3)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 0,
+        "connectionCount": 2,
+        "sideEffectCount": 3,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "scenario-9-event-trap/src/SmartInput.js": {
+      "total": 3,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 2,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "medium",
+      "explanation": "High severity connections (1); Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 1,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    }
+  },
+  "report": {
+    "summary": {
+      "totalFiles": 42,
+      "averageScore": "1.24",
+      "criticalCount": 0,
+      "highCount": 0,
+      "mediumCount": 10,
+      "lowCount": 32
+    },
+    "highRiskFiles": [],
+    "mediumRiskFiles": [
+      {
+        "file": "scenario-2-semantic/src/Analytics.js",
+        "total": 5,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 3,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Multiple semantic connections (14); High severity connections (1); Multiple side effects (4)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 2,
+          "connectionCount": 14,
+          "sideEffectCount": 4,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-2-semantic/src/EventBus.js",
+        "total": 5,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 3,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Multiple semantic connections (9); Multiple side effects (3)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 1,
+          "connectionCount": 9,
+          "sideEffectCount": 3,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-2-semantic/src/GameStore.js",
+        "total": 5,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 3,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Multiple semantic connections (25); High severity connections (1); Multiple side effects (3)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 3,
+          "connectionCount": 25,
+          "sideEffectCount": 3,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-2-semantic/src/Player.js",
+        "total": 4,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 3,
+          "sideEffects": 1,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Multiple semantic connections (10); Some side effects (2)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 4,
+          "connectionCount": 10,
+          "sideEffectCount": 2,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-2-semantic/src/UI.js",
+        "total": 4,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Some semantic connections (2); High severity connections (2); Multiple side effects (3)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 4,
+          "connectionCount": 2,
+          "sideEffectCount": 3,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-8-coordinate-trap/src/MinimapUI.js",
+        "total": 4,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "High severity connections (1); Multiple side effects (3)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 1,
+          "exportCount": 1,
+          "connectionCount": 1,
+          "sideEffectCount": 3,
+          "inDegree": 0,
+          "outDegree": 1
+        }
+      },
+      {
+        "file": "scenario-9-event-trap/src/GlobalShortcuts.js",
+        "total": 4,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 2,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Some semantic connections (2); High severity connections (1); Multiple side effects (3)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 0,
+          "connectionCount": 2,
+          "sideEffectCount": 3,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-13-singleton-trap/src/ComponentA.js",
+        "total": 3,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 1,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "High severity connections (1); Some side effects (1)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 1,
+          "exportCount": 1,
+          "connectionCount": 1,
+          "sideEffectCount": 1,
+          "inDegree": 0,
+          "outDegree": 1
+        }
+      },
+      {
+        "file": "scenario-2-semantic/src/GameEvents.js",
+        "total": 3,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 1,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "Several semantic connections (6); High severity connections (2); Some side effects (2)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 4,
+          "connectionCount": 6,
+          "sideEffectCount": 2,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      },
+      {
+        "file": "scenario-9-event-trap/src/SmartInput.js",
+        "total": 3,
+        "breakdown": {
+          "staticComplexity": 0,
+          "semanticConnections": 2,
+          "sideEffects": 1,
+          "hotspotRisk": 0,
+          "couplingRisk": 0
+        },
+        "severity": "medium",
+        "explanation": "High severity connections (1); Some side effects (1)",
+        "metrics": {
+          "functionCount": 0,
+          "importCount": 0,
+          "exportCount": 1,
+          "connectionCount": 1,
+          "sideEffectCount": 1,
+          "inDegree": 0,
+          "outDegree": 0
+        }
+      }
+    ],
+    "recommendations": []
+  },
+  "generatedAt": "2026-02-03T21:32:15.500Z"
+}

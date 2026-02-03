@@ -1,0 +1,116 @@
+{
+  "name": "cognisystem",
+  "displayName": "CogniSystem - Code Intelligence",
+  "description": "Visualiza dependencias y conexiones semánticas de tu código",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Visualization",
+    "Debuggers",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onCommand:cognisystem.showGraph",
+    "onCommand:cognisystem.analyzeProject",
+    "workspaceContains:**/*.js"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cognisystem.showGraph",
+        "title": "CogniSystem: Mostrar Grafo de Dependencias",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "cognisystem.analyzeProject",
+        "title": "CogniSystem: Analizar Proyecto"
+      },
+      {
+        "command": "cognisystem.showImpactMap",
+        "title": "CogniSystem: Mapa de Impacto del Archivo Actual"
+      },
+      {
+        "command": "cognisystem.refresh",
+        "title": "CogniSystem: Refrescar Análisis",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "cognisystem.showImpactMap",
+          "group": "navigation",
+          "when": "resourceExtname == .js || resourceExtname == .ts"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "cognisystem.showImpactMap",
+          "when": "resourceExtname == .js || resourceExtname == .ts",
+          "group": "2_workspace@10"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cognisystem.showGraph"
+        },
+        {
+          "command": "cognisystem.analyzeProject"
+        },
+        {
+          "command": "cognisystem.showImpactMap"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "cognisystemPanel",
+          "name": "CogniSystem",
+          "when": "cognisystem:enabled"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "cognisystemPanel",
+        "contents": "No se ha analizado el proyecto todavía.\n[Analizar Proyecto](command:cognisystem.analyzeProject)"
+      }
+    ],
+    "configuration": {
+      "title": "CogniSystem",
+      "properties": {
+        "cognisystem.autoAnalyzeOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Analizar automáticamente al abrir un proyecto"
+        },
+        "cognisystem.showHighRiskIndicator": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mostrar indicador de riesgo alto en el explorador"
+        },
+        "cognisystem.graph.layout": {
+          "type": "string",
+          "default": "cose",
+          "enum": ["cose", "circle", "grid", "concentric"],
+          "description": "Layout del grafo"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {}
+}

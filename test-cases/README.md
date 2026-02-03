@@ -269,6 +269,20 @@ Múltiples paquetes con dependencias cruzadas
 
 ## Estado Actual
 
-**Escenarios implementados**: 0/7 (estructuras por crear)
+**Escenarios implementados**: 13/13
 
-**Próximo paso**: Crear Scenario 1 para validar Capa A.
+- [x] Scenario 1: Simple Import Chain
+- [x] Scenario 2: Shared State (en `scenario-2-semantic`)
+- [x] Scenario 3: Event System (en `scenario-2-semantic`)
+- [x] Scenario 4: Hidden Side Effect (localStorage)
+- [x] Scenario 5: Disconnected File (Shader)
+- [x] Scenario 6: God Object
+- [x] Scenario 7: Forgotten Test File
+- [x] Scenario 8: Coordinate Matrix Trap (The "Mouse" Nightmare)
+- [x] Scenario 9: The Event Race Condition (Propagation Trap)
+- [x] Scenario 10: The Serialization Phantom (Main-Worker Bridge)
+- [x] Scenario 11: The CSS Variable Poisoning (Visual Drift Trap)
+- [x] Scenario 12: The Dynamic Property Trap (Reflection Nightmare)
+- [x] Scenario 13: The Singleton Identity Crisis (The "Two Managers" Trap)
+
+**Próximo paso**: ¡El sistema de pruebas es ahora una batería de pesadillas! El siguiente paso es ejecutar el análisis semántico para ver cuántas de estas trampas es capaz de detectar el motor actual.

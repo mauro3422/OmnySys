@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-14-broken-worker/src/Main.js",
+  "cacheKey": "d409488baa05b10e54af64dada29670c4856fad4cdcb3cebea275c731b5b0590",
+  "timestamp": 1770154335403,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

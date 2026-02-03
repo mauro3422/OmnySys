@@ -1,0 +1,241 @@
+{
+  "path": "scenario-7-forgotten-test/src/Calculator.js",
+  "displayPath": "src/Calculator.js",
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "add"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "subtract"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "multiply"
+    }
+  ],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "add",
+      "params": 2
+    },
+    {
+      "type": "function",
+      "name": "subtract",
+      "params": 2
+    },
+    {
+      "type": "function",
+      "name": "multiply",
+      "params": 2
+    }
+  ],
+  "usedBy": [
+    "scenario-7-forgotten-test/src/Calculator.test.js"
+  ],
+  "calls": [],
+  "identifierRefs": [
+    "a",
+    "b"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [
+    "scenario-7-forgotten-test/src/Calculator.test.js"
+  ],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-7-forgotten-test\\src\\Calculator.js",
+  "fileName": "Calculator.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "CA:add",
+      "name": "add",
+      "line": 5,
+      "endLine": 7,
+      "params": [
+        "a",
+        "b"
+      ],
+      "isExported": true,
+      "calls": []
+    },
+    {
+      "id": "CA:subtract",
+      "name": "subtract",
+      "line": 9,
+      "endLine": 11,
+      "params": [
+        "a",
+        "b"
+      ],
+      "isExported": true,
+      "calls": []
+    },
+    {
+      "id": "CA:multiply",
+      "name": "multiply",
+      "line": 13,
+      "endLine": 15,
+      "params": [
+        "a",
+        "b"
+      ],
+      "isExported": true,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [],
+      "readProperties": [],
+      "writeProperties": [],
+      "propertyAccessMap": {}
+    },
+    "eventPatterns": {
+      "eventListeners": [],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": false,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": false,
+      "modifiesGlobalState": false,
+      "hasEventListeners": false,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 1,
+          "description": "Calculator.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "Calculator.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 0,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 0,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Low risk baseline",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 3,
+      "connectionCount": 0,
+      "sideEffectCount": 0,
+      "inDegree": 1,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
+}

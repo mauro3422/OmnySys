@@ -1,0 +1,25 @@
+{
+  "filePath": "scenario-15-jsdoc-async/src/api.js",
+  "cacheKey": "98645ddd0fc32f649995142cd0451eeb773e242304a41624410b942b463f515b",
+  "timestamp": 1770154335404,
+  "result": {
+    "source": "llm",
+    "confidence": 1,
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "events": {
+      "emits": [],
+      "listens": []
+    },
+    "sideEffects": [],
+    "affectedFiles": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "reasoning": "brief",
+    "localStorageKeys": [],
+    "eventNames": [],
+    "connectionType": "none"
+  }
+}

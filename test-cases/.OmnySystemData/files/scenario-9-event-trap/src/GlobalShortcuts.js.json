@@ -1,0 +1,357 @@
+{
+  "path": "scenario-9-event-trap/src/GlobalShortcuts.js",
+  "displayPath": "src/GlobalShortcuts.js",
+  "exports": [],
+  "imports": [],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "saveProject",
+      "params": 0
+    }
+  ],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "window",
+      "type": "namespace_access"
+    },
+    {
+      "name": "window.addEventListener",
+      "type": "member_call"
+    },
+    {
+      "name": "e",
+      "type": "namespace_access"
+    },
+    {
+      "name": "e.preventDefault",
+      "type": "member_call"
+    },
+    {
+      "name": "saveProject",
+      "type": "function"
+    },
+    {
+      "name": "window",
+      "type": "namespace_access"
+    },
+    {
+      "name": "window.dispatchEvent",
+      "type": "member_call"
+    },
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "window",
+    "e",
+    "saveProject",
+    "CustomEvent"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
+  "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+  "fileName": "GlobalShortcuts.js",
+  "ext": ".js",
+  "functions": [
+    {
+      "id": "GL:saveProject",
+      "name": "saveProject",
+      "line": 18,
+      "endLine": 20,
+      "params": [],
+      "isExported": false,
+      "calls": []
+    }
+  ],
+  "typeDefinitions": [],
+  "enumDefinitions": [],
+  "constantExports": [],
+  "objectExports": [],
+  "typeUsages": [],
+  "semanticAnalysis": {
+    "sharedState": {
+      "globalAccess": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+          "line": 7,
+          "column": 0,
+          "functionContext": "module-level",
+          "type": "read",
+          "objectName": "window",
+          "propName": "addEventListener",
+          "fullReference": "window.addEventListener",
+          "confidence": 1
+        },
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+          "line": 14,
+          "column": 8,
+          "functionContext": "anonymous-arrow",
+          "type": "read",
+          "objectName": "window",
+          "propName": "dispatchEvent",
+          "fullReference": "window.dispatchEvent",
+          "confidence": 1
+        }
+      ],
+      "readProperties": [
+        "addEventListener",
+        "dispatchEvent"
+      ],
+      "writeProperties": [],
+      "propertyAccessMap": {
+        "addEventListener": {
+          "reads": [
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+              "line": 7,
+              "column": 0,
+              "functionContext": "module-level",
+              "type": "read",
+              "objectName": "window",
+              "propName": "addEventListener",
+              "fullReference": "window.addEventListener",
+              "confidence": 1
+            }
+          ],
+          "writes": []
+        },
+        "dispatchEvent": {
+          "reads": [
+            {
+              "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+              "line": 14,
+              "column": 8,
+              "functionContext": "anonymous-arrow",
+              "type": "read",
+              "objectName": "window",
+              "propName": "dispatchEvent",
+              "fullReference": "window.dispatchEvent",
+              "confidence": 1
+            }
+          ],
+          "writes": []
+        }
+      }
+    },
+    "eventPatterns": {
+      "eventListeners": [
+        {
+          "filePath": "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-9-event-trap\\src\\GlobalShortcuts.js",
+          "line": 7,
+          "column": 0,
+          "functionContext": "module-level",
+          "eventName": "keydown",
+          "pattern": "addEventListener",
+          "objectName": "window",
+          "confidence": 1,
+          "handlerLine": 7
+        }
+      ],
+      "eventEmitters": []
+    },
+    "sideEffects": {
+      "hasGlobalAccess": true,
+      "modifiesDOM": false,
+      "makesNetworkCalls": false,
+      "usesLocalStorage": false,
+      "accessesWindow": true,
+      "modifiesGlobalState": false,
+      "hasEventListeners": true,
+      "usesTimers": false
+    },
+    "sideEffectDetails": {
+      "globalAccessLocations": [
+        {
+          "line": 7,
+          "function": "module-level",
+          "object": "window",
+          "property": "addEventListener"
+        },
+        {
+          "line": 14,
+          "function": "anonymous-arrow",
+          "object": "window",
+          "property": "dispatchEvent"
+        }
+      ],
+      "domModificationLocations": [],
+      "networkCallLocations": [],
+      "storageAccessLocations": [],
+      "windowAccessLocations": [],
+      "globalStateModificationLocations": [],
+      "eventListenerLocations": [
+        {
+          "line": 7,
+          "function": "module-level",
+          "method": "addEventListener"
+        }
+      ],
+      "timerLocations": []
+    }
+  },
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [
+        {
+          "line": 1,
+          "description": "GlobalShortcuts.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
+      "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "GlobalShortcuts.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "semanticConnections": [
+    {
+      "id": "event_scenario-9-event-trap/src/GlobalShortcuts.js_to_scenario-2-semantic/src/EventBus.js",
+      "type": "event_listener",
+      "sourceFile": "scenario-9-event-trap/src/GlobalShortcuts.js",
+      "targetFile": "scenario-2-semantic/src/EventBus.js",
+      "eventNames": [],
+      "eventCount": 0,
+      "reason": "scenario-9-event-trap/src/GlobalShortcuts.js uses event bus created by scenario-2-semantic/src/EventBus.js.",
+      "confidence": 0.95,
+      "severity": "high",
+      "evidence": []
+    },
+    {
+      "id": "event_keydown_scenario-9-event-trap/src/GlobalShortcuts.js_to_scenario-9-event-trap/src/SmartInput.js",
+      "sourceFile": "scenario-9-event-trap/src/GlobalShortcuts.js",
+      "targetFile": "scenario-9-event-trap/src/SmartInput.js",
+      "type": "eventListener",
+      "via": "event",
+      "event": "keydown",
+      "direction": "listens → listens",
+      "confidence": 1,
+      "detectedBy": "static-extractor",
+      "reason": "Both files use event 'keydown'"
+    }
+  ],
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "brief",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "riskScore": {
+    "total": 4,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 2,
+      "sideEffects": 2,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "medium",
+    "explanation": "Some semantic connections (2); High severity connections (1); Multiple side effects (3)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 0,
+      "connectionCount": 2,
+      "sideEffectCount": 3,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": true,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": true,
+    "modifiesGlobalState": false,
+    "hasEventListeners": true,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [
+      {
+        "line": 7,
+        "function": "module-level",
+        "object": "window",
+        "property": "addEventListener"
+      },
+      {
+        "line": 14,
+        "function": "anonymous-arrow",
+        "object": "window",
+        "property": "dispatchEvent"
+      }
+    ],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [
+      {
+        "line": 7,
+        "function": "module-level",
+        "method": "addEventListener"
+      }
+    ],
+    "timerLocations": []
+  }
+}
