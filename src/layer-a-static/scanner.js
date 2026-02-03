@@ -30,7 +30,8 @@ const IGNORED_DIRS = [
   '.turbo',
 
   // CogniSystem analysis data (no re-analyze)
-  '.aver',
+  '.OmnySystemData',
+  '.aver',  // Legacy - mantener por compatibilidad
   'omnysysdata',
 
   // Version control

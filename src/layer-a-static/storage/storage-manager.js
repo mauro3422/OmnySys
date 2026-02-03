@@ -6,7 +6,7 @@ import crypto from 'crypto';
  * Storage Manager - Gestiona el guardado particionado de datos de análisis
  *
  * Estructura de datos:
- * .aver/
+ * .OmnySystemData/
  *   ├── index.json              (metadata + índice ligero)
  *   ├── files/
  *   │   └── {relative-path}/    (espejo de estructura del proyecto)
@@ -14,11 +14,12 @@ import crypto from 'crypto';
  *   ├── connections/
  *   │   ├── shared-state.json
  *   │   └── event-listeners.json
- *   └── risks/
- *       └── assessment.json
+ *   ├── risks/
+ *   │   └── assessment.json
+ *   └── cache.json              (cache de análisis)
  */
 
-const AVER_DIR = '.aver';
+const DATA_DIR = '.OmnySystemData';
 
 /**
  * Calcula hash de un archivo para detectar cambios
@@ -28,17 +29,17 @@ function calculateFileHash(filePath) {
 }
 
 /**
- * Crea la estructura de directorios de .aver/
+ * Crea la estructura de directorios de .OmnySystemData/
  */
-export async function createAverDirectory(rootPath) {
-  const averPath = path.join(rootPath, AVER_DIR);
+export async function createDataDirectory(rootPath) {
+  const dataPath = path.join(rootPath, DATA_DIR);
 
-  await fs.mkdir(averPath, { recursive: true });
-  await fs.mkdir(path.join(averPath, 'files'), { recursive: true });
-  await fs.mkdir(path.join(averPath, 'connections'), { recursive: true });
-  await fs.mkdir(path.join(averPath, 'risks'), { recursive: true });
+  await fs.mkdir(dataPath, { recursive: true });
+  await fs.mkdir(path.join(dataPath, 'files'), { recursive: true });
+  await fs.mkdir(path.join(dataPath, 'connections'), { recursive: true });
+  await fs.mkdir(path.join(dataPath, 'risks'), { recursive: true });
 
-  return averPath;
+  return dataPath;
 }
 
 /**
@@ -49,7 +50,7 @@ export async function createAverDirectory(rootPath) {
  * @param {object} fileIndex - Índice de archivos analizados
  */
 export async function saveMetadata(rootPath, metadata, fileIndex) {
-  const averPath = await createAverDirectory(rootPath);
+  const dataPath = await createDataDirectory(rootPath);
 
   const indexData = {
     metadata: {
@@ -61,7 +62,7 @@ export async function saveMetadata(rootPath, metadata, fileIndex) {
     fileIndex: fileIndex || {}
   };
 
-  const indexPath = path.join(averPath, 'index.json');
+  const indexPath = path.join(dataPath, 'index.json');
   await fs.writeFile(indexPath, JSON.stringify(indexData, null, 2));
 
   return indexPath;
@@ -75,11 +76,11 @@ export async function saveMetadata(rootPath, metadata, fileIndex) {
  * @param {object} fileData - Datos completos del archivo
  */
 export async function saveFileAnalysis(rootPath, filePath, fileData) {
-  const averPath = path.join(rootPath, AVER_DIR);
+  const dataPath = path.join(rootPath, DATA_DIR);
 
   // Crear estructura de directorios que refleja el proyecto
   const fileDir = path.dirname(filePath);
-  const targetDir = path.join(averPath, 'files', fileDir);
+  const targetDir = path.join(dataPath, 'files', fileDir);
   await fs.mkdir(targetDir, { recursive: true });
 
   // Guardar archivo con nombre original + .json
@@ -99,8 +100,8 @@ export async function saveFileAnalysis(rootPath, filePath, fileData) {
  * @param {array} eventListenerConnections - Conexiones de eventos
  */
 export async function saveConnections(rootPath, sharedStateConnections, eventListenerConnections) {
-  const averPath = path.join(rootPath, AVER_DIR);
-  const connectionsDir = path.join(averPath, 'connections');
+  const dataPath = path.join(rootPath, DATA_DIR);
+  const connectionsDir = path.join(dataPath, 'connections');
 
   // Guardar shared state connections
   const sharedStatePath = path.join(connectionsDir, 'shared-state.json');
@@ -128,8 +129,8 @@ export async function saveConnections(rootPath, sharedStateConnections, eventLis
  * @param {object} riskAssessment - Risk assessment con scores y report
  */
 export async function saveRiskAssessment(rootPath, riskAssessment) {
-  const averPath = path.join(rootPath, AVER_DIR);
-  const risksDir = path.join(averPath, 'risks');
+  const dataPath = path.join(rootPath, DATA_DIR);
+  const risksDir = path.join(dataPath, 'risks');
 
   const assessmentPath = path.join(risksDir, 'assessment.json');
   await fs.writeFile(assessmentPath, JSON.stringify({
@@ -190,10 +191,10 @@ export async function savePartitionedSystemMap(rootPath, systemMap) {
 }
 
 /**
- * Obtiene la ruta del directorio .aver/
+ * Obtiene la ruta del directorio .OmnySystemData/
  */
-export function getAverPath(rootPath) {
-  return path.join(rootPath, AVER_DIR);
+export function getDataDirectory(rootPath) {
+  return path.join(rootPath, DATA_DIR);
 }
 
 /**
@@ -201,8 +202,8 @@ export function getAverPath(rootPath) {
  */
 export async function hasExistingAnalysis(rootPath) {
   try {
-    const averPath = getAverPath(rootPath);
-    const indexPath = path.join(averPath, 'index.json');
+    const dataPath = getDataDirectory(rootPath);
+    const indexPath = path.join(dataPath, 'index.json');
     await fs.access(indexPath);
     return true;
   } catch {

@@ -9,7 +9,16 @@ import { detectSharedState, generateSharedStateConnections } from './analyses/ti
 import { detectEventPatterns, generateEventConnections } from './analyses/tier3/event-pattern-detector.js';
 import { detectSideEffects } from './analyses/tier3/side-effects-detector.js';
 import { calculateAllRiskScores, generateRiskReport } from './analyses/tier3/risk-scorer.js';
+import { analyzeBrokenConnections } from './analyses/tier3/broken-connections-detector.js';
 import { savePartitionedSystemMap } from './storage/storage-manager.js';
+import { enrichSemanticAnalysis, generateIssuesReport } from '../layer-b-semantic/semantic-enricher.js';
+import { loadAIConfig } from '../ai/llm-client.js';
+import { detectAllSemanticConnections } from '../layer-b-semantic/static-extractors.js';
+import { detectAllAdvancedConnections } from '../layer-b-semantic/advanced-extractors.js';
+import { extractAllMetadata } from '../layer-b-semantic/metadata-extractors.js';
+import { detectAllCSSInJSConnections } from '../layer-b-semantic/css-in-js-extractor.js';
+import { detectAllTypeScriptConnections } from '../layer-b-semantic/typescript-extractor.js';
+import { detectAllReduxContextConnections } from '../layer-b-semantic/redux-context-extractor.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -32,7 +41,7 @@ import { savePartitionedSystemMap } from './storage/storage-manager.js';
 async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose = true) {
   if (verbose) console.log('\n🔍 Performing semantic analysis (static)...');
 
-  const enhancedFiles = {};
+  let enhancedFiles = {};
   const allSharedStateConnections = [];
   const allEventConnections = [];
   const allSideEffects = {};
@@ -79,6 +88,36 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
 
   if (verbose) console.log('  ✓ Semantic analysis complete');
 
+  // ============================================================
+  // PASO EXTRA: Extraer metadatos adicionales de cada archivo
+  // ============================================================
+  if (verbose) console.log('  🔍 Extracting additional metadata (JSDoc, async, errors, build flags)...');
+  
+  for (const [filePath, fileInfo] of Object.entries(enhancedFiles)) {
+    try {
+      const code = fileSourceCode[filePath] || '';
+      const metadata = extractAllMetadata(filePath, code);
+      
+      enhancedFiles[filePath].metadata = {
+        jsdocContracts: metadata.jsdoc,
+        runtimeContracts: metadata.runtime,
+        asyncPatterns: metadata.async,
+        errorHandling: metadata.errors,
+        buildTimeDeps: metadata.build
+      };
+    } catch (error) {
+      // Silently skip metadata extraction errors
+    }
+  }
+  
+  if (verbose) {
+    const totalJSDoc = Object.values(enhancedFiles).reduce((sum, f) => 
+      sum + (f.metadata?.jsdocContracts?.all?.length || 0), 0);
+    const totalAsync = Object.values(enhancedFiles).reduce((sum, f) => 
+      sum + (f.metadata?.asyncPatterns?.all?.length || 0), 0);
+    console.log(`  ✓ Metadata extracted: ${totalJSDoc} JSDoc, ${totalAsync} async patterns`);
+  }
+
   // Paso 2: Generar conexiones semánticas globales
   if (verbose) console.log('  🔗 Generating semantic connections...');
 
@@ -99,7 +138,56 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     }, {})
   );
 
-  const allConnections = [...sharedStateConnections, ...eventConnections];
+  // ============================================================
+  // PASO EXTRA: Extracción estática de localStorage y eventos
+  // ============================================================
+  if (verbose) console.log('  🔍 Running static extraction for localStorage/events...');
+  // fileSourceCode ya fue declarado arriba
+  for (const filePath of Object.keys(enhancedFiles)) {
+    try {
+      const fullPath = path.join(absoluteRootPath, filePath);
+      fileSourceCode[filePath] = await fs.readFile(fullPath, 'utf-8');
+    } catch (error) {
+      fileSourceCode[filePath] = '';
+    }
+  }
+  const staticConnections = detectAllSemanticConnections(fileSourceCode);
+  const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
+  
+  // ============================================================
+  // NUEVOS EXTRACTORES (CSS-in-JS, TypeScript, Redux/Context)
+  // ============================================================
+  if (verbose) console.log('  🔍 Running CSS-in-JS, TypeScript, Redux/Context extractors...');
+  
+  const cssInJSConnections = detectAllCSSInJSConnections(fileSourceCode);
+  const tsConnections = detectAllTypeScriptConnections(fileSourceCode);
+  const reduxConnections = detectAllReduxContextConnections(fileSourceCode);
+  
+  if (verbose) {
+    console.log(`  ✓ Additional connections found:`);
+    console.log(`    - ${cssInJSConnections.connections.length} CSS-in-JS connections`);
+    console.log(`    - ${tsConnections.connections.length} TypeScript connections`);
+    console.log(`    - ${reduxConnections.connections.length} Redux/Context connections`);
+  }
+  
+  if (verbose) {
+    console.log(`  ✓ Static extraction found:`);
+    console.log(`    - ${staticConnections.localStorageConnections.length} localStorage connections`);
+    console.log(`    - ${staticConnections.eventConnections.length} event connections`);
+    console.log(`    - ${advancedConnections.connections.length} advanced connections (Workers, WebSocket, etc)`);
+  }
+
+  const allConnections = [
+    ...sharedStateConnections, 
+    ...eventConnections,
+    ...staticConnections.localStorageConnections,
+    ...staticConnections.eventConnections,
+    ...staticConnections.globalConnections,
+    ...advancedConnections.connections,
+    ...cssInJSConnections.connections,
+    ...tsConnections.connections,
+    ...reduxConnections.connections
+  ];
 
   if (verbose) {
     console.log(`  ✓ ${sharedStateConnections.length} shared state connections`);
@@ -142,6 +230,60 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
 
   if (verbose) console.log('  ✓ Risk scores calculated');
 
+  // Paso 4.6: Detectar conexiones rotas (Workers, URLs dinámicas, etc)
+  if (verbose) console.log('  🔍 Detecting broken connections...');
+  const brokenConnectionsAnalysis = analyzeBrokenConnections(systemMap, advancedConnections);
+  
+  if (verbose) {
+    console.log(`  ✓ Broken connections analysis:`);
+    console.log(`    - ${brokenConnectionsAnalysis.brokenWorkers.total} broken workers`);
+    console.log(`    - ${brokenConnectionsAnalysis.deadFunctions.total} dead functions`);
+    console.log(`    - ${brokenConnectionsAnalysis.duplicateFunctions.total} duplicate functions`);
+    console.log(`    - ${brokenConnectionsAnalysis.suspiciousUrls.total} suspicious URLs`);
+    if (brokenConnectionsAnalysis.summary.critical > 0) {
+      console.log(`    ⚠️  ${brokenConnectionsAnalysis.summary.critical} CRITICAL issues found!`);
+    }
+  }
+
+  // Paso 4.7: LLM Enrichment (opcional)
+  let llmEnrichmentStats = null;
+  let semanticIssues = null;
+  try {
+    const aiConfig = await loadAIConfig();
+    if (aiConfig.llm.enabled) {
+      if (verbose) console.log('  🤖 LLM enrichment phase...');
+      const tempSystemMap = { files: enhancedFiles };
+      const enrichmentResult = await enrichSemanticAnalysis(
+        tempSystemMap,
+        fileSourceCode,
+        aiConfig
+      );
+
+      if (enrichmentResult.enhanced) {
+        // Actualizar enhancedFiles con resultados LLM
+        enhancedFiles = enrichmentResult.results.files;
+        llmEnrichmentStats = {
+          filesAnalyzed: enrichmentResult.totalAnalyzed,
+          filesEnhanced: enrichmentResult.enhancedCount
+        };
+
+        // Capturar issues semánticos
+        semanticIssues = enrichmentResult.issues;
+
+        if (verbose) {
+          console.log(`  ✓ LLM enhanced ${enrichmentResult.enhancedCount}/${enrichmentResult.totalAnalyzed} files`);
+          if (semanticIssues && semanticIssues.stats.totalIssues > 0) {
+            console.log(`  ⚠️  Found ${semanticIssues.stats.totalIssues} semantic issues (${semanticIssues.stats.bySeverity.high} high, ${semanticIssues.stats.bySeverity.medium} medium, ${semanticIssues.stats.bySeverity.low} low)`);
+          }
+        }
+      } else if (verbose) {
+        console.log(`  ℹ️  ${enrichmentResult.reason}`);
+      }
+    }
+  } catch (error) {
+    console.warn('  ⚠️  LLM enrichment failed:', error.message);
+  }
+
   // Paso 5: Construir enhanced system map
   if (verbose) console.log('  🏗️  Building enhanced system map...');
 
@@ -151,18 +293,33 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
       enhanced: true,
       enhancedAt: new Date().toISOString(),
       analysisVersion: '3.5.0',
-      includes: ['static', 'semantic-static', 'risk-scoring']
+      includes: llmEnrichmentStats
+        ? ['static', 'semantic-static', 'llm-enriched', 'risk-scoring', 'semantic-issues']
+        : ['static', 'semantic-static', 'risk-scoring', 'semantic-issues'],
+      llmEnrichment: llmEnrichmentStats || { enabled: false }
     },
     files: {},
     connections: {
       sharedState: sharedStateConnections,
       eventListeners: eventConnections,
+      localStorage: staticConnections.localStorageConnections,
+      advanced: advancedConnections.connections,
+      cssInJS: cssInJSConnections.connections,
+      typescript: tsConnections.connections,
+      reduxContext: reduxConnections.connections,
       total: allConnections.length
+    },
+    structures: {
+      storeStructure: reduxConnections.storeStructure || { slices: [] },
+      typeDefinitions: tsConnections.fileResults || {},
+      cssInJSFiles: cssInJSConnections.fileResults || {}
     },
     riskAssessment: {
       scores: riskScores,
       report: generateRiskReport(riskScores)
-    }
+    },
+    semanticIssues: semanticIssues || { stats: { totalIssues: 0 } },
+    brokenConnections: brokenConnectionsAnalysis || { summary: { total: 0 } }
   };
 
   // Enriquecer cada archivo con sus análisis
@@ -172,6 +329,7 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
 
     enhancedSystemMap.files[filePath] = {
       ...systemMap.files[filePath],
+      ...fileInfo,  // ✅ Merge LLM insights from enhancedFiles
       semanticConnections: connections,
       riskScore: riskScore,
       sideEffects: allSideEffects[filePath]?.sideEffects || {},
@@ -196,13 +354,24 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
 export async function indexProject(rootPath, options = {}) {
   const {
     outputPath = 'system-map.json',
-    verbose = true
+    verbose = true,
+    singleFile = null,  // Modo single-file: solo analizar este archivo y sus dependencias
+    incremental = false
   } = options;
 
   // Convertir rootPath a absoluto
   const absoluteRootPath = path.isAbsolute(rootPath)
     ? rootPath
     : path.resolve(process.cwd(), rootPath);
+
+  // Modo single-file: análisis rápido
+  if (singleFile) {
+    console.log(`\n🚀 Starting Single-File Analysis\n`);
+    console.log(`📁 Project root: ${absoluteRootPath}`);
+    console.log(`📄 Target file: ${singleFile}\n`);
+    
+    return await analyzeSingleFile(absoluteRootPath, singleFile, { verbose, incremental });
+  }
 
   console.log(`\n🚀 Starting Layer A: Static Analysis\n`);
   console.log(`📁 Project root: ${absoluteRootPath}\n`);
@@ -340,14 +509,14 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
     if (verbose) console.log(`  ✓ Enhanced map saved to: ${enhancedOutputPath}\n`);
 
-    // Paso 11: NUEVO - Guardar datos particionados en .aver/
-    if (verbose) console.log('💾 Saving partitioned data to .aver/...');
+    // Paso 11: NUEVO - Guardar datos particionados en .OmnySystemData/
+    if (verbose) console.log('💾 Saving partitioned data to .OmnySystemData/...');
     const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
     if (verbose) {
-      console.log(`  ✓ Metadata saved to: .aver/index.json`);
-      console.log(`  ✓ ${partitionedPaths.files.length} files saved to: .aver/files/`);
-      console.log(`  ✓ Connections saved to: .aver/connections/`);
-      console.log(`  ✓ Risk assessment saved to: .aver/risks/\n`);
+      console.log(`  ✓ Metadata saved to: .OmnySystemData/index.json`);
+      console.log(`  ✓ ${partitionedPaths.files.length} files saved to: .OmnySystemData/files/`);
+      console.log(`  ✓ Connections saved to: .OmnySystemData/connections/`);
+      console.log(`  ✓ Risk assessment saved to: .OmnySystemData/risks/\n`);
     }
 
     // Resumen
@@ -377,17 +546,183 @@ export async function indexProject(rootPath, options = {}) {
   - High-risk files: ${enhancedSystemMap.riskAssessment.report.summary.highCount + enhancedSystemMap.riskAssessment.report.summary.criticalCount}
   - Average risk score: ${enhancedSystemMap.riskAssessment.report.summary.averageScore}
 
+⚠️  SEMANTIC ISSUES DETECTED:
+  - Total issues: ${enhancedSystemMap.semanticIssues.stats?.totalIssues || 0}
+  - High severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.high || 0}
+  - Medium severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.medium || 0}
+  - Low severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.low || 0}
+
 💾 STORAGE:
   - Monolithic JSON: ${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
-  - Partitioned data: .aver/ directory (${partitionedPaths.files.length} files)
+  - Partitioned data: .OmnySystemData/ directory (${partitionedPaths.files.length} files)
   - Query API available via query-service.js
       `);
+
+      // Si hay issues, generar y guardar reporte detallado
+      if (enhancedSystemMap.semanticIssues?.stats?.totalIssues > 0) {
+        const issuesReportText = generateIssuesReport(enhancedSystemMap.semanticIssues);
+        const issuesReportPath = path.join(absoluteRootPath, '.OmnySystemData', 'semantic-issues-report.txt');
+        await fs.writeFile(issuesReportPath, issuesReportText, 'utf-8');
+        console.log(`\n📋 Detailed issues report saved to: .OmnySystemData/semantic-issues-report.txt`);
+        console.log('💡 Review this report to find potential bugs and improvements\n');
+      }
     }
 
     return systemMap;
 
   } catch (error) {
     console.error('❌ Error during indexing:', error);
+    throw error;
+  }
+}
+
+/**
+ * Análisis rápido de un solo archivo
+ * Usa el contexto del proyecto existente y solo re-analiza el archivo especificado
+ */
+async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
+  const { verbose = true, incremental = false } = options;
+  
+  try {
+    // Cargar systemMap existente si hay análisis previo
+    let existingMap = null;
+    const systemMapPath = path.join(absoluteRootPath, 'system-map-enhanced.json');
+    
+    try {
+      const content = await fs.readFile(systemMapPath, 'utf-8');
+      existingMap = JSON.parse(content);
+      if (verbose) console.log('  ✓ Loaded existing project context\n');
+    } catch {
+      if (verbose) console.log('  ℹ️  No existing analysis found, starting fresh\n');
+    }
+
+    // Paso 1: Parsear solo el archivo objetivo
+    const targetFilePath = path.join(absoluteRootPath, singleFile);
+    if (verbose) console.log(`📝 Parsing ${singleFile}...`);
+    
+    const parsedFile = await parseFileFromDisk(targetFilePath);
+    if (!parsedFile) {
+      throw new Error(`Could not parse file: ${singleFile}`);
+    }
+    
+    if (verbose) console.log('  ✓ File parsed\n');
+
+    // Paso 2: Resolver imports del archivo (solo los necesarios)
+    if (verbose) console.log('🔗 Resolving imports...');
+    const resolutionConfig = await getResolutionConfig(absoluteRootPath);
+    
+    const resolvedImports = [];
+    for (const importStmt of parsedFile.imports || []) {
+      const sources = Array.isArray(importStmt.source) ? importStmt.source : [importStmt.source];
+      for (const source of sources) {
+        const result = await resolveImport(source, targetFilePath, absoluteRootPath, resolutionConfig.aliases);
+        resolvedImports.push({
+          source,
+          resolved: result.resolved,
+          type: result.type,
+          specifiers: importStmt.specifiers,
+          reason: result.reason
+        });
+      }
+    }
+    if (verbose) console.log(`  ✓ Resolved ${resolvedImports.length} imports\n`);
+
+    // Paso 3: Detectar conexiones semánticas
+    if (verbose) console.log('🔍 Detecting semantic connections...');
+    const fileSourceCode = { [targetFilePath]: parsedFile.source || '' };
+    
+    // Parsear imports para detección de conexiones
+    const allParsedFiles = { [targetFilePath]: parsedFile };
+    for (const imp of resolvedImports) {
+      if (imp.type === 'local' && imp.resolved) {
+        try {
+          const depPath = path.join(absoluteRootPath, imp.resolved);
+          const depParsed = await parseFileFromDisk(depPath);
+          if (depParsed) {
+            allParsedFiles[depPath] = depParsed;
+            fileSourceCode[depPath] = depParsed.source || '';
+          }
+        } catch (e) {
+          // Ignorar errores de dependencias
+        }
+      }
+    }
+    
+    const staticConnections = detectAllSemanticConnections(fileSourceCode);
+    const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
+    if (verbose) console.log(`  ✓ Found ${staticConnections.all.length + advancedConnections.connections.length} connections\n`);
+
+    // Paso 4: Extraer metadatos
+    if (verbose) console.log('📊 Extracting metadata...');
+    const metadata = extractAllMetadata(targetFilePath, parsedFile.source || '');
+    if (verbose) console.log(`  ✓ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
+
+    // Paso 5: Construir análisis del archivo
+    const fileAnalysis = {
+      filePath: singleFile,
+      fileName: path.basename(singleFile),
+      ext: path.extname(singleFile),
+      imports: resolvedImports.map(imp => ({
+        source: imp.source,
+        resolvedPath: imp.resolved,
+        type: imp.type,
+        specifiers: imp.specifiers || []
+      })),
+      exports: parsedFile.exports || [],
+      definitions: parsedFile.definitions || [],
+      semanticConnections: [
+        ...staticConnections.all.map(conn => ({
+          target: conn.targetFile,
+          type: conn.via,
+          key: conn.key || conn.event,
+          confidence: conn.confidence,
+          detectedBy: 'static-extractor'
+        })),
+        ...advancedConnections.connections.map(conn => ({
+          target: conn.targetFile,
+          type: conn.via,
+          channelName: conn.channelName,
+          confidence: conn.confidence,
+          detectedBy: 'advanced-extractor'
+        }))
+      ],
+      metadata: {
+        jsdocContracts: metadata.jsdoc || { all: [] },
+        asyncPatterns: metadata.async || { all: [] },
+        errorHandling: metadata.errors || { all: [] },
+        buildTimeDeps: metadata.build || { envVars: [] }
+      },
+      analyzedAt: new Date().toISOString()
+    };
+
+    // Paso 6: Guardar resultado
+    const outputDir = path.join(absoluteRootPath, '.OmnySystemData', 'files', path.dirname(singleFile));
+    await fs.mkdir(outputDir, { recursive: true });
+    
+    const outputPath = path.join(outputDir, `${path.basename(singleFile)}.json`);
+    await fs.writeFile(outputPath, JSON.stringify(fileAnalysis, null, 2), 'utf-8');
+    
+    if (verbose) {
+      console.log(`💾 Results saved to: ${path.relative(absoluteRootPath, outputPath)}`);
+      console.log(`\n📊 Summary:`);
+      console.log(`  - Imports: ${fileAnalysis.imports.length}`);
+      console.log(`  - Exports: ${fileAnalysis.exports.length}`);
+      console.log(`  - Semantic connections: ${fileAnalysis.semanticConnections.length}`);
+      console.log(`  - Functions: ${fileAnalysis.definitions.filter(d => d.type === 'function').length}\n`);
+    }
+
+    // Si hay systemMap existente, actualizarlo
+    if (existingMap && incremental) {
+      existingMap.files[singleFile] = fileAnalysis;
+      existingMap.metadata.lastUpdated = new Date().toISOString();
+      await fs.writeFile(systemMapPath, JSON.stringify(existingMap, null, 2), 'utf-8');
+      if (verbose) console.log('  ✓ Updated system-map-enhanced.json\n');
+    }
+
+    return fileAnalysis;
+
+  } catch (error) {
+    console.error(`\n❌ Single-file analysis failed: ${error.message}`);
     throw error;
   }
 }

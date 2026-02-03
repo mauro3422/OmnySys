@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
-import { getAverPath } from './storage-manager.js';
+import { getDataDirectory } from './storage-manager.js';
 
 /**
  * Query Service - API eficiente para consultar datos particionados
@@ -31,8 +31,8 @@ async function readJSON(filePath) {
  * @returns {Promise<object>} - Metadata + file index
  */
 export async function getProjectMetadata(rootPath) {
-  const averPath = getAverPath(rootPath);
-  const indexPath = path.join(averPath, 'index.json');
+  const dataPath = getDataDirectory(rootPath);
+  const indexPath = path.join(dataPath, 'index.json');
 
   return await readJSON(indexPath);
 }
@@ -45,12 +45,12 @@ export async function getProjectMetadata(rootPath) {
  * @returns {Promise<object>} - Datos completos del archivo
  */
 export async function getFileAnalysis(rootPath, filePath) {
-  const averPath = getAverPath(rootPath);
+  const dataPath = getDataDirectory(rootPath);
 
   // Construir ruta al archivo particionado
   const fileName = path.basename(filePath);
   const fileDir = path.dirname(filePath);
-  const targetPath = path.join(averPath, 'files', fileDir, `${fileName}.json`);
+  const targetPath = path.join(dataPath, 'files', fileDir, `${fileName}.json`);
 
   return await readJSON(targetPath);
 }
@@ -110,9 +110,9 @@ export async function getSemanticConnections(rootPath, filePath = null) {
     return fileData.semanticConnections || [];
   } else {
     // Obtener todas las conexiones del proyecto
-    const averPath = getAverPath(rootPath);
-    const sharedStatePath = path.join(averPath, 'connections', 'shared-state.json');
-    const eventListenersPath = path.join(averPath, 'connections', 'event-listeners.json');
+    const dataPath = getDataDirectory(rootPath);
+    const sharedStatePath = path.join(dataPath, 'connections', 'shared-state.json');
+    const eventListenersPath = path.join(dataPath, 'connections', 'event-listeners.json');
 
     const [sharedState, eventListeners] = await Promise.all([
       readJSON(sharedStatePath),
@@ -144,8 +144,8 @@ export async function getAllConnections(rootPath) {
  * @returns {Promise<object>} - Risk assessment con scores y report
  */
 export async function getRiskAssessment(rootPath) {
-  const averPath = getAverPath(rootPath);
-  const assessmentPath = path.join(averPath, 'risks', 'assessment.json');
+  const dataPath = getDataDirectory(rootPath);
+  const assessmentPath = path.join(dataPath, 'risks', 'assessment.json');
 
   return await readJSON(assessmentPath);
 }
@@ -262,14 +262,14 @@ export async function reconstructFullSystemMap(rootPath) {
  * ⚠️ IMPORTANTE: Este es un archivo de DEBUG - puede ser muy grande
  *
  * @param {string} rootPath - Raíz del proyecto
- * @param {string} outputPath - Ruta donde guardar el JSON (ej: '.aver/debug/system-map-full.json')
+ * @param {string} outputPath - Ruta donde guardar el JSON (ej: '.OmnySystemData/debug/system-map-full.json')
  * @returns {Promise<object>} - { success: true, filePath: string, sizeKB: number, filesExported: number }
  */
 export async function exportFullSystemMapToFile(rootPath, outputPath = null) {
-  // Ruta por defecto: .aver/debug/system-map-full.json
+  // Ruta por defecto: .OmnySystemData/debug/system-map-full.json
   if (!outputPath) {
-    const averPath = getAverPath(rootPath);
-    const debugPath = path.join(averPath, 'debug');
+    const dataPath = getDataDirectory(rootPath);
+    const debugPath = path.join(dataPath, 'debug');
     await fs.mkdir(debugPath, { recursive: true });
     outputPath = path.join(debugPath, 'system-map-full.json');
   }
