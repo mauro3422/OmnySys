@@ -1,13 +1,13 @@
 /**
  * LLM Starter - Inicia el servidor LLM en terminal separada
  * 
- * SSoT: Usa start_brain_gpu.bat (única forma de iniciar LLM)
+ * Ejecuta llama-server.exe directamente (no usa batch para evitar 'pause')
  */
 
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { LLMClient, loadAIConfig } from '../../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,32 +38,53 @@ export async function startLLM(omnySystemRoot) {
   const lockFile = path.join(process.env.TEMP, 'omny_brain_gpu.lock');
   try { await fs.unlink(lockFile); } catch {}
   
-  // 3. Verify batch file exists
-  const gpuScript = path.join(omnySystemRoot, 'src/ai/scripts/start_brain_gpu.bat');
+  // 3. Verify files exist
+  const llamaServer = path.join(omnySystemRoot, 'src/ai/server/llama-server.exe');
+  const modelPath = path.join(omnySystemRoot, 'src/ai/models/LFM2-1.2B-Extract-Q8_0.gguf');
+  
   try {
-    await fs.access(gpuScript);
-  } catch {
-    console.error('   ❌ Batch file not found:', gpuScript);
+    await fs.access(llamaServer);
+    await fs.access(modelPath);
+  } catch (err) {
+    console.error('   ❌ llama-server.exe or model not found');
     return false;
   }
   
-  // 4. Start in NEW TERMINAL WINDOW (completely async, non-blocking)
+  // 4. Start llama-server.exe directly in NEW WINDOW
   console.error('   🚀 Starting LLM in new terminal...');
-  console.error('   📁 Script:', gpuScript);
   
-  // Use exec with start command - non-blocking
-  // Escape the path properly for Windows
-  const { exec } = await import('child_process');
-  const escapedScript = gpuScript.replace(/"/g, '""');
-  const command = `start "" "${escapedScript}"`;
+  const args = [
+    '--model', modelPath,
+    '--port', '8000',
+    '--host', '127.0.0.1',
+    '--n-gpu-layers', '999',
+    '--ctx-size', '32768',
+    '--parallel', '2',
+    '-cb',
+    '--temp', '0.0',
+    '--cache-type-k', 'q8_0',
+    '--cache-type-v', 'q8_0',
+    '--chat-template', 'chatml'
+  ];
   
-  exec(command, { cwd: omnySystemRoot }, (err) => {
-    if (err) console.error('   ⚠️  LLM start warning:', err.message);
+  // Use cmd /c start to open new terminal window
+  // windowsHide: false = SHOW the window
+  // detached: true = Don't wait for it
+  const child = spawn('cmd.exe', [
+    '/c', 'start', 'CogniSystem LLM Server',
+    llamaServer, ...args
+  ], {
+    cwd: omnySystemRoot,
+    detached: true,
+    windowsHide: false  // IMPORTANT: Show the window!
   });
   
-  console.error('   ✓ Terminal opened');
-  console.error('   ⏳ LLM loading asynchronously...');
+  // Don't wait, just unref and continue
+  child.unref();
   
-  // Return immediately - don't block MCP
+  console.error('   ✓ Terminal opened: "CogniSystem LLM Server"');
+  console.error('   ⏳ LLM loading asynchronously (10-30s)...');
+  
+  // Return immediately - MCP continues, LLM loads in background
   return true;
 }
