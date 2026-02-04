@@ -595,3 +595,237 @@ Si inyectamos todas las dependencias, saturamos el contexto de la IA.
 - ✅ Scenario 11: CSS variables (nuevo detector)
 - ✅ Scenario 4: LocalStorage (nuevo detector)
 - ✅ Scenario 10: Web Workers (nuevo detector)
+---
+
+## FASE 7: Metadata + IA = 95% Coverage (Nueva Visión)
+
+**Fecha**: 2026-02-04  
+**Concepto**: "La Metadata detecta patrones sospechosos, la IA verifica hipótesis"
+
+### 7.1: El Problema con el Enfoque Actual
+
+**Enfoque anterior**:
+- Scripts detectan 80% (casos obvios)
+- IA detecta 20% (casos complejos)
+- Casos "imposibles" se ignoran
+
+**Problema**: Los casos "imposibles" como `import(`./modules/${moduleName}`) se consideraban perdidos, PERO pueden detectarse como "patrones sospechosos" y la IA puede inferir probabilidades.
+
+### 7.2: Nuevo Enfoque: Metadata + IA
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER A (Metadata): Extraer TODO, incluso lo "dinámico"    │
+│                                                             │
+│  • No es: "¿Qué valor tiene moduleName?"                   │
+│  • Sí es: "Este archivo usa import() con variable X"        │
+│                                                             │
+│  Metadata capturada:                                        │
+│  {                                                          │
+│    file: "router.js",                                       │
+│    dynamicImports: [{                                       │
+│      pattern: "`./modules/${moduleName}`",                 │
+│      type: "template_literal",                              │
+│      variables: ["moduleName"],                             │
+│      context: "function loadModule(name) {...}"             │
+│    }]                                                       │
+│  }                                                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER B (IA): Verificar hipótesis basadas en metadata      │
+│                                                             │
+│  Prompt: "Dado el contexto de router.js y loadModule(),     │
+│           ¿qué valores probables toma moduleName?"          │
+│                                                             │
+│  IA responde:                                               │
+│  {                                                          │
+│    probableValues: ["user", "admin", "auth", "dashboard"], │
+│    confidence: 0.82,                                        │
+│    reasoning: "La función loadModule se llama con..."       │
+│  }                                                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  RESULTADO: Conexiones con Confidence Score                 │
+│                                                             │
+│  {                                                          │
+│    source: "router.js",                                     │
+│    targets: [                                               │
+│      { file: "modules/user.js", confidence: 0.85 },        │
+│      { file: "modules/admin.js", confidence: 0.82 },       │
+│      { file: "modules/auth.js", confidence: 0.78 }         │
+│    ],                                                       │
+│    type: "probable_dynamic_import",                         │
+│    verifiedBy: "llm"                                        │
+│  }                                                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 7.3: Casos que Ahora Sí Detectamos
+
+| Caso | Metadata (Layer A) | IA (Layer B) | Coverage |
+|------|-------------------|--------------|----------|
+| **Dynamic imports** | Detectar `import()` con variable | Inferir valores probables | 40% → 75% |
+| **Eventos dinámicos** | Detectar `` `user:${id}` `` | Buscar listeners similares | 30% → 70% |
+| **DI implícito** | Detectar `container.register/get` | Mapear tokens a providers | 20% → 65% |
+| **Código muerto** | Detectar "nadie importa esto" | Confirmar no hay refs ocultas | 50% → 80% |
+| **Strings mágicos** | Detectar constantes hardcodeadas | Agrupar usos similares | 40% → 75% |
+
+### 7.4: Confidence Scoring System
+
+**No todas las conexiones son iguales**:
+
+```javascript
+// Niveles de confianza
+const CONFIDENCE_LEVELS = {
+  CERTAIN:    { min: 0.95, color: 'green',  source: 'static' },
+  PROBABLE:   { min: 0.75, color: 'blue',   source: 'llm' },
+  POSSIBLE:   { min: 0.50, color: 'yellow', source: 'llm' },
+  UNCERTAIN:  { min: 0.25, color: 'orange', source: 'llm' },
+  UNKNOWN:    { min: 0,    color: 'red',    source: 'none' }
+};
+
+// En el grafo
+{
+  connections: [
+    { 
+      target: "user.js", 
+      type: "import",
+      confidence: 1.0,  // Parser lo vio directamente
+      source: "ast"
+    },
+    { 
+      target: "admin.js", 
+      type: "probable_dynamic_import",
+      confidence: 0.82,  // IA infirió
+      source: "llm",
+      reasoning: "La función loadModule se usa en rutas de admin"
+    }
+  ]
+}
+```
+
+### 7.5: Implementación Técnica
+
+**Nuevos extractores de metadata**:
+
+```javascript
+// src/layer-b-semantic/dynamic-pattern-extractor.js
+
+export function extractDynamicPatterns(filePath, code) {
+  const patterns = [];
+  
+  // 1. Dynamic imports
+  const importRegex = /import\s*\(\s*[`'"]([^`'"]*\$\{[^}]+\}[^`'"]*)[`'"]\s*\)/g;
+  // 2. Template literal events
+  const eventRegex = /\.(on|emit|addEventListener)\s*\(\s*([^)]+\$\{[^}]+\}[^)]*)/g;
+  // 3. DI patterns
+  const diRegex = /container\.(register|get|resolve)\s*\(\s*['"`]([^'"`]+)/g;
+  
+  // Extraer con contexto
+  for (const match of code.matchAll(importRegex)) {
+    patterns.push({
+      type: 'dynamic_import',
+      pattern: match[1],
+      context: extractSurroundingContext(code, match.index),
+      variables: extractVariables(match[1])
+    });
+  }
+  
+  return patterns;
+}
+```
+
+**Nuevo módulo LLM: Confidence Verifier**:
+
+```javascript
+// src/layer-b-semantic/confidence-verifier.js
+
+export async function verifyWithConfidence(patterns, systemMap, aiConfig) {
+  const verified = [];
+  
+  for (const pattern of patterns) {
+    const prompt = buildVerificationPrompt(pattern, systemMap);
+    const response = await llm.complete(prompt);
+    
+    verified.push({
+      ...pattern,
+      probableValues: response.values,
+      confidence: response.confidence,
+      reasoning: response.reasoning
+    });
+  }
+  
+  return verified;
+}
+```
+
+### 7.6: Roadmap de Implementación
+
+| Phase | Feature | Coverage Gain | Status |
+|-------|---------|---------------|--------|
+| 7.1 | Dynamic import extractor | +15% | 📝 Planned |
+| 7.2 | Event template extractor | +20% | 📝 Planned |
+| 7.3 | DI pattern extractor | +25% | 📝 Planned |
+| 7.4 | Confidence scoring system | +5% | 📝 Planned |
+| 7.5 | LLM verification layer | +10% | 📝 Planned |
+| **TOTAL** | | **+75% → 95%** | |
+
+### 7.7: Ejemplo de Uso Final
+
+```javascript
+// User pregunta: "¿Qué pasa si cambio loadModule()?"
+const impact = await get_impact_map("router.js");
+
+// Respuesta:
+{
+  file: "router.js",
+  certainConnections: [
+    { target: "app.js", type: "import", confidence: 1.0 }
+  ],
+  probableConnections: [
+    { 
+      target: "modules/user.js", 
+      type: "dynamic_import",
+      confidence: 0.85,
+      note: "IA infiere: loadModule('user') es llamado en /user/profile"
+    },
+    { 
+      target: "modules/admin.js", 
+      type: "dynamic_import",
+      confidence: 0.82,
+      note: "IA infiere: loadModule('admin') es llamado en /admin/dashboard"
+    }
+  ],
+  recommendation: "Cambiar loadModule() afecta 2 imports dinámicos probables. Verificar manualmente o usar refactor tool."
+}
+```
+
+---
+
+## Resumen de Arquitectura Actual (v0.4.5)
+
+```
+OmnySystem v0.4.5 - "CogniSystem"
+
+Entry Point:
+  node src/layer-c-memory/mcp/index.js ./project
+
+Flujo:
+  1. LLM Starter → Espera llama-server listo
+  2. Orchestrator → Sync archivos, encola faltantes
+  3. Layer A → Static analysis completo (metadata + semantic)
+  4. Layer B → LLM enrichment (condicional)
+  5. MCP Tools → Queries con auto-análisis
+
+Filosofía:
+  "Metadata detecta, IA verifica, Confidence scoring prioriza"
+
+Cobertura:
+  Actual: ~80%
+  Target (Fase 7): ~95%
+```
+- Casos "imposibles" se ignoran
+
+**Problema**: Los casos "imposibles" como `import(
