@@ -1,4 +1,4 @@
-# .averignore - CogniSystem Analysis Exclusion Rules
+# .averignore - OmnySys Analysis Exclusion Rules
 #
 # Similar to .gitignore, but controls what gets analyzed by CogniSystem
 # Lines starting with # are comments
@@ -13,8 +13,8 @@
 # - dist/
 # - build/
 # - .git/
-# - .aver/
-# - omnysysdata/
+# - .OmnySysData/
+# - .OmnySysData/
 # - .next/
 # - .nuxt/
 # - coverage/

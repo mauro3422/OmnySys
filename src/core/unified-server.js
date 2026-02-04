@@ -52,7 +52,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
   constructor(projectPath) {
     super();
     this.projectPath = projectPath;
-    this.omnySystemDataPath = path.join(projectPath, '.OmnySystemData');
+    this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
     this.cache = null;  // Initialized in initializeMCP()
     this.metadata = null;
     this.initialized = false;
@@ -190,7 +190,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
    */
   async hasExistingAnalysis() {
     try {
-      const indexPath = path.join(this.omnySystemDataPath, 'index.json');
+      const indexPath = path.join(this.OmnySysDataPath, 'index.json');
       await fs.access(indexPath);
       return true;
     } catch {
@@ -392,7 +392,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
 
     // Initialize StateManager
     this.stateManager = new StateManager(
-      path.join(this.omnySystemDataPath, 'orchestrator-state.json')
+      path.join(this.OmnySysDataPath, 'orchestrator-state.json')
     );
     console.log('  ✓ State manager ready');
 

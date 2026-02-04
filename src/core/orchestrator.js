@@ -31,7 +31,7 @@ export class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
     super();
     this.projectPath = projectPath;
-    this.omnySystemDataPath = path.join(projectPath, '.OmnySystemData');
+    this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
     this.options = {
       enableFileWatcher: true,
       enableWebSocket: true,
@@ -83,7 +83,7 @@ export class Orchestrator extends EventEmitter {
 
     // Initialize state manager
     this.stateManager = new StateManager(
-      path.join(this.omnySystemDataPath, 'orchestrator-state.json')
+      path.join(this.OmnySysDataPath, 'orchestrator-state.json')
     );
 
     // Initialize worker
@@ -367,7 +367,7 @@ export class Orchestrator extends EventEmitter {
 
   async _hasExistingAnalysis() {
     try {
-      const indexPath = path.join(this.omnySystemDataPath, 'index.json');
+      const indexPath = path.join(this.OmnySysDataPath, 'index.json');
       await fs.access(indexPath);
       return true;
     } catch {
@@ -376,11 +376,11 @@ export class Orchestrator extends EventEmitter {
   }
 
   async _getFileData(filePath) {
-    // Try to read from .OmnySystemData
+    // Try to read from .OmnySysData
     try {
       const relativePath = path.relative(this.projectPath, filePath);
       const fileDataPath = path.join(
-        this.omnySystemDataPath, 
+        this.OmnySysDataPath, 
         'files', 
         relativePath + '.json'
       );
@@ -429,7 +429,7 @@ export class Orchestrator extends EventEmitter {
       // Obtener lista de archivos ya analizados desde el índice
       const analyzedFiles = new Set();
       try {
-        const indexPath = path.join(this.omnySystemDataPath, 'index.json');
+        const indexPath = path.join(this.OmnySysDataPath, 'index.json');
         const indexContent = await fs.readFile(indexPath, 'utf-8');
         const index = JSON.parse(indexContent);
         for (const file of index.files || []) {

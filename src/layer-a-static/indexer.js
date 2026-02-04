@@ -522,14 +522,14 @@ export async function indexProject(rootPath, options = {}) {
     await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
     if (verbose) console.log(`  ✓ Enhanced map saved to: ${enhancedOutputPath}\n`);
 
-    // Paso 11: NUEVO - Guardar datos particionados en .OmnySystemData/
-    if (verbose) console.log('💾 Saving partitioned data to .OmnySystemData/...');
+    // Paso 11: NUEVO - Guardar datos particionados en .OmnySysData/
+    if (verbose) console.log('💾 Saving partitioned data to .OmnySysData/...');
     const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
     if (verbose) {
-      console.log(`  ✓ Metadata saved to: .OmnySystemData/index.json`);
-      console.log(`  ✓ ${partitionedPaths.files.length} files saved to: .OmnySystemData/files/`);
-      console.log(`  ✓ Connections saved to: .OmnySystemData/connections/`);
-      console.log(`  ✓ Risk assessment saved to: .OmnySystemData/risks/\n`);
+      console.log(`  ✓ Metadata saved to: .OmnySysData/index.json`);
+      console.log(`  ✓ ${partitionedPaths.files.length} files saved to: .OmnySysData/files/`);
+      console.log(`  ✓ Connections saved to: .OmnySysData/connections/`);
+      console.log(`  ✓ Risk assessment saved to: .OmnySysData/risks/\n`);
     }
 
     // Resumen
@@ -567,16 +567,16 @@ export async function indexProject(rootPath, options = {}) {
 
 💾 STORAGE:
   - Monolithic JSON: ${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
-  - Partitioned data: .OmnySystemData/ directory (${partitionedPaths.files.length} files)
+  - Partitioned data: .OmnySysData/ directory (${partitionedPaths.files.length} files)
   - Query API available via query-service.js
       `);
 
       // Si hay issues, generar y guardar reporte detallado
       if (enhancedSystemMap.semanticIssues?.stats?.totalIssues > 0) {
         const issuesReportText = generateIssuesReport(enhancedSystemMap.semanticIssues);
-        const issuesReportPath = path.join(absoluteRootPath, '.OmnySystemData', 'semantic-issues-report.txt');
+        const issuesReportPath = path.join(absoluteRootPath, '.OmnySysData', 'semantic-issues-report.txt');
         await fs.writeFile(issuesReportPath, issuesReportText, 'utf-8');
-        console.log(`\n📋 Detailed issues report saved to: .OmnySystemData/semantic-issues-report.txt`);
+        console.log(`\n📋 Detailed issues report saved to: .OmnySysData/semantic-issues-report.txt`);
         console.log('💡 Review this report to find potential bugs and improvements\n');
       }
     }
@@ -709,7 +709,7 @@ async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
     };
 
     // Paso 6: Guardar resultado
-    const outputDir = path.join(absoluteRootPath, '.OmnySystemData', 'files', path.dirname(singleFile));
+    const outputDir = path.join(absoluteRootPath, '.OmnySysData', 'files', path.dirname(singleFile));
     await fs.mkdir(outputDir, { recursive: true });
     
     const outputPath = path.join(outputDir, `${path.basename(singleFile)}.json`);

@@ -324,13 +324,13 @@ function inferConnections(patterns) {
 **Configuración**:
 ```bash
 # Iniciar servidor
-omnysystem ai start gpu
+OmnySys ai start gpu
 
 # Habilitar en config
 # Editar src/ai/ai-config.json: "enabled": true
 
 # Analizar con LLM
-omnysystem analyze /path/to/project
+OmnySys analyze /path/to/project
 ```
 
 ### Alternativas (No implementadas)
@@ -377,7 +377,7 @@ const response = await openai.chat.completions.create({
 
 ```bash
 # LLM deshabilitado por defecto
-omnysystem analyze /path/to/project
+OmnySys analyze /path/to/project
 ```
 
 Usa solo:
@@ -395,10 +395,10 @@ Usa solo:
 # Editar src/ai/ai-config.json: "enabled": true
 
 # 2. Iniciar servidor
-omnysystem ai start gpu
+OmnySys ai start gpu
 
 # 3. Analizar
-omnysystem analyze /path/to/project
+OmnySys analyze /path/to/project
 ```
 
 Output:

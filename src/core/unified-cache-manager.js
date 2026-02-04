@@ -17,7 +17,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
-const CACHE_DIR = '.OmnySystemData/unified-cache';
+const CACHE_DIR = '.OmnySysData/unified-cache';
 const INDEX_FILE = 'cache-index.json';
 
 /**
@@ -192,7 +192,7 @@ export class UnifiedCacheManager {
   
   /**
    * Inicializa el caché
-   * AHORA: Carga directamente desde Layer A (.OmnySystemData/)
+   * AHORA: Carga directamente desde Layer A (.OmnySysData/)
    */
   async initialize() {
     try {
@@ -215,13 +215,13 @@ export class UnifiedCacheManager {
   }
   
   /**
-   * Carga datos desde Layer A (.OmnySystemData/)
+   * Carga datos desde Layer A (.OmnySysData/)
    * Lee desde la carpeta files/ y el index.json
    * @returns {boolean} true si cargó correctamente
    */
   async loadFromLayerA() {
     try {
-      const layerAPath = path.join(this.projectPath, '.OmnySystemData');
+      const layerAPath = path.join(this.projectPath, '.OmnySysData');
       const filesDir = path.join(layerAPath, 'files');
       
       // Verificar si existe la carpeta files

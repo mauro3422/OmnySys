@@ -30,7 +30,7 @@ async function waitForLLM(client, maxRetries = 60, retryDelay = 2000) {
   return { ready: false };
 }
 
-export async function startLLM(omnySystemRoot) {
+export async function startLLM(OmnySysRoot) {
   console.error('   🔍 Checking LLM status...');
   
   const aiConfig = await loadAIConfig();
@@ -50,7 +50,7 @@ export async function startLLM(omnySystemRoot) {
   try { await fs.unlink(lockFile); } catch {}
   
   // 3. Find batch script
-  const batchPath = path.join(omnySystemRoot, 'src/ai/scripts/start_brain_gpu.bat');
+  const batchPath = path.join(OmnySysRoot, 'src/ai/scripts/start_brain_gpu.bat');
   
   try {
     await fs.access(batchPath);
@@ -63,7 +63,7 @@ export async function startLLM(omnySystemRoot) {
   console.error('   🚀 Starting LLM server...');
   
   const child = spawn('cmd', ['/c', 'start', 'CogniSystem LLM', 'cmd', '/c', batchPath], {
-    cwd: omnySystemRoot,
+    cwd: OmnySysRoot,
     detached: true,
     windowsHide: false
   });

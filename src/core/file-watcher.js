@@ -104,7 +104,7 @@ export class FileWatcher extends EventEmitter {
   constructor(rootPath, options = {}) {
     super();
     this.rootPath = rootPath;
-    this.dataPath = path.join(rootPath, '.OmnySystemData');
+    this.dataPath = path.join(rootPath, '.OmnySysData');
 
     // Opciones
     this.options = {
@@ -676,7 +676,7 @@ export class FileWatcher extends EventEmitter {
       '.git/',
       'dist/',
       'build/',
-      '.OmnySystemData/',
+      '.OmnySysData/',
       'coverage/',
       '.vscode/'
     ];

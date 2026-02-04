@@ -113,10 +113,10 @@ export async function cleanupProcesses() {
     }
   }
 
-  // Kill any orphaned node processes with "omnysystem" in command line
+  // Kill any orphaned node processes with "OmnySys" in command line
   try {
     const { stdout } = await execAsync('wmic process where "name=\'node.exe\'" get commandline,processid /format:csv');
-    const lines = stdout.split('\n').filter(l => l.includes('omnysystem') && !l.includes('wmic'));
+    const lines = stdout.split('\n').filter(l => l.includes('OmnySys') && !l.includes('wmic'));
     for (const line of lines) {
       const parts = line.split(',');
       const pid = parts[parts.length - 1]?.trim();

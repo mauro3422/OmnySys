@@ -29,8 +29,8 @@ const IGNORED_DIRS = [
   '.nuxt',
   '.turbo',
 
-  // CogniSystem analysis data (no re-analyze)
-  '.OmnySystemData',
+  // OmnySys analysis data (no re-analyze)
+  '.OmnySysData',
   '.aver',  // Legacy - mantener por compatibilidad
   'omnysysdata',
 

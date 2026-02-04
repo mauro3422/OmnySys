@@ -7,8 +7,8 @@
  *   node export-system-map.js [projectPath] [outputPath]
  *
  * Ejemplos:
- *   node export-system-map.js                    # Usa directorio actual, salida en .OmnySystemData/debug/
- *   node export-system-map.js /ruta/proyecto     # Proyecto específico, salida en .OmnySystemData/debug/
+ *   node export-system-map.js                    # Usa directorio actual, salida en .OmnySysData/debug/
+ *   node export-system-map.js /ruta/proyecto     # Proyecto específico, salida en .OmnySysData/debug/
  *   node export-system-map.js . debug-map.json   # Proyecto actual, salida personalizada
  */
 
@@ -31,7 +31,7 @@ async function main() {
     if (outputPath) {
       console.log(`Output file: ${outputPath}`);
     } else {
-      console.log('Output file: .OmnySystemData/debug/system-map-full.json (default)');
+      console.log('Output file: .OmnySysData/debug/system-map-full.json (default)');
     }
     console.log('');
     console.log('⏳ Exporting system map...\n');

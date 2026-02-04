@@ -100,16 +100,16 @@ Edit [ai-config.json](ai-config.json):
 
 ```bash
 # Start GPU server
-omnysystem ai start gpu
+OmnySys ai start gpu
 
 # OR start both GPU + CPU for parallel processing
-omnysystem ai start both
+OmnySys ai start both
 ```
 
 **Step 4: Verify**
 
 ```bash
-omnysystem ai status
+OmnySys ai status
 ```
 
 Expected output:
@@ -128,10 +128,10 @@ GPU Server (port 8000):
 
 ### Automatic (Integrated with Analysis)
 
-When AI is enabled, it automatically activates during `omnysystem analyze`:
+When AI is enabled, it automatically activates during `OmnySys analyze`:
 
 ```bash
-omnysystem analyze /path/to/project
+OmnySys analyze /path/to/project
 ```
 
 Output will include:
@@ -145,15 +145,15 @@ Output will include:
 
 ```bash
 # Start servers
-omnysystem ai start gpu       # GPU only
-omnysystem ai start cpu       # CPU only
-omnysystem ai start both      # Both servers
+OmnySys ai start gpu       # GPU only
+OmnySys ai start cpu       # CPU only
+OmnySys ai start both      # Both servers
 
 # Check status
-omnysystem ai status
+OmnySys ai status
 
 # Stop servers
-omnysystem ai stop
+OmnySys ai stop
 ```
 
 ## Configuration
@@ -204,8 +204,8 @@ You can add custom analysis like:
 
 **Fix**:
 ```bash
-omnysystem ai status       # Check status
-omnysystem ai start gpu    # Start servers
+OmnySys ai status       # Check status
+OmnySys ai start gpu    # Start servers
 ```
 
 Check logs in `logs/ai_brain_gpu.log`
@@ -296,7 +296,7 @@ Perfect for analyzing 10+ files simultaneously.
 ## Next Steps
 
 1. **Enable AI**: Edit `ai-config.json` and start servers
-2. **Analyze project**: Run `omnysystem analyze <project>` and observe LLM usage
+2. **Analyze project**: Run `OmnySys analyze <project>` and observe LLM usage
 3. **Tune performance**: Adjust `maxConcurrentAnalyses` based on your hardware
 4. **Customize prompts**: Modify `analysisTemplate` for domain-specific analysis
 

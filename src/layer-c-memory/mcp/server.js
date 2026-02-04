@@ -28,7 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export class CogniSystemMCPServer {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.omnySystemRoot = path.resolve(__dirname, '../../..');
+    this.OmnySysRoot = path.resolve(__dirname, '../../..');
     this.orchestrator = null;
     this.cache = null;
     this.server = null;
@@ -47,7 +47,7 @@ export class CogniSystemMCPServer {
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('STEP 1: AI Server Setup');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    await startLLM(this.omnySystemRoot);
+    await startLLM(this.OmnySysRoot);
 
     // Check/Run Analysis FIRST (before Orchestrator and Cache)
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -91,7 +91,7 @@ export class CogniSystemMCPServer {
 
   async checkAndRunAnalysis() {
     try {
-      const indexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
+      const indexPath = path.join(this.projectPath, '.OmnySysData', 'index.json');
       await fs.access(indexPath);
       const metadata = await getProjectMetadata(this.projectPath);
       const fileCount = metadata?.metadata?.totalFiles || 0;

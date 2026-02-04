@@ -262,11 +262,11 @@ export async function reconstructFullSystemMap(rootPath) {
  * ⚠️ IMPORTANTE: Este es un archivo de DEBUG - puede ser muy grande
  *
  * @param {string} rootPath - Raíz del proyecto
- * @param {string} outputPath - Ruta donde guardar el JSON (ej: '.OmnySystemData/debug/system-map-full.json')
+ * @param {string} outputPath - Ruta donde guardar el JSON (ej: '.OmnySysData/debug/system-map-full.json')
  * @returns {Promise<object>} - { success: true, filePath: string, sizeKB: number, filesExported: number }
  */
 export async function exportFullSystemMapToFile(rootPath, outputPath = null) {
-  // Ruta por defecto: .OmnySystemData/debug/system-map-full.json
+  // Ruta por defecto: .OmnySysData/debug/system-map-full.json
   if (!outputPath) {
     const dataPath = getDataDirectory(rootPath);
     const debugPath = path.join(dataPath, 'debug');

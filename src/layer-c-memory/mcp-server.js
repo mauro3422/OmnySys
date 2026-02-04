@@ -449,7 +449,7 @@ class CogniSystemMCPServer {
 
   async _hasExistingAnalysis() {
     try {
-      const indexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
+      const indexPath = path.join(this.projectPath, '.OmnySysData', 'index.json');
       await fs.access(indexPath);
       return true;
     } catch {
