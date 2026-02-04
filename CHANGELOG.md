@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** (Latest) |
+| **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** (Latest) |
+| **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** |
 | **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** |
 | **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** |
 | **[0.4.0-0.4.1]** | `changelog/v0.4.0.md` | **Phase 3.8: Capa B - Semantic Enrichment** |
@@ -21,20 +22,20 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.4.4 (2026-02-03)**
+### **🚀 Latest Release: v0.4.5 (2026-02-03)**
 
-**Architecture Release**: Unified cache system replacing legacy distributed caches
+**Architecture Release**: MCP Server is now the unified entry point with internal Orchestrator
 
 **Key Changes**:
-- ✅ **UnifiedCacheManager** - Single source of truth for all caching
-- ✅ **Change Detection** - COSMETIC/STATIC/SEMANTIC/CRITICAL levels
-- ✅ **Cascade Invalidation** - Automatic dependency graph invalidation
-- ✅ **Coordinated Versioning** - Static vN always pairs with LLM vN
-- ✅ **Code Reduction** - 430 lines removed, simpler maintenance
+- ✅ **MCP Server as Entry Point** - Single command starts everything
+- ✅ **Internal Orchestrator** - Queue + Worker + FileWatcher as component
+- ✅ **Auto-Indexing** - Background indexing on startup if needed
+- ✅ **Smart Tools** - Auto-queue as CRITICAL if file not analyzed
+- ✅ **analyzeAndWait()** - Tools can trigger and wait for analysis
 
-**Removed**: `analysis-cache.js`, `llm-cache.js`, `query-cache.js` (622 lines)
+**New**: `orchestrator.js` - Reusable orchestrator component
 
-**Previous: v0.4.3** - Bug fixes and stability improvements
+**Previous: v0.4.4** - Unified cache system
 
 **Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
 
@@ -53,6 +54,7 @@ This repository uses a modular changelog structure for better organization and m
 | **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | ✅ Complete |
 | **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | ✅ Complete |
 | **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
+| **Architecture** | 0.4.5 | MCP Unified Entry Point | ✅ Complete |
 | **Architecture** | 0.4.4 | Unified Cache System | ✅ Complete |
 | **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |
 
