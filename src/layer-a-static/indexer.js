@@ -42,7 +42,7 @@ import { analyzeWithUnifiedCache, analyzeLLMWithUnifiedCache } from '../core/cac
  * @param {boolean} verbose - Mostrar output detallado
  * @returns {Promise<object>} - Enhanced system map
  */
-async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose = true) {
+async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose = true, skipLLM = false) {
   if (verbose) console.log('\n🔍 Performing semantic analysis (static)...');
 
   let enhancedFiles = {};
@@ -514,7 +514,8 @@ export async function indexProject(rootPath, options = {}) {
       absoluteRootPath,
       parsedFiles,
       systemMap,
-      verbose
+      verbose,
+      skipLLM
     );
     const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
     const enhancedFullPath = path.join(absoluteRootPath, enhancedOutputPath);
