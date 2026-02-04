@@ -106,6 +106,9 @@ export class Orchestrator extends EventEmitter {
     // Load existing state
     await this._loadState();
 
+    // Sync project files with existing analysis
+    await this._syncProjectFiles();
+
     // Start processing loop
     this._processNext();
 
@@ -409,6 +412,61 @@ export class Orchestrator extends EventEmitter {
     };
     
     checkProgress();
+  }
+
+  /**
+   * Sincroniza archivos del proyecto con el análisis existente
+   * Agrega archivos nuevos o modificados a la cola
+   */
+  async _syncProjectFiles() {
+    try {
+      // Importar scanner dinámicamente
+      const { scanProject } = await import('../layer-a-static/scanner.js');
+      const projectFiles = await scanProject(this.projectPath);
+      
+      if (projectFiles.length === 0) return;
+
+      // Obtener lista de archivos ya analizados desde el índice
+      const analyzedFiles = new Set();
+      try {
+        const indexPath = path.join(this.omnySystemDataPath, 'index.json');
+        const indexContent = await fs.readFile(indexPath, 'utf-8');
+        const index = JSON.parse(indexContent);
+        for (const file of index.files || []) {
+          analyzedFiles.add(file.filePath);
+        }
+      } catch {
+        // No hay índice, todos los archivos son nuevos
+      }
+
+      // Encontrar archivos faltantes
+      const missingFiles = projectFiles.filter(file => {
+        const relativePath = path.relative(this.projectPath, file).replace(/\\/g, '/');
+        return !analyzedFiles.has(relativePath);
+      });
+
+      if (missingFiles.length > 0) {
+        console.log(`📋 Found ${missingFiles.length} new files to analyze`);
+        
+        // Agregar a la cola con prioridad baja
+        for (const file of missingFiles) {
+          const relativePath = path.relative(this.projectPath, file).replace(/\\/g, '/');
+          this.queue.enqueue(relativePath, 'low');
+          this.stats.totalQueued++;
+        }
+        
+        console.log(`✅ Added ${missingFiles.length} files to analysis queue`);
+      }
+
+      // Reportar estado
+      const queueSize = this.queue.size();
+      if (queueSize > 0) {
+        console.log(`📊 Queue: ${queueSize} files pending analysis`);
+      }
+
+    } catch (error) {
+      console.warn('⚠️  Failed to sync project files:', error.message);
+    }
   }
 }
 
