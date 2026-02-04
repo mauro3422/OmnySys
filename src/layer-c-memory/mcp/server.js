@@ -49,9 +49,15 @@ export class CogniSystemMCPServer {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     await startLLM(this.omnySystemRoot);
 
-    // Init Orchestrator
+    // Check/Run Analysis FIRST (before Orchestrator and Cache)
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 2: Initialize Orchestrator');
+    console.error('STEP 2: Layer A - Static Analysis');
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    await this.checkAndRunAnalysis();
+
+    // Init Orchestrator (now with analysis data available)
+    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('STEP 3: Initialize Orchestrator');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     this.orchestrator = new Orchestrator(this.projectPath, {
       enableFileWatcher: true,
@@ -60,18 +66,12 @@ export class CogniSystemMCPServer {
     });
     await this.orchestrator.initialize();
 
-    // Init Cache
+    // Init Cache (now with analysis data available)
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 3: Initialize Cache');
+    console.error('STEP 4: Initialize Cache');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     this.cache = new UnifiedCacheManager(this.projectPath);
     await this.cache.initialize();
-
-    // Check analysis
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 4: Check Analysis Status');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    await this.checkAnalysisStatus();
 
     // Setup MCP
     this.setupMCP();
@@ -89,14 +89,14 @@ export class CogniSystemMCPServer {
     }
   }
 
-  async checkAnalysisStatus() {
+  async checkAndRunAnalysis() {
     try {
       const indexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
       await fs.access(indexPath);
       const metadata = await getProjectMetadata(this.projectPath);
       const fileCount = metadata?.metadata?.totalFiles || 0;
       
-      console.error(`⚠️  Found existing analysis: ${fileCount} files`);
+      console.error(`✅ Found existing analysis: ${fileCount} files`);
       
       // Validar si el análisis está completo y no está corrupto
       if (fileCount === 0 || !metadata?.files || Object.keys(metadata.files).length === 0) {
