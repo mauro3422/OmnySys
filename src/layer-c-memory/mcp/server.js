@@ -96,9 +96,44 @@ export class CogniSystemMCPServer {
       const metadata = await getProjectMetadata(this.projectPath);
       console.error(`✅ Found existing analysis: ${metadata?.metadata?.totalFiles || 0} files`);
     } catch {
-      console.error('⚠️  No analysis found, starting background indexing...');
-      this.orchestrator.startBackgroundIndexing();
+      console.error('⚠️  No analysis found, running full indexing...');
+      console.error('   ⏳ This may take 30-60 seconds...\n');
+      
+      // Ejecutar Layer A completo (BLOQUEANTE) - esperar a que termine
+      await this.runFullIndexing();
+      
+      console.error('\n✅ Full indexing completed');
     }
+  }
+  
+  async runFullIndexing() {
+    const { indexProject } = await import('../../layer-a-static/indexer.js');
+    
+    return new Promise((resolve, reject) => {
+      indexProject(this.projectPath, {
+        verbose: true,
+        skipLLM: false,  // Permitir IA si detecta casos complejos
+        outputPath: 'system-map.json'
+      }).then(result => {
+        console.error(`\n   📊 Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
+        
+        // Verificar si IA se activó
+        const hasLLM = Object.values(result.files || {}).some(
+          f => f.aiEnhancement || f.llmInsights
+        );
+        
+        if (hasLLM) {
+          console.error('   🤖 Layer B: IA enrichment applied');
+        } else {
+          console.error('   ℹ️  Layer B: Static analysis sufficient (no IA needed)');
+        }
+        
+        resolve(result);
+      }).catch(error => {
+        console.error('   ❌ Indexing failed:', error.message);
+        reject(error);
+      });
+    });
   }
 
   setupMCP() {
