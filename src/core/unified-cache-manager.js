@@ -211,37 +211,62 @@ export class UnifiedCacheManager {
   }
   
   /**
-   * Carga datos desde Layer A (.OmnySystemData/index.json)
+   * Carga datos desde Layer A (.OmnySystemData/)
+   * Lee desde la carpeta files/ y el index.json
    * @returns {boolean} true si cargó correctamente
    */
   async loadFromLayerA() {
     try {
-      const layerAIndexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
-      const content = await fs.readFile(layerAIndexPath, 'utf-8');
-      const layerAData = JSON.parse(content);
+      const layerAPath = path.join(this.projectPath, '.OmnySystemData');
+      const filesDir = path.join(layerAPath, 'files');
       
-      if (layerAData.files && layerAData.files.length > 0) {
-        // Convertir formato Layer A al formato del Cache
-        for (const file of layerAData.files) {
-          this.index.entries[file.filePath] = {
-            hash: file.metadata?.hash || '',
-            lastAnalyzed: file.metadata?.lastAnalyzed || Date.now(),
-            staticVersion: layerAData.metadata?.analysisVersion || '1.0.0',
-            llmVersion: null, // Se actualiza cuando pasa Layer B
-            changeType: ChangeType.NONE,
-            dependencies: file.dependencies || [],
-            metadata: file.metadata
-          };
-        }
-        
-        this.index.metadata.totalFiles = layerAData.files.length;
-        await this.saveIndex();
-        return true;
+      // Verificar si existe la carpeta files
+      try {
+        await fs.access(filesDir);
+      } catch {
+        return false;
       }
       
-      return false;
-    } catch {
-      // Layer A no tiene datos todavía
+      // Leer todos los archivos .json en la carpeta files
+      const fileEntries = await fs.readdir(filesDir, { recursive: true });
+      const jsonFiles = fileEntries.filter(f => f.endsWith('.json'));
+      
+      if (jsonFiles.length === 0) {
+        return false;
+      }
+      
+      // Cargar cada archivo de análisis
+      for (const jsonFile of jsonFiles) {
+        try {
+          const filePath = path.join(filesDir, jsonFile);
+          const content = await fs.readFile(filePath, 'utf-8');
+          const fileData = JSON.parse(content);
+          
+          // El filePath está en fileData.filePath
+          const originalPath = fileData.filePath || jsonFile.replace('.json', '');
+          
+          this.index.entries[originalPath] = {
+            hash: fileData.metadata?.hash || '',
+            lastAnalyzed: fileData.metadata?.lastAnalyzed || Date.now(),
+            staticVersion: fileData.metadata?.analysisVersion || '1.0.0',
+            llmVersion: fileData.llmInsights ? '1.0.0' : null,
+            changeType: ChangeType.NONE,
+            dependencies: fileData.dependencies || [],
+            metadata: fileData.metadata,
+            llmInsights: fileData.llmInsights
+          };
+        } catch (err) {
+          console.warn(`   ⚠️  Failed to load ${jsonFile}: ${err.message}`);
+        }
+      }
+      
+      this.index.metadata.totalFiles = jsonFiles.length;
+      await this.saveIndex();
+      
+      console.log(`   📥 Loaded ${jsonFiles.length} files from Layer A`);
+      return true;
+    } catch (error) {
+      console.log(`   ℹ️  Layer A data not available: ${error.message}`);
       return false;
     }
   }
