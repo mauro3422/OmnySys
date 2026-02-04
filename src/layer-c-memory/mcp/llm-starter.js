@@ -1,7 +1,7 @@
 /**
  * LLM Starter - Inicia el servidor LLM en terminal separada
  * 
- * Ejecuta llama-server.exe directamente (no usa batch para evitar 'pause')
+ * Usa start_brain_gpu.bat existente (SSoT para config)
  */
 
 import path from 'path';
@@ -12,11 +12,24 @@ import { LLMClient, loadAIConfig } from '../../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Inicia el servidor LLM si no está corriendo
- * @param {string} omnySystemRoot - Ruta raíz de OmnySystem
- * @returns {Promise<boolean>} - true si está listo o se inició
- */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForLLM(client, maxRetries = 60, retryDelay = 2000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const health = await client.healthCheck();
+      if (health.gpu || health.cpu) {
+        return { ready: true, health };
+      }
+    } catch {}
+    process.stderr.write('.');
+    await sleep(retryDelay);
+  }
+  return { ready: false };
+}
+
 export async function startLLM(omnySystemRoot) {
   console.error('   🔍 Checking LLM status...');
   
@@ -30,61 +43,49 @@ export async function startLLM(omnySystemRoot) {
       console.error('   ✓ LLM already running on port 8000');
       return true;
     }
-  } catch {
-    // Not running, continue
-  }
+  } catch {}
   
   // 2. Clean stale lock file
   const lockFile = path.join(process.env.TEMP, 'omny_brain_gpu.lock');
   try { await fs.unlink(lockFile); } catch {}
   
-  // 3. Verify files exist
-  const llamaServer = path.join(omnySystemRoot, 'src/ai/server/llama-server.exe');
-  const modelPath = path.join(omnySystemRoot, 'src/ai/models/LFM2-1.2B-Extract-Q8_0.gguf');
+  // 3. Find batch script
+  const batchPath = path.join(omnySystemRoot, 'src/ai/scripts/start_brain_gpu.bat');
   
   try {
-    await fs.access(llamaServer);
-    await fs.access(modelPath);
-  } catch (err) {
-    console.error('   ❌ llama-server.exe or model not found');
+    await fs.access(batchPath);
+  } catch {
+    console.error('   ❌ start_brain_gpu.bat not found');
     return false;
   }
   
-  // 4. Start llama-server.exe directly in NEW WINDOW
-  console.error('   🚀 Starting LLM in new terminal...');
+  // 4. Start batch in NEW terminal window
+  console.error('   🚀 Starting LLM server...');
   
-  const args = [
-    '--model', modelPath,
-    '--port', '8000',
-    '--host', '127.0.0.1',
-    '--n-gpu-layers', '999',
-    '--ctx-size', '32768',
-    '--parallel', '2',
-    '-cb',
-    '--temp', '0.0',
-    '--cache-type-k', 'q8_0',
-    '--cache-type-v', 'q8_0',
-    '--chat-template', 'chatml'
-  ];
-  
-  // Use cmd /c start to open new terminal window
-  // windowsHide: false = SHOW the window
-  // detached: true = Don't wait for it
-  const child = spawn('cmd.exe', [
-    '/c', 'start', 'CogniSystem LLM Server',
-    llamaServer, ...args
-  ], {
+  const child = spawn('cmd', ['/c', 'start', 'CogniSystem LLM', 'cmd', '/c', batchPath], {
     cwd: omnySystemRoot,
     detached: true,
-    windowsHide: false  // IMPORTANT: Show the window!
+    windowsHide: false
   });
   
-  // Don't wait, just unref and continue
+  child.on('error', (err) => {
+    console.error('   ❌ Spawn error:', err.message);
+  });
+  
   child.unref();
   
-  console.error('   ✓ Terminal opened: "CogniSystem LLM Server"');
-  console.error('   ⏳ LLM loading asynchronously (10-30s)...');
+  // 5. ESPERAR a que el LLM responda (BLOQUEANTE)
+  console.error('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
   
-  // Return immediately - MCP continues, LLM loads in background
-  return true;
+  const result = await waitForLLM(client, 60, 2000); // 60 retries × 2s = 2 min max
+  
+  if (result.ready) {
+    const mode = result.health.gpu ? 'GPU' : 'CPU';
+    console.error(`   ✅ LLM is ready! (${mode} mode)`);
+    return true;
+  } else {
+    console.error('\n   ❌ LLM failed to start within 2 minutes');
+    console.error('   💡 Check the terminal window "CogniSystem LLM" for errors');
+    return false;
+  }
 }
