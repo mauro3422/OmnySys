@@ -439,19 +439,22 @@ export class Orchestrator extends EventEmitter {
         // No hay índice, todos los archivos son nuevos
       }
 
+      // Normalizar rutas del proyecto (scanProject ya devuelve rutas relativas)
+      const normalizedProjectFiles = projectFiles.map(file => 
+        path.relative(this.projectPath, path.resolve(this.projectPath, file)).replace(/\\/g, '/')
+      );
+
       // Encontrar archivos faltantes
-      const missingFiles = projectFiles.filter(file => {
-        const relativePath = path.relative(this.projectPath, file).replace(/\\/g, '/');
-        return !analyzedFiles.has(relativePath);
+      const missingFiles = normalizedProjectFiles.filter(filePath => {
+        return !analyzedFiles.has(filePath);
       });
 
       if (missingFiles.length > 0) {
         console.log(`📋 Found ${missingFiles.length} new files to analyze`);
         
         // Agregar a la cola con prioridad baja
-        for (const file of missingFiles) {
-          const relativePath = path.relative(this.projectPath, file).replace(/\\/g, '/');
-          this.queue.enqueue(relativePath, 'low');
+        for (const filePath of missingFiles) {
+          this.queue.enqueue(filePath, 'low');
           this.stats.totalQueued++;
         }
         
