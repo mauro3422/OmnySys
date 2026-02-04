@@ -747,7 +747,7 @@ async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
  *   node src/layer-a-static/indexer.js /path/to/project [output-file]
  */
 
-const isMainModule = process.argv[1].includes('indexer.js');
+const isMainModule = process.argv[1]?.includes('indexer.js') || false;
 if (isMainModule) {
   const projectPath = process.argv[2] || process.cwd();
   const outputFile = process.argv[3] || 'system-map.json';
