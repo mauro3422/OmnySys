@@ -376,18 +376,43 @@ Cuando una tool detecta que un archivo no está analizado:
     │         │
     ▼         ▼
 ┌───────┐  ┌─────────────────────────────┐
-│Retornar│  │ 🚨 Encolar como CRITICAL    │
-│datos  │  │ ⏳ Esperar análisis         │
-└───────┘  │ ✅ Retornar resultado       │
+│Retornar│  │ 1️⃣ Encolar como CRITICAL  │
+│datos  │  │ 2️⃣ Analizar con LLM        │
+└───────┘  │ 3️⃣ Esperar resultado       │
+           │ 4️⃣ Retornar a IA           │
            └─────────────────────────────┘
 ```
 
-**Timeout**: Si el análisis tarda más de 60 segundos, la tool devuelve:
+### Respuestas de Auto-Análisis
+
+**Caso 1: Análisis completado (< 60 segundos)**
+```javascript
+// La tool espera y responde directamente:
+{
+  file: "Camera.js",
+  directlyAffects: ["RenderEngine.js", "Input.js"],
+  semanticConnections: [...],
+  riskLevel: "high"
+}
+```
+
+**Caso 2: Timeout (análisis en progreso)**
+```javascript
+// Si tarda más de 60 segundos:
+{
+  "status": "analyzing",
+  "message": "Camera.js is being analyzed as CRITICAL priority",
+  "estimatedTime": "30 seconds",
+  "suggestion": "Please retry this query in 30 seconds"
+}
+```
+
+**Caso 3: Error en análisis**
 ```javascript
 {
-  error: "Timeout waiting for analysis of Camera.js",
-  filePath: "Camera.js",
-  suggestion: "The file has been queued for analysis. Please retry in a few seconds."
+  "status": "error",
+  "error": "Analysis failed for Camera.js",
+  "message": "LLM server unavailable. Please check server status."
 }
 ```
 
