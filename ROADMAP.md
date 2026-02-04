@@ -1,5 +1,10 @@
 # CogniSystem - Roadmap de Desarrollo
 
+**Versión actual**: v0.4.5 - MCP Unified Entry Point ✅  
+**Última actualización**: 2026-02-03
+
+---
+
 ## Filosofía de Desarrollo
 
 **Enfoque incremental**: Construir y validar cada capa antes de pasar a la siguiente. Evitar el "big bang" que puede generar frustración si no funciona de inmediato.
@@ -8,465 +13,293 @@
 
 ---
 
-## FASE 0: Preparación y Documentación ✅
+## Estado Actual (v0.4.5)
 
-**Objetivo**: Capturar todo el conocimiento antes de que se compacte el contexto.
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ✅ COMPLETADO - MCP Unified Entry Point                    │
+│                                                             │
+│  Un solo comando inicia todo el sistema:                   │
+│  node src/layer-c-memory/mcp-server.js /proyecto           │
+│                                                             │
+│  • Orchestrator (cola + worker + file watcher)             │
+│  • Indexación automática en background                     │
+│  • Tools MCP listas para usar                              │
+│  • Auto-análisis cuando archivo no existe                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Fases Completadas
+
+### ✅ FASE 0: Preparación y Documentación
+
+**Estado**: Completada
+
+- [x] README.md con análisis del problema
+- [x] ROADMAP.md con plan de desarrollo
+- [x] ARCHITECTURE.md con diseño técnico
+- [x] docs/ con análisis detallado
+- [x] Estructura de carpetas del proyecto
+- [x] Changelog modular por versión
+
+---
+
+### ✅ FASE 1: Capa A - Análisis Estático
+
+**Estado**: Completada (95%)
+
+**Entregables**:
+- [x] Parser de código (JS/TS) con Babel AST
+- [x] Extracción de imports/exports/definiciones
+- [x] Constructor de grafo de dependencias
+- [x] `system-map.json` con grafo completo
+- [x] 15+ casos de prueba sintéticos
+- [x] Detección de patrones (shared state, eventos, side effects)
+- [x] Risk scorer basado en reglas
+- [x] Análisis de calidad (unused exports, circular deps, etc.)
+
+**Ubicación**: `src/layer-a-static/`
+
+---
+
+### ✅ FASE 2: Integración MCP Básica
+
+**Estado**: Completada (90%)
+
+**Entregables**:
+- [x] Servidor MCP con tools
+- [x] `get_impact_map()` - Mapa de impacto
+- [x] `analyze_change()` - Análisis de cambios
+- [x] `explain_connection()` - Explicar conexiones
+- [x] `get_risk_assessment()` - Evaluación de riesgos
+- [x] `search_files()` - Búsqueda de archivos
+- [x] Query service eficiente
+- [x] Storage particionado en `.OmnySystemData/`
+
+**Ubicación**: `src/layer-c-memory/`
+
+---
+
+### ✅ FASE 3: Capa B - Análisis Semántico
+
+**Estado**: Completada (85%)
+
+**Entregables**:
+- [x] Schema de datos para semantic layer
+- [x] Detección estática de conexiones semánticas
+  - [x] Shared state detector (`window.*`, `global.*`)
+  - [x] Event pattern detector (emitters/listeners)
+  - [x] Side effects detector
+- [x] Análisis con IA local (Qwen2.5-Coder)
+- [x] Validación de respuestas LLM (JSON schemas)
+- [x] Scoring híbrido (estático + IA)
+- [x] `enhanced-system-map.json` con datos enriquecidos
+- [x] Conexiones CSS-in-JS, TypeScript, Redux/Context
+
+**Ubicación**: `src/layer-b-semantic/`
+
+---
+
+### ✅ FASE 4: Orchestrator y Procesamiento
+
+**Estado**: Completada (90%)
+
+**Entregables**:
+- [x] AnalysisQueue con prioridades (CRITICAL > HIGH > MEDIUM > LOW)
+- [x] AnalysisWorker para procesar con LLM
+- [x] FileWatcher para cambios en tiempo real
+- [x] BatchProcessor para agrupar cambios
+- [x] StateManager para persistencia atómica
+- [x] WebSocket para notificaciones en tiempo real
+- [x] Interrupción de trabajos de menor prioridad
+- [x] Rollback de caché en caso de error
+
+**Ubicación**: `src/core/`
+
+---
+
+### ✅ FASE 5: Unified Entry Point (v0.4.5)
+
+**Estado**: Completada (95%)
+
+**Entregables**:
+- [x] MCP Server como entry point único
+- [x] Orchestrator como componente interno
+- [x] Auto-indexación en startup (si no hay datos)
+- [x] Tools con auto-análisis (encola CRITICAL si falta)
+- [x] Cache unificado (v0.4.4)
+- [x] UnifiedCacheManager con invalidación en cascada
+- [x] Documentación de tools MCP
+
+**Ubicación**: `src/layer-c-memory/mcp-server.js`
+
+---
+
+## Fases en Progreso / Próximas
+
+### 🏗️ FASE 6: Beta Testing y Robustez
+
+**Objetivo**: Preparar el sistema para uso real en proyectos
+
+**Duración estimada**: 2-4 semanas
 
 **Tareas**:
-- [x] Crear README.md con análisis del problema
-- [x] Crear ROADMAP.md (este archivo)
-- [ ] Crear ARCHITECTURE.md con diseño técnico
-- [ ] Crear docs/ con análisis detallado
-- [ ] Crear estructura de carpetas del proyecto
+- [ ] Testing en proyectos reales (3-5 proyectos open source)
+- [ ] Benchmark de performance (tiempo de análisis vs tamaño del proyecto)
+- [ ] Manejo de errores graceful (qué pasa si LLM no responde)
+- [ ] Métricas de uso (qué tools se usan más)
+- [ ] Documentación de troubleshooting
+- [ ] Guía de instalación simplificada
 
-**Entregables**:
-- Documentación completa que puede sobrevivir a la compactación de contexto
-- Estructura de proyecto profesional
-- Casos de uso claramente definidos
+**Casos de prueba objetivo**:
+```
+Proyectos para testear:
+1. React component library (50-100 archivos)
+2. Node.js API (100-200 archivos)
+3. Vue/Nuxt app (150-300 archivos)
+4. Proyecto propio del usuario
+```
 
 ---
 
-## FASE 1: Capa A - Indexer Estático (MVP)
+### ⏭️ FASE 7: Protocolo MCP Real
 
-**Duración estimada**: No estimamos tiempos - nos enfocamos en qué construir
+**Objetivo**: Implementar el protocolo MCP estándar para integración nativa con Claude Desktop
 
-**Objetivo**: Crear un analizador estático que genere un grafo de dependencias técnico.
+**Tareas**:
+- [ ] Implementar MCP SDK (@anthropic-ai/mcp)
+- [ ] Configuración via `claude_desktop_config.json`
+- [ ] Stdio transport para comunicación con Claude
+- [ ] Tool definitions dinámicas
+- [ ] Schema validation de requests/responses
 
-### 1.1: Parser de Código
-
-**Entregables**:
-- Script que puede parsear archivos JS/TS y extraer:
-  - Imports/exports
-  - Llamadas a funciones
-  - Acceso a propiedades
-  - Definiciones de clases/funciones
-
-**Stack técnico**:
-- Node.js
-- `@babel/parser` o `ts-morph` para AST parsing
-- `ripgrep` para búsquedas rápidas (opcional)
-
-**Casos de prueba**:
-```
-test-cases/scenario-1-simple-import/
-  ├── fileA.js (exporta función)
-  └── fileB.js (importa de A)
-Resultado esperado: Grafo detecta A → B
-```
-
-### 1.2: Constructor de Grafo
-
-**Entregables**:
-- Script que recorre el proyecto y construye `system-map.json`:
+**Configuración objetivo**:
 ```json
+// claude_desktop_config.json
 {
-  "files": {
-    "src/CameraState.js": {
-      "exports": ["CameraState", "updateCamera"],
-      "imports": ["./math/Vector3"],
-      "usedBy": ["src/RenderEngine.js", "src/Input.js"],
-      "calls": ["Vector3.normalize", "clamp"]
+  "mcpServers": {
+    "cognisystem": {
+      "command": "node",
+      "args": [
+        "/path/to/cognisystem/src/layer-c-memory/mcp-server.js",
+        "/path/to/user/project"
+      ]
     }
-  },
-  "dependencies": [
-    { "from": "RenderEngine.js", "to": "CameraState.js", "type": "import" },
-    { "from": "CameraState.js", "to": "Vector3.js", "type": "import" }
-  ]
+  }
 }
-```
-
-**Casos de prueba**:
-```
-test-cases/scenario-2-chain-dependency/
-  ├── A.js (exporta X)
-  ├── B.js (importa X, exporta Y)
-  └── C.js (importa Y)
-Resultado esperado: Grafo detecta A → B → C
-```
-
-### 1.3: Visualización (Debug)
-
-**Entregables**:
-- Script que convierte `system-map.json` a formato Mermaid o Graphviz
-- Permite visualizar el grafo en markdown
-
-**Propósito**:
-Validar que el grafo está correctamente construido antes de usarlo.
-
----
-
-## FASE 2: Integración Básica con IA
-
-**Objetivo**: Hacer que una IA pueda consultar el grafo antes de editar.
-
-### 2.1: Servidor MCP Simple
-
-**Entregables**:
-- Servidor MCP que expone una herramienta: `get_impact_map`
-- Input: nombre de archivo
-- Output: lista de archivos relacionados
-
-**Ejemplo de uso**:
-```bash
-IA: "Voy a editar CameraState.js"
-Tool: get_impact_map("CameraState.js")
-Respuesta: {
-  "directDependents": ["RenderEngine.js", "Input.js"],
-  "indirectDependents": ["Main.js"],
-  "imports": ["Vector3.js"]
-}
-IA: "Entendido, revisaré RenderEngine.js también"
-```
-
-### 2.2: Skill de Pre-Edición
-
-**Entregables**:
-- Skill personalizado que se ejecuta antes de editar
-- Automáticamente llama a `get_impact_map` y muestra advertencias
-
-**Casos de prueba**:
-```
-test-cases/scenario-3-forgotten-dependent/
-  ├── StateManager.js (módulo central)
-  ├── UI.js (depende del estado)
-  └── Logic.js (depende del estado)
-
-Prueba: Pedir a IA editar StateManager sin mencionar UI/Logic
-Resultado esperado: Skill advierte "Ojo, UI.js y Logic.js dependen de esto"
 ```
 
 ---
 
-## FASE 3: Capa B - Analizador Semántico con IA
+### ⏭️ FASE 8: VS Code Extension
 
-**Objetivo**: Detectar conexiones que el análisis estático no puede ver.
+**Objetivo**: Extensión oficial de VS Code para visualización gráfica
 
-### 3.1: Configuración de IA Local
+**Tareas**:
+- [ ] Graph view interactivo (dependencias entre archivos)
+- [ ] Panel de "Impact Preview" antes de guardar
+- [ ] Decoraciones en el editor (warnings de alto riesgo)
+- [ ] Status bar con estado del sistema
+- [ ] Comandos: "Analyze Current File", "Show Impact Map", etc.
 
-**Entregables**:
-- Setup de modelo local (Qwen2.5-Coder-7B o similar)
-- Script que puede hacer inferencia local
+**Ubicación**: `cognisystem-vscode/` (ya iniciado)
 
-**Consideraciones**:
-- Evaluar si vale la pena el costo computacional
-- Comparar con alternativas (GPT-4o-mini vía API)
+---
 
-### 3.2: Detector de Conexiones Semánticas
+### ⏭️ FASE 9: Optimización de Performance
 
-**Entregables**:
-- Script que lee el código y detecta:
-  - Estado compartido (variables globales, stores)
-  - Eventos/listeners
-  - Efectos indirectos (ej: un botón que triggerea una función en otro módulo)
+**Objetivo**: Soportar proyectos grandes (1000+ archivos)
 
-**Prompt para la IA**:
-```
-Analiza este código y lista todos los archivos del proyecto que
-podrían verse afectados si modifico esta función, incluso si no
-hay un import directo. Considera: estado compartido, eventos,
-callbacks, configuración global.
-```
+**Tareas**:
+- [ ] Análisis incremental (solo archivos cambiados)
+- [ ] Lazy loading de datos del grafo
+- [ ] Caché de análisis por función (no solo por archivo)
+- [ ] Workers paralelos para análisis
+- [ ] Optimización de queries (índices en SQLite)
 
-**Casos de prueba**:
-```
-test-cases/scenario-4-event-coupling/
-  ├── Button.js (dispara evento "click")
-  ├── Analytics.js (escucha "click")
-  └── Logger.js (escucha "click")
+**Métricas objetivo**:
+| Tamaño del Proyecto | Tiempo de Indexación | Query Time |
+|---------------------|---------------------|------------|
+| 100 archivos | < 30 segundos | < 100ms |
+| 500 archivos | < 3 minutos | < 200ms |
+| 1000 archivos | < 10 minutos | < 500ms |
 
-Resultado esperado: IA detecta que Button afecta Analytics y Logger
-aunque no hay imports directos.
-```
+---
 
-### 3.3: Enriquecimiento del Grafo
+### ⏭️ FASE 10: Features Avanzadas
 
-**Entregables**:
-- Script que combina Capa A (estático) + Capa B (semántico)
-- Genera `enhanced-system-map.json` con metadata enriquecida
+**Objetivo**: Expandir capacidades del sistema
 
-### 3.4: Arquitectura de Datos para Semantic Layer ✅ COMPLETADO
+**Tareas**:
+- [ ] Soporte multi-lenguaje (Python, Go, Rust)
+- [ ] Análisis de tests (qué tests correr tras cambio)
+- [ ] Sugerencias de refactoring automáticas
+- [ ] Detección de dead code avanzada
+- [ ] Integración con CI/CD (fallar build si riesgo crítico)
+- [ ] Historial de cambios (quién modificó qué y cuándo)
 
-**Objetivo**: Definir schemas y estructuras de datos ANTES de implementar IA.
+---
 
-**Entregables**:
-- ✅ `schema/enhanced-system-map.schema.json` - JSON Schema completo
-- ✅ `schema/types.d.ts` - TypeScript types para developer experience
-- ✅ `test-cases/scenario-2-semantic/` - Casos de prueba con conexiones no obvias
-  - 6 archivos con shared state y event listeners
-  - NO tienen imports entre sí (conexiones semánticas puras)
-  - `expected-semantic-connections.json` con resultados esperados
-- ✅ `src/layer-b-semantic/schema-validator.js` - Validador de output de IA
+## Métricas de Progreso
 
-**Schema diseñado**:
-```javascript
-{
-  "metadata": { version, generated, analyzers },
-  "files": {
-    "path/to/file.js": {
-      // Static analysis (ya existe)
-      "imports": [...], "exports": [...],
+### Por Componente
 
-      // Semantic analysis (nuevo)
-      "semanticConnections": [
-        {
-          "id": "conn_1",
-          "type": "shared_state",
-          "target": "path/to/other.js",
-          "reason": "Both access window.gameState",
-          "confidence": 0.95,
-          "severity": "high",
-          "sourceLocations": [{ function, line }],
-          "evidence": { sourceCode, targetCode }
-        }
-      ],
-      "sideEffects": {
-        "hasGlobalAccess": true,
-        "modifiesDOM": false,
-        ...
-      },
-      "riskScore": { total: 7.5, breakdown: {...} }
-    }
-  },
-  "connectionIndex": { by_type, by_file, by_severity }
-}
-```
+| Componente | Estado | Líneas de Código | Test Coverage |
+|------------|--------|-----------------|---------------|
+| Capa A (Static) | 95% ✅ | ~3,500 | 70% |
+| Capa B (Semantic) | 85% ✅ | ~2,800 | 60% |
+| Capa C (Memory) | 90% ✅ | ~1,500 | 50% |
+| Orchestrator | 90% ✅ | ~1,200 | 40% |
+| MCP Tools | 95% ✅ | ~800 | 30% |
+| Cache System | 95% ✅ | ~600 | 50% |
+| **TOTAL** | **90%** | **~10,400** | **50%** |
 
-**Scope definido**:
-- Análisis a nivel de ARCHIVO (no bloques de código)
-- Metadata a nivel de FUNCIÓN (para ubicación exacta)
-- Conexiones: shared_state, event_listener, callback, side_effect, global_access, mutation
-- Risk scores: 0-10 scale
+### Por Funcionalidad
 
-**Validación**:
-- Confidence threshold: 0.7 (configurable)
-- Severity levels: low, medium, high, critical
-- Auto-filtrado de conexiones de baja confianza
+| Feature | Status | Notas |
+|---------|--------|-------|
+| Análisis estático | ✅ Completo | 15+ detectores |
+| Análisis semántico | ✅ Completo | Híbrido: estático + IA |
+| Cola de prioridad | ✅ Completo | CRITICAL > HIGH > MEDIUM > LOW |
+| File watching | ✅ Completo | Detección en tiempo real |
+| Auto-indexación | ✅ Completo | Background, no bloqueante |
+| Tools MCP | ✅ Completo | 6 tools disponibles |
+| VS Code Bridge | 🏗️ WIP | Puerto 9998 |
+| MCP Protocol | ⏭️ Planned | Integración con Claude Desktop |
+| Multi-lenguaje | ⏭️ Planned | Python, Go, Rust |
 
-**Por qué este orden**:
-1. No puedes meter IA sin saber dónde escribe resultados
-2. Schema definido permite iterar rápido con mocks
-3. Test cases validan que el esquema cubre todos los casos
+---
 
-### 3.5: Semantic Detection - Static (Hybrid Approach) ⏭️ PRÓXIMO
+## Changelog
 
-**Objetivo**: Detectar conexiones semánticas usando análisis estático (scripts puros). IA solo para casos complejos.
+Ver [CHANGELOG.md](CHANGELOG.md) para historial detallado.
 
-**Filosofía Híbrida**:
-```
-Layer A-Extended (Scripts)      Layer B (IA - Optional)
-├─ 80% de casos                 ├─ 20% de casos complejos
-├─ Patterns obvios              ├─ Código dinámico
-├─ Zero cost                    ├─ Indirección compleja
-├─ Instantáneo (<100ms)         ├─ Context understanding
-└─ 100% reproducible            └─ Síntesis y verificación
-```
+**Últimas versiones**:
+- v0.4.5: MCP Unified Entry Point (current)
+- v0.4.4: Unified Cache System
+- v0.4.3: Bug fixes y estabilidad
+- v0.4.2: Context optimization
+- v0.4.0: Semantic enrichment con IA
 
-#### 3.5.1: Detección Estática de Shared State
+---
 
-**Entregables**:
-- `src/layer-a-static/analyses/tier3/shared-state-detector.js`
-- Detecta `window.*`, `globalThis.*`, `global.*`
-- AST traversal para encontrar reads/writes
-- Genera conexiones con confidence = 1.0 (determinístico)
+## Contribuciones
 
-**Algoritmo**:
-```javascript
-1. Para cada archivo:
-   a. Traverse AST buscando MemberExpression con object = "window"
-   b. Clasificar como READ o WRITE
-   c. Guardar línea y función donde ocurre
+¿Quieres contribuir? Áreas donde necesitamos ayuda:
 
-2. Para cada propiedad global:
-   a. Si tiene WRITERS y READERS en archivos distintos
-   b. Crear semantic connection: writer → reader
-   c. Confidence: 1.0 (100% seguro)
-   d. Severity: calculado por scoring rules
-```
+1. **Testing**: Probar el sistema en proyectos reales
+2. **Documentación**: Tutoriales, guías de uso
+3. **Performance**: Optimización para proyectos grandes
+4. **Lenguajes**: Soporte para Python, Go, Rust
+5. **UI/UX**: Mejorar visualización de dependencias
 
-**Casos detectados**:
-```javascript
-// DETECTA:
-window.gameState = { score: 0 };           // Write
-const score = window.gameState.score;      // Read
-window.eventBus.emit('event');             // Write (method call)
+---
 
-// NO DETECTA (requiere IA):
-const state = window.gameState;
-state.score = 10;                          // Indirección
-window[propName] = value;                  // Dynamic property
-```
+## Referencias
 
-#### 3.5.2: Detección Estática de Event Patterns
-
-**Entregables**:
-- `src/layer-a-static/analyses/tier3/event-pattern-detector.js`
-- Detecta event emitters y listeners
-- Matching automático entre emisores y receptores
-
-**Patterns detectados**:
-```javascript
-// Event Bus Pattern
-window.eventBus.on('event:name', handler);    // Listener
-window.eventBus.emit('event:name', data);     // Emitter
-
-// DOM Events
-element.addEventListener('click', handler);    // Listener
-element.dispatchEvent(new Event('click'));    // Emitter
-
-// Custom Emitters
-EventEmitter.on('custom', handler);
-EventEmitter.emit('custom', data);
-```
-
-**Algoritmo**:
-```javascript
-1. Detectar listeners:
-   a. Buscar CallExpression con método "on", "addEventListener"
-   b. Extraer event name (primer argumento)
-   c. Guardar: { file, line, eventName, type: 'listener' }
-
-2. Detectar emitters:
-   a. Buscar CallExpression con método "emit", "dispatchEvent"
-   b. Extraer event name
-   c. Guardar: { file, line, eventName, type: 'emitter' }
-
-3. Matching:
-   a. Para cada eventName que tiene listeners Y emitters
-   b. Crear conexiones: emitter → listener
-   c. Confidence: 1.0 si string literal, 0.8 si variable
-```
-
-#### 3.5.3: Side Effects Detection
-
-**Entregables**:
-- `src/layer-a-static/analyses/tier3/side-effects-detector.js`
-- Detecta todas las categorías de side effects
-
-**Detecciones**:
-```javascript
-{
-  "hasGlobalAccess": detectGlobalAccess(),      // window.*, global.*
-  "modifiesDOM": detectDOMCalls(),              // document.*, querySelector, etc.
-  "makesNetworkCalls": detectNetworkAPIs(),     // fetch, XMLHttpRequest, axios
-  "usesLocalStorage": detectStorageCalls(),     // localStorage, sessionStorage
-  "accessesWindow": detectWindowAccess(),       // window object usage
-  "modifiesGlobalState": detectGlobalWrites(),  // window.x = ..., global.y = ...
-  "hasEventListeners": detectEventListeners(),  // addEventListener, on()
-  "usesTimers": detectTimerCalls()              // setTimeout, setInterval
-}
-```
-
-**Implementación por categoría**:
-```javascript
-// 1. DOM Manipulation
-function detectDOMCalls(ast) {
-  const domAPIs = ['document', 'querySelector', 'getElementById',
-                   'appendChild', 'removeChild', 'innerHTML', 'textContent'];
-  return hasCallToAny(ast, domAPIs);
-}
-
-// 2. Network Calls
-function detectNetworkAPIs(ast) {
-  const networkAPIs = ['fetch', 'XMLHttpRequest', 'axios', 'request'];
-  return hasCallToAny(ast, networkAPIs);
-}
-
-// 3. Storage
-function detectStorageCalls(ast) {
-  const storageAPIs = ['localStorage', 'sessionStorage', 'indexedDB'];
-  return hasAccessToAny(ast, storageAPIs);
-}
-```
-
-#### 3.5.4: Rule-Based Scoring (Sin IA)
-
-**Entregables**:
-- `src/layer-a-static/analyses/tier3/risk-scorer.js`
-- Sistema de scoring basado en reglas (no IA)
-- Rápido, determinístico, explicable
-
-**Scoring Rules**:
-```javascript
-function calculateRiskScore(file, connections, sideEffects, analysis) {
-  let score = 0;
-
-  // 1. Static Complexity (0-3 points)
-  score += Math.min(3, file.functions.length / 10);  // Más funciones = más riesgo
-  score += Math.min(2, file.imports.length / 20);    // Muchas dependencias
-
-  // 2. Semantic Connections (0-3 points)
-  const connectionCount = connections.length;
-  if (connectionCount >= 5) score += 3;
-  else if (connectionCount >= 3) score += 2;
-  else if (connectionCount >= 1) score += 1;
-
-  // 3. Side Effects (0-3 points)
-  const sideEffectCount = Object.values(sideEffects).filter(Boolean).length;
-  if (sideEffectCount >= 4) score += 3;
-  else if (sideEffectCount >= 2) score += 2;
-  else if (sideEffectCount >= 1) score += 1;
-
-  // 4. Hotspot Risk (0-1 point)
-  const isHotspot = analysis.hotspots.some(h => h.file === file.path);
-  if (isHotspot) score += 1;
-
-  return Math.min(10, score);
-}
-```
-
-**Severity Calculation**:
-```javascript
-function calculateSeverity(connection, fileRisk) {
-  // Shared state + high risk file = CRITICAL
-  if (connection.type === 'shared_state' && fileRisk >= 7) {
-    return 'critical';
-  }
-
-  // Event listener + hotspot = HIGH
-  if (connection.type === 'event_listener' && fileRisk >= 5) {
-    return 'high';
-  }
-
-  // Multiple readers/writers = HIGH
-  if (connection.readers?.length > 3 || connection.writers?.length > 3) {
-    return 'high';
-  }
-
-  // Default
-  return connection.type === 'side_effect' ? 'low' : 'medium';
-}
-```
-
-#### 3.5.5: Integration con Static Analysis
-
-**Entregables**:
-- Integrar semantic detection en pipeline existente
-- Generar `enhanced-system-map.json` con resultados
-
-**Flujo actualizado**:
-```javascript
-// indexer.js (main pipeline)
-async function analyzeProject(projectPath) {
-  // 1. Static Analysis (existente)
-  const systemMap = await buildSystemMap(projectPath);
-  const analysis = await analyzeSystemMap(systemMap);
-
-  // 2. Semantic Detection - STATIC (nuevo)
-  const semanticConnections = {
-    sharedState: detectSharedState(systemMap),
-    eventPatterns: detectEventPatterns(systemMap),
-    sideEffects: detectSideEffects(systemMap)
-  };
-
-  // 3. Risk Scoring (nuevo)
-  const riskScores = calculateRiskScores(systemMap, semanticConnections, analysis);
-
-  // 4. Merge everything
-  const enhanced = mergeAnalyses(systemMap, analysis, semanticConnections, riskScores);
-
-  // 5. Save
-  fs.writeFileSync('enhanced-system-map.json', JSON.stringify(enhanced, null, 2));
-
-  return enhanced;
-}
-```
+- [README.md](README.md) - Overview del proyecto
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico
+- [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) - Documentación de tools
+- [changelog/](changelog/) - Historial de versiones
