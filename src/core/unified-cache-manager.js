@@ -188,15 +188,61 @@ export class UnifiedCacheManager {
   
   /**
    * Inicializa el caché
+   * AHORA: Carga directamente desde Layer A (.OmnySystemData/)
    */
   async initialize() {
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
-      await this.loadIndex();
+      
+      // Intentar cargar desde Layer A primero
+      const loadedFromLayerA = await this.loadFromLayerA();
+      
+      if (!loadedFromLayerA) {
+        // Fallback a caché propio si Layer A no tiene datos
+        await this.loadIndex();
+      }
+      
       this.loaded = true;
-      console.log(`📦 UnifiedCache: ${Object.keys(this.index.entries).length} archivos indexados`);
+      const count = Object.keys(this.index.entries).length;
+      console.log(`📦 UnifiedCache: ${count} archivos indexados (from Layer A)`);
     } catch (error) {
       console.warn('⚠️  Failed to initialize unified cache:', error.message);
+    }
+  }
+  
+  /**
+   * Carga datos desde Layer A (.OmnySystemData/index.json)
+   * @returns {boolean} true si cargó correctamente
+   */
+  async loadFromLayerA() {
+    try {
+      const layerAIndexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
+      const content = await fs.readFile(layerAIndexPath, 'utf-8');
+      const layerAData = JSON.parse(content);
+      
+      if (layerAData.files && layerAData.files.length > 0) {
+        // Convertir formato Layer A al formato del Cache
+        for (const file of layerAData.files) {
+          this.index.entries[file.filePath] = {
+            hash: file.metadata?.hash || '',
+            lastAnalyzed: file.metadata?.lastAnalyzed || Date.now(),
+            staticVersion: layerAData.metadata?.analysisVersion || '1.0.0',
+            llmVersion: null, // Se actualiza cuando pasa Layer B
+            changeType: ChangeType.NONE,
+            dependencies: file.dependencies || [],
+            metadata: file.metadata
+          };
+        }
+        
+        this.index.metadata.totalFiles = layerAData.files.length;
+        await this.saveIndex();
+        return true;
+      }
+      
+      return false;
+    } catch {
+      // Layer A no tiene datos todavía
+      return false;
     }
   }
   

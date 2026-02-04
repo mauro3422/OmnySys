@@ -66,7 +66,7 @@ export class CogniSystemMCPServer {
     });
     await this.orchestrator.initialize();
 
-    // Init Cache (now with analysis data available)
+    // Init Cache (now loads from Layer A automatically)
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('STEP 4: Initialize Cache');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
