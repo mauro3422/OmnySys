@@ -17,9 +17,10 @@ import crypto from 'crypto';
  * Gestor de caché para resultados LLM
  */
 export class LLMCache {
-  constructor(cacheDir = '.OmnySystemData/llm-cache') {
+  constructor(cacheDir = '.OmnySystemData/llm-cache', maxEntries = 500) {
     this.cacheDir = cacheDir;
     this.enabled = true;
+    this.maxEntries = maxEntries; // Límite máximo de archivos en caché
   }
 
   /**
@@ -97,6 +98,45 @@ export class LLMCache {
   }
 
   /**
+   * Limpia entradas antiguas si se excede el límite (rotación FIFO)
+   * @private
+   */
+  async rotateCacheIfNeeded() {
+    try {
+      const files = await fs.readdir(this.cacheDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      
+      if (jsonFiles.length < this.maxEntries) {
+        return; // No necesita rotación
+      }
+      
+      // Ordenar por mtime (más antiguo primero)
+      const filesWithStats = await Promise.all(
+        jsonFiles.map(async (f) => {
+          const stat = await fs.stat(path.join(this.cacheDir, f));
+          return { file: f, mtime: stat.mtime };
+        })
+      );
+      
+      filesWithStats.sort((a, b) => a.mtime - b.mtime);
+      
+      // Eliminar los más antiguos hasta dejar espacio (mantener 80% del límite)
+      const targetSize = Math.floor(this.maxEntries * 0.8);
+      const toDelete = filesWithStats.slice(0, filesWithStats.length - targetSize);
+      
+      for (const { file } of toDelete) {
+        await fs.unlink(path.join(this.cacheDir, file));
+      }
+      
+      if (toDelete.length > 0) {
+        console.log(`🔄 LLM cache rotated: removed ${toDelete.length} old entries`);
+      }
+    } catch (error) {
+      // Ignorar errores de rotación
+    }
+  }
+
+  /**
    * Guarda un resultado en caché
    * @param {string} filePath - Ruta del archivo
    * @param {string} code - Código fuente
@@ -108,6 +148,9 @@ export class LLMCache {
     if (!this.enabled) return false;
 
     try {
+      // Rotación: limpiar entradas antiguas si es necesario
+      await this.rotateCacheIfNeeded();
+      
       const cacheKey = this.generateCacheKey(filePath, code, promptTemplate);
       const cachePath = this.getCachePath(cacheKey);
 
@@ -173,6 +216,7 @@ export class LLMCache {
       return {
         enabled: true,
         entries: jsonFiles.length,
+        maxEntries: this.maxEntries,
         totalSize,
         totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
         cacheDir: this.cacheDir

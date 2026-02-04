@@ -130,6 +130,16 @@ class WSClient {
 
   handleClose() {
     this.state = ConnectionState.DISCONNECTED;
+    
+    // FIX: Limpiar subscriptions para prevenir memory leak
+    // Aunque el objeto eventualmente será GC'd, limpiar explícitamente
+    // ayuda a liberar memoria rápidamente en escenarios de alta reconexión
+    const subCount = this.subscriptions.size;
+    this.subscriptions.clear();
+    if (subCount > 0) {
+      console.log(`🧹 Cleaned up ${subCount} subscriptions for client ${this.id}`);
+    }
+    
     this.manager.removeClient(this.id);
   }
 

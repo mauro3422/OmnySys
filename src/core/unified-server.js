@@ -142,22 +142,239 @@ class CogniSystemUnifiedServer extends EventEmitter {
     console.log('STEP 1: MCP Server Initialization');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Load project metadata
-    this.metadata = await getProjectMetadata(this.projectPath);
-    this.cache.set('metadata', this.metadata);
-    console.log('  ✓ Metadata cached');
+    // Check if analysis exists
+    const hasAnalysis = await this.hasExistingAnalysis();
+    
+    if (!hasAnalysis) {
+      console.log('  ⚠️  No analysis data found');
+      console.log('  🔄 Queuing initial analysis in background...\n');
+      
+      // Start analysis in background (non-blocking)
+      this.queueInitialAnalysis();
+      
+      // Initialize with empty data for now
+      this.metadata = { metadata: { totalFiles: 0 }, fileIndex: {} };
+      this.cache.set('metadata', this.metadata);
+      this.cache.set('connections', { sharedState: [], eventListeners: [], total: 0 });
+      this.cache.set('assessment', { report: { summary: {} } });
+      
+      console.log('  ⏳ Server ready, analysis running in background\n');
+    } else {
+      // Load existing data
+      this.metadata = await getProjectMetadata(this.projectPath);
+      this.cache.set('metadata', this.metadata);
+      console.log('  ✓ Metadata cached');
 
-    // Load connections
-    const connections = await getAllConnections(this.projectPath);
-    this.cache.set('connections', connections);
-    console.log('  ✓ Connections cached');
+      const connections = await getAllConnections(this.projectPath);
+      this.cache.set('connections', connections);
+      console.log('  ✓ Connections cached');
 
-    // Load risk assessment
-    const assessment = await getRiskAssessment(this.projectPath);
-    this.cache.set('assessment', assessment);
-    console.log('  ✓ Risk assessment cached');
+      const assessment = await getRiskAssessment(this.projectPath);
+      this.cache.set('assessment', assessment);
+      console.log('  ✓ Risk assessment cached');
 
-    console.log(`  📊 ${this.metadata?.metadata?.totalFiles || 0} files indexed\n`);
+      console.log(`  📊 ${this.metadata?.metadata?.totalFiles || 0} files indexed\n`);
+    }
+  }
+
+  /**
+   * Check if analysis data exists
+   */
+  async hasExistingAnalysis() {
+    try {
+      const indexPath = path.join(this.omnySystemDataPath, 'index.json');
+      await fs.access(indexPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Queue initial analysis in background
+   */
+  async queueInitialAnalysis() {
+    // Import indexer dynamically
+    const { indexProject } = await import('../layer-a-static/indexer.js');
+    
+    // Check LLM health first
+    let llmAvailable = false;
+    try {
+      const { LLMClient } = await import('../ai/llm-client.js');
+      const client = new LLMClient({ llm: { enabled: true } });
+      const health = await client.healthCheck();
+      llmAvailable = health.gpu || health.cpu;
+    } catch {
+      llmAvailable = false;
+    }
+    
+    // Run analysis in background (don't await)
+    indexProject(this.projectPath, {
+      outputPath: 'system-map.json',
+      verbose: true,
+      skipLLM: !llmAvailable  // Skip LLM if not available
+    }).then(() => {
+      console.log('\n📊 Background analysis completed');
+      // Reload metadata
+      return this.reloadMetadata();
+    }).catch(error => {
+      console.error('\n❌ Background analysis failed:', error.message);
+    });
+  }
+
+  /**
+   * Reload metadata after analysis completes
+   */
+  async reloadMetadata() {
+    try {
+      this.metadata = await getProjectMetadata(this.projectPath);
+      this.cache.set('metadata', this.metadata);
+      
+      const connections = await getAllConnections(this.projectPath);
+      this.cache.set('connections', connections);
+      
+      const assessment = await getRiskAssessment(this.projectPath);
+      this.cache.set('assessment', assessment);
+      
+      // Notify all clients
+      this.wsManager?.broadcast({
+        type: 'analysis:completed',
+        filesAnalyzed: this.metadata?.metadata?.totalFiles || 0,
+        timestamp: Date.now()
+      });
+      
+      console.log(`📊 Data refreshed: ${this.metadata?.metadata?.totalFiles || 0} files`);
+    } catch (error) {
+      console.error('Failed to reload metadata:', error.message);
+    }
+  }
+
+  /**
+   * Initialize File Watcher for real-time updates
+   */
+  async initializeFileWatcher() {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('STEP 4: File Watcher Initialization');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    this.fileWatcher = new FileWatcher(this.projectPath, {
+      debounceMs: 500,
+      batchDelayMs: 1000,
+      maxConcurrent: 3,
+      verbose: true
+    });
+
+    this.fileWatcher.on('file:created', (event) => {
+      this.batchProcessor?.addChange(event.filePath, 'created');
+    });
+
+    this.fileWatcher.on('file:modified', (event) => {
+      this.batchProcessor?.addChange(event.filePath, 'modified');
+    });
+
+    this.fileWatcher.on('file:deleted', (event) => {
+      this.batchProcessor?.addChange(event.filePath, 'deleted');
+    });
+
+    await this.fileWatcher.initialize();
+    console.log('  ✓ File Watcher ready\n');
+  }
+
+  /**
+   * Initialize Batch Processor
+   */
+  async initializeBatchProcessor() {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('STEP 5: Batch Processor Initialization');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    this.batchProcessor = new BatchProcessor({
+      maxBatchSize: 20,
+      batchTimeoutMs: 1000,
+      maxConcurrent: 3,
+      // FIX: Conectar BatchProcessor a AnalysisQueue
+      processChange: async (change) => {
+        // Encolar el archivo para análisis con prioridad basada en el tipo de cambio
+        const priority = this.calculateChangePriority(change);
+        const position = this.queue.enqueue(change.filePath, priority);
+        
+        console.log(`📥 BatchProcessor → Queue: ${path.basename(change.filePath)} [${priority}] at position ${position}`);
+        
+        // Iniciar procesamiento si estamos idle
+        if (!this.currentJob && this.isRunning) {
+          this.processNext();
+        }
+        
+        // Notificar a WebSocket clients
+        this.wsManager?.broadcast({
+          type: 'file:queued',
+          filePath: change.filePath,
+          changeType: change.changeType,
+          priority,
+          position,
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // FIX: Escuchar eventos del batch processor para métricas y notificaciones
+    this.batchProcessor.on('batch:completed', (batch) => {
+      console.log(`✅ Batch ${batch.id} completed: ${batch.changes.size} changes processed`);
+      
+      // Notificar a clientes WebSocket
+      this.wsManager?.broadcast({
+        type: 'batch:completed',
+        batchId: batch.id,
+        stats: batch.getStats(),
+        timestamp: Date.now()
+      });
+    });
+
+    this.batchProcessor.on('batch:failed', (batch, error) => {
+      console.error(`❌ Batch ${batch.id} failed:`, error.message);
+      
+      this.wsManager?.broadcast({
+        type: 'batch:failed',
+        batchId: batch.id,
+        error: error.message,
+        timestamp: Date.now()
+      });
+    });
+
+    this.batchProcessor.start();
+    console.log('  ✓ Batch Processor ready (connected to AnalysisQueue)\n');
+  }
+
+  /**
+   * Calcula prioridad basada en el tipo de cambio del archivo
+   */
+  calculateChangePriority(change) {
+    // Cambios que rompen API tienen mayor prioridad
+    if (change.changeType === 'deleted') return 'critical';
+    if (change.changeType === 'created') return 'high';
+    
+    // Para modificaciones, usar la prioridad calculada por el BatchProcessor
+    if (change.priority >= 4) return 'critical';
+    if (change.priority === 3) return 'high';
+    if (change.priority === 2) return 'medium';
+    return 'low';
+  }
+
+  /**
+   * Initialize WebSocket Manager
+   */
+  async initializeWebSocket() {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('STEP 6: WebSocket Manager Initialization');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    this.wsManager = new WebSocketManager({
+      port: 9997,
+      maxClients: 50
+    });
+
+    await this.wsManager.start();
+    console.log('  ✓ WebSocket Manager ready\n');
   }
 
   async initializeOrchestrator() {
@@ -192,6 +409,18 @@ class CogniSystemUnifiedServer extends EventEmitter {
         this.currentJob = null;
         this.updateState();
         this.emit('job:error', job, error);
+        
+        // FIX: Notificar a clientes WebSocket del error
+        this.wsManager?.broadcast({
+          type: 'analysis:failed',
+          filePath: job.filePath,
+          error: error.message,
+          timestamp: Date.now()
+        });
+        
+        // Nota: No invalidamos el cache en caso de error
+        // El worker ya hizo rollback del análisis fallido
+        
         this.processNext();
       }
     });

@@ -7,13 +7,15 @@
  */
 
 export class QueryCache {
-  constructor(ttlMinutes = 5) {
+  constructor(ttlMinutes = 5, maxEntries = 1000) {
     this.cache = new Map();
     this.ttlMs = ttlMinutes * 60 * 1000;
+    this.maxEntries = maxEntries; // Límite máximo de entradas
     this.stats = {
       hits: 0,
       misses: 0,
-      expirations: 0
+      expirations: 0,
+      evictions: 0 // Nuevo: contador de evicciones LRU
     };
   }
 
@@ -40,9 +42,21 @@ export class QueryCache {
   }
 
   /**
-   * Guarda un valor en caché
+   * Guarda un valor en caché (con LRU eviction si se alcanza el límite)
    */
   set(key, data) {
+    // Si la clave ya existe, la actualizamos (mueve al final en Map)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    
+    // LRU Eviction: si estamos en el límite, eliminar la entrada más antigua
+    if (this.cache.size >= this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+      this.stats.evictions++;
+    }
+    
     this.cache.set(key, {
       data,
       expiry: Date.now() + this.ttlMs,
@@ -88,6 +102,7 @@ export class QueryCache {
       totalRequests,
       hitRate: `${hitRate}%`,
       cacheSize: this.cache.size,
+      maxEntries: this.maxEntries,
       memoryUsage: this._estimateMemory()
     };
   }

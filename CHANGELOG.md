@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** (Latest) |
+| **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** (Latest) |
+| **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** |
 | **[0.4.0-0.4.1]** | `changelog/v0.4.0.md` | **Phase 3.8: Capa B - Semantic Enrichment** |
 | **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
 | **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
@@ -19,16 +20,19 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.4.2 (2026-02-03)**
+### **🚀 Latest Release: v0.4.3 (2026-02-03)**
 
-**Major Milestone**: Context optimization and function-level analysis preparation
+**Patch Release**: Critical bug fixes and stability improvements
 
-**Key Features**:
-- ✅ **Optimized LLM Context** (only relevant data, no noise)
-- ✅ **Complete Import Analysis** (all imports with metadata, not just 3)
-- ✅ **Function-Level Analysis** (prepared for future granular analysis)
-- ✅ **Semantic-Enricher Refactoring** (6 modules, <400 lines each)
-- ✅ **8GB VRAM Optimized** (2 slots × 16K tokens)
+**Key Fixes**:
+- ✅ **Batch Processor Connected** (FileWatcher → Queue → Worker flow fixed)
+- ✅ **Atomic State Manager** (prevents state corruption on concurrent writes)
+- ✅ **Cache LRU Limits** (memory protection for QueryCache and LLMCache)
+- ✅ **MCP Cleanup** (proper resource disposal on shutdown)
+- ✅ **Analysis Rollback** (restores previous state on analysis failure)
+- ✅ **Unified LLM Behavior** (consistent handling across commands)
+
+**Previous: v0.4.2** - Context optimization and function-level analysis preparation
 
 **Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
 
@@ -47,6 +51,7 @@ This repository uses a modular changelog structure for better organization and m
 | **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | ✅ Complete |
 | **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | ✅ Complete |
 | **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
+| **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |
 
 ### **💡 Why This Structure?**
 

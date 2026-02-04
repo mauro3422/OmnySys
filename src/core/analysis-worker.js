@@ -47,6 +47,9 @@ export class AnalysisWorker {
   
   /**
    * Analiza un archivo
+   * 
+   * FIX: Implementa rollback de caché si el análisis falla.
+   * Esto previene que el cache quede en estado inconsistente.
    */
   async analyze(job) {
     if (this.isPaused) {
@@ -56,6 +59,15 @@ export class AnalysisWorker {
     
     this.currentAbortController = new AbortController();
     const { signal } = this.currentAbortController;
+    
+    // FIX: Guardar estado anterior del archivo para posible rollback
+    let previousAnalysis = null;
+    try {
+      previousAnalysis = await getFileAnalysis(this.rootPath, job.filePath);
+    } catch {
+      // No había análisis previo, es un archivo nuevo
+      previousAnalysis = null;
+    }
     
     try {
       this.callbacks.onProgress?.(job, 10);
@@ -84,6 +96,19 @@ export class AnalysisWorker {
       if (error.message === 'Analysis aborted') {
         console.log(`⏹️  Analysis aborted for ${path.basename(job.filePath)}`);
       } else {
+        // FIX: Rollback - restaurar análisis anterior si existe
+        if (previousAnalysis) {
+          console.warn(`⚠️  Analysis failed for ${path.basename(job.filePath)}, restoring previous analysis`);
+          try {
+            // Re-escribir el análisis anterior al disco
+            const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
+            await saveFileAnalysis(this.rootPath, job.filePath, previousAnalysis);
+            console.log(`🔄 Restored previous analysis for ${path.basename(job.filePath)}`);
+          } catch (rollbackError) {
+            console.error(`❌ Failed to rollback analysis for ${job.filePath}:`, rollbackError.message);
+          }
+        }
+        
         this.callbacks.onError?.(job, error);
       }
     } finally {

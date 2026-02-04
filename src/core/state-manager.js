@@ -1,6 +1,9 @@
 /**
  * state-manager.js
  * Maneja el archivo de estado compartido entre procesos
+ * 
+ * FIX: Usa escritura atómica para prevenir corrupción de estado
+ * cuando múltiples requests llegan simultáneamente.
  */
 
 import fs from 'fs/promises';
@@ -11,10 +14,16 @@ export class StateManager {
     this.filePath = filePath;
     this.lastWrite = 0;
     this.writeDebounceMs = 100; // Evitar escrituras muy frecuentes
+    this.writeLock = Promise.resolve(); // Lock para escrituras secuenciales
   }
   
   /**
-   * Escribe estado al archivo
+   * Escribe estado al archivo (ATÓMICO)
+   * 
+   * Estrategia:
+   * 1. Escribir a archivo temporal
+   * 2. Renombrar atómicamente al archivo destino
+   * 3. Usar lock para secuencializar escrituras concurrentes
    */
   async write(state) {
     const now = Date.now();
@@ -24,22 +33,42 @@ export class StateManager {
       await new Promise(resolve => setTimeout(resolve, this.writeDebounceMs));
     }
     
-    try {
-      // Asegurar que el directorio existe
-      const dir = path.dirname(this.filePath);
-      await fs.mkdir(dir, { recursive: true });
-      
-      // Escribir archivo
-      await fs.writeFile(
-        this.filePath,
-        JSON.stringify(state, null, 2),
-        'utf-8'
-      );
-      
-      this.lastWrite = Date.now();
-    } catch (error) {
-      console.error('Error writing state:', error);
-    }
+    // FIX: Usar lock para prevenir race conditions
+    return this.writeLock = this.writeLock.then(async () => {
+      try {
+        // Asegurar que el directorio existe
+        const dir = path.dirname(this.filePath);
+        await fs.mkdir(dir, { recursive: true });
+        
+        // FIX: Escritura atómica
+        const tempPath = `${this.filePath}.tmp.${Date.now()}.${process.pid}`;
+        
+        // 1. Escribir a archivo temporal
+        await fs.writeFile(
+          tempPath,
+          JSON.stringify(state, null, 2),
+          'utf-8'
+        );
+        
+        // 2. Renombrar atómicamente (operación atómica en filesystem)
+        await fs.rename(tempPath, this.filePath);
+        
+        this.lastWrite = Date.now();
+      } catch (error) {
+        console.error('Error writing state:', error);
+        // Limpiar archivo temporal si existe
+        try {
+          const tempFiles = await fs.readdir(path.dirname(this.filePath));
+          for (const file of tempFiles) {
+            if (file.startsWith(`${path.basename(this.filePath)}.tmp.`)) {
+              await fs.unlink(path.join(path.dirname(this.filePath), file));
+            }
+          }
+        } catch (cleanupError) {
+          // Ignorar errores de limpieza
+        }
+      }
+    });
   }
   
   /**

@@ -91,6 +91,97 @@ async function isPortInUse(port) {
 }
 
 /**
+ * Ensure LLM servers are available (auto-start if needed)
+ * 
+ * FIX: Función unificada para manejar disponibilidad de LLM.
+ * Usada tanto por consolidate() como por serve() para comportamiento consistente.
+ * 
+ * @param {object} aiConfig - Configuración de AI
+ * @param {object} options - Opciones
+ * @param {boolean} options.required - Si true, falla si no hay LLM disponible
+ * @param {boolean} options.autoStart - Si true, intenta iniciar el servidor automáticamente
+ * @param {number} options.maxWaitSeconds - Máximo tiempo de espera
+ * @returns {Promise<{available: boolean, gpu: boolean, cpu: boolean, started: boolean}>}
+ */
+async function ensureLLMAvailable(aiConfig, options = {}) {
+  const { required = true, autoStart = true, maxWaitSeconds = 60 } = options;
+  
+  const client = new LLMClient(aiConfig);
+  let health = await client.healthCheck();
+  let started = false;
+  
+  // Si ya está disponible, retornar inmediatamente
+  if (health.gpu || health.cpu) {
+    return { available: true, gpu: health.gpu, cpu: health.cpu, started: false };
+  }
+  
+  // Intentar iniciar servidor si está configurado
+  if (autoStart && !health.gpu && !health.cpu) {
+    console.log('  ⚠️  AI server not running - attempting to start...');
+    
+    // Check if server is already starting to avoid double spawn
+    if (await isBrainServerStarting()) {
+      console.log('  ⏳ AI server is already starting, waiting...');
+    } else if (await isPortInUse(8000)) {
+      console.log('  ⏳ Port 8000 is in use, server may be starting...');
+    } else {
+      console.log('  🔧 Starting GPU server...');
+      
+      const llmServerPath = path.join(process.cwd(), 'src', 'ai', 'scripts', 'start_brain_gpu.bat');
+      
+      if (await exists(llmServerPath)) {
+        const llmProcess = spawn('cmd.exe', ['/c', llmServerPath], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: false
+        });
+        llmProcess.unref();
+        started = true;
+      } else {
+        console.error(`  ❌ Start script not found: ${llmServerPath}`);
+      }
+    }
+    
+    // Esperar a que el servidor esté listo
+    console.log(`  ⏳ Waiting for server (max ${maxWaitSeconds}s)...`);
+    
+    let attempts = 0;
+    const maxAttempts = maxWaitSeconds;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      health = await client.healthCheck();
+      
+      if (health.gpu || health.cpu) {
+        console.log('  ✓ AI server ready');
+        return { available: true, gpu: health.gpu, cpu: health.cpu, started: true };
+      }
+      
+      attempts++;
+      if (attempts % 5 === 0) {
+        console.log(`  ⏳ Still waiting... (${attempts}/${maxAttempts}s)`);
+      }
+    }
+    
+    // Si llegamos aquí, el servidor no se inició a tiempo
+    console.error(`  ❌ AI server failed to start after ${maxWaitSeconds} seconds`);
+  }
+  
+  // Si es requerido, fallar
+  if (required) {
+    console.error('\n❌ No AI servers available!');
+    console.error('\n💡 Start AI server manually:');
+    console.error('   src/ai/scripts/start_brain_gpu.bat');
+    console.error('Or run:');
+    console.error('   omnysystem ai start gpu\n');
+    process.exit(1);
+  }
+  
+  // Si no es requerido, retornar disponibilidad actual
+  return { available: false, gpu: false, cpu: false, started };
+}
+
+/**
  * Resolve project path to absolute
  */
 function resolveProjectPath(projectPath) {
@@ -271,21 +362,18 @@ async function consolidate(projectPath) {
       process.exit(1);
     }
 
-    // Check if AI servers are running
+    // Check if AI servers are running (FIX: Usar función unificada)
     console.log('🔍 Checking AI server status...');
     const aiConfig = await loadAIConfig();
-    const client = new LLMClient(aiConfig);
-    const health = await client.healthCheck();
-
-    if (!health.gpu && !health.cpu) {
-      console.error('\n❌ No AI servers available!');
-      console.error('\n💡 Start AI server first:');
-      console.error('   src/ai/scripts/start_brain_gpu.bat\n');
-      console.error('Or run:');
-      console.error('   omnysystem ai start gpu\n');
-      process.exit(1);
+    const llmStatus = await ensureLLMAvailable(aiConfig, { 
+      required: true,  // En consolidate, el LLM es obligatorio
+      autoStart: true, // Intentar iniciar automáticamente
+      maxWaitSeconds: 60 
+    });
+    
+    if (llmStatus.started) {
+      console.log('  ✓ AI server was auto-started');
     }
-
     console.log('✓ AI server available\n');
 
     // Load existing analysis
@@ -428,62 +516,19 @@ async function serve(projectPath, options = {}) {
       console.log('  ✓ Static analysis exists\n');
     }
 
-    // STEP 2: Check LLM server, start if needed
+    // STEP 2: Check LLM server, start if needed (FIX: Usar función unificada)
     console.log('📋 Step 2/4: Checking AI server...');
     const aiConfig = await loadAIConfig();
-    const client = new LLMClient(aiConfig);
-    let health = await client.healthCheck();
-
-    if (!health.gpu && !health.cpu) {
-      // Check if server is already starting to avoid double spawn
-      if (await isBrainServerStarting()) {
-        console.log('  ⏳ AI server is already starting, waiting...\n');
-      } else if (await isPortInUse(8000)) {
-        console.log('  ⏳ Port 8000 is in use, server may be starting...\n');
-      } else {
-        console.log('  ⚠️  AI server not running - starting GPU server...\n');
-
-        // Start LLM server (GPU)
-        const llmServerPath = path.join(process.cwd(), 'src', 'ai', 'scripts', 'start_brain_gpu.bat');
-        console.log(`  🔧 Starting: ${llmServerPath}`);
-
-        const llmProcess = spawn('cmd.exe', ['/c', llmServerPath], {
-          detached: true,
-          stdio: 'ignore',
-          windowsHide: false
-        });
-        llmProcess.unref();
-      }
-
-      console.log('  ⏳ Waiting for server to be ready...');
-
-      // Wait for server to be healthy (max 60 seconds)
-      let attempts = 0;
-      const maxAttempts = 60;
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        health = await client.healthCheck();
-
-        if (health.gpu || health.cpu) {
-          console.log('  ✓ AI server ready\n');
-          break;
-        }
-
-        attempts++;
-        if (attempts % 5 === 0) {
-          console.log(`  ⏳ Still waiting... (${attempts}/${maxAttempts}s)`);
-        }
-      }
-
-      if (!health.gpu && !health.cpu) {
-        console.error('  ❌ AI server failed to start after 60 seconds');
-        console.error('  💡 Please start manually and try again');
-        process.exit(1);
-      }
-    } else {
-      console.log('  ✓ AI server running\n');
+    const llmStatus = await ensureLLMAvailable(aiConfig, {
+      required: true,
+      autoStart: true,
+      maxWaitSeconds: 60
+    });
+    
+    if (llmStatus.started) {
+      console.log('  ✓ AI server was auto-started');
     }
+    console.log('  ✓ AI server running\n');
 
     // STEP 3: Run iterative consolidation
     console.log('📋 Step 3/4: Running AI consolidation...\n');

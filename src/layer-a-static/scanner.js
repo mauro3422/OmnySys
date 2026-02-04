@@ -219,7 +219,7 @@ export async function detectProjectInfo(rootPath) {
  */
 
 // Ejecutar como CLI si se invoca directamente
-const isMainModule = process.argv[1].includes('scanner.js');
+const isMainModule = process.argv[1]?.includes('scanner.js') || false;
 if (isMainModule) {
   const projectPath = process.argv[2] || process.cwd();
 

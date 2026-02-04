@@ -250,7 +250,7 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
   let semanticIssues = null;
   try {
     const aiConfig = await loadAIConfig();
-    if (aiConfig.llm.enabled) {
+    if (aiConfig.llm.enabled && !skipLLM) {
       if (verbose) console.log('  🤖 LLM enrichment phase...');
       const tempSystemMap = { files: enhancedFiles };
       const enrichmentResult = await enrichSemanticAnalysis(
@@ -356,7 +356,8 @@ export async function indexProject(rootPath, options = {}) {
     outputPath = 'system-map.json',
     verbose = true,
     singleFile = null,  // Modo single-file: solo analizar este archivo y sus dependencias
-    incremental = false
+    incremental = false,
+    skipLLM = false     // Skip LLM enrichment (use static analysis only)
   } = options;
 
   // Convertir rootPath a absoluto

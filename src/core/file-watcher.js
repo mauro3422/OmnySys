@@ -34,7 +34,8 @@ import { parseFileFromDisk } from '../layer-a-static/parser.js';
 import { resolveImport, getResolutionConfig } from '../layer-a-static/resolver.js';
 import { saveFileAnalysis, getDataDirectory } from '../layer-a-static/storage/storage-manager.js';
 import { getProjectMetadata, getFileAnalysis } from '../layer-a-static/storage/query-service.js';
-import { detectAllSemanticConnections, detectAllAdvancedConnections } from '../layer-b-semantic/static-extractors.js';
+import { detectAllSemanticConnections } from '../layer-b-semantic/static-extractors.js';
+import { detectAllAdvancedConnections } from '../layer-b-semantic/advanced-extractors.js';
 import { extractAllMetadata } from '../layer-b-semantic/metadata-extractors.js';
 
 /**

@@ -47,6 +47,7 @@ class CogniSystemMCPServer {
     this.cache = globalCache;
     this.metadata = null;
     this.initialized = false;
+    this.statsInterval = null; // Referencia al interval para cleanup
   }
 
   /**
@@ -374,6 +375,21 @@ class CogniSystemMCPServer {
       uptime: process.uptime()
     };
   }
+
+  /**
+   * Detiene el servidor y limpia recursos
+   */
+  async stop() {
+    console.log('\n👋 Stopping MCP server...');
+    
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
+    
+    this.initialized = false;
+    console.log('✅ MCP server stopped');
+  }
 }
 
 // ============================================================
@@ -389,10 +405,19 @@ async function main() {
     await server.initialize();
 
     // Demo: Show server stats every 10 seconds
-    setInterval(() => {
+    server.statsInterval = setInterval(() => {
       const stats = server.getStats();
       // En producción, esto estaría en un endpoint HTTP/stdio
     }, 10000);
+    
+    // Cleanup on exit
+    process.on('SIGINT', () => {
+      console.log('\n👋 Shutting down MCP server...');
+      if (server.statsInterval) {
+        clearInterval(server.statsInterval);
+      }
+      process.exit(0);
+    });
 
     // Mantener el servidor activo
     console.log('💡 Server running. Press Ctrl+C to stop.\n');
