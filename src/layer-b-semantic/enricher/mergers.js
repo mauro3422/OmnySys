@@ -3,6 +3,24 @@
  * Funciones para combinar análisis estático y LLM
  */
 
+import { detectGodObject } from '../metadata-contract.js';
+
+/**
+ * Detecta God Object por metadatos estáticos
+ * Usa la función compartida del metadata-contract
+ * @private
+ */
+function detectGodObjectByMetadata(staticAnalysis) {
+  const metadata = staticAnalysis.metadata;
+  if (metadata) {
+    return detectGodObject(metadata.exportCount, metadata.dependentCount);
+  }
+  // Fallback a datos directos del análisis estático
+  const exportCount = staticAnalysis.exports?.length || 0;
+  const dependentCount = staticAnalysis.usedBy?.length || 0;
+  return detectGodObject(exportCount, dependentCount);
+}
+
 /**
  * Merge análisis estático y LLM para un archivo
  * @param {object} staticAnalysis - Análisis estático del archivo
@@ -55,6 +73,25 @@ export function mergeAnalyses(staticAnalysis, llmAnalysis) {
   // Agregar archivos afectados detectados por LLM
   if (llmAnalysis.affectedFiles?.length > 0) {
     merged.llmInsights.affectedFiles = llmAnalysis.affectedFiles;
+  }
+
+  // God Object Analysis: detectar por metadatos y/o LLM
+  const isPotentialGodObject = detectGodObjectByMetadata(staticAnalysis);
+  const hasGodObjectData = llmAnalysis.responsibilities || llmAnalysis.riskLevel;
+  
+  if (isPotentialGodObject || hasGodObjectData) {
+    const metadata = staticAnalysis.metadata;
+    merged.llmInsights.godObjectAnalysis = {
+      isGodObject: hasGodObjectData ? llmAnalysis.riskLevel !== 'none' : isPotentialGodObject,
+      riskLevel: llmAnalysis.riskLevel || (isPotentialGodObject ? 'medium' : 'low'),
+      responsibilities: llmAnalysis.responsibilities || [],
+      impactScore: llmAnalysis.impactScore || llmAnalysis.couplingAnalysis?.impactScore || 0.5,
+      _metadata: {
+        detectedByStatic: isPotentialGodObject,
+        exportCount: metadata?.exportCount || staticAnalysis.exports?.length || 0,
+        dependentCount: metadata?.dependentCount || staticAnalysis.usedBy?.length || 0
+      }
+    };
   }
 
   return merged;

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "Schema for God Object architectural analysis. Note: isGodObject is determined by system metadata, not LLM.",
+  "properties": {
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence in the analysis"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "none"],
+      "description": "Architectural risk level"
+    },
+    "responsibilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of responsibilities detected (logging, config, data-access, etc.)"
+    },
+    "couplingAnalysis": {
+      "type": "object",
+      "properties": {
+        "impactScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "0-1 score of change impact"
+        }
+      }
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Explanation of the analysis"
+    }
+  },
+  "required": ["confidence", "riskLevel", "responsibilities", "reasoning"]
+}

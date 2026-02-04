@@ -10,6 +10,8 @@ import { detectSemanticIssues } from '../semantic-issues-detector.js';
 import { detectAllSemanticConnections } from '../static-extractors.js';
 import { detectAllAdvancedConnections } from '../advanced-extractors.js';
 import { extractAllMetadata } from '../metadata-extractors.js';
+import { buildStandardMetadata, validateMetadata } from '../metadata-contract.js';
+import promptSelector from '../prompt-engine/prompt-selector.js';
 
 import { mergeAnalyses } from './mergers.js';
 import { buildFileSpecificContext, buildProjectContext } from './context-builders.js';
@@ -142,8 +144,46 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
   // ============================================================
   console.log('  🔍 Extracting additional metadata...');
   const fileMetadata = {};
+  const standardMetadata = {};
+  
   for (const [filePath, code] of Object.entries(fileSourceCode)) {
-    fileMetadata[filePath] = extractAllMetadata(filePath, code);
+    // Extraer metadatos adicionales (JSDoc, async, errors, build flags)
+    const extendedMetadata = extractAllMetadata(filePath, code);
+    fileMetadata[filePath] = extendedMetadata;
+    
+    // Construir metadatos estándar usando el contrato formal
+    const fileAnalysis = staticResults.files[filePath] || {};
+    const semanticAnalysis = fileAnalysis.semanticAnalysis || {};
+    const stdMeta = buildStandardMetadata(fileAnalysis, filePath, semanticAnalysis);
+    
+    // Enriquecer con metadatos extendidos
+    standardMetadata[filePath] = {
+      ...stdMeta,
+      // Flags adicionales de metadata-extractors
+      hasAsyncPatterns: extendedMetadata.async?.all?.length > 0,
+      hasJSDoc: extendedMetadata.jsdoc?.all?.length > 0,
+      hasRuntimeContracts: extendedMetadata.runtime?.all?.length > 0,
+      hasErrorHandling: extendedMetadata.errors?.all?.length > 0,
+      hasBuildTimeDeps: extendedMetadata.build?.all?.length > 0,
+      hasCSSInJS: extendedMetadata.cssInJS?.hasCSSInJS || false,
+      envVars: extendedMetadata.build?.envVars?.map(e => e.name) || [],
+      // Datos extendidos completos
+      jsdocContracts: extendedMetadata.jsdoc,
+      runtimeContracts: extendedMetadata.runtime,
+      asyncPatterns: extendedMetadata.async,
+      errorHandling: extendedMetadata.errors,
+      buildTimeDeps: extendedMetadata.build,
+      cssInJS: extendedMetadata.cssInJS,
+      typescript: extendedMetadata.typescript
+    };
+    
+    // Validar metadatos (solo en modo debug)
+    if (process.env.DEBUG_METADATA) {
+      const validation = validateMetadata(standardMetadata[filePath]);
+      if (!validation.valid) {
+        console.warn(`⚠️  Metadata validation failed for ${filePath}:`, validation);
+      }
+    }
   }
   
   // Agregar metadatos a los resultados
@@ -151,6 +191,9 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
     if (staticResults.files[filePath]) {
       staticResults.files[filePath].metadata = {
         ...(staticResults.files[filePath].metadata || {}),
+        // Metadatos estándar del contrato
+        ...standardMetadata[filePath],
+        // Metadatos extendidos
         jsdocContracts: metadata.jsdoc,
         runtimeContracts: metadata.runtime,
         asyncPatterns: metadata.async,
@@ -203,9 +246,19 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
   // Identificar archivos que necesitan análisis LLM
   const filesToAnalyze = [];
   for (const [filePath, analysis] of Object.entries(staticResults.files || {})) {
+    // Obtener metadatos estándar para este archivo
+    const metadata = standardMetadata[filePath];
+    
     // Si llmOnlyForComplex está desactivado, analizar TODOS los archivos
-    const shouldAnalyze = !aiConfig.analysis.llmOnlyForComplex ||
-                          llmAnalyzer.needsLLMAnalysis(analysis.semanticAnalysis || {}, analysis);
+    // Si está activado, usar el detector del prompt selector para determinar si necesita análisis
+    let shouldAnalyze = !aiConfig.analysis.llmOnlyForComplex;
+    
+    if (!shouldAnalyze && metadata) {
+      // Usar el prompt selector para detectar si este archivo necesita análisis específico
+      const analysisType = promptSelector.selectAnalysisType(metadata);
+      // Si el tipo no es 'default', significa que se detectó un arquetipo que necesita análisis LLM
+      shouldAnalyze = analysisType !== 'default' || llmAnalyzer.needsLLMAnalysis(analysis.semanticAnalysis || {}, analysis);
+    }
 
     if (shouldAnalyze) {
       // Contexto REDUCIDO y ESPECÍFICO (solo archivos sospechosos, no todo el proyecto)
@@ -213,7 +266,7 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
         filePath, 
         staticResults, 
         globalContext,
-        fileMetadata[filePath]
+        metadata
       );
 
       // Limitar contexto para evitar alucinaciones
@@ -225,12 +278,16 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
         fileSpecific: limitedContext
       };
 
+      // Detectar tipo de análisis usando metadatos estandarizados
+      const analysisType = metadata ? promptSelector.selectAnalysisType(metadata) : 'default';
+
       filesToAnalyze.push({
         filePath,
         code: fileSourceCode[filePath],
         staticAnalysis: analysis.semanticAnalysis,
-        metadata: fileMetadata[filePath],
-        projectContext: combinedContext
+        metadata: metadata,
+        projectContext: combinedContext,
+        analysisType
       });
     }
   }
@@ -265,14 +322,20 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
   };
 
   for (let i = 0; i < filesToAnalyze.length; i++) {
-    const { filePath } = filesToAnalyze[i];
+    const { filePath, analysisType } = filesToAnalyze[i];
     const llmResult = llmResults[i];
 
     // Validar que el resultado tiene la estructura mínima requerida
-    if (llmResult && llmResult.confidence !== undefined && llmResult.sharedState !== undefined) {
+    // Ahora usamos el analysisType para validación específica
+    const isValidResult = llmResult && 
+                          llmResult.confidence !== undefined && 
+                          llmResult.reasoning !== undefined;
+    
+    if (isValidResult) {
       enhancedResults.files[filePath] = mergeAnalyses(
         enhancedResults.files[filePath],
-        llmResult
+        llmResult,
+        analysisType  // Pasar el tipo de análisis para merge correcto
       );
       enhancedCount++;
     }
@@ -337,11 +400,17 @@ export async function enrichSemanticAnalysis(staticResults, fileSourceCode, aiCo
         const iterationResult = iterationResults[i];
 
         // Validar estructura completa antes de merge
-        if (iterationResult && iterationResult.confidence !== undefined &&
-            iterationResult.sharedState !== undefined && iterationResult.confidence > 0.85) {
+        const isValidIteration = iterationResult && 
+                                 iterationResult.confidence !== undefined &&
+                                 iterationResult.reasoning !== undefined && 
+                                 iterationResult.confidence > 0.85;
+        
+        if (isValidIteration) {
+          // Para iteraciones, usamos 'default' como tipo ya que es refinamiento
           iterativeResults.files[filePath] = mergeAnalyses(
             iterativeResults.files[filePath],
-            iterationResult
+            iterationResult,
+            'default'
           );
           improvedCount++;
         }

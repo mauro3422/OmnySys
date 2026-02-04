@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** (Latest) |
+| **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** (Latest) |
+| **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
 | **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** |
 | **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** |
 | **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** |

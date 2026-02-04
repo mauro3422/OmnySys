@@ -154,13 +154,11 @@ export class LLMClient {
       try {
         const parsed = JSON.parse(content);
 
-        // Agregar defaults para campos opcionales (el LLM puede omitirlos para ahorrar tokens)
+        // ✅ CORREGIDO: Preservar TODOS los campos del LLM, no solo los hardcodeados
         return {
+          ...parsed,
           sharedState: parsed.sharedState || [],
           events: parsed.events || [],
-          hiddenConnections: parsed.hiddenConnections || [],
-          suggestedConnections: parsed.suggestedConnections || [],
-          subsystemStatus: parsed.subsystemStatus || 'unknown',
           confidence: parsed.confidence || 0.5,
           reasoning: parsed.reasoning || 'No reasoning provided'
         };

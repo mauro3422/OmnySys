@@ -256,7 +256,11 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     const aiConfig = await loadAIConfig();
     if (aiConfig.llm.enabled && !skipLLM) {
       if (verbose) console.log('  🤖 LLM enrichment phase...');
-      const tempSystemMap = { files: enhancedFiles };
+      // Usar systemMap.files que tiene usedBy/dependsOn completos del grafo
+      const tempSystemMap = { 
+        files: systemMap.files,
+        metadata: systemMap.metadata
+      };
       const enrichmentResult = await enrichSemanticAnalysis(
         tempSystemMap,
         fileSourceCode,
