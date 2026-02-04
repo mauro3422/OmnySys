@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "dynamicImports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Patrón de importación dinámica encontrado"
+          },
+          "variable": {
+            "type": "string",
+            "description": "Variable utilizada en el import dinámico"
+          },
+          "resolvedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Rutas resueltas a archivos reales"
+            },
+            "description": "Rutas de archivos resueltas desde el patrón"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en la detección"
+          }
+        },
+        "required": ["pattern", "variable", "resolvedPaths", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Importaciones dinámicas detectadas"
+    },
+    "staticImports": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Importaciones estáticas encontradas"
+      },
+      "description": "Importaciones estáticas detectadas"
+    },
+    "routeMapAnalysis": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Variables encontradas en routeMap"
+          },
+          "description": "Variables detectadas en routeMap"
+        },
+        "mappings": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {
+              "type": "string",
+              "description": "Mapeo de ruta a nombre de módulo"
+            }
+          },
+          "description": "Mapeos de rutas a nombres de módulos"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confianza en el análisis de routeMap"
+        }
+      },
+      "required": ["variables", "mappings", "confidence"],
+      "additionalProperties": false
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confianza general del análisis"
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Breve explicación del análisis"
+    }
+  },
+  "required": ["dynamicImports", "staticImports", "routeMapAnalysis", "confidence", "reasoning"],
+  "additionalProperties": false
+}

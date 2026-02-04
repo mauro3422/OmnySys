@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "localStorageKeys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Detected localStorage keys"
+      },
+      "description": "Found localStorage keys"
+    },
+    "eventNames": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Detected event names"
+      },
+      "description": "Found event names"
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source file of the connection"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target file of the connection"
+          },
+          "key": {
+            "type": "string",
+            "description": "Key or event that connects the files"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["localStorage", "event", "shared-state"],
+            "description": "Tipo de conexión"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en la conexión"
+          }
+        },
+        "required": ["source", "target", "key", "type", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Conexiones semánticas detectadas"
+    },
+    "sharedState": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Clave de estado compartido"
+          },
+          "accessType": {
+            "type": "string",
+            "enum": ["read", "write", "both"],
+            "description": "Tipo de acceso al estado"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Files that access this state"
+            },
+            "description": "Files that share this state"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en el estado compartido"
+          }
+        },
+        "required": ["key", "accessType", "files", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Estados compartidos detectados"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confianza general del análisis"
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Breve explicación del análisis"
+    }
+  },
+  "required": ["localStorageKeys", "eventNames", "connections", "sharedState", "confidence", "reasoning"],
+  "additionalProperties": false
+}

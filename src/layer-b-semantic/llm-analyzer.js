@@ -17,6 +17,7 @@ import {
   extractActualLocalStorageKeys,
   extractActualEventNames 
 } from './llm-response-validator.js';
+import promptEngine from './prompt-engine/index.js';
 
 /**
  * Analizador semántico basado en LLM
@@ -296,219 +297,28 @@ export class LLMAnalyzer {
   }
 
   /**
-   * Construye el prompt para el LLM con contexto LIMITADO y ENFOCADO
+   * Construye el prompt para el LLM usando el Prompt Engine
    * @private
    */
-  buildPrompt(code, filePath, staticAnalysis, projectContext, metadata = null) {
-    // =============================================================================
-    // REGLA CRITICA DE ORO: SOLO PASAR CONTEXTO RELEVANTE AL LLM
-    // =============================================================================
-    // NUNCA pasar todo el system-map o archivos sin conexion al LLM.
-    // El LLM tiene contexto LIMITADO (15K tokens por slot con 8GB VRAM).
-    // Contexto irrelevante = ruido = alucinaciones = tokens desperdiciados.
-    //
-    // SOLO incluir en el prompt:
-    //   1. Archivos con SHARED STATE común (localStorage, global vars)
-    //   2. Archivos con EVENTOS comunes (addEventListener, emit)
-    //   3. Imports DIRECTOS del archivo analizado
-    //   4. Archivos del proyecto con patrones relevantes (limitado a 5)
-    //
-    // NUNCA incluir:
-    //   - Archivos sin conexión semántica
-    //   - Metadata vacía (JSDoc sin contratos, async sin patrones)
-    //   - Todo el system-map completo
-    //   - Funciones de archivos no relacionados
-    //
-    // CADA token debe tener proposito. Tokens irrelevantes = capacidad perdida.
-    // =============================================================================
-    // Construir lista de "sospechosos" (archivos que PODRÍAN estar conectados)
-    let suspectsStr = 'No suspects identified';
-    if (projectContext?.fileSpecific) {
-      const suspects = [];
-
-      // Archivos con shared state común (ALTA PRIORIDAD)
-      if (projectContext.fileSpecific.relatedFiles.sharedStateWith?.length > 0) {
-        suspects.push('\n### Files with SHARED STATE:');
-        projectContext.fileSpecific.relatedFiles.sharedStateWith.forEach(f => {
-          suspects.push(`- ${f.file}: ${f.reason}`);
-          suspects.push(`  Properties: ${f.sharedProperties.join(', ')}`);
-        });
+  async buildPrompt(code, filePath, staticAnalysis, projectContext, metadata = null) {
+    try {
+      // Usar el Prompt Engine para generar el prompt basado en metadatos
+      const promptConfig = await promptEngine.generatePrompt(metadata || {}, code);
+      
+      // Validar el prompt generado
+      promptEngine.validatePrompt(promptConfig);
+      
+      // Asegurar que el userPrompt sea un string válido
+      if (typeof promptConfig.userPrompt !== 'string') {
+        throw new Error(`Invalid userPrompt type: ${typeof promptConfig.userPrompt}`);
       }
-
-      // Archivos con eventos comunes (ALTA PRIORIDAD)
-      if (projectContext.fileSpecific.relatedFiles.eventsConnectedTo?.length > 0) {
-        suspects.push('\n### Files with SHARED EVENTS:');
-        projectContext.fileSpecific.relatedFiles.eventsConnectedTo.forEach(f => {
-          suspects.push(`- ${f.file}: ${f.reason}`);
-          suspects.push(`  Events: ${f.sharedEvents.join(', ')}`);
-        });
-      }
-
-      // TODOS los imports directos con metadatos (son criticos para entender dependencias)
-      // Cada import incluye: exports, localStorage, eventos que maneja
-      // Esto permite al LLM ver conexiones indirectas sin ver el codigo completo
-      if (projectContext.fileSpecific.relatedFiles.imports?.length > 0) {
-        suspects.push('\n### Direct Imports (with metadata):');
-        projectContext.fileSpecific.relatedFiles.imports.forEach(imp => {
-          const parts = [`- ${imp.file}`];
-          
-          // Solo mostrar info relevante (no todo)
-          if (imp.exports?.length > 0) {
-            parts.push(`  Exports: ${imp.exports.join(', ')}`);
-          }
-          if (imp.hasLocalStorage && imp.localStorageKeys?.length > 0) {
-            parts.push(`  localStorage: [${imp.localStorageKeys.join(', ')}]`);
-          }
-          if (imp.eventEmitters?.length > 0) {
-            parts.push(`  Emits: [${imp.eventEmitters.join(', ')}]`);
-          }
-          if (imp.eventListeners?.length > 0) {
-            parts.push(`  Listens: [${imp.eventListeners.join(', ')}]`);
-          }
-          
-          suspects.push(parts.join('\n'));
-        });
-      }
-
-      // ✅ NUEVO: Si hay metadata de todos los archivos del proyecto, incluirla (LIMITADO)
-      if (projectContext.fileSpecific.allProjectFiles?.length > 0) {
-        // Priorizar archivos con localStorage, eventos, o shared state
-        const relevantFiles = projectContext.fileSpecific.allProjectFiles.filter(f =>
-          f.sharedState.reads.length > 0 ||
-          f.sharedState.writes.length > 0 ||
-          f.events.emits.length > 0 ||
-          f.events.listens.length > 0
-        );
-
-        // Limitar a máximo 5 archivos más relevantes (era 10, reducido para ahorrar tokens)
-        const filesToShow = relevantFiles.slice(0, 5);
-
-        if (filesToShow.length > 0) {
-          suspects.push('\n### RELEVANT PROJECT FILES (with localStorage/events):');
-          filesToShow.forEach(file => {
-            const parts = [];
-            parts.push(`- ${file.path}`);
-
-            if (file.sharedState.reads.length > 0) {
-              parts.push(`  Reads: ${file.sharedState.reads.join(', ')}`);
-            }
-
-            if (file.sharedState.writes.length > 0) {
-              parts.push(`  Writes: ${file.sharedState.writes.join(', ')}`);
-            }
-
-            if (file.events.emits.length > 0) {
-              parts.push(`  Emits: ${file.events.emits.join(', ')}`);
-            }
-
-            if (file.events.listens.length > 0) {
-              parts.push(`  Listens: ${file.events.listens.join(', ')}`);
-            }
-
-            suspects.push(parts.join('\n'));
-          });
-
-          if (relevantFiles.length > 10) {
-            suspects.push(`\n... and ${relevantFiles.length - 10} more files with similar patterns`);
-          }
-        }
-      }
-
-      suspectsStr = suspects.length > 0 ? suspects.join('\n') : 'No obvious suspects';
+      
+      return promptConfig.userPrompt;
+    } catch (error) {
+      console.error(`Error building prompt for ${filePath}:`, error.message);
+      // Fallback a prompt básico
+      return `<file_content>\n${code}\n</file_content>\n\nANALYZE: Extract patterns, functions, exports, imports. Return exact strings found.`;
     }
-
-    // Construir contexto del análisis estático (ULTRA COMPACTO)
-    let staticAnalysisStr = 'none';
-    if (staticAnalysis) {
-      const compact = [];
-      const ss = staticAnalysis.sharedState || {};
-      const ev = staticAnalysis.eventPatterns || {};
-      
-      if (ss.reads?.length) compact.push(`reads:[${ss.reads.slice(0,5).join(',')}]`);
-      if (ss.writes?.length) compact.push(`writes:[${ss.writes.slice(0,5).join(',')}]`);
-      if (ev.eventListeners?.length) compact.push(`listeners:[${ev.eventListeners.slice(0,5).join(',')}]`);
-      if (ev.eventEmitters?.length) compact.push(`emitters:[${ev.eventEmitters.slice(0,5).join(',')}]`);
-      
-      staticAnalysisStr = compact.length ? compact.join('|') : 'none';
-    }
-
-    // Construir contexto de subsistemas
-    const subsystemContext = projectContext?.fileSpecific?.subsystemContext || 'No subsystem information available';
-
-    // Construir metadata adicional del archivo
-    let metadataStr = 'No additional metadata';
-    const fileMetadata = metadata || projectContext?.fileSpecific?.metadata;
-    if (fileMetadata) {
-      const metadataParts = [];
-      
-      // JSDoc contracts
-      if (fileMetadata.jsdoc?.all?.length > 0) {
-        metadataParts.push(`### JSDoc Contracts (${fileMetadata.jsdoc.all.length}):`);
-        fileMetadata.jsdoc.all.slice(0, 5).forEach(contract => {
-          metadataParts.push(`- @${contract.tag}${contract.name ? ` ${contract.name}` : ''}${contract.type ? ` {${contract.type}}` : ''}`);
-        });
-      }
-      
-      // Async patterns
-      if (fileMetadata.async?.all?.length > 0) {
-        metadataParts.push(`\n### Async Patterns (${fileMetadata.async.all.length}):`);
-        fileMetadata.async.asyncFunctions?.slice(0, 3).forEach(fn => {
-          metadataParts.push(`- async function ${fn.name}`);
-        });
-        fileMetadata.async.promiseAll?.slice(0, 2).forEach(p => {
-          metadataParts.push(`- Promise.all with ${p.concurrentCalls} concurrent calls`);
-        });
-      }
-      
-      // Error handling
-      if (fileMetadata.errors?.all?.length > 0) {
-        metadataParts.push(`\n### Error Handling (${fileMetadata.errors.all.length} patterns):`);
-        if (fileMetadata.errors.tryBlocks?.length > 0) {
-          metadataParts.push(`- ${fileMetadata.errors.tryBlocks.length} try/catch blocks`);
-        }
-        if (fileMetadata.errors.customErrors?.length > 0) {
-          metadataParts.push(`- Custom errors: ${fileMetadata.errors.customErrors.map(e => e.name).join(', ')}`);
-        }
-      }
-      
-      // Build flags
-      if (fileMetadata.build?.envVars?.length > 0) {
-        metadataParts.push(`\n### Build-time Flags:`);
-        fileMetadata.build.envVars.forEach(env => {
-          metadataParts.push(`- ${env.name}: ${env.values?.slice(0, 3).join(', ') || 'various'}`);
-        });
-      }
-      
-      // Nuevas conexiones (CSS-in-JS, TypeScript, Redux)
-      const connections = projectContext?.fileSpecific?.connections;
-      if (connections) {
-        if (connections.cssInJS?.length > 0) {
-          metadataParts.push(`\n### CSS-in-JS Connections (${connections.cssInJS.length}):`);
-          connections.cssInJS.slice(0, 3).forEach(conn => {
-            metadataParts.push(`- ${conn.type}: ${conn.component} uses ${conn.themeUsage?.slice(0, 2).join(', ') || 'theme'}`);
-          });
-        }
-        if (connections.redux?.length > 0) {
-          metadataParts.push(`\n### Redux/Context (${connections.redux.length}):`);
-          connections.redux.slice(0, 3).forEach(conn => {
-            metadataParts.push(`- ${conn.type}: ${conn.selector || conn.action || conn.context}`);
-          });
-        }
-      }
-      
-      metadataStr = metadataParts.join('\n') || 'No significant metadata';
-    }
-
-    // Usar template del config
-    const prompt = this.config.prompts.analysisTemplate
-      .replace('{projectContext}', suspectsStr)
-      .replace('{filePath}', filePath)
-      .replace('{code}', code.slice(0, 15000)) // Limitar a 15KB (~3750 tokens) para evitar overflow
-      .replace('{staticAnalysis}', staticAnalysisStr)
-      .replace('{subsystemContext}', subsystemContext)
-      .replace('{metadata}', metadataStr);
-
-    return prompt;
   }
 
   /**

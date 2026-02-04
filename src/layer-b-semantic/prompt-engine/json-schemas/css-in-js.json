@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "cssInJS": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "componentName": {
+            "type": "string",
+            "description": "CSS-in-JS component name"
+          },
+          "cssProperties": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string",
+                "description": "CSS property and its value"
+              }
+            },
+            "description": "Component CSS properties"
+          },
+          "framework": {
+            "type": "string",
+            "enum": ["styled-components", "emotion", "emotion-css", "css-in-js"],
+            "description": "Used CSS-in-JS framework"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en la detección"
+          }
+        },
+        "required": ["componentName", "cssProperties", "framework", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Componentes CSS-in-JS detectados"
+    },
+    "globalStyles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "selector": {
+            "type": "string",
+            "description": "Global CSS selector"
+          },
+          "cssProperties": {
+            "type": "object",
+            "patternProperties": {
+              ".*": {
+                "type": "string",
+                "description": "CSS property and its value"
+              }
+            },
+            "description": "Global selector CSS properties"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en el estilo global"
+          }
+        },
+        "required": ["selector", "cssProperties", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Estilos globales CSS-in-JS detectados"
+    },
+    "cssVariables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "CSS variable name"
+          },
+          "value": {
+            "type": "string",
+            "description": "CSS variable value"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confianza en la variable CSS"
+          }
+        },
+        "required": ["name", "value", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Variables CSS detectadas"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confianza general del análisis"
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Breve explicación del análisis"
+    }
+  },
+  "required": ["cssInJS", "globalStyles", "cssVariables", "confidence", "reasoning"],
+  "additionalProperties": false
+}

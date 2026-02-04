@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Pattern type"
+          },
+          "description": {
+            "type": "string",
+            "description": "Pattern description"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Pattern confidence"
+          }
+        },
+        "required": ["type", "description", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Detected code patterns"
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Function name"
+          },
+          "params": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Function parameter"
+            },
+            "description": "Function parameters"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Function confidence"
+          }
+        },
+        "required": ["name", "params", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Detected functions"
+    },
+    "exports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Export name"
+          },
+          "type": {
+            "type": "string",
+            "description": "Export type"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Export confidence"
+          }
+        },
+        "required": ["name", "type", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Detected exports"
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Import source"
+          },
+          "specifiers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Import specifier"
+            },
+            "description": "Import specifiers"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Import confidence"
+          }
+        },
+        "required": ["source", "specifiers", "confidence"],
+        "additionalProperties": false
+      },
+      "description": "Detected imports"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Overall analysis confidence"
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Brief analysis explanation"
+    }
+  },
+  "required": ["patterns", "functions", "exports", "imports", "confidence", "reasoning"],
+  "additionalProperties": false
+}

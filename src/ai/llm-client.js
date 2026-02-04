@@ -104,6 +104,11 @@ export class LLMClient {
     this.servers[server].activeRequests++;
 
     try {
+      // Validar que el prompt sea un string válido
+      if (typeof prompt !== 'string') {
+        throw new Error(`Invalid prompt type: ${typeof prompt}. Expected string.`);
+      }
+
       const response = await fetch(`${this.servers[server].url}/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -278,9 +283,10 @@ export async function loadAIConfig(configPath = 'src/ai/ai-config.json') {
     return JSON.parse(content);
   } catch (error) {
     console.error('Failed to load AI config:', error.message);
-    // Retornar config por defecto con LLM deshabilitado
+    // Retornar config por defecto con LLM habilitado (auto-detect)
+    // El sistema usará IA cuando los metadatos indiquen casos complejos
     return {
-      llm: { enabled: false },
+      llm: { enabled: true },
       analysis: {
         useStaticFirst: true,
         llmOnlyForComplex: true,
