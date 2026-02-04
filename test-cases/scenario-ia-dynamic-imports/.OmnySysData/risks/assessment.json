@@ -1,0 +1,102 @@
+{
+  "scores": {
+    "src/Router.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 2,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "src/modules/AdminModule.js": {
+      "total": 1,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 1,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (2)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 2,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "src/modules/DashboardModule.js": {
+      "total": 0,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 0,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Low risk baseline",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 1,
+        "connectionCount": 0,
+        "sideEffectCount": 0,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    },
+    "src/modules/UserModule.js": {
+      "total": 2,
+      "breakdown": {
+        "staticComplexity": 0,
+        "semanticConnections": 0,
+        "sideEffects": 2,
+        "hotspotRisk": 0,
+        "couplingRisk": 0
+      },
+      "severity": "low",
+      "explanation": "Some side effects (1)",
+      "metrics": {
+        "functionCount": 0,
+        "importCount": 0,
+        "exportCount": 2,
+        "connectionCount": 0,
+        "sideEffectCount": 1,
+        "inDegree": 0,
+        "outDegree": 0
+      }
+    }
+  },
+  "report": {
+    "summary": {
+      "totalFiles": 4,
+      "averageScore": "1.00",
+      "criticalCount": 0,
+      "highCount": 0,
+      "mediumCount": 0,
+      "lowCount": 4
+    },
+    "highRiskFiles": [],
+    "mediumRiskFiles": [],
+    "recommendations": []
+  },
+  "generatedAt": "2026-02-04T15:58:15.685Z"
+}

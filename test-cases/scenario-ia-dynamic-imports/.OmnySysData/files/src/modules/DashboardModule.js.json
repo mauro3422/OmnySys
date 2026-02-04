@@ -1,0 +1,50 @@
+{
+  "filePath": "src/modules/DashboardModule.js",
+  "fileName": "DashboardModule.js",
+  "ext": ".js",
+  "imports": [],
+  "exports": [
+    {
+      "type": "default",
+      "kind": "ObjectExpression"
+    }
+  ],
+  "definitions": [],
+  "semanticConnections": [],
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [],
+      "types": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "analyzedAt": "2026-02-04T15:58:15.723Z"
+}

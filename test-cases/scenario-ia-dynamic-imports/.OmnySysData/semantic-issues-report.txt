@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════════════
+  SEMANTIC ISSUES REPORT
+═══════════════════════════════════════════════════════════
+
+Total Issues: 2
+  High:   2
+  Medium: 0
+  Low:    0
+
+───────────────────────────────────────────────────────────
+⚠️  ORPHANED FILES WITH SIDE EFFECTS
+───────────────────────────────────────────────────────────
+
+[HIGH] src/Router.js
+  File has no imports/exports but modifies global state
+
+[HIGH] src/modules/AdminModule.js
+  File has no imports/exports but modifies global state
+
+═══════════════════════════════════════════════════════════

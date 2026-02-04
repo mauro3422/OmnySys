@@ -1,0 +1,332 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1770220695713,
+  "entries": {
+    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\Router.js": {
+      "hash": "",
+      "lastAnalyzed": 1770220695711,
+      "staticVersion": "1.0.0",
+      "llmVersion": "1.0.0",
+      "changeType": "none",
+      "dependencies": [],
+      "metadata": {
+        "jsdocContracts": {
+          "functions": [
+            {
+              "line": 1,
+              "description": "Router.js",
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "deprecated": false,
+              "deprecatedReason": ""
+            }
+          ],
+          "types": [],
+          "all": [
+            {
+              "line": 1,
+              "description": "Router.js",
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "deprecated": false,
+              "deprecatedReason": ""
+            }
+          ]
+        },
+        "runtimeContracts": {
+          "assertions": [],
+          "invariants": [],
+          "validations": [],
+          "nullChecks": [],
+          "all": []
+        },
+        "asyncPatterns": {
+          "asyncFunctions": [
+            {
+              "type": "async_function",
+              "name": "navigateTo",
+              "line": 14
+            },
+            {
+              "type": "async_function",
+              "name": "loadPlugin",
+              "line": 35
+            }
+          ],
+          "promiseCreations": [],
+          "promiseChains": [],
+          "promiseAll": [],
+          "promiseRace": [],
+          "awaitExpressions": [
+            {
+              "type": "await",
+              "expression": "import(`./modules/${moduleName}.js`)",
+              "line": 24
+            },
+            {
+              "type": "await",
+              "expression": "import(`./plugins/${plugin}.js`)",
+              "line": 41
+            }
+          ],
+          "timeouts": [],
+          "raceConditions": [],
+          "all": [
+            {
+              "type": "async_function",
+              "name": "navigateTo",
+              "line": 14
+            },
+            {
+              "type": "async_function",
+              "name": "loadPlugin",
+              "line": 35
+            },
+            {
+              "type": "await",
+              "expression": "import(`./modules/${moduleName}.js`)",
+              "line": 24
+            },
+            {
+              "type": "await",
+              "expression": "import(`./plugins/${plugin}.js`)",
+              "line": 41
+            }
+          ]
+        },
+        "errorHandling": {
+          "tryBlocks": [],
+          "throwStatements": [],
+          "errorCodes": [],
+          "customErrors": [],
+          "errorMessages": [],
+          "catchBlocks": [],
+          "all": []
+        },
+        "buildTimeDeps": {
+          "envVars": [],
+          "devFlags": [],
+          "platformChecks": [],
+          "featureFlags": [],
+          "deadCodeCandidates": [],
+          "all": []
+        }
+      },
+      "llmInsights": {
+        "confidence": 1,
+        "reasoning": "Dynamic import con variable",
+        "enhancedConnections": [],
+        "suggestedConnections": [],
+        "hiddenConnections": []
+      }
+    },
+    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\AdminModule.js": {
+      "hash": "",
+      "lastAnalyzed": 1770220695712,
+      "staticVersion": "1.0.0",
+      "llmVersion": "1.0.0",
+      "changeType": "none",
+      "dependencies": [],
+      "metadata": {
+        "jsdocContracts": {
+          "functions": [],
+          "types": [],
+          "all": [
+            {
+              "line": 1,
+              "description": "AdminModule.js",
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "deprecated": false,
+              "deprecatedReason": ""
+            }
+          ]
+        },
+        "runtimeContracts": {
+          "assertions": [],
+          "invariants": [],
+          "validations": [],
+          "nullChecks": [],
+          "all": []
+        },
+        "asyncPatterns": {
+          "asyncFunctions": [],
+          "promiseCreations": [],
+          "promiseChains": [],
+          "promiseAll": [],
+          "promiseRace": [],
+          "awaitExpressions": [],
+          "timeouts": [],
+          "raceConditions": [],
+          "all": []
+        },
+        "errorHandling": {
+          "tryBlocks": [],
+          "throwStatements": [],
+          "errorCodes": [],
+          "customErrors": [],
+          "errorMessages": [],
+          "catchBlocks": [],
+          "all": []
+        },
+        "buildTimeDeps": {
+          "envVars": [],
+          "devFlags": [],
+          "platformChecks": [],
+          "featureFlags": [],
+          "deadCodeCandidates": [],
+          "all": []
+        }
+      },
+      "llmInsights": {
+        "confidence": 1,
+        "reasoning": "Verifica permisos de admin",
+        "enhancedConnections": [],
+        "suggestedConnections": [],
+        "hiddenConnections": []
+      }
+    },
+    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\DashboardModule.js": {
+      "hash": "",
+      "lastAnalyzed": 1770220695712,
+      "staticVersion": "1.0.0",
+      "llmVersion": "1.0.0",
+      "changeType": "none",
+      "dependencies": [],
+      "metadata": {
+        "jsdocContracts": {
+          "functions": [],
+          "types": [],
+          "all": [
+            {
+              "line": 1,
+              "description": "DashboardModule.js",
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "deprecated": false,
+              "deprecatedReason": ""
+            }
+          ]
+        },
+        "runtimeContracts": {
+          "assertions": [],
+          "invariants": [],
+          "validations": [],
+          "nullChecks": [],
+          "all": []
+        },
+        "asyncPatterns": {
+          "asyncFunctions": [],
+          "promiseCreations": [],
+          "promiseChains": [],
+          "promiseAll": [],
+          "promiseRace": [],
+          "awaitExpressions": [],
+          "timeouts": [],
+          "raceConditions": [],
+          "all": []
+        },
+        "errorHandling": {
+          "tryBlocks": [],
+          "throwStatements": [],
+          "errorCodes": [],
+          "customErrors": [],
+          "errorMessages": [],
+          "catchBlocks": [],
+          "all": []
+        },
+        "buildTimeDeps": {
+          "envVars": [],
+          "devFlags": [],
+          "platformChecks": [],
+          "featureFlags": [],
+          "deadCodeCandidates": [],
+          "all": []
+        }
+      },
+      "llmInsights": {
+        "confidence": 1,
+        "reasoning": "Return exact strings and patterns found in code",
+        "enhancedConnections": [],
+        "suggestedConnections": [],
+        "hiddenConnections": []
+      }
+    },
+    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\UserModule.js": {
+      "hash": "",
+      "lastAnalyzed": 1770220695713,
+      "staticVersion": "1.0.0",
+      "llmVersion": "1.0.0",
+      "changeType": "none",
+      "dependencies": [],
+      "metadata": {
+        "jsdocContracts": {
+          "functions": [],
+          "types": [],
+          "all": [
+            {
+              "line": 1,
+              "description": "UserModule.js",
+              "params": [],
+              "returns": null,
+              "throws": [],
+              "deprecated": false,
+              "deprecatedReason": ""
+            }
+          ]
+        },
+        "runtimeContracts": {
+          "assertions": [],
+          "invariants": [],
+          "validations": [],
+          "nullChecks": [],
+          "all": []
+        },
+        "asyncPatterns": {
+          "asyncFunctions": [],
+          "promiseCreations": [],
+          "promiseChains": [],
+          "promiseAll": [],
+          "promiseRace": [],
+          "awaitExpressions": [],
+          "timeouts": [],
+          "raceConditions": [],
+          "all": []
+        },
+        "errorHandling": {
+          "tryBlocks": [],
+          "throwStatements": [],
+          "errorCodes": [],
+          "customErrors": [],
+          "errorMessages": [],
+          "catchBlocks": [],
+          "all": []
+        },
+        "buildTimeDeps": {
+          "envVars": [],
+          "devFlags": [],
+          "platformChecks": [],
+          "featureFlags": [],
+          "deadCodeCandidates": [],
+          "all": []
+        }
+      },
+      "llmInsights": {
+        "confidence": 1,
+        "reasoning": "Brief explanation of why these files are connected",
+        "enhancedConnections": [],
+        "suggestedConnections": [],
+        "hiddenConnections": []
+      }
+    }
+  },
+  "dependencyGraph": {},
+  "metadata": {
+    "totalFiles": 4,
+    "totalDependencies": 0
+  }
+}

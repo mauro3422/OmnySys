@@ -1,0 +1,67 @@
+{
+  "filePath": "src/Router.js",
+  "fileName": "Router.js",
+  "ext": ".js",
+  "imports": [],
+  "exports": [
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "navigateTo"
+    },
+    {
+      "type": "declaration",
+      "kind": "FunctionDeclaration",
+      "name": "loadPlugin"
+    }
+  ],
+  "definitions": [
+    {
+      "type": "function",
+      "name": "navigateTo",
+      "params": 1
+    },
+    {
+      "type": "function",
+      "name": "loadPlugin",
+      "params": 1
+    }
+  ],
+  "semanticConnections": [],
+  "metadata": {
+    "jsdocContracts": {
+      "functions": [],
+      "types": [],
+      "all": []
+    },
+    "asyncPatterns": {
+      "asyncFunctions": [],
+      "promiseCreations": [],
+      "promiseChains": [],
+      "promiseAll": [],
+      "promiseRace": [],
+      "awaitExpressions": [],
+      "timeouts": [],
+      "raceConditions": [],
+      "all": []
+    },
+    "errorHandling": {
+      "tryBlocks": [],
+      "throwStatements": [],
+      "errorCodes": [],
+      "customErrors": [],
+      "errorMessages": [],
+      "catchBlocks": [],
+      "all": []
+    },
+    "buildTimeDeps": {
+      "envVars": [],
+      "devFlags": [],
+      "platformChecks": [],
+      "featureFlags": [],
+      "deadCodeCandidates": [],
+      "all": []
+    }
+  },
+  "analyzedAt": "2026-02-04T15:58:15.711Z"
+}
