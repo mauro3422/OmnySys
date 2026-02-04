@@ -2,18 +2,11 @@
  * Prompt Selector - Selecciona el prompt template basado en metadatos
  */
 
-import dynamicImportsModule from './prompt-templates/dynamic-imports.js';
-import semanticConnectionsModule from './prompt-templates/semantic-connections.js';
-import cssInJSModule from './prompt-templates/css-in-js.js';
-import typescriptModule from './prompt-templates/typescript.js';
-import defaultModule from './prompt-templates/default.js';
-
-// Extraer los templates de los módulos (handle both default and named exports)
-const dynamicImportsTemplate = dynamicImportsModule.default || dynamicImportsModule;
-const semanticConnectionsTemplate = semanticConnectionsModule.default || semanticConnectionsModule;
-const cssInJSTemplate = cssInJSModule.default || cssInJSModule;
-const typescriptTemplate = typescriptModule.default || typescriptModule;
-const defaultTemplate = defaultModule.default || defaultModule;
+import dynamicImportsTemplate from './prompt-templates/dynamic-imports.js';
+import semanticConnectionsTemplate from './prompt-templates/semantic-connections.js';
+import cssInJSTemplate from './prompt-templates/css-in-js.js';
+import typescriptTemplate from './prompt-templates/typescript.js';
+import defaultTemplate from './prompt-templates/default.js';
 
 class PromptSelector {
   /**
@@ -106,19 +99,28 @@ class PromptSelector {
       'default': defaultTemplate
     };
 
-    const template = templates[analysisType] || templates.default;
+    let template = templates[analysisType] || templates.default;
+    
+    // Extraer el template real (handle ES module default export)
+    if (template && template.default) {
+      template = template.default;
+    }
     
     // Validar que el template tenga las propiedades necesarias
     if (!template || !template.systemPrompt || !template.userPrompt) {
-      console.warn(`Warning: Template for ${analysisType} is incomplete, using default`);
       // Si el default también está roto, crear un template básico
-      if (!defaultTemplate || !defaultTemplate.systemPrompt || !defaultTemplate.userPrompt) {
+      let defaultTmpl = defaultTemplate;
+      if (defaultTmpl && defaultTmpl.default) {
+        defaultTmpl = defaultTmpl.default;
+      }
+      
+      if (!defaultTmpl || !defaultTmpl.systemPrompt || !defaultTmpl.userPrompt) {
         return {
           systemPrompt: `You are a code analyzer. Return valid JSON.`,
           userPrompt: `<file_content>\n{fileContent}\n</file_content>\n\nANALYZE: Extract patterns, functions, exports, imports. Return exact strings found.`
         };
       }
-      return defaultTemplate;
+      return defaultTmpl;
     }
     
     return template;

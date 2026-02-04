@@ -81,27 +81,23 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
    */
   async getJsonSchema(analysisType) {
     const schemas = {
-      'dynamic-imports': './json-schemas/dynamic-imports.json',
-      'semantic-connections': './json-schemas/semantic-connections.json',
-      'css-in-js': './json-schemas/css-in-js.json',
-      'typescript': './json-schemas/typescript.json',
-      'default': './json-schemas/default.json'
+      'dynamic-imports': 'dynamic-imports.json',
+      'semantic-connections': 'semantic-connections.json',
+      'css-in-js': 'css-in-js.json',
+      'typescript': 'typescript.json',
+      'default': 'default.json'
     };
 
-    const schemaPath = schemas[analysisType] || schemas.default;
+    const schemaFile = schemas[analysisType] || schemas.default;
     
     try {
-      const schemaModule = await import(schemaPath, { assert: { type: 'json' } });
+      // Construir ruta absoluta usando import.meta.url
+      const schemaUrl = new URL(`./json-schemas/${schemaFile}`, import.meta.url);
+      const schemaModule = await import(schemaUrl, { assert: { type: 'json' } });
       return schemaModule.default || schemaModule;
     } catch (error) {
-      console.warn(`Warning: Could not load schema for ${analysisType}, using default`);
-      try {
-        const defaultModule = await import('./json-schemas/default.json', { assert: { type: 'json' } });
-        return defaultModule.default || defaultModule;
-      } catch (defaultError) {
-        console.warn('Warning: Could not load default schema, using empty schema');
-        return {};
-      }
+      // Silenciar warning - los schemas son opcionales
+      return {};
     }
   }
 
