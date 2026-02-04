@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** (Latest) |
+| **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** (Latest) |
+| **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** |
 | **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** |
 | **[0.4.0-0.4.1]** | `changelog/v0.4.0.md` | **Phase 3.8: Capa B - Semantic Enrichment** |
 | **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
@@ -20,24 +21,25 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.4.3 (2026-02-03)**
+### **🚀 Latest Release: v0.4.4 (2026-02-03)**
 
-**Patch Release**: Critical bug fixes and stability improvements
+**Architecture Release**: Unified cache system replacing legacy distributed caches
 
-**Key Fixes**:
-- ✅ **Batch Processor Connected** (FileWatcher → Queue → Worker flow fixed)
-- ✅ **Atomic State Manager** (prevents state corruption on concurrent writes)
-- ✅ **Cache LRU Limits** (memory protection for QueryCache and LLMCache)
-- ✅ **MCP Cleanup** (proper resource disposal on shutdown)
-- ✅ **Analysis Rollback** (restores previous state on analysis failure)
-- ✅ **Unified LLM Behavior** (consistent handling across commands)
+**Key Changes**:
+- ✅ **UnifiedCacheManager** - Single source of truth for all caching
+- ✅ **Change Detection** - COSMETIC/STATIC/SEMANTIC/CRITICAL levels
+- ✅ **Cascade Invalidation** - Automatic dependency graph invalidation
+- ✅ **Coordinated Versioning** - Static vN always pairs with LLM vN
+- ✅ **Code Reduction** - 430 lines removed, simpler maintenance
 
-**Previous: v0.4.2** - Context optimization and function-level analysis preparation
+**Removed**: `analysis-cache.js`, `llm-cache.js`, `query-cache.js` (622 lines)
+
+**Previous: v0.4.3** - Bug fixes and stability improvements
 
 **Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
 
 **🔗 Quick Links**:
-- [View Latest Changes](changelog/v0.4.2.md)
+- [View Latest Changes](changelog/v0.4.4.md)
 - [View v0.4.0 Changes](changelog/v0.4.0.md)
 - [View All Version Files](changelog/)
 - [Project Documentation](README.md)
@@ -51,6 +53,7 @@ This repository uses a modular changelog structure for better organization and m
 | **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | ✅ Complete |
 | **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | ✅ Complete |
 | **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
+| **Architecture** | 0.4.4 | Unified Cache System | ✅ Complete |
 | **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |
 
 ### **💡 Why This Structure?**
