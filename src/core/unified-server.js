@@ -39,7 +39,7 @@ import {
   getFileDependencies,
   findFiles
 } from '../layer-a-static/storage/query-service.js';
-import { QueryCache, globalCache } from '../layer-c-memory/query-cache.js';
+import { UnifiedCacheManager } from './unified-cache-manager.js';
 import { loadAIConfig, LLMClient } from '../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,7 +53,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
     super();
     this.projectPath = projectPath;
     this.omnySystemDataPath = path.join(projectPath, '.OmnySystemData');
-    this.cache = globalCache;
+    this.cache = null;  // Initialized in initializeMCP()
     this.metadata = null;
     this.initialized = false;
 
@@ -142,6 +142,14 @@ class CogniSystemUnifiedServer extends EventEmitter {
     console.log('STEP 1: MCP Server Initialization');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+    // Initialize unified cache
+    this.cache = new UnifiedCacheManager(this.projectPath, {
+      enableChangeDetection: true,
+      cascadeInvalidation: true
+    });
+    await this.cache.initialize();
+    console.log('  ✓ Unified cache initialized');
+
     // Check if analysis exists
     const hasAnalysis = await this.hasExistingAnalysis();
     
@@ -154,23 +162,23 @@ class CogniSystemUnifiedServer extends EventEmitter {
       
       // Initialize with empty data for now
       this.metadata = { metadata: { totalFiles: 0 }, fileIndex: {} };
-      this.cache.set('metadata', this.metadata);
-      this.cache.set('connections', { sharedState: [], eventListeners: [], total: 0 });
-      this.cache.set('assessment', { report: { summary: {} } });
+      this.cache.ramCacheSet('metadata', this.metadata);
+      this.cache.ramCacheSet('connections', { sharedState: [], eventListeners: [], total: 0 });
+      this.cache.ramCacheSet('assessment', { report: { summary: {} } });
       
       console.log('  ⏳ Server ready, analysis running in background\n');
     } else {
       // Load existing data
       this.metadata = await getProjectMetadata(this.projectPath);
-      this.cache.set('metadata', this.metadata);
+      this.cache.ramCacheSet('metadata', this.metadata);
       console.log('  ✓ Metadata cached');
 
       const connections = await getAllConnections(this.projectPath);
-      this.cache.set('connections', connections);
+      this.cache.ramCacheSet('connections', connections);
       console.log('  ✓ Connections cached');
 
       const assessment = await getRiskAssessment(this.projectPath);
-      this.cache.set('assessment', assessment);
+      this.cache.ramCacheSet('assessment', assessment);
       console.log('  ✓ Risk assessment cached');
 
       console.log(`  📊 ${this.metadata?.metadata?.totalFiles || 0} files indexed\n`);
@@ -228,13 +236,13 @@ class CogniSystemUnifiedServer extends EventEmitter {
   async reloadMetadata() {
     try {
       this.metadata = await getProjectMetadata(this.projectPath);
-      this.cache.set('metadata', this.metadata);
+      this.cache.ramCacheSet('metadata', this.metadata);
       
       const connections = await getAllConnections(this.projectPath);
-      this.cache.set('connections', connections);
+      this.cache.ramCacheSet('connections', connections);
       
       const assessment = await getRiskAssessment(this.projectPath);
-      this.cache.set('assessment', assessment);
+      this.cache.ramCacheSet('assessment', assessment);
       
       // Notify all clients
       this.wsManager?.broadcast({
@@ -764,7 +772,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
   // ============================================================
 
   async getImpactMap(filePath) {
-    const cached = this.cache.get(`impact:${filePath}`);
+    const cached = this.cache.ramCacheGet(`impact:${filePath}`);
     if (cached) return cached;
 
     try {
@@ -784,7 +792,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
         subsystem: fileData.subsystem
       };
 
-      this.cache.set(`impact:${filePath}`, result);
+      this.cache.ramCacheSet(`impact:${filePath}`, result);
       return result;
     } catch (error) {
       return { error: error.message };
@@ -820,7 +828,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
 
   async explainConnection(fileA, fileB) {
     try {
-      const connections = this.cache.get('connections') ||
+      const connections = this.cache.ramCacheGet('connections') ||
         await getAllConnections(this.projectPath);
 
       const relevant = connections.sharedState
@@ -853,7 +861,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
 
   async getRisk(minSeverity = 'medium') {
     try {
-      const assessment = this.cache.get('assessment') ||
+      const assessment = this.cache.ramCacheGet('assessment') ||
         await getRiskAssessment(this.projectPath);
 
       const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
@@ -944,8 +952,8 @@ class CogniSystemUnifiedServer extends EventEmitter {
   }
 
   invalidateCache(filePath) {
-    this.cache.delete(`impact:${filePath}`);
-    this.cache.delete(`file:${filePath}`);
+    this.cache.ramCacheInvalidate(`impact:${filePath}`);
+    this.cache.ramCacheInvalidate(`file:${filePath}`);
   }
 
   async restart() {
@@ -982,7 +990,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
         totalFiles: this.metadata?.metadata?.totalFiles || 0,
         totalFunctions: this.metadata?.metadata?.totalFunctions || 0
       },
-      cache: this.cache.getStats()
+      cache: this.cache.getCacheStats()
     };
   }
 

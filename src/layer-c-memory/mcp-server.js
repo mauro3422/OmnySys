@@ -31,7 +31,7 @@ import {
 } from '../layer-a-static/storage/query-service.js';
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 import { populateOmnySysData } from './populate-omnysysdata.js';
-import { QueryCache, globalCache } from './query-cache.js';
+import { UnifiedCacheManager } from '../core/unified-cache-manager.js';
 import { loadAIConfig, LLMClient } from '../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,7 +44,7 @@ class CogniSystemMCPServer {
   constructor(projectPath) {
     this.projectPath = projectPath;
     this.omnysysPath = path.join(projectPath, 'omnysysdata');
-    this.cache = globalCache;
+    this.cache = null;  // Initialized in initialize()
     this.metadata = null;
     this.initialized = false;
     this.statsInterval = null; // Referencia al interval para cleanup
@@ -173,21 +173,28 @@ class CogniSystemMCPServer {
 
       const startCache = performance.now();
 
+      // Initialize unified cache
+      this.cache = new UnifiedCacheManager(this.projectPath, {
+        enableChangeDetection: true,
+        cascadeInvalidation: true
+      });
+      await this.cache.initialize();
+
       this.metadata = await getProjectMetadata(this.projectPath);
-      this.cache.set('metadata', this.metadata);
+      this.cache.ramCacheSet('metadata', this.metadata);
       console.log('   ✓ Metadata cached');
 
       const connections = await getAllConnections(this.projectPath);
-      this.cache.set('connections', connections);
+      this.cache.ramCacheSet('connections', connections);
       console.log('   ✓ Connections cached');
 
       const assessment = await getRiskAssessment(this.projectPath);
-      this.cache.set('assessment', assessment);
+      this.cache.ramCacheSet('assessment', assessment);
       console.log('   ✓ Risk assessment cached');
 
       const cacheTime = (performance.now() - startCache).toFixed(2);
       console.log(`\n   Cache load time: ${cacheTime}ms`);
-      console.log(`   Cache memory: ${this.cache.getStats().memoryUsage}`);
+      console.log(`   Cache memory: ${this.cache.getCacheStats().memoryUsage}`);
 
       // Paso 4: Server ready
       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -214,7 +221,7 @@ class CogniSystemMCPServer {
    * Tool: get_impact_map - Qué archivos se ven afectados
    */
   async getImpactMap(filePath) {
-    const cached = this.cache.get(`impact:${filePath}`);
+    const cached = this.cache.ramCacheGet(`impact:${filePath}`);
     if (cached) return cached;
 
     try {
@@ -233,7 +240,7 @@ class CogniSystemMCPServer {
         riskLevel: fileData.riskScore?.severity || 'unknown'
       };
 
-      this.cache.set(`impact:${filePath}`, result);
+      this.cache.ramCacheSet(`impact:${filePath}`, result);
       return result;
     } catch (error) {
       return { error: error.message };
@@ -279,7 +286,7 @@ class CogniSystemMCPServer {
    */
   async explainConnection(fileA, fileB) {
     try {
-      const connections = this.cache.get('connections') ||
+      const connections = this.cache.ramCacheGet('connections') ||
         (await getAllConnections(this.projectPath));
 
       const relevant = connections.sharedState
@@ -320,7 +327,7 @@ class CogniSystemMCPServer {
    */
   async getRiskAssessment(minSeverity = 'medium') {
     try {
-      const assessment = this.cache.get('assessment') ||
+      const assessment = this.cache.ramCacheGet('assessment') ||
         (await getRiskAssessment(this.projectPath));
 
       const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
@@ -371,7 +378,7 @@ class CogniSystemMCPServer {
         totalFiles: this.metadata?.metadata.totalFiles,
         totalFunctions: this.metadata?.metadata.totalFunctions
       },
-      cache: this.cache.getStats(),
+      cache: this.cache.getCacheStats(),
       uptime: process.uptime()
     };
   }

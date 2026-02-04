@@ -10,7 +10,7 @@
  */
 
 import { LLMClient, loadAIConfig } from '../ai/llm-client.js';
-import { getLLMCache } from './llm-cache.js';
+import { UnifiedCacheManager } from '../core/unified-cache-manager.js';
 import { 
   validateLLMResponse, 
   calculateDynamicTimeout,
@@ -22,8 +22,9 @@ import {
  * Analizador semántico basado en LLM
  */
 export class LLMAnalyzer {
-  constructor(config) {
+  constructor(config, projectPath = process.cwd()) {
     this.config = config;
+    this.projectPath = projectPath;
     this.client = new LLMClient(config);
     this.initialized = false;
     this.cache = null;
@@ -44,9 +45,10 @@ export class LLMAnalyzer {
       console.warn('💡 Start servers with: src/ai/scripts/start_brain_gpu.bat');
     }
 
-    // Inicializar caché si está habilitado
+    // Inicializar caché unificado si está habilitado
     if (this.config.analysis.enableLLMCache) {
-      this.cache = await getLLMCache();
+      this.cache = new UnifiedCacheManager(this.projectPath);
+      await this.cache.initialize();
     }
 
     return this.initialized;
@@ -616,9 +618,10 @@ export class LLMAnalyzer {
 
 /**
  * Factory function para crear LLMAnalyzer con configuración cargada
+ * @param {string} projectPath - Ruta del proyecto (opcional)
  * @returns {Promise<LLMAnalyzer>}
  */
-export async function createLLMAnalyzer() {
+export async function createLLMAnalyzer(projectPath = process.cwd()) {
   const config = await loadAIConfig();
-  return new LLMAnalyzer(config);
+  return new LLMAnalyzer(config, projectPath);
 }

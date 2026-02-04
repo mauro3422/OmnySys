@@ -170,13 +170,18 @@ export class UnifiedCacheManager {
     this.cacheDir = path.join(projectPath, CACHE_DIR);
     this.indexPath = path.join(this.cacheDir, INDEX_FILE);
     
-    // Índice en memoria
+    // Índice en memoria (persistente)
     this.index = {
       version: '1.0.0',
       timestamp: Date.now(),
       entries: {}, // filePath -> CacheEntry
       dependencyGraph: {} // filePath -> [filePaths]
     };
+    
+    // Caché RAM (reemplaza QueryCache)
+    this.ramCache = new Map();
+    this.defaultTtlMinutes = 5;
+    this.maxRamEntries = 1000;
     
     this.loaded = false;
   }
@@ -369,6 +374,57 @@ export class UnifiedCacheManager {
     await this.saveIndex();
   }
   
+  // ============================================================
+  // MÉTODOS COMPATIBLES CON LLMCACHE (adaptadores)
+  // ============================================================
+  
+  /**
+   * Obtiene resultado LLM cacheado (compatible con LLMCache antiguo)
+   * @param {string} filePath - Ruta del archivo
+   * @param {string} code - Código fuente (para verificación de hash)
+   * @param {string} promptTemplate - Template del prompt
+   * @returns {Promise<object|null>} - Resultado cacheado o null
+   */
+  async get(filePath, code, promptTemplate) {
+    const entry = this.index.entries[filePath];
+    
+    // Si no hay entrada o no se analizó con LLM
+    if (!entry || !entry.llmAnalyzed) {
+      return null;
+    }
+    
+    try {
+      const insightsPath = path.join(
+        this.cacheDir, 
+        'llm', 
+        `${filePath.replace(/[\/\\]/g, '_')}.v${entry.version}.insights.json`
+      );
+      
+      const content = await fs.readFile(insightsPath, 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+  
+  /**
+   * Guarda resultado LLM (compatible con LLMCache antiguo)
+   * @param {string} filePath - Ruta del archivo
+   * @param {string} code - Código fuente
+   * @param {string} promptTemplate - Template del prompt
+   * @param {object} result - Resultado del análisis
+   * @returns {Promise<boolean>}
+   */
+  async set(filePath, code, promptTemplate, result) {
+    // Asegurar que existe la entrada
+    if (!this.index.entries[filePath]) {
+      await this.registerFile(filePath, code);
+    }
+    
+    await this.saveLLMInsights(filePath, result);
+    return true;
+  }
+  
   /**
    * Actualiza el grafo de dependencias
    */
@@ -437,6 +493,124 @@ export class UnifiedCacheManager {
     }
     
     return deletedCount;
+  }
+  
+  // ============================================================
+  // MÉTODOS DE CACHÉ RAM (reemplazan QueryCache)
+  // ============================================================
+  
+  /**
+   * Obtiene un valor del caché RAM
+   * @param {string} key - Clave del caché
+   * @returns {any} - Valor cacheado o null
+   */
+  get(key) {
+    const item = this.ramCache?.get(key);
+    
+    if (!item) return null;
+    
+    // Verificar TTL
+    if (Date.now() > item.expiry) {
+      this.ramCache.delete(key);
+      return null;
+    }
+    
+    return item.data;
+  }
+  
+  /**
+   * Guarda un valor en el caché RAM
+   * @param {string} key - Clave del caché
+   * @param {any} data - Datos a guardar
+   * @param {number} ttlMinutes - TTL en minutos (default: 5)
+   */
+  set(key, data, ttlMinutes = 5) {
+    if (!this.ramCache) {
+      this.ramCache = new Map();
+    }
+    
+    // Si existe, actualizar mueve al final (LRU)
+    if (this.ramCache.has(key)) {
+      this.ramCache.delete(key);
+    }
+    
+    // LRU eviction si alcanzamos el límite
+    const maxEntries = 1000;
+    if (this.ramCache.size >= maxEntries) {
+      const oldestKey = this.ramCache.keys().next().value;
+      this.ramCache.delete(oldestKey);
+    }
+    
+    this.ramCache.set(key, {
+      data,
+      expiry: Date.now() + (ttlMinutes * 60 * 1000),
+      createdAt: Date.now()
+    });
+  }
+  
+  /**
+   * Invalida una entrada del caché RAM
+   * @param {string} key - Clave a invalidar
+   * @returns {boolean} - true si se eliminó
+   */
+  invalidate(key) {
+    if (!this.ramCache) return false;
+    
+    if (typeof key === 'string' && key.includes('*') || key.includes('?')) {
+      // Patrón con wildcard
+      const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
+      const regex = new RegExp(pattern);
+      let count = 0;
+      
+      for (const k of this.ramCache.keys()) {
+        if (regex.test(k)) {
+          this.ramCache.delete(k);
+          count++;
+        }
+      }
+      return count > 0;
+    }
+    
+    return this.ramCache.delete(key);
+  }
+  
+  /**
+   * Limpia todo el caché RAM
+   */
+  clear() {
+    if (this.ramCache) {
+      this.ramCache.clear();
+    }
+  }
+  
+  /**
+   * Obtiene estadísticas del caché RAM
+   */
+  getRamStats() {
+    if (!this.ramCache) {
+      return { size: 0, memoryUsage: '0 KB' };
+    }
+    
+    let bytes = 0;
+    for (const item of this.ramCache.values()) {
+      bytes += JSON.stringify(item.data).length;
+    }
+    
+    return {
+      size: this.ramCache.size,
+      maxEntries: 1000,
+      memoryUsage: `${Math.round(bytes / 1024)} KB`
+    };
+  }
+  
+  /**
+   * Obtiene estadísticas completas (persistente + RAM)
+   */
+  getAllStats() {
+    return {
+      persistent: this.getStats(),
+      ram: this.getRamStats()
+    };
   }
 }
 
