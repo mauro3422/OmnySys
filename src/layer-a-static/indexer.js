@@ -494,19 +494,21 @@ export async function indexProject(rootPath, options = {}) {
       console.log('');
     }
 
-    // Paso 8: Guardar grafo
+    // Paso 8: Guardar grafo en .OmnySysData/
     if (verbose) console.log('💾 Saving graph...');
-    const outputFullPath = path.join(absoluteRootPath, outputPath);
+    const dataDir = path.join(absoluteRootPath, '.OmnySysData');
+    await fs.mkdir(dataDir, { recursive: true });
+    const outputFullPath = path.join(dataDir, outputPath);
     await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
-    if (verbose) console.log(`  ✓ Saved to: ${outputPath}\n`);
+    if (verbose) console.log(`  ✓ Saved to: .OmnySysData/${outputPath}\n`);
 
     // Paso 9: Generar análisis automático
     if (verbose) console.log('🔍 Analyzing code quality...');
     const analysisReport = generateAnalysisReport(systemMap);
     const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
-    const analysisFullPath = path.join(absoluteRootPath, analysisOutputPath);
+    const analysisFullPath = path.join(dataDir, analysisOutputPath);
     await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
-    if (verbose) console.log(`  ✓ Analysis saved to: ${analysisOutputPath}\n`);
+    if (verbose) console.log(`  ✓ Analysis saved to: .OmnySysData/${analysisOutputPath}\n`);
 
     // Paso 10: NUEVO - Generar enhanced system map con análisis semántico estático
     if (verbose) console.log('🧠 Performing Phase 3.5: Semantic Detection (Static)...');
@@ -518,9 +520,9 @@ export async function indexProject(rootPath, options = {}) {
       skipLLM
     );
     const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
-    const enhancedFullPath = path.join(absoluteRootPath, enhancedOutputPath);
+    const enhancedFullPath = path.join(dataDir, enhancedOutputPath);
     await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
-    if (verbose) console.log(`  ✓ Enhanced map saved to: ${enhancedOutputPath}\n`);
+    if (verbose) console.log(`  ✓ Enhanced map saved to: .OmnySysData/${enhancedOutputPath}\n`);
 
     // Paso 11: NUEVO - Guardar datos particionados en .OmnySysData/
     if (verbose) console.log('💾 Saving partitioned data to .OmnySysData/...');
@@ -566,7 +568,7 @@ export async function indexProject(rootPath, options = {}) {
   - Low severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.low || 0}
 
 💾 STORAGE:
-  - Monolithic JSON: ${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
+  - Monolithic JSON: .OmnySysData/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
   - Partitioned data: .OmnySysData/ directory (${partitionedPaths.files.length} files)
   - Query API available via query-service.js
       `);
@@ -599,7 +601,7 @@ async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
   try {
     // Cargar systemMap existente si hay análisis previo
     let existingMap = null;
-    const systemMapPath = path.join(absoluteRootPath, 'system-map-enhanced.json');
+    const systemMapPath = path.join(absoluteRootPath, '.OmnySysData', 'system-map-enhanced.json');
     
     try {
       const content = await fs.readFile(systemMapPath, 'utf-8');
@@ -729,7 +731,7 @@ async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
       existingMap.files[singleFile] = fileAnalysis;
       existingMap.metadata.lastUpdated = new Date().toISOString();
       await fs.writeFile(systemMapPath, JSON.stringify(existingMap, null, 2), 'utf-8');
-      if (verbose) console.log('  ✓ Updated system-map-enhanced.json\n');
+      if (verbose) console.log('  ✓ Updated .OmnySysData/system-map-enhanced.json\n');
     }
 
     return fileAnalysis;
