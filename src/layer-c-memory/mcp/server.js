@@ -94,7 +94,22 @@ export class CogniSystemMCPServer {
       const indexPath = path.join(this.projectPath, '.OmnySystemData', 'index.json');
       await fs.access(indexPath);
       const metadata = await getProjectMetadata(this.projectPath);
-      console.error(`✅ Found existing analysis: ${metadata?.metadata?.totalFiles || 0} files`);
+      const fileCount = metadata?.metadata?.totalFiles || 0;
+      
+      console.error(`⚠️  Found existing analysis: ${fileCount} files`);
+      
+      // Validar si el análisis está completo y no está corrupto
+      if (fileCount === 0 || !metadata?.files || Object.keys(metadata.files).length === 0) {
+        console.error('   🚨 Analysis appears incomplete or corrupted, forcing regeneration...');
+        console.error('   ⏳ This may take 30-60 seconds...\n');
+        
+        // Forzar regeneración completa
+        await this.runFullIndexing();
+        
+        console.error('\n✅ Full indexing completed');
+      } else {
+        console.error('   ✅ Analysis appears valid, using existing data');
+      }
     } catch {
       console.error('⚠️  No analysis found, running full indexing...');
       console.error('   ⏳ This may take 30-60 seconds...\n');
@@ -109,31 +124,34 @@ export class CogniSystemMCPServer {
   async runFullIndexing() {
     const { indexProject } = await import('../../layer-a-static/indexer.js');
     
-    return new Promise((resolve, reject) => {
-      indexProject(this.projectPath, {
+    console.error('   🚀 Starting Layer A: Static Analysis...');
+    console.error('   ⏳ This may take 30-60 seconds...');
+    
+    try {
+      const result = await indexProject(this.projectPath, {
         verbose: true,
         skipLLM: false,  // Permitir IA si detecta casos complejos
         outputPath: 'system-map.json'
-      }).then(result => {
-        console.error(`\n   📊 Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
-        
-        // Verificar si IA se activó
-        const hasLLM = Object.values(result.files || {}).some(
-          f => f.aiEnhancement || f.llmInsights
-        );
-        
-        if (hasLLM) {
-          console.error('   🤖 Layer B: IA enrichment applied');
-        } else {
-          console.error('   ℹ️  Layer B: Static analysis sufficient (no IA needed)');
-        }
-        
-        resolve(result);
-      }).catch(error => {
-        console.error('   ❌ Indexing failed:', error.message);
-        reject(error);
       });
-    });
+      
+      console.error(`\n   📊 Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
+      
+      // Verificar si IA se activó
+      const hasLLM = Object.values(result.files || {}).some(
+        f => f.aiEnhancement || f.llmInsights
+      );
+      
+      if (hasLLM) {
+        console.error('   🤖 Layer B: IA enrichment applied');
+      } else {
+        console.error('   ℹ️  Layer B: Static analysis sufficient (no IA needed)');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('   ❌ Indexing failed:', error.message);
+      throw error;
+    }
   }
 
   setupMCP() {

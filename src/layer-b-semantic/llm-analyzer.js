@@ -131,7 +131,7 @@ export class LLMAnalyzer {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Construir prompt con contexto del proyecto
-        const prompt = this.buildPrompt(code, filePath, staticAnalysis, projectContext, metadata);
+        const prompt = await this.buildPrompt(code, filePath, staticAnalysis, projectContext, metadata);
 
         // ✅ DEBUGGING: Contar tokens aproximados (4 chars ≈ 1 token)
         if (attempt === 1) { // Solo mostrar en primer intento
@@ -245,7 +245,7 @@ export class LLMAnalyzer {
     const fileIndices = [];
 
     // Construir prompts para todos (ANTES de verificar cache)
-    const allPrompts = files.map(f => this.buildPrompt(f.code, f.filePath, f.staticAnalysis, f.projectContext, f.metadata));
+    const allPrompts = await Promise.all(files.map(f => this.buildPrompt(f.code, f.filePath, f.staticAnalysis, f.projectContext, f.metadata)));
 
     // Verificar caché para cada archivo usando el prompt completo
     for (let i = 0; i < files.length; i++) {

@@ -2,11 +2,18 @@
  * Prompt Selector - Selecciona el prompt template basado en metadatos
  */
 
-import * as dynamicImportsTemplate from './prompt-templates/dynamic-imports.js';
-import * as semanticConnectionsTemplate from './prompt-templates/semantic-connections.js';
-import * as cssInJSTemplate from './prompt-templates/css-in-js.js';
-import * as typescriptTemplate from './prompt-templates/typescript.js';
-import * as defaultTemplate from './prompt-templates/default.js';
+import dynamicImportsModule from './prompt-templates/dynamic-imports.js';
+import semanticConnectionsModule from './prompt-templates/semantic-connections.js';
+import cssInJSModule from './prompt-templates/css-in-js.js';
+import typescriptModule from './prompt-templates/typescript.js';
+import defaultModule from './prompt-templates/default.js';
+
+// Extraer los templates de los módulos (handle both default and named exports)
+const dynamicImportsTemplate = dynamicImportsModule.default || dynamicImportsModule;
+const semanticConnectionsTemplate = semanticConnectionsModule.default || semanticConnectionsModule;
+const cssInJSTemplate = cssInJSModule.default || cssInJSModule;
+const typescriptTemplate = typescriptModule.default || typescriptModule;
+const defaultTemplate = defaultModule.default || defaultModule;
 
 class PromptSelector {
   /**
