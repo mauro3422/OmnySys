@@ -175,7 +175,11 @@ export class UnifiedCacheManager {
       version: '1.0.0',
       timestamp: Date.now(),
       entries: {}, // filePath -> CacheEntry
-      dependencyGraph: {} // filePath -> [filePaths]
+      dependencyGraph: {}, // filePath -> [filePaths]
+      metadata: {
+        totalFiles: 0,
+        totalDependencies: 0
+      }
     };
     
     // Caché RAM (reemplaza QueryCache)
@@ -227,9 +231,9 @@ export class UnifiedCacheManager {
         return false;
       }
       
-      // Leer todos los archivos .json en la carpeta files
+      // Leer todos los archivos .json en la carpeta files (recursivo para subcarpetas como src/modules/)
       const fileEntries = await fs.readdir(filesDir, { recursive: true });
-      const jsonFiles = fileEntries.filter(f => f.endsWith('.json'));
+      const jsonFiles = fileEntries.filter(f => f.endsWith('.json') && !f.includes('connections') && !f.includes('risks'));
       
       if (jsonFiles.length === 0) {
         return false;
