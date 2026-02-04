@@ -20,6 +20,10 @@ import { detectAllCSSInJSConnections } from '../layer-b-semantic/css-in-js-extra
 import { detectAllTypeScriptConnections } from '../layer-b-semantic/typescript-extractor.js';
 import { detectAllReduxContextConnections } from '../layer-b-semantic/redux-context-extractor.js';
 
+// NUEVO: Sistema de caché unificado
+import { UnifiedCacheManager, ChangeType } from '../core/unified-cache-manager.js';
+import { analyzeWithUnifiedCache, analyzeLLMWithUnifiedCache } from '../core/cache-integration.js';
+
 /**
  * Indexer - Orquestador principal de Capa A
  *
@@ -378,6 +382,10 @@ export async function indexProject(rootPath, options = {}) {
   console.log(`📁 Project root: ${absoluteRootPath}\n`);
 
   try {
+    // NUEVO: Inicializar Unified Cache Manager
+    const cacheManager = new UnifiedCacheManager(absoluteRootPath);
+    await cacheManager.initialize();
+
     // Paso 1: Detectar info del proyecto
     if (verbose) console.log('📋 Detecting project info...');
     const projectInfo = await detectProjectInfo(absoluteRootPath);
@@ -389,6 +397,9 @@ export async function indexProject(rootPath, options = {}) {
     // Convertir a rutas absolutas para parseo
     const files = relativeFiles.map(f => path.join(absoluteRootPath, f));
     if (verbose) console.log(`  ✓ Found ${files.length} files\n`);
+    
+    // NUEVO: Limpiar archivos borrados del cache
+    await cacheManager.cleanupDeletedFiles(relativeFiles);
 
     // Paso 3: Parsear archivos
     if (verbose) console.log('📝 Parsing files...');
