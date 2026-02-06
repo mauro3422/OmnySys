@@ -38,25 +38,30 @@ async function main() {
   try {
     // Step 1: Load module
     console.log('📦 Step 1: Loading OmnySys...');
-    const mcpServer = await import('./mcp-server.js');
+    const { OmnySysMCPServer } = await import('./src/layer-c-memory/mcp/core/server-class.js');
 
-    // Step 2: Get server class
-    const { CogniSystemMCPServer } = mcpServer;
-
-    if (!CogniSystemMCPServer) {
-      throw new Error('CogniSystemMCPServer class not found');
+    if (!OmnySysMCPServer) {
+      throw new Error('OmnySysMCPServer class not found');
     }
 
-    // Step 3: Create server instance
+    // Step 2: Create server instance
     console.log('🔧 Step 2: Creating server instance...');
-    const server = new CogniSystemMCPServer(projectRoot);
+    const server = new OmnySysMCPServer(projectRoot);
 
-    // Step 4: Initialize server
-    console.log('⏳ Step 3: Initializing server (this may take a few seconds)...');
-    await server.initialize();
-
-    // Step 5: Show status
-    const status = server.getServerStatus();
+    // Step 3: Run server (initializes in background after MCP handshake)
+    console.log('⏳ Step 3: Starting MCP server...');
+    
+    // Start server in non-blocking way for standalone use
+    server.run().catch(error => {
+      console.error('Server error:', error);
+      process.exit(1);
+    });
+    
+    // Wait a bit for initialization to start
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Step 4: Show status
+    const status = server.getStats();
     console.log('\n' + '='.repeat(60));
     console.log('✅ MCP Server Ready!');
     console.log('='.repeat(60));
@@ -66,7 +71,7 @@ async function main() {
     console.log(`   • Total Files: ${status.metadata.totalFiles || 'Analyzing...'}`);
     console.log(`   • Cache: ${status.cache.stats.totalKeys} entries\n`);
 
-    console.log('🎯 Available Tools:');
+    console.log('🎯 Available Tools (9 total):');
     console.log('   • get_impact_map(filePath)');
     console.log('   • analyze_change(filePath, symbolName)');
     console.log('   • explain_connection(fileA, fileB)');
@@ -82,7 +87,7 @@ async function main() {
     // Keep server running
     process.on('SIGINT', async () => {
       console.log('\n\n🛑 Stopping MCP server...');
-      await server.stop();
+      await server.shutdown();
       process.exit(0);
     });
 
@@ -96,7 +101,7 @@ async function main() {
     console.error('   1. Check if .omnysysdata/ exists');
     console.error('   2. Check if all dependencies are installed (npm install)');
     console.error('   3. Check Node.js version (v16+ required)');
-    console.error('   4. Run: node src/layer-c-memory/mcp-server.js .');
+    console.error('   4. Run: npm run mcp:start');
     process.exit(1);
   }
 }

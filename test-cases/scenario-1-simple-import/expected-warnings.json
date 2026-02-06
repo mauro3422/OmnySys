@@ -61,6 +61,6 @@
   "notes": [
     "Risk levels: low (0 dependents), medium (1-3 dependents), high (4+ dependents or critical function)",
     "For simple chains like this, editing the base (fileC) has higher risk than editing the top (fileA)",
-    "CogniSystem should warn about transitive dependencies: editing C affects A even though there's no direct import"
+    "OmnySys should warn about transitive dependencies: editing C affects A even though there's no direct import"
   ]
 }
