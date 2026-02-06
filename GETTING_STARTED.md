@@ -1,49 +1,137 @@
 # Getting Started - Primeros Pasos
 
+**Versión**: v0.5.1 - Enterprise Architecture Refactor  
+**Última actualización**: 2026-02-06
+
+---
+
 ## Estado Actual del Proyecto
 
-✅ **FASE 0 COMPLETADA** - Documentación y Estructura
+✅ **FASE 5 COMPLETADA** - Sistema Funcional con Arquitectura Enterprise
 
-Hemos creado la base completa de CogniSystem:
-- Documentación exhaustiva del problema y la solución
-- Arquitectura técnica detallada de las 3 capas
-- Roadmap con fases claras
-- Estructura de carpetas profesional
-- Casos de prueba sintéticos
+CogniSystem está completamente funcional con una arquitectura modular de 147 módulos:
 
-**Próximo paso**: Implementar Capa A (Análisis Estático)
+- ✅ Capa A: Análisis estático completo (27 módulos)
+- ✅ Capa B: Análisis semántico con IA (40+ módulos)
+- ✅ Capa C: Memoria persistente y MCP Server (15 módulos)
+- ✅ Core: Orchestrator, FileWatcher, BatchProcessor (25 módulos)
+- ✅ 15+ casos de prueba sintéticos validados
+- ✅ MCP Tools listas para usar
+
+**Próximo paso**: Fase 6 - Beta Testing en proyectos reales
+
+---
+
+## Inicio Rápido (5 minutos)
+
+### 1. Instalación
+
+```bash
+# Clonar o navegar al repositorio
+cd OmnySystem
+
+# Instalar dependencias
+npm install
+```
+
+### 2. Iniciar el Sistema
+
+```bash
+# Un solo comando inicia todo
+node src/layer-c-memory/mcp-server.js /ruta/a/tu/proyecto
+```
+
+Esto inicia automáticamente:
+- MCP Server con tools disponibles
+- Orchestrator (cola + worker)
+- FileWatcher para cambios en tiempo real
+- Indexación en background (si es necesaria)
+- WebSocket en puerto 9997
+
+### 3. Usar las Tools MCP
+
+Una vez iniciado, las siguientes tools están disponibles para la IA:
+
+```javascript
+// Obtener mapa de impacto
+get_impact_map("src/components/Button.js")
+
+// Analizar cambio en un símbolo específico
+analyze_change("src/store.js", "userState")
+
+// Explicar conexión entre archivos
+explain_connection("src/App.js", "src/store.js")
+
+// Evaluación de riesgos del proyecto
+get_risk_assessment("medium")
+
+// Buscar archivos
+search_files("**/*.test.js")
+
+// Estado del servidor
+get_server_status()
+```
 
 ---
 
 ## Estructura del Proyecto
 
 ```
-cogni-system/
+OmnySystem/
 ├── README.md                           ⭐ Empieza aquí
 ├── ROADMAP.md                          📋 Plan de desarrollo
-├── ARCHITECTURE.md                     🏗️ Diseño técnico
+├── ARCHITECTURE.md                     🏗️ Diseño técnico detallado
 ├── GETTING_STARTED.md                  👉 Este archivo
+├── CHANGELOG.md                        📝 Historial de versiones
 │
 ├── docs/
-│   ├── PROBLEM_ANALYSIS.md             📊 Análisis del problema original
-│   ├── EXISTING_SOLUTIONS.md           🔍 Comparación con mercado
-│   └── FUTURE_IDEAS.md                 💡 Ideas de expansión
+│   ├── INDEX.md                        📑 Índice de documentación
+│   ├── ARCHITECTURE_LAYER_A_B.md       🏗️ Arquitectura Capas A/B
+│   ├── MCP_TOOLS.md                    🛠️ Documentación de tools
+│   ├── PROBLEM_ANALYSIS.md             📊 Análisis del problema
+│   └── ...
+│
+├── changelog/
+│   ├── v0.5.1.md                       🆕 Enterprise Architecture
+│   ├── v0.5.0.md                       Layer A/B Unification
+│   └── ...
 │
 ├── test-cases/
-│   ├── README.md                       🧪 Guía de test cases
-│   └── scenario-1-simple-import/       ✅ Primer caso de prueba
-│       ├── README.md
-│       ├── src/                        (código sintético)
-│       ├── expected-graph.json         (ground truth)
-│       └── expected-warnings.json      (advertencias esperadas)
+│   ├── scenario-1-simple-import/       ✅ Casos de prueba
+│   ├── scenario-2-semantic/
+│   └── ... (15+ escenarios)
 │
 ├── src/
-│   ├── layer-a-static/                 🔵 Capa A: Análisis Estático
-│   │   └── README.md                   (qué implementar)
-│   ├── layer-b-semantic/               🟢 Capa B: IA Semántica
-│   │   └── README.md
+│   ├── core/                           🔧 Componentes core (25 módulos)
+│   │   ├── batch-processor/            🆕 Batch processor (9 módulos)
+│   │   ├── websocket/                  🆕 WebSocket server (10 módulos)
+│   │   ├── unified-server/             HTTP API + WebSocket
+│   │   ├── orchestrator.js             🔄 Cola y worker
+│   │   ├── file-watcher.js             👁️ Detección de cambios
+│   │   └── unified-cache-manager.js    💾 Cache unificado
+│   │
+│   ├── layer-a-static/                 🔵 Capa A: Análisis Estático (27 módulos)
+│   │   ├── graph/                      🆕 Graph builder (11 módulos)
+│   │   ├── parser/                     🆕 AST parser (8 módulos)
+│   │   ├── extractors/                 🆕 Extractors organizados (17 módulos)
+│   │   │   ├── communication/          Web Workers, WebSocket, etc.
+│   │   │   ├── metadata/               JSDoc, async, errors
+│   │   │   ├── static/                 localStorage, events, globals
+│   │   │   └── state-management/       Redux & React Context
+│   │   └── query/                      🆕 Query service (6 módulos)
+│   │
+│   ├── layer-b-semantic/               🟢 Capa B: IA Semántica (40+ módulos)
+│   │   ├── llm-analyzer/               🆕 LLM analyzer (5 módulos)
+│   │   ├── issue-detectors/            🆕 Issue detection (8 módulos)
+│   │   ├── project-analyzer/           🆕 Project analysis (10 módulos)
+│   │   ├── validators/                 🆕 LLM validation (17 módulos)
+│   │   └── metadata-contract/          🆕 A→B contract (10 módulos)
+│   │
 │   └── layer-c-memory/                 🟣 Capa C: Memoria Persistente
-│       └── README.md
+│       ├── mcp-server.js               🚀 Entry point único
+│       ├── mcp/                        🆕 MCP modules
+│       ├── storage/                    💾 Persistencia
+│       └── query/                      🔍 Consultas
 │
 ├── package.json
 └── .gitignore
@@ -51,250 +139,197 @@ cogni-system/
 
 ---
 
-## ¿Qué Sigue?
+## Flujo de Trabajo Típico
 
-### Opción A: Empezar a Codear (Recomendado)
+### Escenario: Modificar un Componente React
 
-**Implementar Capa A - Análisis Estático**
-
-1. **Lee la documentación**:
-   - [src/layer-a-static/README.md](src/layer-a-static/README.md) - Qué componentes implementar
-   - [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico detallado
-
-2. **Instala dependencias**:
-   ```bash
-   npm install
-   ```
-
-3. **Crea el primer componente: `scanner.js`**:
-   - Escanea el filesystem
-   - Filtra archivos por extensión
-   - Ignora node_modules, dist, etc.
-
-4. **Valida con test case**:
-   ```bash
-   node src/layer-a-static/scanner.js test-cases/scenario-1-simple-import/src
-   ```
-
-5. **Continúa con los demás componentes**:
-   - `parser.js` (parsea archivos a AST)
-   - `resolver.js` (resuelve rutas de imports)
-   - `graph-builder.js` (construye el grafo)
-   - `indexer.js` (orquestador principal)
-
-### Opción B: Crear Más Test Cases
-
-Si prefieres tener más casos de prueba antes de empezar:
-
-1. **Scenario 2: Shared State**
-   - Crear archivos sintéticos
-   - Definir expected-graph.json
-
-2. **Scenario 3: Event System**
-   - Emisor y listeners
-   - Conexión sin imports directos
-
-3. Ver [test-cases/README.md](test-cases/README.md) para la lista completa
-
-### Opción C: Explorar Herramientas Existentes
-
-Antes de construir desde cero, puedes validar herramientas del mercado:
-
-1. Instalar `@er77/code-graph-rag-mcp`:
-   ```bash
-   npm install -g @er77/code-graph-rag-mcp
-   ```
-
-2. Probar en uno de tus proyectos bloqueados
-
-3. Documentar qué funciona y qué no
-
-4. Usar esos insights para CogniSystem
+```
+1. Usuario: "Voy a modificar Button.js"
+   │
+   ▼
+2. IA (Claude) llama automáticamente:
+   get_impact_map("src/components/Button.js")
+   │
+   ▼
+3. CogniSystem responde:
+   {
+     "file": "Button.js",
+     "directlyAffects": ["Card.js", "Modal.js", "Form.js"],
+     "transitiveAffects": ["Dashboard.js"],
+     "semanticConnections": [
+       { "target": "theme.js", "type": "shared-state" }
+     ],
+     "riskLevel": "medium"
+   }
+   │
+   ▼
+4. IA informa al usuario:
+   "Button.js afecta a 3 archivos directamente y 1 indirectamente.
+    También comparte estado con theme.js."
+   │
+   ▼
+5. Usuario: "Ok, haz los cambios"
+   │
+   ▼
+6. IA edita los 4 archivos necesarios en una sola pasada
+   │
+   ▼
+7. FileWatcher detecta cambios → Regenera grafo automáticamente
+```
 
 ---
 
 ## Comandos Útiles
 
 ```bash
-# Instalar dependencias
-npm install
+# Iniciar servidor MCP
+node src/layer-c-memory/mcp-server.js /ruta/a/proyecto
+
+# Ver estado del sistema
+curl http://localhost:8080/api/status
+
+# Ver estructura del proyecto (excluyendo node_modules)
+tree -L 2 -I 'node_modules'
 
 # Ejecutar tests (cuando estén implementados)
 npm test
 
-# Ver estructura del proyecto
-tree -L 2 -I 'node_modules'
-
-# Validar que el proyecto está bien estructurado
-ls -la
+# Ver documentación de changelog
+cat changelog/v0.5.1.md
 ```
 
 ---
 
-## Flujo de Desarrollo Recomendado
+## Desarrollo y Contribución
 
-### Fase 1: Capa A (MVP)
+### Estructura Modular (v0.5.1)
 
-**Duración**: No estimamos tiempos, enfoque en qué construir
+CogniSystem v0.5.1 sigue principios SOLID con 147 módulos organizados:
 
-**Objetivos**:
-1. ✅ Scanner que encuentra archivos
-2. ✅ Parser que extrae imports/exports
-3. ✅ Graph builder que conecta archivos
-4. ✅ Validar con `scenario-1-simple-import`
+**Principios aplicados**:
+- **Single Responsibility**: Cada módulo tiene UNA razón para cambiar
+- **Open/Closed**: Extensible sin modificar código existente
+- **SSOT**: Single Source of Truth para tipos, configs, utilidades
 
-**Criterio de éxito**: El grafo generado coincide con `expected-graph.json`
+**Agregar un nuevo extractor**:
+```javascript
+// 1. Crear archivo en la carpeta apropiada
+// src/layer-a-static/extractors/metadata/nuevo-extractor.js
 
-### Fase 2: Integración Básica
+// 2. Exportar función principal
+export function extractNuevoPattern(filePath, content) {
+  // Implementación
+}
 
-**Objetivos**:
-1. ✅ Servidor MCP simple que expone `get_impact_map`
-2. ✅ Skill para Claude Code que llama al servidor
-3. ✅ Validar que una IA puede consultar el grafo
+// 3. Actualizar index.js de la carpeta
+// No necesitas modificar código existente
+```
 
-### Fase 3: Capa B (Semántica)
-
-**Objetivos**:
-1. ✅ Pattern matchers (eventos, storage)
-2. ✅ Connection inference
-3. ✅ Validar con `scenario-2-shared-state`
-
----
-
-## Gestión de Contexto
-
-**Importante**: Cuando se compacte el contexto de la IA que te está ayudando:
-
-1. **La documentación sobrevive**: Todo está en archivos Markdown
-2. **Puedes retomar desde aquí**: Este archivo es tu punto de entrada
-3. **Los test cases son tu guía**: Valida cada componente con ellos
-
-**Para retomar**:
-1. Lee [README.md](README.md) para entender el problema
-2. Lee [ROADMAP.md](ROADMAP.md) para ver el plan
-3. Lee el README de la capa que estés implementando
-4. Continúa donde lo dejaste
+**SSOT Locations**:
+- SystemMap Structure: `src/layer-a-static/graph/types.js`
+- Path Normalization: `src/layer-a-static/graph/utils/path-utils.js`
+- Babel Config: `src/layer-a-static/parser/config.js`
+- Prompt Building: `src/layer-b-semantic/llm-analyzer/prompt-builder.js`
 
 ---
 
-## Preguntas Frecuentes
+## Troubleshooting
 
-### ¿Por dónde empiezo?
+### Problema: "No se encuentra el módulo"
 
-**Respuesta**: Implementa `scanner.js` en `src/layer-a-static/`. Es el componente más simple y te dará momentum.
+**Solución**: Asegúrate de usar las rutas correctas con los index.js facades:
+```javascript
+// ✅ Correcto - usa el facade
+import { buildSystemMap } from './src/layer-a-static/graph/index.js';
 
-### ¿Necesito saber mucho sobre ASTs?
+// ❌ Incorrecto - archivo específico
+import { buildSystemMap } from './src/layer-a-static/graph/builders/system-map.js';
+```
 
-**Respuesta**: No. `@babel/parser` hace el trabajo pesado. Solo necesitas saber cómo recorrer el árbol.
+### Problema: LLM no responde
 
-### ¿Qué pasa si me bloqueo?
-
-**Respuesta**:
-1. Revisa [ARCHITECTURE.md](ARCHITECTURE.md) - tiene ejemplos de código
-2. Mira el test case correspondiente - muestra qué se espera
-3. Busca librerías similares (Dependency Cruiser, Madge) para inspiración
-
-### ¿Debo implementar todo de una vez?
-
-**Respuesta**: **NO**. Implementa incrementalmente:
-1. Scanner → valida
-2. Parser → valida
-3. Graph builder → valida
-4. etc.
-
-### ¿Cuándo debería usar esto en proyectos reales?
-
-**Respuesta**: Solo cuando:
-- ✅ Capa A funciona perfectamente en test cases
-- ✅ Has validado en un proyecto pequeño tuyo
-- ✅ Estás cómodo con posibles bugs
-
-**No lo uses en producción hasta Fase 5 del ROADMAP**
-
----
-
-## Recursos Externos
-
-### Documentación de Librerías
-- [@babel/parser](https://babeljs.io/docs/babel-parser) - Parser de JS/TS
-- [@babel/traverse](https://babeljs.io/docs/babel-traverse) - Recorrido de AST
-- [fast-glob](https://github.com/mrmlnc/fast-glob) - File scanning
-- [chokidar](https://github.com/paulmillr/chokidar) - File watching
-
-### Proyectos Similares (Inspiración)
-- [Dependency Cruiser](https://github.com/sverweij/dependency-cruiser) - Análisis estático
-- [Madge](https://github.com/pahen/madge) - Grafo de dependencias
-- [@er77/code-graph-rag-mcp](https://github.com/er77/code-graph-rag-mcp) - Servidor MCP de grafos
-
-### MCP (Model Context Protocol)
-- [MCP Docs](https://modelcontextprotocol.io/) - Especificación oficial
-- [MCP SDK](https://github.com/modelcontextprotocol/sdk) - SDK para construir servidores
-
----
-
-## Notas Importantes
-
-### Sobre el Renombramiento de la Carpeta
-
-**Acción pendiente**: Renombrar la carpeta del proyecto de `aver` a `cogni-system`
-
-Esto no se puede hacer automáticamente desde la IA, debes hacerlo manualmente:
-
+**Solución**: Verifica que llama-server esté corriendo:
 ```bash
-# Opción 1: Desde la carpeta padre
-mv aver cogni-system
+# Verificar estado
+lmstudio status
 
-# Opción 2: En Windows (explorador de archivos)
-# Click derecho → Renombrar
+# O usar análisis sin IA (solo estático)
+# En config, set enableAI: false
 ```
 
-### Sobre Git
+### Problema: Archivo no analizado
 
-**Recomendación**: Inicializa git cuando empieces a codear:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: Project structure and documentation"
+**Solución**: El sistema tiene auto-análisis. Simplemente consulta el archivo:
+```javascript
+// Esto encolará automáticamente el archivo como CRITICAL
+get_impact_map("src/nuevo-archivo.js")
 ```
 
-### Sobre Dependencias Opcionales
+---
 
-El `package.json` tiene `optionalDependencies`:
-- `@modelcontextprotocol/sdk` - Para Capa C (Fase 2)
-- `better-sqlite3` - Para storage escalable (Fase 4)
-- `ollama` - Para IA local (Fase 3, opcional)
+## Próximos Pasos
 
-**No las necesitas en Fase 1**, instala solo cuando llegues a esas fases.
+### Para Usuarios
+
+1. **Instala CogniSystem** en un proyecto real pequeño (50-100 archivos)
+2. **Prueba las tools MCP** con diferentes archivos
+3. **Reporta issues** o comportamientos inesperados
+4. **Da feedback** sobre la utilidad de las conexiones detectadas
+
+### Para Desarrolladores
+
+1. **Lee ARCHITECTURE.md** para entender la arquitectura técnica
+2. **Explora los módulos** en `src/` - cada uno tiene ~50 líneas
+3. **Añade casos de prueba** para nuevos escenarios
+4. **Contribuye** con mejoras siguiendo los principios SOLID
+
+---
+
+## Recursos
+
+### Documentación Principal
+- [README.md](README.md) - Overview y visión general
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico detallado
+- [ROADMAP.md](ROADMAP.md) - Plan de desarrollo y fases
+- [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) - Documentación de tools MCP
+
+### Documentación de Arquitectura
+- [docs/ARCHITECTURE_LAYER_A_B.md](docs/ARCHITECTURE_LAYER_A_B.md) - Capas A y B
+- [docs/AI_CONSOLIDATION_MODE.md](docs/AI_CONSOLIDATION_MODE.md) - Modo consolidación IA
+- [docs/ITERATIVE_MODE.md](docs/ITERATIVE_MODE.md) - Modo iterativo
+
+### Changelogs
+- [changelog/v0.5.1.md](changelog/v0.5.1.md) - Enterprise Architecture Refactor
+- [changelog/v0.5.0.md](changelog/v0.5.0.md) - Layer A/B Unification
+- [CHANGELOG.md](CHANGELOG.md) - Índice de todos los changelogs
 
 ---
 
 ## Motivación
 
-Recuerda por qué estamos construyendo esto:
+> "Las IAs que trabajan con código sufren de **visión de túnel**: cuando editan un archivo, pierden de vista el contexto completo del sistema."
 
-> "Estoy atrapado entre monolitos que la IA no puede regenerar y módulos que causan visión de túnel. Mis proyectos están bloqueados."
+**CogniSystem soluciona esto** inyectando contexto relevante **antes** de que la IA edite código.
 
-**CogniSystem es la solución**. Cada línea de código que escribas nos acerca a proyectos que puedan crecer sin miedo.
+Cada módulo de los 147 que componen el sistema trabaja para que tus proyectos puedan crecer sin miedo a bugs colaterales.
 
 ---
 
-## Próximo Paso Concreto
+## Primer Paso Concreto
 
 **Ahora mismo, haz esto**:
 
-1. Renombra la carpeta a `cogni-system`
-2. Abre [src/layer-a-static/README.md](src/layer-a-static/README.md)
-3. Crea el archivo `src/layer-a-static/scanner.js`
-4. Implementa la función `scanProject(rootPath)`
-5. Valida que funciona:
+1. Abre una terminal en la carpeta del proyecto
+2. Elige un proyecto pequeño tuyo (10-50 archivos JS/TS)
+3. Ejecuta:
    ```bash
-   node src/layer-a-static/scanner.js test-cases/scenario-1-simple-import/src
+   node src/layer-c-memory/mcp-server.js /ruta/a/tu/proyecto
    ```
-6. Debería imprimir: `['fileA.js', 'fileB.js', 'fileC.js']`
+4. Espera a que se complete la indexación inicial
+5. La IA ahora tiene acceso a `get_impact_map()` y otras tools
 
-**¡Empieza pequeño, itera rápido!**
+**¡Empieza a usarlo! 🚀**
 
 ---
 
-¿Listo para construir? 🚀
+*Para más información, consulta [README.md](README.md) o [ARCHITECTURE.md](ARCHITECTURE.md)*

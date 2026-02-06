@@ -344,7 +344,7 @@ cogni-system/
 
 | Principio | Implementación |
 |-----------|----------------|
-| **Single Responsibility** | 50+ módulos, cada uno con UNA responsabilidad |
+| **Single Responsibility** | 147 módulos, cada uno con UNA responsabilidad |
 | **Open/Closed** | Extensible sin modificar código existente |
 | **SSOT** | Tipos, configs y utils en un único lugar |
 | **Testability** | Cada módulo testeable independientemente |
