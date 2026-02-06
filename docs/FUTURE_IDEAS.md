@@ -143,7 +143,7 @@ Ejecutar OmnySys en CI para validar PRs.
 
 ### Ejemplo
 ```yaml
-# .github/workflows/cogni-check.yml
+# .github/workflows/omnysys-check.yml
 name: OmnySys Check
 
 on: pull_request
@@ -153,8 +153,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: cogni-system analyze-pr
-      - run: cogni-system check-risk
+      - run: omny-sys analyze-pr
+      - run: omny-sys check-risk
 ```
 
 **Output en PR**:
@@ -166,7 +166,7 @@ jobs:
 ```
 
 ### Implementación
-- CLI command: `cogni-system analyze-pr`
+- CLI command: `omny-sys analyze-pr`
 - Comparar archivos modificados vs archivos relacionados
 - Comentar en PR con warnings/sugerencias
 

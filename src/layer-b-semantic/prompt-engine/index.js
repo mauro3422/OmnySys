@@ -9,12 +9,10 @@
  */
 
 import promptSelector from './prompt-selector.js';
-import cognitiveVaccines from './cognitive-vaccines.js';
 
 class PromptEngine {
   constructor() {
     this.selector = promptSelector;
-    this.vaccines = cognitiveVaccines;
   }
 
   /**
@@ -50,16 +48,45 @@ class PromptEngine {
   }
 
   /**
-   * Genera el system prompt con cognitive vaccines
+   * Genera el system prompt con reglas anti-hallucination
    */
   generateSystemPrompt(template, analysisType) {
-    const baseRules = this.vaccines.getBaseRules();
-    const specificRules = this.vaccines.getSpecificRules(analysisType);
-    
+    const baseRules = `RULES (Anti-Hallucination):
+- NEVER invent file names
+- ONLY use files mentioned in context
+- DO NOT assume connections
+- COPY exact string literals from code
+- If not found, return empty arrays
+- Return ONLY valid JSON with ALL required fields`;
+
+    const specificRules = {
+      'dynamic-imports': `
+DYNAMIC IMPORTS RULES:
+- Analyze routeMap objects to resolve dynamic paths
+- Extract exact string literals: "./modules/moduleName.js"
+- Map variables to actual module names
+- DO NOT invent file paths
+- ONLY use patterns found in code`,
+      'semantic-connections': `
+SEMANTIC CONNECTIONS RULES:
+- Extract localStorage keys: setItem, getItem, removeItem
+- Extract event names: addEventListener, dispatchEvent
+- Map connections between files using exact paths
+- DO NOT assume connections not explicitly coded
+- Return exact file paths`,
+      'default': `
+DEFAULT RULES:
+- Extract general code patterns
+- Return exact strings and patterns found
+- DO NOT assume patterns not explicitly coded`
+    };
+
+    const rules = specificRules[analysisType] || specificRules.default;
+
     return `${template.systemPrompt}
 
 ${baseRules}
-${specificRules}
+${rules}
 
 IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return empty arrays.`;
   }

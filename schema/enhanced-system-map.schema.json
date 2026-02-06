@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://cognisystem.dev/schemas/enhanced-system-map.json",
+  "$id": "https://omnysys.dev/schemas/enhanced-system-map.json",
   "title": "Enhanced System Map",
-  "description": "Schema for CogniSystem enhanced system map combining static and semantic analysis",
+  "description": "Schema for OmnySys enhanced system map combining static and semantic analysis",
   "type": "object",
   "required": ["metadata", "files"],
   "properties": {

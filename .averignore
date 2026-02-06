@@ -1,6 +1,6 @@
 # .averignore - OmnySys Analysis Exclusion Rules
 #
-# Similar to .gitignore, but controls what gets analyzed by CogniSystem
+# Similar to .gitignore, but controls what gets analyzed by OmnySys
 # Lines starting with # are comments
 # Patterns use gitignore syntax (glob patterns)
 

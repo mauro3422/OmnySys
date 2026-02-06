@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * CogniSystem Test Runner
+ * OmnySys Test Runner
  *
  * Ejecuta todos los tests modulares.
  */

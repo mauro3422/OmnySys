@@ -219,13 +219,18 @@ export class OmnySysMCPServer {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('✅ MCP Server Ready!');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('\n🔧 Available tools:');
+    console.error('\n🔧 Available tools (9 total):');
+    console.error('  Core Tools:');
     console.error('   • get_impact_map(filePath)');
     console.error('   • analyze_change(filePath, symbolName)');
     console.error('   • explain_connection(fileA, fileB)');
     console.error('   • get_risk_assessment(minSeverity)');
     console.error('   • search_files(pattern)');
     console.error('   • get_server_status()');
+    console.error('  🧠 Omniscience Tools:');
+    console.error('   • get_call_graph(filePath, symbolName)');
+    console.error('   • analyze_signature_change(filePath, symbolName)');
+    console.error('   • explain_value_flow(filePath, symbolName)');
     console.error('\n📡 Claude can now use these tools!');
     console.error('💡 If a file is not analyzed, it will be auto-queued as CRITICAL\n');
 

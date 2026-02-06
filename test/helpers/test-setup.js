@@ -11,7 +11,7 @@ import os from 'os';
 /**
  * Crea un directorio temporal para tests
  */
-export async function createTempDir(prefix = 'cognisystem-test-') {
+export async function createTempDir(prefix = 'omnysys-test-') {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   return tempDir;
 }
