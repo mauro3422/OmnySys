@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "omnysys": {
+      "command": "node",
+      "args": ["src/layer-c-memory/mcp/index.js"]
+    }
+  }
+}

@@ -13,7 +13,7 @@ class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
     super();
     this.projectPath = projectPath;
-    this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
+    this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.options = {
       enableFileWatcher: true,
       enableWebSocket: true,
