@@ -10,18 +10,35 @@ import { ARCHITECTURAL_THRESHOLDS } from '../constants.js';
 
 /**
  * Detecta si un archivo es un God Object
+ * 
+ * Un God Object es un archivo que es "el centro" del sistema:
+ * - Tiene muchos exports y muchos dependents (criterio clásico)
+ * - O tiene MUY altos dependents (>= 10) sin importar exports
+ * - O tiene un ratio de acoplamiento extremo (dependents >= 3 * exports)
+ * 
  * @param {number} exportCount - Cantidad de exports
  * @param {number} dependentCount - Cantidad de archivos dependientes
  * @returns {boolean}
  */
 export function detectGodObject(exportCount, dependentCount) {
-  const { MIN_EXPORTS, MIN_DEPENDENTS, HIGH_DEPENDENTS } = ARCHITECTURAL_THRESHOLDS.GOD_OBJECT;
+  const { MIN_EXPORTS, MIN_DEPENDENTS, HIGH_DEPENDENTS, COUPLING_RATIO } = ARCHITECTURAL_THRESHOLDS.GOD_OBJECT;
   
-  const hasManyExports = (exportCount || 0) >= MIN_EXPORTS;
-  const hasManyDependents = (dependentCount || 0) >= MIN_DEPENDENTS;
-  const hasVeryManyDependents = (dependentCount || 0) >= HIGH_DEPENDENTS;
+  const exports = exportCount || 0;
+  const dependents = dependentCount || 0;
   
-  return (hasManyExports && hasManyDependents) || hasVeryManyDependents;
+  // Criterio 1: Clásico - muchos exports + muchos dependents
+  const hasManyExports = exports >= MIN_EXPORTS;
+  const hasManyDependents = dependents >= MIN_DEPENDENTS;
+  const classicGodObject = hasManyExports && hasManyDependents;
+  
+  // Criterio 2: Muy alto acoplamiento (incluso con pocos exports)
+  const hasVeryManyDependents = dependents >= HIGH_DEPENDENTS;
+  
+  // Criterio 3: Ratio de acoplamiento extremo
+  // Ej: 3 exports pero 10 dependents -> ratio 3.3 > 3 -> God Object
+  const hasExtremeCoupling = exports > 0 && dependents >= (exports * COUPLING_RATIO);
+  
+  return classicGodObject || hasVeryManyDependents || hasExtremeCoupling;
 }
 
 /**

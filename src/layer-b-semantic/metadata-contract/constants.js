@@ -62,9 +62,14 @@ export const ALL_METADATA_FIELDS = [
  */
 export const ARCHITECTURAL_THRESHOLDS = {
   GOD_OBJECT: {
+    // Criterio original: muchos exports + muchos dependents
     MIN_EXPORTS: 5,
     MIN_DEPENDENTS: 5,
-    HIGH_DEPENDENTS: 10
+    // Criterio adicional: muy alto acoplamiento (incluso con pocos exports)
+    HIGH_DEPENDENTS: 10,
+    // Criterio relativo: ratio de acoplamiento
+    // Si dependents >= 3 * exports, es un hotspot crítico
+    COUPLING_RATIO: 3
   },
   ORPHAN_MODULE: {
     MAX_DEPENDENTS: 0,
