@@ -4,7 +4,7 @@ import { EventEmitter } from 'events';
 
 import { AnalysisQueue } from '../analysis-queue.js';
 
-import * as init from './init.js';
+import * as init from './initialization/index.js';
 import * as api from './api.js';
 import * as orchestrator from './orchestrator.js';
 import * as tools from './tools.js';

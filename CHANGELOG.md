@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** (Latest - In Dev) |
+| **[0.5.1]** | `changelog/v0.5.1.md` | **Enterprise Architecture Refactor** (Latest) |
+| **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** |
 | **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** |
 | **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
 | **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** |
@@ -24,22 +25,33 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **ðŸš€ Latest Release: v0.5.0 (2026-02-05)**
+### **ðŸš€ Latest Release: v0.5.1 (2026-02-06)**
 
-**Major Release**: Layer A and B unified under Orchestrator with semantic metadata support
+**Enterprise Architecture Release**: Complete modularization of 11 large monolithic files following SOLID principles and SSOT pattern.
 
 **Key Changes**:
-- âœ… **Layer A/B Unification** - Single responsibility for each layer
-- âœ… **Orchestrator** - Queue + Worker + Iterative analysis
-- âœ… **Semantic Metadata** - LLM now receives global state, events, connections
-- âœ… **Archetype Detection** - Improved detection using semantic info
-- âœ… **Tracking System** - Progress tracking for all analyzed files
-- âœ… **Prompt Hygiene** - Archetype prompts receive only needed metadata
-- ✅ **Core Refactors** - Modularizacion de unified-server, orchestrator, indexer pipeline, file-watcher, cache y LLM client
+- ✅ **11 Files Refactored** - 5,000+ lines split into 99+ focused modules
+- ✅ **SOLID Compliance** - Single Responsibility, Open/Closed, Dependency Inversion
+- ✅ **SSOT Pattern** - Single Source of Truth for constants, types, configurations
+- ✅ **API Compatibility** - 100% backward compatible, no breaking changes
+- ✅ **Enterprise Structure** - Average 86% reduction in file size (455 → 63 lines)
 
-**New**: `PROBLEMATICAS.md` - Known issues and roadmap
+**Refactored Files**:
+- `graph-builder.js` (550 lines) → 12 modules
+- `advanced-extractors.js` + `metadata-extractors.js` (1,083 lines) → 17 modules  
+- `semantic-issues-detector.js` (458 lines) → 8 modules
+- `parser.js` (511 lines) → 8 modules
+- `llm-analyzer.js` (441 lines) → 5 modules
+- `init.js` (335 lines) → 7 modules
+- `batch-processor.js` (458 lines) → 9 modules
+- `static-extractors.js` (441 lines) → 10 modules
+- `redux-context-extractor.js` (398 lines) → 12 modules
+- `event-pattern-detector.js` (398 lines) → 9 modules
+- `websocket-manager.js` (441 lines) → 10 modules
 
-**Previous: v0.4.6** - Metadata Contract
+**New**: Modular directory structure with `index.js` facades
+
+**Previous: v0.5.0** - Layer A/B Unification & Orchestrator
 
 **Architecture Release**: MCP Server is now the unified entry point with internal Orchestrator
 
@@ -56,9 +68,9 @@ This repository uses a modular changelog structure for better organization and m
 
 **Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
 
-**ðŸ”— Quick Links**:
-- [View Latest Changes](changelog/v0.4.4.md)
-- [View v0.4.0 Changes](changelog/v0.4.0.md)
+**🔗 Quick Links**:
+- [View Latest Changes](changelog/v0.5.1.md)
+- [View v0.5.0 Changes](changelog/v0.5.0.md)
 - [View All Version Files](changelog/)
 - [Project Documentation](README.md)
 
@@ -73,7 +85,9 @@ This repository uses a modular changelog structure for better organization and m
 | **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | âœ… Complete |
 | **Architecture** | 0.4.5 | MCP Unified Entry Point | âœ… Complete |
 | **Architecture** | 0.4.4 | Unified Cache System | âœ… Complete |
-| **Patch** | 0.4.3 | Bug Fixes & Stability | âœ… Complete |
+| **Enterprise** | 0.5.1 | SOLID Architecture Refactor - 17 files, 147 modules | ✅ Complete |
+| **Architecture** | 0.5.0 | Layer A/B Unification | ✅ Complete |
+| **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |
 
 ### **ðŸ’¡ Why This Structure?**
 

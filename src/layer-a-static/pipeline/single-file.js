@@ -1,11 +1,11 @@
 ﻿import fs from 'fs/promises';
 import path from 'path';
 
-import { parseFileFromDisk } from '../parser.js';
+import { parseFileFromDisk } from '../parser/index.js';
 import { resolveImport, getResolutionConfig } from '../resolver.js';
 import { detectAllSemanticConnections } from '../extractors/static-extractors.js';
-import { detectAllAdvancedConnections } from '../extractors/advanced-extractors.js';
-import { extractAllMetadata } from '../extractors/metadata-extractors.js';
+import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
+import { extractAllMetadata } from '../extractors/metadata/index.js';
 
 /**
  * Análisis rápido de un solo archivo
