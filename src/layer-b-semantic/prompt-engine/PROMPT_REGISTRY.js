@@ -25,7 +25,7 @@ import defaultTemplate from './prompt-templates/default.js';
 import { validateRegistry } from './registry-validator.js';
 
 // Importar detectores compartidos
-import { detectGodObject, detectOrphanModule } from '../metadata-contract.js';
+import { detectGodObject, detectOrphanModule } from '../metadata-contract/index.js';
 
 /**
  * REGISTRO DE ARQUETIPOS

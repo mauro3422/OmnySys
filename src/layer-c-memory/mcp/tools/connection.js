@@ -3,7 +3,18 @@
  * Explains why two files are connected
  */
 
-import { getAllConnections, getFileAnalysis } from '../../../layer-a-static/storage/query-service.js';
+import { getFileAnalysis } from '../../../layer-a-static/storage/query-service.js';
+
+// TODO: Implement getAllConnections or replace with proper query
+async function getAllConnections(projectPath) {
+  // Temporary mock - returns empty connections
+  // This should be implemented in query service
+  return {
+    sharedState: [],
+    eventListeners: [],
+    functionCalls: []
+  };
+}
 
 export async function explain_connection(args, context) {
   const { fileA, fileB } = args;

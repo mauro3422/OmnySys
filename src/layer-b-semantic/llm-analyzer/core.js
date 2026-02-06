@@ -13,7 +13,7 @@ import {
   validateLLMResponse, 
   calculateDynamicTimeout,
   sanitizeGlobalStateResponse
-} from '../llm-response-validator.js';
+} from '../validators/index.js';
 
 import { buildPrompt } from './prompt-builder.js';
 import { 

@@ -159,24 +159,25 @@ export class CogniSystemMCPServer {
     await this.cache.initialize();
 
     // Cargar metadatos y datos críticos
-    const { getProjectMetadata, getAllConnections, getRiskAssessment } = 
+    const { getProjectMetadata } = 
       await import('../../../layer-a-static/storage/query-service.js');
 
     this.metadata = await getProjectMetadata(this.projectPath);
-    this.cache.ramCacheSet('metadata', this.metadata);
+    this.cache.set('metadata', this.metadata);
     console.error('  ✓ Metadata cached');
 
-    const connections = await getAllConnections(this.projectPath);
-    this.cache.ramCacheSet('connections', connections);
-    console.error('  ✓ Connections cached');
+    // TODO: Implement getAllConnections and getRiskAssessment in query service
+    // const connections = await getAllConnections(this.projectPath);
+    this.cache.set('connections', []);
+    console.error('  ✓ Connections cached (empty)');
 
-    const assessment = await getRiskAssessment(this.projectPath);
-    this.cache.ramCacheSet('assessment', assessment);
-    console.error('  ✓ Risk assessment cached');
+    // const assessment = await getRiskAssessment(this.projectPath);
+    this.cache.set('assessment', { totalIssues: 0 });
+    console.error('  ✓ Risk assessment cached (empty)');
 
     const cacheTime = (performance.now() - startCache).toFixed(2);
     console.error(`\n  Cache load time: ${cacheTime}ms`);
-    console.error(`  Cache memory: ${this.cache.getCacheStats().memoryUsage}\n`);
+    console.error(`  Cache memory: ${this.cache.getStats().memoryUsage}\n`);
   }
 
   _step5_MCP() {
@@ -267,7 +268,7 @@ export class CogniSystemMCPServer {
         totalFiles: this.metadata?.metadata?.totalFiles || 0,
         totalFunctions: this.metadata?.metadata?.totalFunctions || 0
       },
-      cache: this.cache?.getCacheStats(),
+      cache: this.cache?.getStats(),
       uptime: process.uptime()
     };
   }

@@ -3,7 +3,7 @@ import path from 'path';
 
 import { parseFileFromDisk } from '../parser/index.js';
 import { resolveImport, getResolutionConfig } from '../resolver.js';
-import { detectAllSemanticConnections } from '../extractors/static-extractors.js';
+import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 
