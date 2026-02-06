@@ -29,7 +29,7 @@
  * Construye el grafo de dependencias del sistema
  * @type {Function}
  */
-export { buildSystemMap as buildGraph } from './builders/system-map.js';
+export { buildSystemMap, buildSystemMap as buildGraph } from './builders/system-map.js';
 
 /**
  * Obtiene el mapa de impacto de un archivo
