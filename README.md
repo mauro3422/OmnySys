@@ -1,40 +1,29 @@
-# OmnySys - Motor de Contexto para IAs que Editan Codigo
+# OmnySys - Code Context Engine with Omnisciencia
 
-Las IAs que editan codigo sufren de **vision de tunel**: modifican un archivo sin ver que otros archivos dependen de el. OmnySys resuelve esto inyectando contexto antes de que la IA toque codigo.
+**The system that prevents tunnel vision** - analyze entire codebase impact before making any changes.
 
-## Como Funciona
+## 🎯 Problem Solved
 
-Imagina una caja donde moves un archivo y ves todas las conexiones por detras — como cables y raices conectadas a otros archivos. OmnySys construye ese mapa automaticamente.
+AI developers suffer from **tunnel vision**: they modify files without seeing dependencies or connections. OmnySys injects complete context before the AI touches code.
 
-```
-Codigo Fuente
-   |
-   v
-Layer A (Estatico)    -- Parsea AST, extrae imports/exports, construye grafo
-   |
-   v
-Layer B (Semantico)   -- IA local detecta conexiones invisibles (eventos, estado, imports dinamicos)
-   |
-   v
-Layer C (Memoria)     -- Almacena, cachea, sirve queries via MCP
-   |
-   v
-MCP Tools             -- La IA consulta: "que se rompe si toco este archivo?"
-```
+## 🚀 Auto-Installing MCP Server
 
-## Inicio Rapido
+**NO MANUAL CONFIGURATION REQUIRED!** When you install OmnySys:
 
 ```bash
-# 1. Instalar
+# 1. Install (automatically detects MCP)
 npm install
 
-# 2. Iniciar (un comando)
-node src/layer-c-memory/mcp-server.js /ruta/a/tu/proyecto
-
-# 3. Listo - las tools MCP estan disponibles para la IA
+# 2. Open in IDE with MCP support (Claude Desktop, OpenCode, etc.)
+# 3. THAT'S IT! The MCP server auto-detects and connects
 ```
 
-El sistema inicia automaticamente: Orchestrator, FileWatcher, indexacion en background, cache y tools MCP.
+The MCP server automatically:
+- ✅ Detects the project root
+- ✅ Loads existing analysis (or creates new)
+- ✅ Starts background processing
+- ✅ Exposes 9 omniscient tools
+- ✅ Monitors file changes in real-time
 
 ## MCP Tools
 
