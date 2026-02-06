@@ -1,6 +1,6 @@
 {
   "llm": {
-    "enabled": false,
+    "enabled": true,
     "gpu": {
       "port": 8000,
       "parallel": 4
