@@ -5,7 +5,7 @@
  * Solo verifica que los metadatos se pasen correctamente al LLM
  */
 
-import { getFileAnalysis } from './src/layer-a-static/storage/query-service.js';
+import { getFileAnalysis } from './src/layer-a-static/query/index.js';
 import { detectArchetypes } from './src/layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js';
 import fs from 'fs/promises';
 import path from 'path';

@@ -1,8 +1,8 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import path from 'path';
 
-import { getAllConnections } from '../../layer-a-static/storage/query-service.js';
+import { getAllConnections } from '../../layer-a-static/query/index.js';
 
 // ============================================================
 // Orchestrator API (Port 9999) - VS Code Integration

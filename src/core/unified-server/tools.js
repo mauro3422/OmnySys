@@ -1,11 +1,11 @@
-﻿import {
+import {
   getFileDependencies,
   getFileAnalysis,
   getAllConnections,
   getRiskAssessment,
   getProjectMetadata,
   findFiles
-} from '../../layer-a-static/storage/query-service.js';
+} from '../../layer-a-static/query/index.js';
 
 // ============================================================
 // MCP Tools (for Claude Code)

@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { getProjectMetadata } from '../../layer-a-static/storage/query-service.js';
+import { getProjectMetadata } from '../../layer-a-static/query/index.js';
 
 /**
  * Inicializa el file watcher

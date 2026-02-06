@@ -6,7 +6,7 @@ import {
   getHighRiskFiles,
   getProjectStats,
   getAllConnections
-} from './src/layer-a-static/storage/query-service.js';
+} from './src/layer-a-static/query/index.js';
 
 /**
  * Script de prueba para Query Service

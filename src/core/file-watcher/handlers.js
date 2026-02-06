@@ -1,6 +1,6 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 
-import { getFileAnalysis } from '../../layer-a-static/storage/query-service.js';
+import { getFileAnalysis } from '../../layer-a-static/query/index.js';
 
 /**
  * Maneja creación de archivo nuevo

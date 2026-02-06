@@ -1,11 +1,11 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { resolveImport, getResolutionConfig } from '../../layer-a-static/resolver.js';
 import { saveFileAnalysis as persistFileAnalysis } from '../../layer-a-static/storage/storage-manager.js';
-import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static-extractors.js';
+import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
 
