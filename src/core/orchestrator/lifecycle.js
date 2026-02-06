@@ -47,7 +47,11 @@ export async function initialize() {
   await this._loadState();
 
   // Analyze complex files with LLM based on Layer A metadata
-  await this._analyzeComplexFilesWithLLM();
+  this._analyzeComplexFilesWithLLM().then(() => {
+    console.log("✅ LLM analysis queue ready");
+  }).catch(err => {
+    console.error("❌ LLM analysis setup failed:", err.message);
+  });
 
   // Start processing loop
   this._processNext();

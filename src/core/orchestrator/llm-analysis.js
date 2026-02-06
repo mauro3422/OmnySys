@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 /**
@@ -15,7 +15,7 @@ import path from 'path';
  * - God objects (muchos exports + dependents)
  */
 export async function _analyzeComplexFilesWithLLM() {
-  console.log('\nðŸ¤– Orchestrator: Analyzing complex files with LLM...');
+  console.log('\n🤖 Orchestrator: Analyzing complex files with LLM...');
 
   try {
     // Importar dependencias dinámicamente
@@ -30,7 +30,7 @@ export async function _analyzeComplexFilesWithLLM() {
     const initialized = await llmAnalyzer.initialize();
 
     if (!initialized) {
-      console.log('   âš ï¸  LLM not available, skipping LLM analysis');
+      console.log('   ⚠️  LLM not available, skipping LLM analysis');
       return;
     }
 
@@ -41,46 +41,57 @@ export async function _analyzeComplexFilesWithLLM() {
 
     const filesNeedingLLM = [];
 
-    // Revisar cada archivo en el índice
-    for (const [filePath, fileInfo] of Object.entries(index.fileIndex || {})) {
-      // Obtener análisis completo del archivo
-      const fileAnalysis = await getFileAnalysis(this.projectPath, filePath);
-      if (!fileAnalysis) continue;
+    // Revisar cada archivo en el índice - PROCESAMIENTO PARALELO POR BATCHES
+    const entries = Object.entries(index.fileIndex || {});
+    const BATCH_SIZE = 10; // Procesar 10 archivos en paralelo
 
-      // Verificar si ya fue procesado por LLM
-      if (fileAnalysis.llmInsights) {
-        continue; // Ya tiene análisis LLM, saltear
-      }
-      // Detectar arquetipos basado en metadatos estandarizados
-      const metadata = buildPromptMetadata(filePath, fileAnalysis);
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      
+      // Procesar batch en paralelo
+      await Promise.all(batch.map(async ([filePath, fileInfo]) => {
+        // Obtener análisis completo del archivo
+        const fileAnalysis = await getFileAnalysis(this.projectPath, filePath);
+        if (!fileAnalysis) return;
 
-      const archetypes = detectArchetypes(metadata);
+        // Verificar si ya fue procesado por LLM
+        if (fileAnalysis.llmInsights) {
+          return; // Ya tiene análisis LLM, saltear
+        }
 
-      // DEBUG: Log de arquetipos detectados
-      if (archetypes.length > 0) {
-        console.log(`   ðŸ” ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
-      }
+        // Detectar arquetipos basado en metadatos estandarizados
+        const metadata = buildPromptMetadata(filePath, fileAnalysis);
+        const archetypes = detectArchetypes(metadata);
 
-      // Decidir si necesita LLM basado en arquetipos y análisis estático
-      const needsLLM = archetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
-        fileAnalysis.semanticAnalysis || {},
-        fileAnalysis
-      );
+        // DEBUG: Log de arquetipos detectados
+        if (archetypes.length > 0) {
+          console.log(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+        }
 
-      if (needsLLM) {
-        console.log(`   âœ… ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
-        filesNeedingLLM.push({
-          filePath,
-          fileAnalysis,
-          archetypes: archetypes.map(a => a.type),
-          priority: this._calculateLLMPriority(archetypes, metadata)
-        });
-      }
+        // Decidir si necesita LLM basado en arquetipos y análisis estático
+        const needsLLM = archetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
+          fileAnalysis.semanticAnalysis || {},
+          fileAnalysis
+        );
+
+        if (needsLLM) {
+          console.log(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
+          filesNeedingLLM.push({
+            filePath,
+            fileAnalysis,
+            archetypes: archetypes.map(a => a.type),
+            priority: this._calculateLLMPriority(archetypes, metadata)
+          });
+        }
+      }));
+
+      // Yield al event loop cada batch para no bloquear
+      await new Promise(resolve => setImmediate(resolve));
     }
 
     if (filesNeedingLLM.length === 0) {
-      console.log('   â„¹ï¸  No files need LLM analysis (static analysis sufficient)');
-      console.log('   âœ… Emitting analysis:complete event');
+      console.log('   ℹ️  No files need LLM analysis (static analysis sufficient)');
+      console.log('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
       this.emit('analysis:complete', {
         iterations: 0,
@@ -95,7 +106,7 @@ export async function _analyzeComplexFilesWithLLM() {
     this.processedFiles.clear();
     this.analysisCompleteEmitted = false;
 
-    console.log(`   ðŸ“Š Found ${filesNeedingLLM.length} files needing LLM analysis`);
+    console.log(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
 
     // Agregar archivos a la cola con prioridad
     for (const file of filesNeedingLLM) {
@@ -106,16 +117,16 @@ export async function _analyzeComplexFilesWithLLM() {
         fileAnalysis: file.fileAnalysis
       }, file.priority);
 
-      console.log(`   âž• Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
+      console.log(`   ➕ Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
     }
 
-    console.log(`   âœ… ${filesNeedingLLM.length} files added to analysis queue`);
-    console.log('   ðŸš€ Starting processing...');
+    console.log(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
+    console.log('   🚀 Starting processing...');
 
     // Iniciar procesamiento
     this._processNext();
   } catch (error) {
-    console.error('   âŒ Error in LLM analysis phase:', error.message);
+    console.error('   ❌ Error in LLM analysis phase:', error.message);
   }
 }
 

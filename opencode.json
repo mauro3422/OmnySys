@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "omny-system": {
+      "type": "local",
+      "command": ["node", "src/layer-c-memory/mcp-server.js", "."],
+      "enabled": true,
+      "timeout": 30000,
+      "environment": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

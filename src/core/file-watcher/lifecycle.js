@@ -1,4 +1,4 @@
-﻿import path from 'path';
+import path from 'path';
 
 import { getProjectMetadata } from '../../layer-a-static/storage/query-service.js';
 
@@ -34,12 +34,20 @@ export async function loadCurrentState() {
   try {
     const metadata = await getProjectMetadata(this.rootPath);
 
-    // Cargar hashes de archivos existentes
-    for (const [filePath, fileInfo] of Object.entries(metadata.fileIndex || {})) {
+    // Cargar hashes de archivos existentes con yield cada 50 archivos
+    const entries = Object.entries(metadata.fileIndex || {});
+    let count = 0;
+    
+    for (const [filePath, fileInfo] of entries) {
       const fullPath = path.join(this.rootPath, filePath);
       const hash = await this._calculateContentHash(fullPath);
       if (hash) {
         this.fileHashes.set(filePath, hash);
+      }
+      
+      // Yield al event loop cada 50 archivos para no bloquear
+      if (++count % 50 === 0) {
+        await new Promise(resolve => setImmediate(resolve));
       }
     }
 

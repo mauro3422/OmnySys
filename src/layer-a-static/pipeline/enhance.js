@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 import { detectSharedState, generateSharedStateConnections } from '../analyses/tier3/shared-state-detector.js';
@@ -6,6 +6,7 @@ import { detectEventPatterns, generateEventConnections } from '../analyses/tier3
 import { detectSideEffects } from '../analyses/tier3/side-effects-detector.js';
 import { calculateAllRiskScores, generateRiskReport } from '../analyses/tier3/risk-scorer.js';
 import { analyzeBrokenConnections } from '../analyses/tier3/broken-connections-detector.js';
+import { detectGodObject, detectOrphanModule } from '../../layer-b-semantic/metadata-contract.js';
 
 import { detectAllSemanticConnections } from '../extractors/static-extractors.js';
 import { detectAllAdvancedConnections } from '../extractors/advanced-extractors.js';
@@ -339,13 +340,31 @@ export async function generateEnhancedSystemMap(
     const baseFile = JSON.parse(JSON.stringify(systemMap.files[filePath] || {}));
     const enhancedFile = JSON.parse(JSON.stringify(fileInfo || {}));
 
+    // Detectar arquetipos arquitectónicos
+    const exportCount = (baseFile.exports || []).length;
+    const dependentCount = (baseFile.usedBy || []).length;
+    
+    const archetype = {
+      type: null,
+      reason: null
+    };
+    
+    if (detectGodObject(exportCount, dependentCount)) {
+      archetype.type = 'GOD_OBJECT';
+      archetype.reason = `High coupling: ${dependentCount} dependents, ${exportCount} exports`;
+    } else if (detectOrphanModule(exportCount, dependentCount)) {
+      archetype.type = 'ORPHAN_MODULE';
+      archetype.reason = `No dependents but has ${exportCount} exports`;
+    }
+
     enhancedSystemMap.files[filePath] = {
       ...baseFile,
       ...enhancedFile,
       semanticConnections: connections,
       riskScore: riskScore,
       sideEffects: allSideEffects[filePath]?.sideEffects || {},
-      sideEffectDetails: allSideEffects[filePath]?.details || {}
+      sideEffectDetails: allSideEffects[filePath]?.details || {},
+      archetype: archetype.type ? archetype : undefined
     };
   }
 

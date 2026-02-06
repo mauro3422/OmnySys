@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 /**
  * CogniSystem MCP Server
@@ -42,6 +42,18 @@ import { loadAIConfig, LLMClient } from '../ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Helper function to read JSON files
+async function readJSON(filePath) {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Failed to read ${filePath}: ${error.message}`);
+  }
+}
+
+// ============================================================
+// CogniSystem MCP Server - Entry Point Único
 // ============================================================
 // CogniSystem MCP Server - Entry Point Ãšnico
 // ============================================================
@@ -49,7 +61,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 class CogniSystemMCPServer {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.omnysysPath = path.join(projectPath, 'omnysysdata');
+    this.omnysysPath = path.join(projectPath, '.omnysysdata');
     this.cache = null;
     this.metadata = null;
     this.initialized = false;
@@ -103,35 +115,18 @@ class CogniSystemMCPServer {
       try {
         await fs.access(this.omnysysPath);
         omnysysExists = true;
-        console.log('  âœ“ omnysysdata/ already exists\n');
+        console.log('  ✓ .omnysysdata/ already exists\n');
       } catch {
-        console.log('  Creating omnysysdata/...');
+        console.log('  Creating .omnysysdata/...');
         await createOmnySysDataStructure(this.projectPath);
       }
 
       // ==========================================
-      // STEP 3: Cargar datos existentes
+      // STEP 3: Initialize Cache (Lazy Loading)
       // ==========================================
-      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-      console.log('STEP 3: Load Existing Data');
-      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-
-      const hasAnalysis = await this._hasExistingAnalysis();
-      
-      if (hasAnalysis) {
-        const populateResult = await populateOmnySysData(this.projectPath);
-        console.log(`  âœ“ Files analyzed: ${populateResult.filesAnalyzed}`);
-        console.log(`  âœ“ Connections found: ${populateResult.connectionsFound}\n`);
-      } else {
-        console.log('  âš ï¸  No analysis data found\n');
-      }
-
-      // ==========================================
-      // STEP 4: Cachear datos crÃ­ticos
-      // ==========================================
-      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-      console.log('STEP 4: Load into Cache');
-      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('STEP 3: Initialize Cache (Lazy Loading)');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       const startCache = performance.now();
 
@@ -141,37 +136,48 @@ class CogniSystemMCPServer {
       });
       await this.cache.initialize();
 
-      this.metadata = await getProjectMetadata(this.projectPath);
-      this.cache.ramCacheSet('metadata', this.metadata);
-      console.log('  âœ“ Metadata cached');
-
-      const connections = await getAllConnections(this.projectPath);
-      this.cache.ramCacheSet('connections', connections);
-      console.log('  âœ“ Connections cached');
-
-      const assessment = await getRiskAssessment(this.projectPath);
-      this.cache.ramCacheSet('assessment', assessment);
-      console.log('  âœ“ Risk assessment cached');
+      // Check if data already populated
+      const hasAnalysis = await this._hasExistingAnalysis();
+      
+      if (hasAnalysis && !omnysysExists) {
+        // Only populate if analysis exists but not yet in .omnysysdata
+        console.log('  🔄 Populating .omnysysdata/ from analysis...');
+        const populateResult = await populateOmnySysData(this.projectPath);
+        console.log(`  ✓ Files analyzed: ${populateResult.filesAnalyzed}`);
+        console.log(`  ✓ Connections found: ${populateResult.connectionsFound}\n`);
+      } else if (omnysysExists) {
+        // Data already populated - just load index
+        const indexPath = path.join(this.omnysysPath, 'index.json');
+        const indexData = await readJSON(indexPath);
+        const totalFiles = indexData.metadata?.totalFiles || indexData.totalFiles || 0;
+        this.cache.set('metadata', { 
+          totalFiles: totalFiles,
+          indexedAt: indexData.metadata?.analyzedAt || indexData.indexedAt 
+        });
+        console.log(`  ✓ Using existing .omnysysdata/ (${totalFiles} files)`);
+        console.log('  ⚡ Data loaded lazily (on-demand)\n');
+      } else {
+        console.log('  ⚠️  No analysis data found\n');
+      }
 
       const cacheTime = (performance.now() - startCache).toFixed(2);
-      console.log(`\n  Cache load time: ${cacheTime}ms`);
-      console.log(`  Cache memory: ${this.cache.getCacheStats().memoryUsage}\n`);
+      console.log(`  Cache init time: ${cacheTime}ms\n`);
 
       // ==========================================
-      // STEP 5: Iniciar indexaciÃ³n si es necesario
+      // STEP 4: Start Background Indexing if needed
       // ==========================================
-      if (!hasAnalysis) {
-        console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-        console.log('STEP 5: Start Background Indexing');
-        console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
-        console.log('  ðŸ”„ Starting Layer A analysis in background...');
-        console.log('  â³ This will run while server is operational\n');
+      if (!hasAnalysis && !omnysysExists) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('STEP 4: Start Background Indexing');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('  🔄 Starting Layer A analysis in background...');
+        console.log('  ⏳ This will run while server is operational\n');
         
         this.orchestrator.startBackgroundIndexing();
       }
 
       // ==========================================
-      // STEP 6: Server Ready
+      // STEP 5: Server Ready
       // ==========================================
       console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('âœ… MCP Server Ready!');
@@ -372,7 +378,7 @@ class CogniSystemMCPServer {
         totalFiles: this.metadata?.metadata?.totalFiles || 0,
         totalFunctions: this.metadata?.metadata?.totalFunctions || 0
       },
-      cache: this.cache.getCacheStats()
+      cache: this.cache.getRamStats()
     };
   }
 
@@ -388,7 +394,7 @@ class CogniSystemMCPServer {
         totalFiles: this.metadata?.metadata?.totalFiles,
         totalFunctions: this.metadata?.metadata?.totalFunctions
       },
-      cache: this.cache.getCacheStats(),
+      cache: this.cache.getRamStats(),
       uptime: process.uptime()
     };
   }
@@ -431,7 +437,7 @@ class CogniSystemMCPServer {
       subsystem: fileData?.subsystem
     };
 
-    this.cache.ramCacheSet(`impact:${filePath}`, result);
+    this.cache.set(`impact:${filePath}`, result);
     return result;
   }
 
@@ -449,7 +455,7 @@ class CogniSystemMCPServer {
 
   async _hasExistingAnalysis() {
     try {
-      const indexPath = path.join(this.projectPath, '.OmnySysData', 'index.json');
+      const indexPath = path.join(this.projectPath, '.omnysysdata', 'index.json');
       await fs.access(indexPath);
       return true;
     } catch {

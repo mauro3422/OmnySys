@@ -19,7 +19,7 @@ import crypto from 'crypto';
  *   └── cache.json              (cache de análisis)
  */
 
-const DATA_DIR = '.OmnySysData';
+const DATA_DIR = '.omnysysdata';
 
 /**
  * Calcula hash de un archivo para detectar cambios

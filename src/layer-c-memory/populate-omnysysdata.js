@@ -29,8 +29,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * Popula omnysysdata/ con datos desde .OmnySysData/
  */
 export async function populateOmnySysData(projectPath) {
-  const omnysysPath = path.join(projectPath, 'omnysysdata');
-  const dataPath = path.join(projectPath, '.OmnySysData');
+  const omnysysPath = path.join(projectPath, '.omnysysdata');
+  const dataPath = path.join(projectPath, '.omnysysdata');
 
   console.log('🔄 Populating OmnySysData...\n');
 

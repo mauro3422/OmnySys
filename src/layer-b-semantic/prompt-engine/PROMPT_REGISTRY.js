@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Prompt Registry - Sistema Plug & Play para Arquetipos
  * 
  * Para agregar un nuevo tipo de análisis, solo necesitas:
@@ -14,6 +14,7 @@
 
 // Importar templates
 import godObjectTemplate from './prompt-templates/god-object.js';
+import circularDependencyTemplate from './prompt-templates/circular-dependency.js';
 import semanticConnectionsTemplate from './prompt-templates/semantic-connections.js';
 import dynamicImportsTemplate from './prompt-templates/dynamic-imports.js';
 import cssInJSTemplate from './prompt-templates/css-in-js.js';
