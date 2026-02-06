@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 
 REM Prevenir ejecuciÃ³n mÃºltiple - verificar si ya hay una instancia iniciÃ¡ndose
@@ -14,7 +14,7 @@ if exist "%LOCK_FILE%" (
 REM Crear archivo de lock
 echo %DATE% %TIME% > "%LOCK_FILE%"
 
-title OmnySys Brain (GPU - Vulkan) - LFM2-Extract [PID:%RANDOM%]
+title OmnySys Brain (GPU - Vulkan) - LFM2.5-Instruct [PID:%RANDOM%]
 color 0B
 
 echo ============================================
@@ -41,7 +41,7 @@ echo [OK] All llama-server instances closed
 REM Cambiar al directorio raÃ­z del proyecto
 cd /d "%~dp0..\..\..\"
 
-set MODEL_PATH=src\ai\models\LFM2-1.2B-Extract-Q8_0.gguf
+set MODEL_PATH=src\ai\models\LFM2.5-1.2B-Instruct-Q8_0.gguf
 
 if not exist "%MODEL_PATH%" (
     echo [ERROR] Model not found: %MODEL_PATH%
@@ -54,7 +54,7 @@ if not exist "%MODEL_PATH%" (
 echo [READY] Starting Brain Server (GPU Vulkan Mode)...
 echo [INFO] Port 8000 - Parallel 2 - Context 48K (24K per slot)
 echo [INFO] Working directory: %CD%
-echo [INFO] Optimized for LFM2-Extract 1.2B with large code contexts
+echo [INFO] Optimized for LFM2.5-Instruct 1.2B with large code contexts
 
 REM Crear directorio de logs si no existe
 if not exist logs mkdir logs

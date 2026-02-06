@@ -42,10 +42,19 @@
       "Bash(\"max_tokens\": 200)",
       "Bash(} ')",
       "Bash(grep:*)",
-      "Bash(start /B cmd /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat > nul 2>&1\")"
+      "Bash(start /B cmd /c \"src\\\\ai\\\\scripts\\\\start_brain_gpu.bat > nul 2>&1\")",
+      "Bash(dir:*)",
+      "Read(//c/**)",
+      "Bash(del \"C:\\\\Dev\\\\OmnySystem\\\\src\\\\layer-c-memory\\\\mcp-server-sdk.js.corrupted\")",
+      "Bash(del \"C:\\\\Dev\\\\OmnySystem\\\\src\\\\layer-c-memory\\\\mcp-server-sdk-fixed.js\")",
+      "Bash(git status:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "omnysys"
+  ],
+  "enableAllProjectMcpServers": true
 }

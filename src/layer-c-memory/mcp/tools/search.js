@@ -3,34 +3,39 @@
  * Search for files in the project by pattern
  */
 
-import { fileExists } from '../../../layer-a-static/query/index.js';
-import fs from 'fs/promises';
-import path from 'path';
-
-// TODO: Implement proper file search
-async function findFiles(projectPath, pattern) {
-  // Simple implementation - list all JS files
-  const files = [];
-  const entries = await fs.readdir(projectPath, { recursive: true });
-  for (const entry of entries) {
-    if (entry.endsWith('.js') && !entry.includes('node_modules')) {
-      files.push(entry);
-    }
-  }
-  return files.filter(f => f.includes(pattern) || pattern === '**/*.js');
-}
+import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
 
 export async function search_files(args, context) {
   const { pattern } = args;
-  const { projectPath } = context;
+  const { projectPath, server } = context;
   
   console.error(`[Tool] search_files("${pattern}")`);
 
-  const results = await findFiles(projectPath, pattern);
-  
-  return {
-    pattern,
-    found: results.length,
-    files: results.slice(0, 20)
-  };
+  try {
+    // Usar metadata indexada (más rápido que escanear disco)
+    const metadata = await getProjectMetadata(projectPath);
+    const fileIndex = metadata?.fileIndex || metadata?.files || {};
+    
+    // Filtrar archivos que coincidan con el patrón
+    const allFiles = Object.keys(fileIndex);
+    const results = allFiles.filter(filePath => {
+      // Buscar en el path completo del archivo
+      return filePath.toLowerCase().includes(pattern.toLowerCase());
+    });
+
+    return {
+      pattern,
+      found: results.length,
+      files: results.slice(0, 20),
+      totalIndexed: allFiles.length
+    };
+  } catch (error) {
+    return {
+      pattern,
+      found: 0,
+      files: [],
+      error: error.message,
+      note: 'Server may still be initializing'
+    };
+  }
 }

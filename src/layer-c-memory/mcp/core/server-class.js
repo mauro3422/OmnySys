@@ -41,7 +41,7 @@ export class OmnySysMCPServer {
     this.projectPath = projectPath;
     this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.omnysysPath = path.join(projectPath, 'omnysysdata'); // Compatibilidad legacy
-    this.OmnySysRoot = path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'), '../../../..');
+    this.OmnySysRoot = projectPath; // Usar projectPath directamente en lugar de calcular desde __dirname
     
     // Components
     this.orchestrator = null;
@@ -201,7 +201,8 @@ export class OmnySysMCPServer {
       const context = {
         orchestrator: this.orchestrator,
         cache: this.cache,
-        projectPath: this.projectPath
+        projectPath: this.projectPath,
+        server: this
       };
 
       const result = await handler(args, context);
@@ -237,10 +238,63 @@ export class OmnySysMCPServer {
   // ==========================================
 
   async run() {
-    await this.initialize();
+    // ==========================================
+    // MCP Handshake debe ser INMEDIATO
+    // ==========================================
+    
+    // 1. Setup MCP server mínimo PRIMERO
+    this._step5_MCP();
+    
+    // 2. Conectar transporte inmediatamente (handshake ocurre aquí)
     this.transport = new StdioServerTransport();
     await this.server.connect(this.transport);
-    console.error('💡 MCP Server running via stdio\n');
+    console.error('💡 MCP Server connected via stdio\n');
+    
+    // 3. Inicialización pesada en BACKGROUND (después del handshake)
+    this._initializeInBackground().catch(error => {
+      console.error('❌ Background initialization failed:', error);
+    });
+  }
+
+  /**
+   * Inicialización pesada en background
+   * Corre DESPUÉS del handshake MCP
+   */
+  async _initializeInBackground() {
+    try {
+      console.error('\n╔═══════════════════════════════════════════════════════════════╗');
+      console.error('║     OmnySys MCP Server v3.0.0                             ║');
+      console.error('║     Entry Point Único - IA-Native Architecture                ║');
+      console.error('╚═══════════════════════════════════════════════════════════════╝\n');
+      console.error(`📂 Project: ${this.projectPath}\n`);
+      console.error('⚡ Starting background initialization...\n');
+
+      // STEP 1: AI Server Setup (LLM)
+      await this._step1_LLMSetup();
+
+      // STEP 2: Layer A Analysis
+      await this._step2_LayerAAnalysis();
+
+      // STEP 3: Orchestrator
+      await this._step3_Orchestrator();
+
+      // STEP 4: Cache
+      await this._step4_Cache();
+
+      // STEP 5: Ready
+      await this._step6_Ready();
+
+      this.initialized = true;
+      console.error('\n✅ Background initialization complete!\n');
+      
+      // Emitir evento
+      this.orchestrator?.emit('mcp:initialized');
+      
+    } catch (error) {
+      console.error('\n❌ Background initialization failed:');
+      console.error(error.message);
+      console.error(error.stack);
+    }
   }
 
   async shutdown() {

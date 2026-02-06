@@ -16,33 +16,44 @@
 
 import { OmnySysMCPServer } from './core/server-class.js';
 import path from 'path';
+import fs from 'fs/promises';
 
+// ==========================================
+// MAIN
+// ==========================================
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
   const absolutePath = path.resolve(projectPath);
 
+  console.error(`📂 Project: ${absolutePath}`);
+  console.error('🚀 Starting OmnySys MCP Server...\n');
+
   const server = new OmnySysMCPServer(absolutePath);
 
-  // Stats cada 30 segundos (silencioso en producción)
-  server.startStatsInterval((stats) => {
-    // Silent - solo para debugging si es necesario
-  }, 30000);
-
-  // Cleanup
+  // Cleanup graceful
   process.on('SIGINT', async () => {
+    console.error('\n👋 Received SIGINT, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
+    console.error('\n👋 Received SIGTERM, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
+  });
+
+  process.on('uncaughtException', async (error) => {
+    console.error('\n❌ Uncaught exception:', error);
+    await server.shutdown();
+    process.exit(1);
   });
 
   try {
     await server.run();
   } catch (error) {
     console.error('Fatal error:', error);
+    await server.shutdown();
     process.exit(1);
   }
 }
