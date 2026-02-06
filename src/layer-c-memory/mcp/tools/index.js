@@ -1,6 +1,6 @@
 /**
  * MCP Tools Registry
- */
+ */ 
 
 import { get_impact_map } from './impact-map.js';
 import { analyze_change } from './analyze-change.js';
@@ -8,6 +8,9 @@ import { explain_connection } from './connection.js';
 import { get_risk_assessment } from './risk.js';
 import { search_files } from './search.js';
 import { get_server_status } from './status.js';
+import { get_call_graph } from './get-call-graph.js';
+import { analyze_signature_change } from './analyze-signature-change.js';
+import { explain_value_flow } from './explain-value-flow.js';
 
 export const toolDefinitions = [
   {
@@ -66,6 +69,46 @@ export const toolDefinitions = [
     name: 'get_server_status',
     description: 'Returns the complete status of the OmnySys server',
     inputSchema: { type: 'object', properties: {} }
+  },
+  // ========== OMNISCIENCE TOOLS ==========
+  {
+    name: 'get_call_graph',
+    description: 'Shows ALL call sites of a symbol - who calls what, where, and how',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the symbol' },
+        symbolName: { type: 'string', description: 'Name of the function/class/variable' },
+        includeContext: { type: 'boolean', description: 'Include code context for each call site', default: true }
+      },
+      required: ['filePath', 'symbolName']
+    }
+  },
+  {
+    name: 'analyze_signature_change',
+    description: 'Predicts breaking changes if you modify a function signature',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the function' },
+        symbolName: { type: 'string', description: 'Name of the function' },
+        newSignature: { type: 'string', description: 'New signature to analyze, e.g., "funcName(param1, param2)"' }
+      },
+      required: ['filePath', 'symbolName']
+    }
+  },
+  {
+    name: 'explain_value_flow',
+    description: 'Shows data flow: inputs → symbol → outputs → consumers',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file' },
+        symbolName: { type: 'string', description: 'Name of function/class/variable' },
+        maxDepth: { type: 'number', description: 'Maximum dependency depth to trace', default: 2 }
+      },
+      required: ['filePath', 'symbolName']
+    }
   }
 ];
 
@@ -75,5 +118,9 @@ export const toolHandlers = {
   explain_connection,
   get_risk_assessment,
   search_files,
-  get_server_status
+  get_server_status,
+  // OMNISCIENCE TOOLS
+  get_call_graph,
+  analyze_signature_change,
+  explain_value_flow
 };
