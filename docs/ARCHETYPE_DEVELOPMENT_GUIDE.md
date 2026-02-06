@@ -24,6 +24,40 @@ llmInsights (merge por mergeKey)
 - Se selecciona el de mayor `severity`.
 - Solo se ejecuta un prompt por archivo en cada corrida.
 
+**Mapa de arquetipos y metadatos**
+
+| Arquetipo | Detector (metadatos) | Template | Placeholders usados |
+|---|---|---|---|
+| `god-object` | `exportCount`, `dependentCount`, `semanticDependentCount` | `prompt-templates/god-object.js` | `{filePath}`, `{exportCount}`, `{exports}`, `{dependentCount}`, `{fileContent}` |
+| `orphan-module` | `exportCount`, `dependentCount`, `semanticDependentCount` | `prompt-templates/orphan-module.js` | `{filePath}`, `{exportCount}`, `{exports}`, `{dependentCount}`, `{fileContent}` |
+| `dynamic-importer` | `hasDynamicImports` | `prompt-templates/dynamic-imports.js` | `{filePath}`, `{hasDynamicImports}`, `{fileContent}` |
+| `singleton` | `hasSingletonPattern` o (`functionCount` + `exportCount` + `dependentCount`) | `prompt-templates/singleton.js` | `{filePath}`, `{hasSingletonPattern}`, `{fileContent}` |
+| `event-hub` | `hasEventEmitters` o `hasEventListeners` o `eventNames` | `prompt-templates/semantic-connections.js` | `{filePath}`, `{fileContent}` |
+| `global-state` | `usesGlobalState` y `localStorageKeys` vacio | `prompt-templates/global-state.js` | `{filePath}`, `{hasGlobalAccess}`, `{fileContent}` |
+| `state-manager` | `definesGlobalState` o `localStorageKeys` o `hasGlobalAccess` | `prompt-templates/semantic-connections.js` | `{filePath}`, `{fileContent}` |
+| `styled-component` | `hasCSSInJS` | `prompt-templates/css-in-js.js` | `{filePath}`, `{fileContent}` |
+| `type-definer` | `hasTypeScript` | `prompt-templates/typescript.js` | `{filePath}`, `{fileContent}` |
+| `default` | fallback | `prompt-templates/default.js` | `{filePath}`, `{exportCount}`, `{exports}`, `{dependentCount}`, `{importCount}`, `{functionCount}`, `{fileContent}` |
+
+**Fuentes de metadata (Layer A)**
+
+| Metadata | Fuente |
+|---|---|
+| `exportCount`, `exports` | parser + graph (`exports`, `usedBy`) |
+| `dependentCount`, `dependents` | graph (`usedBy`) |
+| `importCount` | parser (`imports`) |
+| `functionCount` | parser (`functions`) |
+| `semanticConnections`, `semanticDependentCount` | extractors estaticos + conexiones semanticas |
+| `definesGlobalState`, `usesGlobalState`, `globalStateWrites`, `globalStateReads` | `shared-state-detector` |
+| `hasEventEmitters`, `hasEventListeners`, `eventNames` | `event-pattern-detector` |
+| `hasLocalStorage`, `localStorageKeys` | `static-extractors` + `side-effects-detector` |
+| `hasGlobalAccess` | `side-effects-detector` + `shared-state-detector` |
+| `hasDynamicImports` | parser (import()) |
+| `hasCSSInJS` | `css-in-js-extractor` |
+| `hasTypeScript` | extension + `typescript-extractor` |
+| `hasJSDoc`, `hasAsyncPatterns`, `envVars` | `metadata-extractors` |
+| `hasSingletonPattern` | heuristica en `buildPromptMetadata` |
+
 **Checklist para agregar un arquetipo**
 1. Definir la señal de metadatos.
 2. Crear el template del prompt.
@@ -33,9 +67,8 @@ llmInsights (merge por mergeKey)
 
 **1) Definir la señal de metadatos**
 - El detector solo usa metadata, no regex directos en Orchestrator.
-- Si falta metadata, agregarla donde se construye el objeto `metadata` en:
-  - `src/core/orchestrator.js`
-  - `src/core/analysis-worker.js`
+- La fuente unica es `buildPromptMetadata()` en `src/layer-b-semantic/metadata-contract.js`.
+- Si falta metadata, agregarla en `buildPromptMetadata()` y en la fuente Layer A correspondiente.
 - Usa nombres consistentes con `metadata-contract.js`.
 
 **2) Crear el template del prompt**
@@ -46,6 +79,7 @@ Reglas basicas:
 - JSON puro, sin wrappers ni markdown.
 - El schema debe estar visible en el system prompt.
 - El user prompt debe incluir `{fileContent}`.
+- Solo usa placeholders que realmente necesita el arquetipo.
 
 **3) Crear JSON schema (opcional pero recomendado)**
 Archivo:
@@ -95,6 +129,7 @@ El sistema ahora valida el registry al cargar y avisa si falta algo.
 - Validacion del registry con warnings (tipos duplicados, templates incompletos).
 - Detectores con try/catch para no romper el flujo.
 - JSON schema se carga automaticamente si existe `<type>.json`.
+- Prompt Engine usa whitelist por placeholders y elimina metadata vacia/false.
 
 **Depuracion rapida**
 - `DEBUG_METADATA=1` habilita validacion de metadata en el selector.
