@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-This document describes the major optimizations implemented to improve the AI-powered semantic analysis system in OmnySystem. These changes address performance issues, improve accuracy, and add intelligent issue detection capabilities.
+This document describes the major optimizations implemented to improve the AI-powered semantic analysis system in OmnySys. These changes address performance issues, improve accuracy, and add intelligent issue detection capabilities.
 
 ---
 
@@ -259,8 +259,8 @@ Expected output:
 Test with real scenarios:
 
 ```bash
-node omnysystem.js analyze test-cases/scenario-2-semantic
-node omnysystem.js analyze test-cases/scenario-9-event-trap
+node omnysys.js analyze test-cases/scenario-2-semantic
+node omnysys.js analyze test-cases/scenario-9-event-trap
 ```
 
 ---
@@ -277,7 +277,7 @@ node omnysystem.js analyze test-cases/scenario-9-event-trap
    - Support custom issue patterns
 
 3. **Issue suppression**
-   - Add `.omnysystem-ignore` patterns
+   - Add `.omnysys-ignore` patterns
    - Per-file issue suppression comments
 
 ### Medium Term (Next Month):
@@ -321,7 +321,7 @@ node omnysystem.js analyze test-cases/scenario-9-event-trap
 
 **Optimizations implemented:** February 2026
 **System architect:** Claude (Anthropic)
-**Project:** OmnySystem - Intelligent Code Analysis System
+**Project:** OmnySys - Intelligent Code Analysis System
 
 ---
 

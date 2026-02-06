@@ -3,7 +3,7 @@
  * Returns a complete impact map for a file
  */
 
-import { getFileAnalysis, getFileDependencies } from '../../../layer-a-static/storage/query-service.js';
+import { getFileAnalysis, getFileDependencies } from '../../../layer-a-static/query/index.js';
 
 export async function get_impact_map(args, context) {
   const { filePath } = args;

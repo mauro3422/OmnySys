@@ -1,3 +1,10 @@
+/**
+ * REGLA: Toda entrada del registry DEBE cumplir con el proposito del sistema:
+ * detectar patrones de CONEXION entre archivos. Este validador verifica
+ * estructura (campos obligatorios, duplicados), no proposito.
+ * El proposito lo valida el desarrollador con el checklist en
+ * docs/ARCHETYPE_DEVELOPMENT_GUIDE.md antes de registrar un arquetipo.
+ */
 export function validateRegistry(registry) {
   const issues = [];
 
@@ -30,11 +37,14 @@ export function validateRegistry(registry) {
       issues.push(`Archetype ${entry.type || 'unknown'} missing detector function`);
     }
 
-    if (!entry.template || typeof entry.template !== 'object') {
-      issues.push(`Archetype ${entry.type || 'unknown'} missing template`);
-    } else {
-      if (!entry.template.systemPrompt || !entry.template.userPrompt) {
-        issues.push(`Archetype ${entry.type || 'unknown'} template missing systemPrompt or userPrompt`);
+    // Template solo es requerido si requiresLLM !== false
+    if (entry.requiresLLM !== false) {
+      if (!entry.template || typeof entry.template !== 'object') {
+        issues.push(`Archetype ${entry.type || 'unknown'} missing template (requiresLLM is not false)`);
+      } else {
+        if (!entry.template.systemPrompt || !entry.template.userPrompt) {
+          issues.push(`Archetype ${entry.type || 'unknown'} template missing systemPrompt or userPrompt`);
+        }
       }
     }
 

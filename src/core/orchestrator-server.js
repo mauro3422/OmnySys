@@ -46,11 +46,11 @@ const state = {
  * Inicializa el orchestrator
  */
 async function initialize(rootPath) {
-  console.log('🚀 Initializing CogniSystem Orchestrator...\n');
+  console.log('🚀 Initializing OmnySys Orchestrator...\n');
   
   // Inicializar StateManager
   state.stateManager = new StateManager(
-    path.join(rootPath, '.OmnySysData', 'orchestrator-state.json')
+    path.join(rootPath, '.omnysysdata', 'orchestrator-state.json')
   );
   
   // Inicializar worker
@@ -305,7 +305,7 @@ const PORT = process.env.ORCHESTRATOR_PORT || 9999;
 const ROOT_PATH = process.argv[2] || process.cwd();
 
 app.listen(PORT, async () => {
-  console.log(`\n🔧 CogniSystem Orchestrator v1.0.0`);
+  console.log(`\n🔧 OmnySys Orchestrator v1.0.0`);
   console.log(`📡 HTTP API: http://localhost:${PORT}`);
   console.log(`📁 Project: ${ROOT_PATH}\n`);
   

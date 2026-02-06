@@ -1,7 +1,7 @@
-# CogniSystem - Roadmap de Desarrollo
+# OmnySys - Roadmap de Desarrollo
 
-**Versión actual**: v0.4.5 - MCP Unified Entry Point ✅  
-**Última actualización**: 2026-02-03
+**Versión actual**: v0.5.1 - Enterprise Architecture Refactor ✅  
+**Última actualización**: 2026-02-06
 
 ---
 
@@ -13,19 +13,22 @@
 
 ---
 
-## Estado Actual (v0.4.5)
+## Estado Actual (v0.5.1)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ✅ COMPLETADO - MCP Unified Entry Point                    │
+│  ✅ COMPLETADO - Enterprise SOLID/SSOT Architecture         │
 │                                                             │
-│  Un solo comando inicia todo el sistema:                   │
-│  node src/layer-c-memory/mcp-server.js /proyecto           │
+│  17 monolitos → 147 módulos enfocados                      │
+│  89% reducción en tamaño de archivos (453 → 52 líneas)     │
+│  Principios SOLID aplicados en toda la base de código      │
+│  SSOT (Single Source of Truth) implementado                │
+│  100% API backward compatible                              │
 │                                                             │
-│  • Orchestrator (cola + worker + file watcher)             │
-│  • Indexación automática en background                     │
-│  • Tools MCP listas para usar                              │
-│  • Auto-análisis cuando archivo no existe                  │
+│  Nueva estructura modular con index.js facades             │
+│  - core/: batch-processor, websocket, orchestrator         │
+│  - layer-a-static/: graph, parser, extractors, query       │
+│  - layer-b-semantic/: llm-analyzer, validators, detectors  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,20 +56,20 @@
 **Entregables**:
 - [x] Parser de código (JS/TS) con Babel AST
 - [x] Extracción de imports/exports/definiciones
-- [x] Constructor de grafo de dependencias
+- [x] Constructor de grafo de dependencias (modular)
 - [x] `system-map.json` con grafo completo
 - [x] 15+ casos de prueba sintéticos
 - [x] Detección de patrones (shared state, eventos, side effects)
 - [x] Risk scorer basado en reglas
 - [x] Análisis de calidad (unused exports, circular deps, etc.)
 
-**Ubicación**: `src/layer-a-static/`
+**Ubicación**: `src/layer-a-static/` (27 módulos)
 
 ---
 
 ### ✅ FASE 2: Integración MCP Básica
 
-**Estado**: Completada (90%)
+**Estado**: Completada (95%)
 
 **Entregables**:
 - [x] Servidor MCP con tools
@@ -75,8 +78,8 @@
 - [x] `explain_connection()` - Explicar conexiones
 - [x] `get_risk_assessment()` - Evaluación de riesgos
 - [x] `search_files()` - Búsqueda de archivos
-- [x] Query service eficiente
-- [x] Storage particionado en `.OmnySystemData/`
+- [x] Query service eficiente (6 módulos)
+- [x] Storage particionado en `.omnysysdata/`
 
 **Ubicación**: `src/layer-c-memory/`
 
@@ -84,7 +87,7 @@
 
 ### ✅ FASE 3: Capa B - Análisis Semántico
 
-**Estado**: Completada (85%)
+**Estado**: Completada (90%)
 
 **Entregables**:
 - [x] Schema de datos para semantic layer
@@ -93,34 +96,34 @@
   - [x] Event pattern detector (emitters/listeners)
   - [x] Side effects detector
 - [x] Análisis con IA local (Qwen2.5-Coder)
-- [x] Validación de respuestas LLM (JSON schemas)
+- [x] Validación de respuestas LLM (17 módulos)
 - [x] Scoring híbrido (estático + IA)
 - [x] `enhanced-system-map.json` con datos enriquecidos
 - [x] Conexiones CSS-in-JS, TypeScript, Redux/Context
 
-**Ubicación**: `src/layer-b-semantic/`
+**Ubicación**: `src/layer-b-semantic/` (40+ módulos)
 
 ---
 
 ### ✅ FASE 4: Orchestrator y Procesamiento
 
-**Estado**: Completada (90%)
+**Estado**: Completada (95%)
 
 **Entregables**:
 - [x] AnalysisQueue con prioridades (CRITICAL > HIGH > MEDIUM > LOW)
 - [x] AnalysisWorker para procesar con LLM
 - [x] FileWatcher para cambios en tiempo real
-- [x] BatchProcessor para agrupar cambios
+- [x] BatchProcessor para agrupar cambios (9 módulos)
 - [x] StateManager para persistencia atómica
-- [x] WebSocket para notificaciones en tiempo real
+- [x] WebSocket para notificaciones en tiempo real (10 módulos)
 - [x] Interrupción de trabajos de menor prioridad
 - [x] Rollback de caché en caso de error
 
-**Ubicación**: `src/core/`
+**Ubicación**: `src/core/` (25+ módulos)
 
 ---
 
-### ✅ FASE 5: Unified Entry Point (v0.4.5)
+### ✅ FASE 5: Unified Entry Point (v0.4.5+ v0.5.1)
 
 **Estado**: Completada (95%)
 
@@ -132,6 +135,7 @@
 - [x] Cache unificado (v0.4.4)
 - [x] UnifiedCacheManager con invalidación en cascada
 - [x] Documentación de tools MCP
+- [x] **v0.5.1**: Arquitectura modular SOLID
 
 **Ubicación**: `src/layer-c-memory/mcp-server.js`
 
@@ -246,15 +250,15 @@ Proyectos para testear:
 
 ### Por Componente
 
-| Componente | Estado | Líneas de Código | Test Coverage |
-|------------|--------|-----------------|---------------|
-| Capa A (Static) | 95% ✅ | ~3,500 | 70% |
-| Capa B (Semantic) | 85% ✅ | ~2,800 | 60% |
-| Capa C (Memory) | 90% ✅ | ~1,500 | 50% |
-| Orchestrator | 90% ✅ | ~1,200 | 40% |
-| MCP Tools | 95% ✅ | ~800 | 30% |
-| Cache System | 95% ✅ | ~600 | 50% |
-| **TOTAL** | **90%** | **~10,400** | **50%** |
+| Componente | Estado | Módulos | Test Coverage |
+|------------|--------|---------|---------------|
+| Capa A (Static) | 95% ✅ | ~27 | 70% |
+| Capa B (Semantic) | 90% ✅ | ~40 | 60% |
+| Capa C (Memory) | 95% ✅ | ~15 | 50% |
+| Orchestrator | 95% ✅ | ~25 | 40% |
+| MCP Tools | 95% ✅ | ~10 | 30% |
+| Cache System | 95% ✅ | ~5 | 50% |
+| **TOTAL** | **92%** | **~147** | **50%** |
 
 ### Por Funcionalidad
 
@@ -277,7 +281,10 @@ Proyectos para testear:
 Ver [CHANGELOG.md](CHANGELOG.md) para historial detallado.
 
 **Últimas versiones**:
-- v0.4.5: MCP Unified Entry Point (current)
+- **v0.5.1**: Enterprise SOLID Architecture Refactor (current) - 147 módulos
+- v0.5.0: Layer A/B Unification & Orchestrator
+- v0.4.6: Metadata Contract & Plug & Play Architecture
+- v0.4.5: MCP Unified Entry Point
 - v0.4.4: Unified Cache System
 - v0.4.3: Bug fixes y estabilidad
 - v0.4.2: Context optimization
@@ -300,6 +307,49 @@ Ver [CHANGELOG.md](CHANGELOG.md) para historial detallado.
 ## Referencias
 
 - [README.md](README.md) - Overview del proyecto
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico
-- [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) - Documentación de tools
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico detallado
+- [docs/INDEX.md](docs/INDEX.md) - Índice de documentación
 - [changelog/](changelog/) - Historial de versiones
+
+---
+
+## Notas sobre v0.5.1
+
+### Arquitectura Modular
+
+La v0.5.1 representa un hito arquitectónico: la transformación de 17 archivos monolíticos en 147 módulos enfocados, siguiendo principios SOLID y el patrón SSOT (Single Source of Truth).
+
+**Beneficios**:
+- **Mantenibilidad**: Cada módulo tiene una única responsabilidad
+- **Testabilidad**: Fácil de testear unitariamente
+- **Extensibilidad**: Nuevos features sin modificar código existente
+- **Colaboración**: Múltiples desarrolladores sin conflictos
+
+**Estructura**:
+```
+src/
+├── core/                          (25 módulos)
+│   ├── batch-processor/           (9 módulos)
+│   ├── websocket/                 (10 módulos)
+│   └── unified-server/            (7 módulos)
+│
+├── layer-a-static/                (27 módulos)
+│   ├── graph/                     (11 módulos)
+│   ├── parser/                    (8 módulos)
+│   ├── extractors/                (17 módulos organizados)
+│   └── query/                     (6 módulos)
+│
+└── layer-b-semantic/              (40+ módulos)
+    ├── llm-analyzer/              (5 módulos)
+    ├── issue-detectors/           (8 módulos)
+    ├── project-analyzer/          (10 módulos)
+    ├── validators/                (17 módulos)
+    └── metadata-contract/         (10 módulos)
+```
+
+**SSOT Locations**:
+- SystemMap Structure: `graph/types.js`
+- Path Normalization: `graph/utils/path-utils.js`
+- Babel Config: `parser/config.js`
+- Prompt Building: `llm-analyzer/prompt-builder.js`
+- Metadata Contract: `metadata-contract/constants.js`

@@ -239,7 +239,7 @@ uniform float u_zoom; // La IA NO ve que esto depende de CameraState
 
 ---
 
-## Propuesta de Solución: CogniSystem
+## Propuesta de Solución: OmnySys
 
 Ver [../ARCHITECTURE.md](../ARCHITECTURE.md) para el diseño técnico completo.
 
@@ -257,20 +257,20 @@ Ver [../ARCHITECTURE.md](../ARCHITECTURE.md) para el diseño técnico completo.
 ### Caso 1: Modificación de Estado Central
 **Setup**: Sistema con estado compartido en `store.js`, usado por 5 archivos
 **Acción**: IA modifica estructura del estado
-**Resultado esperado**: CogniSystem advierte de los 5 archivos afectados
-**Resultado sin CogniSystem**: IA solo actualiza 1-2 archivos, rompe 3
+**Resultado esperado**: OmnySys advierte de los 5 archivos afectados
+**Resultado sin OmnySys**: IA solo actualiza 1-2 archivos, rompe 3
 
 ### Caso 2: Sistema de Eventos
 **Setup**: Botón que emite evento, 3 listeners en archivos diferentes
 **Acción**: IA cambia el nombre del evento
-**Resultado esperado**: CogniSystem identifica los 3 listeners
-**Resultado sin CogniSystem**: IA cambia el nombre solo en el emisor
+**Resultado esperado**: OmnySys identifica los 3 listeners
+**Resultado sin OmnySys**: IA cambia el nombre solo en el emisor
 
 ### Caso 3: Dependencia de Shader
 **Setup**: Shader que usa uniform alimentado por JS
 **Acción**: IA cambia el nombre de la variable en JS
-**Resultado esperado**: CogniSystem detecta que el shader también debe cambiar
-**Resultado sin CogniSystem**: Shader roto (error en runtime)
+**Resultado esperado**: OmnySys detecta que el shader también debe cambiar
+**Resultado sin OmnySys**: Shader roto (error en runtime)
 
 ---
 
@@ -290,4 +290,4 @@ Ver [../ARCHITECTURE.md](../ARCHITECTURE.md) para el diseño técnico completo.
 
 El problema de visión de túnel en IAs no es un "bug" de los modelos, es una **limitación arquitectural** de cómo trabajan con código modular. La única solución es una **memoria externa** que mantenga el contexto completo y lo inyecte proactivamente.
 
-CogniSystem es esa memoria externa.
+OmnySys es esa memoria externa.

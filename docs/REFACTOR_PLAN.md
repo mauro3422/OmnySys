@@ -1,5 +1,7 @@
 # Refactor Plan (Monolitos Grandes)
 
+> **HISTORICO**: Completado en v0.5.1. Este documento se mantiene como referencia del proceso de refactorizacion. No usar para decisiones actuales.
+
 Este plan evita "vision de tunel" durante el refactor. Se enfoca en dependencias reales y contratos que no deben romperse.
 
 ## Objetivo
@@ -19,12 +21,12 @@ Dividir archivos grandes sin romper:
 
 ## Hotspots y Dependencias
 
-### 1) `omnysystem.js` (CLI)
+### 1) `omnysys.js` (CLI)
 **Depende de:**
 - `indexProject`
 - `Orchestrator`
-- `CogniSystemMCPServer`
-- `CogniSystemUnifiedServer`
+- `OmnySysMCPServer`
+- `OmnySysUnifiedServer`
 - `LLMClient`, `loadAIConfig`
 - `query-service` y `storage-manager`
 
@@ -77,7 +79,7 @@ Dividir archivos grandes sin romper:
 - extractores y detectores
 - `storage-manager`
 
-**Riesgo:** romper formato de `.OmnySysData/`.
+**Riesgo:** romper formato de `.omnysysdata/`.
 
 **Split sugerido:**
 - `src/layer-a-static/pipeline/scan.js`
@@ -102,7 +104,7 @@ Dividir archivos grandes sin romper:
 
 ### 6) `src/core/unified-cache-manager.js`
 **Depende de:**
-- FS y metadatos de `.OmnySysData/`
+- FS y metadatos de `.omnysysdata/`
 
 **Riesgo:** invalidaciones incorrectas.
 
@@ -125,7 +127,7 @@ Dividir archivos grandes sin romper:
 - `batch.js`
 
 ## Orden Recomendado
-1. CLI (`omnysystem.js`)
+1. CLI (`omnysys.js`)
 2. Unified Server
 3. Orchestrator
 4. Layer A pipeline
@@ -135,6 +137,6 @@ Dividir archivos grandes sin romper:
 
 ## Definicion de "Listo"
 - Compila y corre los comandos principales.
-- `.OmnySysData/` sigue igual.
+- `.omnysysdata/` sigue igual.
 - MCP Server responde a tools.
 

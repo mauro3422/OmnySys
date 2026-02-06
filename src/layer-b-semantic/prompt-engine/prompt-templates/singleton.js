@@ -1,7 +1,7 @@
 /**
  * Singleton Pattern Template - ChatML v3 Format with Few-Shot Examples
  *
- * Estandarizado para el sistema plug-and-play de CogniSystem.
+ * Estandarizado para el sistema plug-and-play de OmnySys.
  * Detecta patrones Singleton y analiza sus características.
  *
  * Basado en: https://docs.liquid.ai/docs/key-concepts/text-generation-and-prompting.md

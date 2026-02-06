@@ -8,7 +8,7 @@ import { parseFiles } from './pipeline/parse.js';
 import { resolveImports } from './pipeline/resolve.js';
 import { normalizeParsedFiles, normalizeResolvedImports } from './pipeline/normalize.js';
 import { buildSystemGraph } from './pipeline/graph.js';
-import { generateEnhancedSystemMap } from './pipeline/enhance.js';
+import { enhanceSystemMap as generateEnhancedSystemMap } from './pipeline/enhancers/index.js';
 import { analyzeSingleFile } from './pipeline/single-file.js';
 import {
   ensureDataDir,

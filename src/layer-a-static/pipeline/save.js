@@ -1,19 +1,19 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 import { savePartitionedSystemMap } from '../storage/storage-manager.js';
 
 export async function ensureDataDir(absoluteRootPath) {
-  const dataDir = path.join(absoluteRootPath, '.OmnySysData');
+  const dataDir = path.join(absoluteRootPath, '.omnysysdata');
   await fs.mkdir(dataDir, { recursive: true });
   return dataDir;
 }
 
 export async function saveSystemMap(dataDir, outputPath, systemMap, verbose = true) {
-  if (verbose) console.log('ðŸ’¾ Saving graph...');
+  if (verbose) console.log('\uD83D\uDCBE Saving graph...');
   const outputFullPath = path.join(dataDir, outputPath);
   await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
-  if (verbose) console.log(`  âœ“ Saved to: .OmnySysData/${outputPath}\n`);
+  if (verbose) console.log(`  \u2714 Saved to: .omnysysdata/${outputPath}\n`);
   return outputFullPath;
 }
 
@@ -21,7 +21,7 @@ export async function saveAnalysisReport(dataDir, outputPath, analysisReport, ve
   const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
   const analysisFullPath = path.join(dataDir, analysisOutputPath);
   await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
-  if (verbose) console.log(`  âœ“ Analysis saved to: .OmnySysData/${analysisOutputPath}\n`);
+  if (verbose) console.log(`  \u2714 Analysis saved to: .omnysysdata/${analysisOutputPath}\n`);
   return analysisOutputPath;
 }
 
@@ -29,18 +29,18 @@ export async function saveEnhancedSystemMap(dataDir, outputPath, enhancedSystemM
   const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
   const enhancedFullPath = path.join(dataDir, enhancedOutputPath);
   await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
-  if (verbose) console.log(`  âœ“ Enhanced map saved to: .OmnySysData/${enhancedOutputPath}\n`);
+  if (verbose) console.log(`  \u2714 Enhanced map saved to: .omnysysdata/${enhancedOutputPath}\n`);
   return enhancedOutputPath;
 }
 
 export async function savePartitionedData(absoluteRootPath, enhancedSystemMap, verbose = true) {
-  if (verbose) console.log('ðŸ’¾ Saving partitioned data to .OmnySysData/...');
+  if (verbose) console.log('\uD83D\uDCBE Saving partitioned data to .omnysysdata/...');
   const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
   if (verbose) {
-    console.log('  âœ“ Metadata saved to: .OmnySysData/index.json');
-    console.log(`  âœ“ ${partitionedPaths.files.length} files saved to: .OmnySysData/files/`);
-    console.log('  âœ“ Connections saved to: .OmnySysData/connections/');
-    console.log('  âœ“ Risk assessment saved to: .OmnySysData/risks/\n');
+    console.log('  \u2714 Metadata saved to: .omnysysdata/index.json');
+    console.log(`  \u2714 ${partitionedPaths.files.length} files saved to: .omnysysdata/files/`);
+    console.log('  \u2714 Connections saved to: .omnysysdata/connections/');
+    console.log('  \u2714 Risk assessment saved to: .omnysysdata/risks/\n');
   }
   return partitionedPaths;
 }
@@ -52,40 +52,46 @@ export function printSummary({
   enhancedOutputPath,
   partitionedPaths
 }) {
-  console.log('âœ… Layer A Complete!');
+  const meta = systemMap?.metadata || {};
+  const quality = analysisReport?.qualityMetrics || {};
+  const conns = enhancedSystemMap?.connections || {};
+  const risk = enhancedSystemMap?.riskAssessment?.report?.summary || {};
+  const issues = enhancedSystemMap?.semanticIssues?.stats || {};
+
+  console.log('\u2705 Layer A Complete!');
   console.log(`
-ðŸ“Š STATIC ANALYSIS Summary:
-  - Files analyzed: ${systemMap.metadata.totalFiles}
-  - Functions analyzed: ${systemMap.metadata.totalFunctions}
-  - Dependencies: ${systemMap.metadata.totalDependencies}
-  - Function links: ${systemMap.metadata.totalFunctionLinks}
-  - Average deps per file: ${(systemMap.metadata.totalDependencies / systemMap.metadata.totalFiles).toFixed(2)}
+\uD83D\uDCCA STATIC ANALYSIS Summary:
+  - Files analyzed: ${meta.totalFiles || 0}
+  - Functions analyzed: ${meta.totalFunctions || 0}
+  - Dependencies: ${meta.totalDependencies || 0}
+  - Function links: ${meta.totalFunctionLinks || 0}
+  - Average deps per file: ${meta.totalFiles > 0 ? (meta.totalDependencies / meta.totalFiles).toFixed(2) : '0.00'}
 
-ðŸ” CODE QUALITY Analysis:
-  - Quality Score: ${analysisReport.qualityMetrics.score}/100 (Grade: ${analysisReport.qualityMetrics.grade})
-  - Total Issues: ${analysisReport.qualityMetrics.totalIssues}
-  - Unused Exports: ${analysisReport.unusedExports.totalUnused}
-  - Dead Code Files: ${analysisReport.orphanFiles.deadCodeCount}
-  - Critical Hotspots: ${analysisReport.hotspots.criticalCount}
-  - Circular Dependencies: ${analysisReport.circularFunctionDeps.total}
-  - Recommendations: ${analysisReport.recommendations.total}
+\uD83D\uDD0D CODE QUALITY Analysis:
+  - Quality Score: ${quality.score || 0}/100 (Grade: ${quality.grade || 'N/A'})
+  - Total Issues: ${quality.totalIssues || 0}
+  - Unused Exports: ${analysisReport?.unusedExports?.totalUnused || 0}
+  - Dead Code Files: ${analysisReport?.orphanFiles?.deadCodeCount || 0}
+  - Critical Hotspots: ${analysisReport?.hotspots?.criticalCount || 0}
+  - Circular Dependencies: ${analysisReport?.circularFunctionDeps?.total || 0}
+  - Recommendations: ${analysisReport?.recommendations?.total || 0}
 
-ðŸ§  SEMANTIC ANALYSIS (Phase 3.5):
-  - Shared state connections: ${enhancedSystemMap.connections.sharedState.length}
-  - Event listener connections: ${enhancedSystemMap.connections.eventListeners.length}
-  - Total semantic connections: ${enhancedSystemMap.connections.total}
-  - High-risk files: ${enhancedSystemMap.riskAssessment.report.summary.highCount + enhancedSystemMap.riskAssessment.report.summary.criticalCount}
-  - Average risk score: ${enhancedSystemMap.riskAssessment.report.summary.averageScore}
+\uD83E\uDDE0 SEMANTIC ANALYSIS (Phase 3.5):
+  - Shared state connections: ${conns.sharedState?.length || 0}
+  - Event listener connections: ${conns.eventListeners?.length || 0}
+  - Total semantic connections: ${conns.total || 0}
+  - High-risk files: ${(risk.highCount || 0) + (risk.criticalCount || 0)}
+  - Average risk score: ${risk.averageScore || 0}
 
-âš ï¸  SEMANTIC ISSUES DETECTED:
-  - Total issues: ${enhancedSystemMap.semanticIssues.stats?.totalIssues || 0}
-  - High severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.high || 0}
-  - Medium severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.medium || 0}
-  - Low severity: ${enhancedSystemMap.semanticIssues.stats?.bySeverity?.low || 0}
+\u26A0\uFE0F SEMANTIC ISSUES DETECTED:
+  - Total issues: ${issues.totalIssues || 0}
+  - High severity: ${issues.bySeverity?.high || 0}
+  - Medium severity: ${issues.bySeverity?.medium || 0}
+  - Low severity: ${issues.bySeverity?.low || 0}
 
-ðŸ’¾ STORAGE:
-  - Monolithic JSON: .OmnySysData/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap).length / 1024).toFixed(2)} KB)
-  - Partitioned data: .OmnySysData/ directory (${partitionedPaths.files.length} files)
+\uD83D\uDCBE STORAGE:
+  - Monolithic JSON: .omnysysdata/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap || {}).length / 1024).toFixed(2)} KB)
+  - Partitioned data: .omnysysdata/ directory (${partitionedPaths?.files?.length || 0} files)
   - Query API available via query-service.js
       `);
 }

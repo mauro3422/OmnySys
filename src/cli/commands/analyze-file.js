@@ -58,7 +58,7 @@ export async function analyzeFile(filePath) {
     });
 
     console.log('\nFile analysis complete!\n');
-    console.log(`Results saved to: .OmnySystemData/files/${relativeFilePath}.json\n`);
+    console.log(`Results saved to: .omnysysdata/files/${relativeFilePath}.json\n`);
 
     process.exit(0);
   } catch (error) {

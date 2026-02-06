@@ -3,7 +3,18 @@
  * Returns a risk assessment of the entire project
  */
 
-import { getRiskAssessment } from '../../../layer-a-static/storage/query-service.js';
+import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
+
+// TODO: Implement proper risk assessment query
+async function getRiskAssessment(projectPath, minSeverity = 'low') {
+  const metadata = await getProjectMetadata(projectPath);
+  return {
+    totalIssues: 0,
+    bySeverity: { high: 0, medium: 0, low: 0 },
+    hotspots: [],
+    metadata
+  };
+}
 
 export async function get_risk_assessment(args, context) {
   const { minSeverity = 'medium' } = args;

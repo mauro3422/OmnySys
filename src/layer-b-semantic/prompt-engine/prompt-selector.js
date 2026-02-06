@@ -1,10 +1,15 @@
 /**
  * Prompt Selector - Usa PROMPT_REGISTRY
- * 
+ *
  * Sistema plug & play: solo necesitas registrar en PROMPT_REGISTRY.js
- * 
- * Este selector delega toda la lógica de detección al PROMPT_REGISTRY,
- * eliminando el acoplamiento implícito entre detectores y templates.
+ *
+ * Este selector delega toda la logica de deteccion al PROMPT_REGISTRY,
+ * eliminando el acoplamiento implicito entre detectores y templates.
+ *
+ * REGLA: Este selector SOLO debe elegir arquetipos que detecten patrones
+ * de CONEXION entre archivos. No debe existir logica de deteccion aqui -
+ * toda la deteccion esta en PROMPT_REGISTRY.js. Si necesitas agregar un
+ * nuevo arquetipo, registralo alla, no aqui.
  */
 
 import { 
@@ -13,7 +18,7 @@ import {
   getTemplateForType,
   ARCHETYPE_REGISTRY
 } from './PROMPT_REGISTRY.js';
-import { validateMetadata } from '../metadata-contract.js';
+import { validateMetadata } from '../metadata-contract/index.js';
 
 class PromptSelector {
   /**

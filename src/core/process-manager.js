@@ -82,10 +82,10 @@ export async function checkServices() {
 }
 
 /**
- * Limpia todos los procesos del sistema CogniSystem
+ * Limpia todos los procesos del sistema OmnySys
  */
 export async function cleanupProcesses() {
-  console.log('🧹 Cleaning up CogniSystem processes...\n');
+  console.log('🧹 Cleaning up OmnySys processes...\n');
 
   const services = await checkServices();
 

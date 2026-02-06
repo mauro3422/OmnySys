@@ -17,8 +17,6 @@ import godObjectTemplate from './prompt-templates/god-object.js';
 import circularDependencyTemplate from './prompt-templates/circular-dependency.js';
 import semanticConnectionsTemplate from './prompt-templates/semantic-connections.js';
 import dynamicImportsTemplate from './prompt-templates/dynamic-imports.js';
-import cssInJSTemplate from './prompt-templates/css-in-js.js';
-import typescriptTemplate from './prompt-templates/typescript.js';
 import singletonTemplate from './prompt-templates/singleton.js';
 import orphanModuleTemplate from './prompt-templates/orphan-module.js';
 import globalStateTemplate from './prompt-templates/global-state.js';
@@ -26,23 +24,44 @@ import defaultTemplate from './prompt-templates/default.js';
 import { validateRegistry } from './registry-validator.js';
 
 // Importar detectores compartidos
-import { detectGodObject, detectOrphanModule } from '../metadata-contract.js';
+import { detectGodObject, detectOrphanModule } from '../metadata-contract/index.js';
 
 /**
  * REGISTRO DE ARQUETIPOS
- * 
+ *
+ * ============================================================
+ * REGLAS DEL SISTEMA (LEER ANTES DE MODIFICAR):
+ *
+ * 1. Un arquetipo DEBE detectar un PATRON DE CONEXION entre archivos.
+ *    Pregunta obligatoria: "Esto me dice algo sobre como este archivo
+ *    se CONECTA con otros archivos?" Si la respuesta es no, NO es un arquetipo.
+ *
+ * 2. Si la metadata sola puede determinar el patron Y la accion,
+ *    NO enviar a LLM. El LLM es para conexiones INVISIBLES que la
+ *    metadata no puede resolver (eventos, estado compartido, imports dinamicos).
+ *
+ * 3. Anti-patrones (cosas que NO son arquetipos):
+ *    - "usa CSS-in-JS" -> estilo de codigo, no conexion
+ *    - "tiene TypeScript" -> lenguaje, no conexion
+ *    - "tiene errores" -> calidad, no conexion
+ *    - "dependencia circular" -> ya lo detecta el grafo en Layer A
+ *
+ * 4. Ver docs/ARCHETYPE_DEVELOPMENT_GUIDE.md para el checklist completo.
+ * ============================================================
+ *
  * Cada entrada define:
- * - type: Identificador único (kebab-case)
- * - severity: Prioridad arquitectónica (0-10, mayor = más prioritario)
- * - detector: Función que recibe metadata y retorna boolean
+ * - type: Identificador unico (kebab-case)
+ * - severity: Prioridad arquitectonica (0-10, mayor = mas prioritario)
+ * - detector: Funcion que recibe metadata y retorna boolean
  * - template: Prompt template (systemPrompt, userPrompt)
- * - mergeKey: Clave en llmInsights donde se guardará el resultado
+ * - mergeKey: Clave en llmInsights donde se guardara el resultado
  * - fields: Campos esperados en la respuesta del LLM
  */
 export const ARCHETYPE_REGISTRY = [
   {
     type: 'god-object',
     severity: 10,
+    requiresLLM: true, // Siempre: responsabilidades y riesgo son invisibles para metadata
     detector: (metadata) => {
       // Considerar tanto dependents estáticos como semánticos
       const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
@@ -55,8 +74,9 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'orphan-module',
     severity: 5,
+    requiresLLM: true, // El LLM sugiere potentialUsage — conexiones posibles invisibles para metadata
     detector: (metadata) => {
-      // Solo es orphan si NO tiene dependents estáticos NI semánticos
+      // Solo es orphan si NO tiene dependents estaticos NI semanticos
       const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
       return detectOrphanModule(metadata.exportCount, totalDependents);
     },
@@ -67,6 +87,7 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'dynamic-importer',
     severity: 7,
+    requiresLLM: true, // Siempre: rutas dinámicas son irresolubles estáticamente
     detector: (metadata) => metadata.hasDynamicImports === true,
     template: dynamicImportsTemplate,
     mergeKey: 'dynamicImportAnalysis',
@@ -75,10 +96,11 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'singleton',
     severity: 7,
+    requiresLLM: 'conditional', // Solo si hay state compartido no resuelto por Layer A
     detector: (metadata) => {
       // Detectar patrón Singleton
       return metadata.hasSingletonPattern === true ||
-             (metadata.functionCount === 1 && 
+             (metadata.functionCount === 1 &&
               metadata.exportCount === 1 &&
               metadata.dependentCount > 5);
     },
@@ -89,6 +111,7 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'event-hub',
     severity: 6,
+    requiresLLM: 'conditional', // Solo si hay eventos no resueltos por cross-reference estático
     detector: (metadata) => metadata.hasEventEmitters || metadata.hasEventListeners || (metadata.eventNames?.length || 0) > 0,
     template: semanticConnectionsTemplate,
     mergeKey: 'eventHubAnalysis',
@@ -97,6 +120,7 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'global-state',
     severity: 6,
+    requiresLLM: 'conditional', // Solo si hay globals no resueltos por cross-reference estático
     detector: (metadata) => metadata.usesGlobalState === true && (metadata.localStorageKeys?.length || 0) === 0,
     template: globalStateTemplate,
     mergeKey: 'globalStateAnalysis',
@@ -105,6 +129,7 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'state-manager',
     severity: 6,
+    requiresLLM: 'conditional', // Solo si hay state no resuelto por cross-reference estático
     detector: (metadata) =>
       metadata.definesGlobalState === true ||
       metadata.hasLocalStorage === true ||
@@ -115,24 +140,55 @@ export const ARCHETYPE_REGISTRY = [
     fields: ['localStorageKeys', 'sharedState']
   },
   {
-    type: 'styled-component',
-    severity: 3,
-    detector: (metadata) => metadata.hasCSSInJS === true,
-    template: cssInJSTemplate,
-    mergeKey: 'cssInJSAnalysis',
-    fields: ['cssInJS', 'globalStyles']
+    type: 'facade',
+    severity: 4,
+    requiresLLM: false, // 100% determinístico: reExportCount viene del AST
+    detector: (metadata) => {
+      // Re-exporta mucho pero define poco propio
+      const hasReExports = (metadata.reExportCount || 0) >= 3;
+      const isMainlyReExporter = (metadata.exportCount || 0) > 0 &&
+                                  (metadata.functionCount || 0) <= 1;
+      const isIndexFile = (metadata.filePath || '').endsWith('index.js') ||
+                          (metadata.filePath || '').endsWith('index.ts');
+      return hasReExports || (isIndexFile && isMainlyReExporter && (metadata.exportCount || 0) >= 3);
+    },
+    template: null, // No usa LLM
+    mergeKey: 'facadeAnalysis',
+    fields: ['reExportedModules', 'aggregationScope', 'blastRadius']
   },
   {
-    type: 'type-definer',
-    severity: 2,
-    detector: (metadata) => metadata.hasTypeScript === true,
-    template: typescriptTemplate,
-    mergeKey: 'typescriptAnalysis',
-    fields: ['interfaces', 'types', 'generics']
+    type: 'config-hub',
+    severity: 5,
+    requiresLLM: false, // 100% determinístico: exportCount + dependentCount del grafo
+    detector: (metadata) => {
+      const exportsMany = (metadata.exportCount || 0) >= 5;
+      const hasManyDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0) >= 5;
+      const fewFunctions = (metadata.functionCount || 0) <= 2;
+      // Muchos exports, muchos dependents, pocas funciones = probablemente config
+      return exportsMany && hasManyDependents && fewFunctions;
+    },
+    template: null, // No usa LLM
+    mergeKey: 'configHubAnalysis',
+    fields: ['configKeys', 'consumers', 'riskLevel']
+  },
+  {
+    type: 'entry-point',
+    severity: 3,
+    requiresLLM: false, // 100% determinístico: importCount + dependentCount del grafo
+    detector: (metadata) => {
+      const importsMuch = (metadata.importCount || 0) >= 5;
+      const nobodyImportsIt = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0) === 0;
+      // Importa mucho pero nadie lo importa = entry point
+      return importsMuch && nobodyImportsIt;
+    },
+    template: null, // No usa LLM
+    mergeKey: 'entryPointAnalysis',
+    fields: ['bootSequence', 'servicesInitialized']
   },
   {
     type: 'default',
     severity: 0,
+    requiresLLM: true, // Fallback: archivos sin arquetipo pasan por análisis general
     detector: () => true, // Siempre coincide (fallback)
     template: defaultTemplate,
     mergeKey: 'generalAnalysis',
@@ -217,6 +273,28 @@ export function listAvailableArchetypes() {
   }));
 }
 
+/**
+ * Filtra arquetipos que requieren LLM
+ * @param {Array} archetypes - Array de {type, severity}
+ * @returns {Array} - Solo los que tienen requiresLLM: true o 'conditional'
+ */
+export function filterArchetypesRequiringLLM(archetypes) {
+  return archetypes.filter(a => {
+    const archetype = getArchetype(a.type);
+    return archetype?.requiresLLM === true || archetype?.requiresLLM === 'conditional';
+  });
+}
+
+/**
+ * Verifica si un tipo de arquetipo necesita LLM
+ * @param {string} type - Tipo de arquetipo
+ * @returns {boolean|string} - true, false, o 'conditional'
+ */
+export function archetypeRequiresLLM(type) {
+  const archetype = getArchetype(type);
+  return archetype?.requiresLLM ?? true;
+}
+
 export default {
   ARCHETYPE_REGISTRY,
   getArchetype,
@@ -224,7 +302,9 @@ export default {
   selectArchetypeBySeverity,
   getTemplateForType,
   getMergeConfig,
-  listAvailableArchetypes
+  listAvailableArchetypes,
+  filterArchetypesRequiringLLM,
+  archetypeRequiresLLM
 };
 
 const registryValidation = validateRegistry(ARCHETYPE_REGISTRY);
