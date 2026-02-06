@@ -44,6 +44,8 @@ Entrada principal a la documentacion. La vision y los contratos se definen aqui.
 | Documento | Tipo | Descripción |
 |-----------|------|-------------|
 | [ARCHITECTURE.md](../ARCHITECTURE.md) | Canónico | Arquitectura técnica de 3 capas (A/B/C) |
+| [CONTEXT_SELECTION_ALGORITHMS.md](CONTEXT_SELECTION_ALGORITHMS.md) | Técnico | Algoritmos de selección de contexto |
+| [HYBRID_ANALYSIS_PIPELINE.md](HYBRID_ANALYSIS_PIPELINE.md) | Técnico | Pipeline de análisis híbrido (Static + AI) |
 | [ARCHITECTURE_LAYER_A_B.md](ARCHITECTURE_LAYER_A_B.md) | Canónico | Detalle de Capas A y B |
 | [SEMANTIC_LAYER_MODELS.md](SEMANTIC_LAYER_MODELS.md) | Referencia | Modelos de IA para Capa B |
 
