@@ -1,17 +1,9 @@
 /**
- * Re-exports para compatibilidad temporal
- * 
- * ⚠️ DEPRECATED: Estos extractores se movieron a layer-a-static/extractors/
- * Este archivo existe solo para mantener compatibilidad con código legacy.
- * 
- * Los extractores estáticos ahora viven en:
- *   src/layer-a-static/extractors/
- * 
- * TODO: Actualizar todos los imports para apuntar directamente a layer-a-static
- * y eliminar este archivo.
+ * @deprecated Este archivo es un wrapper de compatibilidad.
+ * Por favor usa: import { extractAllMetadata } from '../layer-a-static/extractors/metadata/index.js';
  */
 
 console.warn('⚠️  DEPRECATED: Importing from layer-b-semantic/metadata-extractors.js');
-console.warn('   Please update imports to: layer-a-static/extractors/metadata-extractors.js');
+console.warn('   Please update imports to: layer-a-static/extractors/metadata/index.js');
 
-export * from '../layer-a-static/extractors/metadata-extractors.js';
+export * from '../layer-a-static/extractors/metadata/index.js';

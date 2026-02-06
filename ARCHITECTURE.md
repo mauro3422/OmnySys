@@ -1,8 +1,8 @@
 
 # CogniSystem - Arquitectura Técnica
 
-**Versión**: v0.4.5 - MCP Unified Entry Point  
-**Última actualización**: 2026-02-03
+**Versión**: v0.5.1 - Enterprise Architecture Refactor  
+**Última actualización**: 2026-02-06
 
 ## Visión General
 
@@ -280,6 +280,107 @@ La IA puede entonces:
 1. **Esperar y reintentar** (recomendado)
 2. **Consultar estado** con `get_server_status()`
 3. **Proseguir** con otros archivos y volver después
+
+---
+
+## 🏗️ Arquitectura Modular Enterprise (v0.5.1)
+
+### Principios SOLID Aplicados
+
+| Principio | Implementación | Ejemplo |
+|-----------|----------------|---------|
+| **S**ingle Responsibility | Cada módulo tiene UNA razón para cambiar | `cycle-detector.js` solo detecta ciclos |
+| **O**pen/Closed | Extensible sin modificar código existente | Agregar nuevo extractor sin tocar parseador |
+| **L**iskov Substitution | Módulos intercambiables con misma interfaz | Extractores de diferentes tipos |
+| **I**nterface Segregation | Ningún módulo depende de métodos que no usa | Cada inicializador recibe solo lo que necesita |
+| **D**ependency Inversion | Depende de abstracciones, no concreciones | Context objects en lugar de `this` |
+
+### SSOT (Single Source of Truth)
+
+| Dominio | Ubicación | Propósito |
+|---------|-----------|-----------|
+| **SystemMap Structure** | `graph/types.js` | Definición central de tipos |
+| **Path Normalization** | `graph/utils/path-utils.js` | Todas las operaciones de path |
+| **Babel Config** | `parser/config.js` | Configuración del parser |
+| **Prompt Building** | `llm-analyzer/prompt-builder.js` | Construcción de prompts LLM |
+
+### Estructura Modular
+
+```
+src/
+├── layer-a-static/
+│   ├── graph/                      # Graph construction (12 modules)
+│   │   ├── index.js               # Public API façade
+│   │   ├── types.js               # SSOT - Type definitions
+│   │   ├── builders/              # Construction logic
+│   │   │   ├── system-map.js      # 7-phase build process
+│   │   │   ├── export-index.js    # Re-export tracking
+│   │   │   └── function-links.js  # Call graph builder
+│   │   ├── algorithms/            # Graph algorithms
+│   │   │   ├── cycle-detector.js  # DFS cycle detection
+│   │   │   ├── transitive-deps.js # Transitive dependencies
+│   │   │   └── impact-analyzer.js # Impact calculation
+│   │   ├── resolvers/             # Resolution logic
+│   │   │   └── function-resolver.js # Cross-file resolution
+│   │   └── utils/                 # Utilities
+│   │       ├── path-utils.js      # Path normalization
+│   │       └── counters.js        # Statistics
+│   │
+│   ├── parser/                     # AST Parser (7 modules)
+│   │   ├── index.js               # Main API
+│   │   ├── config.js              # Babel configuration
+│   │   ├── helpers.js             # Utilities
+│   │   └── extractors/            # AST extractors
+│   │       ├── imports.js         # ESM/CJS/dynamic
+│   │       ├── exports.js         # Named/default/re-exports
+│   │       ├── definitions.js     # Functions/classes/vars
+│   │       ├── typescript.js      # TS interfaces/types
+│   │       └── calls.js           # Call expressions
+│   │
+│   └── extractors/                 # Semantic extractors (17 modules)
+│       ├── communication/          # Advanced patterns
+│       │   ├── web-workers.js
+│       │   ├── websocket.js
+│       │   ├── broadcast-channel.js
+│       │   └── ...
+│       └── metadata/               # Metadata extraction
+│           ├── jsdoc-contracts.js
+│           ├── async-patterns.js
+│           └── ...
+│
+├── layer-b-semantic/
+│   ├── llm-analyzer/               # LLM Analysis (5 modules)
+│   │   ├── index.js               # Public API
+│   │   ├── core.js                # LLMAnalyzer class
+│   │   ├── prompt-builder.js      # Prompt construction
+│   │   ├── response-normalizer.js # Response normalization
+│   │   └── analysis-decider.js    # Need-analysis logic
+│   │
+│   └── issue-detectors/            # Issue detection (8 modules)
+│       ├── index.js               # Orchestrator
+│       ├── orphaned-files.js
+│       ├── unhandled-events.js
+│       ├── shared-state.js
+│       └── ...
+│
+└── core/unified-server/
+    └── initialization/             # Init modules (7 modules)
+        ├── index.js               # Main orchestrator
+        ├── cache-manager.js       # Cache init
+        ├── analysis-manager.js    # Background analysis
+        ├── file-watcher-init.js   # File watching
+        ├── batch-processor-init.js # Batch processing
+        ├── websocket-init.js      # WebSocket
+        └── orchestrator-init.js   # Orchestrator
+```
+
+### Beneficios
+
+1. **Mantenibilidad**: Cada módulo es pequeño y enfocado (promedio 85 líneas)
+2. **Testabilidad**: Módulos independientes, fáciles de testear unitariamente
+3. **Extensibilidad**: Nuevos features sin tocar código existente
+4. **Colaboración**: Múltiples desarrolladores en paralelo sin conflictos
+5. **Debugging**: Stack traces más claros, responsabilidades definidas
 
 ---
 

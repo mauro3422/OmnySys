@@ -1,4 +1,4 @@
-﻿import { parseFileFromDisk } from '../parser.js';
+﻿import { parseFileFromDisk } from '../parser/index.js';
 
 export async function parseFiles(files, verbose = true) {
   if (verbose) console.log('ðŸ“ Parsing files...');

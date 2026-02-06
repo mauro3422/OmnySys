@@ -222,7 +222,7 @@ Claude: *edita los 4 archivos en una sola pasada*
 
 ## 📊 Estado del Proyecto
 
-**Versión**: v0.4.5 - MCP Unified Entry Point ✅
+**Versión**: v0.5.1 - Enterprise Architecture Refactor ✅
 
 | Componente | Estado | Descripción |
 |------------|--------|-------------|
@@ -251,7 +251,9 @@ Claude: *edita los 4 archivos en una sola pasada*
 
 ---
 
-## 📁 Estructura del Repositorio
+## 📁 Estructura del Repositorio (Enterprise v0.5.1)
+
+### Arquitectura Modular SOLID
 
 ```
 cogni-system/
@@ -259,25 +261,93 @@ cogni-system/
 ├── ROADMAP.md                   (fases de desarrollo)
 ├── ARCHITECTURE.md              (diseño técnico detallado)
 ├── CHANGELOG.md                 (historial de cambios)
+├── changelog/                   (Changelogs versionados)
+│   ├── v0.5.1.md               🆕 Enterprise Architecture
+│   ├── v0.5.0.md               Layer A/B Unification
+│   └── ...
 ├── docs/
 │   ├── PROBLEM_ANALYSIS.md
 │   ├── EXISTING_SOLUTIONS.md
 │   └── MCP_TOOLS.md            (documentación de tools)
 ├── src/
-│   ├── core/
-│   │   ├── orchestrator.js     (🔥 Componente principal)
-│   │   ├── unified-server.js   (HTTP API + WebSocket)
+│   ├── core/                    (Componentes core - Modular)
+│   │   ├── orchestrator/        (🔥 Modular: lifecycle, queueing, llm-analysis)
+│   │   ├── batch-processor/     🆕 Batch processor modules
+│   │   │   ├── models/          (file-change, batch)
+│   │   │   ├── constants.js     (SSOT - Priority, BatchState)
+│   │   │   ├── priority-calculator.js
+│   │   │   ├── dependency-loader.js
+│   │   │   ├── batch-scheduler.js
+│   │   │   └── change-processor.js
+│   │   ├── websocket/           🆕 WebSocket server modules
+│   │   │   ├── client/          (ws-client, message-handler, subscriptions)
+│   │   │   ├── server/          (websocket-server, connection-handler, heartbeat)
+│   │   │   ├── messaging/       (broadcaster, message-types)
+│   │   │   └── constants.js     (SSOT - MessageTypes, ConnectionState)
+│   │   ├── unified-server/      (HTTP API + WebSocket)
+│   │   │   └── initialization/  🆕 SSOT init modules
 │   │   ├── unified-cache-manager.js
 │   │   ├── analysis-queue.js
 │   │   ├── analysis-worker.js
 │   │   └── file-watcher.js
-│   ├── layer-a-static/         (Análisis estático)
-│   ├── layer-b-semantic/       (Análisis con IA)
-│   └── layer-c-memory/         
-│       ├── mcp-server.js       (🔥 Entry point único)
+│   │
+│   ├── layer-a-static/          (Análisis estático - Modular)
+│   │   ├── graph/               🆕 Graph builder modules
+│   │   │   ├── builders/        (system-map, export-index, function-links)
+│   │   │   ├── algorithms/      (cycle-detector, transitive-deps, impact)
+│   │   │   ├── resolvers/       (function-resolver)
+│   │   │   └── utils/           (path-utils, counters)
+│   │   ├── parser/              🆕 Parser modules
+│   │   │   ├── extractors/      (imports, exports, definitions, typescript)
+│   │   │   ├── config.js        (Babel config SSOT)
+│   │   │   └── helpers.js       (Shared utilities)
+│   │   ├── extractors/          🆕 Extractors organized
+│   │   │   ├── communication/   (Web Workers, WebSocket, fetch, etc.)
+│   │   │   ├── metadata/        (JSDoc, async, errors, build-time)
+│   │   │   ├── static/          🆕 Static extractors (localStorage, events, globals)
+│   │   │   │   ├── storage-extractor.js
+│   │   │   │   ├── events-extractor.js
+│   │   │   │   ├── globals-extractor.js
+│   │   │   │   └── ...
+│   │   │   ├── state-management/ 🆕 Redux & React Context
+│   │   │   │   ├── redux/       (selectors, slices, thunks)
+│   │   │   │   ├── context/     (providers, consumers)
+│   │   │   │   └── connections/ (selector-connections, context-connections)
+│   │   │   └── utils.js
+│   │   └── analyses/            (Tier 1/2/3 analyzers)
+│   │       └── tier3/           🆕 Event pattern detector
+│   │           └── event-detector/ (listeners, emitters, connections)
+│   │
+│   ├── layer-b-semantic/        (Análisis con IA - Modular)
+│   │   ├── llm-analyzer/        🆕 LLM analyzer modules
+│   │   │   ├── core.js          (LLMAnalyzer class)
+│   │   │   ├── prompt-builder.js
+│   │   │   ├── response-normalizer.js
+│   │   │   └── analysis-decider.js
+│   │   ├── issue-detectors/     🆕 Issue detection modules
+│   │   │   ├── orphaned-files.js
+│   │   │   ├── unhandled-events.js
+│   │   │   ├── shared-state.js
+│   │   │   └── ...
+│   │   └── prompt-engine/       (Plug & Play prompts)
+│   │
+│   └── layer-c-memory/          
+│       ├── mcp/                 🆕 MCP server modules
+│       │   ├── core/            (server-class, llm-starter)
+│       │   └── tools/           (impact-map, analyze-change, etc.)
 │       └── ...
-└── test-cases/                 (Escenarios de prueba)
+│
+└── test-cases/                  (Escenarios de prueba)
 ```
+
+### 🏗️ Principios Aplicados
+
+| Principio | Implementación |
+|-----------|----------------|
+| **Single Responsibility** | 50+ módulos, cada uno con UNA responsabilidad |
+| **Open/Closed** | Extensible sin modificar código existente |
+| **SSOT** | Tipos, configs y utils en un único lugar |
+| **Testability** | Cada módulo testeable independientemente |
 
 ---
 
