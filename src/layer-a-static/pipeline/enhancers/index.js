@@ -6,8 +6,11 @@
  * @module pipeline/enhancers
  */
 
-export { enhanceConnections } from './phases/connection-enhancer.js';
-export { enhanceMetadata } from './phases/metadata-enhancer.js';
+import { enhanceConnections } from './phases/connection-enhancer.js';
+import { enhanceMetadata } from './phases/metadata-enhancer.js';
+
+export { enhanceConnections };
+export { enhanceMetadata };
 
 /**
  * Pipeline de enriquecimiento completo
@@ -15,11 +18,20 @@ export { enhanceMetadata } from './phases/metadata-enhancer.js';
  * @returns {Promise<object>} - Resultados enriquecidos
  */
 export async function enhanceSystemMap(staticResults) {
-  // Fase 1: Enriquecer conexiones
-  await enhanceConnections(staticResults);
-  
-  // Fase 2: Enriquecer metadata
-  enhanceMetadata(staticResults);
+  try {
+    // Fase 1: Enriquecer conexiones
+    if (typeof enhanceConnections === 'function') {
+      await enhanceConnections(staticResults);
+    }
+    
+    // Fase 2: Enriquecer metadata
+    if (typeof enhanceMetadata === 'function') {
+      enhanceMetadata(staticResults);
+    }
+  } catch (error) {
+    // Si el enriquecimiento falla, continuar con los datos básicos
+    console.warn('Warning: Enhancement failed, using basic data:', error.message);
+  }
   
   return staticResults;
 }
