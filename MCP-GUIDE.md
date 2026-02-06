@@ -31,7 +31,7 @@ node src/layer-c-memory/mcp/index.js [opciones] <project-path>
 | `--skip-llm` | Desactivar IA (solo análisis estático) | ❌ No |
 | `--verbose` | Modo detallado | ❌ No |
 
-## 🔄 Flujo de Ejecución
+## 🔄 Flujo de Ejecución (Arquitectura Actual)
 
 Cuando ejecutás el comando, el sistema hace automáticamente:
 
@@ -39,19 +39,65 @@ Cuando ejecutás el comando, el sistema hace automáticamente:
 1. Iniciar LLM Server (llama-server.exe en GPU)
    └─ Espera a que esté listo (health check)
 
-2. Inicializar Orchestrator
-   └─ Queue, Worker, FileWatcher
-
-3. Inicializar Cache
-   └─ Carga análisis existente si hay
-
-4. Verificar Análisis
-   └─ Si NO hay: Ejecutar Layer A + Layer B (IA) completo
+2. Verificar Análisis Existente
+   └─ Si NO hay: Ejecutar Layer A (Análisis Estático)
    └─ Si hay: Usar análisis existente
+
+3. Inicializar Orchestrator
+   └─ Carga metadatos de Layer A
+   └─ Analiza qué archivos necesitan LLM
+   └─ Agrega a cola de prioridad (background)
+
+4. Inicializar Cache
+   └─ Carga análisis existente
 
 5. Iniciar MCP Server
    └─ Listo para recibir queries via stdio
+   └─ LLM processing continúa en background
 ```
+
+### 🏗️ Arquitectura de Capas
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MCP Server                                                  │
+│  └─ Entry point, recibe queries de la IA (Claude, etc.)     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer A - Static Analysis                                   │
+│  └─ Parse AST, extrae metadatos (exports, imports, etc.)    │
+│  └─ NO usa LLM - es 100% estático                          │
+│  └─ Guarda en .OmnySysData/ (sin llmInsights)               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Orchestrator                                                │
+│  └─ Recibe metadatos de Layer A                             │
+│  └─ Decide qué archivos necesitan LLM (basado en patrones)  │
+│  └─ Agrega a cola: critical > high > medium > low           │
+│  └─ Procesa en background (no bloquea al usuario)           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Analysis Worker                                             │
+│  └─ Toma job de la cola                                     │
+│  └─ Si needsLLM: usa LLMAnalyzer con prompt especializado   │
+│  └─ Guarda resultado CON llmInsights                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 🧠 Cuándo se activa el LLM
+
+El LLM se activa para archivos que tienen:
+- **Patrones complejos**: shared state (window.*), eventos, localStorage
+- **Arquetipos detectados**: orphan-module, state-manager, god-object, etc.
+- **Baja confianza**: conexiones detectadas con confianza < 0.8
+
+El procesamiento es **asíncrono**: el usuario puede trabajar mientras el LLM analiza en background.
 
 ## 📊 Qué obtienes
 

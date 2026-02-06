@@ -1,10 +1,100 @@
-# Capa A: Rastreador Estático
+# Layer A: Static Analysis
 
 ## Responsabilidad
 
-Analizar código mediante parseo de AST (Abstract Syntax Tree) para extraer dependencias técnicas explícitas.
+Análisis determinista y rápido del código fuente. Extrae toda la información posible mediante parseo AST y regex **sin usar LLM**.
 
-Esta es la capa más rápida y determinista de CogniSystem.
+Esta capa es el fundamento del sistema: cuanto más complete el análisis estático, menos necesitamos depender del LLM.
+
+## Arquitectura
+
+```
+Layer A/
+├── scanner.js              # Escanear filesystem
+├── parser.js               # Parsear AST con Babel
+├── graph-builder.js        # Construir grafo de dependencias
+├── resolver.js             # Resolver imports a paths absolutos
+├── indexer.js              # Orquestador principal
+├── analyses/               # Análisis estáticos (Tier 1-3)
+│   ├── tier1/             # Análisis básico (orphan, circular)
+│   ├── tier2/             # Análisis intermedio (unused imports)
+│   └── tier3/             # Análisis profundo (shared state, events)
+└── extractors/            # 🆕 EXTRACTORES ESTÁTICOS
+    ├── static-extractors.js      # localStorage, eventos
+    ├── advanced-extractors.js    # Web Workers, WebSocket
+    ├── metadata-extractors.js    # JSDoc, async patterns
+    ├── css-in-js-extractor.js    # styled-components
+    ├── typescript-extractor.js   # interfaces, types
+    ├── redux-context-extractor.js # Redux, Context API
+    ├── function-analyzer.js      # Análisis por función
+    └── pattern-matchers.js       # Detectores heurísticos
+```
+
+## Flujo de Datos
+
+```
+Scanner → Parser → Graph Builder → Extractores → Tier Analyses
+                                          ↓
+                                    Metadatos completos
+                                          ↓
+                                    Layer B (orquestación LLM)
+```
+
+## Extractores (Nuevo)
+
+Los extractores en `extractors/` realizan análisis estático profundo usando regex y AST:
+
+- **static-extractors.js**: Detecta localStorage, sessionStorage, eventos (emit/on)
+- **advanced-extractors.js**: Web Workers, BroadcastChannel, WebSocket, SharedWorker
+- **metadata-extractors.js**: JSDoc/TSDoc, async/await patterns, error handling, build-time deps
+- **css-in-js-extractor.js**: styled-components, emotion, theme objects
+- **typescript-extractor.js**: interfaces, types, generics, herencia
+- **redux-context-extractor.js**: selectors, actions, reducers, context providers
+- **function-analyzer.js**: Análisis granular por función (imports usados, globals, calls)
+- **pattern-matchers.js**: Detectores heurísticos para eventos y storage
+
+**Importante**: Todos estos extractores fueron movidos desde `layer-b-semantic/` porque son **análisis estático puro**, no usan LLM.
+
+## Output
+
+Layer A genera metadatos completos para cada archivo:
+
+```javascript
+{
+  filePath: "src/components/Button.js",
+  imports: [...],
+  exports: [...],
+  definitions: [...],
+  calls: [...],
+  // Metadatos de extractores
+  sharedState: { reads: [...], writes: [...] },
+  eventPatterns: { emitters: [...], listeners: [...] },
+  sideEffects: { hasGlobalAccess: true, ... },
+  jsdocContracts: [...],
+  asyncPatterns: [...],
+  // ... y más
+}
+```
+
+## Relación con Layer B
+
+Layer A **no depende de Layer B**. Es completamente independiente.
+
+Layer B (orquestador) recibe los metadatos de Layer A y decide:
+1. Qué archivos necesitan análisis LLM (basado en metadatos)
+2. Qué tipo de prompt usar (basado en patrones detectados)
+3. Cuándo el análisis estático es suficiente
+
+## Performance
+
+- **Objetivo**: Indexar 1000 archivos en < 10 segundos
+- **Optimizaciones**: Parseo paralelo, caché de AST, skip de archivos grandes
+
+## Estado
+
+✅ **IMPLEMENTADO**: Todos los componentes base funcionan
+✅ **EXTRACTORES**: Migrados desde Layer B
+🔄 **EN DESARROLLO**: Integración con nuevo sistema de prompting
 
 ---
 

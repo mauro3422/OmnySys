@@ -1,8 +1,6 @@
 {
-  "filePath": "src/modules/UserModule.js",
-  "fileName": "UserModule.js",
-  "ext": ".js",
-  "imports": [],
+  "path": "src/modules/UserModule.js",
+  "displayPath": "UserModule.js",
   "exports": [
     {
       "type": "default",
@@ -14,6 +12,7 @@
       "name": "getUserProfile"
     }
   ],
+  "imports": [],
   "definitions": [
     {
       "type": "function",
@@ -21,11 +20,81 @@
       "params": 0
     }
   ],
-  "semanticConnections": [],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    },
+    {
+      "name": "fetch",
+      "type": "function"
+    },
+    {
+      "name": "r",
+      "type": "namespace_access"
+    },
+    {
+      "name": "r.json",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "fetch",
+    "r"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
   "metadata": {
+    "filePath": "src/modules/UserModule.js",
+    "exportCount": 1,
+    "dependentCount": 0,
+    "importCount": 0,
+    "functionCount": 0,
+    "exports": [
+      "getUserProfile"
+    ],
+    "dependents": [],
+    "hasDynamicImports": false,
+    "hasTypeScript": false,
+    "hasCSSInJS": false,
+    "hasLocalStorage": false,
+    "hasEventListeners": false,
+    "hasGlobalAccess": false,
+    "hasAsyncPatterns": false,
+    "hasJSDoc": true,
+    "localStorageKeys": [],
+    "eventNames": [],
+    "envVars": [],
+    "hasRuntimeContracts": false,
+    "hasErrorHandling": false,
+    "hasBuildTimeDeps": false,
+    "hasSingletonPattern": false,
     "jsdocContracts": {
       "functions": [],
       "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "UserModule.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
       "all": []
     },
     "asyncPatterns": {
@@ -57,5 +126,80 @@
       "all": []
     }
   },
-  "analyzedAt": "2026-02-04T15:58:15.728Z"
+  "semanticAnalysis": {
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "eventPatterns": {
+      "eventEmitters": [],
+      "eventListeners": []
+    },
+    "sideEffects": {}
+  },
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "The module has no dependents (DEPENDENTS: 0), so it is an orphan. The exports contain a single object with a function, indicating minimal usage context.",
+    "analysisType": "orphan-module",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "orphanAnalysis": {
+      "isOrphan": false,
+      "potentialUsage": [],
+      "suggestedUsage": ""
+    },
+    "affectedFiles": [
+      "Import in main application",
+      "Use in tests"
+    ]
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 2,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 2,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Some side effects (1)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 2,
+      "connectionCount": 0,
+      "sideEffectCount": 1,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": true,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [
+      {
+        "line": 17,
+        "function": "module-level",
+        "api": "fetch"
+      }
+    ],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
 }

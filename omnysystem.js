@@ -26,10 +26,10 @@ import { spawn } from 'child_process';
 import { indexProject } from './src/layer-a-static/indexer.js';
 import { CogniSystemMCPServer } from './src/layer-c-memory/mcp-server.js';
 import { CogniSystemUnifiedServer } from './src/core/unified-server.js';
+import { Orchestrator } from './src/core/orchestrator.js';
 import { getProjectStats, exportFullSystemMapToFile } from './src/layer-a-static/storage/query-service.js';
 import { hasExistingAnalysis } from './src/layer-a-static/storage/storage-manager.js';
 import { LLMClient, loadAIConfig } from './src/ai/llm-client.js';
-import { enrichSemanticAnalysis, generateIssuesReport } from './src/layer-b-semantic/semantic-enricher.js';
 import { savePartitionedSystemMap } from './src/layer-a-static/storage/storage-manager.js';
 import { analyzeProjectStructure, generateStructureReport } from './src/layer-b-semantic/project-structure-analyzer.js';
 
@@ -344,12 +344,18 @@ async function analyzeFile(filePath) {
 }
 
 /**
- * CONSOLIDATE - Iterative AI consolidation to 100% coverage
+ * CONSOLIDATE - Iterative AI consolidation using Orchestrator
+ * 
+ * Uses the new Orchestrator system with:
+ * - Priority queue (CRITICAL > HIGH > MEDIUM > LOW)
+ * - Parallel workers
+ * - Automatic iterative refinement
+ * - Semantic issue detection
  */
 async function consolidate(projectPath) {
   const absolutePath = resolveProjectPath(projectPath);
 
-  console.log('\n🔄 OmniSystem Iterative Consolidation\n');
+  console.log('\n🔄 OmniSystem Iterative Consolidation (Orchestrator)\n');
   console.log(`📁 Project: ${absolutePath}\n`);
 
   try {
@@ -362,103 +368,68 @@ async function consolidate(projectPath) {
       process.exit(1);
     }
 
-    // Check if AI servers are running (FIX: Usar función unificada)
-    console.log('🔍 Checking AI server status...');
-    const aiConfig = await loadAIConfig();
-    const llmStatus = await ensureLLMAvailable(aiConfig, { 
-      required: true,  // En consolidate, el LLM es obligatorio
-      autoStart: true, // Intentar iniciar automáticamente
-      maxWaitSeconds: 60 
+    // Initialize Orchestrator
+    console.log('🔧 Initializing Orchestrator...\n');
+    const orchestrator = new Orchestrator(absolutePath, {
+      enableFileWatcher: false,  // Disable for one-shot consolidation
+      enableWebSocket: false,
+      autoStartLLM: true
     });
-    
-    if (llmStatus.started) {
-      console.log('  ✓ AI server was auto-started');
-    }
-    console.log('✓ AI server available\n');
 
-    // Load existing analysis
-    console.log('📖 Loading existing analysis...');
+    // Listen for completion
+    let finalStats = null;
+    orchestrator.on('analysis:complete', (stats) => {
+      finalStats = stats;
+    });
+
+    // Wait for initialization and analysis to complete
+    await new Promise((resolve, reject) => {
+      orchestrator.initialize();
+      
+      orchestrator.on('indexing:completed', () => {
+        console.log('\n✅ Layer A (Static Analysis) completed');
+        console.log('🤖 Starting Layer B (LLM Analysis)...\n');
+      });
+      
+      orchestrator.on('analysis:complete', () => {
+        console.log('\n✅ Analysis complete!');
+        resolve();
+      });
+      
+      orchestrator.on('error', (error) => {
+        reject(error);
+      });
+      
+      // Timeout after 30 minutes
+      setTimeout(() => {
+        reject(new Error('Analysis timeout after 30 minutes'));
+      }, 30 * 60 * 1000);
+    });
+
+    // Load final results
     const enhancedMapPath = path.join(absolutePath, 'system-map-enhanced.json');
     const enhancedMap = JSON.parse(await fs.readFile(enhancedMapPath, 'utf-8'));
-
-    // Load file source code
-    console.log('📖 Loading source files...');
-    const fileSourceCode = {};
-    for (const [filePath, analysis] of Object.entries(enhancedMap.files || {})) {
-      const absoluteFilePath = path.join(absolutePath, filePath);
-      try {
-        fileSourceCode[filePath] = await fs.readFile(absoluteFilePath, 'utf-8');
-      } catch (error) {
-        console.warn(`⚠️  Could not read ${filePath}: ${error.message}`);
-      }
-    }
-
-    console.log(`✓ Loaded ${Object.keys(fileSourceCode).length} files\n`);
-
-    // Analyze project structure (subsystems detection)
-    console.log('🔍 Analyzing project structure...\n');
-    const projectStructure = analyzeProjectStructure(enhancedMap);
-
-    console.log(generateStructureReport(projectStructure));
-
-    // Run iterative enrichment with project structure context
-    console.log('\n🤖 Starting iterative AI consolidation...\n');
-    const enrichmentResult = await enrichSemanticAnalysis(
-      enhancedMap,
-      fileSourceCode,
-      aiConfig,
-      { projectStructure }, // Pass structure context
-      {
-        iterative: true,
-        maxIterations: Infinity // No limit - iterate until convergence
-      }
-    );
-
-    // Save consolidated results
-    console.log('\n💾 Saving consolidated results...');
-
-    // Update enhanced map
-    const consolidatedMap = {
-      ...enhancedMap,
-      files: enrichmentResult.results.files,
-      semanticIssues: enrichmentResult.issues,
-      metadata: {
-        ...enhancedMap.metadata,
-        consolidatedAt: new Date().toISOString(),
-        iterations: enrichmentResult.iterations,
-        includes: [...new Set([...(enhancedMap.metadata.includes || []), 'ai-consolidated'])]
-      }
-    };
-
-    await fs.writeFile(
-      enhancedMapPath,
-      JSON.stringify(consolidatedMap, null, 2),
-      'utf-8'
-    );
-    console.log('  ✓ Updated system-map-enhanced.json');
-
-    // Update partitioned storage
-    await savePartitionedSystemMap(absolutePath, consolidatedMap);
-    console.log('  ✓ Updated .OmnySystemData/ directory');
-
-    // Save issues report if exists
-    if (enrichmentResult.issues?.stats?.totalIssues > 0) {
-      const issuesReportText = generateIssuesReport(enrichmentResult.issues);
-      const issuesReportPath = path.join(absolutePath, '.OmnySystemData', 'semantic-issues-report.txt');
-      await fs.writeFile(issuesReportPath, issuesReportText, 'utf-8');
-      console.log('  ✓ Generated semantic-issues-report.txt');
+    
+    const issuesPath = path.join(absolutePath, '.OmnySysData', 'semantic-issues.json');
+    let issuesReport = { stats: { totalIssues: 0 } };
+    try {
+      issuesReport = JSON.parse(await fs.readFile(issuesPath, 'utf-8'));
+    } catch {
+      // No issues file
     }
 
     console.log('\n✅ Consolidation complete!\n');
     console.log('📊 Results:');
-    console.log(`  - Iterations: ${enrichmentResult.iterations}`);
-    console.log(`  - Files enhanced: ${enrichmentResult.enhancedCount}`);
-    console.log(`  - Issues found: ${enrichmentResult.issues?.stats?.totalIssues || 0}`);
-    console.log(`    • High severity: ${enrichmentResult.issues?.stats?.bySeverity?.high || 0}`);
-    console.log(`    • Medium severity: ${enrichmentResult.issues?.stats?.bySeverity?.medium || 0}`);
-    console.log(`    • Low severity: ${enrichmentResult.issues?.stats?.bySeverity?.low || 0}`);
-    console.log('\n💡 View detailed issues:');
-    console.log(`   cat ${path.join('.OmnySystemData', 'semantic-issues-report.txt')}\n`);
+    console.log(`  - Iterations: ${finalStats?.iterations || 1}`);
+    console.log(`  - Files analyzed: ${finalStats?.totalFiles || enhancedMap.metadata.totalFiles}`);
+    console.log(`  - Issues found: ${issuesReport.stats?.totalIssues || 0}`);
+    if (issuesReport.stats?.totalIssues > 0) {
+      console.log(`    • High severity: ${issuesReport.stats.bySeverity?.high || 0}`);
+      console.log(`    • Medium severity: ${issuesReport.stats.bySeverity?.medium || 0}`);
+      console.log(`    • Low severity: ${issuesReport.stats.bySeverity?.low || 0}`);
+    }
+    console.log('\n💡 View detailed analysis:');
+    console.log(`   ${path.join('.OmnySysData', 'semantic-issues.json')}\n`);
 
     process.exit(0);
   } catch (error) {
@@ -530,61 +501,53 @@ async function serve(projectPath, options = {}) {
     }
     console.log('  ✓ AI server running\n');
 
-    // STEP 3: Run iterative consolidation
-    console.log('📋 Step 3/4: Running AI consolidation...\n');
+    // STEP 3: Run iterative consolidation using Orchestrator
+    console.log('📋 Step 3/4: Running AI consolidation (Orchestrator)...\n');
 
-    // Load existing analysis
+    const orchestrator = new Orchestrator(absolutePath, {
+      enableFileWatcher: false,
+      enableWebSocket: false,
+      autoStartLLM: false  // Already started above
+    });
+
+    let finalStats = null;
+    orchestrator.on('analysis:complete', (stats) => {
+      finalStats = stats;
+    });
+
+    await new Promise((resolve, reject) => {
+      orchestrator.initialize();
+      
+      orchestrator.on('analysis:complete', () => {
+        console.log('\n  ✓ Consolidation complete');
+        resolve();
+      });
+      
+      orchestrator.on('error', (error) => {
+        reject(error);
+      });
+      
+      // Timeout after 30 minutes
+      setTimeout(() => {
+        reject(new Error('Consolidation timeout after 30 minutes'));
+      }, 30 * 60 * 1000);
+    });
+
+    // Load final results
     const enhancedMapPath = path.join(absolutePath, 'system-map-enhanced.json');
     const enhancedMap = JSON.parse(await fs.readFile(enhancedMapPath, 'utf-8'));
-
-    // Load file source code
-    const fileSourceCode = {};
-    for (const [filePath] of Object.entries(enhancedMap.files || {})) {
-      const absoluteFilePath = path.join(absolutePath, filePath);
-      try {
-        fileSourceCode[filePath] = await fs.readFile(absoluteFilePath, 'utf-8');
-      } catch (error) {
-        // Skip files that can't be read
-      }
+    
+    const issuesPath = path.join(absolutePath, '.OmnySysData', 'semantic-issues.json');
+    let issuesReport = { stats: { totalIssues: 0 } };
+    try {
+      issuesReport = JSON.parse(await fs.readFile(issuesPath, 'utf-8'));
+    } catch {
+      // No issues file
     }
 
-    // Analyze project structure
-    const projectStructure = analyzeProjectStructure(enhancedMap);
-    console.log(generateStructureReport(projectStructure));
-
-    // Run iterative enrichment
-    console.log('\n  🤖 Starting iterative consolidation...\n');
-    const enrichmentResult = await enrichSemanticAnalysis(
-      enhancedMap,
-      fileSourceCode,
-      aiConfig,
-      { projectStructure },
-      {
-        iterative: true,
-        maxIterations: Infinity
-      }
-    );
-
-    // Save consolidated results
-    const consolidatedMap = {
-      ...enhancedMap,
-      files: enrichmentResult.results.files,
-      semanticIssues: enrichmentResult.issues,
-      projectStructure,
-      metadata: {
-        ...enhancedMap.metadata,
-        consolidatedAt: new Date().toISOString(),
-        iterations: enrichmentResult.iterations,
-        includes: [...new Set([...(enhancedMap.metadata.includes || []), 'ai-consolidated'])]
-      }
-    };
-
-    await fs.writeFile(enhancedMapPath, JSON.stringify(consolidatedMap, null, 2), 'utf-8');
-    await savePartitionedSystemMap(absolutePath, consolidatedMap);
-
-    console.log('\n  ✓ Consolidation complete');
-    console.log(`    - Iterations: ${enrichmentResult.iterations}`);
-    console.log(`    - Files enhanced: ${enrichmentResult.enhancedCount}\n`);
+    console.log(`    - Iterations: ${finalStats?.iterations || 1}`);
+    console.log(`    - Files analyzed: ${finalStats?.totalFiles || enhancedMap.metadata.totalFiles}`);
+    console.log(`    - Issues found: ${issuesReport.stats?.totalIssues || 0}\n`);
 
     // STEP 4: Start MCP server
     console.log('📋 Step 4/4: Starting MCP server...\n');

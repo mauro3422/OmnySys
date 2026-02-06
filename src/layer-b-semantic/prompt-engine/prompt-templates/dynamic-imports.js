@@ -1,57 +1,73 @@
 /**
- * Dynamic Imports Template - ChatML v3 Format
- * 
- * Estandarizado para el sistema plug-and-play de CogniSystem.
- * Todos los templates deben seguir el formato ChatML v3 para máxima compatibilidad.
+ * Dynamic Imports Template - Optimizado para LFM2.5-Instruct
  */
 
 export default {
   systemPrompt: `<|im_start|>system
-You are a specialized data extractor for dynamic imports analysis. Return ONLY valid JSON.
+You are a code analyzer. Your task is to analyze JavaScript code and extract dynamic import patterns.
 
-Schema (root object, NO wrappers):
+<task>
+Analyze the provided JavaScript code and extract:
+1. Dynamic import() expressions
+2. Route mappings (if present)
+3. Variable-based imports vs static string imports
+4. Target file paths resolved from the imports
+</task>
+
+<schema>
+Return ONLY valid JSON matching this exact structure:
 {
   "confidence": 0.0-1.0,
-  "reasoning": "string",
-  "dynamicImports": [{
-    "pattern": "string",
-    "variable": "string", 
-    "resolvedPaths": ["string"],
-    "confidence": 0.0-1.0
-  }],
-  "staticImports": ["string"],
+  "reasoning": "Brief explanation of dynamic imports found in THIS code",
+  "dynamicImports": [
+    {
+      "pattern": "how the import is called",
+      "variable": "variable name if dynamic, 'none' if static",
+      "resolvedPaths": ["./path/to/file.js"],
+      "confidence": 0.0-1.0
+    }
+  ],
+  "staticImports": [],
   "routeMapAnalysis": {
-    "variables": ["string"],
-    "mappings": {"string": "string"},
+    "variables": ["routeVar"],
+    "mappings": {"/route": "./path.js"},
     "confidence": 0.0-1.0
   }
 }
+</schema>
 
-Instructions:
-- confidence: certainty of dynamic import detection (0.0-1.0)
-- reasoning: 1 sentence explaining what was found
-- dynamicImports: array of dynamic import patterns found
-- staticImports: array of static import paths
-- routeMapAnalysis: analysis of route mappings if present
-- Use exact strings found in code
-- DO NOT invent file names. ONLY use files mentioned in context
-- NO wrappers, NO extra objects, return root object directly<|im_end|>`,
+<instructions>
+1. Look ONLY at the CODE section below
+2. Find all import() calls:
+   - Static: import('./path/file.js') → variable: "none"
+   - Dynamic: import(\`./path/\${var}.js\`) → variable: "var"
+3. If there's a routeMap object, extract the mappings
+4. resolvedPaths should contain the actual file paths found in the code
+5. If no dynamic imports found, return empty arrays
+6. NO markdown, NO extra text, ONLY the JSON object
+</instructions>
+
+<warning>
+DO NOT invent file paths not present in the code.
+DO NOT copy patterns from examples.
+ONLY analyze the CODE provided below.
+</warning><|im_end|>`,
 
   userPrompt: `<|im_start|>user
+<file_info>
 FILE: {filePath}
 EXPORTS: {exportCount} ({exports})
 DEPENDENTS: {dependentCount}
 HAS_DYNAMIC_IMPORTS: {hasDynamicImports}
+</file_info>
 
-CODE:
+<code>
 {fileContent}
+</code>
 
-ANALYZE FOR DYNAMIC IMPORTS:
-1. Find all import() expressions with variables
-2. Extract routeMap objects and variable mappings
-3. Resolve dynamic paths to actual file names
-4. Return exact string literals found in code
-
-Extract dynamic imports analysis as JSON.<|im_end|>
-<|im_start|>assistant`
+Analyze the code above and return JSON with dynamic imports analysis.
+Remember: Only extract what is literally present in this code.
+<|im_end|>
+<|im_start|>assistant
+{`
 };

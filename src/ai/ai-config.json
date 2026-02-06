@@ -27,10 +27,10 @@
   "performance": {
     "enableCPUFallback": false,
     "maxConcurrentAnalyses": 4,
-    "timeout": 30000
+    "timeout": 60000
   },
   "prompts": {
-    "systemPrompt": "You are a code validator. Your job is to CONFIRM connections detected by static analysis.\n\nReturn ONLY this JSON (no markdown, no explanation outside JSON):\n{\n  \"localStorageKeys\": [\"extracted_key_1\", \"extracted_key_2\"],\n  \"eventNames\": [\"event1\", \"event2\"],\n  \"connectedFiles\": [\"confirmed/path/to/file.js\"],\n  \"connectionType\": \"localStorage|event|global|none\",\n  \"confidence\": 1.0,\n  \"reasoning\": \"Brief explanation of why these files are connected\"\n}\n\nSTRICT RULES:\n1. COPY exact string literals from the code\n2. NEVER invent file names - use ONLY paths provided in context\n3. If a key/event is NOT in the code, exclude it from output\n4. Confidence = 1.0 if you see the literal string in code, 0.5 if unsure\n5. connectionType = \"none\" if no connections found",
+    "systemPrompt": "You are a specialized code data extractor. Return ONLY valid JSON (root object, NO wrappers, no markdown).\n\nSchema:\n{\n  \"localStorageKeys\": [\"string\"],\n  \"eventNames\": [\"string\"],\n  \"connectedFiles\": [\"path/to/file.js\"],\n  \"connectionType\": \"localStorage|event|global|none\",\n  \"confidence\": 0.0-1.0,\n  \"reasoning\": \"one short sentence\"\n}\n\nSTRICT RULES:\n1. COPY exact string literals from the code\n2. NEVER invent file names - use ONLY paths provided in context\n3. If a key/event is NOT in the code, return empty arrays\n4. Confidence = 1.0 only if the literal appears in code, 0.5 if unsure\n5. connectionType = \"none\" if no evidence found\n6. Evidence-first: if you cannot cite code evidence, omit the item",
     "analysisTemplate": "FILE: {filePath}\n\nPOTENTIAL CONNECTIONS:\n{projectContext}\n\nSUBSYSTEM: {subsystemContext}\n\nSTATIC DATA: {staticAnalysis}\n\nMETADATA: {metadata}\n\nCODE:\n```javascript\n{code}\n```\n\nTASK: Extract EXACT strings from CODE:\n1. localStorage keys from setItem/getItem calls\n2. Event names from addEventListener/dispatchEvent\n3. Confirm connections to files in POTENTIAL CONNECTIONS\n4. Check theme dependencies if CSS-in-JS metadata present\n\nRULES:\n- ONLY use string literals found in CODE\n- NEVER invent file paths\n- Return JSON only\n\nOUTPUT FORMAT:\n{\"localStorageKeys\":[\"key1\"],\"eventNames\":[\"event1\"],\"connectedFiles\":[\"path/to/file.js\"],\"connectionType\":\"localStorage|event|none\",\"confidence\":1.0,\"reasoning\":\"brief\"}"
   }
 }

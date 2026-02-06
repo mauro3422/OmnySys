@@ -127,23 +127,26 @@ export class LLMAnalyzer {
     // Configurar retry con backoff
     const maxRetries = 3;
     let lastError = null;
+    let promptConfig = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Construir prompt con contexto del proyecto
-        const prompt = await this.buildPrompt(code, filePath, staticAnalysis, projectContext, metadata);
+        // Construir prompts con contexto del proyecto
+        promptConfig = await this.buildPrompt(code, filePath, staticAnalysis, projectContext, metadata);
+        const { systemPrompt, userPrompt } = promptConfig;
+        const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
         // ✅ DEBUGGING: Contar tokens aproximados (4 chars ≈ 1 token)
         if (attempt === 1) { // Solo mostrar en primer intento
-          const approxTokens = Math.ceil(prompt.length / 4);
+          const approxTokens = Math.ceil(fullPrompt.length / 4);
           console.log(`\n📊 Prompt Stats for ${filePath}:`);
-          console.log(`  - Characters: ${prompt.length}`);
+          console.log(`  - Characters: ${fullPrompt.length}`);
           console.log(`  - Approx Tokens: ${approxTokens}`);
         }
 
         // Verificar caché usando el prompt completo
         if (this.cache && attempt === 1) {
-          const cached = await this.cache.get(filePath, code, prompt);
+          const cached = await this.cache.get(filePath, code, fullPrompt);
           if (cached) {
             console.log(`  ✓ Cache hit for ${filePath}`);
             return cached;
@@ -154,9 +157,9 @@ export class LLMAnalyzer {
         const dynamicTimeout = calculateDynamicTimeout(code);
         console.log(`  🔄 Attempt ${attempt}/${maxRetries} (timeout: ${dynamicTimeout}ms)`);
 
-        // Llamar a LLM con timeout
+        // Llamar a LLM con timeout, pasando system prompt personalizado
         const response = await Promise.race([
-          this.client.analyze(prompt),
+          this.client.analyze(userPrompt, { systemPrompt }),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('LLM timeout')), dynamicTimeout)
           )
@@ -171,20 +174,30 @@ export class LLMAnalyzer {
           continue; // Retry
         }
 
-        // ✅ VALIDAR respuesta del LLM
-        const validated = validateLLMResponse(normalized, code, validFilePaths);
+        // ✅ VALIDAR respuesta del LLM (solo para tipos que requieren validación específica)
+        const analysisType = promptConfig?.analysisType || 'default';
+        const typesRequiringValidation = ['semantic-connections', 'state-manager', 'event-hub'];
         
-        if (!validated) {
-          console.warn(`  ⚠️  Attempt ${attempt}: LLM response failed validation`);
-          lastError = new Error('Validation failed');
-          continue; // Retry
+        let validated = normalized;
+        if (typesRequiringValidation.includes(analysisType)) {
+          validated = validateLLMResponse(normalized, code, validFilePaths);
+          
+          if (!validated) {
+            console.warn(`  ⚠️  Attempt ${attempt}: LLM response failed validation`);
+            lastError = new Error('Validation failed');
+            continue; // Retry
+          }
+          console.log(`  ✓ Validated: ${validated.localStorageKeys?.length || 0} keys, ${validated.eventNames?.length || 0} events`);
+        } else {
+          console.log(`  ✓ Analysis complete for ${analysisType}: ${filePath}`);
         }
 
-        console.log(`  ✓ Validated: ${validated.localStorageKeys.length} keys, ${validated.eventNames.length} events`);
+        // Agregar analysisType al resultado para que el merger sepa cómo procesarlo
+        validated.analysisType = analysisType;
 
         // Guardar en caché
         if (this.cache) {
-          await this.cache.set(filePath, code, prompt, validated);
+          await this.cache.set(filePath, code, fullPrompt, validated);
         }
 
         return validated;
@@ -245,22 +258,23 @@ export class LLMAnalyzer {
     const fileIndices = [];
 
     // Construir prompts para todos (ANTES de verificar cache)
-    const allPrompts = await Promise.all(files.map(f => this.buildPrompt(f.code, f.filePath, f.staticAnalysis, f.projectContext, f.metadata)));
+    const allPromptConfigs = await Promise.all(files.map(f => this.buildPrompt(f.code, f.filePath, f.staticAnalysis, f.projectContext, f.metadata)));
 
     // Verificar caché para cada archivo usando el prompt completo
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const prompt = allPrompts[i];
+      const { systemPrompt, userPrompt } = allPromptConfigs[i];
+      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
       let cached = null;
 
       if (this.cache) {
-        cached = await this.cache.get(file.filePath, file.code, prompt);
+        cached = await this.cache.get(file.filePath, file.code, fullPrompt);
       }
 
       if (cached) {
         results[i] = cached;
       } else {
-        filesToAnalyze.push({ ...file, prompt });
+        filesToAnalyze.push({ ...file, systemPrompt, userPrompt, fullPrompt });
         fileIndices.push(i);
       }
     }
@@ -273,11 +287,11 @@ export class LLMAnalyzer {
 
     console.log(`  📊 Cache hit: ${files.length - filesToAnalyze.length}/${files.length}, analyzing ${filesToAnalyze.length} files`);
 
-    // Extraer solo los prompts de archivos no cacheados
-    const prompts = filesToAnalyze.map(f => f.prompt);
+    // Extraer solo los user prompts de archivos no cacheados
+    const userPrompts = filesToAnalyze.map(f => f.userPrompt);
 
-    // Analizar en paralelo
-    const responses = await this.client.analyzeParallel(prompts);
+    // Analizar en paralelo pasando system prompts personalizados
+    const responses = await this.client.analyzeParallelWithSystemPrompts(userPrompts, filesToAnalyze.map(f => f.systemPrompt));
 
     // Normalizar respuestas y guardar en caché
     for (let i = 0; i < filesToAnalyze.length; i++) {
@@ -285,11 +299,16 @@ export class LLMAnalyzer {
       const response = responses[i];
       const normalized = this.normalizeResponse(response, file.filePath);
 
+      // Agregar analysisType al resultado
+      if (normalized) {
+        normalized.analysisType = file.analysisType || 'default';
+      }
+
       results[fileIndices[i]] = normalized;
 
       // Guardar en caché usando el prompt completo
       if (normalized && this.cache) {
-        await this.cache.set(file.filePath, file.code, file.prompt, normalized);
+        await this.cache.set(file.filePath, file.code, file.fullPrompt, normalized);
       }
     }
 
@@ -299,6 +318,7 @@ export class LLMAnalyzer {
   /**
    * Construye el prompt para el LLM usando el Prompt Engine
    * @private
+   * @returns {Promise<{systemPrompt: string, userPrompt: string}>} - Prompts separados
    */
   async buildPrompt(code, filePath, staticAnalysis, projectContext, metadata = null) {
     try {
@@ -308,24 +328,38 @@ export class LLMAnalyzer {
       // Validar el prompt generado
       promptEngine.validatePrompt(promptConfig);
       
-      // Asegurar que el userPrompt sea un string válido
+      // Asegurar que los prompts sean strings válidos
+      if (typeof promptConfig.systemPrompt !== 'string') {
+        throw new Error(`Invalid systemPrompt type: ${typeof promptConfig.systemPrompt}`);
+      }
       if (typeof promptConfig.userPrompt !== 'string') {
         throw new Error(`Invalid userPrompt type: ${typeof promptConfig.userPrompt}`);
       }
       
-      return promptConfig.userPrompt;
+      // Retornar prompts separados + analysisType
+      return {
+        systemPrompt: promptConfig.systemPrompt,
+        userPrompt: promptConfig.userPrompt,
+        analysisType: promptConfig.analysisType
+      };
     } catch (error) {
       console.error(`Error building prompt for ${filePath}:`, error.message);
-      // Fallback a prompt básico
-      return `<file_content>\n${code}\n</file_content>\n\nANALYZE: Extract patterns, functions, exports, imports. Return exact strings found.`;
+      // Fallback a prompts básicos
+      return {
+        systemPrompt: `You are a code analyzer. Return ONLY valid JSON.`,
+        userPrompt: `<file_content>\n${code}\n</file_content>\n\nANALYZE: Extract patterns, functions, exports, imports. Return exact strings found.`,
+        analysisType: 'default'
+      };
     }
   }
 
   /**
-   * Normaliza y valida la respuesta del LLM (schema simplificado para LFM2)
+   * Normaliza y valida la respuesta del LLM
    * @private
    */
   normalizeResponse(response, filePath) {
+    console.log(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
+
     if (!response || response.error) {
       console.warn(`⚠️  Invalid LLM response for ${filePath}`);
       return null;
@@ -337,24 +371,44 @@ export class LLMAnalyzer {
       return null;
     }
 
-    // NUEVO: Schema simplificado para LFM2-Extract
-    // El nuevo formato es más plano y fácil de parsear
+    // Buscar campos en diferentes niveles del objeto response
+    const baseResponse = response.analysisResult || response.analysisresult || response;
+    const confidence = baseResponse.confidence || response.confidence || 0.8;
+    const reasoning = baseResponse.reasoning || response.reasoning || 'No reasoning provided';
+
+    // Schema simplificado para LFM2-Extract
+    // Incluir TODOS los campos del response original, no solo los genéricos
     const normalized = {
+      ...response,  // Spread primero para incluir todos los campos originales
       source: 'llm',
-      confidence: response.confidence || 0.8,
-      // Convertir nuevo formato al formato interno
-      sharedState: this.normalizeSharedStateFromSimple(response.localStorageKeys || [], response.connectionType),
-      events: this.normalizeEventsFromSimple(response.eventNames || [], response.connectionType),
-      sideEffects: [],
-      affectedFiles: response.connectedFiles || [],
-      suggestedConnections: [],
-      hiddenConnections: [],
-      reasoning: response.reasoning || 'No reasoning provided',
+      confidence: confidence,
+      reasoning: reasoning,
+      affectedFiles: response.connectedFiles || response.potentialUsage || response.affectedFiles || [],
+      suggestedConnections: response.suggestedConnections || [],
+      hiddenConnections: response.hiddenConnections || [],
       // Campos nuevos del schema simplificado
-      localStorageKeys: response.localStorageKeys || [],
-      eventNames: response.eventNames || [],
+      localStorageKeys: response.localStorageKeys || response.sharedState?.reads || [],
+      eventNames: response.eventNames || response.events?.listens || response.events?.emits || [],
       connectionType: response.connectionType || 'none'
     };
+
+    console.log(`🔍 DEBUG normalized: ${filePath}`, JSON.stringify(normalized).substring(0, 200));
+
+    // Si tiene sharedState o events del nuevo formato, convertir al formato interno
+    if (response.sharedState || response.events) {
+      normalized.sharedState = response.sharedState;
+      normalized.events = response.events;
+    } else if (response.connectionType === 'shared-state' || response.connectionType === 'global') {
+      // Convertir formatos legacy de shared state a formato interno
+      normalized.sharedState = {
+        reads: response.sharedState?.reads || [],
+        writes: response.sharedState?.writes || []
+      };
+      normalized.events = {
+        emits: response.events?.emits || [],
+        listens: response.events?.listens || []
+      };
+    }
 
     // Filtrar por umbral de confianza
     if (normalized.confidence < this.config.analysis.confidenceThreshold) {
@@ -364,6 +418,7 @@ export class LLMAnalyzer {
       return null;
     }
 
+    console.log(`✅ Validated: ${filePath}, confidence=${normalized.confidence}`);
     return normalized;
   }
 

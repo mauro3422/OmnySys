@@ -51,10 +51,13 @@ CogniSystem es un **motor de contexto multi-capa** que actúa como memoria exter
 │  │  └─────────────────────────────────────────────────────────────┘   │   │
 │  │                                                                     │   │
 │  │  ┌─────────────────────────────────────────────────────────────┐   │   │
-│  │  │  STATIC EXTRACTORS (80% de casos semánticos)                │   │   │
-│  │  │  • Shared State Detector (window.*, global.*)              │   │   │
-│  │  │  • Event Pattern Detector (emitters/listeners)             │   │   │
-│  │  │  • Side Effects, CSS-in-JS, TypeScript, Redux              │   │   │
+│  │  │  STATIC EXTRACTORS (src/layer-a-static/extractors/)         │   │   │
+│  │  │  • static-extractors.js: localStorage, eventos              │   │   │
+│  │  │  • advanced-extractors.js: Web Workers, WebSocket          │   │   │
+│  │  │  • metadata-extractors.js: JSDoc, async patterns           │   │   │
+│  │  │  • css-in-js-extractor.js: styled-components               │   │   │
+│  │  │  • typescript-extractor.js: interfaces, types              │   │   │
+│  │  │  • redux-context-extractor.js: Redux, Context API          │   │   │
 │  │  └─────────────────────────────────────────────────────────────┘   │   │
 │  │                                                                     │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │

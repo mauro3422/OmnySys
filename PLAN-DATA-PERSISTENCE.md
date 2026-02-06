@@ -1,6 +1,15 @@
-# Plan 2: Data Persistence Fix
+# Plan 2: Data Persistence Fix [HISTÓRICO - v0.4.x]
 
-## Problem Analysis
+> **⚠️ NOTA IMPORTANTE (v0.5.0):** Este documento es histórico y hace referencia a `enrichSemanticAnalysis` 
+> y el sistema antiguo de enriquecimiento que fue **eliminado** en v0.5.0.
+>
+> **Nueva arquitectura:**
+> - Layer A: Solo extracción estática
+> - Orchestrator: Maneja todo el flujo LLM (cola, workers, iteraciones)
+> - Ver: [AI_CONSOLIDATION_MODE.md](./docs/AI_CONSOLIDATION_MODE.md)
+> - Ver: [ARCHITECTURE_LAYER_A_B.md](./docs/ARCHITECTURE_LAYER_A_B.md)
+
+## Problem Analysis (Histórico v0.4.x)
 
 ### Symptoms
 1. LLM analysis shows "Enhanced X/Y files" but data not in final files

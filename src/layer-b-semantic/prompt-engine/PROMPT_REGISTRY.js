@@ -20,6 +20,7 @@ import cssInJSTemplate from './prompt-templates/css-in-js.js';
 import typescriptTemplate from './prompt-templates/typescript.js';
 import singletonTemplate from './prompt-templates/singleton.js';
 import orphanModuleTemplate from './prompt-templates/orphan-module.js';
+import globalStateTemplate from './prompt-templates/global-state.js';
 import defaultTemplate from './prompt-templates/default.js';
 
 // Importar detectores compartidos
@@ -40,15 +41,23 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'god-object',
     severity: 10,
-    detector: (metadata) => detectGodObject(metadata.exportCount, metadata.dependentCount),
+    detector: (metadata) => {
+      // Considerar tanto dependents estáticos como semánticos
+      const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
+      return detectGodObject(metadata.exportCount, totalDependents);
+    },
     template: godObjectTemplate,
     mergeKey: 'godObjectAnalysis',
     fields: ['riskLevel', 'responsibilities', 'impactScore']
   },
   {
     type: 'orphan-module',
-    severity: 8,
-    detector: (metadata) => detectOrphanModule(metadata.exportCount, metadata.dependentCount),
+    severity: 5,
+    detector: (metadata) => {
+      // Solo es orphan si NO tiene dependents estáticos NI semánticos
+      const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
+      return detectOrphanModule(metadata.exportCount, totalDependents);
+    },
     template: orphanModuleTemplate,
     mergeKey: 'orphanAnalysis',
     fields: ['isOrphan', 'potentialUsage', 'suggestedUsage']
@@ -78,15 +87,23 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'event-hub',
     severity: 6,
-    detector: (metadata) => (metadata.eventNames?.length || 0) > 0,
+    detector: (metadata) => metadata.hasEventEmitters || metadata.hasEventListeners || (metadata.eventNames?.length || 0) > 0,
     template: semanticConnectionsTemplate,
     mergeKey: 'eventHubAnalysis',
     fields: ['eventNames', 'eventConnections']
   },
   {
+    type: 'global-state',
+    severity: 6,
+    detector: (metadata) => metadata.usesGlobalState === true && (metadata.localStorageKeys?.length || 0) === 0,
+    template: globalStateTemplate,
+    mergeKey: 'globalStateAnalysis',
+    fields: ['globalVariables', 'accessPatterns', 'riskLevel']
+  },
+  {
     type: 'state-manager',
     severity: 6,
-    detector: (metadata) => (metadata.localStorageKeys?.length || 0) > 0 || metadata.hasSharedState,
+    detector: (metadata) => metadata.definesGlobalState === true || (metadata.localStorageKeys?.length || 0) > 0 || metadata.hasGlobalAccess,
     template: semanticConnectionsTemplate,
     mergeKey: 'stateManagerAnalysis',
     fields: ['localStorageKeys', 'sharedState']

@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** (Latest) |
+| **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** (Latest - In Dev) |
+| **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** |
 | **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
 | **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** |
 | **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** |
@@ -23,7 +24,20 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.4.5 (2026-02-03)**
+### **🚀 Latest Release: v0.5.0 (2026-02-05)**
+
+**Major Release**: Layer A and B unified under Orchestrator with semantic metadata support
+
+**Key Changes**:
+- ✅ **Layer A/B Unification** - Single responsibility for each layer
+- ✅ **Orchestrator** - Queue + Worker + Iterative analysis
+- ✅ **Semantic Metadata** - LLM now receives global state, events, connections
+- ✅ **Archetype Detection** - Improved detection using semantic info
+- ✅ **Tracking System** - Progress tracking for all analyzed files
+
+**New**: `PROBLEMATICAS.md` - Known issues and roadmap
+
+**Previous: v0.4.6** - Metadata Contract
 
 **Architecture Release**: MCP Server is now the unified entry point with internal Orchestrator
 

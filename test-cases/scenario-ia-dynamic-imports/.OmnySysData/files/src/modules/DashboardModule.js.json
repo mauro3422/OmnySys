@@ -1,20 +1,72 @@
 {
-  "filePath": "src/modules/DashboardModule.js",
-  "fileName": "DashboardModule.js",
-  "ext": ".js",
-  "imports": [],
+  "path": "src/modules/DashboardModule.js",
+  "displayPath": "DashboardModule.js",
   "exports": [
     {
       "type": "default",
       "kind": "ObjectExpression"
     }
   ],
+  "imports": [],
   "definitions": [],
-  "semanticConnections": [],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.log",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
   "metadata": {
+    "filePath": "src/modules/DashboardModule.js",
+    "exportCount": 0,
+    "dependentCount": 0,
+    "importCount": 0,
+    "functionCount": 0,
+    "exports": [],
+    "dependents": [],
+    "hasDynamicImports": false,
+    "hasTypeScript": false,
+    "hasCSSInJS": false,
+    "hasLocalStorage": false,
+    "hasEventListeners": false,
+    "hasGlobalAccess": false,
+    "hasAsyncPatterns": false,
+    "hasJSDoc": true,
+    "localStorageKeys": [],
+    "eventNames": [],
+    "envVars": [],
+    "hasRuntimeContracts": false,
+    "hasErrorHandling": false,
+    "hasBuildTimeDeps": false,
+    "hasSingletonPattern": false,
     "jsdocContracts": {
       "functions": [],
       "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "DashboardModule.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
       "all": []
     },
     "asyncPatterns": {
@@ -46,5 +98,65 @@
       "all": []
     }
   },
-  "analyzedAt": "2026-02-04T15:58:15.723Z"
+  "semanticAnalysis": {
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "eventPatterns": {
+      "eventEmitters": [],
+      "eventListeners": []
+    },
+    "sideEffects": {}
+  },
+  "llmInsights": {
+    "confidence": 1,
+    "reasoning": "Code contains only a module declaration with no executable logic",
+    "analysisType": "default",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": []
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 0,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 0,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Low risk baseline",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 1,
+      "connectionCount": 0,
+      "sideEffectCount": 0,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": false,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": false,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
 }

@@ -31,7 +31,7 @@ class PromptEngine {
     const systemPrompt = this.generateSystemPrompt(template, analysisType);
     
     // Generar user prompt
-    const userPrompt = this.generateUserPrompt(template, fileContent, analysisType);
+    const userPrompt = this.generateUserPrompt(template, fileContent, metadata, analysisType);
     
     // Obtener JSON schema
     const jsonSchema = await this.getJsonSchema(analysisType);
@@ -62,9 +62,9 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
   }
 
   /**
-   * Genera el user prompt con el contenido del archivo
+   * Genera el user prompt con el contenido del archivo y metadatos
    */
-  generateUserPrompt(template, fileContent, analysisType) {
+  generateUserPrompt(template, fileContent, metadata, analysisType) {
     if (!template) {
       throw new Error(`Template for ${analysisType} is null or undefined`);
     }
@@ -73,7 +73,46 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
       throw new Error(`Template for ${analysisType} is missing userPrompt. Template keys: ${Object.keys(template).join(', ')}`);
     }
     
-    return template.userPrompt.replace('{fileContent}', fileContent);
+    // Reemplazar todas las variables del template con los metadatos
+    let userPrompt = template.userPrompt;
+    
+    // Variables básicas siempre disponibles
+    const replacements = {
+      '{filePath}': metadata.filePath || 'unknown',
+      '{fileContent}': fileContent,
+      '{exportCount}': metadata.exportCount || 0,
+      '{dependentCount}': metadata.dependentCount || 0,
+      '{importCount}': metadata.importCount || 0,
+      '{functionCount}': metadata.functionCount || 0,
+      '{exports}': (metadata.exports || []).join(', '),
+      '{dependents}': (metadata.dependents || []).join(', '),
+      '{hasDynamicImports}': metadata.hasDynamicImports || false,
+      '{hasTypeScript}': metadata.hasTypeScript || false,
+      '{hasCSSInJS}': metadata.hasCSSInJS || false,
+      '{hasLocalStorage}': metadata.hasLocalStorage || false,
+      '{hasEventListeners}': metadata.hasEventListeners || false,
+      '{hasGlobalAccess}': metadata.hasGlobalAccess || false,
+      '{hasAsyncPatterns}': metadata.hasAsyncPatterns || false,
+      '{hasJSDoc}': metadata.hasJSDoc || false,
+      '{localStorageKeys}': (metadata.localStorageKeys || []).join(', '),
+      '{eventNames}': (metadata.eventNames || []).join(', '),
+      '{envVars}': (metadata.envVars || []).join(', '),
+      // NUEVO: Variables semánticas críticas
+      '{semanticDependentCount}': metadata.semanticDependentCount || 0,
+      '{definesGlobalState}': metadata.definesGlobalState || false,
+      '{usesGlobalState}': metadata.usesGlobalState || false,
+      '{globalStateWrites}': (metadata.globalStateWrites || []).join(', '),
+      '{globalStateReads}': (metadata.globalStateReads || []).join(', '),
+      '{hasEventEmitters}': metadata.hasEventEmitters || false,
+      '{semanticConnections}': JSON.stringify(metadata.semanticConnections || []).slice(0, 200)
+    };
+    
+    // Reemplazar todas las variables
+    for (const [key, value] of Object.entries(replacements)) {
+      userPrompt = userPrompt.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+    }
+    
+    return userPrompt;
   }
 
   /**

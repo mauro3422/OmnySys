@@ -2,19 +2,28 @@
   SEMANTIC ISSUES REPORT
 ═══════════════════════════════════════════════════════════
 
-Total Issues: 2
-  High:   2
+Total Issues: 3
+  High:   0
   Medium: 0
-  Low:    0
+  Low:    3
 
 ───────────────────────────────────────────────────────────
-⚠️  ORPHANED FILES WITH SIDE EFFECTS
+⚠️  SUSPICIOUS PATTERNS
 ───────────────────────────────────────────────────────────
 
-[HIGH] src/Router.js
-  File has no imports/exports but modifies global state
+[LOW] src/modules/AdminModule.js
+  Type: low-confidence-analysis
+  LLM analysis has low confidence on this file
+  💡 Manual review recommended
 
-[HIGH] src/modules/AdminModule.js
-  File has no imports/exports but modifies global state
+[LOW] src/modules/DashboardModule.js
+  Type: low-confidence-analysis
+  LLM analysis has low confidence on this file
+  💡 Manual review recommended
+
+[LOW] src/modules/UserModule.js
+  Type: low-confidence-analysis
+  LLM analysis has low confidence on this file
+  💡 Manual review recommended
 
 ═══════════════════════════════════════════════════════════

@@ -1,8 +1,6 @@
 {
-  "filePath": "src/Router.js",
-  "fileName": "Router.js",
-  "ext": ".js",
-  "imports": [],
+  "path": "src/Router.js",
+  "displayPath": "Router.js",
   "exports": [
     {
       "type": "declaration",
@@ -15,6 +13,7 @@
       "name": "loadPlugin"
     }
   ],
+  "imports": [],
   "definitions": [
     {
       "type": "function",
@@ -27,23 +26,141 @@
       "params": 1
     }
   ],
-  "semanticConnections": [],
+  "usedBy": [],
+  "calls": [
+    {
+      "name": "console",
+      "type": "namespace_access"
+    },
+    {
+      "name": "console.warn",
+      "type": "member_call"
+    }
+  ],
+  "identifierRefs": [
+    "routeMap",
+    "route",
+    "moduleName",
+    "module",
+    "window",
+    "config",
+    "plugin",
+    "pluginModule"
+  ],
+  "dependsOn": [],
+  "transitiveDepends": [],
+  "transitiveDependents": [],
   "metadata": {
+    "filePath": "src/Router.js",
+    "exportCount": 2,
+    "dependentCount": 0,
+    "importCount": 0,
+    "functionCount": 0,
+    "exports": [
+      "navigateTo",
+      "loadPlugin"
+    ],
+    "dependents": [],
+    "hasDynamicImports": false,
+    "hasTypeScript": false,
+    "hasCSSInJS": false,
+    "hasLocalStorage": false,
+    "hasEventListeners": false,
+    "hasGlobalAccess": false,
+    "hasAsyncPatterns": true,
+    "hasJSDoc": true,
+    "localStorageKeys": [],
+    "eventNames": [],
+    "envVars": [],
+    "hasRuntimeContracts": false,
+    "hasErrorHandling": false,
+    "hasBuildTimeDeps": false,
+    "hasSingletonPattern": false,
     "jsdocContracts": {
-      "functions": [],
+      "functions": [
+        {
+          "line": 1,
+          "description": "Router.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ],
       "types": [],
+      "all": [
+        {
+          "line": 1,
+          "description": "Router.js",
+          "params": [],
+          "returns": null,
+          "throws": [],
+          "deprecated": false,
+          "deprecatedReason": ""
+        }
+      ]
+    },
+    "runtimeContracts": {
+      "assertions": [],
+      "invariants": [],
+      "validations": [],
+      "nullChecks": [],
       "all": []
     },
     "asyncPatterns": {
-      "asyncFunctions": [],
+      "asyncFunctions": [
+        {
+          "type": "async_function",
+          "name": "navigateTo",
+          "line": 14
+        },
+        {
+          "type": "async_function",
+          "name": "loadPlugin",
+          "line": 35
+        }
+      ],
       "promiseCreations": [],
       "promiseChains": [],
       "promiseAll": [],
       "promiseRace": [],
-      "awaitExpressions": [],
+      "awaitExpressions": [
+        {
+          "type": "await",
+          "expression": "import(`./modules/${moduleName}.js`)",
+          "line": 24
+        },
+        {
+          "type": "await",
+          "expression": "import(`./plugins/${plugin}.js`)",
+          "line": 41
+        }
+      ],
       "timeouts": [],
       "raceConditions": [],
-      "all": []
+      "all": [
+        {
+          "type": "async_function",
+          "name": "navigateTo",
+          "line": 14
+        },
+        {
+          "type": "async_function",
+          "name": "loadPlugin",
+          "line": 35
+        },
+        {
+          "type": "await",
+          "expression": "import(`./modules/${moduleName}.js`)",
+          "line": 24
+        },
+        {
+          "type": "await",
+          "expression": "import(`./plugins/${plugin}.js`)",
+          "line": 41
+        }
+      ]
     },
     "errorHandling": {
       "tryBlocks": [],
@@ -63,5 +180,81 @@
       "all": []
     }
   },
-  "analyzedAt": "2026-02-04T15:58:15.711Z"
+  "semanticAnalysis": {
+    "sharedState": {
+      "reads": [],
+      "writes": []
+    },
+    "eventPatterns": {
+      "eventEmitters": [],
+      "eventListeners": []
+    },
+    "sideEffects": {}
+  },
+  "llmInsights": {
+    "confidence": 0.95,
+    "reasoning": "El archivo Router.js no tiene dependencias declaradas, y su exportación es mínima (2 funciones). No hay módulos importados ni exportados que indiquen dependencias externas.",
+    "analysisType": "orphan-module",
+    "enhancedConnections": [],
+    "suggestedConnections": [],
+    "hiddenConnections": [],
+    "orphanAnalysis": {
+      "isOrphan": false,
+      "potentialUsage": [],
+      "suggestedUsage": ""
+    },
+    "affectedFiles": [
+      "usado como módulo principal del aplicación",
+      "punto de entrada para rutas dinámicas"
+    ]
+  },
+  "semanticConnections": [],
+  "riskScore": {
+    "total": 1,
+    "breakdown": {
+      "staticComplexity": 0,
+      "semanticConnections": 0,
+      "sideEffects": 1,
+      "hotspotRisk": 0,
+      "couplingRisk": 0
+    },
+    "severity": "low",
+    "explanation": "Some side effects (2)",
+    "metrics": {
+      "functionCount": 0,
+      "importCount": 0,
+      "exportCount": 2,
+      "connectionCount": 0,
+      "sideEffectCount": 2,
+      "inDegree": 0,
+      "outDegree": 0
+    }
+  },
+  "sideEffects": {
+    "hasGlobalAccess": true,
+    "modifiesDOM": false,
+    "makesNetworkCalls": false,
+    "usesLocalStorage": false,
+    "accessesWindow": true,
+    "modifiesGlobalState": false,
+    "hasEventListeners": false,
+    "usesTimers": false
+  },
+  "sideEffectDetails": {
+    "globalAccessLocations": [
+      {
+        "line": 37,
+        "function": "loadPlugin",
+        "object": "window",
+        "property": "appConfig"
+      }
+    ],
+    "domModificationLocations": [],
+    "networkCallLocations": [],
+    "storageAccessLocations": [],
+    "windowAccessLocations": [],
+    "globalStateModificationLocations": [],
+    "eventListenerLocations": [],
+    "timerLocations": []
+  }
 }

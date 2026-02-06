@@ -274,9 +274,9 @@ function sanitizeReasoning(reasoning) {
  * @returns {number} - Timeout en ms
  */
 export function calculateDynamicTimeout(code) {
-  const baseTimeout = 10000; // 10 segundos base
-  const sizeFactor = Math.ceil(code.length / 1000); // +1s por cada 1000 chars
-  const maxTimeout = 60000; // Máximo 60 segundos
+  const baseTimeout = 20000; // 20 segundos base (aumentado)
+  const sizeFactor = Math.ceil(code.length / 500); // +1s por cada 500 chars (más granular)
+  const maxTimeout = 120000; // Máximo 120 segundos (aumentado)
   
   return Math.min(baseTimeout + (sizeFactor * 1000), maxTimeout);
 }

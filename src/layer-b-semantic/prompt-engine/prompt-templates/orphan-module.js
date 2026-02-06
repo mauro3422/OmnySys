@@ -1,48 +1,62 @@
 /**
- * Orphan Module Template - ChatML v3 Format
- * 
- * Estandarizado para el sistema plug-and-play de CogniSystem.
- * Detecta módulos huérfanos (sin dependencias) y sugiere usos potenciales.
+ * Orphan Module Template - Optimizado para LFM2.5-Instruct
  */
 
 export default {
   systemPrompt: `<|im_start|>system
-You are a specialized data extractor for orphan module analysis. Return ONLY valid JSON.
+You are a code analyzer. Your task is to analyze JavaScript modules and detect orphan modules.
 
-Schema (root object, NO wrappers):
+<task>
+Analyze the provided JavaScript module and determine if it's an orphan (has no dependents).
+If it is an orphan, suggest potential usage scenarios based on its exports.
+</task>
+
+<schema>
+Return ONLY valid JSON matching this exact structure:
 {
   "confidence": 0.0-1.0,
-  "reasoning": "string",
-  "isOrphan": boolean,
-  "potentialUsage": ["string"],
-  "suggestedUsage": "string"
+  "reasoning": "Brief explanation of why this module is or isn't an orphan",
+  "isOrphan": true|false,
+  "potentialUsage": ["suggestion1", "suggestion2"],
+  "suggestedUsage": "Specific recommendation for this module"
 }
+</schema>
 
-Instructions:
-- confidence: certainty of orphan detection (0.0-1.0)
-- reasoning: 1 sentence explaining why this module is orphan
-- isOrphan: true if module has no dependents
-- potentialUsage: array of potential use cases for this module
-- suggestedUsage: brief suggestion on how to use or remove this module
-- Use exact strings found in code
-- DO NOT invent data not present in code
-- NO wrappers, NO extra objects, return root object directly<|im_end|>`,
+<instructions>
+1. Check the DEPENDENTS count in the file_info section
+2. If dependentCount === 0, isOrphan = true
+3. If isOrphan = true:
+   - Look at the exports in the code
+   - Suggest realistic usage scenarios based on those exports
+   - potentialUsage should be generic (e.g., "Import in main app", "Use in tests")
+4. If isOrphan = false:
+   - potentialUsage = []
+   - suggestedUsage = "Keep as is - actively used"
+5. Reasoning must explain based on THIS specific module
+6. NO markdown, NO extra text, ONLY the JSON object
+</instructions>
+
+<warning>
+DO NOT invent exports or functionality not present in the code.
+DO NOT copy suggestions from examples.
+ONLY analyze the CODE provided below.
+</warning><|im_end|>`,
 
   userPrompt: `<|im_start|>user
+<file_info>
 FILE: {filePath}
 EXPORTS: {exportCount} ({exports})
 DEPENDENTS: {dependentCount}
 HAS_JSDOC: {hasJSDoc}
+</file_info>
 
-CODE:
+<code>
 {fileContent}
+</code>
 
-ANALYZE FOR ORPHAN MODULE:
-1. Verify module has no dependents (dependentCount === 0)
-2. Check what exports are available
-3. Identify potential usage scenarios
-4. Suggest integration or removal strategy
-
-Extract orphan module analysis as JSON.<|im_end|>
-<|im_start|>assistant`
+Analyze the code above and return JSON with orphan module analysis.
+Remember: Only analyze what is literally present in this code.
+<|im_end|>
+<|im_start|>assistant
+{`
 };

@@ -47,6 +47,38 @@ export class AnalysisQueue {
     
     return this.getPosition(filePath);
   }
+
+  /**
+   * Agrega un job completo a la cola con prioridad
+   * @param {object} job - Job completo con filePath y metadata adicional
+   * @param {string} priority - 'critical' | 'high' | 'medium' | 'low'
+   * @returns {number} - Posición en la cola
+   */
+  enqueueJob(job, priority = 'low') {
+    if (!job || !job.filePath) {
+      throw new Error('Job must have a filePath property');
+    }
+    
+    // Normalizar prioridad
+    const validPriority = this.normalizePriority(priority);
+    
+    // Verificar si ya está encolado
+    if (this.enqueuedFiles.has(job.filePath)) {
+      this.reprioritize(job.filePath, validPriority);
+      return this.getPosition(job.filePath);
+    }
+    
+    // Agregar a la cola correspondiente con toda la metadata
+    this.queues[validPriority].push({
+      ...job,
+      priority: validPriority,
+      enqueuedAt: Date.now()
+    });
+    
+    this.enqueuedFiles.add(job.filePath);
+    
+    return this.getPosition(job.filePath);
+  }
   
   /**
    * Obtiene el siguiente trabajo de mayor prioridad

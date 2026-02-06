@@ -1,15 +1,40 @@
 {
   "version": "1.0.0",
-  "timestamp": 1770220695713,
+  "timestamp": 1770263544100,
   "entries": {
-    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\Router.js": {
+    "src\\Router.js": {
       "hash": "",
-      "lastAnalyzed": 1770220695711,
+      "lastAnalyzed": 1770263544099,
       "staticVersion": "1.0.0",
       "llmVersion": "1.0.0",
       "changeType": "none",
       "dependencies": [],
       "metadata": {
+        "filePath": "src/Router.js",
+        "exportCount": 2,
+        "dependentCount": 0,
+        "importCount": 0,
+        "functionCount": 0,
+        "exports": [
+          "navigateTo",
+          "loadPlugin"
+        ],
+        "dependents": [],
+        "hasDynamicImports": false,
+        "hasTypeScript": false,
+        "hasCSSInJS": false,
+        "hasLocalStorage": false,
+        "hasEventListeners": false,
+        "hasGlobalAccess": false,
+        "hasAsyncPatterns": true,
+        "hasJSDoc": true,
+        "localStorageKeys": [],
+        "eventNames": [],
+        "envVars": [],
+        "hasRuntimeContracts": false,
+        "hasErrorHandling": false,
+        "hasBuildTimeDeps": false,
+        "hasSingletonPattern": false,
         "jsdocContracts": {
           "functions": [
             {
@@ -115,21 +140,55 @@
         }
       },
       "llmInsights": {
-        "confidence": 1,
-        "reasoning": "Dynamic import con variable",
+        "confidence": 0.95,
+        "reasoning": "El archivo Router.js no tiene dependencias declaradas, y su exportación es mínima (2 funciones). No hay módulos importados ni exportados que indiquen dependencias externas.",
+        "analysisType": "orphan-module",
         "enhancedConnections": [],
         "suggestedConnections": [],
-        "hiddenConnections": []
+        "hiddenConnections": [],
+        "orphanAnalysis": {
+          "isOrphan": false,
+          "potentialUsage": [],
+          "suggestedUsage": ""
+        },
+        "affectedFiles": [
+          "usado como módulo principal del aplicación",
+          "punto de entrada para rutas dinámicas"
+        ]
       }
     },
-    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\AdminModule.js": {
+    "src\\modules\\AdminModule.js": {
       "hash": "",
-      "lastAnalyzed": 1770220695712,
+      "lastAnalyzed": 1770263544099,
       "staticVersion": "1.0.0",
       "llmVersion": "1.0.0",
       "changeType": "none",
       "dependencies": [],
       "metadata": {
+        "filePath": "src/modules/AdminModule.js",
+        "exportCount": 1,
+        "dependentCount": 0,
+        "importCount": 0,
+        "functionCount": 0,
+        "exports": [
+          "getAdminStats"
+        ],
+        "dependents": [],
+        "hasDynamicImports": false,
+        "hasTypeScript": false,
+        "hasCSSInJS": false,
+        "hasLocalStorage": false,
+        "hasEventListeners": false,
+        "hasGlobalAccess": false,
+        "hasAsyncPatterns": false,
+        "hasJSDoc": true,
+        "localStorageKeys": [],
+        "eventNames": [],
+        "envVars": [],
+        "hasRuntimeContracts": false,
+        "hasErrorHandling": false,
+        "hasBuildTimeDeps": false,
+        "hasSingletonPattern": false,
         "jsdocContracts": {
           "functions": [],
           "types": [],
@@ -183,20 +242,52 @@
       },
       "llmInsights": {
         "confidence": 1,
-        "reasoning": "Verifica permisos de admin",
+        "reasoning": "The module exports a single object with no dependents, indicating it has no external dependencies.",
+        "analysisType": "orphan-module",
         "enhancedConnections": [],
         "suggestedConnections": [],
-        "hiddenConnections": []
+        "hiddenConnections": [],
+        "orphanAnalysis": {
+          "isOrphan": false,
+          "potentialUsage": [],
+          "suggestedUsage": ""
+        },
+        "affectedFiles": [
+          "used in admin initialization",
+          "required for admin stats"
+        ]
       }
     },
-    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\DashboardModule.js": {
+    "src\\modules\\DashboardModule.js": {
       "hash": "",
-      "lastAnalyzed": 1770220695712,
+      "lastAnalyzed": 1770263544099,
       "staticVersion": "1.0.0",
       "llmVersion": "1.0.0",
       "changeType": "none",
       "dependencies": [],
       "metadata": {
+        "filePath": "src/modules/DashboardModule.js",
+        "exportCount": 0,
+        "dependentCount": 0,
+        "importCount": 0,
+        "functionCount": 0,
+        "exports": [],
+        "dependents": [],
+        "hasDynamicImports": false,
+        "hasTypeScript": false,
+        "hasCSSInJS": false,
+        "hasLocalStorage": false,
+        "hasEventListeners": false,
+        "hasGlobalAccess": false,
+        "hasAsyncPatterns": false,
+        "hasJSDoc": true,
+        "localStorageKeys": [],
+        "eventNames": [],
+        "envVars": [],
+        "hasRuntimeContracts": false,
+        "hasErrorHandling": false,
+        "hasBuildTimeDeps": false,
+        "hasSingletonPattern": false,
         "jsdocContracts": {
           "functions": [],
           "types": [],
@@ -250,20 +341,45 @@
       },
       "llmInsights": {
         "confidence": 1,
-        "reasoning": "Return exact strings and patterns found in code",
+        "reasoning": "Code contains only a module declaration with no executable logic",
+        "analysisType": "default",
         "enhancedConnections": [],
         "suggestedConnections": [],
         "hiddenConnections": []
       }
     },
-    "C:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\OmnySystem\\test-cases\\scenario-ia-dynamic-imports\\src\\modules\\UserModule.js": {
+    "src\\modules\\UserModule.js": {
       "hash": "",
-      "lastAnalyzed": 1770220695713,
+      "lastAnalyzed": 1770263544099,
       "staticVersion": "1.0.0",
       "llmVersion": "1.0.0",
       "changeType": "none",
       "dependencies": [],
       "metadata": {
+        "filePath": "src/modules/UserModule.js",
+        "exportCount": 1,
+        "dependentCount": 0,
+        "importCount": 0,
+        "functionCount": 0,
+        "exports": [
+          "getUserProfile"
+        ],
+        "dependents": [],
+        "hasDynamicImports": false,
+        "hasTypeScript": false,
+        "hasCSSInJS": false,
+        "hasLocalStorage": false,
+        "hasEventListeners": false,
+        "hasGlobalAccess": false,
+        "hasAsyncPatterns": false,
+        "hasJSDoc": true,
+        "localStorageKeys": [],
+        "eventNames": [],
+        "envVars": [],
+        "hasRuntimeContracts": false,
+        "hasErrorHandling": false,
+        "hasBuildTimeDeps": false,
+        "hasSingletonPattern": false,
         "jsdocContracts": {
           "functions": [],
           "types": [],
@@ -317,10 +433,20 @@
       },
       "llmInsights": {
         "confidence": 1,
-        "reasoning": "Brief explanation of why these files are connected",
+        "reasoning": "The module has no dependents (DEPENDENTS: 0), so it is an orphan. The exports contain a single object with a function, indicating minimal usage context.",
+        "analysisType": "orphan-module",
         "enhancedConnections": [],
         "suggestedConnections": [],
-        "hiddenConnections": []
+        "hiddenConnections": [],
+        "orphanAnalysis": {
+          "isOrphan": false,
+          "potentialUsage": [],
+          "suggestedUsage": ""
+        },
+        "affectedFiles": [
+          "Import in main application",
+          "Use in tests"
+        ]
       }
     }
   },

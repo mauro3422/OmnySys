@@ -66,6 +66,17 @@ export class Orchestrator extends EventEmitter {
     this.isIndexing = false;
     this.indexingProgress = 0;
     this.indexedFiles = new Set();
+    
+    // Iterative analysis state
+    this.iteration = 0;
+    this.maxIterations = 10;
+    this.isIterating = false;
+    this.iterativeQueue = [];
+    
+    // Tracking for completion
+    this.totalFilesToAnalyze = 0;
+    this.processedFiles = new Set();
+    this.analysisCompleteEmitted = false;
   }
 
   /**
@@ -106,8 +117,8 @@ export class Orchestrator extends EventEmitter {
     // Load existing state
     await this._loadState();
 
-    // Sync project files with existing analysis
-    await this._syncProjectFiles();
+    // Analyze complex files with LLM based on Layer A metadata
+    await this._analyzeComplexFilesWithLLM();
 
     // Start processing loop
     this._processNext();
@@ -319,20 +330,205 @@ export class Orchestrator extends EventEmitter {
     }
   }
 
+  /**
+   * Analiza archivos complejos con LLM basado en metadatos de Layer A
+   * 
+   * Esta función revisa los metadatos que Layer A generó y decide qué archivos
+   * necesitan análisis LLM para fortalecer las conexiones semánticas.
+   * 
+   * Criterios para necesitar LLM:
+   * - Archivos huérfanos (0 dependents) - potencialmente conectados por estado global
+   * - Archivos con shared state detectado (window.*, localStorage)
+   * - Archivos con eventos complejos
+   * - Archivos con imports dinámicos
+   * - God objects (muchos exports + dependents)
+   */
+  async _analyzeComplexFilesWithLLM() {
+    console.log('\n🤖 Orchestrator: Analyzing complex files with LLM...');
+    
+    try {
+      // Importar dependencias dinámicamente
+      const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer.js');
+      const { getFileAnalysis } = await import('../layer-a-static/storage/query-service.js');
+      const { detectArchetypes } = await import('../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
+      
+      // Inicializar LLM Analyzer
+      const aiConfig = await (await import('../ai/llm-client.js')).loadAIConfig();
+      const llmAnalyzer = new LLMAnalyzer(aiConfig, this.projectPath);
+      const initialized = await llmAnalyzer.initialize();
+      
+      if (!initialized) {
+        console.log('   ⚠️  LLM not available, skipping LLM analysis');
+        return;
+      }
+      
+      // Leer índice de archivos analizados por Layer A
+      const indexPath = path.join(this.OmnySysDataPath, 'index.json');
+      const indexContent = await fs.readFile(indexPath, 'utf-8');
+      const index = JSON.parse(indexContent);
+      
+      const filesNeedingLLM = [];
+      
+      // Revisar cada archivo en el índice
+      for (const [filePath, fileInfo] of Object.entries(index.fileIndex || {})) {
+        
+        // Obtener análisis completo del archivo
+        const fileAnalysis = await getFileAnalysis(this.projectPath, filePath);
+        if (!fileAnalysis) continue;
+        
+        // Verificar si ya fue procesado por LLM
+        if (fileAnalysis.llmInsights) {
+          continue; // Ya tiene análisis LLM, saltear
+        }
+        
+        // Calcular métricas semánticas para detección de arquetipos
+        const semanticAccess = fileAnalysis.semanticAnalysis?.sharedState?.globalAccess || [];
+        const semanticWrites = semanticAccess.filter(item => item.type === 'write');
+        const semanticReads = semanticAccess.filter(item => item.type === 'read');
+        const eventEmitters = fileAnalysis.semanticAnalysis?.eventPatterns?.eventEmitters || [];
+        const eventListeners = fileAnalysis.semanticAnalysis?.eventPatterns?.eventListeners || [];
+        const semanticConnections = fileAnalysis.semanticConnections || [];
+        
+        // Detectar arquetipos basado en metadatos mejorados con información semántica
+        const metadata = {
+          filePath: filePath,
+          exportCount: fileInfo.exports || 0,
+          dependentCount: fileInfo.dependents || 0,
+          // NUEVO: Métricas semánticas críticas
+          semanticDependentCount: semanticConnections.length,
+          definesGlobalState: semanticWrites.length > 0,
+          usesGlobalState: semanticReads.length > 0,
+          hasGlobalAccess: semanticWrites.length > 0 || semanticReads.length > 0,
+          hasLocalStorage: fileAnalysis.semanticConnections?.some(c => c.type === 'localStorage'),
+          hasEventEmitters: eventEmitters.length > 0,
+          hasEventListeners: eventListeners.length > 0,
+          hasDynamicImports: fileAnalysis.semanticAnalysis?.sideEffects?.hasDynamicImport,
+          // NUEVO: Campos adicionales para mejor detección
+          globalStateWrites: semanticWrites.map(w => w.propName || w.property || w.fullReference).filter(Boolean),
+          globalStateReads: semanticReads.map(r => r.propName || r.property || r.fullReference).filter(Boolean),
+          eventNames: [...new Set([
+            ...eventEmitters.map(e => e.event || e.name || e.eventName || String(e)),
+            ...eventListeners.map(l => l.event || l.name || l.eventName || String(l))
+          ])].slice(0, 10),
+          semanticConnections: semanticConnections.map(c => ({
+            target: c.target,
+            type: c.type,
+            key: c.key
+          })).slice(0, 5)
+        };
+        
+        const archetypes = detectArchetypes(metadata);
+        
+        // DEBUG: Log de arquetipos detectados
+        if (archetypes.length > 0) {
+          console.log(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+        }
+        
+        // Decidir si necesita LLM basado en arquetipos y análisis estático
+        const needsLLM = archetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
+          fileAnalysis.semanticAnalysis || {},
+          fileAnalysis
+        );
+        
+        if (needsLLM) {
+          console.log(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
+          filesNeedingLLM.push({
+            filePath,
+            fileAnalysis,
+            archetypes: archetypes.map(a => a.type),
+            priority: this._calculateLLMPriority(archetypes, metadata)
+          });
+        }
+      }
+      
+      if (filesNeedingLLM.length === 0) {
+        console.log('   ℹ️  No files need LLM analysis (static analysis sufficient)');
+        console.log('   ✅ Emitting analysis:complete event');
+        // Emitir evento de completado aunque no haya archivos para analizar
+        this.emit('analysis:complete', {
+          iterations: 0,
+          totalFiles: this.indexedFiles.size,
+          issues: { stats: { totalIssues: 0 } }
+        });
+        return;
+      }
+      
+      // Guardar cuántos archivos deben analizarse
+      this.totalFilesToAnalyze = filesNeedingLLM.length;
+      this.processedFiles.clear();
+      this.analysisCompleteEmitted = false;
+      
+      console.log(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
+      
+      // Agregar archivos a la cola con prioridad
+      for (const file of filesNeedingLLM) {
+        this.queue.enqueueJob({
+          filePath: file.filePath,
+          needsLLM: true,
+          archetypes: file.archetypes,
+          fileAnalysis: file.fileAnalysis
+        }, file.priority);
+        
+        console.log(`   ➕ Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
+      }
+      
+      console.log(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
+      console.log(`   🚀 Starting processing...`);
+      
+      // Iniciar procesamiento
+      this._processNext();
+      
+    } catch (error) {
+      console.error('   ❌ Error in LLM analysis phase:', error.message);
+    }
+  }
+
+  /**
+   * Calcula prioridad para análisis LLM
+   */
+  _calculateLLMPriority(archetypes, metadata) {
+    // Prioridad CRITICAL: God objects, archivos críticos
+    if (archetypes.some(a => a.type === 'god-object')) return 'critical';
+    
+    // Prioridad HIGH: Orphan modules, state managers (conexiones ocultas)
+    if (archetypes.some(a => ['orphan-module', 'state-manager', 'event-hub'].includes(a.type))) {
+      return 'high';
+    }
+    
+    // Prioridad MEDIUM: Dynamic imports, singletons
+    if (archetypes.some(a => ['dynamic-importer', 'singleton'].includes(a.type))) {
+      return 'medium';
+    }
+    
+    // Prioridad LOW: Otros casos
+    return 'low';
+  }
+
   async _processNext() {
-    if (!this.isRunning || this.currentJob) {
+    if (!this.isRunning) {
+      return;
+    }
+
+    // Si ya hay un job en progreso, no hacer nada
+    if (this.currentJob) {
       return;
     }
 
     const nextJob = this.queue.dequeue();
     if (!nextJob) {
+      // No hay jobs, el loop se reactivará cuando se agregue uno nuevo
       return;
     }
 
     this.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
     this.emit('job:started', this.currentJob);
 
-    this.worker.analyze(nextJob);
+    try {
+      await this.worker.analyze(nextJob);
+    } catch (error) {
+      console.error(`❌ Error processing job ${nextJob.filePath}:`, error.message);
+      this._onJobError(nextJob, error);
+    }
   }
 
   _onJobProgress(job, progress) {
@@ -344,15 +540,167 @@ export class Orchestrator extends EventEmitter {
     this.stats.totalAnalyzed++;
     this.currentJob = null;
     this.indexedFiles.add(job.filePath);
+    this.processedFiles.add(job.filePath);
     
     this.emit('job:complete', job, result);
-    this._processNext();
+    
+    console.log(`   ✅ Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze})`);
+    
+    // Check if all files have been processed
+    if (this.processedFiles.size >= this.totalFilesToAnalyze && this.totalFilesToAnalyze > 0) {
+      console.log(`\n🎉 All ${this.totalFilesToAnalyze} files processed!`);
+      this._finalizeAnalysis();
+      return;
+    }
+    
+    // Check if main queue is empty and we should start iterative analysis
+    if (this.queue.size() === 0 && !this.isIterating && this.iteration < this.maxIterations) {
+      this._startIterativeAnalysis();
+    } else if (this.queue.size() > 0) {
+      // Continuar con el siguiente job
+      this._processNext();
+    } else {
+      // No hay más jobs ni iteraciones, finalizar
+      this._finalizeAnalysis();
+    }
+  }
+  
+  /**
+   * Finaliza el análisis y emite el evento complete
+   */
+  async _finalizeAnalysis() {
+    if (this.analysisCompleteEmitted) {
+      return; // Evitar múltiples emisiones
+    }
+    
+    this.analysisCompleteEmitted = true;
+    
+    console.log('\n🔍 Detecting semantic issues...');
+    await this._detectSemanticIssues();
+    
+    console.log('\n✅ Analysis complete!');
+  }
+  
+  /**
+   * Start iterative analysis when main queue is empty
+   * Files with high-confidence suggestions get re-analyzed
+   */
+  async _startIterativeAnalysis() {
+    if (this.iteration >= this.maxIterations) {
+      console.log(`\n✅ Iterative analysis complete after ${this.iteration} iterations`);
+      await this._detectSemanticIssues();
+      return;
+    }
+    
+    this.iteration++;
+    console.log(`\n🔄 Starting iteration ${this.iteration}/${this.maxIterations}...`);
+    
+    try {
+      const { getFileAnalysis } = await import('../layer-a-static/storage/query-service.js');
+      const filesNeedingRefinement = [];
+      
+      // Check all analyzed files for high-confidence suggestions
+      for (const filePath of this.indexedFiles) {
+        const analysis = await getFileAnalysis(this.projectPath, filePath);
+        if (!analysis || !analysis.llmInsights) continue;
+        
+        const llmInsights = analysis.llmInsights;
+        if (llmInsights.suggestedConnections?.length > 0) {
+          const highConfidenceConnections = llmInsights.suggestedConnections
+            .filter(conn => conn.confidence > 0.9);
+          
+          if (highConfidenceConnections.length > 0 && !analysis.llmInsights.iterationRefined) {
+            filesNeedingRefinement.push({
+              filePath,
+              priority: 'high',
+              needsLLM: true,
+              isIterative: true,
+              fileAnalysis: analysis
+            });
+          }
+        }
+      }
+      
+      if (filesNeedingRefinement.length === 0) {
+        console.log(`  ✓ No files need refinement - consolidation complete`);
+        await this._detectSemanticIssues();
+        return;
+      }
+      
+      console.log(`  📊 ${filesNeedingRefinement.length} files need refinement`);
+      
+      // Add to iterative queue and process
+      this.isIterating = true;
+      this.iterativeQueue = filesNeedingRefinement;
+      
+      for (const file of filesNeedingRefinement) {
+        this.queue.enqueueJob(file, file.priority);
+      }
+      
+      this._processNext();
+      
+    } catch (error) {
+      console.error('  ❌ Error in iterative analysis:', error.message);
+      this.isIterating = false;
+    }
+  }
+  
+  /**
+   * Detect semantic issues across all analyzed files
+   */
+  async _detectSemanticIssues() {
+    console.log('\n🔍 Detecting semantic issues...');
+    
+    try {
+      const { getFileAnalysis } = await import('../layer-a-static/storage/query-service.js');
+      const { detectSemanticIssues } = await import('../layer-b-semantic/semantic-issues-detector.js');
+      const { savePartitionedSystemMap } = await import('../layer-a-static/storage/storage-manager.js');
+      
+      // Build system map from all analyzed files
+      const systemMap = {
+        files: {},
+        metadata: {
+          analyzedAt: new Date().toISOString(),
+          totalFiles: this.indexedFiles.size
+        }
+      };
+      
+      for (const filePath of this.indexedFiles) {
+        const analysis = await getFileAnalysis(this.projectPath, filePath);
+        if (analysis) {
+          systemMap.files[filePath] = analysis;
+        }
+      }
+      
+      // Detect issues
+      const issuesReport = detectSemanticIssues(systemMap);
+      
+      // Save issues report
+      const issuesPath = path.join(this.OmnySysDataPath, 'semantic-issues.json');
+      await fs.writeFile(issuesPath, JSON.stringify(issuesReport, null, 2), 'utf-8');
+      
+      console.log(`  ✓ Found ${issuesReport.stats?.totalIssues || 0} semantic issues`);
+      if (issuesReport.stats?.totalIssues > 0) {
+        console.log(`    • High: ${issuesReport.stats.bySeverity?.high || 0}`);
+        console.log(`    • Medium: ${issuesReport.stats.bySeverity?.medium || 0}`);
+        console.log(`    • Low: ${issuesReport.stats.bySeverity?.low || 0}`);
+      }
+      
+      // El evento analysis:complete se emite desde _finalizeAnalysis
+      return issuesReport;
+      
+    } catch (error) {
+      console.error('  ❌ Error detecting semantic issues:', error.message);
+      return { stats: { totalIssues: 0 } };
+    }
   }
 
   _onJobError(job, error) {
     console.error(`❌ Job failed: ${job.filePath}`, error.message);
     this.currentJob = null;
     this.emit('job:error', job, error);
+    
+    // Continuar con el siguiente job a pesar del error
     this._processNext();
   }
 

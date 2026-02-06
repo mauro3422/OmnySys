@@ -52,6 +52,10 @@ export class AnalysisWorker {
    * Esto previene que el cache quede en estado inconsistente.
    */
   async analyze(job) {
+    // Debug: Verificar estructura del job
+    console.log(`🔍 DEBUG Worker: Received job`, typeof job, job ? Object.keys(job) : 'null');
+    console.log(`🔍 DEBUG Worker: job.filePath =`, job?.filePath, typeof job?.filePath);
+    
     if (this.isPaused) {
       console.log(`⏸️  Worker paused, delaying ${path.basename(job.filePath)}`);
       return;
@@ -72,22 +76,136 @@ export class AnalysisWorker {
     try {
       this.callbacks.onProgress?.(job, 10);
       
-      // Usar indexProject en modo single-file
-      await indexProject(this.rootPath, {
-        verbose: false,
-        singleFile: job.filePath,
-        incremental: true,
-        abortSignal: signal
-      });
+      let result;
       
-      if (signal.aborted) {
-        throw new Error('Analysis aborted');
+      // Si el job necesita LLM, usar LLMAnalyzer
+      if (job.needsLLM) {
+        console.log(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
+        console.log(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
+        
+        const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer.js');
+        const { loadAIConfig } = await import('../ai/llm-client.js');
+        const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
+        const aiConfig = await loadAIConfig();
+        
+        console.log(`   🔌 Initializing LLM analyzer...`);
+        const llmAnalyzer = new LLMAnalyzer(aiConfig, this.rootPath);
+        const initialized = await llmAnalyzer.initialize();
+        
+        if (!initialized) {
+          throw new Error('LLM not available');
+        }
+        console.log(`   ✅ LLM analyzer ready`);
+        
+        // Calcular métricas semánticas
+        const semanticAccess = job.fileAnalysis?.semanticAnalysis?.sharedState?.globalAccess || [];
+        const semanticWrites = semanticAccess.filter(item => item.type === 'write');
+        const semanticReads = semanticAccess.filter(item => item.type === 'read');
+        const eventEmitters = job.fileAnalysis?.semanticAnalysis?.eventPatterns?.eventEmitters || [];
+        const eventListeners = job.fileAnalysis?.semanticAnalysis?.eventPatterns?.eventListeners || [];
+        const semanticConnections = job.fileAnalysis?.semanticConnections || [];
+        
+        console.log(`   📊 Metadata prepared: ${semanticConnections.length} semantic connections`);
+        
+        // Analizar con LLM incluyendo conexiones semánticas
+        console.log(`   🚀 Sending to LLM...`);
+        const llmResults = await llmAnalyzer.analyzeMultiple([{
+          filePath: job.filePath,
+          code: job.fileAnalysis?.content || '',
+          staticAnalysis: job.fileAnalysis?.semanticAnalysis,
+          metadata: {
+            filePath: job.filePath,
+            exportCount: job.fileAnalysis?.exports?.length || 0,
+            dependentCount: job.fileAnalysis?.dependents?.length || 0,
+            // NUEVO: Métricas semánticas críticas
+            semanticDependentCount: semanticConnections.length,
+            definesGlobalState: semanticWrites.length > 0,
+            usesGlobalState: semanticReads.length > 0,
+            globalStateWrites: semanticWrites.map(w => w.propName || w.property || w.fullReference).filter(Boolean),
+            globalStateReads: semanticReads.map(r => r.propName || r.property || r.fullReference).filter(Boolean),
+            hasEventEmitters: eventEmitters.length > 0,
+            hasEventListeners: eventListeners.length > 0,
+            eventNames: [...new Set([
+              ...eventEmitters.map(e => e.event || e.name || e.eventName || String(e)),
+              ...eventListeners.map(l => l.event || l.name || l.eventName || String(l))
+            ])].slice(0, 10),
+            semanticConnections: semanticConnections.map(c => ({
+              target: c.target,
+              type: c.type,
+              key: c.key
+            })).slice(0, 5),
+            ...job.fileAnalysis?.metadata
+          },
+          analysisType: job.archetypes?.[0] || 'default'
+        }]);
+        
+        if (signal.aborted) {
+          throw new Error('Analysis aborted');
+        }
+        
+        const llmResult = llmResults[0];
+        
+        if (!llmResult) {
+          throw new Error('LLM analysis failed');
+        }
+        
+        // Merge resultado LLM con análisis existente
+        const mergedResult = {
+          ...job.fileAnalysis,
+          llmInsights: {
+            confidence: llmResult.confidence,
+            reasoning: llmResult.reasoning,
+            analysisType: llmResult.analysisType || job.archetypes?.[0] || 'default',
+            enhancedConnections: llmResult.suggestedConnections || [],
+            suggestedConnections: llmResult.suggestedConnections || [],
+            hiddenConnections: llmResult.hiddenConnections || [],
+            iterationRefined: job.isIterative || false,
+            // Campos específicos según el tipo
+            ...(llmResult.isOrphan !== undefined && {
+              orphanAnalysis: {
+                isOrphan: llmResult.isOrphan,
+                potentialUsage: llmResult.potentialUsage || [],
+                suggestedUsage: llmResult.suggestedUsage || ''
+              }
+            }),
+            ...(llmResult.riskLevel && {
+              godObjectAnalysis: {
+                isGodObject: llmResult.riskLevel !== 'none',
+                riskLevel: llmResult.riskLevel,
+                responsibilities: llmResult.responsibilities || [],
+                impactScore: llmResult.impactScore || 0.5
+              }
+            })
+          },
+          llmProcessed: true,
+          llmProcessedAt: new Date().toISOString()
+        };
+        
+        // Guardar resultado mergeado
+        await saveFileAnalysis(this.rootPath, job.filePath, mergedResult);
+        
+        result = mergedResult;
+        
+      } else {
+        // Análisis estático simple con indexProject
+        console.log(`📊 Using static analysis for ${path.basename(job.filePath)}`);
+        
+        await indexProject(this.rootPath, {
+          verbose: false,
+          singleFile: job.filePath,
+          incremental: true,
+          abortSignal: signal
+        });
+        
+        if (signal.aborted) {
+          throw new Error('Analysis aborted');
+        }
+        
+        // Obtener resultado
+        result = await getFileAnalysis(this.rootPath, job.filePath);
       }
       
       this.callbacks.onProgress?.(job, 100);
-      
-      // Obtener resultado
-      const result = await getFileAnalysis(this.rootPath, job.filePath);
       
       this.analyzedFiles.add(job.filePath);
       this.callbacks.onComplete?.(job, result);

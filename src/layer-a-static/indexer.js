@@ -11,14 +11,13 @@ import { detectSideEffects } from './analyses/tier3/side-effects-detector.js';
 import { calculateAllRiskScores, generateRiskReport } from './analyses/tier3/risk-scorer.js';
 import { analyzeBrokenConnections } from './analyses/tier3/broken-connections-detector.js';
 import { savePartitionedSystemMap } from './storage/storage-manager.js';
-import { enrichSemanticAnalysis, generateIssuesReport } from '../layer-b-semantic/semantic-enricher.js';
-import { loadAIConfig } from '../ai/llm-client.js';
-import { detectAllSemanticConnections } from '../layer-b-semantic/static-extractors.js';
-import { detectAllAdvancedConnections } from '../layer-b-semantic/advanced-extractors.js';
-import { extractAllMetadata } from '../layer-b-semantic/metadata-extractors.js';
-import { detectAllCSSInJSConnections } from '../layer-b-semantic/css-in-js-extractor.js';
-import { detectAllTypeScriptConnections } from '../layer-b-semantic/typescript-extractor.js';
-import { detectAllReduxContextConnections } from '../layer-b-semantic/redux-context-extractor.js';
+// Extractores estáticos (movidos de layer-b-semantic a layer-a-static)
+import { detectAllSemanticConnections } from './extractors/static-extractors.js';
+import { detectAllAdvancedConnections } from './extractors/advanced-extractors.js';
+import { extractAllMetadata } from './extractors/metadata-extractors.js';
+import { detectAllCSSInJSConnections } from './extractors/css-in-js-extractor.js';
+import { detectAllTypeScriptConnections } from './extractors/typescript-extractor.js';
+import { detectAllReduxContextConnections } from './extractors/redux-context-extractor.js';
 
 // NUEVO: Sistema de caché unificado
 import { UnifiedCacheManager, ChangeType } from '../core/unified-cache-manager.js';
@@ -249,47 +248,15 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     }
   }
 
-  // Paso 4.7: LLM Enrichment (opcional)
+  // Paso 4.7: LLM Enrichment - MOVIDO AL ORCHESTRATOR
+  // Layer A solo hace análisis estático. El LLM enrichment lo hace el Orchestrator
+  // basado en los metadatos que Layer A genera.
   let llmEnrichmentStats = null;
   let semanticIssues = null;
-  try {
-    const aiConfig = await loadAIConfig();
-    if (aiConfig.llm.enabled && !skipLLM) {
-      if (verbose) console.log('  🤖 LLM enrichment phase...');
-      // Usar systemMap.files que tiene usedBy/dependsOn completos del grafo
-      const tempSystemMap = { 
-        files: systemMap.files,
-        metadata: systemMap.metadata
-      };
-      const enrichmentResult = await enrichSemanticAnalysis(
-        tempSystemMap,
-        fileSourceCode,
-        aiConfig
-      );
-
-      if (enrichmentResult.enhanced) {
-        // Actualizar enhancedFiles con resultados LLM
-        enhancedFiles = enrichmentResult.results.files;
-        llmEnrichmentStats = {
-          filesAnalyzed: enrichmentResult.totalAnalyzed,
-          filesEnhanced: enrichmentResult.enhancedCount
-        };
-
-        // Capturar issues semánticos
-        semanticIssues = enrichmentResult.issues;
-
-        if (verbose) {
-          console.log(`  ✓ LLM enhanced ${enrichmentResult.enhancedCount}/${enrichmentResult.totalAnalyzed} files`);
-          if (semanticIssues && semanticIssues.stats.totalIssues > 0) {
-            console.log(`  ⚠️  Found ${semanticIssues.stats.totalIssues} semantic issues (${semanticIssues.stats.bySeverity.high} high, ${semanticIssues.stats.bySeverity.medium} medium, ${semanticIssues.stats.bySeverity.low} low)`);
-          }
-        }
-      } else if (verbose) {
-        console.log(`  ℹ️  ${enrichmentResult.reason}`);
-      }
-    }
-  } catch (error) {
-    console.warn('  ⚠️  LLM enrichment failed:', error.message);
+  
+  if (verbose) {
+    console.log('  ℹ️  LLM enrichment disabled in Layer A (moved to Orchestrator)');
+    console.log('  📊 Static analysis complete - metadata ready for Orchestrator');
   }
 
   // Paso 5: Construir enhanced system map
@@ -335,9 +302,14 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     const riskScore = riskScores[filePath];
     const connections = semanticConnectionsByFile[filePath] || [];
 
+    // Merge: fileInfo (con LLM insights) tiene prioridad sobre systemMap.files
+    // Usar Object.assign para merge profundo
+    const baseFile = JSON.parse(JSON.stringify(systemMap.files[filePath] || {}));
+    const enhancedFile = JSON.parse(JSON.stringify(fileInfo || {}));
+    
     enhancedSystemMap.files[filePath] = {
-      ...systemMap.files[filePath],
-      ...fileInfo,  // ✅ Merge LLM insights from enhancedFiles
+      ...baseFile,
+      ...enhancedFile,
       semanticConnections: connections,
       riskScore: riskScore,
       sideEffects: allSideEffects[filePath]?.sideEffects || {},
@@ -577,14 +549,8 @@ export async function indexProject(rootPath, options = {}) {
   - Query API available via query-service.js
       `);
 
-      // Si hay issues, generar y guardar reporte detallado
-      if (enhancedSystemMap.semanticIssues?.stats?.totalIssues > 0) {
-        const issuesReportText = generateIssuesReport(enhancedSystemMap.semanticIssues);
-        const issuesReportPath = path.join(absoluteRootPath, '.OmnySysData', 'semantic-issues-report.txt');
-        await fs.writeFile(issuesReportPath, issuesReportText, 'utf-8');
-        console.log(`\n📋 Detailed issues report saved to: .OmnySysData/semantic-issues-report.txt`);
-        console.log('💡 Review this report to find potential bugs and improvements\n');
-      }
+      // NOTE: Issues report generation moved to Orchestrator (Layer B)
+      // Layer A only extracts metadata, Layer B processes it
     }
 
     return systemMap;

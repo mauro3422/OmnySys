@@ -98,26 +98,75 @@ export class CogniSystemMCPServer {
       
       console.error(`✅ Found existing analysis: ${fileCount} files`);
       
-      // Validar si el análisis está completo y no está corrupto
-      if (fileCount === 0 || !metadata?.files || Object.keys(metadata.files).length === 0) {
-        console.error('   🚨 Analysis appears incomplete or corrupted, forcing regeneration...');
+      // Validar si el análisis base de Layer A está completo
+      // El análisis se considera válido si:
+      // 1. Hay archivos en el índice (fileIndex)
+      // 2. Layer A completó exitosamente (enhanced: true)
+      // NOTA: El LLM enrichment puede estar pendiente y se procesará en background
+      const hasValidBaseAnalysis = fileCount > 0 && 
+        (metadata?.fileIndex || metadata?.files) && 
+        metadata?.metadata?.enhanced === true;
+      
+      if (!hasValidBaseAnalysis) {
+        console.error('   🚨 Analysis incomplete, running Layer A...');
         console.error('   ⏳ This may take 30-60 seconds...\n');
         
-        // Forzar regeneración completa
+        // Ejecutar Layer A completo (BLOQUEANTE) - esto es necesario para tener metadatos
         await this.runFullIndexing();
         
-        console.error('\n✅ Full indexing completed');
+        console.error('\n✅ Layer A completed');
+        console.error('   🤖 LLM enrichment will continue in background');
       } else {
-        console.error('   ✅ Analysis appears valid, using existing data');
+        console.error('   ✅ Layer A analysis valid');
+        
+        // Verificar si hay archivos pendientes de LLM
+        const pendingLLM = await this._countPendingLLMAnalysis();
+        if (pendingLLM > 0) {
+          console.error(`   ⏳ ${pendingLLM} files pending LLM enrichment (background)`);
+        } else {
+          console.error('   ✅ All files processed');
+        }
       }
     } catch {
-      console.error('⚠️  No analysis found, running full indexing...');
+      console.error('⚠️  No analysis found, running Layer A...');
       console.error('   ⏳ This may take 30-60 seconds...\n');
       
-      // Ejecutar Layer A completo (BLOQUEANTE) - esperar a que termine
+      // Ejecutar Layer A completo (BLOQUEANTE)
       await this.runFullIndexing();
       
-      console.error('\n✅ Full indexing completed');
+      console.error('\n✅ Layer A completed');
+      console.error('   🤖 LLM enrichment will continue in background');
+    }
+  }
+
+  /**
+   * Cuenta archivos pendientes de análisis LLM
+   */
+  async _countPendingLLMAnalysis() {
+    try {
+      const { getFileAnalysis } = await import('../../layer-a-static/storage/query-service.js');
+      const metadata = await getProjectMetadata(this.projectPath);
+      
+      let pendingCount = 0;
+      const fileEntries = metadata?.fileIndex || metadata?.files || {};
+      
+      for (const filePath of Object.keys(fileEntries)) {
+        const analysis = await getFileAnalysis(this.projectPath, filePath);
+        // Un archivo necesita LLM si:
+        // 1. No tiene llmInsights Y
+        // 2. Tiene características que sugieren que necesita LLM (orphan, shared state, etc.)
+        if (!analysis?.llmInsights) {
+          const needsLLM = analysis?.semanticAnalysis?.sharedState?.writes?.length > 0 ||
+                          analysis?.semanticAnalysis?.eventPatterns?.eventListeners?.length > 0 ||
+                          (analysis?.exports?.length > 0 && analysis?.dependents?.length === 0);
+          
+          if (needsLLM) pendingCount++;
+        }
+      }
+      
+      return pendingCount;
+    } catch {
+      return 0;
     }
   }
   
