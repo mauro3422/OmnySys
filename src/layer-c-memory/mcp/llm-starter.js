@@ -1,7 +1,7 @@
-/**
+﻿/**
  * LLM Starter - Inicia el servidor LLM en terminal separada
  * 
- * Usa start_brain_gpu.bat existente (SSoT para config)
+ * Usa brain_gpu.bat existente (SSoT para config)
  */
 
 import path from 'path';
@@ -31,7 +31,7 @@ async function waitForLLM(client, maxRetries = 60, retryDelay = 2000) {
 }
 
 export async function startLLM(OmnySysRoot) {
-  console.error('   🔍 Checking LLM status...');
+  console.error('   ðŸ” Checking LLM status...');
   
   const aiConfig = await loadAIConfig();
   const client = new LLMClient(aiConfig);
@@ -40,7 +40,7 @@ export async function startLLM(OmnySysRoot) {
   try {
     const health = await client.healthCheck();
     if (health.gpu || health.cpu) {
-      console.error('   ✓ LLM already running on port 8000');
+      console.error('   âœ“ LLM already running on port 8000');
       return true;
     }
   } catch {}
@@ -50,17 +50,17 @@ export async function startLLM(OmnySysRoot) {
   try { await fs.unlink(lockFile); } catch {}
   
   // 3. Find batch script
-  const batchPath = path.join(OmnySysRoot, 'src/ai/scripts/start_brain_gpu.bat');
+  const batchPath = path.join(OmnySysRoot, 'src/ai/scripts/brain_gpu.bat');
   
   try {
     await fs.access(batchPath);
   } catch {
-    console.error('   ❌ start_brain_gpu.bat not found');
+    console.error('   âŒ brain_gpu.bat not found');
     return false;
   }
   
   // 4. Start batch in NEW terminal window
-  console.error('   🚀 Starting LLM server...');
+  console.error('   ðŸš€ Starting LLM server...');
   
   const child = spawn('cmd', ['/c', 'start', 'CogniSystem LLM', 'cmd', '/c', batchPath], {
     cwd: OmnySysRoot,
@@ -69,23 +69,24 @@ export async function startLLM(OmnySysRoot) {
   });
   
   child.on('error', (err) => {
-    console.error('   ❌ Spawn error:', err.message);
+    console.error('   âŒ Spawn error:', err.message);
   });
   
   child.unref();
   
   // 5. ESPERAR a que el LLM responda (BLOQUEANTE)
-  console.error('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
+  console.error('   â³ Waiting for LLM to be ready (this may take 10-30s)...');
   
-  const result = await waitForLLM(client, 60, 2000); // 60 retries × 2s = 2 min max
+  const result = await waitForLLM(client, 60, 2000); // 60 retries Ã— 2s = 2 min max
   
   if (result.ready) {
     const mode = result.health.gpu ? 'GPU' : 'CPU';
-    console.error(`   ✅ LLM is ready! (${mode} mode)`);
+    console.error(`   âœ… LLM is ready! (${mode} mode)`);
     return true;
   } else {
-    console.error('\n   ❌ LLM failed to start within 2 minutes');
-    console.error('   💡 Check the terminal window "CogniSystem LLM" for errors');
+    console.error('\n   âŒ LLM failed to start within 2 minutes');
+    console.error('   ðŸ’¡ Check the terminal window "CogniSystem LLM" for errors');
     return false;
   }
 }
+

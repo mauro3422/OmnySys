@@ -140,17 +140,8 @@ ${example2Assistant}
 FILE: {filePath}
 EXPORTS: {exportCount} ({exports})
 DEPENDENTS: {dependentCount}
-SEMANTIC_DEPENDENTS: {semanticDependentCount}
 IMPORTS: {importCount}
 FUNCTIONS: {functionCount}
-DEFINES_GLOBAL_STATE: {definesGlobalState}
-USES_GLOBAL_STATE: {usesGlobalState}
-GLOBAL_WRITES: {globalStateWrites}
-GLOBAL_READS: {globalStateReads}
-HAS_EVENT_EMITTERS: {hasEventEmitters}
-HAS_EVENT_LISTENERS: {hasEventListeners}
-EVENT_NAMES: {eventNames}
-SEMANTIC_CONNECTIONS: {semanticConnections}
 </file_info>
 
 <code>

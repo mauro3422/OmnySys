@@ -73,6 +73,31 @@ export function extractActualEventNames(code) {
 }
 
 /**
+ * Extrae variables globales reales del codigo (window/globalThis/global)
+ * @param {string} code - Codigo fuente
+ * @returns {Set<string>} - Set de propiedades globales detectadas
+ */
+export function extractActualGlobalVariables(code) {
+  const globals = new Set();
+  const patterns = [
+    /(window|globalThis|global)\.([A-Za-z_$][\w$]*)/g,
+    /(window|globalThis|global)\[['"`]([^'"`]+)['"`]\]/g
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(code)) !== null) {
+      const prop = match[2];
+      if (prop) {
+        globals.add(prop);
+      }
+    }
+  }
+
+  return globals;
+}
+
+/**
  * Verifica si una string es un método de localStorage
  */
 function isLocalStorageMethod(str) {
@@ -155,6 +180,7 @@ export function validateLLMResponse(response, code, validFilePaths = []) {
  */
 function validateLocalStorageKeys(llmKeys, actualKeys) {
   if (!Array.isArray(llmKeys)) return [];
+  if (!actualKeys || actualKeys.size === 0) return [];
   
   return llmKeys.filter(key => {
     // Rechazar métodos
@@ -172,8 +198,58 @@ function validateLocalStorageKeys(llmKeys, actualKeys) {
     // Idealmente: verificar que exista en actualKeys
     // Pero el LLM puede detectar keys indirectamente, así que permitimos
     // keys que parezcan válidas (no métodos, no placeholders)
-    return key.length > 0 && !key.includes(' ');
+    return actualKeys.has(key);
   });
+}
+
+/**
+ * Sanitiza respuestas del arquetipo global-state usando codigo real
+ * @param {object} response - Respuesta cruda del LLM
+ * @param {string} code - Codigo fuente analizado
+ * @returns {object|null} - Respuesta sanitizada o null si no hay evidencia
+ */
+export function sanitizeGlobalStateResponse(response, code) {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+
+  const actualGlobals = extractActualGlobalVariables(code);
+  if (actualGlobals.size === 0) {
+    return null;
+  }
+
+  const rawGlobals = Array.isArray(response.globalVariables) ? response.globalVariables : [];
+  const sanitizedGlobals = rawGlobals
+    .map(entry => {
+      if (typeof entry === 'string') {
+        return { name: entry };
+      }
+      return entry;
+    })
+    .filter(entry => {
+      const name = entry?.name;
+      if (!name) return false;
+      const normalized = name.includes('.') ? name.split('.').pop() : name;
+      return actualGlobals.has(normalized);
+    });
+
+  const rawAccess = Array.isArray(response.accessPatterns) ? response.accessPatterns : [];
+  const sanitizedAccess = rawAccess.filter(entry => {
+    const variable = entry?.variable || entry?.name || entry?.key;
+    if (!variable) return false;
+    const normalized = variable.includes('.') ? variable.split('.').pop() : variable;
+    return actualGlobals.has(normalized);
+  });
+
+  if (sanitizedGlobals.length === 0 && sanitizedAccess.length === 0) {
+    return null;
+  }
+
+  return {
+    ...response,
+    globalVariables: sanitizedGlobals,
+    accessPatterns: sanitizedAccess
+  };
 }
 
 /**
@@ -181,6 +257,7 @@ function validateLocalStorageKeys(llmKeys, actualKeys) {
  */
 function validateEventNames(llmEvents, actualEvents) {
   if (!Array.isArray(llmEvents)) return [];
+  if (!actualEvents || actualEvents.size === 0) return [];
   
   return llmEvents.filter(event => {
     // Rechazar métodos del DOM
@@ -201,7 +278,7 @@ function validateEventNames(llmEvents, actualEvents) {
       return false;
     }
     
-    return event.length > 0;
+    return actualEvents.has(event);
   });
 }
 

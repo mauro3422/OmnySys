@@ -1,11 +1,11 @@
-/**
+﻿/**
  * llm-analyzer.js
- * Analiza código complejo usando LLM local
+ * Analiza cÃ³digo complejo usando LLM local
  *
  * Casos de uso (cuando regex/AST no es suficiente):
- * - Indirección: const state = window.gameState; state.score = 10;
- * - Propiedades dinámicas: window[propName] = value;
- * - Razonamiento contextual: ¿Qué archivos afecta este cambio?
+ * - IndirecciÃ³n: const state = window.gameState; state.score = 10;
+ * - Propiedades dinÃ¡micas: window[propName] = value;
+ * - Razonamiento contextual: Â¿QuÃ© archivos afecta este cambio?
  * - Patrones no obvios: callbacks, closures, event handlers indirectos
  */
 
@@ -15,12 +15,13 @@ import {
   validateLLMResponse, 
   calculateDynamicTimeout,
   extractActualLocalStorageKeys,
-  extractActualEventNames 
+  extractActualEventNames,
+  sanitizeGlobalStateResponse
 } from './llm-response-validator.js';
 import promptEngine from './prompt-engine/index.js';
 
 /**
- * Analizador semántico basado en LLM
+ * Analizador semÃ¡ntico basado en LLM
  */
 export class LLMAnalyzer {
   constructor(config, projectPath = process.cwd()) {
@@ -33,7 +34,7 @@ export class LLMAnalyzer {
 
   /**
    * Inicializa el cliente y verifica servidores
-   * @returns {Promise<boolean>} - true si al menos un servidor está disponible
+   * @returns {Promise<boolean>} - true si al menos un servidor estÃ¡ disponible
    */
   async initialize() {
     if (this.initialized) return true;
@@ -42,11 +43,11 @@ export class LLMAnalyzer {
     this.initialized = health.gpu || health.cpu;
 
     if (!this.initialized) {
-      console.warn('⚠️  No LLM servers available. Falling back to static analysis only.');
-      console.warn('💡 Start servers with: src/ai/scripts/start_brain_gpu.bat');
+      console.warn('âš ï¸  No LLM servers available. Falling back to static analysis only.');
+      console.warn('ðŸ’¡ Start servers with: src/ai/scripts/brain_gpu.bat');
     }
 
-    // Inicializar caché unificado si está habilitado
+    // Inicializar cachÃ© unificado si estÃ¡ habilitado
     if (this.config.analysis.enableLLMCache) {
       this.cache = new UnifiedCacheManager(this.projectPath);
       await this.cache.initialize();
@@ -56,34 +57,34 @@ export class LLMAnalyzer {
   }
 
   /**
-   * Determina si un archivo necesita análisis LLM
+   * Determina si un archivo necesita anÃ¡lisis LLM
    *
    * ESTRATEGIA INTELIGENTE:
    * - NO analizar archivos ya conectados por imports (lo sabemos)
-   * - SÍ analizar archivos DESCONECTADOS con indicios de conexión oculta
-   * - SÍ analizar archivos con shared state/eventos (conexiones no obvias)
+   * - SÃ analizar archivos DESCONECTADOS con indicios de conexiÃ³n oculta
+   * - SÃ analizar archivos con shared state/eventos (conexiones no obvias)
    *
-   * @param {object} staticAnalysis - Resultados del análisis estático
+   * @param {object} staticAnalysis - Resultados del anÃ¡lisis estÃ¡tico
    * @param {object} fileInfo - Info completa del archivo (imports, usedBy, etc)
-   * @returns {boolean} - true si necesita análisis LLM
+   * @returns {boolean} - true si necesita anÃ¡lisis LLM
    */
   needsLLMAnalysis(staticAnalysis, fileInfo = null) {
-    // Criterio 1: Archivos HUÉRFANOS o DESCONECTADOS (alta prioridad)
+    // Criterio 1: Archivos HUÃ‰RFANOS o DESCONECTADOS (alta prioridad)
     const isOrphan = fileInfo &&
       (fileInfo.imports || []).length === 0 &&
       (fileInfo.usedBy || []).length === 0;
 
-    // Criterio 2: Tiene SHARED STATE (conexión oculta posible)
+    // Criterio 2: Tiene SHARED STATE (conexiÃ³n oculta posible)
     const hasSharedState =
       (staticAnalysis.sharedState?.reads?.length > 0) ||
       (staticAnalysis.sharedState?.writes?.length > 0);
 
-    // Criterio 3: Tiene EVENTOS (conexión oculta posible)
+    // Criterio 3: Tiene EVENTOS (conexiÃ³n oculta posible)
     const hasEvents =
       (staticAnalysis.eventPatterns?.eventListeners?.length > 0) ||
       (staticAnalysis.eventPatterns?.eventEmitters?.length > 0);
 
-    // Criterio 4: Código DINÁMICO (necesita razonamiento)
+    // Criterio 4: CÃ³digo DINÃMICO (necesita razonamiento)
     const hasDynamicCode = staticAnalysis.sideEffects?.some(
       effect => effect.includes('dynamic') || effect.includes('eval')
     );
@@ -105,12 +106,12 @@ export class LLMAnalyzer {
   }
 
   /**
-   * Analiza código usando LLM con contexto del proyecto
-   * @param {string} code - Código fuente
+   * Analiza cÃ³digo usando LLM con contexto del proyecto
+   * @param {string} code - CÃ³digo fuente
    * @param {string} filePath - Ruta del archivo
-   * @param {object} staticAnalysis - Resultados del análisis estático
+   * @param {object} staticAnalysis - Resultados del anÃ¡lisis estÃ¡tico
    * @param {object} projectContext - Contexto del proyecto (opcional)
-   * @returns {Promise<object>} - Conexiones semánticas detectadas por LLM
+   * @returns {Promise<object>} - Conexiones semÃ¡nticas detectadas por LLM
    */
   async analyzeComplexCode(code, filePath, staticAnalysis, projectContext = null, metadata = null) {
     if (!this.initialized) {
@@ -121,7 +122,7 @@ export class LLMAnalyzer {
       return null; // No hay servidores disponibles
     }
 
-    // Extraer paths válidos del proyecto para validación
+    // Extraer paths vÃ¡lidos del proyecto para validaciÃ³n
     const validFilePaths = this.extractValidFilePaths(projectContext);
 
     // Configurar retry con backoff
@@ -136,26 +137,26 @@ export class LLMAnalyzer {
         const { systemPrompt, userPrompt } = promptConfig;
         const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-        // ✅ DEBUGGING: Contar tokens aproximados (4 chars ≈ 1 token)
+        // âœ… DEBUGGING: Contar tokens aproximados (4 chars â‰ˆ 1 token)
         if (attempt === 1) { // Solo mostrar en primer intento
           const approxTokens = Math.ceil(fullPrompt.length / 4);
-          console.log(`\n📊 Prompt Stats for ${filePath}:`);
+          console.log(`\nðŸ“Š Prompt Stats for ${filePath}:`);
           console.log(`  - Characters: ${fullPrompt.length}`);
           console.log(`  - Approx Tokens: ${approxTokens}`);
         }
 
-        // Verificar caché usando el prompt completo
+        // Verificar cachÃ© usando el prompt completo
         if (this.cache && attempt === 1) {
           const cached = await this.cache.get(filePath, code, fullPrompt);
           if (cached) {
-            console.log(`  ✓ Cache hit for ${filePath}`);
+            console.log(`  âœ“ Cache hit for ${filePath}`);
             return cached;
           }
         }
 
-        // Calcular timeout dinámico basado en tamaño
+        // Calcular timeout dinÃ¡mico basado en tamaÃ±o
         const dynamicTimeout = calculateDynamicTimeout(code);
-        console.log(`  🔄 Attempt ${attempt}/${maxRetries} (timeout: ${dynamicTimeout}ms)`);
+        console.log(`  ðŸ”„ Attempt ${attempt}/${maxRetries} (timeout: ${dynamicTimeout}ms)`);
 
         // Llamar a LLM con timeout, pasando system prompt personalizado
         const response = await Promise.race([
@@ -169,33 +170,42 @@ export class LLMAnalyzer {
         const normalized = this.normalizeResponse(response, filePath);
         
         if (!normalized) {
-          console.warn(`  ⚠️  Attempt ${attempt}: Invalid LLM response format`);
+          console.warn(`  âš ï¸  Attempt ${attempt}: Invalid LLM response format`);
           lastError = new Error('Invalid response format');
           continue; // Retry
         }
 
-        // ✅ VALIDAR respuesta del LLM (solo para tipos que requieren validación específica)
+        // âœ… VALIDAR respuesta del LLM (solo para tipos que requieren validaciÃ³n especÃ­fica)
         const analysisType = promptConfig?.analysisType || 'default';
         const typesRequiringValidation = ['semantic-connections', 'state-manager', 'event-hub'];
         
         let validated = normalized;
-        if (typesRequiringValidation.includes(analysisType)) {
+        if (analysisType === 'global-state') {
+          validated = sanitizeGlobalStateResponse(normalized, code);
+          
+          if (!validated) {
+            console.warn(`  âš ï¸  Attempt ${attempt}: Global-state response failed validation`);
+            lastError = new Error('Global-state validation failed');
+            continue; // Retry
+          }
+          console.log(`  âœ“ Global-state validated: ${validated.globalVariables?.length || 0} globals`);
+        } else if (typesRequiringValidation.includes(analysisType)) {
           validated = validateLLMResponse(normalized, code, validFilePaths);
           
           if (!validated) {
-            console.warn(`  ⚠️  Attempt ${attempt}: LLM response failed validation`);
+            console.warn(`  âš ï¸  Attempt ${attempt}: LLM response failed validation`);
             lastError = new Error('Validation failed');
             continue; // Retry
           }
-          console.log(`  ✓ Validated: ${validated.localStorageKeys?.length || 0} keys, ${validated.eventNames?.length || 0} events`);
+          console.log(`  âœ“ Validated: ${validated.localStorageKeys?.length || 0} keys, ${validated.eventNames?.length || 0} events`);
         } else {
-          console.log(`  ✓ Analysis complete for ${analysisType}: ${filePath}`);
+          console.log(`  âœ“ Analysis complete for ${analysisType}: ${filePath}`);
         }
 
-        // Agregar analysisType al resultado para que el merger sepa cómo procesarlo
+        // Agregar analysisType al resultado para que el merger sepa cÃ³mo procesarlo
         validated.analysisType = analysisType;
 
-        // Guardar en caché
+        // Guardar en cachÃ©
         if (this.cache) {
           await this.cache.set(filePath, code, fullPrompt, validated);
         }
@@ -204,23 +214,23 @@ export class LLMAnalyzer {
 
       } catch (error) {
         lastError = error;
-        console.error(`  ❌ Attempt ${attempt} failed: ${error.message}`);
+        console.error(`  âŒ Attempt ${attempt} failed: ${error.message}`);
         
         // Backoff exponencial antes de reintentar
         if (attempt < maxRetries) {
           const backoffMs = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-          console.log(`  ⏳ Waiting ${backoffMs}ms before retry...`);
+          console.log(`  â³ Waiting ${backoffMs}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
       }
     }
 
-    console.error(`❌ LLM analysis failed for ${filePath} after ${maxRetries} attempts:`, lastError.message);
+    console.error(`âŒ LLM analysis failed for ${filePath} after ${maxRetries} attempts:`, lastError.message);
     return null;
   }
 
   /**
-   * Extrae paths válidos de archivos del proyecto para validación
+   * Extrae paths vÃ¡lidos de archivos del proyecto para validaciÃ³n
    * @private
    */
   extractValidFilePaths(projectContext) {
@@ -240,7 +250,7 @@ export class LLMAnalyzer {
   }
 
   /**
-   * Analiza múltiples archivos en paralelo
+   * Analiza mÃºltiples archivos en paralelo
    * @param {Array<{code, filePath, staticAnalysis}>} files - Archivos a analizar
    * @returns {Promise<Array<object>>} - Resultados para cada archivo
    */
@@ -260,7 +270,7 @@ export class LLMAnalyzer {
     // Construir prompts para todos (ANTES de verificar cache)
     const allPromptConfigs = await Promise.all(files.map(f => this.buildPrompt(f.code, f.filePath, f.staticAnalysis, f.projectContext, f.metadata)));
 
-    // Verificar caché para cada archivo usando el prompt completo
+    // Verificar cachÃ© para cada archivo usando el prompt completo
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const { systemPrompt, userPrompt } = allPromptConfigs[i];
@@ -279,13 +289,13 @@ export class LLMAnalyzer {
       }
     }
 
-    // Si todos están en caché, retornar
+    // Si todos estÃ¡n en cachÃ©, retornar
     if (filesToAnalyze.length === 0) {
-      console.log('  ✓ All files found in cache');
+      console.log('  âœ“ All files found in cache');
       return results;
     }
 
-    console.log(`  📊 Cache hit: ${files.length - filesToAnalyze.length}/${files.length}, analyzing ${filesToAnalyze.length} files`);
+    console.log(`  ðŸ“Š Cache hit: ${files.length - filesToAnalyze.length}/${files.length}, analyzing ${filesToAnalyze.length} files`);
 
     // Extraer solo los user prompts de archivos no cacheados
     const userPrompts = filesToAnalyze.map(f => f.userPrompt);
@@ -293,7 +303,7 @@ export class LLMAnalyzer {
     // Analizar en paralelo pasando system prompts personalizados
     const responses = await this.client.analyzeParallelWithSystemPrompts(userPrompts, filesToAnalyze.map(f => f.systemPrompt));
 
-    // Normalizar respuestas y guardar en caché
+    // Normalizar respuestas y guardar en cachÃ©
     for (let i = 0; i < filesToAnalyze.length; i++) {
       const file = filesToAnalyze[i];
       const response = responses[i];
@@ -306,7 +316,7 @@ export class LLMAnalyzer {
 
       results[fileIndices[i]] = normalized;
 
-      // Guardar en caché usando el prompt completo
+      // Guardar en cachÃ© usando el prompt completo
       if (normalized && this.cache) {
         await this.cache.set(file.filePath, file.code, file.fullPrompt, normalized);
       }
@@ -328,7 +338,7 @@ export class LLMAnalyzer {
       // Validar el prompt generado
       promptEngine.validatePrompt(promptConfig);
       
-      // Asegurar que los prompts sean strings válidos
+      // Asegurar que los prompts sean strings vÃ¡lidos
       if (typeof promptConfig.systemPrompt !== 'string') {
         throw new Error(`Invalid systemPrompt type: ${typeof promptConfig.systemPrompt}`);
       }
@@ -344,7 +354,7 @@ export class LLMAnalyzer {
       };
     } catch (error) {
       console.error(`Error building prompt for ${filePath}:`, error.message);
-      // Fallback a prompts básicos
+      // Fallback a prompts bÃ¡sicos
       return {
         systemPrompt: `You are a code analyzer. Return ONLY valid JSON.`,
         userPrompt: `<file_content>\n${code}\n</file_content>\n\nANALYZE: Extract patterns, functions, exports, imports. Return exact strings found.`,
@@ -358,16 +368,16 @@ export class LLMAnalyzer {
    * @private
    */
   normalizeResponse(response, filePath) {
-    console.log(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
+    console.log(`ðŸ” DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
 
     if (!response || response.error) {
-      console.warn(`⚠️  Invalid LLM response for ${filePath}`);
+      console.warn(`âš ï¸  Invalid LLM response for ${filePath}`);
       return null;
     }
 
-    // Si la respuesta no es JSON estructurado, intentar extraer información
+    // Si la respuesta no es JSON estructurado, intentar extraer informaciÃ³n
     if (response.rawResponse) {
-      console.warn(`⚠️  LLM returned raw text for ${filePath}, expected JSON`);
+      console.warn(`âš ï¸  LLM returned raw text for ${filePath}, expected JSON`);
       return null;
     }
 
@@ -377,7 +387,7 @@ export class LLMAnalyzer {
     const reasoning = baseResponse.reasoning || response.reasoning || 'No reasoning provided';
 
     // Schema simplificado para LFM2-Extract
-    // Incluir TODOS los campos del response original, no solo los genéricos
+    // Incluir TODOS los campos del response original, no solo los genÃ©ricos
     const normalized = {
       ...response,  // Spread primero para incluir todos los campos originales
       source: 'llm',
@@ -392,7 +402,7 @@ export class LLMAnalyzer {
       connectionType: response.connectionType || 'none'
     };
 
-    console.log(`🔍 DEBUG normalized: ${filePath}`, JSON.stringify(normalized).substring(0, 200));
+    console.log(`ðŸ” DEBUG normalized: ${filePath}`, JSON.stringify(normalized).substring(0, 200));
 
     // Si tiene sharedState o events del nuevo formato, convertir al formato interno
     if (response.sharedState || response.events) {
@@ -413,12 +423,12 @@ export class LLMAnalyzer {
     // Filtrar por umbral de confianza
     if (normalized.confidence < this.config.analysis.confidenceThreshold) {
       console.warn(
-        `⚠️  LLM confidence too low (${normalized.confidence}) for ${filePath}`
+        `âš ï¸  LLM confidence too low (${normalized.confidence}) for ${filePath}`
       );
       return null;
     }
 
-    console.log(`✅ Validated: ${filePath}, confidence=${normalized.confidence}`);
+    console.log(`âœ… Validated: ${filePath}, confidence=${normalized.confidence}`);
     return normalized;
   }
 
@@ -429,8 +439,8 @@ export class LLMAnalyzer {
   normalizeSharedStateFromSimple(keys, connectionType) {
     if (!keys || keys.length === 0) return { reads: [], writes: [] };
     
-    // Asumimos que son todas lecturas/escrituras según el contexto
-    // El extractor estático ya determinó eso con precisión
+    // Asumimos que son todas lecturas/escrituras segÃºn el contexto
+    // El extractor estÃ¡tico ya determinÃ³ eso con precisiÃ³n
     return {
       reads: connectionType === 'localStorage' ? keys : [],
       writes: connectionType === 'localStorage' ? keys : []
@@ -482,7 +492,7 @@ export class LLMAnalyzer {
 }
 
 /**
- * Factory function para crear LLMAnalyzer con configuración cargada
+ * Factory function para crear LLMAnalyzer con configuraciÃ³n cargada
  * @param {string} projectPath - Ruta del proyecto (opcional)
  * @returns {Promise<LLMAnalyzer>}
  */
@@ -490,3 +500,4 @@ export async function createLLMAnalyzer(projectPath = process.cwd()) {
   const config = await loadAIConfig();
   return new LLMAnalyzer(config, projectPath);
 }
+

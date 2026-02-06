@@ -132,8 +132,6 @@ ${example2Assistant}
   userPrompt: `<|im_start|>user
 <file_info>
 FILE: {filePath}
-EXPORTS: {exportCount} ({exports})
-FUNCTIONS: {functionCount}
 HAS_SINGLETON_PATTERN: {hasSingletonPattern}
 </file_info>
 

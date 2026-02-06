@@ -1,15 +1,15 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * CogniSystem MCP Server - Protocolo MCP Real
  * 
- * Implementación completa del Model Context Protocol (MCP) SDK.
- * Este servidor expone las tools de CogniSystem via protocolo estándar MCP.
+ * ImplementaciÃ³n completa del Model Context Protocol (MCP) SDK.
+ * Este servidor expone las tools de CogniSystem via protocolo estÃ¡ndar MCP.
  * 
  * Uso:
  *   node mcp-server-sdk.js /path/to/project
  * 
- * Integración con Kimi/Claude:
+ * IntegraciÃ³n con Kimi/Claude:
  *   - Protocolo: MCP stdio
  *   - Tools: get_impact_map, analyze_change, explain_connection, etc.
  *   - Auto-inicia Orchestrator interno
@@ -57,72 +57,72 @@ class CogniSystemMCPRuntime {
    * Initialize the MCP server
    */
   async initialize() {
-    console.error('\n🚀 CogniSystem MCP Server - Initializing...');
-    console.error(`📂 Project: ${this.projectPath}`);
+    console.error('\nðŸš€ CogniSystem MCP Server - Initializing...');
+    console.error(`ðŸ“‚ Project: ${this.projectPath}`);
 
     // Step 1: Check if project has files
     const fileCount = await this.countProjectFiles();
-    console.error(`📊 Found ${fileCount} JS/TS files in project`);
+    console.error(`ðŸ“Š Found ${fileCount} JS/TS files in project`);
 
     if (fileCount === 0) {
-      console.error('⚠️  WARNING: No JavaScript/TypeScript files found!');
+      console.error('âš ï¸  WARNING: No JavaScript/TypeScript files found!');
       console.error('   The project appears to be empty or not a JS/TS project.');
     }
 
     // Step 2: Auto-start LLM Server
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     console.error('STEP 1: AI Server Setup');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     await this.autoStartLLM();
 
     // Step 3: Initialize Orchestrator
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     console.error('STEP 2: Initialize Orchestrator');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     this.orchestrator = new Orchestrator(this.projectPath, {
       enableFileWatcher: true,
       enableWebSocket: false,
       autoStartLLM: false // Already started above
     });
     await this.orchestrator.initialize();
-    console.error('✅ Orchestrator initialized');
+    console.error('âœ… Orchestrator initialized');
 
     // Step 4: Initialize Cache
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     console.error('STEP 3: Initialize Cache');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     this.cache = new UnifiedCacheManager(this.projectPath);
     await this.cache.initialize();
-    console.error('✅ Cache initialized');
+    console.error('âœ… Cache initialized');
 
     // Step 5: Check for existing analysis
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     console.error('STEP 4: Check Analysis Status');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
     const hasAnalysis = await this.hasExistingAnalysis();
     
     if (hasAnalysis) {
       const metadata = await getProjectMetadata(this.projectPath);
       const totalFiles = metadata?.metadata?.totalFiles || 0;
-      console.error(`✅ Found existing analysis: ${totalFiles} files indexed`);
+      console.error(`âœ… Found existing analysis: ${totalFiles} files indexed`);
       
       // Even with existing analysis, check if all current files are indexed
       const fileCount = await this.countProjectFiles();
       if (fileCount > totalFiles) {
-        console.error(`⚠️  Project has ${fileCount} files but only ${totalFiles} analyzed`);
-        console.error('🔄 Starting incremental indexing...');
+        console.error(`âš ï¸  Project has ${fileCount} files but only ${totalFiles} analyzed`);
+        console.error('ðŸ”„ Starting incremental indexing...');
         this.orchestrator.startBackgroundIndexing();
       }
     } else {
-      console.error('⚠️  No existing analysis found');
-      console.error('🔄 Starting background indexing...');
-      console.error('   ⏳ This may take 1-5 minutes depending on project size');
+      console.error('âš ï¸  No existing analysis found');
+      console.error('ðŸ”„ Starting background indexing...');
+      console.error('   â³ This may take 1-5 minutes depending on project size');
       this.orchestrator.startBackgroundIndexing();
     }
     
     // Log initial status
     const status = this.orchestrator.getStatus();
-    console.error(`\n📊 Initial Status:`);
+    console.error(`\nðŸ“Š Initial Status:`);
     console.error(`   - Queue size: ${status.queueSize}`);
     console.error(`   - Is indexing: ${status.isIndexing}`);
     console.error(`   - Current job: ${status.currentJob ? status.currentJob.filePath : 'none'}`);
@@ -153,7 +153,7 @@ class CogniSystemMCPRuntime {
       process.exit(0);
     });
 
-    console.error('✅ MCP Server initialized and ready\n');
+    console.error('âœ… MCP Server initialized and ready\n');
   }
 
   /**
@@ -319,11 +319,11 @@ class CogniSystemMCPRuntime {
     
     if (!fileData) {
       // Auto-analyze with CRITICAL priority
-      console.error(`  → File not analyzed, queueing as CRITICAL`);
+      console.error(`  â†’ File not analyzed, queueing as CRITICAL`);
       
       try {
         const analysis = await this.orchestrator.analyzeAndWait(filePath, 60000);
-        console.error(`  → Analysis completed`);
+        console.error(`  â†’ Analysis completed`);
         
         // Get fresh data after analysis
         return await this.buildImpactMap(filePath);
@@ -348,7 +348,7 @@ class CogniSystemMCPRuntime {
     let fileData = await getFileAnalysis(this.projectPath, filePath);
     
     if (!fileData) {
-      console.error(`  → Auto-analyzing file`);
+      console.error(`  â†’ Auto-analyzing file`);
       await this.orchestrator.analyzeAndWait(filePath, 60000);
       fileData = await getFileAnalysis(this.projectPath, filePath);
     }
@@ -378,8 +378,8 @@ class CogniSystemMCPRuntime {
       riskLevel: fileData.riskScore?.severity,
       recommendation:
         fileData.riskScore?.severity === 'critical'
-          ? '⚠️ HIGH RISK - This change affects many files'
-          : '✓ Safe - Limited scope'
+          ? 'âš ï¸ HIGH RISK - This change affects many files'
+          : 'âœ“ Safe - Limited scope'
     };
   }
 
@@ -442,8 +442,8 @@ class CogniSystemMCPRuntime {
       topRiskFiles: filtered,
       recommendation:
         assessment.report.summary.criticalCount > 0
-          ? '🚨 Critical issues detected - Review high-risk files'
-          : '✓ Risk levels acceptable'
+          ? 'ðŸš¨ Critical issues detected - Review high-risk files'
+          : 'âœ“ Risk levels acceptable'
     };
   }
 
@@ -487,7 +487,7 @@ class CogniSystemMCPRuntime {
       const files = await scanProject(this.projectPath);
       return files.length;
     } catch (error) {
-      console.error('  ⚠️  Could not count project files:', error.message);
+      console.error('  âš ï¸  Could not count project files:', error.message);
       return 0;
     }
   }
@@ -507,7 +507,7 @@ class CogniSystemMCPRuntime {
       const aiConfig = await loadAIConfig();
 
       if (!aiConfig.llm.enabled) {
-        console.error('   ℹ️  LLM disabled in config');
+        console.error('   â„¹ï¸  LLM disabled in config');
         return false;
       }
 
@@ -515,11 +515,11 @@ class CogniSystemMCPRuntime {
       const lockFile = path.join(process.env.TEMP || '/tmp', 'omny_brain_gpu.lock');
 
       // STEP 1: Check if already running (health check)
-      console.error('   🔍 Checking if LLM server is already running...');
+      console.error('   ðŸ” Checking if LLM server is already running...');
       try {
         const health = await client.healthCheck();
         if (health.gpu || health.cpu) {
-          console.error('   ✓ LLM server already running on port 8000');
+          console.error('   âœ“ LLM server already running on port 8000');
           return true;
         }
       } catch {
@@ -530,15 +530,15 @@ class CogniSystemMCPRuntime {
       try { await fs.unlink(lockFile); } catch {}
 
       // STEP 3: Start LLM server
-      console.error('   🚀 Starting LLM server...');
+      console.error('   ðŸš€ Starting LLM server...');
       const omnySystemRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
       const scriptPath = path.join(omnySystemRoot, 'src/ai/scripts');
-      const gpuScript = path.join(scriptPath, 'start_brain_gpu.bat');
+      const gpuScript = path.join(scriptPath, 'brain_gpu.bat');
       
       try {
         await fs.access(gpuScript);
       } catch {
-        console.error('   ❌ GPU script not found!');
+        console.error('   âŒ GPU script not found!');
         return false;
       }
 
@@ -548,7 +548,7 @@ class CogniSystemMCPRuntime {
       await fs.writeFile(lockFile, `${new Date().toISOString()} - Started by MCP Server`);
       
       // Execute llama-server directly (batch has 'pause' that blocks)
-      // Using same params as start_brain_gpu.bat
+      // Using same params as brain_gpu.bat
       // Use relative paths to avoid emoji issues in absolute paths
       const llamaServer = 'src/ai/server/llama-server.exe';
       const modelPath = 'src/ai/models/LFM2-1.2B-Extract-Q8_0.gguf';
@@ -556,17 +556,17 @@ class CogniSystemMCPRuntime {
       // Debug: Check files exist
       try {
         await fs.access(llamaServer);
-        console.error(`   ✅ llama-server.exe found`);
+        console.error(`   âœ… llama-server.exe found`);
       } catch {
-        console.error(`   ❌ llama-server.exe NOT FOUND at: ${llamaServer}`);
+        console.error(`   âŒ llama-server.exe NOT FOUND at: ${llamaServer}`);
         return false;
       }
       
       try {
         await fs.access(modelPath);
-        console.error(`   ✅ Model found: LFM2-1.2B-Extract-Q8_0.gguf`);
+        console.error(`   âœ… Model found: LFM2-1.2B-Extract-Q8_0.gguf`);
       } catch {
-        console.error(`   ❌ Model NOT FOUND at: ${modelPath}`);
+        console.error(`   âŒ Model NOT FOUND at: ${modelPath}`);
         return false;
       }
       
@@ -584,8 +584,8 @@ class CogniSystemMCPRuntime {
         '--chat-template', 'chatml'
       ];
       
-      console.error('   🚀 Starting llama-server.exe...');
-      console.error(`   📁 CWD: ${omnySystemRoot}`);
+      console.error('   ðŸš€ Starting llama-server.exe...');
+      console.error(`   ðŸ“ CWD: ${omnySystemRoot}`);
       
       // Start LLM in separate terminal window
       // Use start command to open new window
@@ -594,14 +594,14 @@ class CogniSystemMCPRuntime {
       const { exec } = await import('child_process');
       exec(command, { cwd: omnySystemRoot });
       
-      console.error('   ✓ GPU server starting in new terminal...');
-      console.error('   💡 Window: "CogniSystem LLM"');
+      console.error('   âœ“ GPU server starting in new terminal...');
+      console.error('   ðŸ’¡ Window: "CogniSystem LLM"');
       
       child.unref();
-      console.error('   ✓ GPU server starting (port 8000)...');
+      console.error('   âœ“ GPU server starting (port 8000)...');
 
       // STEP 4: Wait for startup with health check
-      console.error('   ⏳ Waiting for server to initialize...');
+      console.error('   â³ Waiting for server to initialize...');
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       let retries = 5;
@@ -609,7 +609,7 @@ class CogniSystemMCPRuntime {
         try {
           const health = await client.healthCheck();
           if (health.gpu || health.cpu) {
-            console.error('   ✅ LLM server started successfully');
+            console.error('   âœ… LLM server started successfully');
             return true;
           }
         } catch {
@@ -618,16 +618,16 @@ class CogniSystemMCPRuntime {
         
         retries--;
         if (retries > 0) {
-          console.error(`   ⏳ Checking... (${5 - retries}/5)`);
+          console.error(`   â³ Checking... (${5 - retries}/5)`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
       
-      console.error('   ❌ LLM server failed to start');
+      console.error('   âŒ LLM server failed to start');
       return false;
       
     } catch (error) {
-      console.error(`   ❌ LLM auto-start failed: ${error.message}`);
+      console.error(`   âŒ LLM auto-start failed: ${error.message}`);
       return false;
     }
   }
@@ -654,7 +654,7 @@ class CogniSystemMCPRuntime {
     let fileData = await getFileAnalysis(this.projectPath, filePath);
     
     if (!fileData) {
-      console.error(`  → Auto-analyzing: ${filePath}`);
+      console.error(`  â†’ Auto-analyzing: ${filePath}`);
       await this.orchestrator.analyzeAndWait(filePath, 60000);
     }
   }
@@ -672,14 +672,14 @@ class CogniSystemMCPRuntime {
     await this.server.connect(this.transport);
     
     // Keep alive
-    console.error('💡 MCP Server running via stdio');
+    console.error('ðŸ’¡ MCP Server running via stdio');
   }
 
   /**
    * Shutdown gracefully
    */
   async shutdown() {
-    console.error('\n👋 Shutting down MCP server...');
+    console.error('\nðŸ‘‹ Shutting down MCP server...');
     
     await this.orchestrator?.stop();
     
@@ -687,7 +687,7 @@ class CogniSystemMCPRuntime {
       await this.transport.close();
     }
     
-    console.error('✅ MCP server stopped');
+    console.error('âœ… MCP server stopped');
   }
 }
 
@@ -710,3 +710,4 @@ async function main() {
 }
 
 main();
+

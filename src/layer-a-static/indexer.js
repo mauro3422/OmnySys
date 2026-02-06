@@ -23,6 +23,34 @@ import { detectAllReduxContextConnections } from './extractors/redux-context-ext
 import { UnifiedCacheManager, ChangeType } from '../core/unified-cache-manager.js';
 import { analyzeWithUnifiedCache, analyzeLLMWithUnifiedCache } from '../core/cache-integration.js';
 
+function dedupeConnections(connections) {
+  const seen = new Set();
+  const result = [];
+
+  for (const conn of connections) {
+    const keyParts = [
+      conn.type,
+      conn.sourceFile,
+      conn.targetFile,
+      conn.property,
+      conn.globalProperty,
+      conn.key,
+      conn.event,
+      conn.eventName,
+      conn.connectionType,
+      conn.via
+    ].map(value => value ?? '');
+    const key = keyParts.join('|');
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(conn);
+    }
+  }
+
+  return result;
+}
+
 /**
  * Indexer - Orquestador principal de Capa A
  *
@@ -172,6 +200,19 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     console.log(`    - ${tsConnections.connections.length} TypeScript connections`);
     console.log(`    - ${reduxConnections.connections.length} Redux/Context connections`);
   }
+
+  // Adjuntar metadata de CSS-in-JS y TypeScript por archivo (para arquetipos)
+  for (const [filePath, fileInfo] of Object.entries(enhancedFiles)) {
+    if (!fileInfo.metadata) {
+      fileInfo.metadata = {};
+    }
+    if (cssInJSConnections.fileResults?.[filePath]) {
+      fileInfo.metadata.cssInJS = cssInJSConnections.fileResults[filePath];
+    }
+    if (tsConnections.fileResults?.[filePath]) {
+      fileInfo.metadata.typescript = tsConnections.fileResults[filePath];
+    }
+  }
   
   if (verbose) {
     console.log(`  ✓ Static extraction found:`);
@@ -180,7 +221,7 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     console.log(`    - ${advancedConnections.connections.length} advanced connections (Workers, WebSocket, etc)`);
   }
 
-  const allConnections = [
+  const allConnections = dedupeConnections([
     ...sharedStateConnections, 
     ...eventConnections,
     ...staticConnections.localStorageConnections,
@@ -190,7 +231,7 @@ async function generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMa
     ...cssInJSConnections.connections,
     ...tsConnections.connections,
     ...reduxConnections.connections
-  ];
+  ]);
 
   if (verbose) {
     console.log(`  ✓ ${sharedStateConnections.length} shared state connections`);

@@ -70,8 +70,6 @@ ONLY analyze the CODE provided below.
   userPrompt: `<|im_start|>user
 <file_info>
 FILE: {filePath}
-EXPORTS: {exportCount}
-DEPENDENTS: {dependentCount}
 HAS_GLOBAL_ACCESS: {hasGlobalAccess}
 </file_info>
 

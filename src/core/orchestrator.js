@@ -351,6 +351,7 @@ export class Orchestrator extends EventEmitter {
       const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer.js');
       const { getFileAnalysis } = await import('../layer-a-static/storage/query-service.js');
       const { detectArchetypes } = await import('../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
+      const { buildPromptMetadata } = await import('../layer-b-semantic/metadata-contract.js');
       
       // Inicializar LLM Analyzer
       const aiConfig = await (await import('../ai/llm-client.js')).loadAIConfig();
@@ -380,42 +381,8 @@ export class Orchestrator extends EventEmitter {
         if (fileAnalysis.llmInsights) {
           continue; // Ya tiene análisis LLM, saltear
         }
-        
-        // Calcular métricas semánticas para detección de arquetipos
-        const semanticAccess = fileAnalysis.semanticAnalysis?.sharedState?.globalAccess || [];
-        const semanticWrites = semanticAccess.filter(item => item.type === 'write');
-        const semanticReads = semanticAccess.filter(item => item.type === 'read');
-        const eventEmitters = fileAnalysis.semanticAnalysis?.eventPatterns?.eventEmitters || [];
-        const eventListeners = fileAnalysis.semanticAnalysis?.eventPatterns?.eventListeners || [];
-        const semanticConnections = fileAnalysis.semanticConnections || [];
-        
-        // Detectar arquetipos basado en metadatos mejorados con información semántica
-        const metadata = {
-          filePath: filePath,
-          exportCount: fileInfo.exports || 0,
-          dependentCount: fileInfo.dependents || 0,
-          // NUEVO: Métricas semánticas críticas
-          semanticDependentCount: semanticConnections.length,
-          definesGlobalState: semanticWrites.length > 0,
-          usesGlobalState: semanticReads.length > 0,
-          hasGlobalAccess: semanticWrites.length > 0 || semanticReads.length > 0,
-          hasLocalStorage: fileAnalysis.semanticConnections?.some(c => c.type === 'localStorage'),
-          hasEventEmitters: eventEmitters.length > 0,
-          hasEventListeners: eventListeners.length > 0,
-          hasDynamicImports: fileAnalysis.semanticAnalysis?.sideEffects?.hasDynamicImport,
-          // NUEVO: Campos adicionales para mejor detección
-          globalStateWrites: semanticWrites.map(w => w.propName || w.property || w.fullReference).filter(Boolean),
-          globalStateReads: semanticReads.map(r => r.propName || r.property || r.fullReference).filter(Boolean),
-          eventNames: [...new Set([
-            ...eventEmitters.map(e => e.event || e.name || e.eventName || String(e)),
-            ...eventListeners.map(l => l.event || l.name || l.eventName || String(l))
-          ])].slice(0, 10),
-          semanticConnections: semanticConnections.map(c => ({
-            target: c.target,
-            type: c.type,
-            key: c.key
-          })).slice(0, 5)
-        };
+        // Detectar arquetipos basado en metadatos estandarizados
+        const metadata = buildPromptMetadata(filePath, fileAnalysis);
         
         const archetypes = detectArchetypes(metadata);
         
@@ -576,9 +543,15 @@ export class Orchestrator extends EventEmitter {
     this.analysisCompleteEmitted = true;
     
     console.log('\n🔍 Detecting semantic issues...');
-    await this._detectSemanticIssues();
+    const issuesReport = await this._detectSemanticIssues();
     
     console.log('\n✅ Analysis complete!');
+
+    this.emit('analysis:complete', {
+      iterations: this.iteration,
+      totalFiles: this.indexedFiles.size,
+      issues: issuesReport
+    });
   }
   
   /**
@@ -588,7 +561,7 @@ export class Orchestrator extends EventEmitter {
   async _startIterativeAnalysis() {
     if (this.iteration >= this.maxIterations) {
       console.log(`\n✅ Iterative analysis complete after ${this.iteration} iterations`);
-      await this._detectSemanticIssues();
+      await this._finalizeAnalysis();
       return;
     }
     
@@ -623,7 +596,7 @@ export class Orchestrator extends EventEmitter {
       
       if (filesNeedingRefinement.length === 0) {
         console.log(`  ✓ No files need refinement - consolidation complete`);
-        await this._detectSemanticIssues();
+        await this._finalizeAnalysis();
         return;
       }
       
@@ -822,3 +795,12 @@ export class Orchestrator extends EventEmitter {
 }
 
 export default Orchestrator;
+
+
+
+
+
+
+
+
+

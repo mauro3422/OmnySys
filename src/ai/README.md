@@ -1,23 +1,23 @@
-# AI Integration - Local LLM for Semantic Analysis
+﻿# AI Integration - Local LLM for Semantic Analysis
 
 This directory contains the AI integration for CogniSystem, enabling deep semantic analysis using local LLMs.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  Static Analysis (Layer A)              │
-│  ├─ AST parsing                         │
-│  ├─ Pattern matching                    │
-│  └─ ~80% of cases ✅                    │
-└─────────────────────────────────────────┘
-                  ⬇️
-┌─────────────────────────────────────────┐
-│  LLM Analysis (Layer B - Optional)      │
-│  ├─ Complex code patterns               │
-│  ├─ Indirect connections                │
-│  └─ ~20% of cases (when needed) 🤖      │
-└─────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Static Analysis (Layer A)              â”‚
+â”‚  â”œâ”€ AST parsing                         â”‚
+â”‚  â”œâ”€ Pattern matching                    â”‚
+â”‚  â””â”€ ~80% of cases âœ…                    â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                  â¬‡ï¸
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  LLM Analysis (Layer B - Optional)      â”‚
+â”‚  â”œâ”€ Complex code patterns               â”‚
+â”‚  â”œâ”€ Indirect connections                â”‚
+â”‚  â””â”€ ~20% of cases (when needed) ðŸ¤–      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ## Components
@@ -43,7 +43,7 @@ HTTP client for communicating with llama-server instances.
 ### 3. [scripts/](scripts/)
 Batch scripts to start AI servers.
 
-- `start_brain_gpu.bat` - GPU-accelerated server (port 8000)
+- `brain_gpu.bat` - GPU-accelerated server (port 8000)
 - `start_brain_cpu.bat` - CPU-only server (port 8002)
 
 ### 4. [server/](server/) (Transfer from Giteach)
@@ -90,7 +90,7 @@ Edit [ai-config.json](ai-config.json):
 ```json
 {
   "llm": {
-    "enabled": true,  // ← Change to true
+    "enabled": true,  // â† Change to true
     "mode": "gpu"     // Or "cpu" if no GPU
   }
 }
@@ -114,12 +114,12 @@ OmnySys ai status
 
 Expected output:
 ```
-📊 AI Server Status
+ðŸ“Š AI Server Status
 
 GPU Server (port 8000):
-  ✅ RUNNING
+  âœ… RUNNING
 
-💡 Configuration:
+ðŸ’¡ Configuration:
   LLM enabled: Yes
   Mode: gpu
 ```
@@ -136,9 +136,9 @@ OmnySys analyze /path/to/project
 
 Output will include:
 ```
-🤖 LLM enrichment phase...
-📊 Analyzing 12 complex files with LLM...
-✓ Enhanced 10/12 files with LLM insights
+ðŸ¤– LLM enrichment phase...
+ðŸ“Š Analyzing 12 complex files with LLM...
+âœ“ Enhanced 10/12 files with LLM insights
 ```
 
 ### Manual (CLI Commands)
@@ -178,13 +178,13 @@ LLM analysis triggers automatically when:
 - Increase `maxConcurrentAnalyses` to 8-12
 
 **Low RAM systems**:
-- Edit `start_brain_gpu.bat`: reduce `--ctx-size` to 32768
+- Edit `brain_gpu.bat`: reduce `--ctx-size` to 32768
 - Reduce `--parallel` to 2
 - Use CPU server instead
 
 ### Prompt Customization
 
-Edit `ai-config.json` → `prompts.analysisTemplate` to customize what the LLM analyzes.
+Edit `ai-config.json` â†’ `prompts.analysisTemplate` to customize what the LLM analyzes.
 
 Default prompt focuses on:
 - Shared state detection
@@ -236,7 +236,7 @@ taskkill /F /PID <pid>
 **Cause**: Model too large for available RAM/VRAM
 
 **Fix**:
-- Reduce context size in `start_brain_gpu.bat`:
+- Reduce context size in `brain_gpu.bat`:
   ```batch
   --ctx-size 32768  (instead of 49152)
   ```
@@ -287,9 +287,9 @@ Tested on:
 
 ### Continuous Batching (`-cb`)
 
-Without `-cb`: Process one request → generate all tokens → next request
+Without `-cb`: Process one request â†’ generate all tokens â†’ next request
 
-With `-cb`: Interleave tokens from multiple requests → 3-4x throughput
+With `-cb`: Interleave tokens from multiple requests â†’ 3-4x throughput
 
 Perfect for analyzing 10+ files simultaneously.
 
@@ -305,3 +305,4 @@ Perfect for analyzing 10+ files simultaneously.
 - [AI_SETUP_GUIDE.md](../../docs/ai_architecture/AI_SETUP_GUIDE.md) - Detailed Vulkan architecture
 - [layer-b-semantic/README.md](../layer-b-semantic/README.md) - Semantic analysis overview
 - [Logs README](../../logs/README.md) - Logging and troubleshooting
+

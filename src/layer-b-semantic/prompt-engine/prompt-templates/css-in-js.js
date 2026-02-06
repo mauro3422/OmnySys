@@ -124,8 +124,6 @@ ${example2Assistant}
   userPrompt: `<|im_start|>user
 <file_info>
 FILE: {filePath}
-EXPORTS: {exportCount} ({exports})
-DEPENDENTS: {dependentCount}
 </file_info>
 
 <code>

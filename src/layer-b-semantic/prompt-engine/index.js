@@ -72,20 +72,55 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
     if (!template.userPrompt) {
       throw new Error(`Template for ${analysisType} is missing userPrompt. Template keys: ${Object.keys(template).join(', ')}`);
     }
+
+    const fileContentPlaceholder = '__OMNY_FILE_CONTENT__';
+
+    // Helpers to avoid empty metadata lines (token savings)
+    const listToString = (value) => {
+      if (!Array.isArray(value) || value.length === 0) return '';
+      return value.join(', ');
+    };
+    const formatSemanticConnections = (value) => {
+      if (!Array.isArray(value) || value.length === 0) return '';
+      return JSON.stringify(value).slice(0, 200);
+    };
+    const compactMetadataBlock = (text) => {
+      const lines = text.split(/\r?\n/);
+      const compacted = [];
+
+      for (let line of lines) {
+        // Remove empty trailing parentheses, e.g. "EXPORTS: 0 ()"
+        line = line.replace(/\s*\(\s*\)\s*$/, '');
+
+        // Remove lines with empty values: "KEY: " or "KEY: []" or "KEY: {}"
+        const match = line.match(/^\s*[^:]+:\s*(.*)\s*$/);
+        if (match) {
+          const value = (match[1] || '').trim();
+          if (value === '' || value === '[]' || value === '{}' || value === 'false') {
+            continue;
+          }
+        }
+
+        compacted.push(line);
+      }
+
+      return compacted.join('\n');
+    };
     
     // Reemplazar todas las variables del template con los metadatos
     let userPrompt = template.userPrompt;
+    const placeholders = new Set(template.userPrompt.match(/\{[a-zA-Z0-9_]+\}/g) || []);
     
     // Variables básicas siempre disponibles
     const replacements = {
       '{filePath}': metadata.filePath || 'unknown',
-      '{fileContent}': fileContent,
+      '{fileContent}': fileContentPlaceholder,
       '{exportCount}': metadata.exportCount || 0,
       '{dependentCount}': metadata.dependentCount || 0,
       '{importCount}': metadata.importCount || 0,
       '{functionCount}': metadata.functionCount || 0,
-      '{exports}': (metadata.exports || []).join(', '),
-      '{dependents}': (metadata.dependents || []).join(', '),
+      '{exports}': listToString(metadata.exports),
+      '{dependents}': listToString(metadata.dependents),
       '{hasDynamicImports}': metadata.hasDynamicImports || false,
       '{hasTypeScript}': metadata.hasTypeScript || false,
       '{hasCSSInJS}': metadata.hasCSSInJS || false,
@@ -94,24 +129,45 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
       '{hasGlobalAccess}': metadata.hasGlobalAccess || false,
       '{hasAsyncPatterns}': metadata.hasAsyncPatterns || false,
       '{hasJSDoc}': metadata.hasJSDoc || false,
-      '{localStorageKeys}': (metadata.localStorageKeys || []).join(', '),
-      '{eventNames}': (metadata.eventNames || []).join(', '),
-      '{envVars}': (metadata.envVars || []).join(', '),
+      '{hasSingletonPattern}': metadata.hasSingletonPattern || false,
+      '{localStorageKeys}': listToString(metadata.localStorageKeys),
+      '{eventNames}': listToString(metadata.eventNames),
+      '{envVars}': listToString(metadata.envVars),
       // NUEVO: Variables semánticas críticas
       '{semanticDependentCount}': metadata.semanticDependentCount || 0,
       '{definesGlobalState}': metadata.definesGlobalState || false,
       '{usesGlobalState}': metadata.usesGlobalState || false,
-      '{globalStateWrites}': (metadata.globalStateWrites || []).join(', '),
-      '{globalStateReads}': (metadata.globalStateReads || []).join(', '),
+      '{globalStateWrites}': listToString(metadata.globalStateWrites),
+      '{globalStateReads}': listToString(metadata.globalStateReads),
       '{hasEventEmitters}': metadata.hasEventEmitters || false,
-      '{semanticConnections}': JSON.stringify(metadata.semanticConnections || []).slice(0, 200)
+      '{semanticConnections}': formatSemanticConnections(metadata.semanticConnections)
     };
-    
-    // Reemplazar todas las variables
-    for (const [key, value] of Object.entries(replacements)) {
-      userPrompt = userPrompt.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+
+    const filteredReplacements = {};
+    for (const placeholder of placeholders) {
+      filteredReplacements[placeholder] = Object.prototype.hasOwnProperty.call(replacements, placeholder)
+        ? replacements[placeholder]
+        : '';
     }
     
+    // Reemplazar todas las variables
+    for (const [key, value] of Object.entries(filteredReplacements)) {
+      userPrompt = userPrompt.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+    }
+
+    // Compact only the metadata section (before the code)
+    if (userPrompt.includes(fileContentPlaceholder)) {
+      const parts = userPrompt.split(fileContentPlaceholder);
+      const before = parts.shift() || '';
+      const after = parts.join(fileContentPlaceholder);
+      userPrompt = `${compactMetadataBlock(before)}${fileContentPlaceholder}${after}`;
+    } else {
+      userPrompt = compactMetadataBlock(userPrompt);
+    }
+
+    // Reinsert real file content
+    userPrompt = userPrompt.replace(fileContentPlaceholder, fileContent || '');
+
     return userPrompt;
   }
 
@@ -127,17 +183,30 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
       'default': 'default.json'
     };
 
-    const schemaFile = schemas[analysisType] || schemas.default;
-    
-    try {
-      // Construir ruta absoluta usando import.meta.url
-      const schemaUrl = new URL(`./json-schemas/${schemaFile}`, import.meta.url);
-      const schemaModule = await import(schemaUrl, { assert: { type: 'json' } });
-      return schemaModule.default || schemaModule;
-    } catch (error) {
-      // Silenciar warning - los schemas son opcionales
-      return {};
+    const candidates = [];
+    const safeType = typeof analysisType === 'string' && /^[a-z0-9-]+$/i.test(analysisType)
+      ? analysisType
+      : null;
+
+    if (safeType) {
+      candidates.push(`${safeType}.json`);
     }
+    if (schemas[analysisType]) {
+      candidates.push(schemas[analysisType]);
+    }
+    candidates.push(schemas.default);
+
+    for (const schemaFile of candidates) {
+      try {
+        const schemaUrl = new URL(`./json-schemas/${schemaFile}`, import.meta.url);
+        const schemaModule = await import(schemaUrl, { assert: { type: 'json' } });
+        return schemaModule.default || schemaModule;
+      } catch {
+        // Try next candidate
+      }
+    }
+
+    return {};
   }
 
   /**

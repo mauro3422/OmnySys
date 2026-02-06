@@ -99,19 +99,20 @@ function buildGlobalState(enrichedResults) {
 
   for (const [filePath, analysis] of Object.entries(enrichedResults.files || {})) {
     const semantic = analysis.semanticAnalysis || {};
+    const sharedState = semantic.sharedState || {};
+    const readProps = sharedState.reads || sharedState.readProperties || [];
+    const writeProps = sharedState.writes || sharedState.writeProperties || [];
 
     // Indexar shared state
-    if (semantic.sharedState) {
-      (semantic.sharedState.reads || []).forEach(prop => {
-        state.sharedState.reads[prop] = state.sharedState.reads[prop] || [];
-        state.sharedState.reads[prop].push(filePath);
-      });
+    readProps.forEach(prop => {
+      state.sharedState.reads[prop] = state.sharedState.reads[prop] || [];
+      state.sharedState.reads[prop].push(filePath);
+    });
 
-      (semantic.sharedState.writes || []).forEach(prop => {
-        state.sharedState.writes[prop] = state.sharedState.writes[prop] || [];
-        state.sharedState.writes[prop].push(filePath);
-      });
-    }
+    writeProps.forEach(prop => {
+      state.sharedState.writes[prop] = state.sharedState.writes[prop] || [];
+      state.sharedState.writes[prop].push(filePath);
+    });
 
     // Indexar eventos
     if (semantic.eventPatterns) {
@@ -149,20 +150,28 @@ function detectOrphanedFiles(enrichedResults) {
 
     const semantic = analysis.semanticAnalysis || {};
     const sideEffects = semantic.sideEffects || {};
+    const hasSemanticConnections =
+      (analysis.semanticConnections || []).length > 0 ||
+      (semantic.sharedState?.reads?.length || 0) > 0 ||
+      (semantic.sharedState?.writes?.length || 0) > 0 ||
+      (semantic.sharedState?.readProperties?.length || 0) > 0 ||
+      (semantic.sharedState?.writeProperties?.length || 0) > 0 ||
+      (semantic.eventPatterns?.eventEmitters?.length || 0) > 0 ||
+      (semantic.eventPatterns?.eventListeners?.length || 0) > 0;
 
     // Casos sospechosos
-    if (sideEffects.hasGlobalAccess) {
+    if (sideEffects.hasGlobalAccess && !hasSemanticConnections) {
       issues.push({
         type: 'orphan-with-global-access',
         file: filePath,
         severity: 'high',
-        reason: 'File has no imports/exports but modifies global state',
+        reason: 'File has no imports and no dependents but accesses global state',
         evidence: {
-          sharedStateWrites: semantic.sharedState?.writes || [],
-          sharedStateReads: semantic.sharedState?.reads || []
+          sharedStateWrites: semantic.sharedState?.writes || semantic.sharedState?.writeProperties || [],
+          sharedStateReads: semantic.sharedState?.reads || semantic.sharedState?.readProperties || []
         }
       });
-    } else if (sideEffects.usesLocalStorage) {
+    } else if (sideEffects.usesLocalStorage && !hasSemanticConnections) {
       issues.push({
         type: 'orphan-with-localstorage',
         file: filePath,
@@ -177,7 +186,7 @@ function detectOrphanedFiles(enrichedResults) {
         (semantic.eventPatterns.eventEmitters || []).length > 0 ||
         (semantic.eventPatterns.eventListeners || []).length > 0;
 
-      if (hasEvents) {
+      if (hasEvents && !hasSemanticConnections) {
         issues.push({
           type: 'orphan-with-events',
           file: filePath,
@@ -352,16 +361,31 @@ function detectSuspiciousPatterns(enrichedResults) {
       });
     }
 
-    // Patrón 3: Muchos side effects diferentes (God Object?)
+    // Patrón 3: Muchos side effects diferentes pero con pocas conexiones reales
     const sideEffectCount = Object.values(semantic.sideEffects || {}).filter(Boolean).length;
-    if (sideEffectCount >= 4) {
+    const connectionCount =
+      (analysis.imports || []).length +
+      (analysis.usedBy || []).length +
+      (analysis.semanticConnections || []).length +
+      (semantic.sharedState?.reads?.length || 0) +
+      (semantic.sharedState?.writes?.length || 0) +
+      (semantic.sharedState?.readProperties?.length || 0) +
+      (semantic.sharedState?.writeProperties?.length || 0) +
+      (semantic.eventPatterns?.eventEmitters?.length || 0) +
+      (semantic.eventPatterns?.eventListeners?.length || 0);
+    const weaklyConnected = connectionCount <= 1;
+
+    if (sideEffectCount >= 4 && weaklyConnected) {
       issues.push({
         type: 'many-side-effects',
         file: filePath,
         severity: 'medium',
         sideEffectCount,
-        reason: 'File has many different side effects (possible God Object)',
-        evidence: semantic.sideEffects,
+        reason: 'File has many side effects but very few connections (suspiciously isolated)',
+        evidence: {
+          ...semantic.sideEffects,
+          connectionCount
+        },
         suggestion: 'Consider splitting responsibilities'
       });
     }
@@ -492,3 +516,4 @@ export function generateIssuesReport(issuesReport) {
 
   return lines.join('\n');
 }
+

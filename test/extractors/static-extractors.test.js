@@ -10,7 +10,7 @@ import {
   detectLocalStorageConnections,
   detectEventConnections,
   detectAllSemanticConnections
-} from '../../src/layer-b-semantic/static-extractors.js';
+} from '../../src/layer-a-static/extractors/static-extractors.js';
 
 describe('Static Extractors', () => {
   

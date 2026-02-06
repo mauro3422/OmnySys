@@ -1,25 +1,25 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * CogniSystem MCP Server
  * 
- * ENTRY POINT ÚNICO del sistema.
+ * ENTRY POINT ÃšNICO del sistema.
  * 
  * Responsabilidades:
  * 1. Inicializar Orchestrator (cola, worker, file watcher)
- * 2. Iniciar indexación en background (si es necesario)
+ * 2. Iniciar indexaciÃ³n en background (si es necesario)
  * 3. Exponer tools para Claude/IA
- * 4. Si un archivo no está analizado, encolarlo como CRITICAL
+ * 4. Si un archivo no estÃ¡ analizado, encolarlo como CRITICAL
  * 
  * Flujo:
  *   node mcp-server.js /ruta/proyecto
- *   → Inicia Orchestrator
- *   → Inicia indexación background (si no hay datos)
- *   → Server listo para recibir queries
+ *   â†’ Inicia Orchestrator
+ *   â†’ Inicia indexaciÃ³n background (si no hay datos)
+ *   â†’ Server listo para recibir queries
  * 
  * Uso por IA:
  *   const impact = await get_impact_map("CameraState.js");
- *   // Si no está analizado, se encola automáticamente y espera
+ *   // Si no estÃ¡ analizado, se encola automÃ¡ticamente y espera
  */
 
 import fs from 'fs/promises';
@@ -43,7 +43,7 @@ import { loadAIConfig, LLMClient } from '../ai/llm-client.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================================
-// CogniSystem MCP Server - Entry Point Único
+// CogniSystem MCP Server - Entry Point Ãšnico
 // ============================================================
 
 class CogniSystemMCPServer {
@@ -55,7 +55,7 @@ class CogniSystemMCPServer {
     this.initialized = false;
     this.statsInterval = null;
 
-    // 🔥 NUEVO: Orchestrator como componente interno
+    // ðŸ”¥ NUEVO: Orchestrator como componente interno
     this.orchestrator = new Orchestrator(projectPath, {
       enableFileWatcher: true,
       enableWebSocket: true,
@@ -67,43 +67,43 @@ class CogniSystemMCPServer {
    * Inicializa el sistema completo
    */
   async initialize() {
-    console.log('\n╔═══════════════════════════════════════════════════════════╗');
-    console.log('║     CogniSystem MCP Server v3.0.0                         ║');
-    console.log('║     Entry Point Único - IA-Native Architecture            ║');
-    console.log('╚═══════════════════════════════════════════════════════════╝\n');
-    console.log(`📂 Project: ${this.projectPath}\n`);
+    console.log('\nâ•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
+    console.log('â•‘     CogniSystem MCP Server v3.0.0                         â•‘');
+    console.log('â•‘     Entry Point Ãšnico - IA-Native Architecture            â•‘');
+    console.log('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
+    console.log(`ðŸ“‚ Project: ${this.projectPath}\n`);
 
     try {
       // ==========================================
       // STEP 0: Inicializar Orchestrator
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('STEP 0: Initialize Orchestrator');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       
       await this.orchestrator.initialize();
-      console.log('  ✓ Orchestrator ready (Queue + Worker + FileWatcher)\n');
+      console.log('  âœ“ Orchestrator ready (Queue + Worker + FileWatcher)\n');
 
       // ==========================================
       // STEP 1: Setup LLM Server
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('STEP 1: AI Server Setup');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       await this.autoStartLLM();
 
       // ==========================================
       // STEP 2: Crear estructura de datos
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('STEP 2: Initialize Data Structure');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
 
       let omnysysExists = false;
       try {
         await fs.access(this.omnysysPath);
         omnysysExists = true;
-        console.log('  ✓ omnysysdata/ already exists\n');
+        console.log('  âœ“ omnysysdata/ already exists\n');
       } catch {
         console.log('  Creating omnysysdata/...');
         await createOmnySysDataStructure(this.projectPath);
@@ -112,26 +112,26 @@ class CogniSystemMCPServer {
       // ==========================================
       // STEP 3: Cargar datos existentes
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('STEP 3: Load Existing Data');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
 
       const hasAnalysis = await this._hasExistingAnalysis();
       
       if (hasAnalysis) {
         const populateResult = await populateOmnySysData(this.projectPath);
-        console.log(`  ✓ Files analyzed: ${populateResult.filesAnalyzed}`);
-        console.log(`  ✓ Connections found: ${populateResult.connectionsFound}\n`);
+        console.log(`  âœ“ Files analyzed: ${populateResult.filesAnalyzed}`);
+        console.log(`  âœ“ Connections found: ${populateResult.connectionsFound}\n`);
       } else {
-        console.log('  ⚠️  No analysis data found\n');
+        console.log('  âš ï¸  No analysis data found\n');
       }
 
       // ==========================================
-      // STEP 4: Cachear datos críticos
+      // STEP 4: Cachear datos crÃ­ticos
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
       console.log('STEP 4: Load into Cache');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
 
       const startCache = performance.now();
 
@@ -143,29 +143,29 @@ class CogniSystemMCPServer {
 
       this.metadata = await getProjectMetadata(this.projectPath);
       this.cache.ramCacheSet('metadata', this.metadata);
-      console.log('  ✓ Metadata cached');
+      console.log('  âœ“ Metadata cached');
 
       const connections = await getAllConnections(this.projectPath);
       this.cache.ramCacheSet('connections', connections);
-      console.log('  ✓ Connections cached');
+      console.log('  âœ“ Connections cached');
 
       const assessment = await getRiskAssessment(this.projectPath);
       this.cache.ramCacheSet('assessment', assessment);
-      console.log('  ✓ Risk assessment cached');
+      console.log('  âœ“ Risk assessment cached');
 
       const cacheTime = (performance.now() - startCache).toFixed(2);
       console.log(`\n  Cache load time: ${cacheTime}ms`);
       console.log(`  Cache memory: ${this.cache.getCacheStats().memoryUsage}\n`);
 
       // ==========================================
-      // STEP 5: Iniciar indexación si es necesario
+      // STEP 5: Iniciar indexaciÃ³n si es necesario
       // ==========================================
       if (!hasAnalysis) {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
         console.log('STEP 5: Start Background Indexing');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('  🔄 Starting Layer A analysis in background...');
-        console.log('  ⏳ This will run while server is operational\n');
+        console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+        console.log('  ðŸ”„ Starting Layer A analysis in background...');
+        console.log('  â³ This will run while server is operational\n');
         
         this.orchestrator.startBackgroundIndexing();
       }
@@ -173,18 +173,18 @@ class CogniSystemMCPServer {
       // ==========================================
       // STEP 6: Server Ready
       // ==========================================
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('✅ MCP Server Ready!');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('\n🔧 Available tools:');
-      console.log('   • get_impact_map(filePath)');
-      console.log('   • analyze_change(filePath, symbolName)');
-      console.log('   • explain_connection(fileA, fileB)');
-      console.log('   • get_risk_assessment(minSeverity)');
-      console.log('   • search_files(pattern)');
-      console.log('   • get_server_status()');
-      console.log('\n📡 Claude can now use these tools!');
-      console.log('💡 If a file is not analyzed, it will be auto-queued as CRITICAL\n');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+      console.log('âœ… MCP Server Ready!');
+      console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+      console.log('\nðŸ”§ Available tools:');
+      console.log('   â€¢ get_impact_map(filePath)');
+      console.log('   â€¢ analyze_change(filePath, symbolName)');
+      console.log('   â€¢ explain_connection(fileA, fileB)');
+      console.log('   â€¢ get_risk_assessment(minSeverity)');
+      console.log('   â€¢ search_files(pattern)');
+      console.log('   â€¢ get_server_status()');
+      console.log('\nðŸ“¡ Claude can now use these tools!');
+      console.log('ðŸ’¡ If a file is not analyzed, it will be auto-queued as CRITICAL\n');
 
       this.initialized = true;
       
@@ -193,7 +193,7 @@ class CogniSystemMCPServer {
       
       return true;
     } catch (error) {
-      console.error('\n❌ Initialization failed:');
+      console.error('\nâŒ Initialization failed:');
       console.error(error.message);
       console.error(error.stack);
       process.exit(1);
@@ -201,28 +201,28 @@ class CogniSystemMCPServer {
   }
 
   /**
-   * Tool: get_impact_map - Qué archivos se ven afectados
-   * 🔥 Si el archivo no está analizado, lo encola como CRITICAL y espera
+   * Tool: get_impact_map - QuÃ© archivos se ven afectados
+   * ðŸ”¥ Si el archivo no estÃ¡ analizado, lo encola como CRITICAL y espera
    */
   async getImpactMap(filePath) {
     const cached = this.cache.ramCacheGet(`impact:${filePath}`);
     if (cached) return cached;
 
     try {
-      // Verificar si el archivo está analizado
+      // Verificar si el archivo estÃ¡ analizado
       const fileData = await getFileAnalysis(this.projectPath, filePath);
       
       if (!fileData) {
-        // 🔥 NUEVO: Archivo no analizado → Encolar como CRITICAL
-        console.log(`\n🚨 File not analyzed: ${filePath}`);
-        console.log(`⏳ Queueing as CRITICAL priority...`);
+        // ðŸ”¥ NUEVO: Archivo no analizado â†’ Encolar como CRITICAL
+        console.log(`\nðŸš¨ File not analyzed: ${filePath}`);
+        console.log(`â³ Queueing as CRITICAL priority...`);
         
         // Usar orchestrator para analizar y esperar
         const result = await this.orchestrator.analyzeAndWait(filePath, 60000);
         
-        console.log(`✅ Analysis completed for: ${filePath}\n`);
+        console.log(`âœ… Analysis completed for: ${filePath}\n`);
         
-        // Ahora sí obtener los datos
+        // Ahora sÃ­ obtener los datos
         return await this._buildImpactMap(filePath);
       }
 
@@ -233,11 +233,11 @@ class CogniSystemMCPServer {
   }
 
   /**
-   * Tool: analyze_change - Impacto de cambiar un símbolo específico
+   * Tool: analyze_change - Impacto de cambiar un sÃ­mbolo especÃ­fico
    */
   async analyzeChange(filePath, symbolName) {
     try {
-      // Asegurar que el archivo esté analizado
+      // Asegurar que el archivo estÃ© analizado
       const fileData = await this._ensureAnalyzed(filePath);
       
       if (!fileData) {
@@ -261,8 +261,8 @@ class CogniSystemMCPServer {
         riskLevel: fileData.riskScore?.severity,
         recommendation:
           fileData.riskScore?.severity === 'critical'
-            ? '⚠️ HIGH RISK - This change affects many files'
-            : '✓ Safe - Limited scope'
+            ? 'âš ï¸ HIGH RISK - This change affects many files'
+            : 'âœ“ Safe - Limited scope'
       };
     } catch (error) {
       return { error: error.message };
@@ -270,11 +270,11 @@ class CogniSystemMCPServer {
   }
 
   /**
-   * Tool: explain_connection - Por qué dos archivos están conectados
+   * Tool: explain_connection - Por quÃ© dos archivos estÃ¡n conectados
    */
   async explainConnection(fileA, fileB) {
     try {
-      // Asegurar que ambos archivos estén analizados
+      // Asegurar que ambos archivos estÃ©n analizados
       await this._ensureAnalyzed(fileA);
       await this._ensureAnalyzed(fileB);
 
@@ -315,7 +315,7 @@ class CogniSystemMCPServer {
   }
 
   /**
-   * Tool: get_risk_assessment - Evaluación de riesgos
+   * Tool: get_risk_assessment - EvaluaciÃ³n de riesgos
    */
   async getRiskAssessment(minSeverity = 'medium') {
     try {
@@ -335,8 +335,8 @@ class CogniSystemMCPServer {
         topRiskFiles: filtered,
         recommendation:
           assessment.report.summary.criticalCount > 0
-            ? '🚨 Critical issues detected - Review high-risk files'
-            : '✓ Risk levels acceptable'
+            ? 'ðŸš¨ Critical issues detected - Review high-risk files'
+            : 'âœ“ Risk levels acceptable'
       };
     } catch (error) {
       return { error: error.message };
@@ -377,7 +377,7 @@ class CogniSystemMCPServer {
   }
 
   /**
-   * Obtiene estadísticas del servidor
+   * Obtiene estadÃ­sticas del servidor
    */
   getStats() {
     return {
@@ -397,7 +397,7 @@ class CogniSystemMCPServer {
    * Detiene el servidor y limpia recursos
    */
   async stop() {
-    console.log('\n👋 Stopping MCP server...');
+    console.log('\nðŸ‘‹ Stopping MCP server...');
     
     if (this.statsInterval) {
       clearInterval(this.statsInterval);
@@ -407,7 +407,7 @@ class CogniSystemMCPServer {
     await this.orchestrator.stop();
     
     this.initialized = false;
-    console.log('✅ MCP server stopped');
+    console.log('âœ… MCP server stopped');
   }
 
   // ==========================================
@@ -439,7 +439,7 @@ class CogniSystemMCPServer {
     let fileData = await getFileAnalysis(this.projectPath, filePath);
     
     if (!fileData) {
-      console.log(`⏳ Auto-analyzing: ${filePath}`);
+      console.log(`â³ Auto-analyzing: ${filePath}`);
       await this.orchestrator.analyzeAndWait(filePath, 60000);
       fileData = await getFileAnalysis(this.projectPath, filePath);
     }
@@ -462,7 +462,7 @@ class CogniSystemMCPServer {
       const aiConfig = await loadAIConfig();
 
       if (!aiConfig.llm.enabled) {
-        console.log('   ℹ️  LLM disabled in config\n');
+        console.log('   â„¹ï¸  LLM disabled in config\n');
         return false;
       }
 
@@ -470,26 +470,26 @@ class CogniSystemMCPServer {
       const health = await client.healthCheck();
 
       if (health.gpu || health.cpu) {
-        console.log('   ✓ LLM server already running\n');
+        console.log('   âœ“ LLM server already running\n');
         return true;
       }
 
-      console.log('   🚀 Starting LLM server...');
+      console.log('   ðŸš€ Starting LLM server...');
 
       const scriptPath = path.resolve(this.projectPath, 'src/ai/scripts');
       const mode = aiConfig.llm.mode || 'gpu';
 
       if (mode === 'gpu' || mode === 'both') {
-        const gpuScript = path.join(scriptPath, 'start_brain_gpu.bat');
+        const gpuScript = path.join(scriptPath, 'brain_gpu.bat');
         try {
           await fs.access(gpuScript);
           spawn('cmd.exe', ['/c', 'start', '/min', gpuScript], {
             detached: true,
             stdio: 'ignore'
           }).unref();
-          console.log('   ✓ GPU server starting (port 8000)...');
+          console.log('   âœ“ GPU server starting (port 8000)...');
         } catch {
-          console.log('   ⚠️  GPU script not found');
+          console.log('   âš ï¸  GPU script not found');
         }
       }
 
@@ -501,9 +501,9 @@ class CogniSystemMCPServer {
             detached: true,
             stdio: 'ignore'
           }).unref();
-          console.log('   ✓ CPU server starting (port 8002)...');
+          console.log('   âœ“ CPU server starting (port 8002)...');
         } catch {
-          console.log('   ⚠️  CPU script not found');
+          console.log('   âš ï¸  CPU script not found');
         }
       }
 
@@ -511,14 +511,14 @@ class CogniSystemMCPServer {
 
       const healthAfter = await client.healthCheck();
       if (healthAfter.gpu || healthAfter.cpu) {
-        console.log('   ✓ LLM server started successfully\n');
+        console.log('   âœ“ LLM server started successfully\n');
         return true;
       } else {
-        console.log('   ⚠️  LLM server failed to start\n');
+        console.log('   âš ï¸  LLM server failed to start\n');
         return false;
       }
     } catch (error) {
-      console.log(`   ⚠️  LLM auto-start failed: ${error.message}\n`);
+      console.log(`   âš ï¸  LLM auto-start failed: ${error.message}\n`);
       return false;
     }
   }
@@ -553,7 +553,7 @@ async function main() {
       process.exit(0);
     });
 
-    console.log('💡 Server running. Press Ctrl+C to stop.\n');
+    console.log('ðŸ’¡ Server running. Press Ctrl+C to stop.\n');
 
     // Keep alive
     await new Promise(() => {});
@@ -568,3 +568,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 
 export { CogniSystemMCPServer };
+

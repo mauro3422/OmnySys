@@ -34,6 +34,7 @@ This repository uses a modular changelog structure for better organization and m
 - ✅ **Semantic Metadata** - LLM now receives global state, events, connections
 - ✅ **Archetype Detection** - Improved detection using semantic info
 - ✅ **Tracking System** - Progress tracking for all analyzed files
+- ✅ **Prompt Hygiene** - Archetype prompts receive only needed metadata
 
 **New**: `PROBLEMATICAS.md` - Known issues and roadmap
 

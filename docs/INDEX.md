@@ -22,6 +22,7 @@ Entrada principal a la documentacion. La vision y los contratos se definen aqui.
 ## Operacion
 - [AUTO_SERVE_IMPLEMENTATION.md](AUTO_SERVE_IMPLEMENTATION.md) (canonico)
 - [FILE_WATCHER_ANALYSIS.md](FILE_WATCHER_ANALYSIS.md) (canonico)
+- [REFACTOR_PLAN.md](REFACTOR_PLAN.md) (plan)
 
 ## Referencias
 - [storage-visualization.md](storage-visualization.md)

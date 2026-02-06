@@ -47,7 +47,6 @@ ONLY analyze the CODE provided below.
 FILE: {filePath}
 EXPORTS: {exportCount} ({exports})
 DEPENDENTS: {dependentCount}
-HAS_JSDOC: {hasJSDoc}
 </file_info>
 
 <code>

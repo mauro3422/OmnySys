@@ -9,7 +9,7 @@ import {
   extractWebSocket,
   extractNetworkCalls,
   detectAllAdvancedConnections
-} from '../../src/layer-b-semantic/advanced-extractors.js';
+} from '../../src/layer-a-static/extractors/advanced-extractors.js';
 
 describe('Advanced Extractors', () => {
   

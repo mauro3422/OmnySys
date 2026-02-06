@@ -95,8 +95,6 @@ This helps understand the architecture beyond simple imports/exports.
 
 <file_metadata>
 File: {filePath}
-Exports: {exportCount} functions/objects
-Dependents: {dependentCount} files import this
 </file_metadata>
 
 <code_to_analyze>

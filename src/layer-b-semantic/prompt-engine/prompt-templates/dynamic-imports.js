@@ -56,8 +56,6 @@ ONLY analyze the CODE provided below.
   userPrompt: `<|im_start|>user
 <file_info>
 FILE: {filePath}
-EXPORTS: {exportCount} ({exports})
-DEPENDENTS: {dependentCount}
 HAS_DYNAMIC_IMPORTS: {hasDynamicImports}
 </file_info>
 

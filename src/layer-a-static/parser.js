@@ -102,6 +102,20 @@ export function parseFile(filePath, code) {
       // Extraer requires (CommonJS)
       CallExpression(nodePath) {
         const node = nodePath.node;
+
+        // Detectar import() dinámico
+        if (node.callee?.type === 'Import' && node.arguments?.length > 0) {
+          const arg = node.arguments[0];
+          let source = '<dynamic>';
+          if (arg.type === 'StringLiteral' || arg.type === 'Literal') {
+            source = arg.value;
+          }
+          fileInfo.imports.push({
+            source,
+            type: 'dynamic'
+          });
+        }
+
         if (
           node.callee.type === 'Identifier' &&
           node.callee.name === 'require' &&

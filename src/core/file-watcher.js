@@ -34,9 +34,9 @@ import { parseFileFromDisk } from '../layer-a-static/parser.js';
 import { resolveImport, getResolutionConfig } from '../layer-a-static/resolver.js';
 import { saveFileAnalysis, getDataDirectory } from '../layer-a-static/storage/storage-manager.js';
 import { getProjectMetadata, getFileAnalysis } from '../layer-a-static/storage/query-service.js';
-import { detectAllSemanticConnections } from '../layer-b-semantic/static-extractors.js';
-import { detectAllAdvancedConnections } from '../layer-b-semantic/advanced-extractors.js';
-import { extractAllMetadata } from '../layer-b-semantic/metadata-extractors.js';
+import { detectAllSemanticConnections } from '../layer-a-static/extractors/static-extractors.js';
+import { detectAllAdvancedConnections } from '../layer-a-static/extractors/advanced-extractors.js';
+import { extractAllMetadata } from '../layer-a-static/extractors/metadata-extractors.js';
 
 /**
  * Calcula hash del contenido de un archivo

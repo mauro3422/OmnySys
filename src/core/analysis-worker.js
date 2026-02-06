@@ -3,9 +3,10 @@
  * Worker que ejecuta el análisis real usando el indexador existente
  */
 
+import fs from 'fs/promises';
+import path from 'path';
 import { indexProject } from '../layer-a-static/indexer.js';
 import { getFileAnalysis } from '../layer-a-static/storage/query-service.js';
-import path from 'path';
 
 export class AnalysisWorker {
   constructor(rootPath, callbacks = {}) {
@@ -84,6 +85,7 @@ export class AnalysisWorker {
         console.log(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
         
         const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer.js');
+        const { buildPromptMetadata } = await import('../layer-b-semantic/metadata-contract.js');
         const { loadAIConfig } = await import('../ai/llm-client.js');
         const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
         const aiConfig = await loadAIConfig();
@@ -97,45 +99,28 @@ export class AnalysisWorker {
         }
         console.log(`   ✅ LLM analyzer ready`);
         
-        // Calcular métricas semánticas
-        const semanticAccess = job.fileAnalysis?.semanticAnalysis?.sharedState?.globalAccess || [];
-        const semanticWrites = semanticAccess.filter(item => item.type === 'write');
-        const semanticReads = semanticAccess.filter(item => item.type === 'read');
-        const eventEmitters = job.fileAnalysis?.semanticAnalysis?.eventPatterns?.eventEmitters || [];
-        const eventListeners = job.fileAnalysis?.semanticAnalysis?.eventPatterns?.eventListeners || [];
-        const semanticConnections = job.fileAnalysis?.semanticConnections || [];
+        const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
         
-        console.log(`   📊 Metadata prepared: ${semanticConnections.length} semantic connections`);
+        console.log(`   📊 Metadata prepared: ${promptMetadata.semanticConnections?.length || 0} semantic connections`);
         
         // Analizar con LLM incluyendo conexiones semánticas
         console.log(`   🚀 Sending to LLM...`);
+        let code = job.fileAnalysis?.content || '';
+        if (!code) {
+          try {
+            const absolutePath = path.join(this.rootPath, job.filePath);
+            code = await fs.readFile(absolutePath, 'utf-8');
+          } catch (readError) {
+            console.warn(`   ⚠️  Could not read file content for ${job.filePath}: ${readError.message}`);
+            code = '';
+          }
+        }
+
         const llmResults = await llmAnalyzer.analyzeMultiple([{
           filePath: job.filePath,
-          code: job.fileAnalysis?.content || '',
+          code,
           staticAnalysis: job.fileAnalysis?.semanticAnalysis,
-          metadata: {
-            filePath: job.filePath,
-            exportCount: job.fileAnalysis?.exports?.length || 0,
-            dependentCount: job.fileAnalysis?.dependents?.length || 0,
-            // NUEVO: Métricas semánticas críticas
-            semanticDependentCount: semanticConnections.length,
-            definesGlobalState: semanticWrites.length > 0,
-            usesGlobalState: semanticReads.length > 0,
-            globalStateWrites: semanticWrites.map(w => w.propName || w.property || w.fullReference).filter(Boolean),
-            globalStateReads: semanticReads.map(r => r.propName || r.property || r.fullReference).filter(Boolean),
-            hasEventEmitters: eventEmitters.length > 0,
-            hasEventListeners: eventListeners.length > 0,
-            eventNames: [...new Set([
-              ...eventEmitters.map(e => e.event || e.name || e.eventName || String(e)),
-              ...eventListeners.map(l => l.event || l.name || l.eventName || String(l))
-            ])].slice(0, 10),
-            semanticConnections: semanticConnections.map(c => ({
-              target: c.target,
-              type: c.type,
-              key: c.key
-            })).slice(0, 5),
-            ...job.fileAnalysis?.metadata
-          },
+          metadata: promptMetadata,
           analysisType: job.archetypes?.[0] || 'default'
         }]);
         
@@ -143,23 +128,46 @@ export class AnalysisWorker {
           throw new Error('Analysis aborted');
         }
         
-        const llmResult = llmResults[0];
-        
+        let llmResult = llmResults[0];
+
         if (!llmResult) {
-          throw new Error('LLM analysis failed');
+          console.warn(`   ⚠️  LLM returned no usable data for ${job.filePath}. Storing low-confidence placeholder.`);
+          llmResult = {
+            confidence: 0.0,
+            reasoning: 'LLM returned no usable data or confidence too low',
+            analysisType: job.archetypes?.[0] || 'default',
+            suggestedConnections: [],
+            hiddenConnections: [],
+            isOrphan: false
+          };
         }
         
+        const { getMergeConfig } = await import('../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
+        const analysisType = llmResult.analysisType || job.archetypes?.[0] || 'default';
+        const mergeConfig = getMergeConfig(analysisType);
+        const archetypePayload = {};
+        if (mergeConfig) {
+          for (const field of mergeConfig.fields || []) {
+            if (llmResult[field] !== undefined) {
+              archetypePayload[field] = llmResult[field];
+            }
+          }
+        }
+
         // Merge resultado LLM con análisis existente
         const mergedResult = {
           ...job.fileAnalysis,
           llmInsights: {
             confidence: llmResult.confidence,
             reasoning: llmResult.reasoning,
-            analysisType: llmResult.analysisType || job.archetypes?.[0] || 'default',
+            analysisType,
             enhancedConnections: llmResult.suggestedConnections || [],
             suggestedConnections: llmResult.suggestedConnections || [],
             hiddenConnections: llmResult.hiddenConnections || [],
             iterationRefined: job.isIterative || false,
+            ...(mergeConfig && Object.keys(archetypePayload).length > 0 && {
+              [mergeConfig.mergeKey]: archetypePayload
+            }),
             // Campos específicos según el tipo
             ...(llmResult.isOrphan !== undefined && {
               orphanAnalysis: {
@@ -168,10 +176,14 @@ export class AnalysisWorker {
                 suggestedUsage: llmResult.suggestedUsage || ''
               }
             }),
-            ...(llmResult.riskLevel && {
+            ...(((llmResult.isGodObject !== undefined) ||
+              llmResult.analysisType === 'god-object' ||
+              job.archetypes?.includes('god-object')) && {
               godObjectAnalysis: {
-                isGodObject: llmResult.riskLevel !== 'none',
-                riskLevel: llmResult.riskLevel,
+                isGodObject: llmResult.isGodObject !== undefined
+                  ? !!llmResult.isGodObject
+                  : (llmResult.riskLevel && llmResult.riskLevel !== 'none'),
+                riskLevel: llmResult.riskLevel || (llmResult.isGodObject ? 'high' : 'none'),
                 responsibilities: llmResult.responsibilities || [],
                 impactScore: llmResult.impactScore || 0.5
               }

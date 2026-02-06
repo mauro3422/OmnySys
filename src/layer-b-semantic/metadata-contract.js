@@ -31,6 +31,7 @@
  * @property {boolean} hasCSSInJS - Usa styled-components/emotion
  * @property {boolean} hasLocalStorage - Accede a localStorage
  * @property {boolean} hasEventListeners - Tiene event listeners
+ * @property {boolean} hasEventEmitters - Tiene event emitters
  * @property {boolean} hasGlobalAccess - Accede a variables globales
  * @property {boolean} hasAsyncPatterns - Tiene async/await o Promises
  * @property {boolean} hasJSDoc - Tiene documentación JSDoc
@@ -40,6 +41,12 @@
  * @property {string[]} localStorageKeys - Claves de localStorage usadas
  * @property {string[]} eventNames - Nombres de eventos usados
  * @property {string[]} envVars - Variables de entorno usadas
+ * @property {number} semanticDependentCount - Conexiones semánticas detectadas
+ * @property {boolean} definesGlobalState - Escribe estado global
+ * @property {boolean} usesGlobalState - Lee estado global
+ * @property {string[]} globalStateWrites - Props globales escritas
+ * @property {string[]} globalStateReads - Props globales leídas
+ * @property {Array} semanticConnections - Conexiones semánticas resumidas
  * 
  * // Metadatos adicionales (opcional)
  * @property {Object} jsdocContracts - Contratos JSDoc extraídos
@@ -75,13 +82,20 @@ export const OPTIONAL_METADATA_FIELDS = [
   'hasCSSInJS',
   'hasLocalStorage',
   'hasEventListeners',
+  'hasEventEmitters',
   'hasGlobalAccess',
   'hasAsyncPatterns',
   'hasJSDoc',
   'hasSingletonPattern',
   'localStorageKeys',
   'eventNames',
-  'envVars'
+  'envVars',
+  'semanticDependentCount',
+  'definesGlobalState',
+  'usesGlobalState',
+  'globalStateWrites',
+  'globalStateReads',
+  'semanticConnections'
 ];
 
 /**
@@ -237,11 +251,120 @@ export function buildStandardMetadata(fileAnalysis, filePath, semanticAnalysis =
   };
 }
 
+/**
+ * Construye metadata para prompts/arquetipos a partir del análisis completo
+ * @param {string} filePath - Ruta relativa del archivo
+ * @param {object} fileAnalysis - Análisis del archivo (Layer A)
+ * @returns {LayerAMetadata}
+ */
+export function buildPromptMetadata(filePath, fileAnalysis = {}) {
+  const analysis = fileAnalysis || {};
+  const semantic = analysis.semanticAnalysis || {};
+  const sharedState = semantic.sharedState || {};
+  const eventPatterns = semantic.eventPatterns || {};
+  const sideEffects = semantic.sideEffects || {};
+  const extra = analysis.metadata || {};
+
+  const exports = (analysis.exports || []).map(e =>
+    typeof e === 'string' ? e : e?.name
+  ).filter(Boolean);
+
+  const dependents = Array.isArray(analysis.usedBy)
+    ? analysis.usedBy
+    : (analysis.dependents || []);
+
+  const imports = analysis.imports || [];
+  const functions = analysis.functions || [];
+
+  const eventEmitters = eventPatterns.eventEmitters || [];
+  const eventListeners = eventPatterns.eventListeners || [];
+  const eventNames = [...new Set([
+    ...eventEmitters.map(e => e?.eventName || e?.event || e?.name || String(e)),
+    ...eventListeners.map(e => e?.eventName || e?.event || e?.name || String(e))
+  ])].filter(Boolean).slice(0, 10);
+
+  const globalStateWrites = (sharedState.writeProperties || sharedState.writes || []).slice(0, 10);
+  const globalStateReads = (sharedState.readProperties || sharedState.reads || []).slice(0, 10);
+
+  const envVars = (extra.buildTimeDeps?.envVars || [])
+    .map(v => v?.name || v?.key || v?.varName)
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const hasJSDoc = (extra.jsdocContracts?.all?.length || 0) > 0;
+  const hasAsyncPatterns = (extra.asyncPatterns?.all?.length || 0) > 0;
+  const hasCSSInJS = (
+    (extra.cssInJS?.all?.length || 0) > 0 ||
+    (extra.cssInJS?.components?.length || 0) > 0 ||
+    (extra.cssInJS?.themes?.length || 0) > 0 ||
+    (extra.cssInJS?.globalStyles?.length || 0) > 0
+  );
+  const hasTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx') ||
+    (extra.typescript?.all?.length || 0) > 0;
+
+  const hasDynamicImports = (imports || []).some(imp =>
+    imp?.type === 'dynamic' ||
+    (typeof imp?.source === 'string' && (imp.source.includes('${') || imp.source.includes('+')))
+  );
+
+  const exportNamesLower = exports.map(e => String(e).toLowerCase());
+  const hasSingletonPattern =
+    extra.hasSingletonPattern === true ||
+    exportNamesLower.some(name =>
+      name.includes('singleton') || name.includes('getinstance') || name === 'instance'
+    );
+
+  const semanticConnections = analysis.semanticConnections || [];
+  const localStorageKeys = semanticConnections
+    .filter(c => c?.type === 'localStorage' || c?.via === 'localStorage')
+    .map(c => c?.key || c?.localStorageKey)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  return {
+    filePath: analysis.filePath || filePath,
+    exportCount: exports.length,
+    dependentCount: dependents.length,
+    importCount: imports.length,
+    functionCount: functions.length,
+
+    exports: exports.slice(0, 10),
+    dependents: dependents.slice(0, 10),
+
+    hasDynamicImports,
+    hasTypeScript,
+    hasCSSInJS,
+    hasLocalStorage: sideEffects.usesLocalStorage || localStorageKeys.length > 0,
+    hasEventListeners: (eventListeners.length > 0) || sideEffects.hasEventListeners,
+    hasGlobalAccess: sideEffects.hasGlobalAccess || globalStateReads.length > 0 || globalStateWrites.length > 0,
+    hasAsyncPatterns,
+    hasJSDoc,
+    hasSingletonPattern,
+
+    localStorageKeys,
+    eventNames,
+    envVars,
+
+    semanticDependentCount: semanticConnections.length,
+    definesGlobalState: globalStateWrites.length > 0,
+    usesGlobalState: globalStateReads.length > 0,
+    globalStateWrites,
+    globalStateReads,
+    hasEventEmitters: eventEmitters.length > 0,
+    semanticConnections: semanticConnections.map(c => ({
+      target: c.target || c.targetFile,
+      type: c.type || c.via,
+      key: c.key || c.event || c.eventName
+    })).slice(0, 5)
+  };
+}
+
 export default {
   REQUIRED_METADATA_FIELDS,
   OPTIONAL_METADATA_FIELDS,
   validateMetadata,
   buildStandardMetadata,
+  buildPromptMetadata,
   detectGodObject,
   detectOrphanModule,
   ARCHITECTURAL_THRESHOLDS

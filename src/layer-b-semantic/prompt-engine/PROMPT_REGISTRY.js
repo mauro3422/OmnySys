@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Prompt Registry - Sistema Plug & Play para Arquetipos
  * 
  * Para agregar un nuevo tipo de análisis, solo necesitas:
@@ -22,6 +22,7 @@ import singletonTemplate from './prompt-templates/singleton.js';
 import orphanModuleTemplate from './prompt-templates/orphan-module.js';
 import globalStateTemplate from './prompt-templates/global-state.js';
 import defaultTemplate from './prompt-templates/default.js';
+import { validateRegistry } from './registry-validator.js';
 
 // Importar detectores compartidos
 import { detectGodObject, detectOrphanModule } from '../metadata-contract.js';
@@ -103,7 +104,11 @@ export const ARCHETYPE_REGISTRY = [
   {
     type: 'state-manager',
     severity: 6,
-    detector: (metadata) => metadata.definesGlobalState === true || (metadata.localStorageKeys?.length || 0) > 0 || metadata.hasGlobalAccess,
+    detector: (metadata) =>
+      metadata.definesGlobalState === true ||
+      metadata.hasLocalStorage === true ||
+      (metadata.localStorageKeys?.length || 0) > 0 ||
+      metadata.hasGlobalAccess,
     template: semanticConnectionsTemplate,
     mergeKey: 'stateManagerAnalysis',
     fields: ['localStorageKeys', 'sharedState']
@@ -151,8 +156,15 @@ export function getArchetype(type) {
 export function detectArchetypes(metadata) {
   return ARCHETYPE_REGISTRY
     .filter(a => a.type !== 'default') // Excluir default de detección múltiple
-    .filter(a => a.detector(metadata))
-    .map(a => ({ type: a.type, severity: a.severity }));
+    .filter(a => {
+      try {
+        return !!a.detector(metadata);
+      } catch (error) {
+        console.warn(`⚠️  Archetype detector failed (${a.type}): ${error.message}`);
+        return false;
+      }
+    })
+    .map(a => ({ type: a.type, severity: Number.isFinite(a.severity) ? a.severity : 0 }));
 }
 
 /**
@@ -213,3 +225,11 @@ export default {
   getMergeConfig,
   listAvailableArchetypes
 };
+
+const registryValidation = validateRegistry(ARCHETYPE_REGISTRY);
+if (!registryValidation.valid) {
+  console.warn('⚠️  ARCHETYPE_REGISTRY validation issues:');
+  for (const issue of registryValidation.issues) {
+    console.warn(`  - ${issue}`);
+  }
+}
