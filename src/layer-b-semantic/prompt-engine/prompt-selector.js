@@ -13,7 +13,7 @@ import {
   getTemplateForType,
   ARCHETYPE_REGISTRY
 } from './PROMPT_REGISTRY.js';
-import { validateMetadata } from '../metadata-contract.js';
+import { validateMetadata } from '../metadata-contract/index.js';
 
 class PromptSelector {
   /**

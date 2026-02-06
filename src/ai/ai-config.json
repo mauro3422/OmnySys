@@ -1,36 +1,24 @@
 {
   "llm": {
-    "enabled": true,
-    "mode": "gpu",
+    "enabled": false,
     "gpu": {
       "port": 8000,
-      "parallel": 4,
-      "contextSize": 49152,
-      "gpuLayers": 999
+      "parallel": 4
     },
     "cpu": {
-      "port": 8002,
-      "parallel": 4,
-      "contextSize": 65536,
-      "threads": 4
+      "port": 8001,
+      "parallel": 2
     }
   },
   "analysis": {
     "useStaticFirst": true,
-    "llmOnlyForComplex": false,
-    "analyzePercentage": 1.0,
-    "complexityThreshold": 0.3,
-    "confidenceThreshold": 0.7,
-    "includeProjectContext": true,
-    "enableLLMCache": true
+    "llmOnlyForComplex": true,
+    "complexityThreshold": 0.7,
+    "confidenceThreshold": 0.8
   },
   "performance": {
     "enableCPUFallback": false,
     "maxConcurrentAnalyses": 4,
-    "timeout": 60000
-  },
-  "prompts": {
-    "systemPrompt": "You are a specialized code data extractor. Return ONLY valid JSON (root object, NO wrappers, no markdown).\n\nSchema:\n{\n  \"localStorageKeys\": [\"string\"],\n  \"eventNames\": [\"string\"],\n  \"connectedFiles\": [\"path/to/file.js\"],\n  \"connectionType\": \"localStorage|event|global|none\",\n  \"confidence\": 0.0-1.0,\n  \"reasoning\": \"one short sentence\"\n}\n\nSTRICT RULES:\n1. COPY exact string literals from the code\n2. NEVER invent file names - use ONLY paths provided in context\n3. If a key/event is NOT in the code, return empty arrays\n4. Confidence = 1.0 only if the literal appears in code, 0.5 if unsure\n5. connectionType = \"none\" if no evidence found\n6. Evidence-first: if you cannot cite code evidence, omit the item",
-    "analysisTemplate": "FILE: {filePath}\n\nPOTENTIAL CONNECTIONS:\n{projectContext}\n\nSUBSYSTEM: {subsystemContext}\n\nSTATIC DATA: {staticAnalysis}\n\nMETADATA: {metadata}\n\nCODE:\n```javascript\n{code}\n```\n\nTASK: Extract EXACT strings from CODE:\n1. localStorage keys from setItem/getItem calls\n2. Event names from addEventListener/dispatchEvent\n3. Confirm connections to files in POTENTIAL CONNECTIONS\n4. Check theme dependencies if CSS-in-JS metadata present\n\nRULES:\n- ONLY use string literals found in CODE\n- NEVER invent file paths\n- Return JSON only\n\nOUTPUT FORMAT:\n{\"localStorageKeys\":[\"key1\"],\"eventNames\":[\"event1\"],\"connectedFiles\":[\"path/to/file.js\"],\"connectionType\":\"localStorage|event|none\",\"confidence\":1.0,\"reasoning\":\"brief\"}"
+    "timeout": 30000
   }
 }
