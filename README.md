@@ -1,86 +1,141 @@
-# OmnySys - Code Context Engine with Omnisciencia
+# OmnySys - Code Context Engine
 
-**The system that prevents tunnel vision** - analyze entire codebase impact before making any changes.
+**Previene la visión de túnel al editar código.** Analiza impacto completo antes de cualquier cambio.
 
-## 🎯 Problem Solved
-
-AI developers suffer from **tunnel vision**: they modify files without seeing dependencies or connections. OmnySys injects complete context before the AI touches code.
-
-## 🚀 Auto-Installing MCP Server
-
-**NO MANUAL CONFIGURATION REQUIRED!** When you install OmnySys:
+## 🚀 Instalación Plug & Play (2 comandos)
 
 ```bash
-# 1. Install (automatically detects MCP)
-npm install
+# 1. Clonar e instalar
+git clone https://github.com/mauro3422/OmnySys.git
+cd OmnySys && npm install
 
-# 2. Open in IDE with MCP support (Claude Desktop, OpenCode, etc.)
-# 3. THAT'S IT! The MCP server auto-detects and connects
+# 2. Iniciar todo automáticamente
+npm run install:all
 ```
 
-The MCP server automatically:
-- ✅ Detects the project root
-- ✅ Loads existing analysis (or creates new)
-- ✅ Starts background processing
-- ✅ Exposes 9 omniscient tools
-- ✅ Monitors file changes in real-time
+**¡Listo!** OmnySys ahora corre en background:
+- 🧠 LLM Server: `http://localhost:8000`
+- 🔌 MCP Server: `http://localhost:9999` (9 herramientas)
 
-## MCP Tools
+Tu IA (Claude, OpenCode, etc.) tiene acceso automático a las herramientas.
 
-| Tool | Que hace | Auto-analisis |
-|------|----------|---------------|
-| `get_impact_map(filePath)` | Archivos afectados si tocas este | Si (encola CRITICAL) |
-| `analyze_change(filePath, symbolName)` | Impacto de cambiar un simbolo | Si |
-| `explain_connection(fileA, fileB)` | Por que estan conectados | Si |
-| `get_risk_assessment(minSeverity)` | Evaluacion de riesgos del proyecto | No (usa datos existentes) |
-| `search_files(pattern)` | Buscar archivos por patron | No |
-| `get_server_status()` | Estado del sistema | No |
+## 🎯 El Problema
 
-### Ejemplo
+Las IAs sufren **visión de túnel**: editan archivos sin ver dependencias ni conexiones.
+
+**OmnySys soluciona esto** proporcionando:
+- Mapas de impacto completos
+- Quién llama a qué funciones
+- Flujo de datos entre componentes
+- Riesgos ocultos detectados
+
+## 🛠️ Herramientas MCP (9 disponibles)
+
+| Herramienta | Qué hace | Cuándo usar |
+|-------------|----------|-------------|
+| `get_impact_map(file)` | Archivos afectados por cambio | Antes de editar cualquier archivo |
+| `get_call_graph(file, symbol)` | Quién llama a esta función | Refactorizando código |
+| `analyze_change(file, symbol)` | Impacto de cambiar símbolo | Evaluando riesgo |
+| `explain_connection(a, b)` | Por qué dos archivos están conectados | Entendiendo arquitectura |
+| `analyze_signature_change(...)` | Breaking changes de firma | Cambiando APIs |
+| `explain_value_flow(...)` | Inputs → proceso → outputs | Data pipelines |
+| `get_risk_assessment()` | Riesgos de todo el proyecto | Priorizando trabajo |
+| `search_files(pattern)` | Buscar archivos | Navegando codebase |
+| `get_server_status()` | Estado del sistema | Diagnóstico |
+
+## 📖 Ejemplo Real
 
 ```
-Usuario: "Voy a modificar CameraState.js"
+Usuario: "Voy a modificar orchestrator.js"
 
-IA llama: get_impact_map("CameraState.js")
+IA usa: get_impact_map("src/core/orchestrator.js")
 
-OmnySys responde:
-  - RenderEngine.js (dependencia directa)
-  - Input.js (dependencia directa)
-  - MinimapUI.js (estado compartido: cameraPosition)
-  - Riesgo: ALTO
+Resultado:
+  ✅ Afecta directamente: 2 archivos
+     - src/cli/commands/consolidate.js
+     - src/layer-c-memory/mcp/core/server-class.js
+  
+  ⚠️  Afecta transitivamente: 6 archivos
+     - src/cli/index.js
+     - src/layer-c-memory/mcp-server.js
+     - ...
+  
+  📊 Total: 8 archivos
+  🟡 Riesgo: MEDIO
 
-IA edita los 4 archivos en una sola pasada.
-FileWatcher detecta cambios y regenera el grafo.
+IA edita considerando todo el impacto.
 ```
 
-## Estado del Proyecto
+## 🎮 Comandos CLI
 
-**Version**: v0.5.2
+```bash
+# Control
+npm start          # Inicia LLM + MCP
+npm stop           # Detiene todo
+npm status         # Estado de servicios
+
+# Herramientas
+npm tools          # Lista herramientas disponibles
+npm run call -- get_impact_map '{"filePath": "src/test.js"}'
+
+# Análisis
+npm run analyze    # Analizar proyecto completo
+```
+
+## 📚 Documentación
+
+| Documento | Descripción |
+|-----------|-------------|
+| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | **Guía completa de herramientas** con ejemplos |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica |
+| [docs/INDEX.md](docs/INDEX.md) | Índice de documentación |
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Tu IA (Claude/OpenCode)         │
+└──────────────┬──────────────────────────────────────┘
+               │ HTTP (localhost:9999)
+               ▼
+┌─────────────────────────────────────────────────────┐
+│              OmnySys MCP Server                      │
+│  ┌─────────────────┐  ┌──────────────────────────┐ │
+│  │ 9 Tools MCP     │  │ Layer A: Static Analysis │ │
+│  │ • Impact Map    │  │ Layer B: Semantic        │ │
+│  │ • Call Graph    │  │ Layer C: Memory          │ │
+│  │ • Value Flow    │  └──────────────────────────┘ │
+│  └─────────────────┘                                  │
+└──────────────┬──────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────┐
+│  LLM Server (localhost:8000)                        │
+│  Modelo: LFM2.5-Instruct                            │
+└─────────────────────────────────────────────────────┘
+```
+
+## ✅ Estado del Proyecto
+
+**Versión**: v0.5.3
 
 | Componente | Estado |
 |------------|--------|
-| Layer A (Analisis Estatico) | 95% |
-| Layer B (Analisis Semantico) | 85% |
-| Layer C (Memoria + MCP) | 90% |
-| Orchestrator + FileWatcher | 90% |
-| Cache Unificado | 95% |
+| MCP Server HTTP | ✅ Production Ready |
+| 9 Tools MCP | ✅ 100% Funcionales |
+| LLM Integration | ✅ GPU Optimizado |
+| OpenCode Auto-Setup | ✅ Automático |
+| Layer A (Static) | ✅ 95% |
+| Layer B (Semantic) | ✅ 85% |
 
-Arquitectura modular SOLID con ~147 modulos (promedio ~85 lineas cada uno).
+## 🤝 Contribuciones
 
-## Documentacion
+Proyecto experimental. Si sufres de visión de túnel al editar código, ¡tus ideas son bienvenidas!
 
-| Documento | Descripcion |
-|-----------|-------------|
-| [docs/INDEX.md](docs/INDEX.md) | Indice completo de documentacion |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura tecnica detallada |
-| [GETTING_STARTED.md](GETTING_STARTED.md) | Instalacion y primeros pasos |
-| [ROADMAP.md](ROADMAP.md) | Plan de desarrollo |
-| [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) | Documentacion de tools MCP |
+## 📄 Licencia
 
-## Contribuciones
+MIT
 
-Proyecto experimental. Si sufris del mismo problema de vision de tunel, tus ideas y casos de uso son bienvenidos.
+---
 
-## Licencia
-
-Por definir.
+**OmnySys - Una herramienta a la vez, previene la visión de túnel.**

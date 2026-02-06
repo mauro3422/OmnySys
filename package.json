@@ -2,22 +2,25 @@
   "name": "omnysys",
   "version": "0.5.3",
   "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
-  "main": "src/cli/index.js",
+"main": "omny.js",
   "bin": {
-    "omnysys": "src/cli/index.js"
+    "omny": "omny.js",
+    "omnysys": "omny.js"
   },
   "type": "module",
   "scripts": {
+    "install:all": "node install.js",
+    "start": "node omny.js up",
+    "stop": "node omny.js down",
+    "status": "node omny.js status",
+    "tools": "node omny.js tools",
+    "setup": "node omny.js setup",
     "analyze": "node src/cli/index.js analyze",
-    "dev": "node src/cli/index.js",
-    "orchestrator": "node scripts/start-orchestrator.js",
-    "orchestrator:stop": "echo 'Use Ctrl+C to stop orchestrator'",
-    "orchestrator:status": "curl http://localhost:9999/health 2>/dev/null || echo 'Orchestrator not running'",
-    "mcp:start": "node start-mcp.js",
-    "mcp:status": "node -e \"import('./src/layer-c-memory/mcp/core/server-class.js').then(async m => { const s = new m.OmnySysMCPServer('.'); await s.initialize(); const status = s.getStats(); console.log('MCP Server:', status.initialized ? '✅ Running' : '❌ Not running'); console.log('Files:', status.metadata.totalFiles || '0'); }).catch(e => console.error('Error:', e.message))\"",
+    "dev": "node omny.js up",
     "smoke": "node tests/smoke-test.js",
     "build": "echo \"No build step needed for now\"",
-    "lint": "echo \"No linter configured yet\""
+    "lint": "echo \"No linter configured yet\"",
+    "postinstall": "node install.js"
   },
   "keywords": [
     "ai",
