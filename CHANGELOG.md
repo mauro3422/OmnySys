@@ -1,10 +1,10 @@
-# CHANGELOG - OmnySys
+﻿# CHANGELOG - OmnySys
 
-## 📋 **Index of Version-Specific Changelogs**
+## ðŸ“‹ **Index of Version-Specific Changelogs**
 
 This repository uses a modular changelog structure for better organization and maintainability. Each major version has its own dedicated file in the `changelog/` directory.
 
-### **📁 Version Files**
+### **ðŸ“ Version Files**
 
 | Version | File | Description |
 |---------|------|-------------|
@@ -24,17 +24,18 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.5.0 (2026-02-05)**
+### **ðŸš€ Latest Release: v0.5.0 (2026-02-05)**
 
 **Major Release**: Layer A and B unified under Orchestrator with semantic metadata support
 
 **Key Changes**:
-- ✅ **Layer A/B Unification** - Single responsibility for each layer
-- ✅ **Orchestrator** - Queue + Worker + Iterative analysis
-- ✅ **Semantic Metadata** - LLM now receives global state, events, connections
-- ✅ **Archetype Detection** - Improved detection using semantic info
-- ✅ **Tracking System** - Progress tracking for all analyzed files
-- ✅ **Prompt Hygiene** - Archetype prompts receive only needed metadata
+- âœ… **Layer A/B Unification** - Single responsibility for each layer
+- âœ… **Orchestrator** - Queue + Worker + Iterative analysis
+- âœ… **Semantic Metadata** - LLM now receives global state, events, connections
+- âœ… **Archetype Detection** - Improved detection using semantic info
+- âœ… **Tracking System** - Progress tracking for all analyzed files
+- âœ… **Prompt Hygiene** - Archetype prompts receive only needed metadata
+- ✅ **Core Refactors** - Modularizacion de unified-server, orchestrator, indexer pipeline, file-watcher, cache y LLM client
 
 **New**: `PROBLEMATICAS.md` - Known issues and roadmap
 
@@ -43,11 +44,11 @@ This repository uses a modular changelog structure for better organization and m
 **Architecture Release**: MCP Server is now the unified entry point with internal Orchestrator
 
 **Key Changes**:
-- ✅ **MCP Server as Entry Point** - Single command starts everything
-- ✅ **Internal Orchestrator** - Queue + Worker + FileWatcher as component
-- ✅ **Auto-Indexing** - Background indexing on startup if needed
-- ✅ **Smart Tools** - Auto-queue as CRITICAL if file not analyzed
-- ✅ **analyzeAndWait()** - Tools can trigger and wait for analysis
+- âœ… **MCP Server as Entry Point** - Single command starts everything
+- âœ… **Internal Orchestrator** - Queue + Worker + FileWatcher as component
+- âœ… **Auto-Indexing** - Background indexing on startup if needed
+- âœ… **Smart Tools** - Auto-queue as CRITICAL if file not analyzed
+- âœ… **analyzeAndWait()** - Tools can trigger and wait for analysis
 
 **New**: `orchestrator.js` - Reusable orchestrator component
 
@@ -55,34 +56,34 @@ This repository uses a modular changelog structure for better organization and m
 
 **Previous: v0.4.0** - Complete semantic analysis with hybrid AI (80/20)
 
-**🔗 Quick Links**:
+**ðŸ”— Quick Links**:
 - [View Latest Changes](changelog/v0.4.4.md)
 - [View v0.4.0 Changes](changelog/v0.4.0.md)
 - [View All Version Files](changelog/)
 - [Project Documentation](README.md)
 
-### **📈 Project Evolution**
+### **ðŸ“ˆ Project Evolution**
 
 | Phase | Version | Focus | Status |
 |-------|---------|-------|--------|
-| **Phase 1** | 0.1.0 | Static Analysis Foundation | ✅ Complete |
-| **Phase 2** | 0.2.0 | Function-Level Tracking | ✅ Complete |
-| **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | ✅ Complete |
-| **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | ✅ Complete |
-| **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
-| **Architecture** | 0.4.5 | MCP Unified Entry Point | ✅ Complete |
-| **Architecture** | 0.4.4 | Unified Cache System | ✅ Complete |
-| **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |
+| **Phase 1** | 0.1.0 | Static Analysis Foundation | âœ… Complete |
+| **Phase 2** | 0.2.0 | Function-Level Tracking | âœ… Complete |
+| **Phase 3** | 0.3.0-0.3.4 | Quality Analysis & Import Validation | âœ… Complete |
+| **Phase 3.8** | 0.4.0-0.4.1 | Semantic Enrichment & AI Integration | âœ… Complete |
+| **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | âœ… Complete |
+| **Architecture** | 0.4.5 | MCP Unified Entry Point | âœ… Complete |
+| **Architecture** | 0.4.4 | Unified Cache System | âœ… Complete |
+| **Patch** | 0.4.3 | Bug Fixes & Stability | âœ… Complete |
 
-### **💡 Why This Structure?**
+### **ðŸ’¡ Why This Structure?**
 
-- **🎯 Focused**: Each file covers specific milestones
-- **🔍 Searchable**: Easy to find changes by version
-- **📝 Maintainable**: No more 700+ line files
-- **🔄 Scalable**: Easy to add new versions
-- **👥 Collaborative**: Multiple developers can work on different versions
+- **ðŸŽ¯ Focused**: Each file covers specific milestones
+- **ðŸ” Searchable**: Easy to find changes by version
+- **ðŸ“ Maintainable**: No more 700+ line files
+- **ðŸ”„ Scalable**: Easy to add new versions
+- **ðŸ‘¥ Collaborative**: Multiple developers can work on different versions
 
-### **📋 Usage**
+### **ðŸ“‹ Usage**
 
 To view changes for a specific version:
 ```bash
