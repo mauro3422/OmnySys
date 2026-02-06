@@ -30,7 +30,7 @@ const IGNORED_DIRS = [
   '.turbo',
 
   // OmnySys analysis data (no re-analyze)
-  '.OmnySysData',
+  '.omnysysdata',
   '.aver',  // Legacy - mantener por compatibilidad
   'omnysysdata',
 

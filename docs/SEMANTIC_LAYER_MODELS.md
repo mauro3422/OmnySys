@@ -27,7 +27,7 @@
 
 ## Contexto
 
-La **Semantic Layer (Phase 5)** de CogniSystem necesita un modelo de IA local que pueda:
+La **Semantic Layer (Phase 5)** de OmnySys necesita un modelo de IA local que pueda:
 1. Analizar código y detectar conexiones NO obvias (estado compartido, eventos, side effects)
 2. Generar salida estructurada (JSON) para enriquecer el system map
 3. Ser lo suficientemente rápido (<2s por análisis)
@@ -48,7 +48,7 @@ Liquid AI lanzó en enero 2026 la familia **LFM2.5** con múltiples variantes:
 5. **LFM2.5-VL-1.6B** - Vision-Language multimodal
 6. **LFM2.5-Audio-1.5B** - Audio-Language nativo
 
-**Para CogniSystem (análisis de código):** Solo consideramos variantes 1-3 (text-only).
+**Para OmnySys (análisis de código):** Solo consideramos variantes 1-3 (text-only).
 
 ---
 
@@ -74,7 +74,7 @@ Liquid AI lanzó en enero 2026 la familia **LFM2.5** con múltiples variantes:
 
 **🟢 THINKING es superior en:**
 - ✅ **Razonamiento matemático**: +24-40% mejor (MATH-500, GSM8K, AIME25)
-- ✅ **Tool use**: +16% mejor (BFCLv3) → **CRÍTICO para CogniSystem**
+- ✅ **Tool use**: +16% mejor (BFCLv3) → **CRÍTICO para OmnySys**
 - ✅ **Multi-instruction**: +13.7% mejor (Multi-IF)
 - ✅ **MMLU-Pro**: +11.9% mejor (conocimiento general)
 
@@ -87,7 +87,7 @@ Liquid AI lanzó en enero 2026 la familia **LFM2.5** con múltiples variantes:
 
 ---
 
-### 🎯 ¿Por Qué Thinking > Instruct para CogniSystem?
+### 🎯 ¿Por Qué Thinking > Instruct para OmnySys?
 
 #### 1. **Tool Use Performance** ⭐⭐⭐⭐⭐
 
@@ -97,7 +97,7 @@ Liquid AI lanzó en enero 2026 la familia **LFM2.5** con múltiples variantes:
 - **Diferencia: +7.85 puntos (+16%)**
 
 **Por qué importa:**
-- CogniSystem necesita generar JSON estructurado
+- OmnySys necesita generar JSON estructurado
 - El modelo debe "llamar funciones" (conceptualmente) para detectar patterns
 - Tool use = capacidad de generar structured output
 
@@ -199,7 +199,7 @@ Thinking mode maneja **instrucciones complejas** 13.7% mejor.
 | **Fine-tuning custom** | ✅ Ideal | ⚠️ Posible | ⚠️ Posible | Base |
 | **Memoria** | ✅ <900MB | ✅ <900MB | ✅ <900MB | Empate |
 
-**Recomendación para CogniSystem:** **LFM2.5-1.2B-Thinking** ✅
+**Recomendación para OmnySys:** **LFM2.5-1.2B-Thinking** ✅
 
 **Cuándo considerar alternativas:**
 - **Instruct**: Si velocidad > precisión (pero diferencia es marginal)
@@ -275,7 +275,7 @@ Thinking mode maneja **instrucciones complejas** 13.7% mejor.
 - Chat casual
 - Escritura creativa
 
-#### Por Qué es Ideal para CogniSystem
+#### Por Qué es Ideal para OmnySys
 
 1. **Razonamiento Profundo**: El modo "thinking" permite analizar código complejo y detectar conexiones sutiles
 2. **Structured Output**: Genera JSON directamente, perfecto para enriquecer system map
@@ -611,7 +611,7 @@ results = analyze_batch(changed_files + affected_files)
 
 ## Recomendación Final (Actualizada)
 
-### Para Phase 5 de CogniSystem: **Liquid LFM2.5-1.2B-Thinking** ⭐
+### Para Phase 5 de OmnySys: **Liquid LFM2.5-1.2B-Thinking** ⭐
 
 **Decisión basada en data:**
 1. **+39% mejor razonamiento** que Instruct (MATH-500: 87.96% vs 63.20%)
@@ -631,7 +631,7 @@ results = analyze_batch(changed_files + affected_files)
 | LFM2.5-1.2B-Base | Si vas a hacer fine-tuning pesado (100+ ejemplos) |
 | GPT-4o-mini (API) | Fallback si local no funciona |
 
-### Para Phase 5 de CogniSystem: **Liquid LFM2.5-1.2B-Thinking**
+### Para Phase 5 de OmnySys: **Liquid LFM2.5-1.2B-Thinking**
 
 **Razones (actualizadas con benchmarks):**
 
@@ -738,7 +738,7 @@ Comparar contra:
 
 ### TL;DR
 
-**Pregunta**: ¿Qué modelo usar para semantic analysis en CogniSystem?
+**Pregunta**: ¿Qué modelo usar para semantic analysis en OmnySys?
 
 **Respuesta**: **Liquid LFM2.5-1.2B-Thinking**
 
@@ -816,6 +816,6 @@ python test_semantic_analysis.py
 
 **Última actualización**: 2026-02-02 04:00 AM
 **Versión**: v2.0 (Análisis completo con benchmarks y variantes)
-**Autor**: CogniSystem Team
+**Autor**: OmnySys Team
 **Status**: ✅ Ready for Phase 5 implementation
 **Confianza**: 95% en recomendación LFM2.5-1.2B-Thinking

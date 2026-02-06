@@ -64,7 +64,7 @@ export const toolDefinitions = [
   },
   {
     name: 'get_server_status',
-    description: 'Returns the complete status of the CogniSystem server',
+    description: 'Returns the complete status of the OmnySys server',
     inputSchema: { type: 'object', properties: {} }
   }
 ];

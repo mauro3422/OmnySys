@@ -31,7 +31,7 @@ export async function _detectSemanticIssues() {
 
   try {
     const { getFileAnalysis } = await import('../../layer-a-static/storage/query-service.js');
-    const { detectSemanticIssues } = await import('../../layer-b-semantic/semantic-issues-detector.js');
+    const { detectSemanticIssues } = await import('../../layer-b-semantic/issue-detectors/index.js');
 
     // Build system map from all analyzed files
     const systemMap = {

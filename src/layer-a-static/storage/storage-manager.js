@@ -6,7 +6,7 @@ import crypto from 'crypto';
  * Storage Manager - Gestiona el guardado particionado de datos de análisis
  *
  * Estructura de datos:
- * .OmnySysData/
+ * .omnysysdata/
  *   ├── index.json              (metadata + índice ligero)
  *   ├── files/
  *   │   └── {relative-path}/    (espejo de estructura del proyecto)
@@ -29,7 +29,7 @@ function calculateFileHash(filePath) {
 }
 
 /**
- * Crea la estructura de directorios de .OmnySysData/
+ * Crea la estructura de directorios de .omnysysdata/
  */
 export async function createDataDirectory(rootPath) {
   const dataPath = path.join(rootPath, DATA_DIR);
@@ -213,7 +213,7 @@ export async function savePartitionedSystemMap(rootPath, systemMap) {
 }
 
 /**
- * Obtiene la ruta del directorio .OmnySysData/
+ * Obtiene la ruta del directorio .omnysysdata/
  */
 export function getDataDirectory(rootPath) {
   return path.join(rootPath, DATA_DIR);

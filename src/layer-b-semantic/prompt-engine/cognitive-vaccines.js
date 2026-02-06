@@ -1,6 +1,10 @@
 /**
  * Cognitive Vaccines - Anti-hallucination rules
  * Basado en LFM2_OPTIMIZATION.md
+ *
+ * REGLA: Solo agregar reglas para analysis types que existan activamente
+ * en PROMPT_REGISTRY.js. Si un arquetipo se elimina del registry, su regla
+ * aqui tambien debe eliminarse. No dejar codigo muerto.
  */
 
 class CognitiveVaccines {
@@ -37,20 +41,6 @@ SEMANTIC CONNECTIONS RULES:
 - Map connections between files using exact paths
 - DO NOT assume connections not explicitly coded
 - Return exact file paths: "./modules/UserModule.js"`,
-      
-      'css-in-js': `
-CSS-IN-JS RULES:
-- Extract styled components and CSS-in-JS patterns
-- Return component names and CSS properties
-- DO NOT invent component names
-- ONLY use CSS found in the code`,
-      
-      'typescript': `
-TYPESCRIPT RULES:
-- Extract interfaces, types, and class definitions
-- Return exact type names and definitions
-- DO NOT invent type definitions
-- ONLY use types found in the code`,
       
       'default': `
 DEFAULT RULES:

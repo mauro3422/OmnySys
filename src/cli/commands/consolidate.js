@@ -54,7 +54,7 @@ export async function consolidate(projectPath) {
     });
 
     const enhancedCandidates = [
-      path.join(absolutePath, '.OmnySysData', 'system-map-enhanced.json'),
+      path.join(absolutePath, '.omnysysdata', 'system-map-enhanced.json'),
       path.join(absolutePath, 'system-map-enhanced.json')
     ];
     let enhancedMap = null;
@@ -71,7 +71,7 @@ export async function consolidate(projectPath) {
       enhancedMap = { metadata: { totalFiles: finalStats?.totalFiles || 0 } };
     }
 
-    const issuesPath = path.join(absolutePath, '.OmnySysData', 'semantic-issues.json');
+    const issuesPath = path.join(absolutePath, '.omnysysdata', 'semantic-issues.json');
     let issuesReport = { stats: { totalIssues: 0 } };
     try {
       issuesReport = JSON.parse(await fs.readFile(issuesPath, 'utf-8'));
@@ -90,7 +90,7 @@ export async function consolidate(projectPath) {
       console.log(`    - Low severity: ${issuesReport.stats.bySeverity?.low || 0}`);
     }
     console.log('\nView detailed analysis:');
-    console.log(`   ${path.join('.OmnySysData', 'semantic-issues.json')}\n`);
+    console.log(`   ${path.join('.omnysysdata', 'semantic-issues.json')}\n`);
 
     process.exit(0);
   } catch (error) {

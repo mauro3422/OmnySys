@@ -2,7 +2,7 @@
 
 ## Resumen
 
-Este documento analiza las herramientas y servicios existentes que intentan resolver problemas similares al de CogniSystem, evaluando sus fortalezas, limitaciones y por qué no resuelven completamente nuestro caso de uso.
+Este documento analiza las herramientas y servicios existentes que intentan resolver problemas similares al de OmnySys, evaluando sus fortalezas, limitaciones y por qué no resuelven completamente nuestro caso de uso.
 
 ---
 
@@ -181,7 +181,7 @@ No está pensado para IAs. Requiere que el humano configure reglas manualmente.
 **Fortalezas**:
 - ✅ API fácil de usar
 - ✅ Pensado para herramientas de análisis
-- ✅ Útil para construir CogniSystem Capa A
+- ✅ Útil para construir OmnySys Capa A
 
 **Limitaciones**:
 - ❌ Solo TypeScript (no JS puro, no otros lenguajes)
@@ -297,9 +297,9 @@ jest --findRelatedTests src/CameraState.js
 
 ---
 
-## Comparación: Soluciones Existentes vs CogniSystem
+## Comparación: Soluciones Existentes vs OmnySys
 
-| Feature | Existing MCP Tools | Dependency Cruiser | Cursor/Copilot | CogniSystem |
+| Feature | Existing MCP Tools | Dependency Cruiser | Cursor/Copilot | OmnySys |
 |---------|-------------------|-------------------|---------------|-------------|
 | **Análisis Estático** | ✅ | ✅ | ✅ | ✅ |
 | **Análisis Semántico** | ❓ | ❌ | ✅ (black box) | ✅ (IA local) |
@@ -342,4 +342,4 @@ jest --findRelatedTests src/CameraState.js
 - Código abierto y transparente
 - Diseñado específicamente para el problema de visión de túnel
 
-**Recomendación**: Construir CogniSystem reutilizando componentes existentes (parsers, MCP) pero con arquitectura propia.
+**Recomendación**: Construir OmnySys reutilizando componentes existentes (parsers, MCP) pero con arquitectura propia.

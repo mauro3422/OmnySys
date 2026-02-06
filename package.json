@@ -1,15 +1,19 @@
 {
-  "name": "cogni-system",
-  "version": "0.1.0",
-  "description": "Motor de Conciencia Sistémica para IAs - Previene visión de túnel al editar código",
-  "main": "src/index.js",
+  "name": "omnysys",
+  "version": "0.5.2",
+  "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
+  "main": "src/cli/index.js",
+  "bin": {
+    "omnysys": "src/cli/index.js"
+  },
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test runner configured yet\" && exit 1",
-    "dev": "node src/index.js",
+    "analyze": "node src/cli/index.js analyze",
+    "dev": "node src/cli/index.js",
     "orchestrator": "node scripts/start-orchestrator.js",
     "orchestrator:stop": "echo 'Use Ctrl+C to stop orchestrator'",
     "orchestrator:status": "curl http://localhost:9999/health 2>/dev/null || echo 'Orchestrator not running'",
+    "smoke": "node tests/smoke-test.js",
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\""
   },
@@ -20,9 +24,10 @@
     "mcp",
     "static-analysis",
     "semantic-analysis",
-    "developer-tools"
+    "developer-tools",
+    "context-engine"
   ],
-  "author": "Your Name",
+  "author": "mauro3422",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
@@ -47,10 +52,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/cogni-system.git"
+    "url": "https://github.com/mauro3422/OmnySys.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/cogni-system/issues"
+    "url": "https://github.com/mauro3422/OmnySys/issues"
   },
-  "homepage": "https://github.com/yourusername/cogni-system#readme"
+  "homepage": "https://github.com/mauro3422/OmnySys#readme"
 }

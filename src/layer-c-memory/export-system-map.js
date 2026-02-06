@@ -7,8 +7,8 @@
  *   node export-system-map.js [projectPath] [outputPath]
  *
  * Ejemplos:
- *   node export-system-map.js                    # Usa directorio actual, salida en .OmnySysData/debug/
- *   node export-system-map.js /ruta/proyecto     # Proyecto específico, salida en .OmnySysData/debug/
+ *   node export-system-map.js                    # Usa directorio actual, salida en .omnysysdata/debug/
+ *   node export-system-map.js /ruta/proyecto     # Proyecto específico, salida en .omnysysdata/debug/
  *   node export-system-map.js . debug-map.json   # Proyecto actual, salida personalizada
  */
 
@@ -25,13 +25,13 @@ async function main() {
     const projectPath = args[0] ? path.resolve(args[0]) : process.cwd();
     const outputPath = args[1] ? path.resolve(args[1]) : null;
 
-    console.log('📊 CogniSystem - Export Full System Map (Debug)');
+    console.log('📊 OmnySys - Export Full System Map (Debug)');
     console.log('='.repeat(50));
     console.log(`Project path: ${projectPath}`);
     if (outputPath) {
       console.log(`Output file: ${outputPath}`);
     } else {
-      console.log('Output file: .OmnySysData/debug/system-map-full.json (default)');
+      console.log('Output file: .omnysysdata/debug/system-map-full.json (default)');
     }
     console.log('');
     console.log('⏳ Exporting system map...\n');

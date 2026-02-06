@@ -1,6 +1,6 @@
-# Ideas Futuras para CogniSystem
+# Ideas Futuras para OmnySys
 
-Este documento captura ideas de expansión para CogniSystem una vez que el MVP esté funcionando. No todas estas ideas son viables o necesarias, pero vale la pena documentarlas para consideración futura.
+Este documento captura ideas de expansión para OmnySys una vez que el MVP esté funcionando. No todas estas ideas son viables o necesarias, pero vale la pena documentarlas para consideración futura.
 
 ---
 
@@ -13,7 +13,7 @@ Antes de editar un archivo, mostrar qué tests se verán afectados.
 ```
 IA: "Voy a modificar CameraState.js"
 
-CogniSystem: "⚠️ Impacto estimado:
+OmnySys: "⚠️ Impacto estimado:
   - 12 tests directos en CameraState.test.js
   - 5 tests indirectos en Integration.test.js
   - 2 snapshots de UI probablemente cambiarán"
@@ -42,7 +42,7 @@ Asignar un "nivel de riesgo" a cada archivo basado en:
 ```
 IA: "Voy a editar AuthService.js"
 
-CogniSystem: "🔴 ALTA CRITICIDAD
+OmnySys: "🔴 ALTA CRITICIDAD
   - 23 archivos dependen de este módulo
   - Modificado 47 veces en el último mes
   - 3 bugs críticos relacionados en los últimos 3 meses
@@ -69,7 +69,7 @@ Si modificas una función pública, sugerir actualizar la documentación.
 ```
 IA: "Cambié la firma de updateCamera(x, y) a updateCamera(position, zoom)"
 
-CogniSystem: "💡 Sugerencia:
+OmnySys: "💡 Sugerencia:
   - Actualizar docs/API.md (menciona esta función)
   - Actualizar README.md (ejemplo de uso)
   - Actualizar comentarios JSDoc"
@@ -93,7 +93,7 @@ Identificar archivos y funciones que no son usados por nadie.
 
 ### Ejemplo
 ```
-CogniSystem: "📊 Reporte semanal:
+OmnySys: "📊 Reporte semanal:
   - src/utils/OldHelper.js: No usado por ningún archivo
   - function calculateLegacyFOV(): Llamada 0 veces
   - Sugerencia: Eliminar para reducir complejidad"
@@ -119,7 +119,7 @@ Aprender de modificaciones pasadas para mejorar predicciones.
 ```
 IA: "Voy a modificar CameraState.js"
 
-CogniSystem: "📚 Historial:
+OmnySys: "📚 Historial:
   - Últimas 5 veces que modificaste CameraState.js,
     también actualizaste Minimap.js
   - Sugerencia: Probablemente quieras revisar Minimap.js ahora"
@@ -139,12 +139,12 @@ CogniSystem: "📚 Historial:
 ## 6. Integración con CI/CD
 
 ### Concepto
-Ejecutar CogniSystem en CI para validar PRs.
+Ejecutar OmnySys en CI para validar PRs.
 
 ### Ejemplo
 ```yaml
 # .github/workflows/cogni-check.yml
-name: CogniSystem Check
+name: OmnySys Check
 
 on: pull_request
 
@@ -159,7 +159,7 @@ jobs:
 
 **Output en PR**:
 ```
-🤖 CogniSystem Report:
+🤖 OmnySys Report:
 ✅ Todos los archivos relacionados fueron modificados
 ⚠️ Archivo de riesgo alto modificado: AuthService.js
 💡 Sugerencia: Ejecutar tests de integración
@@ -185,7 +185,7 @@ Explicar **por qué** dos archivos están conectados, no solo que lo están.
 ```
 Usuario: "¿Por qué modificar CameraState afecta Minimap?"
 
-CogniSystem: "Conexión detectada:
+OmnySys: "Conexión detectada:
   1. CameraState.js exporta la variable 'state' (línea 10)
   2. store.js importa y re-exporta 'state' (línea 5)
   3. Minimap.js importa 'state' de store.js (línea 3)
@@ -239,7 +239,7 @@ Guiar refactorings complejos paso a paso.
 ```
 Usuario: "Quiero renombrar updateCamera a updateCameraPosition"
 
-CogniSystem: "📋 Plan de Refactor:
+OmnySys: "📋 Plan de Refactor:
   1. Renombrar definición en CameraState.js
   2. Actualizar 12 llamadas en RenderEngine.js
   3. Actualizar test mock en test/mocks.js
@@ -251,7 +251,7 @@ CogniSystem: "📋 Plan de Refactor:
 
 ### Implementación
 - Usar jscodeshift para generar transformaciones
-- CogniSystem genera el plan, IA ejecuta
+- OmnySys genera el plan, IA ejecuta
 - Validar cada paso antes de continuar
 
 ### Beneficio
@@ -263,7 +263,7 @@ CogniSystem: "📋 Plan de Refactor:
 ## 10. Análisis Multi-Lenguaje
 
 ### Concepto
-Extender CogniSystem a otros lenguajes: Python, Go, Rust.
+Extender OmnySys a otros lenguajes: Python, Go, Rust.
 
 ### Desafíos
 - Cada lenguaje tiene su propio sistema de imports
@@ -315,7 +315,7 @@ Entorno de prueba donde puedes simular cambios y ver el impacto.
 ```
 Usuario: "¿Qué pasaría si elimino esta función?"
 
-CogniSystem Playground:
+OmnySys Playground:
   - Simula la eliminación
   - Muestra: "7 archivos tendrían imports rotos"
   - Lista los archivos y líneas específicas
@@ -394,7 +394,7 @@ Cuando modificas un archivo, generar tests automáticamente.
 ```
 IA: "Añadí función calculateZoom() en CameraState.js"
 
-CogniSystem: "💡 Generé un test stub:
+OmnySys: "💡 Generé un test stub:
   test/CameraState.test.js:
   - describe('calculateZoom')
   - it('should return correct zoom for positive values')
@@ -426,7 +426,7 @@ Detectar archivos que son "hot paths" (ejecutados frecuentemente).
 
 ### Ejemplo
 ```
-CogniSystem: "⚡ Performance Insights:
+OmnySys: "⚡ Performance Insights:
   - RenderLoop.js es ejecutado 60 veces/segundo
   - Modificaciones aquí impactan FPS
   - Sugerencia: Benchmarkear cambios antes de commit"
@@ -466,7 +466,7 @@ Encontrar archivos que hacen "lo mismo" aunque el código sea diferente.
 
 ### Ejemplo
 ```
-CogniSystem: "🔍 Duplicación Detectada:
+OmnySys: "🔍 Duplicación Detectada:
   - utils/formatDate.js
   - helpers/dateFormatter.js
 
@@ -492,7 +492,7 @@ Conectar archivos con tickets de Jira/GitHub Issues.
 
 ### Ejemplo
 ```
-CogniSystem: "📝 Contexto de Issue:
+OmnySys: "📝 Contexto de Issue:
   - Este archivo fue modificado en PR #123
   - Relacionado con Issue #456: 'Bug en zoom del mapa'
   - Última modificación: fix de bug de memoria
@@ -557,10 +557,38 @@ Ver cómo el grafo de dependencias ha evolucionado en el tiempo.
 
 ---
 
+## 21. Semantic Pattern Engine (Prediccion Predictiva)
+
+### Concepto
+En lugar de usar un LLM grande para cada archivo, entrenar un modelo pequeno (~350M parametros) con los datos que OmnySys ya genera. El modelo aprende a predecir conexiones semanticas en milisegundos, como un autocompletado pero para metadatos arquitectonicos.
+
+### Como Funciona
+1. **Dataset**: OmnySys analiza N proyectos y genera pares `fragmento de codigo → conexion en el mapa de impacto`
+2. **Fine-tuning**: Se entrena LFM2-Extract (350M) con esos pares
+3. **Inferencia**: Al abrir un archivo, el modelo predice conexiones en milisegundos (no escribe codigo, rellena una tabla de metadatos)
+
+### Ejemplo
+```
+Patron detectado: localStorage.setItem('user', ...)
+Prediccion: {"target": "AuthStore", "type": "shared-state"}
+Latencia: <10ms
+```
+
+### Beneficio
+- Elimina la necesidad de LLM grande para el 80% de los casos
+- Velocidad de autocompletado para deteccion de conexiones
+- El modelo mejora con mas datos de proyectos analizados
+
+### Prerequisitos
+- OmnySys funcionando y recolectando datos de proyectos reales
+- Suficientes pares de entrenamiento (estimado: 100+ proyectos)
+
+---
+
 ## Notas Finales
 
-Estas ideas no son un compromiso, son un "parking lot" para no olvidar. El foco actual debe ser el MVP (Fases 1-5).
+Estas ideas no son un compromiso, son un "parking lot" para no olvidar.
 
-**Criterio para añadir features**: ¿Resuelve un problema real que hemos experimentado? Si no, esperar a tener evidencia.
+**Criterio para anadir features**: Resuelve un problema real que hemos experimentado? Si no, esperar a tener evidencia.
 
-**Anti-patrón a evitar**: Feature creep. Construir lo mínimo que funcione, iterar basado en uso real.
+**Anti-patron a evitar**: Feature creep. Construir lo minimo que funcione, iterar basado en uso real.

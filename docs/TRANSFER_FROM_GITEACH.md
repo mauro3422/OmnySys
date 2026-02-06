@@ -1,6 +1,6 @@
 # Transferencia de Archivos desde Giteach
 
-Este documento guía la transferencia manual de binarios y modelos desde el proyecto **Giteach** a **CogniSystem (aver)**.
+Este documento guía la transferencia manual de binarios y modelos desde el proyecto **Giteach** a **OmnySys (aver)**.
 
 ## ¿Por qué no están en Git?
 
@@ -138,12 +138,12 @@ Después de la transferencia:
 
 1. **Iniciar servidor**:
    ```bash
-   omnysystem ai start gpu
+   omnysys ai start gpu
    ```
 
 2. **Verificar estado**:
    ```bash
-   omnysystem ai status
+   omnysys ai status
    ```
 
 3. **Habilitar AI** (editar [src/ai/ai-config.json](../src/ai/ai-config.json)):
@@ -157,7 +157,7 @@ Después de la transferencia:
 
 4. **Analizar proyecto de prueba**:
    ```bash
-   omnysystem analyze test-cases/scenario-2-semantic/
+   omnysys analyze test-cases/scenario-2-semantic/
    ```
 
 ---
@@ -175,7 +175,7 @@ Después de la transferencia:
 
 ### "Vulkan device not found"
 - Tu GPU necesita drivers actualizados
-- O usa modo CPU: `omnysystem ai start cpu`
+- O usa modo CPU: `omnysys ai start cpu`
 
 ### Modelo no encontrado
 - Verifica el nombre exacto: `LFM2.5-1.2B-Instruct-Q8_0.gguf`

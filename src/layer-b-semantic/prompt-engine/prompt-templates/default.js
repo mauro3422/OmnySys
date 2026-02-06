@@ -1,7 +1,7 @@
 /**
  * Default Template - ChatML v3 Format with Few-Shot Examples
  *
- * Estandarizado para el sistema plug-and-play de CogniSystem.
+ * Estandarizado para el sistema plug-and-play de OmnySys.
  * Todos los templates deben seguir el formato ChatML v3 para máxima compatibilidad.
  *
  * Basado en: https://docs.liquid.ai/docs/key-concepts/text-generation-and-prompting.md

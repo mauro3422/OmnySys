@@ -14,7 +14,7 @@ export function shouldIgnore(filePath) {
     '.git/',
     'dist/',
     'build/',
-    '.OmnySysData/',
+    '.omnysysdata/',
     'coverage/',
     '.vscode/'
   ];

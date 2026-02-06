@@ -84,7 +84,7 @@ export class AnalysisWorker {
         console.log(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
         console.log(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
         
-        const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer.js');
+        const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer/index.js');
         const { buildPromptMetadata } = await import('../layer-b-semantic/metadata-contract.js');
         const { loadAIConfig } = await import('../ai/llm-client.js');
         const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
