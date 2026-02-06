@@ -12,16 +12,19 @@ Los arquetipos clasifican archivos segun sus **patrones de conexion**: como un a
 
 Antes de crear un arquetipo, debe pasar este test: **"Al levantar la caja (archivo), este arquetipo me ayuda a ver cables (conexiones) que de otra forma no veria?"**
 
-| Arquetipo | Pasa? | Que cables revela |
-|-----------|-------|-------------------|
-| `god-object` | SI | Caja con 20+ cables a todos lados. Alto blast radius. |
-| `dynamic-importer` | SI | Cables invisibles (resueltos en runtime). Sin LLM no los ves. |
-| `event-hub` | SI | Cables invisibles (emit/listen). No aparecen en imports. |
-| `global-state` | SI | Cables invisibles via `window.*`. Conecta lectores con escritores. |
-| `state-manager` | SI | Cables a todos los consumidores de estado (localStorage, etc). |
-| `orphan-module` | SI | Caja SIN cables visibles. Sospechoso: o es codigo muerto o tiene cables ocultos. |
-| `singleton` | SI (debil) | Acoplamiento implicito: todos los usuarios de la instancia estan conectados entre si. |
-| `default` | N/A | Fallback, no es un arquetipo real. |
+| Arquetipo | Pasa? | Que cables revela | Necesita LLM? |
+|-----------|-------|-------------------|---------------|
+| `god-object` | SI | Caja con 20+ cables a todos lados. Alto blast radius. | SI siempre |
+| `dynamic-importer` | SI | Cables invisibles (resueltos en runtime). Sin LLM no los ves. | SI siempre |
+| `event-hub` | SI | Cables invisibles (emit/listen). No aparecen en imports. | Condicional |
+| `global-state` | SI | Cables invisibles via `window.*`. Conecta lectores con escritores. | Condicional |
+| `state-manager` | SI | Cables a todos los consumidores de estado (localStorage, etc). | Condicional |
+| `orphan-module` | SI | Caja SIN cables visibles. Sospechoso: o es codigo muerto o tiene cables ocultos. | SI siempre |
+| `singleton` | SI (debil) | Acoplamiento implicito: todos los usuarios de la instancia estan conectados entre si. | Condicional |
+| `facade` | SI | Cables de re-export: todos los consumidores dependen transitivamente de los modulos internos. | NO (metadata) |
+| `config-hub` | SI | Caja de config con cables a todos los consumidores. Cambiar una key afecta a muchos. | NO (metadata) |
+| `entry-point` | SI | Punto de entrada: cables de import hacia adentro, cero hacia afuera. | NO (metadata) |
+| `default` | N/A | Fallback, no es un arquetipo real. | SI (general) |
 
 ---
 
@@ -83,41 +86,66 @@ Archivo tiene arquetipos?
 
 ---
 
-## Arquetipos Actuales (8) — Analisis de Necesidad de LLM
+## Arquetipos Actuales (11) — Clasificacion por Necesidad de LLM
 
 Para cada arquetipo, la pregunta es: **"La metadata y el cross-reference ya resuelven las conexiones, o NECESITO LLM?"**
 
-| Arquetipo | Severity | LLM necesario? | Analisis |
-|-----------|----------|----------------|----------|
-| `god-object` | 10 | **SI, siempre** | La metadata sabe que tiene 15 exports y 20 dependents, pero NO sabe que responsabilidades tiene. Solo LLM puede decir "este archivo tiene 3 areas: auth, logging, config" y cuales afectan a cada dependiente. |
-| `dynamic-importer` | 7 | **SI, siempre** | Si la ruta del import() es una variable, es imposible resolverla estaticamente. Solo LLM puede inferir que modulo carga basandose en el contexto. |
-| `singleton` | 7 | **CONDICIONAL** | Si metadata ya cruzo las conexiones de global state con confidence 1.0, el LLM no agrega cables nuevos. LLM solo vale si hay acceso indirecto (via wrapper functions) que el regex no capta. **Bypass si conexiones resueltas.** |
-| `event-hub` | 6 | **CONDICIONAL** | Si Layer A ya cruzo los event names entre archivos (confidence 1.0), el LLM repite lo mismo. LLM solo agrega valor si hay eventos DINAMICOS (nombre de evento es variable, no string literal). **Bypass si todos los eventos son string literals ya cruzados.** |
-| `global-state` | 6 | **CONDICIONAL** | Mismo caso que event-hub. Si `window.config` ya fue cruzado entre archivos con confidence 1.0, LLM no agrega nada. Solo vale si hay acceso indirecto. **Bypass si conexiones resueltas.** |
-| `state-manager` | 6 | **CONDICIONAL** | Si localStorage keys ya estan cruzadas con confidence 1.0, LLM no agrega cables nuevos. Solo vale para patrones de shared state que el regex no ve. **Bypass si conexiones resueltas.** |
-| `orphan-module` | 5 | **SI, siempre** | La metadata sabe que es huerfano pero NO sabe por que. Puede ser dead code, puede ser un plugin, puede tener cables via callback registration. LLM es el unico que puede investigar. |
-| `default` | 0 | **SI (fallback)** | Analisis general. Solo se usa si ningun otro arquetipo matchea. |
+### requiresLLM: true (SIEMPRE necesitan LLM)
 
-### Regla de Bypass
+| Arquetipo | Severity | Analisis |
+|-----------|----------|----------|
+| `god-object` | 10 | La metadata sabe que tiene 15 exports y 20 dependents, pero NO sabe que responsabilidades tiene. Solo LLM puede decir "este archivo tiene 3 areas: auth, logging, config" y cuales afectan a cada dependiente. |
+| `dynamic-importer` | 7 | Si la ruta del import() es una variable, es imposible resolverla estaticamente. Solo LLM puede inferir que modulo carga basandose en el contexto. |
+| `orphan-module` | 5 | La metadata sabe que es huerfano pero NO sabe por que. Puede ser dead code, puede ser un plugin, puede tener cables via callback registration. LLM es el unico que puede investigar. |
+| `default` | 0 | Fallback. Analisis general para archivos sin otro arquetipo. |
+
+### requiresLLM: 'conditional' (A veces se resuelven sin LLM)
+
+| Arquetipo | Severity | Bypass si... |
+|-----------|----------|-------------|
+| `singleton` | 7 | Metadata ya cruzo las conexiones de global state con confidence 1.0. |
+| `event-hub` | 6 | Layer A ya cruzo todos los event names entre archivos (string literals). |
+| `global-state` | 6 | `window.config` ya fue cruzado entre archivos con confidence 1.0. |
+| `state-manager` | 6 | localStorage keys ya estan cruzadas con confidence 1.0. |
+
+### requiresLLM: false (NUNCA necesitan LLM)
+
+| Arquetipo | Severity | Por que no necesita LLM |
+|-----------|----------|------------------------|
+| `facade` | 4 | 100% determinístico: `reExportCount` viene del AST. Si re-exporta >= 3 modulos, es facade. Las conexiones son los mismos imports/exports — visibles sin LLM. |
+| `config-hub` | 5 | 100% determinístico: `exportCount + dependentCount` del grafo. Muchos exports, muchos dependents, pocas funciones = config hub. |
+| `entry-point` | 3 | 100% determinístico: `importCount + dependentCount` del grafo. Importa mucho, nadie lo importa = entry point. |
+
+**SSOT**: El campo `requiresLLM` esta definido en `PROMPT_REGISTRY.js` para cada arquetipo. El pipeline en `llm-analysis.js` usa `filterArchetypesRequiringLLM()` para separar los que pasan por LLM de los que no.
+
+### Pipeline de Decision LLM (corregido v0.6)
 
 ```text
-Archivo tiene arquetipo?
+Layer A extrae metadata
    |
-   +-- NO --> No necesita LLM
+   v
+detectArchetypes(metadata) -- evalua TODOS los detectores
    |
-   +-- SI --> Las conexiones estaticas ya cubren el caso?
-              |
-              +-- SI (todos los eventos/keys/globals ya cruzados con confidence 1.0)
-              |   --> NO enviar a LLM (bypass - no gastar recursos)
-              |
-              +-- NO (hay datos sin resolver: eventos dinamicos, imports variables, etc)
-                  --> SI enviar a LLM
+   v
+filterArchetypesRequiringLLM(archetypes)
+   |
+   +-- requiresLLM: false --> Se registra el arquetipo pero NO pasa por LLM
+   |   (facade, config-hub, entry-point)
+   |
+   +-- requiresLLM: true/conditional --> Pasan a Gate 2
+       |
+       v
+   needsLLMAnalysis() -- analysis-decider.js
+       |
+       +-- Conexiones ya resueltas (confidence >= 1.0) --> Bypass
+       |
+       +-- Conexiones sin resolver --> Encolar para LLM
 ```
 
-**Arquetipos que SIEMPRE necesitan LLM**: god-object, dynamic-importer, orphan-module
-**Arquetipos que a veces se pueden resolver sin LLM**: event-hub, global-state, state-manager, singleton
-
-Esta optimizacion se implementa en `analysis-decider.js` (Gate 2). Ver `ARCHITECTURE_LAYER_A_B.md` para el pipeline completo.
+Esta optimizacion se implementa en:
+- `PROMPT_REGISTRY.js`: define `requiresLLM` por arquetipo
+- `llm-analysis.js`: usa `filterArchetypesRequiringLLM()` para filtrar
+- `analysis-decider.js`: Gate 2, evalua conexiones no resueltas
 
 ## Arquetipos Removidos (v0.5.2)
 
@@ -200,5 +228,10 @@ Y antes de mandar algo al LLM, pregunta: **"La metadata ya me da esta conexion c
 | `src/layer-a-static/extractors/static/storage-connections.js` | Cross-reference de localStorage |
 | `src/layer-a-static/extractors/static/events-connections.js` | Cross-reference de eventos |
 | `src/layer-a-static/extractors/static/globals-connections.js` | Cross-reference de globals |
+| `src/layer-a-static/extractors/static/env-connections.js` | Cross-reference de env vars (process.env) |
+| `src/layer-a-static/extractors/static/route-extractor.js` | Extrae rutas API (server + client) |
+| `src/layer-a-static/extractors/static/route-connections.js` | Cross-reference de rutas API compartidas |
+| `src/layer-a-static/extractors/static/colocation-extractor.js` | Detecta archivos co-locados (test, stories) |
+| `tests/smoke-test.js` | Smoke test: valida extractores y bypass LLM |
 
 Ultima actualizacion: 2026-02-06

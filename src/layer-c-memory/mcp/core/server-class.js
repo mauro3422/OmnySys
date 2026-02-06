@@ -1,7 +1,7 @@
 /**
  * @fileoverview server-class.js
  * 
- * Clase principal CogniSystemMCPServer.
+ * Clase principal OmnySysMCPServer.
  * Consolidación del flujo correcto con:
  * - Layer A primero (análisis estático)
  * - Luego detección de arquetipos
@@ -27,7 +27,7 @@ import path from 'path';
 import fs from 'fs/promises';
 
 /**
- * CogniSystem MCP Server - Entry Point Único
+ * OmnySys MCP Server - Entry Point Único
  * 
  * Flujo de inicialización:
  * 1. AI Server Setup (LLM)
@@ -36,7 +36,7 @@ import fs from 'fs/promises';
  * 4. Initialize Cache
  * 5. Setup MCP Protocol
  */
-export class CogniSystemMCPServer {
+export class OmnySysMCPServer {
   constructor(projectPath) {
     this.projectPath = projectPath;
     this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
@@ -62,7 +62,7 @@ export class CogniSystemMCPServer {
    */
   async initialize() {
     console.error('\n╔═══════════════════════════════════════════════════════════════╗');
-    console.error('║     CogniSystem MCP Server v3.0.0                             ║');
+    console.error('║     OmnySys MCP Server v3.0.0                             ║');
     console.error('║     Entry Point Único - IA-Native Architecture                ║');
     console.error('╚═══════════════════════════════════════════════════════════════╝\n');
     console.error(`📂 Project: ${this.projectPath}\n`);
@@ -182,7 +182,7 @@ export class CogniSystemMCPServer {
 
   _step5_MCP() {
     this.server = new Server(
-      { name: 'cognisystem', version: '3.0.0' },
+      { name: 'omnysys', version: '3.0.0' },
       { capabilities: { tools: {} } }
     );
 

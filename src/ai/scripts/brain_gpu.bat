@@ -14,7 +14,7 @@ if exist "%LOCK_FILE%" (
 REM Crear archivo de lock
 echo %DATE% %TIME% > "%LOCK_FILE%"
 
-title CogniSystem Brain (GPU - Vulkan) - LFM2-Extract [PID:%RANDOM%]
+title OmnySys Brain (GPU - Vulkan) - LFM2-Extract [PID:%RANDOM%]
 color 0B
 
 echo ============================================

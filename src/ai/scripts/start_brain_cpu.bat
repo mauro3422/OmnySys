@@ -1,5 +1,5 @@
 @echo off
-title CogniSystem Mappers (CPU)
+title OmnySys Mappers (CPU)
 color 0E
 
 set MODEL_PATH=src\ai\models\LFM2.5-1.2B-Instruct-Q8_0.gguf

@@ -1,6 +1,6 @@
 /**
  * Tool: get_server_status
- * Returns the complete status of the CogniSystem server
+ * Returns the complete status of the OmnySys server
  */
 
 import { getProjectMetadata } from '../../../layer-a-static/storage/query-service.js';
