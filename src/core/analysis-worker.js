@@ -6,7 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { indexProject } from '../layer-a-static/indexer.js';
-import { getFileAnalysis } from '../layer-a-static/storage/query-service.js';
+import { getFileAnalysis } from '../layer-a-static/query/index.js';
 
 export class AnalysisWorker {
   constructor(rootPath, callbacks = {}) {

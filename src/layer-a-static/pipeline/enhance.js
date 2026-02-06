@@ -8,9 +8,9 @@ import { calculateAllRiskScores, generateRiskReport } from '../analyses/tier3/ri
 import { analyzeBrokenConnections } from '../analyses/tier3/broken-connections-detector.js';
 import { detectGodObject, detectOrphanModule } from '../../layer-b-semantic/metadata-contract.js';
 
-import { detectAllSemanticConnections } from '../extractors/static-extractors.js';
-import { detectAllAdvancedConnections } from '../extractors/advanced-extractors.js';
-import { extractAllMetadata } from '../extractors/metadata-extractors.js';
+import { detectAllSemanticConnections } from '../extractors/static/index.js';
+import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
+import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { detectAllCSSInJSConnections } from '../extractors/css-in-js-extractor.js';
 import { detectAllTypeScriptConnections } from '../extractors/typescript-extractor.js';
 import { detectAllReduxContextConnections } from '../extractors/redux-context-extractor.js';

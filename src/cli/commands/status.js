@@ -1,4 +1,4 @@
-﻿import { getProjectStats } from '../../layer-a-static/storage/query-service.js';
+import { getProjectStats } from '../../layer-a-static/query/index.js';
 import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager.js';
 import { resolveProjectPath } from '../utils/paths.js';
 
