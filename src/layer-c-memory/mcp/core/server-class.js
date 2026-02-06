@@ -305,8 +305,18 @@ export class OmnySysMCPServer {
       this.statsInterval = null;
     }
 
-    await this.orchestrator?.stop();
-    await this.transport?.close();
+    try {
+      await this.orchestrator?.stop();
+    } catch (error) {
+      console.error('❌ Error stopping orchestrator:', error.message);
+    }
+    
+    try {
+      await this.transport?.close();
+    } catch (error) {
+      console.error('❌ Error closing transport:', error.message);
+    }
+    
     console.error('✅ MCP server stopped');
   }
 
