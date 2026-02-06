@@ -3,7 +3,7 @@
  * Search for files in the project by pattern
  */
 
-import { fileExists } from '../../../layer-a-static/storage/query-service.js';
+import { fileExists } from '../../../layer-a-static/query/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 

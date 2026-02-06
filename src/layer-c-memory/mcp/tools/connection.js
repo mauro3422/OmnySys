@@ -3,7 +3,7 @@
  * Explains why two files are connected
  */
 
-import { getFileAnalysis } from '../../../layer-a-static/storage/query-service.js';
+import { getFileAnalysis } from '../../../layer-a-static/query/index.js';
 
 // TODO: Implement getAllConnections or replace with proper query
 async function getAllConnections(projectPath) {
