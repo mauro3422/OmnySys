@@ -68,7 +68,7 @@ export {
  * Analiza un archivo completo y extrae toda la información semántica
  * @param {string} filePath - Ruta del archivo
  * @param {string} code - Código fuente
- * @returns {Object} - Resultados de extracción { filePath, localStorage, events, globals, routes, envVars }
+ * @returns {Object} - { filePath, localStorage, events, globals, routes, envVars }
  */
 export function extractSemanticFromFile(filePath, code) {
   return {
@@ -76,8 +76,25 @@ export function extractSemanticFromFile(filePath, code) {
     localStorage: extractLocalStorageKeys(code),
     events: extractEventNames(code),
     globals: extractGlobalAccess(code),
-    routes: extractRoutes(filePath, code)
+    routes: extractRoutes(filePath, code),
+    envVars: extractEnvVars(code)
   };
+}
+
+/**
+ * Extrae variables de entorno referenciadas en el código
+ * @param {string} code - Código fuente
+ * @returns {Array} - [{name, line}]
+ */
+function extractEnvVars(code) {
+  const envVars = [];
+  const pattern = /(?:process\.env|import\.meta\.env)\.(\w+)/g;
+  let match;
+  while ((match = pattern.exec(code)) !== null) {
+    const line = code.substring(0, match.index).split('\n').length;
+    envVars.push({ name: match[1], line });
+  }
+  return envVars;
 }
 
 /**

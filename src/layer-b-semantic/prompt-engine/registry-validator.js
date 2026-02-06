@@ -37,11 +37,14 @@ export function validateRegistry(registry) {
       issues.push(`Archetype ${entry.type || 'unknown'} missing detector function`);
     }
 
-    if (!entry.template || typeof entry.template !== 'object') {
-      issues.push(`Archetype ${entry.type || 'unknown'} missing template`);
-    } else {
-      if (!entry.template.systemPrompt || !entry.template.userPrompt) {
-        issues.push(`Archetype ${entry.type || 'unknown'} template missing systemPrompt or userPrompt`);
+    // Template solo es requerido si requiresLLM !== false
+    if (entry.requiresLLM !== false) {
+      if (!entry.template || typeof entry.template !== 'object') {
+        issues.push(`Archetype ${entry.type || 'unknown'} missing template (requiresLLM is not false)`);
+      } else {
+        if (!entry.template.systemPrompt || !entry.template.userPrompt) {
+          issues.push(`Archetype ${entry.type || 'unknown'} template missing systemPrompt or userPrompt`);
+        }
       }
     }
 

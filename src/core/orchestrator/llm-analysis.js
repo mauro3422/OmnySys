@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 /**
@@ -15,15 +15,21 @@ import path from 'path';
  * - Estado compartido (que archivos leen/escriben la misma key de localStorage)
  * - Imports dinamicos (que rutas resuelven los import() en runtime)
  * - God objects (que responsabilidades tiene y como afecta dependents)
+ *
+ * ARQUETIPOS SIN LLM (requiresLLM: false):
+ * - facade: 100% determinístico por reExportCount (AST)
+ * - config-hub: 100% determinístico por exportCount + dependentCount (grafo)
+ * - entry-point: 100% determinístico por importCount + dependentCount (grafo)
+ * Estos se detectan y registran como arquetipo pero NO pasan por LLM.
  */
 export async function _analyzeComplexFilesWithLLM() {
-  console.log('\nðŸ¤– Orchestrator: Analyzing complex files with LLM...');
+  console.log('\n\uD83E\uDD16 Orchestrator: Analyzing complex files with LLM...');
 
   try {
     // Importar dependencias dinámicamente
     const { LLMAnalyzer } = await import('../../layer-b-semantic/llm-analyzer/index.js');
     const { getFileAnalysis } = await import('../../layer-a-static/storage/query-service.js');
-    const { detectArchetypes } = await import('../../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
+    const { detectArchetypes, filterArchetypesRequiringLLM } = await import('../../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract.js');
 
     // Inicializar LLM Analyzer
@@ -32,7 +38,7 @@ export async function _analyzeComplexFilesWithLLM() {
     const initialized = await llmAnalyzer.initialize();
 
     if (!initialized) {
-      console.log('   âš ï¸  LLM not available, skipping LLM analysis');
+      console.log('   \u26A0\uFE0F  LLM not available, skipping LLM analysis');
       return;
     }
 
@@ -56,33 +62,42 @@ export async function _analyzeComplexFilesWithLLM() {
       // Detectar arquetipos basado en metadatos estandarizados
       const metadata = buildPromptMetadata(filePath, fileAnalysis);
 
-      const archetypes = detectArchetypes(metadata);
+      const allArchetypes = detectArchetypes(metadata);
+
+      // Separar: arquetipos que necesitan LLM vs los que no
+      const llmArchetypes = filterArchetypesRequiringLLM(allArchetypes);
+      const metadataOnlyArchetypes = allArchetypes.filter(
+        a => !llmArchetypes.some(l => l.type === a.type)
+      );
 
       // DEBUG: Log de arquetipos detectados
-      if (archetypes.length > 0) {
-        console.log(`   ðŸ” ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+      if (allArchetypes.length > 0) {
+        const llmTypes = llmArchetypes.map(a => a.type).join(', ') || 'ninguno';
+        const skipTypes = metadataOnlyArchetypes.map(a => a.type).join(', ') || 'ninguno';
+        console.log(`   \uD83D\uDD0D ${filePath}: LLM=[${llmTypes}] Metadata-only=[${skipTypes}]`);
       }
 
-      // Decidir si necesita LLM basado en arquetipos y análisis estático
-      const needsLLM = archetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
+      // Decidir si necesita LLM: solo si hay arquetipos que lo requieren
+      // O si el analysis-decider detecta conexiones no resueltas
+      const needsLLM = llmArchetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
         fileAnalysis.semanticAnalysis || {},
         fileAnalysis
       );
 
       if (needsLLM) {
-        console.log(`   âœ… ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
+        console.log(`   \u2705 ${filePath}: Necesita LLM (${llmArchetypes.map(a => a.type).join(', ')})`);
         filesNeedingLLM.push({
           filePath,
           fileAnalysis,
-          archetypes: archetypes.map(a => a.type),
-          priority: this._calculateLLMPriority(archetypes, metadata)
+          archetypes: llmArchetypes.map(a => a.type),
+          priority: this._calculateLLMPriority(llmArchetypes, metadata)
         });
       }
     }
 
     if (filesNeedingLLM.length === 0) {
-      console.log('   â„¹ï¸  No files need LLM analysis (static analysis sufficient)');
-      console.log('   âœ… Emitting analysis:complete event');
+      console.log('   \u2139\uFE0F  No files need LLM analysis (static analysis sufficient)');
+      console.log('   \u2705 Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
       this.emit('analysis:complete', {
         iterations: 0,
@@ -97,7 +112,7 @@ export async function _analyzeComplexFilesWithLLM() {
     this.processedFiles.clear();
     this.analysisCompleteEmitted = false;
 
-    console.log(`   ðŸ“Š Found ${filesNeedingLLM.length} files needing LLM analysis`);
+    console.log(`   \uD83D\uDCCA Found ${filesNeedingLLM.length} files needing LLM analysis`);
 
     // Agregar archivos a la cola con prioridad
     for (const file of filesNeedingLLM) {
@@ -108,16 +123,16 @@ export async function _analyzeComplexFilesWithLLM() {
         fileAnalysis: file.fileAnalysis
       }, file.priority);
 
-      console.log(`   âž• Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
+      console.log(`   \u2795 Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
     }
 
-    console.log(`   âœ… ${filesNeedingLLM.length} files added to analysis queue`);
-    console.log('   ðŸš€ Starting processing...');
+    console.log(`   \u2705 ${filesNeedingLLM.length} files added to analysis queue`);
+    console.log('   \uD83D\uDE80 Starting processing...');
 
     // Iniciar procesamiento
     this._processNext();
   } catch (error) {
-    console.error('   âŒ Error in LLM analysis phase:', error.message);
+    console.error('   \u274C Error in LLM analysis phase:', error.message);
   }
 }
 

@@ -11,7 +11,7 @@ import * as tools from './tools.js';
 import { printStatus } from './status.js';
 import { shutdown } from './lifecycle.js';
 
-class CogniSystemUnifiedServer extends EventEmitter {
+class OmnySysUnifiedServer extends EventEmitter {
   constructor(projectPath) {
     super();
     this.projectPath = projectPath;
@@ -56,7 +56,7 @@ class CogniSystemUnifiedServer extends EventEmitter {
 }
 
 Object.assign(
-  CogniSystemUnifiedServer.prototype,
+  OmnySysUnifiedServer.prototype,
   init,
   api,
   orchestrator,
@@ -66,7 +66,7 @@ Object.assign(
 
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
-  const server = new CogniSystemUnifiedServer(projectPath);
+  const server = new OmnySysUnifiedServer(projectPath);
 
   // Handle graceful shutdown
   process.on('SIGTERM', () => server.shutdown());
@@ -83,4 +83,4 @@ async function main() {
   }
 }
 
-export { CogniSystemUnifiedServer, main };
+export { OmnySysUnifiedServer, main };

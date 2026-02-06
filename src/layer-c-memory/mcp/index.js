@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * CogniSystem MCP Server - Entry Point Único
+ * OmnySys MCP Server - Entry Point Único
  * 
  * Usage: node src/layer-c-memory/mcp/index.js /path/to/project
  * 
@@ -14,14 +14,14 @@
  * 6. MCP Server listo para queries
  */
 
-import { CogniSystemMCPServer } from './core/server-class.js';
+import { OmnySysMCPServer } from './core/server-class.js';
 import path from 'path';
 
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
   const absolutePath = path.resolve(projectPath);
 
-  const server = new CogniSystemMCPServer(absolutePath);
+  const server = new OmnySysMCPServer(absolutePath);
 
   // Stats cada 30 segundos (silencioso en producción)
   server.startStatsInterval((stats) => {

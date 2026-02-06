@@ -4,7 +4,7 @@
  * Initialization Module - SSOT para inicialización del servidor
  * 
  * Este módulo centraliza toda la lógica de inicialización del
- * CogniSystemUnifiedServer siguiendo principios SOLID:
+ * OmnySysUnifiedServer siguiendo principios SOLID:
  * - S: Cada sub-módulo tiene una responsabilidad única
  * - O: Extensible mediante nuevos inicializadores
  * - D: Depende de abstracciones (contextos), no de implementaciones
@@ -28,7 +28,7 @@ export { calculateChangePriority } from './batch-processor-init.js';
  */
 export async function initialize() {
   console.log('\n╔═══════════════════════════════════════════════════════════════╗');
-  console.log('║     CogniSystem Unified Server v2.0.0                         ║');
+  console.log('║     OmnySys Unified Server v2.0.0                         ║');
   console.log('╚═══════════════════════════════════════════════════════════════╝\n');
   console.log(`📁 Project: ${this.projectPath}\n`);
 

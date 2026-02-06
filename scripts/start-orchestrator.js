@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootPath = process.argv[2] || process.cwd();
 
-console.log('🚀 Starting CogniSystem Orchestrator...');
+console.log('🚀 Starting OmnySys Orchestrator...');
 console.log(`📁 Project: ${rootPath}\n`);
 
 const orchestratorPath = path.join(__dirname, '..', 'src', 'core', 'orchestrator-server.js');
