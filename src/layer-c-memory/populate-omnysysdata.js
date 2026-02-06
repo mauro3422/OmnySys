@@ -18,8 +18,7 @@ import {
   getFileAnalysis,
   getAllConnections,
   getRiskAssessment,
-  getProjectStats,
-  getMultipleFiles
+  getProjectStats
 } from '../layer-a-static/query/index.js';
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 
