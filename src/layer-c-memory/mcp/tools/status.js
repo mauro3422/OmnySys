@@ -3,7 +3,7 @@
  * Returns the complete status of the OmnySys server
  */
 
-import { getProjectMetadata } from '../../../layer-a-static/storage/query-service.js';
+import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
 
 export async function get_server_status(args, context) {
   const { orchestrator, cache, projectPath } = context;

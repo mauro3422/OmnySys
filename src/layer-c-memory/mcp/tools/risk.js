@@ -3,7 +3,7 @@
  * Returns a risk assessment of the entire project
  */
 
-import { getProjectMetadata } from '../../../layer-a-static/storage/query-service.js';
+import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
 
 // TODO: Implement proper risk assessment query
 async function getRiskAssessment(projectPath, minSeverity = 'low') {
