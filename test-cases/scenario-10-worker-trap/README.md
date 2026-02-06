@@ -15,4 +15,4 @@ Una IA decide que para mejorar la legibilidad, las coordenadas deben estar en un
 
 Edita `DataManager.js`. Cree que ha terminado porque ha actualizado los usos en el hilo principal. Pero el `Worker.js` sigue intentando leer `node.x` y `node.y`.
 
-**El resultado**: El worker devuelve `NaN` o falla silenciosamente, y el sistema se cuelga o los objetos desaparecen. Como el worker está en otro archivo y no hay un `import` de código (solo un `new Worker('file.js')`), el análisis estático tradicional falla. **CogniSystem debe encontrar esta conexión semántica vía el mensaje `postMessage`.**
+**El resultado**: El worker devuelve `NaN` o falla silenciosamente, y el sistema se cuelga o los objetos desaparecen. Como el worker está en otro archivo y no hay un `import` de código (solo un `new Worker('file.js')`), el análisis estático tradicional falla. **OmnySys debe encontrar esta conexión semántica vía el mensaje `postMessage`.**

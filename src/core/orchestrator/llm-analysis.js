@@ -4,15 +4,17 @@ import path from 'path';
 /**
  * Analiza archivos complejos con LLM basado en metadatos de Layer A
  *
- * Esta función revisa los metadatos que Layer A generó y decide qué archivos
- * necesitan análisis LLM para fortalecer las conexiones semánticas.
+ * Esta funcion revisa los metadatos que Layer A genero y decide que archivos
+ * necesitan analisis LLM para fortalecer las conexiones semanticas.
  *
- * Criterios para necesitar LLM:
- * - Archivos huérfanos (0 dependents) - potencialmente conectados por estado global
- * - Archivos con shared state detectado (window.*, localStorage)
- * - Archivos con eventos complejos
- * - Archivos con imports dinámicos
- * - God objects (muchos exports + dependents)
+ * REGLA: Solo se envia a LLM si los arquetipos detectados requieren analisis
+ * semantico. Si la metadata sola puede determinar el patron (ej: dependencias
+ * circulares, modulos huerfanos), NO debe pasar por LLM. El LLM es para
+ * conexiones INVISIBLES que la metadata no puede resolver:
+ * - Eventos (que archivos emiten/escuchan el mismo evento)
+ * - Estado compartido (que archivos leen/escriben la misma key de localStorage)
+ * - Imports dinamicos (que rutas resuelven los import() en runtime)
+ * - God objects (que responsabilidades tiene y como afecta dependents)
  */
 export async function _analyzeComplexFilesWithLLM() {
   console.log('\nðŸ¤– Orchestrator: Analyzing complex files with LLM...');

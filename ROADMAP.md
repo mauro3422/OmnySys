@@ -1,4 +1,4 @@
-# CogniSystem - Roadmap de Desarrollo
+# OmnySys - Roadmap de Desarrollo
 
 **Versión actual**: v0.5.1 - Enterprise Architecture Refactor ✅  
 **Última actualización**: 2026-02-06
@@ -79,7 +79,7 @@
 - [x] `get_risk_assessment()` - Evaluación de riesgos
 - [x] `search_files()` - Búsqueda de archivos
 - [x] Query service eficiente (6 módulos)
-- [x] Storage particionado en `.OmnySystemData/`
+- [x] Storage particionado en `.omnysysdata/`
 
 **Ubicación**: `src/layer-c-memory/`
 

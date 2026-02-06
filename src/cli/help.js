@@ -7,11 +7,11 @@ USAGE:
   omnysystem ai <subcommand> [mode]
 
 COMMANDS:
-  analyze [project]    Run static analysis (generates .OmnySystemData/)
+  analyze [project]    Run static analysis (generates .omnysysdata/)
   check <file>         Show impact analysis for a specific file
   consolidate [project] Iterative AI consolidation to 100% coverage
   serve [project]      Start local MCP server for Claude Code
-  clean [project]      Remove analysis data (.OmnySystemData/)
+  clean [project]      Remove analysis data (.omnysysdata/)
   status [project]     Show analysis status and statistics
   export [project]     Export complete system map (debug)
   ai <subcommand>      Manage AI servers (see below)

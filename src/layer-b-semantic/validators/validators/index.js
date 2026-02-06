@@ -28,3 +28,15 @@ export {
   sanitizeGlobalStateResponse,
   isValidGlobalVariable
 } from './global-validator.js';
+
+export {
+  validateFacadeResponse
+} from './facade-validator.js';
+
+export {
+  validateConfigHubResponse
+} from './config-hub-validator.js';
+
+export {
+  validateEntryPointResponse
+} from './entry-point-validator.js';

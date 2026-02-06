@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Esta carpeta contiene **proyectos sintéticos** diseñados para validar cada componente de CogniSystem en un entorno controlado antes de aplicarlo a código real.
+Esta carpeta contiene **proyectos sintéticos** diseñados para validar cada componente de OmnySys en un entorno controlado antes de aplicarlo a código real.
 
 Cada escenario simula un patrón común que causa visión de túnel en IAs.
 
@@ -19,7 +19,7 @@ scenario-X-nombre/
 │   ├── fileA.js
 │   └── fileB.js
 ├── expected-graph.json    # Grafo esperado (ground truth)
-└── expected-warnings.json # Advertencias que CogniSystem debería generar
+└── expected-warnings.json # Advertencias que OmnySys debería generar
 ```
 
 ---
@@ -38,7 +38,7 @@ scenario-X-nombre/
 - `fileB.js` importa `fileC.js`
 - Dependientes indirectos: `fileC.js` afecta a `fileA.js` (transitivamente)
 
-**Test**: ¿CogniSystem detecta que modificar `fileC` afecta a `fileA` y `fileB`?
+**Test**: ¿OmnySys detecta que modificar `fileC` afecta a `fileA` y `fileB`?
 
 ---
 
@@ -68,7 +68,7 @@ console.log(state.counter);
 - Modificar `state.counter` en `incrementer` afecta `display`
 - **No hay import directo entre incrementer y display**
 
-**Test**: ¿CogniSystem advierte que modificar `incrementer` puede afectar `display`?
+**Test**: ¿OmnySys advierte que modificar `incrementer` puede afectar `display`?
 
 ---
 
@@ -93,7 +93,7 @@ eventBus.on('click', logClick);
 - `button.js` afecta a `analytics.js` y `logger.js`
 - **No hay imports directos**
 
-**Test**: ¿CogniSystem detecta que renombrar el evento 'click' romperá 2 archivos?
+**Test**: ¿OmnySys detecta que renombrar el evento 'click' romperá 2 archivos?
 
 ---
 
@@ -115,7 +115,7 @@ const token = localStorage.getItem('token');
 - `writer.js` y `reader.js` están conectados por el key 'token'
 - Cambiar el key rompe la conexión
 
-**Test**: ¿CogniSystem detecta la conexión vía localStorage?
+**Test**: ¿OmnySys detecta la conexión vía localStorage?
 
 ---
 
@@ -138,7 +138,7 @@ void main() { /* usa u_zoom */ }
 - `renderer.js` está conectado a `shader.glsl` por el uniform `u_zoom`
 - Renombrar `u_zoom` rompe el shader
 
-**Test**: ¿CogniSystem detecta la conexión aunque el shader no sea JS?
+**Test**: ¿OmnySys detecta la conexión aunque el shader no sea JS?
 
 ---
 
@@ -158,7 +158,7 @@ core.js (exporta función crítica)
 └── moduleJ.js (usa core)
 ```
 
-**Test**: ¿CogniSystem marca `core.js` como "HIGH RISK" al intentar editarlo?
+**Test**: ¿OmnySys marca `core.js` como "HIGH RISK" al intentar editarlo?
 
 ---
 
@@ -179,7 +179,7 @@ test('add', () => expect(add(1, 2)).toBe(3));
 
 **Cambio simulado**: Renombrar `add` a `sum` en `calculator.js`
 
-**Test**: ¿CogniSystem advierte que `calculator.test.js` también debe actualizarse?
+**Test**: ¿OmnySys advierte que `calculator.test.js` también debe actualizarse?
 
 ---
 
@@ -263,7 +263,7 @@ Múltiples paquetes con dependencias cruzadas
 - Estos casos son **sintéticos**, no código real
 - Están diseñados para ser **minimalistas**: el código más simple que demuestra el patrón
 - **Ground truth es manual**: Tú defines qué conexiones deben detectarse
-- Si CogniSystem falla un test, el bug está en CogniSystem, no en el test case
+- Si OmnySys falla un test, el bug está en OmnySys, no en el test case
 
 ---
 

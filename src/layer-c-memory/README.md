@@ -249,20 +249,20 @@ class FileWatcher {
 
 **Comandos**:
 ```bash
-# Inicializar CogniSystem en un proyecto
-cogni-system init
+# Inicializar OmnySys en un proyecto
+omnysys init
 
 # Regenerar grafo manualmente
-cogni-system reindex
+omnysys reindex
 
 # Iniciar servidor MCP
-cogni-system serve
+omnysys serve
 
 # Consultar desde CLI (debug)
-cogni-system query impact src/CameraState.js
+omnysys query impact src/CameraState.js
 
 # Ver estadísticas del grafo
-cogni-system stats
+omnysys stats
 ```
 
 **Implementación**:
@@ -274,7 +274,7 @@ const program = new Command();
 
 program
   .command('init')
-  .description('Initialize CogniSystem in current project')
+  .description('Initialize OmnySys in current project')
   .action(async () => {
     // 1. Ejecutar Capa A
     // 2. Ejecutar Capa B
@@ -300,12 +300,12 @@ program.parse();
 ### Instalación Inicial
 
 ```bash
-# 1. Usuario instala CogniSystem
-npm install -g cogni-system
+# 1. Usuario instala OmnySys
+npm install -g omnysys
 
 # 2. Inicializa en su proyecto
 cd my-project
-cogni-system init
+omnysys init
 ```
 
 **Proceso de `init`**:
@@ -315,7 +315,7 @@ cogni-system init
 4. Genera `enhanced-system-map.json`
 5. Inicia file watcher (background)
 6. Inicia servidor MCP (background)
-7. Imprime: "✅ CogniSystem ready. MCP server running on port 3000"
+7. Imprime: "✅ OmnySys ready. MCP server running on port 3000"
 
 ---
 
@@ -359,7 +359,7 @@ Crear un hook que se ejecute antes de cada edición:
 // En configuración de Claude Code
 {
   "hooks": {
-    "pre-edit": "cogni-system query impact $FILE"
+    "pre-edit": "omnysys query impact $FILE"
   }
 }
 ```
@@ -370,19 +370,19 @@ Crear un skill que la IA pueda invocar manualmente:
 
 ```bash
 # IA ejecuta:
-/cogni-check CameraState.js
+/omnysys-check CameraState.js
 ```
 
 **Opción C: Servidor MCP (Recomendado)**
 
-Registrar CogniSystem como servidor MCP disponible:
+Registrar OmnySys como servidor MCP disponible:
 
 ```json
 // claude_desktop_config.json
 {
   "mcpServers": {
-    "cogni-system": {
-      "command": "cogni-system",
+    "omnysys": {
+      "command": "omnysys",
       "args": ["serve"]
     }
   }
@@ -421,7 +421,7 @@ Registrar CogniSystem como servidor MCP disponible:
 
 ## Configuración
 
-**Archivo**: `.cogni-system.json` en la raíz del proyecto
+**Archivo**: `.omnysys.json` en la raíz del proyecto
 
 ```json
 {

@@ -1,3 +1,10 @@
+/**
+ * REGLA: Toda entrada del registry DEBE cumplir con el proposito del sistema:
+ * detectar patrones de CONEXION entre archivos. Este validador verifica
+ * estructura (campos obligatorios, duplicados), no proposito.
+ * El proposito lo valida el desarrollador con el checklist en
+ * docs/ARCHETYPE_DEVELOPMENT_GUIDE.md antes de registrar un arquetipo.
+ */
 export function validateRegistry(registry) {
   const issues = [];
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CogniSystem analyzer automatically filters what gets analyzed to avoid:
+The OmnySys analyzer automatically filters what gets analyzed to avoid:
 - Generated/build directories
 - Dependencies (node_modules)
 - Analysis data (.aver/, omnysysdata/)
@@ -23,7 +23,7 @@ These directories are ALWAYS ignored:
 - `.nuxt/`
 - `.turbo/`
 
-### CogniSystem Data (Don't re-analyze)
+### OmnySys Data (Don't re-analyze)
 - `.aver/` - Analysis data
 - `omnysysdata/` - MCP data hub
 

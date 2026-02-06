@@ -14,4 +14,4 @@ Un desarrollador decide mover `ServiceManager.js` de `/utils` a `/core`. Actuali
 
 **El resultado**: El plugin emite eventos al "Bus de Datos B", pero todo el resto de la aplicación escucha el "Bus de Datos A". 
 
-**Invisibilidad**: No hay errores. La aplicación simplemente "deja de funcionar" para ese plugin. **CogniSystem debe alertar si un mismo símbolo exportado como Singleton parece estar siendo instanciado de múltiples formas o si hay rutas de importación ambiguas para el mismo recurso.**
+**Invisibilidad**: No hay errores. La aplicación simplemente "deja de funcionar" para ese plugin. **OmnySys debe alertar si un mismo símbolo exportado como Singleton parece estar siendo instanciado de múltiples formas o si hay rutas de importación ambiguas para el mismo recurso.**

@@ -14,4 +14,4 @@ Un desarrollador decide cambiar el nombre de la variable CSS de `--sidebar-width
 
 **El resultado**: El menú sigue funcionando (JS y CSS están sincronizados). Pero el **DiagramCanvas.js** sigue usando `getPropertyValue('--sidebar-width')`. Al recibir un string vacío o `NaN`, el canvas deja de centrar los objetos correctamente o los "teletransporta" fuera de la pantalla. 
 
-Como la conexión es a través del DOM/CSS, no hay `import` que valga. **CogniSystem debe detectar que ambos archivos dependen de la misma identidad semántica: la variable CSS.**
+Como la conexión es a través del DOM/CSS, no hay `import` que valga. **OmnySys debe detectar que ambos archivos dependen de la misma identidad semántica: la variable CSS.**

@@ -1,8 +1,11 @@
 /**
  * Prompt Engine - Single Source of Truth (SSoT)
- * 
- * Sistema centralizado para gestión de prompts dinámicos basados en metadatos.
- * No permite que llm-analyzer.js crezca, todo el prompting está centralizado aquí.
+ *
+ * Sistema centralizado para gestion de prompts dinamicos basados en metadatos.
+ * No permite que llm-analyzer.js crezca, todo el prompting esta centralizado aqui.
+ *
+ * REGLA: Los schemas en getJsonSchema() deben corresponder SOLO a analysis types
+ * activos en PROMPT_REGISTRY.js. Si un arquetipo se elimina, su schema tambien.
  */
 
 import promptSelector from './prompt-selector.js';
@@ -178,8 +181,6 @@ IMPORTANT: Return ONLY valid JSON with ALL required fields. If not found, return
     const schemas = {
       'dynamic-imports': 'dynamic-imports.json',
       'semantic-connections': 'semantic-connections.json',
-      'css-in-js': 'css-in-js.json',
-      'typescript': 'typescript.json',
       'default': 'default.json'
     };
 
