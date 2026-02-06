@@ -1,6 +1,6 @@
 ﻿# AI Integration - Local LLM for Semantic Analysis
 
-This directory contains the AI integration for CogniSystem, enabling deep semantic analysis using local LLMs.
+This directory contains the AI integration for OmnySys, enabling deep semantic analysis using local LLMs.
 
 ## Architecture
 

@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.5.1]** | `changelog/v0.5.1.md` | **Enterprise Architecture Refactor** (Latest) |
+| **[0.5.2]** | `changelog/v0.5.2.md` | **Documentation Overhaul, Rename & New Extractors** (Latest) |
+| **[0.5.1]** | `changelog/v0.5.1.md` | **Enterprise Architecture Refactor** |
 | **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** |
 | **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** |
 | **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
@@ -25,33 +26,20 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.5.1 (2026-02-06)**
+### Latest Release: v0.5.2 (2026-02-06)
 
-**Enterprise Architecture Release**: Complete modularization of 11 large monolithic files following SOLID principles and SSOT pattern.
+**Documentation Overhaul, Rename & New Extractors**
 
 **Key Changes**:
-- ✅ **11 Files Refactored** - 5,000+ lines split into 99+ focused modules
-- ✅ **SOLID Compliance** - Single Responsibility, Open/Closed, Dependency Inversion
-- ✅ **SSOT Pattern** - Single Source of Truth for constants, types, configurations
-- ✅ **API Compatibility** - 100% backward compatible, no breaking changes
-- ✅ **Enterprise Structure** - Average 86% reduction in file size (455 → 63 lines)
+- Project renamed: CogniSystem/OmnySystem → **OmnySys**
+- Data folder: `.OmnySysData` → **`.omnysysdata`**
+- 15 dead docs eliminated, 4 major docs rewritten (-7,200 lines net)
+- 3 new Layer A extractors: shared routes, env coupling, co-located files
+- 3 new archetypes: facade, config-hub, entry-point
+- LLM Gate optimized: bypass for connections already resolved statically
+- Documented "Test de la Caja" architecture for archetype validation
 
-**Refactored Files**:
-- `graph-builder.js` (550 lines) → 12 modules
-- `advanced-extractors.js` + `metadata-extractors.js` (1,083 lines) → 17 modules  
-- `semantic-issues-detector.js` (458 lines) → 8 modules
-- `parser.js` (511 lines) → 8 modules
-- `llm-analyzer.js` (441 lines) → 5 modules
-- `init.js` (335 lines) → 7 modules
-- `batch-processor.js` (458 lines) → 9 modules
-- `static-extractors.js` (441 lines) → 10 modules
-- `redux-context-extractor.js` (398 lines) → 12 modules
-- `event-pattern-detector.js` (398 lines) → 9 modules
-- `websocket-manager.js` (441 lines) → 10 modules
-
-**New**: Modular directory structure with `index.js` facades
-
-**Previous: v0.5.0** - Layer A/B Unification & Orchestrator
+**Previous: v0.5.1** - Enterprise Architecture Refactor
 
 **Architecture Release**: MCP Server is now the unified entry point with internal Orchestrator
 
@@ -85,6 +73,7 @@ This repository uses a modular changelog structure for better organization and m
 | **Phase 3.9** | 0.4.2 | Context Optimization & Function Analysis | ✅ Complete |
 | **Architecture** | 0.4.5 | MCP Unified Entry Point | ✅ Complete |
 | **Architecture** | 0.4.4 | Unified Cache System | ✅ Complete |
+| **Overhaul** | 0.5.2 | Doc cleanup, rename, new extractors/archetypes | ✅ Complete |
 | **Enterprise** | 0.5.1 | SOLID Architecture Refactor - 17 files, 147 modules | ✅ Complete |
 | **Architecture** | 0.5.0 | Layer A/B Unification | ✅ Complete |
 | **Patch** | 0.4.3 | Bug Fixes & Stability | ✅ Complete |

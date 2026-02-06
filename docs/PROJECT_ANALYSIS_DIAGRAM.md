@@ -1,10 +1,10 @@
-# Diagrama de Análisis del Proyecto OmnySystem
+# Diagrama de Análisis del Proyecto OmnySys
 
 ## Visión General del Sistema
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        OMNYSYSTEM                                   │
+│                          OMNYSYS                                     │
 │                    (Motor de Conciencia Sistémica)                  │
 └─────────────────────────────────────────────────────────────────────┘
                                     │

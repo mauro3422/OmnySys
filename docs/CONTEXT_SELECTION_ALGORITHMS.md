@@ -7,7 +7,7 @@
 
 ## Overview
 
-Este documento describe los algoritmos utilizados por CogniSystem para determinar qué archivos son relevantes cuando una IA va a editar código.
+Este documento describe los algoritmos utilizados por OmnySys para determinar qué archivos son relevantes cuando una IA va a editar código.
 
 > **Problema**: Cuando vas a editar `CameraState.js` en un proyecto de 500 archivos, ¿cuáles de esos 500 archivos son RELEVANTES? No puedes pasar todos (contexto saturado), pero necesitas los correctos.
 

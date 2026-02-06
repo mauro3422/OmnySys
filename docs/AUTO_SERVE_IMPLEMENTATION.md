@@ -1,6 +1,6 @@
 # Auto Serve - Pipeline Unificado
 
-Documento canonico del comportamiento esperado de `omnysystem serve`.
+Documento canonico del comportamiento esperado de `omnysys serve`.
 
 ## Objetivo
 Un solo comando deja el sistema operativo:
@@ -20,8 +20,8 @@ serve
 ```
 
 ## Pipeline Canonico
-1. Verificar `.OmnySysData/`.
-2. Si no existe, ejecutar `omnysystem analyze`.
+1. Verificar `.omnysysdata/`.
+2. Si no existe, ejecutar `omnysys analyze`.
 3. Verificar LLM server y arrancar si es necesario.
 4. Inicializar Orchestrator en modo servicio.
 5. Ejecutar consolidacion inicial (opcional, segun config).
@@ -29,6 +29,6 @@ serve
 
 ## Salida esperada
 - MCP tools disponibles
-- `.OmnySysData/` actualizado
+- `.omnysysdata/` actualizado
 
 Ultima actualizacion: 2026-02-05

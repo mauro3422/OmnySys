@@ -94,7 +94,10 @@ export const GLOBAL_PATTERNS = {
 export const ConnectionType = {
   LOCAL_STORAGE: 'localStorage',
   GLOBAL_VARIABLE: 'globalVariable',
-  EVENT_LISTENER: 'eventListener'
+  EVENT_LISTENER: 'eventListener',
+  SHARED_ENV: 'shared-env',
+  COLOCATED: 'colocated',
+  SHARED_ROUTE: 'shared-route'
 };
 
 /**

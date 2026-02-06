@@ -1,8 +1,13 @@
 /**
  * @fileoverview constants.js
- * 
+ *
  * SSOT - Constantes del contrato de metadatos
- * 
+ *
+ * NOTA: Los campos en OPTIONAL_METADATA_FIELDS son metadata informativa de Layer A.
+ * No todos son usados por arquetipos. Campos como hasTypeScript y hasCSSInJS son
+ * datos utiles para contexto pero NO tienen arquetipo asociado porque no describen
+ * patrones de conexion entre archivos. Ver PROMPT_REGISTRY.js para las reglas.
+ *
  * @module metadata-contract/constants
  */
 
@@ -44,7 +49,11 @@ export const OPTIONAL_METADATA_FIELDS = [
   'usesGlobalState',
   'globalStateWrites',
   'globalStateReads',
-  'semanticConnections'
+  'semanticConnections',
+  'colocatedFiles',
+  'hasTestCompanion',
+  'routeStrings',
+  'hasRoutes'
 ];
 
 /**
@@ -89,7 +98,9 @@ export const ARRAY_LIMITS = {
   GLOBAL_READS: 10,
   ENV_VARS: 10,
   SEMANTIC_CONNECTIONS: 5,
-  LOCAL_STORAGE_KEYS: 5
+  LOCAL_STORAGE_KEYS: 5,
+  COLOCATED_FILES: 5,
+  ROUTE_STRINGS: 10
 };
 
 /**

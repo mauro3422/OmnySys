@@ -2,7 +2,7 @@
  * @fileoverview analysis-checker.js
  * 
  * Verifica y ejecuta Layer A si es necesario.
- * Flujo: Verifica .OmnySysData/ → Ejecuta Layer A si falta → Espera completado
+ * Flujo: Verifica .omnysysdata/ → Ejecuta Layer A si falta → Espera completado
  * 
  * @module mcp/core/analysis-checker
  */
@@ -11,11 +11,11 @@ import path from 'path';
 import fs from 'fs/promises';
 
 /**
- * Verifica si existe análisis previo en .OmnySysData/
+ * Verifica si existe análisis previo en .omnysysdata/
  */
 async function hasExistingAnalysis(projectPath) {
   try {
-    const indexPath = path.join(projectPath, '.OmnySysData', 'index.json');
+    const indexPath = path.join(projectPath, '.omnysysdata', 'index.json');
     await fs.access(indexPath);
     return true;
   } catch {

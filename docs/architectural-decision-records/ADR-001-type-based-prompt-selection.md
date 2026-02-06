@@ -32,8 +32,6 @@ Cada archivo puede ser clasificado en uno o más arquetipos basado en sus metada
 | `god-object` | `dependentCount >= 10` | Analiza acoplamiento arquitectónico |
 | `event-hub` | `eventNames.length > 0` | Analiza patrones de eventos |
 | `state-manager` | `localStorageKeys.length > 0` | Analiza estado compartido |
-| `styled-component` | `cssInJS.components.length > 0` | Analiza CSS-in-JS |
-| `type-definer` | `typescript.interfaces.length > 0` | Analiza tipos TypeScript |
 | `utility-module` | `dependentCount > 5 && exportCount < 3` | Analiza si es utilidad legítima |
 | `orphan-module` | `dependentCount == 0 && importCount == 0` | Analiza código muerto potencial |
 
@@ -56,8 +54,6 @@ const severityScores = {
   'dynamic-importer': 7,   // Conexiones ocultas
   'event-hub': 6,          // Acoplamiento por eventos
   'state-manager': 6,      // Acoplamiento por estado
-  'styled-component': 3,   // Bajo impacto arquitectónico
-  'type-definer': 2,       // Bajo impacto
   'utility-module': 1      // Normalmente OK
 };
 
@@ -188,7 +184,30 @@ class TypeBasedPromptSelector {
 2. **Learning**: Aprender de resultados para ajustar severidades
 3. **User Override**: Permitir al usuario especificar el tipo de análisis
 
+## Post-Implementation Update (v0.5.2)
+
+### Refinamiento del proposito de arquetipos
+
+Tras usar el sistema en produccion, se descubrio que dos arquetipos no cumplian con el proposito central:
+
+- `styled-component` (severity 3): Detectaba uso de CSS-in-JS, pero esto es un detalle de estilo de codigo, no un patron de conexion entre archivos.
+- `type-definer` (severity 2): Detectaba uso de TypeScript, pero esto no agrega informacion de conexion mas alla de lo que `exportCount`/`dependentCount` ya capturan.
+
+**Ambos fueron removidos del registry.** El criterio quedo formalizado:
+
+> **Un arquetipo DEBE detectar un patron de CONEXION entre archivos.**
+> Si no describe como un archivo se conecta con otros, no es un arquetipo.
+
+### Regla LLM vs Metadata
+
+Se formalizo tambien cuando usar LLM:
+- Si la metadata sola determina el patron Y la accion -> NO enviar a LLM
+- Si se necesita entender semantica del codigo para mapear conexiones invisibles -> SI enviar a LLM
+
+Ejemplo: las dependencias circulares se detectan en el grafo de Layer A. No necesitan LLM.
+
 ## References
 
-- `docs/creating-new-prompt-template.md` - How to add new archetypes
-- `src/layer-b-semantic/prompt-engine/prompt-selector.js` - Implementation
+- `docs/ARCHETYPE_DEVELOPMENT_GUIDE.md` - Guia canonica para agregar arquetipos
+- `docs/ARCHETYPE_SYSTEM.md` - Resumen del sistema de arquetipos
+- `src/layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js` - Implementation

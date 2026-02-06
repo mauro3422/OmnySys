@@ -10,5 +10,8 @@ export {
   detectGodObject,
   detectOrphanModule,
   detectPatterns,
-  getPatternDescriptions
+  getPatternDescriptions,
+  detectFacade,
+  detectConfigHub,
+  detectEntryPoint
 } from './architectural-patterns.js';

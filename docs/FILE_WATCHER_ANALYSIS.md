@@ -3,7 +3,7 @@
 Documento canonico del comportamiento esperado del file watcher.
 
 ## Objetivo
-Mantener `.OmnySysData/` consistente ante cambios en archivos del proyecto.
+Mantener `.omnysysdata/` consistente ante cambios en archivos del proyecto.
 
 ## Diagrama
 ```text

@@ -3,7 +3,7 @@
 /**
  * Populate OmnySysData
  *
- * Toma datos de .OmnySysData/ y los coloca en omnysysdata/
+ * Toma datos de .omnysysdata/ y los coloca en omnysysdata/
  * para que el MCP Server pueda acceder a ellos
  *
  * Uso:
@@ -26,19 +26,19 @@ import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Popula omnysysdata/ con datos desde .OmnySysData/
+ * Popula omnysysdata/ con datos desde .omnysysdata/
  */
 export async function populateOmnySysData(projectPath) {
   const omnysysPath = path.join(projectPath, 'omnysysdata');
-  const dataPath = path.join(projectPath, '.OmnySysData');
+  const dataPath = path.join(projectPath, '.omnysysdata');
 
   console.log('🔄 Populating OmnySysData...\n');
 
   try {
-    // Verificar que .OmnySysData/ existe
+    // Verificar que .omnysysdata/ existe
     await fs.access(dataPath);
   } catch {
-    console.error('❌ Error: .OmnySysData/ directory not found');
+    console.error('❌ Error: .omnysysdata/ directory not found');
     console.error('   Run the analyzer first: node analyzer.js');
     process.exit(1);
   }

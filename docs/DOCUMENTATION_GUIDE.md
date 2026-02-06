@@ -1,13 +1,13 @@
-# Guía de Documentación - OmnySystem
+# Guía de Documentación - OmnySys
 
-**Versión**: v0.5.1  
-**Última actualización**: 2026-02-06
+**Version**: v0.5.2
+**Ultima actualizacion**: 2026-02-06
 
 ---
 
 ## Propósito
 
-Esta guía establece las convenciones y mejores prácticas para mantener la documentación de OmnySystem organizada, consistente y actualizada.
+Esta guía establece las convenciones y mejores prácticas para mantener la documentación de OmnySys organizada, consistente y actualizada.
 
 ---
 
@@ -16,24 +16,26 @@ Esta guía establece las convenciones y mejores prácticas para mantener la docu
 ### Niveles de Documentación
 
 ```
-OmnySystem/
-├── README.md                    # Entry point - Visión general
-├── GETTING_STARTED.md           # Guía de inicio rápido
+OmnySys/
+├── README.md                    # Entry point - Vision general
+├── GETTING_STARTED.md           # Guia de inicio rapido
 ├── ROADMAP.md                   # Plan de desarrollo
-├── ARCHITECTURE.md              # Diseño técnico detallado
-├── CHANGELOG.md                 # Índice de changelogs
+├── ARCHITECTURE.md              # Diseno tecnico (diagrama, SOLID, SSOT)
+├── CHANGELOG.md                 # Indice de changelogs
 │
 ├── docs/
-│   ├── INDEX.md                 # Índice de toda la documentación
-│   ├── DOCUMENTATION_GUIDE.md   # Esta guía
-│   ├── ARCHITECTURE_LAYER_A_B.md
-│   ├── MCP_TOOLS.md
-│   ├── AI_CONSOLIDATION_MODE.md
-│   ├── ITERATIVE_MODE.md
-│   └── ...
+│   ├── INDEX.md                 # Indice maestro de documentacion
+│   ├── DOCUMENTATION_GUIDE.md   # Esta guia
+│   ├── ARCHITECTURE_LAYER_A_B.md # Detalle Layers A y B
+│   ├── MCP_TOOLS.md             # Tools MCP, CLI, troubleshooting
+│   ├── AI_MODELS_GUIDE.md       # Modelos LFM2.5 (setup, prompting, GPU)
+│   ├── ARCHETYPE_SYSTEM.md      # Sistema de arquetipos
+│   ├── ARCHETYPE_DEVELOPMENT_GUIDE.md # Guia desarrollo arquetipos
+│   ├── metadata-prompt-system.md # Flujo metadata -> prompt -> LLM
+│   └── ...                      # Ver docs/INDEX.md para listado completo
 │
 └── changelog/
-    ├── v0.5.1.md               # Changelog específico de versión
+    ├── v0.5.1.md
     ├── v0.5.0.md
     └── ...
 ```
@@ -49,7 +51,7 @@ OmnySystem/
 | **Canónico** | 📜 | Fuente de verdad. Define comportamiento esperado. | ARCHITECTURE.md, MCP_TOOLS.md |
 | **Resumen** | 📋 | Sintetiza información y apunta a documentos canónicos | INDEX.md, ARCHETYPE_SYSTEM.md |
 | **Guía** | 📖 | Instrucciones paso a paso | GETTING_STARTED.md, DOCUMENTATION_GUIDE.md |
-| **Histórico** | 📚 | Contexto histórico. No usar para decisiones actuales. | PLAN-DATA-PERSISTENCE.md |
+| **Historico** | 📚 | Contexto historico. No usar para decisiones actuales. | REFACTOR_PLAN.md |
 | **Changelog** | 📝 | Registro de cambios por versión | changelog/v0.5.1.md |
 
 ### Encabezado de Documentos

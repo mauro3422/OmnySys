@@ -13,4 +13,4 @@ Un desarrollador decide que `speed` debe llamarse `velocity` por consistencia f�
 
 **El resultado**: El `CommandDispatcher.js` sigue recibiendo el comando `"set speed"`. Al intentar hacer `state['speed'] = value`, el sistema crea una nueva propiedad `speed` en el objeto en lugar de actualizar `velocity`. 
 
-**Invisibilidad**: No hay errores de ejecución inmediatos. El juego simplemente deja de responder al comando de "speed" y el desarrollador no entiende por qué si "ya renombró todo". **CogniSystem debe detectar que "speed" es una llave semántica vinculada a la propiedad del objeto.**
+**Invisibilidad**: No hay errores de ejecución inmediatos. El juego simplemente deja de responder al comando de "speed" y el desarrollador no entiende por qué si "ya renombró todo". **OmnySys debe detectar que "speed" es una llave semántica vinculada a la propiedad del objeto.**

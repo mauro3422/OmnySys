@@ -1,8 +1,14 @@
 /**
  * @fileoverview prompt-builder.js
- * 
- * Construcción de metadatos para prompts/arquetipos
- * 
+ *
+ * Construccion de metadatos para prompts/arquetipos
+ *
+ * NOTA: Esta funcion construye TODA la metadata disponible, incluyendo campos
+ * que ningun arquetipo usa actualmente (ej: hasTypeScript, hasCSSInJS).
+ * Estos campos pueden ser utiles como contexto en templates de prompts, pero
+ * no son señales de deteccion de arquetipos. Los arquetipos solo detectan
+ * patrones de CONEXION entre archivos. Ver PROMPT_REGISTRY.js para las reglas.
+ *
  * @module metadata-contract/builders/prompt-builder
  */
 
@@ -32,12 +38,16 @@ export function buildPromptMetadata(filePath, fileAnalysis = {}) {
   const globalReads = extractGlobalReads(sharedState);
   const envVars = extractEnvVars(extra);
 
+  const colocatedFiles = extractColocatedFiles(analysis);
+  const routes = extractRoutes(analysis);
+
   return {
     filePath: analysis.filePath || filePath,
     exportCount: exports.length,
     dependentCount: dependents.length,
     importCount: imports.length,
     functionCount: functions.length,
+    reExportCount: countReExports(analysis),
 
     exports: limitArray(exports, ARRAY_LIMITS.EXPORTS),
     dependents: limitArray(dependents, ARRAY_LIMITS.DEPENDENTS),
@@ -56,6 +66,10 @@ export function buildPromptMetadata(filePath, fileAnalysis = {}) {
     localStorageKeys: extractLocalStorageKeys(analysis),
     eventNames: limitArray(eventNames, ARRAY_LIMITS.EVENT_NAMES),
     envVars: limitArray(envVars, ARRAY_LIMITS.ENV_VARS),
+    routeStrings: limitArray(routes, ARRAY_LIMITS.ROUTE_STRINGS),
+    hasRoutes: routes.length > 0,
+    colocatedFiles: limitArray(colocatedFiles, ARRAY_LIMITS.COLOCATED_FILES),
+    hasTestCompanion: colocatedFiles.some(c => c.type === 'test-companion'),
 
     semanticDependentCount: (analysis.semanticConnections || []).length,
     definesGlobalState: globalWrites.length > 0,
@@ -180,4 +194,34 @@ function formatSemanticConnections(connections) {
 
 function limitArray(arr, limit) {
   return (arr || []).slice(0, limit);
+}
+
+function extractColocatedFiles(analysis) {
+  const connections = analysis.semanticConnections || [];
+  return connections
+    .filter(c => c?.type === 'colocated')
+    .map(c => ({
+      file: c.targetFile || c.target,
+      type: c.colocationType || 'unknown'
+    }));
+}
+
+function extractRoutes(analysis) {
+  const connections = analysis.semanticConnections || [];
+  const routes = connections
+    .filter(c => c?.type === 'shared-route')
+    .map(c => c?.route)
+    .filter(Boolean);
+
+  // También extraer de routes directamente si está disponible
+  if (analysis.routes?.all) {
+    routes.push(...analysis.routes.all.map(r => r.route || r));
+  }
+
+  return [...new Set(routes)];
+}
+
+function countReExports(analysis) {
+  const exports = analysis.exports || [];
+  return exports.filter(e => e?.source || e?.from).length;
 }

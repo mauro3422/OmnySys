@@ -16,6 +16,10 @@ import { extractGlobalAccess, extractGlobalReads, extractGlobalWrites } from './
 import { detectLocalStorageConnections, sharesStorageKeys, getSharedStorageKeys } from './storage-connections.js';
 import { detectEventConnections, sharesEvents, getEventFlow } from './events-connections.js';
 import { detectGlobalConnections, sharesGlobalVariables, getSharedGlobalVariables } from './globals-connections.js';
+import { detectEnvConnections, sharesEnvVars, getSharedEnvVars } from './env-connections.js';
+import { detectColocatedFiles, getColocatedFilesFor, hasTestCompanion } from './colocation-extractor.js';
+import { extractRoutes, normalizeRoute, isValidRoute } from './route-extractor.js';
+import { detectRouteConnections, sharesRoutes, getSharedRoutes } from './route-connections.js';
 import { ConnectionType } from './constants.js';
 
 // Re-exportar utilidades
@@ -32,7 +36,10 @@ export {
   extractEventEmitters,
   extractGlobalAccess,
   extractGlobalReads,
-  extractGlobalWrites
+  extractGlobalWrites,
+  extractRoutes,
+  normalizeRoute,
+  isValidRoute
 };
 
 // Re-exportar detectores de conexiones
@@ -40,33 +47,43 @@ export {
   detectLocalStorageConnections,
   detectEventConnections,
   detectGlobalConnections,
+  detectEnvConnections,
+  detectColocatedFiles,
+  detectRouteConnections,
   sharesStorageKeys,
   getSharedStorageKeys,
   sharesEvents,
   getEventFlow,
   sharesGlobalVariables,
-  getSharedGlobalVariables
+  getSharedGlobalVariables,
+  sharesEnvVars,
+  getSharedEnvVars,
+  getColocatedFilesFor,
+  hasTestCompanion,
+  sharesRoutes,
+  getSharedRoutes
 };
 
 /**
  * Analiza un archivo completo y extrae toda la información semántica
  * @param {string} filePath - Ruta del archivo
  * @param {string} code - Código fuente
- * @returns {Object} - Resultados de extracción { filePath, localStorage, events, globals }
+ * @returns {Object} - Resultados de extracción { filePath, localStorage, events, globals, routes, envVars }
  */
 export function extractSemanticFromFile(filePath, code) {
   return {
     filePath,
     localStorage: extractLocalStorageKeys(code),
     events: extractEventNames(code),
-    globals: extractGlobalAccess(code)
+    globals: extractGlobalAccess(code),
+    routes: extractRoutes(filePath, code)
   };
 }
 
 /**
  * Detecta todas las conexiones semánticas entre múltiples archivos
  * @param {Object} fileSourceCode - Mapa de filePath -> código fuente
- * @returns {Object} - {localStorageConnections, eventConnections, globalConnections, all, fileResults}
+ * @returns {Object} - {localStorageConnections, eventConnections, globalConnections, envConnections, colocationConnections, all, fileResults}
  */
 export function detectAllSemanticConnections(fileSourceCode) {
   // Primero, extraer información de cada archivo
@@ -74,17 +91,33 @@ export function detectAllSemanticConnections(fileSourceCode) {
   for (const [filePath, code] of Object.entries(fileSourceCode)) {
     fileResults[filePath] = extractSemanticFromFile(filePath, code);
   }
-  
-  // Luego, detectar conexiones
+
+  // Detectar conexiones basadas en contenido
   const localStorageConnections = detectLocalStorageConnections(fileResults);
   const eventConnections = detectEventConnections(fileResults);
   const globalConnections = detectGlobalConnections(fileResults);
-  
+  const envConnections = detectEnvConnections(fileResults);
+  const routeConnections = detectRouteConnections(fileResults);
+
+  // Detectar conexiones basadas solo en paths (O(n))
+  const allFilePaths = Object.keys(fileResults);
+  const colocationConnections = detectColocatedFiles(allFilePaths);
+
   return {
     localStorageConnections,
     eventConnections,
     globalConnections,
-    all: [...localStorageConnections, ...eventConnections, ...globalConnections],
+    envConnections,
+    routeConnections,
+    colocationConnections,
+    all: [
+      ...localStorageConnections,
+      ...eventConnections,
+      ...globalConnections,
+      ...envConnections,
+      ...routeConnections,
+      ...colocationConnections
+    ],
     fileResults
   };
 }
