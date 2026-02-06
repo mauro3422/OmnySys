@@ -39,9 +39,9 @@ import fs from 'fs/promises';
 export class OmnySysMCPServer {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
+    this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.omnysysPath = path.join(projectPath, 'omnysysdata'); // Compatibilidad legacy
-    this.OmnySysRoot = path.resolve(new URL(import.meta.url).pathname, '../../../..');
+    this.OmnySysRoot = path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'), '../../../..');
     
     // Components
     this.orchestrator = null;
@@ -159,8 +159,8 @@ export class OmnySysMCPServer {
     await this.cache.initialize();
 
     // Cargar metadatos y datos críticos
-    const { getProjectMetadata } = 
-      await import('../../../layer-a-static/storage/query-service.js');
+    const { getProjectMetadata } =
+      await import('../../../layer-a-static/query/index.js');
 
     this.metadata = await getProjectMetadata(this.projectPath);
     this.cache.set('metadata', this.metadata);

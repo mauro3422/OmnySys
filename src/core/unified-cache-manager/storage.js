@@ -34,7 +34,7 @@ export async function initialize() {
  */
 export async function loadFromLayerA() {
   try {
-    const layerAPath = path.join(this.projectPath, '.OmnySysData');
+    const layerAPath = path.join(this.projectPath, '.omnysysdata');
     const filesDir = path.join(layerAPath, 'files');
 
     // Verificar si existe la carpeta files

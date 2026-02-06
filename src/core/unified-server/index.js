@@ -15,7 +15,7 @@ class OmnySysUnifiedServer extends EventEmitter {
   constructor(projectPath) {
     super();
     this.projectPath = projectPath;
-    this.OmnySysDataPath = path.join(projectPath, '.OmnySysData');
+    this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.cache = null;  // Initialized in initializeMCP()
     this.metadata = null;
     this.initialized = false;

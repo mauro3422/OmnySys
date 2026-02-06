@@ -10,7 +10,7 @@ class FileWatcher extends EventEmitter {
   constructor(rootPath, options = {}) {
     super();
     this.rootPath = rootPath;
-    this.dataPath = path.join(rootPath, '.OmnySysData');
+    this.dataPath = path.join(rootPath, '.omnysysdata');
 
     // Opciones
     this.options = {

@@ -50,7 +50,7 @@ async function initialize(rootPath) {
   
   // Inicializar StateManager
   state.stateManager = new StateManager(
-    path.join(rootPath, '.OmnySysData', 'orchestrator-state.json')
+    path.join(rootPath, '.omnysysdata', 'orchestrator-state.json')
   );
   
   // Inicializar worker

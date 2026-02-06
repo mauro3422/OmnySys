@@ -17,7 +17,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
   try {
     // Cargar systemMap existente si hay análisis previo
     let existingMap = null;
-    const systemMapPath = path.join(absoluteRootPath, '.OmnySysData', 'system-map-enhanced.json');
+    const systemMapPath = path.join(absoluteRootPath, '.omnysysdata', 'system-map-enhanced.json');
 
     try {
       const content = await fs.readFile(systemMapPath, 'utf-8');
@@ -127,7 +127,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     };
 
     // Paso 6: Guardar resultado
-    const outputDir = path.join(absoluteRootPath, '.OmnySysData', 'files', path.dirname(singleFile));
+    const outputDir = path.join(absoluteRootPath, '.omnysysdata', 'files', path.dirname(singleFile));
     await fs.mkdir(outputDir, { recursive: true });
 
     const outputPath = path.join(outputDir, `${path.basename(singleFile)}.json`);
@@ -147,7 +147,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
       existingMap.files[singleFile] = fileAnalysis;
       existingMap.metadata.lastUpdated = new Date().toISOString();
       await fs.writeFile(systemMapPath, JSON.stringify(existingMap, null, 2), 'utf-8');
-      if (verbose) console.log('  âœ“ Updated .OmnySysData/system-map-enhanced.json\n');
+      if (verbose) console.log('  âœ“ Updated .omnysysdata/system-map-enhanced.json\n');
     }
 
     return fileAnalysis;

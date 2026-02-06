@@ -1,4 +1,4 @@
-﻿export const CACHE_DIR = '.OmnySysData/unified-cache';
+﻿export const CACHE_DIR = '.omnysysdata/unified-cache';
 export const INDEX_FILE = 'cache-index.json';
 
 /**

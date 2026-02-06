@@ -19,11 +19,9 @@ import { readJSON } from '../readers/json-reader.js';
 export async function getFileAnalysis(rootPath, filePath) {
   const dataPath = getDataDirectory(rootPath);
   
-  // Sanitizar el filePath para evitar directory traversal
-  const safeFilePath = filePath.replace(/\./g, '_').replace(/\//g, '_');
-  const partitionPath = path.join(dataPath, 'partitions', `${safeFilePath}.json`);
-  
-  return await readJSON(partitionPath);
+  // Storage-manager saves to: .omnysysdata/files/{dir}/{filename}.json
+  const filePart = path.join(dataPath, 'files', filePath + '.json');
+  return await readJSON(filePart);
 }
 
 /**
