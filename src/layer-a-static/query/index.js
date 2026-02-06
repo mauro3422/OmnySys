@@ -27,3 +27,7 @@ export {
   getDependencyGraph,
   getTransitiveDependents
 } from './queries/dependency-query.js';
+
+export {
+  exportFullSystemMapToFile
+} from './export.js';

@@ -14,7 +14,7 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exportFullSystemMapToFile } from '../layer-a-static/storage/query-service.js';
+import { exportFullSystemMapToFile } from '../layer-a-static/query/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

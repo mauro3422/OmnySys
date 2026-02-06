@@ -33,7 +33,7 @@ import {
   getRiskAssessment,
   getFileDependencies,
   findFiles
-} from '../layer-a-static/storage/query-service.js';
+} from '../layer-a-static/query/index.js';
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 import { populateOmnySysData } from './populate-omnysysdata.js';
 import { UnifiedCacheManager } from '../core/unified-cache-manager.js';
