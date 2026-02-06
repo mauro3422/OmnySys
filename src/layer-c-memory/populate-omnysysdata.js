@@ -20,7 +20,7 @@ import {
   getRiskAssessment,
   getProjectStats,
   getMultipleFiles
-} from '../layer-a-static/storage/query-service.js';
+} from '../layer-a-static/query/index.js';
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
