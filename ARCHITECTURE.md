@@ -1,284 +1,360 @@
-# OmnySys - Arquitectura Tecnica
+# OmnySys - Arquitectura Técnica
 
-**Version**: v0.5.2
-**Ultima actualizacion**: 2026-02-06
+**Versión**: v0.5.3  
+**Última actualización**: 2026-02-06
 
-## Vision General
+## 🎯 Visión General
 
-OmnySys es un **motor de contexto multi-capa** que actua como memoria externa para IAs que modifican codigo. Resuelve el problema de "vision de tunel" mediante tres capas que trabajan en conjunto:
+OmnySys es un **motor de contexto multi-capa** que actúa como memoria externa para IAs que modifican código. Resuelve el problema de "visión de túnel" mediante tres capas que trabajan en conjunto:
 
-1. **Layer A (Estatica)**: Analisis determinista y rapido
-2. **Layer B (Semantica)**: Analisis inteligente con IA local
-3. **Layer C (Memoria)**: Persistencia y servicio de consulta
+1. **Layer A (Estática)**: Análisis determinista y rápido (imports, exports, grafo de dependencias)
+2. **Layer B (Semántica)**: Análisis inteligente con IA local (arquetipos, conexiones ocultas)
+3. **Layer C (Memoria)**: Persistencia y servicio de consulta vía MCP (9 herramientas HTTP)
 
-**Innovacion clave**: El **MCP Server es el entry point unico**. Un solo comando inicia todo el sistema incluyendo el Orchestrator como componente interno.
+**Innovación clave**: El **MCP Server es el entry point unico** vía HTTP. Un solo comando (`npm start`) inicia todo el sistema incluyendo LLM + MCP + auto-configuración de OpenCode.
 
 ---
 
-## Arquitectura Unificada
+## 🏗️ Arquitectura de 3 Capas
 
 ```
-+-----------------------------------------------------------------------+
-|                                                                       |
-|                  MCP SERVER (Entry Point Unico)                       |
-|            node src/layer-c-memory/mcp-server.js /proyecto            |
-|                                                                       |
-+-----------------------------------------------------------------------+
-|                                                                       |
-|  +---------------------------------------------------------------+   |
-|  |  LAYER A: STATIC (El Cuerpo)                                  |   |
-|  |  Escanea y construye grafo base                                |   |
-|  |                                                                |   |
-|  |  - PROJECT SCANNER: Recorre filesystem, detecta JS/TS         |   |
-|  |  - AST PARSER (@babel/parser): imports, exports, definiciones  |   |
-|  |  - GRAPH BUILDER: Grafo file->file, ciclos, metricas          |   |
-|  |  - STATIC EXTRACTORS: localStorage, eventos, globals, etc.    |   |
-|  |  -> OUTPUT: system-map.json                                    |   |
-|  +---------------------------------------------------------------+   |
-|                           |                                           |
-|                           v                                           |
-|  +---------------------------------------------------------------+   |
-|  |  LAYER B: SEMANTIC (La Mente)                                  |   |
-|  |  Enriquece con IA local                                        |   |
-|  |                                                                |   |
-|  |  - LLM ANALYZER: Conexiones no obvias (el 20% restante)       |   |
-|  |  - ARCHETYPE SYSTEM: Clasifica archivos por patron de conexion |   |
-|  |  - VALIDATORS: Filtro de alucinaciones                         |   |
-|  |  -> OUTPUT: enhanced-system-map.json                           |   |
-|  +---------------------------------------------------------------+   |
-|                           |                                           |
-|                           v                                           |
-|  +---------------------------------------------------------------+   |
-|  |  ORCHESTRATOR (Componente Interno)                             |   |
-|  |  Procesa y encola analisis                                     |   |
-|  |                                                                |   |
-|  |  - ANALYSIS QUEUE: CRITICAL > HIGH > MEDIUM > LOW             |   |
-|  |  - ANALYSIS WORKER: Procesa con LLM cuando necesario          |   |
-|  |  - FILE WATCHER: Detecta cambios en tiempo real               |   |
-|  |  - BATCH PROCESSOR: Agrupa cambios                            |   |
-|  +---------------------------------------------------------------+   |
-|                           |                                           |
-|                           v                                           |
-|  +---------------------------------------------------------------+   |
-|  |  LAYER C: MEMORY                                               |   |
-|  |  Almacena y sirve datos                                        |   |
-|  |                                                                |   |
-|  |  - STORAGE: .omnysysdata/ (particionado por archivo)        |   |
-|  |  - UNIFIED CACHE: RAM + Disk con invalidacion en cascada       |   |
-|  |  - QUERY SERVICE: API eficiente para consultas                 |   |
-|  +---------------------------------------------------------------+   |
-|                           |                                           |
-|                           v                                           |
-|  +---------------------------------------------------------------+   |
-|  |  MCP TOOLS (Interfaz para la IA)                               |   |
-|  |                                                                |   |
-|  |  - get_impact_map(filePath)                                    |   |
-|  |  - analyze_change(file, symbol)                                |   |
-|  |  - explain_connection(a, b)                                    |   |
-|  |  - get_risk_assessment(minSeverity)                            |   |
-|  |  - search_files(pattern)                                       |   |
-|  |  - get_server_status()                                         |   |
-|  +---------------------------------------------------------------+   |
-|                                                                       |
-+-----------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Tu IA (Claude/OpenCode)                      │
+│                                                                 │
+│  Usa: get_impact_map("src/core.js")                             │
+│  Recibe: Mapa completo de impacto (8 archivos afectados)        │
+└───────────────────────┬─────────────────────────────────────────┘
+                        │ HTTP (localhost:9999)
+                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              OMNYsys MCP SERVER (Puerto 9999)                   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ LAYER C: MEMORIA                                        │   │
+│  │ • UnifiedCache: Datos en RAM + disco                    │   │
+│  │ • Query Service: API eficiente para consultas           │   │
+│  │ • Storage: .omnysysdata/ particionado por archivo       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            ▲                                    │
+│  ┌─────────────────────────┼───────────────────────────────┐   │
+│  │ ORCHESTRATOR (Interno)  │                               │   │
+│  │ • Analysis Queue: CRITICAL→HIGH→MEDIUM→LOW              │   │
+│  │ • Worker: Procesa con LLM cuando necesario              │   │
+│  │ • FileWatcher: Detecta cambios en tiempo real           │   │
+│  └─────────────────────────┼───────────────────────────────┘   │
+│                            ▲                                    │
+│  ┌─────────────────────────┴───────────────────────────────┐   │
+│  │ LAYER B: SEMÁNTICA (La Mente)                            │   │
+│  │ • Archetype System: Detecta patrones de conexión        │   │
+│  │ • LLM Analyzer: Conexiones invisibles (20% restante)    │   │
+│  │ • Prompt Engine: Prompts específicos por arquetipo      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            ▲                                    │
+│  ┌─────────────────────────┴───────────────────────────────┐   │
+│  │ LAYER A: ESTÁTICA (El Cuerpo)                            │   │
+│  │ • Scanner: Recorre filesystem (JS/TS/JSON)              │   │
+│  │ • AST Parser: Imports, exports, definiciones            │   │
+│  │ • Graph Builder: Grafo file→file, ciclos, métricas      │   │
+│  │ • Extractors: localStorage, eventos, globals            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  LLM SERVER (Puerto 8000) - GPU Optimizado                      │
+│  Modelo: LFM2.5-Instruct-Q8_0.gguf                              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Flujo de Inicializacion
+## 📊 Las 3 Capas en Detalle
 
-```
-node src/layer-c-memory/mcp-server.js /ruta/proyecto
+### **Layer A - Análisis Estático** (Sin IA)
 
-  STEP 0: Initialize Orchestrator (queue, worker, fileWatcher)
-  STEP 1: AI Server Setup (auto-start LLM if needed)
-  STEP 2: Data Structure (create .omnysysdata/)
-  STEP 3: Load Data (existing analysis)
-  STEP 4: Unified Cache (RAM + Disk)
-  STEP 5: Background Indexing (if no data)
-  STEP 6: Tools Ready
+**Responsabilidad**: Extraer datos verificables del código fuente.
 
-  -> MCP Server Ready
-```
+**Componentes**:
+- **Scanner**: Recorre el proyecto, detecta archivos JS/TS/JSON
+- **AST Parser** (@babel/parser): Extrae imports, exports, funciones, clases
+- **Graph Builder**: Construye grafo de dependencias file→file
+- **Extractors**: Detecta localStorage keys, event names, global state
 
-## Flujo de Auto-Analisis
+**Output**: `system-map.json` con datos estructurados de 433 archivos
 
-Cuando la IA consulta un archivo no analizado:
+**Conexiones detectadas** (confidence = 1.0):
+- File A exporta X → File B importa X (estático)
+- File A escribe localStorage['key'] → File B lee localStorage['key'] (semántico)
+- File A emite evento 'login' → File B escucha evento 'login' (semántico)
 
-```
-get_impact_map("CameraState.js")
-  |
-  v
-Archivo analizado en STORAGE?
-  |
-  +-- SI --> Return cached data
-  |
-  +-- NO --> Auto-Analisis:
-              1. Encolar como CRITICAL
-              2. Orchestrator procesa con LLM
-              3. Esperar resultado (max 60s)
-              4. Guardar en STORAGE
-              5. Responder a IA
-```
-
-Si el analisis tarda mas de 60 segundos, se retorna un status parcial con sugerencia de reintentar.
+**NO necesita LLM** porque los datos son verificables estáticamente.
 
 ---
 
-## Layer A: Analisis Estatico
+### **Layer B - Análisis Semántico** (Con IA selectiva)
 
-Extrae relaciones tecnicas entre archivos mediante analisis sintactico (AST).
+**Responsabilidad**: Detectar patrones arquitectónicos invisibles para el análisis estático.
 
-**Componentes**: Scanner, Parser (@babel/parser), Graph Builder, Static Extractors
-**Output**: `system-map.json` con grafo de dependencias
+**Sistema de Arquetipos**:
 
-Para detalle completo de Layer A, ver [docs/ARCHITECTURE_LAYER_A_B.md](docs/ARCHITECTURE_LAYER_A_B.md).
+| Arquetipo | ¿Qué detecta? | ¿Necesita LLM? | Prioridad |
+|-----------|---------------|----------------|-----------|
+| `god-object` | Archivo con 20+ dependencias (alto blast radius) | SIEMPRE | CRITICAL |
+| `orphan-module` | Archivo exporta pero nadie usa (código muerto?) | SIEMPRE | HIGH |
+| `dynamic-importer` | `import(variable)` - rutas dinámicas | SIEMPRE | HIGH |
+| `state-manager` | Lee/escribe estado global (window.*, localStorage) | Condicional | HIGH |
+| `event-hub` | Emite/escucha eventos (pub/sub) | Condicional | MEDIUM |
+| `singleton` | Patrón singleton (acoplamiento implícito) | Condicional | MEDIUM |
+| `default` | Fallback - análisis general | SI | LOW |
 
-### Estructura del Grafo
+**Regla de Oro**:
+```
+¿La metadata sola puede determinar la conexión?
+├── SI → NO usar LLM (Layer A ya lo resolvió)
+└── NO → Usar LLM (conexiones invisibles)
+```
 
-```typescript
-interface SystemMap {
-  files: { [filePath: string]: FileNode };
-  dependencies: Dependency[];
+**Output**: Enriquece `system-map.json` con `llmInsights` por archivo
+
+---
+
+### **Layer C - Memoria y Servicio MCP** (HTTP API)
+
+**Responsabilidad**: Almacenar datos y exponer herramientas a la IA.
+
+**Componentes**:
+- **Storage**: `.omnysysdata/` con archivos JSON por archivo analizado
+- **UnifiedCache**: Cache en RAM con invalidación en cascada
+- **MCP HTTP Server**: Puerto 9999, 9 herramientas REST
+
+**9 Herramientas MCP**:
+
+| Herramienta | Propósito | Arquetipo Relacionado |
+|-------------|-----------|----------------------|
+| `get_impact_map` | Mapa de archivos afectados | god-object, state-manager |
+| `get_call_graph` | Quién llama a qué función | orphan-module |
+| `explain_value_flow` | Flujo de datos input→output | state-manager, event-hub |
+| `analyze_change` | Impacto de cambiar símbolo | Todos |
+| `analyze_signature_change` | Breaking changes de API | god-object |
+| `explain_connection` | Por qué 2 archivos están conectados | Todos |
+| `get_risk_assessment` | Riesgos del proyecto | god-object, orphan-module |
+| `search_files` | Buscar archivos | N/A |
+| `get_server_status` | Estado del sistema | N/A |
+
+---
+
+## 🔄 Flujo de Inicialización
+
+```bash
+npm start
+
+  ┌─────────────────────────────────────┐
+  │ STEP 0: Check LLM (puerto 8000)     │
+  │         Si no está, iniciar         │
+  └─────────────────┬───────────────────┘
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ STEP 1: Iniciar MCP HTTP (9999)     │
+  │         OmnySysMCPServer            │
+  └─────────────────┬───────────────────┘
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ STEP 2: Layer A - Análisis Estático │
+  │         Cargar .omnysysdata/        │
+  └─────────────────┬───────────────────┘
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ STEP 3: Iniciar Orchestrator        │
+  │         Queue + Worker + Watcher    │
+  └─────────────────┬───────────────────┘
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ STEP 4: Configurar OpenCode         │
+  │         Auto-config mcpServers      │
+  └─────────────────┬───────────────────┘
+                    ▼
+  ┌─────────────────────────────────────┐
+  │ STEP 5: ✅ Listo!                   │
+  │         9 herramientas disponibles  │
+  └─────────────────────────────────────┘
+```
+
+---
+
+## 🎯 Sistema de Arquetipos
+
+### ¿Qué es un Arquetipo?
+
+Un **arquetipo** clasifica archivos según sus **patrones de conexión**: cómo un archivo se conecta con otros archivos del proyecto.
+
+**Test de la Caja**: *"Al levantar la caja (archivo), este arquetipo me ayuda a ver cables (conexiones) que de otra forma no vería?"*
+
+### Pipeline de Detección
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ Layer A extrae metadata                                         │
+│   - exportCount, dependentCount                                │
+│   - hasDynamicImports, hasEventListeners                       │
+│   - localStorageKeys, eventNames                               │
+└────────────────┬───────────────────────────────────────────────┘
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ detectArchetypes(metadata)                                      │
+│   ├─ ¿exportCount > 15 AND dependentCount > 10?                │
+│   │   └─ Arquetipo: god-object (severity: 10)                  │
+│   ├─ ¿exportCount > 0 AND dependentCount == 0?                 │
+│   │   └─ Arquetipo: orphan-module (severity: 5)                │
+│   ├─ ¿hasDynamicImports?                                       │
+│   │   └─ Arquetipo: dynamic-importer (severity: 7)             │
+│   └─ ... más detectores                                        │
+└────────────────┬───────────────────────────────────────────────┘
+                 ▼
+┌────────────────────────────────────────────────────────────────┐
+│ ¿Arquetipo requiere LLM?                                        │
+│   ├─ god-object, orphan-module, dynamic-importer               │
+│   │   └─ Encolar para LLM (priority: CRITICAL/HIGH)            │
+│   └─ state-manager, event-hub (condicional)                    │
+│       └─ Solo si Layer A no resolvió todas las conexiones      │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Ejemplo Real: god-object
+
+**Archivo**: `src/core/orchestrator.js`
+
+**Metadata Layer A**:
+```javascript
+{
+  exportCount: 12,
+  dependentCount: 15,        // Archivos que importan de orchestrator
+  semanticDependentCount: 8, // Archivos que usan estado/eventos
+  totalDependents: 23        // 15 + 8
 }
+```
 
-interface FileNode {
-  path: string;
-  exports: string[];
-  imports: ImportStatement[];
-  usedBy: string[];
-  calls: string[];
-  type: 'module' | 'component' | 'utility' | 'config';
+**Detector**:
+```javascript
+if (exportCount > 10 && totalDependents > 20) {
+  return {
+    type: 'god-object',
+    severity: 10,
+    requiresLLM: true
+  };
 }
 ```
 
----
-
-## Layer B: Analisis Semantico
-
-Encuentra conexiones que el analisis estatico no puede detectar:
-- **Estado compartido**: Objetos mutables importados por multiples archivos
-- **Eventos**: emit/on/addEventListener con nombres compartidos
-- **Side effects**: localStorage, sessionStorage, window.*
-- **Imports dinamicos**: import() cuyas rutas se resuelven en runtime
-
-Usa un sistema de **arquetipos** que clasifica archivos por sus patrones de conexion y selecciona prompts especializados para el LLM. Ver [docs/ARCHETYPE_SYSTEM.md](docs/ARCHETYPE_SYSTEM.md).
-
-**Output**: `enhanced-system-map.json`
-
-Para detalle de Layer B, ver [docs/ARCHITECTURE_LAYER_A_B.md](docs/ARCHITECTURE_LAYER_A_B.md).
-Para el flujo metadata->prompt->LLM, ver [docs/metadata-prompt-system.md](docs/metadata-prompt-system.md).
+**Acción**: Encolar como CRITICAL para análisis LLM que determine:
+- Qué responsabilidades tiene (¿es un god object real?)
+- Score de riesgo (0-100)
+- Qué partes son seguras de refactorizar
 
 ---
 
-## Layer C: Memoria Persistente
+## 🛠️ Comandos CLI
 
-Mantiene el grafo actualizado y sirve consultas rapidas a las IAs.
+```bash
+# Control del sistema
+npm run install:all    # Instala todo y arranca automáticamente
+npm start              # Inicia LLM + MCP
+npm stop               # Detiene todo
+npm status             # Muestra estado (LLM + MCP)
 
-**Storage**: `.omnysysdata/` con archivos JSON particionados por archivo
-**Cache**: UnifiedCacheManager con RAM + Disk e invalidacion en cascada
-**Query Service**: API para consultas eficientes desde MCP Tools
+# Herramientas MCP
+npm tools              # Lista las 9 herramientas disponibles
+omny call get_impact_map '{"filePath":"src/core.js"}'
+omny status            # Estado detallado
 
-Para documentacion de MCP Tools, ver [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md).
-Para visualizacion del storage, ver [docs/storage-visualization.md](docs/storage-visualization.md).
-
----
-
-## Arquitectura Modular SOLID (v0.5.1)
-
-17 archivos monoliticos fueron refactorizados en ~147 modulos enfocados.
-
-### Principios Aplicados
-
-| Principio | Implementacion | Ejemplo |
-|-----------|----------------|---------|
-| **S**ingle Responsibility | Cada modulo tiene UNA razon para cambiar | `cycle-detector.js` solo detecta ciclos |
-| **O**pen/Closed | Extensible sin modificar codigo existente | Agregar extractor sin tocar parser |
-| **L**iskov Substitution | Modulos intercambiables con misma interfaz | Extractores de diferentes tipos |
-| **I**nterface Segregation | Ningun modulo depende de metodos que no usa | Cada inicializador recibe solo lo necesario |
-| **D**ependency Inversion | Depende de abstracciones, no concreciones | Context objects en lugar de `this` |
-
-### SSOT (Single Source of Truth)
-
-| Dominio | Ubicacion | Proposito |
-|---------|-----------|-----------|
-| SystemMap Structure | `graph/types.js` | Definicion central de tipos |
-| Path Normalization | `graph/utils/path-utils.js` | Operaciones de path |
-| Babel Config | `parser/config.js` | Configuracion del parser |
-| Prompt Building | `llm-analyzer/prompt-builder.js` | Construccion de prompts LLM |
-| Metadata Contract | `metadata-contract/constants.js` | Constantes del contrato A->B |
-| Batch Priority | `batch-processor/constants.js` | Estados y prioridades |
-| WebSocket Messages | `websocket/constants.js` | Tipos de mensajes |
-
-### Estructura de Modulos
-
-```
-src/
-+-- core/                          (25 modulos)
-|   +-- orchestrator/              (lifecycle, queueing, llm-analysis)
-|   +-- batch-processor/           (9 modulos)
-|   +-- websocket/                 (10 modulos)
-|   +-- unified-server/            (7 modulos)
-|
-+-- layer-a-static/                (27 modulos)
-|   +-- graph/                     (11 modulos: builders, algorithms, resolvers, utils)
-|   +-- parser/                    (8 modulos: extractors, config, helpers)
-|   +-- extractors/                (17 modulos: communication, metadata, static, state-management)
-|   +-- query/                     (6 modulos)
-|
-+-- layer-b-semantic/              (40+ modulos)
-|   +-- llm-analyzer/              (5 modulos)
-|   +-- issue-detectors/           (8 modulos)
-|   +-- project-analyzer/          (10 modulos)
-|   +-- validators/                (17 modulos)
-|   +-- prompt-engine/             (plug & play prompts)
-|   +-- metadata-contract/         (10 modulos)
-|
-+-- layer-c-memory/
-    +-- mcp/                       (core, tools)
-    +-- storage/                   (persistencia)
-    +-- query/                     (consultas)
+# Análisis
+npm run analyze        # Analizar proyecto completo con Layer A
 ```
 
 ---
 
-## Decisiones de Diseno
+## 📡 Endpoints HTTP
 
-### Por que tres capas y no solo una?
-- Layer A sola: Rapida pero limitada (no ve conexiones semanticas)
-- Layer B sola: Inteligente pero lenta (necesita IA para todo)
-- Combinacion: 80% estatico (rapido) + 20% semantico (preciso)
+### LLM Server (Puerto 8000)
+```bash
+GET http://localhost:8000/health
+POST http://localhost:8000/generate  # Generar texto
+```
 
-### Por que IA local y no GPT-4?
-- **Costo**: Analizar 100 archivos con GPT-4 = caro
-- **Privacidad**: El codigo no sale del entorno local
-- **Velocidad**: IA local corre en paralelo sin rate limits
+### MCP Server (Puerto 9999)
+```bash
+GET  http://localhost:9999/health          # Estado
+GET  http://localhost:9999/tools           # Lista herramientas
+POST http://localhost:9999/tools/:name     # Ejecutar herramienta
+POST http://localhost:9999/call            # Ejecutar (formato MCP)
+```
 
-### Por que pre-construir y no analizar on-demand?
-- La IA necesita respuesta instantanea al editar codigo
-- Pre-construir = costo inicial, velocidad constante despues
-
-### Por que MCP?
-- Estandar para herramientas de IAs
-- Funciona con cualquier IA compatible (Claude, GPT, modelos locales)
-- No requiere modificar el codigo de la IA
-
----
-
-## Limitaciones Conocidas
-
-1. **Codigo dinamico**: `require(variable)` no se resuelve estaticamente
-2. **Codigo generado**: Build tools (Webpack) generan codigo no analizable
-3. **Side effects complejos**: DOM, APIs externas requieren heuristicas
-4. **Proyectos enormes**: 10,000+ archivos necesitan analisis incremental
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/get_impact_map \
+  -H "Content-Type: application/json" \
+  -d '{"filePath": "src/core/orchestrator.js"}'
+```
 
 ---
 
-## Referencias
+## 📊 Métricas del Sistema
 
-- [README.md](README.md) - Overview del proyecto
-- [ROADMAP.md](ROADMAP.md) - Plan de desarrollo
-- [docs/INDEX.md](docs/INDEX.md) - Indice de documentacion
-- [docs/ARCHITECTURE_LAYER_A_B.md](docs/ARCHITECTURE_LAYER_A_B.md) - Detalle de Layers A y B
-- [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) - Documentacion de MCP Tools
-- [docs/ARCHETYPE_SYSTEM.md](docs/ARCHETYPE_SYSTEM.md) - Sistema de arquetipos
+**Proyecto analizado**: 431 archivos
+
+| Métrica | Valor |
+|---------|-------|
+| Archivos JS/TS | 418 |
+| Funciones totales | 943 |
+| Arquetipos detectados | ~50 |
+| Conexiones semánticas | ~100 |
+| Módulos huérfanos | ~15 |
+| God Objects | ~3 |
+
+---
+
+## 🎓 Flujo de Uso para IAs
+
+### Escenario: Refactorizar un archivo
+
+**Paso 1**: IA llama a herramienta
+```javascript
+const impact = await get_impact_map({
+  filePath: "src/core/orchestrator.js"
+});
+```
+
+**Paso 2**: OmnySys analiza
+- Layer A: Carga datos del archivo (exports, dependents)
+- Layer B: Detecta arquetipos (god-object detectado)
+- Layer C: Calcula impacto transitivo
+
+**Paso 3**: OmnySys responde
+```javascript
+{
+  file: "src/core/orchestrator.js",
+  directlyAffects: 2,      // Layer A
+  transitiveAffects: 6,    // Grafo calculado
+  totalAffected: 8,
+  riskLevel: "medium",
+  archetype: "god-object", // Layer B
+  exports: ["initialize", "analyzeAndWait", ...]
+}
+```
+
+**Paso 4**: IA toma decisión informada
+- "Este archivo afecta a 8 otros, incluyendo el CLI principal"
+- "Es un god-object, debería dividirse en responsabilidades más pequeñas"
+- "Voy a refactorizar una función a la vez"
+
+---
+
+## 📚 Documentación Relacionada
+
+| Documento | Descripción |
+|-----------|-------------|
+| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de las 9 herramientas MCP |
+| [docs/ARCHETYPE_SYSTEM.md](docs/ARCHETYPE_SYSTEM.md) | Sistema de arquetipos detallado |
+| [README.md](README.md) | Instalación y uso rápido |
+
+---
+
+**OmnySys - De la visión de túnel a la visión de caja completa.**
