@@ -13,7 +13,8 @@ export { readJSON, readMultipleJSON, fileExists } from './readers/json-reader.js
 export {
   getProjectMetadata,
   getAnalyzedFiles,
-  getProjectStats
+  getProjectStats,
+  findFiles
 } from './queries/project-query.js';
 
 export {
@@ -27,6 +28,14 @@ export {
   getDependencyGraph,
   getTransitiveDependents
 } from './queries/dependency-query.js';
+
+export {
+  getAllConnections
+} from './queries/connections-query.js';
+
+export {
+  getRiskAssessment
+} from './queries/risk-query.js';
 
 export {
   exportFullSystemMapToFile
