@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { safeReadJson } from '#utils/json-safe.js';
 
 /**
  * Analiza archivos complejos con LLM basado en metadatos de Layer A
@@ -36,8 +37,12 @@ export async function _analyzeComplexFilesWithLLM() {
 
     // Leer índice de archivos analizados por Layer A
     const indexPath = path.join(this.OmnySysDataPath, 'index.json');
-    const indexContent = await fs.readFile(indexPath, 'utf-8');
-    const index = JSON.parse(indexContent);
+    const index = await safeReadJson(indexPath, { fileIndex: {} });
+    
+    if (!index || !index.fileIndex) {
+      console.log('   ⚠️  No valid index found, skipping LLM analysis');
+      return;
+    }
 
     const filesNeedingLLM = [];
 
