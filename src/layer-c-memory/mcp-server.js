@@ -14,6 +14,7 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,12 +42,34 @@ async function main() {
   // --- Spawn MCP logs terminal ---
   const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
   if (fs.existsSync(batPath)) {
-    const logsTerminal = spawn('cmd.exe', ['/c', 'start', '/min', batPath], {
-      detached: true,
-      stdio: 'ignore'
-    });
-    logsTerminal.unref();
-    console.error('📺 MCP Logs terminal spawned');
+    let logsTerminal;
+    const platform = os.platform();
+    
+    if (platform === 'win32') {
+      // Windows: usar cmd.exe
+      logsTerminal = spawn('cmd.exe', ['/c', 'start', '/min', batPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+    } else if (platform === 'darwin') {
+      // macOS: usar Terminal.app
+      logsTerminal = spawn('osascript', ['-e', `tell application "Terminal" to do script "cd '${projectRoot}' && tail -f logs/mcp-server.log"`], {
+        detached: true,
+        stdio: 'ignore'
+      });
+    } else {
+      // Linux: usar xterm o gnome-terminal
+      const terminalCmd = fs.existsSync('/usr/bin/gnome-terminal') ? 'gnome-terminal' : 'xterm';
+      logsTerminal = spawn(terminalCmd, ['--', 'tail', '-f', path.join(projectRoot, 'logs/mcp-server.log')], {
+        detached: true,
+        stdio: 'ignore'
+      });
+    }
+    
+    if (logsTerminal) {
+      logsTerminal.unref();
+      console.error('📺 MCP Logs terminal spawned');
+    }
   }
 
   console.error(`📂 Project: ${absolutePath}`);
