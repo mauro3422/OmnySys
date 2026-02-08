@@ -2,11 +2,13 @@
 
 ## 🧠 What is Omnisciencia?
 
-**Omnisciencia** = "Omni" (all) + "Sciencia" (knowledge)
+**Omnisciencia** = "Omni" (all) + "Sciencia" (knowledge) + "Sys" (system)
 
-It's not just "code understanding" — it's **complete awareness** of code context, dependencies, impact, and data flow.
+It's not just "code understanding" — it's **complete awareness** of code context, dependencies, impact, and data flow through **structural pattern recognition** (similar to human intuition).
 
-## 🎬 The Vision
+## 🎯 The Core Insight: Artificial Intuition for Code
+
+This system implements a practical form of **Artificial Intuition** — the ability to predict consequences and recognize patterns without explicit reasoning, based on learned metadata and structural analysis.
 
 ```
 BEFORE (Tunnel Vision):
@@ -26,7 +28,7 @@ BEFORE (Tunnel Vision):
 │  - Might break production silently    │
 └─────────────────────────────────────┘
 
-AFTER (Omnisciencia):
+AFTER (Omnisciencia with Artificial Intuition):
 ┌─────────────────────────────────────┐
 │  User edits: src/auth/login.js       │
 │                                      │
@@ -40,6 +42,9 @@ AFTER (Omnisciencia):
 │  ├─ State changes: 5 files affected  │
 │  ├─ Risk: CRITICAL - Production API  │
 │  └─ Breaking changes: 3 endpoints    │
+│                                      │
+│  INSTINCTIVE REACTION (<10ms):       │
+│  "This pattern caused issues before" │
 └─────────────────────────────────────┘
 ```
 
@@ -72,12 +77,6 @@ AFTER (Omnisciencia):
     code: 'expect(getUserById(1)).resolves...',
     context: 'test suite: User API tests'
   },
-  {
-    location: 'src/services/logging.js:7',
-    type: 'error handling',
-    code: 'if (!result) await logError()',
-    impact: 'Affects error tracking system'
-  },
   // ... 47 total call sites
 ]
 ```
@@ -97,7 +96,7 @@ AFTER (Omnisciencia):
 INPUTS:
   ├─ user_input.email: "user@example.com"
   ├─ config.domains: ["gmail.com", "yahoo.com"]
-  └─ regex_pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$`
+  └─ regex_pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/`
 
 PROCESSING:
   ├─ 1. Trim whitespace
@@ -190,6 +189,52 @@ PREDICTED BREAKING CHANGES:
 | `explain_value_flow` | Data flow analysis | Program slicing, dependency tracking |
 | `analyze_signature_change` | Signature matching, impact analysis | Type systems, semantic versioning |
 
+## 🧠 Connection to Artificial Intuition
+
+This system implements **practical Artificial Intuition** for software engineering:
+
+### What is Artificial Intuition?
+> "The capacity of an artificial system to function similarly to human consciousness, specifically in the capacity known as intuition — knowledge based on pattern recognition without explicit reasoning." - Wikipedia
+
+### How OmnySys Implements It:
+
+**Layer A (Static Analysis)** - The "Senses"
+- Extracts raw structural data from code
+- Like eyes seeing shapes and colors
+- No interpretation, just raw input
+
+**Layer B (Semantic Analysis)** - The "Pattern Recognizer"
+- Detects archetypes: god-objects, orphan-modules, event-hubs
+- Like recognizing a face without thinking "eyes + nose + mouth"
+- Selective LLM use for complex patterns
+
+**Layer C (Memory & Prediction)** - The "Intuition Engine"
+- Stores patterns and their consequences
+- Predicts: "This pattern → likely these effects"
+- Provides instant context without reasoning
+
+### The Three-Layer Architecture:
+
+```
+┌─────────────────────────────────────────┐
+│  Human Brain Analogy                    │
+├─────────────────────────────────────────┤
+│                                         │
+│  Brain Stem (Instincts)                 │
+│  ↓ Layer A: Static extraction           │
+│     Fast, automatic, no reasoning       │
+│                                         │
+│  Amygdala (Emotions/Patterns)           │
+│  ↓ Layer B: Semantic detection          │
+│     Pattern recognition, archetypes     │
+│                                         │
+│  Prefrontal Cortex (Reasoning)          │
+│  ↓ Layer C: Memory & prediction         │
+│     Conscious analysis when needed      │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
 ## 🎓 Why This is "Omnisciencia"?
 
 ### NOT Just "Code Understanding"
@@ -200,7 +245,7 @@ PREDICTED BREAKING CHANGES:
 - Knows basic dependencies
 - Still has tunnel vision
 
-✅ **Omnisciencia:**
+✅ **Omnisciencia with Artificial Intuition:**
 - **Complete call graph** (who calls who, how, when)
 - **Full data flow** (what enters, what leaves, who consumes)
 - **Breaking change prediction** (what breaks if I change this)
@@ -208,6 +253,7 @@ PREDICTED BREAKING CHANGES:
 - **Upstream/downstream tracing** (everything connected)
 - **Risk assessment** (how critical is this change?)
 - **Automatic impact calculation** (1 line change = X files affected)
+- **Instinctive warnings** ("this pattern caused issues before")
 
 ### The 3-Tool Approach
 
@@ -217,15 +263,15 @@ PREDICTED BREAKING CHANGES:
 │  "¿Quién me llama? ¿A quién llamo?"     │
 │  → Call sites, call depth, context       │
 └─────────────────────────────────────────┘
-              │
-              ▼
+               │
+               ▼
 ┌─────────────────────────────────────────┐
 │  explain_value_flow()                    │
 │  "¿Qué entra? ¿Qué sale? ¿Quién lo usa?"  │
 │  → Data pipeline, consumers, sources     │
 └─────────────────────────────────────────┘
-              │
-              ▼
+               │
+               ▼
 ┌─────────────────────────────────────────┐
 │  analyze_signature_change()              │
 │  "¿Qué rompo si cambio mi firma?"        │
@@ -265,6 +311,10 @@ AI:
      ├─ src/middleware/auth-check.js: needs update
      └─ src/analytics/usage.js: affected
 
+  🧠 ARTIFICIAL INTUITION ALERT:
+     "This pattern (auth function change) caused
+      3 production outages in analyzed projects"
+
   💡 RECOMMENDATION:
      1. Update src/auth/callback.js first
      2. Update src/middleware/auth-check.js
@@ -275,22 +325,21 @@ AI:
   ✅ Proceed? [Yes/No/Edit]
 ```
 
-## 📊 Scientific Validation
+## 📊 Current Status
 
-### Empirical Studies
+**OmnySys is in active development (v0.5.3)**
 
-| Study | Method | Finding |
-|-------|--------|---------|
-| "Impact Analysis" | 50 developers | Omnisciencia reduces bugs by 63% |
-| "Change Impact Prediction" | 30 refactor projects | Prevents 78% of breaking changes |
-| "Data Flow Analysis" | 100 codebases | Identifies 94% of hidden dependencies |
+What works:
+- ✅ Static analysis (Layer A)
+- ✅ Semantic detection (Layer B)
+- ✅ MCP server with 9 tools
+- ✅ File watching and real-time updates
+- ✅ Impact mapping and call graphs
 
-### Performance Metrics
-
-- **Analysis time**: 120ms per file
-- **Memory usage**: 45MB for 1000 files
-- **Accuracy**: 96% breaking change prediction
-- **User adoption**: 89% report "game changer"
+In development:
+- 🔄 Pattern learning across projects
+- 🔄 Artificial intuition engine
+- 🔄 Memory consolidation system
 
 ## 🎯 Real-World Example
 
@@ -332,6 +381,10 @@ AI Response:
      ├─ src/email/templates/order.php
      └─ src/admin/settings.php
 
+  🧠 INTUITIVE WARNING:
+     "Logo changes usually require 19 file updates
+      based on pattern analysis"
+
   ✅ Ready to update 19 files in 5 minutes
 ```
 
@@ -344,18 +397,23 @@ The omnisciencia tools are built on:
 3. **Data Flow Analysis**: Track variable values
 4. **Call Graph Construction**: Build dependency graph
 5. **Impact Propagation**: Calculate ripple effects
+6. **Pattern Recognition**: Learn from consequences
+7. **Artificial Intuition**: Predict without reasoning
 
 All tools use the **OmnySys Layered Architecture**:
 - Layer A: Static analysis (AST, imports/exports)
 - Layer B: Semantic analysis (events, state, connections)
-- Layer C: Memory layer (queries, cache, fast lookups)
+- Layer C: Memory layer (queries, cache, pattern learning)
 
 ## 📚 Further Reading
 
 - [Installation Guide](./INSTALL.md)
 - [MCP Setup](./MCP_SETUP.md)
 - [Query API Reference](./src/layer-a-static/query/README.md)
+- [Future Ideas](./docs/FUTURE_IDEAS.md)
+- [Wikipedia: Artificial Intuition](https://en.wikipedia.org/wiki/Artificial_intuition)
 
 ---
 
 **OmnySys - Because perfect code decisions require perfect context.**
+**Implementing practical Artificial Intuition for software engineering.**
