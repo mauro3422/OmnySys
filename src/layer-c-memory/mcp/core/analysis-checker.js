@@ -31,7 +31,7 @@ async function hasExistingAnalysis(projectPath) {
 async function countPendingLLMAnalysis(projectPath) {
   try {
     const { getProjectMetadata, getFileAnalysis } =
-      await import('../../../layer-a-static/query/index.js');
+      await import('#layer-a/query/index.js');
 
     const metadata = await getProjectMetadata(projectPath);
 
@@ -64,7 +64,7 @@ async function countPendingLLMAnalysis(projectPath) {
  * Ejecuta Layer A completo (BLOQUEANTE)
  */
 async function runFullIndexing(projectPath) {
-  const { indexProject } = await import('../../../layer-a-static/indexer.js');
+  const { indexProject } = await import('#layer-a/indexer.js');
 
   console.error('   \uD83D\uDE80 Starting Layer A: Static Analysis...');
   console.error('   \u23F3 This may take 30-60 seconds...');
@@ -103,7 +103,7 @@ async function runFullIndexing(projectPath) {
 export async function checkAndRunAnalysis(projectPath) {
   try {
     const { getProjectMetadata } =
-      await import('../../../layer-a-static/query/index.js');
+      await import('#layer-a/query/index.js');
 
     const hasAnalysis = await hasExistingAnalysis(projectPath);
 

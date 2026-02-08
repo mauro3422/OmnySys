@@ -3,7 +3,7 @@
  * Search for files in the project by pattern
  */
 
-import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
+import { getProjectMetadata } from '#layer-a/query/index.js';
 
 export async function search_files(args, context) {
   const { pattern } = args;

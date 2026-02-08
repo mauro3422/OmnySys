@@ -16,12 +16,12 @@ import path from 'path';
  * @returns {Promise<void>}
  */
 export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
-  const { indexProject } = await import('../../../layer-a-static/indexer.js');
+  const { indexProject } = await import('#layer-a/indexer.js');
   
   // Verificar LLM health
   let llmAvailable = false;
   try {
-    const { LLMClient } = await import('../../../ai/llm-client.js');
+    const { LLMClient } = await import('#ai/llm-client.js');
     const client = new LLMClient({ llm: { enabled: true } });
     const health = await client.healthCheck();
     llmAvailable = health.gpu || health.cpu;
@@ -54,7 +54,7 @@ export async function reloadMetadata(context) {
   
   try {
     const { getProjectMetadata, getAllConnections, getRiskAssessment } =
-      await import('../../../layer-a-static/query/index.js');
+      await import('#layer-a/query/index.js');
     
     const metadata = await getProjectMetadata(projectPath);
     cache.ramCacheSet('metadata', metadata);

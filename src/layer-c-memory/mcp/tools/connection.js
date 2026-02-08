@@ -3,7 +3,7 @@
  * Explains why two files are connected
  */
 
-import { getFileAnalysis, getFileDependents } from '../../../layer-a-static/query/index.js';
+import { getFileAnalysis, getFileDependents } from '#layer-a/query/index.js';
 
 export async function explain_connection(args, context) {
   const { fileA, fileB } = args;

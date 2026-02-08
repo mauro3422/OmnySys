@@ -96,7 +96,7 @@ function parseParameters(signature) {
     .map(p => p.trim())
     .filter(p => p.length > 0)
     .map(p => {
-      const [name, type] => p.split(':').map(s => s.trim());
+      const [name, type] = p.split(':').map(s => s.trim());
       return { name, type: type || 'any' };
     });
 }
