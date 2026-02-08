@@ -47,14 +47,16 @@
       "Read(//c/**)",
       "Bash(del \"C:\\\\Dev\\\\OmnySystem\\\\src\\\\layer-c-memory\\\\mcp-server-sdk.js.corrupted\")",
       "Bash(del \"C:\\\\Dev\\\\OmnySystem\\\\src\\\\layer-c-memory\\\\mcp-server-sdk-fixed.js\")",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(git checkout:*)",
+      "Bash(select:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "omnysys"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

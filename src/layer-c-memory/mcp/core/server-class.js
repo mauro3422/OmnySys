@@ -203,6 +203,13 @@ export class OmnySysMCPServer {
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
 
+      // Log tool usage
+      console.error(`\n🔧 Tool called: ${name}`);
+      if (Object.keys(args || {}).length > 0) {
+        console.error(`   Args: ${JSON.stringify(args)}`);
+      }
+      const startTime = performance.now();
+
       const context = {
         orchestrator: this.orchestrator,
         cache: this.cache,
@@ -211,6 +218,9 @@ export class OmnySysMCPServer {
       };
 
       const result = await handler(args, context);
+
+      const elapsed = (performance.now() - startTime).toFixed(2);
+      console.error(`   ✅ Completed in ${elapsed}ms\n`);
 
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]

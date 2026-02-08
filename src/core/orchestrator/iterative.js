@@ -13,7 +13,7 @@ export async function _startIterativeAnalysis() {
   console.log(`\nðŸ”„ Starting iteration ${this.iteration}/${this.maxIterations}...`);
 
   try {
-    const { getFileAnalysis } = await import('../../layer-a-static/storage/query-service.js');
+    const { getFileAnalysis } = await import('../../layer-a-static/query/index.js');
     const filesNeedingRefinement = [];
 
     // Check all analyzed files for high-confidence suggestions

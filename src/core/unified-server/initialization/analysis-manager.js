@@ -53,8 +53,8 @@ export async function reloadMetadata(context) {
   const { cache, projectPath, wsManager } = context;
   
   try {
-    const { getProjectMetadata, getAllConnections, getRiskAssessment } = 
-      await import('../../../layer-a-static/storage/query-service.js');
+    const { getProjectMetadata, getAllConnections, getRiskAssessment } =
+      await import('../../../layer-a-static/query/index.js');
     
     const metadata = await getProjectMetadata(projectPath);
     cache.ramCacheSet('metadata', metadata);
