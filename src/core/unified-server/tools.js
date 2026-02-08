@@ -343,3 +343,153 @@ export async function analyzeFunctionChange(filePath, functionName) {
     return { error: error.message };
   }
 }
+
+// ============================================================
+// Server Management Tools
+// ============================================================
+
+export async function restartServer(clearCache = false) {
+  try {
+    console.log('🔄 Reiniciando servidor OmnySys...');
+    
+    const result = {
+      restarting: true,
+      clearCache: clearCache,
+      timestamp: new Date().toISOString(),
+      message: 'Server restart initiated'
+    };
+    
+    // Si se solicita, limpiar el caché antes de reiniciar
+    if (clearCache && this.cache) {
+      console.log('🧹 Limpiando caché...');
+      this.cache.clear();
+      result.cacheCleared = true;
+    }
+    
+    // Invalidar caché de análisis para forzar re-análisis
+    if (this.cache) {
+      this.cache.invalidate('analysis:*');
+      this.cache.invalidate('atom:*');
+      this.cache.invalidate('derived:*');
+      this.cache.invalidate('impact:*');
+      result.cacheInvalidated = true;
+    }
+    
+    // Programar el reinicio
+    setTimeout(async () => {
+      console.log('👋 Cerrando servidor actual...');
+      await this.shutdown();
+      console.log('🚀 Reiniciando...');
+      process.exit(0); // El proceso padre debería reiniciar el servidor
+    }, 1000);
+    
+    return result;
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+export async function clearAnalysisCache() {
+  try {
+    if (!this.cache) {
+      return { error: 'Cache not initialized' };
+    }
+    
+    const beforeStats = this.cache.getRamStats();
+    
+    // Limpiar solo el caché de análisis (no todo)
+    this.cache.invalidate('analysis:*');
+    this.cache.invalidate('atom:*');
+    this.cache.invalidate('derived:*');
+    this.cache.invalidate('impact:*');
+    this.cache.invalidate('connections');
+    this.cache.invalidate('assessment');
+    
+    const afterStats = this.cache.getRamStats();
+    
+    return {
+      cleared: true,
+      before: beforeStats,
+      after: afterStats,
+      message: 'Analysis cache cleared successfully'
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// ============================================================
+// Atomic Functions Overview Tool
+// ============================================================
+
+export async function getAtomicFunctions(filePath) {
+  try {
+    const data = await getFileAnalysisWithAtoms(this.projectPath, filePath, this.cache);
+    
+    if (!data || !data.atoms || data.atoms.length === 0) {
+      return {
+        filePath,
+        functions: [],
+        message: 'No atomic analysis available. Run analysis first.',
+        suggestion: 'Use /restart command to reload with new atomic analysis'
+      };
+    }
+    
+    // Organizar funciones por categoría
+    const byArchetype = {};
+    const exported = [];
+    const internal = [];
+    
+    for (const atom of data.atoms) {
+      // Por arquetipo
+      const archetype = atom.archetype?.type || 'unknown';
+      if (!byArchetype[archetype]) {
+        byArchetype[archetype] = [];
+      }
+      byArchetype[archetype].push({
+        name: atom.name,
+        line: atom.line,
+        complexity: atom.complexity,
+        calledBy: atom.calledBy?.length || 0
+      });
+      
+      // Por visibilidad
+      if (atom.isExported) {
+        exported.push({
+          name: atom.name,
+          archetype: archetype,
+          complexity: atom.complexity,
+          calledBy: atom.calledBy?.length || 0
+        });
+      } else {
+        internal.push({
+          name: atom.name,
+          archetype: archetype,
+          complexity: atom.complexity,
+          calledBy: atom.calledBy?.length || 0
+        });
+      }
+    }
+    
+    return {
+      filePath,
+      summary: {
+        total: data.atoms.length,
+        exported: exported.length,
+        internal: internal.length,
+        archetypes: Object.keys(byArchetype)
+      },
+      byArchetype,
+      exported: exported.sort((a, b) => b.calledBy - a.calledBy),
+      internal: internal.sort((a, b) => b.calledBy - a.calledBy),
+      insights: {
+        deadCode: byArchetype['dead-function'] || [],
+        hotPaths: byArchetype['hot-path'] || [],
+        fragile: byArchetype['fragile-network'] || [],
+        godFunctions: byArchetype['god-function'] || []
+      }
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
