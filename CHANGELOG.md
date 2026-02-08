@@ -27,6 +27,35 @@ This repository uses a modular changelog structure for better organization and m
 
 ### **ðŸš€ Latest Release: v0.5.0 (2026-02-05)**
 
+### **🚀 Latest Release: v0.5.3 (2026-02-08)**
+
+**Maintenance Release**: Code quality improvements, refactoring, and test suite
+
+**Key Changes**:
+- ✅ **Removed Deprecated Files** - Eliminated css-in-js-extractor.js and static-extractors.js re-exports
+- ✅ **Path Aliases** - Implemented #config/*, #core/*, #layer-a/*, #ai/* imports (14 files updated)
+- ✅ **Safe JSON Utilities** - Added json-safe.js with error handling for all JSON operations
+- ✅ **Unified Constants** - Merged duplicate ChangeType definitions into centralized config
+- ✅ **Centralized Logger** - Created logger.js with level-based logging
+- ✅ **Test Suite** - Added 18 unit and integration tests (npm test)
+- ✅ **Circular Dependency Fix** - Resolved layer-a ↔ layer-b circular import
+- ✅ **File Splitting** - Divided ast-analyzer.js (564 lines) into 3 focused modules
+- ✅ **SSOT Configuration** - Centralized paths, limits, and change types in src/config/
+
+**New Files**:
+- `src/config/paths.js` - All path constants
+- `src/config/limits.js` - All limit/threshold constants  
+- `src/config/change-types.js` - All enum constants
+- `src/utils/json-safe.js` - Safe JSON operations
+- `src/utils/logger.js` - Centralized logging
+- `src/shared/architecture-utils.js` - Shared pattern detection
+- `tests/unit/*.test.js` - Unit tests
+- `tests/integration/*.test.js` - Integration tests
+- `run-tests.js` - Test runner
+
+---
+
+
 **Major Release**: Layer A and B unified under Orchestrator with semantic metadata support
 
 **Key Changes**:
