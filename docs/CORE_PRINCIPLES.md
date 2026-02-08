@@ -6,7 +6,7 @@
 
 ---
 
-## 🎯 The Two Pillars of OmnySys
+## 🎯 The Four Pillars of OmnySys
 
 ### Pillar 1: The Box Test (Archetype Validation)
 
@@ -175,48 +175,86 @@ Each cell is a **potential pattern** to investigate.
 
 ---
 
-## 🧬 The Molecular Evolution (v0.6+ Future)
-
-### Principle 3 (Upcoming): Atomic Composition
+### Pillar 3: Atomic Composition (Molecular Architecture)
 
 **Principle**: *"Files (molecules) have NO metadata of their own - they are COMPOSED from the metadata of their functions (atoms)"*
 
-This is the natural evolution of Pillars 1 & 2:
+#### The Molecular Model (v0.6+)
 
 ```javascript
-// Current (v0.5): File-level metadata
-{
-  "src/api.js": {
-    "hasNetworkCalls": true,
-    "complexity": 120,
-    "exportCount": 3
-  }
-}
-
-// Future (v0.6): Atomic composition
+// SSOT: Single Source of Truth at Function Level
 {
   "atoms": {
     "src/api.js::fetchUser": {
-      "hasNetworkCalls": true,
+      "id": "src/api.js::fetchUser",
+      "type": "atom",
+      "parentMolecule": "src/api.js",
+      
+      // Atomic metadata (SSOT)
+      "line": 15,
       "complexity": 35,
-      "isExported": true
-    },
-    "src/api.js::validateToken": {
-      "hasNetworkCalls": false,
-      "complexity": 15,
-      "isExported": false
+      "isExported": true,
+      "hasNetworkCalls": true,
+      "hasErrorHandling": false,
+      "calls": ["validateToken"],
+      "calledBy": ["UserCard.jsx::loadUser", "ProfilePage.jsx::init"],
+      
+      // Atomic archetype (detected statically)
+      "archetype": {
+        "type": "fragile-network",
+        "severity": 8,
+        "confidence": 1.0
+      }
     }
   },
+  
   "molecules": {
     "src/api.js": {
-      "atoms": ["::fetchUser", "::validateToken"],
-      // Derived (not stored):
-      "hasNetworkCalls": OR(atoms.hasNetworkCalls),
-      "complexity": SUM(atoms.complexity),
-      "exportCount": COUNT(atoms.isExported)
+      "id": "src/api.js",
+      "type": "molecule",
+      "atoms": ["src/api.js::fetchUser", "src/api.js::validateToken"],
+      
+      // DERIVED (not stored - calculated from atoms):
+      // "hasNetworkCalls": OR(atoms.hasNetworkCalls)
+      // "totalComplexity": SUM(atoms.complexity)
+      // "exportCount": COUNT(atoms.isExported)
+      // "riskScore": MAX(atoms.archetype.severity)
     }
   }
 }
+```
+
+#### Derivation Rules
+
+```javascript
+// src/shared/derivation-engine.js
+// No data duplication - everything derived from atoms
+
+export const DerivationRules = {
+  // Rule 1: Molecule archetype inferred from atoms
+  moleculeArchetype: (atoms) => {
+    const atomArchetypes = atoms.map(a => a.archetype?.type);
+    
+    if (atomArchetypes.includes('fragile-network') && 
+        atoms.filter(a => a.hasNetworkCalls).length >= 2) {
+      return { type: 'network-hub', severity: 8 };
+    }
+    if (atoms.every(a => !a.isExported)) {
+      return { type: 'internal-module', severity: 3 };
+    }
+    // ... more rules
+  },
+  
+  // Rule 2: Molecule complexity = sum of atoms
+  moleculeComplexity: (atoms) => {
+    return atoms.reduce((sum, atom) => sum + (atom.complexity || 0), 0);
+  },
+  
+  // Rule 3: Molecule risk = max atomic risk
+  moleculeRisk: (atoms) => {
+    return Math.max(...atoms.map(a => a.archetype?.severity || 0));
+  }
+};
 ```
 
 **Why this is powerful**:
@@ -226,11 +264,174 @@ This is the natural evolution of Pillars 1 & 2:
 3. **Composability**: Same detector works on atoms AND molecules
 4. **Scalability**: Classes, modules, packages all follow same pattern
 
-**This preserves Pillars 1 & 2**:
-- Box Test still applies (at atom level + molecule level)
-- Metadata Insights Verification still applies (atoms discover new patterns too)
+**Atomic Archetypes** (detected 100% statically):
+- `god-function`: complexity > 20 && lines > 100
+- `fragile-network`: fetch/axios without try/catch
+- `hot-path`: exported && calledBy.length > 5
+- `dead-function`: !exported && calledBy.length === 0
+- `utility`: !hasSideEffects && complexity < 5
 
-See `docs/ARCHITECTURE_MOLECULAR_PLAN.md` for full details.
+---
+
+### Pillar 4: Fractal Architecture (Recursive A→B→C)
+
+**Principle**: *"The A→B→C pattern repeats at every scale of the system"*
+
+#### The Recursive Pattern
+
+The same three-layer architecture applies to functions, files, modules, and systems:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SCALE 1: FUNCTIONS (Atoms)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Parse functions, extract calls, calculate complexity │
+│       ↓                                                                 │
+│  Layer B (Detection): Atomic archetypes (god-function, dead-code)       │
+│       ↓                                                                 │
+│  Layer C (Decision): Need LLM? Only if metadata insufficient            │
+│           → 98% bypass, 2% LLM                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ DERIVES
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SCALE 2: FILES (Molecules)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Compose atoms → exports, imports, connections        │
+│       ↓                                                                 │
+│  Layer B (Detection): Molecular archetypes (network-hub, god-object)    │
+│       ↓                                                                 │
+│  Layer C (Decision): Need LLM? Only if metadata insufficient            │
+│           → 90% bypass, 10% LLM                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ DERIVES  
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SCALE 3: MODULES/CLUSTERS                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Graph of files → clusters, cycles, APIs              │
+│       ↓                                                                 │
+│  Layer B (Detection): Architecture patterns (monolith, microservices)   │
+│       ↓                                                                 │
+│  Layer C (Decision): Need LLM? Only if patterns ambiguous               │
+│           → 95% bypass, 5% LLM                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Confidence-Based Bypass at Every Level
+
+Each level implements the same decision logic:
+
+```javascript
+// Universal decision function (works at any scale)
+function shouldUseLLM(entity, metadata, confidenceThreshold = 0.8) {
+  // Layer A: Do we have enough metadata?
+  if (!metadata || metadata.quality < confidenceThreshold) {
+    return { needsLLM: true, reason: 'insufficient_metadata' };
+  }
+  
+  // Layer B: Can we determine the pattern with confidence?
+  const { confidence, evidence } = calculateConfidence(metadata);
+  
+  if (confidence >= confidenceThreshold) {
+    return { 
+      needsLLM: false, 
+      reason: 'sufficient_evidence',
+      confidence,
+      evidence
+    };
+  }
+  
+  // Layer C: Need deeper analysis
+  return { 
+    needsLLM: true, 
+    reason: 'low_confidence',
+    confidence,
+    evidence
+  };
+}
+```
+
+#### Example: Confidence Calculation
+
+```javascript
+// For a god-object archetype at file level
+const calculateConfidence = (metadata) => {
+  let confidence = 0;
+  const evidence = [];
+  
+  // Evidence from exports
+  if (metadata.exportCount > 15) {
+    confidence += 0.3;
+    evidence.push(`exports:${metadata.exportCount}`);
+  }
+  
+  // Evidence from dependencies
+  const totalDeps = (metadata.dependentCount || 0) + 
+                    (metadata.semanticDependentCount || 0);
+  if (totalDeps > 20) {
+    confidence += 0.3;
+    evidence.push(`dependents:${totalDeps}`);
+  }
+  
+  // Evidence from atomic composition
+  const hasGodFunction = metadata.atoms?.some(
+    a => a.archetype?.type === 'god-function'
+  );
+  if (hasGodFunction) {
+    confidence += 0.4;
+    evidence.push('has-god-function');
+  }
+  
+  return { confidence, evidence };
+};
+
+// Decision:
+// confidence >= 0.8 → Bypass LLM (we're sure it's a god-object)
+// confidence < 0.8 → Use LLM (need to verify)
+```
+
+#### Benefits of Fractal Design
+
+| Aspect | Before (Single Scale) | After (Fractal) |
+|--------|----------------------|-----------------|
+| LLM Usage | 30% of files | 10% of files |
+| Precision | File-level | Function-level |
+| Cache Invalidation | Entire file | Single function |
+| Pattern Detection | 11 archetypes | 11 + 7 atomic = 18 |
+| Explanations | "LLM says..." | "Evidence: X, Y, Z" |
+
+---
+
+## 🧬 Evolution Summary
+
+### The Four Pillars Build Upon Each Other
+
+```
+Pillar 1: Box Test
+    ↓
+    "Focus on connections, not attributes"
+    ↓
+Pillar 2: Metadata Insights Verification
+    ↓
+    "Combine metadata to find patterns"
+    ↓
+Pillar 3: Atomic Composition
+    ↓
+    "Apply pillars 1-2 at function level"
+    ↓
+Pillar 4: Fractal Architecture
+    ↓
+    "Apply pillars 1-3 recursively at all scales"
+```
+
+### Version Evolution
+
+| Version | Pillars | Key Innovation | LLM Bypass |
+|---------|---------|----------------|------------|
+| v0.5.0 | 1-2 | Box Test + Metadata Insights | 70% |
+| v0.5.4 | 1-2 | 8 new extractors, 57 metadata fields | 85% |
+| v0.6.0 | 1-4 | Molecular architecture + Fractal A→B→C | 90% |
 
 ---
 
@@ -302,6 +503,7 @@ detector: (metadata) =>
 - [ ] If modifying detector: Did they check impact on derived patterns?
 - [ ] Are new metadata fields documented in `constants.js`?
 - [ ] Are new patterns documented in `METADATA-INSIGHTS-GUIDE.md`?
+- [ ] Does the change follow the Fractal A→B→C pattern?
 
 ---
 
@@ -314,12 +516,14 @@ detector: (metadata) =>
 - LLM usage decreasing as metadata improves
 - Pattern catalog growing faster than archetype count (more insights from same data)
 - False positive rate < 5%
+- Confidence scores > 0.8 for 90% of detections
 
 **Bad indicators**:
 - Archetype explosion (>30 archetypes)
 - Many archetypes with requiresLLM: true (should be conditional)
 - Metadata fields not being cross-referenced
 - Pattern catalog stagnant
+- Low confidence scores (<0.5) common
 
 ### Pattern Discovery
 
@@ -343,7 +547,9 @@ Track metadata insights over time:
     "extractors": 13,  // Same extractors
     "metadata_fields": 57,  // Same fields
     "archetypes": 20,  // 5 more from atom-level insights
-    "discovered_patterns": 35  // Atoms × Molecules combinations
+    "discovered_patterns": 35,  // Atoms × Molecules combinations
+    "llm_bypass_rate": "90%",  // ← Fractal A→B→C achievement
+    "confidence_threshold": 0.8
   }
 }
 ```
@@ -355,7 +561,8 @@ Track metadata insights over time:
 - `METADATA-INSIGHTS-GUIDE.md` - Full pattern catalog + verification process
 - `ARCHETYPE_SYSTEM.md` - How archetypes work
 - `ARCHETYPE_DEVELOPMENT_GUIDE.md` - Step-by-step archetype creation
-- `ARCHITECTURE_MOLECULAR_PLAN.md` - Future evolution (Pillar 3)
+- `ARCHITECTURE_MOLECULAR_PLAN.md` - Molecular architecture details
+- `ARCHITECTURE.md` - System architecture overview
 
 ---
 
@@ -365,10 +572,11 @@ OmnySys is built on a simple insight:
 
 > **"Most architectural coupling is invisible to static analysis but discoverable through metadata combination"**
 
-The Three Pillars ensure we:
+The Four Pillars ensure we:
 1. **Focus on connections** (Box Test)
 2. **Maximize insights from existing data** (Metadata Verification)
 3. **Scale gracefully** (Atomic Composition)
+4. **Apply consistently at all levels** (Fractal Architecture)
 
 Every design decision should pass these filters.
 

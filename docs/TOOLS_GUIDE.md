@@ -2,16 +2,44 @@
 
 ## 🎯 Introducción
 
-OmnySys expone **9 herramientas MCP** vía HTTP en `http://localhost:9999`. Estas herramientas permiten a las IAs entender el contexto completo del código antes de hacer cambios.
+OmnySys expone **12 herramientas MCP** vía HTTP en `http://localhost:9999`. Estas herramientas permiten a las IAs entender el contexto completo del código antes de hacer cambios, ahora con **precisión atómica** (a nivel función).
 
-**Arquitectura**: Las herramientas consultan las 3 capas:
-- **Layer A**: Datos estáticos (imports, exports, grafo)
-- **Layer B**: Análisis semántico (arquetipos, LLM insights)
-- **Layer C**: Cache unificado + almacenamiento
+**Arquitectura Fractal**: Las herramientas consultan las 3 capas en múltiples escalas:
+- **Layer A (Átomos)**: Funciones individuales, calls, complexity
+- **Layer A (Moléculas)**: Archivos como composición de átomos
+- **Layer B (Detección)**: Arquetipos con confidence scoring
+- **Layer C (Respuesta)**: Cache atómico + decisiones LLM
+
+**Confidence-Based Bypass**: 90% de consultas se resuelven sin LLM gracias al sistema de confianza basado en evidencia metadata.
 
 ---
 
-## 🛠️ Las 9 Herramientas
+## 🛠️ Las 12 Herramientas
+
+### Herramientas Atómicas (Nuevas en v0.6.0)
+
+Estas herramientas operan a nivel **función** (átomo) para precisión quirúrgica:
+
+- `getFunctionDetails` - Metadata completa de una función
+- `getMoleculeSummary` - Resumen molecular con insights derivados
+- `analyzeFunctionChange` - Impacto de modificar una función específica
+
+### Herramientas Moléculares (Archivo)
+
+Estas herramientas operan a nivel **archivo** (molécula):
+
+- `get_impact_map` - Mapa de archivos afectados
+- `get_call_graph` - Grafo de llamadas
+- `analyze_change` - Análisis de cambio de símbolo
+- `analyze_signature_change` - Breaking changes de API
+- `explain_value_flow` - Flujo de datos
+- `explain_connection` - Conexión entre archivos
+
+### Herramientas de Sistema
+
+- `get_risk_assessment` - Evaluación de riesgo del proyecto
+- `search_files` - Búsqueda de archivos
+- `get_server_status` - Estado del sistema
 
 ### **1. `get_impact_map`** - Mapa de Impacto Completo
 

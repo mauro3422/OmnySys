@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import { EventEmitter } from 'events';
 
@@ -84,3 +84,9 @@ async function main() {
 }
 
 export { OmnySysUnifiedServer, main };
+
+// Auto-start if run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
+

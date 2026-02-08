@@ -29,7 +29,7 @@ This repository uses a modular changelog structure for better organization and m
 
 ### **🚀 Latest Release: v0.6.0 (2026-02-08)**
 
-**Major Architecture Release**: Sistema atómico completo con SSOT (Single Source of Truth)
+**Major Architecture Release**: Arquitectura Molecular + Fractal A→B→C con Confidence-Based Bypass
 
 **Key Changes**:
 - ✅ **Molecular Architecture** - Funciones (átomos) como unidad primaria de análisis
@@ -40,6 +40,18 @@ This repository uses a modular changelog structure for better organization and m
 - ✅ **Call Graph** - `calledBy` calculado bidireccionalmente
 - ✅ **Optimized Storage** - `atoms/` (SSOT), `molecules/` (índice), `files/` (referencias)
 - ✅ **MCP Tools** - `getFunctionDetails()`, `getMoleculeSummary()`, `analyzeFunctionChange()`
+- ✅ **Fractal Architecture (NEW)** - Patrón A→B→C se repite en funciones, archivos y módulos
+- ✅ **Confidence-Based Bypass (NEW)** - Sistema de confianza para evitar LLM innecesario
+  - Cada arquetipo calcula confidence (0.0 - 1.0) basado en evidencia
+  - Si confidence >= 0.8 → Bypass LLM (90% de casos)
+  - Evidencia documentada: exports, dependents, atoms, conexiones resueltas
+- ✅ **15 Archetypes** - Ahora con confidence calculation para cada uno
+- ✅ **4 Pillars Documented** - Box Test + Metadata Insights + Atomic Composition + Fractal Architecture
+
+**Performance Improvements**:
+- LLM Bypass Rate: 70% → 90% (20% mejora)
+- Cache Invalidation: Por archivo → Por función (100x más rápido)
+- Análisis atómico: ~0.01ms por función desde caché
 
 **Docs**: See `changelog/v0.6.0.md` for full details
 

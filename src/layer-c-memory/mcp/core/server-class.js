@@ -234,7 +234,7 @@ export class OmnySysMCPServer {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('✅ MCP Server Ready!');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('\n🔧 Available tools (9 total):');
+    console.error('\n🔧 Available tools (13 total):');
     console.error('  Core Tools:');
     console.error('   • get_impact_map(filePath)');
     console.error('   • analyze_change(filePath, symbolName)');
@@ -246,6 +246,11 @@ export class OmnySysMCPServer {
     console.error('   • get_call_graph(filePath, symbolName)');
     console.error('   • analyze_signature_change(filePath, symbolName)');
     console.error('   • explain_value_flow(filePath, symbolName)');
+    console.error('  🧬 Atomic Tools:');
+    console.error('   • get_function_details(filePath, functionName)');
+    console.error('   • get_molecule_summary(filePath)');
+    console.error('   • get_atomic_functions(filePath)');
+    console.error('   • restart_server(clearCache)');
     console.error('\n📡 Claude can now use these tools!');
     console.error('💡 If a file is not analyzed, it will be auto-queued as CRITICAL\n');
 

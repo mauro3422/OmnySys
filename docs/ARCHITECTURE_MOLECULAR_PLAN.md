@@ -1,8 +1,9 @@
-# Plan Arquitectónico: OmnySys Molecular
+# Arquitectura Molecular: OmnySys v0.6.0
 
 **Fecha**: 2026-02-08  
-**Versión**: v0.6.0-proposal  
-**Estado**: Plan de diseño - Listo para implementación
+**Versión**: v0.6.0  
+**Estado**: ✅ **IMPLEMENTADO Y ESTABLE**  
+**Guía**: Este documento describe la arquitectura molecular implementada. Para usar el sistema, ver `ARCHITECTURE.md`.
 
 ---
 

@@ -11,6 +11,11 @@ import { get_server_status } from './status.js';
 import { get_call_graph } from './get-call-graph.js';
 import { analyze_signature_change } from './analyze-signature-change.js';
 import { explain_value_flow } from './explain-value-flow.js';
+// Atomic/Molecular Tools (v0.6.0)
+import { get_function_details } from './get-function-details.js';
+import { get_molecule_summary } from './get-molecule-summary.js';
+import { get_atomic_functions } from './get-atomic-functions.js';
+import { restart_server } from './restart-server.js';
 
 export const toolDefinitions = [
   {
@@ -109,6 +114,51 @@ export const toolDefinitions = [
       },
       required: ['filePath', 'symbolName']
     }
+  },
+  // ========== ATOMIC/MOLECULAR TOOLS ==========
+  {
+    name: 'get_function_details',
+    description: 'Gets detailed atomic information about a specific function including archetype, complexity, and call graph',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the function' },
+        functionName: { type: 'string', description: 'Name of the function' }
+      },
+      required: ['filePath', 'functionName']
+    }
+  },
+  {
+    name: 'get_molecule_summary',
+    description: 'Gets molecular summary of a file - all functions with their archetypes and insights',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file' }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'get_atomic_functions',
+    description: 'Lists all atomic functions in a file organized by archetype and visibility',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file' }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'restart_server',
+    description: 'Restarts the OmnySys server to load updated code. Use this after making changes to the codebase.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        clearCache: { type: 'boolean', description: 'Clear analysis cache before restart', default: false }
+      }
+    }
   }
 ];
 
@@ -122,5 +172,10 @@ export const toolHandlers = {
   // OMNISCIENCE TOOLS
   get_call_graph,
   analyze_signature_change,
-  explain_value_flow
+  explain_value_flow,
+  // ATOMIC/MOLECULAR TOOLS
+  get_function_details,
+  get_molecule_summary,
+  get_atomic_functions,
+  restart_server
 };

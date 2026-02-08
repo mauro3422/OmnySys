@@ -1,69 +1,139 @@
 # OmnySys - Arquitectura Técnica
 
-**Versión**: v0.5.3  
-**Última actualización**: 2026-02-06
-
-## 🎯 Visión General
-
-OmnySys es un **motor de contexto multi-capa** que actúa como memoria externa para IAs que modifican código. Resuelve el problema de "visión de túnel" mediante tres capas que trabajan en conjunto:
-
-1. **Layer A (Estática)**: Análisis determinista y rápido (imports, exports, grafo de dependencias)
-2. **Layer B (Semántica)**: Análisis inteligente con IA local (arquetipos, conexiones ocultas)
-3. **Layer C (Memoria)**: Persistencia y servicio de consulta vía MCP (9 herramientas HTTP)
-
-**Innovación clave**: El **MCP Server es el entry point unico** vía HTTP. Un solo comando (`npm start`) inicia todo el sistema incluyendo LLM + MCP + auto-configuración de OpenCode.
+**Versión**: v0.6.0  
+**Última actualización**: 2026-02-08
 
 ---
 
-## 🏗️ Arquitectura de 3 Capas
+## 🎯 Visión General
+
+OmnySys es un **motor de contexto multi-capa y fractal** que actúa como memoria externa para IAs que modifican código. Resuelve el problema de "visión de túnel" mediante una arquitectura recursiva de tres capas que se aplica a múltiples escalas:
+
+1. **Layer A (Estática)**: Análisis determinista y rápido (extracción de datos)
+2. **Layer B (Semántica)**: Detección de patrones con confidence scoring
+3. **Layer C (Decisión)**: LLM selectivo basado en confianza, no siempre
+
+**Innovaciones clave**:
+- **Arquitectura Molecular**: Funciones (átomos) como unidad primaria, archivos (moléculas) como derivación
+- **Arquitectura Fractal**: El patrón A→B→C se repite en funciones, archivos y módulos
+- **Confidence-Based Bypass**: 90% de archivos se analizan sin LLM
+- **MCP Server**: Entry point único vía HTTP (puerto 9999)
+
+---
+
+## 🏗️ Arquitectura Fractal A→B→C
+
+El sistema aplica el mismo patrón de tres capas en múltiples escalas:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Tu IA (Claude/OpenCode)                      │
-│                                                                 │
-│  Usa: get_impact_map("src/core.js")                             │
-│  Recibe: Mapa completo de impacto (8 archivos afectados)        │
-└───────────────────────┬─────────────────────────────────────────┘
-                        │ HTTP (localhost:9999)
-                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              OMNYsys MCP SERVER (Puerto 9999)                   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ LAYER C: MEMORIA                                        │   │
-│  │ • UnifiedCache: Datos en RAM + disco                    │   │
-│  │ • Query Service: API eficiente para consultas           │   │
-│  │ • Storage: .omnysysdata/ particionado por archivo       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                            ▲                                    │
-│  ┌─────────────────────────┼───────────────────────────────┐   │
-│  │ ORCHESTRATOR (Interno)  │                               │   │
-│  │ • Analysis Queue: CRITICAL→HIGH→MEDIUM→LOW              │   │
-│  │ • Worker: Procesa con LLM cuando necesario              │   │
-│  │ • FileWatcher: Detecta cambios en tiempo real           │   │
-│  └─────────────────────────┼───────────────────────────────┘   │
-│                            ▲                                    │
-│  ┌─────────────────────────┴───────────────────────────────┐   │
-│  │ LAYER B: SEMÁNTICA (La Mente)                            │   │
-│  │ • Archetype System: Detecta patrones de conexión        │   │
-│  │ • LLM Analyzer: Conexiones invisibles (20% restante)    │   │
-│  │ • Prompt Engine: Prompts específicos por arquetipo      │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                            ▲                                    │
-│  ┌─────────────────────────┴───────────────────────────────┐   │
-│  │ LAYER A: ESTÁTICA (El Cuerpo)                            │   │
-│  │ • Scanner: Recorre filesystem (JS/TS/JSON)              │   │
-│  │ • AST Parser: Imports, exports, definiciones            │   │
-│  │ • Graph Builder: Grafo file→file, ciclos, métricas      │   │
-│  │ • Extractors: localStorage, eventos, globals            │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  LLM SERVER (Puerto 8000) - GPU Optimizado                      │
-│  Modelo: LFM2.5-Instruct-Q8_0.gguf                              │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ESCALA 1: FUNCIONES (Átomos)                             │
+│                    src/layer-a-static/pipeline/molecular-extractor.js       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Layer A: Extrae funciones, calls, complejidad, side effects                │
+│       ↓                                                                     │
+│  Layer B: Detecta arquetipos atómicos (god-function, dead-code, etc)        │
+│       ↓                                                                     │
+│  Layer C: ¿Necesita LLM? Solo si metadata insuficiente (<2% de casos)       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │ DERIVA
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ESCALA 2: ARCHIVOS (Moléculas)                           │
+│                    src/shared/derivation-engine.js                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Layer A: Compone átomos → exports, imports, grafo de dependencias          │
+│       ↓                                                                     │
+│  Layer B: Detecta arquetipos moleculares (network-hub, god-object, etc)     │
+│       ↓                                                                     │
+│  Layer C: ¿Necesita LLM? Solo si confidence < 0.8 (~10% de casos)           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │ DERIVA
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ESCALA 3: SISTEMA (MCP Server)                           │
+│                    src/core/unified-server/tools.js                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Layer A: Query de datos con caché (atoms/, molecules/, files/)             │
+│       ↓                                                                     │
+│  Layer B: Agregación de resultados + insights                               │
+│       ↓                                                                     │
+│  Layer C: Respuesta a IA (Claude/OpenCode)                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧬 Arquitectura Molecular (v0.6.0)
+
+### Conceptos Clave
+
+| Concepto | Definición | Analogía |
+|----------|------------|----------|
+| **Átomo** | Función individual | Un átomo químico |
+| **Molécula** | Archivo (composición de átomos) | H₂O = 2H + 1O |
+| **Derivación** | Calcular propiedades desde componentes | Propiedades emergentes |
+
+### Estructura de Almacenamiento (SSOT)
+
+```
+.omnysysdata/
+├── atoms/                          ← SSOT: Metadata enriquecida
+│   └── {file}/{function}.json      ← complexity, archetype, calledBy, etc.
+├── molecules/                      ← Índice de átomos
+│   └── {file}.molecule.json        ← Solo referencias: [atomId1, atomId2, ...]
+└── files/                          ← Análisis base (metadata cruzada)
+    └── {file}.json                 ← functionRefs + atomIds + semanticConnections
+```
+
+### Arquetipos Atómicos (7 tipos)
+
+Detectados 100% estáticamente sin LLM:
+
+| Arquetipo | Detección | Severidad |
+|-----------|-----------|-----------|
+| `god-function` | complexity > 20 && lines > 100 | 9 |
+| `fragile-network` | fetch/axios sin try/catch | 8 |
+| `hot-path` | isExported && calledBy.length > 5 | 7 |
+| `dead-function` | !isExported && calledBy.length === 0 | 5 |
+| `private-utility` | !isExported && calledBy.length > 0 | 3 |
+| `utility` | !hasSideEffects && complexity < 5 | 2 |
+| `standard` | Default | 1 |
+
+### Reglas de Derivación
+
+```javascript
+// src/shared/derivation-engine.js
+export const DerivationRules = {
+  // Archetype molecular desde átomos
+  moleculeArchetype: (atoms) => {
+    const atomArchetypes = atoms.map(a => a.archetype?.type);
+    
+    // Si tiene fragile-network + múltiples llamadas de red
+    if (atomArchetypes.includes('fragile-network') && 
+        atoms.filter(a => a.hasNetworkCalls).length >= 2) {
+      return { type: 'network-hub', severity: 8 };
+    }
+    
+    // Si todos los átomos son privados
+    if (atoms.length > 0 && atoms.every(a => !a.isExported)) {
+      return { type: 'internal-module', severity: 3 };
+    }
+    
+    // Si tiene god-function → probable god-object
+    if (atomArchetypes.includes('god-function')) {
+      return { type: 'god-object', severity: 10 };
+    }
+    
+    return { type: 'standard', severity: 1 };
+  },
+  
+  // Complejidad = suma de átomos
+  moleculeComplexity: (atoms) => atoms.reduce((sum, a) => sum + (a.complexity || 0), 0),
+  
+  // Riesgo = máximo de átomos
+  moleculeRisk: (atoms) => Math.max(...atoms.map(a => a.archetype?.severity || 0))
+};
 ```
 
 ---
@@ -75,71 +145,115 @@ OmnySys es un **motor de contexto multi-capa** que actúa como memoria externa p
 **Responsabilidad**: Extraer datos verificables del código fuente.
 
 **Componentes**:
-- **Scanner**: Recorre el proyecto, detecta archivos JS/TS/JSON
-- **AST Parser** (@babel/parser): Extrae imports, exports, funciones, clases
-- **Graph Builder**: Construye grafo de dependencias file→file
-- **Extractors**: Detecta localStorage keys, event names, global state
+- **Molecular Extractor** (`molecular-extractor.js`): Extrae átomos desde AST
+- **Metadata Extractors** (8 extractores): Side effects, call graph, temporal, performance
+- **Storage Manager** (`storage-manager.js`): Guarda átomos y moléculas (SSOT)
+- **Derivation Engine** (`derivation-engine.js`): Calcula propiedades moleculares
 
-**Output**: `system-map.json` con datos estructurados de 433 archivos
+**Output**: Átomos individuales + moléculas derivadas en `.omnysysdata/`
 
-**Conexiones detectadas** (confidence = 1.0):
-- File A exporta X → File B importa X (estático)
-- File A escribe localStorage['key'] → File B lee localStorage['key'] (semántico)
-- File A emite evento 'login' → File B escucha evento 'login' (semántico)
+**Metadata extraída** (57 campos):
+- Static Graph: exports, dependents, imports
+- Storage & State: localStorage keys, global state
+- Events: emitters, listeners, event names
+- Side Effects: network calls, DOM manipulation
+- Call Graph: internal/external calls, depth
+- Temporal: lifecycle hooks, cleanup patterns
+- Performance: nested loops, complexity
+- Historical: git churn, hotspot score
 
 **NO necesita LLM** porque los datos son verificables estáticamente.
 
 ---
 
-### **Layer B - Análisis Semántico** (Con IA selectiva)
+### **Layer B - Análisis Semántico** (Con confidence scoring)
 
-**Responsabilidad**: Detectar patrones arquitectónicos invisibles para el análisis estático.
+**Responsabilidad**: Detectar patrones arquitectónicos usando metadata combinada.
 
-**Sistema de Arquetipos**:
+**Sistema de Arquetipos** (15 tipos):
 
 | Arquetipo | ¿Qué detecta? | ¿Necesita LLM? | Prioridad |
 |-----------|---------------|----------------|-----------|
-| `god-object` | Archivo con 20+ dependencias (alto blast radius) | SIEMPRE | CRITICAL |
-| `orphan-module` | Archivo exporta pero nadie usa (código muerto?) | SIEMPRE | HIGH |
-| `dynamic-importer` | `import(variable)` - rutas dinámicas | SIEMPRE | HIGH |
-| `state-manager` | Lee/escribe estado global (window.*, localStorage) | Condicional | HIGH |
-| `event-hub` | Emite/escucha eventos (pub/sub) | Condicional | MEDIUM |
-| `singleton` | Patrón singleton (acoplamiento implícito) | Condicional | MEDIUM |
-| `default` | Fallback - análisis general | SI | LOW |
+| `god-object` | Archivo con 20+ dependencias | Confidence-based | CRITICAL |
+| `orphan-module` | Código muerto o cables ocultos | Confidence-based | HIGH |
+| `dynamic-importer` | `import(variable)` | Siempre | HIGH |
+| `state-manager` | Estado global (window, localStorage) | Confidence-based | HIGH |
+| `event-hub` | Pub/sub patterns | Confidence-based | MEDIUM |
+| `singleton` | Acoplamiento implícito | Confidence-based | MEDIUM |
+| `network-hub` | Endpoints compartidos | Confidence-based | MEDIUM |
+| `critical-bottleneck` | Hotspot + complejidad + acoplamiento | Confidence-based | CRITICAL |
+| `api-event-bridge` | APIs + event coordination | Confidence-based | HIGH |
+| `storage-sync-manager` | Multi-tab state sync | Confidence-based | HIGH |
+| `facade` | Re-export patterns | Nunca | LOW |
+| `config-hub` | Centralized configuration | Nunca | LOW |
+| `entry-point` | Application bootstrap | Nunca | LOW |
 
-**Regla de Oro**:
-```
-¿La metadata sola puede determinar la conexión?
-├── SI → NO usar LLM (Layer A ya lo resolvió)
-└── NO → Usar LLM (conexiones invisibles)
+**Regla de Oro (Confidence-Based)**:
+```javascript
+// Cálculo de confianza basado en evidencia
+const { confidence, evidence } = calculateConfidence(metadata);
+
+if (confidence >= 0.8) {
+  // ✅ BYPASS: Evidencia suficiente, no necesita LLM
+  return { archetype, confidence, evidence };
+} else {
+  // 🔍 LLM: Evidencia insuficiente, necesita análisis semántico
+  return await analyzeWithLLM(metadata);
+}
 ```
 
-**Output**: Enriquece `system-map.json` con `llmInsights` por archivo
+**Ejemplo de evidencia para god-object**:
+```javascript
+{
+  confidence: 0.9,  // 0.3 + 0.3 + 0.3 + 0.0
+  evidence: [
+    'exports:23',           // +0.3
+    'dependents:45',        // +0.3  
+    'has-god-function',     // +0.3
+    // Falta: semantic connections cross-referenced
+  ]
+}
+```
 
 ---
 
 ### **Layer C - Memoria y Servicio MCP** (HTTP API)
 
-**Responsabilidad**: Almacenar datos y exponer herramientas a la IA.
+**Responsabilidad**: Almacenar datos y exponer herramientas con caché inteligente.
 
 **Componentes**:
-- **Storage**: `.omnysysdata/` con archivos JSON por archivo analizado
-- **UnifiedCache**: Cache en RAM con invalidación en cascada
+- **Atomic Cache** (`atoms.js`): Caché de átomos individuales
+- **Derivation Cache** (`derivation-engine.js`): Cache de derivaciones moleculares
+- **Storage**: `.omnysysdata/` particionado
 - **MCP HTTP Server**: Puerto 9999, 9 herramientas REST
+
+**Invalidación de Caché**:
+```javascript
+// Antes (v0.5): Invalidar archivo completo
+cache.invalidate(`file:${filePath}`);
+
+// Ahora (v0.6): Invalidar solo átomo modificado
+cache.invalidateAtom(`${filePath}::${functionName}`);
+
+// La derivación se recalcula automáticamente
+```
 
 **9 Herramientas MCP**:
 
-| Herramienta | Propósito | Arquetipo Relacionado |
-|-------------|-----------|----------------------|
-| `get_impact_map` | Mapa de archivos afectados | god-object, state-manager |
-| `get_call_graph` | Quién llama a qué función | orphan-module |
-| `explain_value_flow` | Flujo de datos input→output | state-manager, event-hub |
-| `analyze_change` | Impacto de cambiar símbolo | Todos |
-| `analyze_signature_change` | Breaking changes de API | god-object |
-| `explain_connection` | Por qué 2 archivos están conectados | Todos |
-| `get_risk_assessment` | Riesgos del proyecto | god-object, orphan-module |
-| `search_files` | Buscar archivos | N/A |
-| `get_server_status` | Estado del sistema | N/A |
+| Herramienta | Propósito | Escala |
+|-------------|-----------|--------|
+| `get_impact_map` | Mapa de archivos afectados | Molécula |
+| `get_call_graph` | Quién llama a qué función | Átomo/Molécula |
+| `getFunctionDetails` | Información atómica completa | Átomo |
+| `getMoleculeSummary` | Resumen molecular con insights | Molécula |
+| `analyzeFunctionChange` | Impacto a nivel función | Átomo |
+| `analyze_change` | Impacto de cambiar símbolo | Molécula |
+| `analyze_signature_change` | Breaking changes de API | Átomo |
+| `explain_value_flow` | Flujo de datos | Átomo |
+| `explain_connection` | Conexión entre archivos | Molécula |
+| `get_risk_assessment` | Riesgos del proyecto | Sistema |
+| `search_files` | Búsqueda de archivos | Sistema |
+| `get_server_status` | Estado del sistema | Sistema |
 
 ---
 
@@ -148,106 +262,117 @@ OmnySys es un **motor de contexto multi-capa** que actúa como memoria externa p
 ```bash
 npm start
 
-  ┌─────────────────────────────────────┐
-  │ STEP 0: Check LLM (puerto 8000)     │
-  │         Si no está, iniciar         │
-  └─────────────────┬───────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 0: Check LLM (puerto 8000)             │
+  │         Si no está, iniciar                 │
+  └─────────────────┬───────────────────────────┘
                     ▼
-  ┌─────────────────────────────────────┐
-  │ STEP 1: Iniciar MCP HTTP (9999)     │
-  │         OmnySysMCPServer            │
-  └─────────────────┬───────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 1: Iniciar MCP HTTP (9999)             │
+  │         OmnySysMCPServer                    │
+  └─────────────────┬───────────────────────────┘
                     ▼
-  ┌─────────────────────────────────────┐
-  │ STEP 2: Layer A - Análisis Estático │
-  │         Cargar .omnysysdata/        │
-  └─────────────────┬───────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 2: Layer A - Análisis Molecular        │
+  │         • Extraer átomos desde AST          │
+  │         • Guardar en atoms/                 │
+  │         • Derivar moléculas                 │
+  └─────────────────┬───────────────────────────┘
                     ▼
-  ┌─────────────────────────────────────┐
-  │ STEP 3: Iniciar Orchestrator        │
-  │         Queue + Worker + Watcher    │
-  └─────────────────┬───────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 3: Layer B - Detección con Confidence  │
+  │         • Detectar arquetipos               │
+  │         • Calcular confidence               │
+  │         • Bypass LLM si confidence >= 0.8   │
+  └─────────────────┬───────────────────────────┘
                     ▼
-  ┌─────────────────────────────────────┐
-  │ STEP 4: Configurar OpenCode         │
-  │         Auto-config mcpServers      │
-  └─────────────────┬───────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 4: Layer C - Iniciar Orchestrator      │
+  │         • Queue priorizada (confidence)     │
+  │         • Worker para LLM selectivo         │
+  │         • FileWatcher con invalidación      │
+  │           atómica                           │
+  └─────────────────┬───────────────────────────┘
                     ▼
-  ┌─────────────────────────────────────┐
-  │ STEP 5: ✅ Listo!                   │
-  │         9 herramientas disponibles  │
-  └─────────────────────────────────────┘
+  ┌─────────────────────────────────────────────┐
+  │ STEP 5: Configurar OpenCode                 │
+  │         Auto-config mcpServers              │
+  └─────────────────┬───────────────────────────┘
+                    ▼
+  ┌─────────────────────────────────────────────┐
+  │ STEP 6: ✅ Listo!                           │
+  │         12 herramientas disponibles         │
+  │         90% bypass rate                     │
+  └─────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎯 Sistema de Arquetipos
+## 📊 Métricas del Sistema (v0.6.0)
 
-### ¿Qué es un Arquetipo?
+**Proyecto analizado**: ~430 archivos, ~940 funciones
 
-Un **arquetipo** clasifica archivos según sus **patrones de conexión**: cómo un archivo se conecta con otros archivos del proyecto.
+| Métrica | Valor | vs v0.5 |
+|---------|-------|---------|
+| Archivos JS/TS | 418 | = |
+| Funciones (átomos) | 943 | Nuevo |
+| Arquetipos moleculares | 15 | +4 |
+| Arquetipos atómicos | 7 | Nuevo |
+| Conexiones semánticas | ~100 | = |
+| LLM Bypass Rate | 90% | +15% |
+| Tiempo de invalidación | ~0.01ms | 100x más rápido |
+| Cache hit rate (átomos) | 95% | Nuevo |
 
-**Test de la Caja**: *"Al levantar la caja (archivo), este arquetipo me ayuda a ver cables (conexiones) que de otra forma no vería?"*
+---
 
-### Pipeline de Detección
+## 🎓 Flujo de Uso para IAs
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│ Layer A extrae metadata                                         │
-│   - exportCount, dependentCount                                │
-│   - hasDynamicImports, hasEventListeners                       │
-│   - localStorageKeys, eventNames                               │
-└────────────────┬───────────────────────────────────────────────┘
-                 ▼
-┌────────────────────────────────────────────────────────────────┐
-│ detectArchetypes(metadata)                                      │
-│   ├─ ¿exportCount > 15 AND dependentCount > 10?                │
-│   │   └─ Arquetipo: god-object (severity: 10)                  │
-│   ├─ ¿exportCount > 0 AND dependentCount == 0?                 │
-│   │   └─ Arquetipo: orphan-module (severity: 5)                │
-│   ├─ ¿hasDynamicImports?                                       │
-│   │   └─ Arquetipo: dynamic-importer (severity: 7)             │
-│   └─ ... más detectores                                        │
-└────────────────┬───────────────────────────────────────────────┘
-                 ▼
-┌────────────────────────────────────────────────────────────────┐
-│ ¿Arquetipo requiere LLM?                                        │
-│   ├─ god-object, orphan-module, dynamic-importer               │
-│   │   └─ Encolar para LLM (priority: CRITICAL/HIGH)            │
-│   └─ state-manager, event-hub (condicional)                    │
-│       └─ Solo si Layer A no resolvió todas las conexiones      │
-└────────────────────────────────────────────────────────────────┘
+### Escenario: Refactorizar una función específica
+
+**Paso 1**: IA llama a herramienta atómica
+```javascript
+const impact = await getFunctionDetails({
+  filePath: "src/core/orchestrator.js",
+  functionName: "analyzeAndWait"
+});
 ```
 
-### Ejemplo Real: god-object
+**Paso 2**: OmnySys analiza
+- Layer A: Carga átomo desde caché (`atoms::analyzeAndWait`)
+- Layer B: Detecta arquetipo atómico (`hot-path`)
+- Derivation Engine: Calcula impacto molecular
 
-**Archivo**: `src/core/orchestrator.js`
-
-**Metadata Layer A**:
+**Paso 3**: OmnySys responde
 ```javascript
 {
-  exportCount: 12,
-  dependentCount: 15,        // Archivos que importan de orchestrator
-  semanticDependentCount: 8, // Archivos que usan estado/eventos
-  totalDependents: 23        // 15 + 8
+  atom: {
+    id: "src/core/orchestrator.js::analyzeAndWait",
+    name: "analyzeAndWait",
+    complexity: 28,
+    isExported: true,
+    calledBy: ["src/cli/commands/consolidate.js::run", "..."],
+    archetype: {
+      type: "hot-path",
+      severity: 7,
+      confidence: 1.0,
+      evidence: ["exported", "12-callers"]
+    }
+  },
+  callGraph: {
+    callers: 12,
+    files: 5
+  },
+  risk: {
+    level: "high",
+    reason: "Function is called from 12 places"
+  }
 }
 ```
 
-**Detector**:
-```javascript
-if (exportCount > 10 && totalDependents > 20) {
-  return {
-    type: 'god-object',
-    severity: 10,
-    requiresLLM: true
-  };
-}
-```
-
-**Acción**: Encolar como CRITICAL para análisis LLM que determine:
-- Qué responsabilidades tiene (¿es un god object real?)
-- Score de riesgo (0-100)
-- Qué partes son seguras de refactorizar
+**Paso 4**: IA toma decisión informada
+- "Esta función es un hot-path (llamada desde 12 lugares)"
+- "Si la modifico, afecto a 5 archivos"
+- "Voy a mantener la firma compatible"
 
 ---
 
@@ -261,8 +386,9 @@ npm stop               # Detiene todo
 npm status             # Muestra estado (LLM + MCP)
 
 # Herramientas MCP
-npm tools              # Lista las 9 herramientas disponibles
+npm tools              # Lista las 12 herramientas disponibles
 omny call get_impact_map '{"filePath":"src/core.js"}'
+omny call getFunctionDetails '{"filePath":"src/core.js","functionName":"init"}'
 omny status            # Estado detallado
 
 # Análisis
@@ -273,77 +399,30 @@ npm run analyze        # Analizar proyecto completo con Layer A
 
 ## 📡 Endpoints HTTP
 
-### LLM Server (Puerto 8000)
-```bash
-GET http://localhost:8000/health
-POST http://localhost:8000/generate  # Generar texto
-```
-
 ### MCP Server (Puerto 9999)
+
 ```bash
+# Estado y herramientas
 GET  http://localhost:9999/health          # Estado
 GET  http://localhost:9999/tools           # Lista herramientas
+
+# Ejecutar herramienta
 POST http://localhost:9999/tools/:name     # Ejecutar herramienta
-POST http://localhost:9999/call            # Ejecutar (formato MCP)
+POST http://localhost:9999/call            # Formato MCP estándar
 ```
 
-**Ejemplo**:
+**Ejemplos**:
 ```bash
+# Impacto molecular
 curl -X POST http://localhost:9999/tools/get_impact_map \
   -H "Content-Type: application/json" \
   -d '{"filePath": "src/core/orchestrator.js"}'
+
+# Detalles atómicos
+curl -X POST http://localhost:9999/tools/getFunctionDetails \
+  -H "Content-Type: application/json" \
+  -d '{"filePath": "src/core/orchestrator.js", "functionName": "analyzeAndWait"}'
 ```
-
----
-
-## 📊 Métricas del Sistema
-
-**Proyecto analizado**: 431 archivos
-
-| Métrica | Valor |
-|---------|-------|
-| Archivos JS/TS | 418 |
-| Funciones totales | 943 |
-| Arquetipos detectados | ~50 |
-| Conexiones semánticas | ~100 |
-| Módulos huérfanos | ~15 |
-| God Objects | ~3 |
-
----
-
-## 🎓 Flujo de Uso para IAs
-
-### Escenario: Refactorizar un archivo
-
-**Paso 1**: IA llama a herramienta
-```javascript
-const impact = await get_impact_map({
-  filePath: "src/core/orchestrator.js"
-});
-```
-
-**Paso 2**: OmnySys analiza
-- Layer A: Carga datos del archivo (exports, dependents)
-- Layer B: Detecta arquetipos (god-object detectado)
-- Layer C: Calcula impacto transitivo
-
-**Paso 3**: OmnySys responde
-```javascript
-{
-  file: "src/core/orchestrator.js",
-  directlyAffects: 2,      // Layer A
-  transitiveAffects: 6,    // Grafo calculado
-  totalAffected: 8,
-  riskLevel: "medium",
-  archetype: "god-object", // Layer B
-  exports: ["initialize", "analyzeAndWait", ...]
-}
-```
-
-**Paso 4**: IA toma decisión informada
-- "Este archivo afecta a 8 otros, incluyendo el CLI principal"
-- "Es un god-object, debería dividirse en responsabilidades más pequeñas"
-- "Voy a refactorizar una función a la vez"
 
 ---
 
@@ -351,10 +430,13 @@ const impact = await get_impact_map({
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de las 9 herramientas MCP |
+| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de las 12 herramientas MCP |
 | [docs/ARCHETYPE_SYSTEM.md](docs/ARCHETYPE_SYSTEM.md) | Sistema de arquetipos detallado |
+| [docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md) | Los 4 Pilares de OmnySys |
+| [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan detallado de arquitectura molecular |
+| [docs/METADATA-INSIGHTS-GUIDE.md](docs/METADATA-INSIGHTS-GUIDE.md) | Catálogo de patrones metadata |
 | [README.md](README.md) | Instalación y uso rápido |
 
 ---
 
-**OmnySys - De la visión de túnel a la visión de caja completa.**
+**OmnySys - De la visión de túnel a la visión molecular completa.**
