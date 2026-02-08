@@ -51,7 +51,10 @@
       "Bash(git checkout:*)",
       "Bash(select:*)",
       "WebSearch",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(if [ -f \"C:\\\\Dev\\\\OmnySystem\\\\AUTO_INSTALLATION.md\" ])",
+      "Bash(then mv \"C:\\\\Dev\\\\OmnySystem\\\\AUTO_INSTALLATION.md\" \"C:\\\\Dev\\\\OmnySystem\\\\docs\\\\archive\"\"; echo \"MOVED\"; else echo \"NOT FOUND \")",
+      "Bash(fi)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

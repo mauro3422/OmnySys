@@ -225,7 +225,7 @@ if (confidence >= 0.8) {
 - **Atomic Cache** (`atoms.js`): Caché de átomos individuales
 - **Derivation Cache** (`derivation-engine.js`): Cache de derivaciones moleculares
 - **Storage**: `.omnysysdata/` particionado
-- **MCP HTTP Server**: Puerto 9999, 9 herramientas REST
+- **MCP HTTP Server**: Puerto 9999, 12 herramientas REST
 
 **Invalidación de Caché**:
 ```javascript
@@ -436,6 +436,114 @@ curl -X POST http://localhost:9999/tools/getFunctionDetails \
 | [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan detallado de arquitectura molecular |
 | [docs/METADATA-INSIGHTS-GUIDE.md](docs/METADATA-INSIGHTS-GUIDE.md) | Catálogo de patrones metadata |
 | [README.md](README.md) | Instalación y uso rápido |
+
+---
+
+## 🔄 Modos de Operacion del Orchestrator
+
+### Modo Iterativo (Refinamiento)
+
+El modo iterativo refina resultados del LLM con pasadas adicionales hasta convergencia.
+
+**Diagrama:**
+```
+Iteracion 1: LLM base
+   ↓
+Detectar sugerencias con alta confianza
+   ↓
+Re-analizar archivos seleccionados
+   ↓
+Iteracion N hasta convergencia
+```
+
+**Reglas:**
+- Se activa cuando la cola principal queda vacia
+- Solo re-analiza archivos con `suggestedConnections` de confianza >= umbral
+- No re-analiza archivos ya refinados en esa iteracion
+- Se detiene cuando no hay mejoras o se alcanza `maxIterations`
+
+**Parametros:**
+- `confidenceThreshold` (default 0.9)
+- `maxIterations` (default 10)
+
+### Modo Consolidacion (AI Consolidation)
+
+Consolida el analisis semantico con LLM a partir de la base estatica.
+
+**Diagrama:**
+```
+Layer A (.omnysysdata/)
+   ↓
+Orchestrator
+  - detecta arquetipos
+  - cola de prioridad
+  - LLM workers
+  - iteraciones
+  - issues
+   ↓
+llmInsights + semantic-issues.json
+```
+
+**Flujo:**
+1. Verificar analisis estatico (`.omnysysdata/`)
+2. Inicializar Orchestrator
+3. Detectar arquetipos segun metadatos
+4. Encolar archivos con prioridad
+5. Ejecutar LLM en workers paralelos
+6. Ejecutar modo iterativo hasta convergencia
+7. Detectar issues semanticos
+8. Guardar resultados en `.omnysysdata/`
+
+**Salidas:**
+- `llmInsights` en archivos analizados
+- `.omnysysdata/semantic-issues.json`
+
+### Modo Auto Serve (Pipeline Unificado)
+
+Un solo comando deja el sistema operativo con `omnysys serve`:
+
+**Diagrama:**
+```
+serve
+  ↓
+  +-> ensure Layer A
+  +-> ensure LLM server
+  +-> start Orchestrator
+  +-> optional consolidate
+  +-> start MCP Server
+```
+
+**Pipeline:**
+1. Verificar `.omnysysdata/`
+2. Si no existe, ejecutar `omnysys analyze`
+3. Verificar LLM server y arrancar si es necesario
+4. Inicializar Orchestrator en modo servicio
+5. Ejecutar consolidacion inicial (opcional, segun config)
+6. Iniciar MCP Server
+
+---
+
+## 📂 File Watcher - Contrato
+
+**Objetivo:** Mantener `.omnysysdata/` consistente ante cambios en archivos del proyecto.
+
+**Diagrama:**
+```
+FS Change → Queue → Analyze → Update Graph → Invalidate Cache
+```
+
+**Reglas:**
+- Debounce para evitar duplicados
+- Lock por archivo para evitar doble analisis
+- Actualizacion bidireccional de dependencias
+- Invalidacion de caches en MCP/Unified Server
+- Si el parseo falla, no escribir datos nuevos
+
+**Eventos:**
+- `file:created`
+- `file:modified`
+- `file:deleted`
+- `cache:invalidate`
 
 ---
 

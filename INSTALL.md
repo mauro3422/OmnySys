@@ -54,7 +54,7 @@ npx omny-sys mcp start .
 │     → CPU server (port 8002)                    │
 ├─────────────────────────────────────────────────┤
 │  5. READY FOR QUERIES                           │
-│     → All 9 MCP tools available                 │
+│     → All 12 MCP tools available                │
 │     → Impact mapping, code understanding        │
 └─────────────────────────────────────────────────┘
 ```
@@ -113,6 +113,9 @@ node src/layer-c-memory/mcp-server.js . &
 | `get_call_graph(filePath, symbolName)` | Shows all call sites (OMNISCIENCE) | Deep code understanding |
 | `analyze_signature_change(...)` | Predicts breaking changes (OMNISCIENCE) | API design |
 | `explain_value_flow(...)` | Data flow analysis (OMNISCIENCE) | Understanding logic |
+| `get_function_details(...)` | Atomic function metadata | Function-level analysis |
+| `get_molecule_summary(...)` | File molecular summary | File-level overview |
+| `restart_server()` | Restart and reload data | After code changes |
 
 ## 📊 Architecture
 
@@ -173,7 +176,7 @@ ps aux | grep mcp-server
 node -e "
 import('./src/layer-c-memory/mcp-server.js').then(async (m) => {
   console.log('✅ MCP Server loaded');
-  console.log('✅ All 9 tools registered');
+  console.log('✅ All 12 tools registered');
 }).catch(e => console.error(e));
 "
 ```
@@ -209,8 +212,8 @@ cat .omnysysdata/index.json
 
 ## 📚 Documentation
 
-- [MCP Setup Guide](./MCP_SETUP.md) - Detailed MCP configuration
-- [Query API Reference](./src/layer-a-static/query/README.md) - Query service documentation
+- [Tools Guide](./docs/TOOLS_GUIDE.md) - Complete MCP tools reference
+- [MCP Integration Guide](./docs/MCP_INTEGRATION_GUIDE.md) - IDE integration details
 - [Architecture](./ARCHITECTURE.md) - System architecture
 
 ## 🤝 Contributing

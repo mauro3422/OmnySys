@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** (Latest - Stable) |
+| **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** (Latest - Stable) |
+| **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** |
 | **[0.5.4]** | `changelog/v0.5.4.md` | **8 New Metadata Extractors + Network Hub Archetype** |
 | **[0.5.1]** | `changelog/v0.5.1.md` | **Bug Fixes & MCP Optimization** |
 | **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** |
@@ -27,7 +28,24 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.6.0 (2026-02-08)**
+### **🚀 Latest Release: v0.6.1 (2026-02-08)**
+
+**Documentation Overhaul & System Audit**: Reorganización completa de docs + auditoría técnica de integridad atómica/molecular
+
+**Key Changes**:
+- ✅ **Reorganización de Documentación** - 7 carpetas temáticas (architecture, guides, analysis, development, future, ideas, archive)
+- ✅ **Auditoría Técnica Completa** - Verificación de integridad átomo→molécula, ~95% cobertura de conexiones JS/TS
+- ✅ **10 Ideas Extraídas** - Transformation Contracts, Virtual Flow Simulation, Debugger for AIs, etc.
+- ✅ **17 Docs Archivados** - Históricos preservados en docs/archive/
+- ✅ **Versiones Unificadas** - v0.6.0 en todos los archivos
+- ✅ **Correcciones Globales** - 12 tools MCP, 4 Pilares, ROADMAP actualizado
+- ✅ **Sistema Validado** - 968 átomos, 431 archivos, 487 dependencias - Calidad 9/10
+
+Ver detalles completos en [changelog/v0.6.1.md](changelog/v0.6.1.md)
+
+---
+
+### **Previous Release: v0.6.0 (2026-02-08)**
 
 **Major Architecture Release**: Arquitectura Molecular + Fractal A→B→C con Confidence-Based Bypass
 

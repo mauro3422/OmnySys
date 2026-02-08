@@ -1,7 +1,7 @@
 # Guía de Documentación - OmnySys
 
-**Version**: v0.5.2
-**Ultima actualizacion**: 2026-02-06
+**Version**: v0.6.0
+**Ultima actualizacion**: 2026-02-08
 
 ---
 

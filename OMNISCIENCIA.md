@@ -327,12 +327,13 @@ AI:
 
 ## 📊 Current Status
 
-**OmnySys is in active development (v0.5.3)**
+**OmnySys is in active development (v0.6.0)**
 
 What works:
 - ✅ Static analysis (Layer A)
 - ✅ Semantic detection (Layer B)
-- ✅ MCP server with 9 tools
+- ✅ MCP server with 12 tools
+- ✅ Molecular architecture (atoms and molecules)
 - ✅ File watching and real-time updates
 - ✅ Impact mapping and call graphs
 

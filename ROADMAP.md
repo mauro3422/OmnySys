@@ -1,7 +1,7 @@
 # OmnySys - Roadmap de Desarrollo
 
-**Versión actual**: v0.5.1 - Enterprise Architecture Refactor ✅  
-**Última actualización**: 2026-02-06
+**Versión actual**: v0.6.0 - Molecular Architecture ✅
+**Última actualización**: 2026-02-08
 
 ---
 
@@ -13,22 +13,24 @@
 
 ---
 
-## Estado Actual (v0.5.1)
+## Estado Actual (v0.6.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ✅ COMPLETADO - Enterprise SOLID/SSOT Architecture         │
+│  ✅ COMPLETADO - Molecular Architecture                     │
 │                                                             │
-│  17 monolitos → 147 módulos enfocados                      │
-│  89% reducción en tamaño de archivos (453 → 52 líneas)     │
-│  Principios SOLID aplicados en toda la base de código      │
-│  SSOT (Single Source of Truth) implementado                │
-│  100% API backward compatible                              │
+│  Arquitectura Atómica/Molecular implementada               │
+│  12 herramientas MCP (incluyendo atomic tools)             │
+│  Sistema de arquetipos de funciones (Atomic Analysis)      │
+│  Análisis función por función (átomos)                     │
+│  Agregación a nivel archivo (moléculas)                    │
+│  4 Pilares consolidados (Box Test, Metadata, Atomic,       │
+│                          Fractal Architecture)             │
 │                                                             │
-│  Nueva estructura modular con index.js facades             │
-│  - core/: batch-processor, websocket, orchestrator         │
+│  147 módulos enfocados con principios SOLID                │
 │  - layer-a-static/: graph, parser, extractors, query       │
 │  - layer-b-semantic/: llm-analyzer, validators, detectors  │
+│  - layer-c-memory/: atomic analysis, MCP tools             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,6 +143,30 @@
 
 ---
 
+### ✅ FASE 5.5: Molecular Architecture (v0.6.0)
+
+**Estado**: Completada (100%)
+
+**Entregables**:
+- [x] Sistema de análisis atómico (función por función)
+- [x] Arquetipos de funciones (Transformer, Aggregator, Validator, etc.)
+- [x] Análisis molecular (agregación a nivel archivo)
+- [x] 3 herramientas MCP atómicas nuevas:
+  - [x] `get_function_details()` - Metadata de función individual
+  - [x] `get_molecule_summary()` - Resumen molecular de archivo
+  - [x] `restart_server()` - Reinicio y recarga de datos
+- [x] Consolidación de 4 Pilares:
+  - [x] Box Test (verificación de comportamiento)
+  - [x] Metadata Insights (combinación de señales)
+  - [x] Atomic Composition (funciones como unidad base)
+  - [x] Fractal Architecture (patrones a todas las escalas)
+- [x] Documentación de arquitectura molecular
+- [x] Total: 12 herramientas MCP
+
+**Ubicación**: `src/layer-c-memory/atomic/`, `docs/ARCHITECTURE_MOLECULAR_PLAN.md`
+
+---
+
 ## Fases en Progreso / Próximas
 
 ### 🏗️ FASE 6: Beta Testing y Robustez
@@ -184,10 +210,10 @@ Proyectos para testear:
 // claude_desktop_config.json
 {
   "mcpServers": {
-    "cognisystem": {
+    "omnysys": {
       "command": "node",
       "args": [
-        "/path/to/cognisystem/src/layer-c-memory/mcp-server.js",
+        "/path/to/omnysys/src/layer-c-memory/mcp-server.js",
         "/path/to/user/project"
       ]
     }
@@ -208,7 +234,7 @@ Proyectos para testear:
 - [ ] Status bar con estado del sistema
 - [ ] Comandos: "Analyze Current File", "Show Impact Map", etc.
 
-**Ubicación**: `cognisystem-vscode/` (ya iniciado)
+**Ubicación**: `omnysys-vscode/` (planificado)
 
 ---
 
@@ -254,9 +280,9 @@ Proyectos para testear:
 |------------|--------|---------|---------------|
 | Capa A (Static) | 95% ✅ | ~27 | 70% |
 | Capa B (Semantic) | 90% ✅ | ~40 | 60% |
-| Capa C (Memory) | 95% ✅ | ~15 | 50% |
+| Capa C (Memory + Atomic) | 100% ✅ | ~20 | 60% |
 | Orchestrator | 95% ✅ | ~25 | 40% |
-| MCP Tools | 95% ✅ | ~10 | 30% |
+| MCP Tools | 100% ✅ | ~15 | 40% |
 | Cache System | 95% ✅ | ~5 | 50% |
 | **TOTAL** | **92%** | **~147** | **50%** |
 
@@ -269,7 +295,8 @@ Proyectos para testear:
 | Cola de prioridad | ✅ Completo | CRITICAL > HIGH > MEDIUM > LOW |
 | File watching | ✅ Completo | Detección en tiempo real |
 | Auto-indexación | ✅ Completo | Background, no bloqueante |
-| Tools MCP | ✅ Completo | 6 tools disponibles |
+| Tools MCP | ✅ Completo | 12 tools disponibles |
+| Atomic Analysis | ✅ Completo | Arquetipos de funciones |
 | VS Code Bridge | 🏗️ WIP | Puerto 9998 |
 | MCP Protocol | ⏭️ Planned | Integración con Claude Desktop |
 | Multi-lenguaje | ⏭️ Planned | Python, Go, Rust |
@@ -281,7 +308,8 @@ Proyectos para testear:
 Ver [CHANGELOG.md](CHANGELOG.md) para historial detallado.
 
 **Últimas versiones**:
-- **v0.5.1**: Enterprise SOLID Architecture Refactor (current) - 147 módulos
+- **v0.6.0**: Molecular Architecture (current) - 12 tools MCP, análisis atómico
+- v0.5.1: Enterprise SOLID Architecture Refactor - 147 módulos
 - v0.5.0: Layer A/B Unification & Orchestrator
 - v0.4.6: Metadata Contract & Plug & Play Architecture
 - v0.4.5: MCP Unified Entry Point

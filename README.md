@@ -15,7 +15,7 @@ npm run install:all
 
 **¡Listo!** OmnySys ahora corre en background:
 - 🧠 LLM Server: `http://localhost:8000`
-- 🔌 MCP Server: `http://localhost:9999` (9 herramientas)
+- 🔌 MCP Server: `http://localhost:9999` (12 herramientas)
 
 Tu IA (Claude, OpenCode, etc.) tiene acceso automático a las herramientas.
 
@@ -29,7 +29,7 @@ Las IAs sufren **visión de túnel**: editan archivos sin ver dependencias ni co
 - Flujo de datos entre componentes
 - Riesgos ocultos detectados
 
-## 🛠️ Herramientas MCP (9 disponibles)
+## 🛠️ Herramientas MCP (12 disponibles)
 
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
@@ -42,6 +42,9 @@ Las IAs sufren **visión de túnel**: editan archivos sin ver dependencias ni co
 | `get_risk_assessment()` | Riesgos de todo el proyecto | Priorizando trabajo |
 | `search_files(pattern)` | Buscar archivos | Navegando codebase |
 | `get_server_status()` | Estado del sistema | Diagnóstico |
+| `get_function_details(file, fn)` | Metadata atómica de función | Análisis función por función |
+| `get_molecule_summary(file)` | Resumen molecular de archivo | Vista completa de archivo |
+| `restart_server()` | Reinicia servidor y recarga datos | Después de cambios en código |
 
 ## 📖 Ejemplo Real
 
@@ -86,7 +89,7 @@ npm run analyze    # Analizar proyecto completo
 
 | Documento | Descripción |
 |-----------|-------------|
-| **[docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md)** | **🎯 Los 2 Pilares del Sistema** (Box Test + Metadata Insights) |
+| **[docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md)** | **🎯 Los 4 Pilares del Sistema** (Box Test + Metadata Insights + Atomic Composition + Fractal Architecture) |
 | [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de herramientas con ejemplos |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica |
 | [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan futuro: Análisis atómico (v0.6+) |
@@ -104,10 +107,10 @@ npm run analyze    # Analizar proyecto completo
 ┌─────────────────────────────────────────────────────┐
 │              OmnySys MCP Server                      │
 │  ┌─────────────────┐  ┌──────────────────────────┐ │
-│  │ 9 Tools MCP     │  │ Layer A: Static Analysis │ │
+│  │ 12 Tools MCP    │  │ Layer A: Static Analysis │ │
 │  │ • Impact Map    │  │ Layer B: Semantic        │ │
 │  │ • Call Graph    │  │ Layer C: Memory          │ │
-│  │ • Value Flow    │  └──────────────────────────┘ │
+│  │ • Atomic View   │  └──────────────────────────┘ │
 │  └─────────────────┘                                  │
 └──────────────┬──────────────────────────────────────┘
                │
@@ -120,12 +123,12 @@ npm run analyze    # Analizar proyecto completo
 
 ## ✅ Estado del Proyecto
 
-**Versión**: v0.5.3
+**Versión**: v0.6.0
 
 | Componente | Estado |
 |------------|--------|
 | MCP Server HTTP | ✅ Production Ready |
-| 9 Tools MCP | ✅ 100% Funcionales |
+| 12 Tools MCP | ✅ 100% Funcionales |
 | LLM Integration | ✅ GPU Optimizado |
 | OpenCode Auto-Setup | ✅ Automático |
 | Layer A (Static) | ✅ 95% |
