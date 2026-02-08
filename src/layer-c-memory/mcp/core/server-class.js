@@ -234,23 +234,58 @@ export class OmnySysMCPServer {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('✅ MCP Server Ready!');
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('\n🔧 Available tools (13 total):');
-    console.error('  Core Tools:');
-    console.error('   • get_impact_map(filePath)');
-    console.error('   • analyze_change(filePath, symbolName)');
-    console.error('   • explain_connection(fileA, fileB)');
-    console.error('   • get_risk_assessment(minSeverity)');
-    console.error('   • search_files(pattern)');
-    console.error('   • get_server_status()');
-    console.error('  🧠 Omniscience Tools:');
-    console.error('   • get_call_graph(filePath, symbolName)');
-    console.error('   • analyze_signature_change(filePath, symbolName)');
-    console.error('   • explain_value_flow(filePath, symbolName)');
-    console.error('  🧬 Atomic Tools:');
-    console.error('   • get_function_details(filePath, functionName)');
-    console.error('   • get_molecule_summary(filePath)');
-    console.error('   • get_atomic_functions(filePath)');
-    console.error('   • restart_server(clearCache)');
+    
+    // Generar lista de tools dinámicamente desde el registro
+    const totalTools = toolDefinitions.length;
+    console.error(`\n🔧 Available tools (${totalTools} total):`);
+    
+    // Categorizar tools
+    const coreTools = toolDefinitions.filter(t => 
+      ['get_impact_map', 'analyze_change', 'explain_connection', 'get_risk_assessment', 'search_files', 'get_server_status'].includes(t.name)
+    );
+    const omniscienceTools = toolDefinitions.filter(t => 
+      ['get_call_graph', 'analyze_signature_change', 'explain_value_flow'].includes(t.name)
+    );
+    const atomicTools = toolDefinitions.filter(t => 
+      ['get_function_details', 'get_molecule_summary', 'get_atomic_functions', 'restart_server'].includes(t.name)
+    );
+    const otherTools = toolDefinitions.filter(t => 
+      ![...coreTools, ...omniscienceTools, ...atomicTools].includes(t)
+    );
+    
+    // Imprimir por categoría
+    if (coreTools.length > 0) {
+      console.error('  Core Tools:');
+      coreTools.forEach(tool => {
+        const params = Object.keys(tool.inputSchema?.properties || {}).join(', ');
+        console.error(`   • ${tool.name}(${params})`);
+      });
+    }
+    
+    if (omniscienceTools.length > 0) {
+      console.error('  🧠 Omniscience Tools:');
+      omniscienceTools.forEach(tool => {
+        const params = Object.keys(tool.inputSchema?.properties || {}).join(', ');
+        console.error(`   • ${tool.name}(${params})`);
+      });
+    }
+    
+    if (atomicTools.length > 0) {
+      console.error('  🧬 Atomic Tools:');
+      atomicTools.forEach(tool => {
+        const params = Object.keys(tool.inputSchema?.properties || {}).join(', ');
+        console.error(`   • ${tool.name}(${params})`);
+      });
+    }
+    
+    if (otherTools.length > 0) {
+      console.error('  Other Tools:');
+      otherTools.forEach(tool => {
+        const params = Object.keys(tool.inputSchema?.properties || {}).join(', ');
+        console.error(`   • ${tool.name}(${params})`);
+      });
+    }
+    
     console.error('\n📡 Claude can now use these tools!');
     console.error('💡 If a file is not analyzed, it will be auto-queued as CRITICAL\n');
 
