@@ -3,7 +3,7 @@
  * Returns a risk assessment of the entire project
  */
 
-import { getProjectMetadata } from '../../../layer-a-static/query/index.js';
+import { getProjectMetadata } from '#layer-a/query/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 

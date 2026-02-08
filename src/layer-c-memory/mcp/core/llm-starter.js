@@ -10,7 +10,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { LLMClient, loadAIConfig } from '../../../ai/llm-client.js';
+import { LLMClient, loadAIConfig } from '#ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

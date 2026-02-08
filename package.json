@@ -38,6 +38,7 @@
     "node": ">=18.0.0"
   },
   "imports": {
+    "#ai/*": "./src/ai/*",
     "#config/*": "./src/config/*",
     "#core/*": "./src/core/*",
     "#layer-a/*": "./src/layer-a-static/*",

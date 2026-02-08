@@ -10,7 +10,7 @@ import {
   getProjectMetadata,
   getAllConnections,
   getRiskAssessment
-} from '../../../layer-a-static/query/index.js';
+} from '#layer-a/query/index.js';
 import { UnifiedCacheManager } from '../../unified-cache-manager.js';
 
 /**

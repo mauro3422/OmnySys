@@ -19,8 +19,8 @@ import {
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { Orchestrator } from '../../../core/orchestrator.js';
-import { UnifiedCacheManager } from '../../../core/unified-cache-manager.js';
+import { Orchestrator } from '#core/orchestrator.js';
+import { UnifiedCacheManager } from '#core/unified-cache-manager.js';
 import { toolDefinitions, toolHandlers } from '../tools/index.js';
 
 import path from 'path';
@@ -160,7 +160,7 @@ export class OmnySysMCPServer {
 
     // Cargar metadatos y datos críticos
     const { getProjectMetadata, getAllConnections, getRiskAssessment } =
-      await import('../../../layer-a-static/query/index.js');
+      await import('#layer-a/query/index.js');
 
     this.metadata = await getProjectMetadata(this.projectPath);
     this.cache.set('metadata', this.metadata);

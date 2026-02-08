@@ -6,10 +6,10 @@
  * @module pipeline/enhancers/phases/connection-enhancer
  */
 
-import { detectAllSemanticConnections } from '../../../extractors/static/index.js';
-import { detectAllReduxContextConnections } from '../../../extractors/state-management/index.js';
-import { detectAllAdvancedConnections } from '../../../extractors/communication/index.js';
-import { extractAllMetadata } from '../../../extractors/metadata/index.js';
+import { detectAllSemanticConnections } from '#layer-a/extractors/static/index.js';
+import { detectAllReduxContextConnections } from '#layer-a/extractors/state-management/index.js';
+import { detectAllAdvancedConnections } from '#layer-a/extractors/communication/index.js';
+import { extractAllMetadata } from '#layer-a/extractors/metadata/index.js';
 
 /**
  * Enriquece conexiones en los resultados estáticos
