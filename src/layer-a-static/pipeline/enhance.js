@@ -6,7 +6,7 @@ import { detectEventPatterns, generateEventConnections } from '../analyses/tier3
 import { detectSideEffects } from '../analyses/tier3/side-effects-detector.js';
 import { calculateAllRiskScores, generateRiskReport } from '../analyses/tier3/risk-scorer.js';
 import { analyzeBrokenConnections } from '../analyses/tier3/broken-connections-detector.js';
-import { detectGodObject, detectOrphanModule } from '../../layer-b-semantic/metadata-contract.js';
+import { detectGodObject, detectOrphanModule } from '../../shared/architecture-utils.js';
 
 import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
