@@ -43,15 +43,15 @@ export async function loadExistingData(context) {
   const { cache, projectPath } = context;
   
   const metadata = await getProjectMetadata(projectPath);
-  cache.ramCacheSet('metadata', metadata);
+  cache.set('metadata', metadata);
   console.log('  ✓ Metadata cached');
 
   const connections = await getAllConnections(projectPath);
-  cache.ramCacheSet('connections', connections);
+  cache.set('connections', connections);
   console.log('  ✓ Connections cached');
 
   const assessment = await getRiskAssessment(projectPath);
-  cache.ramCacheSet('assessment', assessment);
+  cache.set('assessment', assessment);
   console.log('  ✓ Risk assessment cached');
 
   console.log(`  📊 ${metadata?.metadata?.totalFiles || 0} files indexed\n`);

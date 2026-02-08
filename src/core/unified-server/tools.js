@@ -59,7 +59,7 @@ export async function getImpactMap(filePath) {
       subsystem: fileData.subsystem
     };
 
-    this.cache.ramCacheSet(`impact:${filePath}`, result);
+    this.cache.set(`impact:${filePath}`, result);
     return result;
   } catch (error) {
     return { error: error.message };

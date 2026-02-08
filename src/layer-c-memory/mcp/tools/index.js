@@ -35,6 +35,8 @@ import { get_function_details } from './get-function-details.js';
 import { get_molecule_summary } from './get-molecule-summary.js';
 import { get_atomic_functions } from './get-atomic-functions.js';
 import { restart_server } from './restart-server.js';
+// Tunnel Vision Detection (v0.6.0)
+import getTunnelVisionStats from './get-tunnel-vision-stats.js';
 
 export const toolDefinitions = [
   {
@@ -178,6 +180,19 @@ export const toolDefinitions = [
         clearCache: { type: 'boolean', description: 'Clear analysis cache before restart', default: false }
       }
     }
+  },
+  // ========== TUNNEL VISION DETECTION ==========
+  {
+    name: 'get_tunnel_vision_stats',
+    description: 'Obtiene estadísticas de eventos de Tunnel Vision detectados - muestra cuántos casos se detectaron, archivos problemáticos, severidades, y recomendaciones de refactoring',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includePatterns: { type: 'boolean', description: 'Include pattern analysis (most frequent files, severities, etc.)', default: true },
+        includeEvents: { type: 'boolean', description: 'Include recent events details', default: false },
+        limit: { type: 'number', description: 'Maximum number of recent events to return', default: 10 }
+      }
+    }
   }
 ];
 
@@ -196,5 +211,7 @@ export const toolHandlers = {
   get_function_details,
   get_molecule_summary,
   get_atomic_functions,
-  restart_server
+  restart_server,
+  // TUNNEL VISION DETECTION
+  get_tunnel_vision_stats: getTunnelVisionStats
 };

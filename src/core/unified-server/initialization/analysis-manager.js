@@ -57,13 +57,13 @@ export async function reloadMetadata(context) {
       await import('#layer-a/query/index.js');
     
     const metadata = await getProjectMetadata(projectPath);
-    cache.ramCacheSet('metadata', metadata);
+    cache.set('metadata', metadata);
     
     const connections = await getAllConnections(projectPath);
-    cache.ramCacheSet('connections', connections);
+    cache.set('connections', connections);
     
     const assessment = await getRiskAssessment(projectPath);
-    cache.ramCacheSet('assessment', assessment);
+    cache.set('assessment', assessment);
     
     // Notificar a clientes WebSocket
     wsManager?.broadcast({

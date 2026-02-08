@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** (Latest - Stable) |
+| **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Latest - Stable) |
+| **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
 | **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** |
 | **[0.5.4]** | `changelog/v0.5.4.md` | **8 New Metadata Extractors + Network Hub Archetype** |
 | **[0.5.1]** | `changelog/v0.5.1.md` | **Bug Fixes & MCP Optimization** |
@@ -28,7 +29,25 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.6.1 (2026-02-08)**
+### **🚀 Latest Release: v0.6.2 (2026-02-08)**
+
+**Tunnel Vision Solver + Critical Bugfix**: Sistema automático de detección de riesgos cuando modificas archivos sin actualizar dependientes + bugfix crítico del servidor
+
+**Key Changes**:
+- ✅ **Tunnel Vision Detector** - Detección automática usando metadata del sistema atómico/molecular (sin LLM)
+- ✅ **Logger JSONL** - Recolección de datos para entrenar Artificial Intuition (userAction, preventedBug, timeToResolve)
+- ✅ **MCP Tool** - `get_tunnel_vision_stats` para visualizar estadísticas y patrones (13 tools total)
+- ✅ **Severity Calculation** - CRITICAL/HIGH/MEDIUM/LOW basado en dependientes, exports, riskScore
+- ✅ **Smart Recommendations** - Recomendaciones automáticas de refactoring
+- ✅ **CRITICAL BUGFIX** - Servidor no iniciaba (`cache.ramCacheSet → cache.set`)
+- ✅ **Path Normalization Fix** - Detector ahora encuentra correctamente archivos en system-map
+- ✅ **Test End-to-End** - Validado con archivo real (20 dependientes directos, 35 transitivos)
+
+Ver detalles completos en [changelog/v0.6.2.md](changelog/v0.6.2.md)
+
+---
+
+### **Previous Release: v0.6.1 (2026-02-08)**
 
 **Documentation Overhaul & System Audit**: Reorganización completa de docs + auditoría técnica de integridad atómica/molecular
 

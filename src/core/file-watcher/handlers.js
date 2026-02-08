@@ -4,6 +4,7 @@ import path from 'path';
 import { getFileAnalysis, getFileDependents } from '../../layer-a-static/query/index.js';
 import { detectPatterns } from '../../layer-b-semantic/metadata-contract/detectors/architectural-patterns.js';
 import { TUNNEL_VISION } from '#config/limits.js';
+import { detectTunnelVision, formatAlert } from '../tunnel-vision-detector.js';
 
 /**
  * Maneja creación de archivo nuevo
@@ -119,28 +120,26 @@ export async function handleFileModified(filePath, fullPath) {
 
   this.emit('file:modified', { filePath, changes, analysis: newAnalysis });
 
-  // Tunnel Vision Detection
+  // Tunnel Vision Detection (Enhanced)
   try {
-    const dependents = await getFileDependents(this.rootPath, filePath);
-    if (dependents.length >= TUNNEL_VISION.MIN_AFFECTED_FILES) {
-      const event = {
-        file: filePath,
-        affectedFiles: dependents.slice(0, 10),
-        totalAffected: dependents.length,
-        changes,
-        suggestion: 'Review these files before committing'
-      };
-      console.warn(`\n  ⚠️  TUNNEL VISION: ${filePath} affects ${dependents.length} files`);
-      dependents.slice(0, 5).forEach(dep =>
-        console.warn(`     - ${dep}`)
-      );
-      if (dependents.length > 5) {
-        console.warn(`     ... and ${dependents.length - 5} more`);
+    const alert = await detectTunnelVision(filePath);
+    if (alert) {
+      // Mostrar alerta formateada
+      const formattedAlert = formatAlert(alert);
+      console.log(formattedAlert);
+
+      // Emitir evento con datos completos
+      this.emit('tunnel-vision:detected', alert);
+
+      // Guardar alerta para análisis posterior
+      if (this.options.logTunnelVision !== false) {
+        await this.logTunnelVisionEvent(alert);
       }
-      this.emit('tunnel-vision:detected', event);
     }
-  } catch {
-    // No dependents data available
+  } catch (error) {
+    if (this.options.verbose) {
+      console.warn('[TunnelVision] Error detecting tunnel vision:', error.message);
+    }
   }
 
   // Archetype Change Detection

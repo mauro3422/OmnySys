@@ -34,3 +34,17 @@ export function getStats() {
     isRunning: this.isRunning
   };
 }
+
+/**
+ * Registra un evento de tunnel vision detectado
+ */
+export async function logTunnelVisionEvent(alert) {
+  const { logTunnelVisionEvent } = await import('../tunnel-vision-logger.js');
+  return await logTunnelVisionEvent(alert, {
+    sessionId: this._sessionId || generateSessionId()
+  });
+}
+
+function generateSessionId() {
+  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
