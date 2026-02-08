@@ -1,3 +1,28 @@
+/**
+ * @fileoverview Unified Server API Methods - Métodos internos del servidor REST
+ * 
+ * ⚠️  IMPORTANTE: Este archivo NO contiene Tools MCP.
+ *      Estos son métodos internos usados por la API REST del servidor.
+ * 
+ * 📍 Ubicación: src/core/unified-server/tools.js
+ * 🎯 Uso: API REST interna (endpoints HTTP en puertos 9999/9998)
+ * 🔌 Consumido por: VS Code extension, API clients, UI web
+ * 
+ * Diferencia con mcp/tools/:
+ * - ESTE archivo: Métodos internos del servidor (REST API)
+ * - mcp/tools/: Tools oficiales MCP para Claude Code
+ * 
+ * Estos métodos se asignan al prototype del servidor en index.js:
+ *   Object.assign(OmnySysUnifiedServer.prototype, ..., tools)
+ * 
+ * Y se usan en los endpoints definidos en api.js:
+ *   this.bridgeApp.get('/api/impact/*', async (req, res) => {
+ *     const impact = await this.getImpactMap(filePath);
+ *   })
+ * 
+ * @module core/unified-server/tools
+ */
+
 import {
   getFileDependencies,
   getFileAnalysis,
@@ -10,7 +35,7 @@ import {
 } from '../../layer-a-static/query/index.js';
 
 // ============================================================
-// MCP Tools (for Claude Code)
+// REST API Methods (Internal Server API)
 // ============================================================
 
 export async function getImpactMap(filePath) {

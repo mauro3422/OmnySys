@@ -1,5 +1,24 @@
 /**
- * MCP Tools Registry
+ * @fileoverview MCP Tools Registry - Herramientas para Claude/OpenCode
+ * 
+ * ⚠️  IMPORTANTE: Este archivo contiene las TOOLS OFICIALES DEL MCP
+ *      que Claude y OpenCode pueden invocar via el protocolo MCP.
+ * 
+ * 📍 Ubicación: src/layer-c-memory/mcp/tools/
+ * 🎯 Uso: Protocolo MCP (Model Context Protocol) para Claude Code
+ * 🔌 Expuesto via: server.setRequestHandler(ListToolsRequestSchema, ...)
+ * 
+ * Diferencia con unified-server/tools.js:
+ * - ESTE archivo (mcp/tools/): Tools invocables por Claude via MCP
+ * - unified-server/tools.js: Métodos internos del servidor REST API (puertos 9999/9998)
+ * 
+ * Para agregar una nueva tool MCP:
+ * 1. Crear archivo en esta carpeta (ej: my-tool.js)
+ * 2. Exportar función con nombre snake_case
+ * 3. Agregar a toolDefinitions y toolHandlers abajo
+ * 4. El servidor la detectará automáticamente
+ * 
+ * @module mcp/tools
  */ 
 
 import { get_impact_map } from './impact-map.js';
