@@ -1,6 +1,7 @@
-﻿import { EventEmitter } from 'events';
+import { EventEmitter } from 'events';
 import path from 'path';
 import { AnalysisQueue } from '../analysis-queue.js';
+import { getDataPath } from '#config/paths.js';
 
 import * as lifecycle from './lifecycle.js';
 import * as queueing from './queueing.js';
@@ -13,7 +14,7 @@ class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
     super();
     this.projectPath = projectPath;
-    this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
+    this.OmnySysDataPath = getDataPath(projectPath, '');
     this.options = {
       enableFileWatcher: true,
       enableWebSocket: true,

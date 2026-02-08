@@ -1,8 +1,9 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import { Orchestrator } from '../../core/orchestrator.js';
 import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager.js';
 import { resolveProjectPath } from '../utils/paths.js';
+import { getEnhancedMapPath, getIssuesPath } from '#config/paths.js';
 
 export async function consolidate(projectPath) {
   const absolutePath = resolveProjectPath(projectPath);
@@ -54,7 +55,7 @@ export async function consolidate(projectPath) {
     });
 
     const enhancedCandidates = [
-      path.join(absolutePath, '.omnysysdata', 'system-map-enhanced.json'),
+      getEnhancedMapPath(absolutePath),
       path.join(absolutePath, 'system-map-enhanced.json')
     ];
     let enhancedMap = null;
@@ -71,7 +72,7 @@ export async function consolidate(projectPath) {
       enhancedMap = { metadata: { totalFiles: finalStats?.totalFiles || 0 } };
     }
 
-    const issuesPath = path.join(absolutePath, '.omnysysdata', 'semantic-issues.json');
+    const issuesPath = getIssuesPath(absolutePath);
     let issuesReport = { stats: { totalIssues: 0 } };
     try {
       issuesReport = JSON.parse(await fs.readFile(issuesPath, 'utf-8'));
@@ -90,7 +91,7 @@ export async function consolidate(projectPath) {
       console.log(`    - Low severity: ${issuesReport.stats.bySeverity?.low || 0}`);
     }
     console.log('\nView detailed analysis:');
-    console.log(`   ${path.join('.omnysysdata', 'semantic-issues.json')}\n`);
+    console.log(`   ${getIssuesPath('.')}\n`);
 
     process.exit(0);
   } catch (error) {

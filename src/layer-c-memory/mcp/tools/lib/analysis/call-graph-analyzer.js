@@ -9,6 +9,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { getIndexPath } from '#config/paths.js';
 
 /**
  * Parsea un archivo para encontrar llamadas a una función específica
@@ -53,7 +54,7 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
     }
     
     // Buscar en todos los archivos del proyecto
-    const metadataPath = path.join(projectPath, '.omnysysdata', 'index.json');
+    const metadataPath = getIndexPath(projectPath);
     let allFiles = [];
     
     try {

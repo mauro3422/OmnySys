@@ -2,9 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import { savePartitionedSystemMap } from '../storage/storage-manager.js';
+import { DATA_DIR } from '#config/paths.js';
 
 export async function ensureDataDir(absoluteRootPath) {
-  const dataDir = path.join(absoluteRootPath, '.omnysysdata');
+  const dataDir = path.join(absoluteRootPath, DATA_DIR);
   await fs.mkdir(dataDir, { recursive: true });
   return dataDir;
 }
@@ -13,7 +14,7 @@ export async function saveSystemMap(dataDir, outputPath, systemMap, verbose = tr
   if (verbose) console.log('\uD83D\uDCBE Saving graph...');
   const outputFullPath = path.join(dataDir, outputPath);
   await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
-  if (verbose) console.log(`  \u2714 Saved to: .omnysysdata/${outputPath}\n`);
+  if (verbose) console.log(`  \u2714 Saved to: ${DATA_DIR}/${outputPath}\n`);
   return outputFullPath;
 }
 
@@ -21,7 +22,7 @@ export async function saveAnalysisReport(dataDir, outputPath, analysisReport, ve
   const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
   const analysisFullPath = path.join(dataDir, analysisOutputPath);
   await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
-  if (verbose) console.log(`  \u2714 Analysis saved to: .omnysysdata/${analysisOutputPath}\n`);
+  if (verbose) console.log(`  \u2714 Analysis saved to: ${DATA_DIR}/${analysisOutputPath}\n`);
   return analysisOutputPath;
 }
 
@@ -29,18 +30,18 @@ export async function saveEnhancedSystemMap(dataDir, outputPath, enhancedSystemM
   const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
   const enhancedFullPath = path.join(dataDir, enhancedOutputPath);
   await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
-  if (verbose) console.log(`  \u2714 Enhanced map saved to: .omnysysdata/${enhancedOutputPath}\n`);
+  if (verbose) console.log(`  \u2714 Enhanced map saved to: ${DATA_DIR}/${enhancedOutputPath}\n`);
   return enhancedOutputPath;
 }
 
 export async function savePartitionedData(absoluteRootPath, enhancedSystemMap, verbose = true) {
-  if (verbose) console.log('\uD83D\uDCBE Saving partitioned data to .omnysysdata/...');
+  if (verbose) console.log('\uD83D\uDCBE Saving partitioned data to ${DATA_DIR}/...');
   const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
   if (verbose) {
-    console.log('  \u2714 Metadata saved to: .omnysysdata/index.json');
-    console.log(`  \u2714 ${partitionedPaths.files.length} files saved to: .omnysysdata/files/`);
-    console.log('  \u2714 Connections saved to: .omnysysdata/connections/');
-    console.log('  \u2714 Risk assessment saved to: .omnysysdata/risks/\n');
+    console.log('  \u2714 Metadata saved to: ${DATA_DIR}/index.json');
+    console.log(`  \u2714 ${partitionedPaths.files.length} files saved to: ${DATA_DIR}/files/`);
+    console.log('  \u2714 Connections saved to: ${DATA_DIR}/connections/');
+    console.log('  \u2714 Risk assessment saved to: ${DATA_DIR}/risks/\n');
   }
   return partitionedPaths;
 }
@@ -90,8 +91,8 @@ export function printSummary({
   - Low severity: ${issues.bySeverity?.low || 0}
 
 \uD83D\uDCBE STORAGE:
-  - Monolithic JSON: .omnysysdata/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap || {}).length / 1024).toFixed(2)} KB)
-  - Partitioned data: .omnysysdata/ directory (${partitionedPaths?.files?.length || 0} files)
+  - Monolithic JSON: ${DATA_DIR}/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap || {}).length / 1024).toFixed(2)} KB)
+  - Partitioned data: ${DATA_DIR}/ directory (${partitionedPaths?.files?.length || 0} files)
   - Query API available via query-service.js
       `);
 }
