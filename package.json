@@ -18,6 +18,9 @@
     "analyze": "node src/cli/index.js analyze",
     "dev": "node omny.js up",
     "smoke": "node tests/smoke-test.js",
+    "test": "node run-tests.js all",
+    "test:unit": "node run-tests.js unit",
+    "test:integration": "node run-tests.js integration",
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\"",
     "postinstall": "node install.js"
