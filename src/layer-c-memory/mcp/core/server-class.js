@@ -142,7 +142,7 @@ export class OmnySysMCPServer {
     });
     
     await this.orchestrator.initialize();
-    console.error('  ✓ Orchestrator ready\n');
+    console.error('  ✅ Orchestrator ready\n');
   }
 
   async _step4_Cache() {
@@ -159,25 +159,30 @@ export class OmnySysMCPServer {
     await this.cache.initialize();
 
     // Cargar metadatos y datos críticos
-    const { getProjectMetadata } =
+    const { getProjectMetadata, getAllConnections, getRiskAssessment } =
       await import('../../../layer-a-static/query/index.js');
 
     this.metadata = await getProjectMetadata(this.projectPath);
     this.cache.set('metadata', this.metadata);
-    console.error('  ✓ Metadata cached');
+    console.error('  ✅ Metadata cached');
 
-    // TODO: Implement getAllConnections and getRiskAssessment in query service
-    // const connections = await getAllConnections(this.projectPath);
-    this.cache.set('connections', []);
-    console.error('  ✓ Connections cached (empty)');
+    const connections = await getAllConnections(this.projectPath);
+    this.cache.set('connections', connections);
+    console.error(`  ✅ Connections cached (${connections.total} total)`);
 
-    // const assessment = await getRiskAssessment(this.projectPath);
-    this.cache.set('assessment', { totalIssues: 0 });
-    console.error('  ✓ Risk assessment cached (empty)');
+    const assessment = await getRiskAssessment(this.projectPath);
+    this.cache.set('assessment', assessment);
+    const totalIssues = assessment.report?.summary
+      ? (assessment.report.summary.criticalCount || 0) +
+        (assessment.report.summary.highCount || 0) +
+        (assessment.report.summary.mediumCount || 0) +
+        (assessment.report.summary.lowCount || 0)
+      : 0;
+    console.error(`  ✅ Risk assessment cached (${totalIssues} issues)`);
 
     const cacheTime = (performance.now() - startCache).toFixed(2);
     console.error(`\n  Cache load time: ${cacheTime}ms`);
-    console.error(`  Cache memory: ${this.cache.getStats().memoryUsage}\n`);
+    console.error(`  Cache memory: ${this.cache.getRamStats().memoryUsage}\n`);
   }
 
   _step5_MCP() {
