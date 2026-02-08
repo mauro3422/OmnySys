@@ -38,6 +38,7 @@ This repository uses a modular changelog structure for better organization and m
 - ✅ **Unified Constants** - Merged duplicate ChangeType definitions into centralized config
 - ✅ **Centralized Logger** - Created logger.js with level-based logging
 - ✅ **Test Suite** - Added 18 unit and integration tests (npm test)
+- 🐛 **Bug Fix** - Fixed duplicate export error in batch-processor/constants.js
 - ✅ **Circular Dependency Fix** - Resolved layer-a ↔ layer-b circular import
 - ✅ **File Splitting** - Divided ast-analyzer.js (564 lines) into 3 focused modules
 - ✅ **SSOT Configuration** - Centralized paths, limits, and change types in src/config/
