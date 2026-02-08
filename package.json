@@ -37,6 +37,15 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "imports": {
+    "#config/*": "./src/config/*",
+    "#core/*": "./src/core/*",
+    "#layer-a/*": "./src/layer-a-static/*",
+    "#layer-b/*": "./src/layer-b-semantic/*",
+    "#layer-c/*": "./src/layer-c-memory/*",
+    "#shared/*": "./src/shared/*",
+    "#utils/*": "./src/utils/*"
+  },
   "dependencies": {
     "@babel/parser": "^7.23.0",
     "@babel/traverse": "^7.23.0",
