@@ -86,9 +86,12 @@ npm run analyze    # Analizar proyecto completo
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | **Guía completa de herramientas** con ejemplos |
+| **[docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md)** | **🎯 Los 2 Pilares del Sistema** (Box Test + Metadata Insights) |
+| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de herramientas con ejemplos |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica |
-| [docs/INDEX.md](docs/INDEX.md) | Índice de documentación |
+| [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan futuro: Análisis atómico (v0.6+) |
+| [docs/METADATA-INSIGHTS-GUIDE.md](docs/METADATA-INSIGHTS-GUIDE.md) | Combinación de metadatos para detectar patrones |
+| [docs/INDEX.md](docs/INDEX.md) | Índice completo de documentación |
 
 ## 🏗️ Arquitectura
 

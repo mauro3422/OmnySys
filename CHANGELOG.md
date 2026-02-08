@@ -8,7 +8,9 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.5.1]** | `changelog/v0.5.1.md` | **Bug Fixes & MCP Optimization** (Latest - In Dev) |
+| **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** (Latest - Stable) |
+| **[0.5.4]** | `changelog/v0.5.4.md` | **8 New Metadata Extractors + Network Hub Archetype** |
+| **[0.5.1]** | `changelog/v0.5.1.md` | **Bug Fixes & MCP Optimization** |
 | **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** |
 | **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** |
 | **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
@@ -25,9 +27,78 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **ðŸš€ Latest Release: v0.5.0 (2026-02-05)**
+### **🚀 Latest Release: v0.6.0 (2026-02-08)**
 
-### **🚀 Latest Release: v0.5.3 (2026-02-08)**
+**Major Architecture Release**: Sistema atómico completo con SSOT (Single Source of Truth)
+
+**Key Changes**:
+- ✅ **Molecular Architecture** - Funciones (átomos) como unidad primaria de análisis
+- ✅ **Atomic Extractor** - Extracción de funciones como átomos desde AST
+- ✅ **7 Atomic Archetypes** - god-function, fragile-network, hot-path, dead-function, private-utility, utility, standard
+- ✅ **Derivation Engine** - Metadata molecular derivada desde átomos
+- ✅ **Atomic Cache** - Caché de átomos individuales (100x más rápido)
+- ✅ **Call Graph** - `calledBy` calculado bidireccionalmente
+- ✅ **Optimized Storage** - `atoms/` (SSOT), `molecules/` (índice), `files/` (referencias)
+- ✅ **MCP Tools** - `getFunctionDetails()`, `getMoleculeSummary()`, `analyzeFunctionChange()`
+
+**Docs**: See `changelog/v0.6.0.md` for full details
+
+---
+
+### **v0.5.4 (2026-02-08)**
+
+**Major Feature Release**: 8 new metadata extractors + 4 new archetypes + Metadata Insights Guide
+
+**Key Changes**:
+- ✅ **8 New Metadata Extractors** - Advanced code analysis without LLM
+  - `side-effects.js` - Network calls, DOM, storage, console, timers
+  - `call-graph.js` - Function definitions and internal/external calls
+  - `data-flow.js` - Variable assignments, returns, parameters
+  - `type-inference.js` - typeof, instanceof, JSDoc types, defaults
+  - `temporal-patterns.js` - Lifecycle hooks (React/Vue/Angular/Svelte/SolidJS), events, timers, cleanup
+  - `dependency-depth.js` - Import complexity and chain indicators
+  - `performance-hints.js` - Nested loops, blocking ops, complexity estimation
+  - `historical-metadata.js` - Git history, churn rate, hotspot score
+- ✅ **4 New Archetypes** - Cross-cutting patterns from metadata combinations
+  - `network-hub` - Files sharing API endpoints
+  - `critical-bottleneck` (Phase 1) - High churn + complexity + coupling
+  - `api-event-bridge` (Phase 1) - API calls coordinated with events
+  - `storage-sync-manager` (Phase 1) - Multi-tab localStorage synchronization
+- ✅ **Metadata Insights Guide** - Documentation on combining metadata to discover patterns
+- ✅ **Enhanced Analysis Decider** - 2 new bypass criteria for network/lifecycle patterns
+- ✅ **Extended Metadata Contract** - 16 new optional fields in constants.js
+- ✅ **Smart Prompt Builder** - Exposes new metadata to LLM when needed
+- ✅ **All Tests Pass** - Verified backward compatibility
+
+**New Files**:
+- `src/layer-a-static/extractors/metadata/side-effects.js`
+- `src/layer-a-static/extractors/metadata/call-graph.js`
+- `src/layer-a-static/extractors/metadata/data-flow.js`
+- `src/layer-a-static/extractors/metadata/type-inference.js`
+- `src/layer-a-static/extractors/metadata/temporal-patterns.js`
+- `src/layer-a-static/extractors/metadata/dependency-depth.js`
+- `src/layer-a-static/extractors/metadata/performance-hints.js`
+- `src/layer-a-static/extractors/metadata/historical-metadata.js`
+- `src/layer-b-semantic/prompt-engine/prompt-templates/critical-bottleneck.js`
+- `src/layer-b-semantic/prompt-engine/prompt-templates/api-event-bridge.js`
+- `src/layer-b-semantic/prompt-engine/prompt-templates/storage-sync.js`
+- `docs/METADATA-INSIGHTS-GUIDE.md` - Comprehensive guide on metadata combinations
+
+**Modified Files**:
+- `src/layer-a-static/extractors/metadata/index.js` - Integrated 8 new extractors
+- `src/layer-a-static/extractors/metadata/temporal-patterns.js` - Added Svelte + SolidJS support
+- `src/core/file-watcher/analyze.js` - Added 8 new metadata fields to output
+- `src/layer-b-semantic/metadata-contract/constants.js` - Added 16 optional fields
+- `src/layer-b-semantic/metadata-contract/builders/prompt-builder.js` - Exposed new fields
+- `src/layer-b-semantic/llm-analyzer/analysis-decider.js` - Added network/lifecycle bypass
+- `src/layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js` - Added 4 new archetypes (15 total)
+- `docs/ARCHETYPE_DEVELOPMENT_GUIDE.md` - Added Box Test section + references to CORE_PRINCIPLES
+- `docs/METADATA-INSIGHTS-GUIDE.md` - Added Pillar 2 section + verification checklist
+- `README.md` - Added CORE_PRINCIPLES reference
+
+---
+
+### **Previous: v0.5.3 (2026-02-08)**
 
 **Maintenance Release**: Code quality improvements, refactoring, and test suite
 

@@ -232,3 +232,114 @@ export async function hasExistingAnalysis(rootPath) {
     return false;
   }
 }
+
+/**
+ * Guarda estructura molecular de un archivo
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta relativa del archivo
+ * @param {object} molecularData - Estructura molecular (atoms + derivations)
+ */
+export async function saveMolecule(rootPath, filePath, molecularData) {
+  const dataPath = path.join(rootPath, DATA_DIR);
+
+  // Crear directorio molecules/ si no existe
+  const moleculesDir = path.join(dataPath, 'molecules');
+  await fs.mkdir(moleculesDir, { recursive: true });
+
+  // Crear estructura de directorios que refleja el proyecto
+  const fileDir = path.dirname(filePath);
+  const targetDir = path.join(moleculesDir, fileDir);
+  await fs.mkdir(targetDir, { recursive: true });
+
+  // Guardar archivo con nombre original + .molecule.json
+  const fileName = path.basename(filePath);
+  const targetPath = path.join(targetDir, `${fileName}.molecule.json`);
+
+  await fs.writeFile(targetPath, JSON.stringify(molecularData, null, 2));
+
+  return targetPath;
+}
+
+/**
+ * Carga estructura molecular de un archivo
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta relativa del archivo
+ * @returns {object|null} - Molecular data o null si no existe
+ */
+export async function loadMolecule(rootPath, filePath) {
+  const dataPath = path.join(rootPath, DATA_DIR);
+  const moleculesDir = path.join(dataPath, 'molecules');
+
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath);
+  const targetPath = path.join(moleculesDir, fileDir, `${fileName}.molecule.json`);
+
+  try {
+    const content = await fs.readFile(targetPath, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Guarda el análisis atómico de una función
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta relativa del archivo
+ * @param {string} functionName - Nombre de la función
+ * @param {object} atomData - Metadata del átomo
+ */
+export async function saveAtom(rootPath, filePath, functionName, atomData) {
+  const dataPath = path.join(rootPath, DATA_DIR);
+
+  // Crear directorio atoms/ si no existe
+  const atomsDir = path.join(dataPath, 'atoms');
+  await fs.mkdir(atomsDir, { recursive: true });
+
+  // Crear estructura: atoms/{filePath}/{functionName}.json
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const targetDir = path.join(atomsDir, fileDir, fileName);
+  await fs.mkdir(targetDir, { recursive: true });
+
+  const targetPath = path.join(targetDir, `${functionName}.json`);
+
+  await fs.writeFile(targetPath, JSON.stringify(atomData, null, 2));
+
+  return targetPath;
+}
+
+/**
+ * Carga todos los átomos de un archivo
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta relativa del archivo
+ * @returns {array} - Array de atoms
+ */
+export async function loadAtoms(rootPath, filePath) {
+  const dataPath = path.join(rootPath, DATA_DIR);
+  const atomsDir = path.join(dataPath, 'atoms');
+
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const targetDir = path.join(atomsDir, fileDir, fileName);
+
+  try {
+    const files = await fs.readdir(targetDir);
+    const atoms = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const content = await fs.readFile(path.join(targetDir, file), 'utf-8');
+        atoms.push(JSON.parse(content));
+      }
+    }
+
+    return atoms;
+  } catch {
+    return [];
+  }
+}

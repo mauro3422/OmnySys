@@ -51,6 +51,16 @@ export function needsLLMAnalysis(semanticAnalysis, fileAnalysis = null, confiden
     return true;
   }
 
+  // 6. Network calls: solo si hay endpoints NO cross-referenciados
+  if (hasUnresolvedNetworkConnections(fileAnalysis)) {
+    return true;
+  }
+
+  // 7. Lifecycle hooks: solo si NO tienen cleanup o contexto resuelto
+  if (hasUnresolvedLifecycleConnections(fileAnalysis)) {
+    return true;
+  }
+
   // Si llegamos aquí, Layer A ya cubrió todas las conexiones
   return false;
 }
@@ -133,4 +143,41 @@ function hasUnresolvedSharedState(fileAnalysis) {
  */
 function hasLowConfidenceConnections(fileAnalysis, threshold = 0.7) {
   return (fileAnalysis.semanticConnections || []).some(c => c.confidence < threshold);
+}
+
+/**
+ * Verifica si tiene network calls con endpoints NO resueltos
+ * NUEVO: Si tiene fetch() a los mismos endpoints que otro archivo, hay acoplamiento
+ */
+function hasUnresolvedNetworkConnections(fileAnalysis) {
+  const metadata = fileAnalysis.metadata || {};
+  const endpoints = metadata.sideEffects?.networkCalls || [];
+
+  if (endpoints.length === 0) return false;
+
+  // Verificar si hay conexiones semanticas con confidence >= 1.0 para cada endpoint
+  const resolvedRoutes = (fileAnalysis.semanticConnections || [])
+    .filter(c => c.type === 'shared-route' && c.confidence >= 1.0)
+    .map(c => c.route);
+
+  // Si hay endpoints que NO tienen conexión resuelta, necesita LLM
+  return endpoints.some(endpoint => {
+    const code = endpoint.code || '';
+    return !resolvedRoutes.some(route => code.includes(route));
+  });
+}
+
+/**
+ * Verifica si tiene lifecycle hooks sin cleanup o sin contexto resuelto
+ * NUEVO: Lifecycle hooks que NO tienen cleanup son auto-contenidos
+ */
+function hasUnresolvedLifecycleConnections(fileAnalysis) {
+  const metadata = fileAnalysis.metadata || {};
+  const hooks = metadata.temporal?.lifecycleHooks || [];
+
+  if (hooks.length === 0) return false;
+
+  // Si todos los hooks tienen cleanup, están auto-contenidos (no necesita LLM)
+  const cleanups = metadata.temporal?.cleanupPatterns || [];
+  return cleanups.length < hooks.length;
 }

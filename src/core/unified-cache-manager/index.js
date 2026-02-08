@@ -1,4 +1,4 @@
-﻿import path from 'path';
+import path from 'path';
 
 import { CACHE_DIR, INDEX_FILE, ChangeType } from './constants.js';
 import { detectChangeType } from './utils.js';
@@ -9,6 +9,7 @@ import * as dependency from './dependency.js';
 import * as ramCache from './ram-cache.js';
 import * as stats from './stats.js';
 import * as cleanup from './cleanup.js';
+import * as atoms from './atoms.js';
 
 /**
  * Unified Cache Manager
@@ -47,7 +48,8 @@ Object.assign(
   dependency,
   ramCache,
   stats,
-  cleanup
+  cleanup,
+  atoms
 );
 
 export { UnifiedCacheManager, ChangeType, detectChangeType };

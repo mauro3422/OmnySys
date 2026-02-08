@@ -76,7 +76,31 @@ export function buildPromptMetadata(filePath, fileAnalysis = {}) {
     usesGlobalState: globalReads.length > 0,
     globalStateWrites: limitArray(globalWrites, ARRAY_LIMITS.GLOBAL_WRITES),
     globalStateReads: limitArray(globalReads, ARRAY_LIMITS.GLOBAL_READS),
-    semanticConnections: formatSemanticConnections(analysis.semanticConnections)
+    semanticConnections: formatSemanticConnections(analysis.semanticConnections),
+
+    // New metadata from advanced extractors
+    hasSideEffects: detectHasSideEffects(extra),
+    hasNetworkCalls: (extra.sideEffects?.networkCalls?.length || 0) > 0,
+    hasDomManipulation: (extra.sideEffects?.domManipulations?.length || 0) > 0,
+    hasStorageAccess: (extra.sideEffects?.storageAccess?.length || 0) > 0,
+    networkEndpoints: extractNetworkEndpoints(extra),
+
+    callGraphDepth: extra.callGraph?.functionDefinitions?.length || 0,
+    externalCallCount: extra.callGraph?.externalCalls?.length || 0,
+
+    inferredTypeCount: extra.typeInference?.all?.length || 0,
+    hasDataFlow: (extra.dataFlow?.all?.length || 0) > 0,
+
+    hasLifecycleHooks: (extra.temporal?.lifecycleHooks?.length || 0) > 0,
+    hasCleanupPatterns: (extra.temporal?.cleanupPatterns?.length || 0) > 0,
+
+    importDepth: extra.depDepth?.depthScore || 0,
+    hasNestedLoops: (extra.performance?.nestedLoops?.length || 0) > 0,
+    hasBlockingOps: (extra.performance?.blockingOperations?.length || 0) > 0,
+    estimatedComplexity: extra.performance?.estimatedComplexity || 'O(n)',
+
+    gitChurnRate: extra.historical?.churnRate || 0,
+    gitHotspotScore: extra.historical?.hotspotScore || 0
   };
 }
 
@@ -224,4 +248,27 @@ function extractRoutes(analysis) {
 function countReExports(analysis) {
   const exports = analysis.exports || [];
   return exports.filter(e => e?.source || e?.from).length;
+}
+
+// Helper functions for new metadata fields
+function detectHasSideEffects(extra) {
+  const sideEffects = extra.sideEffects || {};
+  return (
+    (sideEffects.networkCalls?.length || 0) > 0 ||
+    (sideEffects.domManipulations?.length || 0) > 0 ||
+    (sideEffects.storageAccess?.length || 0) > 0 ||
+    (sideEffects.timerUsage?.length || 0) > 0
+  );
+}
+
+function extractNetworkEndpoints(extra) {
+  const networkCalls = extra.sideEffects?.networkCalls || [];
+  const endpoints = networkCalls
+    .map(call => {
+      // Try to extract URL from code snippet
+      const urlMatch = call.code?.match(/['"`](\/[^'"`]+|https?:\/\/[^'"`]+)['"`]/);
+      return urlMatch ? urlMatch[1] : null;
+    })
+    .filter(Boolean);
+  return [...new Set(endpoints)].slice(0, 10);
 }

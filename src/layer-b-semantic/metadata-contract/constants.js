@@ -53,7 +53,25 @@ export const OPTIONAL_METADATA_FIELDS = [
   'colocatedFiles',
   'hasTestCompanion',
   'routeStrings',
-  'hasRoutes'
+  'hasRoutes',
+  // New metadata fields from advanced extractors
+  'hasSideEffects',
+  'hasNetworkCalls',
+  'hasDomManipulation',
+  'hasStorageAccess',
+  'callGraphDepth',
+  'externalCallCount',
+  'hasDataFlow',
+  'inferredTypeCount',
+  'hasLifecycleHooks',
+  'hasCleanupPatterns',
+  'importDepth',
+  'hasNestedLoops',
+  'hasBlockingOps',
+  'estimatedComplexity',
+  'gitChurnRate',
+  'gitHotspotScore',
+  'networkEndpoints'
 ];
 
 /**

@@ -21,7 +21,9 @@ export {
   getFileAnalysis,
   getMultipleFileAnalysis,
   getFileDependencies,
-  getFileDependents
+  getFileDependents,
+  getFileAnalysisWithAtoms,
+  getAtomDetails
 } from './queries/file-query.js';
 
 export {

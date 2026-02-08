@@ -1,6 +1,9 @@
 import fs from 'fs/promises';
+import path from 'path';
 
-import { getFileAnalysis } from '../../layer-a-static/query/index.js';
+import { getFileAnalysis, getFileDependents } from '../../layer-a-static/query/index.js';
+import { detectPatterns } from '../../layer-b-semantic/metadata-contract/detectors/architectural-patterns.js';
+import { TUNNEL_VISION } from '#config/limits.js';
 
 /**
  * Maneja creación de archivo nuevo
@@ -116,6 +119,63 @@ export async function handleFileModified(filePath, fullPath) {
 
   this.emit('file:modified', { filePath, changes, analysis: newAnalysis });
 
+  // Tunnel Vision Detection
+  try {
+    const dependents = await getFileDependents(this.rootPath, filePath);
+    if (dependents.length >= TUNNEL_VISION.MIN_AFFECTED_FILES) {
+      const event = {
+        file: filePath,
+        affectedFiles: dependents.slice(0, 10),
+        totalAffected: dependents.length,
+        changes,
+        suggestion: 'Review these files before committing'
+      };
+      console.warn(`\n  ⚠️  TUNNEL VISION: ${filePath} affects ${dependents.length} files`);
+      dependents.slice(0, 5).forEach(dep =>
+        console.warn(`     - ${dep}`)
+      );
+      if (dependents.length > 5) {
+        console.warn(`     ... and ${dependents.length - 5} more`);
+      }
+      this.emit('tunnel-vision:detected', event);
+    }
+  } catch {
+    // No dependents data available
+  }
+
+  // Archetype Change Detection
+  if (oldAnalysis) {
+    const buildMeta = (analysis) => ({
+      exportCount: analysis.exports?.length || 0,
+      dependentCount: analysis.usedBy?.length || 0,
+      importCount: analysis.imports?.length || 0,
+      functionCount: analysis.definitions?.filter(d => d.type === 'function').length || 0,
+      reExportCount: 0,
+      filePath: filePath
+    });
+
+    const oldMeta = buildMeta(oldAnalysis);
+    const newMeta = buildMeta(newAnalysis);
+
+    const oldPatterns = detectPatterns(oldMeta);
+    const newPatterns = detectPatterns(newMeta);
+
+    const archetypeChanges = [];
+    for (const key of Object.keys(oldPatterns)) {
+      if (oldPatterns[key] !== newPatterns[key]) {
+        archetypeChanges.push({ pattern: key, was: oldPatterns[key], now: newPatterns[key] });
+      }
+    }
+
+    if (archetypeChanges.length > 0) {
+      console.warn(`  🔄 Archetype change in ${filePath}:`);
+      archetypeChanges.forEach(c =>
+        console.warn(`     ${c.pattern}: ${c.was} → ${c.now}`)
+      );
+      this.emit('archetype:changed', { filePath, changes: archetypeChanges });
+    }
+  }
+
   if (this.options.verbose) {
     console.log(`  âœ… ${filePath} - updated (${changes.length} change types)`);
   }
@@ -179,12 +239,42 @@ export async function handleExportChanges(filePath, change) {
 
   const removed = change.removed || [];
   if (removed.length > 0) {
-    // TODO: Detectar archivos que importaban estos exports
-    // y marcarlos como potencialmente rotos
     this.emit('exports:removed', {
       file: filePath,
       exports: removed
     });
+
+    // Detectar archivos que importaban estos exports
+    try {
+      const dependents = await getFileDependents(this.rootPath, filePath);
+      for (const depFile of dependents) {
+        try {
+          const depAnalysis = await getFileAnalysis(this.rootPath, depFile);
+          const depImports = depAnalysis?.imports || [];
+
+          // Buscar imports que referencian al archivo modificado
+          const affectedImport = depImports.find(imp =>
+            imp.resolvedPath === filePath || imp.source?.includes(path.basename(filePath, '.js'))
+          );
+
+          if (affectedImport) {
+            // Verificar si importa specifiers removidos
+            const usesRemoved = (affectedImport.specifiers || []).some(s => removed.includes(s));
+            if (usesRemoved || affectedImport.specifiers?.length === 0) {
+              this.emit('dependency:broken', {
+                affectedFile: depFile,
+                brokenBy: filePath,
+                removedExports: removed
+              });
+            }
+          }
+        } catch {
+          // Skip files that can't be read
+        }
+      }
+    } catch {
+      // No dependents data available
+    }
   }
 }
 
@@ -192,16 +282,43 @@ export async function handleExportChanges(filePath, change) {
  * Limpia relaciones de un archivo eliminado
  */
 export async function cleanupRelationships(filePath) {
-  // TODO: Remover referencias en otros archivos a este archivo
-  // Actualizar usedBy de dependencias
+  // Remover referencias en otros archivos a este archivo
+  try {
+    const dependents = await getFileDependents(this.rootPath, filePath);
+    for (const depFile of dependents) {
+      this.emit('dependency:broken', {
+        affectedFile: depFile,
+        brokenBy: filePath,
+        reason: 'file_deleted'
+      });
+    }
+  } catch {
+    // No dependents data available
+  }
 }
 
 /**
  * Notifica a dependientes de cambios
  */
 export async function notifyDependents(filePath, changeType) {
-  // TODO: Enviar notificación a VS Code/MCP de que hay cambios
-  this.emit('dependents:notify', { filePath, changeType });
+  let dependents = [];
+  try {
+    dependents = await getFileDependents(this.rootPath, filePath);
+  } catch {
+    // No data available
+  }
+
+  this.emit('dependents:notify', {
+    filePath,
+    changeType,
+    affectedFiles: dependents,
+    affectedCount: dependents.length
+  });
+
+  // Re-encolar dependientes para re-analisis
+  for (const dep of dependents) {
+    this.emit('file:modified', { filePath: dep, triggeredBy: filePath });
+  }
 }
 
 /**

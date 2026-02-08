@@ -9,18 +9,20 @@
 import path from 'path';
 
 /**
- * Genera un ID único para el archivo (FA, FB, FC, etc.)
+ * Genera un ID único para el archivo basado en el path completo
  * @param {string} filePath - Ruta del archivo
  * @returns {string}
  */
 export function getFileId(filePath) {
-  const fileName = path.basename(filePath, path.extname(filePath));
-  const simplified = fileName
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .toUpperCase()
-    .substring(0, 2);
-
-  return simplified || 'F';
+  // Usar el path relativo completo para evitar colisiones
+  // Ej: src/api/userService.js -> src_api_userService
+  const normalized = filePath
+    .replace(/\\/g, '_')  // Windows backslash
+    .replace(/\//g, '_')  // Unix slash
+    .replace(/[^a-zA-Z0-9_]/g, '')  // Remover caracteres especiales
+    .replace(/\.[^.]+$/, '');  // Remover extensión
+  
+  return normalized || 'unknown';
 }
 
 /**

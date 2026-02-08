@@ -150,6 +150,32 @@ export async function _initializeFileWatcher() {
     this.batchProcessor?.addChange(event.filePath, 'deleted');
   });
 
+  // Tunnel vision warnings
+  this.fileWatcher.on('tunnel-vision:detected', (event) => {
+    console.warn(`\n🔍 Tunnel Vision Alert: ${event.file} → ${event.totalAffected} files affected`);
+    this.wsManager?.broadcast({
+      type: 'tunnel-vision:detected',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Archetype changes
+  this.fileWatcher.on('archetype:changed', (event) => {
+    console.warn(`\n🏗️ Archetype Change: ${event.filePath}`);
+    this.wsManager?.broadcast({
+      type: 'archetype:changed',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Broken dependencies - re-queue affected files
+  this.fileWatcher.on('dependency:broken', (event) => {
+    console.warn(`\n⚠️ Broken dependency: ${event.affectedFile} (broken by ${event.brokenBy})`);
+    this.batchProcessor?.addChange(event.affectedFile, 'modified');
+  });
+
   await this.fileWatcher.initialize();
 
   // Initialize batch processor

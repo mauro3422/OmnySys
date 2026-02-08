@@ -2,23 +2,71 @@
 
 Guia canonica para agregar arquetipos. Para el resumen del sistema, ver `ARCHETYPE_SYSTEM.md`.
 
+**IMPORTANTE**: Este documento implementa **Pillar 1** del sistema (Box Test). Ver `docs/CORE_PRINCIPLES.md` para fundamentos.
+
 ## Proposito y Reglas
 
-Un arquetipo DEBE detectar un **patron de conexion** entre archivos. Antes de crear uno, responde estas 3 preguntas:
+Un arquetipo DEBE detectar un **patron de conexion** entre archivos.
 
-1. **Esto me dice algo sobre CONEXIONES entre archivos?** Si no, no es un arquetipo.
-2. **La metadata sola puede determinar el patron Y la accion?** Si ambas, no necesita LLM.
-3. **El LLM aporta algo que la metadata no puede?** Si si, enviar a LLM.
+### The Box Test (Pillar 1)
 
-**Anti-patrones (cosas que NO son arquetipos):**
-- "El archivo usa CSS-in-JS" -> Estilo de codigo, no conexion
-- "El archivo tiene TypeScript" -> Lenguaje, no conexion
-- "El archivo tiene dependencias circulares" -> Layer A ya lo detecta en el grafo
-- "El archivo tiene errores" -> Calidad de codigo, no conexion
+Antes de crear un arquetipo, aplica **The Box Test**:
+
+> **"¿Esto me dice algo sobre cómo este archivo se CONECTA con otros archivos?"**
+
+- ✅ **SI** → Arquetipo válido
+- ❌ **NO** → Solo metadata informativa
+
+### Las 3 Preguntas de Validación
+
+1. **¿Esto me dice algo sobre CONEXIONES entre archivos?** Si no, no es un arquetipo.
+2. **¿La metadata sola puede determinar el patron Y la accion?** Si ambas, no necesita LLM.
+3. **¿El LLM aporta algo que la metadata no puede?** Si si, enviar a LLM.
+
+### Anti-patrones (fallan el Box Test)
+
+Estos NO son arquetipos porque no revelan conexiones:
+
+| Propuesta | ¿Pasa Box Test? | Razón |
+|-----------|-----------------|--------|
+| "usa CSS-in-JS" | ❌ NO | Estilo de código, no conexión |
+| "tiene TypeScript" | ❌ NO | Lenguaje, no conexión |
+| "tiene errores" | ❌ NO | Calidad de código, no conexión |
+| "tiene dependencias circulares" | ❌ NO | Layer A ya lo detecta en el grafo |
+| "complejidad > 100" | ❌ NO | Propiedad interna, no coupling |
 
 **Arquetipos removidos (v0.5.2):**
-- `styled-component`: Detectaba `hasCSSInJS` pero esto no indica conexiones entre archivos.
-- `type-definer`: Detectaba `hasTypeScript` pero esto no indica conexiones entre archivos.
+- `styled-component`: Detectaba `hasCSSInJS` pero falla Box Test
+- `type-definer`: Detectaba `hasTypeScript` pero falla Box Test
+
+### Ejemplos de Box Test
+
+**✅ PASA (Arquetipo válido):**
+```javascript
+// Arquetipo: "network-hub"
+// Pregunta: "¿Detectar fetch('/api/users') revela conexiones?"
+// Respuesta: SÍ - Archivos que llaman al mismo endpoint están acoplados
+//            Si cambia el contrato de /api/users, todos se rompen
+// → Arquetipo válido
+```
+
+**❌ FALLA (Solo metadata):**
+```javascript
+// Propuesta: "uses-async-await"
+// Pregunta: "¿Detectar async/await revela conexiones?"
+// Respuesta: NO - Es sintaxis interna, no indica coupling con otros archivos
+// → No es arquetipo, solo metadata informativa
+```
+
+**🤔 CONDICIONAL (Depends):**
+```javascript
+// Propuesta: "error-handler"
+// Pregunta: "¿Detectar try/catch revela conexiones?"
+// Respuesta: DEPENDE:
+//   - Si el catch emite eventos → SÍ (event-error-coordinator)
+//   - Si el catch solo loggea → NO (calidad interna)
+// → Arquetipo condicional con detector refinado
+```
 
 ## Flujo
 

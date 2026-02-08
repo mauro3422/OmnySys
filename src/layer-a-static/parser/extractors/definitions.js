@@ -28,7 +28,7 @@ export function extractFunctionDefinition(nodePath, filePath, fileInfo) {
   const isExported = isExportedFunction(node, fileInfo);
 
   fileInfo.functions.push({
-    id: `${getFileId(filePath)}:${node.id.name}`,
+    id: `${getFileId(filePath)}::${node.id.name}`,
     name: node.id.name,
     line: node.loc?.start.line || 0,
     endLine: node.loc?.end.line || 0,

@@ -128,6 +128,15 @@ export const RETRY = {
 };
 
 /**
+ * Tunnel Vision detection thresholds
+ * @constant {Object}
+ */
+export const TUNNEL_VISION = {
+  /** Minimum affected files to trigger tunnel vision warning */
+  MIN_AFFECTED_FILES: 3
+};
+
+/**
  * Server configuration
  * @constant {Object}
  */

@@ -50,7 +50,8 @@
       "Bash(git status:*)",
       "Bash(git checkout:*)",
       "Bash(select:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm test)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

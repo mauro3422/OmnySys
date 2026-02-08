@@ -1,6 +1,8 @@
 import {
   getFileDependencies,
   getFileAnalysis,
+  getFileAnalysisWithAtoms,
+  getAtomDetails,
   getAllConnections,
   getRiskAssessment,
   getProjectMetadata,
@@ -187,6 +189,156 @@ export async function getFileTool(filePath) {
       exists: !!fileData,
       analysis: fileData
     };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// ============================================================
+// Atomic/Molecular Tools (New)
+// ============================================================
+
+export async function getFunctionDetails(filePath, functionName) {
+  try {
+    const atom = await getAtomDetails(this.projectPath, filePath, functionName, this.cache);
+
+    if (!atom) {
+      return {
+        error: `Function '${functionName}' not found in ${filePath}`,
+        suggestion: 'The function may not be analyzed yet or is an anonymous function'
+      };
+    }
+
+    return {
+      atom: {
+        id: atom.id,
+        name: atom.name,
+        type: 'atom',
+        line: atom.line,
+        linesOfCode: atom.linesOfCode,
+        complexity: atom.complexity,
+        isExported: atom.isExported,
+        isAsync: atom.isAsync
+      },
+      archetype: atom.archetype,
+      sideEffects: {
+        hasNetworkCalls: atom.hasNetworkCalls,
+        hasDomManipulation: atom.hasDomManipulation,
+        hasStorageAccess: atom.hasStorageAccess,
+        hasLogging: atom.hasLogging,
+        networkEndpoints: atom.networkEndpoints
+      },
+      callGraph: {
+        calls: atom.calls?.length || 0,
+        externalCalls: atom.externalCallCount,
+        calledBy: atom.calledBy?.length || 0,
+        callers: atom.calledBy || []
+      },
+      quality: {
+        hasErrorHandling: atom.hasErrorHandling,
+        hasNestedLoops: atom.hasNestedLoops,
+        hasBlockingOps: atom.hasBlockingOps
+      }
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+export async function getMoleculeSummary(filePath) {
+  try {
+    const data = await getFileAnalysisWithAtoms(this.projectPath, filePath, this.cache);
+
+    if (!data) {
+      return { error: `File not found: ${filePath}` };
+    }
+
+    if (!data.atoms || data.atoms.length === 0) {
+      return {
+        filePath,
+        atomsAvailable: false,
+        message: 'No atomic analysis available for this file'
+      };
+    }
+
+    return {
+      filePath,
+      atomsAvailable: true,
+      molecule: data.derived,
+      stats: data.stats,
+      atoms: data.atoms.map(atom => ({
+        id: atom.id,
+        name: atom.name,
+        archetype: atom.archetype,
+        complexity: atom.complexity,
+        isExported: atom.isExported,
+        calledBy: atom.calledBy?.length || 0
+      })),
+      // High-level insights
+      insights: {
+        hasDeadCode: data.stats.deadAtoms > 0,
+        hasHotPaths: data.stats.hotPathAtoms > 0,
+        hasFragileNetwork: data.stats.fragileNetworkAtoms > 0,
+        riskLevel: data.derived?.archetype?.severity > 7 ? 'high' :
+                   data.derived?.archetype?.severity > 4 ? 'medium' : 'low'
+      }
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+export async function analyzeFunctionChange(filePath, functionName) {
+  try {
+    const atom = await getAtomDetails(this.projectPath, filePath, functionName);
+
+    if (!atom) {
+      return { error: `Function '${functionName}' not found` };
+    }
+
+    const impact = {
+      function: functionName,
+      file: filePath,
+      atomId: atom.id,
+
+      // Impacto directo
+      directImpact: {
+        callers: atom.calledBy || [],
+        callerCount: atom.calledBy?.length || 0,
+        isExported: atom.isExported
+      },
+
+      // Qué funciones llama esta función
+      dependencies: {
+        calls: atom.calls || [],
+        externalCalls: atom.externalCalls || [],
+        internalCalls: atom.internalCalls || []
+      },
+
+      // Riesgo basado en arquetipo
+      risk: {
+        level: atom.archetype?.severity > 7 ? 'critical' :
+               atom.archetype?.severity > 4 ? 'high' :
+               atom.archetype?.severity > 2 ? 'medium' : 'low',
+        archetype: atom.archetype?.type,
+        severity: atom.archetype?.severity,
+        reason: atom.archetype?.type === 'hot-path' ? 'Function is called from multiple places' :
+                atom.archetype?.type === 'fragile-network' ? 'Function makes network calls without proper error handling' :
+                atom.archetype?.type === 'god-function' ? 'Function is too complex' :
+                atom.archetype?.type === 'dead-function' ? 'Function is not used anywhere' : 'Standard function'
+      },
+
+      // Recomendación
+      recommendation: atom.archetype?.type === 'fragile-network'
+        ? 'Add try/catch blocks before modifying network logic'
+        : atom.archetype?.type === 'hot-path'
+        ? 'Changes will affect multiple callers - test thoroughly'
+        : atom.archetype?.type === 'dead-function'
+        ? 'Function is safe to remove or refactor'
+        : 'Standard changes - proceed with normal testing'
+    };
+
+    return impact;
   } catch (error) {
     return { error: error.message };
   }

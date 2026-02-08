@@ -8,6 +8,8 @@ import { saveFileAnalysis as persistFileAnalysis } from '../../layer-a-static/st
 import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
+import { extractMolecularStructure } from '../../layer-a-static/pipeline/molecular-extractor.js';
+import { saveAtom, saveMolecule } from '../../layer-a-static/storage/storage-manager.js';
 
 /**
  * Calcula hash del contenido de un archivo
@@ -121,7 +123,30 @@ export async function analyzeFile(filePath, fullPath) {
   // Extraer metadatos
   const metadata = extractAllMetadata(filePath, parsed.source || '');
 
-  // Construir análisis completo
+  // Extraer estructura molecular (átomos + molécula)
+  const molecularStructure = extractMolecularStructure(
+    filePath,
+    parsed.source || '',
+    parsed,
+    metadata
+  );
+
+  // Guardar átomos individualmente (SSOT)
+  for (const atom of molecularStructure.atoms) {
+    await saveAtom(this.rootPath, filePath, atom.name, atom);
+  }
+
+  // Guardar molécula
+  await saveMolecule(this.rootPath, filePath, {
+    filePath,
+    type: 'molecule',
+    atoms: molecularStructure.atoms.map(a => a.id),
+    extractedAt: new Date().toISOString()
+  });
+
+  // Construir análisis completo (SSOT - Single Source of Truth)
+  // Los átomos (funciones enriquecidas) se guardan individualmente en atoms/
+  // Aquí solo guardamos referencias para evitar duplicación
   return {
     filePath,
     fileName: path.basename(filePath),
@@ -134,7 +159,16 @@ export async function analyzeFile(filePath, fullPath) {
     })),
     exports: parsed.exports || [],
     definitions: parsed.definitions || [],
-    functions: parsed.functions || [],
+    // NO guardar functions completos - están en atoms/ (SSOT)
+    // Solo guardar referencias básicas para identificación rápida
+    functionRefs: (parsed.functions || []).map(f => ({
+      id: f.id,
+      name: f.name,
+      line: f.line,
+      isExported: f.isExported
+    })),
+    atomIds: molecularStructure.atoms.map(a => a.id),
+    atomCount: molecularStructure.atoms.length,
     calls: parsed.calls || [],
     semanticConnections: [
       ...staticConnections.all.map(conn => ({
@@ -156,7 +190,16 @@ export async function analyzeFile(filePath, fullPath) {
       jsdocContracts: metadata.jsdoc || { all: [] },
       asyncPatterns: metadata.async || { all: [] },
       errorHandling: metadata.errors || { all: [] },
-      buildTimeDeps: metadata.build || { envVars: [] }
+      buildTimeDeps: metadata.build || { envVars: [] },
+      // New metadata fields
+      sideEffects: metadata.sideEffects || { all: [] },
+      callGraph: metadata.callGraph || { all: [] },
+      dataFlow: metadata.dataFlow || { all: [] },
+      typeInference: metadata.typeInference || { all: [] },
+      temporal: metadata.temporal || { all: [] },
+      depDepth: metadata.depDepth || {},
+      performance: metadata.performance || { all: [] },
+      historical: metadata.historical || {}
     },
     contentHash: await this._calculateContentHash(fullPath),
     analyzedAt: new Date().toISOString()

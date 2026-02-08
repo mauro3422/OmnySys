@@ -21,6 +21,9 @@ import singletonTemplate from './prompt-templates/singleton.js';
 import orphanModuleTemplate from './prompt-templates/orphan-module.js';
 import globalStateTemplate from './prompt-templates/global-state.js';
 import defaultTemplate from './prompt-templates/default.js';
+import criticalBottleneckTemplate from './prompt-templates/critical-bottleneck.js';
+import apiEventBridgeTemplate from './prompt-templates/api-event-bridge.js';
+import storageSyncTemplate from './prompt-templates/storage-sync.js';
 import { validateRegistry } from './registry-validator.js';
 
 // Importar detectores compartidos
@@ -184,6 +187,66 @@ export const ARCHETYPE_REGISTRY = [
     template: null, // No usa LLM
     mergeKey: 'entryPointAnalysis',
     fields: ['bootSequence', 'servicesInitialized']
+  },
+  {
+    type: 'network-hub',
+    severity: 5,
+    requiresLLM: 'conditional', // Bypass si todos los endpoints ya están cross-referenciados
+    detector: (metadata) => (
+      metadata.hasNetworkCalls === true &&
+      (metadata.networkEndpoints?.length || 0) > 0
+    ),
+    template: semanticConnectionsTemplate, // Reutilizar template de semantic connections
+    mergeKey: 'networkHubAnalysis',
+    fields: ['endpoints', 'apiDependencies', 'riskLevel']
+  },
+  {
+    type: 'critical-bottleneck',
+    severity: 10,
+    requiresLLM: true, // Siempre: necesita sugerir optimizaciones específicas
+    detector: (metadata) => {
+      const isHotspot = (metadata.gitHotspotScore || 0) > 3;
+      const isComplex = ['O(n²)', 'O(n³)'].includes(metadata.estimatedComplexity);
+      const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
+      const isWidelyUsed = totalDependents > 5;
+      const hasManyCalls = (metadata.externalCallCount || 0) > 3;
+
+      return isHotspot && isComplex && isWidelyUsed && hasManyCalls;
+    },
+    template: criticalBottleneckTemplate,
+    mergeKey: 'criticalBottleneckAnalysis',
+    fields: ['optimizationStrategy', 'estimatedImpact', 'refactoringRisk']
+  },
+  {
+    type: 'api-event-bridge',
+    severity: 8,
+    requiresLLM: true, // Siempre: necesita analizar flujo de eventos
+    detector: (metadata) => {
+      const hasNetwork = metadata.hasNetworkCalls === true;
+      const hasEvents = metadata.hasEventEmitters === true;
+      const hasMultipleEndpoints = (metadata.networkEndpoints?.length || 0) > 1;
+
+      return hasNetwork && hasEvents && hasMultipleEndpoints;
+    },
+    template: apiEventBridgeTemplate,
+    mergeKey: 'apiEventBridgeAnalysis',
+    fields: ['apiFlowDiagram', 'eventSequence', 'riskOfRaceConditions']
+  },
+  {
+    type: 'storage-sync-manager',
+    severity: 8,
+    requiresLLM: 'conditional', // Solo si la lógica de sync es compleja
+    detector: (metadata) => {
+      const hasStorage = metadata.hasLocalStorage === true;
+      const hasListeners = metadata.hasEventListeners === true;
+      const hasStorageEvent = (metadata.eventNames || []).includes('storage');
+      const hasConnections = (metadata.semanticConnections?.length || 0) > 2;
+
+      return hasStorage && hasListeners && hasStorageEvent && hasConnections;
+    },
+    template: storageSyncTemplate,
+    mergeKey: 'storageSyncAnalysis',
+    fields: ['syncPatterns', 'conflictResolution', 'consistencyGuarantees']
   },
   {
     type: 'default',
