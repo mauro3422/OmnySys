@@ -58,6 +58,9 @@ export async function extractDataFlow(ast, code, functionName, filePath) {
     invariants: []
   };
 
+  // PASO 0: Extraer parámetros de función como INPUTS
+  extractFunctionParameters(ast, builder, context);
+
   // PASO 1: Recorrer AST con visitors
   const visitors = [
     new ExpressionVisitor(context),
@@ -121,6 +124,127 @@ export async function extractDataFlow(ast, code, functionName, filePath) {
   });
 
   return result;
+}
+
+/**
+ * Extrae parámetros de función y los registra como nodos INPUT
+ */
+function extractFunctionParameters(ast, builder, context) {
+  // Buscar declaración de función en el AST
+  const functionNode = findFunctionNode(ast);
+  
+  if (!functionNode || !functionNode.params) {
+    return;
+  }
+
+  // Registrar cada parámetro como INPUT
+  functionNode.params.forEach((param, index) => {
+    const paramName = extractParamName(param);
+    
+    if (paramName) {
+      // Crear nodo INPUT
+      const nodeId = builder.addNode({
+        type: 'INPUT',
+        category: 'input',
+        standardToken: 'INPUT_PARAM',
+        inputs: [],
+        output: {
+          name: paramName,
+          type: inferParamType(param)
+        },
+        properties: {
+          isPure: true,
+          isParameter: true,
+          position: index,
+          destructured: param.type === 'ObjectPattern' || param.type === 'ArrayPattern'
+        },
+        location: param.loc
+      });
+      
+      // Registrar en el scope
+      builder.scope.set(paramName, nodeId);
+      
+      // Agregar a transforms del contexto
+      context.transforms.push({
+        type: 'INPUT',
+        name: paramName,
+        position: index,
+        nodeId
+      });
+    }
+  });
+}
+
+/**
+ * Encuentra el nodo de función en el AST
+ */
+function findFunctionNode(ast) {
+  // El AST debería ser el cuerpo de la función o la función misma
+  if (ast.type === 'FunctionDeclaration' || 
+      ast.type === 'FunctionExpression' || 
+      ast.type === 'ArrowFunctionExpression') {
+    return ast;
+  }
+  
+  // Buscar en el body si existe
+  if (ast.body && (ast.body.type === 'FunctionDeclaration' || 
+                   ast.body.type === 'FunctionExpression' || 
+                   ast.body.type === 'ArrowFunctionExpression')) {
+    return ast.body;
+  }
+  
+  return null;
+}
+
+/**
+ * Extrae el nombre de un parámetro
+ */
+function extractParamName(param) {
+  switch (param.type) {
+    case 'Identifier':
+      return param.name;
+    case 'ObjectPattern':
+      // Destructuring: { a, b } -> "props"
+      return 'destructured_obj';
+    case 'ArrayPattern':
+      // Destructuring: [a, b] -> "array"
+      return 'destructured_arr';
+    case 'AssignmentPattern':
+      // Default value: x = 5
+      return extractParamName(param.left);
+    case 'RestElement':
+      // Rest: ...args
+      return param.argument?.name || 'rest_args';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Infiere el tipo de un parámetro
+ */
+function inferParamType(param) {
+  // TypeScript type annotation
+  if (param.typeAnnotation && param.typeAnnotation.typeAnnotation) {
+    const typeAnnotation = param.typeAnnotation.typeAnnotation;
+    if (typeAnnotation.type === 'TSStringKeyword') return 'string';
+    if (typeAnnotation.type === 'TSNumberKeyword') return 'number';
+    if (typeAnnotation.type === 'TSBooleanKeyword') return 'boolean';
+    if (typeAnnotation.type === 'TSArrayType') return 'array';
+    if (typeAnnotation.type === 'TSObjectKeyword') return 'object';
+  }
+  
+  // Default value inference
+  if (param.type === 'AssignmentPattern' && param.right) {
+    const right = param.right;
+    if (right.type === 'StringLiteral') return 'string';
+    if (right.type === 'NumericLiteral') return 'number';
+    if (right.type === 'BooleanLiteral') return 'boolean';
+    if (right.type === 'ArrayExpression') return 'array';
+    if (right.type === 'ObjectExpression') return 'object';
+  }
+  
+  return 'any';
 }
 
 /**

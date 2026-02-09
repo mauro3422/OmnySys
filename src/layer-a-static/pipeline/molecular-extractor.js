@@ -248,7 +248,7 @@ async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, fil
  */
 export async function extractMolecularStructure(filePath, code, fileInfo, fileMetadata) {
   // Extraer átomos (funciones) - ahora async
-  const atoms = await Promise.all(
+  let atoms = await Promise.all(
     (fileInfo.functions || []).map(async functionInfo => {
       // Encontrar el nodo en el AST para extraer su código
       // Por ahora, usamos líneas del código completo

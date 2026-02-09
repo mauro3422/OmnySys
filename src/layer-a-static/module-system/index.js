@@ -122,7 +122,7 @@ export function enrichMoleculesWithSystemContext(molecules, moduleData) {
 
   return molecules.map(mol => {
     const fileName = path.basename(mol.filePath);
-    const module = moduleByFile.get(fileName);
+    const module = moduleByFile.get(mol.filePath);
     
     if (!module) {
       return mol;

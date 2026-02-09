@@ -34,7 +34,8 @@ export function extractFunctionDefinition(nodePath, filePath, fileInfo) {
     endLine: node.loc?.end.line || 0,
     params: node.params.map(p => p.name || ''),
     isExported: isExported,
-    calls: functionCalls
+    calls: functionCalls,
+    node: node  // Incluir nodo AST para análisis de data flow
   });
 
   return fileInfo;

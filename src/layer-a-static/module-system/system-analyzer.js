@@ -388,7 +388,7 @@ export class SystemAnalyzer {
       input: ['request']
     }];
     
-    while (queue.length > 0 &> steps.length < 20) { // Limitar profundidad
+    while (queue.length > 0 && steps.length < 20) { // Limitar profundidad
       const current = queue.shift();
       
       if (visited.has(`${current.module}.${current.function}`)) continue;
@@ -494,8 +494,7 @@ export class SystemAnalyzer {
         if (fromModule.moduleName === toModule.moduleName) continue;
         
         // Verificar si fromModule importa de toModule
-        const imports = fromModule.imports?.filter(imp =
-003e
+        const imports = fromModule.imports?.filter(imp =>
           imp.module === toModule.moduleName
         ) || [];
         
