@@ -379,3 +379,38 @@ export async function analyzeProjectSystem(projectRoot, allMolecules) {
     };
   }
 }
+
+/**
+ * NUEVO FASE 4: Detecta race conditions en el sistema
+ * 
+ * @param {Object} projectData - Datos del proyecto (de Fase 3)
+ * @returns {Object} - Race conditions detectadas
+ */
+export async function detectRaceConditions(projectData) {
+  console.log(`[molecular-extractor] Fase 4: Detecting race conditions...`);
+  
+  try {
+    // Importar race detector
+    const { analyzeProjectRaces, enrichProjectWithRaces } = await import('../race-detector/integration.js');
+    
+    // Detectar races
+    const raceResults = await analyzeProjectRaces(projectData);
+    
+    // Enriquecer proyecto con información de races
+    const enrichedProjectData = enrichProjectWithRaces(projectData, raceResults);
+    
+    console.log(`[molecular-extractor] Fase 4: Detected ${raceResults.summary.totalRaces} races`);
+    
+    // Log de races críticas
+    const criticalRaces = raceResults.races.filter(r => r.severity === 'critical');
+    if (criticalRaces.length > 0) {
+      console.warn(`[molecular-extractor] ⚠️  ${criticalRaces.length} CRITICAL races detected!`);
+    }
+    
+    return enrichedProjectData;
+    
+  } catch (error) {
+    console.error('[molecular-extractor] Error in Fase 4 (Race Detection):', error.message);
+    return projectData;
+  }
+}
