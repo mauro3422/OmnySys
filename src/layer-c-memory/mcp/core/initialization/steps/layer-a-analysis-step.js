@@ -7,6 +7,11 @@
  */
 
 import { InitializationStep } from './base-step.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:layer:a:analysis:step');
+
+
 
 /**
  * Step 2: Layer A Analysis
@@ -17,24 +22,24 @@ export class LayerAAnalysisStep extends InitializationStep {
   }
 
   async execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 2: Layer A - Static Analysis');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('STEP 2: Layer A - Static Analysis');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const { checkAndRunAnalysis } = await import('../analysis-checker.js');
     const result = await checkAndRunAnalysis(server.projectPath);
 
     if (result.success) {
-      console.error(`  ✅ Analysis complete: ${result.fileCount} files, ${result.atomCount} atoms`);
+      logger.error(`  ✅ Analysis complete: ${result.fileCount} files, ${result.atomCount} atoms`);
     } else {
-      console.error('  ⚠️  Analysis warning:', result.error);
+      logger.error('  ⚠️  Analysis warning:', result.error);
     }
 
     return true;
   }
 
   async rollback(server, error) {
-    console.error('  ℹ️  Layer A analysis is idempotent, no rollback needed');
+    logger.error('  ℹ️  Layer A analysis is idempotent, no rollback needed');
   }
 }
 

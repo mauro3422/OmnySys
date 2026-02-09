@@ -2,6 +2,11 @@
 import path from 'path';
 
 import { LLMClient } from '../../ai/llm-client.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:helpers');
+
+
 
 /**
  * Check if a file has been analyzed
@@ -111,7 +116,7 @@ export async function _syncProjectFiles() {
     });
 
     if (missingFiles.length > 0) {
-      console.log(`ðŸ“‹ Found ${missingFiles.length} new files to analyze`);
+      logger.info(`ðŸ“‹ Found ${missingFiles.length} new files to analyze`);
 
       // Agregar a la cola con prioridad baja
       for (const filePath of missingFiles) {
@@ -119,15 +124,15 @@ export async function _syncProjectFiles() {
         this.stats.totalQueued++;
       }
 
-      console.log(`âœ… Added ${missingFiles.length} files to analysis queue`);
+      logger.info(`âœ… Added ${missingFiles.length} files to analysis queue`);
     }
 
     // Reportar estado
     const queueSize = this.queue.size();
     if (queueSize > 0) {
-      console.log(`ðŸ“Š Queue: ${queueSize} files pending analysis`);
+      logger.info(`ðŸ“Š Queue: ${queueSize} files pending analysis`);
     }
   } catch (error) {
-    console.warn('âš ï¸  Failed to sync project files:', error.message);
+    logger.warn('âš ï¸  Failed to sync project files:', error.message);
   }
 }

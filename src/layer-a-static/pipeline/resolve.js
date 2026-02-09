@@ -1,14 +1,19 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:resolve');
+
+
 ﻿import { resolveImport, getResolutionConfig } from '../resolver.js';
 
 export async function resolveImports(parsedFiles, absoluteRootPath, verbose = true) {
-  if (verbose) console.log('âš™ï¸  Loading resolution config...');
+  if (verbose) logger.info('âš™ï¸  Loading resolution config...');
   const resolutionConfig = await getResolutionConfig(absoluteRootPath);
   if (verbose) {
     const aliasCount = Object.keys(resolutionConfig.aliases).length;
-    console.log(`  âœ“ Found ${aliasCount} aliases\n`);
+    logger.info(`  âœ“ Found ${aliasCount} aliases\n`);
   }
 
-  if (verbose) console.log('ðŸ”— Resolving imports...');
+  if (verbose) logger.info('ðŸ”— Resolving imports...');
   const resolvedImports = {};
   let totalImports = 0;
   let resolvedCount = 0;
@@ -48,7 +53,7 @@ export async function resolveImports(parsedFiles, absoluteRootPath, verbose = tr
   }
 
   if (verbose) {
-    console.log(`  âœ“ Resolved ${resolvedCount}/${totalImports} imports\n`);
+    logger.info(`  âœ“ Resolved ${resolvedCount}/${totalImports} imports\n`);
   }
 
   return { resolvedImports, resolutionConfig };

@@ -1,15 +1,20 @@
 import { buildGraph } from '../graph/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:graph');
+
+
 
 export function buildSystemGraph(normalizedParsedFiles, normalizedResolvedImports, verbose = true) {
-  if (verbose) console.log('Building dependency graph...');
+  if (verbose) logger.info('Building dependency graph...');
   const systemMap = buildGraph(normalizedParsedFiles, normalizedResolvedImports);
   if (verbose) {
-    console.log(`  ✓ Graph with ${systemMap.metadata.totalFiles} files`);
-    console.log(`  ✓ ${systemMap.metadata.totalDependencies} dependencies found`);
+    logger.info(`  ✓ Graph with ${systemMap.metadata.totalFiles} files`);
+    logger.info(`  ✓ ${systemMap.metadata.totalDependencies} dependencies found`);
     if (systemMap.metadata.cyclesDetected.length > 0) {
-      console.log(`  ⚠️  ${systemMap.metadata.cyclesDetected.length} cycles detected!`);
+      logger.info(`  ⚠️  ${systemMap.metadata.cyclesDetected.length} cycles detected!`);
     }
-    console.log('');
+    logger.info('');
   }
   return systemMap;
 }

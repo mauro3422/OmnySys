@@ -14,6 +14,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import { detectAllSemanticConnections } from '../../extractors/static/index.js';
 import { calculateAllRiskScores, generateRiskReport } from '../../analyses/tier3/risk-scorer.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 /**
  * Pipeline de enriquecimiento completo.
@@ -34,12 +39,12 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
 
   try {
     // Step 1: Build source code map (relative paths -> code)
-    if (verbose) console.log('  Reading source code for semantic analysis...');
+    if (verbose) logger.info('  Reading source code for semantic analysis...');
     const sourceCodeMap = await buildSourceCodeMap(absoluteRootPath, parsedFiles, systemMap);
-    if (verbose) console.log(`  \u2714 ${Object.keys(sourceCodeMap).length} files loaded\n`);
+    if (verbose) logger.info(`  \u2714 ${Object.keys(sourceCodeMap).length} files loaded\n`);
 
     // Step 2: Detect all semantic connections
-    if (verbose) console.log('  Detecting semantic connections...');
+    if (verbose) logger.info('  Detecting semantic connections...');
     const semanticResults = detectAllSemanticConnections(sourceCodeMap);
 
     const sharedStateConnections = [
@@ -50,13 +55,13 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     const allConnections = semanticResults.all;
 
     if (verbose) {
-      console.log(`  \u2714 localStorage: ${semanticResults.localStorageConnections.length} connections`);
-      console.log(`  \u2714 events: ${semanticResults.eventConnections.length} connections`);
-      console.log(`  \u2714 globals: ${semanticResults.globalConnections.length} connections`);
-      console.log(`  \u2714 env vars: ${semanticResults.envConnections.length} connections`);
-      console.log(`  \u2714 routes: ${semanticResults.routeConnections.length} connections`);
-      console.log(`  \u2714 colocation: ${semanticResults.colocationConnections.length} connections`);
-      console.log(`  \u2714 Total: ${allConnections.length} semantic connections\n`);
+      logger.info(`  \u2714 localStorage: ${semanticResults.localStorageConnections.length} connections`);
+      logger.info(`  \u2714 events: ${semanticResults.eventConnections.length} connections`);
+      logger.info(`  \u2714 globals: ${semanticResults.globalConnections.length} connections`);
+      logger.info(`  \u2714 env vars: ${semanticResults.envConnections.length} connections`);
+      logger.info(`  \u2714 routes: ${semanticResults.routeConnections.length} connections`);
+      logger.info(`  \u2714 colocation: ${semanticResults.colocationConnections.length} connections`);
+      logger.info(`  \u2714 Total: ${allConnections.length} semantic connections\n`);
     }
 
     // Step 3: Attach semantic data to each file
@@ -78,7 +83,7 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     }
 
     // Step 4: Calculate risk scores
-    if (verbose) console.log('  Calculating risk scores...');
+    if (verbose) logger.info('  Calculating risk scores...');
     const semanticConnectionsByFile = {};
     for (const [filePath, fileData] of Object.entries(enhanced.files || {})) {
       semanticConnectionsByFile[filePath] = fileData.semanticConnections || [];
@@ -105,8 +110,8 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     }
 
     if (verbose) {
-      console.log(`  \u2714 Risk scores calculated for ${Object.keys(riskScores).length} files`);
-      console.log(`  \u2714 High risk: ${riskReport.summary.highCount + riskReport.summary.criticalCount} files\n`);
+      logger.info(`  \u2714 Risk scores calculated for ${Object.keys(riskScores).length} files`);
+      logger.info(`  \u2714 High risk: ${riskReport.summary.highCount + riskReport.summary.criticalCount} files\n`);
     }
 
     // Step 5: Build connections summary
@@ -130,11 +135,11 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     enhanced.semanticIssues = semanticIssues;
 
     if (verbose) {
-      console.log(`  \u2714 Semantic issues: ${semanticIssues.stats?.totalIssues || 0} detected\n`);
+      logger.info(`  \u2714 Semantic issues: ${semanticIssues.stats?.totalIssues || 0} detected\n`);
     }
 
   } catch (error) {
-    console.warn('Warning: Enhancement partially failed:', error.message);
+    logger.warn('Warning: Enhancement partially failed:', error.message);
     // Ensure minimum structure exists
     enhanced.connections = enhanced.connections || { sharedState: [], eventListeners: [], total: 0 };
     enhanced.riskAssessment = enhanced.riskAssessment || { scores: {}, report: { summary: {} } };

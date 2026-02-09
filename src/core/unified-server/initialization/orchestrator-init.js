@@ -9,6 +9,11 @@
 import path from 'path';
 import { StateManager } from '../../state-manager.js';
 import { AnalysisWorker } from '../../analysis-worker.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:orchestrator:init');
+
+
 
 /**
  * Inicializa componentes del Orchestrator
@@ -18,15 +23,15 @@ import { AnalysisWorker } from '../../analysis-worker.js';
 export async function initializeOrchestratorComponents(context) {
   const { projectPath, omnySysDataPath, eventEmitter } = context;
   
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 2: Orchestrator Initialization');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('STEP 2: Orchestrator Initialization');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Initialize StateManager
   const stateManager = new StateManager(
     path.join(omnySysDataPath, 'orchestrator-state.json')
   );
-  console.log('  ✓ State manager ready');
+  logger.info('  ✓ State manager ready');
 
   // Initialize Analysis Worker
   const worker = new AnalysisWorker(projectPath, {
@@ -34,16 +39,16 @@ export async function initializeOrchestratorComponents(context) {
       eventEmitter.emit('job:progress', job, progress);
     },
     onComplete: (job, result) => {
-      console.log(`  ✅ Completed: ${path.basename(job.filePath)}`);
+      logger.info(`  ✅ Completed: ${path.basename(job.filePath)}`);
       eventEmitter.emit('job:complete', job, result);
     },
     onError: (job, error) => {
-      console.error(`  ❌ Failed: ${path.basename(job.filePath)}`, error.message);
+      logger.error(`  ❌ Failed: ${path.basename(job.filePath)}`, error.message);
       eventEmitter.emit('job:error', job, error);
     }
   });
   await worker.initialize();
-  console.log('  ✓ Analysis Worker ready\n');
+  logger.info('  ✓ Analysis Worker ready\n');
 
   return { stateManager, worker };
 }

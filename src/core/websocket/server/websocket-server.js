@@ -18,12 +18,15 @@ import {
   handleServerError,
   closeAllConnections 
 } from './connection-handler.js';
+import { createLogger } from '../../../utils/logger.js';
 import {
   sendToClient,
   broadcast,
   broadcastToSubscribers,
   broadcastToProject
 } from '../messaging/broadcaster.js';
+
+const logger = createLogger('OmnySys:websocket:server');
 
 /**
  * WebSocket Manager - Servidor WebSocket con soporte para rooms, heartbeat y broadcast
@@ -109,7 +112,7 @@ export class WebSocketManager extends EventEmitter {
   onListening(resolve) {
     this.isRunning = true;
     this.startHeartbeat();
-    console.log(`🔌 WebSocket server listening on ws://localhost:${this.options.port}${this.options.path}`);
+    logger.info(`🔌 WebSocket server listening on ws://localhost:${this.options.port}${this.options.path}`);
     this.emit(Events.STARTED);
     resolve();
   }
@@ -125,7 +128,7 @@ export class WebSocketManager extends EventEmitter {
       onDeadClient: (id) => {
         const client = this.clients.get(id);
         if (client) {
-          console.log(`💀 Removing dead client: ${id}`);
+          logger.info(`💀 Removing dead client: ${id}`);
           client.close(1001, 'Heartbeat timeout');
         }
       }
@@ -213,7 +216,7 @@ export class WebSocketManager extends EventEmitter {
       return;
     }
 
-    console.log('🔌 Stopping WebSocket server...');
+    logger.info('🔌 Stopping WebSocket server...');
 
     // Detener heartbeat
     if (this.heartbeatManager) {

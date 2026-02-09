@@ -72,19 +72,24 @@ async function fixFile(filePath) {
 
     if (hasChanges) {
       await fs.writeFile(filePath, newContent, 'utf-8');
-      console.log(`Fixed: ${filePath}`);
+      logger.info(`Fixed: ${filePath}`);
       return true;
     }
     return false;
   } catch (error) {
-    console.error(`Error fixing ${filePath}: ${error.message}`);
+    logger.error(`Error fixing ${filePath}: ${error.message}`);
     return false;
   }
 }
 
 const files = process.argv.slice(2);
+import { createLogger } from '../src/utils/logger.js';
+
+const logger = createLogger('OmnySys:fix:encoding');
+
+
 if (files.length === 0) {
-  console.log('Usage: node fix-encoding.js <file1> <file2> ...');
+  logger.info('Usage: node fix-encoding.js <file1> <file2> ...');
   process.exit(1);
 }
 
@@ -93,4 +98,4 @@ for (const file of files) {
   if (await fixFile(file)) fixedCount++;
 }
 
-console.log(`\nFixed ${fixedCount} files`);
+logger.info(`\nFixed ${fixedCount} files`);

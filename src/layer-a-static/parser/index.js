@@ -24,6 +24,11 @@ import { extractNamedExports, extractDefaultExport } from './extractors/exports.
 import { extractFunctionDefinition, extractClassDefinition, extractVariableExports } from './extractors/definitions.js';
 import { extractTSInterface, extractTSTypeAlias, extractTSEnum, extractTSTypeReference } from './extractors/typescript.js';
 import { extractCallExpression, extractIdentifierRef } from './extractors/calls.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 // ============================================
 // API Pública
@@ -142,7 +147,7 @@ export function parseFile(filePath, code) {
 
   } catch (error) {
     fileInfo.parseError = error.message;
-    console.warn(`⚠️  Parse error in ${filePath}: ${error.message}`);
+    logger.warn(`⚠️  Parse error in ${filePath}: ${error.message}`);
   }
 
   return fileInfo;
@@ -159,7 +164,7 @@ export async function parseFileFromDisk(filePath) {
     const code = await fs.readFile(filePath, 'utf-8');
     return parseFile(filePath, code);
   } catch (error) {
-    console.error(`Error reading file ${filePath}:`, error);
+    logger.error(`Error reading file ${filePath}:`, error);
     return {
       filePath,
       fileName: path.basename(filePath),

@@ -1,3 +1,8 @@
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:restart:server');
+
+
 /**
  * MCP Tool: restart_server
  * Reinicia el servidor OmnySys para cargar código actualizado
@@ -8,7 +13,7 @@ export async function restart_server(args, context) {
   const { cache } = context;
   
   try {
-    console.error('🔄 Reiniciando servidor OmnySys...');
+    logger.error('🔄 Reiniciando servidor OmnySys...');
     
     const result = {
       restarting: true,
@@ -19,7 +24,7 @@ export async function restart_server(args, context) {
     
     // Limpiar caché si se solicita
     if (clearCache && cache) {
-      console.error('🧹 Limpiando caché...');
+      logger.error('🧹 Limpiando caché...');
       cache.invalidate('analysis:*');
       cache.invalidate('atom:*');
       cache.invalidate('derived:*');
@@ -31,7 +36,7 @@ export async function restart_server(args, context) {
     
     // Programar reinicio
     setTimeout(() => {
-      console.error('👋 Cerrando servidor actual...');
+      logger.error('👋 Cerrando servidor actual...');
       process.exit(0); // El proceso padre (OpenCode) reiniciará el servidor
     }, 1000);
     

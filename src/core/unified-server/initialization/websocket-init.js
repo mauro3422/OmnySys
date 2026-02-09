@@ -7,6 +7,11 @@
  */
 
 import { WebSocketManager } from '../../websocket/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:websocket:init');
+
+
 
 /**
  * Inicializa WebSocket Manager
@@ -18,9 +23,9 @@ import { WebSocketManager } from '../../websocket/index.js';
 export async function initializeWebSocket(options = {}) {
   const { port = 9997, maxClients = 50 } = options;
   
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 6: WebSocket Manager Initialization');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('STEP 6: WebSocket Manager Initialization');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const wsManager = new WebSocketManager({
     port,
@@ -28,7 +33,7 @@ export async function initializeWebSocket(options = {}) {
   });
 
   await wsManager.start();
-  console.log('  ✓ WebSocket Manager ready\n');
+  logger.info('  ✓ WebSocket Manager ready\n');
   
   return wsManager;
 }

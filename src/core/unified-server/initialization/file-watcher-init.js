@@ -7,6 +7,11 @@
  */
 
 import { FileWatcher } from '../../file-watcher.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:file:watcher:init');
+
+
 
 /**
  * Inicializa File Watcher para actualizaciones en tiempo real
@@ -16,9 +21,9 @@ import { FileWatcher } from '../../file-watcher.js';
 export async function initializeFileWatcher(context) {
   const { projectPath, batchProcessor, wsManager } = context;
   
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 4: File Watcher Initialization');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('STEP 4: File Watcher Initialization');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const fileWatcher = new FileWatcher(projectPath, {
     debounceMs: 500,
@@ -40,7 +45,7 @@ export async function initializeFileWatcher(context) {
   });
 
   await fileWatcher.initialize();
-  console.log('  ✓ File Watcher ready\n');
+  logger.info('  ✓ File Watcher ready\n');
   
   return fileWatcher;
 }

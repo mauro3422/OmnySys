@@ -8,6 +8,11 @@
  */
 
 import fs from 'fs/promises';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('OmnySys:json:safe');
+
+
 
 /**
  * Safely read and parse a JSON file
@@ -26,11 +31,11 @@ export async function safeReadJson(filePath, defaultValue = null) {
     }
     if (error instanceof SyntaxError) {
       // Invalid JSON
-      console.error(`[safeReadJson] Invalid JSON in ${filePath}:`, error.message);
+      logger.error(`[safeReadJson] Invalid JSON in ${filePath}:`, error.message);
       return defaultValue;
     }
     // Other errors
-    console.error(`[safeReadJson] Error reading ${filePath}:`, error.message);
+    logger.error(`[safeReadJson] Error reading ${filePath}:`, error.message);
     return defaultValue;
   }
 }
@@ -48,7 +53,7 @@ export async function safeWriteJson(filePath, data, indent = 2) {
     await fs.writeFile(filePath, content, 'utf-8');
     return true;
   } catch (error) {
-    console.error(`[safeWriteJson] Error writing ${filePath}:`, error.message);
+    logger.error(`[safeWriteJson] Error writing ${filePath}:`, error.message);
     return false;
   }
 }
@@ -64,7 +69,7 @@ export function safeParseJson(jsonString, defaultValue = null) {
     return JSON.parse(jsonString);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      console.error('[safeParseJson] Invalid JSON string:', error.message);
+      logger.error('[safeParseJson] Invalid JSON string:', error.message);
     }
     return defaultValue;
   }
@@ -80,7 +85,7 @@ export function safeStringifyJson(data, indent = 2) {
   try {
     return JSON.stringify(data, null, indent);
   } catch (error) {
-    console.error('[safeStringifyJson] Error stringifying:', error.message);
+    logger.error('[safeStringifyJson] Error stringifying:', error.message);
     return '{}';
   }
 }

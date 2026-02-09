@@ -16,6 +16,11 @@
 
 import traverse from '@babel/traverse';
 import { parse } from '@babel/parser';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:side:effects:detector');
+
+
 
 /**
  * Detecta side effects en un archivo
@@ -204,7 +209,7 @@ export function detectSideEffects(code, filePath = '') {
       }
     });
   } catch (error) {
-    console.warn(`⚠️  Error parsing ${filePath}:`, error.message);
+    logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
   }
 
   return {

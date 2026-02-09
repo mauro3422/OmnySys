@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:queueing');
+
+
 ﻿/**
  * Analyze a file and wait for result
  * Used by MCP tools when file is not yet analyzed
@@ -6,11 +11,11 @@ export async function analyzeAndWait(filePath, timeoutMs = 60000) {
   // Check if already in queue
   const position = this.queue.findPosition(filePath);
   if (position >= 0) {
-    console.log(`â³ ${filePath} already in queue at position ${position}`);
+    logger.info(`â³ ${filePath} already in queue at position ${position}`);
   } else {
     // Enqueue as CRITICAL priority
     this.queue.enqueue(filePath, 'critical');
-    console.log(`ðŸš¨ ${filePath} queued as CRITICAL`);
+    logger.info(`ðŸš¨ ${filePath} queued as CRITICAL`);
   }
 
   // Trigger processing if idle
@@ -58,7 +63,7 @@ export async function _processNext() {
   try {
     await this.worker.analyze(nextJob);
   } catch (error) {
-    console.error(`âŒ Error processing job ${nextJob.filePath}:`, error.message);
+    logger.error(`âŒ Error processing job ${nextJob.filePath}:`, error.message);
     this._onJobError(nextJob, error);
   }
 }
@@ -76,11 +81,11 @@ export function _onJobComplete(job, result) {
 
   this.emit('job:complete', job, result);
 
-  console.log(`   âœ… Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze})`);
+  logger.info(`   âœ… Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze})`);
 
   // Check if all files have been processed
   if (this.processedFiles.size >= this.totalFilesToAnalyze && this.totalFilesToAnalyze > 0) {
-    console.log(`\nðŸŽ‰ All ${this.totalFilesToAnalyze} files processed!`);
+    logger.info(`\nðŸŽ‰ All ${this.totalFilesToAnalyze} files processed!`);
     this._finalizeAnalysis();
     return;
   }
@@ -98,7 +103,7 @@ export function _onJobComplete(job, result) {
 }
 
 export function _onJobError(job, error) {
-  console.error(`âŒ Job failed: ${job.filePath}`, error.message);
+  logger.error(`âŒ Job failed: ${job.filePath}`, error.message);
   this.currentJob = null;
   this.emit('job:error', job, error);
 

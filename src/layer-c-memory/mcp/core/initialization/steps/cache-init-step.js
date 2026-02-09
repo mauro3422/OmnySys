@@ -8,6 +8,11 @@
 
 import { InitializationStep } from './base-step.js';
 import { UnifiedCacheManager } from '#core/unified-cache-manager.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:cache:init:step');
+
+
 
 /**
  * Step 4: Cache Initialization
@@ -18,9 +23,9 @@ export class CacheInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 4: Initialize Cache');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('STEP 4: Initialize Cache');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const startTime = performance.now();
 
@@ -37,19 +42,19 @@ export class CacheInitStep extends InitializationStep {
 
     server.metadata = await getProjectMetadata(server.projectPath);
     server.cache.set('metadata', server.metadata);
-    console.error('  ✅ Metadata cached');
+    logger.error('  ✅ Metadata cached');
 
     const connections = await getAllConnections(server.projectPath);
     server.cache.set('connections', connections);
-    console.error(`  ✅ Connections cached (${connections.total} total)`);
+    logger.error(`  ✅ Connections cached (${connections.total} total)`);
 
     const assessment = await getRiskAssessment(server.projectPath);
     server.cache.set('assessment', assessment);
     const totalIssues = this.countIssues(assessment);
-    console.error(`  ✅ Risk assessment cached (${totalIssues} issues)`);
+    logger.error(`  ✅ Risk assessment cached (${totalIssues} issues)`);
 
     const elapsed = (performance.now() - startTime).toFixed(2);
-    console.error(`\n  Cache load time: ${elapsed}ms`);
+    logger.error(`\n  Cache load time: ${elapsed}ms`);
 
     return true;
   }

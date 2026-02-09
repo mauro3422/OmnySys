@@ -1,3 +1,8 @@
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:base:step');
+
+
 /**
  * @fileoverview base-step.js
  *
@@ -39,7 +44,7 @@ export class InitializationStep {
    */
   async rollback(server, error) {
     // Default: no rollback needed
-    console.error(`  ⚠️  No rollback implemented for step: ${this.name}`);
+    logger.error(`  ⚠️  No rollback implemented for step: ${this.name}`);
   }
 
   /**

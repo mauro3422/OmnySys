@@ -13,6 +13,11 @@ import { fileURLToPath } from 'url';
 import { LLMClient, loadAIConfig } from '#ai/llm-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:llm:starter');
+
+
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -42,7 +47,7 @@ async function waitForLLM(client, maxRetries = 60, retryDelay = 2000) {
  * @returns {Promise<boolean>} - true si está listo
  */
 export async function startLLM(OmnySysRoot) {
-  console.error('   🔍 Checking LLM status...');
+  logger.error('   🔍 Checking LLM status...');
   
   const aiConfig = await loadAIConfig();
   const client = new LLMClient(aiConfig);
@@ -52,13 +57,13 @@ export async function startLLM(OmnySysRoot) {
     const health = await client.healthCheck();
     if (health.gpu || health.cpu) {
       const mode = health.gpu ? 'GPU' : 'CPU';
-      console.error(`   ✓ LLM already running on port 8000 (${mode} mode)`);
+      logger.error(`   ✓ LLM already running on port 8000 (${mode} mode)`);
       return true;
     }
   } catch {}
   
   if (!aiConfig.llm.enabled) {
-    console.error('   ℹ️  LLM disabled in config');
+    logger.error('   ℹ️  LLM disabled in config');
     return false;
   }
   
@@ -75,7 +80,7 @@ export async function startLLM(OmnySysRoot) {
     
     try {
       await fs.access(gpuScript);
-      console.error('   🚀 Starting GPU server...');
+      logger.error('   🚀 Starting GPU server...');
       
       const gpuProcess = spawn('cmd.exe', ['/c', 'start', '/min', gpuScript], {
         detached: true,
@@ -83,9 +88,9 @@ export async function startLLM(OmnySysRoot) {
       });
       gpuProcess.unref();
       
-      console.error('   ✓ GPU server starting (port 8000)...');
+      logger.error('   ✓ GPU server starting (port 8000)...');
     } catch {
-      console.error('   ⚠️  GPU script not found');
+      logger.error('   ⚠️  GPU script not found');
     }
   }
   
@@ -95,7 +100,7 @@ export async function startLLM(OmnySysRoot) {
     
     try {
       await fs.access(cpuScript);
-      console.error('   🚀 Starting CPU server...');
+      logger.error('   🚀 Starting CPU server...');
       
       const cpuProcess = spawn('cmd.exe', ['/c', 'start', '/min', cpuScript], {
         detached: true,
@@ -103,24 +108,24 @@ export async function startLLM(OmnySysRoot) {
       });
       cpuProcess.unref();
       
-      console.error('   ✓ CPU server starting (port 8002)...');
+      logger.error('   ✓ CPU server starting (port 8002)...');
     } catch {
-      console.error('   ⚠️  CPU script not found');
+      logger.error('   ⚠️  CPU script not found');
     }
   }
   
   // 5. Wait for LLM to be ready
-  console.error('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
+  logger.error('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
   
   const result = await waitForLLM(client, 60, 2000); // 2 min max
   
   if (result.ready) {
     const activeMode = result.health.gpu ? 'GPU' : 'CPU';
-    console.error(`\n   ✅ LLM is ready! (${activeMode} mode)`);
+    logger.error(`\n   ✅ LLM is ready! (${activeMode} mode)`);
     return true;
   } else {
-    console.error('\n   ❌ LLM failed to start within 2 minutes');
-    console.error('   💡 Check the terminal windows for errors');
+    logger.error('\n   ❌ LLM failed to start within 2 minutes');
+    logger.error('   💡 Check the terminal windows for errors');
     return false;
   }
 }

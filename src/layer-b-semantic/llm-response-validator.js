@@ -1,3 +1,8 @@
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:llm:response:validator');
+
+
 /**
  * llm-response-validator.js
  * 
@@ -28,7 +33,7 @@
  * @deprecated Use `import { ... } from './validators/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from llm-response-validator.js');
-console.warn('   Please update imports to: validators/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from llm-response-validator.js');
+logger.warn('   Please update imports to: validators/index.js');
 
 export * from './validators/index.js';

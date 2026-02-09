@@ -7,12 +7,17 @@ import { WebSocketManager } from '../websocket/index.js';
 import { BatchProcessor } from '../batch-processor/index.js';
 import { UnifiedCacheManager } from '../unified-cache-manager.js';
 import { indexProject } from '../../layer-a-static/indexer.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:lifecycle');
+
+
 
 /**
  * Initialize the orchestrator
  */
 export async function initialize() {
-  console.log('\nðŸ”§ Initializing Orchestrator...\n');
+  logger.info('\nðŸ”§ Initializing Orchestrator...\n');
 
   // Initialize cache
   this.cache = new UnifiedCacheManager(this.projectPath, {
@@ -48,15 +53,15 @@ export async function initialize() {
 
   // Analyze complex files with LLM based on Layer A metadata
   this._analyzeComplexFilesWithLLM().then(() => {
-    console.log("✅ LLM analysis queue ready");
+    logger.info("✅ LLM analysis queue ready");
   }).catch(err => {
-    console.error("❌ LLM analysis setup failed:", err.message);
+    logger.error("❌ LLM analysis setup failed:", err.message);
   });
 
   // Start processing loop
   this._processNext();
 
-  console.log('âœ… Orchestrator initialized\n');
+  logger.info('âœ… Orchestrator initialized\n');
 }
 
 /**
@@ -66,11 +71,11 @@ export async function startBackgroundIndexing() {
   const hasData = await this._hasExistingAnalysis();
 
   if (hasData) {
-    console.log('ðŸ“Š Analysis data found, skipping initial indexing');
+    logger.info('ðŸ“Š Analysis data found, skipping initial indexing');
     return;
   }
 
-  console.log('\nðŸš€ Starting background indexing...\n');
+  logger.info('\nðŸš€ Starting background indexing...\n');
   this.isIndexing = true;
 
   // Check LLM availability
@@ -85,12 +90,12 @@ export async function startBackgroundIndexing() {
     verbose: true,
     skipLLM: !llmAvailable
   }).then((result) => {
-    console.log('\nâœ… Background indexing completed');
+    logger.info('\nâœ… Background indexing completed');
     this.isIndexing = false;
     this.indexingProgress = 100;
     this.emit('indexing:completed', result);
   }).catch((error) => {
-    console.error('\nâŒ Background indexing failed:', error.message);
+    logger.error('\nâŒ Background indexing failed:', error.message);
     this.isIndexing = false;
     this.emit('indexing:failed', error);
   });
@@ -103,7 +108,7 @@ export async function startBackgroundIndexing() {
  * Stop the orchestrator
  */
 export async function stop() {
-  console.log('\nðŸ‘‹ Stopping Orchestrator...');
+  logger.info('\nðŸ‘‹ Stopping Orchestrator...');
   this.isRunning = false;
 
   if (this.fileWatcher) {
@@ -122,7 +127,7 @@ export async function stop() {
     await this.worker.stop();
   }
 
-  console.log('âœ… Orchestrator stopped');
+  logger.info('âœ… Orchestrator stopped');
 }
 
 // ==========================================
@@ -130,7 +135,7 @@ export async function stop() {
 // ==========================================
 
 export async function _initializeFileWatcher() {
-  console.log('ðŸ‘ï¸  Initializing File Watcher...');
+  logger.info('ðŸ‘ï¸  Initializing File Watcher...');
 
   this.fileWatcher = new FileWatcher(this.projectPath, {
     debounceMs: 500,
@@ -152,7 +157,7 @@ export async function _initializeFileWatcher() {
 
   // Tunnel vision warnings
   this.fileWatcher.on('tunnel-vision:detected', (event) => {
-    console.warn(`\n🔍 Tunnel Vision Alert: ${event.file} → ${event.totalAffected} files affected`);
+    logger.warn(`\n🔍 Tunnel Vision Alert: ${event.file} → ${event.totalAffected} files affected`);
     this.wsManager?.broadcast({
       type: 'tunnel-vision:detected',
       ...event,
@@ -162,7 +167,7 @@ export async function _initializeFileWatcher() {
 
   // Archetype changes
   this.fileWatcher.on('archetype:changed', (event) => {
-    console.warn(`\n🏗️ Archetype Change: ${event.filePath}`);
+    logger.warn(`\n🏗️ Archetype Change: ${event.filePath}`);
     this.wsManager?.broadcast({
       type: 'archetype:changed',
       ...event,
@@ -172,7 +177,7 @@ export async function _initializeFileWatcher() {
 
   // Broken dependencies - re-queue affected files
   this.fileWatcher.on('dependency:broken', (event) => {
-    console.warn(`\n⚠️ Broken dependency: ${event.affectedFile} (broken by ${event.brokenBy})`);
+    logger.warn(`\n⚠️ Broken dependency: ${event.affectedFile} (broken by ${event.brokenBy})`);
     this.batchProcessor?.addChange(event.affectedFile, 'modified');
   });
 
@@ -200,17 +205,17 @@ export async function _initializeFileWatcher() {
   });
 
   this.batchProcessor.start();
-  console.log('âœ… File Watcher ready\n');
+  logger.info('âœ… File Watcher ready\n');
 }
 
 export async function _initializeWebSocket() {
-  console.log('ðŸ“¡ Initializing WebSocket...');
+  logger.info('ðŸ“¡ Initializing WebSocket...');
   this.wsManager = new WebSocketManager({
     port: this.options.ports.webSocket,
     maxClients: 50
   });
   await this.wsManager.start();
-  console.log('âœ… WebSocket ready\n');
+  logger.info('âœ… WebSocket ready\n');
 }
 
 export async function _loadState() {

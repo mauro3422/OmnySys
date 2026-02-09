@@ -280,7 +280,7 @@ export function detectArchetypes(metadata) {
       try {
         return !!a.detector(metadata);
       } catch (error) {
-        console.warn(`⚠️  Archetype detector failed (${a.type}): ${error.message}`);
+        logger.warn(`⚠️  Archetype detector failed (${a.type}): ${error.message}`);
         return false;
       }
     })
@@ -371,9 +371,14 @@ export default {
 };
 
 const registryValidation = validateRegistry(ARCHETYPE_REGISTRY);
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:PROMPT:REGISTRY');
+
+
 if (!registryValidation.valid) {
-  console.warn('⚠️  ARCHETYPE_REGISTRY validation issues:');
+  logger.warn('⚠️  ARCHETYPE_REGISTRY validation issues:');
   for (const issue of registryValidation.issues) {
-    console.warn(`  - ${issue}`);
+    logger.warn(`  - ${issue}`);
   }
 }

@@ -1,3 +1,8 @@
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:metadata:contract');
+
+
 /**
  * metadata-contract.js
  * 
@@ -22,7 +27,7 @@
  * @deprecated Use `import { ... } from './metadata-contract/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from metadata-contract.js');
-console.warn('   Please update imports to: metadata-contract/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from metadata-contract.js');
+logger.warn('   Please update imports to: metadata-contract/index.js');
 
 export * from './metadata-contract/index.js';

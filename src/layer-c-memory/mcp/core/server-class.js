@@ -43,6 +43,11 @@ import {
 } from './initialization/steps/index.js';
 
 import path from 'path';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:server:class');
+
+
 
 /**
  * OmnySys MCP Server - Entry Point Único
@@ -92,28 +97,28 @@ export class OmnySysMCPServer {
       
       if (result.success) {
         this.initialized = true;
-        console.error('\n✅ Server initialized successfully\n');
+        logger.error('\n✅ Server initialized successfully\n');
       } else {
-        console.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
+        logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
         if (result.error) {
-          console.error('Error:', result.error.message);
+          logger.error('Error:', result.error.message);
         }
         process.exit(1);
       }
 
     } catch (error) {
-      console.error('\n❌ Fatal error during initialization:', error.message);
-      console.error(error.stack);
+      logger.error('\n❌ Fatal error during initialization:', error.message);
+      logger.error(error.stack);
       process.exit(1);
     }
   }
 
   printBanner() {
-    console.error('\n╔═══════════════════════════════════════════════════════════════╗');
-    console.error('║     OmnySys MCP Server v3.0.0                                 ║');
-    console.error('║     Fractal Architecture: A→B→C Pipeline                      ║');
-    console.error('╚═══════════════════════════════════════════════════════════════╝\n');
-    console.error(`📂 Project: ${this.projectPath}\n`);
+    logger.error('\n╔═══════════════════════════════════════════════════════════════╗');
+    logger.error('║     OmnySys MCP Server v3.0.0                                 ║');
+    logger.error('║     Fractal Architecture: A→B→C Pipeline                      ║');
+    logger.error('╚═══════════════════════════════════════════════════════════════╝\n');
+    logger.error(`📂 Project: ${this.projectPath}\n`);
   }
 }
 

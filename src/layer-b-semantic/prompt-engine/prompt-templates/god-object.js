@@ -50,15 +50,20 @@ DEPENDENTS: 8
 </file_info>
 
 <code>
-export function log(message) { console.log(message); }
-export function error(message) { console.error(message); }
-export function warn(message) { console.warn(message); }
+export function log(message) { logger.info(message); }
+export function error(message) { logger.error(message); }
+export function warn(message) { logger.warn(message); }
 </code>
 
 Extract God Object analysis as JSON.
 <|im_end|>`;
 
 const example2Assistant = `<|im_start|>assistant
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:god:object');
+
+
 {"confidence":0.9,"riskLevel":"low","responsibilities":["logging"],"impactScore":0.2,"reasoning":"Module has focused responsibility on logging only, despite having 8 dependents"}
 <|im_end|>`;
 

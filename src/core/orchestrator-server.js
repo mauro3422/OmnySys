@@ -46,7 +46,7 @@ const state = {
  * Inicializa el orchestrator
  */
 async function initialize(rootPath) {
-  console.log('🚀 Initializing OmnySys Orchestrator...\n');
+  logger.info('🚀 Initializing OmnySys Orchestrator...\n');
   
   // Inicializar StateManager
   state.stateManager = new StateManager(
@@ -60,14 +60,14 @@ async function initialize(rootPath) {
       updateState();
     },
     onComplete: (job, result) => {
-      console.log(`✅ Completed: ${path.basename(job.filePath)}`);
+      logger.info(`✅ Completed: ${path.basename(job.filePath)}`);
       state.stats.totalAnalyzed++;
       state.currentJob = null;
       updateState();
       processNext(); // Procesar siguiente en cola
     },
     onError: (job, error) => {
-      console.error(`❌ Error analyzing ${path.basename(job.filePath)}:`, error.message);
+      logger.error(`❌ Error analyzing ${path.basename(job.filePath)}:`, error.message);
       state.currentJob = null;
       updateState();
       processNext();
@@ -76,7 +76,7 @@ async function initialize(rootPath) {
   
   await state.worker.initialize();
   
-  console.log('✅ Orchestrator ready\n');
+  logger.info('✅ Orchestrator ready\n');
   updateState();
 }
 
@@ -132,11 +132,11 @@ async function processNext() {
   
   const nextJob = state.queue.dequeue();
   if (!nextJob) {
-    console.log('📭 Queue empty, waiting for jobs...');
+    logger.info('📭 Queue empty, waiting for jobs...');
     return;
   }
   
-  console.log(`⚡ Processing: ${path.basename(nextJob.filePath)} [${nextJob.priority}]`);
+  logger.info(`⚡ Processing: ${path.basename(nextJob.filePath)} [${nextJob.priority}]`);
   state.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
   await updateState();
   
@@ -172,7 +172,7 @@ app.post('/command', async (req, res) => {
       const position = state.queue.enqueue(filePath, priority);
       state.stats.totalQueued++;
       
-      console.log(`📥 Queued: ${path.basename(filePath)} [${priority}] at position ${position}`);
+      logger.info(`📥 Queued: ${path.basename(filePath)} [${priority}] at position ${position}`);
       
       // Si es CRITICAL y hay un trabajo en curso de menor prioridad
       if (priority === 'critical' && state.currentJob) {
@@ -180,7 +180,7 @@ app.post('/command', async (req, res) => {
         const newPriority = getPriorityLevel(priority);
         
         if (newPriority > currentPriority) {
-          console.log(`⏸️  Pausing current job to prioritize ${path.basename(filePath)}`);
+          logger.info(`⏸️  Pausing current job to prioritize ${path.basename(filePath)}`);
           await state.worker.pause();
           state.queue.enqueue(state.currentJob.filePath, state.currentJob.priority);
           state.currentJob = null;
@@ -220,7 +220,7 @@ app.post('/command', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Error in /command:', error);
+    logger.error('Error in /command:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -267,7 +267,7 @@ app.get('/queue', async (req, res) => {
  * POST /restart - Reiniciar orchestrator
  */
 app.post('/restart', async (req, res) => {
-  console.log('🔄 Restarting orchestrator...');
+  logger.info('🔄 Restarting orchestrator...');
   
   try {
     await state.worker.stop();
@@ -278,11 +278,11 @@ app.post('/restart', async (req, res) => {
     await state.worker.initialize();
     await updateState();
     
-    console.log('✅ Orchestrator restarted');
+    logger.info('✅ Orchestrator restarted');
     res.json({ status: 'restarted' });
     
   } catch (error) {
-    console.error('Error restarting:', error);
+    logger.error('Error restarting:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -303,11 +303,16 @@ function calculateETA(position) {
 
 const PORT = process.env.ORCHESTRATOR_PORT || 9999;
 const ROOT_PATH = process.argv[2] || process.cwd();
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:orchestrator:server');
+
+
 
 app.listen(PORT, async () => {
-  console.log(`\n🔧 OmnySys Orchestrator v1.0.0`);
-  console.log(`📡 HTTP API: http://localhost:${PORT}`);
-  console.log(`📁 Project: ${ROOT_PATH}\n`);
+  logger.info(`\n🔧 OmnySys Orchestrator v1.0.0`);
+  logger.info(`📡 HTTP API: http://localhost:${PORT}`);
+  logger.info(`📁 Project: ${ROOT_PATH}\n`);
   
   await initialize(ROOT_PATH);
   
@@ -317,7 +322,7 @@ app.listen(PORT, async () => {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('\n👋 Shutting down orchestrator...');
+  logger.info('\n👋 Shutting down orchestrator...');
   state.isRunning = false;
   if (state.worker) {
     await state.worker.stop();
@@ -326,7 +331,7 @@ process.on('SIGTERM', async () => {
 });
 
 process.on('SIGINT', async () => {
-  console.log('\n👋 Shutting down orchestrator...');
+  logger.info('\n👋 Shutting down orchestrator...');
   state.isRunning = false;
   if (state.worker) {
     await state.worker.stop();

@@ -6,12 +6,17 @@
 import { getProjectMetadata } from '#layer-a/query/index.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:risk');
+
+
 
 export async function get_risk_assessment(args, context) {
   const { minSeverity = 'medium' } = args;
   const { projectPath } = context;
   
-  console.error(`[Tool] get_risk_assessment("${minSeverity}")`);
+  logger.error(`[Tool] get_risk_assessment("${minSeverity}")`);
 
   try {
     // Obtener metadata del proyecto
@@ -97,7 +102,7 @@ export async function get_risk_assessment(args, context) {
           : '✓ Risk levels acceptable'
     };
   } catch (error) {
-    console.error(`Error in get_risk_assessment: ${error.message}`);
+    logger.error(`Error in get_risk_assessment: ${error.message}`);
     return {
       summary: { totalFiles: 0, totalIssues: 0, criticalCount: 0, highCount: 0, mediumCount: 0, lowCount: 0 },
       topRiskFiles: [],

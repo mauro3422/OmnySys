@@ -21,6 +21,11 @@ import {
   extractValidFilePaths 
 } from './response-normalizer.js';
 import { needsLLMAnalysis } from './analysis-decider.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:core');
+
+
 
 /**
  * Analizador semántico basado en LLM
@@ -45,8 +50,8 @@ export class LLMAnalyzer {
     this.initialized = health.gpu || health.cpu;
 
     if (!this.initialized) {
-      console.warn('⚠️  No LLM servers available. Falling back to static analysis only.');
-      console.warn('💡 Start servers with: src/ai/scripts/brain_gpu.bat');
+      logger.warn('⚠️  No LLM servers available. Falling back to static analysis only.');
+      logger.warn('💡 Start servers with: src/ai/scripts/brain_gpu.bat');
     }
 
     // Inicializar caché unificado si está habilitado
@@ -104,22 +109,22 @@ export class LLMAnalyzer {
         // DEBUG: Contar tokens aproximados
         if (attempt === 1) {
           const approxTokens = Math.ceil(fullPrompt.length / 4);
-          console.log(`\n📊 Prompt Stats for ${filePath}:`);
-          console.log(`  - Characters: ${fullPrompt.length}`);
-          console.log(`  - Approx Tokens: ${approxTokens}`);
+          logger.info(`\n📊 Prompt Stats for ${filePath}:`);
+          logger.info(`  - Characters: ${fullPrompt.length}`);
+          logger.info(`  - Approx Tokens: ${approxTokens}`);
         }
 
         // Verificar caché
         if (this.cache && attempt === 1) {
           const cached = await this.cache.get(filePath, code, fullPrompt);
           if (cached) {
-            console.log(`  ✓ Cache hit for ${filePath}`);
+            logger.info(`  ✓ Cache hit for ${filePath}`);
             return cached;
           }
         }
 
         const dynamicTimeout = calculateDynamicTimeout(code);
-        console.log(`  🔄 Attempt ${attempt}/${maxRetries} (timeout: ${dynamicTimeout}ms)`);
+        logger.info(`  🔄 Attempt ${attempt}/${maxRetries} (timeout: ${dynamicTimeout}ms)`);
 
         const response = await Promise.race([
           this.client.analyze(userPrompt, { systemPrompt }),
@@ -135,7 +140,7 @@ export class LLMAnalyzer {
         );
         
         if (!normalized) {
-          console.warn(`  ⚠️  Attempt ${attempt}: Invalid LLM response format`);
+          logger.warn(`  ⚠️  Attempt ${attempt}: Invalid LLM response format`);
           lastError = new Error('Invalid response format');
           continue;
         }
@@ -148,14 +153,14 @@ export class LLMAnalyzer {
         if (analysisType === 'global-state') {
           validated = sanitizeGlobalStateResponse(normalized, code);
           if (!validated) {
-            console.warn(`  ⚠️  Attempt ${attempt}: Global-state response failed validation`);
+            logger.warn(`  ⚠️  Attempt ${attempt}: Global-state response failed validation`);
             lastError = new Error('Global-state validation failed');
             continue;
           }
         } else if (typesRequiringValidation.includes(analysisType)) {
           validated = validateLLMResponse(normalized, code, validFilePaths);
           if (!validated) {
-            console.warn(`  ⚠️  Attempt ${attempt}: LLM response failed validation`);
+            logger.warn(`  ⚠️  Attempt ${attempt}: LLM response failed validation`);
             lastError = new Error('Validation failed');
             continue;
           }
@@ -172,17 +177,17 @@ export class LLMAnalyzer {
 
       } catch (error) {
         lastError = error;
-        console.error(`  ❌ Attempt ${attempt} failed: ${error.message}`);
+        logger.error(`  ❌ Attempt ${attempt} failed: ${error.message}`);
         
         if (attempt < maxRetries) {
           const backoffMs = Math.pow(2, attempt) * 1000;
-          console.log(`  ⏳ Waiting ${backoffMs}ms before retry...`);
+          logger.info(`  ⏳ Waiting ${backoffMs}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, backoffMs));
         }
       }
     }
 
-    console.error(`❌ LLM analysis failed for ${filePath} after ${maxRetries} attempts:`, lastError.message);
+    logger.error(`❌ LLM analysis failed for ${filePath} after ${maxRetries} attempts:`, lastError.message);
     return null;
   }
 
@@ -228,11 +233,11 @@ export class LLMAnalyzer {
     }
 
     if (filesToAnalyze.length === 0) {
-      console.log('  ✓ All files found in cache');
+      logger.info('  ✓ All files found in cache');
       return results;
     }
 
-    console.log(`  📊 Cache hit: ${files.length - filesToAnalyze.length}/${files.length}, analyzing ${filesToAnalyze.length} files`);
+    logger.info(`  📊 Cache hit: ${files.length - filesToAnalyze.length}/${files.length}, analyzing ${filesToAnalyze.length} files`);
 
     const userPrompts = filesToAnalyze.map(f => f.userPrompt);
     const responses = await this.client.analyzeParallelWithSystemPrompts(

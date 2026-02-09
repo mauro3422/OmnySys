@@ -6,6 +6,11 @@ import { resolveImport, getResolutionConfig } from '../resolver.js';
 import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:single:file');
+
+
 
 /**
  * Análisis rápido de un solo archivo
@@ -22,24 +27,24 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     try {
       const content = await fs.readFile(systemMapPath, 'utf-8');
       existingMap = JSON.parse(content);
-      if (verbose) console.log('  âœ“ Loaded existing project context\n');
+      if (verbose) logger.info('  âœ“ Loaded existing project context\n');
     } catch {
-      if (verbose) console.log('  â„¹ï¸  No existing analysis found, starting fresh\n');
+      if (verbose) logger.info('  â„¹ï¸  No existing analysis found, starting fresh\n');
     }
 
     // Paso 1: Parsear solo el archivo objetivo
     const targetFilePath = path.join(absoluteRootPath, singleFile);
-    if (verbose) console.log(`ðŸ“ Parsing ${singleFile}...`);
+    if (verbose) logger.info(`ðŸ“ Parsing ${singleFile}...`);
 
     const parsedFile = await parseFileFromDisk(targetFilePath);
     if (!parsedFile) {
       throw new Error(`Could not parse file: ${singleFile}`);
     }
 
-    if (verbose) console.log('  âœ“ File parsed\n');
+    if (verbose) logger.info('  âœ“ File parsed\n');
 
     // Paso 2: Resolver imports del archivo (solo los necesarios)
-    if (verbose) console.log('ðŸ”— Resolving imports...');
+    if (verbose) logger.info('ðŸ”— Resolving imports...');
     const resolutionConfig = await getResolutionConfig(absoluteRootPath);
 
     const resolvedImports = [];
@@ -56,10 +61,10 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
         });
       }
     }
-    if (verbose) console.log(`  âœ“ Resolved ${resolvedImports.length} imports\n`);
+    if (verbose) logger.info(`  âœ“ Resolved ${resolvedImports.length} imports\n`);
 
     // Paso 3: Detectar conexiones semánticas
-    if (verbose) console.log('ðŸ” Detecting semantic connections...');
+    if (verbose) logger.info('ðŸ” Detecting semantic connections...');
     const fileSourceCode = { [targetFilePath]: parsedFile.source || '' };
 
     // Parsear imports para detección de conexiones
@@ -81,12 +86,12 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
 
     const staticConnections = detectAllSemanticConnections(fileSourceCode);
     const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
-    if (verbose) console.log(`  âœ“ Found ${staticConnections.all.length + advancedConnections.connections.length} connections\n`);
+    if (verbose) logger.info(`  âœ“ Found ${staticConnections.all.length + advancedConnections.connections.length} connections\n`);
 
     // Paso 4: Extraer metadatos
-    if (verbose) console.log('ðŸ“Š Extracting metadata...');
+    if (verbose) logger.info('ðŸ“Š Extracting metadata...');
     const metadata = extractAllMetadata(targetFilePath, parsedFile.source || '');
-    if (verbose) console.log(`  âœ“ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
+    if (verbose) logger.info(`  âœ“ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
 
     // Paso 5: Construir análisis del archivo
     const fileAnalysis = {
@@ -134,12 +139,12 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     await fs.writeFile(outputPath, JSON.stringify(fileAnalysis, null, 2), 'utf-8');
 
     if (verbose) {
-      console.log(`ðŸ’¾ Results saved to: ${path.relative(absoluteRootPath, outputPath)}`);
-      console.log(`\nðŸ“Š Summary:`);
-      console.log(`  - Imports: ${fileAnalysis.imports.length}`);
-      console.log(`  - Exports: ${fileAnalysis.exports.length}`);
-      console.log(`  - Semantic connections: ${fileAnalysis.semanticConnections.length}`);
-      console.log(`  - Functions: ${fileAnalysis.definitions.filter(d => d.type === 'function').length}\n`);
+      logger.info(`ðŸ’¾ Results saved to: ${path.relative(absoluteRootPath, outputPath)}`);
+      logger.info(`\nðŸ“Š Summary:`);
+      logger.info(`  - Imports: ${fileAnalysis.imports.length}`);
+      logger.info(`  - Exports: ${fileAnalysis.exports.length}`);
+      logger.info(`  - Semantic connections: ${fileAnalysis.semanticConnections.length}`);
+      logger.info(`  - Functions: ${fileAnalysis.definitions.filter(d => d.type === 'function').length}\n`);
     }
 
     // Si hay systemMap existente, actualizarlo
@@ -147,12 +152,12 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
       existingMap.files[singleFile] = fileAnalysis;
       existingMap.metadata.lastUpdated = new Date().toISOString();
       await fs.writeFile(systemMapPath, JSON.stringify(existingMap, null, 2), 'utf-8');
-      if (verbose) console.log('  âœ“ Updated .omnysysdata/system-map-enhanced.json\n');
+      if (verbose) logger.info('  âœ“ Updated .omnysysdata/system-map-enhanced.json\n');
     }
 
     return fileAnalysis;
   } catch (error) {
-    console.error(`\nâŒ Single-file analysis failed: ${error.message}`);
+    logger.error(`\nâŒ Single-file analysis failed: ${error.message}`);
     throw error;
   }
 }

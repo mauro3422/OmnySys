@@ -17,6 +17,11 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const OMNYSYSDATA_DIR = '.omnysysdata';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:omnysysdata:generator');
+
+
 
 /**
  * Crea la estructura omnysysdata/ en la raíz del proyecto
@@ -24,8 +29,8 @@ const OMNYSYSDATA_DIR = '.omnysysdata';
 export async function createOmnySysDataStructure(projectPath) {
   const omnysyspath = path.join(projectPath, OMNYSYSDATA_DIR);
 
-  console.log('📊 Creating OmnySysData structure...');
-  console.log(`   Location: ${omnysyspath}\n`);
+  logger.info('📊 Creating OmnySysData structure...');
+  logger.info(`   Location: ${omnysyspath}\n`);
 
   // Crear directorios
   const dirs = [
@@ -39,10 +44,10 @@ export async function createOmnySysDataStructure(projectPath) {
 
   for (const dir of dirs) {
     await fs.mkdir(dir, { recursive: true });
-    console.log(`   ✓ ${path.relative(projectPath, dir)}/`);
+    logger.info(`   ✓ ${path.relative(projectPath, dir)}/`);
   }
 
-  console.log('\n📝 Creating metadata files...\n');
+  logger.info('\n📝 Creating metadata files...\n');
 
   // 1. project-meta.json
   const projectMeta = {
@@ -58,7 +63,7 @@ export async function createOmnySysDataStructure(projectPath) {
     path.join(omnysyspath, 'project-meta.json'),
     JSON.stringify(projectMeta, null, 2)
   );
-  console.log('   ✓ project-meta.json');
+  logger.info('   ✓ project-meta.json');
 
   // 2. system-structure.json (placeholder)
   const systemStructure = {
@@ -76,7 +81,7 @@ export async function createOmnySysDataStructure(projectPath) {
     path.join(omnysyspath, 'system-structure.json'),
     JSON.stringify(systemStructure, null, 2)
   );
-  console.log('   ✓ system-structure.json');
+  logger.info('   ✓ system-structure.json');
 
   // 3. README.md
   const readme = `# OmnySysData - Project Analysis Hub
@@ -179,7 +184,7 @@ Edit omnysysdata.config.json to customize:
 `;
 
   await fs.writeFile(path.join(omnysyspath, 'README.md'), readme);
-  console.log('   ✓ README.md');
+  logger.info('   ✓ README.md');
 
   // 4. omnysysdata.config.json
   const config = {
@@ -215,7 +220,7 @@ Edit omnysysdata.config.json to customize:
     path.join(omnysyspath, 'omnysysdata.config.json'),
     JSON.stringify(config, null, 2)
   );
-  console.log('   ✓ omnysysdata.config.json');
+  logger.info('   ✓ omnysysdata.config.json');
 
   // 5. .gitignore for cache
   const gitignore = `# OmnySysData runtime cache
@@ -233,17 +238,17 @@ cache/
 `;
 
   await fs.writeFile(path.join(omnysyspath, '.gitignore'), gitignore);
-  console.log('   ✓ .gitignore');
+  logger.info('   ✓ .gitignore');
 
-  console.log('\n' + '='.repeat(50));
-  console.log('✅ OmnySysData structure created successfully!');
-  console.log('='.repeat(50));
-  console.log(`\n📂 Location: omnysysdata/`);
-  console.log('\n📋 Next steps:');
-  console.log('   1. Populate with analysis data');
-  console.log('   2. Start MCP Server');
-  console.log('   3. Connect Claude Code');
-  console.log('\n');
+  logger.info('\n' + '='.repeat(50));
+  logger.info('✅ OmnySysData structure created successfully!');
+  logger.info('='.repeat(50));
+  logger.info(`\n📂 Location: omnysysdata/`);
+  logger.info('\n📋 Next steps:');
+  logger.info('   1. Populate with analysis data');
+  logger.info('   2. Start MCP Server');
+  logger.info('   3. Connect Claude Code');
+  logger.info('\n');
 
   return omnysyspath;
 }
@@ -256,7 +261,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     await createOmnySysDataStructure(projectPath);
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    logger.error('❌ Error:', error.message);
     process.exit(1);
   }
 }

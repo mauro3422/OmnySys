@@ -14,6 +14,11 @@ import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { detectAllCSSInJSConnections } from '../extractors/css-in-js-extractor.js';
 import { detectAllTypeScriptConnections } from '../extractors/typescript-extractor.js';
 import { detectAllReduxContextConnections } from '../extractors/redux-context-extractor.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:enhance');
+
+
 
 function dedupeConnections(connections) {
   const seen = new Set();
@@ -59,7 +64,7 @@ export async function generateEnhancedSystemMap(
   verbose = true,
   skipLLM = false
 ) {
-  if (verbose) console.log('\nðŸ” Performing semantic analysis (static)...');
+  if (verbose) logger.info('\nðŸ” Performing semantic analysis (static)...');
 
   let enhancedFiles = {};
   const allSharedStateConnections = [];
@@ -68,7 +73,7 @@ export async function generateEnhancedSystemMap(
   const fileSourceCode = {};
 
   // Paso 1: Analizar shared state y event patterns para cada archivo
-  if (verbose) console.log('  ðŸ“Š Analyzing global state and event patterns...');
+  if (verbose) logger.info('  ðŸ“Š Analyzing global state and event patterns...');
 
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     const projectRelative = path.relative(absoluteRootPath, filePath).replace(/\\/g, '/');
@@ -100,17 +105,17 @@ export async function generateEnhancedSystemMap(
 
       allSideEffects[projectRelative] = sideEffects;
     } catch (error) {
-      console.warn(`  âš ï¸  Error analyzing ${projectRelative}:`, error.message);
+      logger.warn(`  âš ï¸  Error analyzing ${projectRelative}:`, error.message);
       enhancedFiles[projectRelative] = fileInfo;
     }
   }
 
-  if (verbose) console.log('  âœ“ Semantic analysis complete');
+  if (verbose) logger.info('  âœ“ Semantic analysis complete');
 
   // ============================================================
   // PASO EXTRA: Extraer metadatos adicionales de cada archivo
   // ============================================================
-  if (verbose) console.log('  ðŸ” Extracting additional metadata (JSDoc, async, errors, build flags)...');
+  if (verbose) logger.info('  ðŸ” Extracting additional metadata (JSDoc, async, errors, build flags)...');
 
   for (const [filePath, fileInfo] of Object.entries(enhancedFiles)) {
     try {
@@ -138,11 +143,11 @@ export async function generateEnhancedSystemMap(
       (sum, f) => sum + (f.metadata?.asyncPatterns?.all?.length || 0),
       0
     );
-    console.log(`  âœ“ Metadata extracted: ${totalJSDoc} JSDoc, ${totalAsync} async patterns`);
+    logger.info(`  âœ“ Metadata extracted: ${totalJSDoc} JSDoc, ${totalAsync} async patterns`);
   }
 
   // Paso 2: Generar conexiones semánticas globales
-  if (verbose) console.log('  ðŸ”— Generating semantic connections...');
+  if (verbose) logger.info('  ðŸ”— Generating semantic connections...');
 
   const sharedStateConnections = generateSharedStateConnections(
     Object.entries(enhancedFiles).reduce((acc, [file, analysis]) => {
@@ -164,7 +169,7 @@ export async function generateEnhancedSystemMap(
   // ============================================================
   // PASO EXTRA: Extracción estática de localStorage y eventos
   // ============================================================
-  if (verbose) console.log('  ðŸ” Running static extraction for localStorage/events...');
+  if (verbose) logger.info('  ðŸ” Running static extraction for localStorage/events...');
   // fileSourceCode ya fue declarado arriba
   for (const filePath of Object.keys(enhancedFiles)) {
     try {
@@ -180,17 +185,17 @@ export async function generateEnhancedSystemMap(
   // ============================================================
   // NUEVOS EXTRACTORES (CSS-in-JS, TypeScript, Redux/Context)
   // ============================================================
-  if (verbose) console.log('  ðŸ” Running CSS-in-JS, TypeScript, Redux/Context extractors...');
+  if (verbose) logger.info('  ðŸ” Running CSS-in-JS, TypeScript, Redux/Context extractors...');
 
   const cssInJSConnections = detectAllCSSInJSConnections(fileSourceCode);
   const tsConnections = detectAllTypeScriptConnections(fileSourceCode);
   const reduxConnections = detectAllReduxContextConnections(fileSourceCode);
 
   if (verbose) {
-    console.log(`  âœ“ Additional connections found:`);
-    console.log(`    - ${cssInJSConnections.connections.length} CSS-in-JS connections`);
-    console.log(`    - ${tsConnections.connections.length} TypeScript connections`);
-    console.log(`    - ${reduxConnections.connections.length} Redux/Context connections`);
+    logger.info(`  âœ“ Additional connections found:`);
+    logger.info(`    - ${cssInJSConnections.connections.length} CSS-in-JS connections`);
+    logger.info(`    - ${tsConnections.connections.length} TypeScript connections`);
+    logger.info(`    - ${reduxConnections.connections.length} Redux/Context connections`);
   }
 
   // Adjuntar metadata de CSS-in-JS y TypeScript por archivo (para arquetipos)
@@ -207,10 +212,10 @@ export async function generateEnhancedSystemMap(
   }
 
   if (verbose) {
-    console.log(`  âœ“ Static extraction found:`);
-    console.log(`    - ${staticConnections.localStorageConnections.length} localStorage connections`);
-    console.log(`    - ${staticConnections.eventConnections.length} event connections`);
-    console.log(`    - ${advancedConnections.connections.length} advanced connections (Workers, WebSocket, etc)`);
+    logger.info(`  âœ“ Static extraction found:`);
+    logger.info(`    - ${staticConnections.localStorageConnections.length} localStorage connections`);
+    logger.info(`    - ${staticConnections.eventConnections.length} event connections`);
+    logger.info(`    - ${advancedConnections.connections.length} advanced connections (Workers, WebSocket, etc)`);
   }
 
   const allConnections = dedupeConnections([
@@ -226,8 +231,8 @@ export async function generateEnhancedSystemMap(
   ]);
 
   if (verbose) {
-    console.log(`  âœ“ ${sharedStateConnections.length} shared state connections`);
-    console.log(`  âœ“ ${eventConnections.length} event listener connections`);
+    logger.info(`  âœ“ ${sharedStateConnections.length} shared state connections`);
+    logger.info(`  âœ“ ${eventConnections.length} event listener connections`);
   }
 
   // Paso 3: Agrupar conexiones por archivo
@@ -240,7 +245,7 @@ export async function generateEnhancedSystemMap(
   }
 
   // Paso 4: Calcular risk scores
-  if (verbose) console.log('  ðŸ“ˆ Calculating risk scores...');
+  if (verbose) logger.info('  ðŸ“ˆ Calculating risk scores...');
 
   // Preparar métricas del grafo para cada archivo
   const graphMetrics = {};
@@ -264,20 +269,20 @@ export async function generateEnhancedSystemMap(
     graphMetrics
   );
 
-  if (verbose) console.log('  âœ“ Risk scores calculated');
+  if (verbose) logger.info('  âœ“ Risk scores calculated');
 
   // Paso 4.6: Detectar conexiones rotas (Workers, URLs dinámicas, etc)
-  if (verbose) console.log('  ðŸ” Detecting broken connections...');
+  if (verbose) logger.info('  ðŸ” Detecting broken connections...');
   const brokenConnectionsAnalysis = analyzeBrokenConnections(systemMap, advancedConnections);
 
   if (verbose) {
-    console.log(`  âœ“ Broken connections analysis:`);
-    console.log(`    - ${brokenConnectionsAnalysis.brokenWorkers.total} broken workers`);
-    console.log(`    - ${brokenConnectionsAnalysis.deadFunctions.total} dead functions`);
-    console.log(`    - ${brokenConnectionsAnalysis.duplicateFunctions.total} duplicate functions`);
-    console.log(`    - ${brokenConnectionsAnalysis.suspiciousUrls.total} suspicious URLs`);
+    logger.info(`  âœ“ Broken connections analysis:`);
+    logger.info(`    - ${brokenConnectionsAnalysis.brokenWorkers.total} broken workers`);
+    logger.info(`    - ${brokenConnectionsAnalysis.deadFunctions.total} dead functions`);
+    logger.info(`    - ${brokenConnectionsAnalysis.duplicateFunctions.total} duplicate functions`);
+    logger.info(`    - ${brokenConnectionsAnalysis.suspiciousUrls.total} suspicious URLs`);
     if (brokenConnectionsAnalysis.summary.critical > 0) {
-      console.log(`    âš ï¸  ${brokenConnectionsAnalysis.summary.critical} CRITICAL issues found!`);
+      logger.info(`    âš ï¸  ${brokenConnectionsAnalysis.summary.critical} CRITICAL issues found!`);
     }
   }
 
@@ -288,12 +293,12 @@ export async function generateEnhancedSystemMap(
   let semanticIssues = null;
 
   if (verbose) {
-    console.log('  â„¹ï¸  LLM enrichment disabled in Layer A (moved to Orchestrator)');
-    console.log('  ðŸ“Š Static analysis complete - metadata ready for Orchestrator');
+    logger.info('  â„¹ï¸  LLM enrichment disabled in Layer A (moved to Orchestrator)');
+    logger.info('  ðŸ“Š Static analysis complete - metadata ready for Orchestrator');
   }
 
   // Paso 5: Construir enhanced system map
-  if (verbose) console.log('  ðŸ—ï¸  Building enhanced system map...');
+  if (verbose) logger.info('  ðŸ—ï¸  Building enhanced system map...');
 
   const enhancedSystemMap = {
     metadata: {
@@ -368,7 +373,7 @@ export async function generateEnhancedSystemMap(
     };
   }
 
-  if (verbose) console.log('  âœ“ Enhanced system map built');
+  if (verbose) logger.info('  âœ“ Enhanced system map built');
 
   return enhancedSystemMap;
 }

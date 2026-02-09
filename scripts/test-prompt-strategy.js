@@ -30,6 +30,11 @@ const STRATEGIES = {
 };
 
 const TEST_CASES = {
+import { createLogger } from '../src/utils/logger.js';
+
+const logger = createLogger('OmnySys:test:prompt:strategy');
+
+
   'localstorage': {
     name: 'localStorage Bridge',
     description: 'AuthService escribe auth_token, ApiClient lo lee',
@@ -62,7 +67,7 @@ export function logout() {
     if (!token) {
         throw new Error("No hay token de autenticación disponible");
     }
-    console.log(\`Haciendo petición a \${endpoint} con token\`);
+    logger.info(\`Haciendo petición a \${endpoint} con token\`);
     return { data: "success" };
 }`,
         metadata: {
@@ -446,19 +451,19 @@ Remember: Only extract what is literally in this code.<|im_end|>
 }
 
 async function testStrategy(strategyName, testCaseName) {
-  console.log('='.repeat(80));
-  console.log(`Testing Strategy: ${strategyName}`);
-  console.log(`Test Case: ${testCaseName}`);
-  console.log('='.repeat(80));
+  logger.info('='.repeat(80));
+  logger.info(`Testing Strategy: ${strategyName}`);
+  logger.info(`Test Case: ${testCaseName}`);
+  logger.info('='.repeat(80));
   
   const testCase = TEST_CASES[testCaseName];
   if (!testCase) {
-    console.error(`Unknown test case: ${testCaseName}`);
-    console.log('Available test cases:', Object.keys(TEST_CASES).join(', '));
+    logger.error(`Unknown test case: ${testCaseName}`);
+    logger.info('Available test cases:', Object.keys(TEST_CASES).join(', '));
     return;
   }
   
-  console.log(`Description: ${testCase.description}`);
+  logger.info(`Description: ${testCase.description}`);
   console.log();
   
   const config = {
@@ -476,20 +481,20 @@ async function testStrategy(strategyName, testCaseName) {
   const health = await client.healthCheck();
   
   if (!health.gpu) {
-    console.error('❌ GPU server not available');
+    logger.error('❌ GPU server not available');
     return;
   }
   
   const results = [];
   
   for (const file of testCase.files) {
-    console.log(`\n📄 File: ${file.filePath}`);
-    console.log('-'.repeat(80));
+    logger.info(`\n📄 File: ${file.filePath}`);
+    logger.info('-'.repeat(80));
     
     const prompt = generatePrompt(strategyName, file.metadata, file.code);
     
-    console.log('System Prompt Length:', prompt.systemPrompt.length, 'chars');
-    console.log('User Prompt Length:', prompt.userPrompt.length, 'chars');
+    logger.info('System Prompt Length:', prompt.systemPrompt.length, 'chars');
+    logger.info('User Prompt Length:', prompt.userPrompt.length, 'chars');
     
     try {
       const startTime = Date.now();
@@ -499,9 +504,9 @@ async function testStrategy(strategyName, testCaseName) {
       });
       const duration = Date.now() - startTime;
       
-      console.log(`\n⏱️  Response time: ${duration}ms`);
-      console.log('\n🤖 LLM Response:');
-      console.log(JSON.stringify(response, null, 2));
+      logger.info(`\n⏱️  Response time: ${duration}ms`);
+      logger.info('\n🤖 LLM Response:');
+      logger.info(JSON.stringify(response, null, 2));
       
       // Evaluate response quality
       const evaluation = evaluateResponse(response, file);
@@ -511,31 +516,31 @@ async function testStrategy(strategyName, testCaseName) {
         response
       });
       
-      console.log('\n📊 Evaluation:');
-      console.log(`  ✅ Correct localStorage keys: ${evaluation.correctLocalStorageKeys ? 'YES' : 'NO'}`);
-      console.log(`  ✅ Correct event names: ${evaluation.correctEventNames ? 'YES' : 'NO'}`);
-      console.log(`  ✅ Correct shared state: ${evaluation.correctSharedState ? 'YES' : 'NO'}`);
-      console.log(`  ✅ No hallucinations: ${evaluation.noHallucinations ? 'YES' : 'NO'}`);
-      console.log(`  ✅ Accurate reasoning: ${evaluation.accurateReasoning ? 'YES' : 'NO'}`);
-      console.log(`  Overall Score: ${evaluation.score}/5`);
+      logger.info('\n📊 Evaluation:');
+      logger.info(`  ✅ Correct localStorage keys: ${evaluation.correctLocalStorageKeys ? 'YES' : 'NO'}`);
+      logger.info(`  ✅ Correct event names: ${evaluation.correctEventNames ? 'YES' : 'NO'}`);
+      logger.info(`  ✅ Correct shared state: ${evaluation.correctSharedState ? 'YES' : 'NO'}`);
+      logger.info(`  ✅ No hallucinations: ${evaluation.noHallucinations ? 'YES' : 'NO'}`);
+      logger.info(`  ✅ Accurate reasoning: ${evaluation.accurateReasoning ? 'YES' : 'NO'}`);
+      logger.info(`  Overall Score: ${evaluation.score}/5`);
       
     } catch (error) {
-      console.error(`❌ Error: ${error.message}`);
+      logger.error(`❌ Error: ${error.message}`);
       results.push({
         file: file.filePath,
         error: error.message
       });
     }
     
-    console.log('\n' + '-'.repeat(80));
+    logger.info('\n' + '-'.repeat(80));
   }
   
   // Summary
-  console.log('\n📈 SUMMARY');
-  console.log('='.repeat(80));
+  logger.info('\n📈 SUMMARY');
+  logger.info('='.repeat(80));
   const totalScore = results.reduce((sum, r) => sum + (r.evaluation?.score || 0), 0);
   const maxScore = results.length * 5;
-  console.log(`Total Score: ${totalScore}/${maxScore} (${((totalScore/maxScore)*100).toFixed(1)}%)`);
+  logger.info(`Total Score: ${totalScore}/${maxScore} (${((totalScore/maxScore)*100).toFixed(1)}%)`);
   
   return results;
 }
@@ -646,42 +651,42 @@ async function main() {
   const args = process.argv.slice(2);
   
   if (args.length < 2) {
-    console.log('Usage: node test-prompt-strategy.js <strategy> <test-case>');
-    console.log('');
-    console.log('Strategies:');
-    console.log('  few-shot     - Current template with examples');
-    console.log('  zero-shot    - Instructions only, no examples');
-    console.log('  schema-only  - Minimal schema, no instructions');
-    console.log('  detailed     - Very detailed instructions');
-    console.log('');
-    console.log('Test cases:');
+    logger.info('Usage: node test-prompt-strategy.js <strategy> <test-case>');
+    logger.info('');
+    logger.info('Strategies:');
+    logger.info('  few-shot     - Current template with examples');
+    logger.info('  zero-shot    - Instructions only, no examples');
+    logger.info('  schema-only  - Minimal schema, no instructions');
+    logger.info('  detailed     - Very detailed instructions');
+    logger.info('');
+    logger.info('Test cases:');
     Object.entries(TEST_CASES).forEach(([key, value]) => {
-      console.log(`  ${key.padEnd(12)} - ${value.description}`);
+      logger.info(`  ${key.padEnd(12)} - ${value.description}`);
     });
-    console.log('');
-    console.log('Example:');
-    console.log('  node test-prompt-strategy.js zero-shot localstorage');
+    logger.info('');
+    logger.info('Example:');
+    logger.info('  node test-prompt-strategy.js zero-shot localstorage');
     process.exit(1);
   }
   
   const [strategy, testCase] = args;
   
   if (!STRATEGIES[strategy]) {
-    console.error(`Unknown strategy: ${strategy}`);
-    console.log('Available strategies:', Object.keys(STRATEGIES).join(', '));
+    logger.error(`Unknown strategy: ${strategy}`);
+    logger.info('Available strategies:', Object.keys(STRATEGIES).join(', '));
     process.exit(1);
   }
   
   if (!TEST_CASES[testCase]) {
-    console.error(`Unknown test case: ${testCase}`);
-    console.log('Available test cases:', Object.keys(TEST_CASES).join(', '));
+    logger.error(`Unknown test case: ${testCase}`);
+    logger.info('Available test cases:', Object.keys(TEST_CASES).join(', '));
     process.exit(1);
   }
   
   try {
     await testStrategy(strategy, testCase);
   } catch (error) {
-    console.error('Fatal error:', error);
+    logger.error('Fatal error:', error);
     process.exit(1);
   }
 }

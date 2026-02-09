@@ -154,7 +154,7 @@ export async function scanProject(rootPath, options = {}) {
       return files.map(f => f.replace(/\\/g, '/')).sort();
     }
   } catch (error) {
-    console.error(`Error scanning project at ${absoluteRootPath}:`, error);
+    logger.error(`Error scanning project at ${absoluteRootPath}:`, error);
     return [];
   }
 }
@@ -205,7 +205,7 @@ export async function detectProjectInfo(rootPath) {
     }
 
   } catch (error) {
-    console.error('Error detecting project info:', error);
+    logger.error('Error detecting project info:', error);
   }
 
   return info;
@@ -220,19 +220,24 @@ export async function detectProjectInfo(rootPath) {
 
 // Ejecutar como CLI si se invoca directamente
 const isMainModule = process.argv[1]?.includes('scanner.js') || false;
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:scanner');
+
+
 if (isMainModule) {
   const projectPath = process.argv[2] || process.cwd();
 
-  console.log(`📁 Scanning project: ${projectPath}\n`);
+  logger.info(`📁 Scanning project: ${projectPath}\n`);
 
   const projectInfo = await detectProjectInfo(projectPath);
-  console.log('📋 Project Info:');
-  console.log(`  - Has package.json: ${projectInfo.hasPackageJson}`);
-  console.log(`  - Has tsconfig.json: ${projectInfo.hasTsConfig}`);
-  console.log(`  - Uses TypeScript: ${projectInfo.useTypeScript}`);
-  console.log('');
+  logger.info('📋 Project Info:');
+  logger.info(`  - Has package.json: ${projectInfo.hasPackageJson}`);
+  logger.info(`  - Has tsconfig.json: ${projectInfo.hasTsConfig}`);
+  logger.info(`  - Uses TypeScript: ${projectInfo.useTypeScript}`);
+  logger.info('');
 
   const files = await scanProject(projectPath);
-  console.log(`✅ Found ${files.length} files to analyze:\n`);
-  files.forEach(file => console.log(`  - ${file}`));
+  logger.info(`✅ Found ${files.length} files to analyze:\n`);
+  files.forEach(file => logger.info(`  - ${file}`));
 }

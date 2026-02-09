@@ -5,12 +5,17 @@
  */
 
 import { analyzeFunctionSignature } from './lib/ast-analyzer.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:analyze:signature:change');
+
+
 
 export async function analyze_signature_change(args, context) {
   const { filePath, symbolName, newSignature } = args;
   const { projectPath, server } = context;
   
-  console.error(`[Tool] analyze_signature_change("${filePath}", "${symbolName}")`);
+  logger.error(`[Tool] analyze_signature_change("${filePath}", "${symbolName}")`);
   
   if (!filePath || !symbolName) {
     return {
@@ -120,7 +125,7 @@ export async function analyze_signature_change(args, context) {
     };
     
   } catch (error) {
-    console.error(`Error in analyze_signature_change: ${error.message}`);
+    logger.error(`Error in analyze_signature_change: ${error.message}`);
     return {
       error: error.message,
       filePath,

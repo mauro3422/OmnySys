@@ -18,6 +18,11 @@ import * as fileWatcherInit from './file-watcher-init.js';
 import * as batchProcessorInit from './batch-processor-init.js';
 import * as websocketInit from './websocket-init.js';
 import * as orchestratorInit from './orchestrator-init.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 // Re-exportar funciones individuales para compatibilidad
 export { calculateChangePriority } from './batch-processor-init.js';
@@ -27,10 +32,10 @@ export { calculateChangePriority } from './batch-processor-init.js';
  * @returns {Promise<boolean>}
  */
 export async function initialize() {
-  console.log('\n╔═══════════════════════════════════════════════════════════════╗');
-  console.log('║     OmnySys Unified Server v2.0.0                         ║');
-  console.log('╚═══════════════════════════════════════════════════════════════╝\n');
-  console.log(`📁 Project: ${this.projectPath}\n`);
+  logger.info('\n╔═══════════════════════════════════════════════════════════════╗');
+  logger.info('║     OmnySys Unified Server v2.0.0                         ║');
+  logger.info('╚═══════════════════════════════════════════════════════════════╝\n');
+  logger.info(`📁 Project: ${this.projectPath}\n`);
 
   try {
     // Step 1: Initialize Cache
@@ -41,8 +46,8 @@ export async function initialize() {
     const hasAnalysis = await cacheManager.hasExistingAnalysis(this.OmnySysDataPath);
     
     if (!hasAnalysis) {
-      console.log('  ⚠️  No analysis data found');
-      console.log('  🔄 Queuing initial analysis in background...\n');
+      logger.info('  ⚠️  No analysis data found');
+      logger.info('  🔄 Queuing initial analysis in background...\n');
       
       analysisManager.queueInitialAnalysis(
         this.projectPath,
@@ -50,7 +55,7 @@ export async function initialize() {
       );
       
       cacheManager.initializeEmptyCache(this.cache);
-      console.log('  ⏳ Server ready, analysis running in background\n');
+      logger.info('  ⏳ Server ready, analysis running in background\n');
     } else {
       this.metadata = await cacheManager.loadExistingData({
         cache: this.cache,
@@ -115,8 +120,8 @@ export async function initialize() {
 
     return true;
   } catch (error) {
-    console.error('\n❌ Initialization failed:', error.message);
-    console.error(error.stack);
+    logger.error('\n❌ Initialization failed:', error.message);
+    logger.error(error.stack);
     throw error;
   }
 }

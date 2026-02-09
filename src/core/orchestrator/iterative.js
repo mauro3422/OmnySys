@@ -1,16 +1,21 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:iterative');
+
+
 ﻿/**
  * Start iterative analysis when main queue is empty
  * Files with high-confidence suggestions get re-analyzed
  */
 export async function _startIterativeAnalysis() {
   if (this.iteration >= this.maxIterations) {
-    console.log(`\nâœ… Iterative analysis complete after ${this.iteration} iterations`);
+    logger.info(`\nâœ… Iterative analysis complete after ${this.iteration} iterations`);
     await this._finalizeAnalysis();
     return;
   }
 
   this.iteration++;
-  console.log(`\nðŸ”„ Starting iteration ${this.iteration}/${this.maxIterations}...`);
+  logger.info(`\nðŸ”„ Starting iteration ${this.iteration}/${this.maxIterations}...`);
 
   try {
     const { getFileAnalysis } = await import('../../layer-a-static/query/index.js');
@@ -39,12 +44,12 @@ export async function _startIterativeAnalysis() {
     }
 
     if (filesNeedingRefinement.length === 0) {
-      console.log('  âœ“ No files need refinement - consolidation complete');
+      logger.info('  âœ“ No files need refinement - consolidation complete');
       await this._finalizeAnalysis();
       return;
     }
 
-    console.log(`  ðŸ“Š ${filesNeedingRefinement.length} files need refinement`);
+    logger.info(`  ðŸ“Š ${filesNeedingRefinement.length} files need refinement`);
 
     // Add to iterative queue and process
     this.isIterating = true;
@@ -56,7 +61,7 @@ export async function _startIterativeAnalysis() {
 
     this._processNext();
   } catch (error) {
-    console.error('  âŒ Error in iterative analysis:', error.message);
+    logger.error('  âŒ Error in iterative analysis:', error.message);
     this.isIterating = false;
   }
 }

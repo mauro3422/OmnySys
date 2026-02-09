@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:response:normalizer');
+
+
 /**
  * @fileoverview response-normalizer.js
  * 
@@ -14,16 +19,16 @@
  * @returns {object|null} - Respuesta normalizada o null
  */
 export function normalizeResponse(response, filePath, confidenceThreshold = 0.7) {
-  console.log(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
+  logger.info(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
 
   if (!response || response.error) {
-    console.warn(`⚠️  Invalid LLM response for ${filePath}`);
+    logger.warn(`⚠️  Invalid LLM response for ${filePath}`);
     return null;
   }
 
   // Si la respuesta no es JSON estructurado, rechazar
   if (response.rawResponse) {
-    console.warn(`⚠️  LLM returned raw text for ${filePath}, expected JSON`);
+    logger.warn(`⚠️  LLM returned raw text for ${filePath}, expected JSON`);
     return null;
   }
 
@@ -46,7 +51,7 @@ export function normalizeResponse(response, filePath, confidenceThreshold = 0.7)
     connectionType: response.connectionType || 'none'
   };
 
-  console.log(`🔍 DEBUG normalized: ${filePath}`, JSON.stringify(normalized).substring(0, 200));
+  logger.info(`🔍 DEBUG normalized: ${filePath}`, JSON.stringify(normalized).substring(0, 200));
 
   // Convertir formatos de shared state
   if (response.sharedState || response.events) {
@@ -65,11 +70,11 @@ export function normalizeResponse(response, filePath, confidenceThreshold = 0.7)
 
   // Filtrar por umbral de confianza
   if (normalized.confidence < confidenceThreshold) {
-    console.warn(`⚠️  LLM confidence too low (${normalized.confidence}) for ${filePath}`);
+    logger.warn(`⚠️  LLM confidence too low (${normalized.confidence}) for ${filePath}`);
     return null;
   }
 
-  console.log(`✅ Validated: ${filePath}, confidence=${normalized.confidence}`);
+  logger.info(`✅ Validated: ${filePath}, confidence=${normalized.confidence}`);
   return normalized;
 }
 

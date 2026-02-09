@@ -5,12 +5,17 @@
  */
 
 import { analyzeValueFlow } from './lib/ast-analyzer.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:explain:value:flow');
+
+
 
 export async function explain_value_flow(args, context) {
   const { filePath, symbolName, maxDepth = 2 } = args;
   const { projectPath, server } = context;
   
-  console.error(`[Tool] explain_value_flow("${filePath}", "${symbolName}")`);
+  logger.error(`[Tool] explain_value_flow("${filePath}", "${symbolName}")`);
   
   if (!filePath || !symbolName) {
     return {
@@ -106,7 +111,7 @@ export async function explain_value_flow(args, context) {
     };
     
   } catch (error) {
-    console.error(`Error in explain_value_flow: ${error.message}`);
+    logger.error(`Error in explain_value_flow: ${error.message}`);
     return {
       error: error.message,
       filePath,

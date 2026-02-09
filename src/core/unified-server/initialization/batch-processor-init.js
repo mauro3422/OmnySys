@@ -8,6 +8,11 @@
 
 import path from 'path';
 import { BatchProcessor } from '../../batch-processor/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:batch:processor:init');
+
+
 
 /**
  * Calcula prioridad basada en el tipo de cambio
@@ -32,9 +37,9 @@ export function calculateChangePriority(change) {
 export async function initializeBatchProcessor(context) {
   const { queue, wsManager, processNextFn, isRunningRef, currentJobRef } = context;
   
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 5: Batch Processor Initialization');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('STEP 5: Batch Processor Initialization');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const batchProcessor = new BatchProcessor({
     maxBatchSize: 20,
@@ -44,7 +49,7 @@ export async function initializeBatchProcessor(context) {
       const priority = calculateChangePriority(change);
       const position = queue.enqueue(change.filePath, priority);
       
-      console.log(`📥 BatchProcessor → Queue: ${path.basename(change.filePath)} [${priority}] at position ${position}`);
+      logger.info(`📥 BatchProcessor → Queue: ${path.basename(change.filePath)} [${priority}] at position ${position}`);
       
       // Iniciar procesamiento si estamos idle
       if (!currentJobRef.current && isRunningRef.current) {
@@ -65,7 +70,7 @@ export async function initializeBatchProcessor(context) {
 
   // Escuchar eventos del batch processor
   batchProcessor.on('batch:completed', (batch) => {
-    console.log(`✅ Batch ${batch.id} completed: ${batch.changes.size} changes processed`);
+    logger.info(`✅ Batch ${batch.id} completed: ${batch.changes.size} changes processed`);
     
     wsManager?.broadcast({
       type: 'batch:completed',
@@ -76,7 +81,7 @@ export async function initializeBatchProcessor(context) {
   });
 
   batchProcessor.on('batch:failed', (batch, error) => {
-    console.error(`❌ Batch ${batch.id} failed:`, error.message);
+    logger.error(`❌ Batch ${batch.id} failed:`, error.message);
     
     wsManager?.broadcast({
       type: 'batch:failed',
@@ -87,7 +92,7 @@ export async function initializeBatchProcessor(context) {
   });
 
   batchProcessor.start();
-  console.log('  ✓ Batch Processor ready (connected to AnalysisQueue)\n');
+  logger.info('  ✓ Batch Processor ready (connected to AnalysisQueue)\n');
   
   return batchProcessor;
 }

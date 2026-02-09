@@ -1,3 +1,8 @@
+import { createLogger } from './logger.js';
+
+const logger = createLogger('OmnySys:response:cleaner');
+
+
 /**
  * Utilidad para limpiar respuestas del LLM
  * Elimina markdown, comentarios y otros artefactos
@@ -101,15 +106,15 @@ export function parseLLMJSON(response) {
     const cleaned = cleanLLMResponse(response);
     return JSON.parse(cleaned);
   } catch (error) {
-    console.error('Failed to parse LLM response as JSON:', error.message);
-    console.error('Cleaned response preview:', cleanLLMResponse(response).substring(0, 200));
+    logger.error('Failed to parse LLM response as JSON:', error.message);
+    logger.error('Cleaned response preview:', cleanLLMResponse(response).substring(0, 200));
     return null;
   }
 }
 
 // Tests
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log('🧪 Testing response cleaner\n');
+  logger.info('🧪 Testing response cleaner\n');
 
   const testCases = [
     {
@@ -146,15 +151,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const result = cleanLLMResponse(test.input);
     const success = result === test.expected;
     
-    console.log(`${success ? '✅' : '❌'} ${test.name}`);
+    logger.info(`${success ? '✅' : '❌'} ${test.name}`);
     if (!success) {
-      console.log(`   Expected: ${test.expected}`);
-      console.log(`   Got: ${result}`);
+      logger.info(`   Expected: ${test.expected}`);
+      logger.info(`   Got: ${result}`);
       failed++;
     } else {
       passed++;
     }
   }
 
-  console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
+  logger.info(`\n📊 Results: ${passed} passed, ${failed} failed`);
 }

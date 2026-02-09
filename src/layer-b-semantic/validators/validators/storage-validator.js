@@ -7,6 +7,11 @@
  */
 
 import { isLocalStorageMethod, isGenericPlaceholder } from '../utils/pattern-checkers.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:storage:validator');
+
+
 
 /**
  * Valida que las localStorage keys existan realmente en el código
@@ -21,13 +26,13 @@ export function validateLocalStorageKeys(llmKeys, actualKeys) {
   return llmKeys.filter(key => {
     // Rechazar métodos
     if (isLocalStorageMethod(key)) {
-      console.warn(`⚠️  LLM alucinó método como key: ${key}`);
+      logger.warn(`⚠️  LLM alucinó método como key: ${key}`);
       return false;
     }
 
     // Rechazar strings genéricos
     if (isGenericPlaceholder(key)) {
-      console.warn(`⚠️  LLM devolvió placeholder: ${key}`);
+      logger.warn(`⚠️  LLM devolvió placeholder: ${key}`);
       return false;
     }
 

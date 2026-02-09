@@ -35,6 +35,11 @@ const TUNNEL_VISION_LOG = path.join(
  * Ruta del resumen de estadísticas
  */
 const TUNNEL_VISION_STATS = path.join(
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:tunnel:vision:logger');
+
+
   PROJECT_ROOT,
   '.omnysysdata',
   'tunnel-vision-stats.json'
@@ -70,7 +75,7 @@ export async function logTunnelVisionEvent(alert, context = {}) {
 
     return event;
   } catch (error) {
-    console.error('[TunnelVisionLogger] Error logging event:', error.message);
+    logger.error('[TunnelVisionLogger] Error logging event:', error.message);
     return null;
   }
 }
@@ -105,7 +110,7 @@ async function updateStats(event) {
     // Guardar
     await fs.writeFile(TUNNEL_VISION_STATS, JSON.stringify(stats, null, 2), 'utf-8');
   } catch (error) {
-    console.error('[TunnelVisionLogger] Error updating stats:', error.message);
+    logger.error('[TunnelVisionLogger] Error updating stats:', error.message);
   }
 }
 

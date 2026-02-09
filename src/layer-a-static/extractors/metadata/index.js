@@ -89,6 +89,11 @@ import { extractTemporalPatterns } from './temporal-patterns.js';
 import { extractDependencyDepth } from './dependency-depth.js';
 import { extractPerformanceHints } from './performance-hints.js';
 import { extractHistoricalMetadata } from './historical-metadata.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 /**
  * Extrae TODOS los metadatos de un archivo
@@ -102,8 +107,8 @@ import { extractHistoricalMetadata } from './historical-metadata.js';
  * 
  * @example
  * const metadata = extractAllMetadata('src/utils.js', sourceCode);
- * console.log(metadata.sideEffects.hasNetworkCalls); // true/false
- * console.log(metadata.complexity.cyclomatic); // 5
+ * logger.info(metadata.sideEffects.hasNetworkCalls); // true/false
+ * logger.info(metadata.complexity.cyclomatic); // 5
  */
 export function extractAllMetadata(filePath, code) {
   // Ejecutar todos los extractores

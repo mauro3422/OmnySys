@@ -8,6 +8,11 @@
 
 import { InitializationStep } from './base-step.js';
 import { Orchestrator } from '#core/orchestrator.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:orchestrator:init:step');
+
+
 
 /**
  * Step 3: Orchestrator Initialization
@@ -18,9 +23,9 @@ export class OrchestratorInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 3: Initialize Orchestrator');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('STEP 3: Initialize Orchestrator');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     server.orchestrator = new Orchestrator(server.projectPath, {
       enableFileWatcher: true,
@@ -29,7 +34,7 @@ export class OrchestratorInitStep extends InitializationStep {
     });
 
     await server.orchestrator.initialize();
-    console.error('  ✅ Orchestrator ready');
+    logger.error('  ✅ Orchestrator ready');
 
     return true;
   }
@@ -38,7 +43,7 @@ export class OrchestratorInitStep extends InitializationStep {
     if (server.orchestrator) {
       await server.orchestrator.stop();
       server.orchestrator = null;
-      console.error('  ✅ Orchestrator stopped');
+      logger.error('  ✅ Orchestrator stopped');
     }
   }
 }

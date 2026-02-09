@@ -53,15 +53,15 @@ export async function indexProject(rootPath, options = {}) {
 
   // Modo single-file: análisis rápido
   if (singleFile) {
-    console.log(`\nðŸš€ Starting Single-File Analysis\n`);
-    console.log(`ðŸ“ Project root: ${absoluteRootPath}`);
-    console.log(`ðŸ“„ Target file: ${singleFile}\n`);
+    logger.info(`\nðŸš€ Starting Single-File Analysis\n`);
+    logger.info(`ðŸ“ Project root: ${absoluteRootPath}`);
+    logger.info(`ðŸ“„ Target file: ${singleFile}\n`);
 
     return await analyzeSingleFile(absoluteRootPath, singleFile, { verbose, incremental });
   }
 
-  console.log(`\nðŸš€ Starting Layer A: Static Analysis\n`);
-  console.log(`ðŸ“ Project root: ${absoluteRootPath}\n`);
+  logger.info(`\nðŸš€ Starting Layer A: Static Analysis\n`);
+  logger.info(`ðŸ“ Project root: ${absoluteRootPath}\n`);
 
   try {
     // NUEVO: Inicializar Unified Cache Manager
@@ -84,10 +84,10 @@ export async function indexProject(rootPath, options = {}) {
     const { resolvedImports } = await resolveImports(parsedFiles, absoluteRootPath, verbose);
 
     // Paso 5: Normalizar paths a proyecto-relativo
-    if (verbose) console.log('ðŸ”„ Normalizing paths...');
+    if (verbose) logger.info('ðŸ”„ Normalizing paths...');
     const normalizedParsedFiles = normalizeParsedFiles(parsedFiles, absoluteRootPath);
     const normalizedResolvedImports = normalizeResolvedImports(resolvedImports, absoluteRootPath);
-    if (verbose) console.log('  âœ“ Paths normalized\n');
+    if (verbose) logger.info('  âœ“ Paths normalized\n');
 
     // Paso 6: Construir grafo
     const systemMap = buildSystemGraph(normalizedParsedFiles, normalizedResolvedImports, verbose);
@@ -97,12 +97,12 @@ export async function indexProject(rootPath, options = {}) {
     await saveSystemMap(dataDir, outputPath, systemMap, verbose);
 
     // Paso 8: Generar análisis automático
-    if (verbose) console.log('ðŸ” Analyzing code quality...');
+    if (verbose) logger.info('ðŸ” Analyzing code quality...');
     const analysisReport = generateAnalysisReport(systemMap);
     await saveAnalysisReport(dataDir, outputPath, analysisReport, verbose);
 
     // Paso 9: Generar enhanced system map con análisis semántico estático
-    if (verbose) console.log('ðŸ§  Performing Phase 3.5: Semantic Detection (Static)...');
+    if (verbose) logger.info('ðŸ§  Performing Phase 3.5: Semantic Detection (Static)...');
     const enhancedSystemMap = await generateEnhancedSystemMap(
       absoluteRootPath,
       parsedFiles,
@@ -135,7 +135,7 @@ export async function indexProject(rootPath, options = {}) {
 
     return systemMap;
   } catch (error) {
-    console.error('âŒ Error during indexing:', error);
+    logger.error('âŒ Error during indexing:', error);
     throw error;
   }
 }
@@ -148,6 +148,11 @@ export async function indexProject(rootPath, options = {}) {
  */
 
 const isMainModule = process.argv[1]?.includes('indexer.js') || false;
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:indexer');
+
+
 if (isMainModule) {
   const projectPath = process.argv[2] || process.cwd();
   const outputFile = process.argv[3] || 'system-map.json';

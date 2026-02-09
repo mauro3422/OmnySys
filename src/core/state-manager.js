@@ -8,6 +8,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:state:manager');
+
+
 
 export class StateManager {
   constructor(filePath) {
@@ -55,7 +60,7 @@ export class StateManager {
         
         this.lastWrite = Date.now();
       } catch (error) {
-        console.error('Error writing state:', error);
+        logger.error('Error writing state:', error);
         // Limpiar archivo temporal si existe
         try {
           const tempFiles = await fs.readdir(path.dirname(this.filePath));
@@ -133,7 +138,7 @@ export class StateManager {
         }
       }
     } catch (error) {
-      console.error('Error watching state:', error);
+      logger.error('Error watching state:', error);
     }
   }
 }

@@ -7,6 +7,11 @@
  */
 
 import { InitializationStep } from './base-step.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:llm:setup:step');
+
+
 
 /**
  * Step 1: LLM Server Setup
@@ -17,17 +22,17 @@ export class LLMSetupStep extends InitializationStep {
   }
 
   async execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 1: AI Server Setup');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('STEP 1: AI Server Setup');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     try {
       const { startLLM } = await import('../llm-starter.js');
       await startLLM(server.OmnySysRoot);
-      console.error('  ✅ LLM server started');
+      logger.error('  ✅ LLM server started');
       return true;
     } catch (error) {
-      console.error('  ⚠️  LLM server not available, continuing without AI');
+      logger.error('  ⚠️  LLM server not available, continuing without AI');
       return true; // Don't fail if LLM unavailable
     }
   }

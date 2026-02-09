@@ -4,12 +4,17 @@
  */
 
 import { getFileAnalysis, getFileDependents, getProjectMetadata } from '#layer-a/query/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:impact:map');
+
+
 
 export async function get_impact_map(args, context) {
   const { filePath } = args;
   const { orchestrator, projectPath, server } = context;
   
-  console.error(`[Tool] get_impact_map("${filePath}")`);
+  logger.error(`[Tool] get_impact_map("${filePath}")`);
 
   // Check if analyzed
   let fileData = await getFileAnalysis(projectPath, filePath);
@@ -17,11 +22,11 @@ export async function get_impact_map(args, context) {
   if (!fileData) {
     // Si el servidor está inicializado, auto-analizar
     if (server?.initialized && orchestrator) {
-      console.error(`  → File not analyzed, queueing as CRITICAL`);
+      logger.error(`  → File not analyzed, queueing as CRITICAL`);
       
       try {
         await orchestrator.analyzeAndWait(filePath, 60000);
-        console.error(`  → Analysis completed`);
+        logger.error(`  → Analysis completed`);
         fileData = await getFileAnalysis(projectPath, filePath);
       } catch (error) {
         return {

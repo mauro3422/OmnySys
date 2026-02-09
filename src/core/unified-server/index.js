@@ -10,6 +10,11 @@ import * as orchestrator from './orchestrator.js';
 import * as tools from './tools.js';
 import { printStatus } from './status.js';
 import { shutdown } from './lifecycle.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 class OmnySysUnifiedServer extends EventEmitter {
   constructor(projectPath) {
@@ -78,7 +83,7 @@ async function main() {
     // Keep alive
     await new Promise(() => {});
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 }

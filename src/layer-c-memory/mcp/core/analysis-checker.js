@@ -11,6 +11,11 @@ import path from 'path';
 import fs from 'fs/promises';
 
 const DATA_DIR = '.omnysysdata';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:analysis:checker');
+
+
 
 /**
  * Verifica si existe analisis previo en .omnysysdata/
@@ -66,8 +71,8 @@ async function countPendingLLMAnalysis(projectPath) {
 async function runFullIndexing(projectPath) {
   const { indexProject } = await import('#layer-a/indexer.js');
 
-  console.error('   \uD83D\uDE80 Starting Layer A: Static Analysis...');
-  console.error('   \u23F3 This may take 30-60 seconds...');
+  logger.error('   \uD83D\uDE80 Starting Layer A: Static Analysis...');
+  logger.error('   \u23F3 This may take 30-60 seconds...');
 
   try {
     const result = await indexProject(projectPath, {
@@ -76,7 +81,7 @@ async function runFullIndexing(projectPath) {
       outputPath: 'system-map.json'
     });
 
-    console.error(`\n   \uD83D\uDCCA Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
+    logger.error(`\n   \uD83D\uDCCA Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
 
     // Verificar si IA se activo
     const hasLLM = Object.values(result.files || {}).some(
@@ -84,14 +89,14 @@ async function runFullIndexing(projectPath) {
     );
 
     if (hasLLM) {
-      console.error('   \uD83E\uDD16 Layer B: IA enrichment applied');
+      logger.error('   \uD83E\uDD16 Layer B: IA enrichment applied');
     } else {
-      console.error('   \u2139\uFE0F  Layer B: Static analysis sufficient (no IA needed)');
+      logger.error('   \u2139\uFE0F  Layer B: Static analysis sufficient (no IA needed)');
     }
 
     return result;
   } catch (error) {
-    console.error('   \u274C Indexing failed:', error.message);
+    logger.error('   \u274C Indexing failed:', error.message);
     throw error;
   }
 }
@@ -108,13 +113,13 @@ export async function checkAndRunAnalysis(projectPath) {
     const hasAnalysis = await hasExistingAnalysis(projectPath);
 
     if (!hasAnalysis) {
-      console.error('\u26A0\uFE0F  No analysis found, running Layer A...');
-      console.error('   \u23F3 This may take 30-60 seconds...\n');
+      logger.error('\u26A0\uFE0F  No analysis found, running Layer A...');
+      logger.error('   \u23F3 This may take 30-60 seconds...\n');
 
       await runFullIndexing(projectPath);
 
-      console.error('\n\u2705 Layer A completed');
-      console.error('   \uD83E\uDD16 LLM enrichment will continue in background');
+      logger.error('\n\u2705 Layer A completed');
+      logger.error('   \uD83E\uDD16 LLM enrichment will continue in background');
       return { ran: true, filesAnalyzed: 0 };
     }
 
@@ -122,7 +127,7 @@ export async function checkAndRunAnalysis(projectPath) {
     const metadata = await getProjectMetadata(projectPath);
     const fileCount = metadata?.metadata?.totalFiles || 0;
 
-    console.error(`\u2705 Found existing analysis: ${fileCount} files`);
+    logger.error(`\u2705 Found existing analysis: ${fileCount} files`);
 
     // Validar si el analisis base de Layer A esta completo
     const hasValidBaseAnalysis =
@@ -131,29 +136,29 @@ export async function checkAndRunAnalysis(projectPath) {
       metadata?.metadata?.enhanced === true;
 
     if (!hasValidBaseAnalysis) {
-      console.error('   \uD83D\uDEA8 Analysis incomplete, running Layer A...');
-      console.error('   \u23F3 This may take 30-60 seconds...\n');
+      logger.error('   \uD83D\uDEA8 Analysis incomplete, running Layer A...');
+      logger.error('   \u23F3 This may take 30-60 seconds...\n');
 
       await runFullIndexing(projectPath);
 
-      console.error('\n\u2705 Layer A completed');
-      console.error('   \uD83E\uDD16 LLM enrichment will continue in background');
+      logger.error('\n\u2705 Layer A completed');
+      logger.error('   \uD83E\uDD16 LLM enrichment will continue in background');
       return { ran: true, filesAnalyzed: fileCount };
     }
 
-    console.error('   \u2705 Layer A analysis valid');
+    logger.error('   \u2705 Layer A analysis valid');
 
     // Verificar si hay archivos pendientes de LLM
     const pendingLLM = await countPendingLLMAnalysis(projectPath);
     if (pendingLLM > 0) {
-      console.error(`   \u23F3 ${pendingLLM} files pending LLM enrichment (background)`);
+      logger.error(`   \u23F3 ${pendingLLM} files pending LLM enrichment (background)`);
     } else {
-      console.error('   \u2705 All files processed');
+      logger.error('   \u2705 All files processed');
     }
 
     return { ran: false, filesAnalyzed: fileCount };
   } catch (error) {
-    console.error('   \u274C Analysis check failed:', error.message);
+    logger.error('   \u274C Analysis check failed:', error.message);
     throw error;
   }
 }

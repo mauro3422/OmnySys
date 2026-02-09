@@ -5,12 +5,17 @@
  */
 
 import { findCallSites } from './lib/ast-analyzer.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:get:call:graph');
+
+
 
 export async function get_call_graph(args, context) {
   const { filePath, symbolName, includeContext = true } = args;
   const { projectPath } = context;
   
-  console.error(`[Tool] get_call_graph("${filePath}", "${symbolName}")`);
+  logger.error(`[Tool] get_call_graph("${filePath}", "${symbolName}")`);
   
   if (!filePath || !symbolName) {
     return {
@@ -77,7 +82,7 @@ export async function get_call_graph(args, context) {
     };
     
   } catch (error) {
-    console.error(`Error in get_call_graph: ${error.message}`);
+    logger.error(`Error in get_call_graph: ${error.message}`);
     return {
       error: error.message,
       filePath,

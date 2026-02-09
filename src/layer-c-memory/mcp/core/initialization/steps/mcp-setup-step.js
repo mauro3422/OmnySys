@@ -15,6 +15,11 @@ import {
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
 import { toolDefinitions, toolHandlers } from '../../tools/index.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:mcp:setup:step');
+
+
 
 /**
  * Step 5: MCP Protocol Setup
@@ -25,9 +30,9 @@ export class McpSetupStep extends InitializationStep {
   }
 
   execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('STEP 5: MCP Protocol Setup');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('STEP 5: MCP Protocol Setup');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     server.server = new Server(
       { name: 'omnysys', version: '3.0.0' },
@@ -44,9 +49,9 @@ export class McpSetupStep extends InitializationStep {
       return this.handleToolCall(request, server);
     });
 
-    server.server.onerror = (error) => console.error('[MCP Error]', error);
+    server.server.onerror = (error) => logger.error('[MCP Error]', error);
 
-    console.error(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
+    logger.error(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
     return true;
   }
 
@@ -58,9 +63,9 @@ export class McpSetupStep extends InitializationStep {
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
     }
 
-    console.error(`\n🔧 Tool called: ${name}`);
+    logger.error(`\n🔧 Tool called: ${name}`);
     if (Object.keys(args || {}).length > 0) {
-      console.error(`   Args: ${JSON.stringify(args)}`);
+      logger.error(`   Args: ${JSON.stringify(args)}`);
     }
 
     const startTime = performance.now();
@@ -75,7 +80,7 @@ export class McpSetupStep extends InitializationStep {
     const result = await handler(args, context);
 
     const elapsed = (performance.now() - startTime).toFixed(2);
-    console.error(`   ✅ Completed in ${elapsed}ms\n`);
+    logger.error(`   ✅ Completed in ${elapsed}ms\n`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]

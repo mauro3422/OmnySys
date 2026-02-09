@@ -4,12 +4,17 @@
  */
 
 import { getFileAnalysis, getFileDependents } from '#layer-a/query/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:connection');
+
+
 
 export async function explain_connection(args, context) {
   const { fileA, fileB } = args;
   const { orchestrator, projectPath, server } = context;
   
-  console.error(`[Tool] explain_connection("${fileA}", "${fileB}")`);
+  logger.error(`[Tool] explain_connection("${fileA}", "${fileB}")`);
 
   // Obtener datos de ambos archivos
   let fileDataA = await getFileAnalysis(projectPath, fileA);

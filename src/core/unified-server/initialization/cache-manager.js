@@ -19,9 +19,9 @@ import { UnifiedCacheManager } from '../../unified-cache-manager.js';
  * @returns {Promise<Object>} - { cache, metadata, hasExistingData }
  */
 export async function initializeCache(projectPath) {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 1: MCP Server Initialization');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('STEP 1: MCP Server Initialization');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const cache = new UnifiedCacheManager(projectPath, {
     enableChangeDetection: true,
@@ -29,7 +29,7 @@ export async function initializeCache(projectPath) {
   });
   
   await cache.initialize();
-  console.log('  ✓ Unified cache initialized');
+  logger.info('  ✓ Unified cache initialized');
 
   return { cache };
 }
@@ -44,17 +44,17 @@ export async function loadExistingData(context) {
   
   const metadata = await getProjectMetadata(projectPath);
   cache.set('metadata', metadata);
-  console.log('  ✓ Metadata cached');
+  logger.info('  ✓ Metadata cached');
 
   const connections = await getAllConnections(projectPath);
   cache.set('connections', connections);
-  console.log('  ✓ Connections cached');
+  logger.info('  ✓ Connections cached');
 
   const assessment = await getRiskAssessment(projectPath);
   cache.set('assessment', assessment);
-  console.log('  ✓ Risk assessment cached');
+  logger.info('  ✓ Risk assessment cached');
 
-  console.log(`  📊 ${metadata?.metadata?.totalFiles || 0} files indexed\n`);
+  logger.info(`  📊 ${metadata?.metadata?.totalFiles || 0} files indexed\n`);
   
   return metadata;
 }
@@ -87,3 +87,8 @@ export async function hasExistingAnalysis(omnySysDataPath) {
 // Import necesario para hasExistingAnalysis
 import fs from 'fs/promises';
 import path from 'path';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:cache:manager');
+
+

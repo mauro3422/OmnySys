@@ -11,6 +11,11 @@
 import path from 'path';
 import { ModuleAnalyzer } from './module-analyzer.js';
 import { SystemAnalyzer } from './system-analyzer.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 /**
  * Analiza todos los módulos del proyecto
@@ -20,7 +25,7 @@ import { SystemAnalyzer } from './system-analyzer.js';
  * @returns {Object} - { modules, system }
  */
 export function analyzeModules(projectRoot, molecules) {
-  console.log(`[ModuleSystem] Analyzing modules in ${projectRoot}...`);
+  logger.info(`[ModuleSystem] Analyzing modules in ${projectRoot}...`);
 
   // PASO 1: Agrupar moléculas por módulo
   const moleculesByModule = groupMoleculesByModule(projectRoot, molecules);
@@ -34,13 +39,13 @@ export function analyzeModules(projectRoot, molecules) {
     modules.push(moduleAnalysis);
   }
 
-  console.log(`[ModuleSystem] Analyzed ${modules.length} modules`);
+  logger.info(`[ModuleSystem] Analyzed ${modules.length} modules`);
 
   // PASO 3: Analizar sistema completo
   const systemAnalyzer = new SystemAnalyzer(projectRoot, modules);
   const system = systemAnalyzer.analyze();
 
-  console.log(`[ModuleSystem] Detected ${system.businessFlows.length} business flows`);
+  logger.info(`[ModuleSystem] Detected ${system.businessFlows.length} business flows`);
 
   return {
     modules,

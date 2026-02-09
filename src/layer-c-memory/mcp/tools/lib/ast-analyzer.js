@@ -1,3 +1,8 @@
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:ast:analyzer');
+
+
 /**
  * @fileoverview ast-analyzer.js
  * 
@@ -12,8 +17,8 @@
  * @deprecated Use `import { ... } from './analysis/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from ast-analyzer.js');
-console.warn('   Please update imports to: ./analysis/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from ast-analyzer.js');
+logger.warn('   Please update imports to: ./analysis/index.js');
 
 export {
   findCallSites,

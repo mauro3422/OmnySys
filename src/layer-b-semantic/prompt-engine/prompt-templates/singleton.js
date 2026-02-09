@@ -70,7 +70,7 @@ class Logger {
   
   log(message) {
     this.logs.push({ message, timestamp: Date.now() });
-    console.log(message);
+    logger.info(message);
   }
 }
 
@@ -81,6 +81,11 @@ Extract Singleton analysis as JSON.
 <|im_end|>`;
 
 const example2Assistant = `<|im_start|>assistant
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:singleton');
+
+
 {"confidence":0.9,"reasoning":"Module exports single instance created at module load time","instanceCount":1,"globalState":["logs"],"threadSafety":"unknown","initializationPattern":"eager"}
 <|im_end|>`;
 

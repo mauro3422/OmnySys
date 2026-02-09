@@ -1,3 +1,8 @@
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:project:structure:analyzer');
+
+
 /**
  * project-structure-analyzer.js
  * 
@@ -21,7 +26,7 @@
  * @deprecated Use `import { ... } from './project-analyzer/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from project-structure-analyzer.js');
-console.warn('   Please update imports to: project-analyzer/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from project-structure-analyzer.js');
+logger.warn('   Please update imports to: project-analyzer/index.js');
 
 export * from './project-analyzer/index.js';

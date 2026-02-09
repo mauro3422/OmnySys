@@ -10,6 +10,11 @@ import { promisify } from 'util';
 import net from 'net';
 
 const execAsync = promisify(exec);
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:process:manager');
+
+
 
 /**
  * Verifica si un puerto está en uso
@@ -85,14 +90,14 @@ export async function checkServices() {
  * Limpia todos los procesos del sistema OmnySys
  */
 export async function cleanupProcesses() {
-  console.log('🧹 Cleaning up OmnySys processes...\n');
+  logger.info('🧹 Cleaning up OmnySys processes...\n');
 
   const services = await checkServices();
 
   if (services.llm) {
     const pid = await findProcessByPort(8000);
     if (pid) {
-      console.log(`  Stopping LLM server (PID: ${pid})...`);
+      logger.info(`  Stopping LLM server (PID: ${pid})...`);
       await killProcess(pid);
     }
   }
@@ -100,7 +105,7 @@ export async function cleanupProcesses() {
   if (services.orchestrator) {
     const pid = await findProcessByPort(9999);
     if (pid) {
-      console.log(`  Stopping Orchestrator (PID: ${pid})...`);
+      logger.info(`  Stopping Orchestrator (PID: ${pid})...`);
       await killProcess(pid);
     }
   }
@@ -108,7 +113,7 @@ export async function cleanupProcesses() {
   if (services.websocket) {
     const pid = await findProcessByPort(9997);
     if (pid) {
-      console.log(`  Stopping WebSocket (PID: ${pid})...`);
+      logger.info(`  Stopping WebSocket (PID: ${pid})...`);
       await killProcess(pid);
     }
   }
@@ -121,7 +126,7 @@ export async function cleanupProcesses() {
       const parts = line.split(',');
       const pid = parts[parts.length - 1]?.trim();
       if (pid && !isNaN(parseInt(pid))) {
-        console.log(`  Stopping orphaned process (PID: ${pid})...`);
+        logger.info(`  Stopping orphaned process (PID: ${pid})...`);
         await killProcess(pid);
       }
     }
@@ -129,7 +134,7 @@ export async function cleanupProcesses() {
     // Ignore errors
   }
 
-  console.log('\n✅ Cleanup completed\n');
+  logger.info('\n✅ Cleanup completed\n');
 }
 
 /**
@@ -139,11 +144,11 @@ export async function startLLMServer(scriptPath) {
   const running = await isPortInUse(8000);
   
   if (running) {
-    console.log('✅ LLM Server already running on port 8000');
+    logger.info('✅ LLM Server already running on port 8000');
     return { started: false, wasRunning: true };
   }
 
-  console.log('🚀 Starting LLM Server...');
+  logger.info('🚀 Starting LLM Server...');
   
   const process = spawn('cmd.exe', ['/c', 'start', '/min', scriptPath], {
     detached: true,
@@ -161,12 +166,12 @@ export async function startLLMServer(scriptPath) {
     await new Promise(r => setTimeout(r, 1000));
     const ready = await isPortInUse(8000);
     if (ready) {
-      console.log('✅ LLM Server ready\n');
+      logger.info('✅ LLM Server ready\n');
       return { started: true, wasRunning: false };
     }
     attempts++;
     if (attempts % 5 === 0) {
-      console.log(`  ⏳ Waiting for LLM server... (${attempts}/${maxAttempts})`);
+      logger.info(`  ⏳ Waiting for LLM server... (${attempts}/${maxAttempts})`);
     }
   }
 
@@ -179,11 +184,11 @@ export async function startLLMServer(scriptPath) {
 export async function printServiceStatus() {
   const services = await checkServices();
   
-  console.log('\n📊 Service Status:');
-  console.log(`  LLM Server (port 8000):    ${services.llm ? '🟢 Running' : '🔴 Stopped'}`);
-  console.log(`  Orchestrator (port 9999):  ${services.orchestrator ? '🟢 Running' : '🔴 Stopped'}`);
-  console.log(`  WebSocket (port 9997):     ${services.websocket ? '🟢 Running' : '🔴 Stopped'}`);
-  console.log('');
+  logger.info('\n📊 Service Status:');
+  logger.info(`  LLM Server (port 8000):    ${services.llm ? '🟢 Running' : '🔴 Stopped'}`);
+  logger.info(`  Orchestrator (port 9999):  ${services.orchestrator ? '🟢 Running' : '🔴 Stopped'}`);
+  logger.info(`  WebSocket (port 9997):     ${services.websocket ? '🟢 Running' : '🔴 Stopped'}`);
+  logger.info('');
   
   return services;
 }

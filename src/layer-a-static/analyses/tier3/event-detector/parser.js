@@ -8,6 +8,11 @@
 
 import { parse } from '@babel/parser';
 import { DEFAULT_BABEL_PLUGINS, DEFAULT_PARSER_OPTIONS } from './constants.js';
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:parser');
+
+
 
 /**
  * Obtiene plugins de Babel según extensión del archivo
@@ -41,7 +46,7 @@ export function parseCodeToAST(code, filePath) {
       plugins
     });
   } catch (error) {
-    console.warn(`⚠️  Error parsing ${filePath}:`, error.message);
+    logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
     return null;
   }
 }

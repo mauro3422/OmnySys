@@ -1,5 +1,10 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:lifecycle');
+
+
 ﻿export async function shutdown() {
-  console.log('\nðŸ‘‹ Shutting down Unified Server...');
+  logger.info('\nðŸ‘‹ Shutting down Unified Server...');
 
   this.isRunning = false;
 
@@ -27,6 +32,6 @@
     this.bridgeServer.close();
   }
 
-  console.log('âœ… Server stopped');
+  logger.info('âœ… Server stopped');
   process.exit(0);
 }

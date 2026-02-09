@@ -3,6 +3,11 @@ import path from 'path';
 
 import { savePartitionedSystemMap } from '../storage/storage-manager.js';
 import { DATA_DIR } from '#config/paths.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:save');
+
+
 
 export async function ensureDataDir(absoluteRootPath) {
   const dataDir = path.join(absoluteRootPath, DATA_DIR);
@@ -11,10 +16,10 @@ export async function ensureDataDir(absoluteRootPath) {
 }
 
 export async function saveSystemMap(dataDir, outputPath, systemMap, verbose = true) {
-  if (verbose) console.log('\uD83D\uDCBE Saving graph...');
+  if (verbose) logger.info('\uD83D\uDCBE Saving graph...');
   const outputFullPath = path.join(dataDir, outputPath);
   await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
-  if (verbose) console.log(`  \u2714 Saved to: ${DATA_DIR}/${outputPath}\n`);
+  if (verbose) logger.info(`  \u2714 Saved to: ${DATA_DIR}/${outputPath}\n`);
   return outputFullPath;
 }
 
@@ -22,7 +27,7 @@ export async function saveAnalysisReport(dataDir, outputPath, analysisReport, ve
   const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
   const analysisFullPath = path.join(dataDir, analysisOutputPath);
   await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
-  if (verbose) console.log(`  \u2714 Analysis saved to: ${DATA_DIR}/${analysisOutputPath}\n`);
+  if (verbose) logger.info(`  \u2714 Analysis saved to: ${DATA_DIR}/${analysisOutputPath}\n`);
   return analysisOutputPath;
 }
 
@@ -30,18 +35,18 @@ export async function saveEnhancedSystemMap(dataDir, outputPath, enhancedSystemM
   const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
   const enhancedFullPath = path.join(dataDir, enhancedOutputPath);
   await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
-  if (verbose) console.log(`  \u2714 Enhanced map saved to: ${DATA_DIR}/${enhancedOutputPath}\n`);
+  if (verbose) logger.info(`  \u2714 Enhanced map saved to: ${DATA_DIR}/${enhancedOutputPath}\n`);
   return enhancedOutputPath;
 }
 
 export async function savePartitionedData(absoluteRootPath, enhancedSystemMap, verbose = true) {
-  if (verbose) console.log('\uD83D\uDCBE Saving partitioned data to ${DATA_DIR}/...');
+  if (verbose) logger.info('\uD83D\uDCBE Saving partitioned data to ${DATA_DIR}/...');
   const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
   if (verbose) {
-    console.log('  \u2714 Metadata saved to: ${DATA_DIR}/index.json');
-    console.log(`  \u2714 ${partitionedPaths.files.length} files saved to: ${DATA_DIR}/files/`);
-    console.log('  \u2714 Connections saved to: ${DATA_DIR}/connections/');
-    console.log('  \u2714 Risk assessment saved to: ${DATA_DIR}/risks/\n');
+    logger.info('  \u2714 Metadata saved to: ${DATA_DIR}/index.json');
+    logger.info(`  \u2714 ${partitionedPaths.files.length} files saved to: ${DATA_DIR}/files/`);
+    logger.info('  \u2714 Connections saved to: ${DATA_DIR}/connections/');
+    logger.info('  \u2714 Risk assessment saved to: ${DATA_DIR}/risks/\n');
   }
   return partitionedPaths;
 }
@@ -59,8 +64,8 @@ export function printSummary({
   const risk = enhancedSystemMap?.riskAssessment?.report?.summary || {};
   const issues = enhancedSystemMap?.semanticIssues?.stats || {};
 
-  console.log('\u2705 Layer A Complete!');
-  console.log(`
+  logger.info('\u2705 Layer A Complete!');
+  logger.info(`
 \uD83D\uDCCA STATIC ANALYSIS Summary:
   - Files analyzed: ${meta.totalFiles || 0}
   - Functions analyzed: ${meta.totalFunctions || 0}

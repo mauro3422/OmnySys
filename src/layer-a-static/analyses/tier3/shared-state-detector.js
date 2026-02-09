@@ -12,6 +12,11 @@
 
 import traverse from '@babel/traverse';
 import { parse } from '@babel/parser';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:shared:state:detector');
+
+
 
 /**
  * Detecta acceso a estado global en un archivo
@@ -157,7 +162,7 @@ export function detectSharedState(code, filePath = '') {
       }
     });
   } catch (error) {
-    console.warn(`⚠️  Error parsing ${filePath}:`, error.message);
+    logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
   }
 
   // Convertir Sets a Arrays

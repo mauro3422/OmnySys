@@ -7,6 +7,11 @@
  */
 
 import { isJavaScriptCode, isGenericPath, looksLikeValidPath } from '../utils/pattern-checkers.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:file:validator');
+
+
 
 /**
  * Valida que los paths de archivos existan en el proyecto
@@ -20,13 +25,13 @@ export function validateConnectedFiles(llmFiles, validFilePaths) {
   return llmFiles.filter(file => {
     // Rechazar placeholders genéricos
     if (isGenericPath(file)) {
-      console.warn(`⚠️  LLM devolvió path genérico: ${file}`);
+      logger.warn(`⚠️  LLM devolvió path genérico: ${file}`);
       return false;
     }
 
     // Rechazar código como path
     if (isJavaScriptCode(file)) {
-      console.warn(`⚠️  LLM confundió código con path: ${file}`);
+      logger.warn(`⚠️  LLM confundió código con path: ${file}`);
       return false;
     }
 
@@ -39,7 +44,7 @@ export function validateConnectedFiles(llmFiles, validFilePaths) {
       );
 
       if (!exists) {
-        console.warn(`⚠️  LLM inventó path: ${file}`);
+        logger.warn(`⚠️  LLM inventó path: ${file}`);
         return false;
       }
     }

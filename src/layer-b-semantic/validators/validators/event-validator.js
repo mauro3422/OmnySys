@@ -7,6 +7,11 @@
  */
 
 import { isDOMMethod, isGenericPlaceholder, isJavaScriptCode } from '../utils/pattern-checkers.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:event:validator');
+
+
 
 /**
  * Valida que los event names sean reales
@@ -21,19 +26,19 @@ export function validateEventNames(llmEvents, actualEvents) {
   return llmEvents.filter(event => {
     // Rechazar métodos del DOM
     if (isDOMMethod(event)) {
-      console.warn(`⚠️  LLM alucinó método DOM como evento: ${event}`);
+      logger.warn(`⚠️  LLM alucinó método DOM como evento: ${event}`);
       return false;
     }
 
     // Rechazar strings genéricos
     if (isGenericPlaceholder(event)) {
-      console.warn(`⚠️  LLM devolvió placeholder: ${event}`);
+      logger.warn(`⚠️  LLM devolvió placeholder: ${event}`);
       return false;
     }
 
     // Rechazar código JavaScript como evento
     if (isJavaScriptCode(event)) {
-      console.warn(`⚠️  LLM confundió código con evento: ${event}`);
+      logger.warn(`⚠️  LLM confundió código con evento: ${event}`);
       return false;
     }
 

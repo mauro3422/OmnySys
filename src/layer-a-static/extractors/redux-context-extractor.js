@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:redux:context:extractor');
+
+
 /**
  * redux-context-extractor.js
  * 
@@ -27,7 +32,7 @@
  * @deprecated Use `import { ... } from './state-management/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from redux-context-extractor.js');
-console.warn('   Please update imports to: extractors/state-management/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from redux-context-extractor.js');
+logger.warn('   Please update imports to: extractors/state-management/index.js');
 
 export * from './state-management/index.js';

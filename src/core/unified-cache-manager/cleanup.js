@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:cleanup');
+
+
 ﻿/**
  * Limpia entradas de archivos que ya no existen
  */
@@ -14,7 +19,7 @@ export async function cleanupDeletedFiles(existingFiles) {
   }
 
   if (deletedCount > 0) {
-    console.log(`ðŸ—‘ï¸  UnifiedCache: Removed ${deletedCount} deleted files`);
+    logger.info(`ðŸ—‘ï¸  UnifiedCache: Removed ${deletedCount} deleted files`);
     await this.saveIndex();
   }
 

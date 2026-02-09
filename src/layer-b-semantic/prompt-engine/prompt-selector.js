@@ -19,6 +19,11 @@ import {
   ARCHETYPE_REGISTRY
 } from './PROMPT_REGISTRY.js';
 import { validateMetadata } from '../metadata-contract/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:prompt:selector');
+
+
 
 class PromptSelector {
   /**
@@ -33,7 +38,7 @@ class PromptSelector {
     if (process.env.DEBUG_METADATA) {
       const validation = validateMetadata(metadata);
       if (!validation.valid) {
-        console.warn('⚠️  Invalid metadata:', validation);
+        logger.warn('⚠️  Invalid metadata:', validation);
         // No lanzar error, usar default
         return 'default';
       }
@@ -61,7 +66,7 @@ class PromptSelector {
     
     // Validar que el template tenga las propiedades necesarias
     if (!template || !template.systemPrompt || !template.userPrompt) {
-      console.warn(`⚠️  Invalid template for type: ${analysisType}`);
+      logger.warn(`⚠️  Invalid template for type: ${analysisType}`);
       
       // Fallback a default
       const defaultTemplate = getTemplateForType('default');

@@ -20,6 +20,11 @@
 
 import fs from 'fs';
 import path from 'path';
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:pattern:index:manager');
+
+
 
 export class PatternIndexManager {
   constructor(basePath = '.omnysysdata/patterns') {
@@ -73,7 +78,7 @@ export class PatternIndexManager {
       });
 
     } catch (error) {
-      console.warn('[PatternIndexManager] Error:', error.message);
+      logger.warn('[PatternIndexManager] Error:', error.message);
       // No fallar la extracción
     }
   }
@@ -248,7 +253,7 @@ export class PatternIndexManager {
         return JSON.parse(content);
       }
     } catch (error) {
-      console.warn(`[PatternIndexManager] Error loading ${filePath}:`, error.message);
+      logger.warn(`[PatternIndexManager] Error loading ${filePath}:`, error.message);
     }
     return defaultValue;
   }

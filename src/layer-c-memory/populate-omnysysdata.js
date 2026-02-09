@@ -23,6 +23,11 @@ import {
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:populate:omnysysdata');
+
+
 
 /**
  * Popula omnysysdata/ con datos desde .OmnySysData/
@@ -31,14 +36,14 @@ export async function populateOmnySysData(projectPath) {
   const omnysysPath = path.join(projectPath, '.omnysysdata');
   const dataPath = path.join(projectPath, '.omnysysdata');
 
-  console.log('🔄 Populating OmnySysData...\n');
+  logger.info('🔄 Populating OmnySysData...\n');
 
   try {
     // Verificar que .OmnySysData/ existe
     await fs.access(dataPath);
   } catch {
-    console.error('❌ Error: .OmnySysData/ directory not found');
-    console.error('   Run the analyzer first: node analyzer.js');
+    logger.error('❌ Error: .OmnySysData/ directory not found');
+    logger.error('   Run the analyzer first: node analyzer.js');
     process.exit(1);
   }
 
@@ -46,17 +51,17 @@ export async function populateOmnySysData(projectPath) {
     // 1. Crear estructura si no existe
     try {
       await fs.access(omnysysPath);
-      console.log('   ✓ omnysysdata/ already exists');
+      logger.info('   ✓ omnysysdata/ already exists');
     } catch {
-      console.log('   Creating omnysysdata/ structure...');
+      logger.info('   Creating omnysysdata/ structure...');
       await createOmnySysDataStructure(projectPath);
     }
 
-    console.log('\n📊 Collecting analysis data...\n');
+    logger.info('\n📊 Collecting analysis data...\n');
 
     // 2. Leer metadata
     const metadata = await getProjectMetadata(projectPath);
-    console.log(`   ✓ Metadata: ${metadata.metadata.totalFiles} files`);
+    logger.info(`   ✓ Metadata: ${metadata.metadata.totalFiles} files`);
 
     // 3. Actualizar system-structure.json
     const allFilePaths = Object.keys(metadata.fileIndex);
@@ -82,7 +87,7 @@ export async function populateOmnySysData(projectPath) {
       path.join(connectionsDir, 'all-connections.json'),
       JSON.stringify(connections, null, 2)
     );
-    console.log(
+    logger.info(
       `   ✓ Connections: ${connections.sharedState.length} shared-state, ${connections.eventListeners.length} events`
     );
 
@@ -95,12 +100,12 @@ export async function populateOmnySysData(projectPath) {
       JSON.stringify(risks, null, 2)
     );
     const summary = risks.report.summary;
-    console.log(
+    logger.info(
       `   ✓ Risks: ${summary.criticalCount} critical, ${summary.highCount} high, ${summary.mediumCount} medium`
     );
 
     // 6. Cargar archivos individuales
-    console.log(`\n   Loading individual file analyses...`);
+    logger.info(`\n   Loading individual file analyses...`);
     const filesDir = path.join(omnysysPath, 'files');
     let loadedCount = 0;
 
@@ -125,10 +130,10 @@ export async function populateOmnySysData(projectPath) {
           process.stdout.write(`   ${loadedCount}/${allFilePaths.length}\r`);
         }
       } catch (error) {
-        console.warn(`   ⚠️ Could not load ${filePath}: ${error.message}`);
+        logger.warn(`   ⚠️ Could not load ${filePath}: ${error.message}`);
       }
     }
-    console.log(
+    logger.info(
       `   ✓ Loaded ${loadedCount}/${allFilePaths.length} file analyses\n`
     );
 
@@ -206,23 +211,23 @@ export async function populateOmnySysData(projectPath) {
       path.join(toolsDir, 'tools.json'),
       JSON.stringify(mcp_tools, null, 2)
     );
-    console.log('   ✓ MCP tools definition');
+    logger.info('   ✓ MCP tools definition');
 
     // 8. Summary
     const stats = await getProjectStats(projectPath);
 
-    console.log('\n' + '='.repeat(50));
-    console.log('✅ OmnySysData populated successfully!');
-    console.log('='.repeat(50));
-    console.log('\n📊 Summary:');
-    console.log(`   Files analyzed: ${stats.totalFiles}`);
-    console.log(`   Total functions: ${stats.totalFunctions}`);
-    console.log(`   Semantic connections: ${stats.totalSemanticConnections}`);
-    console.log(`   High risk files: ${stats.highRiskFiles}`);
-    console.log(`   Medium risk files: ${stats.mediumRiskFiles}`);
-    console.log(`\n📍 Location: ./omnysysdata/`);
-    console.log('\n🚀 Next: Start MCP Server');
-    console.log('   node mcp-server.js\n');
+    logger.info('\n' + '='.repeat(50));
+    logger.info('✅ OmnySysData populated successfully!');
+    logger.info('='.repeat(50));
+    logger.info('\n📊 Summary:');
+    logger.info(`   Files analyzed: ${stats.totalFiles}`);
+    logger.info(`   Total functions: ${stats.totalFunctions}`);
+    logger.info(`   Semantic connections: ${stats.totalSemanticConnections}`);
+    logger.info(`   High risk files: ${stats.highRiskFiles}`);
+    logger.info(`   Medium risk files: ${stats.mediumRiskFiles}`);
+    logger.info(`\n📍 Location: ./omnysysdata/`);
+    logger.info('\n🚀 Next: Start MCP Server');
+    logger.info('   node mcp-server.js\n');
 
     return {
       success: true,
@@ -231,8 +236,8 @@ export async function populateOmnySysData(projectPath) {
       riskAssessment: summary
     };
   } catch (error) {
-    console.error('\n❌ Error populating OmnySysData:');
-    console.error(error.message);
+    logger.error('\n❌ Error populating OmnySysData:');
+    logger.error(error.message);
     process.exit(1);
   }
 }

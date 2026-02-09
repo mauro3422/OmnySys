@@ -4,12 +4,17 @@
  */
 
 import { getProjectMetadata } from '#layer-a/query/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:search');
+
+
 
 export async function search_files(args, context) {
   const { pattern } = args;
   const { projectPath, server } = context;
   
-  console.error(`[Tool] search_files("${pattern}")`);
+  logger.error(`[Tool] search_files("${pattern}")`);
 
   try {
     // Usar metadata indexada (más rápido que escanear disco)

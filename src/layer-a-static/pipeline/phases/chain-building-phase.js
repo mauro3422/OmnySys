@@ -8,7 +8,7 @@
  */
 
 import { ExtractionPhase } from './base-phase.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Phase 2: Build molecular chains

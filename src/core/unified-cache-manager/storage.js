@@ -2,6 +2,11 @@
 import path from 'path';
 
 import { ChangeType } from './constants.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:storage');
+
+
 
 /**
  * Inicializa el caché
@@ -21,9 +26,9 @@ export async function initialize() {
 
     this.loaded = true;
     const count = Object.keys(this.index.entries).length;
-    console.log(`ðŸ“¦ UnifiedCache: ${count} archivos indexados (from Layer A)`);
+    logger.info(`ðŸ“¦ UnifiedCache: ${count} archivos indexados (from Layer A)`);
   } catch (error) {
-    console.warn('âš ï¸  Failed to initialize unified cache:', error.message);
+    logger.warn('âš ï¸  Failed to initialize unified cache:', error.message);
   }
 }
 
@@ -75,17 +80,17 @@ export async function loadFromLayerA() {
           llmInsights: fileData.llmInsights
         };
       } catch (err) {
-        console.warn(`   âš ï¸  Failed to load ${jsonFile}: ${err.message}`);
+        logger.warn(`   âš ï¸  Failed to load ${jsonFile}: ${err.message}`);
       }
     }
 
     this.index.metadata.totalFiles = jsonFiles.length;
     await this.saveIndex();
 
-    console.log(`   ðŸ“¥ Loaded ${jsonFiles.length} files from Layer A`);
+    logger.info(`   ðŸ“¥ Loaded ${jsonFiles.length} files from Layer A`);
     return true;
   } catch (error) {
-    console.log(`   â„¹ï¸  Layer A data not available: ${error.message}`);
+    logger.info(`   â„¹ï¸  Layer A data not available: ${error.message}`);
     return false;
   }
 }
@@ -114,6 +119,6 @@ export async function saveIndex() {
     this.index.timestamp = Date.now();
     await fs.writeFile(this.indexPath, JSON.stringify(this.index, null, 2));
   } catch (error) {
-    console.warn('âš ï¸  Failed to save cache index:', error.message);
+    logger.warn('âš ï¸  Failed to save cache index:', error.message);
   }
 }

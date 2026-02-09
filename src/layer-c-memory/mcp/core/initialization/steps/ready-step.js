@@ -7,6 +7,11 @@
  */
 
 import { InitializationStep } from './base-step.js';
+import { createLogger } from '../../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:ready:step');
+
+
 
 /**
  * Step 6: Server Ready
@@ -17,9 +22,9 @@ export class ReadyStep extends InitializationStep {
   }
 
   execute(server) {
-    console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('✅ MCP Server Ready!');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('✅ MCP Server Ready!');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Display available tools
     const { toolDefinitions } = server.server.handlers.ListToolsRequestSchema || { toolDefinitions: [] };
@@ -29,9 +34,9 @@ export class ReadyStep extends InitializationStep {
     
     // Display stats
     const uptime = ((Date.now() - server.startTime) / 1000).toFixed(2);
-    console.error(`\n📊 Server stats:`);
-    console.error(`   Uptime: ${uptime}s`);
-    console.error(`   Cache: ${server.cache?.getRamStats?.().memoryUsage || 'N/A'}`);
+    logger.error(`\n📊 Server stats:`);
+    logger.error(`   Uptime: ${uptime}s`);
+    logger.error(`   Cache: ${server.cache?.getRamStats?.().memoryUsage || 'N/A'}`);
 
     server.initialized = true;
     return true;
@@ -40,7 +45,7 @@ export class ReadyStep extends InitializationStep {
   displayTools() {
     // Import here to avoid circular dependencies
     import('../../tools/index.js').then(({ toolDefinitions }) => {
-      console.error(`\n🔧 Available tools (${toolDefinitions.length} total):`);
+      logger.error(`\n🔧 Available tools (${toolDefinitions.length} total):`);
 
       const categories = {
         'Core Analysis': ['get_impact_map', 'analyze_change', 'explain_connection', 'get_risk_assessment'],
@@ -52,8 +57,8 @@ export class ReadyStep extends InitializationStep {
       for (const [category, toolNames] of Object.entries(categories)) {
         const tools = toolDefinitions.filter(t => toolNames.includes(t.name));
         if (tools.length > 0) {
-          console.error(`\n   ${category}:`);
-          tools.forEach(t => console.error(`     • ${t.name}`));
+          logger.error(`\n   ${category}:`);
+          tools.forEach(t => logger.error(`     • ${t.name}`));
         }
       }
     });

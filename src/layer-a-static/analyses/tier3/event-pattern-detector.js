@@ -1,3 +1,8 @@
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:event:pattern:detector');
+
+
 /**
  * event-pattern-detector.js
  * 
@@ -20,7 +25,7 @@
  * @deprecated Use `import { ... } from './event-detector/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from event-pattern-detector.js');
-console.warn('   Please update imports to: analyses/tier3/event-detector/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from event-pattern-detector.js');
+logger.warn('   Please update imports to: analyses/tier3/event-detector/index.js');
 
 export * from './event-detector/index.js';

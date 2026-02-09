@@ -8,6 +8,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:analysis:manager');
+
+
 
 /**
  * Inicia el análisis inicial en background
@@ -35,12 +40,12 @@ export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
     verbose: true,
     skipLLM: !llmAvailable
   }).then(() => {
-    console.log('\n📊 Background analysis completed');
+    logger.info('\n📊 Background analysis completed');
     if (reloadMetadataFn) {
       return reloadMetadataFn();
     }
   }).catch(error => {
-    console.error('\n❌ Background analysis failed:', error.message);
+    logger.error('\n❌ Background analysis failed:', error.message);
   });
 }
 
@@ -72,8 +77,8 @@ export async function reloadMetadata(context) {
       timestamp: Date.now()
     });
     
-    console.log(`📊 Data refreshed: ${metadata?.metadata?.totalFiles || 0} files`);
+    logger.info(`📊 Data refreshed: ${metadata?.metadata?.totalFiles || 0} files`);
   } catch (error) {
-    console.error('Failed to reload metadata:', error.message);
+    logger.error('Failed to reload metadata:', error.message);
   }
 }

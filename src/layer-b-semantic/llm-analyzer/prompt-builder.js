@@ -7,6 +7,11 @@
  */
 
 import promptEngine from '../prompt-engine/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:prompt:builder');
+
+
 
 /**
  * Construye el prompt para el LLM
@@ -39,7 +44,7 @@ export async function buildPrompt(code, filePath, staticAnalysis, projectContext
       analysisType: promptConfig.analysisType
     };
   } catch (error) {
-    console.error(`Error building prompt for ${filePath}:`, error.message);
+    logger.error(`Error building prompt for ${filePath}:`, error.message);
     // Fallback a prompts básicos
     return {
       systemPrompt: `You are a code analyzer. Return ONLY valid JSON.`,

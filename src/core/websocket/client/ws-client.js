@@ -10,6 +10,11 @@ import { ConnectionState, DEFAULT_CONFIG } from '../constants.js';
 import { SubscriptionManager } from './subscription-manager.js';
 import { handleClientCommand } from './message-handler.js';
 import { parseMessage, createErrorMessage } from '../messaging/message-types.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:ws:client');
+
+
 
 /**
  * Cliente WebSocket wrapper
@@ -77,7 +82,7 @@ export class WSClient {
     // Limpiar subscriptions para prevenir memory leak
     const subCount = this.subscriptions.clear();
     if (subCount > 0) {
-      console.log(`🧹 Cleaned up ${subCount} subscriptions for client ${this.id}`);
+      logger.info(`🧹 Cleaned up ${subCount} subscriptions for client ${this.id}`);
     }
     
     this.manager.removeClient(this.id);
@@ -88,7 +93,7 @@ export class WSClient {
    * @param {Error} error - Error ocurrido
    */
   handleError(error) {
-    console.error(`WebSocket error for client ${this.id}:`, error.message);
+    logger.error(`WebSocket error for client ${this.id}:`, error.message);
     this.manager.emit('client:error', this, error);
   }
 
@@ -107,7 +112,7 @@ export class WSClient {
       this.ws.send(data);
       return true;
     } catch (error) {
-      console.error(`Failed to send message to client ${this.id}:`, error.message);
+      logger.error(`Failed to send message to client ${this.id}:`, error.message);
       return false;
     }
   }

@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:static:extractors');
+
+
 /**
  * static-extractors.js
  * 
@@ -20,7 +25,7 @@
  * @deprecated Use `import { ... } from './static/index.js'` instead
  */
 
-console.warn('⚠️  DEPRECATED: Importing from static-extractors.js');
-console.warn('   Please update imports to: extractors/static/index.js');
+logger.warn('⚠️  DEPRECATED: Importing from static-extractors.js');
+logger.warn('   Please update imports to: extractors/static/index.js');
 
 export * from './static/index.js';

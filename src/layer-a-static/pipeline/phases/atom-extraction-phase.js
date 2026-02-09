@@ -9,13 +9,13 @@
 
 import { ExtractionPhase } from './base-phase.js';
 import { extractFunctionCode, getLineNumber } from '../../../shared/utils/ast-utils.js';
-import { extractSideEffects } from '../extractors/metadata/side-effects.js';
-import { extractCallGraph } from '../extractors/metadata/call-graph.js';
-import { extractDataFlow as extractDataFlowV2 } from '../extractors/data-flow-v2/core/index.js';
-import { extractTypeInference } from '../extractors/metadata/type-inference.js';
-import { extractTemporalPatterns } from '../extractors/metadata/temporal-patterns.js';
-import { extractPerformanceHints } from '../extractors/metadata/performance-hints.js';
-import { logger } from '../../utils/logger.js';
+import { extractSideEffects } from '../../extractors/metadata/side-effects.js';
+import { extractCallGraph } from '../../extractors/metadata/call-graph.js';
+import { extractDataFlow as extractDataFlowV2 } from '../../extractors/data-flow/index.js';
+import { extractTypeInference } from '../../extractors/metadata/type-inference.js';
+import { extractTemporalPatterns } from '../../extractors/metadata/temporal-patterns.js';
+import { extractPerformanceHints } from '../../extractors/metadata/performance-hints.js';
+import { logger } from '../../../utils/logger.js';
 
 /**
  * Phase 1: Extract atomic metadata from functions
@@ -146,18 +146,16 @@ export class AtomExtractionPhase extends ExtractionPhase {
       hasNestedLoops: performance.nestedLoops.length > 0,
       hasBlockingOps: performance.blockingOperations.length > 0,
 
-      // Data flow
-      dataFlow: dataFlowV2?.real || null,
-      standardized: dataFlowV2?.standardized || null,
-      patternHash: dataFlowV2?.standardized?.patternHash || null,
-      invariants: dataFlowV2?.real?.invariants || [],
-      typeFlow: dataFlowV2?.real?.typeFlow || null,
+      // Data Flow Fractal (Fase 1)
+      dataFlow: dataFlowV2 || null,
+      dataFlowAnalysis: dataFlowV2?.analysis || null,
+      hasDataFlow: dataFlowV2 !== null && dataFlowV2.inputs.length > 0,
 
       // Metadata
       _meta: {
-        dataFlowVersion: '2.0.0',
-        extractionTime: dataFlowV2?._meta?.processingTime || 0,
-        confidence: dataFlowV2?._meta?.confidence || 0.5
+        dataFlowVersion: '1.0.0-fractal',
+        extractionTime: new Date().toISOString(),
+        confidence: dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
       }
     };
 

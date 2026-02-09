@@ -16,6 +16,11 @@
 import { ChainBuilder } from './chain-builder.js';
 import { ArgumentMapper } from './argument-mapper.js';
 import { CrossFunctionGraphBuilder } from './cross-function-graph-builder.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:index');
+
+
 
 /**
  * Construye chains moleculares desde átomos
@@ -33,7 +38,7 @@ export function buildMolecularChains(atoms) {
     };
   }
 
-  console.log(`[MolecularChains] Building chains for ${atoms.length} atoms...`);
+  logger.info(`[MolecularChains] Building chains for ${atoms.length} atoms...`);
 
   // PASO 1: Construir chains
   const builder = new ChainBuilder(atoms);
@@ -49,7 +54,7 @@ export function buildMolecularChains(atoms) {
   // PASO 4: Generar resumen
   const summary = generateSummary(atoms, chains, mappings, graph);
 
-  console.log(`[MolecularChains] Built ${chains.length} chains across ${summary.totalFunctions} functions`);
+  logger.info(`[MolecularChains] Built ${chains.length} chains across ${summary.totalFunctions} functions`);
 
   return {
     chains,

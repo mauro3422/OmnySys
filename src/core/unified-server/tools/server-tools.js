@@ -1,3 +1,8 @@
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:server:tools');
+
+
 /**
  * @fileoverview Server Management Tools
  * 
@@ -13,7 +18,7 @@
  */
 export async function restartServer(clearCache = false) {
   try {
-    console.log('🔄 Reiniciando servidor OmnySys...');
+    logger.info('🔄 Reiniciando servidor OmnySys...');
     
     const result = {
       restarting: true,
@@ -23,7 +28,7 @@ export async function restartServer(clearCache = false) {
     };
     
     if (clearCache && this.cache) {
-      console.log('🧹 Limpiando caché...');
+      logger.info('🧹 Limpiando caché...');
       this.cache.clear();
       result.cacheCleared = true;
     }
@@ -37,9 +42,9 @@ export async function restartServer(clearCache = false) {
     }
     
     setTimeout(async () => {
-      console.log('👋 Cerrando servidor actual...');
+      logger.info('👋 Cerrando servidor actual...');
       await this.shutdown();
-      console.log('🚀 Reiniciando...');
+      logger.info('🚀 Reiniciando...');
       process.exit(0);
     }, 1000);
     

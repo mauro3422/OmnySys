@@ -11,6 +11,11 @@
  */
 
 import { getTransformByOperator } from '../core/transform-registry.js';
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:expression:visitor');
+
+
 
 export class ExpressionVisitor {
   constructor(context) {
@@ -61,7 +66,7 @@ export class ExpressionVisitor {
     const transform = getTransformByOperator(node.operator);
     
     if (!transform) {
-      console.warn(`[ExpressionVisitor] Unknown operator: ${node.operator}`);
+      logger.warn(`[ExpressionVisitor] Unknown operator: ${node.operator}`);
       return;
     }
 

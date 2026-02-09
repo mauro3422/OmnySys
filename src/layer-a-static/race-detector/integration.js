@@ -7,6 +7,11 @@
  */
 
 import { RaceConditionDetector } from './index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:integration');
+
+
 
 /**
  * Analiza un proyecto completo para race conditions
@@ -15,12 +20,12 @@ import { RaceConditionDetector } from './index.js';
  * @returns {Object} - Race conditions detectadas
  */
 export async function analyzeProjectRaces(projectData) {
-  console.log('[RaceDetector] Analyzing project for race conditions...');
+  logger.info('[RaceDetector] Analyzing project for race conditions...');
   
   const detector = new RaceConditionDetector(projectData);
   const results = detector.detect();
   
-  console.log(`[RaceDetector] Found ${results.races.length} races, ${results.warnings.length} warnings`);
+  logger.info(`[RaceDetector] Found ${results.races.length} races, ${results.warnings.length} warnings`);
   
   return results;
 }

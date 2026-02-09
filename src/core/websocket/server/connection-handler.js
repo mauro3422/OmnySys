@@ -33,7 +33,7 @@ export function handleConnection(ws, req, context) {
   const client = createClient(ws, clientId);
   clients.set(clientId, client);
 
-  console.log(`👤 Client connected: ${clientId} (total: ${clients.size})`);
+  logger.info(`👤 Client connected: ${clientId} (total: ${clients.size})`);
 
   // Enviar mensaje de bienvenida
   client.send(createConnectedMessage(clientId));
@@ -56,7 +56,7 @@ export function handleDisconnection(clientId, context) {
   
   if (client) {
     clients.delete(clientId);
-    console.log(`👋 Client disconnected: ${clientId} (total: ${clients.size})`);
+    logger.info(`👋 Client disconnected: ${clientId} (total: ${clients.size})`);
     emitter.emit('client:disconnected', client);
   }
 }
@@ -67,7 +67,7 @@ export function handleDisconnection(clientId, context) {
  * @param {EventEmitter} emitter - EventEmitter
  */
 export function handleServerError(error, emitter) {
-  console.error('WebSocket server error:', error);
+  logger.error('WebSocket server error:', error);
   emitter.emit('error', error);
 }
 
@@ -98,3 +98,8 @@ export function generateClientId() {
 
 // Import crypto for generateClientId
 import crypto from 'crypto';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:connection:handler');
+
+

@@ -1,383 +1,559 @@
 # OmnySys - Roadmap de Desarrollo
 
-**Versión actual**: v0.6.0 - Molecular Architecture ✅
-**Última actualización**: 2026-02-08
+**Versión actual**: v0.7.1 - Data Flow Fractal Phase 1 ✅  
+**Última actualización**: 2026-02-09  
+**Estado**: Production Ready - Core Stable
 
 ---
 
-## Filosofía de Desarrollo
+## 🎯 Propósito Central (El "Por Qué")
 
-**Enfoque incremental**: Construir y validar cada capa antes de pasar a la siguiente. Evitar el "big bang" que puede generar frustración si no funciona de inmediato.
+> **"Dar a las IAs el contexto exacto de un archivo específico, como si un desarrollador senior que conoce TODO el codebase estuviera sentado al lado"**
 
-**Principio**: "Funciona en sintético antes de tocar código real"
-
----
-
-## Estado Actual (v0.6.0)
+### La Metáfora: De Cajas a Electrones
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ✅ COMPLETADO - Molecular Architecture                     │
-│                                                             │
-│  Arquitectura Atómica/Molecular implementada               │
-│  12 herramientas MCP (incluyendo atomic tools)             │
-│  Sistema de arquetipos de funciones (Atomic Analysis)      │
-│  Análisis función por función (átomos)                     │
-│  Agregación a nivel archivo (moléculas)                    │
-│  4 Pilares consolidados (Box Test, Metadata, Atomic,       │
-│                          Fractal Architecture)             │
-│                                                             │
-│  147 módulos enfocados con principios SOLID                │
-│  - layer-a-static/: graph, parser, extractors, query       │
-│  - layer-b-semantic/: llm-analyzer, validators, detectors  │
-│  - layer-c-memory/: atomic analysis, MCP tools             │
-└─────────────────────────────────────────────────────────────┘
+SISTEMA TRADICIONAL (v0.5):
+┌─────────────────────────────────────────┐
+│  Levantas una caja (archivo)            │
+│  └── Ves cables (imports/exports)       │
+│      └── "Este archivo importa React"   │
+│                                         │
+│  ❌ No sabes QUÉ hace la función        │
+│  ❌ No sabes CÓMO fluyen los datos      │
+│  ❌ No sabes el IMPACTO de cambiar X    │
+└─────────────────────────────────────────┘
+
+OMNYSYS v0.6 (Molecular):
+┌─────────────────────────────────────────┐
+│  Dentro de la caja hay ÁTOMOS          │
+│  └── Cada función es un átomo           │
+│      └── Con propiedades (metadata)     │
+│                                         │
+│  ✅ Sabes que existe processOrder()     │
+│  ✅ Sabes que tiene 3 parámetros        │
+│  ✅ Sabes que llama a calculateTotal    │
+│  ❌ Pero NO sabes qué hace cada uno     │
+└─────────────────────────────────────────┘
+
+OMNYSYS v0.7+ (Data Flow Fractal):
+┌─────────────────────────────────────────┐
+│  Dentro del átomo hay ELECTRONES        │
+│  └── Fluyen por ÓRBITAS definidas       │
+│                                         │
+│  ✅ "order entra por aquí"              │
+│  ✅ "se transforma en total aquí"       │
+│  ✅ "sale como orderId aquí"            │
+│  ✅ "Si cambias order.items, afecta X"  │
+│                                         │
+│  ⚡ Contexto COMPLETO para la IA        │
+└─────────────────────────────────────────┘
 ```
 
----
+### Más Allá del Código: Patrones Universales
 
-## Fases Completadas
+Esta arquitectura aplica a **cualquier sistema complejo**:
 
-### ✅ FASE 0: Preparación y Documentación
+| Dominio | "Cajas" | "Átomos" | "Electrones" |
+|---------|---------|----------|--------------|
+| **Software** | Archivos | Funciones | Flujo de datos |
+| **Organizaciones** | Departamentos | Procesos | Información |
+| **Hardware** | PCBs | Componentes | Señales eléctricas |
+| **Biología** | Células | Organelos | Moléculas |
+| **Legal** | Contratos | Cláusulas | Derechos/Obligaciones |
 
-**Estado**: Completada
-
-- [x] README.md con análisis del problema
-- [x] ROADMAP.md con plan de desarrollo
-- [x] ARCHITECTURE.md con diseño técnico
-- [x] docs/ con análisis detallado
-- [x] Estructura de carpetas del proyecto
-- [x] Changelog modular por versión
-
----
-
-### ✅ FASE 1: Capa A - Análisis Estático
-
-**Estado**: Completada (95%)
-
-**Entregables**:
-- [x] Parser de código (JS/TS) con Babel AST
-- [x] Extracción de imports/exports/definiciones
-- [x] Constructor de grafo de dependencias (modular)
-- [x] `system-map.json` con grafo completo
-- [x] 15+ casos de prueba sintéticos
-- [x] Detección de patrones (shared state, eventos, side effects)
-- [x] Risk scorer basado en reglas
-- [x] Análisis de calidad (unused exports, circular deps, etc.)
-
-**Ubicación**: `src/layer-a-static/` (27 módulos)
+> **OmnySys es un motor de comprensión de sistemas complejos, usando código como primer caso de uso.**
 
 ---
 
-### ✅ FASE 2: Integración MCP Básica
+## 🧬 Evolución del Sistema
 
-**Estado**: Completada (95%)
-
-**Entregables**:
-- [x] Servidor MCP con tools
-- [x] `get_impact_map()` - Mapa de impacto
-- [x] `analyze_change()` - Análisis de cambios
-- [x] `explain_connection()` - Explicar conexiones
-- [x] `get_risk_assessment()` - Evaluación de riesgos
-- [x] `search_files()` - Búsqueda de archivos
-- [x] Query service eficiente (6 módulos)
-- [x] Storage particionado en `.omnysysdata/`
-
-**Ubicación**: `src/layer-c-memory/`
-
----
-
-### ✅ FASE 3: Capa B - Análisis Semántico
-
-**Estado**: Completada (90%)
-
-**Entregables**:
-- [x] Schema de datos para semantic layer
-- [x] Detección estática de conexiones semánticas
-  - [x] Shared state detector (`window.*`, `global.*`)
-  - [x] Event pattern detector (emitters/listeners)
-  - [x] Side effects detector
-- [x] Análisis con IA local (Qwen2.5-Coder)
-- [x] Validación de respuestas LLM (17 módulos)
-- [x] Scoring híbrido (estático + IA)
-- [x] `enhanced-system-map.json` con datos enriquecidos
-- [x] Conexiones CSS-in-JS, TypeScript, Redux/Context
-
-**Ubicación**: `src/layer-b-semantic/` (40+ módulos)
-
----
-
-### ✅ FASE 4: Orchestrator y Procesamiento
-
-**Estado**: Completada (95%)
-
-**Entregables**:
-- [x] AnalysisQueue con prioridades (CRITICAL > HIGH > MEDIUM > LOW)
-- [x] AnalysisWorker para procesar con LLM
-- [x] FileWatcher para cambios en tiempo real
-- [x] BatchProcessor para agrupar cambios (9 módulos)
-- [x] StateManager para persistencia atómica
-- [x] WebSocket para notificaciones en tiempo real (10 módulos)
-- [x] Interrupción de trabajos de menor prioridad
-- [x] Rollback de caché en caso de error
-
-**Ubicación**: `src/core/` (25+ módulos)
-
----
-
-### ✅ FASE 5: Unified Entry Point (v0.4.5+ v0.5.1)
-
-**Estado**: Completada (95%)
-
-**Entregables**:
-- [x] MCP Server como entry point único
-- [x] Orchestrator como componente interno
-- [x] Auto-indexación en startup (si no hay datos)
-- [x] Tools con auto-análisis (encola CRITICAL si falta)
-- [x] Cache unificado (v0.4.4)
-- [x] UnifiedCacheManager con invalidación en cascada
-- [x] Documentación de tools MCP
-- [x] **v0.5.1**: Arquitectura modular SOLID
-
-**Ubicación**: `src/layer-c-memory/mcp-server.js`
-
----
-
-### ✅ FASE 5.5: Molecular Architecture (v0.6.0)
-
-**Estado**: Completada (100%)
-
-**Entregables**:
-- [x] Sistema de análisis atómico (función por función)
-- [x] Arquetipos de funciones (Transformer, Aggregator, Validator, etc.)
-- [x] Análisis molecular (agregación a nivel archivo)
-- [x] 3 herramientas MCP atómicas nuevas:
-  - [x] `get_function_details()` - Metadata de función individual
-  - [x] `get_molecule_summary()` - Resumen molecular de archivo
-  - [x] `restart_server()` - Reinicio y recarga de datos
-- [x] Consolidación de 4 Pilares:
-  - [x] Box Test (verificación de comportamiento)
-  - [x] Metadata Insights (combinación de señales)
-  - [x] Atomic Composition (funciones como unidad base)
-  - [x] Fractal Architecture (patrones a todas las escalas)
-- [x] Documentación de arquitectura molecular
-- [x] Total: 12 herramientas MCP
-
-**Ubicación**: `src/layer-c-memory/atomic/`, `docs/ARCHITECTURE_MOLECULAR_PLAN.md`
-
----
-
-## Fases en Progreso / Próximas
-
-### 🏗️ FASE 6: Beta Testing y Robustez
-
-**Objetivo**: Preparar el sistema para uso real en proyectos
-
-**Duración estimada**: 2-4 semanas
-
-**Tareas**:
-- [ ] Testing en proyectos reales (3-5 proyectos open source)
-- [ ] Benchmark de performance (tiempo de análisis vs tamaño del proyecto)
-- [ ] Manejo de errores graceful (qué pasa si LLM no responde)
-- [ ] Métricas de uso (qué tools se usan más)
-- [ ] Documentación de troubleshooting
-- [ ] Guía de instalación simplificada
-
-**Casos de prueba objetivo**:
 ```
-Proyectos para testear:
-1. React component library (50-100 archivos)
-2. Node.js API (100-200 archivos)
-3. Vue/Nuxt app (150-300 archivos)
-4. Proyecto propio del usuario
+v0.5 - Box Test (2026-01)
+   └── Levantas la caja, ves cables (conexiones entre archivos)
+   └── 11 arquetipos de archivos
+   └── 57 campos de metadata
+   
+v0.6 - Molecular (2026-02-08)
+   └── Dentro de la caja hay átomos (funciones)
+   └── 12 herramientas MCP (3 atómicas nuevas)
+   └── Análisis función por función
+   └── 4 Pilares consolidados
+   
+v0.7 - Data Flow Fractal (2026-02-09)
+   └── Dentro del átomo ves electrones orbitando
+   └── Fase 1: Inputs → Transforms → Outputs
+   └── Meta-Validator: 4 capas de validación
+   └── Logger System: 475+ logs centralizados
+   
+v0.8 - IDE Consciente (Próximo)
+   └── Simulación del flujo de datos
+   └── Predicción de impacto antes de escribir
+   └── Autocompletado basado en contexto real
+   
+v1.0 - Artificial Intuition (Futuro)
+   └── La IA "entiende" el sistema como un senior
+   └── Sugerencias de refactoring proactivas
+   └── Detección de bugs antes de que existan
 ```
 
 ---
 
-### ⏭️ FASE 7: Protocolo MCP Real
+## ✅ Fases Completadas
 
-**Objetivo**: Implementar el protocolo MCP estándar para integración nativa con Claude Desktop
+### ✅ FASE 0-5: Fundamentos (v0.1 - v0.5)
 
-**Tareas**:
-- [ ] Implementar MCP SDK (@anthropic-ai/mcp)
-- [ ] Configuración via `claude_desktop_config.json`
-- [ ] Stdio transport para comunicación con Claude
-- [ ] Tool definitions dinámicas
-- [ ] Schema validation de requests/responses
+**Capa A (Static)**: Parser, imports/exports, grafo de dependencias, 15+ detectores  
+**Capa B (Semantic)**: Análisis híbrido (estático + IA), validadores, conexiones semánticas  
+**Capa C (Memory)**: MCP tools, caché unificado, WebSocket, BatchProcessor  
+**Orchestrator**: AnalysisQueue, FileWatcher, StateManager, ProcessManager  
 
-**Configuración objetivo**:
-```json
-// claude_desktop_config.json
+**Resultado**: 12 herramientas MCP funcionando, sistema estable, ~147 módulos.
+
+---
+
+### ✅ FASE 6: Molecular Architecture (v0.6.0)
+
+**El Gran Salto**: De archivos a funciones como unidad atómica.
+
+```javascript
+// ANTES (v0.5): Análisis a nivel archivo
 {
-  "mcpServers": {
-    "omnysys": {
-      "command": "node",
-      "args": [
-        "/path/to/omnysys/src/layer-c-memory/mcp-server.js",
-        "/path/to/user/project"
-      ]
+  "src/api.js": {
+    exports: ["processOrder"],
+    imports: ["calculateTotal"],
+    type: "network-hub"
+  }
+}
+
+// DESPUÉS (v0.6): Análisis a nivel función
+{
+  "atoms": {
+    "src/api.js::processOrder": {
+      type: "fragile-network",
+      severity: 8,
+      complexity: 35,
+      calls: ["calculateTotal"],
+      calledBy: ["UserCard.jsx::loadUser"]
+    },
+    "src/api.js::validateToken": {
+      type: "validator",
+      severity: 3,
+      complexity: 8
     }
   }
 }
 ```
 
----
-
-### ⏭️ FASE 8: VS Code Extension
-
-**Objetivo**: Extensión oficial de VS Code para visualización gráfica
-
-**Tareas**:
-- [ ] Graph view interactivo (dependencias entre archivos)
-- [ ] Panel de "Impact Preview" antes de guardar
-- [ ] Decoraciones en el editor (warnings de alto riesgo)
-- [ ] Status bar con estado del sistema
-- [ ] Comandos: "Analyze Current File", "Show Impact Map", etc.
-
-**Ubicación**: `omnysys-vscode/` (planificado)
+**Deliverables**:
+- ✅ Sistema atómico (funciones con metadata completa)
+- ✅ Tools atómicas: `get_function_details()`, `get_molecule_summary()`
+- ✅ Archetypes atómicos: god-function, fragile-network, validator, etc.
+- ✅ Derivación molecular: archivos componen sus propiedades de átomos
+- ✅ 4 Pilares documentados: Box Test, Metadata Insights, Atomic Composition, Fractal A→B→C
 
 ---
 
-### ⏭️ FASE 9: Optimización de Performance
+### ✅ FASE 7: Race Conditions + Robustez (v0.7.0 - v0.7.1)
 
-**Objetivo**: Soportar proyectos grandes (1000+ archivos)
+**Detectar el invisible**: Cuando dos funciones async pueden pisarse.
 
-**Tareas**:
-- [ ] Análisis incremental (solo archivos cambiados)
-- [ ] Lazy loading de datos del grafo
-- [ ] Caché de análisis por función (no solo por archivo)
-- [ ] Workers paralelos para análisis
-- [ ] Optimización de queries (índices en SQLite)
+```javascript
+// Detectado automáticamente:
+async updateCart() { localStorage.cart = ... }      // ← WRITE
+async applyDiscount() { localStorage.cart = ... }   // ← WRITE (RACE!)
 
-**Métricas objetivo**:
-| Tamaño del Proyecto | Tiempo de Indexación | Query Time |
-|---------------------|---------------------|------------|
-| 100 archivos | < 30 segundos | < 100ms |
-| 500 archivos | < 3 minutos | < 200ms |
-| 1000 archivos | < 10 minutos | < 500ms |
-
----
-
-### ⏭️ FASE 10: Features Avanzadas
-
-**Objetivo**: Expandir capacidades del sistema
-
-**Tareas**:
-- [ ] Soporte multi-lenguaje (Python, Go, Rust)
-- [ ] Análisis de tests (qué tests correr tras cambio)
-- [ ] Sugerencias de refactoring automáticas
-- [ ] Detección de dead code avanzada
-- [ ] Integración con CI/CD (fallar build si riesgo crítico)
-- [ ] Historial de cambios (quién modificó qué y cuándo)
-
----
-
-## Métricas de Progreso
-
-### Por Componente
-
-| Componente | Estado | Módulos | Test Coverage |
-|------------|--------|---------|---------------|
-| Capa A (Static) | 95% ✅ | ~27 | 70% |
-| Capa B (Semantic) | 90% ✅ | ~40 | 60% |
-| Capa C (Memory + Atomic) | 100% ✅ | ~20 | 60% |
-| Orchestrator | 95% ✅ | ~25 | 40% |
-| MCP Tools | 100% ✅ | ~15 | 40% |
-| Cache System | 95% ✅ | ~5 | 50% |
-| **TOTAL** | **92%** | **~147** | **50%** |
-
-### Por Funcionalidad
-
-| Feature | Status | Notas |
-|---------|--------|-------|
-| Análisis estático | ✅ Completo | 15+ detectores |
-| Análisis semántico | ✅ Completo | Híbrido: estático + IA |
-| Cola de prioridad | ✅ Completo | CRITICAL > HIGH > MEDIUM > LOW |
-| File watching | ✅ Completo | Detección en tiempo real |
-| Auto-indexación | ✅ Completo | Background, no bloqueante |
-| Tools MCP | ✅ Completo | 12 tools disponibles |
-| Atomic Analysis | ✅ Completo | Arquetipos de funciones |
-| VS Code Bridge | 🏗️ WIP | Puerto 9998 |
-| MCP Protocol | ⏭️ Planned | Integración con Claude Desktop |
-| Multi-lenguaje | ⏭️ Planned | Python, Go, Rust |
-
----
-
-## Changelog
-
-Ver [CHANGELOG.md](CHANGELOG.md) para historial detallado.
-
-**Últimas versiones**:
-- **v0.6.0**: Molecular Architecture (current) - 12 tools MCP, análisis atómico
-- v0.5.1: Enterprise SOLID Architecture Refactor - 147 módulos
-- v0.5.0: Layer A/B Unification & Orchestrator
-- v0.4.6: Metadata Contract & Plug & Play Architecture
-- v0.4.5: MCP Unified Entry Point
-- v0.4.4: Unified Cache System
-- v0.4.3: Bug fixes y estabilidad
-- v0.4.2: Context optimization
-- v0.4.0: Semantic enrichment con IA
-
----
-
-## Contribuciones
-
-¿Quieres contribuir? Áreas donde necesitamos ayuda:
-
-1. **Testing**: Probar el sistema en proyectos reales
-2. **Documentación**: Tutoriales, guías de uso
-3. **Performance**: Optimización para proyectos grandes
-4. **Lenguajes**: Soporte para Python, Go, Rust
-5. **UI/UX**: Mejorar visualización de dependencias
-
----
-
-## Referencias
-
-- [README.md](README.md) - Overview del proyecto
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Diseño técnico detallado
-- [docs/INDEX.md](docs/INDEX.md) - Índice de documentación
-- [changelog/](changelog/) - Historial de versiones
-
----
-
-## Notas sobre v0.5.1
-
-### Arquitectura Modular
-
-La v0.5.1 representa un hito arquitectónico: la transformación de 17 archivos monolíticos en 147 módulos enfocados, siguiendo principios SOLID y el patrón SSOT (Single Source of Truth).
-
-**Beneficios**:
-- **Mantenibilidad**: Cada módulo tiene una única responsabilidad
-- **Testabilidad**: Fácil de testear unitariamente
-- **Extensibilidad**: Nuevos features sin modificar código existente
-- **Colaboración**: Múltiples desarrolladores sin conflictos
-
-**Estructura**:
-```
-src/
-├── core/                          (25 módulos)
-│   ├── batch-processor/           (9 módulos)
-│   ├── websocket/                 (10 módulos)
-│   └── unified-server/            (7 módulos)
-│
-├── layer-a-static/                (27 módulos)
-│   ├── graph/                     (11 módulos)
-│   ├── parser/                    (8 módulos)
-│   ├── extractors/                (17 módulos organizados)
-│   └── query/                     (6 módulos)
-│
-└── layer-b-semantic/              (40+ módulos)
-    ├── llm-analyzer/              (5 módulos)
-    ├── issue-detectors/           (8 módulos)
-    ├── project-analyzer/          (10 módulos)
-    ├── validators/                (17 módulos)
-    └── metadata-contract/         (10 módulos)
+// Sistema alerta:
+⚠️  WW Race Condition detected in localStorage.cart
+   Severity: HIGH
+   Mitigation: Add lock or transaction
 ```
 
-**SSOT Locations**:
-- SystemMap Structure: `graph/types.js`
-- Path Normalization: `graph/utils/path-utils.js`
-- Babel Config: `parser/config.js`
-- Prompt Building: `llm-analyzer/prompt-builder.js`
-- Metadata Contract: `metadata-contract/constants.js`
+**Deliverables**:
+- ✅ **8 TODOs implementados**: sameBusinessFlow, findCapturedVariables, etc.
+- ✅ **27+ tests**: Derivation engine + Race detector
+- ✅ **Logger System**: 475+ console.log → sistema jerárquico
+- ✅ **Refactorización masiva**: 69% menos líneas de código, SOLID/SSOT
+- ✅ **Meta-Validator**: 4 capas de validación de integridad
+
+---
+
+### ✅ FASE 8: Data Flow Fractal - Fase 1 (v0.7.1) ✅ ACTUAL
+
+**Ver el flujo de datos**: inputs → transforms → outputs
+
+```javascript
+// Metadata extraída automáticamente:
+{
+  name: "processOrder",
+  dataFlow: {
+    inputs: [
+      { name: "order", usages: [
+        { type: "property_access", property: "items", passedTo: "calculateTotal" },
+        { type: "spread", passedTo: "saveOrder" }
+      ]}
+    ],
+    transformations: [
+      { from: "order.items", to: "total", via: "calculateTotal", operation: "calculation" },
+      { from: ["total", "discount"], to: "finalTotal", operation: "arithmetic" }
+    ],
+    outputs: [
+      { type: "side_effect", target: "saveOrder", operation: "persistence" },
+      { type: "return", shape: "{ orderId, total }" }
+    ]
+  },
+  analysis: {
+    coherence: 85,      // 0-100 qué tan coherente es el flujo
+    unusedInputs: [],   // parámetros no usados
+    deadVariables: []   // variables definidas pero no usadas
+  }
+}
+```
+
+**Deliverables**:
+- ✅ **Input Extractor**: Parámetros simples, destructuring, rest
+- ✅ **Transformation Extractor**: Asignaciones, operaciones, llamadas
+- ✅ **Output Extractor**: Returns, side effects, throws
+- ✅ **Flow Analyzer**: Detecta inputs no usados, variables muertas
+- ✅ Integrado en pipeline de extracción
+
+---
+
+## 🏗️ Fases en Progreso / Próximas
+
+### 🔄 FASE 9: Data Flow Fractal - Fases 2-3
+
+**Estimado**: 1-2 semanas  
+**Propósito**: Entender el SIGNIFICADO del código para ML y detección de patrones.
+
+#### Fase 2: Análisis Semántico (Nombres)
+
+```javascript
+// Extraer significado del nombre de función:
+"validateUserPayment" → {
+  verbo: "validate",
+  dominio: "user",
+  entidad: "payment",
+  tipoOperacion: "validation",
+  confidence: 0.95
+}
+
+"fetchUserData" → {
+  verbo: "fetch",
+  dominio: "user",
+  entidad: "data",
+  tipoOperacion: "network_read",
+  confidence: 0.98
+}
+```
+
+**Para qué sirve**:
+- Agrupar funciones por propósito semántico
+- Detectar inconsistencias (función llamada "validate" que hace "delete")
+- Catalogar para entrenamiento de IA
+
+#### Fase 3: Estandarización de Patrones
+
+```javascript
+// Convertir código específico a patrón universal:
+
+// Original A:              Original B:
+validateUser(user)        validateOrder(order)
+
+// Estandarizado (ambos):
+VALIDATE_FUNC(ENTITY_PARAM)
+
+// Pattern hash: "a3f7d29c1b5e..."
+// Flow type: "validation"
+```
+
+**Índice de Patrones** (`.omnysysdata/patterns/{hash}.json`):
+```javascript
+{
+  hash: "a3f7d29c1b5e",
+  pattern: "VALIDATE_FUNC(ENTITY_PARAM)",
+  atoms: [
+    "src/api.js::processOrder",
+    "src/cart.js::processCart",
+    "src/orders.js::processPayment"
+  ],
+  count: 15,
+  statistics: {
+    avgComplexity: 12.4,
+    commonDomains: ["order", "payment", "cart"],
+    successRate: 0.94  // % que funcionan correctamente
+  },
+  trainingReady: true  // Exportable para ML
+}
+```
+
+**Deliverables**:
+- [ ] Semantic name parser (verb-noun patterns)
+- [ ] Pattern standardization engine
+- [ ] Pattern index manager
+- [ ] Exportación a datasets de entrenamiento
+
+---
+
+### ⏭️ FASE 10: Data Flow Fractal - Fases 4-7 (El Core del IDE)
+
+**Estimado**: 3-4 semanas  
+**Propósito**: Conectar todo para simular y predecir.
+
+#### Fase 4: Cadenas Cross-Function
+
+```
+processOrder(order) 
+  → llama a: calculateTotal(order.items)
+  → recibe: total
+  → pasa a: applyDiscount(total)
+  → recibe: finalTotal
+  → retorna: { orderId, finalTotal }
+  
+// Cadena completa del viaje del dato:
+order.items → calculateTotal → total → applyDiscount → finalTotal → return
+```
+
+**Deliverables**:
+- [ ] Cross-function data flow tracking
+- [ ] Chain builder (conectar output de A con input de B)
+- [ ] Dead data detection (datos que no llegan a ningún output)
+
+#### Fase 5: Race Conditions (✅ Ya implementado en v0.7.0)
+
+Ya tenemos detección completa de race conditions en shared state.
+
+#### Fase 6: Motor de Simulación ⭐ CRÍTICO
+
+```javascript
+// Simular: "Qué pasa si order.items es null?"
+
+simulator.run({
+  entryPoint: "processOrder",
+  input: { order: { items: null }, userId: 123 }
+});
+
+// Resultado:
+Step 1: processOrder recibe order={items: null}
+Step 2: calculateTotal(order.items) → ERROR: Cannot read property of null
+Step 3: ❌ Simulación falla en línea 15
+
+// Sugerencia automática:
+💡 Agregar validación: if (!order?.items) throw new ValidationError(...)
+```
+
+**Deliverables**:
+- [ ] Virtual Data Flow Simulator
+- [ ] Test probe injection (inyectar valores de prueba)
+- [ ] Path prediction (predecir caminos de ejecución)
+- [ ] Impact pre-analysis (antes de escribir código)
+
+#### Fase 7: Nivel Módulo y Sistema
+
+```javascript
+// Análisis a nivel de carpeta (feature):
+auth/
+  ├── login.js      → Entry point
+  ├── validate.js   → Transformer
+  └── store.js      → Side effect
+
+// Metadata derivada:
+{
+  module: "auth",
+  flowType: "entry-transform-persist",
+  inputs: ["credentials"],
+  outputs: ["session", "localStorage.session"],
+  risk: "HIGH" // Porque maneja auth + storage
+}
+```
+
+---
+
+### ⏭️ FASE 11: IDE Consciente (El "OmnyIDE")
+
+**Estimado**: 2-3 meses  
+**Visión**: Un IDE que "entiende" tu código como un senior developer.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    IDE CONSCIENTE                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  💡 Autocompletado Contextual                                   │
+│  Escribes: "order."                                             │
+│  Sugiere: "items" (usado en calculateTotal), "id" (en return)  │
+│  NO sugiere: "metadata" (nunca usado en esta función)          │
+│                                                                 │
+│  🔮 Predicción de Impacto (antes de guardar)                    │
+│  "Si cambias este parámetro, afecta 12 archivos"               │
+│  "¿Quieres ver el análisis de impacto?"                        │
+│                                                                 │
+│  🧪 Test Generation                                            │
+│  "Detecté un edge case no manejado: order.items vacío"         │
+│  "¿Generar test para este caso?"                               │
+│                                                                 │
+│  🚨 Prevenición de Bugs                                        │
+│  "⚠️  Esta función puede causar race condition con línea 45"   │
+│  "Sugerencia: Agregar await o mutex"                           │
+│                                                                 │
+│  📊 System Health Dashboard                                     │
+│  "Deuda técnica: 3 archivos god-object detectados"             │
+│  "Riesgo acumulado en módulo 'payment': 8.5/10"                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementación**: VS Code Extension + Web UI
+
+**Deliverables**:
+- [ ] VS Code Extension con integración MCP
+- [ ] Panel de System Health en tiempo real
+- [ ] Impact Preview (antes de guardar archivo)
+- [ ] Decoraciones de riesgo en el editor
+- [ ] Autocompletado basado en data flow
+
+---
+
+### ⏭️ FASE 12: Artificial Intuition (v1.0)
+
+**Visión**: La IA no solo sugiere, "siente" el sistema.
+
+```javascript
+// La IA detecta patrones de riesgo automáticamente:
+
+"He visto este patrón antes..."
+"3 veces en proyectos similares, cambiar X sin actualizar Y"
+"causó bugs en producción."
+
+"Recomendación: Agregar validación de Y antes de mergear."
+```
+
+**Basado en**:
+- Catálogo de patrones de .omnysysdata/patterns/
+- Historial de cambios exitosos vs fallidos
+- ML entrenado en patrones universales
+
+---
+
+## 📊 Estado Actual Detallado
+
+### Componentes Core
+
+| Componente | Estado | Módulos | Cobertura | Notas |
+|------------|--------|---------|-----------|-------|
+| **Capa A (Static)** | 95% ✅ | ~30 | 70% | Parser, extractors, graph, data flow |
+| **Capa B (Semantic)** | 90% ✅ | ~40 | 60% | LLM analysis, validators, archetypes |
+| **Capa C (Memory/MCP)** | 100% ✅ | ~25 | 60% | 12 tools, cache, WebSocket |
+| **Orchestrator** | 95% ✅ | ~25 | 40% | Queue, workers, file watcher |
+| **Race Detector** | 100% ✅ | ~15 | 70% | 8 TODOs implementados |
+| **Meta-Validator** | 80% ✅ | ~10 | 30% | 4 capas, Source/Derivation funcionando |
+| **Data Flow Fractal** | 30% 🔄 | ~8 | 20% | Fase 1 lista, 2-7 pendientes |
+| **TOTAL** | **82%** | **~147** | **50%** | |
+
+### Data Flow Fractal - Progreso Detallado
+
+| Fase | Descripción | Estado | Bloquea |
+|------|-------------|--------|---------|
+| **Fase 1** | Data Flow Atómico | ✅ 100% | - |
+| **Fase 2** | Análisis Semántico | ⏭️ 0% | Fase 1 |
+| **Fase 3** | Estandarización | ⏭️ 0% | Fase 2 |
+| **Fase 4** | Cadenas Cross-Function | ⏭️ 0% | Fase 1 |
+| **Fase 5** | Race Conditions | ✅ 100% | - |
+| **Fase 6** | Simulación | ⏭️ 0% | Fase 4 |
+| **Fase 7** | Nivel Sistema | ⏭️ 0% | Fase 6 |
+
+---
+
+## 🎯 Decisiones de Diseño Clave
+
+### 1. "Cables, No Señales"
+
+No rastreamos VALORES (user.name = "John"), rastreamos CONEXIONES (user → validate → save).
+
+**Por qué**:
+- 97% cobertura vs 20% si rastreamos valores
+- No necesitamos ejecutar el código
+- Funciona con eval(), dynamic imports, etc.
+- Los valores son para runtime, las conexiones son para análisis estático
+
+### 2. Zero LLM para Extracción
+
+Toda la extracción es determinística (AST + regex). LLM solo para:
+- Confidence < 0.8
+- Semantic analysis de nombres
+- Casos ambiguos
+
+**Resultado**: 90%+ de archivos sin necesidad de LLM.
+
+### 3. Fractal A→B→C
+
+Mismo patrón en todas las escalas:
+```
+Átomo:   Inputs → Transform → Output
+Molécula: Exports → Chains → Returns
+Módulo:  Imports → Flows → Exports
+Sistema: Entry → Processing → Response
+```
+
+### 4. Single Source of Truth (SSOT)
+
+Los átomos tienen la verdad. Las moléculas DERIVAN de átomos. Si cambia un átomo, se invalida todo hacia arriba.
+
+---
+
+## 🚀 Próximos Pasos Inmediatos
+
+### Prioridad 1: Data Flow Fase 2-3 (Semana 1-2)
+- Parser semántico de nombres de funciones
+- Engine de estandarización de patrones
+- Índice de patrones para ML
+
+### Prioridad 2: Data Flow Fase 4 (Semana 3-4)
+- Cross-function chain builder
+- Conectar outputs con inputs entre funciones
+- Detección de "data sinks" (datos que mueren)
+
+### Prioridad 3: Integración Completa (Semana 5-6)
+- Meta-Validator usando datos reales
+- Pipeline de análisis con data flow
+- Tests end-to-end con proyectos reales
+
+### Prioridad 4: IDE Consciente (Mes 2-3)
+- VS Code Extension básica
+- Autocompletado contextual
+- Impact Preview
+
+---
+
+## 📚 Documentación Clave
+
+| Documento | Descripción | Estado |
+|-----------|-------------|--------|
+| `docs/FISICA_DEL_SOFTWARE.md` | Visión UNIFICADA del sistema | ✅ Actualizado |
+| `docs/DATA_FLOW/README.md` | Arquitectura Fractal completa | ✅ Actualizado |
+| `docs/architecture/CORE_PRINCIPLES.md` | Los 4 Pilares | ✅ Actualizado |
+| `docs/OMNY_IDE_CONSCIENTE_PRACTICO.md` | Roadmap al IDE | ✅ Actualizado |
+| `changelog/v0.7.1.md` | Cambios recientes | ✅ Actualizado |
+| `PLAN_MAESTRO_CORRECCION.md` | Plan técnico detallado | ✅ Completo |
+
+---
+
+## 🎓 Metáforas para Recordar
+
+### Para Usuarios (Desarrolladores):
+> **"OmnySys es como tener un desarrollador senior que ya leyó TODO tu código, sentado a tu lado. Cuando vas a cambar algo, te dice: 'Espera, eso afecta a 12 archivos, mira...'"**
+
+### Para Clientes (Empresas):
+> **"OmnySys reduce el tiempo de onboarding a codebase de semanas a minutos. Un desarrollador nuevo puede hacer cambios seguros en su primer día."**
+
+### Para Inversores:
+> **"OmnySys es el Google Maps para código. No solo sabe QUÉ calles existen, sabe CÓMO llegar de A a B. Aplicamos esto a software hoy, pero el motor sirve para cualquier sistema complejo."**
+
+### Para la Comunidad (Open Source):
+> **"OmnySys democratiza el conocimiento de sistemas complejos. Antes necesitabas 6 meses para entender un codebase grande. Ahora necesitas 6 minutos preguntándole a la IA."**
+
+---
+
+**OmnySys v0.7.1 - Del código al conocimiento.**
+
+*"Levantas la caja, ves los cables. Miras dentro, ves los átomos. Ves más allá, ves los electrones bailando. Eso es OmnySys."*

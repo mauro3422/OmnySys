@@ -7,6 +7,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { indexProject } from '../layer-a-static/indexer.js';
 import { getFileAnalysis } from '../layer-a-static/query/index.js';
+import { createLogger } from '../shared/logger-system.js';
+
+const logger = createLogger('OmnySys:core:analysis-worker');
 
 export class AnalysisWorker {
   constructor(rootPath, callbacks = {}) {
@@ -22,9 +25,9 @@ export class AnalysisWorker {
    * Inicializa el worker
    */
   async initialize() {
-    console.log('🔧 Initializing AnalysisWorker...');
+    logger.info('Initializing AnalysisWorker...');
     this.isInitialized = true;
-    console.log('✅ AnalysisWorker ready');
+    logger.info('AnalysisWorker ready');
   }
   
   /**
@@ -54,11 +57,11 @@ export class AnalysisWorker {
    */
   async analyze(job) {
     // Debug: Verificar estructura del job
-    console.log(`🔍 DEBUG Worker: Received job`, typeof job, job ? Object.keys(job) : 'null');
-    console.log(`🔍 DEBUG Worker: job.filePath =`, job?.filePath, typeof job?.filePath);
+    logger.debug('Received job', { type: typeof job, keys: job ? Object.keys(job) : null });
+    logger.debug('Job filePath', { path: job?.filePath, type: typeof job?.filePath });
     
     if (this.isPaused) {
-      console.log(`⏸️  Worker paused, delaying ${path.basename(job.filePath)}`);
+      logger.info(`Worker paused, delaying ${path.basename(job.filePath)}`);
       return;
     }
     
@@ -81,8 +84,8 @@ export class AnalysisWorker {
       
       // Si el job necesita LLM, usar LLMAnalyzer
       if (job.needsLLM) {
-        console.log(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
-        console.log(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
+        logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
+        logger.info(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
         
         const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer/index.js');
         const { buildPromptMetadata } = await import('../layer-b-semantic/metadata-contract.js');
@@ -90,28 +93,28 @@ export class AnalysisWorker {
         const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
         const aiConfig = await loadAIConfig();
         
-        console.log(`   🔌 Initializing LLM analyzer...`);
+        logger.info(`   🔌 Initializing LLM analyzer...`);
         const llmAnalyzer = new LLMAnalyzer(aiConfig, this.rootPath);
         const initialized = await llmAnalyzer.initialize();
         
         if (!initialized) {
           throw new Error('LLM not available');
         }
-        console.log(`   ✅ LLM analyzer ready`);
+        logger.info(`   ✅ LLM analyzer ready`);
         
         const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
         
-        console.log(`   📊 Metadata prepared: ${promptMetadata.semanticConnections?.length || 0} semantic connections`);
+        logger.info(`   📊 Metadata prepared: ${promptMetadata.semanticConnections?.length || 0} semantic connections`);
         
         // Analizar con LLM incluyendo conexiones semánticas
-        console.log(`   🚀 Sending to LLM...`);
+        logger.info(`   🚀 Sending to LLM...`);
         let code = job.fileAnalysis?.content || '';
         if (!code) {
           try {
             const absolutePath = path.join(this.rootPath, job.filePath);
             code = await fs.readFile(absolutePath, 'utf-8');
           } catch (readError) {
-            console.warn(`   ⚠️  Could not read file content for ${job.filePath}: ${readError.message}`);
+            logger.warn(`   ⚠️  Could not read file content for ${job.filePath}: ${readError.message}`);
             code = '';
           }
         }
@@ -131,7 +134,7 @@ export class AnalysisWorker {
         let llmResult = llmResults[0];
 
         if (!llmResult) {
-          console.warn(`   ⚠️  LLM returned no usable data for ${job.filePath}. Storing low-confidence placeholder.`);
+          logger.warn(`   ⚠️  LLM returned no usable data for ${job.filePath}. Storing low-confidence placeholder.`);
           llmResult = {
             confidence: 0.0,
             reasoning: 'LLM returned no usable data or confidence too low',
@@ -200,7 +203,7 @@ export class AnalysisWorker {
         
       } else {
         // Análisis estático simple con indexProject
-        console.log(`📊 Using static analysis for ${path.basename(job.filePath)}`);
+        logger.info(`📊 Using static analysis for ${path.basename(job.filePath)}`);
         
         await indexProject(this.rootPath, {
           verbose: false,
@@ -224,18 +227,18 @@ export class AnalysisWorker {
       
     } catch (error) {
       if (error.message === 'Analysis aborted') {
-        console.log(`⏹️  Analysis aborted for ${path.basename(job.filePath)}`);
+        logger.info(`⏹️  Analysis aborted for ${path.basename(job.filePath)}`);
       } else {
         // FIX: Rollback - restaurar análisis anterior si existe
         if (previousAnalysis) {
-          console.warn(`⚠️  Analysis failed for ${path.basename(job.filePath)}, restoring previous analysis`);
+          logger.warn(`⚠️  Analysis failed for ${path.basename(job.filePath)}, restoring previous analysis`);
           try {
             // Re-escribir el análisis anterior al disco
             const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
             await saveFileAnalysis(this.rootPath, job.filePath, previousAnalysis);
-            console.log(`🔄 Restored previous analysis for ${path.basename(job.filePath)}`);
+            logger.info(`🔄 Restored previous analysis for ${path.basename(job.filePath)}`);
           } catch (rollbackError) {
-            console.error(`❌ Failed to rollback analysis for ${job.filePath}:`, rollbackError.message);
+            logger.error(`❌ Failed to rollback analysis for ${job.filePath}:`, rollbackError.message);
           }
         }
         
@@ -250,7 +253,7 @@ export class AnalysisWorker {
    * Pausa el trabajo actual
    */
   async pause() {
-    console.log('⏸️  Pausing worker...');
+    logger.info('⏸️  Pausing worker...');
     this.isPaused = true;
     
     if (this.currentAbortController) {
@@ -265,7 +268,7 @@ export class AnalysisWorker {
    * Reanuda el worker
    */
   resume() {
-    console.log('▶️  Resuming worker...');
+    logger.info('▶️  Resuming worker...');
     this.isPaused = false;
   }
   
@@ -273,7 +276,7 @@ export class AnalysisWorker {
    * Detiene el worker
    */
   async stop() {
-    console.log('🛑 Stopping worker...');
+    logger.info('🛑 Stopping worker...');
     this.isPaused = true;
     
     if (this.currentAbortController) {

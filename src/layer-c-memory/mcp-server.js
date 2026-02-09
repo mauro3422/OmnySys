@@ -17,6 +17,11 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:mcp:server');
+
+
 
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
@@ -68,30 +73,30 @@ async function main() {
     
     if (logsTerminal) {
       logsTerminal.unref();
-      console.error('📺 MCP Logs terminal spawned');
+      logger.error('📺 MCP Logs terminal spawned');
     }
   }
 
-  console.error(`📂 Project: ${absolutePath}`);
-  console.error('🚀 Starting OmnySys MCP Server...\n');
+  logger.error(`📂 Project: ${absolutePath}`);
+  logger.error('🚀 Starting OmnySys MCP Server...\n');
 
   const server = new OmnySysMCPServer(absolutePath);
 
   // Cleanup graceful
   process.on('SIGINT', async () => {
-    console.error('\n👋 Received SIGINT, shutting down gracefully...');
+    logger.error('\n👋 Received SIGINT, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
-    console.error('\n👋 Received SIGTERM, shutting down gracefully...');
+    logger.error('\n👋 Received SIGTERM, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
   });
 
   process.on('uncaughtException', async (error) => {
-    console.error('\n❌ Uncaught exception:', error);
+    logger.error('\n❌ Uncaught exception:', error);
     await server.shutdown();
     process.exit(1);
   });
@@ -100,7 +105,7 @@ async function main() {
     // El servidor se inicializa en background después del handshake MCP
     await server.run();
   } catch (error) {
-    console.error('Fatal error:', error);
+    logger.error('Fatal error:', error);
     await server.shutdown();
     process.exit(1);
   }

@@ -1,6 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:llm:analysis');
+
+
 
 /**
  * Analiza archivos complejos con LLM basado en metadatos de Layer A
@@ -16,7 +21,7 @@ import { safeReadJson } from '#utils/json-safe.js';
  * - God objects (muchos exports + dependents)
  */
 export async function _analyzeComplexFilesWithLLM() {
-  console.log('\n🤖 Orchestrator: Analyzing complex files with LLM...');
+  logger.info('\n🤖 Orchestrator: Analyzing complex files with LLM...');
 
   try {
     // Importar dependencias dinámicamente
@@ -31,7 +36,7 @@ export async function _analyzeComplexFilesWithLLM() {
     const initialized = await llmAnalyzer.initialize();
 
     if (!initialized) {
-      console.log('   ⚠️  LLM not available, skipping LLM analysis');
+      logger.info('   ⚠️  LLM not available, skipping LLM analysis');
       return;
     }
 
@@ -40,7 +45,7 @@ export async function _analyzeComplexFilesWithLLM() {
     const index = await safeReadJson(indexPath, { fileIndex: {} });
     
     if (!index || !index.fileIndex) {
-      console.log('   ⚠️  No valid index found, skipping LLM analysis');
+      logger.info('   ⚠️  No valid index found, skipping LLM analysis');
       return;
     }
 
@@ -70,7 +75,7 @@ export async function _analyzeComplexFilesWithLLM() {
 
         // DEBUG: Log de arquetipos detectados
         if (archetypes.length > 0) {
-          console.log(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+          logger.info(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
         }
 
         // Decidir si necesita LLM basado en arquetipos y análisis estático
@@ -80,7 +85,7 @@ export async function _analyzeComplexFilesWithLLM() {
         );
 
         if (needsLLM) {
-          console.log(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
+          logger.info(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
           filesNeedingLLM.push({
             filePath,
             fileAnalysis,
@@ -95,8 +100,8 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     if (filesNeedingLLM.length === 0) {
-      console.log('   ℹ️  No files need LLM analysis (static analysis sufficient)');
-      console.log('   ✅ Emitting analysis:complete event');
+      logger.info('   ℹ️  No files need LLM analysis (static analysis sufficient)');
+      logger.info('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
       this.emit('analysis:complete', {
         iterations: 0,
@@ -111,7 +116,7 @@ export async function _analyzeComplexFilesWithLLM() {
     this.processedFiles.clear();
     this.analysisCompleteEmitted = false;
 
-    console.log(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
+    logger.info(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
 
     // Agregar archivos a la cola con prioridad
     for (const file of filesNeedingLLM) {
@@ -122,16 +127,16 @@ export async function _analyzeComplexFilesWithLLM() {
         fileAnalysis: file.fileAnalysis
       }, file.priority);
 
-      console.log(`   ➕ Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
+      logger.info(`   ➕ Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);
     }
 
-    console.log(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
-    console.log('   🚀 Starting processing...');
+    logger.info(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
+    logger.info('   🚀 Starting processing...');
 
     // Iniciar procesamiento
     this._processNext();
   } catch (error) {
-    console.error('   ❌ Error in LLM analysis phase:', error.message);
+    logger.error('   ❌ Error in LLM analysis phase:', error.message);
   }
 }
 

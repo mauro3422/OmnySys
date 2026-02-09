@@ -4,11 +4,16 @@
  */
 
 import { getProjectMetadata } from '#layer-a/query/index.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:status');
+
+
 
 export async function get_server_status(args, context) {
   const { orchestrator, cache, projectPath, server } = context;
   
-  console.error(`[Tool] get_server_status()`);
+  logger.error(`[Tool] get_server_status()`);
 
   // Siempre disponible: información básica del sistema
   const status = {

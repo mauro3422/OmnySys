@@ -1,7 +1,12 @@
 import { parseFileFromDisk } from '../parser/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:parse');
+
+
 
 export async function parseFiles(files, verbose = true) {
-  if (verbose) console.log('📝 Parsing files...');
+  if (verbose) logger.info('📝 Parsing files...');
   const parsedFiles = {};
 
   // PROCESAMIENTO EN PARALELO POR BATCHES
@@ -11,7 +16,7 @@ export async function parseFiles(files, verbose = true) {
     const batch = files.slice(i, i + BATCH_SIZE);
     
     if (verbose) {
-      console.log(`  ${i}/${files.length} files parsed... (${batch.length} in current batch)`);
+      logger.info(`  ${i}/${files.length} files parsed... (${batch.length} in current batch)`);
     }
 
     // Procesar batch en paralelo
@@ -33,6 +38,6 @@ export async function parseFiles(files, verbose = true) {
     }
   }
 
-  if (verbose) console.log('  ✓ All files parsed\n');
+  if (verbose) logger.info('  ✓ All files parsed\n');
   return parsedFiles;
 }

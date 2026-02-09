@@ -17,6 +17,11 @@ import { fileURLToPath } from 'url';
 import { exportFullSystemMapToFile } from '../layer-a-static/query/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:export:system:map');
+
+
 
 async function main() {
   try {
@@ -25,16 +30,16 @@ async function main() {
     const projectPath = args[0] ? path.resolve(args[0]) : process.cwd();
     const outputPath = args[1] ? path.resolve(args[1]) : null;
 
-    console.log('📊 OmnySys - Export Full System Map (Debug)');
-    console.log('='.repeat(50));
-    console.log(`Project path: ${projectPath}`);
+    logger.info('📊 OmnySys - Export Full System Map (Debug)');
+    logger.info('='.repeat(50));
+    logger.info(`Project path: ${projectPath}`);
     if (outputPath) {
-      console.log(`Output file: ${outputPath}`);
+      logger.info(`Output file: ${outputPath}`);
     } else {
-      console.log('Output file: .omnysysdata/debug/system-map-full.json (default)');
+      logger.info('Output file: .omnysysdata/debug/system-map-full.json (default)');
     }
-    console.log('');
-    console.log('⏳ Exporting system map...\n');
+    logger.info('');
+    logger.info('⏳ Exporting system map...\n');
 
     const startTime = Date.now();
 
@@ -43,35 +48,35 @@ async function main() {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-    console.log('\n' + '='.repeat(50));
-    console.log('✅ Export completed successfully!');
-    console.log('='.repeat(50));
-    console.log(`✓ File: ${result.filePath}`);
-    console.log(`✓ Size: ${result.sizeKB} KB`);
-    console.log(`✓ Files exported: ${result.filesExported}`);
-    console.log(`✓ Duration: ${duration}s`);
-    console.log('');
-    console.log('📝 This is a DEBUG FILE - contains the complete system map.');
-    console.log('   Use it for debugging, comparison, or full analysis.');
-    console.log('');
-    console.log('💡 For normal queries, use the partitioned API instead:');
-    console.log('   - getProjectMetadata()');
-    console.log('   - getFileAnalysis(filePath)');
-    console.log('   - getSemanticConnections()');
-    console.log('   - getRiskAssessment()');
+    logger.info('\n' + '='.repeat(50));
+    logger.info('✅ Export completed successfully!');
+    logger.info('='.repeat(50));
+    logger.info(`✓ File: ${result.filePath}`);
+    logger.info(`✓ Size: ${result.sizeKB} KB`);
+    logger.info(`✓ Files exported: ${result.filesExported}`);
+    logger.info(`✓ Duration: ${duration}s`);
+    logger.info('');
+    logger.info('📝 This is a DEBUG FILE - contains the complete system map.');
+    logger.info('   Use it for debugging, comparison, or full analysis.');
+    logger.info('');
+    logger.info('💡 For normal queries, use the partitioned API instead:');
+    logger.info('   - getProjectMetadata()');
+    logger.info('   - getFileAnalysis(filePath)');
+    logger.info('   - getSemanticConnections()');
+    logger.info('   - getRiskAssessment()');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Export failed:');
-    console.error(error.message);
-    console.error('');
-    console.error('Usage:');
-    console.error('  node export-system-map.js [projectPath] [outputPath]');
-    console.error('');
-    console.error('Examples:');
-    console.error('  node export-system-map.js');
-    console.error('  node export-system-map.js /path/to/project');
-    console.error('  node export-system-map.js . custom-output.json');
+    logger.error('❌ Export failed:');
+    logger.error(error.message);
+    logger.error('');
+    logger.error('Usage:');
+    logger.error('  node export-system-map.js [projectPath] [outputPath]');
+    logger.error('');
+    logger.error('Examples:');
+    logger.error('  node export-system-map.js');
+    logger.error('  node export-system-map.js /path/to/project');
+    logger.error('  node export-system-map.js . custom-output.json');
     process.exit(1);
   }
 }

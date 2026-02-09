@@ -1,13 +1,16 @@
 import path from 'path';
 
 import { getProjectMetadata } from '../../layer-a-static/query/index.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('file-watcher');
 
 /**
  * Inicializa el file watcher
  */
 export async function initialize() {
   if (this.options.verbose) {
-    console.log('ðŸ” FileWatcher initializing...');
+    logger.info('FileWatcher initializing...');
   }
 
   // Cargar estado actual del proyecto
@@ -18,10 +21,11 @@ export async function initialize() {
   this.processingInterval = setInterval(() => this.processPendingChanges(), this.options.batchDelayMs);
 
   if (this.options.verbose) {
-    console.log('âœ… FileWatcher ready');
-    console.log(`   - Debounce: ${this.options.debounceMs}ms`);
-    console.log(`   - Batch delay: ${this.options.batchDelayMs}ms`);
-    console.log(`   - Max concurrent: ${this.options.maxConcurrent}\n`);
+    logger.info('FileWatcher ready', {
+      debounce: this.options.debounceMs,
+      batchDelay: this.options.batchDelayMs,
+      maxConcurrent: this.options.maxConcurrent
+    });
   }
 
   this.emit('ready');
@@ -52,11 +56,11 @@ export async function loadCurrentState() {
     }
 
     if (this.options.verbose) {
-      console.log(`   - Tracking ${this.fileHashes.size} files`);
+      logger.info(`Tracking ${this.fileHashes.size} files`);
     }
   } catch (error) {
     if (this.options.verbose) {
-      console.log('   - No existing analysis found, starting fresh');
+      logger.info('No existing analysis found, starting fresh');
     }
   }
 }
@@ -89,7 +93,7 @@ export async function notifyChange(filePath, changeType = 'modified') {
   this.stats.totalChanges++;
 
   if (this.options.verbose) {
-    console.log(`ðŸ“¥ Queued: ${relativePath} (${changeType})`);
+    logger.debug(`Queued: ${relativePath} (${changeType})`);
   }
 
   this.emit('change:queued', { filePath: relativePath, type: changeType });
@@ -121,7 +125,7 @@ export async function processPendingChanges() {
   const toProcess = readyToProcess.slice(0, this.options.maxConcurrent);
 
   if (this.options.verbose) {
-    console.log(`\nâš¡ Processing ${toProcess.length} changes (${this.pendingChanges.size} pending)`);
+    logger.info(`Processing ${toProcess.length} changes (${this.pendingChanges.size} pending)`);
   }
 
   // Procesar en paralelo
@@ -142,7 +146,7 @@ export async function processChange(change) {
   // Evitar procesar el mismo archivo concurrentemente
   if (this.processingFiles.has(filePath)) {
     if (this.options.verbose) {
-      console.log(`  â¸ï¸  ${filePath} - already processing`);
+      logger.debug(`${filePath} - already processing`);
     }
     return;
   }
@@ -161,13 +165,13 @@ export async function processChange(change) {
         await this.handleFileDeleted(filePath);
         break;
       default:
-        console.warn(`  âš ï¸  Unknown change type: ${type}`);
+        logger.warn(`Unknown change type: ${type}`);
     }
 
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
   } catch (error) {
-    console.error(`  âŒ Error processing ${filePath}:`, error.message);
+    logger.error(`Error processing ${filePath}:`, error);
     this.stats.failedChanges++;
     this.emit('change:error', { filePath, error: error.message });
   } finally {
@@ -189,7 +193,7 @@ export async function stop() {
   // Esperar a que terminen procesos pendientes
   if (this.processingFiles.size > 0) {
     if (this.options.verbose) {
-      console.log(`â³ Waiting for ${this.processingFiles.size} analyses to complete...`);
+      logger.info(`Waiting for ${this.processingFiles.size} analyses to complete...`);
     }
 
     const maxWait = 10000; // 10 segundos máximo
@@ -203,6 +207,6 @@ export async function stop() {
   this.emit('stopped');
 
   if (this.options.verbose) {
-    console.log('ðŸ‘‹ FileWatcher stopped');
+    logger.info('FileWatcher stopped');
   }
 }

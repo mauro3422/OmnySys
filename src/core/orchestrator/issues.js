@@ -1,5 +1,10 @@
 ﻿import fs from 'fs/promises';
 import path from 'path';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:issues');
+
+
 
 /**
  * Finaliza el análisis y emite el evento complete
@@ -11,10 +16,10 @@ export async function _finalizeAnalysis() {
 
   this.analysisCompleteEmitted = true;
 
-  console.log('\nðŸ” Detecting semantic issues...');
+  logger.info('\nðŸ” Detecting semantic issues...');
   const issuesReport = await this._detectSemanticIssues();
 
-  console.log('\nâœ… Analysis complete!');
+  logger.info('\nâœ… Analysis complete!');
 
   this.emit('analysis:complete', {
     iterations: this.iteration,
@@ -27,7 +32,7 @@ export async function _finalizeAnalysis() {
  * Detect semantic issues across all analyzed files
  */
 export async function _detectSemanticIssues() {
-  console.log('\nðŸ” Detecting semantic issues...');
+  logger.info('\nðŸ” Detecting semantic issues...');
 
   try {
     const { getFileAnalysis } = await import('../../layer-a-static/query/index.js');
@@ -56,17 +61,17 @@ export async function _detectSemanticIssues() {
     const issuesPath = path.join(this.OmnySysDataPath, 'semantic-issues.json');
     await fs.writeFile(issuesPath, JSON.stringify(issuesReport, null, 2), 'utf-8');
 
-    console.log(`  âœ“ Found ${issuesReport.stats?.totalIssues || 0} semantic issues`);
+    logger.info(`  âœ“ Found ${issuesReport.stats?.totalIssues || 0} semantic issues`);
     if (issuesReport.stats?.totalIssues > 0) {
-      console.log(`    â€¢ High: ${issuesReport.stats.bySeverity?.high || 0}`);
-      console.log(`    â€¢ Medium: ${issuesReport.stats.bySeverity?.medium || 0}`);
-      console.log(`    â€¢ Low: ${issuesReport.stats.bySeverity?.low || 0}`);
+      logger.info(`    â€¢ High: ${issuesReport.stats.bySeverity?.high || 0}`);
+      logger.info(`    â€¢ Medium: ${issuesReport.stats.bySeverity?.medium || 0}`);
+      logger.info(`    â€¢ Low: ${issuesReport.stats.bySeverity?.low || 0}`);
     }
 
     // El evento analysis:complete se emite desde _finalizeAnalysis
     return issuesReport;
   } catch (error) {
-    console.error('  âŒ Error detecting semantic issues:', error.message);
+    logger.error('  âŒ Error detecting semantic issues:', error.message);
     return { stats: { totalIssues: 0 } };
   }
 }

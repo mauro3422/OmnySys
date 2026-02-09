@@ -5,13 +5,18 @@ import { getFileAnalysis, getFileDependents } from '../../layer-a-static/query/i
 import { detectPatterns } from '../../layer-b-semantic/metadata-contract/detectors/architectural-patterns.js';
 import { TUNNEL_VISION } from '#config/limits.js';
 import { detectTunnelVision, formatAlert } from '../tunnel-vision-detector.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:handlers');
+
+
 
 /**
  * Maneja creación de archivo nuevo
  */
 export async function handleFileCreated(filePath, fullPath) {
   if (this.options.verbose) {
-    console.log(`  ðŸ†• ${filePath} - analyzing new file`);
+    logger.info(`  ðŸ†• ${filePath} - analyzing new file`);
   }
 
   // Verificar que el archivo exista y sea legible
@@ -40,7 +45,7 @@ export async function handleFileCreated(filePath, fullPath) {
   this.emit('file:created', { filePath, analysis });
 
   if (this.options.verbose) {
-    console.log(`  âœ… ${filePath} - created and analyzed`);
+    logger.info(`  âœ… ${filePath} - created and analyzed`);
   }
 }
 
@@ -49,7 +54,7 @@ export async function handleFileCreated(filePath, fullPath) {
  */
 export async function handleFileModified(filePath, fullPath) {
   if (this.options.verbose) {
-    console.log(`  ðŸ“ ${filePath} - analyzing changes`);
+    logger.info(`  ðŸ“ ${filePath} - analyzing changes`);
   }
 
   // Calcular hash nuevo
@@ -59,7 +64,7 @@ export async function handleFileModified(filePath, fullPath) {
   // Si el hash no cambió, ignorar (posiblemente fue un touch)
   if (newHash === oldHash) {
     if (this.options.verbose) {
-      console.log(`  â­ï¸  ${filePath} - no content change (hash match)`);
+      logger.info(`  â­ï¸  ${filePath} - no content change (hash match)`);
     }
     return;
   }
@@ -81,7 +86,7 @@ export async function handleFileModified(filePath, fullPath) {
 
   if (changes.length === 0) {
     if (this.options.verbose) {
-      console.log(`  â­ï¸  ${filePath} - no significant changes`);
+      logger.info(`  â­ï¸  ${filePath} - no significant changes`);
     }
     // Actualizar hash de todos modos
     this.fileHashes.set(filePath, newHash);
@@ -90,7 +95,7 @@ export async function handleFileModified(filePath, fullPath) {
 
   if (this.options.verbose) {
     for (const change of changes) {
-      console.log(`     ${change.type}: ${change.added?.length || 0} added, ${change.removed?.length || 0} removed`);
+      logger.info(`     ${change.type}: ${change.added?.length || 0} added, ${change.removed?.length || 0} removed`);
     }
   }
 
@@ -126,7 +131,7 @@ export async function handleFileModified(filePath, fullPath) {
     if (alert) {
       // Mostrar alerta formateada
       const formattedAlert = formatAlert(alert);
-      console.log(formattedAlert);
+      logger.info(formattedAlert);
 
       // Emitir evento con datos completos
       this.emit('tunnel-vision:detected', alert);
@@ -138,7 +143,7 @@ export async function handleFileModified(filePath, fullPath) {
     }
   } catch (error) {
     if (this.options.verbose) {
-      console.warn('[TunnelVision] Error detecting tunnel vision:', error.message);
+      logger.warn('[TunnelVision] Error detecting tunnel vision:', error.message);
     }
   }
 
@@ -167,16 +172,16 @@ export async function handleFileModified(filePath, fullPath) {
     }
 
     if (archetypeChanges.length > 0) {
-      console.warn(`  🔄 Archetype change in ${filePath}:`);
+      logger.warn(`  🔄 Archetype change in ${filePath}:`);
       archetypeChanges.forEach(c =>
-        console.warn(`     ${c.pattern}: ${c.was} → ${c.now}`)
+        logger.warn(`     ${c.pattern}: ${c.was} → ${c.now}`)
       );
       this.emit('archetype:changed', { filePath, changes: archetypeChanges });
     }
   }
 
   if (this.options.verbose) {
-    console.log(`  âœ… ${filePath} - updated (${changes.length} change types)`);
+    logger.info(`  âœ… ${filePath} - updated (${changes.length} change types)`);
   }
 }
 
@@ -185,7 +190,7 @@ export async function handleFileModified(filePath, fullPath) {
  */
 export async function handleFileDeleted(filePath) {
   if (this.options.verbose) {
-    console.log(`  ðŸ—‘ï¸  ${filePath} - removing from index`);
+    logger.info(`  ðŸ—‘ï¸  ${filePath} - removing from index`);
   }
 
   // Limpiar relaciones
@@ -203,7 +208,7 @@ export async function handleFileDeleted(filePath) {
   this.emit('file:deleted', { filePath });
 
   if (this.options.verbose) {
-    console.log(`  âœ… ${filePath} - removed from index`);
+    logger.info(`  âœ… ${filePath} - removed from index`);
   }
 }
 

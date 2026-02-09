@@ -6,6 +6,11 @@
  */
 
 import { UnifiedCacheManager, ChangeType } from './unified-cache-manager.js';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('OmnySys:cache:integration');
+
+
 
 /**
  * Wrapper para el análisis estático con caché inteligente
@@ -25,7 +30,7 @@ export async function analyzeWithUnifiedCache(options) {
   
   // Si no necesita re-análisis estático, retornar cache
   if (!cacheStatus.needsStatic && cacheStatus.entry.staticAnalyzed) {
-    if (verbose) console.log(`  ⚡ Cache hit (static): ${filePath}`);
+    if (verbose) logger.info(`  ⚡ Cache hit (static): ${filePath}`);
     
     // Cargar análisis desde disco
     const cachedAnalysis = await loadStaticAnalysis(cacheManager, filePath, cacheStatus.entry.version);
@@ -40,7 +45,7 @@ export async function analyzeWithUnifiedCache(options) {
   }
   
   // Realizar análisis estático
-  if (verbose) console.log(`  🔍 Analyzing (static): ${filePath} [${cacheStatus.changeType}]`);
+  if (verbose) logger.info(`  🔍 Analyzing (static): ${filePath} [${cacheStatus.changeType}]`);
   const startTime = Date.now();
   const analysis = await analyzeFn(filePath, content);
   const duration = Date.now() - startTime;
@@ -74,7 +79,7 @@ export async function analyzeLLMWithUnifiedCache(options) {
   
   // Verificar si se necesita re-análisis LLM
   if (!forceReanalyze && entry && entry.llmAnalyzed && !entry.needsLLM) {
-    if (verbose) console.log(`  ⚡ Cache hit (LLM): ${filePath}`);
+    if (verbose) logger.info(`  ⚡ Cache hit (LLM): ${filePath}`);
     
     // Cargar insights desde disco
     const cachedInsights = await loadLLMInsights(cacheManager, filePath, entry.version);
@@ -87,7 +92,7 @@ export async function analyzeLLMWithUnifiedCache(options) {
   }
   
   // Realizar análisis LLM
-  if (verbose) console.log(`  🤖 Analyzing (LLM): ${filePath}`);
+  if (verbose) logger.info(`  🤖 Analyzing (LLM): ${filePath}`);
   const startTime = Date.now();
   const insights = await analyzeFn(filePath, content);
   const duration = Date.now() - startTime;

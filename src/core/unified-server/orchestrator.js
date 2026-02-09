@@ -1,3 +1,8 @@
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:orchestrator');
+
+
 ﻿import path from 'path';
 
 // ============================================================
@@ -20,7 +25,7 @@ export async function handlePrioritize(filePath, priority, requestId) {
   const position = this.queue.enqueue(filePath, priority);
   this.stats.totalQueued++;
 
-  console.log(`ðŸ“¥ Queued: ${path.basename(filePath)} [${priority}] at position ${position}`);
+  logger.info(`ðŸ“¥ Queued: ${path.basename(filePath)} [${priority}] at position ${position}`);
 
   // If CRITICAL and lower priority job running, pause it
   if (priority === 'critical' && this.currentJob) {
@@ -28,7 +33,7 @@ export async function handlePrioritize(filePath, priority, requestId) {
     const newPriority = this.getPriorityLevel(priority);
 
     if (newPriority > currentPriority) {
-      console.log(`â¸ï¸  Pausing current job to prioritize ${path.basename(filePath)}`);
+      logger.info(`â¸ï¸  Pausing current job to prioritize ${path.basename(filePath)}`);
       await this.worker.pause();
       this.queue.enqueue(this.currentJob.filePath, this.currentJob.priority);
       this.currentJob = null;
@@ -59,11 +64,11 @@ export async function processNext() {
 
   const nextJob = this.queue.dequeue();
   if (!nextJob) {
-    console.log('ðŸ“­ Queue empty, waiting for jobs...');
+    logger.info('ðŸ“­ Queue empty, waiting for jobs...');
     return;
   }
 
-  console.log(`âš¡ Processing: ${path.basename(nextJob.filePath)} [${nextJob.priority}]`);
+  logger.info(`âš¡ Processing: ${path.basename(nextJob.filePath)} [${nextJob.priority}]`);
   this.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
   await this.updateState();
 
@@ -112,12 +117,12 @@ export function invalidateCache(filePath) {
 }
 
 export async function restart() {
-  console.log('ðŸ”„ Restarting orchestrator...');
+  logger.info('ðŸ”„ Restarting orchestrator...');
   await this.worker.stop();
   this.queue.clear();
   this.currentJob = null;
   this.isRunning = true;
   await this.worker.initialize();
   await this.updateState();
-  console.log('âœ… Orchestrator restarted');
+  logger.info('âœ… Orchestrator restarted');
 }

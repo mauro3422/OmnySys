@@ -7,6 +7,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { createLogger } from '../../src/utils/logger.js';
+
+const logger = createLogger('OmnySys:test:setup');
+
+
 
 /**
  * Crea un directorio temporal para tests
@@ -139,16 +144,16 @@ export const testCounter = new TestCounter();
  * Runner de tests simple
  */
 export async function runTests(testSuite) {
-  console.log(`\n🧪 Running: ${testSuite.name}\n`);
+  logger.info(`\n🧪 Running: ${testSuite.name}\n`);
 
   for (const [testName, testFn] of Object.entries(testSuite.tests)) {
     try {
       await testFn();
       testCounter.record(`${testSuite.name}.${testName}`, true);
-      console.log(`  ✅ ${testName}`);
+      logger.info(`  ✅ ${testName}`);
     } catch (error) {
       testCounter.record(`${testSuite.name}.${testName}`, false, error.message);
-      console.log(`  ❌ ${testName}: ${error.message}`);
+      logger.info(`  ❌ ${testName}: ${error.message}`);
     }
   }
 }
@@ -159,19 +164,19 @@ export async function runTests(testSuite) {
 export function printFinalReport() {
   const summary = testCounter.summary();
 
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 TEST SUMMARY');
-  console.log('='.repeat(50));
-  console.log(`Total:  ${summary.total}`);
-  console.log(`Passed: ${summary.passed} ✅`);
-  console.log(`Failed: ${summary.failed} ❌`);
-  console.log('='.repeat(50));
+  logger.info('\n' + '='.repeat(50));
+  logger.info('📊 TEST SUMMARY');
+  logger.info('='.repeat(50));
+  logger.info(`Total:  ${summary.total}`);
+  logger.info(`Passed: ${summary.passed} ✅`);
+  logger.info(`Failed: ${summary.failed} ❌`);
+  logger.info('='.repeat(50));
 
   if (summary.failed > 0) {
-    console.log('\nFailed tests:');
+    logger.info('\nFailed tests:');
     summary.tests
       .filter(t => !t.passed)
-      .forEach(t => console.log(`  - ${t.name}: ${t.error}`));
+      .forEach(t => logger.info(`  - ${t.name}: ${t.error}`));
   }
 
   process.exit(summary.failed > 0 ? 1 : 0);

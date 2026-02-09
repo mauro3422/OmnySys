@@ -5,23 +5,28 @@
 
 import { getFileAnalysis } from '#layer-a/query/index.js';
 import { get_impact_map } from './impact-map.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:analyze:change');
+
+
 
 export async function analyze_change(args, context) {
   const { filePath, symbolName } = args;
   const { orchestrator, projectPath, server } = context;
   
-  console.error(`[Tool] analyze_change("${filePath}", "${symbolName}")`);
+  logger.error(`[Tool] analyze_change("${filePath}", "${symbolName}")`);
 
   // Ensure file is analyzed
   let fileData = await getFileAnalysis(projectPath, filePath);
   
   if (!fileData && server?.initialized && orchestrator) {
-    console.error(`  → Auto-analyzing file`);
+    logger.error(`  → Auto-analyzing file`);
     try {
       await orchestrator.analyzeAndWait(filePath, 60000);
       fileData = await getFileAnalysis(projectPath, filePath);
     } catch (error) {
-      console.error(`  → Analysis failed: ${error.message}`);
+      logger.error(`  → Analysis failed: ${error.message}`);
     }
   }
 
