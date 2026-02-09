@@ -4,6 +4,40 @@
  * Base interface for race detection strategies
  * Implements Strategy pattern for different race types
  *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📋 EXTENSION GUIDE - Creating New Race Detection Strategies
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * To detect a new type of race condition:
+ *
+ * 1️⃣  EXTEND RaceDetectionStrategy
+ * 
+ *     import { RaceDetectionStrategy } from './race-detection-strategy.js';
+ *     
+ *     export class YourRaceStrategy extends RaceDetectionStrategy {
+ *       getRaceType() {
+ *         return 'YOUR_TYPE'; // e.g., 'TS' for Transaction-Serialization
+ *       }
+ *       
+ *       detect(sharedState, project) {
+ *         const races = [];
+ *         
+ *         for (const [stateKey, accesses] of sharedState) {
+ *           // Your detection logic
+ *           if (this.isYourRaceCondition(accesses)) {
+ *             races.push(this.createRace(stateKey, access1, access2, 'YOUR_TYPE'));
+ *           }
+ *         }
+ *         
+ *         return races;
+ *       }
+ *     }
+ *
+ * 2️⃣  ADD TO PIPELINE in race-detector/index.js
+ *     this.strategies.push(new YourRaceStrategy());
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
  * @module race-detector/strategies/race-detection-strategy
  */
 
@@ -14,33 +48,59 @@
 export class RaceDetectionStrategy {
   constructor() {
     if (this.constructor === RaceDetectionStrategy) {
-      throw new Error('Cannot instantiate abstract class');
+      throw new Error('Cannot instantiate abstract class RaceDetectionStrategy');
     }
   }
 
   /**
    * Detect races from shared state
+   * IMPLEMENT THIS METHOD in subclasses
+   * 
    * @abstract
-   * @param {Map} sharedState - Map of stateKey to access points
-   * @param {Object} project - Project data
-   * @returns {Array} - Array of detected races
+   * @param {Map<string, Array>} sharedState - Map of stateKey to access points
+   * @param {Object} project - Project data with modules and atoms
+   * @returns {Array<Object>} - Array of detected races
+   * 
+   * @example
+   * detect(sharedState, project) {
+   *   const races = [];
+   *   for (const [stateKey, accesses] of sharedState) {
+   *     // Check for race condition
+   *     if (accesses.length >= 2 && this.canRace(accesses)) {
+   *       races.push(this.createRace(stateKey, accesses[0], accesses[1], 'RW'));
+   *     }
+   *   }
+   *   return races;
+   * }
    */
   detect(sharedState, project) {
-    throw new Error('Must implement detect()');
+    throw new Error('Subclasses must implement detect()');
   }
 
   /**
    * Get the type of race this strategy detects
+   * IMPLEMENT THIS METHOD in subclasses
+   * 
    * @abstract
-   * @returns {string} - Race type (e.g., 'RW', 'WW', 'IE')
+   * @returns {string} - Race type code (e.g., 'RW', 'WW', 'IE')
+   * @example
+   * getRaceType() {
+   *   return 'RW'; // Read-Write race
+   * }
    */
   getRaceType() {
-    throw new Error('Must implement getRaceType()');
+    throw new Error('Subclasses must implement getRaceType()');
   }
 
   /**
-   * Helper: Check if two accesses can run concurrently
+   * Check if two accesses can run concurrently
+   * Override for custom concurrency logic
+   * 
    * @protected
+   * @param {Object} access1 - First access
+   * @param {Object} access2 - Second access
+   * @param {Object} project - Project data
+   * @returns {boolean} - True if can run concurrently
    */
   canRunConcurrently(access1, access2, project) {
     // Same atom = sequential
@@ -63,8 +123,13 @@ export class RaceDetectionStrategy {
   }
 
   /**
-   * Helper: Check if accesses are in same business flow
+   * Check if accesses are in same business flow
+   * 
    * @protected
+   * @param {Object} access1 - First access
+   * @param {Object} access2 - Second access
+   * @param {Object} project - Project data
+   * @returns {boolean} - True if same flow
    */
   sameBusinessFlow(access1, access2, project) {
     // Simplified: same file = likely same flow
@@ -78,8 +143,13 @@ export class RaceDetectionStrategy {
   }
 
   /**
-   * Helper: Check if accesses share entry point
+   * Check if accesses share entry point
+   * 
    * @protected
+   * @param {Object} access1 - First access
+   * @param {Object} access2 - Second access
+   * @param {Object} project - Project data
+   * @returns {boolean} - True if same entry point
    */
   sameEntryPoint(access1, access2, project) {
     if (access1.module === access2.module && 
@@ -95,8 +165,12 @@ export class RaceDetectionStrategy {
   }
 
   /**
-   * Helper: Get callers of an atom
+   * Get callers of an atom
+   * 
    * @protected
+   * @param {string} atomId - Atom identifier
+   * @param {Object} project - Project data
+   * @returns {Array<string>} - Array of atom IDs that call this atom
    */
   getAtomCallers(atomId, project) {
     const callers = [];
@@ -116,8 +190,12 @@ export class RaceDetectionStrategy {
   }
 
   /**
-   * Helper: Find entry points for an atom
+   * Find entry points for an atom
+   * 
    * @protected
+   * @param {string} atomId - Atom identifier
+   * @param {Object} project - Project data
+   * @returns {Array<string>} - Entry point atom IDs
    */
   findEntryPoints(atomId, project) {
     const entryPoints = [];
@@ -132,8 +210,8 @@ export class RaceDetectionStrategy {
       const callers = this.getAtomCallers(current, project);
       
       for (const caller of callers) {
-        const [file, name] = caller.split('::');
-        // Simple heuristic: exported functions are entry points
+        const [, name] = caller.split('::');
+        // Heuristic: exported functions with capital letter are entry points
         if (name && name[0] === name[0].toUpperCase()) {
           entryPoints.push(caller);
         } else {
@@ -146,8 +224,23 @@ export class RaceDetectionStrategy {
   }
 
   /**
-   * Helper: Create race object
+   * Create a race object
+   * Helper method for subclasses
+   * 
    * @protected
+   * @param {string} stateKey - Key of shared state
+   * @param {Object} access1 - First access
+   * @param {Object} access2 - Second access
+   * @param {string} raceType - Type of race (RW, WW, IE, etc.)
+   * @returns {Object} - Race object with all required fields
+   * 
+   * @example
+   * const race = this.createRace(
+   *   'global:counter',
+   *   { atom: 'file.js::increment', type: 'read', ... },
+   *   { atom: 'file.js::decrement', type: 'write', ... },
+   *   'RW'
+   * );
    */
   createRace(stateKey, access1, access2, raceType) {
     const typeNames = {

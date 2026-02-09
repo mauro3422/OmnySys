@@ -8,6 +8,7 @@
  */
 
 import { ExtractionPhase } from './base-phase.js';
+import { extractFunctionCode, getLineNumber } from '../../../shared/utils/ast-utils.js';
 import { extractSideEffects } from '../extractors/metadata/side-effects.js';
 import { extractCallGraph } from '../extractors/metadata/call-graph.js';
 import { extractDataFlow as extractDataFlowV2 } from '../extractors/data-flow-v2/core/index.js';
@@ -62,21 +63,10 @@ export class AtomExtractionPhase extends ExtractionPhase {
   async extractAtoms(fileInfo, code, fileMetadata, filePath) {
     return Promise.all(
       (fileInfo.functions || []).map(async (functionInfo) => {
-        const functionCode = this.extractFunctionCode(code, functionInfo);
+        const functionCode = extractFunctionCode(code, functionInfo);
         return this.extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath);
       })
     );
-  }
-
-  /**
-   * Extract code for a single function
-   * @private
-   */
-  extractFunctionCode(fullCode, functionInfo) {
-    const lines = fullCode.split('\n');
-    const startLine = Math.max(0, functionInfo.line - 1);
-    const endLine = Math.min(lines.length, functionInfo.endLine);
-    return lines.slice(startLine, endLine).join('\n');
   }
 
   /**

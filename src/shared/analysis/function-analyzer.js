@@ -69,15 +69,7 @@ export function analyzeFunctions(filePath, code, fileAnalysis) {
   return functions;
 }
 
-/**
- * Extrae el código de una función específica
- */
-function extractFunctionCode(code, funcDef) {
-  const lines = code.split('\n');
-  const startLine = Math.max(0, funcDef.line - 1);
-  const endLine = Math.min(lines.length, funcDef.endLine);
-  return lines.slice(startLine, endLine).join('\n');
-}
+import { extractFunctionCode, extractJSDocComment } from '../utils/ast-utils.js';
 
 /**
  * Detecta qué imports usa esta función
@@ -203,28 +195,9 @@ function isWriteOperation(code, position) {
  * Extrae JSDoc específico de una función
  */
 function extractJSDocForFunction(code, funcDef) {
-  const lines = code.split('\n');
-  const funcLineIndex = Math.max(0, funcDef.line - 1);
+  const jsdocText = extractJSDocComment(code, funcDef);
   
-  // Buscar comentarios JSDoc antes de la función
-  const jsdocLines = [];
-  for (let i = funcLineIndex - 1; i >= Math.max(0, funcLineIndex - 10); i--) {
-    const line = lines[i].trim();
-    if (line.startsWith('/**')) {
-      jsdocLines.unshift(line);
-      break;
-    } else if (line.startsWith('*') || line.startsWith('*/')) {
-      jsdocLines.unshift(line);
-    } else if (line === '') {
-      continue;
-    } else {
-      break;
-    }
-  }
-  
-  if (jsdocLines.length === 0) return null;
-  
-  const jsdocText = jsdocLines.join('\n');
+  if (!jsdocText) return null;
   
   // Parsear tags
   const tags = [];
