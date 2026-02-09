@@ -4,11 +4,11 @@
 
 This repository uses a modular changelog structure for better organization and maintainability. Each major version has its own dedicated file in the `changelog/` directory.
 
-### **ðŸ“ Version Files**
+### **📁 Version Files**
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.7.0]** | `changelog/v0.7.0.md` | **Data Flow Fractal System** (Latest - Beta) |
+| **[0.7.0]** | `changelog/v0.7.0.md` | **Architecture Refactoring - SOLID/SSOT/Fractal** (Latest - Stable) |
 | **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Stable) |
 | **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
 | **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** |
@@ -30,7 +30,25 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.6.2 (2026-02-08)**
+### **🚀 Latest Release: v0.7.0 (2026-02-09)**
+
+**Architecture Refactoring - SOLID/SSOT/Fractal**: Refactorización masiva reduciendo 69% las líneas de código, extracción de 25+ módulos especializados y documentación completa para extensiones.
+
+**Key Changes**:
+- ✅ **Race Detector Modular** - 5 trackers + 3 strategies (was: 925 lines, now: 292 lines)
+- ✅ **Molecular Pipeline** - Fases independientes con error handling (was: 470 lines, now: 200 lines)
+- ✅ **Server Initialization** - 6 steps con rollback automático (was: 541 lines, now: 109 lines)
+- ✅ **Extension Guides** - Documentación extensiva en 9 archivos críticos
+- ✅ **100% Backwards Compatible** - APIs públicas sin cambios
+- ✅ **Template Method Pattern** - Base classes para extensibilidad
+- ✅ **Strategy Pattern** - Detección de races modular
+- ✅ **Pipeline Pattern** - Orquestación declarativa
+
+Ver detalles completos en [changelog/v0.7.0.md](changelog/v0.7.0.md)
+
+---
+
+### **Previous Release: v0.6.2 (2026-02-08)**
 
 **Tunnel Vision Solver + Critical Bugfix**: Sistema automático de detección de riesgos cuando modificas archivos sin actualizar dependientes + bugfix crítico del servidor
 

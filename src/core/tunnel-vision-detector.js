@@ -1,99 +1,49 @@
 /**
- * @fileoverview Tunnel Vision Detector
+ * @fileoverview Tunnel Vision Detector - REFACTORIZADO para Arquitectura Molecular
  *
- * Detecta cuando modificas un archivo pero hay archivos dependientes
- * que NO fueron modificados (tunnel vision).
+ * Detecta cuando modificas una función (átomo) pero hay funciones dependientes
+ * que NO fueron modificadas (tunnel vision).
  *
- * CORE IDEA: Si cambias función A que es llamada por B, C, D
- *            y NO modificas B, C, D → ALERTA de tunnel vision
+ * CORE IDEA (Molecular): Si cambias átomo A que es llamado por B, C, D
+ *                        y NO modificas B, C, D → ALERTA de tunnel vision
+ *
+ * V3.0: Ahora usa átomos (funciones) como unidad primaria, siguiendo SSOT.
  *
  * @module core/tunnel-vision-detector
+ * @version 3.0.0
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
+import {
+  getAtomDetails,
+  getFileAnalysisWithAtoms
+} from '../layer-a-static/query/index.js';
 
 /**
- * Historial de archivos modificados recientemente (últimos 5 minutos)
- * Key: filePath, Value: timestamp
+ * Historial de átomos modificados recientemente
+ * Key: atomId (filePath::functionName), Value: timestamp
  */
-const recentlyModifiedFiles = new Map();
+const recentlyModifiedAtoms = new Map();
 const RECENT_WINDOW_MS = 5 * 60 * 1000; // 5 minutos
 
 /**
- * Threshold: mínimo de archivos dependientes no modificados para alertar
+ * Threshold: mínimo de átomos dependientes no modificados para alertar
  */
 const MIN_UNMODIFIED_DEPENDENTS = 2;
 
 /**
- * Lee el index.json para obtener metadata rápida
+ * Verifica si un átomo fue modificado recientemente
+ * @param {string} atomId - ID del átomo (filePath::functionName)
+ * @returns {boolean}
  */
-async function loadIndex() {
-  try {
-    const indexPath = path.join(PROJECT_ROOT, '.omnysysdata', 'index.json');
-    const content = await fs.readFile(indexPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.warn('[TunnelVision] No se pudo cargar index.json:', error.message);
-    return null;
-  }
-}
-
-/**
- * Lee la metadata completa de un archivo
- */
-async function loadFileMetadata(filePath) {
-  try {
-    // Normalizar path (sin src/ prefix)
-    const normalizedPath = filePath.replace(/^src[\\/]/, '');
-    const metadataPath = path.join(
-      PROJECT_ROOT,
-      '.omnysysdata',
-      'files',
-      `${normalizedPath}.json`
-    );
-
-    const content = await fs.readFile(metadataPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.warn(`[TunnelVision] No se pudo cargar metadata de ${filePath}:`, error.message);
-    return null;
-  }
-}
-
-/**
- * Lee system-map para obtener dependencias completas
- * (esto es más pesado, solo si es necesario)
- */
-async function loadSystemMap() {
-  try {
-    const mapPath = path.join(PROJECT_ROOT, '.omnysysdata', 'system-map.json');
-    const content = await fs.readFile(mapPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.warn('[TunnelVision] No se pudo cargar system-map.json:', error.message);
-    return null;
-  }
-}
-
-/**
- * Verifica si un archivo fue modificado recientemente
- */
-function wasRecentlyModified(filePath) {
-  const timestamp = recentlyModifiedFiles.get(filePath);
+function wasRecentlyModified(atomId) {
+  const timestamp = recentlyModifiedAtoms.get(atomId);
   if (!timestamp) return false;
 
   const now = Date.now();
   const age = now - timestamp;
 
-  // Si es muy viejo, limpiar del cache
   if (age > RECENT_WINDOW_MS) {
-    recentlyModifiedFiles.delete(filePath);
+    recentlyModifiedAtoms.delete(atomId);
     return false;
   }
 
@@ -101,87 +51,150 @@ function wasRecentlyModified(filePath) {
 }
 
 /**
- * Registra que un archivo fue modificado
+ * Registra que un átomo fue modificado
+ * @param {string} atomId - ID del átomo
  */
-function markAsModified(filePath) {
-  recentlyModifiedFiles.set(filePath, Date.now());
+function markAtomAsModified(atomId) {
+  recentlyModifiedAtoms.set(atomId, Date.now());
 }
 
 /**
- * Obtiene archivos que dependen del archivo modificado
- * usando los datos ya analizados en .omnysysdata
+ * Obtiene información completa de un átomo y sus callers
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {string} filePath - Ruta del archivo
+ * @param {string} functionName - Nombre de la función
+ * @returns {Promise<Object|null>} - Info del átomo o null
  */
-async function getAffectedFiles(filePath) {
-  const systemMap = await loadSystemMap();
-  if (!systemMap || !systemMap.files) {
-    return { direct: [], transitive: [], all: [] };
-  }
-
-  // Normalizar path: asegurar que use / y buscar con y sin src/
-  const normalizedPath = filePath.replace(/\\/g, '/');
-  let fileData = systemMap.files[normalizedPath];
-
-  // Si no se encuentra, intentar sin src/ prefix
-  if (!fileData && normalizedPath.startsWith('src/')) {
-    fileData = systemMap.files[normalizedPath.replace(/^src\//, '')];
-  }
-
-  // Si no se encuentra, intentar CON src/ prefix
-  if (!fileData && !normalizedPath.startsWith('src/')) {
-    fileData = systemMap.files['src/' + normalizedPath];
-  }
-
-  if (!fileData) {
-    return { direct: [], transitive: [], all: [] };
-  }
-
-  // usedBy contiene los archivos que importan/usan este archivo
-  const directDependents = fileData.usedBy || [];
-
-  // También buscar dependientes transitivos si es crítico
-  const transitiveDependents = fileData.transitiveDependents || [];
-
+async function getAtomWithCallers(projectPath, filePath, functionName) {
+  const atom = await getAtomDetails(projectPath, filePath, functionName);
+  if (!atom) return null;
+  
   return {
-    direct: directDependents,
-    transitive: transitiveDependents,
-    all: [...new Set([...directDependents, ...transitiveDependents])]
+    ...atom,
+    callers: atom.calledBy || []
   };
 }
 
 /**
- * Calcula la severidad del riesgo
+ * Detecta tunnel vision cuando una función es modificada
+ * V3.0: Usa átomos (funciones) como unidad primaria
+ *
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {string} filePath - Archivo modificado
+ * @param {string} [functionName] - Función específica modificada (opcional)
+ * @returns {Promise<Object|null>} - Alerta de tunnel vision o null
  */
-function calculateSeverity(modifiedFile, affectedFiles, fileMetadata) {
-  const unmodifiedCount = affectedFiles.unmodified.length;
-
-  // Factores de riesgo:
-  // 1. Número de dependientes no modificados
-  let score = unmodifiedCount * 2;
-
-  // 2. Si el archivo tiene exports públicos (mayor riesgo)
-  if (fileMetadata && fileMetadata.exports && fileMetadata.exports.length > 0) {
-    score += 3;
+export async function detectTunnelVision(projectPath, filePath, functionName = null) {
+  // Si no se especifica función, analizar todas las funciones del archivo
+  if (!functionName) {
+    return detectTunnelVisionForFile(projectPath, filePath);
   }
+  
+  // Modo atómico: detectar para función específica
+  const atomId = `${filePath}::${functionName}`;
+  markAtomAsModified(atomId);
+  
+  const atom = await getAtomWithCallers(projectPath, filePath, functionName);
+  if (!atom) return null;
+  
+  // Obtener callers no modificados
+  const unmodifiedCallers = atom.callers.filter(callerId => !wasRecentlyModified(callerId));
+  
+  if (unmodifiedCallers.length < MIN_UNMODIFIED_DEPENDENTS) {
+    return null;
+  }
+  
+  return createTunnelVisionAlert({
+    type: 'ATOMIC',
+    modifiedAtom: atomId,
+    filePath,
+    functionName,
+    atom,
+    unmodifiedCallers,
+    totalCallers: atom.callers.length
+  });
+}
 
-  // 3. Si el archivo tiene alto riesgo según análisis previo
-  if (fileMetadata && fileMetadata.riskScore) {
-    const riskLevel = fileMetadata.riskScore.severity;
-    if (riskLevel === 'high' || riskLevel === 'critical') {
-      score += 5;
-    } else if (riskLevel === 'medium') {
-      score += 2;
+/**
+ * Detecta tunnel vision para todas las funciones de un archivo
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {string} filePath - Archivo modificado
+ * @returns {Promise<Object|null>} - Alerta agregada o null
+ */
+async function detectTunnelVisionForFile(projectPath, filePath) {
+  const fileData = await getFileAnalysisWithAtoms(projectPath, filePath);
+  if (!fileData || !fileData.atoms || fileData.atoms.length === 0) {
+    return null;
+  }
+  
+  const allAlerts = [];
+  
+  for (const atom of fileData.atoms) {
+    if (atom.isExported && atom.calledBy && atom.calledBy.length > 0) {
+      markAtomAsModified(atom.id);
+      
+      const unmodifiedCallers = atom.calledBy.filter(callerId => !wasRecentlyModified(callerId));
+      
+      if (unmodifiedCallers.length >= MIN_UNMODIFIED_DEPENDENTS) {
+        allAlerts.push({
+          atom: atom.name,
+          atomId: atom.id,
+          unmodifiedCallers,
+          severity: calculateAtomicSeverity(atom, unmodifiedCallers.length)
+        });
+      }
     }
   }
+  
+  if (allAlerts.length === 0) return null;
+  
+  // Agregar todos los callers no modificados
+  const allUnmodifiedCallers = [...new Set(allAlerts.flatMap(a => a.unmodifiedCallers))];
+  
+  return createAggregatedTunnelVisionAlert({
+    filePath,
+    atomsModified: allAlerts.map(a => a.atom),
+    totalAtomsModified: allAlerts.length,
+    unmodifiedCallers: allUnmodifiedCallers,
+    details: allAlerts
+  });
+}
 
-  // 4. Si hay muchos dependientes directos vs transitivos
-  const directCount = affectedFiles.direct.filter(f =>
-    !wasRecentlyModified(f)
-  ).length;
-  if (directCount >= 3) {
-    score += 3;
+/**
+ * Calcula severidad basada en riesgo atómico
+ * @param {Object} atom - Átomo modificado
+ * @param {number} unmodifiedCallerCount - Número de callers no modificados
+ * @returns {string} - CRITICAL, HIGH, MEDIUM, LOW
+ */
+function calculateAtomicSeverity(atom, unmodifiedCallerCount) {
+  let score = unmodifiedCallerCount * 2;
+  
+  // Factor: arquetipo del átomo
+  if (atom.archetype) {
+    switch (atom.archetype.type) {
+      case 'god-function':
+      case 'hot-path':
+        score += 10;
+        break;
+      case 'fragile-network':
+        score += 5;
+        break;
+      default:
+        score += atom.archetype.severity || 0;
+    }
   }
-
-  // Clasificar severidad
+  
+  // Factor: complejidad
+  if (atom.complexity > 20) score += 3;
+  else if (atom.complexity > 10) score += 1;
+  
+  // Factor: tiene side effects
+  if (atom.hasSideEffects) score += 2;
+  
+  // Factor: es async
+  if (atom.isAsync) score += 1;
+  
+  // Clasificar
   if (score >= 15) return 'CRITICAL';
   if (score >= 10) return 'HIGH';
   if (score >= 5) return 'MEDIUM';
@@ -189,98 +202,131 @@ function calculateSeverity(modifiedFile, affectedFiles, fileMetadata) {
 }
 
 /**
- * Genera recomendaciones basadas en el contexto
+ * Crea alerta de tunnel vision atómica
  */
-function generateRecommendations(severity, affectedFiles, fileMetadata) {
-  const recommendations = [];
-
-  if (severity === 'CRITICAL' || severity === 'HIGH') {
-    recommendations.push('⚠️  REVISA estos archivos ANTES de commitear');
-    recommendations.push('💡 Considera crear tests para validar los cambios');
-  } else if (severity === 'MEDIUM') {
-    recommendations.push('💡 Revisa si estos archivos necesitan actualizarse');
-  }
-
-  if (fileMetadata && fileMetadata.exports && fileMetadata.exports.length > 0) {
-    recommendations.push('📦 Este archivo exporta funciones públicas - cambios pueden ser breaking');
-  }
-
-  if (affectedFiles.unmodified.length > 5) {
-    recommendations.push(`🔍 ${affectedFiles.unmodified.length} archivos afectados - considera revisar en orden de importancia`);
-  }
-
-  return recommendations;
-}
-
-/**
- * Detecta tunnel vision cuando un archivo es modificado
- *
- * @param {string} filePath - Archivo que fue modificado
- * @returns {Object|null} - Alerta de tunnel vision o null si no hay riesgo
- */
-export async function detectTunnelVision(filePath) {
-  // Marcar archivo como modificado
-  markAsModified(filePath);
-
-  // Obtener archivos afectados
-  const affected = await getAffectedFiles(filePath);
-
-  if (!affected || affected.all.length === 0) {
-    // No hay dependientes, no hay riesgo de tunnel vision
-    return null;
-  }
-
-  // Filtrar cuáles NO fueron modificados recientemente
-  const unmodifiedDirect = affected.direct.filter(f => !wasRecentlyModified(f));
-  const unmodifiedTransitive = affected.transitive.filter(f => !wasRecentlyModified(f));
-  const unmodified = [...new Set([...unmodifiedDirect, ...unmodifiedTransitive])];
-
-  // Si hay pocos dependientes no modificados, no es tunnel vision significativo
-  if (unmodified.length < MIN_UNMODIFIED_DEPENDENTS) {
-    return null;
-  }
-
-  // Cargar metadata del archivo para evaluar severidad
-  const fileMetadata = await loadFileMetadata(filePath);
-
-  const affectedData = {
-    direct: unmodifiedDirect,
-    transitive: unmodifiedTransitive,
-    unmodified,
-    total: affected.all.length
-  };
-
-  const severity = calculateSeverity(filePath, affectedData, fileMetadata);
-  const recommendations = generateRecommendations(severity, affectedData, fileMetadata);
-
-  // Retornar alerta
+function createTunnelVisionAlert({
+  type,
+  modifiedAtom,
+  filePath,
+  functionName,
+  atom,
+  unmodifiedCallers,
+  totalCallers
+}) {
+  const severity = calculateAtomicSeverity(atom, unmodifiedCallers.length);
+  
   return {
-    type: 'TUNNEL_VISION',
+    type: 'TUNNEL_VISION_ATOMIC',
+    version: '3.0',
     severity,
-    modifiedFile: filePath,
-    affectedFiles: {
-      total: affected.all.length,
-      unmodified: unmodified.length,
-      direct: unmodifiedDirect.length,
-      transitive: unmodifiedTransitive.length
+    modifiedAtom,
+    filePath,
+    functionName,
+    atom: {
+      name: atom.name,
+      complexity: atom.complexity,
+      archetype: atom.archetype,
+      isExported: atom.isExported,
+      isAsync: atom.isAsync,
+      hasSideEffects: atom.hasSideEffects
     },
-    files: {
-      direct: unmodifiedDirect.slice(0, 10), // Limitar a 10 para no abrumar
-      transitive: unmodifiedTransitive.slice(0, 5),
-      all: unmodified.slice(0, 15)
+    callers: {
+      total: totalCallers,
+      unmodified: unmodifiedCallers.length,
+      list: unmodifiedCallers.slice(0, 10)
     },
-    recommendations,
-    metadata: {
-      hasExports: fileMetadata?.exports?.length > 0,
-      exportCount: fileMetadata?.exports?.length || 0,
-      riskLevel: fileMetadata?.riskScore?.severity || 'unknown'
-    },
+    recommendations: generateAtomicRecommendations(severity, atom, unmodifiedCallers),
     timestamp: new Date().toISOString()
   };
 }
 
 /**
- * Formatea alerta para mostrar en consola
+ * Crea alerta agregada para archivo completo
+ */
+function createAggregatedTunnelVisionAlert({
+  filePath,
+  atomsModified,
+  totalAtomsModified,
+  unmodifiedCallers,
+  details
+}) {
+  const maxSeverity = details.reduce((max, d) => {
+    const order = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+    return order[d.severity] > order[max] ? d.severity : max;
+  }, 'LOW');
+  
+  return {
+    type: 'TUNNEL_VISION_FILE',
+    version: '3.0',
+    severity: maxSeverity,
+    filePath,
+    atomsModified: {
+      count: totalAtomsModified,
+      list: atomsModified
+    },
+    callers: {
+      totalAffected: unmodifiedCallers.length,
+      list: unmodifiedCallers.slice(0, 15)
+    },
+    details: details.slice(0, 5), // Top 5 funciones más críticas
+    recommendations: generateFileRecommendations(maxSeverity, totalAtomsModified, unmodifiedCallers.length),
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Genera recomendaciones para alerta atómica
+ */
+function generateAtomicRecommendations(severity, atom, unmodifiedCallers) {
+  const recommendations = [];
+  
+  if (severity === 'CRITICAL' || severity === 'HIGH') {
+    recommendations.push(`⚠️  La función '${atom.name}' tiene ${unmodifiedCallers.length} callers no modificados`);
+    
+    if (atom.archetype?.type === 'hot-path') {
+      recommendations.push('🔥 Esta es una función hot-path - cambios afectan a muchos lugares');
+    }
+    if (atom.archetype?.type === 'god-function') {
+      recommendations.push('⚡ Función compleja - considera dividirla antes de modificar');
+    }
+    
+    recommendations.push('💡 Ejecuta tests en los archivos afectados antes de commitear');
+  } else {
+    recommendations.push(`💡 Verifica si los ${unmodifiedCallers.length} callers necesitan actualización`);
+  }
+  
+  if (atom.hasSideEffects) {
+    recommendations.push('🔄 Esta función tiene side effects - revisa efectos secundarios');
+  }
+  
+  if (!atom.hasErrorHandling && atom.hasNetworkCalls) {
+    recommendations.push('🌐 Función con network calls - asegúrate de manejar errores');
+  }
+  
+  return recommendations;
+}
+
+/**
+ * Genera recomendaciones para alerta de archivo
+ */
+function generateFileRecommendations(severity, atomsModified, totalCallers) {
+  const recommendations = [];
+  
+  recommendations.push(`📦 ${atomsModified} funciones exportadas modificadas en este archivo`);
+  recommendations.push(`🔗 ${totalCallers} funciones callers potencialmente afectadas`);
+  
+  if (severity === 'CRITICAL' || severity === 'HIGH') {
+    recommendations.push('⚠️  ALTO RIESGO - Considera hacer cambios más pequeños y graduales');
+    recommendations.push('🧪 Ejecuta el test suite completo antes de commitear');
+  }
+  
+  recommendations.push('💡 Usa "getFunctionDetails" para ver el impacto de cada función modificada');
+  
+  return recommendations;
+}
+
+/**
+ * Formatea alerta para mostrar en consola (versión 3.0 molecular)
  */
 export function formatAlert(alert) {
   if (!alert) return '';
@@ -294,57 +340,41 @@ export function formatAlert(alert) {
 
   const lines = [];
   lines.push('');
-  lines.push('┌─────────────────────────────────────────────────────────────┐');
-  lines.push(`│  ${severityEmoji[alert.severity]} TUNNEL VISION DETECTED - ${alert.severity}                       │`);
-  lines.push('├─────────────────────────────────────────────────────────────┤');
-  lines.push(`│  Modificaste: ${alert.modifiedFile.padEnd(42)}│`);
-  lines.push('│                                                             │');
-  lines.push(`│  Archivos afectados que NO modificaste:                     │`);
-  lines.push(`│    • Directos: ${String(alert.affectedFiles.direct).padEnd(46)}│`);
-  lines.push(`│    • Transitivos: ${String(alert.affectedFiles.transitive).padEnd(43)}│`);
-  lines.push(`│    • Total sin modificar: ${String(alert.affectedFiles.unmodified).padEnd(34)}│`);
-  lines.push('│                                                             │');
-
-  // Mostrar hasta 5 archivos directos
-  if (alert.files.direct.length > 0) {
-    lines.push('│  📄 Archivos directos:                                      │');
-    alert.files.direct.slice(0, 5).forEach(file => {
-      const truncated = file.length > 50 ? '...' + file.slice(-47) : file;
-      lines.push(`│     ⚠️  ${truncated.padEnd(52)}│`);
-    });
-
-    if (alert.files.direct.length > 5) {
-      lines.push(`│     ... y ${alert.files.direct.length - 5} más                                          │`);
-    }
-    lines.push('│                                                             │');
+  lines.push('╔══════════════════════════════════════════════════════════════╗');
+  lines.push(`║  ${severityEmoji[alert.severity]} TUNNEL VISION MOLECULAR v3.0 - ${alert.severity.padEnd(14)}║`);
+  lines.push('╠══════════════════════════════════════════════════════════════╣');
+  
+  if (alert.type === 'TUNNEL_VISION_ATOMIC') {
+    lines.push(`║  🧬 Átomo modificado: ${alert.functionName.padEnd(37)}║`);
+    lines.push(`║  📁 Archivo: ${alert.filePath.padEnd(45)}║`);
+    lines.push('║                                                              ║');
+    lines.push(`║  📊 Metadata del átomo:                                      ║`);
+    lines.push(`║    • Complejidad: ${String(alert.atom.complexity).padEnd(38)}║`);
+    lines.push(`║    • Arquetipo: ${(alert.atom.archetype?.type || 'standard').padEnd(40)}║`);
+    lines.push(`║    • Exportada: ${(alert.atom.isExported ? 'Sí' : 'No').padEnd(42)}║`);
+    lines.push('║                                                              ║');
+  } else {
+    lines.push(`║  📁 Archivo modificado: ${alert.filePath.padEnd(33)}║`);
+    lines.push(`║  🧬 Funciones exportadas modificadas: ${String(alert.atomsModified.count).padEnd(17)}║`);
+    lines.push('║                                                              ║');
   }
+  
+  lines.push(`║  📞 Callers no modificados: ${String(alert.callers.unmodified || alert.callers.totalAffected).padEnd(27)}║`);
+  lines.push('║                                                              ║');
 
-  // Recomendaciones
   if (alert.recommendations.length > 0) {
-    lines.push('│  💡 Recomendaciones:                                        │');
+    lines.push('║  💡 Recomendaciones:                                         ║');
     alert.recommendations.forEach(rec => {
-      // Dividir en líneas si es muy largo
-      if (rec.length <= 54) {
-        lines.push(`│  ${rec.padEnd(60)}│`);
+      if (rec.length <= 56) {
+        lines.push(`║  ${rec.padEnd(62)}║`);
       } else {
-        const words = rec.split(' ');
-        let currentLine = '';
-        words.forEach(word => {
-          if ((currentLine + word).length > 54) {
-            lines.push(`│  ${currentLine.padEnd(60)}│`);
-            currentLine = '     ' + word + ' ';
-          } else {
-            currentLine += word + ' ';
-          }
-        });
-        if (currentLine.trim()) {
-          lines.push(`│  ${currentLine.padEnd(60)}│`);
-        }
+        lines.push(`║  ${rec.substring(0, 56).padEnd(62)}║`);
+        lines.push(`║     ${rec.substring(56, 112).padEnd(59)}║`);
       }
     });
   }
 
-  lines.push('└─────────────────────────────────────────────────────────────┘');
+  lines.push('╚══════════════════════════════════════════════════════════════╝');
   lines.push('');
 
   return lines.join('\n');
@@ -355,22 +385,35 @@ export function formatAlert(alert) {
  */
 export function cleanupHistory() {
   const now = Date.now();
-  for (const [filePath, timestamp] of recentlyModifiedFiles.entries()) {
+  for (const [atomId, timestamp] of recentlyModifiedAtoms.entries()) {
     if (now - timestamp > RECENT_WINDOW_MS) {
-      recentlyModifiedFiles.delete(filePath);
+      recentlyModifiedAtoms.delete(atomId);
     }
   }
 }
 
 /**
- * Obtiene estadísticas del detector
+ * Obtiene estadísticas del detector (versión molecular)
  */
 export function getStats() {
   return {
-    recentlyModifiedCount: recentlyModifiedFiles.size,
+    recentlyModifiedCount: recentlyModifiedAtoms.size,
     windowMs: RECENT_WINDOW_MS,
-    minThreshold: MIN_UNMODIFIED_DEPENDENTS
+    minThreshold: MIN_UNMODIFIED_DEPENDENTS,
+    version: '3.0',
+    architecture: 'molecular'
   };
+}
+
+/**
+ * Obtiene historial de modificaciones
+ */
+export function getModificationHistory() {
+  return Array.from(recentlyModifiedAtoms.entries()).map(([atomId, timestamp]) => ({
+    atomId,
+    timestamp,
+    age: Date.now() - timestamp
+  }));
 }
 
 // Limpieza periódica cada minuto

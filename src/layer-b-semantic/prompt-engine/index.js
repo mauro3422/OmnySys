@@ -4,8 +4,179 @@
  * Sistema centralizado para gestion de prompts dinamicos basados en metadatos.
  * No permite que llm-analyzer.js crezca, todo el prompting esta centralizado aqui.
  *
+ * ARCHITECTURE: Layer B (Prompt Construction) → Layer C (LLM Communication)
+ * Bridges static analysis with LLM by creating targeted prompts
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📋 EXTENSION GUIDE - Adding New Prompt Types and Templates
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * To add a new type of LLM analysis with custom prompting:
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * STEP 1: Create Prompt Template
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Create file in: src/layer-b-semantic/prompt-engine/prompt-templates/
+ *
+ *     // your-analysis-type.js
+ *     export const yourAnalysisTypeTemplate = {
+ *       name: 'your-analysis-type',
+ *       
+ *       // When to use this template (based on metadata)
+ *       detect: (metadata) => {
+ *         // Return true if this template applies
+ *         return metadata.hasYourSpecificPattern === true;
+ *       },
+ *       
+ *       // Priority (higher = checked first)
+ *       priority: 50,
+ *       
+ *       // Prompt sections
+ *       sections: {
+ *         context: `
+ * You are analyzing code for SPECIFIC_PATTERN issues.
+ * Focus on: X, Y, Z aspects.
+ *         `,
+ *         
+ *         instructions: `
+ * 1. Analyze the provided code for PATTERN
+ * 2. Identify specific instances
+ * 3. Suggest improvements
+ *         `,
+ *         
+ *         outputFormat: `
+ * Return JSON with:
+ * - findings: Array of found issues
+ * - severity: "low" | "medium" | "high" | "critical"
+ * - suggestions: Array of improvement suggestions
+ *         `
+ *       },
+ *       
+ *       // JSON Schema for response validation
+ *       responseSchema: {
+ *         type: 'object',
+ *         properties: {
+ *           findings: {
+ *             type: 'array',
+ *             items: {
+ *               type: 'object',
+ *               properties: {
+ *                 line: { type: 'number' },
+ *                 description: { type: 'string' },
+ *                 severity: { 
+ *                   type: 'string', 
+ *                   enum: ['low', 'medium', 'high', 'critical'] 
+ *                 }
+ *               },
+ *               required: ['line', 'description', 'severity']
+ *             }
+ *           },
+ *           suggestions: {
+ *             type: 'array',
+ *             items: { type: 'string' }
+ *           }
+ *         },
+ *         required: ['findings', 'suggestions']
+ *       }
+ *     };
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * STEP 2: Register in PROMPT_REGISTRY.js
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Add to: src/layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js
+ *
+ *     import { yourAnalysisTypeTemplate } from './prompt-templates/your-analysis-type.js';
+ *     
+ *     export const PROMPT_REGISTRY = {
+ *       // ... existing templates ...
+ *       
+ *       'your-analysis-type': yourAnalysisTypeTemplate,
+ *     };
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * STEP 3: Update PromptSelector (if needed)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * In: src/layer-b-semantic/prompt-engine/prompt-selector.js
+ *
+ * The selector automatically uses PROMPT_REGISTRY, but you may want to add
+ * special selection logic for complex cases:
+ *
+ *     selectAnalysisType(metadata) {
+ *       // Check your template first if high priority
+ *       if (yourAnalysisTypeTemplate.detect(metadata)) {
+ *         return 'your-analysis-type';
+ *       }
+ *       
+ *       // ... existing logic ...
+ *     }
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * STEP 4: Handle Response in LLM Analyzer
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * In: src/layer-b-semantic/llm-analyzer/response-normalizer.js (or create handler)
+ *
+ * Ensure the LLM response is properly validated and stored:
+ *
+ *     // Add case for your analysis type
+ *     if (analysisType === 'your-analysis-type') {
+ *       return {
+ *         llmInsights: {
+ *           findings: parsed.findings,
+ *           suggestions: parsed.suggestions,
+ *           analyzedAt: new Date().toISOString()
+ *         },
+ *         // May also update file metadata
+ *         metadata: {
+ *           hasYourPatternIssues: parsed.findings.length > 0
+ *         }
+ *       };
+ *     }
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ⚠️  PRINCIPLES TO MAINTAIN
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * ✓ SSOT: This is the ONLY place that defines prompts
+ *   No other file should construct LLM prompts directly
+ *
+ * ✓ Anti-hallucination: Every prompt must include rules about:
+ *   - Not inventing file names
+ *   - Only using provided context
+ *   - Exact string matching
+ *
+ * ✓ JSON Schema: Every template MUST define responseSchema
+ *   This validates LLM output before processing
+ *
+ * ✓ Temperature 0.0: Always use 0.0 for deterministic extraction
+ *   (Already set in generatePrompt())
+ *
+ * ✓ Layer B only: Construct prompts from metadata, don't re-analyze code
+ *   The code content is passed for context, but detection logic uses metadata
+ *
+ * ✓ Declarative templates: Keep logic in 'detect' function, keep prompt text static
+ *   BAD: String concatenation in prompt based on conditions
+ *   GOOD: Clear sections with all possibilities documented
+ *
+ * 📊  PROMPT EFFECTIVENESS:
+ *     - Monitor LLM response quality
+ *     - If responses are inconsistent: tighten the schema
+ *     - If responses miss things: improve instructions
+ *     - If responses hallucinate: strengthen anti-hallucination rules
+ *
+ * 🔗  RELATED FILES:
+ *     - PROMPT_REGISTRY.js: Central registry of all templates
+ *     - prompt-selector.js: Chooses which template to use
+ *     - prompt-templates/*.js: Individual template definitions
+ *     - llm-analyzer/*.js: Uses this engine to get prompts
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
  * REGLA: Los schemas en getJsonSchema() deben corresponder SOLO a analysis types
  * activos en PROMPT_REGISTRY.js. Si un arquetipo se elimina, su schema tambien.
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import promptSelector from './prompt-selector.js';

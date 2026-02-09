@@ -12,7 +12,7 @@ import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { detectAllCSSInJSConnections } from '../extractors/css-in-js-extractor.js';
-import { detectAllTypeScriptConnections } from '../../layer-b-semantic/typescript-extractor.js';
+import { detectAllTypeScriptConnections } from '../extractors/typescript-extractor.js';
 import { detectAllReduxContextConnections } from '../extractors/redux-context-extractor.js';
 
 function dedupeConnections(connections) {

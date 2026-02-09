@@ -5,7 +5,92 @@
  *
  * CORE PRINCIPLE: Files have NO metadata of their own - they are DERIVED from functions
  *
+ * ARCHITECTURE: Layer B (Semantic Derivation) → Layer C (Molecular Composition)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📋 EXTENSION GUIDE - Adding New Derivation Rules
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * To add a new molecular property derived from atoms:
+ *
+ * 1️⃣  ADD RULE to DerivationRules object (line ~16-227)
+ *
+ *     POSITION: Add after existing rules, before moleculeNetworkEndpoints
+ *
+ *     PATTERN:
+ *     moleculeYourProperty: (atoms) => {
+ *       // Derivation logic here
+ *       return computedValue;
+ *     },
+ *
+ * 2️⃣  EXAMPLE - Adding Security Risk Score:
+ *
+ *     moleculeSecurityRisk: (atoms) => {
+ *       // Count atoms with security issues
+ *       const vulnerableAtoms = atoms.filter(a => 
+ *         a.hasSQLInjection || a.hasXSSVulnerability
+ *       );
+ *       
+ *       if (vulnerableAtoms.length === 0) return 0;
+ *       
+ *       // Risk = number of vulnerable atoms * max severity
+ *       const maxSeverity = Math.max(...vulnerableAtoms.map(a => 
+ *         a.hasSQLInjection ? 9 : 7
+ *       ));
+ *       
+ *       return {
+ *         score: vulnerableAtoms.length * maxSeverity,
+ *         vulnerableFunctions: vulnerableAtoms.map(a => a.name),
+ *         severity: maxSeverity > 8 ? 'critical' : 'high'
+ *       };
+ *     },
+ *
+ * 3️⃣  UPDATE composeMolecularMetadata() (line ~332-385)
+ *     Add the derived property to the returned object:
+ *
+ *     return {
+ *       // ... existing properties ...
+ *       
+ *       // NEW: Security risk
+ *       securityRisk: derive('moleculeSecurityRisk'),
+ *     };
+ *
+ * 4️⃣  UPDATE MOLECULAR ARCHETYPES (line ~22-75)
+ *     If the new property affects archetype detection:
+ *
+ *     moleculeArchetype: (atoms) => {
+ *       // ... existing rules ...
+ *       
+ *       // NEW: High security risk → vulnerable-module
+ *       const securityRisk = DerivationRules.moleculeSecurityRisk(atoms);
+ *       if (securityRisk.severity === 'critical') {
+ *         return {
+ *           type: 'vulnerable-module',
+ *           severity: 10,
+ *           confidence: 0.95,
+ *           source: 'security-analysis'
+ *         };
+ *       }
+ *       
+ *       // ... rest of rules ...
+ *     },
+ *
+ * ⚠️  PRINCIPLES TO MAINTAIN:
+ *     ✓ SSOT: DerivationRules is the ONLY source for molecular properties
+ *     ✓ Pure functions: (atoms) => result - no external dependencies
+ *     ✓ Deterministic: Same atoms always produce same derivation
+ *     ✓ Composable: Rules can call other rules (DerivationRules.moleculeX(atoms))
+ *     ✓ No Layer A logic: Only derive from existing atom metadata
+ *
+ * 🔗  RELATED FILES:
+ *     - molecular-extractor.js: Where atom metadata is created
+ *     - query/queries/file-query.js: Where derivations are consumed
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
  * @module shared/derivation-engine
+ * @phase 2 (Molecular Derivation)
+ * @dependencies NONE (pure functions, no imports)
  */
 
 /**

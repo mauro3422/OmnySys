@@ -3,7 +3,124 @@
  * 
  * Determina si un archivo necesita análisis LLM
  * 
+ * ARCHITECTURE: Layer B (Confidence-Based Decision)
+ * Bridges Layer A (static) and Layer C (LLM) - decides when LLM is necessary
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📋 EXTENSION GUIDE - Adding New LLM Decision Criteria
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * To add a new criterion for when to use LLM analysis:
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * OPTION A: New Detection Criterion (e.g., Security Review, Performance Analysis)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Use this when you want to force LLM analysis for specific code patterns
+ * that static analysis can't fully evaluate.
+ *
+ * 1️⃣  CREATE DETECTOR FUNCTION (add after existing check functions, line ~170+)
+ *
+ *     /**
+ *      * Checks if file needs security review from LLM
+ *      * Examples: crypto usage, auth logic, input validation
+ *      * /
+ *     function needsSecurityReview(fileAnalysis) {
+ *       const atoms = fileAnalysis.atoms || [];
+ *       
+ *       // Check for security-sensitive patterns in atoms
+ *       return atoms.some(atom => {
+ *         // Uses crypto/auth APIs
+ *         const securityCalls = ['crypto', 'bcrypt', 'jwt', 'auth'];
+ *         const hasSecurityCalls = atom.calls?.some(call => 
+ *           securityCalls.some(api => call.name?.toLowerCase().includes(api))
+ *         );
+ *         
+ *         // Handles user input
+ * *         const handlesUserInput = atom.params?.some(p => 
+ *           ['userInput', 'data', 'payload'].includes(p.name)
+ *         );
+ *         
+ *         return hasSecurityCalls || handlesUserInput;
+ *       });
+ *     }
+ *
+ * 2️⃣  ADD CHECK to needsLLMAnalysis() (line ~23-66):
+ *
+ *     // 8. Security-sensitive code -> SÍ LLM (for security review)
+ *     if (needsSecurityReview(fileAnalysis)) {
+ *       return true;
+ *     }
+ *
+ * 3️⃣  UPDATE CONFIDENCE SCORING (if applicable):
+ *     If this check represents a gap in static analysis confidence,
+ *     also update any confidence calculation to reflect this.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * OPTION B: Refine Existing Criterion
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * To make an existing check more precise:
+ *
+ * EXAMPLE: Making hasUnresolvedEvents more precise
+ *
+ *     // BEFORE (line ~93-109):
+ *     function hasUnresolvedEvents(fileAnalysis) {
+ *       const eventNames = semanticAnalysis.events?.all || [];
+ *       const resolvedEvents = (fileAnalysis.semanticConnections || [])
+ *         .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
+ *         .map(c => c.event || c.via);
+ *       return eventNames.some(e => !resolvedEvents.includes(e.event || e));
+ *     }
+ *
+ *     // AFTER (more sophisticated):
+ *     function hasUnresolvedEvents(fileAnalysis) {
+ *       const eventNames = semanticAnalysis.events?.all || [];
+ *       
+ *       // NEW: Consider event patterns (some are always OK)
+ *       const safeEventPatterns = ['click', 'submit', 'load']; // Standard DOM events
+ *       const suspiciousEvents = eventNames.filter(e => {
+ *         const eventName = e.event || e;
+ *         // Custom events (with colons) need more scrutiny
+ *         const isCustomEvent = eventName.includes(':');
+ *         // High-frequency events might indicate performance issues
+ *         const isHighFrequency = ['scroll', 'mousemove', 'resize'].includes(eventName);
+ *         return isCustomEvent || isHighFrequency;
+ *       });
+ *       
+ *       const resolvedEvents = (fileAnalysis.semanticConnections || [])
+ *         .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
+ *         .map(c => c.event || c.via);
+ *       
+ *       // Only LLM if there are suspicious unresolved events
+ *       return suspiciousEvents.some(e => !resolvedEvents.includes(e.event || e));
+ *     }
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ⚠️  PRINCIPLES TO MAINTAIN
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * ✓ BYPASS FIRST: Default to NOT using LLM (confidence >= 0.8)
+ * ✓ Evidence-based: Each check must look at specific atom/file metadata
+ * ✓ Performance: Keep checks fast (O(n) where n = atoms in file)
+ * ✓ SSOT: Don't duplicate detection logic from molecular-extractor.js
+ *   Instead, check the atom metadata that extractor already produced
+ * ✓ Layer B only: This file INTERPRETS metadata, doesn't extract new data
+ *
+ * 🔗  RELATED FILES:
+ *     - molecular-extractor.js: Source of atom metadata we check
+ *     - prompt-engine/: Where LLM prompts are built for files that need analysis
+ *     - llm-analyzer/core.js: Where the actual LLM calls happen
+ *
+ * 📊  BYPASS RATE TARGET: 90%+
+ *     Measure: console.log how often we return false vs true
+ *     If bypass rate drops, criteria are too broad - refine them
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
  * @module llm-analyzer/analysis-decider
+ * @phase Layer B (Decision Logic)
+ * @dependencies NONE (pure functions over metadata)
  */
 
 /**
