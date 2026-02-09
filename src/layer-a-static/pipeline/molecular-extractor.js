@@ -10,10 +10,12 @@
 
 import { extractSideEffects } from '../extractors/metadata/side-effects.js';
 import { extractCallGraph } from '../extractors/metadata/call-graph.js';
-import { extractDataFlow } from '../extractors/metadata/data-flow.js';
+import { extractDataFlow as extractDataFlowV2 } from '../extractors/data-flow-v2/core/index.js';
 import { extractTypeInference } from '../extractors/metadata/type-inference.js';
 import { extractTemporalPatterns } from '../extractors/metadata/temporal-patterns.js';
 import { extractPerformanceHints } from '../extractors/metadata/performance-hints.js';
+import { buildMolecularChains, enrichAtomsWithChains } from './molecular-chains/index.js';
+import { analyzeModules, enrichMoleculesWithSystemContext } from '../module-system/index.js';
 
 /**
  * Extrae el código de una función desde el AST
@@ -108,16 +110,35 @@ function detectAtomArchetype(atomMetadata) {
  * @param {Object} functionInfo - Info de función del parser
  * @param {string} functionCode - Código de la función
  * @param {Object} fileMetadata - Metadata del archivo completo
+ * @param {string} filePath - Ruta del archivo
  * @returns {Object} - Atom metadata
  */
-function extractAtomMetadata(functionInfo, functionCode, fileMetadata) {
-  // Extraer metadata específica de la función
+async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath) {
+  // Extraer metadata específica de la función (existente)
   const sideEffects = extractSideEffects(functionCode);
   const callGraph = extractCallGraph(functionCode);
-  const dataFlow = extractDataFlow(functionCode);
   const typeInference = extractTypeInference(functionCode);
   const temporal = extractTemporalPatterns(functionCode);
   const performance = extractPerformanceHints(functionCode);
+  
+  // NUEVO: Data Flow Exhaustivo v2
+  let dataFlowV2 = null;
+  try {
+    // Obtener AST de la función si está disponible
+    const functionAst = functionInfo.node || functionInfo.ast;
+    
+    if (functionAst) {
+      dataFlowV2 = await extractDataFlowV2(
+        functionAst,
+        functionCode,
+        functionInfo.name,
+        filePath
+      );
+    }
+  } catch (error) {
+    console.warn(`[molecular-extractor] Error extrayendo data flow v2 for ${functionInfo.name}:`, error.message);
+    // No fallar la extracción completa si data flow falla
+  }
 
   // Calcular métricas
   const complexity = calculateComplexity(functionCode);
@@ -192,7 +213,23 @@ function extractAtomMetadata(functionInfo, functionCode, fileMetadata) {
 
     // Performance
     hasNestedLoops: performance.nestedLoops.length > 0,
-    hasBlockingOps: performance.blockingOperations.length > 0
+    hasBlockingOps: performance.blockingOperations.length > 0,
+
+    // NUEVO: Data Flow Exhaustivo v0.7
+    dataFlow: dataFlowV2?.real || null,
+    standardized: dataFlowV2?.standardized || null,
+    patternHash: dataFlowV2?.standardized?.patternHash || null,
+    
+    // NUEVO: Invariantes detectadas
+    invariants: dataFlowV2?.real?.invariants || [],
+    typeFlow: dataFlowV2?.real?.typeFlow || null,
+    
+    // NUEVO: Metadata del proceso
+    _meta: {
+      dataFlowVersion: '2.0.0',
+      extractionTime: dataFlowV2?._meta?.processingTime || 0,
+      confidence: dataFlowV2?._meta?.confidence || 0.5
+    }
   };
 
   // Detect archetype based on metadata
@@ -209,16 +246,18 @@ function extractAtomMetadata(functionInfo, functionCode, fileMetadata) {
  * @param {Object} fileMetadata - Metadata del archivo completo (de extractors)
  * @returns {Object} - Molecular structure
  */
-export function extractMolecularStructure(filePath, code, fileInfo, fileMetadata) {
-  // Extraer átomos (funciones)
-  const atoms = (fileInfo.functions || []).map(functionInfo => {
-    // Encontrar el nodo en el AST para extraer su código
-    // Por ahora, usamos líneas del código completo
-    const lines = code.split('\n');
-    const functionCode = lines.slice(functionInfo.line - 1, functionInfo.endLine).join('\n');
+export async function extractMolecularStructure(filePath, code, fileInfo, fileMetadata) {
+  // Extraer átomos (funciones) - ahora async
+  const atoms = await Promise.all(
+    (fileInfo.functions || []).map(async functionInfo => {
+      // Encontrar el nodo en el AST para extraer su código
+      // Por ahora, usamos líneas del código completo
+      const lines = code.split('\n');
+      const functionCode = lines.slice(functionInfo.line - 1, functionInfo.endLine).join('\n');
 
-    return extractAtomMetadata(functionInfo, functionCode, fileMetadata);
-  });
+      return await extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath);
+    })
+  );
 
   // Crear índice de funciones por nombre para lookups rápidos
   const atomByName = new Map(atoms.map(a => [a.name, a]));
@@ -261,14 +300,82 @@ export function extractMolecularStructure(filePath, code, fileInfo, fileMetadata
     atom.archetype = detectAtomArchetype(atom);
   });
 
+  // NUEVO FASE 2: Construir chains moleculares
+  let molecularChains = null;
+  try {
+    const { buildMolecularChains, enrichAtomsWithChains } = await import('./molecular-chains/index.js');
+    
+    // Construir chains
+    const chainData = buildMolecularChains(atoms);
+    
+    // Enriquecer átomos con información de chains
+    atoms = enrichAtomsWithChains(atoms, chainData);
+    
+    molecularChains = {
+      chains: chainData.chains,
+      graph: chainData.graph,
+      summary: chainData.summary
+    };
+    
+    console.log(`[molecular-extractor] Built ${chainData.chains.length} molecular chains`);
+  } catch (error) {
+    console.warn('[molecular-extractor] Error building molecular chains:', error.message);
+    // No fallar si chains falla
+  }
+
   // Retornar molécula
   return {
     filePath,
     type: 'molecule',
     atomCount: atoms.length,
     atoms,
+    // NUEVO Fase 2: Chains moleculares
+    molecularChains,
     // La metadata molecular se DERIVA en derivation-engine
     // Aquí solo proporcionamos los átomos
     extractedAt: new Date().toISOString()
   };
+}
+
+/**
+ * NUEVO FASE 3: Analiza el sistema completo (todos los módulos)
+ * 
+ * @param {string} projectRoot - Raíz del proyecto
+ * @param {Array} allMolecules - Todas las moléculas extraídas
+ * @returns {Object} - Análisis de módulos y sistema
+ */
+export async function analyzeProjectSystem(projectRoot, allMolecules) {
+  console.log(`[molecular-extractor] Fase 3: Analyzing project system...`);
+  
+  try {
+    // Importar module-system
+    const { analyzeModules, enrichMoleculesWithSystemContext } = await import('../module-system/index.js');
+    
+    // Analizar módulos
+    const moduleData = analyzeModules(projectRoot, allMolecules);
+    
+    // Enriquecer moléculas con contexto de sistema
+    const enrichedMolecules = enrichMoleculesWithSystemContext(
+      allMolecules,
+      moduleData
+    );
+    
+    console.log(`[molecular-extractor] Fase 3: Analyzed ${moduleData.summary.totalModules} modules, ${moduleData.summary.totalBusinessFlows} business flows`);
+    
+    return {
+      molecules: enrichedMolecules,
+      modules: moduleData.modules,
+      system: moduleData.system,
+      summary: moduleData.summary
+    };
+    
+  } catch (error) {
+    console.error('[molecular-extractor] Error in Fase 3 (Module System):', error.message);
+    return {
+      molecules: allMolecules,
+      modules: [],
+      system: null,
+      summary: { totalModules: 0, totalBusinessFlows: 0 }
+    };
+  }
 }

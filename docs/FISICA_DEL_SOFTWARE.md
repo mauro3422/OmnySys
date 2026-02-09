@@ -1,0 +1,423 @@
+# Física del Software - Evolución Fractal de OmnySys
+
+**Versión**: v0.7.0 (Data Flow Fractal)  
+**Estado**: Sistema evolutivo en producción  
+**Metafora**: De cajas con cables a átomos con electrones orbitando
+
+---
+
+## 🎯 La Gran Visión
+
+OmnySys no es solo un "analizador de código". Es un **sistema de física del software** que modela cómo fluye la información a través de un programa, desde el nivel macro (arquitectura) hasta el nivel cuántico (transformaciones de datos individuales).
+
+**Principio fundamental**: *"El software es un sistema físico observable. Al igual que la física modela partículas y fuerzas, OmnySys modela funciones y flujos de datos."*
+
+---
+
+## 📈 Evolución del Sistema (5 Etapas)
+
+### v0.5 - Box Test: El Mapeo de Cables
+
+**Concepto**: Cada archivo es una caja negra. Al levantarla, ves cables que la conectan con otras cajas.
+
+```
+📦 src/api.js
+   ├── cable → 📦 src/auth.js
+   ├── cable → 📦 src/db.js
+   └── cable → 📦 src/utils.js
+```
+
+**Qué revela**: 
+- Qué archivos se conectan entre sí
+- Dónde están los "god-objects" (cajas con 20+ cables)
+- Qué archivos son "orphans" (cajas sin cables = código muerto)
+
+**Limitación**: Solo vemos el EXTERIOR de las cajas.
+
+**Documentación**: [ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md)
+
+---
+
+### v0.6 - Arquitectura Molecular: Dentro de la Caja
+
+**Concepto**: Dentro de cada caja (archivo) hay átomos (funciones) que se conectan entre sí.
+
+```
+📦 src/api.js (Molécula)
+   ├── ⚛️ fetchUser() ──→ ⚛️ validateToken()
+   ├── ⚛️ validateToken() ──→ ⚛️ checkPermissions()
+   └── ⚛️ formatResponse() (standalone)
+```
+
+**Qué revela**:
+- Qué funciones existen dentro de cada archivo
+- Cómo se llaman entre sí (call graph interno)
+- Qué funciones son "god-functions" (átomos con muchas conexiones)
+- Qué funciones son "dead code" (átomos sin llamadas)
+
+**Principio clave**: **SSOT (Single Source of Truth)**
+- La metadata del archivo se DERIVA de sus funciones
+- Si cambia una función, se recalcula todo el archivo
+- Zero duplicación de datos
+
+**Documentación**: [ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md)
+
+---
+
+### v0.7 - Data Flow Fractal: Los Electrones Orbitando
+
+**Concepto**: Dentro de cada átomo (función), los datos fluyen como electrones en órbitas: entran, se transforman, y salen.
+
+```
+⚛️ processOrder(order, userId) (Átomo)
+   │
+   ├── 🔄 ENTRADA: order.items →
+   │   ├── 🔄 TRANSFORM: calculateTotal() → total
+   │   └── 🔄 TRANSFORM: getUser() → user
+   │       └── 🔄 TRANSFORM: user.discount → discount
+   │           └── 🔄 TRANSFORM: arithmetic → finalTotal
+   │               └── 🔄 SALIDA: saveOrder() + return {...}
+```
+
+**Qué revela**:
+- **Cómo viaja un dato**: De parámetro → transformación → return/side effect
+- **Transformaciones**: Qué operaciones se aplican (validación, cálculo, merge)
+- **Cadenas cross-function**: Salida de A → Entrada de B
+- **Race conditions**: Dos funciones async escribiendo al mismo recurso
+- **Simulación**: "Si modifico X, ¿qué funciones se ven afectadas?"
+
+**Principio clave**: **Fractal A→B→C**
+```
+Átomo:   Params → Transform → Return
+Molécula: Inputs → Chains    → Outputs  
+Módulo:  Imports → Internal  → Exports
+Sistema: Entry   → Business  → Side Effects
+```
+
+**Documentación**: [DATA_FLOW/README.md](DATA_FLOW/README.md)
+
+---
+
+## 🔬 El Modelo Atómico Completo
+
+### Analogía Física
+
+| Física Real | OmnySys | Qué modela |
+|-------------|---------|------------|
+| **Universo** | Sistema (Proyecto) | Todo el código |
+| **Galaxia** | Módulo (Feature) | Carpeta de funcionalidad |
+| **Planeta** | Molécula (Archivo) | Archivo con funciones |
+| **Átomo** | Función | Unidad básica de ejecución |
+| **Núcleo** | Lógica interna | El algoritmo de la función |
+| **Electrones** | Datos fluyendo | Parámetros → transformaciones → returns |
+| **Orbitales** | Conexiones | Cómo los datos viajan entre funciones |
+| **Enlaces químicos** | Llamadas entre funciones | A llama a B |
+| **Campo gravitacional** | Side effects globales | localStorage, eventos, DB |
+
+### Jerarquía de Derivación
+
+```
+                    SISTEMA (Universo)
+                    ┌─────────────────┐
+                    │ Entry Points    │
+                    │ Business Flows  │
+                    │ Bottlenecks     │
+                    └────────┬────────┘
+                             │ DERIVA de módulos
+           ┌─────────────────┼─────────────────┐
+           │                 │                 │
+    ┌──────▼──────┐  ┌──────▼──────┐  ┌──────▼──────┐
+    │  MÓDULO     │  │  MÓDULO     │  │  MÓDULO     │
+    │ (Galaxia)   │  │ (Galaxia)   │  │ (Galaxia)   │
+    │ auth/       │  │ cart/       │  │ payment/    │
+    └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+           │                │                │
+           └────────────────┼────────────────┘
+                            │ DERIVA de moléculas
+              ┌─────────────┼─────────────┐
+              │             │             │
+       ┌──────▼─────┐ ┌────▼────┐ ┌──────▼─────┐
+       │ MOLÉCULA   │ │MOLÉCULA │ │ MOLÉCULA   │
+       │ (Planeta)  │ │(Planeta)│ │ (Planeta)  │
+       │ login.js   │ │cart.js  │ │ checkout.js│
+       └──────┬─────┘ └────┬────┘ └──────┬─────┘
+              │            │             │
+              └────────────┼─────────────┘
+                           │ DERIVA de átomos
+                 ┌─────────┼─────────┐
+                 │         │         │
+          ┌──────▼───┐ ┌───▼───┐ ┌───▼────┐
+          │  ÁTOMO   │ │ ÁTOMO │ │ ÁTOMO  │
+          │ validate │ │fetch  │ │process │
+          │Credential│ │User  │ │Order   │
+          └──────┬───┘ └───┬───┘ └───┬────┘
+                 │         │         │
+                 └─────────┼─────────┘
+                           │ EXTRAE vía AST
+                    ┌──────▼──────┐
+                    │  ELECTRONES │
+                    │  (Data Flow)│
+                    │  • inputs   │
+                    │  • transforms│
+                    │  • outputs  │
+                    └─────────────┘
+```
+
+**Regla de oro**: Si cambia un electrón (dato), se recalcula todo hacia arriba hasta el universo.
+
+---
+
+## 🧩 Cómo se Conecta Todo
+
+### 1. Box Test → Arquetipos
+
+Los **arquetipos** clasifican qué tipo de cables tiene una caja:
+
+| Arquetipo | Qué cables revela | Nivel |
+|-----------|-------------------|-------|
+| `god-object` | Caja con 20+ cables a todos lados | Molécula |
+| `network-hub` | Cables compartidos por endpoints de API | Molécula |
+| `event-hub` | Cables invisibles (emit/listen) | Molécula |
+| `god-function` | Átomo con muchas conexiones internas | Átomo |
+| `fragile-network` | Átomo que hace fetch sin error handling | Átomo |
+
+**Conexión con Data Flow**: Un `god-function` suele tener **muchas transformaciones** (electrones complejos).
+
+### 2. Átomos → Data Flow
+
+Cada átomo tiene:
+- **Estructura**: Nombre, parámetros, complejidad
+- **Conexiones**: calls, calledBy
+- **Side Effects**: network, DOM, storage
+- **Archetype**: Tipo de patrón
+- **Data Flow**: **Inputs → Transformations → Outputs** ⭐ NUEVO en v0.7
+
+```javascript
+// Un átomo completo (v0.7)
+{
+  id: "src/api.js::processOrder",
+  name: "processOrder",
+  
+  // Estructura
+  params: ["order", "userId"],
+  complexity: 12,
+  isAsync: true,
+  
+  // Conexiones (v0.6)
+  calls: ["calculateTotal", "getUser", "saveOrder"],
+  calledBy: ["handleRequest"],
+  
+  // Side Effects (v0.6)
+  hasNetworkCalls: true,
+  hasStorageAccess: true,
+  
+  // Arquetipo (v0.5-0.6)
+  archetype: {
+    type: "read-transform-persist",
+    severity: 6
+  },
+  
+  // Data Flow (v0.7) ⭐ NUEVO
+  dataFlow: {
+    inputs: [
+      { name: "order", usages: [...] },
+      { name: "userId", usages: [...] }
+    ],
+    transformations: [
+      { from: "order.items", to: "total", via: "calculateTotal" },
+      { from: "userId", to: "user", via: "getUser" },
+      { from: ["total", "discount"], to: "finalTotal", operation: "arithmetic" }
+    ],
+    outputs: [
+      { type: "side_effect", target: "saveOrder" },
+      { type: "return", shape: "{ orderId, total }" }
+    ]
+  }
+}
+```
+
+### 3. Data Flow → Simulación
+
+Con el data flow de TODOS los átomos, podemos **simular el viaje de un dato**:
+
+```
+Simulación: "¿Qué pasa con req.body en handleRequest()?"
+
+Journey:
+  Step 1: handleRequest → extrae userData
+  Step 2: validateUser → valida email
+  Step 3: saveUser → guarda en DB
+  Step 4: sendWelcome → envía email
+
+Impacto: Modificar validateUser afecta a saveUser y sendWelcome
+Archivos tocados: 4
+Funciones tocadas: 6
+Side effects: database_write, email_send
+```
+
+Esto es posible porque conectamos:
+1. **Salida** de validateUser → **Entrada** de saveUser
+2. **Salida** de saveUser → **Entrada** de sendWelcome
+3. **Side effects** registrados en cada átomo
+
+---
+
+## 🎯 Zero LLM: El Determinismo Absoluto
+
+### La Promesa
+
+OmnySys busca **97-99% de cobertura** con **0% de LLM** para la extracción.
+
+| Capa | Técnica | LLM? |
+|------|---------|------|
+| **Box Test** (v0.5) | AST + grafo de imports | ❌ No |
+| **Molecular** (v0.6) | AST + call graph | ❌ No |
+| **Data Flow** (v0.7) | AST + visitor pattern | ❌ No |
+| **Simulación** (v0.7) | Graph walking | ❌ No |
+| **Arquetipos** | Rule-based detection | ❌ No (confidence ≥ 0.8) |
+
+### Cuándo SÍ usamos LLM
+
+Solo cuando `confidence < 0.8`:
+
+```javascript
+// Caso 1: Evidencia suficiente → BYPASS
+if (confidence >= 0.8) {
+  return { needsLLM: false };  // Ahorramos 2-3 segundos
+}
+
+// Caso 2: Evidencia parcial → LLM con contexto
+if (confidence >= 0.5) {
+  return { 
+    needsLLM: true,
+    context: "Ya detecté: hasNetworkCalls, hasEventEmitters. Verificar: ¿coordina múltiples APIs?"
+  };
+}
+
+// Caso 3: Sin evidencia → Full LLM
+return { 
+  needsLLM: true,
+  context: "Análisis completo necesario"
+};
+```
+
+**Estimación**: Solo ~2-5% de funciones necesitan LLM.
+
+---
+
+## 🔮 Más Allá del v0.7: ¿Qué sigue?
+
+El fractal puede seguir profundizando:
+
+### v0.8 - Intra-Atómico: Dentro de la Transformación
+
+**Concepto**: Dentro de cada transformación (electrón), podemos ver los **sub-átomos**:
+
+```javascript
+// Transformación actual (v0.7)
+{
+  from: "total",
+  to: "finalTotal",
+  operation: "arithmetic"
+}
+
+// Intra-atómico (v0.8) - MÁS GRANULAR
+{
+  from: "total",
+  to: "finalTotal",
+  operation: "arithmetic",
+  subOperations: [
+    { op: "multiply", operands: ["total", "discount"], result: "savings" },
+    { op: "subtract", operands: ["total", "savings"], result: "finalTotal" }
+  ],
+  precision: "line-by-line"
+}
+```
+
+**Para qué sirve**: 
+- Detectar precision loss en cálculos financieros
+- Optimizar transformaciones innecesarias
+- Validar invariantes matemáticos
+
+### v0.9 - Estado Cuántico: Múltiples Universos
+
+**Concepto**: Simular **todos los paths posibles** (if/else, try/catch):
+
+```javascript
+// Simulación multi-universo
+function processOrder(order) {
+  if (!order.items.length) throw new Error("Empty");  // Universo A
+  if (order.total > 10000) applyDiscount();           // Universo B
+  return saveOrder(order);                            // Universo C
+}
+
+// Posibles universos:
+Universe A: order.items=[] → throw → catch → error_response
+Universe B: order.total=15000 → applyDiscount → saveOrder → success
+Universe C: order.total=5000 → saveOrder → success
+```
+
+**Para qué sirve**:
+- Generar test cases automáticamente (happy path, error path, edge cases)
+- Detectar paths no cubiertos por tests
+- Análisis de riesgo: "¿Qué pasa si falla X?"
+
+### v0.10 - Campo Unificado: Entrelazamiento
+
+**Concepto**: Detectar **entrelazamiento cuántico** entre archivos lejanos:
+
+```javascript
+// Archivo A (frontend)
+const user = await fetchUser(id);
+
+// Archivo B (backend) 
+app.get('/api/user/:id', handler);
+
+// Entrelazamiento detectado:
+// frontend.fetchUser() ──entrelazado──→ backend./api/user/:id
+// Si cambia el contrato en B, A se rompe (aunque no haya import directo)
+```
+
+**Para qué sirve**:
+- Detectar breaking changes en APIs
+- Mapear dependencias cross-service
+- Validar contratos entre frontend y backend
+
+---
+
+## 📚 Documentación Relacionada
+
+### Fundamentos
+- [CORE_PRINCIPLES.md](architecture/CORE_PRINCIPLES.md) - Los 4 Pilares
+- [ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md) - Átomos y moléculas
+- [DATA_FLOW/README.md](DATA_FLOW/README.md) - Flujo de datos Fractal
+
+### Implementación
+- [ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md) - Sistema de arquetipos
+- [ARCHETYPE_DEVELOPMENT_GUIDE.md](architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md) - Crear arquetipos
+- [HYBRID_ANALYSIS_PIPELINE.md](architecture/HYBRID_ANALYSIS_PIPELINE.md) - Pipeline de análisis
+
+### Ideas Futuras
+- [TRANSFORMATION_CONTRACTS.md](ideas/TRANSFORMATION_CONTRACTS.md) - Contratos de tipo
+- [VIRTUAL_FLOW_SIMULATION.md](ideas/VIRTUAL_FLOW_SIMULATION.md) - Simulación de flujo
+- [UNIVERSAL_PATTERN_ENGINE.md](ideas/UNIVERSAL_PATTERN_ENGINE.md) - Motor de patrones
+
+---
+
+## 🎓 Resumen para Humanos
+
+**Si solo vas a recordar 3 cosas**:
+
+1. **Cajas con cables** (v0.5): Sabemos qué archivos se conectan
+2. **Átomos dentro de cajas** (v0.6): Sabemos qué funciones existen y se llaman
+3. **Electrones orbitando** (v0.7): Sabemos cómo fluyen los datos dentro de cada función
+
+**Todo es fractal**: El mismo patrón A→B→C se repite en cada nivel (sistema → módulo → molécula → átomo → transformación).
+
+**Todo se deriva**: El sistema no duplica datos. Si cambia un electrón, se recalcula todo hacia arriba.
+
+**Zero LLM**: 97% del análisis es determinístico (AST + reglas). Solo el 3% necesita inteligencia artificial.
+
+---
+
+**OmnySys v0.7.0** - Modelando el software como un sistema físico observable.

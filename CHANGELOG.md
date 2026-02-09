@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Latest - Stable) |
+| **[0.7.0]** | `changelog/v0.7.0.md` | **Data Flow Fractal System** (Latest - Beta) |
+| **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Stable) |
 | **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
 | **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** |
 | **[0.5.4]** | `changelog/v0.5.4.md` | **8 New Metadata Extractors + Network Hub Archetype** |

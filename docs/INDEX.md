@@ -10,6 +10,7 @@
 | Documento | ¿Para quién? | Descripción |
 |-----------|--------------|-------------|
 | **[README.md](../README.md)** | **Todos** | Instalación rápida (2 comandos) y overview |
+| **[FISICA_DEL_SOFTWARE.md](FISICA_DEL_SOFTWARE.md)** | **⭐ Todos** | Visión UNIFICADA: de cajas con cables a átomos con electrones |
 | [ARCHITECTURE.md](../ARCHITECTURE.md) | Desarrolladores | Arquitectura de 3 capas detallada |
 | [guides/TOOLS_GUIDE.md](guides/TOOLS_GUIDE.md) | Usuarios de IA | Guía completa de las 12 herramientas MCP |
 
@@ -20,6 +21,19 @@
 ```
 docs/
 ├── INDEX.md (este archivo)
+│
+├── FISICA_DEL_SOFTWARE.md  # 🧬 Visión UNIFICADA del sistema completo
+│
+├── DATA_FLOW/              # 🧬 Flujo de datos Fractal (v0.7)
+│   ├── README.md                           # Índice y visión general
+│   ├── CONCEPTOS_CLAVE.md                  # Cables, Fractal, Zero LLM
+│   ├── 01_FASE_ATOMO.md                    # Data flow por función
+│   ├── 02_FASE_SEMANTICA.md                # Análisis de nombres
+│   ├── 03_FASE_ESTANDARIZACION.md          # Patrones universales
+│   ├── 04_FASE_CADENAS.md                  # Conectar funciones
+│   ├── 05_FASE_RACE_CONDITIONS.md          # Detectar races
+│   ├── 06_FASE_SIMULACION.md               # Motor de simulación
+│   └── 07_FASE_SISTEMA.md                  # Nivel proyecto completo
 │
 ├── architecture/           # 🏗️ Arquitectura del sistema
 │   ├── CORE_PRINCIPLES.md                    # ⭐ Los 4 Pilares
@@ -87,10 +101,11 @@ docs/
 3. Probar: `npm start` → `npm tools`
 
 ### 🔧 Para Desarrolladores (1 hora)
-1. [ARCHITECTURE.md](../ARCHITECTURE.md) - Entender las 3 capas (20 min)
+1. **[FISICA_DEL_SOFTWARE.md](FISICA_DEL_SOFTWARE.md)** - **Visión UNIFICADA** de todo el sistema (15 min)
 2. [architecture/CORE_PRINCIPLES.md](architecture/CORE_PRINCIPLES.md) - Los 4 Pilares (15 min)
 3. [architecture/ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md) - Átomos y moléculas (20 min)
-4. [architecture/ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md) - Sistema de arquetipos (15 min)
+4. [DATA_FLOW/README.md](DATA_FLOW/README.md) - Flujo de datos Fractal (20 min)
+5. [architecture/ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md) - Sistema de arquetipos (15 min)
 
 ### 🤖 Para IAs (Claude, OpenCode, etc.)
 1. [guides/TOOLS_GUIDE.md](guides/TOOLS_GUIDE.md) - **Referencia completa de herramientas**
@@ -100,6 +115,15 @@ docs/
 ---
 
 ## 📚 Documentación por Tema
+
+### 🧬 Data Flow Fractal (v0.7)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [DATA_FLOW/README.md](DATA_FLOW/README.md) | **⭐ Índice del flujo de datos** - Visión general y 7 fases |
+| [DATA_FLOW/CONCEPTOS_CLAVE.md](DATA_FLOW/CONCEPTOS_CLAVE.md) | **Cables vs Señales**, Arquitectura Fractal, Zero LLM |
+| [DATA_FLOW/01_FASE_ATOMO.md](DATA_FLOW/01_FASE_ATOMO.md) | Data Flow por función (inputs → transforms → outputs) |
+| [DATA_FLOW/06_FASE_SIMULACION.md](DATA_FLOW/06_FASE_SIMULACION.md) | Motor de simulación del viaje del dato |
 
 ### 🏗️ Arquitectura
 
@@ -173,10 +197,12 @@ docs/
 | ¿Buscas...? | Ve a... |
 |-------------|---------|
 | **Instalación** | [README.md](../README.md) |
+| **⭐ Visión UNIFICADA** | [FISICA_DEL_SOFTWARE.md](FISICA_DEL_SOFTWARE.md) |
 | **Usar herramientas MCP** | [guides/TOOLS_GUIDE.md](guides/TOOLS_GUIDE.md) |
 | **Entender arquitectura** | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | **Los 4 Pilares** | [architecture/CORE_PRINCIPLES.md](architecture/CORE_PRINCIPLES.md) |
 | **Átomos y moléculas** | [architecture/ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md) |
+| **Flujo de datos Fractal** | [DATA_FLOW/README.md](DATA_FLOW/README.md) |
 | **Arquetipos** | [architecture/ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md) |
 | **Crear arquetipo** | [architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md](architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md) |
 | **Modelos de IA** | [guides/AI_MODELS_GUIDE.md](guides/AI_MODELS_GUIDE.md) |
@@ -213,4 +239,16 @@ docs/
 
 ---
 
-**OmnySys v0.6.0** - Molecular Architecture con 12 herramientas MCP
+**OmnySys v0.7.0** - Data Flow Fractal + Molecular Architecture + 12 herramientas MCP
+
+---
+
+## 🧬 Evolución del Sistema
+
+```
+v0.5 - Box Test: Levantas la caja, ves cables (conexiones entre archivos)
+v0.6 - Molecular: Dentro de la caja hay átomos (funciones) conectados  
+v0.7 - Data Flow: Dentro del átomo ves electrones orbitando (flujo de datos)
+```
+
+**Documentación clave**: [DATA_FLOW/README.md](DATA_FLOW/README.md) - Arquitectura Fractal del flujo de datos
