@@ -32,7 +32,7 @@ Documentación de la arquitectura del sistema:
 | [architecture/ARCHITECTURE_MOLECULAR_IMPLEMENTATION.md](architecture/ARCHITECTURE_MOLECULAR_IMPLEMENTATION.md) | Implementación del sistema molecular |
 | [architecture/ARCHITECTURE_LAYER_A_B.md](architecture/ARCHITECTURE_LAYER_A_B.md) | Capas A (Static) y B (Semantic) |
 | [architecture/DATA_FLOW_FRACTAL_DESIGN.md](architecture/DATA_FLOW_FRACTAL_DESIGN.md) | Diseño fractal del flujo de datos |
-| [architecture/DATA_FLOW_V2.md](architecture/DATA_FLOW_V2.md) | **Data Flow v2** - Sistema completo de flujo de datos |
+| [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | **⭐ Data Flow System** - Comprehensive documentation (v1, v2, usage, implementation) |
 | [architecture/METADATA_EXTRACTORS.md](architecture/METADATA_EXTRACTORS.md) | **Metadata Extractors** - Guía completa de extractores |
 
 ### Sistemas Especializados
@@ -51,31 +51,37 @@ Documentación de la arquitectura del sistema:
 
 ---
 
-## 🧬 Data Flow Fractal (v0.7)
+## 🧬 Data Flow System (v0.7.1)
 
-Sistema de flujo de datos fractal implementado en 7 fases:
+**Current Status**: Fase 1 (v2) ✅ 95% | Future Phases 🟡 Planned
 
+### Main Documentation
 | Documento | Descripción |
 |-----------|-------------|
-| [DATA_FLOW/README.md](DATA_FLOW/README.md) | **Índice principal** del Data Flow |
-| [DATA_FLOW/CONCEPTOS_CLAVE.md](DATA_FLOW/CONCEPTOS_CLAVE.md) | Conceptos fundamentales |
-| [DATA_FLOW/01_FASE_ATOMO.md](DATA_FLOW/01_FASE_ATOMO.md) | Fase 1: Extracción atómica |
-| [DATA_FLOW/02_FASE_SEMANTICA.md](DATA_FLOW/02_FASE_SEMANTICA.md) | Fase 2: Enriquecimiento semántico |
-| [DATA_FLOW/03_FASE_ESTANDARIZACION.md](DATA_FLOW/03_FASE_ESTANDARIZACION.md) | Fase 3: Estandarización y derivaciones |
-| [DATA_FLOW/04_FASE_CADENAS.md](DATA_FLOW/04_FASE_CADENAS.md) | Fase 4: Cadenas de transformación |
-| [DATA_FLOW/05_FASE_RACE_CONDITIONS.md](DATA_FLOW/05_FASE_RACE_CONDITIONS.md) | Fase 5: Detección de race conditions |
-| [DATA_FLOW/06_FASE_SIMULACION.md](DATA_FLOW/06_FASE_SIMULACION.md) | Fase 6: Simulación de flujos |
-| [DATA_FLOW/07_FASE_SISTEMA.md](DATA_FLOW/07_FASE_SISTEMA.md) | Fase 7: Vista completa del sistema |
+| [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | **⭐ Complete guide** - v1, v2, architecture, implementation, usage |
 
-### Planes de Implementación (Legacy)
+### Future Phases (Roadmap)
 | Documento | Descripción |
 |-----------|-------------|
-| [DATA_FLOW/PLAN_FASE_1_REVISADO.md](DATA_FLOW/PLAN_FASE_1_REVISADO.md) | Plan revisado de Fase 1 |
-| [DATA_FLOW/PLAN_FASE_1_IMPLEMENTADO.md](DATA_FLOW/PLAN_FASE_1_IMPLEMENTADO.md) | Implementación completada |
-| [DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md](DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md) | Cadenas entre funciones |
-| [DATA_FLOW/FASE_3_MODULO_SISTEMA.md](DATA_FLOW/FASE_3_MODULO_SISTEMA.md) | Módulo y sistema |
-| [DATA_FLOW/08_FASE_4_RACE_CONDITIONS.md](DATA_FLOW/08_FASE_4_RACE_CONDITIONS.md) | Race conditions (legacy) |
-| [DATA_FLOW/09_FASE_5_SIMULATION.md](DATA_FLOW/09_FASE_5_SIMULATION.md) | Simulación (legacy) |
+| [DATA_FLOW/README.md](DATA_FLOW/README.md) | **Roadmap index** - Future phases 2-5 (planned) |
+| [DATA_FLOW/CONCEPTOS_CLAVE.md](DATA_FLOW/CONCEPTOS_CLAVE.md) | Core concepts (cables vs signals, fractal architecture) |
+| [DATA_FLOW/04_FASE_CADENAS.md](DATA_FLOW/04_FASE_CADENAS.md) | 🟡 Fase 4: Cross-function chains (planned) |
+| [DATA_FLOW/06_FASE_SIMULACION.md](DATA_FLOW/06_FASE_SIMULACION.md) | 🟡 Fase 6: Flow simulation (planned) |
+| [DATA_FLOW/07_FASE_SISTEMA.md](DATA_FLOW/07_FASE_SISTEMA.md) | 🟡 Fase 7: System-level view (planned) |
+| [DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md](DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md) | 🟡 Fase 2: Alternative cross-function design (planned) |
+| [DATA_FLOW/FASE_3_MODULO_SISTEMA.md](DATA_FLOW/FASE_3_MODULO_SISTEMA.md) | 🟡 Fase 3: Module & system levels (planned) |
+
+### Archived Design Documents
+See [DATA_FLOW_CONSOLIDATION.md](DATA_FLOW_CONSOLIDATION.md) for details on consolidation.
+
+**Archived to** `docs/archive/design/data-flow/`:
+- `01_FASE_ATOMO.md` - Fase 1 design (superseded by v2 implementation)
+- `02_FASE_SEMANTICA.md` - Semantic analysis design
+- `03_FASE_ESTANDARIZACION.md` - Standardization design (implemented in v2)
+- `05_FASE_RACE_CONDITIONS.md`, `08_FASE_4_RACE_CONDITIONS.md`, `09_FASE_5_SIMULATION.md` - Duplicates
+
+**Archived to** `docs/archive/plans/data-flow/`:
+- `PLAN_FASE_1_REVISADO.md`, `PLAN_FASE_1_IMPLEMENTADO.md` - Fase 1 plans (completed)
 
 ---
 
@@ -117,7 +123,6 @@ Análisis del ecosistema y auditorías del sistema:
 |-----------|-------------|
 | [analysis/COMPETITIVE_LANDSCAPE.md](analysis/COMPETITIVE_LANDSCAPE.md) | Análisis de competidores |
 | [analysis/COMPETITIVE_STRATEGY.md](analysis/COMPETITIVE_STRATEGY.md) | Estrategia competitiva |
-| [AUDIT_METADATA_POTENTIAL.md](AUDIT_METADATA_POTENTIAL.md) | **⭐ Auditoría del potencial de metadata** (v0.7.1) |
 | [analysis/PROBLEM_ANALYSIS.md](analysis/PROBLEM_ANALYSIS.md) | Análisis del problema de visión de túnel |
 | [analysis/TUNNEL_VISION_CASES.md](analysis/TUNNEL_VISION_CASES.md) | Casos de visión de túnel |
 | [analysis/SYSTEM_ANALYSIS_OVERVIEW.md](analysis/SYSTEM_ANALYSIS_OVERVIEW.md) | Overview del análisis del sistema |
@@ -178,7 +183,13 @@ Documentación para desarrollo y mantenimiento:
 | [MIGRATION_v0.6_to_v0.7.md](MIGRATION_v0.6_to_v0.7.md) | **Guía de migración v0.6 → v0.7** |
 | [QUEDO_POR_HACER.md](../QUEDO_POR_HACER.md) | Tareas pendientes |
 | [INTEGRITY_AND_CLEANUP.md](../INTEGRITY_AND_CLEANUP.md) | Integridad y limpieza del sistema |
-| [PROGRESS_SUMMARY_2026-02-09.md](PROGRESS_SUMMARY_2026-02-09.md) | Resumen de progreso v0.7.1 |
+
+### Consolidation Reports
+| Documento | Descripción |
+|-----------|-------------|
+| [SHADOW_REGISTRY_CONSOLIDATION.md](SHADOW_REGISTRY_CONSOLIDATION.md) | Shadow Registry consolidation report (5→2 files, 60% reduction) |
+| [DATA_FLOW_CONSOLIDATION.md](DATA_FLOW_CONSOLIDATION.md) | Data Flow consolidation report (15→7 files, 58% reduction) |
+| [CLEANUP_REPORT.md](CLEANUP_REPORT.md) | Documentation cleanup report (3 dated reports archived) |
 
 ### Reportes Activos
 | Documento | Descripción |
@@ -220,16 +231,20 @@ Documentos históricos y obsoletos:
 |-----------|-------------|
 | [archive/README.md](archive/README.md) | **Índice de archivos históricos** |
 
-### Total de documentos archivados: 26
+### Total de documentos archivados: 38
 
-Los documentos archivados incluyen:
-- **9 reportes point-in-time completados** (auditorías, refactoring, migraciones v0.6-v0.7.1)
-- Conversaciones originales (Gemini 2026-02-08)
-- Guías obsoletas (MCP_TOOLS v0.5.2, QWEN2.5_CODER_GUIDE)
-- Documentos mergeados (COMPETITIVE-ANALYSIS, EXISTING_SOLUTIONS)
-- Planes completados (REFACTOR_PLAN v0.5.1)
-- Stubs integrados (AUTO_SERVE, ITERATIVE_MODE, FILE_WATCHER)
-- Referencias históricas (TRANSFER_FROM_GITEACH, storage-visualization)
+**By category**:
+- **Dated reports** (12): Point-in-time progress summaries, audits, verification reports
+- **Design documents** (9): Pre-implementation design docs (Data Flow Fases 1-3, Shadow Registry plans)
+- **Obsolete guides** (5): MCP_TOOLS v0.5.2, QWEN2.5_CODER_GUIDE, etc.
+- **Merged documents** (4): COMPETITIVE-ANALYSIS, EXISTING_SOLUTIONS, etc.
+- **Completed plans** (3): REFACTOR_PLAN v0.5.1, Shadow Registry plans, Data Flow plans
+- **Integrated stubs** (3): AUTO_SERVE, ITERATIVE_MODE, FILE_WATCHER
+- **Historical references** (2): TRANSFER_FROM_GITEACH, storage-visualization
+
+**Recent additions** (2026-02-10):
+- **Data Flow design docs** (8 files) → `archive/design/data-flow/`
+- **Dated reports** (3 files) → `archive/reports/`
 
 Ver [archive/README.md](archive/README.md) para detalles completos.
 
@@ -256,7 +271,7 @@ Ver [archive/README.md](archive/README.md) para detalles completos.
 ### 🔧 Para Implementar
 1. [guides/SHADOW_REGISTRY_USAGE.md](guides/SHADOW_REGISTRY_USAGE.md) - Guía de uso del Shadow Registry
 2. [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) - Arquitectura técnica completa
-3. [DATA_FLOW/01_FASE_ATOMO.md](DATA_FLOW/01_FASE_ATOMO.md) - Data Flow Fase 1
+3. [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) - Data Flow System complete guide
 
 ### 🔮 Para Visionarios
 1. [OMNY_IDE_CONSCIENTE.md](OMNY_IDE_CONSCIENTE.md) - Visión del IDE consciente
@@ -269,8 +284,9 @@ Ver [archive/README.md](archive/README.md) para detalles completos.
 
 | Fase | Estado | Documentos |
 |------|--------|------------|
-| **Fase 0** - Limpieza | ✅ Completa | [plan/fases-0-2/](plan/fases-0-2/) |
-| **Fase 1** - Shadow Registry Core | ✅ Completa | [architecture/shadow-registry/](architecture/shadow-registry/) |
+| **Fase 0** - Limpieza | ✅ Completa | Archived to `archive/plans/` |
+| **Fase 1** - Shadow Registry Core | ✅ Completa | [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) |
+| **Fase 1** - Data Flow Atomic (v2) | ✅ 95% | [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) |
 | **Fase 2** - Conexiones Enriquecidas | ✅ Completa | [architecture/ecosystem/](architecture/ecosystem/) |
 | **Fase 3+** - ML/Predicción | 🔮 Futuro | [future/FUTURE_IDEAS.md](future/FUTURE_IDEAS.md) |
 
@@ -278,15 +294,15 @@ Ver [archive/README.md](archive/README.md) para detalles completos.
 
 ## 📊 Estadísticas de Documentación
 
-- **Total de documentos**: 91+ archivos Markdown
-- **Arquitectura**: 14 documentos
-- **Data Flow**: 13 documentos (7 fases + 6 legacy)
-- **Shadow Registry**: 2 documentos (consolidado desde 5)
+- **Total de documentos activos**: 80+ archivos Markdown
+- **Arquitectura**: 13 documentos (includes consolidated DATA_FLOW.md)
+- **Data Flow**: 7 documentos (1 main + 6 future roadmap)
+- **Shadow Registry**: 2 documentos (consolidated from 5)
 - **Guías**: 10 documentos
-- **Análisis**: 10 documentos
+- **Análisis**: 9 documentos
 - **Ideas y Futuro**: 16 documentos
-- **Desarrollo**: 8 documentos
-- **Archivados**: 27 documentos
+- **Desarrollo**: 11 documentos (includes 3 consolidation reports)
+- **Archivados**: 38 documentos (26 original + 9 Data Flow + 3 reports)
 
 ---
 

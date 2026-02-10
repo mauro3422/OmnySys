@@ -1,214 +1,186 @@
-# DATA FLOW FRACTAL - Índice
+# DATA FLOW - Future Phases (Roadmap)
 
 **Versión**: v0.7.1
-**Estado**: Fase 1 (v1) 100% ✅ | v2 (Graph-Based) 95% ✅
+**Estado**: Fase 1 ✅ Implemented | Fases 2-5 🟡 Planned
 **Última actualización**: 2026-02-09
 
 ---
 
-## 🎯 Visión Rápida (30 segundos)
+## 📌 Important Note
 
-**Problema**: Sabemos qué funciones existen, pero NO sabemos cómo viajan los datos entre ellas.
+**For complete Data Flow documentation (v1, v2, usage, implementation)**, see:
+👉 **[docs/architecture/DATA_FLOW.md](../architecture/DATA_FLOW.md)** - Comprehensive documentation
 
-**Solución**: Seguir el viaje del dato desde que entra (parámetro) hasta que sale (return/side effect).
-
-**Metafora**: Como Google Maps, pero para datos. No te dice solo QUÉ calles existen, sino CÓMO llegar de A a B.
-
----
-
-## 📦 Data Flow v2 (Graph-Based)
-
-**Estado**: ✅ IMPLEMENTADO en v0.7.1 (95% completo - 1 stub en invariant-detector)
-
-### Qué es v2
-
-Data Flow v2 es una **reimplementación completa** del sistema de extracción de flujo de datos usando arquitectura modular basada en visitors del patrón AST. **Coexiste con v1** sin reemplazarlo.
-
-### v1 vs v2 - Comparación Rápida
-
-| Aspecto | v1 (Monolítico) | v2 (Graph-Based) | Estado |
-|---------|-----------------|------------------|--------|
-| **Arquitectura** | 1 archivo | 12 archivos modulares | ✅ v2 |
-| **Patterns** | ~15 patrones | 50+ patrones registrados | ✅ v2 |
-| **Outputs** | 1 formato básico | 3 formatos (real/std/graph) | ✅ v2 |
-| **Type Inference** | ❌ No | ✅ Sí | ✅ v2 |
-| **Scope Management** | ❌ No | ✅ Sí | ✅ v2 |
-| **Extensibilidad** | Baja | Alta (visitor pattern) | ✅ v2 |
-| **Estado** | ✅ Funcional | 🟡 95% completo | Coexisten |
-
-### Ubicación
-
-- **v1**: `src/layer-a-static/extractors/data-flow/index.js`
-- **v2**: `src/layer-a-static/extractors/data-flow-v2/` (12 archivos)
-
-### Pendiente en v2
-
-- ⚠️ **Invariant Detector**: Línea 335 en `analyzers/invariant-detector.js` es stub parcial
-- ✅ No bloquea funcionalidad principal
-- 📝 Será completado en v0.7.2
-
-### Más Información
-
-Ver documentación completa en: **[DATA_FLOW_V2.md](../architecture/DATA_FLOW_V2.md)**
+**This directory** (`docs/DATA_FLOW/`) contains **design documents for future phases** (Fase 2-5) that are planned but not yet implemented.
 
 ---
 
-## 🏗️ Arquitectura Fractal (4 Niveles)
+## ✅ Current Status (v0.7.1)
 
-```
-┌─────────────────────────────────────────┐
-│           SISTEMA (Proyecto)            │
-│   Entrada: API/UI/CLI                   │
-│   Salida: Response/DB/Email             │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│           MÓDULO (Feature/Carpeta)      │
-│   Ej: auth/, cart/, payment/            │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│           MOLÉCULA (Archivo)            │
-│   Ej: validateUser.js                   │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│           ÁTOMO (Función)               │
-│   Ej: validateUser(user)                │
-└─────────────────────────────────────────┘
-```
+### Fase 1: Atomic Data Flow - ✅ IMPLEMENTED
 
-**Regla**: Cada nivel se DERIVA del inferior. Si cambia un átomo, se recalcula todo hacia arriba.
+**What**: Track data flow within a single function (atom level)
+**Implementation**: Data Flow v2 (graph-based, 12 files)
+**Location**: `src/layer-a-static/extractors/data-flow-v2/`
+**Status**: 95% complete (1 stub in invariant-detector.js line 335)
+
+**Documentation**: See [docs/architecture/DATA_FLOW.md](../architecture/DATA_FLOW.md)
 
 ---
 
-## 📋 Fases de Implementación
+## 🟡 Future Phases (Planned)
 
-### FASE 1 - Data Flow Atómico [→ Ver detalle](./01_FASE_ATOMO.md)
-**Qué hace**: Cada función sabe qué recibe, qué transforma, qué retorna.
+### Fase 2: Cross-Function Chains
 
-**Ejemplo**:
+**Status**: 🟡 Designed, not implemented
+**Documentation**: [FASE_2_CROSS_FUNCTION_CHAINS.md](./FASE_2_CROSS_FUNCTION_CHAINS.md)
+
+**Goal**: Connect output of one function to input of another:
+
 ```javascript
-function processOrder(order, userId) {
-  const total = calculateTotal(order.items);  // order.items → total
-  return { orderId: order.id, total };        // → return
-}
+processOrder(order)
+  → calls: calculateTotal(order.items)
+  → receives: total
+  → returns: { orderId, total }
 ```
 
-**Metadata extraída**:
-- INPUT: `order`, `userId`
-- TRANSFORM: `order.items` → `total` (via calculateTotal)
-- OUTPUT: return `{ orderId, total }`
+**Benefit**: Trace data flow across function boundaries
 
 ---
 
-### FASE 2 - Análisis Semántico [→ Ver detalle](./02_FASE_SEMANTICA.md)
-**Qué hace**: Extrae significado del nombre de la función.
+### Fase 3: Module & System Level
 
-**Ejemplo**:
-```javascript
-"validateUserPayment" → {
-  verbo: "validate",
-  dominio: "user",
-  entidad: "payment",
-  tipoOperacion: "validation"
-}
+**Status**: 🟡 Designed, not implemented
+**Documentation**: [FASE_3_MODULO_SISTEMA.md](./FASE_3_MODULO_SISTEMA.md)
+
+**Goal**: Derive metadata at:
+- **Module level**: Feature/folder data flows
+- **System level**: Project-wide data flows
+
+**Benefit**: Understand data flows at architectural level
+
+---
+
+### Fase 4: Cross-Function Chains (Alternative Design)
+
+**Status**: 🟡 Designed, not implemented
+**Documentation**: [04_FASE_CADENAS.md](./04_FASE_CADENAS.md)
+
+**Note**: Similar to Fase 2, alternative approach
+
+---
+
+### Fase 5: Simulation Engine
+
+**Status**: 🟡 Designed, not implemented
+**Documentation**: [06_FASE_SIMULACION.md](./06_FASE_SIMULACION.md)
+
+**Goal**: "Walk" the graph simulating data journey:
+
+```
+> Simulate: "req.body" from "handleRequest"
+
+Step 1: handleRequest → extracts userData
+Step 2: validateUser → validates email
+Step 3: saveUser → saves to DB
+Step 4: sendWelcome → sends email
+
+Result: Traveled through 4 files, 4 functions
 ```
 
----
-
-### FASE 3 - Estandarización [→ Ver detalle](./03_FASE_ESTANDARIZACION.md)
-**Qué hace**: Convierte código a un patrón universal para detectar similitudes.
-
-**Ejemplo**:
-```javascript
-// Original A:           // Original B:
-validateUser(user)      validateOrder(order)
-
-// Estandarizado (ambos):
-VALIDATE_FUNC(ENTITY_PARAM)
-```
-
-**Para qué sirve**: Detectar que dos funciones diferentes tienen la MISMA estructura.
+**Benefit**: Virtual execution to understand data transformations
 
 ---
 
-### FASE 4 - Cadenas Cross-Function [→ Ver detalle](./04_FASE_CADENAS.md)
-**Qué hace**: Conecta la salida de una función con la entrada de otra.
+### Fase 6: System Level
 
-**Ejemplo**:
-```
-processOrder(order) 
-  → llama a: calculateTotal(order.items)
-  → recibe: total
-  → retorna: { orderId, total }
-```
+**Status**: 🟡 Designed, not implemented
+**Documentation**: [07_FASE_SISTEMA.md](./07_FASE_SISTEMA.md)
+
+**Goal**: Derive project-level metadata from modules
 
 ---
 
-### FASE 5 - Detector de Race Conditions [→ Ver detalle](./05_FASE_RACE_CONDITIONS.md)
-**Qué hace**: Detecta cuando dos funciones async pueden pisarse escribiendo al mismo recurso.
+## 📚 Supporting Documentation
 
-**Ejemplo**:
-```javascript
-// PROBLEMA DETECTADO:
-async updateCart() { localStorage.cart = ... }
-async applyDiscount() { localStorage.cart = ... }
-// Ambas escriben a localStorage.cart sin coordinación
-```
+### Core Concepts
 
----
+**File**: [CONCEPTOS_CLAVE.md](./CONCEPTOS_CLAVE.md)
 
-### FASE 6 - Motor de Simulación [→ Ver detalle](./06_FASE_SIMULACION.md)
-**Qué hace**: "Camina" el grafo simulando el viaje de un dato.
+Explains fundamental concepts:
+1. **"Cables, Not Signals"** - Map connections, not values
+2. **Fractal Architecture** - Each level derives from below
+3. **Deterministic Extraction** - Zero LLM, pure AST
 
-**Ejemplo**:
-```
-> Simular: "req.body" desde "handleRequest"
-
-Paso 1: handleRequest → extrae userData
-Paso 2: validateUser → valida email
-Paso 3: saveUser → guarda en DB
-Paso 4: sendWelcome → envía email
-
-Resultado: Viajó por 4 archivos, 4 funciones
-```
+**Read this first** before implementing any phase.
 
 ---
 
-### FASE 7 - Nivel Módulo y Sistema [→ Ver detalle](./07_FASE_SISTEMA.md)
-**Qué hace**: Deriva metadata de carpetas y del proyecto completo.
+## 📁 Archived Design Documents
+
+The following documents have been archived to `docs/archive/design/data-flow/`:
+
+- `01_FASE_ATOMO.md` - Original Fase 1 design (superseded by v2 implementation)
+- `02_FASE_SEMANTICA.md` - Semantic analysis design
+- `03_FASE_ESTANDARIZACION.md` - Standardization design (implemented in v2)
+- `05_FASE_RACE_CONDITIONS.md` - Race condition detection (duplicate)
+- `08_FASE_4_RACE_CONDITIONS.md` - Race condition detection (duplicate)
+- `09_FASE_5_SIMULATION.md` - Simulation engine (duplicate)
+
+And to `docs/archive/plans/data-flow/`:
+
+- `PLAN_FASE_1_IMPLEMENTADO.md` - Fase 1 implementation plan
+- `PLAN_FASE_1_REVISADO.md` - Fase 1 revised plan
+
+**Why archived**: These were pre-implementation design docs that have been superseded by the actual v2 implementation documented in `docs/architecture/DATA_FLOW.md`.
 
 ---
 
-## 📊 Cobertura Esperada
+## 🎯 Implementation Priority
 
-| Tipo de Conexión | Antes | Después |
-|------------------|-------|---------|
-| Imports/Exports | 95% | 95% |
-| Llamadas directas | 85% | 95% |
-| Data flow completo | 20% | **90%** |
-| Race conditions | 0% | **75%** |
-| **TOTAL** | ~75% | **~97%** |
+When implementing future phases, follow this order:
 
----
+1. **Complete Fase 1** (v0.7.2)
+   - Finish invariant-detector.js stub (line 335)
+   - Add unit tests
 
-## 🎓 Conceptos Clave [→ Leer primero](./CONCEPTOS_CLAVE.md)
+2. **Fase 2: Cross-Function Chains** (v0.8.0)
+   - Build on atomic data flow
+   - Connect functions via call graph
 
-Si vas a implementar, lee primero:
-1. **CONCEPTOS_CLAVE.md** - Entiende "Cables vs Señales" y "Fractal"
-2. **01_FASE_ATOMO.md** - Empieza por la base
-3. El resto en orden numérico
+3. **Fase 4: Race Condition Detector** (v0.8.x)
+   - Requires Fase 2 (cross-function chains)
+   - Detect async conflicts
 
----
+4. **Fase 3: Module/System Level** (v0.9.0)
+   - Requires Fase 2 (chains across boundaries)
+   - Aggregate metadata upwards
 
-## ⚠️ Nota Importante
-
-- Cada fase **construye sobre la anterior**
-- Sin Fase 1, no se puede hacer nada del resto
-- Todo es **determinístico** (zero LLM para extracción)
-- **Backwards compatible**: se agrega metadata sin romper lo existente
+5. **Fase 5: Simulation Engine** (v0.9.x)
+   - Requires Fase 2, 3 (complete graph)
+   - Virtual execution
 
 ---
 
-**Documento Original**: [DATA_FLOW_FRACTAL_DESIGN.md](../architecture/DATA_FLOW_FRACTAL_DESIGN.md) (1088 líneas - referencia completa)
+## 📊 Expected Coverage Improvements
+
+| Phase | Additional Coverage | Cumulative |
+|-------|---------------------|------------|
+| Fase 1 (v0.7.1) ✅ | Atomic data flow | ~85% |
+| Fase 2 (Planned) | Cross-function chains | ~92% |
+| Fase 3 (Planned) | Module/system levels | ~94% |
+| Fase 4 (Planned) | Race conditions | ~96% |
+| Fase 5 (Planned) | Simulation | ~97% |
+
+---
+
+## 🔗 Quick Links
+
+- **Current Implementation**: [docs/architecture/DATA_FLOW.md](../architecture/DATA_FLOW.md)
+- **Changelog**: [changelog/v0.7.1.md](../../changelog/v0.7.1.md)
+- **Source Code**: `src/layer-a-static/extractors/data-flow-v2/`
+- **Core Principles**: [docs/CORE_PRINCIPLES.md](../CORE_PRINCIPLES.md)
+
+---
+
+**Remember**: This directory contains **future roadmap**, not current implementation. For current status and usage, always refer to [docs/architecture/DATA_FLOW.md](../architecture/DATA_FLOW.md).
