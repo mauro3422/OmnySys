@@ -1,12 +1,67 @@
 # Transformation Contracts
 
-**Status**: Idea / No implementado
+---
+
+## ✅ PARCIALMENTE IMPLEMENTADO en v0.7.1
+
+**Status**: 🟡 Parcialmente implementado (70% completo)
 **Origen**: Conversacion con Gemini (2026-02-08)
 **Prioridad**: Alta (habilita Virtual Flow Simulation y modelo de prediccion)
 
 ---
 
-## Concepto
+## 📋 Implementación Actual
+
+### Type Contracts Extractor
+
+**Ubicación**: `src/layer-a-static/extractors/metadata/type-contracts.js`
+
+Este extractor implementa la **primera parte** del sistema de contratos de transformación: extracción y validación de tipos desde JSDoc y código.
+
+**Características implementadas**:
+
+```javascript
+// Extracción de metadata de type contracts
+{
+  jsdoc: {
+    hasJSDoc: true,
+    valid: true,
+    paramTypes: [
+      { name: 'userId', type: 'string', required: true },
+      { name: 'options', type: 'Object', required: false }
+    ],
+    returnType: { type: 'Promise<User>', nullable: false },
+    throws: ['ValidationError', 'NotFoundError']
+  },
+  runtime: {
+    hasTypeGuards: true,          // typeof, instanceof checks
+    hasValidation: true,           // joi, yup, zod
+    validationType: 'zod'
+  },
+  compatibility: {
+    score: 0.95,                   // JSDoc ↔ Runtime agreement
+    issues: []
+  }
+}
+```
+
+**Integrado en**:
+- `atom-extraction-phase.js` → Campo `atom.typeContracts`
+- Connection Enricher → Validación de compatibilidad de tipos entre conexiones
+- Metadata Enhancer → Detección de breaking changes
+
+### Pendiente de Implementación
+
+**Runtime Contract Validation** (30% restante):
+- ❌ Validación en tiempo de ejecución (auto-instrumentación)
+- ❌ Generación automática de type guards
+- ❌ Enforcement de contratos en development mode
+
+**Roadmap**: Completar en v0.7.2-0.8.0
+
+---
+
+## 📚 Concepto Original (Diseño)
 
 Cada atomo (funcion) declara un **contrato de transformacion**: que tipo de dato entra y que tipo sale. No solo "tiene side effects", sino "recibe `UserRaw`, devuelve `UserValidated`".
 

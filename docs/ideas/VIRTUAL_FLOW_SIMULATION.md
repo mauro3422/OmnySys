@@ -1,12 +1,75 @@
 # Virtual Flow Simulation (Ejecucion Simbolica)
 
-**Status**: Idea / No implementado
+---
+
+## 🔄 EN PROGRESO - Base implementada en v0.7.1
+
+**Status**: 🟡 **PARCIALMENTE IMPLEMENTADO** (Base completa, simulación pendiente)
 **Origen**: Conversacion con Gemini (2026-02-08)
 **Prioridad**: Alta (siguiente nivel de determinismo)
 
 ---
 
-## Concepto
+## 📋 Implementación Actual
+
+### Foundation: Data Flow v2 Graph Builder
+
+**Ubicación**: `src/layer-a-static/extractors/data-flow-v2/core/graph-builder.js`
+
+La **base para la simulación** está implementada: un grafo completo de transformaciones de datos con nodos y edges.
+
+**Estructura del grafo implementada**:
+
+```javascript
+{
+  nodes: Map {
+    'n1' => {
+      id: 'n1',
+      type: 'INPUT',
+      output: { name: 'userId', type: 'string' }
+    },
+    'n2' => {
+      id: 'n2',
+      type: 'TRANSFORM',
+      category: 'read',
+      standardToken: 'READ_FUNC',
+      inputs: [{ name: 'userId', type: 'string' }],
+      output: { name: 'user', type: 'User' }
+    },
+    'n3' => {
+      id: 'n3',
+      type: 'OUTPUT',
+      input: { name: 'user', type: 'User' },
+      destination: 'return'
+    }
+  },
+  edges: [
+    { from: 'n1', to: 'n2', type: 'data-flow', variable: 'userId' },
+    { from: 'n2', to: 'n3', type: 'data-flow', variable: 'user' }
+  ]
+}
+```
+
+**Capacidades actuales**:
+- ✅ Construcción de grafo completo de transformaciones
+- ✅ Nodos tipados (INPUT, TRANSFORM, OUTPUT, SIDE_EFFECT)
+- ✅ Edges con metadata (tipo de conexión, variable transportada)
+- ✅ Detección de side effects y async operations
+- ✅ Scope tracking para variables disponibles
+
+### Pending: Simulation Engine
+
+**Lo que falta** (30% restante):
+- ❌ Walker que recorre el grafo simulando ejecución
+- ❌ Estado virtual de variables en cada paso
+- ❌ Detección de ciclos y dead code
+- ❌ Predicción de outputs basado en inputs
+
+**Roadmap**: Completar en v0.8.0 (Data Flow Fase 2)
+
+---
+
+## 📚 Concepto Original (Diseño)
 
 Usar los metadatos existentes de OmnySys para **simular la ejecucion del codigo sin correrlo**. Trazar como una variable viaja a traves del grafo de atomos/moleculas para predecir que pasa cuando se activa una funcion.
 

@@ -2,11 +2,28 @@
 
 Este directorio contiene documentos historicos, superados o consolidados. Se preservan para referencia historica pero NO deben usarse para decisiones actuales del proyecto.
 
-**Ultima actualizacion**: 2026-02-08
+**Ultima actualizacion**: 2026-02-10
 
 ---
 
-## Documentos Archivados
+## Documentos Archivados (26 total)
+
+### Reportes Point-in-Time Completados (9 archivos)
+Reportes de auditorias, refactoring y migraciones completados en v0.6.x - v0.7.1. Preservados como referencia historica.
+
+| Archivo | Razon | Fecha Completado |
+|---------|-------|------------------|
+| **AUDIT_ARCHITECTURE.md** | Auditoria de arquitectura completada | 2026-02-10 |
+| **AUDIT_FOLLOW_UP.md** | Follow-up de auditoria completado | 2026-02-09 |
+| **COMPLETE_REFACTORING_REPORT.md** | Reporte de refactoring SOLID/SSOT completado | 2026-02-09 |
+| **CORRECTIONS_SUMMARY.md** | Resumen de correcciones aplicadas | 2026-02-09 |
+| **REFACTORING_SUMMARY.md** | Resumen de refactoring inicial | 2026-02-09 |
+| **LOG_MIGRATION_COMPLETE.md** | Migracion de sistema de logs completada | 2026-02-09 |
+| **PLAN_MAESTRO_CORRECCION.md** | Plan maestro de correcciones ejecutado | 2026-02-10 |
+| **SYSTEM_ANALYSIS_REPORT.md** | Analisis de sistema consolidado en docs/SYSTEM_ANALYSIS_*.md | 2026-02-09 |
+| **NEXT_STEPS_ROADMAP.md** | Roadmap superado por ROADMAP.md activo | 2026-02-09 |
+
+### Documentos Mergeados/Superados (17 archivos)
 
 | Archivo | Razon | Reemplazado por |
 |---------|-------|----------------|

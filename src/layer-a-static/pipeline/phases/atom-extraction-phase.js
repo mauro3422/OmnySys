@@ -14,7 +14,13 @@ import { extractCallGraph } from '../../extractors/metadata/call-graph.js';
 import { extractDataFlow as extractDataFlowV2 } from '../../extractors/data-flow/index.js';
 import { extractTypeInference } from '../../extractors/metadata/type-inference.js';
 import { extractTemporalPatterns } from '../../extractors/metadata/temporal-patterns.js';
+import { extractTemporalPatterns as extractTemporalConnections } from '../../extractors/metadata/temporal-connections.js';
 import { extractPerformanceHints } from '../../extractors/metadata/performance-hints.js';
+import { extractPerformanceMetrics } from '../../extractors/metadata/performance-impact.js';
+import { extractTypeContracts } from '../../extractors/metadata/type-contracts.js';
+import { extractErrorFlow } from '../../extractors/metadata/error-flow.js';
+import { extractDNA } from '../../extractors/metadata/dna-extractor.js';
+import { validateForLineage } from '../../../layer-b-semantic/validators/lineage-validator.js';
 import { logger } from '../../../utils/logger.js';
 
 /**
@@ -79,7 +85,13 @@ export class AtomExtractionPhase extends ExtractionPhase {
     const callGraph = extractCallGraph(functionCode);
     const typeInference = extractTypeInference(functionCode);
     const temporal = extractTemporalPatterns(functionCode);
-    const performance = extractPerformanceHints(functionCode);
+    const performanceHints = extractPerformanceHints(functionCode);
+    
+    // NUEVOS: 4 sistemas de conexiones enriquecidas
+    const performanceMetrics = extractPerformanceMetrics(functionCode, performanceHints);
+    const typeContracts = extractTypeContracts(functionCode, fileMetadata.jsdoc, functionInfo);
+    const errorFlow = extractErrorFlow(functionCode, typeContracts);
+    const temporalPatterns = extractTemporalConnections(functionCode, functionInfo);
 
     // Data flow analysis (optional, may fail gracefully)
     let dataFlowV2 = null;
@@ -107,6 +119,7 @@ export class AtomExtractionPhase extends ExtractionPhase {
       id: functionInfo.id,
       name: functionInfo.name,
       type: 'atom',
+      filePath: filePath,
       line: functionInfo.line,
       endLine: functionInfo.endLine,
       linesOfCode,
@@ -141,15 +154,32 @@ export class AtomExtractionPhase extends ExtractionPhase {
       hasLifecycleHooks: temporal.lifecycleHooks.length > 0,
       lifecycleHooks: temporal.lifecycleHooks,
       hasCleanupPatterns: temporal.cleanupPatterns.length > 0,
+      
+      // Temporal Connections (NUEVO)
+      temporal: {
+        patterns: temporalPatterns,
+        executionOrder: null // Se llena en cross-reference
+      },
+      
+      // Type Contracts (NUEVO)
+      typeContracts: typeContracts,
+      
+      // Error Flow (NUEVO)
+      errorFlow: errorFlow,
 
-      // Performance
-      hasNestedLoops: performance.nestedLoops.length > 0,
-      hasBlockingOps: performance.blockingOperations.length > 0,
+      // Performance (Legacy hints + NUEVO impact metrics)
+      hasNestedLoops: performanceHints.nestedLoops.length > 0,
+      hasBlockingOps: performanceHints.blockingOperations.length > 0,
+      performance: performanceMetrics, // NUEVO: métricas completas
 
       // Data Flow Fractal (Fase 1)
-      dataFlow: dataFlowV2 || null,
+      dataFlow: dataFlowV2?.real || dataFlowV2 || null,
       dataFlowAnalysis: dataFlowV2?.analysis || null,
-      hasDataFlow: dataFlowV2 !== null && dataFlowV2.inputs.length > 0,
+      hasDataFlow: dataFlowV2 !== null && (dataFlowV2.inputs?.length > 0 || dataFlowV2.real?.inputs?.length > 0),
+
+      // DNA & Lineage (Shadow Registry integration)
+      dna: null, // Will be populated below
+      lineage: null,
 
       // Metadata
       _meta: {
@@ -158,6 +188,24 @@ export class AtomExtractionPhase extends ExtractionPhase {
         confidence: dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
       }
     };
+
+    // Extract DNA for lineage tracking
+    try {
+      atomMetadata.dna = extractDNA(atomMetadata);
+    } catch (error) {
+      logger.warn(`DNA extraction failed for ${functionInfo.name}: ${error.message}`);
+    }
+
+    // Validate for lineage (if DNA was extracted)
+    if (atomMetadata.dna) {
+      const validation = validateForLineage(atomMetadata);
+      atomMetadata._meta.lineageValidation = {
+        valid: validation.valid,
+        confidence: validation.confidence,
+        errors: validation.errors,
+        warnings: validation.warnings
+      };
+    }
 
     // Detect archetype
     atomMetadata.archetype = this.detectAtomArchetype(atomMetadata);

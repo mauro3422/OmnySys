@@ -1,7 +1,7 @@
 # OmnySys - Arquitectura Técnica
 
-**Versión**: v0.6.0  
-**Última actualización**: 2026-02-08
+**Versión**: v0.7.1
+**Última actualización**: 2026-02-09
 
 ---
 
@@ -225,7 +225,8 @@ if (confidence >= 0.8) {
 - **Atomic Cache** (`atoms.js`): Caché de átomos individuales
 - **Derivation Cache** (`derivation-engine.js`): Cache de derivaciones moleculares
 - **Storage**: `.omnysysdata/` particionado
-- **MCP HTTP Server**: Puerto 9999, 12 herramientas REST
+- **MCP HTTP Server**: Puerto 9999, 14 herramientas REST
+- **Data Flow v2**: Sistema graph-based de flujo de datos (Fase 1)
 
 **Invalidación de Caché**:
 ```javascript
@@ -238,22 +239,97 @@ cache.invalidateAtom(`${filePath}::${functionName}`);
 // La derivación se recalcula automáticamente
 ```
 
-**9 Herramientas MCP**:
+**14 Herramientas MCP**:
 
+### Core Analysis (6 tools)
 | Herramienta | Propósito | Escala |
 |-------------|-----------|--------|
 | `get_impact_map` | Mapa de archivos afectados | Molécula |
-| `get_call_graph` | Quién llama a qué función | Átomo/Molécula |
-| `getFunctionDetails` | Información atómica completa | Átomo |
-| `getMoleculeSummary` | Resumen molecular con insights | Molécula |
-| `analyzeFunctionChange` | Impacto a nivel función | Átomo |
 | `analyze_change` | Impacto de cambiar símbolo | Molécula |
-| `analyze_signature_change` | Breaking changes de API | Átomo |
-| `explain_value_flow` | Flujo de datos | Átomo |
 | `explain_connection` | Conexión entre archivos | Molécula |
 | `get_risk_assessment` | Riesgos del proyecto | Sistema |
 | `search_files` | Búsqueda de archivos | Sistema |
 | `get_server_status` | Estado del sistema | Sistema |
+
+### Omniscience (3 tools)
+| Herramienta | Propósito | Escala |
+|-------------|-----------|--------|
+| `get_call_graph` | Quién llama a qué función | Átomo/Molécula |
+| `analyze_signature_change` | Breaking changes de API | Átomo |
+| `explain_value_flow` | Flujo de datos | Átomo |
+
+### Atomic/Molecular (3 tools)
+| Herramienta | Propósito | Escala |
+|-------------|-----------|--------|
+| `get_function_details` | Información atómica completa | Átomo |
+| `get_molecule_summary` | Resumen molecular con insights | Molécula |
+| `get_atomic_functions` | Lista funciones de archivo | Átomo |
+
+### Utilities (2 tools)
+| Herramienta | Propósito | Escala |
+|-------------|-----------|--------|
+| `restart_server` | Reinicia servidor y recarga | Sistema |
+| `get_tunnel_vision_stats` | Estadísticas de detección | Sistema |
+
+---
+
+## 🌊 Data Flow v2 (Graph-Based) - Nuevo en v0.7.1
+
+**Fase 1 Completa**: Sistema de análisis de flujo de datos basado en grafos.
+
+### Conceptos Clave
+
+El Data Flow v2 analiza cómo los datos fluyen dentro de cada función (átomo):
+
+```javascript
+// Ejemplo: processOrder(order, discount)
+{
+  inputs: [
+    { name: "order", type: "parameter", usages: ["order.items", "order.total"] },
+    { name: "discount", type: "parameter", usages: ["discount.code"] }
+  ],
+  transformations: [
+    { from: "order.items", to: "itemsTotal", operation: "calculation" },
+    { from: ["itemsTotal", "discount"], to: "finalAmount", operation: "arithmetic" }
+  ],
+  outputs: [
+    { type: "return", value: "finalAmount" },
+    { type: "side_effect", target: "saveOrder", operation: "persistence" }
+  ]
+}
+```
+
+### 5 Nuevos Metadata Extractors
+
+| Extractor | Propósito | Output |
+|-----------|-----------|--------|
+| `dna-extractor.js` | Identifica "ADN" de la función | Patterns, signatures, contracts |
+| `error-flow.js` | Rastreo de error handling | Try/catch, error propagation |
+| `performance-impact.js` | Análisis de performance | Loops, recursion, complexity |
+| `temporal-connections.js` | Conexiones temporales | Lifecycle hooks, cleanup patterns |
+| `type-contracts.js` | Contratos de tipos implícitos | Type inference, validations |
+
+### Transform Registry
+
+Sistema de 50+ patrones de transformación de datos:
+
+```javascript
+// Patrón: MAP
+{ from: "items", to: "prices", operation: "map", transform: "item => item.price" }
+
+// Patrón: REDUCE
+{ from: "prices", to: "total", operation: "reduce", transform: "sum" }
+
+// Patrón: FILTER
+{ from: "users", to: "activeUsers", operation: "filter", transform: "user.active" }
+```
+
+### Beneficios
+
+1. **Precisión Quirúrgica**: Análisis a nivel de variable, no solo función
+2. **Detección de Dead Code**: Variables declaradas pero nunca usadas
+3. **Input Validation**: Parámetros que no se usan
+4. **Flow Coherence**: Score 0-100 de qué tan lógico es el flujo
 
 ---
 
@@ -301,27 +377,31 @@ npm start
                     ▼
   ┌─────────────────────────────────────────────┐
   │ STEP 6: ✅ Listo!                           │
-  │         12 herramientas disponibles         │
+  │         14 herramientas disponibles         │
+  │         5 metadata extractors activos       │
+  │         Data Flow v2 integrado              │
   │         90% bypass rate                     │
   └─────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 Métricas del Sistema (v0.6.0)
+## 📊 Métricas del Sistema (v0.7.1)
 
-**Proyecto analizado**: ~430 archivos, ~940 funciones
+**Proyecto analizado**: 451 archivos JavaScript, ~980 funciones
 
-| Métrica | Valor | vs v0.5 |
+| Métrica | Valor | vs v0.6 |
 |---------|-------|---------|
-| Archivos JS/TS | 418 | = |
-| Funciones (átomos) | 943 | Nuevo |
-| Arquetipos moleculares | 15 | +4 |
-| Arquetipos atómicos | 7 | Nuevo |
-| Conexiones semánticas | ~100 | = |
-| LLM Bypass Rate | 90% | +15% |
-| Tiempo de invalidación | ~0.01ms | 100x más rápido |
-| Cache hit rate (átomos) | 95% | Nuevo |
+| Archivos JS/TS | 451 | +33 |
+| Funciones (átomos) | 980 | +37 |
+| Arquetipos moleculares | 15 | = |
+| Arquetipos atómicos | 7 | = |
+| Metadata Extractors | 5 | Nuevo |
+| Conexiones semánticas | ~120 | +20 |
+| LLM Bypass Rate | 90% | = |
+| Tiempo de invalidación | ~0.01ms | = |
+| Cache hit rate (átomos) | 95% | = |
+| Data Flow coverage | 100% | Nuevo |
 
 ---
 
@@ -386,7 +466,7 @@ npm stop               # Detiene todo
 npm status             # Muestra estado (LLM + MCP)
 
 # Herramientas MCP
-npm tools              # Lista las 12 herramientas disponibles
+npm tools              # Lista las 14 herramientas disponibles
 omny call get_impact_map '{"filePath":"src/core.js"}'
 omny call getFunctionDetails '{"filePath":"src/core.js","functionName":"init"}'
 omny status            # Estado detallado
@@ -430,7 +510,7 @@ curl -X POST http://localhost:9999/tools/getFunctionDetails \
 
 | Documento | Descripción |
 |-----------|-------------|
-| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de las 12 herramientas MCP |
+| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de las 14 herramientas MCP |
 | [docs/ARCHETYPE_SYSTEM.md](docs/ARCHETYPE_SYSTEM.md) | Sistema de arquetipos detallado |
 | [docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md) | Los 4 Pilares de OmnySys |
 | [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan detallado de arquitectura molecular |

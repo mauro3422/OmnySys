@@ -10,8 +10,10 @@
 ```
 🎉 Sistema funcional y usable:
 ├── Race detector 100% activo
-├── 12 herramientas MCP disponibles
+├── 14 herramientas MCP disponibles
 ├── Arquitectura molecular (SSOT)
+├── Data Flow v2 (graph-based) - Fase 1
+├── 5 nuevos metadata extractors
 ├── 30 tests pasando
 ├── Documentación completa
 └── Listo para proyectos < 100 archivos

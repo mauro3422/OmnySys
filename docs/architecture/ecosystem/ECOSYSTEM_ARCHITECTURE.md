@@ -1,0 +1,354 @@
+# Arquitectura de Ecosistema - Todo se Alimenta de Todo
+
+**Visión**: OmnySys no es un pipeline (A→B→C), es un **ecosistema de datos** donde cada sistema se alimenta de los demás.
+
+> *"No hay ruido, solo datos esperando ser conectados"*
+
+---
+
+## 🌐 El Ecosistema en Lugar del Pipeline
+
+### Mentalidad Pipeline (incorrecta)
+```
+Extracción → Validación → Almacenamiento → Uso
+     A    →     B      →       C        →  D
+```
+
+### Mentalidad Ecosistema (correcta)
+```
+                    ┌─────────────────┐
+                    │   Shadow Registry│
+                    │   (Memoria)      │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│  Data Flow    │◄─►│   Archetype   │◄─►│   Performance │
+│  Analyzer     │   │   Detector    │   │   Impact      │
+└───────┬───────┘   └───────┬───────┘   └───────┬───────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │  Clan Registry │
+                    │  (Patrones)    │
+                    └───────────────┘
+```
+
+**Cada sistema consume datos de TODOS los demás**.
+
+---
+
+## 🔄 Ciclos de Alimentación Mutua
+
+### Ciclo 1: Cyclomatic Complexity → God-Object Detection
+
+```javascript
+// "Ruido": Cyclomatic complexity = 7
+// En realidad es INPUT para otro sistema
+
+atom.metrics = {
+  cyclomaticComplexity: 7,
+  nestedLoops: 2
+};
+
+// Archetype Detector consume esto:
+if (atom.metrics.cyclomaticComplexity > 10 && 
+    atom.connections.length > 15) {
+  archetype = {
+    type: 'god-function',
+    confidence: 0.85,
+    evidence: ['high-complexity', 'many-connections']
+  };
+}
+
+// Shadow Registry consume el archetype:
+if (archetype.type === 'god-function') {
+  shadow.inheritance.vibrationScore *= 1.2; // Más "peso"
+}
+
+// Performance Impact consume el archetype + complexity:
+if (archetype.type === 'god-function' && 
+    atom.metrics.nestedLoops > 0) {
+  performance.impact = 'blocking';
+  performance.recommendation = 'Consider splitting this god-function';
+}
+```
+
+**Todo es útil. Todo fluye.**
+
+---
+
+### Ciclo 2: Operation Sequence → Clan Registry → Predicción
+
+```javascript
+// "Ruido": operationSequence = ['receive', 'read', 'transform', 'emit']
+// En realidad es FIRMA del comportamiento
+
+atom.dna.operationSequence = ['receive', 'read', 'transform', 'emit'];
+
+// Clan Registry detecta similitud:
+const clan = findClanBySequence(atom.dna.operationSequence);
+// → Clan "read-transform-persist"
+
+// Archetype usa el clan:
+atom.archetype = {
+  ...atom.archetype,
+  clan: clan.id,
+  similarFunctions: clan.members
+};
+
+// Cuando editás esta función, el sistema predice:
+prediction = {
+  basedOn: clan.historicalChanges,
+  suggestion: "Functions in clan 'read-transform-persist' often need:",
+  recommendations: [
+    "1. Add validation after 'read'",
+    "2. Consider caching before 'persist'",
+    "3. 67% added error handling in phase 2"
+  ]
+};
+```
+
+**La operationSequence no es ruido, es ADN comportamental.**
+
+---
+
+### Ciclo 3: TODOS los Datos → Context Query Inteligente
+
+```javascript
+// Cuando levantás una caja, NO es "mostrar todo vs filtrar"
+// Es "conectar todo para generar insights"
+
+function generateContext(filePath) {
+  const atom = getAtom(filePath);
+  
+  // Conectar complexity + connections + ancestry
+  const criticality = calculateCriticality({
+    complexity: atom.metrics.cyclomaticComplexity,
+    connections: atom.connections.length,
+    vibration: atom.ancestry?.vibrationScore,
+    generation: atom.ancestry?.generation
+  });
+  
+  // Conectar data flow + type contracts + error flow
+  const dataRisks = analyzeDataFlowRisks({
+    inputs: atom.dataFlow.inputs,
+    outputs: atom.dataFlow.outputs,
+    typeContracts: atom.typeContracts,
+    errorFlows: atom.errorFlow.throws
+  });
+  
+  // Conectar performance + temporal + archetype
+  const executionProfile = analyzeExecution({
+    performance: atom.performance,
+    temporal: atom.temporal,
+    archetype: atom.archetype
+  });
+  
+  return {
+    criticality,
+    dataRisks,
+    executionProfile,
+    // Todo conectado, todo generado de todo
+  };
+}
+```
+
+---
+
+## 📊 Matriz de Alimentación (Quién consume qué)
+
+| Sistema | Consume de | Produce para |
+|---------|-----------|--------------|
+| **DNA Extractor** | Data Flow, Semantic | Shadow Registry, Clan Registry |
+| **Shadow Registry** | DNA, Metadata | Archetype Detector, Context Queries |
+| **Archetype Detector** | Metrics, Connections, Ancestry | Performance, Warnings, LLM Bypass |
+| **Performance Impact** | Archetype, Metrics, Complexity | Warnings, Critical Path Detection |
+| **Type Contracts** | JSDoc, Code, Data Flow | Error Flow, Connection Validation |
+| **Error Flow** | Type Contracts, Calls | Unhandled Error Detection, Risk Score |
+| **Temporal** | Lifecycle, Async | Race Detection, Init Order |
+| **Clan Registry** | DNA, Operation Sequence | Pattern Prediction, Recommendations |
+
+**Nada es ruido. Todo es input para algo.**
+
+---
+
+## 💡 Ejemplos de Conexiones Invisibles
+
+### Ejemplo 1: Complexity + Ancestry + Archetype
+```javascript
+// Atom: processOrder
+{
+  metrics: { cyclomaticComplexity: 12 },
+  ancestry: { generation: 3, vibrationScore: 0.8 },
+  archetype: { type: 'business-logic' }
+}
+
+// Conexión invisible detectada:
+"Esta función es compleja (12) Y tiene historia (gen 3) 
+ Y es business-logic. 
+ 
+ Funciones similares en el pasado:
+ - 80% fueron refactorizadas en gen 4
+ - 60% se dividieron en 2 funciones
+ - Riesgo de 'god-function' aumenta con generación"
+```
+
+### Ejemplo 2: Nested Loops + Performance + Data Flow
+```javascript
+// Atom: calculateStats
+{
+  metrics: { nestedLoops: 2 },
+  performance: { bigO: 'O(n²)' },
+  dataFlow: { 
+    inputs: [{ name: 'items', type: 'Array' }],
+    outputs: [{ type: 'return' }]
+  }
+}
+
+// Conexión invisible:
+"O(n²) + input 'items' (Array) + nested loops = 
+ Riesgo de performance si 'items' crece.
+ 
+ Detectado: 3 funciones llaman a calculateStats
+ con arrays de >1000 items.
+ 
+ Recomendación: Agregar early return o memoization"
+```
+
+### Ejemplo 3: Operation Sequence + Clan + Error Flow
+```javascript
+// Clan: "read-transform-persist"
+// Miembros: [validateOrder, processPayment, saveUser]
+
+// Patrón detectado en el clan:
+"67% de funciones en este clan agregaron 
+ error handling después de 'read' en gen 2.
+
+ Tu función (gen 1) no tiene error handling en 'read'.
+ Predicción: 78% probabilidad de necesitarlo."
+```
+
+---
+
+## 🎯 La Nueva Visión del "Contexto"
+
+Cuando levantás una caja, no ves "datos crudos" ni "datos filtrados".
+
+**Ves conexiones generadas dinámicamente de TODOS los datos:**
+
+```javascript
+📦 api.js (processOrder)
+
+🔗 CONEXIONES GENERADAS AL VUELO:
+
+1. [Criticality] HIGH
+   └─ Fuente: complexity(12) × connections(15) × vibration(0.8)
+   └─ Significado: Cambios impactan MUCHO
+
+2. [Historical Pattern] REFACTOR LIKELY
+   └─ Fuente: Clan("read-transform") + Generation(3)
+   └─ Significado: Historia muestra que esta función crece
+
+3. [Data Risk] TYPE MISMATCH
+   └─ Fuente: Data Flow + Type Contracts
+   └─ Significado: Output no coincide con input del consumidor
+
+4. [Performance Chain] BLOCKING
+   └─ Fuente: Performance + Call Graph
+   └─ Significado: 3 funciones bloquean el render
+
+5. [Error Leak] UNHANDLED
+   └─ Fuente: Error Flow + Call Graph
+   └─ Significado: Error puede escapar al usuario
+
+💡 INSIGHTS GENERADOS:
+   "Esta función es un punto crítico por múltiples razones:
+    - Tiene historia de crecimiento (gen 3)
+    - Es compleja (12) y conectada (15)
+    - Tiene un type mismatch no resuelto
+    - Bloquea la UI (150ms)
+    - Puede lanzar errores no manejados"
+```
+
+**Cada insight viene de conectar múltiples datos.**
+
+---
+
+## 🔧 Implementación: Sistema de Insights
+
+```javascript
+// Nuevo módulo: insight-generator.js
+
+export function generateInsights(atom, ecosystem) {
+  const insights = [];
+  
+  // Conectar complexity + ancestry
+  if (atom.metrics.cyclomaticComplexity > 10 && 
+      atom.ancestry?.generation > 2) {
+    insights.push({
+      type: 'historical-risk',
+      severity: 'high',
+      message: 'Complex function with long lineage - refactor likely needed',
+      evidence: {
+        complexity: atom.metrics.cyclomaticComplexity,
+        generation: atom.ancestry.generation,
+        similarRefactors: ecosystem.clan.getHistoricalRefactors(atom.dna.clan)
+      }
+    });
+  }
+  
+  // Conectar performance + data flow + temporal
+  if (atom.performance?.impactScore > 0.6 &&
+      atom.temporal?.patterns?.isInitializer) {
+    insights.push({
+      type: 'startup-performance',
+      severity: 'critical',
+      message: 'Slow initialization will delay app startup',
+      evidence: {
+        impactScore: atom.performance.impactScore,
+        isInitializer: true,
+        dependentCount: atom.calledBy?.length
+      }
+    });
+  }
+  
+  // Conectar type contracts + error flow
+  if (atom.typeContracts?.confidence < 0.5 &&
+      atom.errorFlow?.throws?.length > 0) {
+    insights.push({
+      type: 'api-stability-risk',
+      severity: 'medium',
+      message: 'Poorly typed function that throws errors - API contract unclear',
+      evidence: {
+        typeConfidence: atom.typeContracts.confidence,
+        throwCount: atom.errorFlow.throws.length
+      }
+    });
+  }
+  
+  return insights;
+}
+```
+
+---
+
+## ✅ Conclusión
+
+**Todo es útil. Todo está conectado. Todo se alimenta de todo.**
+
+- **Cyclomatic complexity** → Input para archetype detection + criticality
+- **Nested loops** → Input para performance prediction
+- **Operation sequence** → Input para clan registry + pattern matching
+- **42 líneas de código** → Input para complexity normalization
+- **DNA completo** → Input para Shadow Registry + matching
+
+El sistema no es: **Extraer → Filtrar → Mostrar**
+
+El sistema es: **Extraer → Conectar TODO → Generar Insights**
+
+**Cada dato es una pieza del rompecabezas. Solo tiene sentido cuando se conecta.**

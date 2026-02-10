@@ -15,7 +15,7 @@ npm run install:all
 
 **¡Listo!** OmnySys ahora corre en background:
 - 🧠 LLM Server: `http://localhost:8000`
-- 🔌 MCP Server: `http://localhost:9999` (12 herramientas)
+- 🔌 MCP Server: `http://localhost:9999` (14 herramientas)
 
 Tu IA (Claude, OpenCode, etc.) tiene acceso automático a las herramientas.
 
@@ -29,7 +29,7 @@ Las IAs sufren **visión de túnel**: editan archivos sin ver dependencias ni co
 - Flujo de datos entre componentes
 - Riesgos ocultos detectados
 
-## 🛠️ Herramientas MCP (12 disponibles)
+## 🛠️ Herramientas MCP (14 disponibles)
 
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
@@ -44,7 +44,9 @@ Las IAs sufren **visión de túnel**: editan archivos sin ver dependencias ni co
 | `get_server_status()` | Estado del sistema | Diagnóstico |
 | `get_function_details(file, fn)` | Metadata atómica de función | Análisis función por función |
 | `get_molecule_summary(file)` | Resumen molecular de archivo | Vista completa de archivo |
+| `get_atomic_functions(file)` | Lista funciones de un archivo | Navegación atómica |
 | `restart_server()` | Reinicia servidor y recarga datos | Después de cambios en código |
+| `get_tunnel_vision_stats()` | Estadísticas de detección de visión túnel | Diagnóstico de análisis |
 
 ## 📖 Ejemplo Real
 
@@ -107,10 +109,11 @@ npm run analyze    # Analizar proyecto completo
 ┌─────────────────────────────────────────────────────┐
 │              OmnySys MCP Server                      │
 │  ┌─────────────────┐  ┌──────────────────────────┐ │
-│  │ 12 Tools MCP    │  │ Layer A: Static Analysis │ │
+│  │ 14 Tools MCP    │  │ Layer A: Static Analysis │ │
 │  │ • Impact Map    │  │ Layer B: Semantic        │ │
 │  │ • Call Graph    │  │ Layer C: Memory          │ │
-│  │ • Atomic View   │  └──────────────────────────┘ │
+│  │ • Atomic View   │  │ Data Flow v2 (graph)     │ │
+│  │ • Data Flow v2  │  └──────────────────────────┘ │
 │  └─────────────────┘                                  │
 └──────────────┬──────────────────────────────────────┘
                │
@@ -123,12 +126,14 @@ npm run analyze    # Analizar proyecto completo
 
 ## ✅ Estado del Proyecto
 
-**Versión**: v0.6.0
+**Versión**: v0.7.1
 
 | Componente | Estado |
 |------------|--------|
 | MCP Server HTTP | ✅ Production Ready |
-| 12 Tools MCP | ✅ 100% Funcionales |
+| 14 Tools MCP | ✅ 100% Funcionales |
+| 5 Metadata Extractors | ✅ Nuevos en v0.7.1 |
+| Data Flow v2 (graph-based) | ✅ Fase 1 Completa |
 | LLM Integration | ✅ GPU Optimizado |
 | OpenCode Auto-Setup | ✅ Automático |
 | Layer A (Static) | ✅ 95% |

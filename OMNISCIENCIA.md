@@ -327,7 +327,7 @@ AI:
 
 ## 📊 Current Status
 
-**OmnySys is in active development (v0.6.0)**
+**OmnySys is in active development (v0.7.1)**
 
 What works:
 - ✅ Static analysis (Layer A)

@@ -178,29 +178,42 @@ jobs:
 
 ---
 
-## 7. Modo "Explain Impact"
+## 7. Modo "Explain Impact" ✅ IMPLEMENTADO
+
+**Estado**: ✅ **IMPLEMENTADO** en v0.7.1
 
 ### Concepto
 Explicar **por qué** dos archivos están conectados, no solo que lo están.
 
-### Ejemplo
+### Implementación Real
+
+**MCP Tool**: `explain_connection` implementado en `src/mcp/tools/explain-connection.js`
+
+```javascript
+// Uso
+const explanation = await explain_connection({
+  sourceFile: 'src/auth/validateUser.js',
+  targetFile: 'src/api/userController.js'
+});
+
+// Output
+{
+  path: [
+    { file: 'validateUser.js', exports: ['validateUser'], line: 10 },
+    { file: 'authService.js', imports: ['validateUser'], reexports: true },
+    { file: 'userController.js', imports: ['validateUser'], usedAt: [42, 67] }
+  ],
+  connectionType: 'function-call',
+  strength: 'strong',
+  riskLevel: 'medium'
+}
 ```
-Usuario: "¿Por qué modificar CameraState afecta Minimap?"
 
-OmnySys: "Conexión detectada:
-  1. CameraState.js exporta la variable 'state' (línea 10)
-  2. store.js importa y re-exporta 'state' (línea 5)
-  3. Minimap.js importa 'state' de store.js (línea 3)
-  4. Minimap.js lee state.camera.position en render() (línea 42)
-
-  Tipo de conexión: Estado compartido
-  Riesgo: ALTO (modificación directa sin validación)"
-```
-
-### Implementación
-- Almacenar "path" de conexión: A → B → C
-- Para cada conexión, guardar el "por qué" (import, event, state)
-- Generar explicación en lenguaje natural
+**Características implementadas**:
+- ✅ Traza path completo de conexiones
+- ✅ Detecta tipo de conexión (import, event, state, data-flow)
+- ✅ Calcula riesgo basado en coupling
+- ✅ Genera explicación en lenguaje natural
 
 ### Beneficio
 - Ayuda a entender la arquitectura del proyecto
@@ -357,33 +370,63 @@ Extensión de VS Code que muestra warnings inline.
 
 ---
 
-## 14. Detector de Anti-Patrones
+## 14. Detector de Anti-Patrones ✅ IMPLEMENTADO
+
+**Estado**: ✅ **IMPLEMENTADO** en v0.7.0
 
 ### Concepto
 Identificar patrones problemáticos en el código.
 
-### Ejemplos de Anti-Patrones
-- **God Object**: Archivo usado por 50+ otros archivos
-- **Spaghetti Connections**: Muchas conexiones indirectas (A → B → C → D)
-- **Hidden Coupling**: Dos archivos conectados solo por estado global
-- **Dead End**: Archivo que importa muchos pero no es usado por nadie
+### Implementación Real
 
-### Reporte
+**Sistema de Race Conditions**: Implementado en `src/layer-a-static/race-detector/`
+
+**Anti-patrones detectados**:
+
+1. **Race Conditions** (WW, WR, RW)
+   - Write-Write: Dos funciones async escriben al mismo recurso
+   - Write-Read: Lectura puede ocurrir durante escritura
+   - Read-Write: Escritura puede invalidar lectura en progreso
+
+2. **Unprotected Shared State**
+   - Estado compartido sin locks
+   - Acceso concurrente sin transacciones
+   - Variables capturadas en closures sin protección
+
+3. **Missing Mitigation**
+   - Operaciones críticas sin mutex
+   - Transacciones de BD sin serialización
+   - Async queues sin rate limiting
+
+### Reporte Real
+
+```javascript
+// Via get_risk_assessment MCP tool
+{
+  raceConditions: {
+    total: 5,
+    byType: { WW: 2, WR: 2, RW: 1 },
+    bySeverity: { high: 2, medium: 3 },
+    mitigated: 3,
+    unprotected: 2
+  },
+  recommendations: [
+    'Add mutex to localStorage.cart accesses',
+    'Wrap DB operations in transaction'
+  ]
+}
 ```
-🚨 Anti-Patrones Detectados:
 
-1. God Object: store.js
-   - Usado por 47 archivos
-   - Sugerencia: Dividir en módulos más pequeños
-
-2. Hidden Coupling: UIComponent.js ↔ BackendService.js
-   - Conectados por globalState.user
-   - Sugerencia: Pasar user como prop explícito
-```
+**Características implementadas**:
+- ✅ Detección de 8 tipos de mitigaciones (locks, transactions, atomic ops, etc.)
+- ✅ Análisis de business flow para detectar concurrencia real
+- ✅ Severity scoring basado en impacto
+- ✅ Recomendaciones automáticas
 
 ### Beneficio
 - Mejora arquitectura del proyecto
 - Previene deuda técnica
+- Previene bugs de race conditions antes de producción
 
 ---
 

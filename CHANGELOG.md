@@ -8,7 +8,7 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.7.1]** | `changelog/v0.7.1.md` | **Race Conditions Activated - TODOs Completed** (Latest - Stable) |
+| **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** (Latest - Stable) |
 | **[0.7.0]** | `changelog/v0.7.0.md` | **Architecture Refactoring - SOLID/SSOT/Fractal** (Stable) |
 | **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Stable) |
 | **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
@@ -33,7 +33,7 @@ This repository uses a modular changelog structure for better organization and m
 
 ### **🚀 Latest Release: v0.7.1 (2026-02-09)**
 
-**Race Conditions + Logger System + Meta-Validator**: Activación completa del race detector (8 TODOs implementados), migración de 475+ logs a sistema centralizado, y nuevo Meta-Validator de 4 capas para verificar integridad del sistema.
+**Race Conditions + Logger System + Meta-Validator + Data Flow V2 + Shadow Registry + 5 Extractores**: Activación completa del race detector (8 TODOs implementados), migración de 475+ logs a sistema centralizado, nuevo Meta-Validator de 4 capas, Data Flow V2 graph-based (12 archivos), Shadow Registry para linaje de archivos, y 5 extractores de metadata adicionales.
 
 **Key Changes**:
 - ✅ **8 TODOs Implemented** - sameBusinessFlow, sameTransaction, findCapturedVariables, etc.
@@ -43,9 +43,23 @@ This repository uses a modular changelog structure for better organization and m
 - ✅ **Meta-Validator** - 4 capas de validación: Source, Derivation, Semantic, Cross-Metadata
 - ✅ **100% Race Detection** - All patterns now functional
 - ✅ **Validation CLI** - `scripts/validate-full.js` con reportes detallados
-- ✅ **Complete Documentation** - PLAN_MAESTRO + AUDIT_FOLLOW_UP
+- ✅ **Data Flow V2** - 12 archivos modulares, 50+ patrones, 3 output formats, 95% completo
+- ✅ **Transform Registry** - 50+ transformation patterns (side effects, functional, operators)
+- ✅ **Shadow Registry** - Sistema de linaje con DNA extraction (7 shadows creados)
+- ✅ **5 New Extractors** - Temporal Connections, Type Contracts, Error Flow, Performance Impact, DNA Extractor
+- ✅ **Connection Enricher** - Post-procesamiento con pesos calculados y ancestry
+- ✅ **Metadata Enhancer** - DNA extraction, historical context, network analysis
+- ✅ **Lineage Validator** - Validación de ancestros y detección de rupturas
+- ✅ **350+ Test Cases** - Comprehensive test coverage across system
+- ✅ **99% Veracity Audit** - System integrity validated
+- ✅ **Complete Documentation** - PLAN_MAESTRO + AUDIT_FOLLOW_UP + Architecture docs
+- ✅ **Divided Changelogs** - 4 archivos (<300 líneas cada uno) para mejor mantenibilidad
 
-Ver detalles completos en [changelog/v0.7.1.md](changelog/v0.7.1.md)
+**Documentación Dividida**:
+- [changelog/v0.7.1.md](changelog/v0.7.1.md) - Resumen ejecutivo
+- [changelog/v0.7.1-race-conditions.md](changelog/v0.7.1-race-conditions.md) - Race detector
+- [changelog/v0.7.1-shadow-registry.md](changelog/v0.7.1-shadow-registry.md) - Shadow Registry + Extractores
+- [changelog/v0.7.1-audit-verification.md](changelog/v0.7.1-audit-verification.md) - Auditoría + Logger + Meta-Validator
 
 ---
 

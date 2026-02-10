@@ -2,7 +2,7 @@
 
 ## 🎯 Introducción
 
-OmnySys expone **12 herramientas MCP** vía HTTP en `http://localhost:9999`. Estas herramientas permiten a las IAs entender el contexto completo del código antes de hacer cambios, ahora con **precisión atómica** (a nivel función).
+OmnySys expone **14 herramientas MCP** vía HTTP en `http://localhost:9999`. Estas herramientas permiten a las IAs entender el contexto completo del código antes de hacer cambios, ahora con **precisión atómica** (a nivel función).
 
 **Arquitectura Fractal**: Las herramientas consultan las 3 capas en múltiples escalas:
 - **Layer A (Átomos)**: Funciones individuales, calls, complexity
@@ -14,15 +14,15 @@ OmnySys expone **12 herramientas MCP** vía HTTP en `http://localhost:9999`. Est
 
 ---
 
-## 🛠️ Las 12 Herramientas
+## 🛠️ Las 14 Herramientas
 
 ### Herramientas Atómicas (Nuevas en v0.6.0)
 
 Estas herramientas operan a nivel **función** (átomo) para precisión quirúrgica:
 
-- `getFunctionDetails` - Metadata completa de una función
-- `getMoleculeSummary` - Resumen molecular con insights derivados
-- `analyzeFunctionChange` - Impacto de modificar una función específica
+- `get_function_details` - Metadata completa de una función
+- `get_molecule_summary` - Resumen molecular con insights derivados
+- `get_atomic_functions` - Lista funciones de un archivo
 
 ### Herramientas Moléculares (Archivo)
 
@@ -40,6 +40,8 @@ Estas herramientas operan a nivel **archivo** (molécula):
 - `get_risk_assessment` - Evaluación de riesgo del proyecto
 - `search_files` - Búsqueda de archivos
 - `get_server_status` - Estado del sistema
+- `restart_server` - Reinicia el servidor OmnySys
+- `get_tunnel_vision_stats` - Estadísticas de detección de visión túnel
 
 ### **1. `get_impact_map`** - Mapa de Impacto Completo
 
@@ -460,6 +462,115 @@ curl -X POST http://localhost:9999/tools/get_impact_map \
 
 ---
 
+### **10. `get_atomic_functions`** - Lista de Funciones Atómicas
+
+**Endpoint**: `POST /tools/get_atomic_functions`
+
+**Descripción**: Retorna la lista de todas las funciones (átomos) definidas en un archivo específico.
+
+**Parámetros**:
+```json
+{
+  "filePath": "string"  // Ruta del archivo
+}
+```
+
+**Respuesta**:
+```json
+{
+  "file": "src/core/orchestrator.js",
+  "functions": [
+    {
+      "name": "analyzeAndWait",
+      "type": "async-function",
+      "exported": true,
+      "complexity": 28,
+      "archetype": "hot-path"
+    },
+    {
+      "name": "processQueue",
+      "type": "function",
+      "exported": false,
+      "complexity": 12,
+      "archetype": "private-utility"
+    }
+  ],
+  "totalFunctions": 2
+}
+```
+
+**Cuándo usar**:
+- ✅ Navegando funciones de un archivo
+- ✅ Identificando funciones públicas vs privadas
+- ✅ Overview rápido de un módulo
+
+---
+
+### **11. `restart_server`** - Reiniciar Servidor
+
+**Endpoint**: `POST /tools/restart_server`
+
+**Descripción**: Reinicia el servidor OmnySys para recargar código actualizado y refrescar el análisis.
+
+**Parámetros**: `{}` (ninguno)
+
+**Respuesta**:
+```json
+{
+  "status": "restarting",
+  "message": "Server restart initiated. Re-analyzing project...",
+  "estimatedTime": "30s"
+}
+```
+
+**Cuándo usar**:
+- ✅ Después de cambios significativos en el código
+- ✅ Cuando el caché está desincronizado
+- ✅ Para forzar re-análisis completo
+
+---
+
+### **12. `get_tunnel_vision_stats`** - Estadísticas de Visión Túnel
+
+**Endpoint**: `POST /tools/get_tunnel_vision_stats`
+
+**Descripción**: Retorna estadísticas sobre detección y prevención de visión túnel durante el análisis.
+
+**Parámetros**: `{}` (ninguno)
+
+**Respuesta**:
+```json
+{
+  "totalAnalyses": 1543,
+  "tunnelVisionPrevented": 127,
+  "preventionRate": "8.2%",
+  "mostCommonPatterns": [
+    {
+      "pattern": "god-object-missed-connections",
+      "count": 45,
+      "description": "Conexiones semánticas no detectadas en god-objects"
+    },
+    {
+      "pattern": "transitive-dependency-blindspot",
+      "count": 38,
+      "description": "Dependencias transitivas ignoradas"
+    }
+  ],
+  "byArchetype": {
+    "god-object": 45,
+    "orphan-module": 32,
+    "network-hub": 25
+  }
+}
+```
+
+**Cuándo usar**:
+- ✅ Evaluando efectividad del sistema
+- ✅ Identificando patrones comunes de error
+- ✅ Mejorando configuración del análisis
+
+---
+
 ## 🎓 Flujos de Trabajo Recomendados
 
 ### Flujo 1: Antes de editar un archivo
@@ -563,6 +674,9 @@ curl -X POST http://localhost:9999/call \
 | "¿Qué debería refactorizar primero?" | `get_risk_assessment` | Priorización |
 | "Busco el archivo de configuración" | `search_files` | Navegación |
 | "¿Está todo funcionando?" | `get_server_status` | Diagnóstico |
+| "Lista todas las funciones de este archivo" | `get_atomic_functions` | Navegación atómica |
+| "Necesito recargar el análisis" | `restart_server` | Mantenimiento |
+| "¿Qué tan efectivo es el sistema?" | `get_tunnel_vision_stats` | Métricas |
 
 ### Anti-patrones a evitar:
 
@@ -577,4 +691,16 @@ curl -X POST http://localhost:9999/call \
 
 ---
 
-**OmnySys - Una herramienta a la vez, visión de caja completa.**
+---
+
+## 📊 Nuevas Herramientas en v0.7.1
+
+### Tool #13: `restart_server`
+Reinicia el servidor OmnySys para recargar código actualizado y refrescar el análisis completo del proyecto.
+
+### Tool #14: `get_tunnel_vision_stats`
+Retorna estadísticas detalladas sobre la detección y prevención de visión túnel, ayudando a evaluar la efectividad del sistema.
+
+---
+
+**OmnySys v0.7.1 - 14 herramientas para visión completa del código.**

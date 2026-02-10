@@ -55,7 +55,8 @@
       "Bash(if [ -f \"C:\\\\Dev\\\\OmnySystem\\\\AUTO_INSTALLATION.md\" ])",
       "Bash(then mv \"C:\\\\Dev\\\\OmnySystem\\\\AUTO_INSTALLATION.md\" \"C:\\\\Dev\\\\OmnySystem\\\\docs\\\\archive\"\"; echo \"MOVED\"; else echo \"NOT FOUND \")",
       "Bash(fi)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(wc:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

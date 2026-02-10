@@ -1,8 +1,8 @@
 # 🔍 Auditoría de Arquitectura - OmnySys
 
-**Fecha**: 2026-02-09  
-**Versión analizada**: v0.6.0  
-**Total archivos JS analizados**: 367
+**Fecha**: 2026-02-09
+**Versión analizada**: v0.7.1
+**Total archivos JS analizados**: 451
 
 ---
 

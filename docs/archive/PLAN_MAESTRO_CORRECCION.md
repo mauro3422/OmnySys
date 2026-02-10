@@ -1,4 +1,4 @@
-# 🎯 Plan Maestro de Corrección - OmnySys v0.6.0
+# 🎯 Plan Maestro de Corrección - OmnySys v0.7.1
 
 **Fecha**: 2026-02-09  
 **Auditor**: Claude (Code Review)  

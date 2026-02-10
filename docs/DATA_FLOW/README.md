@@ -1,7 +1,8 @@
 # DATA FLOW FRACTAL - Índice
 
-**Versión**: v0.7.0 (Pre-Implementación)  
-**Estado**: Fase de Diseño
+**Versión**: v0.7.1
+**Estado**: Fase 1 (v1) 100% ✅ | v2 (Graph-Based) 95% ✅
+**Última actualización**: 2026-02-09
 
 ---
 
@@ -12,6 +13,43 @@
 **Solución**: Seguir el viaje del dato desde que entra (parámetro) hasta que sale (return/side effect).
 
 **Metafora**: Como Google Maps, pero para datos. No te dice solo QUÉ calles existen, sino CÓMO llegar de A a B.
+
+---
+
+## 📦 Data Flow v2 (Graph-Based)
+
+**Estado**: ✅ IMPLEMENTADO en v0.7.1 (95% completo - 1 stub en invariant-detector)
+
+### Qué es v2
+
+Data Flow v2 es una **reimplementación completa** del sistema de extracción de flujo de datos usando arquitectura modular basada en visitors del patrón AST. **Coexiste con v1** sin reemplazarlo.
+
+### v1 vs v2 - Comparación Rápida
+
+| Aspecto | v1 (Monolítico) | v2 (Graph-Based) | Estado |
+|---------|-----------------|------------------|--------|
+| **Arquitectura** | 1 archivo | 12 archivos modulares | ✅ v2 |
+| **Patterns** | ~15 patrones | 50+ patrones registrados | ✅ v2 |
+| **Outputs** | 1 formato básico | 3 formatos (real/std/graph) | ✅ v2 |
+| **Type Inference** | ❌ No | ✅ Sí | ✅ v2 |
+| **Scope Management** | ❌ No | ✅ Sí | ✅ v2 |
+| **Extensibilidad** | Baja | Alta (visitor pattern) | ✅ v2 |
+| **Estado** | ✅ Funcional | 🟡 95% completo | Coexisten |
+
+### Ubicación
+
+- **v1**: `src/layer-a-static/extractors/data-flow/index.js`
+- **v2**: `src/layer-a-static/extractors/data-flow-v2/` (12 archivos)
+
+### Pendiente en v2
+
+- ⚠️ **Invariant Detector**: Línea 335 en `analyzers/invariant-detector.js` es stub parcial
+- ✅ No bloquea funcionalidad principal
+- 📝 Será completado en v0.7.2
+
+### Más Información
+
+Ver documentación completa en: **[DATA_FLOW_V2.md](../architecture/DATA_FLOW_V2.md)**
 
 ---
 

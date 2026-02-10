@@ -76,7 +76,7 @@ v0.5 - Box Test (2026-01)
    
 v0.6 - Molecular (2026-02-08)
    └── Dentro de la caja hay átomos (funciones)
-   └── 12 herramientas MCP (3 atómicas nuevas)
+   └── 14 herramientas MCP (3 atómicas nuevas)
    └── Análisis función por función
    └── 4 Pilares consolidados
    
@@ -108,7 +108,7 @@ v1.0 - Artificial Intuition (Futuro)
 **Capa C (Memory)**: MCP tools, caché unificado, WebSocket, BatchProcessor  
 **Orchestrator**: AnalysisQueue, FileWatcher, StateManager, ProcessManager  
 
-**Resultado**: 12 herramientas MCP funcionando, sistema estable, ~147 módulos.
+**Resultado**: 14 herramientas MCP funcionando, sistema estable, 451 archivos.
 
 ---
 
@@ -181,6 +181,12 @@ async applyDiscount() { localStorage.cart = ... }   // ← WRITE (RACE!)
 ### ✅ FASE 8: Data Flow Fractal - Fase 1 (v0.7.1) ✅ ACTUAL
 
 **Ver el flujo de datos**: inputs → transforms → outputs
+
+**Logros v0.7.1**:
+- ✅ Data Flow v2 (graph-based) implementado
+- ✅ 5 nuevos metadata extractors
+- ✅ Transform Registry (50+ patterns)
+- ✅ Module System Phase 3 completo
 
 ```javascript
 // Metadata extraída automáticamente:
@@ -439,16 +445,16 @@ auth/
 
 ### Componentes Core
 
-| Componente | Estado | Módulos | Cobertura | Notas |
-|------------|--------|---------|-----------|-------|
-| **Capa A (Static)** | 95% ✅ | ~30 | 70% | Parser, extractors, graph, data flow |
-| **Capa B (Semantic)** | 90% ✅ | ~40 | 60% | LLM analysis, validators, archetypes |
-| **Capa C (Memory/MCP)** | 100% ✅ | ~25 | 60% | 12 tools, cache, WebSocket |
+| Componente | Estado | Archivos | Cobertura | Notas |
+|------------|--------|----------|-----------|-------|
+| **Capa A (Static)** | 95% ✅ | 206 archivos, 444 exports | 70% | Parser, extractors, graph, data flow |
+| **Capa B (Semantic)** | 100% ✅ | 79 archivos | 60% | LLM analysis, validators, archetypes |
+| **Capa C (Memory/MCP)** | 98% ✅ | 41 módulos | 60% | 14 tools, cache, WebSocket |
 | **Orchestrator** | 95% ✅ | ~25 | 40% | Queue, workers, file watcher |
 | **Race Detector** | 100% ✅ | ~15 | 70% | 8 TODOs implementados |
 | **Meta-Validator** | 80% ✅ | ~10 | 30% | 4 capas, Source/Derivation funcionando |
 | **Data Flow Fractal** | 30% 🔄 | ~8 | 20% | Fase 1 lista, 2-7 pendientes |
-| **TOTAL** | **82%** | **~147** | **50%** | |
+| **TOTAL** | **85%** | **451 archivos** | **55%** | |
 
 ### Data Flow Fractal - Progreso Detallado
 

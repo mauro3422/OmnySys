@@ -8,6 +8,14 @@
  * 
  * Parte del Data Flow Fractal - Nivel Átomo
  * 
+ * ⚠️ PRINCIPIO CRÍTICO: Los datos extraídos se mantienen con nombres REALES del
+ * proyecto. La estandarización (VALIDATE_FUNC, ENTITY_PARAM) es metadata ADICIONAL
+ * para entrenamiento de ML, NUNCA un reemplazo de los nombres originales.
+ * 
+ * Dataset dual:
+ * - Real names: "validateUser", "order", "calculateTotal" → Para contexto local
+ * - Standardized: "VALIDATE_FUNC", "ENTITY_PARAM", "CALC_FUNC" → Para ML/cross-project
+ * 
  * @module extractors/data-flow
  * @version 1.0.0
  * @phase 1 (Atomic Data Flow)
