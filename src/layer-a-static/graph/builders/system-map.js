@@ -77,7 +77,35 @@ export function buildSystemMap(parsedFiles, resolvedImports) {
     }
 
     for (const importInfo of imports) {
-      // Capturar imports no resueltos
+      // Si es un import dinámico resuelto, procesarlo como dependencia potencial
+      if (importInfo.type === 'dynamic' && importInfo.source) {
+        // Para imports dinámicos con path conocido (ej: import('./utils.js'))
+        if (importInfo.source !== '<dynamic>') {
+          const normalizedTo = normalizePath(importInfo.source);
+          
+          if (systemMap.files[normalizedTo]) {
+            const depKey = `${normalizedFrom} -> ${normalizedTo}`;
+            if (!dependencySet.has(depKey)) {
+              dependencySet.add(depKey);
+              
+              systemMap.dependencies.push(
+                createDependency(normalizedFrom, normalizedTo, {
+                  ...importInfo,
+                  dynamic: true,
+                  confidence: 0.8 // Menor confianza que estático
+                })
+              );
+              
+              systemMap.files[normalizedFrom].dependsOn.push(normalizedTo);
+              systemMap.files[normalizedTo].usedBy.push(normalizedFrom);
+            }
+          }
+        }
+        // Los imports dinámicos con variables se registran como potenciales
+        continue;
+      }
+      
+      // Capturar imports no resueltos (que no son dinámicos)
       if (!importInfo.resolved) {
         if (!systemMap.unresolvedImports[normalizedFrom]) {
           systemMap.unresolvedImports[normalizedFrom] = [];
