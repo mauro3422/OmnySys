@@ -11,7 +11,7 @@
  * - Previene errores que rompen el sistema
  */
 
-import { getAtomicEditor } from '../../../../core/atomic-editor.js';
+import { getAtomicEditor } from '#core/atomic-editor.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:atomic:edit:tool');
