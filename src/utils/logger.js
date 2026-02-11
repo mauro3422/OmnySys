@@ -12,8 +12,8 @@ export class Logger {
     this.name = name;
     this.level = options.level || process.env.LOG_LEVEL || 'info';
     this.prefix = `[${name}]`;
-    // En modo MCP (stdio), no escribir a console para evitar broken pipe
-    this.mcpMode = process.env.MCP_STDIO === 'true' || false;
+    // User-friendly mode: no mostrar prefijos técnicos
+    this.userFriendly = process.env.NODE_ENV === 'production' || true;
   }
 
   _shouldLog(level) {
@@ -22,7 +22,11 @@ export class Logger {
   }
 
   _format(message, level) {
-    // Sin timestamps - más limpio y directo
+    // En modo user-friendly, solo mostrar el mensaje sin prefijos técnicos
+    if (this.userFriendly) {
+      return message;
+    }
+    // En modo debug, mostrar level y prefix
     return `${level.toUpperCase()} ${this.prefix} ${message}`;
   }
 

@@ -100,7 +100,7 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     if (filesNeedingLLM.length === 0) {
-      logger.info('   ℹ️  No files need LLM analysis (static analysis sufficient)');
+      logger.info('   i  No files need LLM analysis (static analysis sufficient)');
       logger.info('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
       this.emit('analysis:complete', {
