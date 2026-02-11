@@ -151,6 +151,13 @@ export class HotReloadManager {
       return { type: 'critical', priority: 0 };
     }
 
+    // Verificar si es un módulo del pipeline de análisis (requiere invalidación de caché)
+    if (filename.includes('/analyses/') || 
+        filename.includes('/analyzer.js') || 
+        filename.includes('/indexer.js')) {
+      return { type: 'pipeline', priority: 0 };
+    }
+
     // Verificar patrones recargables
     for (const pattern of this.reloadablePatterns) {
       if (pattern.pattern.test(filename)) {
@@ -177,7 +184,7 @@ export class HotReloadManager {
       // 1. Preservar estado
       this._preserveState();
       
-      // 2. Recargar según el tipo
+       // 2. Recargar según el tipo
       switch (moduleInfo.type) {
         case 'tool':
           await this._reloadTool(filename);
@@ -193,6 +200,9 @@ export class HotReloadManager {
           break;
         case 'lifecycle':
           await this._reloadLifecycle(filename);
+          break;
+        case 'pipeline':
+          await this._reloadPipelineModule(filename);
           break;
         default:
           logger.warn(`Unknown module type: ${moduleInfo.type}`);
@@ -363,6 +373,43 @@ export class HotReloadManager {
     logger.warn(`Lifecycle reload partially supported: ${filename}`);
     // Los métodos lifecycle se asignan al prototipo,
     // requieren recarga más compleja
+  }
+
+  /**
+   * Recarga un módulo del pipeline de análisis (analyzer, indexer, etc.)
+   * @private
+   */
+  async _reloadPipelineModule(filename) {
+    logger.info(`🔄 Reloading pipeline module: ${filename}`);
+    
+    try {
+      const modulePath = path.resolve(this.server.projectPath, filename);
+      
+      // Invalidar caché de Node.js para este módulo
+      const moduleId = await import.meta.resolve(modulePath).catch(() => modulePath);
+      
+      if (require.cache && require.cache[moduleId]) {
+        delete require.cache[moduleId];
+        logger.debug(`Invalidated require.cache for: ${filename}`);
+      }
+      
+      // Para ESM, usamos import con query string único
+      const uniqueImport = `${modulePath}?pipeline-reload=${Date.now()}`;
+      await import(uniqueImport);
+      
+      logger.info(`✅ Pipeline module reloaded: ${filename}`);
+      logger.warn(`⚠️  Analysis cache invalidated - next analysis will use new code`);
+      
+      // Emitir evento para que el sistema sepa que necesita re-análisis
+      this.server.emit('hot-reload:pipeline-updated', { 
+        file: filename,
+        requiresReanalysis: true 
+      });
+      
+    } catch (error) {
+      logger.error(`Failed to reload pipeline module ${filename}:`, error);
+      throw error;
+    }
   }
 
   /**
