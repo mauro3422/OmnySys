@@ -33,18 +33,28 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
       };
     }
     
-    // Verificar que el símbolo existe
-    const hasExport = targetAnalysis.exports?.some(e => e.name === symbolName);
+    // Verificar que el símbolo existe (incluyendo reexports)
+    const exportInfo = targetAnalysis.exports?.find(e => e.name === symbolName);
     const hasDefinition = targetAnalysis.definitions?.some(d => d.name === symbolName);
     
-    if (!hasExport && !hasDefinition) {
+    if (!exportInfo && !hasDefinition) {
       return { 
         error: `Symbol '${symbolName}' not found in ${targetFile}`,
         availableExports: targetAnalysis.exports?.map(e => e.name) || []
       };
     }
     
-    const exportType = targetAnalysis.exports?.find(e => e.name === symbolName)?.type || 'function';
+    // Si es reexport, seguir la cadena al archivo fuente
+    let effectiveFile = targetFile;
+    let effectiveSymbol = symbolName;
+    
+    if (exportInfo?.type === 'reexport' && exportInfo.source) {
+      // Es un reexport, la definición real está en otro archivo
+      // Pero seguimos usando este archivo como punto de entrada para el grafo
+      logger.info(`  Note: ${symbolName} is reexported from ${exportInfo.source}`);
+    }
+    
+    const exportType = exportInfo?.type || 'function';
     
     // PASO 2: Obtener lista de archivos que usan este archivo
     // Esto viene del grafo de dependencias de Layer A

@@ -37,6 +37,8 @@ import { get_atomic_functions } from './get-atomic-functions.js';
 import { restart_server } from './restart-server.js';
 // Tunnel Vision Detection (v0.6.0)
 import getTunnelVisionStats from './get-tunnel-vision-stats.js';
+// Atomic Editor Tools (v0.7.2)
+import { atomic_edit, atomic_write } from './atomic-edit.js';
 
 export const toolDefinitions = [
   {
@@ -193,6 +195,32 @@ export const toolDefinitions = [
         limit: { type: 'number', description: 'Maximum number of recent events to return', default: 10 }
       }
     }
+  },
+  // ========== ATOMIC EDITOR TOOLS ==========
+  {
+    name: 'atomic_edit',
+    description: 'Edits a file with atomic validation - validates syntax, propagates vibration to dependents, and prevents breaking changes. Use this instead of normal edit for safer code changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to edit' },
+        oldString: { type: 'string', description: 'Text to be replaced' },
+        newString: { type: 'string', description: 'New text to insert' }
+      },
+      required: ['filePath', 'oldString', 'newString']
+    }
+  },
+  {
+    name: 'atomic_write',
+    description: 'Writes a new file with atomic validation - validates syntax before writing and immediately indexes the atom.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the new file' },
+        content: { type: 'string', description: 'Full content of the file' }
+      },
+      required: ['filePath', 'content']
+    }
   }
 ];
 
@@ -213,5 +241,8 @@ export const toolHandlers = {
   get_atomic_functions,
   restart_server,
   // TUNNEL VISION DETECTION
-  get_tunnel_vision_stats: getTunnelVisionStats
+  get_tunnel_vision_stats: getTunnelVisionStats,
+  // ATOMIC EDITOR TOOLS
+  atomic_edit,
+  atomic_write
 };
