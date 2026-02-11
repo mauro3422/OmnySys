@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 import { parseFileFromDisk } from '../parser/index.js';
@@ -6,6 +6,7 @@ import { resolveImport, getResolutionConfig } from '../resolver.js';
 import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
+import { extractAtoms } from '../extractors/atomic/index.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:single:file');
@@ -91,7 +92,12 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     // Paso 4: Extraer metadatos
     if (verbose) logger.info('ðŸ“Š Extracting metadata...');
     const metadata = extractAllMetadata(targetFilePath, parsedFile.source || '');
-    if (verbose) logger.info(`  âœ“ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
+    if (verbose) logger.info(`  ✓ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
+
+    // PASO NUEVO: Extraer átomos con el sistema atómico
+    if (verbose) logger.info('🔬 Extracting atoms...');
+    const atoms = extractAtoms(parsedFile.source || '', singleFile);
+    if (verbose) logger.info(`  ✓ Extracted ${atoms.length} atoms: ${atoms.map(a => a.type).join(', ')}\n`);
 
     // Paso 5: Construir análisis del archivo
     const fileAnalysis = {
@@ -128,6 +134,12 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
         errorHandling: metadata.errors || { all: [] },
         buildTimeDeps: metadata.build || { envVars: [] }
       },
+      atoms: atoms,
+      totalAtoms: atoms.length,
+      atomsByType: atoms.reduce((acc, atom) => {
+        acc[atom.type] = (acc[atom.type] || 0) + 1;
+        return acc;
+      }, {}),
       analyzedAt: new Date().toISOString()
     };
 
