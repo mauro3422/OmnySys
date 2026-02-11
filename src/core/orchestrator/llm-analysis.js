@@ -5,7 +5,46 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:llm:analysis');
 
+/**
+ * Determina si un archivo necesita LLM basado en arquetipos y Gates de decisión
+ * 
+ * GATE 1: Verificar arquetipos con requiresLLM = true (siempre necesitan LLM)
+ * GATE 2: Verificar arquetipos con requiresLLM = 'conditional' (usar analysis-decider)
+ * GATE 3: Arquetipos con requiresLLM = false (nunca necesitan LLM)
+ * GATE 4: Fallback a analysis-decider si no hay arquetipos determinísticos
+ * 
+ * @param {Array} archetypes - Arquetipos detectados
+ * @param {Object} fileAnalysis - Análisis del archivo
+ * @param {Object} llmAnalyzer - Instancia del analizador LLM
+ * @returns {boolean} - true si necesita LLM
+ */
+function shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer) {
+  // Si no hay arquetipos, usar analysis-decider como fallback
+  if (!archetypes || archetypes.length === 0) {
+    return llmAnalyzer.needsLLMAnalysis(fileAnalysis.semanticAnalysis || {}, fileAnalysis);
+  }
 
+  // GATE 1: Si hay arquetipos que SIEMPRE requieren LLM
+  const alwaysNeedsLLM = archetypes.some(a => a.requiresLLM === true);
+  if (alwaysNeedsLLM) {
+    return true;
+  }
+
+  // GATE 2: Si hay arquetipos condicionales, verificar con analysis-decider
+  const hasConditional = archetypes.some(a => a.requiresLLM === 'conditional');
+  if (hasConditional) {
+    return llmAnalyzer.needsLLMAnalysis(fileAnalysis.semanticAnalysis || {}, fileAnalysis);
+  }
+
+  // GATE 3: Si todos los arquetipos tienen requiresLLM = false, NO necesita LLM
+  const allBypass = archetypes.every(a => a.requiresLLM === false);
+  if (allBypass) {
+    return false;
+  }
+
+  // Fallback: usar analysis-decider para casos mixtos
+  return llmAnalyzer.needsLLMAnalysis(fileAnalysis.semanticAnalysis || {}, fileAnalysis);
+}
 
 /**
  * Analiza archivos complejos con LLM basado en metadatos de Layer A
@@ -78,11 +117,8 @@ export async function _analyzeComplexFilesWithLLM() {
           logger.info(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
         }
 
-        // Decidir si necesita LLM basado en arquetipos y análisis estático
-        const needsLLM = archetypes.length > 0 || llmAnalyzer.needsLLMAnalysis(
-          fileAnalysis.semanticAnalysis || {},
-          fileAnalysis
-        );
+        // Decidir si necesita LLM basado en arquetipos y Gates de decisión
+        const needsLLM = shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer);
 
         if (needsLLM) {
           logger.info(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
