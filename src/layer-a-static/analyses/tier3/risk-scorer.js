@@ -144,7 +144,8 @@ export function calculateRiskScore(
 
   // 5. COUPLING RISK (0-1 point)
   // ==========================
-  const circularDependencies = graphMetrics.circularDependencies || 0;
+  // Usar solo ciclos problemáticos (no los arquitectónicamente válidos)
+  const circularDependencies = graphMetrics.problematicCycles || 0;
   const coupledFiles = graphMetrics.coupledFiles || 0;
 
   if (circularDependencies > 0) {

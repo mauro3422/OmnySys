@@ -253,9 +253,11 @@ export async function generateEnhancedSystemMap(
     graphMetrics[filePath] = {
       inDegree: (fileData.usedBy || []).length,
       outDegree: (fileData.dependsOn || []).length,
-      circularDependencies: systemMap.metadata.cyclesDetected.filter(
-        cycle => cycle.includes(filePath)
-      ).length,
+      // Usar clasificación molecular para separar válidos de problemáticos
+    totalCycles: systemMap.metadata.cyclesDetected.filter(
+      cycle => cycle.includes(filePath)
+    ).length,
+    problematicCycles: 0 // Se calculará después con cycle-classifier
       coupledFiles: (fileData.usedBy || []).filter(f =>
         (systemMap.files[f]?.dependsOn || []).includes(filePath)
       ).length

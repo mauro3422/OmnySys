@@ -94,13 +94,22 @@ export function generateRecommendations(analyses) {
     });
   }
 
-  // Recomendación 8.5: Circular imports (NUEVOS)
-  if (analyses.circularImports.total > 0) {
+  // Recomendación 8.5: Circular imports (clasificados molecularmente)
+  if (analyses.circularImports.problematicCount > 0) {
     recommendations.push({
       priority: 'CRITICAL',
       category: 'Architecture',
-      message: `${analyses.circularImports.total} circular import(s) detected - breaks module loading`,
-      action: 'Refactor to break circular dependencies (move shared code to utility)'
+      message: `${analyses.circularImports.problematicCount} ciclos problemáticos detectados`,
+      action: 'Refactorizar usando arquitectura hexagonal o inyección de dependencias'
+    });
+  }
+  
+  if (analyses.circularImports.validCount > 0) {
+    recommendations.push({
+      priority: 'INFO',
+      category: 'Architecture',
+      message: `${analyses.circularImports.validCount} ciclos arquitectónicamente válidos (eventos, WebSocket, lifecycle)`,
+      action: 'No requieren cambios - son patrones intencionales'
     });
   }
 

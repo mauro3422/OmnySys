@@ -31,8 +31,10 @@ export function calculateQualityMetrics(analyses) {
   // Penalizar imports problemáticos
   if (analyses.unresolvedImports.total > 0)
     score -= Math.min(25, analyses.unresolvedImports.total * 5);
-  if (analyses.circularImports.total > 0)
-    score -= Math.min(35, analyses.circularImports.total * 20);
+  // Solo penalizar ciclos problemáticos (no los arquitectónicamente válidos)
+  const problematicCycles = analyses.circularImports.problematicCount || 0;
+  if (problematicCycles > 0)
+    score -= Math.min(20, problematicCycles * 10);
   if (analyses.unusedImports.total > 0)
     score -= Math.min(15, Math.ceil(analyses.unusedImports.total / 2));
 
@@ -60,7 +62,7 @@ export function calculateQualityMetrics(analyses) {
       analyses.hotspots.total +
       analyses.circularFunctionDeps.total +
       analyses.unresolvedImports.total +
-      analyses.circularImports.total +
+      (analyses.circularImports.problematicCount || 0) +
       analyses.unusedImports.total +
       (analyses.sharedObjects?.criticalObjects.length || 0) +
       (analyses.typeUsage?.highRiskCount || 0) +
