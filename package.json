@@ -23,6 +23,7 @@
     "test:integration": "node run-tests.js integration",
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\"",
+    "validate": "node scripts/validate-syntax.js",
     "postinstall": "node install.js"
   },
   "keywords": [
