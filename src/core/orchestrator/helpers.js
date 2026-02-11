@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 import { LLMClient } from '../../ai/llm-client.js';
@@ -133,6 +133,40 @@ export async function _syncProjectFiles() {
       logger.info(`ðŸ“Š Queue: ${queueSize} files pending analysis`);
     }
   } catch (error) {
-    logger.warn('âš ï¸  Failed to sync project files:', error.message);
+    logger.warn('⚠️  Failed to sync project files:', error.message);
   }
+}
+
+/**
+ * Invalida el caché de Layer A para un archivo específico
+ * Fuerza re-análisis completo del archivo cuando cambia
+ * @param {string} filePath - Ruta del archivo a invalidar
+ */
+export async function _invalidateFileCache(filePath) {
+  try {
+    const relativePath = path.relative(this.projectPath, path.resolve(this.projectPath, filePath));
+    const normalizedPath = relativePath.replace(/\\/g, '/');
+    
+    // Eliminar del caché del UnifiedCacheManager
+    if (this.cache) {
+      this.cache.invalidate(`analysis:${normalizedPath}`);
+      this.cache.invalidate(`atom:${normalizedPath}`);
+    }
+    
+    // Eliminar archivo de análisis de .omnysysdata/files/
+    const fileDataPath = path.join(this.OmnySysDataPath, 'files', normalizedPath + '.json');
+    try {
+      await fs.unlink(fileDataPath);
+      logger.info(`🗑️  Invalidated cache for: ${normalizedPath}`);
+    } catch {
+      // Archivo no existía, ignorar
+    }
+    
+    // Marcar como no indexado para forzar re-análisis
+    this.indexedFiles.delete(normalizedPath);
+    
+  } catch (error) {
+    logger.warn(`⚠️  Failed to invalidate cache for ${filePath}:`, error.message);
+  }
+}
 }

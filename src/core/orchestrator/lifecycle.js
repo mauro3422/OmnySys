@@ -1,4 +1,4 @@
-﻿import path from 'path';
+import path from 'path';
 
 import { AnalysisWorker } from '../analysis-worker.js';
 import { StateManager } from '../state-manager.js';
@@ -188,6 +188,9 @@ export async function _initializeFileWatcher() {
     maxBatchSize: 20,
     batchTimeoutMs: 1000,
     processChange: async (change) => {
+      // Invalidar caché de Layer A para forzar re-análisis
+      await this._invalidateFileCache(change.filePath);
+      
       const priority = this._calculateChangePriority(change);
       this.queue.enqueue(change.filePath, priority);
 

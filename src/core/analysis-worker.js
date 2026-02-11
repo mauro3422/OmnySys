@@ -82,7 +82,31 @@ export class AnalysisWorker {
       
       let result;
       
-      // Si el job necesita LLM, usar LLMAnalyzer
+      // PASO 1: Re-analizar con Layer A (análisis estático single-file)
+      logger.info(`📊 Re-analyzing with Layer A: ${path.basename(job.filePath)}`);
+      try {
+        const { analyzeSingleFile } = await import('../layer-a-static/pipeline/single-file.js');
+        const layerAResult = await analyzeSingleFile(this.rootPath, job.filePath, {
+          verbose: false,
+          incremental: true
+        });
+        
+        // Actualizar el job con el nuevo análisis de Layer A
+        job.fileAnalysis = {
+          ...job.fileAnalysis,
+          ...layerAResult,
+          reanalyzedAt: new Date().toISOString()
+        };
+        
+        logger.info(`   ✅ Layer A analysis complete: ${layerAResult.semanticConnections?.length || 0} connections`);
+      } catch (layerAError) {
+        logger.warn(`   ⚠️  Layer A analysis failed: ${layerAError.message}`);
+        // Continuar con análisis existente
+      }
+      
+      this.callbacks.onProgress?.(job, 50);
+      
+      // PASO 2: Si el job necesita LLM, usar LLMAnalyzer
       if (job.needsLLM) {
         logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
         logger.info(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
