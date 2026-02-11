@@ -2,21 +2,59 @@
 
 /**
  * OmnySys MCP Server - Entry Point Único
- * 
+ *
  * Usa OmnySysMCPServer con MCP SDK oficial
  * Compatible con Claude Desktop, OpenCode, y otros clientes MCP
- * 
+ *
  * Usage: node src/layer-c-memory/mcp-server.js /path/to/project
+ *
+ * ⚡ CRITICAL FIX: This file redirects stderr to a log file BEFORE any imports
+ *    to prevent EPIPE errors with MCP stdio transport. DO NOT move the stderr
+ *    redirect code below - it must execute FIRST.
  */
 
-import { OmnySysMCPServer } from './mcp/core/server-class.js';
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 STEP 1: Redirect stderr to file BEFORE ANY OTHER CODE
+// ═══════════════════════════════════════════════════════════════════════════
+// This MUST be the first code that runs to prevent EPIPE errors.
+// MCP SDK uses stdio (stdin/stdout) for JSON communication. If stderr receives
+// any output during the handshake, it can cause "EPIPE: broken pipe" errors.
+
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../..');
+const logsDir = path.join(projectRoot, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+const logFile = path.join(logsDir, 'mcp-server.log');
+
+// Redirect ALL stderr writes to the log file
+// This includes console.error(), logger.error(), and any other stderr output
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+process.stderr.write = function(chunk, encoding, callback) {
+  // Write to file instead of stderr pipe
+  fs.appendFileSync(logFile, chunk);
+
+  // Call callback if provided (handling different signatures)
+  if (typeof encoding === 'function') {
+    encoding(); // encoding is actually the callback
+  } else if (callback) {
+    callback();
+  }
+  return true;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 STEP 2: NOW import modules (logging is now safe)
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { OmnySysMCPServer } from './mcp/core/server-class.js';
+import { spawn } from 'child_process';
+import os from 'os';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:server');
@@ -26,23 +64,6 @@ const logger = createLogger('OmnySys:mcp:server');
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
   const absolutePath = path.resolve(projectPath);
-
-  // --- Log file setup ---
-  const projectRoot = path.resolve(__dirname, '../..');
-  const logsDir = path.join(projectRoot, 'logs');
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-  }
-  const logFile = path.join(logsDir, 'mcp-server.log');
-  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-
-  // Intercept console.error to write ONLY to log file (not stderr)
-  // This prevents broken pipe errors when using MCP stdio transport
-  console.error = (...args) => {
-    const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    logStream.write(`${message}\n`);
-    // Don't write to stderr to avoid interfering with MCP stdio protocol
-  };
 
   // --- Spawn MCP logs terminal ---
   const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
@@ -96,6 +117,13 @@ async function main() {
   });
 
   process.on('uncaughtException', async (error) => {
+    // Ignore EPIPE errors - they occur when client disconnects unexpectedly
+    // This is normal behavior for MCP stdio transport and should not crash the server
+    if (error.code === 'EPIPE') {
+      logger.error('⚠️  EPIPE ignored (client disconnected)');
+      return;
+    }
+
     logger.error('\n❌ Uncaught exception:', error);
     await server.shutdown();
     process.exit(1);

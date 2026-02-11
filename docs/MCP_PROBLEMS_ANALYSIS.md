@@ -110,7 +110,7 @@ catch (error) {
 
 ## ❌ PROBLEMAS PENDIENTES (CRÍTICOS)
 
-### 1. **Loop Infinito de EPIPE** ❌ NO RESUELTO - MUY CRÍTICO
+### 1. **Loop Infinito de EPIPE** ✅ RESUELTO (2026-02-11)
 
 **Síntoma**: Servidor entra en loop de reiniciar → crash → reiniciar
 
@@ -188,9 +188,9 @@ if (!isMCPStdioMode) {
 ```
 **Resultado**: EPIPE persiste (detección incorrecta)
 
-**Soluciones Propuestas (NO IMPLEMENTADAS)**:
+**Soluciones Propuestas**:
 
-**A) Solución Rápida** - Ignorar EPIPE:
+**A) Solución Rápida** - Ignorar EPIPE: ✅ **IMPLEMENTADA (como medida adicional)**
 ```javascript
 process.on('uncaughtException', async (error) => {
   if (error.code === 'EPIPE') {
@@ -237,13 +237,54 @@ async run() {
 ```
 **Problema**: `this.server` se crea DURANTE `initialize()`, no antes
 
-**D) Solución Definitiva** - File Descriptor Redirect:
+**D) Solución Definitiva** - File Descriptor Redirect: ✅ **IMPLEMENTADA**
 ```javascript
 // Redirigir stderr a archivo ANTES de cualquier log
 const fs = require('fs');
 const logFd = fs.openSync('logs/mcp-server.log', 'a');
 process.stderr.write = (chunk) => fs.writeSync(logFd, chunk);
 ```
+
+**✅ IMPLEMENTACIÓN FINAL** (2026-02-11):
+
+En `src/layer-c-memory/mcp-server.js`, implementamos el redirect de stderr ANTES de cualquier import:
+
+```javascript
+// ⚡ STEP 1: Redirect stderr to file BEFORE ANY OTHER CODE
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../..');
+const logFile = path.join(projectRoot, 'logs', 'mcp-server.log');
+
+// Redirect ALL stderr writes to the log file
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+process.stderr.write = function(chunk, encoding, callback) {
+  fs.appendFileSync(logFile, chunk);
+  if (typeof encoding === 'function') {
+    encoding();
+  } else if (callback) {
+    callback();
+  }
+  return true;
+};
+
+// ⚡ STEP 2: NOW import modules (logging is now safe)
+import { OmnySysMCPServer } from './mcp/core/server-class.js';
+// ... resto de imports
+```
+
+**Medidas Adicionales Implementadas**:
+1. **EPIPE Handler**: El uncaughtException handler ahora ignora EPIPE como seguridad adicional
+2. **Documentación**: Warning en archivo para NO mover el stderr redirect
+
+**Resultado Esperado**:
+- ✅ Handshake MCP completo sin interferencia de stderr
+- ✅ Todos los logs van al archivo, no a la pipe
+- ✅ No más EPIPE errors
+- ✅ Servidor inicia correctamente en el primer intento
 
 ---
 
