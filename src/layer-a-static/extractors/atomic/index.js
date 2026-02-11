@@ -56,7 +56,7 @@ export function extractAtoms(code, filePath) {
   
   let currentClassName = null;
   
-  traverse(ast, {
+  traverse.default(ast, {
     // Funciones declaradas
     FunctionDeclaration(path) {
       if (isTopLevel(path)) {
@@ -78,11 +78,19 @@ export function extractAtoms(code, filePath) {
       }
     },
     
-    // Métodos de clase
+    // Métodos de clase (incluye getters/setters)
     ClassMethod(path) {
       if (path.parent.type === 'ClassBody') {
         const className = getClassName(path);
-        atoms.push(extractClassMethod(path, filePath, className));
+        const kind = path.node.kind;
+        
+        if (kind === 'get' || kind === 'set') {
+          // Getter o setter
+          atoms.push(extractAccessor(path, filePath, className));
+        } else {
+          // Método normal
+          atoms.push(extractClassMethod(path, filePath, className));
+        }
       }
     },
     
@@ -91,14 +99,6 @@ export function extractAtoms(code, filePath) {
       if (path.parent.type === 'ClassBody') {
         const className = getClassName(path);
         atoms.push(extractPrivateMethod(path, filePath, className));
-      }
-    },
-    
-    // Getters/Setters
-    ClassAccessor(path) {
-      if (path.parent.type === 'ClassBody') {
-        const className = getClassName(path);
-        atoms.push(extractAccessor(path, filePath, className));
       }
     }
   });
