@@ -26,9 +26,6 @@ export class ReadyStep extends InitializationStep {
     logger.error('✅ MCP Server Ready!');
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Display available tools
-    const { toolDefinitions } = server.server.handlers.ListToolsRequestSchema || { toolDefinitions: [] };
-    
     // Categorize and display tools
     this.displayTools();
     
@@ -44,7 +41,7 @@ export class ReadyStep extends InitializationStep {
 
   displayTools() {
     // Import here to avoid circular dependencies
-    import('../../tools/index.js').then(({ toolDefinitions }) => {
+    import('../../../tools/index.js').then(({ toolDefinitions }) => {
       logger.error(`\n🔧 Available tools (${toolDefinitions.length} total):`);
 
       const categories = {

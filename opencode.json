@@ -3,7 +3,11 @@
   "mcp": {
     "omny-system": {
       "type": "local",
-      "command": ["node", "src/layer-c-memory/mcp-server.js", "."],
+      "command": [
+        "node",
+        "src/layer-c-memory/mcp-server.js",
+        "C:\\Dev\\OmnySystem"
+      ],
       "enabled": true,
       "timeout": 30000,
       "environment": {

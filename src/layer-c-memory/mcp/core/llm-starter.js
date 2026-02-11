@@ -82,7 +82,7 @@ export async function startLLM(OmnySysRoot) {
       await fs.access(gpuScript);
       logger.error('   🚀 Starting GPU server...');
       
-      const gpuProcess = spawn('cmd.exe', ['/c', 'start', '/min', gpuScript], {
+      const gpuProcess = spawn('cmd.exe', ['/c', 'start', gpuScript], {
         detached: true,
         stdio: 'ignore'
       });
@@ -102,7 +102,7 @@ export async function startLLM(OmnySysRoot) {
       await fs.access(cpuScript);
       logger.error('   🚀 Starting CPU server...');
       
-      const cpuProcess = spawn('cmd.exe', ['/c', 'start', '/min', cpuScript], {
+      const cpuProcess = spawn('cmd.exe', ['/c', 'start', cpuScript], {
         detached: true,
         stdio: 'ignore'
       });

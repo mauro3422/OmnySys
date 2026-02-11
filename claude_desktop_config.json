@@ -4,8 +4,11 @@
       "command": "node",
       "args": [
         "src/layer-c-memory/mcp-server.js",
-        "."
-      ]
+        "C:\\Dev\\OmnySystem"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   }
 }

@@ -12,6 +12,8 @@ export class Logger {
     this.name = name;
     this.level = options.level || process.env.LOG_LEVEL || 'info';
     this.prefix = `[${name}]`;
+    // En modo MCP (stdio), no escribir a console para evitar broken pipe
+    this.mcpMode = process.env.MCP_STDIO === 'true' || false;
   }
 
   _shouldLog(level) {
@@ -20,30 +22,30 @@ export class Logger {
   }
 
   _format(message, level) {
-    const timestamp = new Date().toISOString();
-    return `${timestamp} ${level.toUpperCase()} ${this.prefix} ${message}`;
+    // Sin timestamps - más limpio y directo
+    return `${level.toUpperCase()} ${this.prefix} ${message}`;
   }
 
   debug(message, ...args) {
-    if (this._shouldLog('debug')) {
+    if (this._shouldLog('debug') && !this.mcpMode) {
       console.debug(this._format(message, 'debug'), ...args);
     }
   }
 
   info(message, ...args) {
-    if (this._shouldLog('info')) {
+    if (this._shouldLog('info') && !this.mcpMode) {
       console.info(this._format(message, 'info'), ...args);
     }
   }
 
   warn(message, ...args) {
-    if (this._shouldLog('warn')) {
+    if (this._shouldLog('warn') && !this.mcpMode) {
       console.warn(this._format(message, 'warn'), ...args);
     }
   }
 
   error(message, error, ...args) {
-    if (this._shouldLog('error')) {
+    if (this._shouldLog('error') && !this.mcpMode) {
       console.error(this._format(message, 'error'), error?.message || '', ...args);
       if (error?.stack && process.env.LOG_LEVEL === 'debug') {
         console.error(error.stack);

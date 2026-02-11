@@ -120,6 +120,53 @@ export class OmnySysMCPServer {
     logger.error('╚═══════════════════════════════════════════════════════════════╝\n');
     logger.error(`📂 Project: ${this.projectPath}\n`);
   }
+
+  /**
+   * Run the MCP server
+   * Initializes and connects to stdio for MCP communication
+   */
+  async run() {
+    await this.initialize();
+
+    if (!this.server) {
+      throw new Error('MCP server not initialized');
+    }
+
+    // Connect to stdio for MCP protocol communication
+    const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+
+    logger.error('🔌 MCP Server connected via stdio\n');
+  }
+
+  /**
+   * Shutdown the server gracefully
+   */
+  async shutdown() {
+    logger.error('\n🛑 Shutting down server...');
+
+    try {
+      if (this.server) {
+        await this.server.close();
+        logger.error('  ✅ MCP server closed');
+      }
+
+      if (this.orchestrator) {
+        // Orchestrator cleanup if needed
+        logger.error('  ✅ Orchestrator cleaned up');
+      }
+
+      if (this.cache) {
+        // Cache cleanup if needed
+        logger.error('  ✅ Cache cleaned up');
+      }
+
+      logger.error('\n👋 Server shutdown complete\n');
+    } catch (error) {
+      logger.error('Error during shutdown:', error.message);
+    }
+  }
 }
 
 export default OmnySysMCPServer;

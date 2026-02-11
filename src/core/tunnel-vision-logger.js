@@ -17,10 +17,13 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
+
+const logger = createLogger('OmnySys:tunnel:vision:logger');
 
 /**
  * Ruta del log de eventos de tunnel vision
@@ -35,11 +38,6 @@ const TUNNEL_VISION_LOG = path.join(
  * Ruta del resumen de estadísticas
  */
 const TUNNEL_VISION_STATS = path.join(
-import { createLogger } from '../utils/logger.js';
-
-const logger = createLogger('OmnySys:tunnel:vision:logger');
-
-
   PROJECT_ROOT,
   '.omnysysdata',
   'tunnel-vision-stats.json'

@@ -14,7 +14,7 @@ import {
   ErrorCode,
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
-import { toolDefinitions, toolHandlers } from '../../tools/index.js';
+import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');

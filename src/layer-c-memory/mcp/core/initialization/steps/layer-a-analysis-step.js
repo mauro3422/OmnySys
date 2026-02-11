@@ -26,7 +26,7 @@ export class LayerAAnalysisStep extends InitializationStep {
     logger.error('STEP 2: Layer A - Static Analysis');
     logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    const { checkAndRunAnalysis } = await import('../analysis-checker.js');
+    const { checkAndRunAnalysis } = await import('../../analysis-checker.js');
     const result = await checkAndRunAnalysis(server.projectPath);
 
     if (result.success) {

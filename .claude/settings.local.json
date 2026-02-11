@@ -56,7 +56,11 @@
       "Bash(then mv \"C:\\\\Dev\\\\OmnySystem\\\\AUTO_INSTALLATION.md\" \"C:\\\\Dev\\\\OmnySystem\\\\docs\\\\archive\"\"; echo \"MOVED\"; else echo \"NOT FOUND \")",
       "Bash(fi)",
       "Bash(netstat:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(if exist \"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\" type \"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\")",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout:*)",
+      "Bash(taskkill:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

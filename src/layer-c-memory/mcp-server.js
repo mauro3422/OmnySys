@@ -36,12 +36,12 @@ async function main() {
   const logFile = path.join(logsDir, 'mcp-server.log');
   const logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
-  // Intercept console.error to also write to log file
-  const originalConsoleError = console.error;
+  // Intercept console.error to write ONLY to log file (not stderr)
+  // This prevents broken pipe errors when using MCP stdio transport
   console.error = (...args) => {
-    originalConsoleError(...args);
     const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
     logStream.write(`${message}\n`);
+    // Don't write to stderr to avoid interfering with MCP stdio protocol
   };
 
   // --- Spawn MCP logs terminal ---
@@ -51,8 +51,8 @@ async function main() {
     const platform = os.platform();
     
     if (platform === 'win32') {
-      // Windows: usar cmd.exe
-      logsTerminal = spawn('cmd.exe', ['/c', 'start', '/min', batPath], {
+      // Windows: abrir terminal VISIBLE con logs
+      logsTerminal = spawn('cmd.exe', ['/c', 'start', batPath], {
         detached: true,
         stdio: 'ignore'
       });
