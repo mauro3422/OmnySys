@@ -1,4 +1,4 @@
-/
+/**
  * Circular Imports Analysis - Entry Point
  * 
  * Re-exporta desde el sistema molecular de clasificación.

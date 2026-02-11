@@ -1,4 +1,4 @@
-/
+/**
  * Cycle Metadata - Extracción y derivación de metadatos
  * 
  * Responsabilidad única: Extraer información de átomos y derivar propiedades

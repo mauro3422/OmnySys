@@ -1,4 +1,4 @@
-/
+/**
  * Cycle Classifier - Orquestador molecular
  * 
  * Usa cycle-metadata y cycle-rules para clasificar ciclos.
