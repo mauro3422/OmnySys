@@ -22,18 +22,18 @@ export class ReadyStep extends InitializationStep {
   }
 
   execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('✅ MCP Server Ready!');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('✅ MCP Server Ready!');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Categorize and display tools
     this.displayTools();
     
     // Display stats
     const uptime = ((Date.now() - server.startTime) / 1000).toFixed(2);
-    logger.error(`\n📊 Server stats:`);
-    logger.error(`   Uptime: ${uptime}s`);
-    logger.error(`   Cache: ${server.cache?.getRamStats?.().memoryUsage || 'N/A'}`);
+    logger.info(`\n📊 Server stats:`);
+    logger.info(`   Uptime: ${uptime}s`);
+    logger.info(`   Cache: ${server.cache?.getRamStats?.().memoryUsage || 'N/A'}`);
 
     server.initialized = true;
     return true;
@@ -42,7 +42,7 @@ export class ReadyStep extends InitializationStep {
   displayTools() {
     // Import here to avoid circular dependencies
     import('../../../tools/index.js').then(({ toolDefinitions }) => {
-      logger.error(`\n🔧 Available tools (${toolDefinitions.length} total):`);
+      logger.info(`\n🔧 Available tools (${toolDefinitions.length} total):`);
 
       const categories = {
         'Core Analysis': ['get_impact_map', 'analyze_change', 'explain_connection', 'get_risk_assessment'],
@@ -54,8 +54,8 @@ export class ReadyStep extends InitializationStep {
       for (const [category, toolNames] of Object.entries(categories)) {
         const tools = toolDefinitions.filter(t => toolNames.includes(t.name));
         if (tools.length > 0) {
-          logger.error(`\n   ${category}:`);
-          tools.forEach(t => logger.error(`     • ${t.name}`));
+          logger.info(`\n   ${category}:`);
+          tools.forEach(t => logger.info(`     • ${t.name}`));
         }
       }
     });

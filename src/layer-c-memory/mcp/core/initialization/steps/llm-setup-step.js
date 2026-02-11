@@ -22,19 +22,19 @@ export class LLMSetupStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('STEP 1: AI Server Setup');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('STEP 1: AI Server Setup');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     try {
       const { startLLM } = await import('../../llm-starter.js');
       await startLLM(server.OmnySysRoot);
-      logger.error('  ✅ LLM server started');
+      logger.info('  ✅ LLM server started');
       return true;
     } catch (error) {
-      logger.error(`  ⚠️  LLM server not available: ${error.message}`);
+      logger.info(`  ⚠️  LLM server not available: ${error.message}`);
       if (process.env.DEBUG) {
-        logger.error(`  🐛 Error stack: ${error.stack}`);
+        logger.info(`  🐛 Error stack: ${error.stack}`);
       }
       return true; // Don't fail if LLM unavailable
     }

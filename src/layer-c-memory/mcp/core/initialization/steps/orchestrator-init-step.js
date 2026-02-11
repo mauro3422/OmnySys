@@ -23,9 +23,9 @@ export class OrchestratorInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('STEP 3: Initialize Orchestrator');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('STEP 3: Initialize Orchestrator');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     server.orchestrator = new Orchestrator(server.projectPath, {
       enableFileWatcher: true,
@@ -34,7 +34,7 @@ export class OrchestratorInitStep extends InitializationStep {
     });
 
     await server.orchestrator.initialize();
-    logger.error('  ✅ Orchestrator ready');
+    logger.info('  ✅ Orchestrator ready');
 
     return true;
   }
@@ -43,7 +43,7 @@ export class OrchestratorInitStep extends InitializationStep {
     if (server.orchestrator) {
       await server.orchestrator.stop();
       server.orchestrator = null;
-      logger.error('  ✅ Orchestrator stopped');
+      logger.info('  ✅ Orchestrator stopped');
     }
   }
 }

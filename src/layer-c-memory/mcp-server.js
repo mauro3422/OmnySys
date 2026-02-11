@@ -33,7 +33,7 @@ if (!fs.existsSync(logsDir)) {
 const logFile = path.join(logsDir, 'mcp-server.log');
 
 // Redirect ALL stderr writes to the log file
-// This includes console.error(), logger.error(), and any other stderr output
+// This includes console.error(), logger.info(), and any other stderr output
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 process.stderr.write = function(chunk, encoding, callback) {
   // Write to file instead of stderr pipe
@@ -98,24 +98,24 @@ async function main() {
     
     if (logsTerminal) {
       logsTerminal.unref();
-      logger.error('📺 MCP Logs terminal spawned');
+      logger.info('📺 MCP Logs terminal spawned');
     }
   }
 
-  logger.error(`📂 Project: ${absolutePath}`);
-  logger.error('🚀 Starting OmnySys MCP Server...\n');
+  logger.info(`📂 Project: ${absolutePath}`);
+  logger.info('🚀 Starting OmnySys MCP Server...\n');
 
   const server = new OmnySysMCPServer(absolutePath);
 
   // Cleanup graceful
   process.on('SIGINT', async () => {
-    logger.error('\n👋 Received SIGINT, shutting down gracefully...');
+    logger.info('\n👋 Received SIGINT, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
-    logger.error('\n👋 Received SIGTERM, shutting down gracefully...');
+    logger.info('\n👋 Received SIGTERM, shutting down gracefully...');
     await server.shutdown();
     process.exit(0);
   });
@@ -124,11 +124,11 @@ async function main() {
     // Ignore EPIPE errors - they occur when client disconnects unexpectedly
     // This is normal behavior for MCP stdio transport and should not crash the server
     if (error.code === 'EPIPE') {
-      logger.error('⚠️  EPIPE ignored (client disconnected)');
+      logger.info('⚠️  EPIPE ignored (client disconnected)');
       return;
     }
 
-    logger.error('\n❌ Uncaught exception:', error);
+    logger.info('\n❌ Uncaught exception:', error);
     await server.shutdown();
     process.exit(1);
   });
@@ -137,7 +137,7 @@ async function main() {
     // El servidor se inicializa en background después del handshake MCP
     await server.run();
   } catch (error) {
-    logger.error('Fatal error:', error);
+    logger.info('Fatal error:', error);
     await server.shutdown();
     process.exit(1);
   }

@@ -30,9 +30,9 @@ export class McpSetupStep extends InitializationStep {
   }
 
   execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('STEP 5: MCP Protocol Setup');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('STEP 5: MCP Protocol Setup');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     server.server = new Server(
       { name: 'omnysys', version: '3.0.0' },
@@ -49,9 +49,9 @@ export class McpSetupStep extends InitializationStep {
       return this.handleToolCall(request, server);
     });
 
-    server.server.onerror = (error) => logger.error('[MCP Error]', error);
+    server.server.onerror = (error) => logger.info('[MCP Error]', error);
 
-    logger.error(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
+    logger.info(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
     return true;
   }
 
@@ -63,9 +63,9 @@ export class McpSetupStep extends InitializationStep {
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
     }
 
-    logger.error(`\n🔧 Tool called: ${name}`);
+    logger.info(`\n🔧 Tool called: ${name}`);
     if (Object.keys(args || {}).length > 0) {
-      logger.error(`   Args: ${JSON.stringify(args)}`);
+      logger.info(`   Args: ${JSON.stringify(args)}`);
     }
 
     const startTime = performance.now();
@@ -80,7 +80,7 @@ export class McpSetupStep extends InitializationStep {
     const result = await handler(args, context);
 
     const elapsed = (performance.now() - startTime).toFixed(2);
-    logger.error(`   ✅ Completed in ${elapsed}ms\n`);
+    logger.info(`   ✅ Completed in ${elapsed}ms\n`);
 
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]

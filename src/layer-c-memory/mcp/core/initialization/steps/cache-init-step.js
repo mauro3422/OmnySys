@@ -23,9 +23,9 @@ export class CacheInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('STEP 4: Initialize Cache');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('STEP 4: Initialize Cache');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const startTime = performance.now();
 
@@ -42,19 +42,19 @@ export class CacheInitStep extends InitializationStep {
 
     server.metadata = await getProjectMetadata(server.projectPath);
     server.cache.set('metadata', server.metadata);
-    logger.error('  ✅ Metadata cached');
+    logger.info('  ✅ Metadata cached');
 
     const connections = await getAllConnections(server.projectPath);
     server.cache.set('connections', connections);
-    logger.error(`  ✅ Connections cached (${connections.total} total)`);
+    logger.info(`  ✅ Connections cached (${connections.total} total)`);
 
     const assessment = await getRiskAssessment(server.projectPath);
     server.cache.set('assessment', assessment);
     const totalIssues = this.countIssues(assessment);
-    logger.error(`  ✅ Risk assessment cached (${totalIssues} issues)`);
+    logger.info(`  ✅ Risk assessment cached (${totalIssues} issues)`);
 
     const elapsed = (performance.now() - startTime).toFixed(2);
-    logger.error(`\n  Cache load time: ${elapsed}ms`);
+    logger.info(`\n  Cache load time: ${elapsed}ms`);
 
     return true;
   }

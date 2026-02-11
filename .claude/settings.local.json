@@ -60,7 +60,11 @@
       "Bash(if exist \"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\" type \"%APPDATA%\\\\Claude\\\\claude_desktop_config.json\")",
       "Bash(powershell -Command:*)",
       "Bash(timeout:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(xargs kill:*)",
+      "Bash(wmic process where \"name=''node.exe''\" get ProcessId,CommandLine)",
+      "Bash(/tmp/kill-mcp.ps1 << 'EOF'\n$processes = Get-WmiObject Win32_Process -Filter \"name='node.exe'\"\nforeach \\($p in $processes\\) {\n  if \\($p.CommandLine -like '*mcp-server*'\\) {\n    Write-Host \"Killing PID $\\($p.ProcessId\\)\"\n    Stop-Process -Id $p.ProcessId -Force\n  }\n}\nEOF)",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

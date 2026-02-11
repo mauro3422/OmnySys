@@ -22,24 +22,24 @@ export class LayerAAnalysisStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.error('STEP 2: Layer A - Static Analysis');
-    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('STEP 2: Layer A - Static Analysis');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const { checkAndRunAnalysis } = await import('../../analysis-checker.js');
     const result = await checkAndRunAnalysis(server.projectPath);
 
     if (result.success) {
-      logger.error(`  ✅ Analysis complete: ${result.fileCount} files, ${result.atomCount} atoms`);
+      logger.info(`  ✅ Analysis complete: ${result.fileCount} files, ${result.atomCount} atoms`);
     } else {
-      logger.error('  ⚠️  Analysis warning:', result.error);
+      logger.info('  ⚠️  Analysis warning:', result.error);
     }
 
     return true;
   }
 
   async rollback(server, error) {
-    logger.error('  ℹ️  Layer A analysis is idempotent, no rollback needed');
+    logger.info('  ℹ️  Layer A analysis is idempotent, no rollback needed');
   }
 }
 

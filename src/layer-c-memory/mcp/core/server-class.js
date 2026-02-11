@@ -97,28 +97,28 @@ export class OmnySysMCPServer {
       
       if (result.success) {
         this.initialized = true;
-        logger.error('\n✅ Server initialized successfully\n');
+        logger.info('\n✅ Server initialized successfully\n');
       } else {
-        logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
+        logger.info(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
         if (result.error) {
-          logger.error('Error:', result.error.message);
+          logger.info('Error:', result.error.message);
         }
         process.exit(1);
       }
 
     } catch (error) {
-      logger.error('\n❌ Fatal error during initialization:', error.message);
-      logger.error(error.stack);
+      logger.info('\n❌ Fatal error during initialization:', error.message);
+      logger.info(error.stack);
       process.exit(1);
     }
   }
 
   printBanner() {
-    logger.error('\n╔═══════════════════════════════════════════════════════════════╗');
-    logger.error('║     OmnySys MCP Server v3.0.0                                 ║');
-    logger.error('║     Fractal Architecture: A→B→C Pipeline                      ║');
-    logger.error('╚═══════════════════════════════════════════════════════════════╝\n');
-    logger.error(`📂 Project: ${this.projectPath}\n`);
+    logger.info('\n╔═══════════════════════════════════════════════════════════════╗');
+    logger.info('║     OmnySys MCP Server v3.0.0                                 ║');
+    logger.info('║     Fractal Architecture: A→B→C Pipeline                      ║');
+    logger.info('╚═══════════════════════════════════════════════════════════════╝\n');
+    logger.info(`📂 Project: ${this.projectPath}\n`);
   }
 
   /**
@@ -137,34 +137,34 @@ export class OmnySysMCPServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
 
-    logger.error('🔌 MCP Server connected via stdio\n');
+    logger.info('🔌 MCP Server connected via stdio\n');
   }
 
   /**
    * Shutdown the server gracefully
    */
   async shutdown() {
-    logger.error('\n🛑 Shutting down server...');
+    logger.info('\n🛑 Shutting down server...');
 
     try {
       if (this.server) {
         await this.server.close();
-        logger.error('  ✅ MCP server closed');
+        logger.info('  ✅ MCP server closed');
       }
 
       if (this.orchestrator) {
         // Orchestrator cleanup if needed
-        logger.error('  ✅ Orchestrator cleaned up');
+        logger.info('  ✅ Orchestrator cleaned up');
       }
 
       if (this.cache) {
         // Cache cleanup if needed
-        logger.error('  ✅ Cache cleaned up');
+        logger.info('  ✅ Cache cleaned up');
       }
 
-      logger.error('\n👋 Server shutdown complete\n');
+      logger.info('\n👋 Server shutdown complete\n');
     } catch (error) {
-      logger.error('Error during shutdown:', error.message);
+      logger.info('Error during shutdown:', error.message);
     }
   }
 }

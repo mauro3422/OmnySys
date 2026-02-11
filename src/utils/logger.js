@@ -27,28 +27,31 @@ export class Logger {
   }
 
   debug(message, ...args) {
-    if (this._shouldLog('debug') && !this.mcpMode) {
-      console.debug(this._format(message, 'debug'), ...args);
+    if (this._shouldLog('debug')) {
+      process.stderr.write(this._format(message, 'debug') + '\n');
     }
   }
 
   info(message, ...args) {
-    if (this._shouldLog('info') && !this.mcpMode) {
-      console.info(this._format(message, 'info'), ...args);
+    if (this._shouldLog('info')) {
+      // Usar stderr para consistencia con MCP (está redirigido a archivo)
+      process.stderr.write(this._format(message, 'info') + '\n');
     }
   }
 
   warn(message, ...args) {
-    if (this._shouldLog('warn') && !this.mcpMode) {
-      console.warn(this._format(message, 'warn'), ...args);
+    if (this._shouldLog('warn')) {
+      process.stderr.write(this._format(message, 'warn') + '\n');
     }
   }
 
   error(message, error, ...args) {
-    if (this._shouldLog('error') && !this.mcpMode) {
-      console.error(this._format(message, 'error'), error?.message || '', ...args);
+    if (this._shouldLog('error')) {
+      const formatted = this._format(message, 'error');
+      const errorMsg = error?.message ? ` ${error.message}` : '';
+      process.stderr.write(formatted + errorMsg + '\n');
       if (error?.stack && process.env.LOG_LEVEL === 'debug') {
-        console.error(error.stack);
+        process.stderr.write(error.stack + '\n');
       }
     }
   }
