@@ -3,12 +3,16 @@
  *
  * Responsabilidad:
  * - Detectar ciclos entre funciones (A → B → A)
- * - Diferenciar recursión legítima de circular dependencies problemáticas
+ * - Clasificar molecularmente usando metadatos reales de átomos
  *
  * @param {object} systemMap - SystemMap generado por graph-builder
- * @returns {object} - Reporte de dependencias circulares
+ * @param {object} atomsIndex - Índice de átomos del sistema
+ * @returns {object} - Reporte de dependencias circulares clasificadas
  */
-export function findCircularFunctionDeps(systemMap) {
+
+import { classifyAllFunctionCycles } from './function-cycle-classifier.js';
+
+export function findCircularFunctionDeps(systemMap, atomsIndex = {}) {
   const cycles = [];
   const visited = new Set();
   const recursionStack = new Set();
@@ -50,87 +54,41 @@ export function findCircularFunctionDeps(systemMap) {
     }
   }
 
-  // Clasificar ciclos: recursión legítima vs problemas reales
-  const recursiveFunctions = []; // Funciones recursivas (A → A)
-  const mutualRecursion = [];    // Recursión mutua (A → B → A)
-  const problematicCycles = [];  // Ciclos problemáticos
-
-  for (const cycle of cycles) {
-    const cycleLength = cycle.cycle.length - 1; // -1 porque el último repite el primero
-
-    // Recursión directa: función se llama a sí misma
-    if (cycleLength === 1) {
-      const funcName = cycle.cycle[0].split(':')[1] || cycle.cycle[0];
-      const isRecursivePattern = isLikelyRecursive(funcName);
-
-      recursiveFunctions.push({
-        ...cycle,
-        isLegitimate: isRecursivePattern,
-        reason: isRecursivePattern ? 'Recursive function (DFS, traversal, etc.)' : 'Self-call detected'
-      });
-    }
-    // Recursión mutua: 2-3 funciones en ciclo
-    else if (cycleLength >= 2 && cycleLength <= 3) {
-      const funcNames = cycle.cycle.map(id => id.split(':')[1] || id);
-      const areRecursiveNames = funcNames.some(name => isLikelyRecursive(name));
-
-      mutualRecursion.push({
-        ...cycle,
-        isLegitimate: areRecursiveNames,
-        reason: areRecursiveNames ? 'Mutual recursion (helper functions)' : 'Mutual dependency detected'
-      });
-    }
-    // Ciclos largos: probablemente problemáticos
-    else {
-      problematicCycles.push({
-        ...cycle,
-        isLegitimate: false,
-        reason: `Long cycle (${cycleLength} functions) - likely a design issue`
-      });
-    }
-  }
-
-  const legitimateCount = recursiveFunctions.filter(c => c.isLegitimate).length +
-                          mutualRecursion.filter(c => c.isLegitimate).length;
-  const problematicCount = problematicCycles.length +
-                           recursiveFunctions.filter(c => !c.isLegitimate).length +
-                           mutualRecursion.filter(c => !c.isLegitimate).length;
-
+  // Extraer solo los ciclos (sin metadata extra) para el clasificador
+  const rawCycles = cycles.map(c => c.cycle);
+  
+  // Clasificación MOLECULAR usando metadatos de átomos
+  const classification = classifyAllFunctionCycles(rawCycles, atomsIndex);
+  
+  // Separar ciclos por categoría
+  const validCycles = classification.classifications.filter(c => 
+    c.category === 'VALID_PATTERN' || c.autoIgnore
+  );
+  
+  const problematicCycles = classification.classifications.filter(c =>
+    c.category === 'CRITICAL_ISSUE' || c.category === 'REQUIRES_REVIEW'
+  );
+  
   return {
     total: cycles.length,
     cycles: cycles,
-    recursiveFunctions: recursiveFunctions,
-    mutualRecursion: mutualRecursion,
-    problematicCycles: problematicCycles,
-    legitimateCount: legitimateCount,
-    problematicCount: problematicCount,
-    hasMutualRecursion: cycles.some(c => c.length === 2),
-    recommendation: problematicCount > 0
-      ? `Found ${problematicCount} problematic circular dependency(ies) - review and refactor`
-      : legitimateCount > 0
-        ? `Found ${legitimateCount} legitimate recursive function(s) - no action needed`
+    classifications: classification.classifications,
+    validCount: classification.valid,
+    problematicCount: classification.problematic,
+    // Backwards compatibility
+    recursiveFunctions: validCycles.filter(c => 
+      c.ruleId === 'direct-recursion' || c.ruleId === 'pure-algorithm-mutual-recursion'
+    ),
+    mutualRecursion: validCycles.filter(c =>
+      c.ruleId === 'mutual-recursion-algorithms' || c.ruleId === 'event-handler-cycle'
+    ),
+    // Solo ciclos problemáticos afectan métricas
+    hasMutualRecursion: problematicCycles.length > 0,
+    recommendation: classification.problematic > 0
+      ? `Found ${classification.problematic} problematic circular function dependency(ies)`
+      : classification.valid > 0
+        ? `Found ${classification.valid} valid function cycles (recursion, events, etc.)`
         : 'No circular function dependencies detected'
   };
 }
 
-/**
- * Detecta si un nombre de función sugiere recursión legítima
- *
- * @param {string} funcName - Nombre de la función
- * @returns {boolean}
- */
-function isLikelyRecursive(funcName) {
-  const recursivePatterns = [
-    /^dfs$/i,           // Depth-first search
-    /^bfs$/i,           // Breadth-first search
-    /traverse/i,        // traverseTree, traverse, etc.
-    /walk/i,            // walk, walkAST, etc.
-    /visit/i,           // visit, visitNode, etc.
-    /search/i,          // search, searchTree, etc.
-    /find/i,            // findCycle, findPath, etc.
-    /recursive/i,       // recursiveHelper, etc.
-    /helper/i           // helper (common in mutual recursion)
-  ];
-
-  return recursivePatterns.some(pattern => pattern.test(funcName));
-}

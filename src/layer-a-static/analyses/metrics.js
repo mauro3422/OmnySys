@@ -23,8 +23,10 @@ export function calculateQualityMetrics(analyses) {
     score -= Math.min(25, analyses.hotspots.criticalCount * 10);
   // Circular function deps: penalizar solo si es excesivo (>10)
   // La mayoría son funciones recursivas legítimas (DFS, traversal)
-  if (analyses.circularFunctionDeps.total > 10)
-    score -= Math.min(15, (analyses.circularFunctionDeps.total - 10) * 5);
+  // Solo contar ciclos de funciones problemáticos (no recursión válida)
+  const problematicFunctionCycles = analyses.circularFunctionDeps?.problematicCount || 0;
+  if (problematicFunctionCycles > 0)
+    score -= Math.min(15, problematicFunctionCycles * 5);
   if (analyses.deepDependencyChains.totalDeepChains > 0)
     score -= Math.min(20, analyses.deepDependencyChains.totalDeepChains * 2);
   if (analyses.couplingAnalysis.concern === 'HIGH') score -= 15;
@@ -60,7 +62,7 @@ export function calculateQualityMetrics(analyses) {
       analyses.unusedExports.totalUnused +
       analyses.orphanFiles.total +
       analyses.hotspots.total +
-      analyses.circularFunctionDeps.total +
+      (analyses.circularFunctionDeps?.problematicCount || 0) +
       analyses.unresolvedImports.total +
       (analyses.circularImports.problematicCount || 0) +
       analyses.unusedImports.total +
@@ -72,7 +74,7 @@ export function calculateQualityMetrics(analyses) {
       unusedExports: analyses.unusedExports.totalUnused,
       orphanFiles: analyses.orphanFiles.deadCodeCount,
       hotspots: analyses.hotspots.criticalCount,
-      circularDeps: analyses.circularFunctionDeps.total,
+      circularDeps: analyses.circularFunctionDeps?.problematicCount || 0,
       deepChains: analyses.deepDependencyChains.totalDeepChains,
       coupling: analyses.couplingAnalysis.total,
       unresolvedImports: analyses.unresolvedImports.total,

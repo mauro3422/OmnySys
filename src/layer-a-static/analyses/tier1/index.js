@@ -8,5 +8,6 @@
 export { findUnusedExports } from './unused-exports.js';
 export { findOrphanFiles } from './orphan-files.js';
 export { findHotspots } from './hotspots.js';
-export { findCircularFunctionDeps } from './circular-function-deps.js';
+export { findCircularFunctionDeps } from "./circular-function-deps.js";
+export { classifyFunctionCycle, classifyAllFunctionCycles } from "./function-cycle-classifier.js";
 export { findDeepDependencyChains } from './deep-chains.js';
