@@ -22,9 +22,7 @@ export class LLMSetupStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('STEP 1: AI Server Setup');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('AI Server Setup');
 
     try {
       const { startLLM } = await import('../../llm-starter.js');

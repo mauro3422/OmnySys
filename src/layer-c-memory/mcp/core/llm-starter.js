@@ -47,7 +47,7 @@ async function waitForLLM(client, maxRetries = 60, retryDelay = 2000) {
  * @returns {Promise<boolean>} - true si está listo
  */
 export async function startLLM(OmnySysRoot) {
-  logger.error('   🔍 Checking LLM status...');
+  logger.info('   🔍 Checking LLM status...');
   
   const aiConfig = await loadAIConfig();
   const client = new LLMClient(aiConfig);
@@ -57,13 +57,13 @@ export async function startLLM(OmnySysRoot) {
     const health = await client.healthCheck();
     if (health.gpu || health.cpu) {
       const mode = health.gpu ? 'GPU' : 'CPU';
-      logger.error(`   ✓ LLM already running on port 8000 (${mode} mode)`);
+      logger.info(`   ✓ LLM already running on port 8000 (${mode} mode)`);
       return true;
     }
   } catch {}
   
   if (!aiConfig.llm.enabled) {
-    logger.error('   ℹ️  LLM disabled in config');
+    logger.info('   ℹ️  LLM disabled in config');
     return false;
   }
   
@@ -80,7 +80,7 @@ export async function startLLM(OmnySysRoot) {
     
     try {
       await fs.access(gpuScript);
-      logger.error('   🚀 Starting GPU server...');
+      logger.info('   🚀 Starting GPU server...');
       
       const gpuProcess = spawn('cmd.exe', ['/c', 'start', gpuScript], {
         detached: true,
@@ -88,9 +88,9 @@ export async function startLLM(OmnySysRoot) {
       });
       gpuProcess.unref();
       
-      logger.error('   ✓ GPU server starting (port 8000)...');
+      logger.info('   ✓ GPU server starting (port 8000)...');
     } catch {
-      logger.error('   ⚠️  GPU script not found');
+      logger.info('   ⚠️  GPU script not found');
     }
   }
   
@@ -100,7 +100,7 @@ export async function startLLM(OmnySysRoot) {
     
     try {
       await fs.access(cpuScript);
-      logger.error('   🚀 Starting CPU server...');
+      logger.info('   🚀 Starting CPU server...');
       
       const cpuProcess = spawn('cmd.exe', ['/c', 'start', cpuScript], {
         detached: true,
@@ -108,24 +108,24 @@ export async function startLLM(OmnySysRoot) {
       });
       cpuProcess.unref();
       
-      logger.error('   ✓ CPU server starting (port 8002)...');
+      logger.info('   ✓ CPU server starting (port 8002)...');
     } catch {
-      logger.error('   ⚠️  CPU script not found');
+      logger.info('   ⚠️  CPU script not found');
     }
   }
   
   // 5. Wait for LLM to be ready
-  logger.error('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
+  logger.info('   ⏳ Waiting for LLM to be ready (this may take 10-30s)...');
   
   const result = await waitForLLM(client, 60, 2000); // 2 min max
   
   if (result.ready) {
     const activeMode = result.health.gpu ? 'GPU' : 'CPU';
-    logger.error(`\n   ✅ LLM is ready! (${activeMode} mode)`);
+    logger.info(`\n   ✅ LLM is ready! (${activeMode} mode)`);
     return true;
   } else {
-    logger.error('\n   ❌ LLM failed to start within 2 minutes');
-    logger.error('   💡 Check the terminal windows for errors');
+    logger.info('\n   ❌ LLM failed to start within 2 minutes');
+    logger.info('   💡 Check the terminal windows for errors');
     return false;
   }
 }

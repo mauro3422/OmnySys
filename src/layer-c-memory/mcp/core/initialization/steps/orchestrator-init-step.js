@@ -23,9 +23,7 @@ export class OrchestratorInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('STEP 3: Initialize Orchestrator');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('Initialize Orchestrator');
 
     server.orchestrator = new Orchestrator(server.projectPath, {
       enableFileWatcher: true,

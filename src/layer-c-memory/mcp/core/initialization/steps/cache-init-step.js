@@ -23,9 +23,7 @@ export class CacheInitStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('STEP 4: Initialize Cache');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('Initialize Cache');
 
     const startTime = performance.now();
 

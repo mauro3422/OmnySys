@@ -97,9 +97,11 @@ export class OmnySysMCPServer {
       
       if (result.success) {
         this.initialized = true;
-        logger.info('\n✅ Server initialized successfully\n');
+        logger.info('\n' + '='.repeat(60));
+        logger.info('✅ INITIALIZATION COMPLETE');
+        logger.info('='.repeat(60) + '\n');
       } else {
-        logger.info(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
+        logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
         if (result.error) {
           logger.info('Error:', result.error.message);
         }
@@ -114,10 +116,10 @@ export class OmnySysMCPServer {
   }
 
   printBanner() {
-    logger.info('\n╔═══════════════════════════════════════════════════════════════╗');
-    logger.info('║     OmnySys MCP Server v3.0.0                                 ║');
-    logger.info('║     Fractal Architecture: A→B→C Pipeline                      ║');
-    logger.info('╚═══════════════════════════════════════════════════════════════╝\n');
+    logger.info('\n' + '='.repeat(60));
+    logger.info('  OmnySys MCP Server v3.0.0');
+    logger.info('  Starting initialization...');
+    logger.info('='.repeat(60));
     logger.info(`📂 Project: ${this.projectPath}\n`);
   }
 

@@ -31,41 +31,44 @@ export class InitializationPipeline {
    * @returns {Promise<Object>} - Result { success, error, failedAt }
    */
   async execute(server) {
+    const totalSteps = this.steps.filter(s => s.shouldExecute(server)).length;
+    let currentStep = 0;
+
     for (const step of this.steps) {
       // Check if should execute
       if (!step.shouldExecute(server)) {
-        logger.info(`⏭️  Skipping step: ${step.name}`);
         continue;
       }
 
-      logger.info(`\n⏳ Executing: ${step.name}`);
+      currentStep++;
+      logger.info(`\n[${currentStep}/${totalSteps}] ${step.name}...`);
 
       try {
         const shouldContinue = await step.execute(server);
         this.completedSteps.push(step);
 
         if (!shouldContinue) {
-          logger.info(`   ⚠️  Step ${step.name} requested halt`);
-          return { 
-            success: false, 
+          logger.warn(`   ⚠️  Step ${step.name} requested halt`);
+          return {
+            success: false,
             haltedAt: step.name,
-            completedSteps: this.completedSteps.length 
+            completedSteps: this.completedSteps.length
           };
         }
 
-        logger.info(`   ✅ ${step.name} completed`);
+        logger.info(`   ✅ ${step.name} complete`);
 
       } catch (error) {
-        logger.info(`   ❌ ${step.name} failed: ${error.message}`);
-        
+        logger.error(`   ❌ ${step.name} failed: ${error.message}`);
+
         // Rollback
         await this.rollback(server, error);
-        
-        return { 
-          success: false, 
-          error, 
+
+        return {
+          success: false,
+          error,
           failedAt: step.name,
-          completedSteps: this.completedSteps.length 
+          completedSteps: this.completedSteps.length
         };
       }
     }
@@ -82,14 +85,14 @@ export class InitializationPipeline {
    * @param {Error} error - Error that caused rollback
    */
   async rollback(server, error) {
-    logger.info('\n🔄 Rolling back initialization...');
+    logger.warn('\n🔄 Rolling back initialization...');
 
     for (const step of this.completedSteps.reverse()) {
       try {
         await step.rollback(server, error);
         logger.info(`   ✅ Rolled back: ${step.name}`);
       } catch (rollbackError) {
-        logger.info(`   ⚠️  Rollback failed for ${step.name}: ${rollbackError.message}`);
+        logger.warn(`   ⚠️  Rollback failed for ${step.name}: ${rollbackError.message}`);
       }
     }
   }

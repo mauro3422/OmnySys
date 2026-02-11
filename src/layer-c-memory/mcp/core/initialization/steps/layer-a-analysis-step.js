@@ -22,9 +22,7 @@ export class LayerAAnalysisStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('STEP 2: Layer A - Static Analysis');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('Layer A - Static Analysis');
 
     const { checkAndRunAnalysis } = await import('../../analysis-checker.js');
     const result = await checkAndRunAnalysis(server.projectPath);

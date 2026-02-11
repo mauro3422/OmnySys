@@ -30,9 +30,7 @@ export class McpSetupStep extends InitializationStep {
   }
 
   execute(server) {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('STEP 5: MCP Protocol Setup');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('MCP Protocol Setup');
 
     server.server = new Server(
       { name: 'omnysys', version: '3.0.0' },
