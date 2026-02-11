@@ -10,7 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { getFileAnalysis } from '#layer-a/query/index.js';
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:call:graph');
 
