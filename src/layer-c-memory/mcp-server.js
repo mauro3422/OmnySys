@@ -63,7 +63,11 @@ const logger = createLogger('OmnySys:mcp:server');
 
 async function main() {
   const projectPath = process.argv[2] || process.cwd();
-  const absolutePath = path.resolve(projectPath);
+  // FIX: Use normalize instead of resolve to avoid path duplication
+  // path.resolve() can duplicate paths on Windows if cwd is inside the target
+  const absolutePath = path.isAbsolute(projectPath)
+    ? path.normalize(projectPath)
+    : path.resolve(projectPath);
 
   // --- Spawn MCP logs terminal ---
   const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
