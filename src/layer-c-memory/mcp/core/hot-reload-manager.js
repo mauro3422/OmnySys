@@ -243,9 +243,11 @@ export class HotReloadManager {
       
       // Estado del orquestador
       orchestrator: this.server.orchestrator ? {
-        queue: [...this.server.orchestrator.queue.items],
+        queue: this.server.orchestrator.queue?.items 
+          ? [...this.server.orchestrator.queue.items] 
+          : [],
         isIndexing: this.server.orchestrator.isIndexing,
-        indexedFiles: new Set(this.server.orchestrator.indexedFiles),
+        indexedFiles: new Set(this.server.orchestrator.indexedFiles || []),
         stats: { ...this.server.orchestrator.stats }
       } : null,
       
@@ -281,7 +283,11 @@ export class HotReloadManager {
     
     // Restaurar orquestador
     if (this.preservedState.orchestrator && this.server.orchestrator) {
-      this.server.orchestrator.queue.items = this.preservedState.orchestrator.queue;
+      // Asegurar que queue existe antes de restaurar items
+      if (!this.server.orchestrator.queue) {
+        this.server.orchestrator.queue = { items: [] };
+      }
+      this.server.orchestrator.queue.items = this.preservedState.orchestrator.queue || [];
       this.server.orchestrator.isIndexing = this.preservedState.orchestrator.isIndexing;
       this.server.orchestrator.indexedFiles = this.preservedState.orchestrator.indexedFiles;
       this.server.orchestrator.stats = this.preservedState.orchestrator.stats;
