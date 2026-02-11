@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../utils/logger.js';
 
@@ -35,7 +35,7 @@ export async function _detectSemanticIssues() {
   logger.info('\nðŸ” Detecting semantic issues...');
 
   try {
-    const { getFileAnalysis } = await import('../../layer-a-static/query/index.js');
+    const { getFileAnalysis } = await import('../../layer-a-static/query/apis/file-api.js');
     const { detectSemanticIssues } = await import('../../layer-b-semantic/issue-detectors/index.js');
 
     // Build system map from all analyzed files

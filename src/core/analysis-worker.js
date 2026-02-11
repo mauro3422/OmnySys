@@ -6,7 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { indexProject } from '../layer-a-static/indexer.js';
-import { getFileAnalysis } from '../layer-a-static/query/index.js';
+import { getFileAnalysis } from '../layer-a-static/query/apis/file-api.js';
 import { createLogger } from '../shared/logger-system.js';
 
 const logger = createLogger('OmnySys:core:analysis-worker');

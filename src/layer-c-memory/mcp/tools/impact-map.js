@@ -3,7 +3,8 @@
  * Returns a complete impact map for a file
  */
 
-import { getFileAnalysis, getFileDependents, getProjectMetadata } from '#layer-a/query/index.js';
+import { getFileAnalysis, getFileDependents } from '#layer-a/query/apis/file-api.js';
+import { getProjectMetadata } from '#layer-a/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:impact:map');

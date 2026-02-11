@@ -192,7 +192,7 @@ export class AtomicEditor extends EventEmitter {
     
     try {
       // Importar sistema de queries
-      const { getFileDependents, getFileAnalysis } = await import('#layer-a/query/index.js');
+      const { getFileDependents, getFileAnalysis } = await import('#layer-a/query/apis/file-api.js');
       
       // Obtener dependientes del archivo
       const dependents = await getFileDependents(this.projectPath, filePath);

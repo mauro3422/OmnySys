@@ -6,7 +6,7 @@
  * @module unified-server/tools/risk-tools
  */
 
-import { getRiskAssessment } from '../../../layer-a-static/query/index.js';
+import { getRiskAssessment } from '../../../layer-a-static/query/apis/risk-api.js';
 
 /**
  * Obtiene evaluación de riesgos

@@ -140,7 +140,7 @@
 import {
   getAtomDetails,
   getFileAnalysisWithAtoms
-} from '../../../layer-a-static/query/index.js';
+} from '../../../layer-a-static/query/apis/file-api.js';
 
 /**
  * Obtiene detalles de una función específica (átomo)

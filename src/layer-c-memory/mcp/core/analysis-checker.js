@@ -129,8 +129,8 @@ async function detectCacheChanges(projectPath, metadata) {
  */
 async function countPendingLLMAnalysis(projectPath) {
   try {
-    const { getProjectMetadata, getFileAnalysis } =
-      await import('#layer-a/query/index.js');
+    const { getProjectMetadata } = await import('#layer-a/query/apis/project-api.js');
+    const { getFileAnalysis } = await import('#layer-a/query/apis/file-api.js');
 
     const metadata = await getProjectMetadata(projectPath);
 
@@ -202,7 +202,7 @@ async function runFullIndexing(projectPath) {
 export async function checkAndRunAnalysis(projectPath) {
   try {
     const { getProjectMetadata } =
-      await import('#layer-a/query/index.js');
+      await import('#layer-a/query/apis/project-api.js');
 
     const hasAnalysis = await hasExistingAnalysis(projectPath);
 

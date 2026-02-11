@@ -13,13 +13,13 @@ import {
   getModificationHistory
 } from '../tunnel-vision-detector.js';
 
-// Mock the query module
-vi.mock('../../layer-a-static/query/index.js', () => ({
+// Mock the query APIs (using new specialized APIs instead of deprecated facade)
+vi.mock('../../layer-a-static/query/apis/file-api.js', () => ({
   getAtomDetails: vi.fn(),
   getFileAnalysisWithAtoms: vi.fn()
 }));
 
-import { getAtomDetails, getFileAnalysisWithAtoms } from '../../layer-a-static/query/index.js';
+import { getAtomDetails, getFileAnalysisWithAtoms } from '../../layer-a-static/query/apis/file-api.js';
 
 describe('tunnel-vision-detector', () => {
   beforeEach(() => {

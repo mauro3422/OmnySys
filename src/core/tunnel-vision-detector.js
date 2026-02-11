@@ -16,7 +16,7 @@
 import {
   getAtomDetails,
   getFileAnalysisWithAtoms
-} from '../layer-a-static/query/index.js';
+} from '../layer-a-static/query/apis/file-api.js';
 
 /**
  * Historial de átomos modificados recientemente

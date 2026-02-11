@@ -35,8 +35,9 @@ export class CacheInitStep extends InitializationStep {
     await server.cache.initialize();
 
     // Preload critical data
-    const { getProjectMetadata, getAllConnections, getRiskAssessment } = 
-      await import('#layer-a/query/index.js');
+    const { getProjectMetadata } = await import('#layer-a/query/apis/project-api.js');
+    const { getAllConnections } = await import('#layer-a/query/apis/connections-api.js');
+    const { getRiskAssessment } = await import('#layer-a/query/apis/risk-api.js');
 
     server.metadata = await getProjectMetadata(server.projectPath);
     server.cache.set('metadata', server.metadata);

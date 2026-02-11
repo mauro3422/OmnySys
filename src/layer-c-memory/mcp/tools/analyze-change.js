@@ -3,7 +3,7 @@
  * Analyzes the impact of changing a specific symbol
  */
 
-import { getFileAnalysis } from '#layer-a/query/index.js';
+import { getFileAnalysis } from '#layer-a/query/apis/file-api.js';
 import { get_impact_map } from './impact-map.js';
 import { createLogger } from '../../../utils/logger.js';
 

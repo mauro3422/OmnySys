@@ -3,7 +3,7 @@
  * Explains why two files are connected
  */
 
-import { getFileAnalysis, getFileDependents } from '#layer-a/query/index.js';
+import { getFileAnalysis, getFileDependents } from '#layer-a/query/apis/file-api.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:connection');

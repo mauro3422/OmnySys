@@ -8,7 +8,9 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** (Latest - Stable) |
+| **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** (Latest - Stable) |
+| **[0.7.2]** | `changelog/v0.7.2.md` | **BUG #47 Fix + 89 Extractores + Verification** |
+| **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** |
 | **[0.7.0]** | `changelog/v0.7.0.md` | **Architecture Refactoring - SOLID/SSOT/Fractal** (Stable) |
 | **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Stable) |
 | **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
@@ -31,7 +33,22 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.7.2 (2026-02-11) - BUG #47 Fix + 89 Extractores + Verification System**
+### **🚀 Latest Release: v0.8.0 (2026-02-11) - Query Refactor + Hot-Reload System**
+
+**Query Architecture Refactoring + Hot-Reload + Self-Improvement System**: Refactorización completa del sistema de queries (desacoplamiento del facade monolítico), implementación de hot-reload para automejora en tiempo real, y sistema de file watcher nativo.
+
+**Key Changes**:
+- ✅ **6 Query APIs**: Desacoplamiento del facade en APIs especializadas (project, file, dependency, connections, risk, export)
+- ✅ **Hot-Reload System**: Detección automática de cambios, recarga sin perder estado
+- ✅ **41 Archivos Migrados**: Zero breaking changes, facade legacy eliminado
+- ✅ **File Watcher Nativo**: fs.watch implementado para detección automática
+- ✅ **Automejora Real**: Sistema puede modificarse a sí mismo sin reiniciar
+
+**Ver archivo:** `changelog/v0.8.0.md`
+
+---
+
+### **v0.7.2 (2026-02-11) - BUG #47 Fix + 89 Extractores + Verification System**
 
 **BUG #47 Cache Desynchronization + 89 Extractores + Verification & Certification System**: Implementación completa de 5 fixes críticos, activación de 89 extractores, sistema de verificación con 88% de mejora, 1,375 átomos extraídos, y certificado de verificación generado.
 

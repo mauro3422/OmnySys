@@ -1,6 +1,7 @@
 import path from 'path';
+import { watch } from 'fs';
 
-import { getProjectMetadata } from '../../layer-a-static/query/index.js';
+import { getProjectMetadata } from '../../layer-a-static/query/apis/project-api.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
@@ -28,7 +29,62 @@ export async function initialize() {
     });
   }
 
+  // Iniciar watching del filesystem
+  this.startWatching();
+
   this.emit('ready');
+}
+
+/**
+ * Inicia el watching del filesystem usando fs.watch
+ * Detecta cambios automáticamente sin depender de notificaciones externas
+ */
+export function startWatching() {
+  if (this.fsWatcher) {
+    logger.warn('FileWatcher already watching');
+    return;
+  }
+
+  try {
+    // Usar fs.watch para monitorear recursivamente
+    this.fsWatcher = watch(
+      this.rootPath,
+      { recursive: true },
+      (eventType, filename) => {
+        // Ignorar si no hay filename o está vacío
+        if (!filename) return;
+        
+        // Convertir a path relativo
+        const fullPath = path.join(this.rootPath, filename);
+        
+        // Determinar tipo de cambio
+        // 'rename' = archivo creado o eliminado
+        // 'change' = archivo modificado
+        const changeType = eventType === 'rename' 
+          ? 'created'  // fs.watch reporta 'rename' para nuevos archivos
+          : 'modified';
+        
+        // Notificar el cambio
+        this.notifyChange(fullPath, changeType);
+      }
+    );
+
+    if (this.options.verbose) {
+      logger.info('🔍 Watching filesystem for changes...');
+    }
+
+    // Manejar errores del watcher
+    this.fsWatcher.on('error', (error) => {
+      logger.error('FileWatcher error:', error);
+      this.emit('error', error);
+    });
+
+    this.emit('watching:start');
+
+  } catch (error) {
+    logger.error('Failed to start file watching:', error);
+    this.emit('error', error);
+  }
 }
 
 /**
@@ -184,6 +240,16 @@ export async function processChange(change) {
  */
 export async function stop() {
   this.isRunning = false;
+
+  // Detener fs.watch
+  if (this.fsWatcher) {
+    this.fsWatcher.close();
+    this.fsWatcher = null;
+    
+    if (this.options.verbose) {
+      logger.info('Filesystem watcher stopped');
+    }
+  }
 
   if (this.processingInterval) {
     clearInterval(this.processingInterval);

@@ -42,6 +42,7 @@ import {
   ReadyStep
 } from './initialization/steps/index.js';
 import { getErrorGuardian } from '../../../core/error-guardian.js';
+import { HotReloadManager } from './hot-reload-manager.js';
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
@@ -75,6 +76,9 @@ export class OmnySysMCPServer {
     this.cache = null;
     this.server = null;
 
+    // 🔥 Hot-reload manager (self-improvement capability)
+    this.hotReloadManager = null;
+
     // State
     this.initialized = false;
     this.startTime = Date.now();
@@ -104,6 +108,20 @@ export class OmnySysMCPServer {
         logger.info('\n' + '='.repeat(60));
         logger.info('✅ INITIALIZATION COMPLETE');
         logger.info('='.repeat(60) + '\n');
+        
+        // 🔥 Iniciar hot-reload (activado por defecto, desactivar con OMNYSYS_HOT_RELOAD=false)
+        const hotReloadEnabled = process.env.OMNYSYS_HOT_RELOAD !== 'false';
+        if (hotReloadEnabled) {
+          try {
+            this.hotReloadManager = new HotReloadManager(this);
+            await this.hotReloadManager.start();
+            logger.info('🔥 Hot-reload enabled - System can self-improve');
+            logger.info('   Watching for code changes in src/\n');
+          } catch (error) {
+            logger.warn('⚠️  Hot-reload failed to start:', error.message);
+            logger.info('   Continuing without hot-reload...\n');
+          }
+        }
       } else {
         logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
         if (result.error) {
@@ -166,6 +184,11 @@ export class OmnySysMCPServer {
       if (this.cache) {
         // Cache cleanup if needed
         logger.info('  ✅ Cache cleaned up');
+      }
+
+      if (this.hotReloadManager) {
+        this.hotReloadManager.stop();
+        logger.info('  ✅ Hot-reload stopped');
       }
 
       logger.info('\n👋 Server shutdown complete\n');

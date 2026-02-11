@@ -6,11 +6,9 @@
  * @module unified-server/initialization/cache-manager
  */
 
-import {
-  getProjectMetadata,
-  getAllConnections,
-  getRiskAssessment
-} from '#layer-a/query/index.js';
+import { getProjectMetadata } from '#layer-a/query/apis/project-api.js';
+import { getAllConnections } from '#layer-a/query/apis/connections-api.js';
+import { getRiskAssessment } from '#layer-a/query/apis/risk-api.js';
 import { UnifiedCacheManager } from '../../unified-cache-manager.js';
 
 /**

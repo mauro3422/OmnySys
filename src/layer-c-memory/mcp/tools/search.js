@@ -3,7 +3,7 @@
  * Search for files in the project by pattern
  */
 
-import { getProjectMetadata } from '#layer-a/query/index.js';
+import { getProjectMetadata } from '#layer-a/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:search');
