@@ -1,4 +1,4 @@
-/
+/**
  * Function Cycle Classifier - Usando METADATOS REALES del sistema
  * 
  * NO supone campos inexistentes. Usa SOLO lo que existe en átomos.
