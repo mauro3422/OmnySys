@@ -145,8 +145,20 @@ export async function indexProject(rootPath, options = {}) {
     await saveSystemMap(dataDir, outputPath, systemMap, verbose);
 
     // Paso 8: Generar análisis automático
-    if (verbose) logger.info('ðŸ” Analyzing code quality...');
-    const analysisReport = generateAnalysisReport(systemMap);
+    if (verbose) logger.info('🔍 Analyzing code quality...');
+    
+    // Construir índice de átomos para clasificación molecular
+    const atomsIndex = {};
+    for (const parsedFile of normalizedParsedFiles) {
+      if (parsedFile.atoms && parsedFile.atoms.length > 0) {
+        atomsIndex[parsedFile.filePath] = {
+          atoms: parsedFile.atoms,
+          atomCount: parsedFile.atomCount
+        };
+      }
+    }
+    
+    const analysisReport = generateAnalysisReport(systemMap, atomsIndex);
     await saveAnalysisReport(dataDir, outputPath, analysisReport, verbose);
 
     // Paso 9: Generar enhanced system map con análisis semántico estático

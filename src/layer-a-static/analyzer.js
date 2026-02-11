@@ -19,16 +19,17 @@ import { generateRecommendations } from './analyses/recommendations.js';
  * Genera reporte completo de análisis
  *
  * @param {object} systemMap - SystemMap generado por graph-builder
+ * @param {object} atomsIndex - Índice de átomos para análisis molecular (opcional)
  * @returns {object} - Reporte con todos los análisis
  */
-export function generateAnalysisReport(systemMap) {
+export function generateAnalysisReport(systemMap, atomsIndex = {}) {
   // Ejecutar todos los análisis
   const analyses = {
     // Tier 1: Análisis básicos
     unusedExports: tier1.findUnusedExports(systemMap),
     orphanFiles: tier1.findOrphanFiles(systemMap),
     hotspots: tier1.findHotspots(systemMap),
-    circularFunctionDeps: tier1.findCircularFunctionDeps(systemMap),
+    circularFunctionDeps: tier1.findCircularFunctionDeps(systemMap, atomsIndex),
     deepDependencyChains: tier1.findDeepDependencyChains(systemMap),
 
     // Tier 2: Análisis avanzados
