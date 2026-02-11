@@ -53,4 +53,5 @@ Object.assign(
 );
 
 export { UnifiedCacheManager, ChangeType, detectChangeType };
+export { hashContent } from './utils.js';
 export default UnifiedCacheManager;

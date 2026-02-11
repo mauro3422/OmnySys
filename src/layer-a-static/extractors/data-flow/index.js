@@ -157,4 +157,20 @@ export function extractDataFlowLegacy(functionCode, functionAst) {
 // Re-exportar clases para testing avanzado
 export { InputExtractor, TransformationExtractor, OutputExtractor, DataFlowAnalyzer };
 
-export default { extractDataFlow, extractDataFlowLegacy };
+// 🆕 NUEVO: Wrappers simplificados para comprehensive-extractor (usar nombres diferentes)
+export function getInputs(functionAst, functionCode, functionName) {
+  const extractor = new InputExtractor(functionCode, functionName);
+  return extractor.extract(functionAst);
+}
+
+export function getTransformations(functionAst, functionCode, inputs) {
+  const extractor = new TransformationExtractor(functionCode, inputs);
+  return extractor.extract(functionAst);
+}
+
+export function getOutputs(functionAst, functionCode, transformations) {
+  const extractor = new OutputExtractor(functionCode, transformations);
+  return extractor.extract(functionAst);
+}
+
+export default { extractDataFlow, extractDataFlowLegacy, getInputs, getTransformations, getOutputs };

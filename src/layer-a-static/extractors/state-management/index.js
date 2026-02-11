@@ -50,6 +50,60 @@ export function extractReduxContextFromFile(filePath, code) {
   };
 }
 
+// 🆕 NUEVO: Wrappers simplificados para comprehensive-extractor
+export function extractReduxSlices(code) {
+  const result = extractRedux(code);
+  return result.slices || [];
+}
+
+export function extractReduxThunks(code) {
+  const result = extractRedux(code);
+  return result.thunks || [];
+}
+
+export function extractReduxSelectors(code) {
+  const result = extractRedux(code);
+  return result.selectors || [];
+}
+
+export function extractContextProviders(code) {
+  const result = extractContext(code);
+  return result.providers || [];
+}
+
+export function extractContextConsumers(code) {
+  const result = extractContext(code);
+  return result.consumers || [];
+}
+
+export function extractStoreStructure(code) {
+  const result = extractRedux(code);
+  return {
+    stores: result.stores || [],
+    slices: result.slices || [],
+    hasStore: result.hasStore || false
+  };
+}
+
+export function extractSelectorConnections(code, allFiles = {}) {
+  // Wrapper simplificado - en implementación real usaría el detector completo
+  const result = extractRedux(code);
+  return result.selectors?.map(s => ({
+    selector: s.name,
+    statePath: s.statePath,
+    line: s.line
+  })) || [];
+}
+
+export function extractContextConnections(code, allFiles = {}) {
+  // Wrapper simplificado
+  const result = extractContext(code);
+  return {
+    provides: result.providers?.map(p => p.name) || [],
+    consumes: result.consumers?.map(c => c.contextName) || []
+  };
+}
+
 /**
  * Detecta todas las conexiones Redux/Context
  * @param {Object} fileSourceCode - Mapa de filePath -> código

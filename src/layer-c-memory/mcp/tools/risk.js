@@ -3,7 +3,7 @@
  * Returns a risk assessment of the entire project
  */
 
-import { getProjectMetadata } from '#layer-a/query/index.js';
+import { getProjectMetadata, getRiskAssessment } from '#layer-a/query/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
@@ -19,6 +19,9 @@ export async function get_risk_assessment(args, context) {
   logger.error(`[Tool] get_risk_assessment("${minSeverity}")`);
 
   try {
+    // 🆕 INTEGRADO: Obtener risk assessment completo (incluye Tunnel Vision)
+    const assessment = await getRiskAssessment(projectPath);
+    
     // Obtener metadata del proyecto
     const metadata = await getProjectMetadata(projectPath);
     
@@ -26,59 +29,83 @@ export async function get_risk_assessment(args, context) {
     const fileIndex = metadata?.fileIndex || {};
     const totalFiles = Object.keys(fileIndex).length;
     
-    // Analizar archivos por severidad
-    let criticalCount = 0;
-    let highCount = 0;
-    let mediumCount = 0;
-    let lowCount = 0;
+    // 🆕 Usar contadores del assessment integrado (incluye Tunnel Vision)
+    let criticalCount = assessment?.report?.summary?.criticalCount || 0;
+    let highCount = assessment?.report?.summary?.highCount || 0;
+    let mediumCount = assessment?.report?.summary?.mediumCount || 0;
+    let lowCount = assessment?.report?.summary?.lowCount || 0;
+    
+    // 🆕 Incluir archivos críticos de Tunnel Vision
     const hotspots = [];
     
-    // Revisar archivos con alto riesgo basado en métricas
+    // Agregar archivos críticos del assessment (incluye Tunnel Vision)
+    if (assessment?.report?.criticalRiskFiles) {
+      for (const file of assessment.report.criticalRiskFiles) {
+        hotspots.push({
+          file: file.file,
+          severity: file.severity,
+          reason: file.reason,
+          source: file.source || 'risk-analysis',
+          affectedCount: file.affectedCount,
+          timestamp: file.timestamp
+        });
+      }
+    }
+    
+    // Agregar archivos de alto riesgo
+    if (assessment?.report?.highRiskFiles) {
+      for (const file of assessment.report.highRiskFiles) {
+        hotspots.push({
+          file: file.file,
+          severity: file.severity,
+          reason: file.explanation || 'High risk file',
+          source: 'risk-analysis'
+        });
+      }
+    }
+    
+    // Revisar archivos con alto riesgo basado en métricas adicionales
     for (const [filePath, fileInfo] of Object.entries(fileIndex)) {
       const riskFactors = [];
       
       // Factor 1: Muchos exports + Muchos dependientes = Alto acoplamiento
       if (fileInfo.exports?.length > 5 && fileInfo.usedBy?.length > 10) {
-        highCount++;
         riskFactors.push('high-coupling');
       }
       
       // Factor 2: Archivos huérfanos (sin dependientes)
       if (fileInfo.exports?.length > 0 && (!fileInfo.usedBy || fileInfo.usedBy.length === 0)) {
-        mediumCount++;
         riskFactors.push('orphan-module');
       }
       
       // Factor 3: Archivos con state management
       if (fileInfo.semanticAnalysis?.sharedState?.writes?.length > 0) {
-        highCount++;
         riskFactors.push('state-management');
       }
       
-      // Agregar a hotspots si tiene factores de riesgo
+      // Agregar a hotspots si tiene factores de riesgo y no está ya incluido
       if (riskFactors.length > 0) {
-        hotspots.push({
-          file: filePath,
-          factors: riskFactors,
-          exports: fileInfo.exports?.length || 0,
-          dependents: fileInfo.usedBy?.length || 0
-        });
+        const alreadyIncluded = hotspots.some(h => h.file === filePath);
+        if (!alreadyIncluded) {
+          hotspots.push({
+            file: filePath,
+            factors: riskFactors,
+            severity: riskFactors.includes('high-coupling') || riskFactors.includes('state-management') ? 'high' : 'medium',
+            exports: fileInfo.exports?.length || 0,
+            dependents: fileInfo.usedBy?.length || 0,
+            source: 'metrics-analysis'
+          });
+        }
       }
     }
     
-    // Ordenar hotspots por riesgo
-    hotspots.sort((a, b) => b.factors.length - a.factors.length);
+    // Ordenar hotspots por severidad
+    const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
+    hotspots.sort((a, b) => severityOrder[b.severity] - severityOrder[a.severity]);
     
     // Filtrar por severidad mínima
-    const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
     const minLevel = severityOrder[minSeverity] || 1;
-    
-    let filteredHotspots = hotspots;
-    if (minSeverity === 'high') {
-      filteredHotspots = hotspots.filter(h => 
-        h.factors.includes('high-coupling') || h.factors.includes('state-management')
-      );
-    }
+    const filteredHotspots = hotspots.filter(h => severityOrder[h.severity] >= minLevel);
     
     const totalIssues = criticalCount + highCount + mediumCount + lowCount;
     
@@ -89,7 +116,8 @@ export async function get_risk_assessment(args, context) {
         criticalCount,
         highCount,
         mediumCount,
-        lowCount
+        lowCount,
+        tunnelVisionIntegrated: true  // 🆕 Indicar que incluye datos de Tunnel Vision
       },
       topRiskFiles: filteredHotspots.slice(0, 10),
       recommendation:

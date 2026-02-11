@@ -118,3 +118,43 @@ export const EvolutionType = {
  * @property {number} [limit] - Máximo resultados
  * @property {boolean} [includeReplaced] - Incluir ya reemplazadas
  */
+
+/**
+ * 🆕 NUEVO: Tipos de decisiones arquitectónicas
+ * @readonly
+ * @enum {string}
+ */
+export const DecisionType = {
+  /** Bypass de LLM por reglas */
+  LLM_BYPASS: 'llm_bypass',
+  /** Envío a LLM requerido */
+  LLM_REQUIRED: 'llm_required',
+  /** Detección de arquetipo por reglas */
+  ARCHETYPE_RULE: 'archetype_rule',
+  /** Detección de arquetipo por LLM */
+  ARCHETYPE_LLM: 'archetype_llm',
+  /** Cambio de cache invalidado */
+  CACHE_INVALIDATION: 'cache_invalidation',
+  /** Re-análisis solicitado */
+  REANALYSIS: 'reanalysis'
+};
+
+/**
+ * 🆕 NUEVO: Estructura de Auditoría de Decisiones
+ * @typedef {Object} DecisionAudit
+ * @property {string} decisionId - ID único de la decisión
+ * @property {DecisionType} type - Tipo de decisión
+ * @property {string} filePath - Archivo afectado
+ * @property {string} timestamp - ISO timestamp
+ * @property {string} reason - Razón de la decisión
+ * @property {number} confidence - Confianza 0-1
+ * @property {Object} context - Contexto completo
+ * @property {string} [ruleId] - ID de regla aplicada (si aplica)
+ * @property {string} [llmModel] - Modelo LLM usado (si aplica)
+ * @property {Object} [metadata] - Metadata enriquecida usada
+ * @property {string} previousState - Estado anterior
+ * @property {string} newState - Estado nuevo
+ * @property {boolean} overridden - Si fue sobrescrita manualmente
+ * @property {string} [overriddenBy] - Quién la sobrescribió
+ * @property {string} [overrideReason] - Razón de sobrescritura
+ */

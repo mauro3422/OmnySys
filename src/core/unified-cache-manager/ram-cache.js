@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Obtiene un valor del caché RAM
  * @param {string} key - Clave del caché
  * @returns {any} - Valor cacheado o null
@@ -102,4 +102,23 @@ export function getRamStats() {
     maxEntries: this.maxRamEntries,
     memoryUsage: `${Math.round(bytes / 1024)} KB`
   };
+}
+
+/**
+ * Alias for get() - Compatibilidad con código existente
+ * @param {string} key - Clave del caché
+ * @returns {any} - Valor cacheado o null
+ */
+export function ramCacheGet(key) {
+  return this.get(key);
+}
+
+/**
+ * Alias for set() - Compatibilidad con código existente
+ * @param {string} key - Clave del caché
+ * @param {any} data - Datos a guardar
+ * @param {number} ttlMinutes - TTL opcional
+ */
+export function ramCacheSet(key, data, ttlMinutes) {
+  return this.set(key, data, ttlMinutes);
 }

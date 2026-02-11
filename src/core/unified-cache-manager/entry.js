@@ -1,4 +1,4 @@
-﻿import { ChangeType } from './constants.js';
+import { ChangeType } from './constants.js';
 
 /**
  * Entrada de caché para un archivo
@@ -24,5 +24,9 @@ export class CacheEntry {
     // Metadata
     this.analysisDuration = 0;
     this.llmDuration = 0;
+    
+    // 🆕 NUEVO: Hashes para invalidación completa (BUG #47 FIX #2)
+    this.metadataHash = null;  // Hash de metadata enriquecida
+    this.combinedHash = null;  // Hash combinado (contenido + metadata)
   }
 }

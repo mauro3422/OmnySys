@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Obtiene estadísticas del caché
  */
 export function getStats() {
@@ -6,8 +6,9 @@ export function getStats() {
 
   return {
     totalFiles: entries.length,
-    staticAnalyzed: entries.filter(e => e.staticAnalyzed).length,
-    llmAnalyzed: entries.filter(e => e.llmAnalyzed).length,
+    // 🆕 FIX #4: Derivar de campos existentes si no hay flags directos
+    staticAnalyzed: entries.filter(e => e.staticAnalyzed || e.staticVersion || e.definitions?.length || e.exports?.length).length,
+    llmAnalyzed: entries.filter(e => e.llmAnalyzed || e.llmVersion || e.llmInsights).length,
     byChangeType: {
       none: entries.filter(e => e.changeType === 'none').length,
       cosmetic: entries.filter(e => e.changeType === 'cosmetic').length,

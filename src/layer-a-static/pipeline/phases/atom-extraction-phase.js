@@ -182,6 +182,7 @@ export class AtomExtractionPhase extends ExtractionPhase {
       lineage: null,
 
       // Metadata
+      extractedAt: new Date().toISOString(), // 🆕 Campo simple para validación
       _meta: {
         dataFlowVersion: '1.0.0-fractal',
         extractionTime: new Date().toISOString(),

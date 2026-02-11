@@ -6,6 +6,7 @@
  */
 
 import { UnifiedCacheManager, ChangeType } from './unified-cache-manager.js';
+import { hashContent } from './unified-cache-manager/index.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:integration');
@@ -49,6 +50,27 @@ export async function analyzeWithUnifiedCache(options) {
   const startTime = Date.now();
   const analysis = await analyzeFn(filePath, content);
   const duration = Date.now() - startTime;
+  
+  // 🆕 NUEVO: Extraer metadata para invalidación completa (BUG #47 FIX #2)
+  const metadata = {
+    hash: analysis.metadata?.hash,
+    analysisVersion: analysis.metadata?.analysisVersion,
+    // Incluir DNA y otros datos que afectan la interpretación
+    dna: analysis.dna,
+    archetype: analysis.archetype,
+    semanticConnections: analysis.semanticConnections
+  };
+  
+  // 🆕 NUEVO: Re-registrar con metadata para calcular combinedHash
+  const metadataHash = metadata ? hashContent(JSON.stringify(metadata)) : null;
+  const contentHash = cacheStatus.entry.contentHash;
+  const combinedHash = metadataHash 
+    ? hashContent(content + metadataHash)
+    : contentHash;
+  
+  // Actualizar entrada con hashes completos
+  cacheStatus.entry.metadataHash = metadataHash;
+  cacheStatus.entry.combinedHash = combinedHash;
   
   // Guardar en caché
   cacheStatus.entry.analysisDuration = duration;
@@ -151,11 +173,20 @@ async function loadLLMInsights(cacheManager, filePath, version) {
   }
 }
 
+import { getDecisionAuditLogger } from '../layer-c-memory/shadow-registry/audit-logger.js';
+
 /**
  * Invalida caché de archivos dependientes cuando cambian sus dependencias
  */
-export async function invalidateDependentCaches(cacheManager, changedFilePath) {
+export async function invalidateDependentCaches(cacheManager, changedFilePath, projectPath) {
   const entry = cacheManager.index.entries[changedFilePath];
+  
+  // 🆕 NUEVO: Inicializar audit logger (BUG #47 FIX #3)
+  let auditLogger = null;
+  if (projectPath) {
+    auditLogger = getDecisionAuditLogger(projectPath);
+    await auditLogger.initialize();
+  }
   if (!entry) return [];
   
   const invalidated = [];
@@ -171,8 +202,18 @@ export async function invalidateDependentCaches(cacheManager, changedFilePath) {
       
       invalidated.push(dependent);
       
+      // 🆕 NUEVO: Loguear invalidación de cache (BUG #47 FIX #3)
+      if (auditLogger) {
+        await auditLogger.logCacheInvalidation(
+          dependent,
+          `Dependency changed: ${changedFilePath}`,
+          'dependency_change',
+          { changedDependency: changedFilePath }
+        );
+      }
+      
       // Recursivamente invalidar sus dependientes
-      const nested = await invalidateDependentCaches(cacheManager, dependent);
+      const nested = await invalidateDependentCaches(cacheManager, dependent, projectPath);
       invalidated.push(...nested);
     }
   }

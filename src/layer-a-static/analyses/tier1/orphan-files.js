@@ -3,9 +3,11 @@
  *
  * Responsabilidad:
  * - Detectar archivos sin dependencias (entry points o código muerto)
+ * - IGNORAR tests, scripts y documentación
  */
 
 import { isLikelyEntryPoint } from '../helpers.js';
+import { classifyFile } from '../../../layer-c-memory/verification/utils/path-utils.js';
 
 /**
  * Encuentra archivos sin dependencias (entrada points o código muerto)
@@ -27,6 +29,18 @@ export function findOrphanFiles(systemMap) {
   }
 
   for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+    // 🆕 CLASIFICAR: Ignorar tests y documentación (pero NO scripts)
+    // Los scripts son archivos válidos por diseño, no son "dead code"
+    const classification = classifyFile(filePath);
+    if (classification.type === 'test' || classification.type === 'documentation') {
+      continue;
+    }
+    
+    // 🆕 Los scripts no son huérfanos por definición (son entry points/utilities)
+    if (classification.type === 'script') {
+      continue;
+    }
+    
     const hasIncomingDeps = fileNode.usedBy && fileNode.usedBy.length > 0;
     const hasOutgoingDeps = fileNode.dependsOn && fileNode.dependsOn.length > 0;
     const isReexported = reexportedFiles.has(filePath);

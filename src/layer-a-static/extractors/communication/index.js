@@ -69,3 +69,34 @@ export function detectAllAdvancedConnections(code) {
     }
   };
 }
+
+// 🆕 NUEVO: Wrappers simplificados para comprehensive-extractor
+export function getWebSocketConnections(code) {
+  const result = extractWebSocket(code);
+  return result.connections || [];
+}
+
+export function getWebWorkers(code) {
+  const result = extractWebWorkerCommunication(code);
+  return result.workers || [];
+}
+
+export function getPostMessages(code) {
+  const result = extractWindowPostMessage(code);
+  return result.messages || [];
+}
+
+export function getBroadcastChannels(code) {
+  const result = extractBroadcastChannel(code);
+  return result.channels || [];
+}
+
+export function getServerSentEvents(code) {
+  const result = extractServerSentEvents(code);
+  return result.events || [];
+}
+
+export function getMessageChannels(code) {
+  const result = extractMessageChannel(code);
+  return result.channels || [];
+}

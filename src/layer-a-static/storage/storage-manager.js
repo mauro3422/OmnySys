@@ -272,8 +272,18 @@ export async function loadMolecule(rootPath, filePath) {
   const dataPath = path.join(rootPath, DATA_DIR);
   const moleculesDir = path.join(dataPath, 'molecules');
 
-  const fileDir = path.dirname(filePath);
-  const fileName = path.basename(filePath);
+  // 🆕 FIX: Normalizar filePath para que sea relativo al rootPath
+  let normalizedPath = filePath;
+  // Normalizar separadores de path para comparación cross-platform
+  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  const normalizedRootPath = rootPath.replace(/\\/g, '/');
+  
+  if (path.isAbsolute(filePath) && normalizedFilePath.startsWith(normalizedRootPath)) {
+    normalizedPath = path.relative(rootPath, filePath);
+  }
+
+  const fileDir = path.dirname(normalizedPath);
+  const fileName = path.basename(normalizedPath);
   const targetPath = path.join(moleculesDir, fileDir, `${fileName}.molecule.json`);
 
   try {
@@ -323,8 +333,18 @@ export async function loadAtoms(rootPath, filePath) {
   const dataPath = path.join(rootPath, DATA_DIR);
   const atomsDir = path.join(dataPath, 'atoms');
 
-  const fileDir = path.dirname(filePath);
-  const fileName = path.basename(filePath, path.extname(filePath));
+  // 🆕 FIX: Normalizar filePath para que sea relativo al rootPath
+  let normalizedPath = filePath;
+  // Normalizar separadores de path para comparación cross-platform
+  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  const normalizedRootPath = rootPath.replace(/\\/g, '/');
+  
+  if (path.isAbsolute(filePath) && normalizedFilePath.startsWith(normalizedRootPath)) {
+    normalizedPath = path.relative(rootPath, filePath);
+  }
+
+  const fileDir = path.dirname(normalizedPath);
+  const fileName = path.basename(normalizedPath, path.extname(normalizedPath));
   const targetDir = path.join(atomsDir, fileDir, fileName);
 
   try {

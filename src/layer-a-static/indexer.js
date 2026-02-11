@@ -1,4 +1,4 @@
-﻿import path from 'path';
+import path from 'path';
 
 import { generateAnalysisReport } from './analyzer.js';
 import { UnifiedCacheManager } from '../core/unified-cache-manager.js';
@@ -18,6 +18,8 @@ import {
   savePartitionedData,
   printSummary
 } from './pipeline/save.js';
+import { AtomExtractionPhase } from './pipeline/phases/atom-extraction-phase.js';
+import { saveAtom } from './storage/storage-manager.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -79,6 +81,52 @@ export async function indexProject(rootPath, options = {}) {
 
     // Paso 3: Parsear archivos
     const parsedFiles = await parseFiles(files, verbose);
+    
+    // 🆕 PASO 3.5: Extraer átomos con metadata RICA usando AtomExtractionPhase
+    if (verbose) logger.info('\n⚛️  Extracting rich atomic metadata...');
+    const atomPhase = new AtomExtractionPhase();
+    let totalAtomsExtracted = 0;
+    
+    for (const [absoluteFilePath, parsedFile] of Object.entries(parsedFiles)) {
+      try {
+        // Normalizar path a relativo desde el inicio
+        const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+        
+        // Crear contexto para el phase con path relativo
+        const context = {
+          filePath: relativeFilePath,
+          code: parsedFile.source || '',
+          fileInfo: parsedFile,
+          fileMetadata: parsedFile.metadata || {}
+        };
+        
+        // Ejecutar fase de extracción atómica
+        await atomPhase.execute(context);
+        
+        // Guardar átomos en el parsedFile para que estén disponibles después
+        parsedFile.atoms = context.atoms || [];
+        parsedFile.atomCount = context.atomCount || 0;
+        totalAtomsExtracted += context.atomCount || 0;
+        
+        // 🆕 Guardar átomos individualmente en disco
+        if (context.atoms && context.atoms.length > 0) {
+          for (const atom of context.atoms) {
+            if (atom.name) {
+              await saveAtom(absoluteRootPath, relativeFilePath, atom.name, atom);
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn(`  ⚠️ Failed to extract atoms from ${relativeFilePath}: ${error.message}`);
+        parsedFile.atoms = [];
+        parsedFile.atomCount = 0;
+      }
+    }
+    
+    if (verbose) {
+      logger.info(`  ✓ ${totalAtomsExtracted} rich atoms extracted and saved`);
+      logger.info(`  ✓ Individual atoms saved to .omnysysdata/atoms/\n`);
+    }
 
     // Paso 4: Resolver imports
     const { resolvedImports } = await resolveImports(parsedFiles, absoluteRootPath, verbose);
@@ -119,6 +167,9 @@ export async function indexProject(rootPath, options = {}) {
 
     // Paso 10: Guardar datos particionados en .OmnySysData/
     const partitionedPaths = await savePartitionedData(absoluteRootPath, enhancedSystemMap, verbose);
+    
+    // Actualizar metadata con conteo de átomos extraídos
+    enhancedSystemMap.metadata.totalAtoms = totalAtomsExtracted;
 
     // Resumen
     if (verbose) {

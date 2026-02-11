@@ -178,8 +178,18 @@ import { composeMolecularMetadata } from '../../../shared/derivation-engine.js';
 export async function getFileAnalysis(rootPath, filePath) {
   const dataPath = getDataDirectory(rootPath);
   
+  // 🆕 FIX: Normalizar filePath para que sea relativo
+  let normalizedPath = filePath;
+  // Normalizar separadores de path para comparación cross-platform
+  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  const normalizedRootPath = rootPath.replace(/\\/g, '/');
+  
+  if (path.isAbsolute(filePath) && normalizedFilePath.startsWith(normalizedRootPath)) {
+    normalizedPath = path.relative(rootPath, filePath);
+  }
+  
   // Storage-manager saves to: .omnysysdata/files/{dir}/{filename}.json
-  const filePart = path.join(dataPath, 'files', filePath + '.json');
+  const filePart = path.join(dataPath, 'files', normalizedPath + '.json');
   return await readJSON(filePart);
 }
 

@@ -1,0 +1,3 @@
+# Archivos que sabemos que tienen syntax errors
+src/layer-a-static/module-system/analyzers/business-flow-analyzer.js
+src/layer-a-static/race-detector/integration.js

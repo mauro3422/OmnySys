@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import { ChangeType } from './constants.js';
 import { hashContent, detectChangeType } from './utils.js';
@@ -6,17 +6,29 @@ import { CacheEntry } from './entry.js';
 
 /**
  * Registra un archivo y detecta qué tipo de re-análisis necesita
+ * 🆕 AHORA: Incluye hash de metadata para invalidación completa
+ * 
  * @param {string} filePath - Ruta del archivo
  * @param {string} content - Contenido actual
+ * @param {object} metadata - Metadata enriquecida (opcional)
  * @returns {object} - { changeType, needsStatic, needsLLM, dependencies }
  */
-export async function registerFile(filePath, content) {
+export async function registerFile(filePath, content, metadata = null) {
   const contentHash = hashContent(content);
+  
+  // 🆕 NUEVO: Calcular hash de metadata si existe
+  const metadataHash = metadata ? hashContent(JSON.stringify(metadata)) : null;
+  const combinedHash = metadataHash 
+    ? hashContent(content + metadataHash) 
+    : contentHash;
+  
   const existingEntry = this.index.entries[filePath];
 
   // Si no hay entrada previa, es nuevo
   if (!existingEntry) {
     const entry = new CacheEntry(filePath, contentHash, ChangeType.SEMANTIC);
+    entry.metadataHash = metadataHash; // 🆕 Guardar hash de metadata
+    entry.combinedHash = combinedHash; // 🆕 Guardar hash combinado
     this.index.entries[filePath] = entry;
 
     return {
@@ -28,8 +40,9 @@ export async function registerFile(filePath, content) {
     };
   }
 
-  // Si el hash es igual, no hay cambios
-  if (existingEntry.contentHash === contentHash) {
+  // 🆕 MODIFICADO: Comparar hash combinado (contenido + metadata)
+  const existingCombinedHash = existingEntry.combinedHash || existingEntry.contentHash;
+  if (existingCombinedHash === combinedHash) {
     return {
       changeType: ChangeType.NONE,
       needsStatic: false,
@@ -43,11 +56,22 @@ export async function registerFile(filePath, content) {
   const oldCode = await this.getPreviousCode(filePath);
   const changeType = detectChangeType(oldCode, content, existingEntry);
 
+  // 🆕 MODIFICADO: Detectar si cambió solo la metadata (no el contenido)
+  const metadataChanged = existingEntry.metadataHash !== metadataHash;
+  const contentChanged = existingEntry.contentHash !== contentHash;
+  
   // Actualizar entrada
   existingEntry.contentHash = contentHash;
+  existingEntry.metadataHash = metadataHash; // 🆕 Actualizar hash de metadata
+  existingEntry.combinedHash = combinedHash; // 🆕 Actualizar hash combinado
   existingEntry.changeType = changeType;
   existingEntry.version++;
   existingEntry.timestamp = Date.now();
+  
+  // 🆕 NUEVO: Log de qué tipo de cambio ocurrió
+  if (metadataChanged && !contentChanged) {
+    console.log(`[Cache] Metadata changed for ${filePath} (content unchanged)`);
+  }
 
   // Determinar qué se necesita re-analizar
   const result = {

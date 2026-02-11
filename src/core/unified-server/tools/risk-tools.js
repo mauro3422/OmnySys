@@ -21,8 +21,8 @@ export async function getRisk(minSeverity = 'medium') {
     const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
     const minLevel = severityOrder[minSeverity];
 
-    const filtered = assessment.report.mediumRiskFiles
-      ?.concat(assessment.report.highRiskFiles || [])
+    const filtered = assessment.report.criticalRiskFiles
+      ?.concat(assessment.report.highRiskFiles || [], assessment.report.mediumRiskFiles || [])
       .filter((f) => severityOrder[f.severity] >= minLevel)
       .slice(0, 10);
 

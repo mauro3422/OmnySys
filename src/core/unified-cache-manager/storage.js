@@ -1,4 +1,4 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 
 import { ChangeType } from './constants.js';
@@ -66,8 +66,8 @@ export async function loadFromLayerA() {
         const content = await fs.readFile(filePath, 'utf-8');
         const fileData = JSON.parse(content);
 
-        // El filePath está en fileData.filePath
-        const originalPath = fileData.filePath || jsonFile.replace('.json', '');
+        // El filePath está en fileData.path o fileData.filePath
+        const originalPath = fileData.path || fileData.filePath || jsonFile.replace('.json', '');
 
         this.index.entries[originalPath] = {
           hash: fileData.metadata?.hash || '',
@@ -77,7 +77,14 @@ export async function loadFromLayerA() {
           changeType: ChangeType.NONE,
           dependencies: fileData.dependencies || [],
           metadata: fileData.metadata,
-          llmInsights: fileData.llmInsights
+          llmInsights: fileData.llmInsights,
+          // 🆕 NUEVO: Hashes para invalidación completa (BUG #47 FIX #2)
+          contentHash: fileData.metadata?.hash || '',
+          metadataHash: fileData.metadata?.metadataHash || null,
+          combinedHash: fileData.metadata?.combinedHash || null,
+          // 🆕 FIX #4: Marcar como analizado si tiene datos de Layer A
+          staticAnalyzed: !!(fileData.definitions?.length || fileData.semanticAnalysis || fileData.exports?.length),
+          llmAnalyzed: !!fileData.llmInsights
         };
       } catch (err) {
         logger.warn(`   âš ï¸  Failed to load ${jsonFile}: ${err.message}`);

@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
 import { createLogger } from '../../utils/logger.js';
+import { getDecisionAuditLogger } from '../../layer-c-memory/shadow-registry/audit-logger.js';
 
 const logger = createLogger('OmnySys:llm:analysis');
 
@@ -120,14 +121,45 @@ export async function _analyzeComplexFilesWithLLM() {
         // Decidir si necesita LLM basado en arquetipos y Gates de decisión
         const needsLLM = shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer);
 
+        // 🆕 NUEVO: Loguear decisión arquitectónica (BUG #47 FIX #3)
+        const auditLogger = getDecisionAuditLogger(this.projectPath);
+        await auditLogger.initialize();
+
         if (needsLLM) {
           logger.info(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
+          
+          // Loguear decisión de enviar a LLM
+          await auditLogger.logLLMRequired(
+            filePath,
+            `Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`,
+            aiConfig?.model || 'unknown',
+            { archetypes, metadata: metadata.summary }
+          );
+          
+          // Loguear arquetipos detectados
+          for (const archetype of archetypes) {
+            await auditLogger.logArchetypeDetection(
+              filePath,
+              archetype,
+              archetype.detectedBy || 'rule',
+              { confidence: archetype.confidence }
+            );
+          }
+          
           filesNeedingLLM.push({
             filePath,
             fileAnalysis,
             archetypes: archetypes.map(a => a.type),
             priority: this._calculateLLMPriority(archetypes, metadata)
           });
+        } else {
+          // Loguear bypass de LLM
+          await auditLogger.logLLMBypass(
+            filePath,
+            `Layer A analysis sufficient. Arquetipos: ${archetypes.map(a => a.type).join(', ')}`,
+            archetypes.find(a => a.requiresLLM === false)?.ruleId || 'layer-a-sufficient',
+            { archetypes, reason: 'Static analysis covers all connections' }
+          );
         }
       }));
 

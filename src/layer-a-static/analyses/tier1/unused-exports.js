@@ -1,4 +1,5 @@
 import { isPublicAPI } from '../helpers.js';
+import { classifyFile } from '../../../layer-c-memory/verification/utils/path-utils.js';
 
 /**
  * Unused Exports Analyzer
@@ -7,6 +8,7 @@ import { isPublicAPI } from '../helpers.js';
  * - Detectar exports que nunca se importan (código muerto)
  * - Considerar barrel exports (re-exports)
  * - Filtrar API pública (exports intencionales para uso externo)
+ * - IGNORAR tests, scripts y documentación (no son código de producción)
  *
  * @param {object} systemMap - SystemMap generado por graph-builder
  * @returns {object} - Reporte de exports sin usar
@@ -51,6 +53,17 @@ export function findUnusedExports(systemMap) {
 
   // Ahora revisar cada archivo y sus exports
   for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+    // 🆕 CLASIFICAR: Ignorar tests y documentación
+    // Scripts SÍ se analizan (tienen funciones útiles), pero con lógica diferente
+    const classification = classifyFile(filePath);
+    if (classification.type === 'test' || classification.type === 'documentation') {
+      continue;
+    }
+    
+    // 🆕 Para scripts, ser más permisivo con "unused exports"
+    // Los scripts exportan funciones para uso CLI/externo, no para imports internos
+    const isScript = classification.type === 'script';
+    
     const unusedInFile = [];
 
     // Obtener las funciones exportadas de este archivo
@@ -67,7 +80,8 @@ export function findUnusedExports(systemMap) {
       // No reportar como unused si:
       // 1. Se usa internamente (usedByFuncId o usedByName)
       // 2. Es parte de la API pública (export intencional para uso externo)
-      if (!usedByFuncId && !usedByName && !isPublic) {
+      // 3. Es un script (las exports de scripts son para uso CLI/externo por diseño)
+      if (!usedByFuncId && !usedByName && !isPublic && !isScript) {
         unusedInFile.push({
           name: func.name,
           line: func.line,

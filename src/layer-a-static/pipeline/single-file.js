@@ -7,6 +7,7 @@ import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { extractAtoms } from '../extractors/atomic/index.js';
+import { saveAtom } from '../storage/storage-manager.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:single:file');
@@ -97,7 +98,22 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     // PASO NUEVO: Extraer átomos con el sistema atómico
     if (verbose) logger.info('🔬 Extracting atoms...');
     const atoms = extractAtoms(parsedFile.source || '', singleFile);
-    if (verbose) logger.info(`  ✓ Extracted ${atoms.length} atoms: ${atoms.map(a => a.type).join(', ')}\n`);
+    if (verbose) logger.info(`  ✓ Extracted ${atoms.length} atoms: ${atoms.map(a => a.type).join(', ')}
+`);
+
+    // 🆕 GUARDAR ÁTOMOS INDIVIDUALMENTE para tools atómicos
+    if (verbose) logger.info('💾 Saving individual atoms...');
+    for (const atom of atoms) {
+      if (atom.name) {
+        try {
+          await saveAtom(absoluteRootPath, singleFile, atom.name, atom);
+        } catch (err) {
+          logger.warn(`  ⚠️ Failed to save atom ${atom.name}: ${err.message}`);
+        }
+      }
+    }
+    if (verbose) logger.info(`  ✓ Saved ${atoms.length} individual atoms
+`);
 
     // Paso 5: Construir análisis del archivo
     const fileAnalysis = {

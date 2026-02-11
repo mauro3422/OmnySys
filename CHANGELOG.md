@@ -31,7 +31,23 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.7.1 (2026-02-09) + Documentation Consolidation (2026-02-10)**
+### **🚀 Latest Release: v0.7.2 (2026-02-11) - BUG #47 Fix + 89 Extractores + Verification System**
+
+**BUG #47 Cache Desynchronization + 89 Extractores + Verification & Certification System**: Implementación completa de 5 fixes críticos, activación de 89 extractores, sistema de verificación con 88% de mejora, 1,375 átomos extraídos, y certificado de verificación generado.
+
+**Key Changes**:
+- ✅ **FIX #1-5**: Tunnel Vision ↔ Risk Assessment, Cache Hashing, Audit Trail, Statistics, Path Normalization
+- ✅ **89 Extractores**: Comprehensive extractor con 8 categorías
+- ✅ **1,375 Átomos**: Extraídos con metadata completa (archetypes, DNA, side effects)
+- ✅ **Verification System**: 4,067 issues detectados, 88% mejora, 0 críticos
+- ✅ **Certificación**: Certificado generado válido hasta 2026-02-18
+- ✅ **Clasificación Inteligente**: Scripts, tests, docs, core diferenciados
+
+**Ver archivo:** `changelog/v0.7.2.md`
+
+---
+
+### **v0.7.1 (2026-02-09) + Documentation Consolidation (2026-02-10)**
 
 **Race Conditions + Logger System + Meta-Validator + Data Flow V2 + Shadow Registry + 5 Extractores + Documentation Consolidation**: Activación completa del race detector (8 TODOs implementados), migración de 475+ logs a sistema centralizado, nuevo Meta-Validator de 4 capas, Data Flow V2 graph-based (12 archivos), Shadow Registry para linaje de archivos, 5 extractores de metadata adicionales, y consolidación masiva de documentación (58% reducción).
 
