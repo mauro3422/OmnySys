@@ -169,4 +169,3 @@ export async function _invalidateFileCache(filePath) {
     logger.warn(`⚠️  Failed to invalidate cache for ${filePath}:`, error.message);
   }
 }
-}
