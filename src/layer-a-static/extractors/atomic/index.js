@@ -18,6 +18,7 @@
  */
 
 import { parse } from '@babel/parser';
+import traverse from '@babel/traverse';
 import { extractFunctionDeclaration, extractFunctionExpression } from './function-extractor.js';
 import { extractArrowFunction } from './arrow-extractor.js';
 import { extractClassMethod, extractPrivateMethod, extractAccessor } from './class-method-extractor.js';
@@ -52,9 +53,6 @@ export function extractAtoms(code, filePath) {
     logger.warn(`Parse error in ${filePath}: ${error.message}`);
     return [];
   }
-  
-  // Usar traverse de Babel
-  const traverse = (await import('@babel/traverse')).default;
   
   let currentClassName = null;
   
