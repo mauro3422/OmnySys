@@ -149,11 +149,11 @@ export async function indexProject(rootPath, options = {}) {
     
     // Construir índice de átomos para clasificación molecular
     const atomsIndex = {};
-    for (const parsedFile of normalizedParsedFiles) {
-      if (parsedFile.atoms && parsedFile.atoms.length > 0) {
-        atomsIndex[parsedFile.filePath] = {
-          atoms: parsedFile.atoms,
-          atomCount: parsedFile.atomCount
+    for (const [filePath, fileInfo] of Object.entries(normalizedParsedFiles)) {
+      if (fileInfo.atoms && fileInfo.atoms.length > 0) {
+        atomsIndex[filePath] = {
+          atoms: fileInfo.atoms,
+          atomCount: fileInfo.atomCount
         };
       }
     }
