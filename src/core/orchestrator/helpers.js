@@ -138,11 +138,19 @@ export async function _syncProjectFiles() {
 }
 
 /**
- * Invalida el caché de Layer A para un archivo específico
- * Fuerza re-análisis completo del archivo cuando cambia
+ * ⚠️ DEPRECADO: Usar CacheInvalidator.invalidateSync() en su lugar
+ * 
+ * Esta función ha sido reemplazada por el sistema de CacheInvalidator
+ * que proporciona invalidación síncrona, atómica y con rollback.
+ * 
+ * Se mantiene por compatibilidad con código legacy, pero se recomienda
+ * usar el nuevo sistema en src/core/cache-invalidator/
+ * 
+ * @deprecated Usar CacheInvalidator.invalidateSync()
  * @param {string} filePath - Ruta del archivo a invalidar
  */
 export async function _invalidateFileCache(filePath) {
+  logger.warn('⚠️  _invalidateFileCache() is deprecated. Use CacheInvalidator.invalidateSync() instead.');
   try {
     const relativePath = path.relative(this.projectPath, path.resolve(this.projectPath, filePath));
     const normalizedPath = relativePath.replace(/\\/g, '/');

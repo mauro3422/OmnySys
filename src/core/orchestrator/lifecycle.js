@@ -147,8 +147,31 @@ export async function _initializeFileWatcher() {
     this.batchProcessor?.addChange(event.filePath, 'created');
   });
 
-  this.fileWatcher.on('file:modified', (event) => {
-    this.batchProcessor?.addChange(event.filePath, 'modified');
+  this.fileWatcher.on('file:modified', async (event) => {
+    // 🆕 INVALIDACIÓN SÍNCRONA INMEDIATA (nueva arquitectura)
+    logger.info(`🗑️  Cache invalidation starting for: ${event.filePath}`);
+    
+    const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
+    
+    try {
+      // Invalidar caché ANTES de continuar (síncrono)
+      const result = await cacheInvalidator.invalidateSync(event.filePath);
+      
+      if (!result.success) {
+        logger.error(`❌ Cache invalidation failed for ${event.filePath}:`, result.error);
+        // No continuar si invalidación falla
+        return;
+      }
+      
+      logger.info(`✅ Cache invalidated (${result.duration}ms): ${event.filePath}`);
+      
+      // Solo agregar a batch si invalidación exitosa
+      this.batchProcessor?.addChange(event.filePath, 'modified');
+      
+    } catch (error) {
+      logger.error(`💥 Unexpected error during cache invalidation:`, error.message);
+      // No propagar error, solo loguear
+    }
   });
 
   this.fileWatcher.on('file:deleted', (event) => {
@@ -188,8 +211,13 @@ export async function _initializeFileWatcher() {
     maxBatchSize: 20,
     batchTimeoutMs: 1000,
     processChange: async (change) => {
-      // Invalidar caché de Layer A para forzar re-análisis
-      await this._invalidateFileCache(change.filePath);
+      // 📝 NOTA: La invalidación de caché ahora se hace SÍNCRONAMENTE
+      // en el handler de 'file:modified' ANTES de llegar aquí.
+      // Esto garantiza que el caché esté limpio antes de procesar.
+      // 
+      // La llamada anterior a _invalidateFileCache() se mantiene como
+      // fallback por compatibilidad, pero no es necesaria:
+      // await this._invalidateFileCache(change.filePath);
       
       const priority = this._calculateChangePriority(change);
       this.queue.enqueue(change.filePath, priority);

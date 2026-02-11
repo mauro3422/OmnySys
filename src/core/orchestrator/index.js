@@ -65,6 +65,21 @@ class Orchestrator extends EventEmitter {
     // Atomic Editor - Para ediciones seguras con vibración
     this.atomicEditor = getAtomicEditor(projectPath, this);
     this._setupAtomicEditor();
+    
+    // Cache Invalidator - Para invalidación síncrona de caché
+    this.cacheInvalidator = null; // Se inicializa lazy
+  }
+  
+  /**
+   * Obtiene o inicializa el Cache Invalidator (lazy initialization)
+   * @returns {Promise<CacheInvalidator>}
+   */
+  async _getCacheInvalidator() {
+    if (!this.cacheInvalidator) {
+      const { getCacheInvalidator } = await import('../cache-invalidator/index.js');
+      this.cacheInvalidator = getCacheInvalidator(this.cache || { projectPath: this.projectPath });
+    }
+    return this.cacheInvalidator;
   }
 
   /**
