@@ -41,6 +41,7 @@ import {
   McpSetupStep,
   ReadyStep
 } from './initialization/steps/index.js';
+import { getErrorGuardian } from '../../../core/error-guardian.js';
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
@@ -65,6 +66,9 @@ export class OmnySysMCPServer {
     this.projectPath = projectPath;
     this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.OmnySysRoot = projectPath;
+
+    // 🛡️ Error Guardian - Protección recursiva desde el inicio
+    this.errorGuardian = getErrorGuardian(projectPath);
 
     // Components (initialized by steps)
     this.orchestrator = null;
