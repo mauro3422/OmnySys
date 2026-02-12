@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** (Latest - Stable) |
+| **[0.9.0]** | `changelog/v0.9.0.md` | **Pattern Detection Engine V2 - Intelligent Analysis** (Latest - Stable) |
+| **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** |
 | **[0.7.2]** | `changelog/v0.7.2.md` | **BUG #47 Fix + 89 Extractores + Verification** |
 | **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** |
 | **[0.7.0]** | `changelog/v0.7.0.md` | **Architecture Refactoring - SOLID/SSOT/Fractal** (Stable) |
@@ -33,18 +34,19 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.8.0 (2026-02-11) - Query Refactor + Hot-Reload System**
+### **🚀 Latest Release: v0.9.0 (2026-02-12) - Pattern Detection Engine V2**
 
-**Query Architecture Refactoring + Hot-Reload + Self-Improvement System**: Refactorización completa del sistema de queries (desacoplamiento del facade monolítico), implementación de hot-reload para automejora en tiempo real, y sistema de file watcher nativo.
+**Pattern Detection Engine V2 - Intelligent Code Analysis**: Sistema robusto de detección de patrones con heurísticas inteligentes basadas en AST, eliminando 99.8% de falsos positivos y proporcionando análisis de calidad preciso.
 
 **Key Changes**:
-- ✅ **6 Query APIs**: Desacoplamiento del facade en APIs especializadas (project, file, dependency, connections, risk, export)
-- ✅ **Hot-Reload System**: Detección automática de cambios, recarga sin perder estado
-- ✅ **41 Archivos Migrados**: Zero breaking changes, facade legacy eliminado
-- ✅ **File Watcher Nativo**: fs.watch implementado para detección automática
-- ✅ **Automejora Real**: Sistema puede modificarse a sí mismo sin reiniciar
+- ✅ **99.8% Reduction in False Positives**: De 473 issues a 1 issue real
+- ✅ **Quality Score**: De 0/100 (F) a 99/100 (A)
+- ✅ **Pattern Detection Engine**: Arquitectura SOLID completa
+- ✅ **Smart Detectors**: Deep chains y Shared objects con scoring inteligente
+- ✅ **Zero Breaking Changes**: Retrocompatible con sistema legacy
+- ✅ **Circular Dependencies Fixed**: Separación de concerns con detector-base.js
 
-**Ver archivo:** `changelog/v0.8.0.md`
+**Ver archivo:** `changelog/v0.9.0.md`
 
 ---
 

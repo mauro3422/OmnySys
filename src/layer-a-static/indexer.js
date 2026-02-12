@@ -158,7 +158,7 @@ export async function indexProject(rootPath, options = {}) {
       }
     }
     
-    const analysisReport = generateAnalysisReport(systemMap, atomsIndex);
+    const analysisReport = await generateAnalysisReport(systemMap, atomsIndex);
     await saveAnalysisReport(dataDir, outputPath, analysisReport, verbose);
 
     // Paso 9: Generar enhanced system map con análisis semántico estático

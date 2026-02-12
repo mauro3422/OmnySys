@@ -325,9 +325,12 @@ export class InputExtractor {
       if (key === 'loc' || key === 'type') continue;
       
       const value = node[key];
-      if (Array.isArray(value)) {
-        value.forEach(child => this.traverseNode(child, depth + 1));
-      } else if (value && typeof value === 'object') {
+      if (Array.isArray(value) && typeof value.forEach === 'function') {
+        // Usar for...of en lugar de forEach para mayor compatibilidad
+        for (const child of value) {
+          this.traverseNode(child, depth + 1);
+        }
+      } else if (value && typeof value === 'object' && !Array.isArray(value)) {
         this.traverseNode(value, depth + 1);
       }
     }

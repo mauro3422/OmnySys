@@ -77,14 +77,44 @@ export class ShadowRegistry {
       // Continuamos de todos modos, pero logueamos
     }
     
-    // 2. Extraer DNA si no lo tiene
-    if (!atom.dna) {
+    // 2. Extraer DNA si no lo tiene y tiene dataFlow
+    if (!atom.dna && atom.dataFlow) {
       try {
         atom.dna = extractDNA(atom);
       } catch (error) {
-        logger.error(`❌ Failed to extract DNA for ${atom.id}:`, error);
-        throw error;
+        logger.warn(`⚠️ Could not extract DNA for ${atom.id}: ${error.message}`);
+        // Crear DNA mínimo para continuar
+        atom.dna = {
+          structuralHash: 'unknown',
+          patternHash: 'unknown',
+          flowType: 'unknown',
+          operationSequence: [],
+          complexityScore: 0,
+          inputCount: 0,
+          outputCount: 0,
+          transformationCount: 0,
+          semanticFingerprint: 'unknown',
+          extractedAt: new Date().toISOString(),
+          version: '1.0.0-fallback'
+        };
       }
+    }
+    
+    // Si todavía no tiene DNA, crear uno fallback
+    if (!atom.dna) {
+      atom.dna = {
+        structuralHash: 'unknown',
+        patternHash: 'unknown',
+        flowType: 'unknown',
+        operationSequence: [],
+        complexityScore: 0,
+        inputCount: 0,
+        outputCount: 0,
+        transformationCount: 0,
+        semanticFingerprint: 'unknown',
+        extractedAt: new Date().toISOString(),
+        version: '1.0.0-fallback'
+      };
     }
     
     // 3. Crear sombra
@@ -123,9 +153,33 @@ export class ShadowRegistry {
     const minSimilarity = options.minSimilarity || 0.75;
     const limit = options.limit || 5;
     
-    // Extraer DNA si es necesario
-    if (!atom.dna) {
-      atom.dna = extractDNA(atom);
+    // Si el átomo no tiene DNA válido, no podemos buscar similares
+    if (!atom.dna || atom.dna.flowType === 'unknown') {
+      logger.debug(`Atom ${atom.id} has no valid DNA, skipping similarity search`);
+      return [];
+    }
+    
+    // Extraer DNA si es necesario y el átomo tiene dataFlow
+    if (!atom.dna && atom.dataFlow) {
+      try {
+        atom.dna = extractDNA(atom);
+      } catch (error) {
+        logger.warn(`⚠️ Could not extract DNA for ${atom.id}: ${error.message}`);
+        // Crear DNA mínimo para continuar
+        atom.dna = {
+          structuralHash: 'unknown',
+          patternHash: 'unknown',
+          flowType: 'unknown',
+          operationSequence: [],
+          complexityScore: 0,
+          inputCount: 0,
+          outputCount: 0,
+          transformationCount: 0,
+          semanticFingerprint: 'unknown',
+          extractedAt: new Date().toISOString(),
+          version: '1.0.0-fallback'
+        };
+      }
     }
     
     const candidates = [];

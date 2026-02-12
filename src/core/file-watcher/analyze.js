@@ -264,3 +264,24 @@ export async function removeFromIndex(filePath) {
     // Ignorar errores de índice no existente
   }
 }
+
+/**
+ * Analiza archivo y actualiza índice (wrapper para handlers)
+ * 
+ * @param {string} filePath - Ruta relativa del archivo
+ * @param {string} fullPath - Ruta completa del archivo
+ * @param {boolean} isUpdate - Indica si es una actualización (no usado actualmente)
+ * @returns {Promise<Object>} - Análisis del archivo
+ */
+export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
+  // 1. Analizar archivo
+  const analysis = await analyzeFile.call(this, filePath, fullPath);
+  
+  // 2. Guardar análisis
+  await saveFileAnalysis.call(this, filePath, analysis);
+  
+  // 3. Actualizar índice
+  await updateFileIndex.call(this, filePath, analysis);
+  
+  return analysis;
+}

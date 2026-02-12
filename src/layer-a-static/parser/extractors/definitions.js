@@ -79,12 +79,70 @@ export function extractVariableExports(nodePath, fileInfo) {
 
       // Detectar si es un objeto (potencial estado mutable)
       if (init && init.type === 'ObjectExpression') {
+        // Analizar propiedades para distinguir enums de estado mutable
+        const propertyDetails = init.properties.map(prop => {
+          if (prop.type === 'ObjectProperty') {
+            const keyName = prop.key.name || prop.key.value;
+            const valueType = prop.value?.type;
+            
+            // Detectar tipo de propiedad
+            if (valueType === 'FunctionExpression' || valueType === 'ArrowFunctionExpression') {
+              return { name: keyName, type: 'function', risk: 'high' };
+            } else if (valueType === 'ObjectExpression') {
+              return { name: keyName, type: 'nested_object', risk: 'medium' };
+            } else if (valueType === 'ArrayExpression') {
+              return { name: keyName, type: 'array', risk: 'medium' };
+            } else {
+              // Valores literales (string, number, boolean) - bajo riesgo
+              return { name: keyName, type: 'literal', risk: 'low' };
+            }
+          }
+          return { name: 'unknown', type: 'unknown', risk: 'medium' };
+        });
+        
+        // Calcular riesgo basado en tipos de propiedades
+        const highRiskProps = propertyDetails.filter(p => p.risk === 'high').length;
+        const mediumRiskProps = propertyDetails.filter(p => p.risk === 'medium').length;
+        const lowRiskProps = propertyDetails.filter(p => p.risk === 'low').length;
+        
+        // Determinar tipo de objeto
+        let objectType = 'unknown';
+        let riskLevel = 'medium';
+        
+        if (highRiskProps > 0) {
+          // Tiene métodos = estado mutable potencial
+          objectType = 'state';
+          riskLevel = 'high';
+        } else if (mediumRiskProps > 0 && lowRiskProps === 0) {
+          // Solo objetos/arrays anidados = estructura de datos
+          objectType = 'data_structure';
+          riskLevel = 'medium';
+        } else if (lowRiskProps > 0 && highRiskProps === 0 && mediumRiskProps === 0) {
+          // Solo valores literales = enum/constantes
+          objectType = 'enum';
+          riskLevel = 'low';
+        } else {
+          // Mixto
+          objectType = 'mixed';
+          riskLevel = mediumRiskProps > lowRiskProps ? 'medium' : 'low';
+        }
+        
         fileInfo.objectExports.push({
           name: name,
           line: declarator.loc?.start.line || 0,
           isMutable: true,
           properties: init.properties.length,
-          warning: 'Exported mutable object - potential shared state'
+          propertyDetails: propertyDetails.slice(0, 20), // Limitar a 20 propiedades
+          objectType: objectType,
+          riskLevel: riskLevel,
+          highRiskCount: highRiskProps,
+          mediumRiskCount: mediumRiskProps,
+          lowRiskCount: lowRiskProps,
+          warning: riskLevel === 'high' 
+            ? 'Exported mutable state with methods - potential shared state'
+            : riskLevel === 'medium'
+            ? 'Exported data structure - monitor usage'
+            : 'Exported enum/constants - low risk'
         });
       }
       // Otras constantes exportadas

@@ -46,6 +46,7 @@ import { HotReloadManager } from './hot-reload-manager.js';
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
+import { EventEmitter } from 'events';
 
 const logger = createLogger('OmnySys:server:class');
 
@@ -62,8 +63,9 @@ const logger = createLogger('OmnySys:server:class');
  * 5. Setup MCP Protocol
  * 6. Server Ready
  */
-export class OmnySysMCPServer {
+export class OmnySysMCPServer extends EventEmitter {
   constructor(projectPath) {
+    super();
     this.projectPath = projectPath;
     this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
     this.OmnySysRoot = projectPath;

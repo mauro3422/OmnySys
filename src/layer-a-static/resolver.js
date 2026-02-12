@@ -14,7 +14,7 @@ import path from 'path';
 const SUPPORTED_EXTENSIONS = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.json'];
 
 /**
- * Lee aliases de tsconfig.json o jsconfig.json
+ * Lee aliases de package.json (imports), tsconfig.json o jsconfig.json
  *
  * @param {string} projectRoot - Raíz del proyecto
  * @returns {Promise<object>} - Mapa de aliases { "@": "src", "components": "src/components" }
@@ -22,7 +22,33 @@ const SUPPORTED_EXTENSIONS = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.js
 async function readAliasConfig(projectRoot) {
   const aliases = {};
 
-  // Intentar leer tsconfig.json
+  // 1. Primero: Leer package.json imports (Node.js subpath imports)
+  // Esto es el estándar moderno y debería tener prioridad
+  try {
+    const packagePath = path.join(projectRoot, 'package.json');
+    const content = await fs.readFile(packagePath, 'utf-8');
+    const pkg = JSON.parse(content);
+
+    if (pkg.imports) {
+      for (const [importPath, target] of Object.entries(pkg.imports)) {
+        // Convertir "#config/*" → "#config" y "./src/config/*" → "./src/config"
+        const cleanAlias = importPath.replace(/\*$/, '').replace(/^#/, '');
+        const cleanTarget = (typeof target === 'string' ? target : target?.default || target?.require || target?.import || '')
+          .replace(/\*$/, '');
+        
+        if (cleanAlias && cleanTarget) {
+          // Guardar sin el # para consistencia con el resto del código
+          aliases['#' + cleanAlias] = cleanTarget;
+          // También guardar sin # por si se usa de otra forma
+          aliases[cleanAlias] = cleanTarget;
+        }
+      }
+    }
+  } catch {
+    // package.json no existe o no tiene imports
+  }
+
+  // 2. Segundo: Intentar leer tsconfig.json (para compatibilidad)
   try {
     const tsconfigPath = path.join(projectRoot, 'tsconfig.json');
     const content = await fs.readFile(tsconfigPath, 'utf-8');
@@ -54,7 +80,7 @@ async function readAliasConfig(projectRoot) {
         }
       }
     } catch {
-      // Ambos fallan - sin aliases
+      // Ambos fallan - sin aliases adicionales
     }
   }
 
