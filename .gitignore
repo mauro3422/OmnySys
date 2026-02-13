@@ -10,9 +10,10 @@ yarn.lock
 system-map.json
 system-map-*.json
 enhanced-system-map.json
-# Legacy directories (keep for safety)
-.aver/           # Legacy naming
+# Data directories
+.omnysysdata/    # Current data directory
 omnysysdata/     # Legacy naming
+.aver/           # Legacy naming
 .OmnySystemData/
 .OmnySysData/
 
