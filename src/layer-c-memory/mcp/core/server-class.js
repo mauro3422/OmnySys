@@ -194,8 +194,8 @@ export class OmnySysMCPServer extends EventEmitter {
       }
 
       if (this.orchestrator) {
-        // Orchestrator cleanup if needed
-        logger.info('  ✅ Orchestrator cleaned up');
+        await this.orchestrator.stop();
+        logger.info('  ✅ Orchestrator stopped');
       }
 
       if (this.cache) {

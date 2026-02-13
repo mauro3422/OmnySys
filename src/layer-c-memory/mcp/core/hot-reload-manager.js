@@ -91,6 +91,12 @@ export class HotReloadManager {
    * Detiene el hot-reload
    */
   stop() {
+    // Clear any pending reload timeout
+    if (this._reloadTimeout) {
+      clearTimeout(this._reloadTimeout);
+      this._reloadTimeout = null;
+    }
+    
     if (this.fsWatcher) {
       this.fsWatcher.close();
       this.fsWatcher = null;
@@ -139,6 +145,11 @@ export class HotReloadManager {
     this._reloadTimeout = setTimeout(() => {
       this._reloadModule(filename, moduleInfo);
     }, 500);
+    
+    // Don't prevent process exit
+    if (this._reloadTimeout.unref) {
+      this._reloadTimeout.unref();
+    }
   }
 
   /**

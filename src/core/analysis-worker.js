@@ -244,6 +244,18 @@ export class AnalysisWorker {
 
         // Guardar resultado mergeado
         await saveFileAnalysis(this.rootPath, job.filePath, mergedResult);
+        
+        // FIX: Invalidar cache para forzar re-carga en próximas consultas
+        // Esto evita que el cache tenga datos viejos cuando el disco tiene lo nuevo
+        try {
+          const { getCacheInvalidator } = await import('../cache-invalidator/index.js');
+          const invalidator = getCacheInvalidator({ projectPath: this.rootPath });
+          await invalidator.invalidateSync(job.filePath);
+          logger.debug(`   🗑️  Cache invalidated for: ${job.filePath}`);
+        } catch (cacheError) {
+          logger.warn(`   ⚠️  Failed to invalidate cache for ${job.filePath}:`, cacheError.message);
+          // No fallar el análisis si la invalidación de cache falla
+        }
 
         result = mergedResult;
 
@@ -264,6 +276,17 @@ export class AnalysisWorker {
 
         // Obtener resultado
         result = await getFileAnalysis(this.rootPath, job.filePath);
+        
+        // FIX: Invalidar cache para forzar re-carga en próximas consultas
+        try {
+          const { getCacheInvalidator } = await import('../cache-invalidator/index.js');
+          const invalidator = getCacheInvalidator({ projectPath: this.rootPath });
+          await invalidator.invalidateSync(job.filePath);
+          logger.debug(`   🗑️  Cache invalidated after static analysis: ${job.filePath}`);
+        } catch (cacheError) {
+          logger.warn(`   ⚠️  Failed to invalidate cache for ${job.filePath}:`, cacheError.message);
+          // No fallar el análisis si la invalidación de cache falla
+        }
       }
 
       this.callbacks.onProgress?.(job, 100);
