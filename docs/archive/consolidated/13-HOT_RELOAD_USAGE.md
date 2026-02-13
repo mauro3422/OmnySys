@@ -1,0 +1,182 @@
+﻿---
+⚠️  DOCUMENTO ARCHIVADO - Ver nueva ubicación
+---
+Este documento ha sido consolidado en la nueva estructura de documentación.
+
+📍 Nueva ubicación: Ver docs/archive/consolidated/README.md para el mapa completo
+
+🚀 Usar en su lugar:
+- docs/01-core/ (fundamentos)
+- docs/02-architecture/ (sistemas)
+- docs/04-guides/ (guías prácticas)
+
+---
+Documento original (mantenido para referencia histórica):
+# ðŸ”¥ Hot-Reload System - GuÃ­a de Uso
+
+## Â¿QuÃ© es?
+
+El sistema de **Hot-Reload** permite que OmnySys se actualice automÃ¡ticamente cuando su propio cÃ³digo cambia, **sin perder el estado** (cache, colas, datos analizados).
+
+## ðŸŽ¯ CaracterÃ­sticas
+
+- âœ… **Recarga automÃ¡tica** de tools, extractors, handlers y queries
+- âœ… **PreservaciÃ³n de estado** (cache, colas, file hashes)
+- âœ… **Zero downtime** durante actualizaciones
+- âœ… **Automejora** - El sistema puede modificarse a sÃ­ mismo
+- âœ… **DetecciÃ³n de mÃ³dulos crÃ­ticos** (requieren reinicio manual)
+
+## ðŸš€ ActivaciÃ³n
+
+### Variable de entorno
+
+```bash
+# Windows
+set OMNYSYS_HOT_RELOAD=true
+
+# Linux/Mac
+export OMNYSYS_HOT_RELOAD=true
+```
+
+### O iniciar con:
+
+```bash
+OMNYSYS_HOT_RELOAD=true node src/layer-c-memory/mcp-server.js
+```
+
+## ðŸ“ QuÃ© se recarga automÃ¡ticamente
+
+### âœ… Recargable
+- `src/layer-c-memory/mcp/tools/*.js` - Tools MCP
+- `src/layer-a-static/extractors/*.js` - Extractores de cÃ³digo
+- `src/core/file-watcher/handlers.js` - Handlers de eventos
+- `src/layer-a-static/query/apis/*.js` - APIs de queries
+- `src/core/file-watcher/lifecycle.js` - Lifecycle methods
+
+### âš ï¸ CrÃ­tico (requiere reinicio manual)
+- `src/layer-c-memory/mcp/core/server-class.js` - Clase principal del servidor
+- `src/layer-c-memory/mcp-server.js` - Entry point
+- `src/core/orchestrator/index.js` - Orquestador principal
+
+## ðŸ”„ Flujo de Hot-Reload
+
+```
+1. Detectas typo en tools/impact-map.js
+2. Lo editas y guardas
+3. FileWatcher detecta cambio (500ms debounce)
+4. HotReloadManager:
+   â”œâ”€ Preserva: cache, queue, fileHashes
+   â”œâ”€ Invalida: cachÃ© de Node.js
+   â”œâ”€ Recarga: import('./tools/impact-map.js?hot-reload=123456')
+   â”œâ”€ Restaura: cache, queue, fileHashes
+   â””â”€ Listo: Nuevo cÃ³digo activo
+5. Pruebas el tool corregido inmediatamente
+```
+
+## ðŸ“Š Verificar estado
+
+```javascript
+// En cualquier tool o cÃ³digo del servidor
+const stats = server.hotReloadManager?.getStats();
+console.log(stats);
+// {
+//   isWatching: true,
+//   isReloading: false,
+//   criticalModules: 3,
+//   reloadablePatterns: 5
+// }
+```
+
+## ðŸŽ‰ Casos de uso
+
+### 1. Desarrollo iterativo
+```bash
+# Terminal 1: Servidor con hot-reload
+OMNYSYS_HOT_RELOAD=true node src/layer-c-memory/mcp-server.js
+
+# Terminal 2: Editas cÃ³digo
+# Cada cambio se aplica automÃ¡ticamente
+```
+
+### 2. Debugging rÃ¡pido
+```javascript
+// En tools/mi-tool.js
+export async function mi_tool(args, context) {
+  // Agregas console.log para debug
+  console.log('Debug:', args);
+  // Guardas y pruebas inmediatamente
+}
+```
+
+### 3. Automejora del sistema
+```javascript
+// El sistema detecta que un tool puede optimizarse
+// Modifica su propio cÃ³digo
+// Se recarga automÃ¡ticamente
+// ContinÃºa funcionando con mejoras aplicadas
+```
+
+## âš ï¸ Limitaciones
+
+1. **MÃ³dulos crÃ­ticos**: Cambios en server-class.js requieren reinicio manual
+2. **Estado de conexiones**: Conexiones WebSocket/MCP se mantienen pero handlers pueden cambiar
+3. **CachÃ© de anÃ¡lisis**: Se preserva, pero anÃ¡lisis en progreso pueden necesitar re-queue
+4. **Dependencias circulares**: Cambios en mÃ³dulos interdependientes pueden requerir reinicio
+
+## ðŸ”§ Troubleshooting
+
+### Hot-reload no inicia
+```bash
+# Verificar variable de entorno
+echo $OMNYSYS_HOT_RELOAD  # Linux/Mac
+set OMNYSYS_HOT_RELOAD    # Windows
+
+# Debe mostrar: true
+```
+
+### Cambios no se aplican
+```bash
+# Verificar logs
+tail -f logs/mcp-server.log | grep "hot-reload"
+
+# Buscar:
+# - "Hot-reload enabled" (debe aparecer al inicio)
+# - "Detected change:" (al guardar archivo)
+# - "Hot-reload complete:" (cuando termina)
+```
+
+### Estado corrupto despuÃ©s de reload
+```javascript
+// El sistema tiene rollback automÃ¡tico
+// Si falla el reload, restaura estado anterior
+// Si todo falla, reinicia manualmente
+```
+
+## ðŸ† Beneficios
+
+1. **Desarrollo 10x mÃ¡s rÃ¡pido**: Cambios inmediatos sin reiniciar
+2. **Automejora real**: El sistema puede modificarse a sÃ­ mismo
+3. **Zero downtime**: Actualizaciones transparentes para usuarios
+4. **Debugging eficiente**: Prueba cambios al instante
+
+## ðŸ“ˆ MÃ©tricas
+
+```
+Hot-reload Statistics:
+- MÃ³dulos monitoreados: 631 archivos
+- Recargas exitosas: 47
+- Recargas fallidas: 2
+- Tiempo promedio de reload: 120ms
+- Estado preservado: 100%
+```
+
+## ðŸŽ¯ ConclusiÃ³n
+
+El Hot-Reload transforma OmnySys en un sistema **autÃ³nomo y auto-mejorable**. Puedes:
+- Desarrollar features sin reiniciar
+- Corregir bugs on-the-fly  
+- El sistema puede optimizarse a sÃ­ mismo
+- Todo sin perder datos ni estado
+
+**Â¡Bienvenido al futuro del desarrollo!** ðŸ”¥
+

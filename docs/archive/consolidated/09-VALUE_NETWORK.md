@@ -1,0 +1,400 @@
+﻿---
+⚠️  DOCUMENTO ARCHIVADO - Ver nueva ubicación
+---
+Este documento ha sido consolidado en la nueva estructura de documentación.
+
+📍 Nueva ubicación: Ver docs/archive/consolidated/README.md para el mapa completo
+
+🚀 Usar en su lugar:
+- docs/01-core/ (fundamentos)
+- docs/02-architecture/ (sistemas)
+- docs/04-guides/ (guías prácticas)
+
+---
+Documento original (mantenido para referencia histórica):
+# Red de Valor: Conexiones que Crean Conexiones
+
+**Principio**: El valor de un dato estÃ¡ en quiÃ©n lo consume, no en quiÃ©n lo genera.
+
+> *"Una conexiÃ³n asegura otra, y esa nueva conexiÃ³n sirve en otro lado. Todo es simbiosis."*
+
+---
+
+## ðŸ•¸ï¸ La Red de Valor (No el Pipeline)
+
+### Antiguo Pensamiento (Lineal)
+```
+ExtracciÃ³n â”€â”€â–º Almacenamiento â”€â”€â–º Uso
+   A              B                C
+   
+"Extraigo A, lo guardo en B, lo uso en C"
+```
+
+### Nuevo Pensamiento (Red)
+```
+        A (Data Flow)
+       / \
+      /   \
+     B     C (Type Contracts + Error Flow)
+      \   /
+       \ /
+        D (Insight: "Esta funciÃ³n tiene riesgo de tipo + error")
+        |
+        E (Archetype: "API Boundary Function")
+        |
+        F (Warning: "Cambios rompen contrato")
+```
+
+**A genera datos que se combinan en D, E, F. El valor estÃ¡ en F, pero viene de A.**
+
+---
+
+## ðŸ”„ Ejemplos de Valor Emergente
+
+### Ejemplo 1: Operation Sequence â†’ Clan â†’ PredicciÃ³n â†’ Warning
+
+```javascript
+// GENERADO EN: Data Flow Extractor
+atom.operationSequence = ['receive', 'read', 'transform', 'persist'];
+
+// VALOR EN: NingÃºn lado (todavÃ­a)
+// Es solo una secuencia de strings
+
+// CONECTADO EN: Clan Registry
+clan = findClanBySequence(atom.operationSequence);
+// â†’ Clan "read-transform-persist"
+
+// NUEVO VALOR EN: Clan Registry
+clan.historicalPatterns = {
+  evolution: "67% agregaron validaciÃ³n en gen 2",
+  commonMistakes: ["Olvidar error handling en 'read'"],
+  avgComplexityGrowth: 1.4
+};
+
+// PROPAGADO A: Context Query
+warning = {
+  type: 'clan-pattern',
+  message: "Funciones del clan 'read-transform-persist' suelen:",
+  predictions: [
+    "1. Agregar validaciÃ³n (67% probabilidad)",
+    "2. Crecer en complejidad (avg +40%)"
+  ],
+  recommendation: "Considera agregar validaciÃ³n temprano"
+};
+
+// EL VALOR FINAL ESTÃ EN: Warning al desarrollador
+// PERO VIENE DE: Operation sequence (que parecÃ­a ruido)
+```
+
+**Flujo de valor**: 
+- Generado: Data Flow
+- Procesado: Clan Registry  
+- Consumido: Context Query (Warning)
+- **El valor estÃ¡ en el Warning, no en la sequence**
+
+---
+
+### Ejemplo 2: Complexity + Ancestry + Archetype = Criticality
+
+```javascript
+// DATO 1: Cyclomatic Complexity
+atom.metrics.cyclomaticComplexity = 15;
+// Solo: "Es complejo"
+
+// DATO 2: Ancestry Generation  
+atom.ancestry.generation = 3;
+// Solo: "Tiene historia"
+
+// DATO 3: Archetype
+atom.archetype.type = 'business-logic';
+// Solo: "Es lÃ³gica de negocio"
+
+// CONECTADOS EN: Criticality Calculator
+criticality = calculateCriticality({
+  complexity: atom.metrics.cyclomaticComplexity,  // 15
+  generation: atom.ancestry.generation,           // 3
+  archetype: atom.archetype.type,                 // 'business-logic'
+  connections: atom.connections.length            // 12
+});
+
+// RESULTADO: Valor emergente
+criticality = {
+  score: 0.87,  // HIGH
+  reason: "Complex business logic with lineage + many connections",
+  risk: "Changes will have cascade effects",
+  
+  // NUEVO VALOR: RecomendaciÃ³n especÃ­fica
+  recommendation: {
+    action: "refactor",
+    strategy: "Extract validation logic (seen in 80% of gen 4)",
+    confidence: 0.82
+  }
+};
+
+// VALOR FINAL: Saber NO solo que es complejo, sino QUÃ‰ hacer
+// VIENE DE: Conectar 4 datos aparentemente independientes
+```
+
+**Flujo de valor**:
+- Generado: Metrics (A), Ancestry (B), Archetype (C), Connections (D)
+- Procesado: Criticality Calculator
+- Consumido: Refactor Recommendation
+- **El valor estÃ¡ en "quÃ© hacer", no en los datos individuales**
+
+---
+
+### Ejemplo 3: Type Contract + Error Flow + Performance = API Stability
+
+```javascript
+// DATO 1: Type Contract (baja confianza)
+atom.typeContracts.confidence = 0.4;
+// Solo: "Tipos poco claros"
+
+// DATO 2: Error Flow (muchos throws)
+atom.errorFlow.throws = [
+  { type: 'ValidationError', confidence: 1.0 },
+  { type: 'NetworkError', confidence: 0.7 },
+  { type: 'TimeoutError', confidence: 0.6 }
+];
+// Solo: "Lanza 3 errores"
+
+// DATO 3: Performance (lento)
+atom.performance.impactScore = 0.75;
+// Solo: "Es lento"
+
+// CONECTADOS EN: API Stability Analyzer
+stability = analyzeAPIStability({
+  typeConfidence: atom.typeContracts.confidence,      // 0.4
+  errorCount: atom.errorFlow.throws.length,           // 3
+  performance: atom.performance.impactScore,          // 0.75
+  isExported: atom.isExported                         // true
+});
+
+// RESULTADO: Valor emergente
+stability = {
+  apiContract: 'unstable',
+  riskLevel: 'high',
+  
+  // NUEVO VALOR: Por quÃ© es inestable
+  reasons: [
+    "Tipos poco claros (40% confianza) + mÃºltiples errores = contrato dÃ©bil",
+    "Performance variable (0.75) + errores de red = comportamiento impredecible",
+    "FunciÃ³n exportada = impacto amplio"
+  ],
+  
+  // NUEVO VALOR: QuÃ© arreglar primero
+  priority: [
+    "1. Agregar JSDoc (subir confianza a >0.8)",
+    "2. Documentar errores posibles",
+    "3. Agregar timeout handling consistente"
+  ]
+};
+
+// VALOR FINAL: Entender por quÃ© la API es frÃ¡gil y cÃ³mo arreglarla
+// VIENE DE: 3 datos que solos no lo explican
+```
+
+**Flujo de valor**:
+- Generado: Type Contracts (A), Error Flow (B), Performance (C)
+- Procesado: API Stability Analyzer
+- Consumido: Priority Actions
+- **El valor estÃ¡ en "prioridad de acciones", no en los datos crudos**
+
+---
+
+## ðŸŽ¯ DÃ³nde Presentar QuÃ©
+
+### Contexto: "Voy a editar esta funciÃ³n"
+
+**NO mostrar**:
+- Cyclomatic complexity: 12
+- operationSequence: ['a', 'b', 'c']
+- DNA hash: abc123
+
+**SÃ mostrar** (generado de esos datos):
+```
+âš ï¸  RIESGO ALTO de cascade break
+   â””â”€ RazÃ³n: Complejidad 12 + 15 conexiones + historial de cambios
+   
+ðŸ”´ Cambios recientes en el linaje:
+   â””â”€ Gen 2: AgregÃ³ validaciÃ³n (breaking change)
+   â””â”€ Gen 3: CambiÃ³ tipo de retorno (otro breaking)
+   
+ðŸ’¡ RecomendaciÃ³n basada en el clan:
+   â””â”€ "Funciones similares necesitan:
+       1. Tests de integraciÃ³n (80% las agregan)
+       2. ValidaciÃ³n de tipos (60% rompieron contratos)"
+```
+
+**Los datos "crudos" se transforman en "insights accionables"**
+
+---
+
+### Contexto: "RevisiÃ³n de cÃ³digo"
+
+**NO mostrar**:
+- Tiene 3 nested loops
+- Promise.all con 5 calls
+- 200ms de ejecuciÃ³n estimada
+
+**SÃ mostrar** (generado de esos datos):
+```
+ðŸŒ POSIBLE BOTTLENECK
+   â””â”€ 3 nested loops + Promise.all(5) = O(nÂ²) paralelo
+   â””â”€ Bloquea thread principal 200ms
+   
+ðŸ“Š Impacto en UI:
+   â””â”€ 3 componentes esperan esta funciÃ³n
+   â””â”€ Probable dropped frames durante render
+   
+âœ… Soluciones del clan:
+   â””â”€ "Usar Web Worker (visto en 70% de casos similares)"
+   â””â”€ "Implementar virtualizaciÃ³n (reduce a O(1))"
+```
+
+**Los datos tÃ©cnicos se traducen a impacto de usuario + soluciones**
+
+---
+
+### Contexto: "Nuevo desarrollador entra al proyecto"
+
+**NO mostrar**:
+- Arbol de imports
+- Lista de funciones
+- MÃ©tricas de cÃ³digo
+
+**SÃ mostrar** (generado de TODO):
+```
+ðŸ—ºï¸  MAPA DE ESTA CARPETA
+
+ðŸ“¦ api/ 
+   â”œâ”€ ðŸ”¥ Punto crÃ­tico: auth.js (vibration: 0.9)
+   â”‚   â””â”€ "Si rompes esto, rompes login, perfil, checkout"
+   â”‚
+   â”œâ”€ ðŸ”„ Flujo principal: order.js â†’ payment.js â†’ confirmation.js
+   â”‚   â””â”€ Temporal: order debe inicializar antes que payment
+   â”‚
+   â””â”€ âš ï¸  Deuda tÃ©cnica: legacy.js (gen: 5)
+       â””â”€ "EstÃ¡ aquÃ­ por compatibilidad, no lo extendas"
+
+ðŸŽ¯ Para empezar:
+   1. Lee: validation.js (contratos claros)
+   2. Evita tocar: auth.js sin tests
+   3. Extiende vÃ­a: new-features/ (patrÃ³n del clan)
+```
+
+**Los datos estructurales se convierten en narrativa Ãºtil**
+
+---
+
+## ðŸ§¬ Estructura de PresentaciÃ³n Contextual
+
+### Principio: "El valor es relativo al contexto"
+
+```javascript
+// Mismo Ã¡tomo, diferentes contextos = diferentes presentaciones
+
+const atom = {
+  name: 'processOrder',
+  complexity: 15,
+  vibration: 0.87,
+  generation: 3,
+  clan: 'read-transform-persist',
+  typeContracts: { confidence: 0.4 },
+  performance: { impactScore: 0.75 }
+};
+
+// CONTEXTO 1: "Debug de error"
+present = {
+  highlight: 'errorFlow',           // Mostrar errores
+  secondary: 'typeContracts',       // Mostrar tipos (puede estar relacionado)
+  hide: ['complexity', 'clan']      // Ocultar lo irrelevante
+};
+
+// CONTEXTO 2: "OptimizaciÃ³n de performance"
+present = {
+  highlight: 'performance',         // Mostrar performance
+  secondary: 'complexity',          // Mostrar complejidad (relacionada)
+  connect: 'clan',                  // Mostrar patrones del clan
+  hide: ['typeContracts']           // Ocultar lo irrelevante
+};
+
+// CONTEXTO 3: "RefactorizaciÃ³n"
+present = {
+  highlight: 'complexity',          // Mostrar complejidad
+  connect: ['clan', 'generation'],  // Mostrar historia y patrones
+  predict: 'historicalPatterns',    // Predecir evoluciÃ³n
+  hide: ['performance']             // Ocultar si no es relevante
+};
+```
+
+**El mismo dato se muestra o se oculta segÃºn el contexto.**
+
+---
+
+## ðŸŒ La Simbiosis en AcciÃ³n
+
+### Ciclo: Un sistema alimenta a otro que alimenta al primero
+
+```javascript
+// 1. Shadow Registry detecta patrÃ³n en sombras
+shadowPattern = {
+  type: 'complexity-growth',
+  observation: "Gen 1: avg complexity 8 â†’ Gen 3: avg complexity 15"
+};
+
+// 2. Clan Registry consume el patrÃ³n
+clan.updatePattern(shadowPattern);
+// â†’ "Clanes de 'business-logic' tienen crecimiento de complejidad"
+
+// 3. Archetype Detector consume el clan
+archetypeDetector.addRule({
+  if: "clan == 'business-logic' && generation > 2",
+  then: "high-risk-of-god-function",
+  confidence: 0.78
+});
+
+// 4. Nueva funciÃ³n analizada
+newAtom = analyzeFunction('newFeature.js');
+// â†’ Detectado: clan 'business-logic', gen 1
+
+// 5. Warning generado (usando datos de Shadow Registry)
+warning = {
+  type: 'preventive',
+  message: "Esta funciÃ³n estÃ¡ en clan de alto crecimiento",
+  recommendation: "Agregar tests de complejidad desde ahora",
+  basedOn: "historical data from Shadow Registry"
+};
+
+// 6. Desarrollador actÃºa, funciÃ³n evoluciona diferente
+// â†’ Gen 2: complexity 9 (en lugar de 12)
+
+// 7. Shadow Registry aprende del Ã©xito
+shadowRegistry.markSuccess(warning.id);
+// â†’ "Warnings preventivos de este tipo funcionan"
+
+// 8. Archetype ajusta confianza
+archetypeDetector.adjustConfidence('preventive-warnings', +0.05);
+```
+
+**Simbiosis**: Shadow â†’ Clan â†’ Archetype â†’ Warning â†’ AcciÃ³n â†’ Shadow (mejorado)
+
+---
+
+## âœ… ConclusiÃ³n
+
+**Todo es Ãºtil, pero no en el lugar donde se genera.**
+
+- **Data Flow** genera secuencias â†’ Ãštil en **Clan Registry** â†’ Valor en **Predicciones**
+- **Complexity** genera mÃ©tricas â†’ Ãštil en **Criticality** â†’ Valor en **Warnings**
+- **Ancestry** genera historia â†’ Ãštil en **Pattern Matching** â†’ Valor en **Recomendaciones**
+- **Type Contracts** genera tipos â†’ Ãštil en **API Stability** â†’ Valor en **Prioridades**
+
+**La estructura de presentaciÃ³n debe ser:**
+1. **Contextual**: Mostrar lo relevante al momento
+2. **Conectada**: Combinar mÃºltiples fuentes
+3. **Accionable**: Traducir datos a insights
+4. **DinÃ¡mica**: Adaptarse al uso (aprender quÃ© funciona)
+
+**El valor no estÃ¡ en los datos. EstÃ¡ en las conexiones entre datos.**
+

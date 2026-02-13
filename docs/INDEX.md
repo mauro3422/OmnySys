@@ -1,321 +1,258 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.7.1
-**Última actualización**: 2026-02-10
+**Versión**: v0.7.1  
+**Última actualización**: 2026-02-12  
+**Estado**: ✅ **REESTRUCTURACIÓN COMPLETA**
+
+---
+
+## 📚 Estructura de Documentación
+
+```
+docs/
+├── 01-core/           🎯 Fundamentos (leer primero)
+├── 02-architecture/   🏗️ Arquitectura técnica
+├── 03-orchestrator/   ⚙️ Flujo de datos y orquestación
+├── 04-guides/         🛠️ Guías prácticas
+├── 05-roadmap/        🔮 Roadmap e investigación
+├── 06-reference/      📚 Referencia técnica
+└── archive/           🗄️ Archivo histórico
+```
 
 ---
 
 ## 🚀 Empezar Aquí
 
-Los documentos esenciales para comenzar con OmnySys:
+### Para Entender el Sistema (Obligatorio)
 
-| Documento | Descripción |
-|-----------|-------------|
-| [README.md](../README.md) | Instalación rápida (2 comandos) y overview del sistema |
-| [INSTALL.md](../INSTALL.md) | Guía de instalación detallada |
-| [GETTING_STARTED.md](../GETTING_STARTED.md) | Primeros pasos con OmnySys |
-| [MCP_SETUP.md](../MCP_SETUP.md) | Configuración del servidor MCP |
-| [FISICA_DEL_SOFTWARE.md](FISICA_DEL_SOFTWARE.md) | **⭐ Visión unificada**: De cajas con cables a átomos con electrones |
+| Ruta | Documento | Descripción |
+|------|-----------|-------------|
+| **01-core/** | [problem.md](01-core/problem.md) | **⭐ El problema**: Visión de túnel en IAs |
+| **01-core/** | [principles.md](01-core/principles.md) | **⭐ Los 4 Pilares** del diseño |
+| **01-core/** | [philosophy.md](01-core/philosophy.md) | **⭐ Física del Software** + Omnisciencia |
+| **01-core/** | [README.md](01-core/README.md) | Índice de fundamentos |
+
+### Para Instalar y Usar
+
+| Ruta | Documento | Descripción |
+|------|-----------|-------------|
+| **(raíz)** | [INSTALL.md](../INSTALL.md) | **⭐ Guía de instalación completa** |
+| **(raíz)** | [GETTING_STARTED.md](../GETTING_STARTED.md) | **⭐ Primeros pasos** |
+| **(raíz)** | [MCP_SETUP.md](../MCP_SETUP.md) | Configuración del servidor MCP |
+| **04-guides/** | [quickstart.md](04-guides/quickstart.md) | Empezar en 5 minutos (rápido) |
+| **04-guides/** | [installation-auto.md](04-guides/installation-auto.md) | **⭐ Instalación automática** (rescatado) |
+| **04-guides/** | [tools.md](04-guides/tools.md) | **14 herramientas MCP** disponibles |
+| **04-guides/** | [mcp-integration.md](04-guides/mcp-integration.md) | Integrar con tu IDE |
+| **04-guides/** | [reuse.md](04-guides/reuse.md) | Reusar componentes en tu proyecto |
+| **04-guides/** | [development.md](04-guides/development.md) | Desarrollo y debugging |
+| **04-guides/** | [ai-setup.md](04-guides/ai-setup.md) | Configurar modelos de IA |
 
 ---
 
-## 🏗️ Arquitectura
+## 🏗️ Arquitectura (02-architecture/)
 
-Documentación de la arquitectura del sistema:
-
-### Core Architecture
+### Core
 | Documento | Descripción |
 |-----------|-------------|
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Arquitectura técnica completa de 3 capas |
-| [architecture/CORE_PRINCIPLES.md](architecture/CORE_PRINCIPLES.md) | **⭐ Los 4 Pilares** del sistema |
-| [architecture/ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan de análisis atómico y molecular |
-| [architecture/ARCHITECTURE_MOLECULAR_IMPLEMENTATION.md](architecture/ARCHITECTURE_MOLECULAR_IMPLEMENTATION.md) | Implementación del sistema molecular |
-| [architecture/ARCHITECTURE_LAYER_A_B.md](architecture/ARCHITECTURE_LAYER_A_B.md) | Capas A (Static) y B (Semantic) |
-| [architecture/DATA_FLOW_FRACTAL_DESIGN.md](architecture/DATA_FLOW_FRACTAL_DESIGN.md) | Diseño fractal del flujo de datos |
-| [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | **⭐ Data Flow System** - Comprehensive documentation (v1, v2, usage, implementation) |
-| [architecture/METADATA_EXTRACTORS.md](architecture/METADATA_EXTRACTORS.md) | **Metadata Extractors** - Guía completa de extractores |
+| [core.md](02-architecture/core.md) | Arquitectura de capas A y B |
+| [context-selection.md](02-architecture/context-selection.md) | Algoritmos de selección de contexto |
 
-### Orchestrator & Data Flow
-**⭐ NUEVO**: Documentación consolidada del flujo de datos y orchestrator.
-
+### Data Flow Fractal
 | Documento | Descripción |
 |-----------|-------------|
-| [architecture/orchestrator/README.md](architecture/orchestrator/README.md) | **Índice y mapa del sistema** - Empezar aquí para entender el flujo |
-| [architecture/orchestrator/01-FLUSO-VIDA-ARCHIVO.md](architecture/orchestrator/01-FLUSO-VIDA-ARCHIVO.md) | **Flujo completo**: Desde que tocas un archivo hasta que está disponible |
-| [architecture/orchestrator/02-SISTEMA-CACHE.md](architecture/orchestrator/02-SISTEMA-CACHE.md) | **Los 4 cachés**: Por qué existen y cómo consolidarlos |
-| [architecture/orchestrator/03-ORCHESTRATOR-INTERNO.md](architecture/orchestrator/03-ORCHESTRATOR-INTERNO.md) | **Cómo funciona internamente**: Colas, workers, decisión LLM |
-| [architecture/orchestrator/04-TROUBLESHOOTING.md](architecture/orchestrator/04-TROUBLESHOOTING.md) | **Problemas comunes**: Cache desync, zombies, etc. |
-| [architecture/orchestrator/05-CAMBIOS-RECIENTES.md](architecture/orchestrator/05-CAMBIOS-RECIENTES.md) | **Historial de fixes**: Qué se arregló y cuándo |
+| [data-flow/README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |
+| [data-flow/concepts.md](02-architecture/data-flow/concepts.md) | Conceptos clave (Cables vs Señales, Fractal) |
+| [data-flow/atom-extraction.md](02-architecture/data-flow/atom-extraction.md) | Extracción atómica (implementado) |
+| [data-flow/roadmap.md](02-architecture/data-flow/roadmap.md) | Roadmap fases 2-5 |
 
-### Sistemas Especializados
+### Arquetipos
 | Documento | Descripción |
 |-----------|-------------|
-| [architecture/ARCHETYPE_SYSTEM.md](architecture/ARCHETYPE_SYSTEM.md) | Sistema de arquetipos |
-| [architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md](architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md) | Guía para desarrollar arquetipos |
-| [architecture/HYBRID_ANALYSIS_PIPELINE.md](architecture/HYBRID_ANALYSIS_PIPELINE.md) | Pipeline híbrido de análisis |
-| [architecture/CONTEXT_SELECTION_ALGORITHMS.md](architecture/CONTEXT_SELECTION_ALGORITHMS.md) | Algoritmos de selección de contexto |
+| [archetypes/README.md](02-architecture/archetypes/README.md) | Índice de arquetipos |
+| [archetypes/system.md](02-architecture/archetypes/system.md) | Catálogo de arquetipos |
+| [archetypes/development.md](02-architecture/archetypes/development.md) | Crear nuevos arquetipos |
+
+### Shadow Registry
+| Documento | Descripción |
+|-----------|-------------|
+| [shadow-registry/README.md](02-architecture/shadow-registry/README.md) | Índice del Shadow Registry |
+| [shadow-registry/dna-system.md](02-architecture/shadow-registry/dna-system.md) | ADN estructural |
+| [shadow-registry/lifecycle.md](02-architecture/shadow-registry/lifecycle.md) | Ciclo de vida de archivos |
+| [shadow-registry/usage.md](02-architecture/shadow-registry/usage.md) | Guía de uso |
 
 ### Ecosistema
 | Documento | Descripción |
 |-----------|-------------|
-| [architecture/ecosystem/ECOSYSTEM_ARCHITECTURE.md](architecture/ecosystem/ECOSYSTEM_ARCHITECTURE.md) | Todo se alimenta de todo |
-| [architecture/ecosystem/VALUE_NETWORK.md](architecture/ecosystem/VALUE_NETWORK.md) | Red de valor del sistema |
+| [ecosystem/README.md](02-architecture/ecosystem/README.md) | Índice del ecosistema |
+| [ecosystem/architecture.md](02-architecture/ecosystem/architecture.md) | Arquitectura de valor |
+| [ecosystem/value-flow.md](02-architecture/ecosystem/value-flow.md) | Flujo de valor |
 
 ---
 
-## 🧬 Data Flow System (v0.7.1)
+## ⚙️ Orchestrator (03-orchestrator/)
 
-**Current Status**: Fase 1 (v2) ✅ 95% | Future Phases 🟡 Planned
-
-### Main Documentation
 | Documento | Descripción |
 |-----------|-------------|
-| [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | **⭐ Complete guide** - v1, v2, architecture, implementation, usage |
-
-### Future Phases (Roadmap)
-| Documento | Descripción |
-|-----------|-------------|
-| [DATA_FLOW/README.md](DATA_FLOW/README.md) | **Roadmap index** - Future phases 2-5 (planned) |
-| [DATA_FLOW/CONCEPTOS_CLAVE.md](DATA_FLOW/CONCEPTOS_CLAVE.md) | Core concepts (cables vs signals, fractal architecture) |
-| [DATA_FLOW/04_FASE_CADENAS.md](DATA_FLOW/04_FASE_CADENAS.md) | 🟡 Fase 4: Cross-function chains (planned) |
-| [DATA_FLOW/06_FASE_SIMULACION.md](DATA_FLOW/06_FASE_SIMULACION.md) | 🟡 Fase 6: Flow simulation (planned) |
-| [DATA_FLOW/07_FASE_SISTEMA.md](DATA_FLOW/07_FASE_SISTEMA.md) | 🟡 Fase 7: System-level view (planned) |
-| [DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md](DATA_FLOW/FASE_2_CROSS_FUNCTION_CHAINS.md) | 🟡 Fase 2: Alternative cross-function design (planned) |
-| [DATA_FLOW/FASE_3_MODULO_SISTEMA.md](DATA_FLOW/FASE_3_MODULO_SISTEMA.md) | 🟡 Fase 3: Module & system levels (planned) |
-
-### Archived Design Documents
-See [DATA_FLOW_CONSOLIDATION.md](DATA_FLOW_CONSOLIDATION.md) for details on consolidation.
-
-**Archived to** `docs/archive/design/data-flow/`:
-- `01_FASE_ATOMO.md` - Fase 1 design (superseded by v2 implementation)
-- `02_FASE_SEMANTICA.md` - Semantic analysis design
-- `03_FASE_ESTANDARIZACION.md` - Standardization design (implemented in v2)
-- `05_FASE_RACE_CONDITIONS.md`, `08_FASE_4_RACE_CONDITIONS.md`, `09_FASE_5_SIMULATION.md` - Duplicates
-
-**Archived to** `docs/archive/plans/data-flow/`:
-- `PLAN_FASE_1_REVISADO.md`, `PLAN_FASE_1_IMPLEMENTADO.md` - Fase 1 plans (completed)
+| [readme.md](03-orchestrator/readme.md) | Índice del orchestrator |
+| [01-flujo-vida-archivo.md](03-orchestrator/01-flujo-vida-archivo.md) | Pipeline completo |
+| [02-sistema-cache.md](03-orchestrator/02-sistema-cache.md) | Sistema de caché |
+| [03-orchestrator-interno.md](03-orchestrator/03-orchestrator-interno.md) | Funcionamiento interno |
+| [04-troubleshooting.md](03-orchestrator/04-troubleshooting.md) | Problemas comunes |
+| [05-cambios-recientes.md](03-orchestrator/05-cambios-recientes.md) | Historial de fixes |
 
 ---
 
-## 🪦 Shadow Registry (v0.7.1)
+## 🔮 Roadmap e Investigación (05-roadmap/)
 
-Sistema de linaje de archivos y metadata evolutiva:
-
+### Análisis Estratégico
 | Documento | Descripción |
 |-----------|-------------|
-| [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) | **⭐ Arquitectura completa** - ADN, sombras, linaje y herencia |
-| [guides/SHADOW_REGISTRY_USAGE.md](guides/SHADOW_REGISTRY_USAGE.md) | **Guía práctica de uso** - Casos comunes y ejemplos |
-| [archive/plans/SHADOW_REGISTRY_PLAN.md](archive/plans/SHADOW_REGISTRY_PLAN.md) | Plan de implementación original (Fases 0-2) |
+| [competitive-analysis.md](05-roadmap/competitive-analysis.md) | **⭐ Análisis de competencia** - Posicionamiento vs Copilot, Cody, Aider |
+| [competitors-detailed-analysis.md](05-roadmap/competitors-detailed-analysis.md) | **⭐⭐ COMPETIDORES REALES** - Qodo, Augment Code, Code Pathfinder (rescatado) |
+| [competitors-existing-solutions.md](05-roadmap/competitors-existing-solutions.md) | **⭐ Análisis de soluciones existentes** - MCP servers, Dependency Cruiser (rescatado) |
+
+### Roadmap Práctico
+| Documento | Descripción |
+|-----------|-------------|
+| [future-ideas.md](05-roadmap/future-ideas.md) | Ideas futuras y roadmap |
+| [next-steps-detailed.md](05-roadmap/next-steps-detailed.md) | **⭐ Roadmap detallado** con tareas específicas (rescatado) |
+
+### Históricos
+| Documento | Descripción |
+|-----------|-------------|
+| [historical/gemini-validation-2026-02-08.md](05-roadmap/historical/gemini-validation-2026-02-08.md) | **⭐ Validación por Gemini** - Origen del proyecto (rescatado) |
+
+### Visión e Investigación
+| Documento | Descripción |
+|-----------|-------------|
+| [agi-vision.md](05-roadmap/agi-vision.md) | 🧪 Hipótesis AGI |
+| [intuition-engine-vision.md](05-roadmap/intuition-engine-vision.md) | 🧪 Motor de intuición |
+| [omnybrain-cognition.md](05-roadmap/omnybrain-cognition.md) | 🧪 Cognición artificial |
+| [hardware-vision.md](05-roadmap/hardware-vision.md) | 🧪 OmnySys para hardware |
+| [omnysys-seed.md](05-roadmap/omnysys-seed.md) | Semilla de cognición estructural |
+
+### Omny IDE Visión
+| Documento | Descripción |
+|-----------|-------------|
+| [omny-ide/omny-ide.md](05-roadmap/omny-ide/omny-ide.md) | Visión del IDE |
+| [omny-ide/omny-ide-agi.md](05-roadmap/omny-ide/omny-ide-agi.md) | Camino a AGI práctica |
+| [omny-ide/omny-ide-practico.md](05-roadmap/omny-ide/omny-ide-practico.md) | Revolución en programación |
 
 ---
 
-## 📖 Guías de Uso
+## 📚 Referencia Técnica (06-reference/)
 
-Guías prácticas para usuarios y desarrolladores:
-
+### Análisis del Sistema
 | Documento | Descripción |
 |-----------|-------------|
-| [guides/TOOLS_GUIDE.md](guides/TOOLS_GUIDE.md) | **⭐ Guía completa de las 14 herramientas MCP** |
-| [guides/AI_MODELS_GUIDE.md](guides/AI_MODELS_GUIDE.md) | Guía de modelos de IA (LFM2.5, setup, prompting) |
-| [guides/MCP_INTEGRATION_GUIDE.md](guides/MCP_INTEGRATION_GUIDE.md) | Integración con MCP |
-| [guides/DOCUMENTATION_GUIDE.md](guides/DOCUMENTATION_GUIDE.md) | Guía de documentación |
-| [guides/METADATA_INSIGHTS_GUIDE.md](guides/METADATA_INSIGHTS_GUIDE.md) | Guía de insights de metadata |
-| [guides/METADATA_INSIGHTS_CATALOG.md](guides/METADATA_INSIGHTS_CATALOG.md) | Catálogo de insights |
-| [guides/presentations/PRESENTATION_EXAMPLES.md](guides/presentations/PRESENTATION_EXAMPLES.md) | Ejemplos de presentaciones contextuales |
-| [guides/presentations/SISTEMAS_NUEVOS_Y_ARQUETIPOS.md](guides/presentations/SISTEMAS_NUEVOS_Y_ARQUETIPOS.md) | Sistemas nuevos y arquetipos |
-| [API_GUIDE.md](API_GUIDE.md) | Guía de la API del sistema |
+| [analysis/system-overview.md](06-reference/analysis/system-overview.md) | Overview del análisis |
+| [analysis/system-gaps.md](06-reference/analysis/system-gaps.md) | Gaps identificados |
+| [analysis/system-extractors.md](06-reference/analysis/system-extractors.md) | Análisis de extractores |
 
----
-
-## 📊 Análisis y Auditorías
-
-Análisis del ecosistema y auditorías del sistema:
-
+### Análisis y Reportes (Rescatados del archivo)
 | Documento | Descripción |
 |-----------|-------------|
-| [analysis/COMPETITIVE_LANDSCAPE.md](analysis/COMPETITIVE_LANDSCAPE.md) | Análisis de competidores |
-| [analysis/COMPETITIVE_STRATEGY.md](analysis/COMPETITIVE_STRATEGY.md) | Estrategia competitiva |
-| [analysis/PROBLEM_ANALYSIS.md](analysis/PROBLEM_ANALYSIS.md) | Análisis del problema de visión de túnel |
-| [analysis/TUNNEL_VISION_CASES.md](analysis/TUNNEL_VISION_CASES.md) | Casos de visión de túnel |
-| [analysis/SYSTEM_ANALYSIS_OVERVIEW.md](analysis/SYSTEM_ANALYSIS_OVERVIEW.md) | Overview del análisis del sistema |
-| [analysis/SYSTEM_ANALYSIS_EXTRACTORS.md](analysis/SYSTEM_ANALYSIS_EXTRACTORS.md) | Análisis de extractores |
-| [analysis/SYSTEM_ANALYSIS_GAPS.md](analysis/SYSTEM_ANALYSIS_GAPS.md) | Gaps identificados |
-| [analysis/PROJECT_ANALYSIS_DIAGRAM.md](analysis/PROJECT_ANALYSIS_DIAGRAM.md) | Diagrama de análisis |
-| [FASES_CLARIFICATION.md](FASES_CLARIFICATION.md) | Clarificación de fases (dónde estamos) |
-| [FLUJO_ACTUAL_SIMPLIFICADO.md](FLUJO_ACTUAL_SIMPLIFICADO.md) | Flujo actual simplificado |
-| [INTEGRACION_COMPLETA_FLUJO.md](INTEGRACION_COMPLETA_FLUJO.md) | Integración completa del flujo |
-
----
-
-## 🔮 Visión Futura
-
-Ideas, conceptos y visión a largo plazo:
-
-### Visión OmnyIDE y AGI
-| Documento | Descripción |
-|-----------|-------------|
-| [OMNY_IDE_CONSCIENTE.md](OMNY_IDE_CONSCIENTE.md) | Visión del IDE consciente |
-| [OMNY_IDE_CONSCIENTE_PRACTICO.md](OMNY_IDE_CONSCIENTE_PRACTICO.md) | Aspectos prácticos del IDE |
-| [OMNY_IDE_CONSCIENTE_AGI.md](OMNY_IDE_CONSCIENTE_AGI.md) | Perspectiva AGI |
-| [OMNY_AGI_ARQUITECTURA.md](OMNY_AGI_ARQUITECTURA.md) | Arquitectura AGI |
-| [ideas/OMNYBRAIN_VISION.md](ideas/OMNYBRAIN_VISION.md) | Visión OmnyBrain |
-
-### Roadmap
-| Documento | Descripción |
-|-----------|-------------|
-| [ROADMAP.md](../ROADMAP.md) | Roadmap del proyecto |
-| [future/FUTURE_IDEAS.md](future/FUTURE_IDEAS.md) | Ideas futuras (Fase 3+) |
-
-### Ideas Avanzadas
-| Documento | Descripción |
-|-----------|-------------|
-| [ideas/IDEAS_INDEX.md](ideas/IDEAS_INDEX.md) | **Índice de ideas** |
-| [ideas/TRANSFORMATION_CONTRACTS.md](ideas/TRANSFORMATION_CONTRACTS.md) | Contratos de transformación |
-| [ideas/VIRTUAL_FLOW_SIMULATION.md](ideas/VIRTUAL_FLOW_SIMULATION.md) | Simulación de flujos virtuales |
-| [ideas/SEMANTIC_INTENT_ENRICHMENT.md](ideas/SEMANTIC_INTENT_ENRICHMENT.md) | Enriquecimiento de intención semántica |
-| [ideas/UNIVERSAL_PATTERN_ENGINE.md](ideas/UNIVERSAL_PATTERN_ENGINE.md) | Motor de patrones universales |
-| [ideas/DATA_COLLECTION_STRATEGY.md](ideas/DATA_COLLECTION_STRATEGY.md) | Estrategia de colección de datos |
-| [ideas/VARIABLE_STANDARDIZATION.md](ideas/VARIABLE_STANDARDIZATION.md) | Estandarización de variables |
-| [ideas/DEBUGGER_FOR_AIS.md](ideas/DEBUGGER_FOR_AIS.md) | Debugger para IAs |
-| [ideas/LICENSING_STRATEGY.md](ideas/LICENSING_STRATEGY.md) | Estrategia de licenciamiento |
-| [ideas/PHYSICS_OF_SOFTWARE_MANIFESTO.md](ideas/PHYSICS_OF_SOFTWARE_MANIFESTO.md) | Manifiesto de física del software |
-
----
-
-## 🔧 Desarrollo Interno
-
-Documentación para desarrollo y mantenimiento:
-
-### Estado del Proyecto
-| Documento | Descripción |
-|-----------|-------------|
-| [CHANGELOG.md](../CHANGELOG.md) | **Historial completo de versiones** |
-| [TECHNICAL_STATUS.md](TECHNICAL_STATUS.md) | **Estado técnico actual v0.7.1** |
-| [TESTING_GUIDE.md](TESTING_GUIDE.md) | **Guía de testing del sistema** |
-| [MIGRATION_v0.6_to_v0.7.md](MIGRATION_v0.6_to_v0.7.md) | **Guía de migración v0.6 → v0.7** |
-| [QUEDO_POR_HACER.md](../QUEDO_POR_HACER.md) | Tareas pendientes |
-| [INTEGRITY_AND_CLEANUP.md](../INTEGRITY_AND_CLEANUP.md) | Integridad y limpieza del sistema |
-
-### Consolidation Reports
-| Documento | Descripción |
-|-----------|-------------|
-| [SHADOW_REGISTRY_CONSOLIDATION.md](SHADOW_REGISTRY_CONSOLIDATION.md) | Shadow Registry consolidation report (5→2 files, 60% reduction) |
-| [DATA_FLOW_CONSOLIDATION.md](DATA_FLOW_CONSOLIDATION.md) | Data Flow consolidation report (15→7 files, 58% reduction) |
-| [CLEANUP_REPORT.md](CLEANUP_REPORT.md) | Documentation cleanup report (3 dated reports archived) |
-
-### Reportes Activos
-| Documento | Descripción |
-|-----------|-------------|
-| [AUDIT_RESULTS.md](../AUDIT_RESULTS.md) | Resultados de auditoría v0.7.1 |
-| [INTEGRATION_SUMMARY.md](../INTEGRATION_SUMMARY.md) | Resumen de integración v0.7.1 |
-
-### Visión del Sistema
-| Documento | Descripción |
-|-----------|-------------|
-| [OMNISCIENCIA.md](../OMNISCIENCIA.md) | Visión de omnisciencia del sistema |
+| [analysis-reports/system-analysis-critical.md](06-reference/analysis-reports/system-analysis-critical.md) | **⭐ Auditoría crítica** - Problemas encontrados |
+| [analysis-reports/refactoring-report-v0.7.1.md](06-reference/analysis-reports/refactoring-report-v0.7.1.md) | **⭐ Reporte de refactorización** v0.7.1 |
+| [audit-architecture.md](06-reference/audit-architecture.md) | **⭐ Auditoría de arquitectura** |
+| [audit-follow-up.md](06-reference/audit-follow-up.md) | **⭐ Follow-up de auditoría** |
+| [corrections-summary.md](06-reference/corrections-summary.md) | **⭐ Resumen de correcciones** |
+| [plan-maestro-correccion.md](06-reference/plan-maestro-correccion.md) | **⭐ Plan maestro de corrección** |
+| [analysis-reports/analisis-cache-completo.md](06-reference/analysis-reports/analisis-cache-completo.md) | Análisis de caché |
+| [analysis-reports/analisis-mcp-completo.md](06-reference/analysis-reports/analisis-mcp-completo.md) | Análisis MCP |
+| [analysis-reports/flujo-actual-simplificado.md](06-reference/analysis-reports/flujo-actual-simplificado.md) | Flujo actual |
+| [technical-status.md](06-reference/technical-status.md) | Estado técnico v0.7.1 |
 
 ### Desarrollo y Testing
 | Documento | Descripción |
 |-----------|-------------|
-| [development/TODO-PENDIENTES.md](development/TODO-PENDIENTES.md) | TODOs pendientes |
-| [development/TESTING-RESULTS-PHASE-3.8.md](development/TESTING-RESULTS-PHASE-3.8.md) | Resultados de testing |
-| [development/RESEARCH_PUBLISHING_GUIDE.md](development/RESEARCH_PUBLISHING_GUIDE.md) | Guía de publicación de investigación |
-| [development/metadata-prompt-system.md](development/metadata-prompt-system.md) | Sistema de prompts de metadata |
+| [development/todo-pendientes.md](06-reference/development/todo-pendientes.md) | TODOs pendientes |
+| [development/testing-results-phase-3.8.md](06-reference/development/testing-results-phase-3.8.md) | Resultados de testing |
+| [testing-guide.md](06-reference/testing-guide.md) | Guía de testing |
+| [hot-reload-design.md](06-reference/hot-reload-design.md) | Diseño de hot-reload |
 
-### IA y Optimizaciones
+### Documentación Técnica Implementada
 | Documento | Descripción |
 |-----------|-------------|
-| [ai_architecture/AI_SETUP_GUIDE.md](ai_architecture/AI_SETUP_GUIDE.md) | Guía de setup de IA |
-| [ai_architecture/AI_OPTIMIZATIONS_2026.md](ai_architecture/AI_OPTIMIZATIONS_2026.md) | Optimizaciones de IA 2026 |
+| [technical/virtual-flow-simulation.md](06-reference/technical/virtual-flow-simulation.md) | Simulación de flujos (✅ implementado) |
+| [technical/transformation-contracts.md](06-reference/technical/transformation-contracts.md) | Contratos de transformación (✅ implementado) |
+| [technical/variable-standardization.md](06-reference/technical/variable-standardization.md) | Estandarización (✅ implementado) |
+| [technical/metadata-extractors.md](06-reference/technical/metadata-extractors.md) | Sistema de extractores |
+| [technical/hybrid-analysis-pipeline.md](06-reference/technical/hybrid-analysis-pipeline.md) | Pipeline híbrido |
+| [technical/metadata-insights-guide.md](06-reference/technical/metadata-insights-guide.md) | Guía de metadata |
+| [technical/metadata-insights-catalog.md](06-reference/technical/metadata-insights-catalog.md) | Catálogo de metadata |
 
-### ADRs (Architectural Decision Records)
+### MCP (Rescatados)
 | Documento | Descripción |
 |-----------|-------------|
-| [architectural-decision-records/ADR-001-type-based-prompt-selection.md](architectural-decision-records/ADR-001-type-based-prompt-selection.md) | Selección de prompts basada en tipo |
+| [mcp/mcp-maintenance-guide.md](06-reference/mcp/mcp-maintenance-guide.md) | Guía de mantenimiento |
+| [mcp/mcp-problems-analysis.md](06-reference/mcp/mcp-problems-analysis.md) | Análisis de problemas |
+| [mcp-tools-detailed.md](06-reference/mcp-tools-detailed.md) | **⭐ Documentación detallada de tools** |
+
+### Migración
+| Documento | Descripción |
+|-----------|-------------|
+| [migration/v0.6-to-v0.7.md](06-reference/migration/v0.6-to-v0.7.md) | Migración v0.6→v0.7 |
+| [migration/query-refactor-plan.md](06-reference/migration/query-refactor-plan.md) | Plan de refactor |
+
+### AI y Modelos (Rescatados)
+| Documento | Descripción |
+|-----------|-------------|
+| [ai/AI_SETUP_GUIDE.md](06-reference/ai/AI_SETUP_GUIDE.md) | Setup de IA |
+| [ai/AI_OPTIMIZATIONS_2026.md](06-reference/ai/AI_OPTIMIZATIONS_2026.md) | Optimizaciones |
+| [ai/semantic-layer-models.md](06-reference/ai/semantic-layer-models.md) | **⭐ Análisis LFM2.5 vs Qwen3** |
+| [ai/qwen2.5-coder-guide.md](06-reference/ai/qwen2.5-coder-guide.md) | **⭐ Guía Qwen2.5** (+40% más rápido) |
+| [metadata-insights-guide-detailed.md](06-reference/metadata-insights-guide-detailed.md) | **⭐ Guía completa de metadata insights** |
+| [storage-visualization.md](06-reference/storage-visualization.md) | **⭐ Visualización de storage** |
+| [decisions/ADR-001-type-based-prompt-selection.md](06-reference/decisions/ADR-001-type-based-prompt-selection.md) | ADR-001 |
 
 ---
 
-## 📦 Archivo
+## 🗄️ Archivo Histórico (archive/)
 
-Documentos históricos y obsoletos:
+Documentos históricos, consolidados y obsoletos:
+
+| Sección | Contenido |
+|---------|-----------|
+| [archive/README.md](archive/README.md) | **⭐ Índice del archivo** - Qué se rescató, qué se consolidó |
+| `archive/consolidated/` | 30+ documentos consolidados en nueva estructura |
+| `archive/design/` | Documentos de diseño de fases futuras |
+| `archive/reports/` | Reportes de consolidación y limpieza |
+| `archive/src-archive/` | Código fuente archivado para revisión |
+
+**Nota**: Algunos documentos importantes fueron [rescatados del archivo](archive/README.md) a la documentación activa.
+
+---
+
+## 📋 Documentos Clave en Raíz
 
 | Documento | Descripción |
 |-----------|-------------|
-| [archive/README.md](archive/README.md) | **Índice de archivos históricos** |
-
-### Total de documentos archivados: 38
-
-**By category**:
-- **Dated reports** (12): Point-in-time progress summaries, audits, verification reports
-- **Design documents** (9): Pre-implementation design docs (Data Flow Fases 1-3, Shadow Registry plans)
-- **Obsolete guides** (5): MCP_TOOLS v0.5.2, QWEN2.5_CODER_GUIDE, etc.
-- **Merged documents** (4): COMPETITIVE-ANALYSIS, EXISTING_SOLUTIONS, etc.
-- **Completed plans** (3): REFACTOR_PLAN v0.5.1, Shadow Registry plans, Data Flow plans
-- **Integrated stubs** (3): AUTO_SERVE, ITERATIVE_MODE, FILE_WATCHER
-- **Historical references** (2): TRANSFER_FROM_GITEACH, storage-visualization
-
-**Recent additions** (2026-02-10):
-- **Data Flow design docs** (8 files) → `archive/design/data-flow/`
-- **Dated reports** (3 files) → `archive/reports/`
-
-Ver [archive/README.md](archive/README.md) para detalles completos.
+| [README.md](../README.md) | Overview y entrada principal del proyecto |
+| [ROADMAP.md](../ROADMAP.md) | Roadmap técnico detallado |
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | Arquitectura técnica completa |
+| [CHANGELOG.md](../CHANGELOG.md) | Historial de cambios (índice) |
+| [QUEDO_POR_HACER.md](../QUEDO_POR_HACER.md) | Tareas pendientes del sistema |
+| [OMNISCIENCIA.md](../OMNISCIENCIA.md) | Visión de omnisciencia |
+| [AUDIT_RESULTS.md](../AUDIT_RESULTS.md) | Resultados de auditoría |
+| [INTEGRATION_SUMMARY.md](../INTEGRATION_SUMMARY.md) | Resumen de integraciones |
+| [INTEGRITY_AND_CLEANUP.md](../INTEGRITY_AND_CLEANUP.md) | Estrategia de integridad |
 
 ---
 
-## 🎯 Rutas Rápidas por Rol
+## 📊 Estadísticas
 
-### 🔰 Para Usuarios Nuevos (15 min)
-1. [README.md](../README.md) - Instalación (2 comandos)
-2. [FASES_CLARIFICATION.md](FASES_CLARIFICATION.md) - Entender dónde estamos
-3. [guides/TOOLS_GUIDE.md](guides/TOOLS_GUIDE.md) - Cómo usar las 14 herramientas
-
-### 🏗️ Para Arquitectos
-1. [FISICA_DEL_SOFTWARE.md](FISICA_DEL_SOFTWARE.md) - Visión unificada
-2. [architecture/CORE_PRINCIPLES.md](architecture/CORE_PRINCIPLES.md) - Los 4 Pilares
-3. [architecture/ARCHITECTURE_MOLECULAR_PLAN.md](architecture/ARCHITECTURE_MOLECULAR_PLAN.md) - Átomos y Moléculas
-4. [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) - Sistema de Linaje
-
-### 🧬 Para Entender el Ecosistema
-1. [architecture/ecosystem/ECOSYSTEM_ARCHITECTURE.md](architecture/ecosystem/ECOSYSTEM_ARCHITECTURE.md) - Todo se alimenta de todo
-2. [architecture/ecosystem/VALUE_NETWORK.md](architecture/ecosystem/VALUE_NETWORK.md) - Red de valor
-3. [guides/presentations/PRESENTATION_EXAMPLES.md](guides/presentations/PRESENTATION_EXAMPLES.md) - Cómo se vería
-
-### 🔧 Para Implementar
-1. [guides/SHADOW_REGISTRY_USAGE.md](guides/SHADOW_REGISTRY_USAGE.md) - Guía de uso del Shadow Registry
-2. [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) - Arquitectura técnica completa
-3. [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) - Data Flow System complete guide
-
-### 🔮 Para Visionarios
-1. [OMNY_IDE_CONSCIENTE.md](OMNY_IDE_CONSCIENTE.md) - Visión del IDE consciente
-2. [ideas/OMNYBRAIN_VISION.md](ideas/OMNYBRAIN_VISION.md) - OmnyBrain
-3. [future/FUTURE_IDEAS.md](future/FUTURE_IDEAS.md) - Ideas futuras
+- **Documentos activos**: 101
+- **Documentos archivados**: 60
+- **Documentos rescatados del archivo**: 16
+- **Documentos eliminados**: 8 (redundantes)
+- **Total**: 161 documentos organizados
 
 ---
 
-## 📈 Estado de Fases (v0.7.1)
+## 🎯 Próximos Pasos
 
-| Fase | Estado | Documentos |
-|------|--------|------------|
-| **Fase 0** - Limpieza | ✅ Completa | Archived to `archive/plans/` |
-| **Fase 1** - Shadow Registry Core | ✅ Completa | [architecture/SHADOW_REGISTRY.md](architecture/SHADOW_REGISTRY.md) |
-| **Fase 1** - Data Flow Atomic (v2) | ✅ 95% | [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) |
-| **Fase 2** - Conexiones Enriquecidas | ✅ Completa | [architecture/ecosystem/](architecture/ecosystem/) |
-| **Fase 3+** - ML/Predicción | 🔮 Futuro | [future/FUTURE_IDEAS.md](future/FUTURE_IDEAS.md) |
-
----
-
-## 📊 Estadísticas de Documentación
-
-- **Total de documentos activos**: 80+ archivos Markdown
-- **Arquitectura**: 13 documentos (includes consolidated DATA_FLOW.md)
-- **Data Flow**: 7 documentos (1 main + 6 future roadmap)
-- **Shadow Registry**: 2 documentos (consolidated from 5)
-- **Guías**: 10 documentos
-- **Análisis**: 9 documentos
-- **Ideas y Futuro**: 16 documentos
-- **Desarrollo**: 11 documentos (includes 3 consolidation reports)
-- **Archivados**: 38 documentos (26 original + 9 Data Flow + 3 reports)
-
----
-
-**OmnySys v0.7.1** - Data Flow Fractal + Shadow Registry + 14 herramientas MCP
+1. **Nuevo usuario**: Empezar en [01-core/problem.md](01-core/problem.md)
+2. **Desarrollador**: Ver [04-guides/quickstart.md](04-guides/quickstart.md)
+3. **Investigador**: Explorar [05-roadmap/](05-roadmap/)
+4. **Debugger**: Ver [03-orchestrator/04-troubleshooting.md](03-orchestrator/04-troubleshooting.md)

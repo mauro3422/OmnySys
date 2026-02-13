@@ -89,14 +89,37 @@ npm run analyze    # Analizar proyecto completo
 
 ## 📚 Documentación
 
+La documentación está organizada en 4 niveles:
+
+```
+docs/
+├── 01-core/              🎯 Fundamentos (empezar aquí)
+├── 02-architecture/      🏗️ Sistemas técnicos
+├── 03-orchestrator/      ⚙️ Flujo de datos
+└── 04-guides/            🛠️ Guías prácticas
+```
+
+### Para Empezar
 | Documento | Descripción |
 |-----------|-------------|
-| **[docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md)** | **🎯 Los 4 Pilares del Sistema** (Box Test + Metadata Insights + Atomic Composition + Fractal Architecture) |
-| [docs/TOOLS_GUIDE.md](docs/TOOLS_GUIDE.md) | Guía completa de herramientas con ejemplos |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica |
-| [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan futuro: Análisis atómico (v0.6+) |
-| [docs/METADATA-INSIGHTS-GUIDE.md](docs/METADATA-INSIGHTS-GUIDE.md) | Combinación de metadatos para detectar patrones |
-| [docs/INDEX.md](docs/INDEX.md) | Índice completo de documentación |
+| **[docs/01-core/principles.md](docs/01-core/principles.md)** | **🎯 Los 4 Pilares** (Box Test, Metadata Insights, Atomic Composition, Fractal Architecture) |
+| **[docs/01-core/philosophy.md](docs/01-core/philosophy.md)** | **🧠 Física del Software + Omnisciencia** - La visión completa |
+| **[docs/04-guides/quickstart.md](docs/04-guides/quickstart.md)** | **⚡ Empezar en 5 minutos** |
+
+### Referencia Técnica
+| Documento | Descripción |
+|-----------|-------------|
+| [docs/02-architecture/](docs/02-architecture/) | Data Flow, Arquetipos, Shadow Registry, Ecosistema |
+| [docs/03-orchestrator/](docs/03-orchestrator/) | Flujo de vida de archivos, Caché, Troubleshooting |
+| [docs/04-guides/tools.md](docs/04-guides/tools.md) | Las 14 herramientas MCP |
+| [docs/INDEX.md](docs/INDEX.md) | **📖 Índice completo** - Mapa de toda la documentación |
+
+### Arquitectura General
+| Documento | Descripción |
+|-----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura técnica de 3 capas |
+| [docs/ARCHITECTURE_MOLECULAR_PLAN.md](docs/ARCHITECTURE_MOLECULAR_PLAN.md) | Plan de análisis atómico |
+| [docs/METADATA-INSIGHTS-GUIDE.md](docs/METADATA-INSIGHTS-GUIDE.md) | Combinación de metadatos para patrones |
 
 ## 🏗️ Arquitectura
 
