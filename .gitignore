@@ -1,4 +1,4 @@
-# Node.js
+﻿# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -10,12 +10,18 @@ yarn.lock
 system-map.json
 system-map-*.json
 enhanced-system-map.json
+
 # Data directories
-.omnysysdata/    # Current data directory
-omnysysdata/     # Legacy naming
-.aver/           # Legacy naming
+.omnysysdata/
+omnysysdata/
+.aver/
 .OmnySystemData/
 .OmnySysData/
+
+# Untracked files
+.averignore
+nul
+test-molecular-project/
 
 # IDEs
 .vscode/
