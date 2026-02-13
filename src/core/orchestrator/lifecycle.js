@@ -6,8 +6,10 @@ import { FileWatcher } from '../file-watcher.js';
 import { WebSocketManager } from '../websocket/index.js';
 import { BatchProcessor } from '../batch-processor/index.js';
 import { UnifiedCacheManager } from '../unified-cache-manager.js';
+import { LLMAnalyzer } from '../../layer-b-semantic/llm-analyzer/index.js';
 import { indexProject } from '../../layer-a-static/indexer.js';
 import { createLogger } from '../../utils/logger.js';
+import { loadAIConfig } from '../../ai/llm-client.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 
@@ -31,11 +33,26 @@ export async function initialize() {
     path.join(this.OmnySysDataPath, 'orchestrator-state.json')
   );
 
-  // Initialize worker
+  // OPTIMIZATION: Create single LLMAnalyzer instance once to avoid repeated initialization
+  let llmAnalyzer = null;
+  try {
+    const aiConfig = await loadAIConfig();
+    llmAnalyzer = new LLMAnalyzer(aiConfig, this.projectPath);
+    // Share the same cache instance to avoid re-reading files
+    llmAnalyzer.cache = this.cache;
+    await llmAnalyzer.initialize();
+    logger.info('✅ Shared LLM analyzer initialized with cache');
+  } catch (err) {
+    logger.warn('⚠️ LLM analyzer initialization failed:', err.message);
+  }
+
+  // Initialize worker with injected LLMAnalyzer
   this.worker = new AnalysisWorker(this.projectPath, {
     onProgress: (job, progress) => this._onJobProgress(job, progress),
     onComplete: (job, result) => this._onJobComplete(job, result),
     onError: (job, error) => this._onJobError(job, error)
+  }, {
+    llmAnalyzer
   });
   await this.worker.initialize();
 
@@ -52,14 +69,18 @@ export async function initialize() {
   await this._loadState();
 
   // Analyze complex files with LLM based on Layer A metadata
+  // NOTE: _analyzeComplexFilesWithLLM internally calls _processNext() when ready
+  // So we DON'T call _processNext() here to avoid race condition
   this._analyzeComplexFilesWithLLM().then(() => {
     logger.info("✅ LLM analysis queue ready");
   }).catch(err => {
     logger.error("❌ LLM analysis setup failed:", err.message);
+    // Start processing anyway in case there are jobs
+    this._processNext();
   });
 
-  // Start processing loop
-  this._processNext();
+  // Don't call _processNext() here - let _analyzeComplexFilesWithLLM handle it
+  // This prevents the race condition where we process before jobs are queued
 
   logger.info('âœ… Orchestrator initialized\n');
 }
@@ -150,24 +171,24 @@ export async function _initializeFileWatcher() {
   this.fileWatcher.on('file:modified', async (event) => {
     // 🆕 INVALIDACIÓN SÍNCRONA INMEDIATA (nueva arquitectura)
     logger.info(`🗑️  Cache invalidation starting for: ${event.filePath}`);
-    
+
     const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
-    
+
     try {
       // Invalidar caché ANTES de continuar (síncrono)
       const result = await cacheInvalidator.invalidateSync(event.filePath);
-      
+
       if (!result.success) {
         logger.error(`❌ Cache invalidation failed for ${event.filePath}:`, result.error);
         // No continuar si invalidación falla
         return;
       }
-      
+
       logger.info(`✅ Cache invalidated (${result.duration}ms): ${event.filePath}`);
-      
+
       // Solo agregar a batch si invalidación exitosa
       this.batchProcessor?.addChange(event.filePath, 'modified');
-      
+
     } catch (error) {
       logger.error(`💥 Unexpected error during cache invalidation:`, error.message);
       // No propagar error, solo loguear
@@ -218,7 +239,7 @@ export async function _initializeFileWatcher() {
       // La llamada anterior a _invalidateFileCache() se mantiene como
       // fallback por compatibilidad, pero no es necesaria:
       // await this._invalidateFileCache(change.filePath);
-      
+
       const priority = this._calculateChangePriority(change);
       this.queue.enqueue(change.filePath, priority);
 

@@ -21,7 +21,7 @@ import traverse from '@babel/traverse';
 import { getParserOptions } from './config.js';
 import { extractESMImport, extractCommonJSRequire, extractDynamicImport } from './extractors/imports.js';
 import { extractNamedExports, extractDefaultExport } from './extractors/exports.js';
-import { extractFunctionDefinition, extractClassDefinition, extractVariableExports } from './extractors/definitions.js';
+import { extractFunctionDefinition, extractArrowFunction, extractFunctionExpression, extractClassDefinition, extractVariableExports } from './extractors/definitions.js';
 import { extractTSInterface, extractTSTypeAlias, extractTSEnum, extractTSTypeReference } from './extractors/typescript.js';
 import { extractCallExpression, extractIdentifierRef } from './extractors/calls.js';
 import { createLogger } from '../../utils/logger.js';
@@ -63,6 +63,9 @@ export function parseFile(filePath, code) {
     typeUsages: []
   };
 
+  // Track current class for method extraction
+  let currentClass = null;
+
   try {
     const ast = parse(code, getParserOptions(filePath));
 
@@ -88,16 +91,45 @@ export function parseFile(filePath, code) {
         fileInfo.exports.push(extractDefaultExport(nodePath));
       },
 
-      // Funciones
+      // Funciones declaradas
       FunctionDeclaration(nodePath) {
         if (nodePath.node.id) {
-          extractFunctionDefinition(nodePath, filePath, fileInfo);
+          extractFunctionDefinition(nodePath, filePath, fileInfo, 'declaration');
         }
       },
 
       // Clases
-      ClassDeclaration(nodePath) {
-        extractClassDefinition(nodePath, fileInfo);
+      ClassDeclaration: {
+        enter(nodePath) {
+          const node = nodePath.node;
+          if (node.id) {
+            currentClass = node.id.name;
+            extractClassDefinition(nodePath, fileInfo);
+          }
+        },
+        exit() {
+          currentClass = null;
+        }
+      },
+
+      // Métodos de clase
+      ClassMethod(nodePath) {
+        const node = nodePath.node;
+        if (node.key) {
+          extractFunctionDefinition(nodePath, filePath, fileInfo, 'method', currentClass);
+        }
+      },
+
+      // Arrow functions en variables
+      VariableDeclarator(nodePath) {
+        const node = nodePath.node;
+        if (node.init?.type === 'ArrowFunctionExpression' && node.id?.type === 'Identifier') {
+          extractArrowFunction(nodePath, filePath, fileInfo);
+        }
+        // Function expressions
+        else if (node.init?.type === 'FunctionExpression' && node.id?.type === 'Identifier') {
+          extractFunctionExpression(nodePath, filePath, fileInfo);
+        }
       },
 
       // TypeScript

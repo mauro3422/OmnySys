@@ -22,6 +22,11 @@ export class OrchestratorInitStep extends InitializationStep {
     super('orchestrator-init');
   }
 
+  shouldExecute(server) {
+    // LIGHT mode skips Orchestrator — PRIMARY handles it
+    return server.isPrimary !== false;
+  }
+
   async execute(server) {
     logger.info('Initialize Orchestrator');
 

@@ -34,6 +34,7 @@
 
 import { InitializationPipeline } from './initialization/pipeline.js';
 import {
+  InstanceDetectionStep,
   LLMSetupStep,
   LayerAAnalysisStep,
   OrchestratorInitStep,
@@ -86,7 +87,10 @@ export class OmnySysMCPServer extends EventEmitter {
     this.startTime = Date.now();
 
     // Build initialization pipeline
+    // InstanceDetectionStep MUST be first - it sets server.isPrimary
+    // which controls whether heavy steps (LLM, LayerA, Orchestrator) execute
     this.pipeline = new InitializationPipeline([
+      new InstanceDetectionStep(),
       new LLMSetupStep(),
       new LayerAAnalysisStep(),
       new OrchestratorInitStep(),
@@ -104,13 +108,13 @@ export class OmnySysMCPServer extends EventEmitter {
 
     try {
       const result = await this.pipeline.execute(this);
-      
+
       if (result.success) {
         this.initialized = true;
         logger.info('\n' + '='.repeat(60));
         logger.info('✅ INITIALIZATION COMPLETE');
         logger.info('='.repeat(60) + '\n');
-        
+
         // 🔥 Iniciar hot-reload (activado por defecto, desactivar con OMNYSYS_HOT_RELOAD=false)
         const hotReloadEnabled = process.env.OMNYSYS_HOT_RELOAD !== 'false';
         if (hotReloadEnabled) {
@@ -178,6 +182,17 @@ export class OmnySysMCPServer extends EventEmitter {
         logger.info('  ✅ MCP server closed');
       }
 
+      if (this._healthBeacon) {
+        await new Promise(resolve => this._healthBeacon.close(resolve));
+        logger.info('  ✅ Health beacon closed');
+      }
+
+      if (this._watchdogInterval) {
+        clearInterval(this._watchdogInterval);
+        this._watchdogInterval = null;
+        logger.info('  ✅ Watchdog stopped');
+      }
+
       if (this.orchestrator) {
         // Orchestrator cleanup if needed
         logger.info('  ✅ Orchestrator cleaned up');
@@ -193,7 +208,8 @@ export class OmnySysMCPServer extends EventEmitter {
         logger.info('  ✅ Hot-reload stopped');
       }
 
-      logger.info('\n👋 Server shutdown complete\n');
+      const mode = this.isPrimary ? 'PRIMARY' : 'LIGHT';
+      logger.info(`\n👋 Server shutdown complete (was ${mode})\n`);
     } catch (error) {
       logger.info('Error during shutdown:', error.message);
     }

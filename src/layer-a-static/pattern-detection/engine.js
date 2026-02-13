@@ -146,7 +146,6 @@ export class PatternDetectionEngine {
    */
   registerDefaultDetectors() {
     // Import dinámico para evitar circular deps
-    // Solo detectores que realmente existen:
     const detectors = [
       { 
         id: 'deepChains',
@@ -158,12 +157,19 @@ export class PatternDetectionEngine {
         loader: () => import('./detectors/shared-objects-detector.js'),
         priority: 90
       },
-      // TODO: Añadir más detectores cuando se implementen:
-      // { id: 'circularDeps', loader: () => import('./detectors/circular-deps-detector.js'), priority: 80 },
-      // { id: 'coupling', loader: () => import('./detectors/coupling-detector.js'), priority: 70 },
+      {
+        id: 'coupling',
+        loader: () => import('./detectors/coupling-detector.js'),
+        priority: 80
+      },
+      {
+        id: 'hotspots',
+        loader: () => import('./detectors/hotspots-detector.js'),
+        priority: 70
+      }
+      // TODO: Añadir más detectores:
       // { id: 'unusedExports', loader: () => import('./detectors/unused-exports-detector.js'), priority: 60 },
-      // { id: 'hotspots', loader: () => import('./detectors/hotspots-detector.js'), priority: 50 },
-      // { id: 'unusedImports', loader: () => import('./detectors/unused-imports-detector.js'), priority: 40 },
+      // { id: 'circularDeps', loader: () => import('./detectors/circular-deps-detector.js'), priority: 50 },
     ];
     
     detectors.forEach(detector => {

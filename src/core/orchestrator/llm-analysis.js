@@ -83,7 +83,7 @@ export async function _analyzeComplexFilesWithLLM() {
     // Leer índice de archivos analizados por Layer A
     const indexPath = path.join(this.OmnySysDataPath, 'index.json');
     const index = await safeReadJson(indexPath, { fileIndex: {} });
-    
+
     if (!index || !index.fileIndex) {
       logger.info('   ⚠️  No valid index found, skipping LLM analysis');
       return;
@@ -97,7 +97,7 @@ export async function _analyzeComplexFilesWithLLM() {
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE);
-      
+
       // Procesar batch en paralelo
       await Promise.all(batch.map(async ([filePath, fileInfo]) => {
         // Obtener análisis completo del archivo
@@ -127,7 +127,7 @@ export async function _analyzeComplexFilesWithLLM() {
 
         if (needsLLM) {
           logger.info(`   ✅ ${filePath}: Necesita LLM (${archetypes.map(a => a.type).join(', ')})`);
-          
+
           // Loguear decisión de enviar a LLM
           await auditLogger.logLLMRequired(
             filePath,
@@ -135,7 +135,7 @@ export async function _analyzeComplexFilesWithLLM() {
             aiConfig?.model || 'unknown',
             { archetypes, metadata: metadata.summary }
           );
-          
+
           // Loguear arquetipos detectados
           for (const archetype of archetypes) {
             await auditLogger.logArchetypeDetection(
@@ -145,7 +145,7 @@ export async function _analyzeComplexFilesWithLLM() {
               { confidence: archetype.confidence }
             );
           }
-          
+
           filesNeedingLLM.push({
             filePath,
             fileAnalysis,
@@ -201,8 +201,11 @@ export async function _analyzeComplexFilesWithLLM() {
     logger.info(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
     logger.info('   🚀 Starting processing...');
 
-    // Iniciar procesamiento
-    this._processNext();
+    // Iniciar procesamiento - FILL ALL SLOTS
+    const maxConcurrent = this.maxConcurrentAnalyses || 4;
+    for (let i = 0; i < maxConcurrent; i++) {
+      this._processNext();
+    }
   } catch (error) {
     logger.error('   ❌ Error in LLM analysis phase:', error.message);
   }

@@ -7,6 +7,7 @@
  */
 
 export { InitializationStep } from './base-step.js';
+export { InstanceDetectionStep } from './instance-detection-step.js';
 export { LLMSetupStep } from './llm-setup-step.js';
 export { LayerAAnalysisStep } from './layer-a-analysis-step.js';
 export { OrchestratorInitStep } from './orchestrator-init-step.js';

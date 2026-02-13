@@ -32,7 +32,7 @@ const ERROR_PATTERNS = {
     suggestion: (match) => `Error de sintaxis: ${match[1]}. Usar 'npm run validate' antes de commitear.`,
     prevent: 'atomic_edit valida sintaxis antes de guardar'
   },
-  
+
   // Errores de módulos no encontrados
   'MODULE_NOT_FOUND': {
     pattern: /Cannot find module ['"](.+?)['"]/,
@@ -46,7 +46,7 @@ const ERROR_PATTERNS = {
       'Verificar extensión .js en imports'
     ]
   },
-  
+
   // Errores de importación dinámica
   'DYNAMIC_IMPORT': {
     pattern: /await import\(/,
@@ -59,7 +59,7 @@ const ERROR_PATTERNS = {
       'Agregar async/await si es necesario'
     ]
   },
-  
+
   // Errores de caché corrupto
   'CACHE_ERROR': {
     pattern: /Failed to read.*\.json.*ENOENT/,
@@ -72,7 +72,7 @@ const ERROR_PATTERNS = {
       'Re-analizar proyecto completo'
     ]
   },
-  
+
   // Errores de timeout
   'TIMEOUT': {
     pattern: /timeout|ETIMEOUT/i,
@@ -85,7 +85,7 @@ const ERROR_PATTERNS = {
       'Usar streaming para archivos grandes'
     ]
   },
-  
+
   // Errores de memoria
   'MEMORY': {
     pattern: /out of memory|heap|ENOSPC/i,
@@ -97,6 +97,18 @@ const ERROR_PATTERNS = {
       'Liberar referencias no usadas',
       'Aumentar límite de memoria de Node.js',
       'Usar streaming en lugar de cargar todo en memoria'
+    ]
+  },
+
+  // Errores de EPIPE (pipe rota - cliente MCP se desconectó)
+  'EPIPE': {
+    pattern: /EPIPE|broken pipe/i,
+    severity: 'LOW',
+    autoFixable: false,
+    suggestion: (match) => 'EPIPE: Cliente MCP desconectado. Normal durante transiciones de IDE.',
+    commonFixes: [
+      'Ignorar - es comportamiento normal cuando un IDE se cierra',
+      'El sistema se recupera automáticamente'
     ]
   }
 };
@@ -117,7 +129,7 @@ export class ErrorGuardian {
     };
     this.setupGlobalHandlers();
   }
-  
+
   /**
    * Configura handlers globales para capturar TODO error
    */
@@ -126,25 +138,25 @@ export class ErrorGuardian {
     process.on('uncaughtException', (error) => {
       this.handleFatalError(error, 'uncaughtException');
     });
-    
+
     process.on('unhandledRejection', (reason, promise) => {
       this.handleFatalError(reason, 'unhandledRejection', { promise });
     });
-    
+
     // Capturar warnings
     process.on('warning', (warning) => {
       this.handleWarning(warning);
     });
-    
+
     logger.info('🛡️  Error Guardian activado - Sistema protegido recursivamente');
   }
-  
+
   /**
    * Analiza un error y determina su tipo y severidad
    */
   analyzeError(error) {
     const errorString = error.stack || error.message || String(error);
-    
+
     for (const [type, config] of Object.entries(ERROR_PATTERNS)) {
       const match = errorString.match(config.pattern);
       if (match) {
@@ -159,7 +171,7 @@ export class ErrorGuardian {
         };
       }
     }
-    
+
     // Error desconocido
     return {
       type: 'UNKNOWN',
@@ -174,31 +186,48 @@ export class ErrorGuardian {
       originalError: error
     };
   }
-  
+
   /**
    * Maneja un error fatal del sistema
    */
   async handleFatalError(error, source, context = {}) {
     const analysis = this.analyzeError(error);
-    
+
+    // LOW severity errors (like EPIPE) - just log quietly, no banner
+    if (analysis.severity === 'LOW') {
+      logger.info(`ℹ️  ${analysis.type}: ${error.message || 'Unknown'} (${source}) - auto-handled`);
+      await this.logError({
+        timestamp: new Date().toISOString(),
+        type: analysis.type,
+        severity: analysis.severity,
+        source,
+        message: error.message,
+        suggestion: analysis.suggestion,
+        context
+      });
+      this.stats.prevented++;
+      return;
+    }
+
     logger.error('═══════════════════════════════════════════════════');
     logger.error('🚨 ERROR FATAL CAPTURADO POR GUARDIÁN');
     logger.error('═══════════════════════════════════════════════════');
     logger.error(`Tipo: ${analysis.type}`);
     logger.error(`Severidad: ${analysis.severity}`);
     logger.error(`Fuente: ${source}`);
-    logger.error(`Mensaje: ${analysis.suggestion}`);
+    logger.error(`Mensaje: ${error.message || 'Sin mensaje'}`);
+    logger.error(`Sugerencia: ${analysis.suggestion}`);
     logger.error('───────────────────────────────────────────────────');
-    
+
     if (analysis.commonFixes.length > 0) {
       logger.error('💡 Soluciones posibles:');
       analysis.commonFixes.forEach((fix, i) => {
         logger.error(`   ${i + 1}. ${fix}`);
       });
     }
-    
+
     logger.error('═══════════════════════════════════════════════════');
-    
+
     // Guardar en log
     await this.logError({
       timestamp: new Date().toISOString(),
@@ -210,7 +239,7 @@ export class ErrorGuardian {
       suggestion: analysis.suggestion,
       context
     });
-    
+
     // Intentar auto-fix si es posible
     if (analysis.autoFixable) {
       logger.info('🔧 Intentando auto-fix...');
@@ -221,11 +250,11 @@ export class ErrorGuardian {
         return;
       }
     }
-    
+
     // Si no se pudo arreglar, intentar recuperación graceful
     await this.gracefulRecovery(analysis);
   }
-  
+
   /**
    * Intenta arreglar automáticamente ciertos errores
    */
@@ -239,12 +268,12 @@ export class ErrorGuardian {
           await cache.clear();
           logger.info('🗑️  Caché limpiado automáticamente');
           return true;
-          
+
         case 'DYNAMIC_IMPORT':
           // No podemos arreglar esto automáticamente, pero podemos reportarlo
           logger.warn('⚠️  Detectado import dinámico fuera de lugar. Requiere fix manual.');
           return false;
-          
+
         default:
           return false;
       }
@@ -253,44 +282,44 @@ export class ErrorGuardian {
       return false;
     }
   }
-  
+
   /**
    * Recuperación graceful - mantiene el sistema vivo
    */
   async gracefulRecovery(analysis) {
     logger.info('🔄 Iniciando recuperación graceful...');
-    
+
     try {
       // Guardar estado actual
       await this.saveSystemState();
-      
+
       // Según la severidad, decidir qué hacer
       switch (analysis.severity) {
         case 'CRITICAL':
           logger.error('💥 Error CRITICAL. Reiniciando componentes esenciales...');
           await this.restartEssentialComponents();
           break;
-          
+
         case 'HIGH':
           logger.warn('⚠️  Error HIGH. Aislando componente afectado...');
           await this.isolateAffectedComponent(analysis);
           break;
-          
+
         case 'MEDIUM':
           logger.info('ℹ️  Error MEDIUM. Continuando con precaución...');
           // Continuar operando
           break;
       }
-      
+
       this.stats.prevented++;
       logger.info('✅ Recuperación graceful completada. Sistema sigue operativo.');
-      
+
     } catch (recoveryError) {
       logger.error('💀 Recuperación falló. Esto es grave:', recoveryError.message);
       // Último recurso: informar y seguir
     }
   }
-  
+
   /**
    * Guarda el estado del sistema antes de un error
    */
@@ -303,14 +332,14 @@ export class ErrorGuardian {
       memory: process.memoryUsage(),
       stats: this.stats
     };
-    
+
     try {
       await fs.writeFile(statePath, JSON.stringify(state, null, 2));
     } catch (e) {
       // Ignorar errores al guardar estado
     }
   }
-  
+
   /**
    * Reinicia componentes esenciales
    */
@@ -324,12 +353,12 @@ export class ErrorGuardian {
     } catch (e) {
       logger.warn('⚠️  No se pudo reiniciar caché:', e.message);
     }
-    
+
     // Reiniciar file watcher si existe
     // Reiniciar orchestrator si existe
     logger.info('🔄 Componentes esenciales reiniciados');
   }
-  
+
   /**
    * Aisla el componente afectado para evitar propagación
    */
@@ -339,18 +368,18 @@ export class ErrorGuardian {
     // Prevenir llamadas futuras hasta que se arregle
     logger.info('🔒 Componente aislado. El resto del sistema sigue funcionando.');
   }
-  
+
   /**
    * Loguea un error con contexto completo
    */
   async logError(errorData) {
     this.errorLog.push(errorData);
     this.stats.totalErrors++;
-    
+
     // Actualizar estadísticas
     this.stats.byType[errorData.type] = (this.stats.byType[errorData.type] || 0) + 1;
     this.stats.bySeverity[errorData.severity] = (this.stats.bySeverity[errorData.severity] || 0) + 1;
-    
+
     // Guardar en archivo
     const logPath = path.join(this.projectPath, 'logs', 'error-guardian.json');
     try {
@@ -364,7 +393,7 @@ export class ErrorGuardian {
       // Si no podemos loguear, al menos lo tenemos en memoria
     }
   }
-  
+
   /**
    * Maneja warnings (errores no fatales)
    */
@@ -372,7 +401,7 @@ export class ErrorGuardian {
     logger.warn('⚠️  Warning detectado:', warning.message);
     // Los warnings no detienen el sistema, solo los registramos
   }
-  
+
   /**
    * Obtiene estadísticas de errores
    */
@@ -383,14 +412,14 @@ export class ErrorGuardian {
       health: this.calculateHealth()
     };
   }
-  
+
   /**
    * Calcula salud del sistema
    */
   calculateHealth() {
     const criticalCount = this.stats.bySeverity.CRITICAL || 0;
     const highCount = this.stats.bySeverity.HIGH || 0;
-    
+
     if (criticalCount > 5) return 'CRITICAL';
     if (criticalCount > 0 || highCount > 10) return 'WARNING';
     if (highCount > 0) return 'DEGRADED';

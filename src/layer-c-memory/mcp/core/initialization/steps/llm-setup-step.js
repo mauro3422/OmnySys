@@ -21,6 +21,11 @@ export class LLMSetupStep extends InitializationStep {
     super('llm-setup');
   }
 
+  shouldExecute(server) {
+    // LIGHT mode skips LLM — PRIMARY handles it
+    return server.isPrimary !== false;
+  }
+
   async execute(server) {
     logger.info('AI Server Setup');
 

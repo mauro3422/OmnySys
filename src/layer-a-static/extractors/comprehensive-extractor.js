@@ -13,7 +13,7 @@
 // ============================================
 
 // 1. Atomic Extractors (4)
-import { 
+import {
   extractFunctions,
   extractClassMethods,
   extractArrows
@@ -136,40 +136,40 @@ const EXTRACTOR_STATS = {
  * @returns {Object} - Metadata completa
  */
 export function extractComprehensiveMetadata(filePath, code, options = {}) {
-  const { 
-    useAllExtractors = true, 
-    categories = null 
+  const {
+    useAllExtractors = true,
+    categories = null
   } = options;
 
   const startTime = Date.now();
-  
+
   try {
     // 1. Metadata básica (siempre)
     const basicMetadata = extractBasicMetadata(filePath, code);
-    
+
     // 2. Atomic extraction (funciones/átomos)
     const atomicMetadata = extractAtomicMetadata(code);
-    
+
     // 3. Static connections (storage, events, globals)
     const staticMetadata = extractStaticMetadata(code);
-    
+
     // 4. State management (Redux/Context)
     const stateMetadata = extractStateManagementMetadata(code);
-    
+
     // 5. Communication (network, websockets, workers)
     const commMetadata = extractCommunicationMetadata(code);
-    
+
     // 6. Data flow (inputs, transforms, outputs)
     const dataFlowMetadata = extractDataFlowMetadata(code);
-    
+
     // 7. Advanced metadata (side effects, types, performance)
     const advancedMetadata = extractAdvancedMetadata(filePath, code);
-    
+
     // 8. TypeScript (si aplica)
     const tsMetadata = extractTypeScriptMetadata(code);
-    
+
     const duration = Date.now() - startTime;
-    
+
     // Calcular score de completitud
     const completeness = calculateCompleteness({
       basicMetadata,
@@ -181,7 +181,7 @@ export function extractComprehensiveMetadata(filePath, code, options = {}) {
       advancedMetadata,
       tsMetadata
     });
-    
+
     return {
       // Metadata estructurada
       basic: basicMetadata,
@@ -192,7 +192,7 @@ export function extractComprehensiveMetadata(filePath, code, options = {}) {
       dataFlow: dataFlowMetadata,
       advanced: advancedMetadata,
       typescript: tsMetadata,
-      
+
       // Métricas
       _meta: {
         extractorCount: countActiveExtractors({
@@ -210,7 +210,7 @@ export function extractComprehensiveMetadata(filePath, code, options = {}) {
         timestamp: new Date().toISOString(),
         version: '2.0.0'
       },
-      
+
       // Recomendación para LLM
       needsLLM: shouldNeedLLM({
         staticMetadata,
@@ -220,10 +220,10 @@ export function extractComprehensiveMetadata(filePath, code, options = {}) {
         advancedMetadata
       })
     };
-    
+
   } catch (error) {
     logger.error(`❌ Error extracting metadata for ${filePath}:`, error.message);
-    
+
     // Fallback a metadata básica
     return {
       basic: extractBasicMetadata(filePath, code),
@@ -313,11 +313,18 @@ function extractCommunicationMetadata(code) {
 }
 
 function extractDataFlowMetadata(code) {
+  // NOTE: extractDataFlow/getInputs/getTransformations/getOutputs are PER-FUNCTION extractors
+  // that require (functionAst, functionCode, functionName, filePath).
+  // File-level dataFlow is handled by AtomExtractionPhase using extractDataFlowV2.
+  // Here we only provide file-level indicators.
   return {
-    flow: extractDataFlow(code),
-    inputs: getInputs(code),
-    transformations: getTransformations(code),
-    outputs: getOutputs(code)
+    hasDataFlowPatterns: /=\s*(?:await\s+)?(?:fetch|axios|import)\(/.test(code) ||
+      /\.map\(|\.filter\(|\.reduce\(/.test(code),
+    hasInputValidation: /if\s*\(\s*!?\w+\s*\)/.test(code) && /throw|return/.test(code),
+    hasTransformations: /\.map\(|\.reduce\(|Object\.assign|spread|\.concat\(/.test(code),
+    hasOutputs: /return\s+/.test(code) || /export\s+/.test(code),
+    hasSideEffects: /console\.|localStorage|sessionStorage|document\.|window\./.test(code),
+    _note: 'Per-function dataFlow is in atom-level metadata via AtomExtractionPhase'
   };
 }
 
@@ -347,7 +354,7 @@ function extractTypeScriptMetadata(code) {
   if (!/:\s*(string|number|boolean|interface|type\s+)/.test(code)) {
     return { isTypeScript: false };
   }
-  
+
   return {
     isTypeScript: true,
     interfaces: extractInterfaces(code),
@@ -368,14 +375,14 @@ function countFunctions(code) {
 
 function countActiveExtractors(metadata) {
   let count = 0;
-  
+
   // Contar extractores que retornaron datos válidos
   for (const [key, value] of Object.entries(metadata)) {
     if (value && typeof value === 'object') {
       count++;
     }
   }
-  
+
   return count;
 }
 
@@ -390,43 +397,43 @@ function calculateCompleteness(metadata) {
     advanced: 0.05,
     typescript: 0.05
   };
-  
+
   let score = 0;
   let totalWeight = 0;
-  
+
   for (const [key, weight] of Object.entries(weights)) {
     const data = metadata[key];
     if (data && Object.keys(data).length > 0) {
       // Verificar si tiene datos reales
-      const hasRealData = Object.values(data).some(v => 
-        v !== null && 
-        v !== undefined && 
+      const hasRealData = Object.values(data).some(v =>
+        v !== null &&
+        v !== undefined &&
         (Array.isArray(v) ? v.length > 0 : true) &&
         (typeof v === 'object' ? Object.keys(v).length > 0 : true)
       );
-      
+
       if (hasRealData) {
         score += weight;
       }
     }
     totalWeight += weight;
   }
-  
+
   return Math.round((score / totalWeight) * 100);
 }
 
 function shouldNeedLLM(metadata) {
   // Reglas para decidir si necesita LLM
-  const hasComplexState = metadata.state?.redux?.slices?.length > 0 || 
-                          metadata.state?.context?.providers?.length > 0;
-  
+  const hasComplexState = metadata.state?.redux?.slices?.length > 0 ||
+    metadata.state?.context?.providers?.length > 0;
+
   const hasComplexCommunication = metadata.communication?.network?.length > 0 ||
-                                   metadata.communication?.websocket?.length > 0;
-  
+    metadata.communication?.websocket?.length > 0;
+
   const hasLowCompleteness = calculateCompleteness(metadata) < 50;
-  
+
   const hasUnresolvedDataFlow = metadata.dataFlow?.flow?.hasComplexTransformations;
-  
+
   // Si tiene conexiones complejas NO resueltas por extractores, necesita LLM
   return hasComplexState || hasComplexCommunication || hasLowCompleteness || hasUnresolvedDataFlow;
 }

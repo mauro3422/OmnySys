@@ -21,6 +21,11 @@ export class LayerAAnalysisStep extends InitializationStep {
     super('layer-a-analysis', { blocking: true });
   }
 
+  shouldExecute(server) {
+    // LIGHT mode skips Layer A analysis — PRIMARY handles it
+    return server.isPrimary !== false;
+  }
+
   async execute(server) {
     logger.info('Layer A - Static Analysis');
 

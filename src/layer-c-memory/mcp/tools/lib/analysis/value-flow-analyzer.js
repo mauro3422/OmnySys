@@ -24,41 +24,71 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
     dependencies: [],
     consumers: []
   };
-  
+
   try {
     const content = await fs.readFile(
       path.join(projectPath, targetFile),
       'utf-8'
     );
-    
-    // Detectar tipo de símbolo
-    if (new RegExp(`export\\s+(?:async\\s+)?function\\s+${symbolName}`).test(content)) {
-      flow.type = 'function';
-    } else if (new RegExp(`export\\s+class\\s+${symbolName}`).test(content)) {
-      flow.type = 'class';
-    } else if (new RegExp(`export\\s+(?:const|let|var)\\s+${symbolName}`).test(content)) {
-      flow.type = 'variable';
+
+    // Detectar tipo de símbolo - handle ALL patterns
+    const patterns = [
+      // export function name / export async function name
+      { regex: new RegExp(`export\\s+(?:async\\s+)?function\\s+${symbolName}`), type: 'function' },
+      // function name (non-exported)
+      { regex: new RegExp(`(?:^|\\n)\\s*(?:async\\s+)?function\\s+${symbolName}\\s*\\(`), type: 'function' },
+      // Class method: name( / async name(
+      { regex: new RegExp(`(?:^|\\n)\\s*(?:async\\s+)?${symbolName}\\s*\\(`), type: 'function' },
+      // Arrow: const name = (...) => / const name = async (...) =>
+      { regex: new RegExp(`(?:const|let|var)\\s+${symbolName}\\s*=\\s*(?:async\\s+)?(?:\\([^)]*\\)|\\w+)\\s*=>`), type: 'function' },
+      // export class name
+      { regex: new RegExp(`export\\s+class\\s+${symbolName}`), type: 'class' },
+      // class name (non-exported)  
+      { regex: new RegExp(`(?:^|\\n)\\s*class\\s+${symbolName}`), type: 'class' },
+      // export const/let/var name
+      { regex: new RegExp(`export\\s+(?:const|let|var)\\s+${symbolName}`), type: 'variable' },
+    ];
+
+    for (const p of patterns) {
+      if (p.regex.test(content)) {
+        flow.type = p.type;
+        break;
+      }
     }
-    
+
     // Para funciones, extraer parámetros y return
     if (flow.type === 'function') {
-      const funcMatch = content.match(
-        new RegExp(`(?:export\\s+(?:async\\s+)?)?function\\s+${symbolName}\\s*\\(([^)]*)\\)(?:\\s*:\\s*([^\\{]+))?`, 'i')
-      );
-      
+      // Try multiple patterns for parameter extraction
+      const funcPatterns = [
+        // export function name(params) / function name(params) / async function name(params)
+        new RegExp(`(?:export\\s+)?(?:async\\s+)?function\\s+${symbolName}\\s*\\(([^)]*)\\)`, 'i'),
+        // Class method: name(params) / async name(params)
+        new RegExp(`(?:async\\s+)?${symbolName}\\s*\\(([^)]*)\\)\\s*\\{`, 'i'),
+        // Arrow: const name = (params) =>
+        new RegExp(`(?:const|let|var)\\s+${symbolName}\\s*=\\s*(?:async\\s+)?\\(([^)]*)\\)\\s*=>`, 'i'),
+        // Arrow single param: const name = param =>
+        new RegExp(`(?:const|let|var)\\s+${symbolName}\\s*=\\s*(?:async\\s+)?(\\w+)\\s*=>`, 'i'),
+      ];
+
+      let funcMatch = null;
+      for (const fp of funcPatterns) {
+        funcMatch = content.match(fp);
+        if (funcMatch) break;
+      }
+
       if (funcMatch) {
         // Parsear parámetros
         const params = funcMatch[1].split(',').map(p => {
           const [name, type] = p.split(':').map(s => s.trim());
-          return { 
-            name: name.replace(/\?\s*$/, ''), 
+          return {
+            name: name.replace(/\?\s*$/, '').replace(/\s*=\s*.+$/, ''),
             optional: p.includes('?') || p.includes('='),
             type: type || 'unknown'
           };
         }).filter(p => p.name);
-        
+
         flow.inputs = params;
-        
+
         // Buscar return statements
         const funcBody = extractFunctionBody(content, symbolName);
         if (funcBody) {
@@ -71,7 +101,7 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
           }
         }
       }
-      
+
       // Buscar dependencias (otras funciones llamadas)
       const body = extractFunctionBody(content, symbolName);
       if (body) {
@@ -81,7 +111,7 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
           .slice(0, 10);
       }
     }
-    
+
     // Encontrar consumidores (quién usa el valor retornado)
     const callGraph = await findCallSites(projectPath, targetFile, symbolName);
     if (!callGraph.error && callGraph.callSites) {
@@ -91,9 +121,9 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
         context: site.context
       }));
     }
-    
+
     return flow;
-    
+
   } catch (error) {
     return { error: error.message };
   }
@@ -104,10 +134,10 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
 async function findAllJsFiles(dir, files = []) {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      
+
       if (entry.isDirectory() && !entry.name.includes('node_modules')) {
         await findAllJsFiles(fullPath, files);
       } else if (entry.isFile() && /\.(js|ts|jsx|tsx)$/.test(entry.name)) {
@@ -117,13 +147,13 @@ async function findAllJsFiles(dir, files = []) {
   } catch {
     // Skip directories that can't be read
   }
-  
+
   return files;
 }
 
 function parseSignature(signature) {
   if (!signature || signature.trim() === '') return [];
-  
+
   return signature.split(',').map(param => {
     const [name, type] = param.split(':').map(s => s.trim());
     return {
@@ -137,16 +167,16 @@ function parseSignature(signature) {
 function extractArguments(callLine) {
   const match = callLine.match(/\((.*)\)/);
   if (!match) return [];
-  
+
   // Split by comma, handling nested parentheses
   const args = [];
   let depth = 0;
   let current = '';
-  
+
   for (const char of match[1]) {
     if (char === '(') depth++;
     if (char === ')') depth--;
-    
+
     if (char === ',' && depth === 0) {
       args.push(current.trim());
       current = '';
@@ -154,36 +184,43 @@ function extractArguments(callLine) {
       current += char;
     }
   }
-  
+
   if (current.trim()) args.push(current.trim());
   return args;
 }
 
 function extractFunctionBody(content, functionName) {
-  const regex = new RegExp(
-    `function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`,
-    'i'
-  );
-  
-  const match = content.match(regex);
+  // Try multiple patterns
+  const patterns = [
+    new RegExp(`function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`, 'i'),
+    new RegExp(`async\\s+function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`, 'i'),
+    new RegExp(`(?:async\\s+)?${functionName}\\s*\\([^)]*\\)\\s*\\{`, 'i'),
+    new RegExp(`${functionName}\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>\\s*\\{`, 'i'),
+  ];
+
+  let match = null;
+  for (const regex of patterns) {
+    match = content.match(regex);
+    if (match) break;
+  }
   if (!match) return null;
-  
+
   const startIndex = match.index + match[0].length;
   let depth = 1;
   let endIndex = startIndex;
-  
+
   while (depth > 0 && endIndex < content.length) {
     if (content[endIndex] === '{') depth++;
     if (content[endIndex] === '}') depth--;
     endIndex++;
   }
-  
+
   return content.slice(startIndex, endIndex - 1);
 }
 
 function inferType(returnStatement) {
   const value = returnStatement.replace(/^return\s+/, '').trim();
-  
+
   if (/^\d+$/.test(value)) return 'number';
   if (/^["'`].*["'`]$/.test(value)) return 'string';
   if (/^(true|false)$/.test(value)) return 'boolean';
@@ -191,6 +228,6 @@ function inferType(returnStatement) {
   if (/^\{/.test(value)) return 'object';
   if (/^new\s+/.test(value)) return 'instance';
   if (/^(async\s+)?(\(?[^)]*\)?\s*=>|\{)/.test(value)) return 'function';
-  
+
   return 'unknown';
 }

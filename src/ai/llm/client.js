@@ -5,19 +5,29 @@
  */
 export class LLMClient {
   constructor(config) {
-    this.config = config;
+    this.config = config || {};
+
+    // Safety defaults
+    this.config.prompts = this.config.prompts || {
+      systemPrompt: "You are a semantic code analyzer. Return ONLY valid JSON.",
+      analysisTemplate: ""
+    };
+    this.config.performance = this.config.performance || {};
+    this.config.performance.timeout = this.config.performance.timeout || 30000;
+    this.config.performance.maxConcurrentAnalyses = this.config.performance.maxConcurrentAnalyses || 4;
+
     this.servers = {
       gpu: {
-        url: `http://127.0.0.1:${config.llm.gpu.port}`,
+        url: `http://127.0.0.1:${this.config.llm?.gpu?.port || 8000}`,
         available: false,
         activeRequests: 0,
-        maxParallel: config.llm.gpu.parallel || 4
+        maxParallel: this.config.llm?.gpu?.parallel || 4
       },
       cpu: {
-        url: `http://127.0.0.1:${config.llm.cpu.port}`,
+        url: `http://127.0.0.1:${this.config.llm?.cpu?.port || 8001}`,
         available: false,
         activeRequests: 0,
-        maxParallel: config.llm.cpu.parallel || 4
+        maxParallel: this.config.llm?.cpu?.parallel || 4
       }
     };
   }
@@ -110,32 +120,43 @@ export class LLMClient {
       }
 
       // Usar system prompt personalizado si se proporciona, sino el de la config
-      const finalSystemPrompt = systemPrompt || this.config.prompts.systemPrompt;
+      const finalSystemPrompt = systemPrompt || this.config.prompts?.systemPrompt || "You are a semantic code analyzer. Return ONLY valid JSON.";
 
-      const response = await fetch(`${this.servers[server].url}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'local-model', // llama-server ignora esto, usa el modelo cargado
-          messages: [
-            {
-              role: 'system',
-              content: finalSystemPrompt
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1, // LFM2.5-Instruct recommended temperature
-          max_tokens: 1000,
-          stream: false
-          // JSON Schema forzado a nivel de servidor con --json-schema-file
-        }),
-        signal: AbortSignal.timeout(this.config.performance.timeout)
-      });
+      const timeoutMs = this.config.performance?.timeout || 30000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      let response;
+      try {
+        console.log(`📡 [LLMClient] Sending request to ${this.servers[server].url} (timeout: ${timeoutMs}ms)`);
+
+        response = await fetch(`${this.servers[server].url}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'local-model', // llama-server ignora esto, usa el modelo cargado
+            messages: [
+              {
+                role: 'system',
+                content: finalSystemPrompt
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.1, // LFM2.5-Instruct recommended temperature
+            max_tokens: 1000,
+            stream: false
+            // JSON Schema forzado a nivel de servidor con --json-schema-file
+          }),
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

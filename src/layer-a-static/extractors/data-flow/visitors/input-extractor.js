@@ -33,23 +33,40 @@ export class InputExtractor {
   extract(functionAst) {
     try {
       // Encontrar el nodo de la función
-      const functionNode = this.findFunctionNode(functionAst);
+      let functionNode;
+      try {
+        functionNode = this.findFunctionNode(functionAst);
+      } catch (e) {
+        logger.warn(`[DIAG] findFunctionNode failed for ${this.functionName}: ${e.message}`);
+        return [];
+      }
       if (!functionNode) {
         logger.debug(`No function node found in ${this.functionName}`);
         return [];
       }
 
       // Extraer parámetros
-      this.extractParameters(functionNode);
+      try {
+        this.extractParameters(functionNode);
+      } catch (e) {
+        logger.warn(`[DIAG] extractParameters failed for ${this.functionName}: ${e.message}`);
+        return [];
+      }
 
       // Encontrar usos de cada parámetro
-      this.findUsages(functionNode);
+      try {
+        this.findUsages(functionNode);
+      } catch (e) {
+        logger.warn(`[DIAG] findUsages failed for ${this.functionName}: ${e.message}`);
+        // Still return inputs without usages
+        return this.buildInputsWithUsages();
+      }
 
       // Combinar inputs con sus usos
       return this.buildInputsWithUsages();
 
     } catch (error) {
-      logger.warn(`Error extracting inputs: ${error.message}`);
+      logger.warn(`Error extracting inputs for ${this.functionName}: ${error.message}`);
       return [];
     }
   }
@@ -59,9 +76,9 @@ export class InputExtractor {
    */
   findFunctionNode(ast) {
     // Si ya es un nodo de función, retornarlo
-    if (ast && (ast.type === 'FunctionDeclaration' || 
-                ast.type === 'FunctionExpression' || 
-                ast.type === 'ArrowFunctionExpression')) {
+    if (ast && (ast.type === 'FunctionDeclaration' ||
+      ast.type === 'FunctionExpression' ||
+      ast.type === 'ArrowFunctionExpression')) {
       return ast;
     }
 
@@ -75,10 +92,10 @@ export class InputExtractor {
         if (node.type === 'ExportNamedDeclaration' && node.declaration?.type === 'FunctionDeclaration') {
           return node.declaration;
         }
-        if (node.type === 'ExportDefaultDeclaration' && 
-            (node.declaration?.type === 'FunctionDeclaration' || 
-             node.declaration?.type === 'FunctionExpression' ||
-             node.declaration?.type === 'ArrowFunctionExpression')) {
+        if (node.type === 'ExportDefaultDeclaration' &&
+          (node.declaration?.type === 'FunctionDeclaration' ||
+            node.declaration?.type === 'FunctionExpression' ||
+            node.declaration?.type === 'ArrowFunctionExpression')) {
           return node.declaration;
         }
       }
@@ -92,7 +109,7 @@ export class InputExtractor {
    */
   extractParameters(functionNode) {
     const params = Array.isArray(functionNode.params) ? functionNode.params : [];
-    
+
     for (let i = 0; i < params.length; i++) {
       const param = params[i];
       const input = this.parseParameter(param, i);
@@ -168,7 +185,7 @@ export class InputExtractor {
         if (prop.type === 'ObjectProperty') {
           const key = prop.key.name || prop.key.value;
           let valueName = key;
-          
+
           // { name: localName }
           if (prop.value.type === 'Identifier') {
             valueName = prop.value.name;
@@ -233,19 +250,19 @@ export class InputExtractor {
    */
   extractDefaultValue(node) {
     if (!node) return null;
-    
+
     // Literales simples
     if (node.type === 'StringLiteral') return `"${node.value}"`;
     if (node.type === 'NumericLiteral') return String(node.value);
     if (node.type === 'BooleanLiteral') return String(node.value);
     if (node.type === 'NullLiteral') return 'null';
-    
+
     // Array vacío: []
     if (node.type === 'ArrayExpression' && node.elements.length === 0) return '[]';
-    
+
     // Object vacío: {}
     if (node.type === 'ObjectExpression' && node.properties.length === 0) return '{}';
-    
+
     // Para otros casos, retornar tipo
     return `<${node.type}>`;
   }
@@ -277,7 +294,7 @@ export class InputExtractor {
     // MemberExpression: obj.prop
     if (node.type === 'MemberExpression') {
       const objectName = this.getIdentifierName(node.object);
-      const propertyName = node.computed 
+      const propertyName = node.computed
         ? this.getIdentifierName(node.property)
         : (node.property.name || node.property.value);
 
@@ -293,7 +310,7 @@ export class InputExtractor {
     // CallExpression: func(arg)
     if (node.type === 'CallExpression') {
       const calleeName = this.getIdentifierName(node.callee);
-      
+
       // Revisar argumentos para ver si pasan inputs
       node.arguments.forEach((arg, index) => {
         const argName = this.getIdentifierName(arg);
@@ -305,7 +322,7 @@ export class InputExtractor {
             line: arg.loc?.start?.line
           });
         }
-        
+
         // Spread: ...obj
         if (arg.type === 'SpreadElement') {
           const spreadName = this.getIdentifierName(arg.argument);
@@ -323,7 +340,7 @@ export class InputExtractor {
     // Recursión en propiedades del nodo
     for (const key in node) {
       if (key === 'loc' || key === 'type') continue;
-      
+
       const value = node[key];
       if (Array.isArray(value) && typeof value.forEach === 'function') {
         // Usar for...of en lugar de forEach para mayor compatibilidad
@@ -347,14 +364,17 @@ export class InputExtractor {
     }
 
     // Verificar si es una propiedad de un destructured input
-    for (const [inputName, input] of this.inputs) {
-      if (input.type.startsWith('destructured')) {
-        const prop = input.properties.find(p => p.local === name);
+    for (const input of this.inputs) {
+      if (input.type && input.type.startsWith('destructured')) {
+        const prop = input.properties?.find(p => p.local === name);
         if (prop) {
-          this.usages.get(inputName).push({
-            ...usage,
-            destructuredProperty: prop.original || prop.index
-          });
+          const usageList = this.usages.get(input.name);
+          if (usageList) {
+            usageList.push({
+              ...usage,
+              destructuredProperty: prop.original || prop.index
+            });
+          }
           return;
         }
       }

@@ -87,11 +87,11 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     }
 
     const staticConnections = detectAllSemanticConnections(fileSourceCode);
-    const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
-    if (verbose) logger.info(`  âœ“ Found ${staticConnections.all.length + advancedConnections.connections.length} connections\n`);
+    const advancedConnections = detectAllAdvancedConnections(parsedFile.source || '');
+    if (verbose) logger.info(`  ✓ Found ${staticConnections.all.length + advancedConnections.all.length} connections\n`);
 
     // Paso 4: Extraer metadatos
-    if (verbose) logger.info('ðŸ“Š Extracting metadata...');
+    if (verbose) logger.info('📊 Extracting metadata...');
     const metadata = extractAllMetadata(targetFilePath, parsedFile.source || '');
     if (verbose) logger.info(`  ✓ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
 
@@ -136,7 +136,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
           confidence: conn.confidence,
           detectedBy: 'static-extractor'
         })),
-        ...advancedConnections.connections.map(conn => ({
+        ...advancedConnections.all.map(conn => ({
           target: conn.targetFile,
           type: conn.via,
           channelName: conn.channelName,

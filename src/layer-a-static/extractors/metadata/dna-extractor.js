@@ -33,29 +33,43 @@ import { createHash } from 'crypto';
  */
 export function extractDNA(atom) {
   if (!atom || !atom.dataFlow) {
-    throw new DNAExtractionError('Invalid atom: missing dataFlow');
+    // Graceful fallback for atoms without dataFlow (e.g., config files, simple exports)
+    return {
+      structuralHash: 'no-dataflow',
+      patternHash: 'no-dataflow',
+      flowType: 'unknown',
+      operationSequence: [],
+      complexityScore: 1,
+      inputCount: 0,
+      outputCount: 0,
+      transformationCount: 0,
+      semanticFingerprint: 'unknown',
+      extractedAt: new Date().toISOString(),
+      version: '1.0',
+      id: 'no-dataflow'
+    };
   }
 
   const dna = {
     // Identidad estructural (inmutable ante cambios de nombre)
     structuralHash: computeStructuralHash(atom.dataFlow),
-    
+
     // Patrón de flujo (categoría alta)
     patternHash: atom.standardized?.patternHash || computePatternHash(atom.dataFlow),
     flowType: detectFlowType(atom.dataFlow),
-    
+
     // Secuencia de operaciones ("firma" del comportamiento)
     operationSequence: extractOperationSequence(atom.dataFlow),
-    
+
     // Métricas derivadas
     complexityScore: computeComplexity(atom.dataFlow),
     inputCount: atom.dataFlow.inputs?.length || 0,
     outputCount: atom.dataFlow.outputs?.length || 0,
     transformationCount: atom.dataFlow.transformations?.length || 0,
-    
+
     // Huella semántica (para matching aproximado)
     semanticFingerprint: computeSemanticFingerprint(atom),
-    
+
     // Metadatos de extracción
     extractedAt: new Date().toISOString(),
     version: '1.0'
@@ -100,7 +114,7 @@ function computePatternHash(dataFlow) {
   const operations = (dataFlow.transformations || [])
     .map(t => t.operation || 'unknown')
     .join('→');
-  
+
   return createHash('sha256')
     .update(operations)
     .digest('hex')
@@ -123,7 +137,7 @@ function detectFlowType(dataFlow) {
   if (hasTransform && hasReturn) return 'transform-return';
   if (hasRead && hasReturn) return 'read-return';
   if (hasWrite) return 'side-effect-only';
-  
+
   return 'unknown';
 }
 
@@ -132,23 +146,23 @@ function detectFlowType(dataFlow) {
  */
 function extractOperationSequence(dataFlow) {
   const sequence = [];
-  
+
   // Inputs
   if (dataFlow.inputs?.length > 0) {
     sequence.push('receive');
   }
-  
+
   // Transformaciones en orden
   (dataFlow.transformations || []).forEach(t => {
     sequence.push(t.operation || 'transform');
   });
-  
+
   // Outputs
   (dataFlow.outputs || []).forEach(o => {
     if (o.type === 'side_effect') sequence.push('emit');
     if (o.type === 'return') sequence.push('return');
   });
-  
+
   return sequence;
 }
 
@@ -157,21 +171,21 @@ function extractOperationSequence(dataFlow) {
  */
 function computeComplexity(dataFlow) {
   let score = 1;
-  
+
   // +1 por cada input
   score += (dataFlow.inputs?.length || 0) * 0.5;
-  
+
   // +1 por cada transformación
   score += (dataFlow.transformations?.length || 0) * 0.8;
-  
+
   // +1 por cada output
   score += (dataFlow.outputs?.length || 0) * 0.5;
-  
+
   // +2 si tiene side effects
   if ((dataFlow.outputs || []).some(o => o.type === 'side_effect')) {
     score += 2;
   }
-  
+
   return Math.min(10, Math.round(score));
 }
 
@@ -180,13 +194,13 @@ function computeComplexity(dataFlow) {
  */
 function computeSemanticFingerprint(atom) {
   if (!atom.semantic) return 'unknown';
-  
+
   const parts = [
     atom.semantic.verb || 'unknown',
     atom.semantic.domain || 'unknown',
     atom.semantic.entity || 'unknown'
   ];
-  
+
   return parts.join(':');
 }
 
@@ -209,16 +223,16 @@ function computeDNAId(dna) {
  */
 export function compareDNA(dna1, dna2) {
   if (!dna1 || !dna2) return 0;
-  
+
   let score = 0;
   let weights = 0;
-  
+
   // Estructural (40%)
   if (dna1.structuralHash === dna2.structuralHash) {
     score += 0.4;
   }
   weights += 0.4;
-  
+
   // Pattern (30%)
   if (dna1.patternHash === dna2.patternHash) {
     score += 0.3;
@@ -226,7 +240,7 @@ export function compareDNA(dna1, dna2) {
     score += 0.15; // Mitad si mismo flow type pero diferente hash
   }
   weights += 0.3;
-  
+
   // Operaciones (20%)
   const ops1 = dna1.operationSequence.join(',');
   const ops2 = dna2.operationSequence.join(',');
@@ -236,13 +250,13 @@ export function compareDNA(dna1, dna2) {
     score += 0.1;
   }
   weights += 0.2;
-  
+
   // Semántico (10%)
   if (dna1.semanticFingerprint === dna2.semanticFingerprint) {
     score += 0.1;
   }
   weights += 0.1;
-  
+
   return weights > 0 ? score / weights : 0;
 }
 
@@ -254,7 +268,7 @@ export function compareDNA(dna1, dna2) {
  */
 export function validateDNA(dna) {
   const errors = [];
-  
+
   if (!dna.id) errors.push('Missing DNA ID');
   if (!dna.structuralHash) errors.push('Missing structural hash');
   if (!dna.patternHash) errors.push('Missing pattern hash');
@@ -262,7 +276,7 @@ export function validateDNA(dna) {
   if (dna.complexityScore < 1 || dna.complexityScore > 10) {
     errors.push('Invalid complexity score');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors

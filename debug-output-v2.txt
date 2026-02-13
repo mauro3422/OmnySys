@@ -1,0 +1,1383 @@
+﻿node : 
+En línea: 1 Carácter: 1
++ node --input-type=module -e "
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], Re 
+   moteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+├░┼©ÔÇØ┬º Initializing Orchestrator...
+
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:16.536Z [32m[INFO][0m [core:analysis-worker] Initializing AnalysisWorker...
+2026-02-12T21:54:16.538Z [32m[INFO][0m [core:analysis-worker] AnalysisWorker ready
+
+­ƒñû Orchestrator: Analyzing complex files with LLM...
+├ó┼ôÔÇª Orchestrator initialized
+
+ÔÜá´©Å  DEPRECATED: Importing from metadata-contract.js
+   Please update imports to: metadata-contract/index.js
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/analyzers/real-values-analyzer.js: Arquetipos 
+detectados: orphan-module
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/analyzers/standardizer-analyzer.js: Arquetipos 
+detectados: orphan-module
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/utils/pattern-index-manager.js: Arquetipos 
+detectados: orphan-module
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/utils/scope-tracker.js: Arquetipos detectados: 
+orphan-module
+   ­ƒöì install.js: Arquetipos detectados: god-object
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/b-transforms-visitor.js: Arquetipos 
+detectados: orphan-module
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/a-inputs-visitor.js: Arquetipos 
+detectados: orphan-module
+   ƒöì docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/c-outputs-visitor.js: Arquetipos 
+detectados: orphan-module
+­ƒôï Decision audit logger initialized (3536 decisions)
+­ƒôï Decision audit logger initialized (3537 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/analyzers/real-values-analyzer.js: Necesita LLM 
+(orphan-module)
+­ƒôï Decision audit logger initialized (3538 decisions)
+­ƒôï Decision audit logger initialized (3539 decisions)
+­ƒôï Decision audit logger initialized (3540 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/utils/scope-tracker.js: Necesita LLM 
+(orphan-module)
+­ƒôï Decision audit logger initialized (3541 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/index.js: Necesita LLM ()
+­ƒôï Decision audit logger initialized (3542 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/b-transforms-visitor.js: Necesita LLM 
+(orphan-module)
+­ƒôï Decision audit logger initialized (3543 decisions)
+­ƒôï Decision audit logger initialized (3544 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/a-inputs-visitor.js: Necesita LLM 
+(orphan-module)
+­ƒôï Decision audit logger initialized (3545 decisions)
+   Ô£à docs/DATA_FLOW/src/layer-a-static/extractors/metadata/
+data-flow/visitors/c-outputs-visitor.js: Necesita LLM 
+(orphan-module)
+   Ô£à main.js: Necesita LLM ()
+   Ô£à omnysystem.js: Necesita LLM ()
+   ­ƒöì restart-server.mjs: Arquetipos detectados: god-object
+   ­ƒöì run-tests.js: Arquetipos detectados: god-object
+   ­ƒöì omny.js: Arquetipos detectados: god-object
+   Ô£à schema/types.d.ts: Necesita LLM ()
+   ƒöì src/ai/llm-client.js: Arquetipos detectados: 
+god-object
+   ƒöì src/ai/llm/load-config.js: Arquetipos detectados: 
+dynamic-importer
+   ƒöì src/cli/commands/consolidate.js: Arquetipos 
+detectados: god-object
+   ƒöì src/cli/commands/serve.js: Arquetipos detectados: 
+god-object
+   ­ƒöì src/cli/help.js: Arquetipos detectados: god-object
+   ƒöì src/cli/index.js: Arquetipos detectados: 
+orphan-module, dynamic-importer, facade, entry-point
+   ƒöì src/cli/utils/paths.js: Arquetipos detectados: 
+god-object
+   ƒöì src/config/index.js: Arquetipos detectados: 
+orphan-module, facade
+   Ô£à src/config/index.js: Necesita LLM (orphan-module, 
+facade)
+   ƒöì src/config/paths.js: Arquetipos detectados: 
+god-object, config-hub
+   ƒöì src/core/analysis-queue.js: Arquetipos detectados: 
+god-object
+   ƒöì src/core/analysis-worker.js: Arquetipos detectados: 
+god-object, dynamic-importer
+   ƒöì src/core/atomic-editor.js: Arquetipos detectados: 
+dynamic-importer
+   Ô£à src/core/atomic-editor.js: Necesita LLM 
+(dynamic-importer)
+   ƒöì src/core/batch-processor/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/core/batch-processor/constants.js: Arquetipos 
+detectados: god-object, facade, config-hub
+   ƒöì src/core/cache-integration.js: Arquetipos detectados: 
+orphan-module, dynamic-importer, entry-point
+   ƒöì src/core/cache-invalidator/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/core/file-watcher/handlers.js: Arquetipos 
+detectados: god-object, dynamic-importer, config-hub
+   ƒöì src/core/error-guardian.js: Arquetipos detectados: 
+dynamic-importer
+   Ô£à src/core/error-guardian.js: Necesita LLM 
+(dynamic-importer)
+   ƒöì src/core/file-watcher/helpers.js: Arquetipos 
+detectados: dynamic-importer
+   ƒöì src/core/file-watcher/index.js: Arquetipos 
+detectados: orphan-module, entry-point
+   ƒöì src/core/orchestrator-server.js: Arquetipos 
+detectados: god-object
+   ƒöì src/core/index.js: Arquetipos detectados: 
+dynamic-importer, facade
+   ƒöì src/core/orchestrator/helpers.js: Arquetipos 
+detectados: dynamic-importer
+   ƒöì src/core/orchestrator/issues.js: Arquetipos 
+detectados: dynamic-importer
+   ƒöì src/core/orchestrator/iterative.js: Arquetipos 
+detectados: dynamic-importer
+   ƒöì src/core/orchestrator/index.js: Arquetipos 
+detectados: god-object, dynamic-importer
+   ƒöì src/core/orchestrator/llm-analysis.js: Arquetipos 
+detectados: dynamic-importer
+   ƒöì src/core/state-manager.js: Arquetipos detectados: 
+god-object
+   ƒöì src/core/process-manager.js: Arquetipos detectados: 
+god-object, config-hub
+   Ô£à src/core/orchestrator/queueing.js: Necesita LLM ()
+   ƒöì src/core/unified-cache-manager.js: Arquetipos 
+detectados: god-object
+   ƒöì src/core/unified-cache-manager/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/core/unified-server/api.js: Arquetipos 
+detectados: god-object
+   ƒöì src/core/unified-server/index.js: Arquetipos 
+detectados: god-object
+   ƒöì 
+src/core/unified-server/initialization/analysis-manager.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/core/unified-server/initialization/index.js: 
+Arquetipos detectados: god-object, facade, config-hub
+   ƒöì 
+src/core/unified-server/initialization/file-watcher-init.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+src/core/unified-server/initialization/orchestrator-init.js: 
+Arquetipos detectados: god-object
+   ƒöì src/core/unified-server/tools/atomic-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/connection-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/impact-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/index.js: Arquetipos 
+detectados: orphan-module, facade
+   Ô£à src/core/unified-server/tools/index.js: Necesita LLM 
+(orphan-module, facade)
+   ƒöì src/core/unified-server/tools/server-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/risk-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/search-tools.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/core/unified-server/tools/status-tools.js: 
+Arquetipos detectados: orphan-module, dynamic-importer
+   Ô£à src/core/websocket/client/message-handler.js: 
+Necesita LLM ()
+   ƒöì src/core/websocket/index.js: Arquetipos detectados: 
+facade
+   ƒöì src/core/websocket/constants.js: Arquetipos 
+detectados: god-object, config-hub
+   ƒöì src/core/websocket/server/connection-handler.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì 
+src/layer-a-static/analyses/V2_ALGORITHMS_PROPOSAL.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-a-static/analyses/V2_ALGORITHMS_PROPOSAL.js: 
+Necesita LLM (orphan-module)
+   ƒöì 
+src/layer-a-static/analyses/tier1/circular-function-deps.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/analyses/metrics.js: Arquetipos 
+detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/metrics.js: Necesita LLM 
+(orphan-module)
+   ƒöì src/layer-a-static/analyses/recommendations.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/recommendations.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier1/hotspots.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier1/hotspots.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier1/deep-chains.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier1/deep-chains.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier1/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-a-static/analyses/tier1/index.js: Necesita 
+LLM (orphan-module, facade)
+   ƒöì src/layer-a-static/analyses/tier1/orphan-files.js: 
+Arquetipos detectados: orphan-module
+   ƒöì 
+src/layer-a-static/analyses/tier2/cycle-classifier.js: 
+Arquetipos detectados: orphan-module, facade
+   ƒöì 
+src/layer-a-static/analyses/tier2/circular-imports.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-a-static/analyses/tier2/circular-imports.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier2/coupling.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier2/coupling.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier2/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-a-static/analyses/tier2/index.js: Necesita 
+LLM (orphan-module, facade)
+   ƒöì src/layer-a-static/analyses/tier2/reachability.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier2/reachability.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier2/reexport-chains.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier2/reexport-chains.js: 
+Necesita LLM (orphan-module)
+   ƒöì 
+src/layer-a-static/analyses/tier2/unresolved-imports.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/analyses/tier2/side-effects.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier2/side-effects.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier2/unused-imports.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier2/unused-imports.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier3/constant-usage.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier3/constant-usage.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier3/enum-usage.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier3/enum-usage.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/analyses/tier3/event-detector/const
+ants.js: Arquetipos detectados: god-object, config-hub
+   ƒöì 
+src/layer-a-static/analyses/tier3/event-detector/index.js: 
+Arquetipos detectados: orphan-module, facade
+   ƒöì src/layer-a-static/analyses/tier3/event-detector/event
+-indexer.js: Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/analyses/tier3/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-a-static/analyses/tier3/index.js: Necesita 
+LLM (orphan-module, facade)
+   ƒöì src/layer-a-static/analyses/tier3/object-tracking.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier3/object-tracking.js: 
+Necesita LLM (orphan-module)
+   ƒöì 
+src/layer-a-static/analyses/tier3/shared-state-detector.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+src/layer-a-static/analyses/tier3/side-effects-detector.js: 
+Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/analyses/tier3/type-usage.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/analyses/tier3/type-usage.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/extractors/atomic/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/extractors/communication/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/extractors/css-in-js-extractor.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/extractors/css-in-js-extractor.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/extractors/communication/window-pos
+tmessage.js: Arquetipos detectados: god-object
+   Ô£à src/layer-a-static/extractors/communication/window-pos
+tmessage.js: Necesita LLM (god-object)
+   ƒöì 
+src/layer-a-static/extractors/comprehensive-extractor.js: 
+Arquetipos detectados: orphan-module, entry-point
+   ƒöì 
+src/layer-a-static/extractors/data-flow-v2/core/index.js: 
+Arquetipos detectados: orphan-module, entry-point
+   ƒöì src/layer-a-static/extractors/data-flow/index.js: 
+Arquetipos detectados: facade
+   Ô£à src/layer-a-static/extractors/function-analyzer.js: 
+Necesita LLM ()
+   ƒöì src/layer-a-static/extractors/metadata/index.js: 
+Arquetipos detectados: facade
+   Ô£à src/layer-a-static/extractors/pattern-matchers.js: 
+Necesita LLM ()
+   ƒöì src/layer-a-static/extractors/state-management/connect
+ions/context-connections.js: Arquetipos detectados: 
+orphan-module
+   ƒöì src/layer-a-static/extractors/state-management/connect
+ions/store-structure.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/extractors/state-management/connect
+ions/store-structure.js: Necesita LLM (orphan-module)
+   ƒöì 
+src/layer-a-static/extractors/state-management/constants.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì src/layer-a-static/extractors/state-management/connect
+ions/selector-connections.js: Arquetipos detectados: 
+orphan-module
+   ƒöì src/layer-a-static/extractors/state-management/context
+/context-extractor.js: Arquetipos detectados: orphan-module
+   ƒöì 
+src/layer-a-static/extractors/state-management/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/extractors/state-management/redux/r
+edux-extractor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/extractors/static/constants.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì src/layer-a-static/extractors/static/index.js: 
+Arquetipos detectados: god-object, facade, config-hub
+   ƒöì 
+src/layer-a-static/extractors/static/route-extractor.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+src/layer-a-static/extractors/typescript-extractor.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-a-static/extractors/typescript-extractor.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/extractors/typescript/extractors/en
+um-extractor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/extractors/typescript/extractors/in
+terface-extractor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/extractors/typescript/extractors/ty
+pe-extractor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/extractors/typescript/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/extractors/utils.js: Arquetipos 
+detectados: god-object
+   ƒöì src/layer-a-static/graph/builders/export-index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/graph/builders/system-map.js: 
+Arquetipos detectados: orphan-module, entry-point
+   ƒöì src/layer-a-static/graph/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/layer-a-static/indexer.js: Arquetipos detectados: 
+god-object
+   ƒöì src/layer-a-static/module-system/detectors/api-route-d
+etector.js: Arquetipos detectados: orphan-module
+   ƒöì 
+src/layer-a-static/module-system/detectors/cli-detector.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/module-system/detectors/export-dete
+ctor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/module-system/detectors/event-detec
+tor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/module-system/detectors/index.js: 
+Arquetipos detectados: facade
+   ƒöì 
+src/layer-a-static/module-system/detectors/job-detector.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/module-system/index.js: Arquetipos 
+detectados: facade
+   Ô£à src/layer-a-static/module-system/index.js: Necesita 
+LLM (facade)
+   ƒöì src/layer-a-static/module-system/utils.js: Arquetipos 
+detectados: god-object, config-hub
+   ƒöì src/layer-a-static/parser/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/layer-a-static/pattern-detection/aggregator.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+src/layer-a-static/pattern-detection/detector-base.js: 
+Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/pattern-detection/detectors/deep-ch
+ains-detector.js: Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/pattern-detection/detectors/shared-
+objects-detector.js: Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/pattern-detection/engine.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/layer-a-static/pattern-detection/detectors/unused-
+exports-detector.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/pattern-detection/index.js: 
+Arquetipos detectados: facade
+   Ô£à src/layer-a-static/pipeline/enhance.js: Necesita LLM 
+()
+   ƒöì src/layer-a-static/pipeline/enhancers/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/pipeline/enhancers/phases/connectio
+n-enhancer.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/pipeline/enhancers/phases/metadata-
+enhancer.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/pipeline/enhancers/phases/metadata-
+enhancer.js: Necesita LLM (orphan-module)
+   ƒöì 
+src/layer-a-static/pipeline/molecular-chains/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/pipeline/molecular-extractor.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/layer-a-static/pipeline/phases/index.js: 
+Arquetipos detectados: facade
+   ƒöì 
+src/layer-a-static/pipeline/phases/chain-building-phase.js: 
+Arquetipos detectados: orphan-module, dynamic-importer
+   ƒöì src/layer-a-static/query/apis/connections-api.js: 
+Arquetipos detectados: god-object
+   ƒöì src/layer-a-static/query/apis/file-api.js: Arquetipos 
+detectados: god-object, facade, config-hub
+   ƒöì src/layer-a-static/query/apis/dependency-api.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/query/apis/dependency-api.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/query/export.js: Arquetipos 
+detectados: orphan-module
+   Ô£à src/layer-a-static/query/apis/index.js: Necesita LLM 
+()
+   ƒöì src/layer-a-static/query/apis/project-api.js: 
+Arquetipos detectados: god-object, facade
+   ƒöì src/layer-a-static/query/apis/risk-api.js: Arquetipos 
+detectados: god-object
+   ƒöì 
+src/layer-a-static/query/queries/connections-query.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-a-static/query/index.js: Necesita LLM ()
+   ƒöì src/layer-a-static/query/queries/dependency-query.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/query/queries/risk-query.js: 
+Arquetipos detectados: orphan-module, dynamic-importer
+   ƒöì src/layer-a-static/race-detector/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/layer-a-static/race-detector/__tests__/race-detect
+or.test.js: Arquetipos detectados: entry-point
+   ƒöì 
+src/layer-a-static/race-detector/shared-state-tracker.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-a-static/race-detector/shared-state-tracker.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-a-static/race-detector/strategies/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-a-static/race-detector/strategies/init-error
+-strategy.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/race-detector/strategies/race-detec
+tion-strategy.js: Arquetipos detectados: god-object
+   ƒöì 
+src/layer-a-static/race-detector/trackers/base-tracker.js: 
+Arquetipos detectados: god-object
+   Ô£à 
+src/layer-a-static/race-detector/trackers/base-tracker.js: 
+Necesita LLM (god-object)
+   ƒöì src/layer-a-static/race-detector/trackers/closure-trac
+ker.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/race-detector/trackers/external-res
+ource-tracker.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/race-detector/trackers/global-varia
+ble-tracker.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/race-detector/trackers/index.js: 
+Arquetipos detectados: singleton, facade
+   ƒöì src/layer-a-static/race-detector/trackers/module-state
+-tracker.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-a-static/race-detector/trackers/singleton-tr
+acker.js: Arquetipos detectados: orphan-module, singleton
+   ƒöì src/layer-a-static/storage/storage-manager.js: 
+Arquetipos detectados: god-object, config-hub
+   Ô£à src/layer-b-semantic/function-analyzer.js: Necesita 
+LLM ()
+   ƒöì src/layer-b-semantic/issue-detectors/global-state-buil
+der.js: Arquetipos detectados: god-object
+   ƒöì src/layer-b-semantic/issue-detectors/index.js: 
+Arquetipos detectados: facade
+   ƒöì 
+src/layer-b-semantic/issue-detectors/report-generator.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-b-semantic/issue-detectors/report-generator.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/llm-analyzer/core.js: Arquetipos 
+detectados: orphan-module, entry-point
+   ƒöì src/layer-b-semantic/llm-analyzer/index.js: 
+Arquetipos detectados: god-object, facade, config-hub
+   ƒöì src/layer-b-semantic/metadata-contract/builders/standa
+rd-builder.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-b-semantic/metadata-contract/constants.js: 
+Arquetipos detectados: god-object, singleton, config-hub
+   ƒöì src/layer-b-semantic/metadata-contract/builders/prompt
+-builder.js: Arquetipos detectados: orphan-module
+   ƒöì 
+src/layer-b-semantic/metadata-contract/detectors/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-b-semantic/metadata-contract/index.js: 
+Arquetipos detectados: singleton, facade
+   ƒöì src/layer-b-semantic/metadata-contract/detectors/archi
+tectural-patterns.js: Arquetipos detectados: orphan-module
+   ƒöì 
+src/layer-b-semantic/metadata-contract/schemas/index.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+src/layer-b-semantic/metadata-contract/schemas/index.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/metadata-contract/schemas/layer-a
+-metadata.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/metadata-contract/schemas/layer-a
+-metadata.js: Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/metadata-contract/validators/meta
+data-validator.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/pattern-matchers.js: Necesita 
+LLM ()
+   ƒöì 
+src/layer-b-semantic/metadata-contract/validators/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-b-semantic/project-analyzer/constants.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì src/layer-b-semantic/project-analyzer/index.js: 
+Arquetipos detectados: orphan-module, facade, entry-point
+   ƒöì 
+src/layer-b-semantic/project-analyzer/reports/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à 
+src/layer-b-semantic/project-analyzer/reports/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-b-semantic/project-analyzer/utils/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/project-analyzer/utils/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-b-semantic/prompt-engine/index.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/layer-b-semantic/prompt-engine/prompt-templates/gl
+obal-state.js: Arquetipos detectados: god-object
+   Ô£à src/layer-b-semantic/prompt-engine/prompt-templates/se
+mantic-connections.js: Necesita LLM ()
+   ƒöì src/layer-b-semantic/redux-context-extractor.js: 
+Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/redux-context-extractor.js: 
+Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/schema-validator.js: Arquetipos 
+detectados: orphan-module
+   ƒöì src/layer-b-semantic/typescript-extractor.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/typescript-extractor.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-b-semantic/validators/constants.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì src/layer-b-semantic/validators/extractors/global-extr
+actor.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-b-semantic/validators/extractors/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/validators/extractors/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-b-semantic/validators/index.js: Arquetipos 
+detectados: facade
+   ƒöì src/layer-b-semantic/validators/sanitizers/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/validators/sanitizers/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì 
+src/layer-b-semantic/validators/utils/pattern-checkers.js: 
+Arquetipos detectados: god-object, config-hub
+   ƒöì src/layer-b-semantic/validators/utils/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/validators/utils/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-b-semantic/validators/validators/config-hub-
+validator.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/validators/validators/config-hub-
+validator.js: Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/validators/validators/entry-point
+-validator.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/validators/validators/entry-point
+-validator.js: Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/validators/validators/facade-vali
+dator.js: Arquetipos detectados: orphan-module
+   Ô£à src/layer-b-semantic/validators/validators/facade-vali
+dator.js: Necesita LLM (orphan-module)
+   ƒöì src/layer-b-semantic/validators/validators/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-b-semantic/validators/validators/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-c-memory/mcp/core/analysis-checker.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/layer-c-memory/mcp/core/hot-reload-manager.js: 
+Arquetipos detectados: god-object, dynamic-importer
+   Ô£à src/layer-c-memory/mcp/core/hot-reload-manager.js: 
+Necesita LLM (god-object, dynamic-importer)
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/base-
+step.js: Arquetipos detectados: god-object
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/cache
+-init-step.js: Arquetipos detectados: orphan-module, 
+dynamic-importer, entry-point
+   ƒöì 
+src/layer-c-memory/mcp/core/initialization/steps/index.js: 
+Arquetipos detectados: singleton, facade
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/layer
+-a-analysis-step.js: Arquetipos detectados: orphan-module, 
+dynamic-importer
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/insta
+nce-detection-step.js: Arquetipos detectados: god-object, 
+dynamic-importer, singleton
+   Ô£à src/layer-c-memory/mcp/core/initialization/steps/insta
+nce-detection-step.js: Necesita LLM (god-object, 
+dynamic-importer, singleton)
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/llm-s
+etup-step.js: Arquetipos detectados: god-object, 
+dynamic-importer
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/mcp-s
+etup-step.js: Arquetipos detectados: orphan-module, 
+entry-point
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/orche
+strator-init-step.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-c-memory/mcp/core/initialization/steps/ready
+-step.js: Arquetipos detectados: orphan-module, 
+dynamic-importer
+   ƒöì src/layer-c-memory/mcp/core/server-class.js: 
+Arquetipos detectados: god-object, dynamic-importer
+   ƒöì src/layer-c-memory/mcp/tools/lib/analysis/index.js: 
+Arquetipos detectados: orphan-module, facade
+   Ô£à src/layer-c-memory/mcp/tools/lib/analysis/index.js: 
+Necesita LLM (orphan-module, facade)
+   ƒöì src/layer-c-memory/mcp/tools/lib/analysis/signature-an
+alyzer.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-c-memory/mcp/tools/lib/analysis/value-flow-a
+nalyzer.js: Arquetipos detectados: orphan-module
+   ƒöì src/layer-c-memory/mcp/tools/restart-server.js: 
+Arquetipos detectados: dynamic-importer
+   ƒöì src/layer-c-memory/mcp/tools/lib/ast-analyzer.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-c-memory/shadow-registry/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-c-memory/populate-omnysysdata.js: 
+Arquetipos detectados: orphan-module, entry-point
+   ƒöì src/layer-c-memory/verification/types/index.js: 
+Arquetipos detectados: facade
+   ƒöì src/layer-c-memory/verification/validators/connection-
+sync.js: Arquetipos detectados: orphan-module
+   Ô£à 
+src/shared/analysis/__tests__/function-analyzer.test.js: 
+Necesita LLM ()
+   ƒöì src/shared/analysis/pattern-matchers.js: Arquetipos 
+detectados: orphan-module
+   Ô£à src/shared/analysis/pattern-matchers.js: Necesita LLM 
+(orphan-module)
+   ƒöì src/shared/atomic-cache.js: Arquetipos detectados: 
+orphan-module
+   ƒöì src/shared/data-integrity-validator.js: Arquetipos 
+detectados: orphan-module
+   ƒöì src/shared/logger-system.js: Arquetipos detectados: 
+god-object, config-hub
+   ƒöì src/shared/ground-truth-validator.js: Arquetipos 
+detectados: orphan-module
+   ƒöì src/utils/logger.js: Arquetipos detectados: god-object
+   ƒöì src/utils/response-cleaner.js: Arquetipos detectados: 
+orphan-module
+   ƒöì src/validation/core/rule-registry.js: Arquetipos 
+detectados: god-object, config-hub
+   ƒöì src/validation/core/validation-engine.js: Arquetipos 
+detectados: orphan-module, entry-point
+   ƒöì src/validation/core/validation-result.js: Arquetipos 
+detectados: god-object, config-hub
+   ƒöì src/validation/index.js: Arquetipos detectados: 
+orphan-module, facade
+   ƒöì src/validation/rules/derivation/index.js: Arquetipos 
+detectados: orphan-module, dynamic-importer, facade
+   ƒöì src/validation/invariants/system-invariants.js: 
+Arquetipos detectados: orphan-module
+   ƒöì src/validation/rules/semantic/index.js: Arquetipos 
+detectados: orphan-module, dynamic-importer, facade
+   ƒöì src/validation/rules/source/index.js: Arquetipos 
+detectados: orphan-module, dynamic-importer, facade
+   ­ƒöì start-server.mjs: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-1-simple-import/src/fileA.js: 
+Arquetipos detectados: orphan-module
+   ­ƒöì start-server.js: Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-10-worker-trap/src/DataManager.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+test-cases/scenario-10-worker-trap/src/DataManager.js: 
+Necesita LLM (orphan-module)
+   Ô£à 
+test-cases/scenario-10-worker-trap/src/ProcessorWorker.js: 
+Necesita LLM ()
+   ƒöì test-cases/scenario-11-css-trap/src/DiagramCanvas.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-11-css-trap/src/DiagramCanvas.js: 
+Necesita LLM (orphan-module)
+   ƒöì test-cases/scenario-12-dynamic-prop-trap/src/CommandDi
+spatcher.js: Arquetipos detectados: orphan-module
+   ƒöì 
+test-cases/scenario-13-singleton-trap/src/ComponentA.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-11-css-trap/src/ThemeManager.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-11-css-trap/src/ThemeManager.js: 
+Necesita LLM (orphan-module)
+   ƒöì 
+test-cases/scenario-13-singleton-trap/src/LegacyPlugin.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-14-broken-worker/src/Main.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-14-broken-worker/src/Main.js: 
+Necesita LLM (orphan-module)
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run/src/Analy
+tics.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run/src/Event
+Bus.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run/src/GameS
+tore.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run/src/GameE
+vents.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run2/src/Even
+tBus.js: Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh-run/src/Player.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh-run/src/UI.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run2/src/Game
+Events.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run2/src/Anal
+ytics.js: Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh-run2/src/Game
+Store.js: Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh-run2/src/Player.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh/src/EventBus.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh-run2/src/UI.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh/src/Analytics.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh/src/GameEvents.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh/src/GameStore.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-2-semantic-llm-fresh/src/Player.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm-fresh/src/UI.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/EventBus.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/Analytics.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/GameEvents.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/GameStore.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic/src/EventBus.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/Player.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic-llm/src/UI.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic/src/GameEvents.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic/src/Analytics.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic/src/GameStore.js: 
+Arquetipos detectados: god-object
+   ƒöì 
+test-cases/scenario-4-localStorage-bridge/src/ApiClient.js: 
+Arquetipos detectados: god-object, state-manager
+   ƒöì test-cases/scenario-2-semantic/src/Player.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-2-semantic/src/UI.js: Arquetipos 
+detectados: god-object
+   ƒöì test-cases/scenario-4-localStorage-bridge/src/AuthServ
+ice.js: Arquetipos detectados: god-object, state-manager
+   ƒöì 
+test-cases/scenario-5-shader-bridge/src/WebGLRenderer.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module01.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module03.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Core.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-6-god-object/src/Module02.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module05.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module04.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module06.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module07.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module08.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module10.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-6-god-object/src/Module09.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-8-coordinate-trap/src/MouseTransfo
+rmer.js: Arquetipos detectados: orphan-module
+   Ô£à 
+test-cases/scenario-9-event-trap/src/GlobalShortcuts.js: 
+Necesita LLM ()
+   ƒöì 
+test-cases/scenario-ia-ambiguous-events/src/AdminPanel.js: 
+Arquetipos detectados: orphan-module
+   Ô£à 
+test-cases/scenario-ia-ambiguous-events/src/AdminPanel.js: 
+Necesita LLM (orphan-module)
+   ƒöì 
+test-cases/scenario-ia-ambiguous-events/src/EventBus.js: 
+Arquetipos detectados: god-object
+   Ô£à 
+test-cases/scenario-ia-ambiguous-events/src/UserStore.js: 
+Necesita LLM ()
+   ƒöì test-cases/scenario-ia-dynamic-imports/src/Router.js: 
+Arquetipos detectados: orphan-module, dynamic-importer
+   Ô£à test-cases/scenario-ia-dynamic-imports/src/Router.js: 
+Necesita LLM (orphan-module, dynamic-importer)
+   Ô£à 
+test-cases/scenario-ia-ambiguous-events/src/UserProfile.js: 
+Necesita LLM ()
+   Ô£à test-cases/scenario-ia-dynamic-imports/src/modules/Das
+hboardModule.js: Necesita LLM ()
+   ƒöì test-cases/scenario-ia-dynamic-imports/src/modules/Use
+rModule.js: Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-ia-dynamic-imports/src/modules/Use
+rModule.js: Necesita LLM (orphan-module)
+   Ô£à test-cases/scenario-ia-orphan-effects/src/LegacyAnalyt
+ics.js: Necesita LLM ()
+   ƒöì test-cases/scenario-ia-orphan-effects/src/MainApp.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-new-extractors/Button.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-new-extractors/Button.stories.js: 
+Arquetipos detectados: orphan-module
+   ƒöì test-cases/scenario-new-extractors/api-client.js: 
+Arquetipos detectados: god-object
+   ƒöì test-cases/scenario-new-extractors/main.js: 
+Arquetipos detectados: entry-point
+   ƒöì test-cases/scenario-new-extractors/utils/date.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-new-extractors/utils/date.js: 
+Necesita LLM (orphan-module)
+   ƒöì test-cases/scenario-new-extractors/utils/math.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-new-extractors/utils/math.js: 
+Necesita LLM (orphan-module)
+   Ô£à test/batch-processor/batch-processor.test.js: 
+Necesita LLM ()
+   ƒöì test-cases/scenario-new-extractors/utils/string.js: 
+Arquetipos detectados: orphan-module
+   Ô£à test-cases/scenario-new-extractors/utils/string.js: 
+Necesita LLM (orphan-module)
+   ƒöì test/extractors/advanced-extractors.test.js: 
+Arquetipos detectados: god-object
+   ƒöì test/extractors/static-extractors.test.js: Arquetipos 
+detectados: god-object, state-manager
+   Ô£à test/extractors/static-extractors.test.js: Necesita 
+LLM (god-object, state-manager)
+   ƒöì test/file-watcher/file-watcher.test.js: Arquetipos 
+detectados: god-object
+   ƒöì test/websocket/websocket.test.js: Arquetipos 
+detectados: god-object
+   Ô£à test/websocket/websocket.test.js: Necesita LLM 
+(god-object)
+   ƒöì tests/cache-invalidator.test.js: Arquetipos 
+detectados: entry-point
+   Ô£à tests/cache-invalidator.test.js: Necesita LLM 
+(entry-point)
+   ƒöì tests/smoke-test.js: Arquetipos detectados: 
+dynamic-importer, entry-point
+   ­ƒôè Found 89 files needing LLM analysis
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/index.js (low) - 
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/analyzers/real-values-analyzer.js 
+(high) - orphan-module
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/utils/scope-tracker.js (high) - 
+orphan-module
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/visitors/b-transforms-visitor.js 
+(high) - orphan-module
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/visitors/a-inputs-visitor.js 
+(high) - orphan-module
+   Ô×ò Added to queue: docs/DATA_FLOW/src/layer-a-static/extr
+actors/metadata/data-flow/visitors/c-outputs-visitor.js 
+(high) - orphan-module
+   Ô×ò Added to queue: main.js (low) - 
+   Ô×ò Added to queue: omnysystem.js (low) - 
+   Ô×ò Added to queue: schema/types.d.ts (low) - 
+   Ô×ò Added to queue: src/config/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: src/core/atomic-editor.js (medium) - 
+dynamic-importer
+   Ô×ò Added to queue: src/core/error-guardian.js (medium) - 
+dynamic-importer
+   Ô×ò Added to queue: src/core/orchestrator/queueing.js 
+(low) - 
+   Ô×ò Added to queue: 
+src/core/unified-server/tools/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/core/websocket/client/message-handler.js (low) - 
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/V2_ALGORITHMS_PROPOSAL.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier1/hotspots.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/metrics.js (high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/recommendations.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier1/deep-chains.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier1/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/circular-imports.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/coupling.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/reachability.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/reexport-chains.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/side-effects.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier2/unused-imports.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier3/enum-usage.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier3/constant-usage.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier3/object-tracking.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier3/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-a-static/analyses/tier3/type-usage.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/extractors/css-in-js-extractor.js (high) 
+- orphan-module
+   Ô×ò Added to queue: src/layer-a-static/extractors/communic
+ation/window-postmessage.js (critical) - god-object
+   Ô×ò Added to queue: 
+src/layer-a-static/extractors/function-analyzer.js (low) - 
+   Ô×ò Added to queue: 
+src/layer-a-static/extractors/pattern-matchers.js (low) - 
+   Ô×ò Added to queue: src/layer-a-static/extractors/state-ma
+nagement/connections/store-structure.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/extractors/typescript-extractor.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/module-system/index.js (low) - facade
+   Ô×ò Added to queue: 
+src/layer-a-static/pipeline/enhance.js (low) - 
+   Ô×ò Added to queue: src/layer-a-static/pipeline/enhancers/
+phases/metadata-enhancer.js (high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/query/apis/index.js (low) - 
+   Ô×ò Added to queue: src/layer-a-static/query/index.js 
+(low) - 
+   Ô×ò Added to queue: 
+src/layer-a-static/query/apis/dependency-api.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/race-detector/shared-state-tracker.js 
+(high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-a-static/race-detector/trackers/base-tracker.js 
+(critical) - god-object
+   Ô×ò Added to queue: 
+src/layer-b-semantic/function-analyzer.js (low) - 
+   Ô×ò Added to queue: 
+src/layer-b-semantic/issue-detectors/report-generator.js 
+(high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/metadata-contract/schemas/index.js 
+(high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/pattern-matchers.js (low) - 
+   Ô×ò Added to queue: src/layer-b-semantic/metadata-contract
+/schemas/layer-a-metadata.js (high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/project-analyzer/reports/index.js 
+(high) - orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-b-semantic/project-analyzer/utils/index.js (high) 
+- orphan-module, facade
+   Ô×ò Added to queue: src/layer-b-semantic/prompt-engine/pro
+mpt-templates/semantic-connections.js (low) - 
+   Ô×ò Added to queue: 
+src/layer-b-semantic/redux-context-extractor.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/typescript-extractor.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-b-semantic/validators/extractors/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: src/layer-b-semantic/validators/valida
+tors/entry-point-validator.js (high) - orphan-module
+   Ô×ò Added to queue: src/layer-b-semantic/validators/valida
+tors/config-hub-validator.js (high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/validators/sanitizers/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-b-semantic/validators/utils/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: src/layer-b-semantic/validators/valida
+tors/facade-validator.js (high) - orphan-module
+   Ô×ò Added to queue: 
+src/layer-b-semantic/validators/validators/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/layer-c-memory/mcp/core/hot-reload-manager.js (critical) 
+- god-object, dynamic-importer
+   Ô×ò Added to queue: src/layer-c-memory/mcp/core/initializa
+tion/steps/instance-detection-step.js (critical) - 
+god-object, dynamic-importer, singleton
+   Ô×ò Added to queue: 
+src/layer-c-memory/mcp/tools/lib/analysis/index.js (high) - 
+orphan-module, facade
+   Ô×ò Added to queue: 
+src/shared/analysis/__tests__/function-analyzer.test.js 
+(low) - 
+   Ô×ò Added to queue: 
+src/shared/analysis/pattern-matchers.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-10-worker-trap/src/ProcessorWorker.js 
+(low) - 
+   Ô×ò Added to queue: 
+test-cases/scenario-10-worker-trap/src/DataManager.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-11-css-trap/src/DiagramCanvas.js (high) 
+- orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-11-css-trap/src/ThemeManager.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-14-broken-worker/src/Main.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-9-event-trap/src/GlobalShortcuts.js 
+(low) - 
+   Ô×ò Added to queue: 
+test-cases/scenario-ia-ambiguous-events/src/UserStore.js 
+(low) - 
+   Ô×ò Added to queue: 
+test-cases/scenario-ia-ambiguous-events/src/UserProfile.js 
+(low) - 
+   Ô×ò Added to queue: test-cases/scenario-ia-dynamic-imports
+/src/modules/DashboardModule.js (low) - 
+   Ô×ò Added to queue: 
+test-cases/scenario-ia-ambiguous-events/src/AdminPanel.js 
+(high) - orphan-module
+   Ô×ò Added to queue: test-cases/scenario-ia-dynamic-imports
+/src/modules/UserModule.js (high) - orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-ia-dynamic-imports/src/Router.js (high) 
+- orphan-module, dynamic-importer
+   Ô×ò Added to queue: 
+test-cases/scenario-ia-orphan-effects/src/LegacyAnalytics.js 
+(low) - 
+   Ô×ò Added to queue: 
+test/batch-processor/batch-processor.test.js (low) - 
+   Ô×ò Added to queue: 
+test-cases/scenario-new-extractors/utils/date.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-new-extractors/utils/math.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test-cases/scenario-new-extractors/utils/string.js (high) - 
+orphan-module
+   Ô×ò Added to queue: 
+test/extractors/static-extractors.test.js (critical) - 
+god-object, state-manager
+   Ô×ò Added to queue: tests/cache-invalidator.test.js (low) 
+- entry-point
+   Ô×ò Added to queue: test/websocket/websocket.test.js 
+(critical) - god-object
+   Ô£à 89 files added to analysis queue
+   ­ƒÜÇ Starting processing...
+2026-02-12T21:54:17.070Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:17.070Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="src/layer-a-static/extractors/communication/window-postmessage.js" type="string"}
+Ô£à LLM analysis queue ready
+2026-02-12T21:54:17.071Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: window-postmessage.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:18.159Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:18.159Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:18.159Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for window-postmessage.js
+2026-02-12T21:54:18.159Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object
+2026-02-12T21:54:18.161Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:18.363Z [32m[INFO][0m [core:analysis-worker]    Ô£à LLM analyzer ready
+2026-02-12T21:54:18.364Z [32m[INFO][0m [core:analysis-worker]    ­ƒôè Metadata prepared: 4 semantic connections
+2026-02-12T21:54:18.364Z [32m[INFO][0m [core:analysis-worker]    ­ƒÜÇ Sending to LLM...
+  ­ƒôè Cache hit: 0/1, analyzing 1 files
+­ƒôí [LLMClient] Sending request to http://127.0.0.1:8000 (timeout: 30000ms)
+├ó┬Ø┼Æ LLM analyze error for prompt 0: fetch failed
+Prompt preview: <|im_start|>user
+<file_info>
+FILE: src/layer-a-static/extractors/communication/window-post
+message.js
+EXPORTS: 1 (extractWindowPostMessage)
+DEPENDENTS: 1
+</file_info>
+
+<code>
+/**
+ * @fileoverview windo...
+ƒöì DEBUG normalizeResponse: src/layer-a-static/extractors/co
+mmunication/window-postmessage.js
+ÔÜá´©Å  Invalid LLM response for src/layer-a-static/extractor
+s/communication/window-postmessage.js
+2026-02-12T21:54:18.556Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  LLM returned no usable 
+data for src/layer-a-static/extractors/communication/window-p
+ostmessage.js. Storing low-confidence placeholder.
+   ├ó┼ôÔÇª Completed: src/layer-a-static/extractors/communica
+tion/window-postmessage.js (1/89)
+2026-02-12T21:54:18.558Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:18.558Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="src/layer-a-static/race-detector/trackers/base-tracker.js" type="string"}
+2026-02-12T21:54:18.559Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: base-tracker.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:19.476Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:19.476Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:19.476Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for base-tracker.js
+2026-02-12T21:54:19.476Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object
+2026-02-12T21:54:19.477Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:19.678Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+base-tracker.js, restoring previous analysis
+2026-02-12T21:54:19.679Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for base-tracker.js
+├ó┬Ø┼Æ Job failed: 
+src/layer-a-static/race-detector/trackers/base-tracker.js
+2026-02-12T21:54:19.679Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:19.679Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="src/layer-c-memory/mcp/core/hot-reload-manager.js" type="string"}
+2026-02-12T21:54:19.679Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: hot-reload-manager.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:20.679Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:20.679Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:20.679Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for hot-reload-manager.js
+2026-02-12T21:54:20.679Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object, dynamic-importer
+2026-02-12T21:54:20.679Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:20.877Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+hot-reload-manager.js, restoring previous analysis
+2026-02-12T21:54:20.878Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for hot-reload-manager.js
+├ó┬Ø┼Æ Job failed: 
+src/layer-c-memory/mcp/core/hot-reload-manager.js
+2026-02-12T21:54:20.878Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:20.878Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="src/layer-c-memory/mcp/core/initialization/steps/instance-detection-step.js" type="string"}
+2026-02-12T21:54:20.879Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: instance-detection-step.js
+ÔÜá´©Å  Parse error in 
+C:\Dev\OmnySystem\src\core\orchestrator.js: Topic reference 
+is used, but the pipelineOperator plugin was not passed a 
+"proposal": "hack" or "smart" option. (1:1)
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:21.815Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:21.816Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:21.816Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for instance-detection-step.js
+2026-02-12T21:54:21.816Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object, dynamic-importer, singleton
+2026-02-12T21:54:21.816Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:22.010Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+instance-detection-step.js, restoring previous analysis
+2026-02-12T21:54:22.011Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for instance-detection-step.js
+├ó┬Ø┼Æ Job failed: src/layer-c-memory/mcp/core/initialization
+/steps/instance-detection-step.js
+2026-02-12T21:54:22.011Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:22.011Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="test/extractors/static-extractors.test.js" type="string"}
+2026-02-12T21:54:22.011Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: static-extractors.test.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:22.987Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:22.987Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:22.987Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for static-extractors.test.js
+2026-02-12T21:54:22.987Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object, state-manager
+2026-02-12T21:54:22.987Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:23.184Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+static-extractors.test.js, restoring previous analysis
+2026-02-12T21:54:23.185Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for static-extractors.test.js
+├ó┬Ø┼Æ Job failed: test/extractors/static-extractors.test.js
+2026-02-12T21:54:23.185Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:23.185Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="test/websocket/websocket.test.js" type="string"}
+2026-02-12T21:54:23.186Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: websocket.test.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:24.103Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:24.103Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:24.103Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for websocket.test.js
+2026-02-12T21:54:24.103Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: god-object
+2026-02-12T21:54:24.105Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:24.298Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+websocket.test.js, restoring previous analysis
+2026-02-12T21:54:24.299Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for websocket.test.js
+├ó┬Ø┼Æ Job failed: test/websocket/websocket.test.js
+2026-02-12T21:54:24.299Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:24.300Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="docs/DATA_FLOW/src/layer-a-static/extractors/metadata/data-flow/analyzers/real-values-analyzer.js" type="string"}
+2026-02-12T21:54:24.300Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: real-values-analyzer.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:25.203Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:25.203Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:25.259Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for real-values-analyzer.js
+2026-02-12T21:54:25.259Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: orphan-module
+2026-02-12T21:54:25.260Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+   ├░┼©ÔÇ£┬Ñ Loaded 604 files from Layer A
+├░┼©ÔÇ£┬ª UnifiedCache: 604 archivos indexados (from Layer A)
+2026-02-12T21:54:25.461Z [33m[WARN][0m 
+[core:analysis-worker] ÔÜá´©Å  Analysis failed for 
+real-values-analyzer.js, restoring previous analysis
+2026-02-12T21:54:25.462Z [32m[INFO][0m [core:analysis-worker] ­ƒöä Restored previous analysis for real-values-analyzer.js
+├ó┬Ø┼Æ Job failed: docs/DATA_FLOW/src/layer-a-static/extracto
+rs/metadata/data-flow/analyzers/real-values-analyzer.js
+2026-02-12T21:54:25.462Z [36m[DEBUG][0m [core:analysis-worker] Received job {type="object" keys=["filePath","needsLLM","archetypes","fileAnalysis","priority","enqueuedAt"]}
+2026-02-12T21:54:25.462Z [36m[DEBUG][0m [core:analysis-worker] Job filePath {path="docs/DATA_FLOW/src/layer-a-static/extractors/metadata/data-flow/utils/scope-tracker.js" type="string"}
+2026-02-12T21:54:25.463Z [32m[INFO][0m [core:analysis-worker] ­ƒôè Re-analyzing with Layer A: scope-tracker.js
+
+├ó┬Ø┼Æ Single-file analysis failed: Cannot read properties 
+of undefined (reading 'map')
+2026-02-12T21:54:26.361Z [33m[WARN][0m 
+[core:analysis-worker]    ÔÜá´©Å  Layer A analysis failed: 
+Cannot read properties of undefined (reading 'map')
+2026-02-12T21:54:26.361Z [33m[WARN][0m 
+[core:analysis-worker]    Stack: TypeError: Cannot read 
+properties of undefined (reading 'map')
+       at analyzeSingleFile (file:///C:/Dev/OmnySystem/src/la
+yer-a-static/pipeline/single-file.js:139:44)
+       at async AnalysisWorker.analyze 
+(file:///C:/Dev/OmnySystem/src/core/analysis-worker.js:89:30)
+2026-02-12T21:54:26.361Z [32m[INFO][0m [core:analysis-worker] ­ƒñû Using LLM analysis for scope-tracker.js
+2026-02-12T21:54:26.361Z [32m[INFO][0m [core:analysis-worker]    ­ƒôï Archetypes: orphan-module
+2026-02-12T21:54:26.362Z [32m[INFO][0m [core:analysis-worker]    ­ƒöî Initializing LLM analyzer...
+ÔÜá´©Å  No LLM servers available. Falling back to static 
+analysis only.
+­ƒÆí Start servers with: src/ai/scripts/brain_gpu.bat
+
+=== FINAL STATE ===
+Queue: 81
+CurrentJob: docs/DATA_FLOW/src/layer-a-static/extractors/metadata/data-flow/utils/scope-tracker.js

@@ -14,11 +14,16 @@
     "useStaticFirst": true,
     "llmOnlyForComplex": true,
     "complexityThreshold": 0.7,
-    "confidenceThreshold": 0.8
+    "confidenceThreshold": 0.8,
+    "enableLLMCache": true
   },
   "performance": {
     "enableCPUFallback": false,
     "maxConcurrentAnalyses": 4,
     "timeout": 30000
+  },
+  "prompts": {
+    "systemPrompt": "You are a semantic code analyzer. Return ONLY valid JSON.",
+    "analysisTemplate": "Analyze the following file {filePath} and provide insights based on the patterns found in the code:\n\n{code}"
   }
 }

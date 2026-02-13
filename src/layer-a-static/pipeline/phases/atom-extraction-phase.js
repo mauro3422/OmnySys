@@ -86,7 +86,7 @@ export class AtomExtractionPhase extends ExtractionPhase {
     const typeInference = extractTypeInference(functionCode);
     const temporal = extractTemporalPatterns(functionCode);
     const performanceHints = extractPerformanceHints(functionCode);
-    
+
     // NUEVOS: 4 sistemas de conexiones enriquecidas
     const performanceMetrics = extractPerformanceMetrics(functionCode, performanceHints);
     const typeContracts = extractTypeContracts(functionCode, fileMetadata.jsdoc, functionInfo);
@@ -127,6 +127,10 @@ export class AtomExtractionPhase extends ExtractionPhase {
       // Export status
       isExported: functionInfo.isExported,
 
+      // Class membership
+      className: functionInfo.className || null,
+      functionType: functionInfo.type || 'declaration',
+
       // Complexity
       complexity,
 
@@ -154,16 +158,16 @@ export class AtomExtractionPhase extends ExtractionPhase {
       hasLifecycleHooks: temporal.lifecycleHooks.length > 0,
       lifecycleHooks: temporal.lifecycleHooks,
       hasCleanupPatterns: temporal.cleanupPatterns.length > 0,
-      
+
       // Temporal Connections (NUEVO)
       temporal: {
         patterns: temporalPatterns,
         executionOrder: null // Se llena en cross-reference
       },
-      
+
       // Type Contracts (NUEVO)
       typeContracts: typeContracts,
-      
+
       // Error Flow (NUEVO)
       errorFlow: errorFlow,
 
@@ -245,8 +249,9 @@ export class AtomExtractionPhase extends ExtractionPhase {
    * @private
    */
   detectAtomArchetype(atomMetadata) {
-    const { complexity, hasSideEffects, hasNetworkCalls, externalCallCount, linesOfCode, isExported, calledBy } = atomMetadata;
+    const { complexity, hasSideEffects, hasNetworkCalls, externalCallCount, linesOfCode, isExported, calledBy, className } = atomMetadata;
     const callerCount = calledBy?.length || 0;
+    const isClassMethod = !!className;
 
     if (complexity > 20 && (externalCallCount > 5 || callerCount > 10)) {
       return { type: 'god-function', severity: 10, confidence: 1.0 };
@@ -260,8 +265,15 @@ export class AtomExtractionPhase extends ExtractionPhase {
       return { type: 'hot-path', severity: 7, confidence: 0.9 };
     }
 
-    if (!isExported && callerCount === 0) {
+    // Class methods are NOT dead — they're accessed via the class instance.
+    // Only standalone non-exported functions with zero callers are dead.
+    if (!isExported && callerCount === 0 && !isClassMethod) {
       return { type: 'dead-function', severity: 5, confidence: 1.0 };
+    }
+
+    // Class methods with no internal callers: they're entry points of the class API
+    if (isClassMethod && callerCount === 0) {
+      return { type: 'class-method', severity: 2, confidence: 1.0 };
     }
 
     if (!isExported && callerCount > 0 && !hasSideEffects && complexity < 10) {
@@ -283,6 +295,16 @@ export class AtomExtractionPhase extends ExtractionPhase {
     const atomByName = new Map(atoms.map(a => [a.name, a]));
     const definedFunctions = new Set(atoms.map(a => a.name));
 
+    // Build a map of short method names to atoms that belong to each class
+    // For tracking this.method() calls between sibling class methods
+    const classMethodsByName = new Map();
+    atoms.forEach(atom => {
+      if (atom.className) {
+        const key = `${atom.className}::${atom.name}`;
+        classMethodsByName.set(key, atom);
+      }
+    });
+
     // First pass: classify calls
     atoms.forEach(atom => {
       atom.calls.forEach(call => {
@@ -300,6 +322,19 @@ export class AtomExtractionPhase extends ExtractionPhase {
           if (targetAtom && targetAtom.id !== callerAtom.id) {
             if (!targetAtom.calledBy.includes(callerAtom.id)) {
               targetAtom.calledBy.push(callerAtom.id);
+            }
+          }
+        }
+
+        // Track this.method() calls between sibling class methods
+        // When a class method calls another method by bare name, check if
+        // there's a sibling in the same class
+        if (callerAtom.className) {
+          const siblingKey = `${callerAtom.className}::${call.name}`;
+          const siblingAtom = classMethodsByName.get(siblingKey);
+          if (siblingAtom && siblingAtom.id !== callerAtom.id) {
+            if (!siblingAtom.calledBy.includes(callerAtom.id)) {
+              siblingAtom.calledBy.push(callerAtom.id);
             }
           }
         }

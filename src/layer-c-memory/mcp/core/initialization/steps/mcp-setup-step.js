@@ -32,6 +32,15 @@ export class McpSetupStep extends InitializationStep {
   execute(server) {
     logger.info('MCP Protocol Setup');
 
+    // ⚠️ SAFETY GUARD: Never re-create the MCP Server if it already exists.
+    // The Server instance is bound to the stdio transport — replacing it
+    // would destroy the active IDE connection and cause EPIPE/stream errors.
+    if (server.server) {
+      logger.info('  ⚠️  MCP server already configured — skipping re-initialization');
+      logger.info(`  ℹ️  ${toolDefinitions.length} tools still registered`);
+      return true;
+    }
+
     server.server = new Server(
       { name: 'omnysys', version: '3.0.0' },
       { capabilities: { tools: {} } }

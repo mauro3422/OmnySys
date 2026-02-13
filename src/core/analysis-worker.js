@@ -12,15 +12,17 @@ import { createLogger } from '../shared/logger-system.js';
 const logger = createLogger('OmnySys:core:analysis-worker');
 
 export class AnalysisWorker {
-  constructor(rootPath, callbacks = {}) {
+  constructor(rootPath, callbacks = {}, options = {}) {
     this.rootPath = rootPath;
     this.callbacks = callbacks;
     this.isInitialized = false;
     this.isPaused = false;
     this.currentAbortController = null;
     this.analyzedFiles = new Set();
+    // OPTIMIZATION: Receive pre-initialized LLMAnalyzer to avoid repeated initialization
+    this.llmAnalyzer = options.llmAnalyzer || null;
   }
-  
+
   /**
    * Inicializa el worker
    */
@@ -29,7 +31,7 @@ export class AnalysisWorker {
     this.isInitialized = true;
     logger.info('AnalysisWorker ready');
   }
-  
+
   /**
    * Verifica si un archivo ya fue analizado
    */
@@ -41,14 +43,14 @@ export class AnalysisWorker {
       return false;
     }
   }
-  
+
   /**
    * Verifica salud del worker
    */
   isHealthy() {
     return this.isInitialized;
   }
-  
+
   /**
    * Analiza un archivo
    * 
@@ -56,32 +58,41 @@ export class AnalysisWorker {
    * Esto previene que el cache quede en estado inconsistente.
    */
   async analyze(job) {
+    const jobId = Math.random().toString(36).substring(2, 8);
+    console.log(`[Worker:${jobId}] ✅ START analyze() for ${job.filePath}`);
+    console.log(`[Worker:${jobId}] job.needsLLM = ${job.needsLLM}, job.archetypes = ${JSON.stringify(job.archetypes)}`);
+    console.log(`[Worker:${jobId}] this.llmAnalyzer exists = ${!!this.llmAnalyzer}`);
+
     // Debug: Verificar estructura del job
     logger.debug('Received job', { type: typeof job, keys: job ? Object.keys(job) : null });
     logger.debug('Job filePath', { path: job?.filePath, type: typeof job?.filePath });
-    
+
     if (this.isPaused) {
+      console.log(`[Worker:${jobId}] Worker is PAUSED, returning early`);
       logger.info(`Worker paused, delaying ${path.basename(job.filePath)}`);
       return;
     }
-    
+
+    console.log(`[Worker:${jobId}] Creating AbortController and getting previous analysis...`);
     this.currentAbortController = new AbortController();
     const { signal } = this.currentAbortController;
-    
+
     // FIX: Guardar estado anterior del archivo para posible rollback
     let previousAnalysis = null;
     try {
+      console.log(`[Worker:${jobId}] Calling getFileAnalysis for ${job.filePath}...`);
       previousAnalysis = await getFileAnalysis(this.rootPath, job.filePath);
-    } catch {
-      // No había análisis previo, es un archivo nuevo
+      console.log(`[Worker:${jobId}] getFileAnalysis returned: ${previousAnalysis ? 'found' : 'null'}`);
+    } catch (err) {
+      console.log(`[Worker:${jobId}] getFileAnalysis error: ${err.message}`);
       previousAnalysis = null;
     }
-    
+
     try {
       this.callbacks.onProgress?.(job, 10);
-      
+
       let result;
-      
+
       // PASO 1: Re-analizar con Layer A (análisis estático single-file)
       logger.info(`📊 Re-analyzing with Layer A: ${path.basename(job.filePath)}`);
       try {
@@ -90,46 +101,57 @@ export class AnalysisWorker {
           verbose: false,
           incremental: true
         });
-        
+
         // Actualizar el job con el nuevo análisis de Layer A
         job.fileAnalysis = {
           ...job.fileAnalysis,
           ...layerAResult,
           reanalyzedAt: new Date().toISOString()
         };
-        
+
         logger.info(`   ✅ Layer A analysis complete: ${layerAResult.semanticConnections?.length || 0} connections`);
       } catch (layerAError) {
         logger.warn(`   ⚠️  Layer A analysis failed: ${layerAError.message}`);
+        if (layerAError.stack) {
+          logger.warn(`   Stack: ${layerAError.stack.split('\n').slice(0, 3).join('\n   ')}`);
+        }
         // Continuar con análisis existente
       }
-      
+
       this.callbacks.onProgress?.(job, 50);
-      
+
       // PASO 2: Si el job necesita LLM, usar LLMAnalyzer
       if (job.needsLLM) {
         logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
         logger.info(`   📋 Archetypes: ${job.archetypes?.join(', ') || 'default'}`);
-        
-        const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer/index.js');
+
         const { buildPromptMetadata } = await import('../layer-b-semantic/metadata-contract.js');
-        const { loadAIConfig } = await import('../ai/llm-client.js');
         const { saveFileAnalysis } = await import('../layer-a-static/storage/storage-manager.js');
-        const aiConfig = await loadAIConfig();
-        
-        logger.info(`   🔌 Initializing LLM analyzer...`);
-        const llmAnalyzer = new LLMAnalyzer(aiConfig, this.rootPath);
-        const initialized = await llmAnalyzer.initialize();
-        
-        if (!initialized) {
-          throw new Error('LLM not available');
+
+        // OPTIMIZATION: Use injected LLMAnalyzer instead of creating a new one
+        let llmAnalyzer = this.llmAnalyzer;
+        if (!llmAnalyzer) {
+          // Fallback: create new analyzer only if none was injected (backwards compatibility)
+          const { LLMAnalyzer } = await import('../layer-b-semantic/llm-analyzer/index.js');
+          const { loadAIConfig } = await import('../ai/llm-client.js');
+          const aiConfig = await loadAIConfig();
+
+          logger.info(`   🔌 Initializing LLM analyzer (fallback)...`);
+          llmAnalyzer = new LLMAnalyzer(aiConfig, this.rootPath);
+          const initialized = await llmAnalyzer.initialize();
+
+          if (!initialized) {
+            throw new Error('LLM not available');
+          }
+          logger.info(`   ✅ LLM analyzer ready`);
+        } else {
+          logger.info(`   ✅ Using shared LLM analyzer`);
         }
-        logger.info(`   ✅ LLM analyzer ready`);
-        
+
         const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
-        
+
         logger.info(`   📊 Metadata prepared: ${promptMetadata.semanticConnections?.length || 0} semantic connections`);
-        
+
         // Analizar con LLM incluyendo conexiones semánticas
         logger.info(`   🚀 Sending to LLM...`);
         let code = job.fileAnalysis?.content || '';
@@ -150,11 +172,11 @@ export class AnalysisWorker {
           metadata: promptMetadata,
           analysisType: job.archetypes?.[0] || 'default'
         }]);
-        
+
         if (signal.aborted) {
           throw new Error('Analysis aborted');
         }
-        
+
         let llmResult = llmResults[0];
 
         if (!llmResult) {
@@ -168,7 +190,7 @@ export class AnalysisWorker {
             isOrphan: false
           };
         }
-        
+
         const { getMergeConfig } = await import('../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
         const analysisType = llmResult.analysisType || job.archetypes?.[0] || 'default';
         const mergeConfig = getMergeConfig(analysisType);
@@ -219,36 +241,38 @@ export class AnalysisWorker {
           llmProcessed: true,
           llmProcessedAt: new Date().toISOString()
         };
-        
+
         // Guardar resultado mergeado
         await saveFileAnalysis(this.rootPath, job.filePath, mergedResult);
-        
+
         result = mergedResult;
-        
+
       } else {
         // Análisis estático simple con indexProject
         logger.info(`📊 Using static analysis for ${path.basename(job.filePath)}`);
-        
+
         await indexProject(this.rootPath, {
           verbose: false,
           singleFile: job.filePath,
           incremental: true,
           abortSignal: signal
         });
-        
+
         if (signal.aborted) {
           throw new Error('Analysis aborted');
         }
-        
+
         // Obtener resultado
         result = await getFileAnalysis(this.rootPath, job.filePath);
       }
-      
+
       this.callbacks.onProgress?.(job, 100);
-      
+
       this.analyzedFiles.add(job.filePath);
+      logger.info(`✅ Analysis complete for ${job.filePath}, calling onComplete callback`);
       this.callbacks.onComplete?.(job, result);
-      
+      logger.info(`✅ onComplete callback done for ${job.filePath}`);
+
     } catch (error) {
       if (error.message === 'Analysis aborted') {
         logger.info(`⏹️  Analysis aborted for ${path.basename(job.filePath)}`);
@@ -265,29 +289,29 @@ export class AnalysisWorker {
             logger.error(`❌ Failed to rollback analysis for ${job.filePath}:`, rollbackError.message);
           }
         }
-        
+
         this.callbacks.onError?.(job, error);
       }
     } finally {
       this.currentAbortController = null;
     }
   }
-  
+
   /**
    * Pausa el trabajo actual
    */
   async pause() {
     logger.info('⏸️  Pausing worker...');
     this.isPaused = true;
-    
+
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
-    
+
     // Esperar a que termine el trabajo actual
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  
+
   /**
    * Reanuda el worker
    */
@@ -295,18 +319,18 @@ export class AnalysisWorker {
     logger.info('▶️  Resuming worker...');
     this.isPaused = false;
   }
-  
+
   /**
    * Detiene el worker
    */
   async stop() {
     logger.info('🛑 Stopping worker...');
     this.isPaused = true;
-    
+
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 200));
     this.isInitialized = false;
   }
