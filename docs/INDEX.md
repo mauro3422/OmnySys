@@ -35,6 +35,18 @@ Documentación de la arquitectura del sistema:
 | [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | **⭐ Data Flow System** - Comprehensive documentation (v1, v2, usage, implementation) |
 | [architecture/METADATA_EXTRACTORS.md](architecture/METADATA_EXTRACTORS.md) | **Metadata Extractors** - Guía completa de extractores |
 
+### Orchestrator & Data Flow
+**⭐ NUEVO**: Documentación consolidada del flujo de datos y orchestrator.
+
+| Documento | Descripción |
+|-----------|-------------|
+| [architecture/orchestrator/README.md](architecture/orchestrator/README.md) | **Índice y mapa del sistema** - Empezar aquí para entender el flujo |
+| [architecture/orchestrator/01-FLUSO-VIDA-ARCHIVO.md](architecture/orchestrator/01-FLUSO-VIDA-ARCHIVO.md) | **Flujo completo**: Desde que tocas un archivo hasta que está disponible |
+| [architecture/orchestrator/02-SISTEMA-CACHE.md](architecture/orchestrator/02-SISTEMA-CACHE.md) | **Los 4 cachés**: Por qué existen y cómo consolidarlos |
+| [architecture/orchestrator/03-ORCHESTRATOR-INTERNO.md](architecture/orchestrator/03-ORCHESTRATOR-INTERNO.md) | **Cómo funciona internamente**: Colas, workers, decisión LLM |
+| [architecture/orchestrator/04-TROUBLESHOOTING.md](architecture/orchestrator/04-TROUBLESHOOTING.md) | **Problemas comunes**: Cache desync, zombies, etc. |
+| [architecture/orchestrator/05-CAMBIOS-RECIENTES.md](architecture/orchestrator/05-CAMBIOS-RECIENTES.md) | **Historial de fixes**: Qué se arregló y cuándo |
+
 ### Sistemas Especializados
 | Documento | Descripción |
 |-----------|-------------|
