@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { LLMClient } from '../../ai/llm-client.js';
+import { LLMService } from '../../services/llm-service.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:helpers');
@@ -63,9 +63,8 @@ export async function _getFileData(filePath) {
 
 export async function _ensureLLMAvailable() {
   try {
-    const client = new LLMClient({ llm: { enabled: true } });
-    const health = await client.healthCheck();
-    return health.gpu || health.cpu;
+    const service = await LLMService.getInstance();
+    return service.isAvailable();
   } catch {
     return false;
   }

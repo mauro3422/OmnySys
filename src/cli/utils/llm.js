@@ -1,7 +1,7 @@
 ﻿import path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
-import { LLMClient } from '../../ai/llm-client.js';
+import { LLMService } from '../../services/llm-service.js';
 import { exists, repoRoot } from './paths.js';
 
 const execAsync = promisify(exec);
@@ -30,11 +30,12 @@ export async function isPortInUse(port) {
 export async function ensureLLMAvailable(aiConfig, options = {}) {
   const { required = true, autoStart = true, maxWaitSeconds = 60 } = options;
 
-  const client = new LLMClient(aiConfig);
-  let health = await client.healthCheck();
+  const service = await LLMService.getInstance();
+  let isAvailable = service.isAvailable();
   let started = false;
 
-  if (health.gpu || health.cpu) {
+  if (isAvailable) {
+    const health = await service.client.healthCheck();
     return { available: true, gpu: health.gpu, cpu: health.cpu, started: false };
   }
 
@@ -73,9 +74,11 @@ export async function ensureLLMAvailable(aiConfig, options = {}) {
 
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      health = await client.healthCheck();
+      await service.checkHealth();
+      isAvailable = service.isAvailable();
 
-      if (health.gpu || health.cpu) {
+      if (isAvailable) {
+        const health = await service.client.healthCheck();
         console.log('  AI server ready');
         return { available: true, gpu: health.gpu, cpu: health.cpu, started: true };
       }

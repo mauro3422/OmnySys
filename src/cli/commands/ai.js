@@ -1,7 +1,8 @@
 ﻿import path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
-import { LLMClient, loadAIConfig } from '../../ai/llm-client.js';
+import { loadAIConfig } from '../../ai/llm-client.js';
+import { LLMService } from '../../services/llm-service.js';
 import { exists, repoRoot } from '../utils/paths.js';
 import { isBrainServerStarting, isPortInUse } from '../utils/llm.js';
 import { showHelp } from '../help.js';
@@ -99,8 +100,12 @@ async function aiStatus() {
 
   try {
     const config = await loadAIConfig();
-    const client = new LLMClient(config);
-    const health = await client.healthCheck();
+    const service = await LLMService.getInstance();
+    await service.checkHealth();
+    
+    // Get detailed health from underlying client
+    const health = await service.client?.healthCheck() || { gpu: false, cpu: false };
+    const metrics = service.getMetrics();
 
     console.log('GPU Server (port 8000):');
     console.log(`  ${health.gpu ? 'RUNNING' : 'OFFLINE'}`);
@@ -116,6 +121,15 @@ async function aiStatus() {
     console.log(`  LLM enabled: ${config.llm.enabled ? 'Yes' : 'No'}`);
     console.log(`  Mode: ${config.llm.mode}`);
     console.log(`  Config: ${path.resolve('src/ai/ai-config.json')}`);
+    
+    // Show service metrics
+    console.log('\nService Metrics:');
+    console.log(`  Circuit Breaker: ${metrics.circuitBreakerState}`);
+    console.log(`  Availability: ${metrics.availability ? 'Yes' : 'No'}`);
+    if (metrics.requestsTotal > 0) {
+      console.log(`  Avg Latency: ${Math.round(metrics.latencyMsAvg)}ms`);
+      console.log(`  Success Rate: ${Math.round((metrics.requestsSuccessful / metrics.requestsTotal) * 100)}%`);
+    }
     console.log('');
 
     if (!health.gpu && !health.cpu) {
