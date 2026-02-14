@@ -10,6 +10,15 @@
 export function findHotspots(systemMap) {
   const callCounts = new Map();
 
+  // Handle edge case: missing or empty function_links
+  if (!systemMap?.function_links) {
+    return {
+      total: 0,
+      functions: [],
+      criticalCount: 0
+    };
+  }
+
   // Contar cuántos links apuntan a cada función
   for (const link of systemMap.function_links) {
     const current = callCounts.get(link.to) || { count: 0, callers: [] };

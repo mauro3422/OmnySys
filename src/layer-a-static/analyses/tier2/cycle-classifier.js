@@ -63,7 +63,8 @@ export function findCircularImports(systemMap, atomsIndex = {}) {
       cycles: [],
       classifications: [],
       problematicCount: 0,
-      validCount: 0
+      validCount: 0,
+      recommendation: 'No circular dependencies detected'
     };
   }
   

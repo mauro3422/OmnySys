@@ -10,7 +10,10 @@
 export function analyzeCoupling(systemMap) {
   const couplings = [];
 
-  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
+    // Handle missing dependsOn gracefully
+    if (!fileNode?.dependsOn?.length) continue;
+    
     const bidirectionalDeps = fileNode.dependsOn.filter(dep =>
       systemMap.files[dep]?.usedBy?.includes(filePath)
     );
