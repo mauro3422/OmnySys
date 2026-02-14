@@ -1,30 +1,22 @@
 /**
  * @fileoverview index.js
  * 
- * Main entry point for the race detection strategy module.
- * Re-exports all public APIs with backward-compatible aliases.
+ * Main entry point for RaceDetectionStrategy module.
+ * Re-exports all public APIs for backward compatibility.
  * 
  * @module race-detector/strategies/race-detection-strategy
  */
 
-// Core Strategy Class
-export { RaceDetectionStrategy } from './RaceDetectionStrategy.js';
-export { RaceDetectionStrategy as default } from './RaceDetectionStrategy.js';
+// Strategy
+export { RaceDetectionStrategy } from './strategy/RaceDetectionStrategy.js';
+export { RaceFactory } from './strategy/RaceFactory.js';
+export { PatternRegistry, defaultRegistry } from './strategy/PatternRegistry.js';
 
-// Analyzers
-export { SharedStateAnalyzer } from './analyzers/shared-state-analyzer.js';
-export { TimingAnalyzer } from './analyzers/timing-analyzer.js';
-export { LockAnalyzer } from './analyzers/lock-analyzer.js';
+// Detectors
+export { SharedStateAnalyzer } from './detectors/SharedStateAnalyzer.js';
+export { TimingAnalyzer } from './detectors/TimingAnalyzer.js';
+export { LockAnalyzer } from './detectors/LockAnalyzer.js';
+export { PatternMatcher } from './detectors/PatternMatcher.js';
 
-// Patterns
-export { PatternMatcher } from './patterns/pattern-matcher.js';
-export { 
-  PatternRegistry, 
-  defaultRegistry 
-} from './patterns/pattern-registry.js';
-
-/**
- * @deprecated Use RaceDetectionStrategy (PascalCase) from './RaceDetectionStrategy.js'
- * This export is maintained for backward compatibility
- */
-export { RaceDetectionStrategy as RaceDetectionStrategyCompat } from './RaceDetectionStrategy.js';
+// Default export
+export { RaceDetectionStrategy as default } from './strategy/RaceDetectionStrategy.js';

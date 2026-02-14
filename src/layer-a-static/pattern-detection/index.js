@@ -1,23 +1,23 @@
 /**
- * @fileoverview Pattern Detection Module - Entry Point
+ * @fileoverview index.js
  * 
- * Exporta todo el sistema de detección de patrones.
+ * Main entry point for pattern-detection module.
  * 
  * @module pattern-detection
  */
 
-// Core
-export { PatternDetectionEngine } from './engine.js';
+// Engine
+export { PatternDetectionEngine } from './engine/PatternDetectionEngine.js';
+export { PatternDetectorRegistry } from './engine/PatternDetectorRegistry.js';
+export { QualityScoreAggregator } from './engine/QualityScoreAggregator.js';
+export { ConfigManager } from './engine/ConfigManager.js';
+export { DEFAULT_CONFIG } from './engine/DefaultConfig.js';
+
+// Runners
+export { DetectorRunner } from './runners/DetectorRunner.js';
+
+// Re-export PatternDetector base class (from detector-base.js if exists)
 export { PatternDetector } from './detector-base.js';
-export { PatternDetectorRegistry } from './registry.js';
-export { QualityScoreAggregator } from './aggregator.js';
 
-// Detectores
-export { DeepChainsDetector } from './detectors/deep-chains-detector.js';
-export { SharedObjectsDetector } from './detectors/shared-objects-detector.js';
-
-// Configuración por defecto
-export { DEFAULT_CONFIG } from './engine.js';
-
-// Versión
-export const VERSION = '2.0.0';
+// Default export
+export { PatternDetectionEngine as default } from './engine/PatternDetectionEngine.js';

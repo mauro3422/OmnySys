@@ -1,16 +1,9 @@
 /**
- * @fileoverview Race Detector Utils - Index
+ * @fileoverview index.js
  * 
- * Centralizes all utility functions for the race detector.
- * Follows SSOT principle for helper functions.
+ * Utility exports (placeholder).
  * 
  * @module race-detector/utils
- * @version 1.0.0
  */
 
-export {
-  findAtomById,
-  extractQueueName,
-  isSharedStateVariable,
-  isJavaScriptKeyword
-} from './atom-utils.js';
+export const utils = {};

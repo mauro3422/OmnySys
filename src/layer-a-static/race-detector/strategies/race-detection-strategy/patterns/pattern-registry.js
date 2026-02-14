@@ -1,14 +1,10 @@
 /**
  * @fileoverview pattern-registry.js
  * 
- * @deprecated Use ./index.js directly
- * 
- * This file is a backward compatibility wrapper.
- * Please import from the module directory instead:
- *   import { PatternRegistry, defaultRegistry } from './index.js';
+ * Re-export for backward compatibility.
  * 
  * @module race-detector/strategies/race-detection-strategy/patterns/pattern-registry
  */
 
-export { PatternRegistry, defaultRegistry } from './index.js';
-export { default } from './index.js';
+export { PatternRegistry, defaultRegistry } from '../strategy/PatternRegistry.js';
+export { PatternRegistry as default } from '../strategy/PatternRegistry.js';
