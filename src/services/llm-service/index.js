@@ -1,55 +1,16 @@
 /**
- * @fileoverview LLM Service Module
- * 
+ * @fileoverview index.js
+ *
+ * Public API for the LLM Service module.
+ * Provides LLMService class and CB_STATE constants.
+ *
  * @module llm-service
- * 
- * @version 0.9.4 - Modularizado: separado en componentes especializados
+ * @version 0.9.4
  * @since 0.7.0
  */
 
-// === Core ===
-export { 
-  LLMService,
-  CB_STATE
-} from './LLMService.js';
+export { LLMService } from './service/LLMService.js';
+export { CB_STATE } from './constants.js';
 
-// === Providers ===
-export {
-  LocalProvider,
-  OpenAIProvider,
-  AnthropicProvider,
-  BaseProvider
-} from './providers/index.js';
-
-// === Handlers ===
-export {
-  RequestHandler,
-  ResponseHandler
-} from './handlers/index.js';
-
-// === Cache ===
-export { ResponseCache } from './cache/response-cache.js';
-
-// === Health ===
-export { HealthChecker } from './health/index.js';
-
-// === Metrics ===
-export { MetricsTracker } from './metrics/index.js';
-
-// === Batch ===
-export { 
-  processBatch,
-  chunkArray,
-  calculateOptimalChunkSize
-} from './batch/index.js';
-
-// === Singleton ===
-export {
-  getSingletonInstance,
-  resetSingleton,
-  hasInstance,
-  getCurrentInstance
-} from './singleton/index.js';
-
-// === Default Export ===
-export { LLMService as default } from './LLMService.js';
+import { LLMService } from './service/LLMService.js';
+export default LLMService;
