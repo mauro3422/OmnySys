@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.2]** | `changelog/v0.9.2-llm-service-refactor.md` | **LLMService Architecture Refactor - Circuit Breaker & Metrics** (Latest - Stable) |
+| **[0.9.3]** | `changelog/v0.9.3-modular-refactor.md` | **Massive Modular Refactoring - 5 Monoliths → 56 Modules** (Latest - Stable) |
+| **[0.9.2]** | `changelog/v0.9.2-llm-service-refactor.md` | **LLMService Architecture Refactor - Circuit Breaker & Metrics** |
 | **[0.9.1]** | `changelog/v0.9.1.md` | **MCP Pipeline Hotfix - Critical Initialization Fixes** |
 | **[0.9.0]** | `changelog/v0.9.0.md` | **Pattern Detection Engine V2 - Intelligent Analysis** |
 | **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** |
@@ -36,7 +37,23 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.9.2 (2026-02-14) - LLMService Architecture Refactor**
+### **🚀 Latest Release: v0.9.3 (2026-02-13) - Massive Modular Refactoring**
+
+**Massive Modular Refactoring**: Refactorización de 5 archivos monolíticos críticos (2,909 líneas) en **56 módulos especializados** (619 líneas cada archivo principal), mejorando mantenibilidad, testeabilidad y debuggabilidad manteniendo 100% compatibilidad.
+
+**Key Changes**:
+- ✅ **5 Monoliths Refactored**: race-detector, prompt-engine, consistency-validator, transformation-extractor, derivation-engine
+- ✅ **56 Specialized Modules**: Cada módulo con responsabilidad única (30-200 líneas)
+- ✅ **79% Size Reduction**: Archivos principales reducidos en promedio
+- ✅ **Zero Breaking Changes**: 100% backward compatible
+- ✅ **SOLID Principles**: Single Responsibility, Open/Closed, Dependency Inversion
+- ✅ **Debuggable**: Errores localizados en módulos específicos
+
+**Ver archivo:** `changelog/v0.9.3-modular-refactor.md`
+
+---
+
+### **v0.9.2 (2026-02-14) - LLMService Architecture Refactor**
 
 **Complete LLM Architecture Refactoring**: Centralización de comunicación con GPU en servicio singleton con circuit breaker, métricas y health checking automático.
 
