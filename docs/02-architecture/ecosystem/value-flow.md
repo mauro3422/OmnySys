@@ -1,6 +1,6 @@
 # Flujo de Valor - Conexiones que Crean Conexiones
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Principio**: El valor de un dato está en **quién lo consume**, no en quién lo genera.
 
 > *"Una conexión asegura otra, y esa nueva conexión sirve en otro lado. Todo es simbiosis."*

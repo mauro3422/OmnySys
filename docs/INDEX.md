@@ -1,7 +1,7 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.7.1  
-**Última actualización**: 2026-02-13  
+**Versión**: v0.9.4  
+**Última actualización**: 2026-02-14  
 **Estado**: ✅ **CONSOLIDADO**
 
 ---
@@ -103,8 +103,9 @@ docs/
 
 | Documento | Descripción |
 |-----------|-------------|
-| [development/technical-status.md](06-reference/development/technical-status.md) | Estado técnico actual v0.7.1 |
+| [development/technical-status.md](06-reference/development/technical-status.md) | Estado técnico actual v0.9.4 |
 | [development/testing-guide.md](06-reference/development/testing-guide.md) | Guía de testing |
+| [development/modular-architecture-guide.md](06-reference/development/modular-architecture-guide.md) | **⭐ Nueva - Guía de arquitectura modular** |
 | [mcp/mcp-tools-detailed.md](06-reference/mcp/mcp-tools-detailed.md) | Documentación detallada de tools |
 | [decisions/ADR-001-type-based-prompt-selection.md](06-reference/decisions/ADR-001-type-based-prompt-selection.md) | Decisiones arquitectónicas |
 

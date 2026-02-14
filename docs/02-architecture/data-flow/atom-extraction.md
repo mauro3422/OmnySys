@@ -1,6 +1,6 @@
 # Fase 1: Extracción Atómica (Implementado)
 
-**Versión**: v0.7.1 - Data Flow v2  
+**Versión**: v0.9.4 - Data Flow v2  
 **Estado**: ✅ 95% completo  
 **Nivel**: Átomo (función individual)  
 **Cobertura**: ~85%

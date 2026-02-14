@@ -1,6 +1,6 @@
 # Sistema de Arquetipos - Catálogo y Extensión
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Estado**: Implementado (Confidence-Based Bypass activo)  
 **Implementa**: [Pilar 1 - Box Test](../01-core/principles.md)
 

@@ -1,6 +1,6 @@
 # Data Flow Fractal
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Estado**: Fase 1 (v2) ✅ 95% | Fases 2-5 🟡 Planned  
 **Última actualización**: 2026-02-12
 

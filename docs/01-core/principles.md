@@ -1,7 +1,7 @@
 # Los 4 Pilares de OmnySys
 
 **Documento**: principles.md  
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Estado**: Fundamentos activos - Toda contribución debe seguir estos pilares
 
 ---

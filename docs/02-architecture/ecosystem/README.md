@@ -1,6 +1,6 @@
 # Ecosistema OmnySys - Todo se Alimenta de Todo
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Visión**: OmnySys no es un pipeline (A→B→C), es un **ecosistema de datos** donde cada sistema se alimenta de los demás.
 
 > *"No hay ruido, solo datos esperando ser conectados"*

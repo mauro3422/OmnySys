@@ -1,6 +1,6 @@
 # Arquitectura del Ecosistema
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Propósito**: Cómo los sistemas se alimentan mutuamente
 
 ---

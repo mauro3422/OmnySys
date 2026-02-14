@@ -1,6 +1,6 @@
 # Guía de Herramientas MCP
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Total**: 14 herramientas implementadas  
 **Endpoint**: `http://localhost:9999/tools/`
 

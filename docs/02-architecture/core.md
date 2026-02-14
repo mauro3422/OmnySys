@@ -1,6 +1,6 @@
 ﻿# Arquitectura Unificada - OmnySys (Layer A + Orchestrator)
 
-**Ultima actualizacion: 2026-02-13 (v0.7.1))
+**Ultima actualizacion: 2026-02-14 (v0.9.4))
 
 Documento canonico. Define la vision y el contrato del sistema. Si el codigo difiere, este documento marca el destino.
 

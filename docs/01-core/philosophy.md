@@ -1,7 +1,7 @@
 # Física del Software + Omnisciencia
 
 **Documento**: philosophy.md  
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Estado**: Visión consolidada  
 **Metáfora**: De cajas con cables a átomos con electrones orbitando
 

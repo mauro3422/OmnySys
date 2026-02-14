@@ -1,6 +1,6 @@
 # OmnySys - Fundamentos
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.4  
 **Estado**: Documentación consolidada  
 **Última actualización**: 2026-02-12
 

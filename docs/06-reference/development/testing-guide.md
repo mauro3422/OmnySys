@@ -1,6 +1,6 @@
-# Testing Guide - OmnySys v0.7.1
+# Testing Guide - OmnySys v0.9.4
 
-**Última actualización**: 2026-02-09
+**Última actualización**: 2026-02-14
 **Coverage estimado**: ~20%
 **Total test files**: 33 archivos
 **Total test cases**: 350+ casos
