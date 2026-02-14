@@ -18,9 +18,18 @@
     "analyze": "node src/cli/index.js analyze",
     "dev": "node omny.js up",
     "smoke": "node tests/smoke-test.js",
-    "test": "node run-tests.js all",
-    "test:unit": "node run-tests.js unit",
-    "test:integration": "node run-tests.js integration",
+    "test": "vitest run",
+    "test:unit": "vitest run --config tests/config/vitest.unit.config.js",
+    "test:integration": "vitest run --config tests/config/vitest.integration.config.js",
+    "test:e2e": "vitest run --config tests/config/vitest.e2e.config.js",
+    "test:contracts": "vitest run tests/contracts --config tests/config/vitest.unit.config.js",
+    "test:layer-a:core": "vitest run tests/unit/layer-a --config tests/config/vitest.unit.config.js",
+    "test:layer-a:extractor:js": "vitest run tests/unit/layer-a/extractors/javascript --config tests/config/vitest.unit.config.js",
+    "test:layer-b": "vitest run tests/unit/layer-b --config tests/config/vitest.unit.config.js",
+    "test:layer-c": "vitest run tests/unit/layer-c --config tests/config/vitest.unit.config.js",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:performance": "vitest run tests/performance --config tests/config/vitest.integration.config.js",
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\"",
     "validate": "node scripts/validate-syntax.js",
@@ -65,7 +74,9 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0"
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "vitest": "^4.0.18"
   },
   "optionalDependencies": {
     "better-sqlite3": "^9.2.0",

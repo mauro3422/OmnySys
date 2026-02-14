@@ -4,6 +4,7 @@
  * Tests for configuration module
  */
 
+import { describe, it, expect } from 'vitest';
 import { 
   DATA_DIR, 
   getIndexPath, 
@@ -23,76 +24,52 @@ import {
   Priority
 } from '#config/change-types.js';
 
-// Simple test runner
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`✅ ${name}`);
-  } catch (error) {
-    console.error(`❌ ${name}: ${error.message}`);
-    process.exitCode = 1;
-  }
-}
+describe('Config - Paths', () => {
+  it('DATA_DIR should be .omnysysdata', () => {
+    expect(DATA_DIR).toBe('.omnysysdata');
+  });
 
-function assertEqual(actual, expected, message) {
-  if (actual !== expected) {
-    throw new Error(`${message}: expected ${expected}, got ${actual}`);
-  }
-}
+  it('getIndexPath should construct correct path', () => {
+    const path = getIndexPath('/project');
+    expect(path).toContain('.omnysysdata');
+    expect(path).toContain('index.json');
+  });
 
-function assertTrue(value, message) {
-  if (!value) {
-    throw new Error(message || 'Expected true');
-  }
-}
-
-console.log('\n🧪 Running config tests...\n');
-
-// Paths tests
-test('DATA_DIR should be .omnysysdata', () => {
-  assertEqual(DATA_DIR, '.omnysysdata', 'DATA_DIR');
+  it('getSystemMapPath should construct correct path', () => {
+    const path = getSystemMapPath('/project');
+    expect(path).toContain('system-map.json');
+  });
 });
 
-test('getIndexPath should construct correct path', () => {
-  const path = getIndexPath('/project');
-  assertTrue(path.includes('.omnysysdata'), 'Path should include .omnysysdata');
-  assertTrue(path.includes('index.json'), 'Path should include index.json');
+describe('Config - Limits', () => {
+  it('BATCH.SIZE should be defined', () => {
+    expect(typeof BATCH.SIZE).toBe('number');
+    expect(BATCH.SIZE).toBeGreaterThan(0);
+  });
+
+  it('ANALYSIS.TIMEOUT_MS should be defined', () => {
+    expect(typeof ANALYSIS.TIMEOUT_MS).toBe('number');
+  });
+
+  it('SERVER.ORCHESTRATOR_PORT should be 9999', () => {
+    expect(SERVER.ORCHESTRATOR_PORT).toBe(9999);
+  });
 });
 
-test('getSystemMapPath should construct correct path', () => {
-  const path = getSystemMapPath('/project');
-  assertTrue(path.includes('system-map.json'), 'Path should include system-map.json');
-});
+describe('Config - Change Types', () => {
+  it('FileChangeType should have CREATED, MODIFIED, DELETED', () => {
+    expect(FileChangeType.CREATED).toBe('created');
+    expect(FileChangeType.MODIFIED).toBe('modified');
+    expect(FileChangeType.DELETED).toBe('deleted');
+  });
 
-// Limits tests
-test('BATCH.SIZE should be defined', () => {
-  assertTrue(typeof BATCH.SIZE === 'number', 'BATCH.SIZE should be a number');
-  assertTrue(BATCH.SIZE > 0, 'BATCH.SIZE should be positive');
-});
+  it('SemanticChangeType should have all levels', () => {
+    expect(SemanticChangeType.CRITICAL).toBe('critical');
+    expect(SemanticChangeType.SEMANTIC).toBe('semantic');
+  });
 
-test('ANALYSIS.TIMEOUT_MS should be defined', () => {
-  assertTrue(typeof ANALYSIS.TIMEOUT_MS === 'number', 'ANALYSIS.TIMEOUT_MS should be a number');
+  it('Priority should be ordered correctly', () => {
+    expect(Priority.CRITICAL).toBeGreaterThan(Priority.HIGH);
+    expect(Priority.HIGH).toBeGreaterThan(Priority.MEDIUM);
+  });
 });
-
-test('SERVER.ORCHESTRATOR_PORT should be 9999', () => {
-  assertEqual(SERVER.ORCHESTRATOR_PORT, 9999, 'ORCHESTRATOR_PORT');
-});
-
-// Change types tests
-test('FileChangeType should have CREATED, MODIFIED, DELETED', () => {
-  assertEqual(FileChangeType.CREATED, 'created', 'CREATED');
-  assertEqual(FileChangeType.MODIFIED, 'modified', 'MODIFIED');
-  assertEqual(FileChangeType.DELETED, 'deleted', 'DELETED');
-});
-
-test('SemanticChangeType should have all levels', () => {
-  assertEqual(SemanticChangeType.CRITICAL, 'critical', 'CRITICAL');
-  assertEqual(SemanticChangeType.SEMANTIC, 'semantic', 'SEMANTIC');
-});
-
-test('Priority should be ordered correctly', () => {
-  assertTrue(Priority.CRITICAL > Priority.HIGH, 'CRITICAL > HIGH');
-  assertTrue(Priority.HIGH > Priority.MEDIUM, 'HIGH > MEDIUM');
-});
-
-console.log('\n✨ Config tests completed!\n');
