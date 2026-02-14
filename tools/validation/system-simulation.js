@@ -3,7 +3,7 @@
  * Verifica que todos los componentes se conecten correctamente
  */
 
-import { LLMService } from './llm-service.js';
+import { LLMService } from '../../src/services/llm-service.js';
 import { AnalysisWorker } from '../core/analysis-worker.js';
 
 // Logger de simulación

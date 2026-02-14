@@ -4,7 +4,7 @@
  * Run: node src/services/llm-service.test.js
  */
 
-import { LLMService, analyzeWithLLM, isLLMAvailable, waitForLLM } from './llm-service.js';
+import { LLMService, analyzeWithLLM, isLLMAvailable, waitForLLM } from '../../src/services/llm-service.js';
 
 // Test utilities
 function assert(condition, message) {

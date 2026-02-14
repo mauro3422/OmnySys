@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '../..');
+const SRC_DIR = path.join(ROOT_DIR, 'src');
 
 // Resultados de validación
 const validation = {
@@ -103,14 +104,14 @@ async function validateInitializationFlow() {
     'src/core/orchestrator/lifecycle.js',
     'src/core/orchestrator/llm-analysis.js',
     'src/layer-c-memory/mcp-server.js'
-  ];
+  ].map(f => path.join(ROOT_DIR, f));
   
   for (const file of criticalFiles) {
-    const fullPath = path.resolve(ROOT_DIR, file);
-    const exists = await checkFileExists(fullPath);
+    const exists = await checkFileExists(file);
+    const displayPath = path.relative(ROOT_DIR, file);
     
     if (exists) {
-      validation.info(`✅ ${file}`);
+      validation.info(`✅ ${displayPath}`);
     } else {
       validation.error(`❌ Missing critical file`, file);
     }
@@ -134,7 +135,7 @@ async function validateLLMService() {
     '../ai/llm/client.js',
     '../ai/llm/load-config.js',
     '../utils/logger.js'
-  ];
+  ].map(i => i.replace(/^\.\.\//, '../../src/')); // Adjust path for moved file
   
   for (const req of requiredImports) {
     if (imports.includes(req)) {
