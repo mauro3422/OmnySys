@@ -8,7 +8,9 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.4]** | `changelog/v0.9.4-COMPLETE.md` | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** (Latest - Stable) |
+| **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** (Latest - Stable) |
+| **[0.9.5]** | `changelog/v0.9.5-complete-modular-refactor.md` | **Complete Modular Refactoring Phase 2** |
+| **[0.9.4]** | `changelog/v0.9.4-COMPLETE.md` | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** |
 | **[0.9.3]** | `changelog/v0.9.3-modular-refactor.md` | **Massive Modular Refactoring - 5 Monoliths → 56 Modules** |
 | **[0.9.2]** | `changelog/v0.9.2-llm-service-refactor.md` | **LLMService Architecture Refactor - Circuit Breaker & Metrics** |
 | **[0.9.1]** | `changelog/v0.9.1.md` | **MCP Pipeline Hotfix - Critical Initialization Fixes** |
@@ -38,7 +40,18 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.9.5 (2026-02-14) - Phase 2 Complete Modular Refactoring**
+### **🚀 Latest Release: v0.9.6 (2026-02-14) - Cleanup: Eliminación de Wrappers Legacy**
+
+**Cleanup Completo**: Eliminación de **18 wrappers legacy** creados durante la refactorización. El sistema ahora usa directamente las rutas modulares sin wrappers de compatibilidad. **Zero deuda técnica**.
+
+**Key Changes**:
+- ✅ **18 Wrappers Eliminados**: Todos los archivos @deprecated eliminados
+- ✅ **14 Archivos Migrados**: Actualizados a rutas modulares directas
+- ✅ **-594 Líneas**: Código innecesario eliminado
+- ✅ **100% Modular**: Sin indirecciones ni re-exports
+- ✅ **Zero Imports Rotos**: Todo el código actualizado
+
+### **Previous: v0.9.5 (2026-02-14) - Phase 2 Complete Modular Refactoring**
 
 **FINAL Phase 2 Modular Refactoring**: 12 additional critical monolithic files (3,000+ lines) completely refactored into **80+ specialized modules**, completing the total architectural transformation. **Zero duplication achieved** with 100% SSOT (Single Source of Truth).
 
