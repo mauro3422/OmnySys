@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.7]** | `changelog/v0.9.7-layer-a-core-test-audit.md` | **Layer A Core Test Audit - 90 Tests 100% Passing** (Latest - Stable) |
+| **[0.9.8]** | `changelog/v0.9.8-layer-a-analysis-audit.md` | **Layer A Analysis Audit - 79 Tests, Tier 1-2 Complete** (Latest - Stable) |
+| **[0.9.7]** | `changelog/v0.9.7-layer-a-core-test-audit.md` | **Layer A Core Test Audit - 90 Tests 100% Passing** |
 | **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** |
 | **[0.9.5]** | `changelog/v0.9.5-complete-modular-refactor.md` | **Complete Modular Refactoring Phase 2** |
 | **[0.9.4]** | `changelog/v0.9.4-COMPLETE.md` | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** |
@@ -41,7 +42,17 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.9.7 (2026-02-14) - Layer A Core Test Audit**
+### **🚀 Latest Release: v0.9.8 (2026-02-14) - Layer A Analysis Systems Audit**
+
+**Analysis Audit Complete**: Audit de sistemas de análisis (Tier 1-2) con **79 tests pasando**. Se implementó Analysis Factory pattern y ScenarioBuilder para testing consistente. Contract tests identificaron bugs adicionales para fix posterior. Hotspots, Orphan Files, Unused Exports, Circular Imports y Coupling 100% testeados.
+
+**Key Changes**:
+- ✅ **79 Unit Tests**: Tier 1 (49) + Tier 2 (30)
+- ✅ **3 Bugs Fixed**: hotspots, cycle-classifier, coupling
+- ✅ **Analysis Factory**: Pattern reutilizable para nuevos análisis
+- ✅ **3 Bugs Identified**: para fix en próxima iteración (null handling)
+
+### **Previous Release: v0.9.7 (2026-02-14) - Layer A Core Test Audit**
 
 **Test Audit Complete**: Audit completo del Layer A Core con **90 tests pasando (100%)**. Arquitectura de testing profesional implementada con Contract Testing pattern para multi-language support. Sistema 100% funcional y listo para continuar con Layer A Analysis.
 
