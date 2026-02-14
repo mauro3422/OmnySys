@@ -45,11 +45,14 @@ export class BrokenConnectionsDetector {
   }
 
   analyze(systemMap, advancedAnalysis) {
-    const brokenWorkers = this.detectBrokenWorkers(systemMap, advancedAnalysis);
-    const brokenDynamics = this.detectBrokenDynamicImports(systemMap);
-    const duplicates = this.detectDuplicateFunctions(systemMap);
-    const deadFunctions = this.detectDeadFunctions(systemMap);
-    const suspiciousUrls = this.detectSuspiciousUrls(advancedAnalysis);
+    const safeSystemMap = systemMap || {};
+    const safeAdvancedAnalysis = advancedAnalysis || {};
+    
+    const brokenWorkers = this.detectBrokenWorkers(safeSystemMap, safeAdvancedAnalysis);
+    const brokenDynamics = this.detectBrokenDynamicImports(safeSystemMap);
+    const duplicates = this.detectDuplicateFunctions(safeSystemMap);
+    const deadFunctions = this.detectDeadFunctions(safeSystemMap);
+    const suspiciousUrls = this.detectSuspiciousUrls(safeAdvancedAnalysis);
 
     const allIssues = [
       ...brokenWorkers.all,

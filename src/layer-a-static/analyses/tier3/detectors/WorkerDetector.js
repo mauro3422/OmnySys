@@ -14,8 +14,9 @@ import { groupByFile } from '../utils/issue-utils.js';
 export class WorkerDetector {
   detect(systemMap, advancedAnalysis) {
     const brokenWorkers = [];
-    const fileResults = advancedAnalysis?.fileResults || {};
-    const allProjectFiles = Object.keys(systemMap.files || {});
+    const safeAdvancedAnalysis = advancedAnalysis || {};
+    const fileResults = safeAdvancedAnalysis.fileResults || {};
+    const allProjectFiles = Object.keys((systemMap || {}).files || {});
 
     const projectFileNames = allProjectFiles.map(f => ({
       fullPath: f,

@@ -14,8 +14,10 @@ import { groupByFile } from '../utils/issue-utils.js';
 export class ImportDetector {
   detect(systemMap) {
     const brokenDynamics = [];
+    const safeSystemMap = systemMap || {};
 
-    for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
+    for (const [filePath, fileNode] of Object.entries(safeSystemMap.files || {})) {
+      if (!fileNode) continue;
       const dynamicImports = fileNode.imports?.filter(imp => 
         imp.type === 'dynamic' || imp.source?.includes('${') || imp.source?.includes('+')
       ) || [];

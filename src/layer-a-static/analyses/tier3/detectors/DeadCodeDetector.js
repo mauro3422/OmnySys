@@ -14,9 +14,12 @@ import { groupByFile } from '../utils/issue-utils.js';
 export class DeadCodeDetector {
   detect(systemMap) {
     const deadFunctions = [];
+    const safeSystemMap = systemMap || {};
 
-    for (const [filePath, functions] of Object.entries(systemMap.functions || {})) {
+    for (const [filePath, functions] of Object.entries(safeSystemMap.functions || {})) {
+      if (!functions) continue;
       for (const func of functions) {
+        if (!func) continue;
         const isExported = func.isExported || false;
         const isCalled = func.calls?.length > 0 || func.usedBy?.length > 0;
 

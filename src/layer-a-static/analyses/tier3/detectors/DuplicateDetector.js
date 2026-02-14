@@ -15,9 +15,12 @@ export class DuplicateDetector {
   detect(systemMap) {
     const duplicates = [];
     const functionIndex = new Map();
+    const safeSystemMap = systemMap || {};
 
-    for (const [filePath, functions] of Object.entries(systemMap.functions || {})) {
+    for (const [filePath, functions] of Object.entries(safeSystemMap.functions || {})) {
+      if (!functions) continue;
       for (const func of functions) {
+        if (!func || !func.name) continue;
         if (!functionIndex.has(func.name)) {
           functionIndex.set(func.name, []);
         }
