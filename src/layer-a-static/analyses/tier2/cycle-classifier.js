@@ -55,6 +55,18 @@ export function classifyCycle(cycle, atomsIndex) {
 }
 
 export function findCircularImports(systemMap, atomsIndex = {}) {
+  // Handle null/undefined input gracefully
+  if (!systemMap) {
+    return {
+      total: 0,
+      cycles: [],
+      classifications: [],
+      problematicCount: 0,
+      validCount: 0,
+      recommendation: 'No circular dependencies detected'
+    };
+  }
+
   const cycles = systemMap.metadata?.cyclesDetected || [];
   
   if (cycles.length === 0) {

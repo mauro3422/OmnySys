@@ -13,6 +13,19 @@
 import { classifyAllFunctionCycles } from './function-cycle-classifier.js';
 
 export function findCircularFunctionDeps(systemMap, atomsIndex = {}) {
+  // Handle null/undefined input gracefully
+  if (!systemMap || !systemMap.function_links) {
+    return {
+      total: 0,
+      cycles: [],
+      classifications: [],
+      validCount: 0,
+      problematicCount: 0,
+      hasMutualRecursion: false,
+      recommendation: 'No circular function dependencies detected'
+    };
+  }
+
   const cycles = [];
   const visited = new Set();
   const recursionStack = new Set();

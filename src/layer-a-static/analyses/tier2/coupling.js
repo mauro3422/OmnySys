@@ -8,6 +8,11 @@
  * @returns {object} - Reporte de acoplamiento
  */
 export function analyzeCoupling(systemMap) {
+  // Handle null/undefined input gracefully
+  if (!systemMap) {
+    return { couplings: [], total: 0 };
+  }
+
   const couplings = [];
 
   for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {

@@ -16,6 +16,11 @@ import { classifyFile } from '../../../layer-c-memory/verification/utils/path-ut
  * @returns {object} - Reporte de archivos huérfanos
  */
 export function findOrphanFiles(systemMap) {
+  // Handle null/undefined input gracefully
+  if (!systemMap) {
+    return { total: 0, files: [], deadCodeCount: 0 };
+  }
+
   const orphans = [];
 
   // Construir set de archivos que son re-exportados (barrel exports)
@@ -28,7 +33,7 @@ export function findOrphanFiles(systemMap) {
     }
   }
 
-  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
     // 🆕 CLASIFICAR: Ignorar tests y documentación (pero NO scripts)
     // Los scripts son archivos válidos por diseño, no son "dead code"
     const classification = classifyFile(filePath);

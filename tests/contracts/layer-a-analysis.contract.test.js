@@ -102,8 +102,8 @@ describe.each(ANALYSES)('Tier $tier - $name: Structure Contract', ({ fn, input, 
     expect(result).toBeTypeOf('object');
   });
 
-  it('MUST NOT throw on valid input', async () => {
-    await expect(fn(input)).resolves.not.toThrow();
+  it('MUST NOT throw on valid input', () => {
+    expect(() => fn(input)).not.toThrow();
   });
 
   if (requiredFields.length > 0) {
@@ -120,17 +120,17 @@ describe.each(ANALYSES)('Tier $tier - $name: Structure Contract', ({ fn, input, 
  * Error Handling Contract - All analyses must handle errors gracefully
  */
 describe.each(ANALYSES)('Tier $tier - $name: Error Handling Contract', ({ fn, optionalParams = [] }) => {
-  it('MUST NOT throw on null/undefined input', async () => {
-    await expect(fn(null)).resolves.not.toThrow();
-    await expect(fn(undefined)).resolves.not.toThrow();
+  it('MUST NOT throw on null/undefined input', () => {
+    expect(() => fn(null)).not.toThrow();
+    expect(() => fn(undefined)).not.toThrow();
   });
 
-  it('MUST NOT throw on empty object input', async () => {
-    await expect(fn({})).resolves.not.toThrow();
+  it('MUST NOT throw on empty object input', () => {
+    expect(() => fn({})).not.toThrow();
   });
 
-  it('MUST return valid object even with missing nested properties', async () => {
-    const result = await fn({ files: null, functions: null });
+  it('MUST return valid object even with missing nested properties', () => {
+    const result = fn({ files: null, functions: null });
     expect(result).toBeTypeOf('object');
   });
 });

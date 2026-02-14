@@ -14,13 +14,18 @@ import { classifyFile } from '../../../layer-c-memory/verification/utils/path-ut
  * @returns {object} - Reporte de exports sin usar
  */
 export function findUnusedExports(systemMap) {
+  // Handle null/undefined input gracefully
+  if (!systemMap) {
+    return { totalUnused: 0, byFile: {}, impact: 'No unused exports detected' };
+  }
+
   const unusedByFile = {};
 
   // Construir índice de qué exports están siendo usados
   const usedExports = new Set();
 
   // 1. Marcar exports que se llaman como funciones
-  for (const link of systemMap.function_links) {
+  for (const link of (systemMap.function_links || [])) {
     usedExports.add(link.to); // function IDs
   }
 
@@ -36,7 +41,7 @@ export function findUnusedExports(systemMap) {
   }
 
   // 3. Marcar exports que se importan directamente
-  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
     for (const importStmt of fileNode.imports) {
       if (!importStmt.specifiers) continue;
 
@@ -52,7 +57,7 @@ export function findUnusedExports(systemMap) {
   }
 
   // Ahora revisar cada archivo y sus exports
-  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
+  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
     // 🆕 CLASIFICAR: Ignorar tests y documentación
     // Scripts SÍ se analizan (tienen funciones útiles), pero con lógica diferente
     const classification = classifyFile(filePath);
