@@ -1,43 +1,40 @@
 /**
- * @fileoverview index.js
+ * TypeScript Extractor Module
  * 
- * Facade del extractor TypeScript
- * 
- * @module extractors/typescript
+ * Extracts TypeScript definitions and detects connections:
+ * - Interfaces, types, classes, enums, generics
+ * - Interface implementations and extensions
+ * - Type imports and exports
+ * - Potential breaking changes
  */
 
-export { TS_EXTENSIONS, TSConstructType, TS_PATTERNS } from './constants.js';
-export { extractInterfaces } from './extractors/interface-extractor.js';
-export { extractTypes } from './extractors/type-extractor.js';
-export { extractEnums } from './extractors/enum-extractor.js';
+// Main extraction function
+export { extractTypeScriptDefinitions } from './extractor.js';
 
-// 🆕 NUEVO: Wrapper para comprehensive-extractor
-export function extractTypeReferences(code) {
-  // Extraer referencias a tipos en el código
-  const typeRefs = [];
-  const patterns = [
-    /:\s*([A-Z][a-zA-Z0-9_]*)/g,  // : TypeName
-    /<([A-Z][a-zA-Z0-9_]*)>/g,    // <TypeName>
-    /as\s+([A-Z][a-zA-Z0-9_]*)/g   // as TypeName
-  ];
-  
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(code)) !== null) {
-      typeRefs.push(match[1]);
-    }
-  }
-  
-  return [...new Set(typeRefs)];
-}
+// Single file and multi-file extractors
+export {
+  extractTypeScriptFromFile,
+  detectAllTypeScriptConnections
+} from './extractors/index.js';
 
-// Función principal
-export function extractTypeScript(code) {
-  return {
-    interfaces: extractInterfaces(code),
-    types: extractTypes(code),
-    enums: extractEnums(code)
-  };
-}
+// Connection detectors
+export {
+  detectInterfaceImplementations,
+  detectInterfaceExtensions,
+  detectTypeUsages,
+  detectPotentialBreakingChanges
+} from './connections/index.js';
 
-export default { extractTypeScript };
+// Parsers (for advanced usage)
+export {
+  extractInterfaces,
+  extractTypes,
+  extractClasses,
+  extractEnums,
+  extractGenerics,
+  extractImports,
+  extractExports
+} from './parsers/index.js';
+
+// Utilities
+export { getLineNumber } from './utils/index.js';
