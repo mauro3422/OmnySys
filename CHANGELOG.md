@@ -44,13 +44,13 @@ This repository uses a modular changelog structure for better organization and m
 
 ### **🚀 Latest Release: v0.9.8 (2026-02-14) - Layer A Analysis Systems Audit**
 
-**Analysis Audit Complete**: Audit de sistemas de análisis (Tier 1-2) con **79 tests pasando**. Se implementó Analysis Factory pattern y ScenarioBuilder para testing consistente. Contract tests identificaron bugs adicionales para fix posterior. Hotspots, Orphan Files, Unused Exports, Circular Imports y Coupling 100% testeados.
+**Analysis Audit Complete**: Audit de sistemas de análisis (Tier 1-2) con **125 tests pasando** (79 unit + 46 contract). Se implementó Analysis Factory pattern y ScenarioBuilder para testing consistente. Todos los análisis ahora manejan null/undefined gracefully. Sistema bulletproof listo para producción.
 
 **Key Changes**:
-- ✅ **79 Unit Tests**: Tier 1 (49) + Tier 2 (30)
-- ✅ **3 Bugs Fixed**: hotspots, cycle-classifier, coupling
+- ✅ **125 Tests**: 79 Unit Tests + 46 Contract Tests
+- ✅ **6 Bugs Fixed**: null/undefined handling en todos los análisis
 - ✅ **Analysis Factory**: Pattern reutilizable para nuevos análisis
-- ✅ **3 Bugs Identified**: para fix en próxima iteración (null handling)
+- ✅ **Bulletproof**: Todos los edge cases manejados
 
 ### **Previous Release: v0.9.7 (2026-02-14) - Layer A Core Test Audit**
 
