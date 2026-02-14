@@ -149,13 +149,13 @@ docs/
 
 ## ✅ Estado del Proyecto
 
-**Versión**: v0.7.1
+**Versión**: v0.9.4
 
 | Componente | Estado |
 |------------|--------|
 | MCP Server HTTP | ✅ Production Ready |
 | 14 Tools MCP | ✅ 100% Funcionales |
-| 5 Metadata Extractors | ✅ Nuevos en v0.7.1 |
+| Modular Architecture | ✅ 204 Modules (v0.9.4) |
 | Data Flow v2 (graph-based) | ✅ Fase 1 Completa |
 | LLM Integration | ✅ GPU Optimizado |
 | OpenCode Auto-Setup | ✅ Automático |
