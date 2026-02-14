@@ -1,109 +1,62 @@
 /**
- * @fileoverview index.js
- * 
- * Public API for comprehensive-extractor module
- * Provides backward-compatible exports and convenient access to all extractors
+ * @fileoverview Comprehensive Extractor Module
  * 
  * @module comprehensive-extractor
- * @phase Layer A - Enhanced
+ * 
+ * @version 0.9.4 - Modularizado: separado en componentes especializados
+ * @since 0.7.0
  */
 
-// ============================================
-// MAIN EXTRACTOR CLASS
-// ============================================
-
+// === Core ===
 export { 
-  ComprehensiveExtractor, 
-  createExtractor,
-  EXTRACTOR_STATS,
-  DEFAULT_CONFIG 
+  ComprehensiveExtractor,
+  createExtractor
 } from './ComprehensiveExtractor.js';
 
-// ============================================
-// INDIVIDUAL EXTRACTORS
-// ============================================
+// === Config ===
+export {
+  DEFAULT_CONFIG,
+  EXTRACTOR_STATS,
+  DETAIL_LEVELS,
+  mergeConfig
+} from './config/index.js';
 
+// === Metadata ===
+export {
+  extractBasicMetadata,
+  detectFileCategory,
+  calculateFileIndicators
+} from './metadata/index.js';
+
+// === Metrics ===
+export {
+  calculateMetrics,
+  calculateComplexityScore
+} from './metrics/index.js';
+
+// === Patterns ===
+export {
+  detectPatterns,
+  detectPatternsByName
+} from './patterns/index.js';
+
+// === Completeness ===
+export {
+  calculateCompleteness,
+  shouldNeedLLM,
+  countActiveExtractors,
+  assessQuality
+} from './completeness/index.js';
+
+// === Extractors (existing) ===
 export {
   extractFunctions,
-  extractFunctionCalls,
-  extractRecursiveFunctions,
-  extractHigherOrderFunctions,
   extractAsyncPatterns
 } from './extractors/function-extractor.js';
 
-export {
-  extractClasses,
-  extractClassMethods,
-  extractClassProperties,
-  extractInheritanceHierarchy,
-  extractMixins
-} from './extractors/class-extractor.js';
+export { extractClasses } from './extractors/class-extractor.js';
+export { extractImports } from './extractors/import-extractor.js';
+export { extractExports } from './extractors/export-extractor.js';
 
-export {
-  extractImports,
-  extractDynamicImports,
-  extractImportAliases,
-  extractBarrelImports,
-  extractUnusedImports
-} from './extractors/import-extractor.js';
-
-export {
-  extractExports,
-  extractExportAssignments,
-  extractExportDeclarations,
-  extractBarrelPattern,
-  extractDefaultExportDetails,
-  extractUnusedExports
-} from './extractors/export-extractor.js';
-
-// ============================================
-// PARSER UTILITIES
-// ============================================
-
-export {
-  parseAST,
-  findNodesByType,
-  findFunctions,
-  findClasses,
-  findImports,
-  findExports,
-  findMethods,
-  findArrowFunctions,
-  PARSER_CONFIG
-} from './parsers/ast-parser.js';
-
-// ============================================
-// BACKWARD COMPATIBILITY
-// ============================================
-
-import { ComprehensiveExtractor, EXTRACTOR_STATS as STATS } from './ComprehensiveExtractor.js';
-
-/**
- * Extract comprehensive metadata (legacy function interface)
- * Maintains backward compatibility with the original API
- * 
- * @param {string} filePath - Path to the file
- * @param {string} code - Source code
- * @param {Object} options - Extraction options
- * @returns {Object} - Comprehensive extraction results
- */
-export function extractComprehensiveMetadata(filePath, code, options = {}) {
-  const extractor = new ComprehensiveExtractor(options);
-  return extractor.extract(filePath, code, options);
-}
-
-/**
- * Legacy statistics export
- * @deprecated Use EXTRACTOR_STATS from ComprehensiveExtractor.js
- */
-export const EXTRACTOR_STATS = STATS;
-
-/**
- * Default export for the module
- */
-export default {
-  ComprehensiveExtractor,
-  createExtractor,
-  extractComprehensiveMetadata,
-  EXTRACTOR_STATS
-};
+// === Default Export ===
+export { ComprehensiveExtractor as default } from './ComprehensiveExtractor.js';

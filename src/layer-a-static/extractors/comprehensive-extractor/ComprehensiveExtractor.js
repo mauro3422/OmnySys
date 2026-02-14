@@ -6,88 +6,34 @@
  * 
  * @module comprehensive-extractor/ComprehensiveExtractor
  * @phase Layer A - Enhanced
+ * 
+ * @version 0.9.4 - Modularizado: separado en componentes especializados
+ * @since 0.7.0
  */
 
 import { createLogger } from '#utils/logger.js';
-
-// Import all extractors
 import { extractFunctions, extractAsyncPatterns } from './extractors/function-extractor.js';
 import { extractClasses } from './extractors/class-extractor.js';
 import { extractImports } from './extractors/import-extractor.js';
 import { extractExports } from './extractors/export-extractor.js';
+import { DEFAULT_CONFIG, EXTRACTOR_STATS, mergeConfig } from './config/defaults.js';
+import { extractBasicMetadata } from './metadata/basic-metadata.js';
+import { calculateMetrics } from './metrics/metrics-calculator.js';
+import { detectPatterns } from './patterns/pattern-detector.js';
+import { calculateCompleteness, shouldNeedLLM, countActiveExtractors } from './completeness/completeness-calculator.js';
 
 const logger = createLogger('OmnySys:ComprehensiveExtractor');
 
-/**
- * Statistics about available extractors
- */
-export const EXTRACTOR_STATS = {
-  total: 4,
-  categories: {
-    function: { 
-      count: 1, 
-      impact: 'Function declarations, arrow functions, async patterns',
-      extractors: ['extractFunctions', 'extractAsyncPatterns']
-    },
-    class: { 
-      count: 1, 
-      impact: 'Class declarations, methods, inheritance',
-      extractors: ['extractClasses']
-    },
-    import: { 
-      count: 1, 
-      impact: 'ES6 imports, CommonJS requires, dynamic imports',
-      extractors: ['extractImports']
-    },
-    export: { 
-      count: 1, 
-      impact: 'ES6 exports, CommonJS exports, re-exports',
-      extractors: ['extractExports']
-    }
-  },
-  llmReduction: '60%'
-};
-
-/**
- * Configuration options for extraction
- */
-export const DEFAULT_CONFIG = {
-  // Which extractors to enable
-  extractors: {
-    functions: true,
-    classes: true,
-    imports: true,
-    exports: true
-  },
-  
-  // Detail level
-  detailLevel: 'standard', // 'minimal', 'standard', 'detailed'
-  
-  // Include raw source in results
-  includeSource: false,
-  
-  // Calculate metrics
-  calculateMetrics: true,
-  
-  // Detect patterns
-  detectPatterns: true,
-  
-  // Timeout for extraction (ms)
-  timeout: 30000
-};
+export { DEFAULT_CONFIG, EXTRACTOR_STATS };
 
 /**
  * ComprehensiveExtractor - Main orchestrator class
  * 
  * Provides a unified interface for extracting all code constructs
- * 
- * @example
- * const extractor = new ComprehensiveExtractor({ detailLevel: 'detailed' });
- * const metadata = extractor.extract(filePath, code);
  */
 export class ComprehensiveExtractor {
   constructor(config = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.config = mergeConfig(config);
     this.stats = { ...EXTRACTOR_STATS };
     this.cache = new Map();
     
@@ -117,53 +63,36 @@ export class ComprehensiveExtractor {
       }
       
       // Run extractors based on configuration
-      const results = {};
-      
-      if (opts.extractors.functions) {
-        results.functions = extractFunctions(code, { detailLevel: opts.detailLevel });
-        results.asyncPatterns = extractAsyncPatterns(code);
-      }
-      
-      if (opts.extractors.classes) {
-        results.classes = extractClasses(code, { detailLevel: opts.detailLevel });
-      }
-      
-      if (opts.extractors.imports) {
-        results.imports = extractImports(code, { detailLevel: opts.detailLevel });
-      }
-      
-      if (opts.extractors.exports) {
-        results.exports = extractExports(code, { detailLevel: opts.detailLevel });
-      }
+      const results = this._runExtractors(code, opts);
       
       // Add basic metadata
-      results.basic = this.extractBasicMetadata(filePath, code);
+      results.basic = extractBasicMetadata(filePath, code);
       
       // Calculate derived metrics
       if (opts.calculateMetrics) {
-        results.metrics = this.calculateMetrics(results);
+        results.metrics = calculateMetrics(results);
       }
       
       // Detect patterns
       if (opts.detectPatterns) {
-        results.patterns = this.detectPatterns(results);
+        results.patterns = detectPatterns(results);
       }
       
       // Calculate completeness
-      const completeness = this.calculateCompleteness(results);
+      const completeness = calculateCompleteness(results);
       
       const duration = Date.now() - startTime;
       
       const output = {
         ...results,
         _meta: {
-          extractorCount: this.countActiveExtractors(results),
+          extractorCount: countActiveExtractors(results),
           extractionTime: duration,
           completeness,
           timestamp: new Date().toISOString(),
           version: '3.0.0-modular'
         },
-        needsLLM: this.shouldNeedLLM(results)
+        needsLLM: shouldNeedLLM(results, calculateCompleteness)
       };
       
       // Cache result
@@ -179,7 +108,7 @@ export class ComprehensiveExtractor {
       logger.error(`Error extracting metadata for ${filePath}:`, error.message);
       
       return {
-        basic: this.extractBasicMetadata(filePath, code),
+        basic: extractBasicMetadata(filePath, code),
         error: error.message,
         _meta: {
           extractionTime: Date.now() - startTime,
@@ -193,212 +122,30 @@ export class ComprehensiveExtractor {
   }
   
   /**
-   * Extract basic file metadata
-   * 
+   * Run extractors based on configuration
    * @private
-   * @param {string} filePath - Path to the file
-   * @param {string} code - Source code
-   * @returns {Object} - Basic metadata
    */
-  extractBasicMetadata(filePath, code) {
-    return {
-      filePath,
-      size: code.length,
-      lineCount: code.split('\n').length,
-      hasImports: /import\s+|require\s*\(/.test(code),
-      hasExports: /export\s+|module\.exports/.test(code),
-      isTestFile: /\.(test|spec)\.(js|ts|jsx|tsx)$/.test(filePath),
-      isConfigFile: /(config|\.config)\.(js|ts|json)$/.test(filePath),
-      isTypeScript: /\.(ts|tsx)$/.test(filePath),
-      isJSX: /\.(jsx|tsx)$/.test(filePath)
-    };
-  }
-  
-  /**
-   * Calculate derived metrics from extraction results
-   * 
-   * @private
-   * @param {Object} results - Extraction results
-   * @returns {Object} - Calculated metrics
-   */
-  calculateMetrics(results) {
-    const metrics = {
-      totalConstructs: 0,
-      complexity: {
-        cyclomatic: 0,
-        cognitive: 0
-      },
-      maintainability: {
-        score: 0,
-        factors: []
-      }
-    };
+  _runExtractors(code, opts) {
+    const results = {};
     
-    // Function metrics
-    if (results.functions) {
-      metrics.totalConstructs += results.functions.totalCount || 0;
-      metrics.complexity.functionCount = results.functions.totalCount || 0;
-      metrics.complexity.asyncCount = results.functions.asyncCount || 0;
+    if (opts.extractors.functions) {
+      results.functions = extractFunctions(code, { detailLevel: opts.detailLevel });
+      results.asyncPatterns = extractAsyncPatterns(code);
     }
     
-    // Class metrics
-    if (results.classes) {
-      metrics.totalConstructs += results.classes.count || 0;
-      metrics.complexity.classCount = results.classes.count || 0;
-      metrics.complexity.inheritanceDepth = results.classes.inheritanceDepth || 0;
+    if (opts.extractors.classes) {
+      results.classes = extractClasses(code, { detailLevel: opts.detailLevel });
     }
     
-    // Import metrics
-    if (results.imports) {
-      metrics.dependencies = results.imports.metrics || {};
-      metrics.hasDynamicImports = results.imports.dynamicImports?.length > 0;
+    if (opts.extractors.imports) {
+      results.imports = extractImports(code, { detailLevel: opts.detailLevel });
     }
     
-    // Export metrics
-    if (results.exports) {
-      metrics.publicAPI = results.exports.metrics?.publicAPI || [];
-      metrics.hasDefaultExport = results.exports.patterns?.hasDefaultExport || false;
+    if (opts.extractors.exports) {
+      results.exports = extractExports(code, { detailLevel: opts.detailLevel });
     }
     
-    return metrics;
-  }
-  
-  /**
-   * Detect architectural patterns
-   * 
-   * @private
-   * @param {Object} results - Extraction results
-   * @returns {Object} - Detected patterns
-   */
-  detectPatterns(results) {
-    const patterns = {
-      architectural: [],
-      structural: [],
-      behavioral: []
-    };
-    
-    // Detect singleton pattern
-    if (results.classes?.classes?.some(c => 
-      c.methods.some(m => m.name === 'getInstance') ||
-      c.staticMembers > 0 && c.methods.some(m => m.name === 'constructor' && m.isPrivate)
-    )) {
-      patterns.architectural.push('singleton');
-    }
-    
-    // Detect factory pattern
-    if (results.functions?.functions?.some(f => 
-      f.name?.toLowerCase().includes('create') ||
-      f.name?.toLowerCase().includes('factory')
-    )) {
-      patterns.architectural.push('factory');
-    }
-    
-    // Detect async patterns
-    if (results.asyncPatterns) {
-      if (results.asyncPatterns.hasAsyncAwait) patterns.behavioral.push('async-await');
-      if (results.asyncPatterns.hasPromises) patterns.behavioral.push('promises');
-      if (results.asyncPatterns.promiseChains > 2) patterns.behavioral.push('promise-chaining');
-    }
-    
-    // Detect module patterns
-    if (results.exports?.patterns?.isBarrelFile) {
-      patterns.structural.push('barrel');
-    }
-    
-    // Detect React patterns (if applicable)
-    if (results.imports?.patterns?.hasNodeModules) {
-      const reactImports = results.imports.all?.some(i => 
-        i.source?.includes('react') || i.source?.includes('jsx')
-      );
-      if (reactImports) {
-        patterns.architectural.push('react');
-      }
-    }
-    
-    return patterns;
-  }
-  
-  /**
-   * Calculate completeness score
-   * 
-   * @private
-   * @param {Object} results - Extraction results
-   * @returns {number} - Completeness percentage (0-100)
-   */
-  calculateCompleteness(results) {
-    const weights = {
-      basic: 0.1,
-      functions: 0.25,
-      classes: 0.2,
-      imports: 0.2,
-      exports: 0.15,
-      patterns: 0.1
-    };
-    
-    let score = 0;
-    let totalWeight = 0;
-    
-    for (const [key, weight] of Object.entries(weights)) {
-      const data = results[key];
-      totalWeight += weight;
-      
-      if (data && Object.keys(data).length > 0) {
-        const hasRealData = Object.values(data).some(v =>
-          v !== null &&
-          v !== undefined &&
-          (Array.isArray(v) ? v.length > 0 : true) &&
-          (typeof v === 'object' ? Object.keys(v).length > 0 : true)
-        );
-        
-        if (hasRealData) {
-          score += weight;
-        }
-      }
-    }
-    
-    return totalWeight > 0 ? Math.round((score / totalWeight) * 100) : 0;
-  }
-  
-  /**
-   * Count active extractors
-   * 
-   * @private
-   * @param {Object} results - Extraction results
-   * @returns {number} - Count of active extractors
-   */
-  countActiveExtractors(results) {
-    let count = 0;
-    const extractors = ['functions', 'classes', 'imports', 'exports'];
-    
-    for (const key of extractors) {
-      if (results[key]?._metadata?.success) {
-        count++;
-      }
-    }
-    
-    return count;
-  }
-  
-  /**
-   * Determine if LLM analysis is needed
-   * 
-   * @private
-   * @param {Object} results - Extraction results
-   * @returns {boolean} - Whether LLM analysis is recommended
-   */
-  shouldNeedLLM(results) {
-    const hasComplexClasses = results.classes?.classes?.some(c => 
-      c.methods.length > 10 || c.inheritanceDepth > 2
-    );
-    
-    const hasHighAsyncUsage = results.asyncPatterns?.asyncFunctionCount > 5 ||
-                               results.asyncPatterns?.awaitCount > 10;
-    
-    const hasManyDependencies = results.imports?.metrics?.total > 20;
-    
-    const lowCompleteness = this.calculateCompleteness(results) < 50;
-    
-    return hasComplexClasses || hasHighAsyncUsage || hasManyDependencies || lowCompleteness;
+    return results;
   }
   
   /**
@@ -411,7 +158,6 @@ export class ComprehensiveExtractor {
   
   /**
    * Get extractor statistics
-   * 
    * @returns {Object} - Statistics
    */
   getStats() {
@@ -424,7 +170,6 @@ export class ComprehensiveExtractor {
   
   /**
    * Update configuration
-   * 
    * @param {Object} newConfig - New configuration options
    */
   updateConfig(newConfig) {
@@ -443,9 +188,5 @@ export class ComprehensiveExtractor {
 export function createExtractor(config = {}) {
   return new ComprehensiveExtractor(config);
 }
-
-// ============================================
-// EXPORTS
-// ============================================
 
 export default ComprehensiveExtractor;
