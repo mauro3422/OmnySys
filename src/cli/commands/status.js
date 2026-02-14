@@ -1,43 +1,29 @@
-import { getProjectStats } from '../../layer-a-static/query/apis/project-api.js';
-import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager.js';
-import { resolveProjectPath } from '../utils/paths.js';
+/**
+ * @fileoverview Status Command
+ * 
+ * Show service status
+ * 
+ * @module cli/commands/status
+ */
 
-export async function status(projectPath) {
-  const absolutePath = resolveProjectPath(projectPath);
+import { checkLLM, checkMCP } from '../utils/port-checker.js';
+import { log } from '../utils/logger.js';
 
-  console.log('\nOmniSystem Status\n');
-  console.log(`Project: ${absolutePath}\n`);
+export const aliases = ['status'];
 
-  try {
-    const hasAnalysis = await hasExistingAnalysis(absolutePath);
-
-    if (!hasAnalysis) {
-      console.log('No analysis data found\n');
-      console.log('Run: omnysystem analyze <project>\n');
-      process.exit(0);
-    }
-
-    const stats = await getProjectStats(absolutePath);
-
-    console.log('Analysis data found\n');
-    console.log('Statistics:');
-    console.log(`  - Files analyzed: ${stats.totalFiles}`);
-    console.log(`  - Total functions: ${stats.totalFunctions}`);
-    console.log(`  - Dependencies: ${stats.totalDependencies}`);
-    console.log(`  - Semantic connections: ${stats.totalSemanticConnections}`);
-    console.log(`    - Shared state: ${stats.sharedStateConnections}`);
-    console.log(`    - Event listeners: ${stats.eventListenerConnections}`);
-    console.log('  - Risk assessment:');
-    console.log(`    - High-risk files: ${stats.highRiskFiles}`);
-    console.log(`    - Medium-risk files: ${stats.mediumRiskFiles}`);
-    console.log(`    - Average risk score: ${stats.averageRiskScore}/10`);
-    console.log(`\nAnalyzed at: ${stats.analyzedAt}\n`);
-
-    console.log('Next: omnysystem serve <project>\n');
-    process.exit(0);
-  } catch (error) {
-    console.error('\nError reading analysis:');
-    console.error(`   ${error.message}\n`);
-    process.exit(1);
+export async function execute() {
+  const llm = await checkLLM();
+  const mcp = await checkMCP();
+  
+  console.log('\n╔════════════════════════════════════╗');
+  console.log('║      OMNYsys STATUS                ║');
+  console.log('╠════════════════════════════════════╣');
+  console.log(`║  LLM Server:  ${llm ? '🟢 Running' : '🔴 Stopped'}${' '.repeat(16)}║`);
+  console.log(`║  MCP Server:  ${mcp ? '🟢 Running' : '🔴 Stopped'}${' '.repeat(16)}║`);
+  console.log(`║  Tools:       ${mcp ? '9 available' : 'N/A'}${' '.repeat(16)}║`);
+  console.log('╚════════════════════════════════════╝\n');
+  
+  if (!llm || !mcp) {
+    log('Ejecuta: omnysys up', 'warning');
   }
 }

@@ -1,71 +1,149 @@
 /**
- * orchestrator-server.js
- * Main entry point (backward compatible)
+ * @fileoverview Orchestrator Server - Main Entry Point
  * 
- * Proceso independiente que gestiona la cola de análisis con prioridad
+ * HTTP API server for managing analysis queue with priority
+ * Refactored following SOLID principles:
+ * - SRP: Each route and utility has single responsibility
+ * - OCP: Easy to add new routes without modifying existing code
+ * - DIP: Routes depend on abstractions (state interface)
  * 
- * Características:
- * - HTTP API en puerto 9999
- * - Cola de prioridad: CRITICAL > HIGH > MEDIUM > LOW
- * - Estado compartido vía archivo JSON
- * - Pausa/reanudación de trabajos
- * - Health checks para la IA
- * 
- * @module core/orchestrator-server
+ * @module orchestrator-server
  */
 
-import express from 'express';
-import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { AnalysisQueue } from './analysis-queue.js';
-import { AnalysisWorker } from './analysis-worker.js';
-import { StateManager } from './state-manager.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '../../utils/logger.js';
 
-// Import modular handlers
-import { initialize, state, updateState, processNext } from './server/state.js';
-import { handleCommand } from './routes/command.js';
-import { handleStatus, handleHealth, handleQueue, handleRestart } from './routes/status.js';
-import { setupShutdownHandlers } from './handlers/shutdown.js';
+import { createApp, startServer } from './server/express-server.js';
+import { 
+  initializeState, 
+  processNext, 
+  serverState,
+  getStateData 
+} from './server/state.js';
+
+import {
+  handleCommand,
+  handleStatus,
+  handleHealth,
+  handleQueue,
+  handleRestart
+} from './routes/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Initialize state with required classes
-state.queue = new AnalysisQueue();
-
 const logger = createLogger('OmnySys:orchestrator:server');
 
-// ============ HTTP API ENDPOINTS ============
+/**
+ * OrchestratorServer class
+ */
+export class OrchestratorServer {
+  constructor(options = {}) {
+    this.port = options.port || 9999;
+    this.rootPath = options.rootPath || process.cwd();
+    this.app = null;
+    this.server = null;
+  }
 
-app.post('/command', (req, res) => handleCommand(req, res, logger));
-app.get('/status', handleStatus);
-app.get('/health', handleHealth);
-app.get('/queue', handleQueue);
-app.post('/restart', (req, res) => handleRestart(req, res, logger));
+  /**
+   * Initialize and start the server
+   */
+  async start() {
+    logger.info(`🚀 Initializing Orchestrator Server on port ${this.port}...\n`);
+    
+    // Initialize state
+    await initializeState(this.rootPath, () => this.updateState());
+    
+    // Create Express app
+    this.app = createApp();
+    this.setupRoutes();
+    
+    // Start server
+    this.server = await startServer(this.app, this.port);
+    
+    logger.info(`✅ Orchestrator Server ready on port ${this.port}\n`);
+    this.updateState();
+    processNext(() => this.updateState());
+    
+    return this;
+  }
 
-// ============ STARTUP ============
+  /**
+   * Setup all routes
+   */
+  setupRoutes() {
+    // POST /command - Queue or prioritize
+    this.app.post('/command', (req, res) => 
+      handleCommand(req, res, serverState, 
+        () => processNext(() => this.updateState()),
+        () => this.updateState()
+      )
+    );
+    
+    // GET /status - Get status
+    this.app.get('/status', handleStatus);
+    
+    // GET /health - Health check
+    this.app.get('/health', handleHealth);
+    
+    // GET /queue - View queue
+    this.app.get('/queue', handleQueue);
+    
+    // POST /restart - Restart
+    this.app.post('/restart', (req, res) =>
+      handleRestart(req, res, 
+        () => this.updateState(),
+        () => processNext(() => this.updateState())
+      )
+    );
+  }
 
-const PORT = process.env.ORCHESTRATOR_PORT || 9999;
-const ROOT_PATH = process.argv[2] || process.cwd();
+  /**
+   * Update shared state file
+   */
+  async updateState() {
+    const stateData = getStateData();
+    stateData.health = await this.getHealthStatus();
+    await serverState.stateManager?.write(stateData);
+  }
 
-app.listen(PORT, async () => {
-  logger.info(`\n🔧 OmnySys Orchestrator v1.0.0`);
-  logger.info(`📡 HTTP API: http://localhost:${PORT}`);
-  logger.info(`📁 Project: ${ROOT_PATH}\n`);
-  
-  await initialize(ROOT_PATH, logger, StateManager, AnalysisWorker, updateState, 
-    () => processNext(logger));
-  
-  processNext(logger);
-});
+  /**
+   * Get health status
+   */
+  async getHealthStatus() {
+    const health = {
+      status: 'healthy',
+      llmConnection: 'ok',
+      memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      lastError: null
+    };
+    
+    if (serverState.worker && !serverState.worker.isHealthy()) {
+      health.status = 'degraded';
+      health.llmConnection = 'disconnected';
+    }
+    
+    return health;
+  }
 
-// Graceful shutdown
-setupShutdownHandlers(logger);
+  /**
+   * Stop the server
+   */
+  async stop() {
+    if (serverState.worker) {
+      await serverState.worker.stop();
+    }
+    if (this.server) {
+      this.server.close();
+    }
+  }
+}
 
-export { state, initialize, updateState, processNext };
+/**
+ * Legacy compatibility: Start server function
+ */
+export async function startOrchestratorServer(rootPath, port = 9999) {
+  const server = new OrchestratorServer({ rootPath, port });
+  return server.start();
+}
+
+export default OrchestratorServer;

@@ -1,15 +1,21 @@
 /**
- * @fileoverview state.js
+ * @fileoverview State Management for Orchestrator Server
  * 
- * Server state management
+ * SSOT: Centralized state management for the orchestrator
+ * Single Responsibility: Manage server state only
  * 
  * @module orchestrator-server/server/state
  */
 
 import { AnalysisQueue } from '../../analysis-queue.js';
+import { AnalysisWorker } from '../../analysis-worker.js';
+import { StateManager as FileStateManager } from '../../state-manager.js';
+import path from 'path';
 
-// Estado global
-export const state = {
+/**
+ * Server state container
+ */
+export const serverState = {
   queue: new AnalysisQueue(),
   worker: null,
   stateManager: null,
@@ -21,69 +27,69 @@ export const state = {
     cacheHitRate: 0
   },
   startTime: Date.now(),
-  isRunning: true
+  isRunning: true,
+  rootPath: null
 };
 
 /**
- * Inicializa el orchestrator
+ * Initialize server state
+ * @param {string} rootPath - Project root path
+ * @param {Function} updateCallback - Callback when state changes
  */
-export async function initialize(rootPath, logger, StateManager, AnalysisWorker, updateStateFn, processNextFn) {
-  logger.info('🚀 Initializing OmnySys Orchestrator...\n');
+export async function initializeState(rootPath, updateCallback) {
+  serverState.rootPath = rootPath;
   
-  state.stateManager = new StateManager(
-    rootPath + '/.omnysysdata/orchestrator-state.json'
+  // Initialize StateManager
+  serverState.stateManager = new FileStateManager(
+    path.join(rootPath, '.omnysysdata', 'orchestrator-state.json')
   );
   
-  state.worker = new AnalysisWorker(rootPath, {
+  // Initialize worker
+  serverState.worker = new AnalysisWorker(rootPath, {
     onProgress: (job, progress) => {
-      state.currentJob = { ...job, progress };
-      updateStateFn();
+      serverState.currentJob = { ...job, progress };
+      updateCallback();
     },
     onComplete: (job, result) => {
-      logger.info(`✅ Completed: ${job.filePath.split('/').pop()}`);
-      state.stats.totalAnalyzed++;
-      state.currentJob = null;
-      updateStateFn();
-      processNextFn();
+      serverState.stats.totalAnalyzed++;
+      serverState.currentJob = null;
+      updateCallback();
+      processNext(updateCallback);
     },
     onError: (job, error) => {
-      logger.error(`❌ Error analyzing ${job.filePath.split('/').pop()}:`, error.message);
-      state.currentJob = null;
-      updateStateFn();
-      processNextFn();
+      serverState.currentJob = null;
+      updateCallback();
+      processNext(updateCallback);
     }
   });
   
-  await state.worker.initialize();
-  
-  logger.info('✅ Orchestrator ready\n');
-  updateStateFn();
+  await serverState.worker.initialize();
+  updateCallback();
 }
 
 /**
- * Actualiza el archivo de estado compartido
+ * Process next job in queue
+ * @param {Function} updateCallback - Callback when state changes
  */
-export async function updateState() {
-  const stateData = {
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    orchestrator: {
-      status: state.isRunning ? 'running' : 'paused',
-      pid: process.pid,
-      uptime: Math.floor((Date.now() - state.startTime) / 1000),
-      port: 9999
-    },
-    currentJob: state.currentJob,
-    queue: state.queue.getAll(),
-    stats: state.stats,
-    health: await getHealthStatus()
-  };
+export async function processNext(updateCallback) {
+  if (!serverState.isRunning || serverState.currentJob) {
+    return;
+  }
   
-  await state.stateManager.write(stateData);
+  const nextJob = serverState.queue.dequeue();
+  if (!nextJob) {
+    return;
+  }
+  
+  serverState.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
+  updateCallback();
+  
+  serverState.worker.analyze(nextJob);
 }
 
 /**
- * Obtiene estado de salud
+ * Get health status
+ * @returns {Promise<Object>} Health status
  */
 export async function getHealthStatus() {
   const health = {
@@ -93,7 +99,7 @@ export async function getHealthStatus() {
     lastError: null
   };
   
-  if (state.worker && !state.worker.isHealthy()) {
+  if (serverState.worker && !serverState.worker.isHealthy()) {
     health.status = 'degraded';
     health.llmConnection = 'disconnected';
   }
@@ -102,22 +108,65 @@ export async function getHealthStatus() {
 }
 
 /**
- * Procesa el siguiente trabajo en la cola
+ * Pause the orchestrator
  */
-export async function processNext(logger) {
-  if (!state.isRunning || state.currentJob) {
-    return;
+export async function pause() {
+  serverState.isRunning = false;
+  if (serverState.worker) {
+    await serverState.worker.pause();
   }
-  
-  const nextJob = state.queue.dequeue();
-  if (!nextJob) {
-    logger.info('📭 Queue empty, waiting for jobs...');
-    return;
+}
+
+/**
+ * Resume the orchestrator
+ */
+export async function resume() {
+  serverState.isRunning = true;
+}
+
+/**
+ * Restart the orchestrator
+ * @param {Function} updateCallback - Callback when state changes
+ */
+export async function restart(updateCallback) {
+  if (serverState.worker) {
+    await serverState.worker.stop();
   }
+  serverState.queue.clear();
+  serverState.currentJob = null;
+  serverState.isRunning = true;
   
-  logger.info(`⚡ Processing: ${nextJob.filePath.split('/').pop()} [${nextJob.priority}]`);
-  state.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
-  await updateState();
-  
-  state.worker.analyze(nextJob);
+  await serverState.worker.initialize();
+  updateCallback();
+  processNext(updateCallback);
+}
+
+/**
+ * Calculate ETA for a job position
+ * @param {number} position - Position in queue
+ * @returns {number} Estimated time in ms
+ */
+export function calculateETA(position) {
+  const avgTime = serverState.stats.avgTime || 3000;
+  return position * avgTime;
+}
+
+/**
+ * Get complete state for serialization
+ * @returns {Object} State object
+ */
+export function getStateData() {
+  return {
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    orchestrator: {
+      status: serverState.isRunning ? 'running' : 'paused',
+      pid: process.pid,
+      uptime: Math.floor((Date.now() - serverState.startTime) / 1000),
+      port: 9999
+    },
+    currentJob: serverState.currentJob,
+    queue: serverState.queue.getAll(),
+    stats: serverState.stats
+  };
 }
