@@ -9,7 +9,7 @@ import {
   analyzeFunctions,
   hasSideEffects,
   isPureFunction
-} from '../function-analyzer.js';
+} from '../function-analyzer/index.js';
 
 describe('function-analyzer', () => {
   describe('analyzeFunctions', () => {

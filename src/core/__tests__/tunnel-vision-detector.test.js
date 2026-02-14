@@ -11,7 +11,7 @@ import {
   getStats,
   cleanupHistory,
   getModificationHistory
-} from '../tunnel-vision-detector.js';
+} from '../tunnel-vision-detector/index.js';
 
 // Mock the query APIs (using new specialized APIs instead of deprecated facade)
 vi.mock('../../layer-a-static/query/apis/file-api.js', () => ({

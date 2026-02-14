@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import { AnalysisQueue } from '../analysis-queue.js';
 import { getDataPath } from '#config/paths.js';
-import { getAtomicEditor } from '../atomic-editor.js';
+import { getAtomicEditor } from '../atomic-editor/index.js';
 
 import * as lifecycle from './lifecycle.js';
 import * as queueing from './queueing.js';

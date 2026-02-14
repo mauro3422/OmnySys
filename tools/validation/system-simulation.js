@@ -4,7 +4,7 @@
  */
 
 import { LLMService } from '../../src/services/llm-service.js';
-import { AnalysisWorker } from '../core/analysis-worker.js';
+import { AnalysisWorker } from '../../src/core/worker/AnalysisWorker.js';
 
 // Logger de simulación
 const SIM = {

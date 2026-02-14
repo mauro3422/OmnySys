@@ -42,7 +42,7 @@ import {
   McpSetupStep,
   ReadyStep
 } from './initialization/steps/index.js';
-import { getErrorGuardian } from '../../../core/error-guardian.js';
+import { getErrorGuardian } from '../../../core/error-guardian/index.js';
 import { HotReloadManager } from './hot-reload-manager.js';
 
 import path from 'path';

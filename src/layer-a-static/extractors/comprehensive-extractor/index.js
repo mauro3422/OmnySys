@@ -7,6 +7,22 @@
  * @since 0.7.0
  */
 
+import { ComprehensiveExtractor } from './ComprehensiveExtractor.js';
+
+// === Legacy function for backward compatibility ===
+/**
+ * Extract comprehensive metadata from a file (legacy API)
+ * @param {string} filePath - Path to the file
+ * @param {string} code - Source code content
+ * @param {object} options - Extraction options
+ * @returns {object} Comprehensive metadata
+ * @deprecated Use ComprehensiveExtractor class instead
+ */
+export function extractComprehensiveMetadata(filePath, code, options = {}) {
+  const extractor = new ComprehensiveExtractor(options);
+  return extractor.extract(filePath, code);
+}
+
 // === Core ===
 export { 
   ComprehensiveExtractor,
@@ -48,15 +64,62 @@ export {
   assessQuality
 } from './completeness/index.js';
 
-// === Extractors (existing) ===
+// === Extractors (Functions) ===
 export {
   extractFunctions,
+  extractFunctionCalls,
+  extractRecursiveFunctions,
+  extractHigherOrderFunctions,
   extractAsyncPatterns
 } from './extractors/function-extractor.js';
 
-export { extractClasses } from './extractors/class-extractor.js';
-export { extractImports } from './extractors/import-extractor.js';
-export { extractExports } from './extractors/export-extractor.js';
+// === Extractors (Classes) ===
+export {
+  extractClasses,
+  extractClassMethods,
+  extractClassProperties,
+  extractInheritanceHierarchy,
+  calculateInheritanceDepth,
+  extractMixins,
+  extractClassBody,
+  extractImplements,
+  extractDecorators
+} from './extractors/class-extractor/index.js';
+
+// === Extractors (Imports) ===
+export {
+  extractImports,
+  extractDynamicImports,
+  extractImportAliases,
+  extractBarrelImports,
+  extractUnusedImports
+} from './extractors/import-extractor.js';
+
+// === Extractors (Exports) ===
+export {
+  extractExports,
+  parseCommonJSExports,
+  categorizeES6Exports,
+  determineExportStyle,
+  analyzeExportPatterns,
+  extractBarrelPattern,
+  calculateExportMetrics,
+  extractUnusedExports
+} from './extractors/export-extractor/index.js';
+
+// === Parser Utilities ===
+export {
+  PARSER_CONFIG,
+  parseAST,
+  findNodesByType,
+  findFunctions,
+  findArrowFunctions,
+  findClasses,
+  findImports,
+  findExports,
+  findMethods
+} from './parsers/ast-parser.js';
 
 // === Default Export ===
-export { ComprehensiveExtractor as default } from './ComprehensiveExtractor.js';
+// Legacy default export for backward compatibility
+export default extractComprehensiveMetadata;

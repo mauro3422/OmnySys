@@ -8,9 +8,9 @@ import { generateSharedStateConnections } from '../../../analyses/tier3/shared-s
 import { generateEventConnections } from '../../../analyses/tier3/event-pattern-detector.js';
 import { detectAllSemanticConnections } from '../../../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../../extractors/communication/index.js';
-import { detectAllCSSInJSConnections } from '../../../extractors/css-in-js-extractor.js';
-import { detectAllTypeScriptConnections } from '../../../extractors/typescript-extractor.js';
-import { detectAllReduxContextConnections } from '../../../extractors/redux-context-extractor.js';
+import { detectAllCSSInJSConnections } from '../../../extractors/css-in-js-extractor/index.js';
+import { detectAllTypeScriptConnections } from '../../../extractors/typescript/index.js';
+import { detectAllReduxContextConnections } from '../../../extractors/state-management/index.js';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:enhance:connections');

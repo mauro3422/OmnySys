@@ -8,7 +8,7 @@
  */
 
 import { AnalysisQueue } from '../../analysis-queue.js';
-import { AnalysisWorker } from '../../analysis-worker.js';
+import { AnalysisWorker } from '../../worker/AnalysisWorker.js';
 import { StateManager as FileStateManager } from '../../state-manager.js';
 import path from 'path';
 

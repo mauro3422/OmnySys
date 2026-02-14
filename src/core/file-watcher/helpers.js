@@ -39,7 +39,7 @@ export function getStats() {
  * Registra un evento de tunnel vision detectado
  */
 export async function logTunnelVisionEvent(alert) {
-  const { logTunnelVisionEvent } = await import('../tunnel-vision-logger.js');
+  const { logTunnelVisionEvent } = await import('../tunnel-vision-logger/index.js');
   return await logTunnelVisionEvent(alert, {
     sessionId: this._sessionId || generateSessionId()
   });

@@ -100,7 +100,7 @@ async function validateInitializationFlow() {
   const criticalFiles = [
     'src/services/llm-service.js',
     'src/services/index.js',
-    'src/core/analysis-worker.js',
+    'src/core/worker/AnalysisWorker.js',
     'src/core/orchestrator/lifecycle.js',
     'src/core/orchestrator/llm-analysis.js',
     'src/layer-c-memory/mcp-server.js'
@@ -169,7 +169,7 @@ async function validateAnalysisWorker() {
   console.log('VALIDATING AnalysisWorker');
   console.log('='.repeat(60));
   
-  const workerPath = path.resolve(ROOT_DIR, 'src/core/analysis-worker.js');
+  const workerPath = path.resolve(ROOT_DIR, 'src/core/worker/AnalysisWorker.js');
   const content = await fs.readFile(workerPath, 'utf-8');
   
   // Verificar que usa LLMService
@@ -249,7 +249,7 @@ async function validateEntryPoints() {
   
   const entryPoints = [
     'src/layer-c-memory/mcp-server.js',
-    'src/core/orchestrator-server.js',
+    'src/core/orchestrator-server/index.js',
     'src/core/unified-server/initialization/orchestrator-init.js'
   ];
   

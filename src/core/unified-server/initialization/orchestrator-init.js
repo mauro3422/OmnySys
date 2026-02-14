@@ -8,7 +8,7 @@
 
 import path from 'path';
 import { StateManager } from '../../state-manager.js';
-import { AnalysisWorker } from '../../analysis-worker.js';
+import { AnalysisWorker } from '../../worker/AnalysisWorker.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:orchestrator:init');

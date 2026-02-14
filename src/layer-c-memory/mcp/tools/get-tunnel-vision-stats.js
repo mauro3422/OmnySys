@@ -12,7 +12,7 @@
  * @module layer-c-memory/mcp/tools/get-tunnel-vision-stats
  */
 
-import { getStats, analyzePatterns, readAllEvents } from '../../../core/tunnel-vision-logger.js';
+import { getStats, analyzePatterns, readAllEvents } from '../../../core/tunnel-vision-logger/index.js';
 
 /**
  * MCP Tool: get_tunnel_vision_stats

@@ -1,6 +1,6 @@
 import path from 'path';
 import { StateManager } from '../../state-manager.js';
-import { AnalysisWorker } from '../../analysis-worker.js';
+import { AnalysisWorker } from '../../worker/AnalysisWorker.js';
 import { UnifiedCacheManager } from '../../unified-cache-manager.js';
 import { loadAIConfig } from '../../../ai/llm-client.js';
 import { LLMService } from '../../../services/llm-service.js';
