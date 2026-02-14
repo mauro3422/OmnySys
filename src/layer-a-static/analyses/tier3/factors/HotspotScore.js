@@ -11,8 +11,9 @@
  * @returns {Object} - Score and explanation
  */
 export function calculateHotspotScore(graphMetrics) {
-  const inDegree = graphMetrics.inDegree || 0;
-  const outDegree = graphMetrics.outDegree || 0;
+  const safeMetrics = graphMetrics || {};
+  const inDegree = safeMetrics.inDegree || 0;
+  const outDegree = safeMetrics.outDegree || 0;
 
   let score = 0;
   const explanations = [];

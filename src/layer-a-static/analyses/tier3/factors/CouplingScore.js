@@ -11,8 +11,9 @@
  * @returns {Object} - Score and explanation
  */
 export function calculateCouplingScore(graphMetrics) {
-  const circularDependencies = graphMetrics.problematicCycles || 0;
-  const coupledFiles = graphMetrics.coupledFiles || 0;
+  const safeMetrics = graphMetrics || {};
+  const circularDependencies = safeMetrics.problematicCycles || 0;
+  const coupledFiles = safeMetrics.coupledFiles || 0;
 
   let score = 0;
   let explanation;

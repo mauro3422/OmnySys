@@ -11,9 +11,10 @@
  * @returns {Object} - Score and explanation
  */
 export function calculateStaticComplexity(fileAnalysis) {
-  const functionCount = fileAnalysis.functions?.length || 0;
-  const importCount = fileAnalysis.imports?.length || 0;
-  const exportCount = fileAnalysis.exports?.length || 0;
+  const safeAnalysis = fileAnalysis || {};
+  const functionCount = safeAnalysis.functions?.length || 0;
+  const importCount = safeAnalysis.imports?.length || 0;
+  const exportCount = safeAnalysis.exports?.length || 0;
 
   let score = 0;
   const explanations = [];

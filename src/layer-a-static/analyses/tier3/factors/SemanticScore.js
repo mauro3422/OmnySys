@@ -11,8 +11,9 @@
  * @returns {Object} - Score and explanation
  */
 export function calculateSemanticScore(semanticConnections) {
-  const connectionCount = semanticConnections.length;
-  const highSeverityConnections = semanticConnections.filter(
+  const safeConnections = semanticConnections || [];
+  const connectionCount = safeConnections.length;
+  const highSeverityConnections = safeConnections.filter(
     c => c.severity === 'critical' || c.severity === 'high'
   ).length;
 

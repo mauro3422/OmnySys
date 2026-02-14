@@ -11,12 +11,13 @@
  * @returns {Object} - Score and explanation
  */
 export function calculateSideEffectScore(sideEffects) {
-  const sideEffectCount = Object.values(sideEffects).filter(Boolean).length || 0;
+  const safeSideEffects = sideEffects || {};
+  const sideEffectCount = Object.values(safeSideEffects).filter(Boolean).length || 0;
 
   let score = 0;
   const explanations = [];
 
-  if (sideEffects.makesNetworkCalls && sideEffects.modifiesGlobalState) {
+  if (safeSideEffects.makesNetworkCalls && safeSideEffects.modifiesGlobalState) {
     score = 3;
     explanations.push('Network calls + global state modification');
   } else if (sideEffectCount >= 5) {
@@ -31,11 +32,11 @@ export function calculateSideEffectScore(sideEffects) {
   }
 
   // Additional penalties for critical types
-  if (sideEffects.modifiesGlobalState) {
+  if (safeSideEffects.modifiesGlobalState) {
     score = Math.max(score, 2);
   }
 
-  if (sideEffects.makesNetworkCalls) {
+  if (safeSideEffects.makesNetworkCalls) {
     score = Math.max(score, 2);
   }
 

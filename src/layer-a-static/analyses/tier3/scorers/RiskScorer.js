@@ -6,8 +6,8 @@
  * @module analyses/tier3/scorers/RiskScorer
  */
 
-import { ScoreCalculator } from '../calculators/ScoreCalculator.js';
-import { SeverityCalculator } from '../calculators/SeverityCalculator.js';
+import { calculateRiskScore, calculateScoreSeverity } from '../calculators/ScoreCalculator.js';
+import { calculateScoreSeverity } from '../calculators/SeverityCalculator.js';
 import { ReportGenerator } from '../calculators/ReportGenerator.js';
 
 /**
@@ -15,8 +15,8 @@ import { ReportGenerator } from '../calculators/ReportGenerator.js';
  */
 export class RiskScorer {
   constructor() {
-    this.scoreCalculator = new ScoreCalculator();
-    this.severityCalculator = new SeverityCalculator();
+    this.scoreCalculator = { calculate: calculateRiskScore };
+    this.severityCalculator = { calculate: calculateScoreSeverity };
     this.reportGenerator = new ReportGenerator();
   }
 
@@ -31,7 +31,7 @@ export class RiskScorer {
    * Calculate severity from score
    */
   calculateSeverity(score) {
-    return this.severityCalculator.calculate(score);
+    return calculateScoreSeverity(score);
   }
 
   /**
