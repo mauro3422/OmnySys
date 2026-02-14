@@ -40,8 +40,15 @@ export class ErrorGuardian {
       enableCircuitBreaker: true,
       enableRetry: true,
       enableFallback: true,
+      enableAutoFix: false,  // 🛡️ SAFETY: Disabled by default to prevent accidental overwrites
       ...options
     };
+
+    // 🛡️ Safety warning if auto-fix is enabled
+    if (this.options.enableAutoFix) {
+      logger.warn('⚠️  Auto-fix is ENABLED. This may overwrite your code changes.');
+      logger.warn('   Make sure you have committed your changes to git before continuing.');
+    }
 
     // Initialize modular components
     this.classifier = new ErrorClassifier();
@@ -200,8 +207,8 @@ export class ErrorGuardian {
       context
     });
 
-    // Intentar auto-fix si es posible
-    if (analysis.autoFixable) {
+    // Intentar auto-fix solo si está explícitamente habilitado
+    if (analysis.autoFixable && this.options.enableAutoFix) {
       logger.info('🔧 Intentando auto-fix...');
       const fixed = await this.recovery.attemptAutoFix(analysis);
       if (fixed) {
@@ -209,6 +216,11 @@ export class ErrorGuardian {
         this.stats.autoFixed++;
         return;
       }
+    } else if (analysis.autoFixable && !this.options.enableAutoFix) {
+      // 🛡️ Informar que hay un fix disponible pero está deshabilitado por seguridad
+      logger.info('💡 Auto-fix available but DISABLED for safety.');
+      logger.info('   To enable: new ErrorGuardian(path, { enableAutoFix: true })');
+      logger.info('   Suggested fix:', analysis.suggestedFix || 'See logs for details');
     }
 
     // Si no se pudo arreglar, intentar recuperación graceful
