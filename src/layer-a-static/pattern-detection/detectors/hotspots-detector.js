@@ -28,6 +28,19 @@ export class HotspotsDetector extends PatternDetector {
   }
   
   async detect(systemMap) {
+    // Handle null/undefined input gracefully
+    if (!systemMap) {
+      return {
+        detector: this.getId(),
+        name: this.getName(),
+        description: this.getDescription(),
+        findings: [],
+        score: 100,
+        weight: this.globalConfig.weights?.hotspots || 0.15,
+        recommendation: 'No hotspots detected'
+      };
+    }
+
     const config = this.config;
     const minUsageThreshold = config.minUsageThreshold || 10;
     const highUsageThreshold = config.highUsageThreshold || 20;
