@@ -266,7 +266,7 @@ export class CacheInvalidator extends EventEmitter {
   }
 
   _isInIndex(filePath) {
-    return !!this.cache.index.entries[filePath];
+    return !!(this.cache?.index?.entries && this.cache.index.entries[filePath]);
   }
 
   _isOnDisk(filePath) {

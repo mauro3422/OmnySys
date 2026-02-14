@@ -1,7 +1,10 @@
 /**
  * @fileoverview cache-init-step.js
  *
- * Step 4: Initialize Cache
+ * Step 2: Initialize Cache (AFTER Layer A, BEFORE LLM)
+ * 
+ * Must run AFTER Layer A creates the .omnysysdata/ files.
+ * Loads cache data before LLM and Orchestrator start.
  *
  * @module mcp/core/initialization/steps/cache-init-step
  */
@@ -15,7 +18,8 @@ const logger = createLogger('OmnySys:cache:init:step');
 
 
 /**
- * Step 4: Cache Initialization
+ * Step 2: Cache Initialization
+ * Loads data after Layer A analysis, before LLM and Orchestrator.
  */
 export class CacheInitStep extends InitializationStep {
   constructor() {

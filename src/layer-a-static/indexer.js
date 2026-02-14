@@ -88,9 +88,11 @@ export async function indexProject(rootPath, options = {}) {
     let totalAtomsExtracted = 0;
     
     for (const [absoluteFilePath, parsedFile] of Object.entries(parsedFiles)) {
+      // Declare outside try so catch block can use it
+      let relativeFilePath;
       try {
         // Normalizar path a relativo desde el inicio
-        const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+        relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
         
         // Crear contexto para el phase con path relativo
         const context = {
@@ -126,6 +128,19 @@ export async function indexProject(rootPath, options = {}) {
     if (verbose) {
       logger.info(`  ✓ ${totalAtomsExtracted} rich atoms extracted and saved`);
       logger.info(`  ✓ Individual atoms saved to .omnysysdata/atoms/\n`);
+    }
+
+    // 🧹 MEMORY OPTIMIZATION: Clear source code from parsed files to free memory
+    // The source is no longer needed after atom extraction
+    let freedMemory = 0;
+    for (const parsedFile of Object.values(parsedFiles)) {
+      if (parsedFile.source) {
+        freedMemory += parsedFile.source.length;
+        parsedFile.source = null; // Allow GC to reclaim memory
+      }
+    }
+    if (verbose && freedMemory > 0) {
+      logger.info(`  🧹 Freed ~${Math.round(freedMemory / 1024 / 1024)}MB of source code from memory`);
     }
 
     // Paso 4: Resolver imports

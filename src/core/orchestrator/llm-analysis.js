@@ -3,6 +3,7 @@ import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
 import { createLogger } from '../../utils/logger.js';
 import { getDecisionAuditLogger } from '../../layer-c-memory/shadow-registry/audit-logger.js';
+import { LLMService } from '../../services/llm-service.js';
 
 const logger = createLogger('OmnySys:llm:analysis');
 
@@ -52,16 +53,10 @@ function shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer) {
  *
  * Esta función revisa los metadatos que Layer A generó y decide qué archivos
  * necesitan análisis LLM para fortalecer las conexiones semánticas.
- *
- * Criterios para necesitar LLM:
- * - Archivos huérfanos (0 dependents) - potencialmente conectados por estado global
- * - Archivos con shared state detectado (window.*, localStorage)
- * - Archivos con eventos complejos
- * - Archivos con imports dinámicos
- * - God objects (muchos exports + dependents)
  */
 export async function _analyzeComplexFilesWithLLM() {
   logger.info('\n🤖 Orchestrator: Analyzing complex files with LLM...');
+  console.log('[LLM-ANALYSIS] Starting LLM analysis of files...');
 
   try {
     // Importar dependencias dinámicamente
@@ -70,15 +65,26 @@ export async function _analyzeComplexFilesWithLLM() {
     const { detectArchetypes } = await import('../../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract.js');
 
-    // Inicializar LLM Analyzer
-    const aiConfig = await (await import('../../ai/llm-client.js')).loadAIConfig();
-    const llmAnalyzer = new LLMAnalyzer(aiConfig, this.projectPath);
-    const initialized = await llmAnalyzer.initialize();
-
-    if (!initialized) {
+    // Usar LLMService para verificar disponibilidad
+    const llmService = await LLMService.getInstance();
+    const llmReady = await llmService.waitForAvailable(20000); // 20s timeout
+    
+    if (!llmReady) {
       logger.info('   ⚠️  LLM not available, skipping LLM analysis');
       return;
     }
+    
+    logger.info('   ✅ LLM server is available (via LLMService)');
+
+    // Inicializar LLM Analyzer con el cliente del servicio
+    // Esto evita crear una nueva conexión HTTP
+    const aiConfig = await (await import('../../ai/llm-client.js')).loadAIConfig();
+    const llmAnalyzer = new LLMAnalyzer(aiConfig, this.projectPath);
+    
+    // Usar el cliente del servicio (compartido) en lugar de crear uno nuevo
+    llmAnalyzer.client = llmService.client;
+    llmAnalyzer.initialized = true;
+    logger.info('   ✅ LLM analyzer initialized with shared client');
 
     // Leer índice de archivos analizados por Layer A
     const indexPath = path.join(this.OmnySysDataPath, 'index.json');
@@ -93,7 +99,7 @@ export async function _analyzeComplexFilesWithLLM() {
 
     // Revisar cada archivo en el índice - PROCESAMIENTO PARALELO POR BATCHES
     const entries = Object.entries(index.fileIndex || {});
-    const BATCH_SIZE = 10; // Procesar 10 archivos en paralelo
+    const BATCH_SIZE = 5; // Mantener en 5 para evitar problemas de memoria
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE);
@@ -121,7 +127,7 @@ export async function _analyzeComplexFilesWithLLM() {
         // Decidir si necesita LLM basado en arquetipos y Gates de decisión
         const needsLLM = shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer);
 
-        // 🆕 NUEVO: Loguear decisión arquitectónica (BUG #47 FIX #3)
+        // Loguear decisión arquitectónica
         const auditLogger = getDecisionAuditLogger(this.projectPath);
         await auditLogger.initialize();
 
@@ -168,6 +174,7 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     if (filesNeedingLLM.length === 0) {
+      console.log('[LLM-ANALYSIS] No files need LLM analysis (static analysis sufficient)');
       logger.info('   i  No files need LLM analysis (static analysis sufficient)');
       logger.info('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
@@ -184,6 +191,7 @@ export async function _analyzeComplexFilesWithLLM() {
     this.processedFiles.clear();
     this.analysisCompleteEmitted = false;
 
+    console.log(`[LLM-ANALYSIS] Found ${filesNeedingLLM.length} files needing LLM analysis`);
     logger.info(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
 
     // Agregar archivos a la cola con prioridad
@@ -199,10 +207,15 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     logger.info(`   ✅ ${filesNeedingLLM.length} files added to analysis queue`);
+    
+    // MEMORY CLEANUP: Clear the array to free memory before processing
+    const fileCount = filesNeedingLLM.length;
+    filesNeedingLLM.length = 0; // Clear array but keep reference
+    
     logger.info('   🚀 Starting processing...');
 
-    // Iniciar procesamiento - FILL ALL SLOTS
-    const maxConcurrent = this.maxConcurrentAnalyses || 4;
+    // Iniciar procesamiento - FILL ALL SLOTS (máximo 2 para GPU)
+    const maxConcurrent = Math.min(this.maxConcurrentAnalyses || 2, 2); // Max 2 for GPU
     for (let i = 0; i < maxConcurrent; i++) {
       this._processNext();
     }

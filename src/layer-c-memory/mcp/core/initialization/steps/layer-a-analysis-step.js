@@ -1,7 +1,10 @@
 /**
  * @fileoverview layer-a-analysis-step.js
  *
- * Step 2: Run Layer A static analysis if needed
+ * Step 1: Run Layer A static analysis if needed
+ * 
+ * Now runs BEFORE LLM setup so we can determine if LLM is actually needed.
+ * This is the correct order: Layer A determines requirements, then we start LLM if needed.
  *
  * @module mcp/core/initialization/steps/layer-a-analysis-step
  */
@@ -14,7 +17,8 @@ const logger = createLogger('OmnySys:layer:a:analysis:step');
 
 
 /**
- * Step 2: Layer A Analysis
+ * Step 1: Layer A Analysis
+ * Runs first to determine what analysis is needed before starting LLM.
  */
 export class LayerAAnalysisStep extends InitializationStep {
   constructor() {

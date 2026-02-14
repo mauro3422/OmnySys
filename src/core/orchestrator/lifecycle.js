@@ -6,10 +6,10 @@ import { FileWatcher } from '../file-watcher.js';
 import { WebSocketManager } from '../websocket/index.js';
 import { BatchProcessor } from '../batch-processor/index.js';
 import { UnifiedCacheManager } from '../unified-cache-manager.js';
-import { LLMAnalyzer } from '../../layer-b-semantic/llm-analyzer/index.js';
 import { indexProject } from '../../layer-a-static/indexer.js';
 import { createLogger } from '../../utils/logger.js';
 import { loadAIConfig } from '../../ai/llm-client.js';
+import { LLMService } from '../../services/llm-service.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 
@@ -19,42 +19,48 @@ const logger = createLogger('OmnySys:lifecycle');
  * Initialize the orchestrator
  */
 export async function initialize() {
-  logger.info('\nðŸ”§ Initializing Orchestrator...\n');
+  logger.info('\n🔧 Initializing Orchestrator...\n');
 
-  // Initialize cache
-  this.cache = new UnifiedCacheManager(this.projectPath, {
-    enableChangeDetection: true,
-    cascadeInvalidation: true
-  });
-  await this.cache.initialize();
+  // Initialize cache - use external cache if provided, otherwise create new
+  if (this.options.cache) {
+    this.cache = this.options.cache;
+    logger.info('  ✅ Using shared cache from server');
+  } else {
+    this.cache = new UnifiedCacheManager(this.projectPath, {
+      enableChangeDetection: true,
+      cascadeInvalidation: true
+    });
+    await this.cache.initialize();
+    logger.info('  ✅ Cache initialized');
+  }
 
   // Initialize state manager
   this.stateManager = new StateManager(
     path.join(this.OmnySysDataPath, 'orchestrator-state.json')
   );
 
-  // OPTIMIZATION: Create single LLMAnalyzer instance once to avoid repeated initialization
-  let llmAnalyzer = null;
+  // Load AI config
+  this.aiConfig = await loadAIConfig();
+  this.maxConcurrentAnalyses = this.aiConfig?.performance?.maxConcurrentAnalyses || 2;
+  
+  // Initialize LLMService (singleton)
+  // El servicio se inicializa lazy, aquí solo nos aseguramos que exista
   try {
-    const aiConfig = await loadAIConfig();
-    llmAnalyzer = new LLMAnalyzer(aiConfig, this.projectPath);
-    // Share the same cache instance to avoid re-reading files
-    llmAnalyzer.cache = this.cache;
-    await llmAnalyzer.initialize();
-    logger.info('✅ Shared LLM analyzer initialized with cache');
+    await LLMService.getInstance();
+    logger.info('  ✅ LLMService initialized');
   } catch (err) {
-    logger.warn('⚠️ LLM analyzer initialization failed:', err.message);
+    logger.warn('⚠️  LLMService not ready yet:', err.message);
   }
 
-  // Initialize worker with injected LLMAnalyzer
+  // Initialize worker
+  // El worker obtendrá el LLMService del singleton automáticamente
   this.worker = new AnalysisWorker(this.projectPath, {
     onProgress: (job, progress) => this._onJobProgress(job, progress),
     onComplete: (job, result) => this._onJobComplete(job, result),
     onError: (job, error) => this._onJobError(job, error)
-  }, {
-    llmAnalyzer
   });
   await this.worker.initialize();
+  logger.info('  ✅ Worker initialized');
 
   // Initialize optional components
   if (this.options.enableFileWatcher) {
@@ -68,21 +74,18 @@ export async function initialize() {
   // Load existing state
   await this._loadState();
 
+  // Start LLM availability monitoring
+  this._startLLMHealthChecker();
+
   // Analyze complex files with LLM based on Layer A metadata
-  // NOTE: _analyzeComplexFilesWithLLM internally calls _processNext() when ready
-  // So we DON'T call _processNext() here to avoid race condition
+  // El LLMService manejará la disponibilidad automáticamente
   this._analyzeComplexFilesWithLLM().then(() => {
     logger.info("✅ LLM analysis queue ready");
   }).catch(err => {
     logger.error("❌ LLM analysis setup failed:", err.message);
-    // Start processing anyway in case there are jobs
-    this._processNext();
   });
 
-  // Don't call _processNext() here - let _analyzeComplexFilesWithLLM handle it
-  // This prevents the race condition where we process before jobs are queued
-
-  logger.info('âœ… Orchestrator initialized\n');
+  logger.info('✅ Orchestrator initialized\n');
 }
 
 /**
@@ -99,10 +102,11 @@ export async function startBackgroundIndexing() {
   logger.info('\nðŸš€ Starting background indexing...\n');
   this.isIndexing = true;
 
-  // Check LLM availability
+  // Check LLM availability via service
   let llmAvailable = false;
   if (this.options.autoStartLLM) {
-    llmAvailable = await this._ensureLLMAvailable();
+    const service = await LLMService.getInstance();
+    llmAvailable = await service.waitForAvailable(10000);
   }
 
   // Start indexing in background (don't await)
@@ -129,8 +133,13 @@ export async function startBackgroundIndexing() {
  * Stop the orchestrator
  */
 export async function stop() {
-  logger.info('\nðŸ‘‹ Stopping Orchestrator...');
+  logger.info('\n👋 Stopping Orchestrator...');
   this.isRunning = false;
+
+  if (this._llmHealthRunning) {
+    this._llmHealthRunning = false;
+    logger.info('✅ LLM health checker stopped');
+  }
 
   if (this.fileWatcher) {
     await this.fileWatcher.stop();
@@ -148,7 +157,81 @@ export async function stop() {
     await this.worker.stop();
   }
 
-  logger.info('âœ… Orchestrator stopped');
+  logger.info('✅ Orchestrator stopped');
+}
+
+/**
+ * Start periodic LLM health checker
+ * Ahora simplificado usando LLMService
+ */
+export function _startLLMHealthChecker() {
+  logger.info('🔍 [HEALTH-CHECK] Starting...');
+  
+  if (this._llmHealthRunning) {
+    logger.info('⏳ Health checker already running');
+    return;
+  }
+  
+  this._llmHealthRunning = true;
+  let attempts = 0;
+  const maxAttempts = 60;
+  
+  const checkLLM = async () => {
+    if (!this._llmHealthRunning) return;
+    
+    try {
+      logger.info(`🔍 [HEALTH-CHECK] Attempt ${attempts + 1}/${maxAttempts}`);
+      
+      const service = await LLMService.getInstance();
+      const isAvailable = service.isAvailable();
+      
+      if (isAvailable) {
+        logger.info('✅ LLM server is available (via LLMService)');
+        this._llmHealthRunning = false;
+        
+        // Trigger analysis if not already done
+        if (!this._llmAnalysisTriggered) {
+          logger.info('🤖 Triggering LLM analysis queue...');
+          this._llmAnalysisTriggered = true;
+          this._analyzeComplexFilesWithLLM().then(() => {
+            logger.info("✅ LLM analysis queue completed");
+          }).catch(err => {
+            logger.error("❌ LLM analysis failed:", err.message);
+            this._llmAnalysisTriggered = false;
+          });
+        }
+        return;
+      }
+      
+      // Try to force health check
+      await service.checkHealth();
+      
+      attempts++;
+      if (attempts % 6 === 0) {
+        logger.info(`⏳ Still waiting for LLM server... (${attempts}/${maxAttempts})`);
+      }
+      
+      if (attempts >= maxAttempts) {
+        logger.warn('⚠️  LLM health checker stopped after 5 minutes');
+        this._llmHealthRunning = false;
+        return;
+      }
+      
+      // Schedule next check
+      setTimeout(checkLLM, 5000);
+    } catch (error) {
+      logger.warn('⚠️  LLM health check error:', error.message);
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(checkLLM, 5000);
+      } else {
+        this._llmHealthRunning = false;
+      }
+    }
+  };
+  
+  // Start first check immediately
+  setTimeout(checkLLM, 0);
 }
 
 // ==========================================
@@ -169,29 +252,23 @@ export async function _initializeFileWatcher() {
   });
 
   this.fileWatcher.on('file:modified', async (event) => {
-    // 🆕 INVALIDACIÓN SÍNCRONA INMEDIATA (nueva arquitectura)
     logger.info(`🗑️  Cache invalidation starting for: ${event.filePath}`);
 
     const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
 
     try {
-      // Invalidar caché ANTES de continuar (síncrono)
       const result = await cacheInvalidator.invalidateSync(event.filePath);
 
       if (!result.success) {
         logger.error(`❌ Cache invalidation failed for ${event.filePath}:`, result.error);
-        // No continuar si invalidación falla
         return;
       }
 
       logger.info(`✅ Cache invalidated (${result.duration}ms): ${event.filePath}`);
-
-      // Solo agregar a batch si invalidación exitosa
       this.batchProcessor?.addChange(event.filePath, 'modified');
 
     } catch (error) {
       logger.error(`💥 Unexpected error during cache invalidation:`, error.message);
-      // No propagar error, solo loguear
     }
   });
 
@@ -232,14 +309,6 @@ export async function _initializeFileWatcher() {
     maxBatchSize: 20,
     batchTimeoutMs: 1000,
     processChange: async (change) => {
-      // 📝 NOTA: La invalidación de caché ahora se hace SÍNCRONAMENTE
-      // en el handler de 'file:modified' ANTES de llegar aquí.
-      // Esto garantiza que el caché esté limpio antes de procesar.
-      // 
-      // La llamada anterior a _invalidateFileCache() se mantiene como
-      // fallback por compatibilidad, pero no es necesaria:
-      // await this._invalidateFileCache(change.filePath);
-
       const priority = this._calculateChangePriority(change);
       this.queue.enqueue(change.filePath, priority);
 
@@ -285,8 +354,6 @@ export function _monitorIndexingProgress() {
   const checkProgress = () => {
     if (!this.isIndexing) return;
 
-    // Update progress based on indexed files
-    // This is a simplified version - could be more sophisticated
     this.emit('indexing:progress', this.indexingProgress);
     setTimeout(checkProgress, 1000);
   };

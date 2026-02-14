@@ -13,7 +13,7 @@ export class LLMClient {
       analysisTemplate: ""
     };
     this.config.performance = this.config.performance || {};
-    this.config.performance.timeout = this.config.performance.timeout || 30000;
+    this.config.performance.timeout = this.config.performance.timeout || 120000;
     this.config.performance.maxConcurrentAnalyses = this.config.performance.maxConcurrentAnalyses || 4;
 
     this.servers = {
@@ -122,7 +122,7 @@ export class LLMClient {
       // Usar system prompt personalizado si se proporciona, sino el de la config
       const finalSystemPrompt = systemPrompt || this.config.prompts?.systemPrompt || "You are a semantic code analyzer. Return ONLY valid JSON.";
 
-      const timeoutMs = this.config.performance?.timeout || 30000;
+      const timeoutMs = this.config.performance?.timeout || 120000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

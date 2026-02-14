@@ -37,8 +37,8 @@ export async function loadAIConfig(configPath) {
       },
       performance: {
         enableCPUFallback: false,
-        maxConcurrentAnalyses: 4,
-        timeout: 30000
+        maxConcurrentAnalyses: 2,
+        timeout: 120000  // 2 minutes for large files
       },
       prompts: {
         systemPrompt: "You are a semantic code analyzer.",

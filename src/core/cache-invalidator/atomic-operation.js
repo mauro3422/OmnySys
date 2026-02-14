@@ -282,8 +282,8 @@ export class OperationFactory {
     return new CacheOperation(
       CacheOperationType.UPDATE_INDEX,
       async () => {
-        // Guardar entrada antes de eliminar
-        entry = indexOps.cache.index.entries[filePath];
+        // Guardar entrada antes de eliminar (with safety check)
+        entry = indexOps.cache?.index?.entries?.[filePath] || null;
         return indexOps.removeEntry(filePath);
       },
       async () => {

@@ -1,7 +1,11 @@
 /**
  * @fileoverview llm-setup-step.js
  *
- * Step 1: Initialize LLM server
+ * Step 3: Initialize LLM server (BACKGROUND/NON-BLOCKING)
+ * 
+ * Starts LLM server in background BEFORE Orchestrator.
+ * The Orchestrator will connect to it when ready (lazy connection).
+ * This prevents blocking the pipeline while LLM initializes.
  *
  * @module mcp/core/initialization/steps/llm-setup-step
  */
@@ -14,7 +18,9 @@ const logger = createLogger('OmnySys:llm:setup:step');
 
 
 /**
- * Step 1: LLM Server Setup
+ * Step 3: LLM Server Setup
+ * Starts LLM in background (non-blocking) before Orchestrator.
+ * Orchestrator will connect lazily when LLM is ready.
  */
 export class LLMSetupStep extends InitializationStep {
   constructor() {
@@ -27,15 +33,25 @@ export class LLMSetupStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('AI Server Setup');
+    logger.info('AI Server Setup (Background)');
 
     try {
-      const { startLLM } = await import('../../llm-starter.js');
-      await startLLM(server.OmnySysRoot);
-      logger.info('  ✅ LLM server started');
+      const { startLLMBackground } = await import('../../llm-starter.js');
+      
+      // Start LLM in background (non-blocking)
+      const started = await startLLMBackground(server.OmnySysRoot);
+      
+      if (started) {
+        logger.info('  🚀 LLM server starting in background...');
+        logger.info('     Will be ready in 10-30 seconds');
+        logger.info('     Orchestrator will connect when ready');
+      } else {
+        logger.info('  ℹ️  LLM not started (already running or disabled)');
+      }
+      
       return true;
     } catch (error) {
-      logger.info(`  ⚠️  LLM server not available: ${error.message}`);
+      logger.info(`  ⚠️  LLM setup failed: ${error.message}`);
       if (process.env.DEBUG) {
         logger.info(`  🐛 Error stack: ${error.stack}`);
       }

@@ -3,7 +3,8 @@ import { createLogger } from '../../utils/logger.js';
 const logger = createLogger('OmnySys:queueing');
 
 // OPTIMIZATION: Default max concurrent analyses
-const DEFAULT_MAX_CONCURRENT = 4;
+// Reduced from 4 to 2 to prevent memory issues with large codebases
+const DEFAULT_MAX_CONCURRENT = 2;
 
 /**
 * Analyze a file and wait for result

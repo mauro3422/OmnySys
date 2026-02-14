@@ -123,12 +123,16 @@ async function main() {
   process.on('uncaughtException', async (error) => {
     // Ignore EPIPE errors - they occur when client disconnects unexpectedly
     // This is normal behavior for MCP stdio transport and should not crash the server
-    if (error.code === 'EPIPE') {
-      logger.info('⚠️  EPIPE ignored (client disconnected)');
-      return;
+    const isEpipe = error.code === 'EPIPE' || 
+                    (error.message && error.message.includes('EPIPE')) ||
+                    (error.message && error.message.includes('broken pipe'));
+    
+    if (isEpipe) {
+      logger.debug('⚠️  EPIPE ignored (client disconnected)');
+      return; // Don't crash on EPIPE
     }
 
-    logger.info('\n❌ Uncaught exception:', error);
+    logger.error('\n❌ Uncaught exception:', error);
     await server.shutdown();
     process.exit(1);
   });

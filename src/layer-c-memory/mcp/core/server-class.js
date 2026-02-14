@@ -89,12 +89,21 @@ export class OmnySysMCPServer extends EventEmitter {
     // Build initialization pipeline
     // InstanceDetectionStep MUST be first - it sets server.isPrimary
     // which controls whether heavy steps (LLM, LayerA, Orchestrator) execute
+    // 
+    // CORRECT ORDER:
+    // 1. InstanceDetectionStep - Detect if another instance is running
+    // 2. LayerAAnalysisStep    - Static analysis FIRST (creates .omnysysdata/)
+    // 3. CacheInitStep         - Load data into cache
+    // 4. LLMSetupStep          - Start LLM in background (non-blocking)
+    // 5. OrchestratorInitStep  - Orchestrator (will connect to LLM when ready)
+    // 6. McpSetupStep          - Setup MCP protocol
+    // 7. ReadyStep             - Server ready
     this.pipeline = new InitializationPipeline([
       new InstanceDetectionStep(),
-      new LLMSetupStep(),
       new LayerAAnalysisStep(),
-      new OrchestratorInitStep(),
       new CacheInitStep(),
+      new LLMSetupStep(),
+      new OrchestratorInitStep(),
       new McpSetupStep(),
       new ReadyStep()
     ]);
@@ -177,6 +186,26 @@ export class OmnySysMCPServer extends EventEmitter {
     logger.info('\n🛑 Shutting down server...');
 
     try {
+      // Kill LLM processes first
+      logger.info('  🛑 Stopping LLM servers...');
+      try {
+        const { exec } = await import('child_process');
+        const util = await import('util');
+        const execPromise = util.promisify(exec);
+        
+        // Kill llama-server processes
+        if (process.platform === 'win32') {
+          await execPromise('taskkill /F /IM llama-server.exe 2>nul').catch(() => {});
+          await execPromise('taskkill /F /IM brain_gpu.bat 2>nul').catch(() => {});
+        } else {
+          await execPromise('pkill -f llama-server 2>/dev/null').catch(() => {});
+          await execPromise('pkill -f brain_gpu 2>/dev/null').catch(() => {});
+        }
+        logger.info('  ✅ LLM servers stopped');
+      } catch (err) {
+        // Ignore errors - processes might not be running
+      }
+
       if (this.server) {
         await this.server.close();
         logger.info('  ✅ MCP server closed');

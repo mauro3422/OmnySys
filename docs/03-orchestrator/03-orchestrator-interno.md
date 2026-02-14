@@ -143,7 +143,7 @@ function shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer) {
 new Orchestrator(projectPath, {
   enableFileWatcher: true,     // Detectar cambios
   enableWebSocket: true,       // Notificar a clients
-  autoStartLLM: false,         // ← YA ARREGLADO (era true)
+  autoStartLLM: false,         // LLM started after orchestrator (on-demand)
   ports: {
     webSocket: 9997
   }

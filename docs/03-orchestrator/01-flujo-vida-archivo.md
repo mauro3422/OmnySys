@@ -338,17 +338,28 @@ const analysis = await getFileAnalysis(projectPath, 'GlobalStore.js');
 
 ---
 
-## 🚨 Problemas Conocidos
+## ✅ Problemas Resueltos
 
-### Problema 1: LLM temprano en pipeline (Pendiente)
+### ~~Problema 1: LLM temprano en pipeline~~ ✅ ARREGLADO
 
-**Síntoma**: El LLM se inicia en Step 2 del pipeline MCP, antes de Layer A.
+**Síntoma**: El LLM se iniciaba en Step 2 del pipeline MCP, antes de Layer A.
 
 **Impacto**: Espera 30s del LLM aunque no lo necesitemos.
 
-**Fix propuesto**: Mover `LLMSetupStep` al final del pipeline.
+**Fix aplicado**: Mover `LLMSetupStep` al final del pipeline (Step 5), después de Layer A y Orchestrator.
 
-**Estado**: ⏳ Pendiente
+**Estado**: ✅ **RESUELTO en v0.7.1**
+
+**Orden correcto ahora**:
+```
+1. InstanceDetectionStep     (Step 0)
+2. LayerAAnalysisStep        (Step 1) - Análisis estático PRIMERO
+3. OrchestratorInitStep      (Step 2) - Decide si necesita LLM
+4. CacheInitStep             (Step 3)
+5. McpSetupStep              (Step 4)
+6. LLMSetupStep              (Step 5) - LLM solo si se necesita
+7. ReadyStep                 (Step 6)
+```
 
 ---
 

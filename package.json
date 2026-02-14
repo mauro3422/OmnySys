@@ -24,7 +24,9 @@
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\"",
     "validate": "node scripts/validate-syntax.js",
-    "postinstall": "node install.js"
+    "postinstall": "node install.js",
+    "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-server.js",
+    "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js"
   },
   "keywords": [
     "ai",

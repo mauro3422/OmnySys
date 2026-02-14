@@ -219,11 +219,20 @@ export class IndexOperations {
    */
   removeEntry(filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // Safety check: ensure index and entries exist
+    if (!this.cache?.index?.entries) {
+      logger.warn(`⚠️  Cannot remove entry: index not initialized`);
+      return null;
+    }
+    
     const entry = this.cache.index.entries[normalizedPath];
     
     if (entry) {
       delete this.cache.index.entries[normalizedPath];
-      this.cache.index.metadata.totalFiles--;
+      if (this.cache.index.metadata) {
+        this.cache.index.metadata.totalFiles--;
+      }
       logger.debug(`🗑️  Removed index entry: ${normalizedPath}`);
     }
     
@@ -237,6 +246,18 @@ export class IndexOperations {
    */
   restoreEntry(filePath, entry) {
     const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // Safety check: ensure index and entries exist
+    if (!this.cache?.index) {
+      this.cache.index = { entries: {}, metadata: { totalFiles: 0 } };
+    }
+    if (!this.cache.index.entries) {
+      this.cache.index.entries = {};
+    }
+    if (!this.cache.index.metadata) {
+      this.cache.index.metadata = { totalFiles: 0 };
+    }
+    
     this.cache.index.entries[normalizedPath] = entry;
     this.cache.index.metadata.totalFiles++;
     logger.debug(`↩️  Restored index entry: ${normalizedPath}`);

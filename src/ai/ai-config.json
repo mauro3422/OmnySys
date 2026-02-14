@@ -19,8 +19,8 @@
   },
   "performance": {
     "enableCPUFallback": false,
-    "maxConcurrentAnalyses": 4,
-    "timeout": 30000
+    "maxConcurrentAnalyses": 2,
+    "timeout": 120000
   },
   "prompts": {
     "systemPrompt": "You are a semantic code analyzer. Return ONLY valid JSON.",

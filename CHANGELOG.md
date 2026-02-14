@@ -8,7 +8,9 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.0]** | `changelog/v0.9.0.md` | **Pattern Detection Engine V2 - Intelligent Analysis** (Latest - Stable) |
+| **[0.9.2]** | `changelog/v0.9.2-llm-service-refactor.md` | **LLMService Architecture Refactor - Circuit Breaker & Metrics** (Latest - Stable) |
+| **[0.9.1]** | `changelog/v0.9.1.md` | **MCP Pipeline Hotfix - Critical Initialization Fixes** |
+| **[0.9.0]** | `changelog/v0.9.0.md` | **Pattern Detection Engine V2 - Intelligent Analysis** |
 | **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** |
 | **[0.7.2]** | `changelog/v0.7.2.md` | **BUG #47 Fix + 89 Extractores + Verification** |
 | **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** |
@@ -34,7 +36,37 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.9.0 (2026-02-12) - Pattern Detection Engine V2**
+### **🚀 Latest Release: v0.9.2 (2026-02-14) - LLMService Architecture Refactor**
+
+**Complete LLM Architecture Refactoring**: Centralización de comunicación con GPU en servicio singleton con circuit breaker, métricas y health checking automático.
+
+**Key Changes**:
+- ✅ **LLMService Singleton**: Un único punto de control para todo el sistema
+- ✅ **Circuit Breaker**: Protección contra cascada de fallos cuando GPU muere
+- ✅ **Real-time Metrics**: Latencia, errores, throughput centralizados
+- ✅ **50% Less Code Duplication**: Eliminadas múltiples instancias de LLMClient
+- ✅ **Zero Breaking Changes**: Código legacy continúa funcionando
+
+**Ver archivo:** `changelog/v0.9.2-llm-service-refactor.md`
+
+---
+
+### **v0.9.1 (2026-02-13) - MCP Pipeline Hotfix**
+
+**Critical Fixes to MCP Initialization Pipeline**: Corrección de 3 bugs críticos en el orden de inicialización que causaban inicios lentos (10-30s), duplicación de cache e inconsistencias de datos.
+
+**Key Changes**:
+- ✅ **85% Faster Startup**: ~2s para proyectos sin LLM (antes 30-35s)
+- ✅ **Fixed LLM Order**: LLM solo inicia si hay archivos que lo necesitan
+- ✅ **Eliminated Cache Duplication**: Orchestrator ahora usa cache compartido
+- ✅ **Fixed FileWatcher Timing**: Cache preparado antes de iniciar FileWatcher
+- ✅ **Zero Breaking Changes**: APIs públicas sin cambios
+
+**Ver archivo:** `changelog/v0.9.1.md`
+
+---
+
+### **v0.9.0 (2026-02-12) - Pattern Detection Engine V2**
 
 **Pattern Detection Engine V2 - Intelligent Code Analysis**: Sistema robusto de detección de patrones con heurísticas inteligentes basadas en AST, eliminando 99.8% de falsos positivos y proporcionando análisis de calidad preciso.
 

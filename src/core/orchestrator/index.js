@@ -76,7 +76,7 @@ class Orchestrator extends EventEmitter {
    */
   async _getCacheInvalidator() {
     if (!this.cacheInvalidator) {
-      const { getCacheInvalidator } = await import('../cache-invalidator/index.js');
+      const { getCacheInvalidator } = await import('../cache-invalidator/index.js'); // Path is correct: orchestrator/ -> core/ -> cache-invalidator/
       this.cacheInvalidator = getCacheInvalidator(this.cache || { projectPath: this.projectPath });
     }
     return this.cacheInvalidator;
