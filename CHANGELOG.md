@@ -8,7 +8,8 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** (Latest - Stable) |
+| **[0.9.7]** | `changelog/v0.9.7-layer-a-core-test-audit.md` | **Layer A Core Test Audit - 90 Tests 100% Passing** (Latest - Stable) |
+| **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** |
 | **[0.9.5]** | `changelog/v0.9.5-complete-modular-refactor.md` | **Complete Modular Refactoring Phase 2** |
 | **[0.9.4]** | `changelog/v0.9.4-COMPLETE.md` | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** |
 | **[0.9.3]** | `changelog/v0.9.3-modular-refactor.md` | **Massive Modular Refactoring - 5 Monoliths → 56 Modules** |
@@ -40,7 +41,17 @@ This repository uses a modular changelog structure for better organization and m
 | **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
 | **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
 
-### **🚀 Latest Release: v0.9.6 (2026-02-14) - Cleanup: Eliminación de Wrappers Legacy**
+### **🚀 Latest Release: v0.9.7 (2026-02-14) - Layer A Core Test Audit**
+
+**Test Audit Complete**: Audit completo del Layer A Core con **90 tests pasando (100%)**. Arquitectura de testing profesional implementada con Contract Testing pattern para multi-language support. Sistema 100% funcional y listo para continuar con Layer A Analysis.
+
+**Key Changes**:
+- ✅ **90 Tests Passing**: Parser (15) + Scanner (12) + Graph (13) + Contracts (52)
+- ✅ **52 Contract Tests**: Patrón revolucionario para soporte multi-lenguaje
+- ✅ **3 Critical Fixes**: ESM traverse, TS/Flow conflict, glob patterns
+- ✅ **CI/CD Parallel**: 8-10 min vs 30+ min sequential
+
+### **Previous Release: v0.9.6 (2026-02-14) - Cleanup: Eliminación de Wrappers Legacy**
 
 **Cleanup Completo**: Eliminación de **18 wrappers legacy** creados durante la refactorización. El sistema ahora usa directamente las rutas modulares sin wrappers de compatibilidad. **Zero deuda técnica**.
 

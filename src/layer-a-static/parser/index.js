@@ -16,7 +16,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
+const traverse = _traverse.default || _traverse;
 
 import { getParserOptions } from './config.js';
 import { extractESMImport, extractCommonJSRequire, extractDynamicImport } from './extractors/imports.js';
@@ -69,7 +70,7 @@ export function parseFile(filePath, code) {
   try {
     const ast = parse(code, getParserOptions(filePath));
 
-    traverse.default(ast, {
+    traverse(ast, {
       // Import ESM
       ImportDeclaration(nodePath) {
         fileInfo.imports.push(extractESMImport(nodePath));

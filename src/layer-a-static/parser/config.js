@@ -15,9 +15,9 @@ export function getBabelPlugins(filePath) {
   const isTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
   const isJSX = filePath.endsWith('.jsx') || filePath.endsWith('.tsx');
 
+  // TypeScript and Flow are mutually exclusive
   const plugins = [
     'jsx',
-    ['flow', { all: true }],
     'objectRestSpread',
     'decorators',
     'classProperties',
@@ -30,7 +30,11 @@ export function getBabelPlugins(filePath) {
   ];
 
   if (isTypeScript) {
+    // Use TypeScript plugin for .ts/.tsx files
     plugins.push(['typescript', { isTSX: isJSX }]);
+  } else {
+    // Use Flow plugin only for non-TypeScript files
+    plugins.push(['flow', { all: true }]);
   }
 
   return plugins;
