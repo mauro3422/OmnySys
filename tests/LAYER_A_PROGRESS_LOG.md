@@ -429,6 +429,42 @@
   - `module-system`: `15`
   - `pattern-detection`: `15`
 
+## 2026-02-15 - Analyses Tier1 Batch #1 (Helpers + Function Cycle Classifier Core)
+- Added 15 new no-mock tests:
+  - `analyses/helpers.test.js`
+  - `analyses/tier1/hotspots.test.js`
+  - `analyses/tier1/orphan-files.test.js`
+  - `analyses/tier1/unused-exports.test.js`
+  - `analyses/tier1/function-cycle-classifier.test.js`
+  - `analyses/tier1/function-cycle-classifier/classifier.test.js`
+  - `analyses/tier1/function-cycle-classifier/index.test.js`
+  - `analyses/tier1/function-cycle-classifier/classifiers/rules.test.js`
+  - `analyses/tier1/function-cycle-classifier/cycles/classifier.test.js`
+  - `analyses/tier1/function-cycle-classifier/extractors/metadata-extractor.test.js`
+  - `analyses/tier1/function-cycle-classifier/rules/async-rules.test.js`
+  - `analyses/tier1/function-cycle-classifier/rules/complexity-rules.test.js`
+  - `analyses/tier1/function-cycle-classifier/rules/index.test.js`
+  - `analyses/tier1/function-cycle-classifier/rules/recursion-rules.test.js`
+  - `analyses/tier1/function-cycle-classifier/utils/metadata.test.js`
+- Focused validation:
+  - `15/15` files passed
+  - `30/30` tests passed
+- Real blocker documented (without source patch in this pass):
+  - unresolved import path in `analyses/tier1/function-cycle-classifier/cycles/classifier.js` to logger
+  - captured by blocker-aware test assertion (no mocks)
+- Coverage impact:
+  - `analyses` direct gaps: `48` -> `33`
+
+## 2026-02-15 - Coverage Snapshot After Analyses Tier1 Batch #1
+- Layer A test files in tree: `485`
+- Remaining direct source files without 1:1 test filename: `199`
+- Remaining split:
+  - `extractors`: `120`
+  - `analyses`: `33`
+  - `storage`: `16`
+  - `module-system`: `15`
+  - `pattern-detection`: `15`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
