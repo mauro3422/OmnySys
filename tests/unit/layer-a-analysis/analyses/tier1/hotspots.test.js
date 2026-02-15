@@ -16,7 +16,13 @@ createAnalysisTestSuite({
   analyzeFn: findHotspots,
   expectedFields: {
     total: 'number',
-    functions: 'array'
+    functions: 'array',
+    criticalCount: 'number'
+  },
+  contractOptions: {
+    async: false,
+    exportNames: ['findHotspots'],
+    expectedSafeResult: { total: 0, functions: [], criticalCount: 0 }
   },
   specificTests: [
     {

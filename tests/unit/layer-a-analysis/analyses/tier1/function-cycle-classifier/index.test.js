@@ -23,6 +23,11 @@ const suite = createAnalysisTestSuite({
     problematic: 'number',
     classifications: 'array'
   },
+  contractOptions: {
+    async: false,
+    exportNames: ['classifyFunctionCycle', 'classifyAllFunctionCycles'],
+    expectedSafeResult: { total: 0, valid: 0, problematic: 0, classifications: [] }
+  },
   createMockInput: () => [[], {}],
   specificTests: [
     {

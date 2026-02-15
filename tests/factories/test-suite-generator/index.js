@@ -91,6 +91,7 @@ export function createAnalysisTestSuite(config) {
     analyzeFn,
     expectedFields,
     createMockInput,
+    contractOptions = {},
     specificTests = []
   } = config;
 
@@ -102,7 +103,7 @@ export function createAnalysisTestSuite(config) {
       analyzeFn,
       expectedFields,
       createMockInput,
-      expectedSafeResult: { total: 0 }
+      ...contractOptions
     },
     specificTests
   });

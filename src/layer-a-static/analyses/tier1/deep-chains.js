@@ -8,6 +8,16 @@
  * @returns {object} - Reporte de cadenas profundas
  */
 export function findDeepDependencyChains(systemMap) {
+  // Guard: Manejar null/undefined input
+  if (!systemMap || !systemMap.function_links) {
+    return {
+      totalDeepChains: 0,
+      maxDepth: 0,
+      chains: [],
+      recommendation: 'No dependency data available'
+    };
+  }
+
   const chains = [];
   const visited = new Set();
 

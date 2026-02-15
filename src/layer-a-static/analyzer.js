@@ -19,6 +19,16 @@ import { PatternDetectionEngine } from './pattern-detection/index.js';
  * @returns {Promise<object>} - Reporte con análisis V2
  */
 export async function generateAnalysisReport(systemMap) {
+  // Guard: Manejar null/undefined input
+  if (!systemMap) {
+    return {
+      metadata: {},
+      patternDetection: { detected: [], summary: { total: 0 } },
+      qualityMetrics: { score: 0, grade: 'N/A', recommendations: [] },
+      recommendations: []
+    };
+  }
+  
   // USAR SOLO Pattern Detection Engine V2 (SSOT)
   const engine = new PatternDetectionEngine({
     projectType: 'standard'
@@ -28,9 +38,9 @@ export async function generateAnalysisReport(systemMap) {
   
   // Retornar reporte con datos V2 únicamente
   return {
-    metadata: systemMap.metadata,
-    patternDetection: patternResults.patterns,
-    qualityMetrics: patternResults.qualityScore,
-    recommendations: patternResults.qualityScore.recommendations
+    metadata: systemMap.metadata || {},
+    patternDetection: patternResults.patterns || { detected: [], summary: { total: 0 } },
+    qualityMetrics: patternResults.qualityScore || { score: 0, grade: 'N/A', recommendations: [] },
+    recommendations: patternResults.qualityScore?.recommendations || []
   };
 }
