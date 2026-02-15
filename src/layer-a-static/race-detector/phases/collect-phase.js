@@ -22,8 +22,21 @@ export function collectSharedState(trackers) {
   
   const sharedState = new Map();
   
+  if (!trackers || !Array.isArray(trackers)) {
+    logger.info(`Found 0 shared state items`);
+    return sharedState;
+  }
+  
   for (const tracker of trackers) {
+    if (!tracker || typeof tracker.track !== 'function') {
+      continue;
+    }
+    
     const trackedState = tracker.track();
+    
+    if (!trackedState || !(trackedState instanceof Map)) {
+      continue;
+    }
     
     // Merge into shared state map
     for (const [key, accesses] of trackedState) {

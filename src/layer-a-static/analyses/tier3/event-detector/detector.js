@@ -28,7 +28,8 @@ export function detectEventPatterns(code, filePath = '') {
 
   let currentFunction = 'module-level';
 
-  traverse.default(ast, {
+  const traverseFn = traverse.default || traverse;
+  traverseFn(ast, {
     FunctionDeclaration(nodePath) {
       currentFunction = nodePath.node.id?.name || 'anonymous-function';
     },

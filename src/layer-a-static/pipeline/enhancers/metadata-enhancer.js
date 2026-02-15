@@ -7,8 +7,8 @@
  * @module pipeline/enhancers/metadata-enhancer
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { validateForLineage } from '../../../layer-b-semantic/validators/lineage-validator.js';
+import { createLogger } from '#utils/logger.js';
+import { validateForLineage } from '#layer-b/validators/lineage-validator.js';
 
 const logger = createLogger('OmnySys:pipeline:metadata-enhancer');
 

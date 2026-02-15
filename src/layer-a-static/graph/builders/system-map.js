@@ -40,6 +40,10 @@ import { buildFunctionLinks } from './function-links.js';
 export function buildSystemMap(parsedFiles, resolvedImports) {
   const systemMap = createEmptySystemMap();
   
+  // Handle null/undefined inputs
+  if (!parsedFiles) return systemMap;
+  resolvedImports = resolvedImports || {};
+  
   // Normalizar paths para búsquedas rápidas
   const filesByPath = {};
   const allFilePaths = new Set();
@@ -78,7 +82,7 @@ export function buildSystemMap(parsedFiles, resolvedImports) {
 
     for (const importInfo of imports) {
       // Si es un import dinámico resuelto, procesarlo como dependencia potencial
-      if (importInfo.type === 'dynamic' && importInfo.source) {
+      if (importInfo && importInfo.type === 'dynamic' && importInfo.source) {
         // Para imports dinámicos con path conocido (ej: import('./utils.js'))
         if (importInfo.source !== '<dynamic>') {
           const normalizedTo = normalizePath(importInfo.source);

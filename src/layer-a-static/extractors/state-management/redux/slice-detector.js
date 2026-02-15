@@ -18,6 +18,7 @@ export function detectSlices(code) {
   const reducers = [];
   let match;
   
+  REDUX_PATTERNS.createSlice.lastIndex = 0;
   while ((match = REDUX_PATTERNS.createSlice.exec(code)) !== null) {
     reducers.push({
       type: ReduxType.CREATE_SLICE,
@@ -38,6 +39,7 @@ export function detectStores(code) {
   const stores = [];
   let match;
   
+  REDUX_PATTERNS.storeCreation.lastIndex = 0;
   while ((match = REDUX_PATTERNS.storeCreation.exec(code)) !== null) {
     stores.push({
       type: ReduxType.STORE_CREATION,

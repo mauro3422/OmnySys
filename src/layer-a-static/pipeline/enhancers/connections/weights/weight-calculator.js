@@ -4,7 +4,7 @@
  * @module pipeline/enhancers/connections/weights
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:connections:weights');
 

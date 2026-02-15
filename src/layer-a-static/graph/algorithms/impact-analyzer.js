@@ -67,6 +67,9 @@ export function generateRecommendation(affectedCount, riskLevel) {
  * @returns {ImpactResult} - Información completa de impacto
  */
 export function getImpactMap(filePath, files) {
+  if (files == null) {
+    return { error: `File not found: ${filePath}` };
+  }
   const fileNode = files[filePath];
 
   if (!fileNode) {
@@ -111,6 +114,10 @@ export function getMultipleImpactMaps(filePaths, files) {
  * @returns {Array<{path: string, dependentCount: number}>}
  */
 export function findHighImpactFiles(files, limit = 10) {
+  if (!files) {
+    return [];
+  }
+  
   const impacts = Object.entries(files).map(([path, node]) => ({
     path,
     dependentCount: (node.usedBy?.length || 0) + (node.transitiveDependents?.length || 0),

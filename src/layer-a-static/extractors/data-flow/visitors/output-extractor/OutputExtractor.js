@@ -7,7 +7,7 @@
  * @version 2.0.0
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { findFunctionNode } from './helpers/ast-helpers.js';
 import { extractReturn, extractImplicitReturn, createUndefinedReturn } from './extractors/return-extractor.js';
 import { extractThrow } from './extractors/throw-extractor.js';

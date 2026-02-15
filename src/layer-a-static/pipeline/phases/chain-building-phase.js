@@ -22,7 +22,7 @@ export class ChainBuildingPhase extends ExtractionPhase {
    * Check if can execute
    */
   canExecute(context) {
-    return context.atoms && context.atoms.length > 0;
+    return context && context.atoms && context.atoms.length > 0;
   }
 
   /**

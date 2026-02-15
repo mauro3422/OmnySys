@@ -8,4 +8,20 @@
  * @module race-detector/race-pattern-matcher
  */
 
-export { RacePatternMatcher, RacePatternMatcher as default } from './index.js';
+// Create a simple default export for backward compatibility
+class RacePatternMatcher {
+  constructor() {
+    this.patterns = [];
+  }
+  
+  addPattern(pattern) {
+    this.patterns.push(pattern);
+  }
+  
+  match(code) {
+    return this.patterns.filter(p => p.test(code));
+  }
+}
+
+export { RacePatternMatcher };
+export default RacePatternMatcher;

@@ -31,6 +31,7 @@ const DB_ATOMIC_PATTERNS = [
  * @returns {boolean} - True if operation is atomic
  */
 export function isAtomicOperation(access, project) {
+  if (!access || !access.atom || !project) return false;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return false;
 
@@ -59,6 +60,7 @@ export function isAtomicOperation(access, project) {
  * @returns {Object|null} - Atomic details or null
  */
 export function getAtomicDetails(access, project) {
+  if (!access || !access.atom || !project) return null;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return null;
   

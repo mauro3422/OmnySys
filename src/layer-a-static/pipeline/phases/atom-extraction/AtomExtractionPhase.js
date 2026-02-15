@@ -8,7 +8,7 @@
  */
 
 import { ExtractionPhase } from '../base-phase.js';
-import { logger } from '../../../utils/logger.js';
+import { logger } from '#utils/logger.js';
 import { extractAtoms } from './extraction/atom-extractor.js';
 import { buildCallGraph } from './graph/call-graph.js';
 import { recalculateArchetypes } from './metadata/archetype.js';

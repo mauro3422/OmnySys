@@ -15,6 +15,7 @@ export class DataIntegrityScorer {
   }
 
   score(race) {
+    if (!race) return 0.5;
     const stateType = race.stateType;
     let base = this.weights.getDataIntegrityWeight('medium');
 
@@ -36,9 +37,9 @@ export class DataIntegrityScorer {
         break;
     }
 
-    if (race.type === 'WW') {
+    if (race?.type === 'WW') {
       base = Math.min(base * 1.2, 1.0);
-    } else if (race.type === 'IE') {
+    } else if (race?.type === 'IE') {
       base = Math.min(base * 1.1, 1.0);
     }
 

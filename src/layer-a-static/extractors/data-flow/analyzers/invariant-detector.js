@@ -13,7 +13,7 @@
  * @version 0.9.4 - Migrado desde data-flow-v2
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { detectTypeInvariants } from './invariants/type-invariants.js';
 import { detectRangeInvariants } from './invariants/range-invariants.js';
 import { detectNullSafety } from './invariants/null-safety.js';

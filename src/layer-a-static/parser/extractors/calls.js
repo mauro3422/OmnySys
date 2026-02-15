@@ -13,6 +13,7 @@
  * @returns {Object} - Info actualizada
  */
 export function extractCallExpression(node, fileInfo) {
+  if (!node?.callee) return fileInfo;
   if (node.callee.type === 'Identifier') {
     fileInfo.calls.push({
       name: node.callee.name,
@@ -20,9 +21,17 @@ export function extractCallExpression(node, fileInfo) {
     });
   } else if (node.callee.type === 'MemberExpression') {
     // tier1.findHotspots() → capturar como "tier1" y "tier1.findHotspots"
-    if (node.callee.object.type === 'Identifier') {
-      const objectName = node.callee.object.name;
-      const propertyName = node.callee.property.name || node.callee.property.value;
+    // Also handle deep chains: a.b.c.d() → capture 'a' as namespace_access
+    
+    // Find the root identifier in the member chain
+    let rootObject = node.callee.object;
+    while (rootObject.type === 'MemberExpression' && rootObject.object) {
+      rootObject = rootObject.object;
+    }
+    
+    if (rootObject.type === 'Identifier') {
+      const objectName = rootObject.name;
+      const propertyName = node.callee.property?.name || node.callee.property?.value;
 
       // Capturar el namespace (tier1)
       fileInfo.calls.push({
@@ -50,8 +59,12 @@ export function extractCallExpression(node, fileInfo) {
  * @returns {Object} - Info actualizada
  */
 export function extractIdentifierRef(nodePath, fileInfo) {
+  if (!nodePath) return fileInfo;
+  
   const node = nodePath.node;
   const parent = nodePath.parent;
+  
+  if (!node || !parent) return fileInfo;
 
   // Ignorar declaraciones y definiciones
   if (

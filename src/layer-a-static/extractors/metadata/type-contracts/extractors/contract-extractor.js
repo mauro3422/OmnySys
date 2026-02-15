@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { StrategyRegistry } from '../strategies/base-strategy.js';
 import { JSDocStrategy } from '../strategies/jsdoc-strategy.js';
 import { TypeScriptStrategy } from '../strategies/typescript-strategy.js';

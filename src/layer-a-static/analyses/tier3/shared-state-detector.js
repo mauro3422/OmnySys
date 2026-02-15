@@ -59,7 +59,8 @@ export function detectSharedState(code, filePath = '') {
 
     let currentFunction = 'module-level';
 
-    traverse.default(ast, {
+    const traverseFn = traverse.default || traverse;
+    traverseFn(ast, {
       FunctionDeclaration(nodePath) {
         currentFunction = nodePath.node.id?.name || 'anonymous-function';
       },
@@ -186,7 +187,7 @@ export function generateSharedStateConnections(fileAnalysisMap) {
 
   // Indexar todas las propiedades globales
   for (const [filePath, analysis] of Object.entries(fileAnalysisMap)) {
-    if (!analysis.globalAccess || analysis.globalAccess.length === 0) continue;
+    if (!analysis || !analysis.globalAccess || analysis.globalAccess.length === 0) continue;
 
     for (const access of analysis.globalAccess) {
       const { propName, type } = access;

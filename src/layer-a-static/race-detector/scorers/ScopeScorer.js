@@ -15,7 +15,8 @@ export class ScopeScorer {
   }
 
   score(race) {
-    return this.weights.getScopeWeight(race.stateType);
+    if (!race) return 0.5;
+    return this.weights?.getScopeWeight(race.stateType) || 0.5;
   }
 }
 

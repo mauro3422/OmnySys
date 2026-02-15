@@ -7,7 +7,7 @@
  * @version 2.0.0
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { findFunctionNode } from './helpers/ast-helpers.js';
 import { extractParameters } from './extractors/param-extractor.js';
 import { findUsages } from './analyzers/usage-analyzer.js';

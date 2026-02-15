@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { normalizeType, analyzeType } from '../types/type-analyzer.js';
 import { validateTypeCompatibility } from '../validators/compatibility-validator.js';
 
@@ -16,7 +16,7 @@ const logger = createLogger('OmnySys:type-contracts:connections');
 /**
  * Índice de tipos para búsqueda eficiente
  */
-class TypeIndex {
+export class TypeIndex {
   constructor() {
     this.byExactType = new Map();
     this.byBaseType = new Map();

@@ -41,9 +41,10 @@ export function extractESMImport(nodePath) {
  * @returns {Object|null} - Import extraído
  */
 export function extractCommonJSRequire(node) {
-  if (node.callee.type === 'Identifier' &&
-      node.callee.name === 'require' &&
-      node.arguments.length > 0) {
+  if (!node) return null;
+  if (node.callee?.type === 'Identifier' &&
+      node.callee?.name === 'require' &&
+      node.arguments?.length > 0) {
     const arg = node.arguments[0];
     if (arg.type === 'StringLiteral' || arg.type === 'Literal') {
       return {
@@ -61,6 +62,7 @@ export function extractCommonJSRequire(node) {
  * @returns {Object|null} - Import extraído
  */
 export function extractDynamicImport(node) {
+  if (!node) return null;
   if (node.callee?.type === 'Import' && node.arguments?.length > 0) {
     const arg = node.arguments[0];
     let source = '<dynamic>';

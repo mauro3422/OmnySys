@@ -47,6 +47,10 @@ export class DetectorRunner {
     const module = await detector.loader();
     const DetectorClass = module.default || module[Object.keys(module)[0]];
     
+    if (!DetectorClass || typeof DetectorClass !== 'function') {
+      throw new Error('DetectorClass is not a constructor');
+    }
+    
     const instance = new DetectorClass({
       config: detector.config || {},
       globalConfig: detector.globalConfig || {}

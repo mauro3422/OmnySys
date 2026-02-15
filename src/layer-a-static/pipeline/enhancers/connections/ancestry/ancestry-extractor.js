@@ -4,7 +4,7 @@
  * @module pipeline/enhancers/connections/ancestry
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:connections:ancestry');
 

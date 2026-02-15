@@ -12,6 +12,7 @@
  * @returns {number}
  */
 export function countTotalFunctions(functions) {
+  if (functions == null) return 0;
   let total = 0;
   for (const funcs of Object.values(functions)) {
     if (Array.isArray(funcs)) {
@@ -27,6 +28,7 @@ export function countTotalFunctions(functions) {
  * @returns {number}
  */
 export function countTotalItems(itemsMap) {
+  if (itemsMap == null) return 0;
   let total = 0;
   for (const items of Object.values(itemsMap)) {
     if (Array.isArray(items)) {
@@ -42,6 +44,7 @@ export function countTotalItems(itemsMap) {
  * @returns {number}
  */
 export function countUnresolvedImports(unresolvedImports) {
+  if (unresolvedImports == null) return 0;
   return Object.values(unresolvedImports)
     .flat()
     .length;
@@ -53,6 +56,7 @@ export function countUnresolvedImports(unresolvedImports) {
  * @returns {number}
  */
 export function countFiles(filesMap) {
+  if (filesMap == null) return 0;
   return Object.keys(filesMap).length;
 }
 
@@ -62,5 +66,6 @@ export function countFiles(filesMap) {
  * @returns {number}
  */
 export function countDependencies(dependencies) {
+  if (dependencies == null) return 0;
   return dependencies.length;
 }

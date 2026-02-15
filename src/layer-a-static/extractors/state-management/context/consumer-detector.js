@@ -18,6 +18,7 @@ export function detectUseContext(code) {
   const consumers = [];
   let match;
   
+  CONTEXT_PATTERNS.useContext.lastIndex = 0;
   while ((match = CONTEXT_PATTERNS.useContext.exec(code)) !== null) {
     consumers.push({
       type: ContextType.USE_CONTEXT,
@@ -38,6 +39,7 @@ export function detectContextConsumers(code) {
   const consumers = [];
   let match;
   
+  CONTEXT_PATTERNS.consumer.lastIndex = 0;
   while ((match = CONTEXT_PATTERNS.consumer.exec(code)) !== null) {
     consumers.push({
       type: ContextType.CONTEXT_CONSUMER,
@@ -58,6 +60,7 @@ export function detectUseContextNew(code) {
   const consumers = [];
   let match;
   
+  CONTEXT_PATTERNS.useContextNew.lastIndex = 0;
   while ((match = CONTEXT_PATTERNS.useContextNew.exec(code)) !== null) {
     consumers.push({
       type: ContextType.USE_CONTEXT_NEW,

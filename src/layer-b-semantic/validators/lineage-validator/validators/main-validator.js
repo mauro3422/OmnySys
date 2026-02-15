@@ -6,7 +6,7 @@
  * @module layer-b-semantic/validators/lineage-validator/validators/main-validator
  */
 
-import { validateDNA } from '../../../layer-a-static/extractors/metadata/dna-extractor.js';
+import { validateDNA } from '#layer-a/extractors/metadata/dna-extractor.js';
 import { validateDataFlow } from '../checks/dataflow-checks.js';
 import { validateCoherence } from '../checks/coherence-checks.js';
 import { validateSemantic } from '../checks/semantic-checks.js';

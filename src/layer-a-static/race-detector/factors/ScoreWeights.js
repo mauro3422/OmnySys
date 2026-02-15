@@ -57,7 +57,13 @@ export class ScoreWeights {
   }
 
   update(newWeights) {
-    this.weights = { ...this.weights, ...newWeights };
+    if (!newWeights || typeof newWeights !== 'object') return;
+    // Deep merge weights
+    for (const category of ['type', 'async', 'dataIntegrity', 'scope']) {
+      if (newWeights[category]) {
+        this.weights[category] = { ...this.weights[category], ...newWeights[category] };
+      }
+    }
   }
 }
 

@@ -8,7 +8,7 @@
  * @version 2.0.0
  */
 
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { ComplexityAnalyzer } from './analyzers/complexity-analyzer.js';
 import { ExpensiveOperationsAnalyzer } from './analyzers/expensive-ops-analyzer.js';
 import { ResourceAnalyzer } from './analyzers/resource-analyzer.js';

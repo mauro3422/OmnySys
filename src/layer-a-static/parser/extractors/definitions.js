@@ -72,31 +72,41 @@ export function extractFunctionDefinition(nodePath, filePath, fileInfo, function
  */
 export function extractArrowFunction(nodePath, filePath, fileInfo) {
   const node = nodePath.node;
-  const name = node.id?.name || 'arrow';
+  
+  // Handle both direct ArrowFunctionExpression and VariableDeclarator containing one
+  let arrowNode = node;
+  let functionName = 'arrow';
+  
+  if (node.type === 'VariableDeclarator' && node.init?.type === 'ArrowFunctionExpression') {
+    arrowNode = node.init;
+    functionName = node.id?.name || 'arrow';
+  } else if (node.type === 'ArrowFunctionExpression') {
+    functionName = node.id?.name || 'arrow';
+  }
   
   fileInfo.definitions.push({
     type: 'arrow',
-    name: name,
-    params: node.params?.length || 0
+    name: functionName,
+    params: arrowNode.params?.length || 0
   });
 
   const functionCalls = findCallsInFunction(nodePath);
-  const functionId = `${getFileId(filePath)}::${name}`;
+  const functionId = `${getFileId(filePath)}::${functionName}`;
 
   fileInfo.functions.push({
     id: functionId,
-    name: name,
-    fullName: name,
+    name: functionName,
+    fullName: functionName,
     type: 'arrow',
     className: null,
-    line: node.loc?.start.line || 0,
-    endLine: node.loc?.end.line || 0,
-    params: (node.params || []).map(p => p.name || p.left?.name || 'param'),
+    line: arrowNode.loc?.start.line || 0,
+    endLine: arrowNode.loc?.end.line || 0,
+    params: (arrowNode.params || []).map(p => p.name || p.left?.name || 'param'),
     isExported: false,
-    isAsync: node.async || false,
+    isAsync: arrowNode.async || false,
     isGenerator: false,
     calls: functionCalls,
-    node: node
+    node: arrowNode
   });
 
   return fileInfo;
@@ -180,8 +190,9 @@ export function extractVariableExports(nodePath, fileInfo) {
       if (init && init.type === 'ObjectExpression') {
         // Analizar propiedades para distinguir enums de estado mutable
         const propertyDetails = init.properties.map(prop => {
+          const keyName = prop.key?.name || prop.key?.value || 'unknown';
+          
           if (prop.type === 'ObjectProperty') {
-            const keyName = prop.key.name || prop.key.value;
             const valueType = prop.value?.type;
             
             // Detectar tipo de propiedad
@@ -195,8 +206,11 @@ export function extractVariableExports(nodePath, fileInfo) {
               // Valores literales (string, number, boolean) - bajo riesgo
               return { name: keyName, type: 'literal', risk: 'low' };
             }
+          } else if (prop.type === 'ObjectMethod') {
+            // Shorthand methods like: method() { }
+            return { name: keyName, type: 'function', risk: 'high' };
           }
-          return { name: 'unknown', type: 'unknown', risk: 'medium' };
+          return { name: keyName, type: 'unknown', risk: 'medium' };
         });
         
         // Calcular riesgo basado en tipos de propiedades

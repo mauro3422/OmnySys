@@ -15,7 +15,8 @@ export class TypeScorer {
   }
 
   score(race) {
-    return this.weights.getTypeWeight(race.type);
+    if (!race) return 0.5;
+    return this.weights?.getTypeWeight(race.type) || 0.5;
   }
 }
 

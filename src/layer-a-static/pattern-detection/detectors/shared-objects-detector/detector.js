@@ -34,6 +34,19 @@ export class SharedObjectsDetector extends PatternDetector {
   }
   
   async detect(systemMap) {
+    // Handle null/undefined input gracefully
+    if (!systemMap) {
+      return {
+        detector: this.getId(),
+        name: this.getName(),
+        description: this.getDescription(),
+        findings: [],
+        score: 100,
+        weight: this.globalConfig.weights?.sharedObjects || 0.20,
+        recommendation: 'No shared objects detected'
+      };
+    }
+    
     const config = this.config;
     const minUsageCount = config.minUsageCount || 3;
     const minRiskScore = config.minRiskScore || 30;

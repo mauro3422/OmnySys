@@ -4,8 +4,8 @@
  */
 
 import { getFileAnalysis } from '../core/single-file.js';
-import { loadAtoms, loadMolecule } from '../../../storage/storage-manager.js';
-import { composeMolecularMetadata } from '../../../../shared/derivation-engine.js';
+import { loadAtoms, loadMolecule } from '#layer-a/storage/storage-manager.js';
+import { composeMolecularMetadata } from '#shared/derivation-engine.js';
 
 /**
  * Loads atoms with cache integration
@@ -16,7 +16,7 @@ import { composeMolecularMetadata } from '../../../../shared/derivation-engine.j
  * @returns {Promise<Array>} - Loaded atoms
  */
 async function loadAtomsWithCache(rootPath, filePath, analysis, cache) {
-  if (!cache || !analysis.atomIds) {
+  if (!cache || !analysis.atomIds || typeof cache.getAtoms !== 'function') {
     return loadAtoms(rootPath, filePath);
   }
 
@@ -27,7 +27,9 @@ async function loadAtomsWithCache(rootPath, filePath, analysis, cache) {
     const diskAtoms = await loadAtoms(rootPath, filePath);
     for (const atom of diskAtoms) {
       if (missing.includes(atom.id)) {
-        cache.setAtom(atom.id, atom);
+        if (typeof cache.setAtom === 'function') {
+          cache.setAtom(atom.id, atom);
+        }
         atoms.push(atom);
       }
     }
@@ -65,7 +67,7 @@ export async function getFileAnalysisWithAtoms(rootPath, filePath, cache = null)
   const analysis = await getFileAnalysis(rootPath, filePath);
   if (!analysis) return null;
 
-  if (cache) {
+  if (cache && typeof cache.getDerivedMetadata === 'function') {
     const cached = cache.getDerivedMetadata(filePath);
     if (cached) {
       return { ...analysis, ...cached };
@@ -95,7 +97,7 @@ export async function getFileAnalysisWithAtoms(rootPath, filePath, cache = null)
     stats
   };
 
-  if (cache) {
+  if (cache && typeof cache.setDerivedMetadata === 'function') {
     cache.setDerivedMetadata(filePath, {
       atoms,
       molecule,

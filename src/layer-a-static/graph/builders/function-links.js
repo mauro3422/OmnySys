@@ -19,6 +19,8 @@ import { resolveAllFunctionCalls } from '../resolvers/function-resolver.js';
 export function buildFunctionLinks(parsedFiles, resolvedImports) {
   const functions = {};
   const function_links = [];
+  
+  if (!parsedFiles) return { functions, function_links };
 
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     // Guardar funciones del archivo
@@ -56,6 +58,7 @@ export function buildFunctionLinks(parsedFiles, resolvedImports) {
  * @returns {Array} - Enlaces que salen de esta función
  */
 export function getOutgoingLinks(funcId, function_links) {
+  if (!function_links || !Array.isArray(function_links)) return [];
   return function_links.filter(link => link.from === funcId);
 }
 
@@ -67,6 +70,7 @@ export function getOutgoingLinks(funcId, function_links) {
  * @returns {Array} - Enlaces que entran a esta función
  */
 export function getIncomingLinks(funcId, function_links) {
+  if (!function_links || !Array.isArray(function_links)) return [];
   return function_links.filter(link => link.to === funcId);
 }
 

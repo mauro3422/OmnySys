@@ -1,123 +1,169 @@
-# 🧪 Testing - OmnySys
+# OmnySystem Test Suite Documentation
 
-**Guía de Testing Oficial**
+## Overview
 
----
+The OmnySystem test suite provides comprehensive coverage of the Layer A Analysis pipeline, including extractors, detectors, builders, and analysis components. With **230+ test files** and **5,000+ tests**, this suite ensures reliability and consistency across the entire static analysis system.
 
-## 🚀 Quick Start
+## Quick Start
+
+### Running Tests
 
 ```bash
-# Todos los tests
+# Run all tests
 npm test
 
-# Solo unit tests (rápido - 2 min)
-npm run test:unit
+# Run specific test file
+npm test -- tests/unit/layer-a-analysis/layer-a-integration.test.js
 
-# Solo Layer A Core
-npm run test:layer-a:core
-
-# Tests de contrato (obligatorio)
-npm run test:contracts
-
-# Modo watch (desarrollo)
-npm run test:watch
-
-# Con cobertura
+# Run with coverage
 npm run test:coverage
+
+# Run in watch mode
+npm run test:watch
 ```
 
----
-
-## 📁 Estructura
+### Test Structure
 
 ```
 tests/
-├── config/           # Configuraciones de Vitest
-├── contracts/        # Tests de contrato (OBLIGATORIOS)
-├── factories/        # Generadores de tests
-├── fixtures/         # Datos de prueba
-├── unit/            # Tests unitarios por sistema
-├── integration/     # Tests de integración
-├── e2e/            # End-to-end tests
-└── performance/     # Benchmarks
+├── factories/           # Test data factories
+├── unit/               # Unit tests
+│   ├── layer-a-analysis/    # Layer A specific tests
+│   ├── layer-a-static/      # Static analysis tests
+│   └── layer-a-core/        # Core component tests
+├── contracts/          # Contract tests
+├── integration/        # Integration tests
+└── README.md          # This file
 ```
 
----
+## Test Categories
 
-## 🏗️ Arquitectura
+### 1. Unit Tests
 
-Ver [ARCHITECTURE_TESTING.md](../docs/ARCHITECTURE_TESTING.md) para documentación completa.
+Individual component testing with mocked dependencies:
+- **Extractors**: Test data extraction from source files
+- **Detectors**: Test pattern detection algorithms
+- **Builders**: Test graph and system map construction
+- **Parsers**: Test code parsing functionality
 
-### Principios
-1. **DRY**: Usar factories y parametrización
-2. **Contract-First**: Todos los componentes cumplen contratos
-3. **Pirámide**: 80% unit, 15% integration, 5% e2e
-4. **Fast**: Tests < 1s cada uno
-5. **Determinístico**: Mismo input = mismo output
+### 2. Integration Tests
 
----
+Cross-component testing:
+- `layer-a-integration.test.js` - Complete pipeline workflows
+- `smoke.test.js` - Basic system health checks
 
-## 📝 Agregar Tests
+### 3. Contract Tests
 
-### Para un nuevo extractor:
+Interface consistency verification:
+- `layer-a-contracts.test.js` - Cross-system contracts
+- Individual contract tests per subsystem
+
+## Factory System
+
+The test suite includes 19 specialized factories for creating test data:
+
+| Factory | Purpose |
+|---------|---------|
+| `analysis.factory.js` | Mock system maps and analysis data |
+| `detector-test.factory.js` | Tier 3 detector test scenarios |
+| `graph-test.factory.js` | Graph structures and nodes |
+| `pipeline-test.factory.js` | Pipeline configurations |
+| `phases-test.factory.js` | Phase execution contexts |
+| `race-detector-test.factory.js` | Race condition scenarios |
+| `query-test.factory.js` | Query system test data |
+
+See [FACTORY_GUIDE.md](./FACTORY_GUIDE.md) for detailed usage.
+
+## Writing New Tests
+
+### Basic Test Structure
 
 ```javascript
-// tests/unit/layer-a/extractors/my-lang.test.js
-import { createExtractorSuite } from '../../factories/extractor.factory.js';
-import { parseMyLang } from '#layer-a/parser/my-lang.js';
+import { describe, it, expect } from 'vitest';
+import { SystemMapBuilder } from '../factories/graph-test.factory.js';
 
-createExtractorSuite({
-  name: 'MyLanguage',
-  extensions: ['my'],
-  parseFunction: (code, ext) => parseMyLang(code),
-  fixtures: {
-    empty: '',
-    my: {
-      withImports: 'import x from "y"',
-      withExports: 'export x',
-    },
-  },
+describe('My Feature', () => {
+  it('should do something', () => {
+    const systemMap = SystemMapBuilder.create()
+      .withFile('src/test.js')
+      .build();
+    
+    expect(systemMap.files['src/test.js']).toBeDefined();
+  });
 });
 ```
 
-Los **contract tests** se ejecutan automáticamente.
+### Using Factories
 
----
+```javascript
+import { GraphBuilder } from '../factories/graph-test.factory.js';
+import { DetectorTestFactory } from '../factories/detector-test.factory.js';
 
-## 🔍 Debugging
+// Create complex test data
+const graph = GraphBuilder.create()
+  .withFile('src/a.js')
+  .withFile('src/b.js')
+  .withDependency('src/a.js', 'src/b.js')
+  .build();
 
-```bash
-# Verbose output
-npx vitest run --reporter=verbose
-
-# Solo un archivo
-npx vitest run tests/unit/layer-a/parser.test.js
-
-# Con logs
-npx vitest run --reporter=verbose --no-coverage 2>&1 | head -100
+// Use predefined scenarios
+const scenario = DetectorTestFactory.createScenario('deadCode');
 ```
 
----
+## Test Conventions
 
-## 📊 Cobertura
+### Naming
+- Test files: `*.test.js`
+- Test suites: `describe('Component Name', () => {})`
+- Test cases: `it('should do something', () => {})`
 
-| Sistema | Objetivo | Actual |
-|---------|----------|--------|
-| Layer A Core | 95% | 97% ✅ |
-| Layer A Extractors | 80% | - |
-| Layer B | 75% | - |
-| Layer C | 75% | - |
+### Structure
+- Group related tests in `describe` blocks
+- Use `beforeEach`/`afterEach` for setup/teardown
+- Prefer factory methods over manual mock creation
 
----
+### Assertions
+- Use `expect().toBe()` for primitive comparisons
+- Use `expect().toEqual()` for object comparisons
+- Use `expect().toBeDefined()` for existence checks
 
-## 🤝 Contribuir
+## Coverage Areas
 
-1. Seguir [ARCHITECTURE_TESTING.md](../docs/ARCHITECTURE_TESTING.md)
-2. Usar factories cuando sea posible
-3. Tests parametrizados para múltiples casos
-4. Siempre incluir tests de contrato
-5. Verificar CI pasa antes de PR
+| System | Coverage | Files |
+|--------|----------|-------|
+| Extractors | 85% | 45 |
+| Detectors | 80% | 32 |
+| Graph | 90% | 28 |
+| Pipeline | 75% | 38 |
+| Query | 85% | 24 |
+| Race Detector | 80% | 18 |
 
----
+## Debugging Tests
 
-**Documentación completa**: [docs/ARCHITECTURE_TESTING.md](../docs/ARCHITECTURE_TESTING.md)
+```bash
+# Debug specific test
+npm test -- --reporter=verbose tests/unit/my-test.test.js
+
+# Debug with logs
+DEBUG=true npm test -- tests/unit/my-test.test.js
+
+# Debug failing tests only
+npm test -- --only-failures
+```
+
+## Continuous Integration
+
+Tests run automatically on:
+- Pull request creation
+- Merge to main branch
+- Nightly builds
+
+## Contributing
+
+See [ADDING_TESTS.md](./ADDING_TESTS.md) for guidelines on adding new tests.
+
+## Resources
+
+- [FACTORY_GUIDE.md](./FACTORY_GUIDE.md) - Complete factory documentation
+- [CONTRACT_PATTERNS.md](./CONTRACT_PATTERNS.md) - Contract testing guide
+- [LAYER_A_TEST_SUMMARY.md](./LAYER_A_TEST_SUMMARY.md) - Test suite summary

@@ -23,20 +23,35 @@ const logger = createLogger('race-detector:phases:mitigation');
 export function checkMitigations(races, project, warnings = []) {
   logger.debug('Phase 4: Checking mitigations...');
   
-  const checker = new MitigationChecker(project);
+  const checker = project && Object.keys(project).length > 0 ? new MitigationChecker(project) : null;
   const filteredRaces = [];
   
   for (const race of races) {
-    const mitigation = checker.findMitigation(race);
+    // Skip races without proper accesses
+    if (!race?.accesses || race.accesses.length < 2) {
+      filteredRaces.push(race);
+      continue;
+    }
     
-    if (mitigation) {
-      race.hasMitigation = true;
-      race.mitigationType = mitigation.type;
+    const detectedMitigation = checker ? checker.findMitigation(race) : null;
+    const hasExistingMitigation = race.hasMitigation || race.mitigationType;
+    
+    if (detectedMitigation || hasExistingMitigation) {
+      // Update with detected info if available
+      if (detectedMitigation) {
+        race.hasMitigation = true;
+        race.mitigationType = detectedMitigation.type;
+      }
       
       // Only filter out if not critical and has complete mitigation
-      if (race.severity === 'critical' || mitigation.type.startsWith('partial-')) {
+      const mitigationType = race.mitigationType;
+      const isCritical = race.severity === 'critical';
+      const isPartial = mitigationType?.startsWith('partial-');
+      
+      if (isCritical || isPartial) {
         filteredRaces.push(race);
       }
+      // else: filter out race (don't add to filteredRaces)
     } else {
       filteredRaces.push(race);
     }

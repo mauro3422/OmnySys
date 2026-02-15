@@ -21,9 +21,24 @@ const createDetectorLogger = (id) => ({
  */
 export class PatternDetector {
   constructor(options = {}) {
-    this.config = options.config || {};
-    this.globalConfig = options.globalConfig || {};
-    this.logger = createDetectorLogger(this.getId());
+    this.config = options.config !== undefined ? options.config : {};
+    this.globalConfig = options.globalConfig !== undefined ? options.globalConfig : {};
+    // Delay logger creation to avoid calling getId() during construction
+    this._logger = null;
+  }
+  
+  /**
+   * Get logger (created lazily)
+   */
+  get logger() {
+    if (!this._logger) {
+      try {
+        this._logger = createDetectorLogger(this.getId());
+      } catch {
+        this._logger = createDetectorLogger('PatternDetector');
+      }
+    }
+    return this._logger;
   }
   
   /**
@@ -67,9 +82,10 @@ export class PatternDetector {
     // Implementación base: cada finding reduce el score
     // Los detectores pueden sobrescribir esto
     const totalPenalty = findings.reduce((sum, f) => {
-      return sum + (f.severity === 'critical' ? 20 :
-                    f.severity === 'high' ? 10 :
-                    f.severity === 'medium' ? 5 : 2);
+      const severity = f.severity || 'low';
+      return sum + (severity === 'critical' ? 20 :
+                    severity === 'high' ? 10 :
+                    severity === 'medium' ? 5 : 2);
     }, 0);
     
     return Math.max(0, 100 - totalPenalty);

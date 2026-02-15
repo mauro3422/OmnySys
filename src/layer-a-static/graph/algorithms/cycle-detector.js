@@ -15,6 +15,7 @@
  * @returns {string[][]} - Array de ciclos encontrados (cada ciclo es un array de paths)
  */
 export function detectCycles(files, getDependencies = (node) => node.dependsOn) {
+  if (files == null) return [];
   const cycles = [];
   const visited = new Set();
   const recursionStack = new Set();
@@ -30,7 +31,13 @@ export function detectCycles(files, getDependencies = (node) => node.dependsOn) 
       return false;
     }
 
-    for (const dependent of getDependencies(fileNode)) {
+    const dependencies = getDependencies(fileNode);
+    if (!dependencies || !Array.isArray(dependencies)) {
+      recursionStack.delete(node);
+      return false;
+    }
+    
+    for (const dependent of dependencies) {
       if (!visited.has(dependent)) {
         if (dfs(dependent, [...path])) {
           return true;
@@ -65,6 +72,7 @@ export function detectCycles(files, getDependencies = (node) => node.dependsOn) 
  * @returns {boolean}
  */
 export function isInCycle(filePath, cycles) {
+  if (!cycles || !Array.isArray(cycles)) return false;
   return cycles.some(cycle => cycle.includes(filePath));
 }
 
@@ -76,9 +84,12 @@ export function isInCycle(filePath, cycles) {
  */
 export function getFilesInCycles(cycles) {
   const files = new Set();
+  if (!cycles || !Array.isArray(cycles)) return files;
   for (const cycle of cycles) {
-    for (const file of cycle) {
-      files.add(file);
+    if (Array.isArray(cycle)) {
+      for (const file of cycle) {
+        files.add(file);
+      }
     }
   }
   return files;

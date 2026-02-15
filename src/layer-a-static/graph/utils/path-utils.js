@@ -17,6 +17,7 @@ import path from 'path';
  * @returns {string} Path normalizado con forward slashes
  */
 export function normalizePath(filePath) {
+  if (filePath == null) return '';
   return path.normalize(filePath).replace(/\\/g, '/');
 }
 
@@ -28,6 +29,7 @@ export function normalizePath(filePath) {
  * @returns {string} Path legible
  */
 export function getDisplayPath(normalizedPath) {
+  if (normalizedPath == null) return '';
   // Mostrar desde "src/" en adelante si existe
   const srcIndex = normalizedPath.indexOf('/src/');
   if (srcIndex !== -1) {
@@ -75,6 +77,8 @@ export function uniquePaths(paths) {
  * @returns {boolean}
  */
 export function pathsEqual(pathA, pathB) {
+  if (pathA == null && pathB == null) return true;
+  if (pathA == null || pathB == null) return false;
   return normalizePath(pathA) === normalizePath(pathB);
 }
 
@@ -85,6 +89,7 @@ export function pathsEqual(pathA, pathB) {
  * @returns {string} Extensión (ej: '.js', '.ts')
  */
 export function getFileExtension(filePath) {
+  if (filePath == null) return '';
   return path.extname(filePath).toLowerCase();
 }
 
@@ -95,5 +100,6 @@ export function getFileExtension(filePath) {
  * @returns {boolean}
  */
 export function isRelativePath(importSource) {
+  if (importSource == null) return false;
   return importSource.startsWith('./') || importSource.startsWith('../');
 }

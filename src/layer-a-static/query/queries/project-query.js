@@ -7,7 +7,7 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '../../storage/storage-manager.js';
+import { getDataDirectory } from '../../storage/storage-manager/index.js';
 import { readJSON } from '../readers/json-reader.js';
 
 /**

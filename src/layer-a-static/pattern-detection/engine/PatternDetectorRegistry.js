@@ -18,8 +18,18 @@ export class PatternDetectorRegistry {
    * Register a detector
    */
   register(config) {
-    const { id, priority = 50 } = config;
-    this.detectors.set(id, { ...config, priority });
+    const { id, priority = 0 } = config;
+    if (!id) {
+      throw new Error('Detector id is required');
+    }
+    if (this.detectors.has(id)) {
+      throw new Error(`Detector ${id} already registered`);
+    }
+    this.detectors.set(id, { 
+      ...config, 
+      priority,
+      registeredAt: new Date().toISOString()
+    });
   }
 
   /**
@@ -27,7 +37,13 @@ export class PatternDetectorRegistry {
    */
   getAll() {
     return Array.from(this.detectors.values())
-      .sort((a, b) => b.priority - a.priority);
+      .sort((a, b) => {
+        // Sort by priority descending, then by id ascending for stable ordering
+        if (b.priority !== a.priority) {
+          return b.priority - a.priority;
+        }
+        return a.id.localeCompare(b.id);
+      });
   }
 
   /**
@@ -41,7 +57,7 @@ export class PatternDetectorRegistry {
    * Unregister a detector
    */
   unregister(id) {
-    this.detectors.delete(id);
+    return this.detectors.delete(id);
   }
 
   /**
@@ -49,6 +65,20 @@ export class PatternDetectorRegistry {
    */
   clear() {
     this.detectors.clear();
+  }
+
+  /**
+   * Check if a detector exists
+   */
+  has(id) {
+    return this.detectors.has(id);
+  }
+
+  /**
+   * Get count of registered detectors
+   */
+  size() {
+    return this.detectors.size;
   }
 }
 

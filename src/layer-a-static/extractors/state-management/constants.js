@@ -11,7 +11,7 @@
  * @readonly
  * @enum {string}
  */
-export const ReduxType = {
+export const ReduxType = Object.freeze({
   USE_SELECTOR: 'use_selector',
   USE_DISPATCH: 'use_dispatch',
   CONNECT_HOC: 'connect_hoc',
@@ -20,30 +20,30 @@ export const ReduxType = {
   STORE_CREATION: 'store_creation',
   ASYNC_THUNK: 'async_thunk',
   DISPATCH_CALL: 'dispatch_call'
-};
+});
 
 /**
  * Tipos de elementos React Context
  * @readonly
  * @enum {string}
  */
-export const ContextType = {
+export const ContextType = Object.freeze({
   CONTEXT_CREATION: 'context_creation',
   CONTEXT_PROVIDER: 'context_provider',
   USE_CONTEXT: 'use_context',
   CONTEXT_CONSUMER: 'context_consumer',
   USE_CONTEXT_NEW: 'use_context_new'
-};
+});
 
 /**
  * Tipos de conexiones
  * @readonly
  * @enum {string}
  */
-export const ConnectionType = {
+export const ConnectionType = Object.freeze({
   SHARED_SELECTOR: 'sharedSelector',
   CONTEXT_USAGE: 'contextUsage'
-};
+});
 
 /**
  * Patrones regex para Redux
@@ -51,9 +51,9 @@ export const ConnectionType = {
  */
 export const REDUX_PATTERNS = {
   // Selectors
-  useSelector: /useSelector\s*\(\s*(?:\(?\s*(\w+)\s*\)?\s*=>\s*)?([^)]+)\)/g,
+  useSelector: /useSelector\s*\(\s*(?:\(?\s*(\w+)\s*\)?\s*=>)?([^)]*)\)/g,
   useDispatch: /useDispatch\s*\(\s*\)/g,
-  connect: /connect\s*\(\s*([^,]+)?\s*,?\s*([^)]+)?\s*\)/g,
+  connect: /connect\s*\(\s*([^,]*)\s*,?\s*([^)]*)\s*\)/g,
   mapStateFunction: /(?:const|function)\s+(\w*mapState\w*)\s*[=(]/g,
   
   // Store & Slices
@@ -65,7 +65,7 @@ export const REDUX_PATTERNS = {
   dispatchCall: /dispatch\s*\(\s*(\w+)\s*\(/g,
   
   // State path extraction
-  statePath: /(\w+(?:\.\w+)+)/g
+  statePath: /state\.\w+(?:\.\w+)*/g
 };
 
 /**
@@ -73,10 +73,10 @@ export const REDUX_PATTERNS = {
  * @constant {Object}
  */
 export const CONTEXT_PATTERNS = {
-  createContext: /createContext\s*(?:<[^>]+>)?\s*\(/g,
-  provider: /(\w+)\.Provider/g,
+  createContext: /createContext\s*(?:<[^>]*>)?\s*\(/g,
+  provider: /(\w+)\.Provider|<(\w+)\.Provider/g,
   useContext: /useContext\s*\(\s*(\w+)\s*\)/g,
-  consumer: /(\w+)\.Consumer/g,
+  consumer: /(\w+)\.Consumer|<(\w+)\.Consumer/g,
   useContextNew: /use\s*\(\s*(\w+)\s*\)/g  // React 18+
 };
 

@@ -16,6 +16,7 @@
  * @returns {Set<string>} - Set de paths de los que depende transitivamente
  */
 export function calculateTransitiveDependencies(filePath, files, visited = new Set()) {
+  if (!files) return new Set();
   if (visited.has(filePath)) {
     return new Set();
   }
@@ -25,8 +26,10 @@ export function calculateTransitiveDependencies(filePath, files, visited = new S
 
   const fileNode = files[filePath];
   if (!fileNode) return result;
+  if (!fileNode.dependsOn) return result;
 
   for (const dependent of fileNode.dependsOn) {
+    if (dependent === filePath) continue; // Exclude self
     result.add(dependent);
     const transitive = calculateTransitiveDependencies(dependent, files, visited);
     for (const dep of transitive) {
@@ -47,6 +50,7 @@ export function calculateTransitiveDependencies(filePath, files, visited = new S
  * @returns {Set<string>} - Set de paths que dependen transitivamente de este
  */
 export function calculateTransitiveDependents(filePath, files, visited = new Set()) {
+  if (!files) return new Set();
   if (visited.has(filePath)) {
     return new Set();
   }
@@ -56,8 +60,10 @@ export function calculateTransitiveDependents(filePath, files, visited = new Set
 
   const fileNode = files[filePath];
   if (!fileNode) return result;
+  if (!fileNode.usedBy) return result;
 
   for (const dependent of fileNode.usedBy) {
+    if (dependent === filePath) continue; // Exclude self
     result.add(dependent);
     const transitive = calculateTransitiveDependents(dependent, files, visited);
     for (const dep of transitive) {
@@ -78,6 +84,8 @@ export function calculateTransitiveDependents(filePath, files, visited = new Set
 export function calculateAllTransitiveDependencies(files) {
   const result = {};
   
+  if (!files) return result;
+  
   for (const filePath of Object.keys(files)) {
     const deps = calculateTransitiveDependencies(filePath, files, new Set());
     result[filePath] = Array.from(deps);
@@ -94,6 +102,8 @@ export function calculateAllTransitiveDependencies(files) {
  */
 export function calculateAllTransitiveDependents(files) {
   const result = {};
+  
+  if (!files) return result;
   
   for (const filePath of Object.keys(files)) {
     const deps = calculateTransitiveDependents(filePath, files, new Set());

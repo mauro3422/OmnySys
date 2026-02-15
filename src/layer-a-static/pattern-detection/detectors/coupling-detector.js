@@ -28,6 +28,19 @@ export class CouplingDetector extends PatternDetector {
   }
   
   async detect(systemMap) {
+    // Handle null/undefined input gracefully
+    if (!systemMap) {
+      return {
+        detector: this.getId(),
+        name: this.getName(),
+        description: this.getDescription(),
+        findings: [],
+        score: 100,
+        weight: this.globalConfig.weights?.coupling || 0.15,
+        recommendation: 'No coupling issues detected'
+      };
+    }
+    
     const config = this.config;
     const highImportThreshold = config.highImportThreshold || 15;
     const highDependentThreshold = config.highDependentThreshold || 10;

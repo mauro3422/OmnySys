@@ -31,9 +31,18 @@ export class RiskScorer {
   }
 
   /**
+   * Calculate risk score for a race (alias for score)
+   */
+  score(race, projectData) {
+    return this.calculate(race, projectData);
+  }
+
+  /**
    * Calculate risk score for a race
    */
   calculate(race, projectData) {
+    if (!race) return 'low';
+    
     const scores = {
       type: this.typeScorer.score(race),
       async: this.asyncScorer.score(race),
@@ -69,6 +78,7 @@ export class RiskScorer {
    * Generate explanation of score
    */
   explainScore(race, projectData) {
+    if (!race) return [];
     const factors = [];
 
     if (this.typeScorer.score(race) >= 0.8) {

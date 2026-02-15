@@ -11,6 +11,9 @@
  */
 export class ImpactScorer {
   score(race, projectData) {
+    if (!race || !race.accesses || !Array.isArray(race.accesses)) {
+      return 0.5;
+    }
     let impact = 0.5;
 
     const affectedFlows = this.getAffectedBusinessFlows(race, projectData);
@@ -23,11 +26,12 @@ export class ImpactScorer {
       impact += 0.2 * Math.min(affectedEntries.length / 2, 1.0);
     }
 
-    const hasExportedAccess = race.accesses.some(a => a.isExported);
+    const hasExportedAccess = race.accesses.some(a => a?.isExported);
     if (hasExportedAccess) {
       impact += 0.1;
     }
 
+    // Cap at 1.0
     return Math.min(impact, 1.0);
   }
 

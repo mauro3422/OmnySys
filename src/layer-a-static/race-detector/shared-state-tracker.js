@@ -16,6 +16,7 @@ export class SharedStateTracker {
    * Registra un acceso al estado
    */
   trackAccess(key, access) {
+    if (!key || !access) return;
     if (!this.state.has(key)) {
       this.state.set(key, {
         key,
@@ -124,8 +125,8 @@ export class SharedStateTracker {
     const reads = accesses.filter(a => a.type === 'read' || a.type === 'STATE_READ');
     const writes = accesses.filter(a => a.type === 'write' || a.type === 'STATE_WRITE');
 
-    // Patrón read-heavy
-    patterns.readHeavy = reads.length > writes.length * 2;
+    // Patrón read-heavy (at least 2x more reads than writes, minimum 2 reads)
+    patterns.readHeavy = reads.length >= 2 && reads.length >= writes.length * 2;
 
     // Patrón write-heavy
     patterns.writeHeavy = writes.length > reads.length;

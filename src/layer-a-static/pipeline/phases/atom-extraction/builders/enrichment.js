@@ -6,9 +6,9 @@
  * @module pipeline/phases/atom-extraction/builders/enrichment
  */
 
-import { extractDNA } from '../../../extractors/metadata/dna-extractor.js';
-import { validateForLineage } from '../../../../layer-b-semantic/validators/lineage-validator.js';
-import { logger } from '../../../../utils/logger.js';
+import { extractDNA } from '#layer-a/extractors/metadata/dna-extractor.js';
+import { validateForLineage } from '#layer-b/validators/lineage-validator.js';
+import { logger } from '#utils/logger.js';
 
 /**
  * Enrich atom with DNA and lineage validation

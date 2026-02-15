@@ -90,7 +90,8 @@ export function createDependency(from, to, importInfo = {}) {
     to,
     type: importInfo.type || 'import',
     symbols: importInfo.symbols || [],
-    reason: importInfo.reason
+    reason: importInfo.reason,
+    dynamic: importInfo.dynamic || false
   };
 }
 

@@ -27,6 +27,7 @@ const IMMUTABLE_PATTERNS = [
  * @returns {boolean} - True if uses immutable data
  */
 export function usesImmutableData(access, project) {
+  if (!access || !access.atom || !project) return false;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return false;
   
@@ -40,12 +41,13 @@ export function usesImmutableData(access, project) {
  * @returns {Object|null} - Immutable details or null
  */
 export function getImmutableDetails(access, project) {
+  if (!access || !access.atom || !project) return null;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return null;
   
   const libraryMap = [
     { pattern: /Immutable\./i, name: 'immutable-js' },
-    { pattern: /immer/i, name: 'immer' },
+    { pattern: /immer|produce\s*\(/i, name: 'immer' },
     { pattern: /Object\.freeze\(/i, name: 'native-freeze' },
     { pattern: /Readonly</i, name: 'typescript-readonly' }
   ];

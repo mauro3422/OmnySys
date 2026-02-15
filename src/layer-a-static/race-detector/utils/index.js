@@ -1,9 +1,14 @@
 /**
  * @fileoverview index.js
  * 
- * Utility exports (placeholder).
+ * Utility exports for race detector.
  * 
  * @module race-detector/utils
  */
 
-export const utils = {};
+export {
+  findAtomById,
+  extractQueueName,
+  isSharedStateVariable,
+  isJavaScriptKeyword
+} from './atom-utils.js';

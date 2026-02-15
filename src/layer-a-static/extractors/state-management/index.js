@@ -81,25 +81,31 @@ export function extractStoreStructure(code) {
   return {
     stores: result.stores || [],
     slices: result.slices || [],
-    hasStore: result.hasStore || false
+    hasStore: (result.stores || []).length > 0
   };
 }
 
 export function extractSelectorConnections(code, allFiles = {}) {
   // Wrapper simplificado - en implementación real usaría el detector completo
   const result = extractRedux(code);
-  return result.selectors?.map(s => ({
-    selector: s.name,
-    statePath: s.statePath,
-    line: s.line
-  })) || [];
+  const connections = [];
+  for (const selector of result.selectors || []) {
+    for (const path of selector.paths || []) {
+      connections.push({
+        selector: selector.body?.slice(0, 50) || 'unknown',
+        statePath: path,
+        line: selector.line
+      });
+    }
+  }
+  return connections;
 }
 
 export function extractContextConnections(code, allFiles = {}) {
-  // Wrapper simplificado
+  // Wrapper simplificado - mapea a formato esperado por tests
   const result = extractContext(code);
   return {
-    provides: result.providers?.map(p => p.name) || [],
+    provides: result.providers?.map(p => p.contextName) || [],
     consumes: result.consumers?.map(c => c.contextName) || []
   };
 }

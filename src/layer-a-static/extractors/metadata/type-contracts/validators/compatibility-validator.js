@@ -8,7 +8,7 @@
  */
 
 import { analyzeType, normalizeType, isNullableType } from '../types/type-analyzer.js';
-import { CompatibilityResult, COERCION_TYPES } from '../types/index.js';
+import { COERCION_TYPES } from '../types/index.js';
 
 /**
  * Regla de compatibilidad

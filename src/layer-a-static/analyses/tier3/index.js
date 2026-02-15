@@ -26,15 +26,6 @@ export {
   calculateCouplingScore
 } from './factors/index.js';
 
-// Legacy function exports for backward compatibility
-export function calculateRiskScore(fileAnalysis, semanticConnections, sideEffects, graphMetrics) {
-  return calculateRiskScore(fileAnalysis, semanticConnections, sideEffects, graphMetrics);
-}
-
-export function calculateScoreSeverity(score) {
-  return calculateScoreSeverity(score);
-}
-
 export function calculateAllRiskScores(systemMap, semanticConnectionsByFile, sideEffectsByFile, graphMetrics) {
   const scorers = new RiskScorer();
   return scorers.calculateAll(systemMap, semanticConnectionsByFile, sideEffectsByFile, graphMetrics);

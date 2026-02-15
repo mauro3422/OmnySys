@@ -16,7 +16,7 @@
  */
 
 import { parse } from '@babel/parser';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { InputExtractor } from './visitors/input-extractor.js';
 import { TransformationExtractor } from './visitors/transformation-extractor.js';
 import { OutputExtractor } from './visitors/output-extractor.js';

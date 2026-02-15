@@ -6,7 +6,7 @@
  * @module analyses/tier3/scorers/RiskScorer
  */
 
-import { calculateRiskScore, calculateScoreSeverity } from '../calculators/ScoreCalculator.js';
+import { calculateRiskScore } from '../calculators/ScoreCalculator.js';
 import { calculateScoreSeverity } from '../calculators/SeverityCalculator.js';
 import { ReportGenerator } from '../calculators/ReportGenerator.js';
 

@@ -8,6 +8,7 @@
 
 export {
   extractErrorFlow,
+  extractErrorFlowConnections,
   extractThrows,
   extractCatches,
   extractTryBlocks,

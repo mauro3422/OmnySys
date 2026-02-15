@@ -32,7 +32,7 @@ export class LockAnalyzer {
     if (atom.locks) {
       const relevantLock = atom.locks.find(lock => 
         lock.protectedVars?.includes(access.variable) ||
-        lock.scope?.includes(access.line)
+        (lock.scope && access.line >= lock.scope[0] && access.line <= lock.scope[1])
       );
       
       if (relevantLock) {
@@ -48,7 +48,10 @@ export class LockAnalyzer {
     if (code) {
       for (const { type, pattern } of this.lockPatterns) {
         if (pattern.test(code)) {
-          return { type, implicit: true };
+          // Try to extract lock name from code for better matching
+          const lockNameMatch = code.match(/(\w+)(?:\.(?:lock|acquire))/);
+          const lockName = lockNameMatch ? lockNameMatch[1] : undefined;
+          return { type, name: lockName, implicit: true };
         }
       }
     }

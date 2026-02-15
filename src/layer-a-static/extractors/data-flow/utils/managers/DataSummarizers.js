@@ -69,4 +69,3 @@ export class StatisticsCalculator {
   }
 }
 
-export { TokenSummarizer, GraphSummarizer, StatisticsCalculator };

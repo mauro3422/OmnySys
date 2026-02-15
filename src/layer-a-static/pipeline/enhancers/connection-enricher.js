@@ -15,11 +15,11 @@
  * @since 0.7.0
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { extractTemporalConnections, extractCrossFileTemporalConnections } from '../../extractors/metadata/temporal-connections.js';
-import { extractTypeContractConnections } from '../../extractors/metadata/type-contracts.js';
-import { extractErrorFlowConnections } from '../../extractors/metadata/error-flow.js';
-import { extractPerformanceImpactConnections } from '../../extractors/metadata/performance-impact.js';
+import { createLogger } from '#utils/logger.js';
+import { extractTemporalConnections, extractCrossFileTemporalConnections } from '#layer-a/extractors/metadata/temporal-connections.js';
+import { extractTypeContractConnections } from '#layer-a/extractors/metadata/type-contracts.js';
+import { extractErrorFlowConnections } from '#layer-a/extractors/metadata/error-flow.js';
+import { extractPerformanceImpactConnections } from '#layer-a/extractors/metadata/performance-impact.js';
 import { extractDataFlowConnections } from './connections/dataflow/index.js';
 import { extractInheritedConnections } from './connections/ancestry/index.js';
 import { calculateAllWeights } from './connections/weights/index.js';

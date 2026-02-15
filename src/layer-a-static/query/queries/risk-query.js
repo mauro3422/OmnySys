@@ -8,7 +8,7 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '../../storage/storage-manager.js';
+import { getDataDirectory } from '../../storage/storage-manager/index.js';
 import { readJSON, fileExists } from '../readers/json-reader.js';
 
 /**
@@ -41,7 +41,24 @@ export async function getRiskAssessment(rootPath) {
   };
 
   if (await fileExists(assessmentPath)) {
-    assessment = await readJSON(assessmentPath);
+    const fileData = await readJSON(assessmentPath);
+    // Merge with defaults to ensure all required properties exist
+    assessment = {
+      report: {
+        summary: {
+          criticalCount: 0,
+          highCount: 0,
+          mediumCount: 0,
+          lowCount: 0,
+          totalFiles: 0,
+          ...fileData.report?.summary
+        },
+        criticalRiskFiles: fileData.report?.criticalRiskFiles || [],
+        highRiskFiles: fileData.report?.highRiskFiles || [],
+        mediumRiskFiles: fileData.report?.mediumRiskFiles || []
+      },
+      scores: fileData.scores || {}
+    };
   }
 
   // 2. 🆕 INTEGRACIÓN: Leer eventos de Tunnel Vision

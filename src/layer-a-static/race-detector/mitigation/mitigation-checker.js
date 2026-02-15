@@ -53,6 +53,9 @@ export class MitigationChecker {
    * @returns {Object|null} - Mitigation info or null if not mitigated
    */
   findMitigation(race) {
+    if (!race || !race.accesses || race.accesses.length < 2) {
+      return null;
+    }
     const [access1, access2] = race.accesses;
     const mitigations = [];
     

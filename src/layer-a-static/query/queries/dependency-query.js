@@ -6,7 +6,8 @@
  * @module query/queries/dependency-query
  */
 
-import { getFileAnalysis } from './file-query.js';
+import { getFileAnalysis } from '#layer-a/query/queries/file-query/core/single-file.js';
+import { getProjectMetadata } from '#layer-a/query/queries/project-query.js';
 
 /**
  * Obtiene el grafo de dependencias de un archivo
@@ -15,31 +16,40 @@ import { getFileAnalysis } from './file-query.js';
  * @param {number} depth - Profundidad máxima
  * @returns {Promise<object>}
  */
-export async function getDependencyGraph(rootPath, filePath, depth = 2) {
+export async function getDependencyGraph(rootPath, filePath, depth) {
+  const maxDepth = depth ?? 2;
   const visited = new Set();
   const graph = { nodes: [], edges: [] };
   
-  async function traverse(currentPath, currentDepth) {
-    if (currentDepth > depth || visited.has(currentPath)) return;
-    
-    visited.add(currentPath);
-    graph.nodes.push({ id: currentPath, depth: currentDepth });
-    
+  async function traverse(currentPath, currentDepth, isRoot = false) {
+    if (currentDepth > maxDepth) return false;
+    if (visited.has(currentPath)) return true;
+
     try {
       const analysis = await getFileAnalysis(rootPath, currentPath);
+      visited.add(currentPath);
+      graph.nodes.push({ id: currentPath, depth: currentDepth });
       const imports = analysis?.imports || [];
       
       for (const imp of imports) {
         const target = imp.resolvedPath || imp.source;
-        graph.edges.push({ from: currentPath, to: target });
-        await traverse(target, currentDepth + 1);
+        const targetLoaded = await traverse(target, currentDepth + 1, false);
+        if (targetLoaded) {
+          graph.edges.push({ from: currentPath, to: target });
+        }
       }
+      return true;
     } catch {
+      if (isRoot) {
+        visited.add(currentPath);
+        graph.nodes.push({ id: currentPath, depth: currentDepth });
+      }
       // Archivo no encontrado, continuar
+      return false;
     }
   }
   
-  await traverse(filePath, 0);
+  await traverse(filePath, 0, true);
   return graph;
 }
 
@@ -70,5 +80,3 @@ export async function getTransitiveDependents(rootPath, filePath) {
   
   return Array.from(dependents);
 }
-
-import { getProjectMetadata } from './project-query.js';

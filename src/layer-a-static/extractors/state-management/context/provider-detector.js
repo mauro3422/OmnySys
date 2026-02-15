@@ -18,6 +18,7 @@ export function detectContextCreations(code) {
   const contexts = [];
   let match;
   
+  CONTEXT_PATTERNS.createContext.lastIndex = 0;
   while ((match = CONTEXT_PATTERNS.createContext.exec(code)) !== null) {
     contexts.push({
       type: ContextType.CONTEXT_CREATION,
@@ -37,6 +38,7 @@ export function detectProviders(code) {
   const providers = [];
   let match;
   
+  CONTEXT_PATTERNS.provider.lastIndex = 0;
   while ((match = CONTEXT_PATTERNS.provider.exec(code)) !== null) {
     providers.push({
       type: ContextType.CONTEXT_PROVIDER,

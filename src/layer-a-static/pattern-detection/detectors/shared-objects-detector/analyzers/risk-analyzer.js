@@ -16,13 +16,16 @@ import { isConfigObject, isStateObject, isUtilsObject } from '../patterns/name-p
  * @returns {Object} Risk profile
  */
 export function analyzeRiskProfile(obj, usages, filePath) {
-  const factors = [];
+  let factors = [];
   let score = 0;
   let type = 'unknown';
   
   // Heuristic 0: Use extractor metadata if available
   if (obj.objectType && obj.riskLevel) {
-    ({ score, type, factors } = applyExtractorMetadata(obj, score, type, factors));
+    const metadata = applyExtractorMetadata(obj, score, type, factors);
+    score = metadata.score;
+    type = metadata.type;
+    factors = metadata.factors;
   }
   
   // Heuristic 1: Config pattern (reduces risk)

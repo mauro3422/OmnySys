@@ -7,7 +7,7 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '../../storage/storage-manager.js';
+import { getDataDirectory } from '../../storage/storage-manager/index.js';
 import { readJSON, fileExists } from '../readers/json-reader.js';
 
 /**
@@ -33,9 +33,15 @@ export async function getAllConnections(rootPath) {
     eventListeners = await readJSON(eventListenersPath);
   }
 
+  // Calculate total from connections arrays if totals are missing
+  const sharedStateConnections = sharedState.connections || [];
+  const eventListenersConnections = eventListeners.connections || [];
+  const sharedStateTotal = sharedState.total !== undefined ? sharedState.total : sharedStateConnections.length;
+  const eventListenersTotal = eventListeners.total !== undefined ? eventListeners.total : eventListenersConnections.length;
+
   return {
-    sharedState: sharedState.connections || [],
-    eventListeners: eventListeners.connections || [],
-    total: (sharedState.total || 0) + (eventListeners.total || 0)
+    sharedState: sharedStateConnections,
+    eventListeners: eventListenersConnections,
+    total: sharedStateTotal + eventListenersTotal
   };
 }

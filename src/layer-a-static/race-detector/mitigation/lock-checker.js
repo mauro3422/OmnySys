@@ -26,7 +26,7 @@ const LOCK_PATTERNS = [
   /LockManager/i,
   
   // Framework patterns
-  /async\s*\.mutate\(/i,  // TanStack Query
+  /\.mutate\(/i,           // TanStack Query / React Query
   /useMutation\(/i,        // React Query
   
   // Database locks
@@ -52,6 +52,7 @@ const LOCK_PATTERNS = [
  * @returns {boolean} - True if protected by lock
  */
 export function hasLockProtection(access, project) {
+  if (!access || !access.atom || !project) return false;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return false;
 
@@ -65,6 +66,7 @@ export function hasLockProtection(access, project) {
  * @returns {Object|null} - Lock details or null
  */
 export function getLockDetails(access, project) {
+  if (!access || !access.atom || !project) return null;
   const atom = findAtomById(access.atom, project);
   if (!atom?.code) return null;
   

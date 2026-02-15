@@ -6,8 +6,8 @@
  * @module class-extractor
  */
 
-import { findClasses, findMethods } from '../../../parsers/ast-parser.js';
-import { createLogger } from '../../../../../utils/logger.js';
+import { findClasses, findMethods } from '../../parsers/ast-parser.js';
+import { createLogger } from '#utils/logger.js';
 import { extractClassBody, extractImplements, extractDecorators } from './parsers/class-body-parser.js';
 import { extractClassMethods } from './extractors/method-extractor.js';
 import { extractClassProperties } from './extractors/property-extractor.js';

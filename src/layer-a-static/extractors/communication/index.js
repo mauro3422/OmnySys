@@ -73,17 +73,17 @@ export function detectAllAdvancedConnections(code) {
 // 🆕 NUEVO: Wrappers simplificados para comprehensive-extractor
 export function getWebSocketConnections(code) {
   const result = extractWebSocket(code);
-  return result.connections || [];
+  return result.urls || [];
 }
 
 export function getWebWorkers(code) {
   const result = extractWebWorkerCommunication(code);
-  return result.workers || [];
+  return result.all || [];
 }
 
 export function getPostMessages(code) {
   const result = extractWindowPostMessage(code);
-  return result.messages || [];
+  return result.all || [];
 }
 
 export function getBroadcastChannels(code) {
@@ -93,7 +93,7 @@ export function getBroadcastChannels(code) {
 
 export function getServerSentEvents(code) {
   const result = extractServerSentEvents(code);
-  return result.events || [];
+  return result.all || [];
 }
 
 export function getMessageChannels(code) {

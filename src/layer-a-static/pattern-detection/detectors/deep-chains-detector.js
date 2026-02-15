@@ -33,6 +33,19 @@ export class DeepChainsDetector extends PatternDetector {
   }
   
   async detect(systemMap) {
+    // Handle null/undefined input gracefully
+    if (!systemMap) {
+      return {
+        detector: this.getId(),
+        name: this.getName(),
+        description: this.getDescription(),
+        findings: [],
+        score: 100,
+        weight: this.globalConfig.weights?.deepChains || 0.2,
+        recommendation: 'No deep chains detected'
+      };
+    }
+    
     const config = this.config;
     const minDepth = config.minDepth || 7;
     const maxAcceptable = config.maxAcceptable || 20;
@@ -96,6 +109,8 @@ export class DeepChainsDetector extends PatternDetector {
    */
   findEntryPoints(systemMap) {
     const entryPoints = [];
+    if (!systemMap) return entryPoints;
+    
     const links = systemMap.function_links || [];
     
     // Agrupar links por función

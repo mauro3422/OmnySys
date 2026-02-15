@@ -8,7 +8,7 @@
  * @version 2.0.0
  */
 
-import { createLogger } from '../../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { findFunctionNode, getFunctionBody, isImplicitReturn } from './utils/ast-helpers.js';
 import { classifyOperation } from './core/operation-classifier.js';
 import { extractSources } from './core/source-extractor.js';
@@ -34,10 +34,10 @@ export class TransformationExtractor {
     this.code = functionCode;
     this.inputs = inputs || [];
     this.transformations = [];
-    this.inputNames = new Set(inputs.map(i => i.name));
+    this.inputNames = new Set(this.inputs.map(i => i.name));
     
     // Trackear nombres locales de destructured inputs
-    inputs.forEach(i => {
+    this.inputs.forEach(i => {
       if (i.properties) {
         i.properties.forEach(p => this.inputNames.add(p.local));
       }

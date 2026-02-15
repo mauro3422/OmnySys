@@ -14,13 +14,17 @@ import path from 'path';
  * @returns {string}
  */
 export function getFileId(filePath) {
+  if (!filePath) return 'unknown';
+  
   // Usar el path relativo completo para evitar colisiones
   // Ej: src/api/userService.js -> src_api_userService
-  const normalized = filePath
+  // Primero remover extensión, luego normalizar path
+  const withoutExt = filePath.replace(/\.[^.]+$/, '');
+  const normalized = withoutExt
     .replace(/\\/g, '_')  // Windows backslash
     .replace(/\//g, '_')  // Unix slash
-    .replace(/[^a-zA-Z0-9_]/g, '')  // Remover caracteres especiales
-    .replace(/\.[^.]+$/, '');  // Remover extensión
+    .replace(/^_|_$/g, '')  // Remover leading/trailing underscores
+    .replace(/[^a-zA-Z0-9_]/g, '');  // Remover caracteres especiales
   
   return normalized || 'unknown';
 }
@@ -31,17 +35,19 @@ export function getFileId(filePath) {
  * @returns {boolean}
  */
 export function isNodeExported(nodePath) {
+  if (!nodePath) return false;
+  
   let parent = nodePath.parent;
 
-  if (parent.type === 'ExportNamedDeclaration' || parent.type === 'ExportDefaultDeclaration') {
+  if (parent?.type === 'ExportNamedDeclaration' || parent?.type === 'ExportDefaultDeclaration') {
     return true;
   }
 
   let currentPath = nodePath;
   while (currentPath.parentPath) {
     currentPath = currentPath.parentPath;
-    if (currentPath.node.type === 'ExportNamedDeclaration' ||
-        currentPath.node.type === 'ExportDefaultDeclaration') {
+    if (currentPath.node?.type === 'ExportNamedDeclaration' ||
+        currentPath.node?.type === 'ExportDefaultDeclaration') {
       return true;
     }
   }
@@ -56,8 +62,8 @@ export function isNodeExported(nodePath) {
  * @returns {boolean}
  */
 export function isExportedFunction(node, fileInfo) {
-  if (!node.id) return false;
-  return fileInfo.exports.some(exp => exp.name === node.id.name);
+  if (!node?.id) return false;
+  return fileInfo?.exports?.some(exp => exp.name === node.id.name) ?? false;
 }
 
 /**
@@ -68,6 +74,8 @@ export function isExportedFunction(node, fileInfo) {
 export function findCallsInFunction(functionPath) {
   const calls = [];
   const seen = new Set();
+
+  if (!functionPath?.traverse) return calls;
 
   functionPath.traverse({
     CallExpression(innerPath) {

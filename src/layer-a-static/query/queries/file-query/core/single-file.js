@@ -4,8 +4,8 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '../../../storage/storage-manager.js';
-import { readJSON } from '../../readers/json-reader.js';
+import { getDataDirectory } from '#layer-a/storage/storage-manager.js';
+import { readJSON } from '#layer-a/query/readers/json-reader.js';
 
 /**
  * Normalizes file path to be relative to root
@@ -32,9 +32,9 @@ function normalizeFilePath(rootPath, filePath) {
  * @returns {Promise<object>} - Datos completos del archivo
  */
 export async function getFileAnalysis(rootPath, filePath) {
-  const dataPath = getDataDirectory(rootPath);
-  const normalizedPath = normalizeFilePath(rootPath, filePath);
+  const dataPath = getDataDirectory(rootPath).replace(/\\/g, '/');
+  const normalizedPath = normalizeFilePath(rootPath, filePath).replace(/\\/g, '/');
 
-  const filePart = path.join(dataPath, 'files', normalizedPath + '.json');
+  const filePart = path.posix.join(dataPath, 'files', normalizedPath + '.json');
   return await readJSON(filePart);
 }

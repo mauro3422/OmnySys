@@ -18,6 +18,7 @@ export class GlobalVariableTracker extends BaseTracker {
    * @param {Object} module - Parent module
    */
   trackMolecule(molecule, module) {
+    if (!molecule) return;
     const atoms = molecule.atoms || [];
     
     for (const atom of atoms) {
@@ -67,6 +68,7 @@ export class GlobalVariableTracker extends BaseTracker {
    * @private
    */
   isGlobalAccess(effect) {
+    if (!effect) return false;
     const globalIndicators = ['global.', 'window.', 'globalThis.', 'process.env'];
     return globalIndicators.some(ind => 
       (effect.variable && effect.variable.includes(ind)) ||

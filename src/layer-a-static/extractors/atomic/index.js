@@ -56,7 +56,7 @@ export function extractAtoms(code, filePath) {
   
   let currentClassName = null;
   
-  traverse.default(ast, {
+  traverse(ast, {
     // Funciones declaradas
     FunctionDeclaration(path) {
       if (isTopLevel(path)) {
@@ -147,7 +147,8 @@ export function extractArrows(code, filePath) {
 // Helpers
 function isTopLevel(path) {
   return path.parent.type === 'Program' ||
-         path.parent.type === 'ExportNamedDeclaration';
+         path.parent.type === 'ExportNamedDeclaration' ||
+         path.parent.type === 'ExportDefaultDeclaration';
 }
 
 function isVariableDeclaration(path) {

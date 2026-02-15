@@ -62,6 +62,6 @@ export function extractDefaultExport(nodePath) {
   const node = nodePath.node;
   return {
     type: 'default',
-    kind: node.declaration.type
+    kind: node.declaration?.type ?? null
   };
 }

@@ -26,6 +26,9 @@ export function findFunctionInResolution(
   parsedFiles,
   currentFile
 ) {
+  if (resolvedImports == null || parsedFiles == null) {
+    return null;
+  }
   // 1. Buscar en imports del archivo actual
   const imports = resolvedImports[currentFile] || [];
 
@@ -47,7 +50,7 @@ export function findFunctionInResolution(
   }
 
   // 2. Buscar en funciones locales (misma archivo)
-  if (fileInfo.functions) {
+  if (fileInfo != null && fileInfo.functions) {
     const localFunc = fileInfo.functions.find(f => f.name === functionName);
     if (localFunc) {
       return {
@@ -72,7 +75,7 @@ export function findFunctionInResolution(
 export function resolveAllFunctionCalls(fileInfo, resolvedImports, parsedFiles, currentFile) {
   const resolvedCalls = [];
   
-  if (!fileInfo.functions || !Array.isArray(fileInfo.functions)) {
+  if (fileInfo == null || !fileInfo.functions || !Array.isArray(fileInfo.functions)) {
     return resolvedCalls;
   }
 

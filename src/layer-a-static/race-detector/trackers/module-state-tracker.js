@@ -18,6 +18,7 @@ export class ModuleStateTracker extends BaseTracker {
    * @param {Object} module - Parent module
    */
   trackMolecule(molecule, module) {
+    if (!molecule) return;
     const atoms = molecule.atoms || [];
     
     for (const atom of atoms) {
@@ -51,6 +52,7 @@ export class ModuleStateTracker extends BaseTracker {
    * @private
    */
   isModuleStateWrite(effect) {
+    if (!effect) return false;
     // Check for explicit module state writes
     if (effect.type === 'module_state_write') {
       return true;

@@ -7,7 +7,7 @@
  * @version 2.0.0
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { extractThrows } from './throw-extractor.js';
 import { extractCatches, extractTryBlocks } from './catch-extractor.js';
 import { detectPropagationPattern, detectUnhandledCalls } from '../analyzers/propagation-analyzer.js';

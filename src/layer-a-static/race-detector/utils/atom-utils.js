@@ -15,13 +15,23 @@
  * @returns {Object|null} - Atom object or null if not found
  */
 export function findAtomById(atomId, project) {
-  const [filePath, functionName] = atomId.split('::');
+  if (!atomId || !project) return null;
+  
+  const parts = atomId.split('::');
+  const filePath = parts.length > 1 ? parts[0] : null;
+  const functionName = parts.length > 1 ? parts[1] : null;
   
   for (const module of project.modules || []) {
     for (const molecule of module.files || []) {
-      if (molecule.filePath?.endsWith(filePath)) {
+      // If we have a file path, check if molecule matches
+      const fileMatches = !filePath || molecule.filePath?.endsWith(filePath);
+      
+      if (!filePath || fileMatches) {
         for (const atom of molecule.atoms || []) {
-          if (atom.name === functionName || atom.id === atomId) {
+          // Match by exact ID, or by function name if we have one
+          if (atom.id === atomId || 
+              (functionName && atom.name === functionName) ||
+              (!functionName && atom.id === atomId)) {
             return atom;
           }
         }

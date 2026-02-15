@@ -18,6 +18,7 @@ export function detectUseSelectors(code) {
   const selectors = [];
   let match;
   
+  REDUX_PATTERNS.useSelector.lastIndex = 0;
   while ((match = REDUX_PATTERNS.useSelector.exec(code)) !== null) {
     const selectorBody = match[2];
     const paths = extractStatePaths(selectorBody);
@@ -42,6 +43,7 @@ export function detectConnectHOC(code) {
   const selectors = [];
   let match;
   
+  REDUX_PATTERNS.connect.lastIndex = 0;
   while ((match = REDUX_PATTERNS.connect.exec(code)) !== null) {
     selectors.push({
       type: ReduxType.CONNECT_HOC,
@@ -63,6 +65,7 @@ export function detectMapStateFunctions(code) {
   const selectors = [];
   let match;
   
+  REDUX_PATTERNS.mapStateFunction.lastIndex = 0;
   while ((match = REDUX_PATTERNS.mapStateFunction.exec(code)) !== null) {
     selectors.push({
       type: ReduxType.MAP_STATE_FUNCTION,

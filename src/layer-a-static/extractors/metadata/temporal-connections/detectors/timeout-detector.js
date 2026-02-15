@@ -71,7 +71,7 @@ export function detectTimeouts(code) {
   }
   
   // Handle setTimeout without explicit delay (defaults to 0)
-  const noDelayPattern = /setTimeout\s*\(\s*(?:function|\([^)]*\)\s*=>|\w+\s*\)\s*[,)]/g;
+  const noDelayPattern = /setTimeout\s*\(\s*(?:function|\([^)]*\)\s*=>|\w+)\s*[,)]/g;
   const noDelayMatches = code.match(noDelayPattern) || [];
   const explicitMatches = timeouts.length;
   

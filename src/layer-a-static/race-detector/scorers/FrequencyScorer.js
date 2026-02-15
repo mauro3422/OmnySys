@@ -11,6 +11,9 @@
  */
 export class FrequencyScorer {
   score(race) {
+    if (!race || !race.accesses || !Array.isArray(race.accesses)) {
+      return 0.5;
+    }
     const accesses = race.accesses;
 
     if (accesses.length > 2) {

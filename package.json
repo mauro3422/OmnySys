@@ -59,7 +59,9 @@
     "#layer-a/*": "./src/layer-a-static/*",
     "#layer-b/*": "./src/layer-b-semantic/*",
     "#layer-c/*": "./src/layer-c-memory/*",
+    "#molecular-chains/*": "./src/layer-a-static/pipeline/molecular-chains/*",
     "#shared/*": "./src/shared/*",
+    "#test-factories/*": "./tests/factories/*",
     "#utils/*": "./src/utils/*"
   },
   "dependencies": {

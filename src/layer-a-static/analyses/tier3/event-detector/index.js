@@ -6,6 +6,10 @@
  * @module analyses/tier3/event-detector
  */
 
+// Imports for analyzeEventPatterns (must be before function definition)
+import { detectEventPatterns } from './detector.js';
+import { generateEventConnections } from './connection-generator.js';
+
 // Constantes
 export {
   EVENT_PATTERNS,
@@ -81,12 +85,8 @@ export function analyzeEventPatterns(fileSourceCode) {
   };
 }
 
-// Import for default export
-import { detectEventPatterns as dep } from './detector.js';
-import { generateEventConnections as gec } from './connection-generator.js';
-
 // Default export
 export default {
-  detectEventPatterns: dep,
-  generateEventConnections: gec
+  detectEventPatterns,
+  generateEventConnections
 };

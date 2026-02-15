@@ -18,6 +18,7 @@ export function detectUseDispatch(code) {
   const actions = [];
   let match;
   
+  REDUX_PATTERNS.useDispatch.lastIndex = 0;
   while ((match = REDUX_PATTERNS.useDispatch.exec(code)) !== null) {
     actions.push({
       type: ReduxType.USE_DISPATCH,
@@ -37,6 +38,7 @@ export function detectAsyncThunks(code) {
   const thunks = [];
   let match;
   
+  REDUX_PATTERNS.asyncThunk.lastIndex = 0;
   while ((match = REDUX_PATTERNS.asyncThunk.exec(code)) !== null) {
     thunks.push({
       type: ReduxType.ASYNC_THUNK,
@@ -57,6 +59,7 @@ export function detectDispatchCalls(code) {
   const actions = [];
   let match;
   
+  REDUX_PATTERNS.dispatchCall.lastIndex = 0;
   while ((match = REDUX_PATTERNS.dispatchCall.exec(code)) !== null) {
     actions.push({
       type: ReduxType.DISPATCH_CALL,

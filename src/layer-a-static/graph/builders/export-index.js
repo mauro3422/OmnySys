@@ -26,6 +26,8 @@ import { resolveImportPath } from '../utils/path-utils.js';
  */
 export function buildExportIndex(parsedFiles, allFilePaths) {
   const exportIndex = {};
+  
+  if (!parsedFiles) return exportIndex;
 
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     if (!fileInfo.exports || fileInfo.exports.length === 0) continue;
@@ -69,6 +71,8 @@ export function buildExportIndex(parsedFiles, allFilePaths) {
  * @returns {ExportIndexEntry|null} - Fuente original o null
  */
 export function resolveExportSource(exportName, filePath, exportIndex, maxDepth = 10) {
+  if (!exportIndex) return null;
+  
   let currentFile = filePath;
   let currentName = exportName;
   let depth = 0;
@@ -103,6 +107,8 @@ export function resolveExportSource(exportName, filePath, exportIndex, maxDepth 
  */
 export function findReexportingFiles(sourceFile, exportIndex) {
   const result = [];
+  
+  if (!exportIndex) return result;
 
   for (const [filePath, exports] of Object.entries(exportIndex)) {
     const reexported = [];

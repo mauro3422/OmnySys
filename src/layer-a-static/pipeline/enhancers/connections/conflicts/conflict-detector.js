@@ -4,7 +4,7 @@
  * @module pipeline/enhancers/connections/conflicts
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:connections:conflicts');
 
@@ -38,7 +38,7 @@ function detectTemporalCycles(connections) {
   const conflicts = [];
   
   const temporalConns = connections.filter(c => 
-    c.type.includes('temporal') && c.relationship === 'must-run-before'
+    c?.type?.includes?.('temporal') && c.relationship === 'must-run-before'
   );
   
   // Grafo de dependencias temporales

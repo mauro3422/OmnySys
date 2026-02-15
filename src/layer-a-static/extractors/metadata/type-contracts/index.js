@@ -9,9 +9,6 @@
 
 // Types & Analysis
 export {
-  TYPE_KINDS,
-  PRIMITIVE_TYPES,
-  COERCION_TYPES,
   analyzeType,
   normalizeType,
   isNullableType,

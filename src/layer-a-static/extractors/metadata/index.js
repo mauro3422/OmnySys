@@ -99,7 +99,7 @@ import { extractDNA } from './dna-extractor.js';
 import { extractErrorFlow } from './error-flow.js';
 import { extractPerformanceMetrics } from './performance-impact.js';
 import { extractTypeContracts } from './type-contracts.js';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:index');
 
