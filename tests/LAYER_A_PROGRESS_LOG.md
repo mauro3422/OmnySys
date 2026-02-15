@@ -502,6 +502,38 @@
   - `module-system`: `15`
   - `pattern-detection`: `15`
 
+## 2026-02-15 - Storage Batch #1 (Storage Manager Full Direct Mapping)
+- Added 16 new no-mock tests to close all `storage` direct gaps:
+  - `storage/storage-manager.test.js`
+  - `storage/storage-manager/index.test.js`
+  - `storage/storage-manager/setup/directory.test.js`
+  - `storage/storage-manager/setup/index.test.js`
+  - `storage/storage-manager/utils/hash.test.js`
+  - `storage/storage-manager/utils/index.test.js`
+  - `storage/storage-manager/atoms/atom.test.js`
+  - `storage/storage-manager/atoms/index.test.js`
+  - `storage/storage-manager/molecules/molecule.test.js`
+  - `storage/storage-manager/molecules/index.test.js`
+  - `storage/storage-manager/files/metadata.test.js`
+  - `storage/storage-manager/files/file-analysis.test.js`
+  - `storage/storage-manager/files/connections.test.js`
+  - `storage/storage-manager/files/risks.test.js`
+  - `storage/storage-manager/files/system-map.test.js`
+  - `storage/storage-manager/files/index.test.js`
+- Focused validation:
+  - `16/16` files passed
+  - `16/16` tests passed
+- Coverage impact:
+  - `storage` direct gaps: `16` -> `0`
+
+## 2026-02-15 - Coverage Snapshot After Storage Batch #1
+- Layer A test files in tree: `534`
+- Remaining direct source files without 1:1 test filename: `150`
+- Remaining split:
+  - `extractors`: `120`
+  - `pattern-detection`: `15`
+  - `module-system`: `15`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
