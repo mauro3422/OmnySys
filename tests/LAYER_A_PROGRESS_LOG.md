@@ -234,6 +234,30 @@
   - `module-system`: 15
   - `query`: 1
 
+## 2026-02-15 - Race Detector Batch #2 (Core Matchers/Phases/Strategy Metadata)
+- Added 8 new no-mock tests:
+  - `tests/unit/layer-a-analysis/race-detector/matchers/PatternRegistry.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/matchers/RacePatternMatcher.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/patterns/PatternDetectors.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/phases/enrich-phase.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/phases/summary-phase.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/strategies/race-detection-strategy.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/strategies/race-detection-strategy/strategy/PatternRegistry.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/strategies/race-detection-strategy/strategy/RaceFactory.test.js`
+- Focused validation:
+  - `8/8` files passed
+  - `15/15` tests passed
+- Coverage impact:
+  - `race-detector` direct gaps: `42` -> `33`
+  - Remaining `race-detector` gaps are concentrated in modular analyzer internals:
+    - `strategies/race-detection-strategy/analyzers/*`
+    - `strategies/race-detection-strategy/patterns/*`
+    - `strategies/race-detection-strategy/detectors/*`
+
+## 2026-02-15 - Coverage Snapshot After Race Detector Batch #2
+- Layer A test files in tree: `386`
+- Remaining direct source files without 1:1 test filename: `297`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
