@@ -27,6 +27,7 @@
 - Added Analyses Tier1 batch #1 (15 new no-mock tests, `30/30` passing) covering `helpers`, `hotspots`, `orphan-files`, `unused-exports`, and `function-cycle-classifier` modular core; reduced `analyses` gaps from `48` to `33` and overall snapshot to `485` test files with `199` direct gaps remaining.
 - Added Analyses batch #2 (33 new no-mock tests, `44/44` passing) covering remaining Tier2/Tier3 modules plus `V2_ALGORITHMS_PROPOSAL`; `analyses` direct gaps reduced from `33` to `0`, with Layer A snapshot now at `518` test files and `166` direct gaps remaining.
 - Added Storage batch #1 (16 new no-mock tests, `16/16` passing) for complete storage-manager direct mapping (`storage-manager`, `setup`, `utils`, `atoms`, `molecules`, `files`); `storage` direct gaps reduced from `16` to `0`, snapshot now `534` test files and `150` direct gaps remaining.
+- Added Module-System + Pattern-Detection batch #1 (30 new no-mock tests, `73/73` passing) to close all remaining direct gaps in both systems; snapshot now `564` test files with `120` direct gaps remaining (`extractors` only). Documented known blocker in `shared-detector.js` (broken relative import) through explicit blocker-evidence test instead of mocks.
 
 ## ðŸ“‹ **Index of Version-Specific Changelogs**
 

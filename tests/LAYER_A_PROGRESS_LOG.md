@@ -534,6 +534,42 @@
   - `pattern-detection`: `15`
   - `module-system`: `15`
 
+## 2026-02-15 - Module-System + Pattern-Detection Batch #1 (Direct Mapping Closure)
+- Added 30 new no-mock tests to close all remaining direct gaps in:
+  - `module-system` (15 files):
+    - `module-system/__tests__/utils.test.test.js`
+    - `module-system/enrichers/*.test.js` (2 files)
+    - `module-system/groupers/*.test.js` (2 files)
+    - `module-system/module-analyzer/ModuleAnalyzer.test.js`
+    - `module-system/module-analyzer/index.test.js`
+    - `module-system/module-analyzer/analyzers/*.test.js` (3 files)
+    - `module-system/module-analyzer/chains/chain-builder.test.js`
+    - `module-system/module-analyzer/metrics/metrics-calculator.test.js`
+    - `module-system/queries/*.test.js` (3 files)
+  - `pattern-detection` (15 files):
+    - `pattern-detection/detectors/*.test.js` (6 files)
+    - `pattern-detection/detectors/shared-objects-detector/analyzers/*.test.js` (3 files)
+    - `pattern-detection/detectors/shared-objects-detector/detector.test.js`
+    - `pattern-detection/detectors/shared-objects-detector/detectors/shared-detector.test.js`
+    - `pattern-detection/detectors/shared-objects-detector/index.test.js`
+    - `pattern-detection/detectors/shared-objects-detector/patterns/name-patterns.test.js`
+    - `pattern-detection/runners/*.test.js` (2 files)
+- Focused validation:
+  - `30/30` files passed
+  - `73/73` tests passed
+- Real blocker documented (without source patch in this pass):
+  - unresolved relative import in `src/layer-a-static/pattern-detection/detectors/shared-objects-detector/detectors/shared-detector.js`
+  - captured by blocker-aware source-level test assertion
+- Coverage impact:
+  - `module-system` direct gaps: `15` -> `0`
+  - `pattern-detection` direct gaps: `15` -> `0`
+
+## 2026-02-15 - Coverage Snapshot After Module-System + Pattern-Detection Batch #1
+- Layer A test files in tree: `564`
+- Remaining direct source files without 1:1 test filename: `120`
+- Remaining split:
+  - `extractors`: `120`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
