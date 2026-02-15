@@ -608,3 +608,28 @@
   2. `test(layer-a): contract alignment and brittle expectation cleanup`
   3. `fix(layer-a): null-safety hardening for phase helpers`
   4. `docs(layer-a): progress and changelog traceability`
+
+## 2026-02-15 - Factories Refactor Batch (Monolith Split + Stable Entrypoints)
+- Objective:
+  - Reduce monolithic factory files in `tests/factories/`
+  - Keep all public imports stable via `*.factory.js` entrypoints
+  - Move implementation to domain folders for maintainability
+- Refactor completed for:
+  - `graph-test`, `phases-test`, `static-extractor-test`, `comprehensive-extractor-test`
+  - `state-management-test`, `race-detector-test`, `tier3-analysis`
+  - `pipeline-test`, `module-system-test`, `data-flow-test`
+  - `query-test`, `parser-test`, `root-infrastructure-test`
+  - `detector-test`, `analysis`, `extractor`
+  - `pattern-detection-test` (entrypoint decoupled to dedicated module path)
+- New architecture pattern:
+  - Entry: `tests/factories/<name>.factory.js`
+  - Internals: `tests/factories/<name>/{builders,scenarios,helpers,validators,constants,...}.js`
+- Validation:
+  - Import smoke-test passed for all factory entrypoints in `tests/factories/*.factory.js`
+  - No test import path changes required in consuming suites
+- Documentation added/updated:
+  - `tests/factories/README.md` (architecture + map)
+  - `tests/factories/FACTORY_RELATIONS.md` (factory-to-suite relationship map)
+- Size impact at top-level:
+  - Largest factory entrypoint reduced from ~`801` lines to under `70` lines
+  - Current largest top-level entrypoint: `extractor-test.factory.js` (`63` lines)
