@@ -258,6 +258,30 @@
 - Layer A test files in tree: `386`
 - Remaining direct source files without 1:1 test filename: `297`
 
+## 2026-02-15 - Race Detector Batch #3 (Lock Analyzer Internals)
+- Added/validated 14 no-mock tests for lock analyzer internals:
+  - `strategies/race-detection-strategy/analyzers/lock/index.test.js`
+  - `strategies/race-detection-strategy/analyzers/lock/LockAnalyzer.test.js`
+  - `strategies/race-detection-strategy/analyzers/lock/utils/scope.test.js`
+  - `strategies/race-detection-strategy/analyzers/lock/utils/index.test.js`
+  - `strategies/race-detection-strategy/analyzers/lock/detectors/*.test.js` (5 files)
+  - `strategies/race-detection-strategy/analyzers/lock/analysis/*.test.js` (4 files)
+  - `strategies/race-detection-strategy/strategy/RaceDetectionStrategy.test.js`
+- Focused validation:
+  - `14/14` files passed
+  - `22/22` tests passed
+- Coverage impact:
+  - `race-detector` direct gaps: `33` -> `19`
+  - Remaining gaps are now concentrated in:
+    - `strategies/race-detection-strategy/analyzers/timing-analyzer/*`
+    - `strategies/race-detection-strategy/patterns/*`
+    - `strategies/race-detection-strategy/detectors/*`
+    - compatibility wrappers: `analyzers/lock-analyzer.js`, `analyzers/shared-state-analyzer.js`, `analyzers/timing-analyzer.js`
+
+## 2026-02-15 - Coverage Snapshot After Race Detector Batch #3
+- Layer A test files in tree: `400`
+- Remaining direct source files without 1:1 test filename: `283`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
