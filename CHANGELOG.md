@@ -17,6 +17,7 @@
 - Added Race Detector structural coverage batch #1 (8 new no-mock test files, 13 tests passing).
 - Added Pipeline structural coverage batch #2 (19 new no-mock test files, 31 tests passing) for molecular-chains/argument-mapper/graph-builder index layers and atom-extraction utility indexes.
 - Added Pipeline structural coverage batch #3 (10 new no-mock test files, 16 tests passing) for enhance core files and phase/compat wrappers, with explicit assertions for real runtime blockers instead of mocks.
+- Added Pipeline structural coverage batch #4 (22 new no-mock test files, 74 tests passing) for concrete `argument-mapper`, `graph-builder`, and `atom-extraction` modules; direct pipeline gaps now `0` (full 1:1 source-test mapping in `src/layer-a-static/pipeline`).
 
 ## ðŸ“‹ **Index of Version-Specific Changelogs**
 

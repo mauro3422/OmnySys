@@ -192,6 +192,48 @@
     - `molecular-chains`: 16
     - `phases`: 6
 
+## 2026-02-15 - Pipeline Batch #4 (Concrete Modules Complete, No Mocks)
+- Added 22 new no-mock tests to close all remaining direct `pipeline` gaps:
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/ArgumentMapper.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/analysis/chains.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/analysis/data-flow.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/analysis/return-usage.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/extractors/argument-extractor.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/transforms/detector.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/transforms/types.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/utils/code-utils.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/utils/confidence.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/GraphBuilder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/edges/builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/edges/return-flow.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/metrics/calculator.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/nodes/builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/nodes/position.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/paths/finder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/builders/enrichment.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/builders/metadata-builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/extraction/atom-extractor.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/graph/call-graph.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/metadata/archetype.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/metadata/complexity.test.js`
+- Focused validation:
+  - `37/37` files passed
+  - `74/74` tests passed
+- Result:
+  - `pipeline` direct source gaps: `0`
+  - All `src/layer-a-static/pipeline/**/*.js` now have matching direct test files.
+
+## 2026-02-15 - Coverage Snapshot After Pipeline Batch #4
+- Remaining direct source files without 1:1 test filename: `322`
+- Remaining split:
+  - `extractors`: 169
+  - `race-detector`: 58
+  - `analyses`: 48
+  - `storage`: 16
+  - `pattern-detection`: 15
+  - `module-system`: 15
+  - `query`: 1
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
