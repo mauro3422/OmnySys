@@ -90,6 +90,42 @@
     - `enhance`: 5
     - `enhancers`: 4
 
+## 2026-02-15 - Pipeline Enhancers Real-Test Cleanup (No Mocks)
+- Reworked these existing enhancer suites to run against real modules (removed `vi.mock` usage):
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/orchestrators/file-enhancer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/orchestrators/project-enhancer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/metadata-enhancer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/connection-enricher.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/legacy/system-map-enhancer.test.js`
+- Validation (real modules):
+  - `5/5` files passed
+  - `15/15` tests passed
+- Important evidence preserved:
+  - Legacy enhancer path still emits real warning `RiskScorer is not defined` in runtime flow.
+  - This is now detected in real tests, not masked by test doubles.
+- Current status for `pipeline/enhancers` test folder:
+  - `vi.mock` occurrences: `0`
+
+## 2026-02-15 - Race Detector Batch #1 (Real Tests)
+- Added 8 new no-mock tests:
+  - `tests/unit/layer-a-analysis/race-detector/closure-analysis/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/mitigation/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/patterns/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/phases/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/scorers/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/trackers/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/utils/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/strategies/race-detection-strategy/patterns/index.test.js`
+- Validation:
+  - `8/8` files passed
+  - `13/13` tests passed
+
+## 2026-02-15 - Coverage Snapshot After Real-Test Cleanup + Race Batch #1
+- Layer A test files in tree: `310`
+- Remaining direct source files without 1:1 test filename: `373`
+- Race detector direct gaps reduced:
+  - from `66` to `58`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`

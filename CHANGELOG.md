@@ -13,6 +13,8 @@
 - Added `tests/LAYER_A_PROGRESS_LOG.md` to preserve baseline-to-current traceability for commits and future audits.
 - Added Tier3 structural coverage batch (8 new test files, 23 tests passing) for `analyses/tier3` export surfaces and event-detector facade contracts, explicitly in "tests first, bugfixes later" mode.
 - Added Pipeline structural coverage batch #1 (13 new test files, 24 tests passing) for `pipeline/enhance*` and `pipeline/enhancers*` index/wrapper contracts.
+- Converted `pipeline/enhancers` test suites to real-module execution (removed mocks from enhancer orchestrator/metadata/connection/legacy tests), preserving real runtime blocker evidence (`RiskScorer is not defined`).
+- Added Race Detector structural coverage batch #1 (8 new no-mock test files, 13 tests passing).
 
 ## ðŸ“‹ **Index of Version-Specific Changelogs**
 
