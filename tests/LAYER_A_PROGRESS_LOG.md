@@ -126,6 +126,44 @@
 - Race detector direct gaps reduced:
   - from `66` to `58`
 
+## 2026-02-15 - Pipeline Batch #2 (Molecular-Chains + Atom-Extraction Index Layer, No Mocks)
+- Added 19 new no-mock tests:
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/utils/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/validators/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/analysis/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/extractors/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/transforms/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper/utils/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/edges/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/metrics/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/nodes/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/graph-builder/paths/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/builders/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/extraction/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/graph/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/phases/atom-extraction/metadata/index.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/builders/source-code-builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/analyzers/semantic-issue-analyzer.test.js`
+- Focused validation for this batch:
+  - `19/19` files passed
+  - `31/31` tests passed
+- Real bug evidence captured while executing broader molecular/phases suites:
+  - Existing failures remain in legacy suites (`ChainBuilder.test.js`, `ChainSummaryBuilder.test.js`, `AtomExtractionPhase.test.js`, `atom-extraction/index.test.js`), i.e. behavior/contract drift not hidden by mocks.
+
+## 2026-02-15 - Coverage Snapshot After Pipeline Batch #2
+- Layer A test files in tree: `329`
+- Remaining direct source files without 1:1 test filename: `354`
+- Pipeline direct gaps reduced:
+  - from `51` to `32`
+  - remaining split:
+    - `molecular-chains`: 19
+    - `phases`: 6
+    - `enhance`: 5
+    - `enhancers`: 2
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
