@@ -57,6 +57,39 @@
   - `pattern-detection`: 15
   - `query`: 1
 
+## 2026-02-15 - Pipeline Coverage Batch #1 (Wrappers and Indexes)
+- Added 13 new pipeline tests focused on structural contracts:
+  - `pipeline/enhance.test.js`
+  - `pipeline/enhance/analyzers/index.test.js`
+  - `pipeline/enhance/builders/index.test.js`
+  - `pipeline/enhance/extractors/index.test.js`
+  - `pipeline/enhancers/index.test.js`
+  - `pipeline/enhancers/legacy/index.test.js`
+  - `pipeline/enhancers/builders/index.test.js`
+  - `pipeline/enhancers/analyzers/index.test.js`
+  - `pipeline/enhancers/orchestrators/index.test.js`
+  - `pipeline/enhancers/connections/ancestry/index.test.js`
+  - `pipeline/enhancers/connections/conflicts/index.test.js`
+  - `pipeline/enhancers/connections/dataflow/index.test.js`
+  - `pipeline/enhancers/connections/weights/index.test.js`
+- Targeted validation result:
+  - `13/13` files passed
+  - `24/24` tests passed
+- Notes:
+  - This batch stayed in no-bugfix mode (test completeness first).
+  - A known import gap in legacy enhance builders (`architecture-utils`) was documented in tests via safe mocking, without changing production behavior.
+
+## 2026-02-15 - Coverage Snapshot After Pipeline Batch #1
+- Layer A test files in tree: `302`
+- Remaining direct source files without 1:1 test filename: `381`
+- Pipeline direct gaps reduced:
+  - from `64` to `51`
+  - remaining split:
+    - `molecular-chains`: 32
+    - `phases`: 10
+    - `enhance`: 5
+    - `enhancers`: 4
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
