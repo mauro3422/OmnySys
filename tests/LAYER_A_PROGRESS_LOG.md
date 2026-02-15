@@ -465,6 +465,43 @@
   - `module-system`: `15`
   - `pattern-detection`: `15`
 
+## 2026-02-15 - Analyses Batch #2 (Tier2 + Tier3 + V2 Proposal Complete)
+- Added 33 new no-mock tests to close all remaining `analyses` direct gaps:
+  - Tier2:
+    - `analyses/tier2/circular-imports.test.js`
+    - `analyses/tier2/coupling.test.js`
+    - `analyses/tier2/index.test.js`
+  - Tier3 wrappers/calculators/detectors:
+    - `analyses/tier3/broken-connections-detector.test.js`
+    - `analyses/tier3/calculators/*.test.js` (3 files)
+    - `analyses/tier3/detectors/*.test.js` (5 files)
+  - Tier3 event detector stack:
+    - `analyses/tier3/event-detector/*.test.js` (8 files)
+    - `analyses/tier3/event-pattern-detector.test.js`
+  - Tier3 factors/scorer/state/side-effects/utils/validators:
+    - `analyses/tier3/factors/*.test.js` (5 files)
+    - `analyses/tier3/scorers/RiskScorer.test.js`
+    - `analyses/tier3/shared-state-detector.test.js`
+    - `analyses/tier3/side-effects-detector.test.js`
+    - `analyses/tier3/utils/*.test.js` (2 files)
+    - `analyses/tier3/validators/UrlValidator.test.js`
+  - Proposal module:
+    - `analyses/V2_ALGORITHMS_PROPOSAL.test.js`
+- Focused validation:
+  - `33/33` files passed
+  - `44/44` tests passed
+- Coverage impact:
+  - `analyses` direct gaps: `33` -> `0`
+
+## 2026-02-15 - Coverage Snapshot After Analyses Batch #2
+- Layer A test files in tree: `518`
+- Remaining direct source files without 1:1 test filename: `166`
+- Remaining split:
+  - `extractors`: `120`
+  - `storage`: `16`
+  - `module-system`: `15`
+  - `pattern-detection`: `15`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
