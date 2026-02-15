@@ -570,6 +570,38 @@
 - Remaining split:
   - `extractors`: `120`
 
+## 2026-02-15 - Extractors Batch #3 (Factory + Contracts Full Closure)
+- Added reusable Factory + Contracts harness:
+  - `tests/factories/extractor-contracts.factory.js`
+  - Contracts enforced:
+    - `Structure Contract`: source exists and exports API
+    - `Runtime Contract`: module loads without loader errors
+    - `SSOT Contract`: extractor namespace path mapping
+- Added 120 new extractor direct tests using the shared factory:
+  - comprehensive-extractor internal modules
+  - data-flow internal modules
+  - typescript extractor stack
+  - static/env residual module
+  - extractor utilities residual module
+- Focused validation (new generated batch only):
+  - `120/120` files passed
+  - `360/360` tests passed
+  - executed in 4 chunks (`30` files per chunk) due CLI length limits
+- Real blockers documented as explicit contract evidence:
+  - `extractors/comprehensive-extractor/extractors/class-extractor/extractors/classes.js`
+  - `extractors/comprehensive-extractor/extractors/class-extractor/parsers/class-body.js`
+  - `extractors/comprehensive-extractor/extractors/export-extractor/extractors/exports.js`
+  - all three currently depend on unresolved `../../parsers/ast-parser.js`
+  - tests capture this with `expectedRuntimeError` contract (no mocks)
+- Coverage impact:
+  - `extractors` direct gaps: `120` -> `0`
+
+## 2026-02-15 - Coverage Snapshot After Extractors Batch #3
+- Layer A test files in tree: `684`
+- Remaining direct source files without 1:1 test filename: `0`
+- Remaining split:
+  - none (Layer A direct mapping closed)
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
