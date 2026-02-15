@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '#layer-a/storage/storage-manager.js';
+import { getDataDirectory } from '#layer-a/storage/storage-manager/index.js';
 import { readJSON } from '#layer-a/query/readers/json-reader.js';
 
 /**

@@ -3,7 +3,7 @@
  * @module query/queries/file-query/atoms/atom-query
  */
 
-import { loadAtoms } from '#layer-a/storage/storage-manager.js';
+import { loadAtoms } from '#layer-a/storage/storage-manager/index.js';
 
 /**
  * Builds atom ID from file path and function name

@@ -4,7 +4,7 @@
  */
 
 import { getFileAnalysis } from '../core/single-file.js';
-import { loadAtoms, loadMolecule } from '#layer-a/storage/storage-manager.js';
+import { loadAtoms, loadMolecule } from '#layer-a/storage/storage-manager/index.js';
 import { composeMolecularMetadata } from '#shared/derivation-engine.js';
 
 /**
