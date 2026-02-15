@@ -356,6 +356,58 @@
 - Layer A test files in tree: `439`
 - Remaining direct source files without 1:1 test filename: `244`
 
+## 2026-02-15 - Extractors Metadata Batch #2 (Temporal + Type Contracts Complete)
+- Added 29 new no-mock tests for all remaining metadata direct gaps:
+  - Temporal Connections stack:
+    - `extractors/metadata/temporal-connections.test.js`
+    - `extractors/metadata/temporal-connections/index.test.js`
+    - `extractors/metadata/temporal-connections/TemporalConnectionExtractor.test.js`
+    - `extractors/metadata/temporal-connections/analyzers/*.test.js` (2 files)
+    - `extractors/metadata/temporal-connections/detectors/*.test.js` (4 files)
+    - `extractors/metadata/temporal-connections/crossfile/*.test.js` (2 files)
+    - `extractors/metadata/temporal-connections/execution/*.test.js` (2 files)
+    - `extractors/metadata/temporal-connections/lifecycle/*.test.js` (2 files)
+    - `extractors/metadata/temporal-connections/utils/*.test.js` (2 files)
+  - Temporal legacy extractor:
+    - `extractors/metadata/temporal-patterns.test.js`
+  - Type Contracts stack:
+    - `extractors/metadata/type-contracts.test.js`
+    - `extractors/metadata/type-contracts/index.test.js`
+    - `extractors/metadata/type-contracts/contracts/connection-extractor.test.js`
+    - `extractors/metadata/type-contracts/extractors/contract-extractor.test.js`
+    - `extractors/metadata/type-contracts/strategies/*.test.js` (4 files)
+    - `extractors/metadata/type-contracts/types/*.test.js` (2 files)
+    - `extractors/metadata/type-contracts/validators/compatibility-validator.test.js`
+- Focused validation for this batch:
+  - `29/29` files passed
+  - `58/58` tests passed
+- Coverage impact:
+  - `metadata` direct gaps: `29` -> `0`
+  - `extractors` direct gaps: `149` -> `120`
+
+## 2026-02-15 - Coverage Snapshot After Extractors Metadata Batch #2
+- Layer A test files in tree: `468`
+- Remaining direct source files without 1:1 test filename: `216`
+- Remaining split:
+  - `extractors`: `120`
+  - `analyses`: `48`
+  - `storage`: `16`
+  - `pattern-detection`: `15`
+  - `module-system`: `15`
+  - `query`: `1`
+  - `race-detector`: `1`
+
+## 2026-02-15 - Layer A Stabilization Macro Summary (Traceability)
+- Operational trace summary references `~406` accumulated changes across recent multi-agent stabilization passes (tests/docs/config/import hardening).
+- Test growth from baseline:
+  - `159` -> `468` test files (`+309`)
+  - Baseline strategic objective preserved: no-mock, contract-first, bugfixes deferred unless blocking test execution.
+- Stabilized coverage fronts in this campaign:
+  - `pipeline` direct mapping completed (`0` gaps)
+  - `race-detector` direct mapping completed previously (`0`, now `1` residual due source/test drift)
+  - `metadata` direct mapping completed (`0` gaps)
+  - remaining effort concentrated in `extractors` non-metadata, `analyses`, `storage`, `pattern-detection`, `module-system`, `query`.
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
