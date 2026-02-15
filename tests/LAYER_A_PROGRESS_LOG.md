@@ -282,6 +282,44 @@
 - Layer A test files in tree: `400`
 - Remaining direct source files without 1:1 test filename: `283`
 
+## 2026-02-15 - Race Detector Batch #4 (Timing + Pattern-Matcher Stack Complete)
+- Added/validated 19 no-mock tests for remaining race-detector strategy internals:
+  - analyzer compatibility wrappers:
+    - `analyzers/lock-analyzer.test.js`
+    - `analyzers/shared-state-analyzer.test.js`
+    - `analyzers/timing-analyzer.test.js`
+  - timing-analyzer internals:
+    - `analyzers/timing-analyzer/index.test.js`
+    - `analyzers/timing-analyzer/analyzers/concurrency.test.js`
+    - `analyzers/timing-analyzer/analyzers/flow.test.js`
+    - `analyzers/timing-analyzer/analyzers/patterns.test.js`
+    - `analyzers/timing-analyzer/detectors/atom-finder.test.js`
+  - detector layer:
+    - `detectors/PatternMatcher.test.js`
+    - `detectors/SharedStateAnalyzer.test.js`
+    - `detectors/TimingAnalyzer.test.js`
+  - pattern stack:
+    - `patterns/builtin-patterns.test.js`
+    - `patterns/pattern-matcher.test.js`
+    - `patterns/pattern-matcher/index.test.js`
+    - `patterns/pattern-matcher/matchers/core.test.js`
+    - `patterns/pattern-matcher/utils/context.test.js`
+    - `patterns/pattern-matcher/utils/helpers.test.js`
+    - `patterns/PatternRegistry.test.js`
+    - `patterns/pattern-registry.test.js`
+- Focused validation:
+  - `19/19` files passed
+  - `23/23` tests passed
+- Real blocker evidence preserved (no source patch in this pass):
+  - import-path mismatch in `patterns/pattern-matcher/matchers/core.js`
+  - represented in tests as explicit blocker assertions, not hidden by mocks
+- Coverage impact:
+  - `race-detector` direct gaps: `19` -> `0` (1:1 complete for source modules)
+
+## 2026-02-15 - Coverage Snapshot After Race Detector Batch #4
+- Layer A test files in tree: `419`
+- Remaining direct source files without 1:1 test filename: `264`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
