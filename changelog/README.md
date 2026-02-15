@@ -8,20 +8,50 @@
 
 ## Índice de Versiones
 
-### Versiones Estables
+### Versiones Estables (v0.9.x)
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
-| [v0.9.0.md](v0.9.0.md) | 2026-02-?? | Pattern Detection Engine V2 |
+| [unreleased-2026-02-15-factories-refactor.md](unreleased-2026-02-15-factories-refactor.md) | 2026-02-15 | **UNRELEASED** - Test Factories Modularization + Layer A Stabilization |
+| [v0.9.10.md](v0.9.10.md) | 2026-02-14 | Layer A MASSIVE Test Coverage - 4,045+ Tests |
+| [v0.9.9.md](v0.9.9.md) | 2026-02-14 | Tier 3 Analysis Complete - 440 Tests |
+| [v0.9.8.md](v0.9.8.md) | 2026-02-14 | Layer A Analysis Systems Audit - 125 Tests |
+| [v0.9.7.md](v0.9.7.md) | 2026-02-14 | Layer A Core Test Audit - 90 Tests 100% Passing |
+| [v0.9.6.md](v0.9.6.md) | 2026-02-14 | Cleanup: Eliminación de 18 Wrappers Legacy |
+| [v0.9.5.md](v0.9.5.md) | 2026-02-14 | Complete Modular Refactoring Phase 2 |
+| [v0.9.3.md](v0.9.3.md) | 2026-02-13 | Massive Modular Refactoring - 5 Monoliths |
+| [v0.9.2.md](v0.9.2.md) | 2026-02-14 | LLMService Architecture Refactor |
+| [v0.9.1.md](v0.9.1.md) | 2026-02-13 | MCP Pipeline Hotfix - Critical Initialization Fixes |
+| [v0.9.0.md](v0.9.0.md) | 2026-02-12 | Pattern Detection Engine V2 |
+
+### Versiones Estables (v0.8.x)
+
+| Versión | Fecha | Cambio Principal |
+|---------|-------|------------------|
 | [v0.8.0.md](v0.8.0.md) | 2026-02-?? | Query Architecture Refactor + Hot-Reload System |
-| [v0.7.2.md](v0.7.2.md) | 2026-02-?? | BUG #47 Fix + 89 Extractores + Verification System |
+
+### Versiones Estables (v0.7.x)
+
+| Versión | Fecha | Cambio Principal |
+|---------|-------|------------------|
+| [v0.7.2.md](v0.7.2.md) | 2026-02-11 | BUG #47 Fix + 89 Extractores + Verification System |
 | [v0.7.1.md](v0.7.1.md) | 2026-02-?? | Extended Release (Race Conditions + Shadow Registry) |
-| [v0.7.0.md](v0.7.0.md) | 2026-02-?? | Architecture Refactoring |
-| [v0.6.2.md](v0.6.2.md) | 2026-02-?? | Tunnel Vision Solver |
-| [v0.6.1.md](v0.6.1.md) | 2026-02-?? | Documentation Overhaul & System Audit |
-| [v0.6.0.md](v0.6.0.md) | 2026-02-?? | Molecular Architecture |
-| [v0.5.4.md](v0.5.4.md) | 2026-02-?? | 8 New Metadata Extractors + Network Hub Archetype |
-| [v0.5.3.md](v0.5.3.md) | 2026-02-?? | MCP Production Ready |
+| [v0.7.0.md](v0.7.0.md) | 2026-02-09 | Architecture Refactoring - SOLID/SSOT/Fractal |
+
+### Versiones Estables (v0.6.x)
+
+| Versión | Fecha | Cambio Principal |
+|---------|-------|------------------|
+| [v0.6.2.md](v0.6.2.md) | 2026-02-08 | Tunnel Vision Solver + Critical Bugfix |
+| [v0.6.1.md](v0.6.1.md) | 2026-02-08 | Documentation Overhaul & System Audit |
+| [v0.6.0.md](v0.6.0.md) | 2026-02-08 | Molecular Architecture |
+
+### Versiones Estables (v0.5.x)
+
+| Versión | Fecha | Cambio Principal |
+|---------|-------|------------------|
+| [v0.5.4.md](v0.5.4.md) | 2026-02-08 | 8 New Metadata Extractors + Network Hub Archetype |
+| [v0.5.3.md](v0.5.3.md) | 2026-02-08 | MCP Production Ready |
 | [v0.5.2.md](v0.5.2.md) | 2026-02-?? | Documentation Overhaul, Rename & New Extractors |
 | [v0.5.1.md](v0.5.1.md) | 2026-02-?? | Bug Fixes & MCP Optimization |
 | [v0.5.0.md](v0.5.0.md) | 2026-02-?? | Layer A/B Unification & Orchestrator |
