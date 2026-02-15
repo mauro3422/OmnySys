@@ -408,6 +408,27 @@
   - `metadata` direct mapping completed (`0` gaps)
   - remaining effort concentrated in `extractors` non-metadata, `analyses`, `storage`, `pattern-detection`, `module-system`, `query`.
 
+## 2026-02-15 - Residual Closure Batch (Query + Race-Detector Source-Test File)
+- Added 2 direct no-mock mapping tests:
+  - `tests/unit/layer-a-analysis/query/apis/index.test.js`
+  - `tests/unit/layer-a-analysis/race-detector/__tests__/race-detector.test.test.js`
+- Focused validation:
+  - `2/2` files passed
+  - `2/2` tests passed
+- Coverage impact:
+  - `query` direct gaps: `1` -> `0`
+  - `race-detector` direct gaps: `1` -> `0`
+
+## 2026-02-15 - Coverage Snapshot After Residual Closure Batch
+- Layer A test files in tree: `470`
+- Remaining direct source files without 1:1 test filename: `214`
+- Remaining split:
+  - `extractors`: `120`
+  - `analyses`: `48`
+  - `storage`: `16`
+  - `module-system`: `15`
+  - `pattern-detection`: `15`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
