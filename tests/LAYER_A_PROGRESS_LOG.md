@@ -164,6 +164,34 @@
     - `enhance`: 5
     - `enhancers`: 2
 
+## 2026-02-15 - Pipeline Batch #3 (Enhance Core + Phase Wrappers, No Mocks)
+- Added 10 new no-mock tests:
+  - `tests/unit/layer-a-analysis/pipeline/enhance/enhance.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhance/analyzers/file-analyzer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhance/analyzers/risk-analyzer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhance/extractors/connection-extractor.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhance/builders/system-map-builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/phases/metadata-enhancer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/enhancers/phases/connection-enhancer.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/argument-mapper.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/chain-builder.test.js`
+  - `tests/unit/layer-a-analysis/pipeline/molecular-chains/cross-function-graph-builder.test.js`
+- Focused validation:
+  - `10/10` files passed
+  - `16/16` tests passed
+- Real blockers captured explicitly (not mocked):
+  - `architecture-utils` unresolved import path in `pipeline/enhance/*` path
+  - `state-management` extractor runtime issues (`extractRedux`, `detectSelectorConnections`) surfaced by connection flows
+
+## 2026-02-15 - Coverage Snapshot After Pipeline Batch #3
+- Layer A test files in tree: `339`
+- Remaining direct source files without 1:1 test filename: `344`
+- Pipeline direct gaps reduced:
+  - from `32` to `22`
+  - remaining split:
+    - `molecular-chains`: 16
+    - `phases`: 6
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`

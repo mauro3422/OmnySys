@@ -16,6 +16,7 @@
 - Converted `pipeline/enhancers` test suites to real-module execution (removed mocks from enhancer orchestrator/metadata/connection/legacy tests), preserving real runtime blocker evidence (`RiskScorer is not defined`).
 - Added Race Detector structural coverage batch #1 (8 new no-mock test files, 13 tests passing).
 - Added Pipeline structural coverage batch #2 (19 new no-mock test files, 31 tests passing) for molecular-chains/argument-mapper/graph-builder index layers and atom-extraction utility indexes.
+- Added Pipeline structural coverage batch #3 (10 new no-mock test files, 16 tests passing) for enhance core files and phase/compat wrappers, with explicit assertions for real runtime blockers instead of mocks.
 
 ## ðŸ“‹ **Index of Version-Specific Changelogs**
 
