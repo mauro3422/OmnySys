@@ -26,6 +26,37 @@
 - Structural import failures in focused block: reduced to 0.
 - Remaining failures: mostly behavior/null-safety contract gaps in phase suites (non-structural).
 
+## 2026-02-15 - Tier3 Coverage Expansion (No Bugfix Mode)
+- Added 8 new test files in `tests/unit/layer-a-analysis/analyses/tier3`:
+  - `index.test.js`
+  - `risk-scorer.test.js`
+  - `calculators/index.test.js`
+  - `factors/index.test.js`
+  - `detectors/index.test.js`
+  - `utils/index.test.js`
+  - `validators/index.test.js`
+  - `event-detector/index.test.js`
+- New tests validated with targeted run:
+  - `8/8` files passed
+  - `23/23` tests passed
+- Intentional scope for this batch:
+  - test-suite completeness and API contracts
+  - no production bugfixes applied
+  - wrapper limitations documented in tests instead of patched in source
+
+## 2026-02-15 - Coverage Snapshot After This Batch
+- Layer A test files in tree: `289`
+- Remaining direct source files without 1:1 test filename: `394`
+- Current missing files by top-level area:
+  - `extractors`: 169
+  - `race-detector`: 66
+  - `pipeline`: 64
+  - `analyses`: 48
+  - `storage`: 16
+  - `module-system`: 15
+  - `pattern-detection`: 15
+  - `query`: 1
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`
