@@ -2,6 +2,10 @@
 
 This guide covers contract testing patterns used in the OmnySystem test suite.
 
+> **🆕 NEW: Meta-Factory Pattern**
+> Use the [test-suite-generator](./META_FACTORY_GUIDE.md) for automated contract generation.
+> This guide explains the concepts; Meta-Factory automates the implementation.
+
 ## What is Contract Testing?
 
 Contract testing verifies that components adhere to agreed-upon interfaces and behaviors. Unlike unit tests that check internal logic, contract tests ensure:
@@ -10,6 +14,24 @@ Contract testing verifies that components adhere to agreed-upon interfaces and b
 2. **Data Structure Consistency** - Returns follow expected formats
 3. **Error Handling** - Failures are handled gracefully
 4. **Behavioral Guarantees** - Side effects occur as expected
+
+## Modern Approach: Meta-Factory (Recommended)
+
+Instead of manually writing contracts (legacy approach below), use the Meta-Factory:
+
+```javascript
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+
+createAnalysisTestSuite({
+  module: 'analyses/tier2/coupling',
+  exports: { analyzeCoupling },
+  analyzeFn: analyzeCoupling,
+  expectedFields: { couplings: 'array', total: 'number' },
+  // Automatically generates: Structure + Error Handling + Return Structure contracts
+});
+```
+
+See [Meta-Factory Guide](./META_FACTORY_GUIDE.md) for complete documentation.
 
 ## Contract Test Types
 

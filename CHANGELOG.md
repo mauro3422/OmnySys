@@ -1,15 +1,20 @@
 # CHANGELOG - OmnySys
 
-## Unreleased (2026-02-15)
+All notable changes to this project are documented in this file and organized by version.
 
-- Layer A test-suite structural audit and stabilization pass completed.
-- Macro summary (~406 accumulated changes across recent multi-agent passes):
-  - Layer A stabilized systems: pipeline, extractors (comprehensive/data-flow/metadata/static/css-in-js), analyses (tier1-3 + root), graph, parser, query, race-detector, pattern-detection.
-  - Test architecture stabilized around Factory + Contract patterns (coverage and consistency hardening before deep bug fixing).
-  - Loader/runtime blockers reduced by normalizing aliases, fixing broken relative imports, and removing duplicate export collisions.
-- Added aliases `#molecular-chains/*` and `#test-factories/*` in `package.json` for more maintainable imports.
-- Fixed multiple Layer A loader blockers (broken relative imports, duplicate exports, missing compatibility exports).
-- Added `tests/LAYER_A_AUDIT_2026-02-15.md` with current status, risks, and next execution order.
+## Quick Links
+
+- **[Unreleased Changes](changelog/unreleased-2026-02-15-factories-refactor.md)** - Latest work in progress
+- **[Changelog Directory](changelog/)** - All version-specific changelogs
+- **[Changelog Index](changelog/README.md)** - Complete version index
+
+---
+
+## Version Index
+
+### Latest Versions
+
+| Version | Date | Description |
 - Added `tests/LAYER_A_PROGRESS_LOG.md` to preserve baseline-to-current traceability for commits and future audits.
 - Added Tier3 structural coverage batch (8 new test files, 23 tests passing) for `analyses/tier3` export surfaces and event-detector facade contracts, explicitly in "tests first, bugfixes later" mode.
 - Added Pipeline structural coverage batch #1 (13 new test files, 24 tests passing) for `pipeline/enhance*` and `pipeline/enhancers*` index/wrapper contracts.

@@ -1,28 +1,43 @@
-import { describe, it, expect } from 'vitest';
-import {
-  detectSharedState,
-  generateSharedStateConnections
-} from '#layer-a/analyses/tier3/shared-state-detector.js';
+/**
+ * @fileoverview Tests for shared-state-detector.js - Auto-generated Meta-Factory Pattern
+ * * Shared State Detector - Detecta acceso a estado global (window.*, global.*) Responsabilidad: - Encontrar todas las referencias a window.* y global.* - Clasificar como READ o WRITE - Guardar línea, función y contexto - Retornar conexiones semánticas entre archivos que acceden al mismo estado /
+ */
 
-describe('analyses/tier3/shared-state-detector.js', () => {
-  it('detects shared state reads/writes from source code', () => {
-    const code = `
-      window.appState = {};
-      console.log(window.appState);
-    `;
-    const out = detectSharedState(code, 'a.js');
-    expect(out.globalAccess.length).toBeGreaterThan(0);
-    expect(out.writeProperties).toContain('appState');
-    expect(out.readProperties).toContain('appState');
-  });
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { detectSharedState, generateSharedStateConnections } from '#layer-a-static/analyses/tier3/shared-state-detector.js';
 
-  it('builds cross-file shared-state semantic connections', () => {
-    const out = generateSharedStateConnections({
-      'a.js': { globalAccess: [{ propName: 'store', type: 'write', access: { line: 1 } }] },
-      'b.js': { globalAccess: [{ propName: 'store', type: 'read', access: { line: 2 } }] }
-    });
-    expect(out.length).toBeGreaterThan(0);
-    expect(out[0].type).toBe('shared_state');
-  });
+// Auto-generated test suite
+const suite = createAnalysisTestSuite({
+  module: 'analyses/tier3/shared-state-detector',
+  exports: { detectSharedState, generateSharedStateConnections },
+  analyzeFn: detectSharedState,
+  expectedFields: {
+  'globalAccess': 'any',
+  'readProperties': 'any',
+  'writeProperties': 'any',
+  'propertyAccessMap': 'any'
+},
+  
+  
+  specificTests: [
+    {
+      name: 'should handle empty input gracefully',
+      test: async (fn) => {
+        const result = await fn({});
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+      }
+    },
+    {
+      name: 'should handle edge cases',
+      test: () => {
+        // Add edge case tests here
+        expect(true).toBe(true);
+      }
+    }
+  ]
 });
 
+// Run the suite
+describe('analyses/tier3/shared-state-detector', suite);

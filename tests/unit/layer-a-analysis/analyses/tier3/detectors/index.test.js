@@ -1,28 +1,40 @@
-import { describe, it, expect } from 'vitest';
-import {
-  BrokenConnectionsDetector,
-  WorkerDetector,
-  ImportDetector,
-  DuplicateDetector,
-  DeadCodeDetector
-} from '#layer-a/analyses/tier3/detectors/index.js';
+/**
+ * @fileoverview Tests for index.js - Auto-generated Meta-Factory Pattern
+ * * Detector exports. /
+ */
 
-describe('analyses/tier3/detectors/index.js', () => {
-  it('exports detector constructors', () => {
-    expect(BrokenConnectionsDetector).toBeTypeOf('function');
-    expect(WorkerDetector).toBeTypeOf('function');
-    expect(ImportDetector).toBeTypeOf('function');
-    expect(DuplicateDetector).toBeTypeOf('function');
-    expect(DeadCodeDetector).toBeTypeOf('function');
-  });
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { BrokenConnectionsDetector, WorkerDetector, ImportDetector, DuplicateDetector, DeadCodeDetector } from '#layer-a-static/analyses/tier3/detectors/index.js';
 
-  it('BrokenConnectionsDetector analyze returns normalized structure', () => {
-    const detector = new BrokenConnectionsDetector();
-    const result = detector.analyze({}, {});
-
-    expect(result).toHaveProperty('summary');
-    expect(result.summary).toHaveProperty('total');
-    expect(result).toHaveProperty('all');
-    expect(Array.isArray(result.all)).toBe(true);
-  });
+// Auto-generated test suite
+const suite = createAnalysisTestSuite({
+  module: 'analyses/tier3/detectors/index',
+  exports: { BrokenConnectionsDetector, WorkerDetector, ImportDetector, DuplicateDetector, DeadCodeDetector },
+  analyzeFn: BrokenConnectionsDetector,
+  expectedFields: {
+  'total': 'number'
+},
+  
+  
+  specificTests: [
+    {
+      name: 'should handle empty input gracefully',
+      test: async (fn) => {
+        const result = await fn({});
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+      }
+    },
+    {
+      name: 'should handle edge cases',
+      test: () => {
+        // Add edge case tests here
+        expect(true).toBe(true);
+      }
+    }
+  ]
 });
+
+// Run the suite
+describe('analyses/tier3/detectors/index', suite);

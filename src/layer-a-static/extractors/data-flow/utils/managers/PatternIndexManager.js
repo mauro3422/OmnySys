@@ -10,7 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createLogger } from '../../../../../utils/logger.js';
-import { MasterIndexer } from '../indexers/MasterIndexer.js';
+import { MasterIndexer } from './MasterIndexer.js';
 import { PatternDirectoryManager } from './PatternDirectoryManager.js';
 import { TrainingDatasetManager } from './TrainingDatasetManager.js';
 import { TokenSummarizer, GraphSummarizer, StatisticsCalculator } from './DataSummarizers.js';

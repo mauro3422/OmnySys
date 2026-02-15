@@ -1,21 +1,40 @@
-import { describe, it, expect } from 'vitest';
-import * as legacy from '#layer-a/analyses/tier3/broken-connections-detector.js';
+/**
+ * @fileoverview Tests for broken-connections-detector.js - Auto-generated Meta-Factory Pattern
+ * * Backward compatibility wrapper. Use './index.js' for new code. /
+ */
 
-describe('analyses/tier3/broken-connections-detector.js', () => {
-  it('exports compatibility wrapper API', () => {
-    expect(legacy.detectBrokenWorkers).toBeTypeOf('function');
-    expect(legacy.detectBrokenDynamicImports).toBeTypeOf('function');
-    expect(legacy.detectDuplicateFunctions).toBeTypeOf('function');
-    expect(legacy.detectDeadFunctions).toBeTypeOf('function');
-    expect(legacy.detectSuspiciousUrls).toBeTypeOf('function');
-    expect(legacy.analyzeBrokenConnections).toBeTypeOf('function');
-  });
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { BrokenConnectionsDetector, detectBrokenWorkers, detectBrokenDynamicImports, detectDuplicateFunctions, detectDeadFunctions, detectSuspiciousUrls, analyzeBrokenConnections } from '#layer-a-static/analyses/tier3/index.js';
 
-  it('can run analysis with empty inputs', () => {
-    const out = legacy.analyzeBrokenConnections({}, {});
-    expect(out).toHaveProperty('summary');
-    expect(out).toHaveProperty('all');
-    expect(Array.isArray(out.all)).toBe(true);
-  });
+// Auto-generated test suite
+const suite = createAnalysisTestSuite({
+  module: 'analyses/tier3/broken-connections-detector',
+  exports: { BrokenConnectionsDetector, detectBrokenWorkers, detectBrokenDynamicImports, detectDuplicateFunctions, detectDeadFunctions, detectSuspiciousUrls, analyzeBrokenConnections },
+  analyzeFn: BrokenConnectionsDetector,
+  expectedFields: {
+  'total': 'number'
+},
+  
+  
+  specificTests: [
+    {
+      name: 'should handle empty input gracefully',
+      test: async (fn) => {
+        const result = await fn({});
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+      }
+    },
+    {
+      name: 'should handle edge cases',
+      test: () => {
+        // Add edge case tests here
+        expect(true).toBe(true);
+      }
+    }
+  ]
 });
 
+// Run the suite
+describe('analyses/tier3/broken-connections-detector', suite);

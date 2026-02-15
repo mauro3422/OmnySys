@@ -6,7 +6,7 @@
  * @module race-detector/strategies/read-write-race-strategy
  */
 
-import { RaceDetectionStrategy } from './race-detection-strategy.js';
+import { RaceDetectionStrategy } from './race-detection-strategy/index.js';
 
 /**
  * Strategy for detecting read-write races

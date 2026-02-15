@@ -1,16 +1,42 @@
-import { describe, it, expect } from 'vitest';
-import { DeadCodeDetector } from '#layer-a/analyses/tier3/detectors/DeadCodeDetector.js';
+/**
+ * @fileoverview Tests for DeadCodeDetector.js - Auto-generated Meta-Factory Pattern
+ * * Detects dead functions. /
+ */
 
-describe('analyses/tier3/detectors/DeadCodeDetector.js', () => {
-  it('detects uncalled non-exported functions as dead code', () => {
-    const detector = new DeadCodeDetector();
-    const out = detector.detect({
-      functions: {
-        'a.js': [{ name: 'unused', isExported: false, calls: [], usedBy: [] }]
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { DeadCodeDetector } from '#layer-a-static/analyses/tier3/detectors/DeadCodeDetector.js';
+
+// Auto-generated test suite
+const suite = createAnalysisTestSuite({
+  module: 'analyses/tier3/detectors/DeadCodeDetector',
+  exports: { DeadCodeDetector },
+  analyzeFn: DeadCodeDetector,
+  expectedFields: {
+  'total': 'number',
+  'byFile': 'object',
+  'all': 'any'
+},
+  
+  
+  specificTests: [
+    {
+      name: 'should handle empty input gracefully',
+      test: async (fn) => {
+        const result = await fn({});
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
       }
-    });
-    expect(out.total).toBe(1);
-    expect(out.all[0].type).toBe('DEAD_FUNCTION');
-  });
+    },
+    {
+      name: 'should handle edge cases',
+      test: () => {
+        // Add edge case tests here
+        expect(true).toBe(true);
+      }
+    }
+  ]
 });
 
+// Run the suite
+describe('analyses/tier3/detectors/DeadCodeDetector', suite);

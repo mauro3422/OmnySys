@@ -10,7 +10,7 @@
  * @returns {object} - Reporte de dependencias circulares clasificadas
  */
 
-import { classifyAllFunctionCycles } from './function-cycle-classifier.js';
+import { classifyAllFunctionCycles } from './function-cycle-classifier/index.js';
 
 export function findCircularFunctionDeps(systemMap, atomsIndex = {}) {
   // Handle null/undefined input gracefully

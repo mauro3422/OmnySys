@@ -74,9 +74,9 @@ export { extractHistoricalMetadata } from './historical-metadata.js';
 
 // 🆕 NUEVO: Extractores adicionales para comprehensive-extractor
 export { extractDNA } from './dna-extractor.js';
-export { extractErrorFlow } from './error-flow.js';
-export { extractPerformanceMetrics } from './performance-impact.js';
-export { extractTypeContracts } from './type-contracts.js';
+export { extractErrorFlow } from './error-flow/index.js';
+export { extractPerformanceMetrics } from './performance-impact/index.js';
+export { extractTypeContracts } from './type-contracts/index.js';
 
 // ============================================
 // Orchestrator function - aggregates all metadata
@@ -96,9 +96,9 @@ import { extractDependencyDepth } from './dependency-depth.js';
 import { extractPerformanceHints } from './performance-hints.js';
 import { extractHistoricalMetadata } from './historical-metadata.js';
 import { extractDNA } from './dna-extractor.js';
-import { extractErrorFlow } from './error-flow.js';
-import { extractPerformanceMetrics } from './performance-impact.js';
-import { extractTypeContracts } from './type-contracts.js';
+import { extractErrorFlow } from './error-flow/index.js';
+import { extractPerformanceMetrics } from './performance-impact/index.js';
+import { extractTypeContracts } from './type-contracts/index.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:index');

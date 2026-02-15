@@ -13,9 +13,9 @@
 
 import { createLogger } from '#utils/logger.js';
 import { extractFunctions, extractAsyncPatterns } from './extractors/function-extractor.js';
-import { extractClasses } from './extractors/class-extractor.js';
+import { extractClasses } from './extractors/class-extractor/index.js';
 import { extractImports } from './extractors/import-extractor.js';
-import { extractExports } from './extractors/export-extractor.js';
+import { extractExports } from './extractors/export-extractor/index.js';
 import { DEFAULT_CONFIG, EXTRACTOR_STATS, mergeConfig } from './config/defaults.js';
 import { extractBasicMetadata } from './metadata/basic-metadata.js';
 import { calculateMetrics } from './metrics/metrics-calculator.js';

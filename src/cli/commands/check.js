@@ -1,6 +1,6 @@
 ﻿import fs from 'fs/promises';
 import path from 'path';
-import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager.js';
+import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager/setup/index.js';
 import { normalizePath } from '../utils/paths.js';
 
 const SEPARATOR = '------------------------------------------------------------';

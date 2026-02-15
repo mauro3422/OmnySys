@@ -17,15 +17,15 @@
 
 import { parse } from '@babel/parser';
 import { createLogger } from '#utils/logger.js';
-import { InputExtractor } from './visitors/input-extractor.js';
-import { TransformationExtractor } from './visitors/transformation-extractor.js';
-import { OutputExtractor } from './visitors/output-extractor.js';
+import { InputExtractor } from './visitors/input-extractor/index.js';
+import { TransformationExtractor } from './visitors/transformation-extractor/index.js';
+import { OutputExtractor } from './visitors/output-extractor/index.js';
 import { DataFlowAnalyzer } from './core/data-flow-analyzer.js';
 import { GraphBuilder } from './core/graph-builder.js';
 import { InvariantDetector } from './analyzers/invariant-detector.js';
-import { TypeInferrer } from './analyzers/type-inferrer.js';
+import { TypeInferrer } from './analyzers/type-inferrer/index.js';
 import { ScopeManager } from './utils/scope-manager.js';
-import { PatternIndexManager } from './utils/pattern-index-manager.js';
+import { PatternIndexManager } from './utils/managers/index.js';
 
 const logger = createLogger('OmnySys:data-flow');
 
@@ -103,14 +103,14 @@ export function extractDataFlow(code, options = {}) {
 }
 
 // Export all components
-export { InputExtractor } from './visitors/input-extractor.js';
-export { TransformationExtractor } from './visitors/transformation-extractor.js';
-export { OutputExtractor } from './visitors/output-extractor.js';
+export { InputExtractor } from './visitors/input-extractor/index.js';
+export { TransformationExtractor } from './visitors/transformation-extractor/index.js';
+export { OutputExtractor } from './visitors/output-extractor/index.js';
 export { DataFlowAnalyzer } from './core/data-flow-analyzer.js';
 export { GraphBuilder } from './core/graph-builder.js';
 export { InvariantDetector } from './analyzers/invariant-detector.js';
-export { TypeInferrer } from './analyzers/type-inferrer.js';
+export { TypeInferrer } from './analyzers/type-inferrer/index.js';
 export { ScopeManager } from './utils/scope-manager.js';
-export { PatternIndexManager } from './utils/pattern-index-manager.js';
+export { PatternIndexManager } from './utils/managers/index.js';
 
 export default extractDataFlow;

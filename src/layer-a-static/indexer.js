@@ -18,8 +18,8 @@ import {
   savePartitionedData,
   printSummary
 } from './pipeline/save.js';
-import { AtomExtractionPhase } from './pipeline/phases/atom-extraction-phase.js';
-import { saveAtom } from './storage/storage-manager.js';
+import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
+import { saveAtom } from './storage/storage-manager/atoms/atom.js';
 
 /**
  * Indexer - Orquestador principal de Capa A

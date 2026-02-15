@@ -5,6 +5,52 @@
 - Keep factories modular and easy to navigate.
 - Avoid monolithic files that are hard to maintain.
 - Preserve backward compatibility through stable entrypoints.
+- Follow SSOT (Single Source of Truth) principle.
+
+## 🆕 Meta-Factory (NEW)
+
+The `test-suite-generator/` is a **Meta-Factory** that generates standardized test suites automatically.
+
+```
+tests/factories/
+├── test-suite-generator/          # Meta-Factory for test generation
+│   ├── contracts.js               # Reusable contract tests (SSOT)
+│   ├── core.js                    # Test suite generator logic
+│   ├── index.js                   # Public API
+│   └── test/
+│       └── meta-factory.validation.test.js
+│
+├── extractor-test.factory.js      # Data factory (legacy pattern)
+├── graph-test.factory.js          # Data factory
+├── ...                            # Other data factories
+```
+
+### Data Factories vs Meta-Factory
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Data Factory** | Creates test data (mocks, builders) | `SystemMapBuilder.create().withFile().build()` |
+| **Meta-Factory** | Generates test suites (contracts) | `createAnalysisTestSuite({ module, analyzeFn })` |
+
+### Usage
+
+```javascript
+// Data Factory - Creates test data
+import { SystemMapBuilder } from '#test-factories/graph-test.factory.js';
+const systemMap = SystemMapBuilder.create().withFile('test.js').build();
+
+// Meta-Factory - Generates test suite with contracts
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+createAnalysisTestSuite({
+  module: 'analyses/tier2/coupling',
+  exports: { analyzeCoupling },
+  analyzeFn: analyzeCoupling,
+  expectedFields: { couplings: 'array', total: 'number' },
+  createMockInput: () => systemMap
+});
+```
+
+See [Meta-Factory Guide](../META_FACTORY_GUIDE.md) for complete documentation.
 
 ## Conventions
 
@@ -28,6 +74,7 @@
 - Top-level `*.factory.js` files are now thin entrypoints.
 - Internal implementations live in `tests/factories/<factory-name>/`.
 - Public imports remain stable (tests keep importing from `tests/factories/*.factory.js`).
+- Meta-Factory is fully modular with 3 files (< 350 lines each).
 
 ## EntryPoint Pattern
 
@@ -36,8 +83,14 @@
   - `tests/factories/pipeline-test/builders.js`
   - `tests/factories/pipeline-test/helpers.js`
 
+- Meta-Factory Example:
+  - `tests/factories/test-suite-generator/index.js` (entrypoint)
+  - `tests/factories/test-suite-generator/contracts.js`
+  - `tests/factories/test-suite-generator/core.js`
+
 ## Domain Map
 
+### Data Factories (Test Data)
 - `analysis.factory.js` -> `analysis/`
 - `comprehensive-extractor-test.factory.js` -> `comprehensive-extractor-test/`
 - `css-in-js-test.factory.js` -> `css-in-js-test/`
@@ -58,8 +111,14 @@
 - `static-extractor-test.factory.js` -> `static-extractor-test/`
 - `tier3-analysis.factory.js` -> `tier3-analysis/`
 
+### Meta-Factory (Test Generation)
+- `test-suite-generator/index.js` -> Entry point
+- `test-suite-generator/contracts.js` -> Contract definitions (SSOT)
+- `test-suite-generator/core.js` -> Suite generator logic
+
 ## Migration Rule
 
 - Refactor in small batches.
 - Run focused suites that consume the factory before commit.
 - Do not break existing import paths from tests.
+- When adding new systems, prefer modular structure from the start.

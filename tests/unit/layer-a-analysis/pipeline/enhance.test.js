@@ -1,7 +1,23 @@
-import { describe, it, expect } from 'vitest';
+/**
+ * @fileoverview Tests for pipeline/enhance.js (Meta-Factory Pattern)
+ * 
+ * @module tests/unit/layer-a-analysis/pipeline/enhance
+ */
 
-describe('pipeline/enhance.js', () => {
-  it('fails import while legacy architecture-utils path is unresolved (real blocker)', async () => {
-    await expect(import('#layer-a/pipeline/enhance.js')).rejects.toThrow(/architecture-utils/i);
-  });
+import { createUtilityTestSuite } from '#test-factories/test-suite-generator';
+import enhance from '#layer-a/pipeline/enhance.js';
+
+createUtilityTestSuite({
+  module: 'pipeline/enhance',
+  exports: { enhance },
+  fn: enhance,
+  expectedSafeResult: null,
+  specificTests: [
+    {
+      name: 'exports enhance function',
+      fn: () => {
+        expect(typeof enhance).toBe('function');
+      }
+    }
+  ]
 });

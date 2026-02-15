@@ -7,22 +7,6 @@
  * @since 0.7.0
  */
 
-import { ComprehensiveExtractor } from './ComprehensiveExtractor.js';
-
-// === Legacy function for backward compatibility ===
-/**
- * Extract comprehensive metadata from a file (legacy API)
- * @param {string} filePath - Path to the file
- * @param {string} code - Source code content
- * @param {object} options - Extraction options
- * @returns {object} Comprehensive metadata
- * @deprecated Use ComprehensiveExtractor class instead
- */
-export function extractComprehensiveMetadata(filePath, code, options = {}) {
-  const extractor = new ComprehensiveExtractor(options);
-  return extractor.extract(filePath, code);
-}
-
 // === Core ===
 export { 
   ComprehensiveExtractor,
@@ -121,5 +105,4 @@ export {
 } from './parsers/ast-parser.js';
 
 // === Default Export ===
-// Legacy default export for backward compatibility
-export default extractComprehensiveMetadata;
+export { ComprehensiveExtractor as default } from './ComprehensiveExtractor.js';

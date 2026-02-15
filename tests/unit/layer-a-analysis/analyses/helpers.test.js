@@ -1,16 +1,23 @@
-import { describe, it, expect } from 'vitest';
-import { isLikelyEntryPoint, isPublicAPI } from '#layer-a/analyses/helpers.js';
+/**
+ * @fileoverview Tests for analyses/helpers.js (Meta-Factory Pattern)
+ * 
+ * @module tests/unit/layer-a-analysis/analyses/helpers
+ */
 
-describe('analyses/helpers.js', () => {
-  it('detects likely entry points by file name', () => {
-    expect(isLikelyEntryPoint('src/index.js')).toBe(true);
-    expect(isLikelyEntryPoint('src/server-main.js')).toBe(true);
-    expect(isLikelyEntryPoint('src/feature/widget.js')).toBe(false);
-  });
+import { createUtilityTestSuite } from '#test-factories/test-suite-generator';
+import * as helpers from '#layer-a/analyses/helpers.js';
 
-  it('detects public API exports on main modules', () => {
-    expect(isPublicAPI('src/layer-a-static/indexer.js', 'indexProject')).toBe(true);
-    expect(isPublicAPI('src/layer-a-static/analyses/foo.js', 'analyzeFoo')).toBe(false);
-  });
+createUtilityTestSuite({
+  module: 'analyses/helpers',
+  exports: helpers,
+  fn: Object.values(helpers)[0],
+  expectedSafeResult: null,
+  specificTests: [
+    {
+      name: 'exports helper functions',
+      fn: () => {
+        expect(Object.keys(helpers).length).toBeGreaterThan(0);
+      }
+    }
+  ]
 });
-

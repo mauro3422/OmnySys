@@ -1,29 +1,41 @@
 /**
- * @fileoverview Tests for indexer.js - Main Entry Point
+ * @fileoverview Tests for indexer.js - Main Entry Point (Meta-Factory Pattern)
  * 
- * Tests the indexProject function which orchestrates the entire analysis pipeline.
+ * Tests the indexProject function using standardized contracts.
+ * 
+ * @module tests/unit/layer-a-analysis/indexer
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { createUtilityTestSuite } from '#test-factories/test-suite-generator';
+import { indexProject } from '#layer-a/indexer.js';
 
-describe('indexer.js', () => {
-  describe('indexProject', () => {
-    it('should exist as a module', async () => {
-      const indexer = await import('../../../src/layer-a-static/indexer.js');
-      expect(indexer).toBeDefined();
-      expect(typeof indexer.indexProject).toBe('function');
-    });
-
-    it('should have correct function signature', async () => {
-      const { indexProject } = await import('../../../src/layer-a-static/indexer.js');
-      expect(indexProject.length).toBe(2); // rootPath, options
-    });
-  });
-
-  describe('Module Exports', () => {
-    it('should export indexProject function', async () => {
-      const indexer = await import('../../../src/layer-a-static/indexer.js');
-      expect(indexer).toHaveProperty('indexProject');
-    });
-  });
+/**
+ * Meta-Factory Test Suite for indexer.js
+ * 
+ * Automatically generates:
+ * - Structure Contract (exports verification)
+ * - Error Handling Contract (null/undefined handling)
+ */
+createUtilityTestSuite({
+  module: 'indexer',
+  exports: { indexProject },
+  fn: indexProject,
+  expectedSafeResult: null,
+  specificTests: [
+    {
+      name: 'exports indexProject function',
+      fn: async () => {
+        expect(typeof indexProject).toBe('function');
+        expect(indexProject.length).toBe(2); // rootPath, options
+      }
+    },
+    {
+      name: 'handles invalid path gracefully',
+      fn: async () => {
+        // Should not throw, return safe result
+        const result = await indexProject(null);
+        expect(result).toBeNull();
+      }
+    }
+  ]
 });

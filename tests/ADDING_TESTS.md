@@ -2,7 +2,56 @@
 
 Guide for adding new tests to the OmnySystem test suite.
 
-## Quick Start
+> **🆕 NEW: Meta-Factory Pattern (Recommended)**
+> Use the test-suite-generator for standardized, DRY test suites.
+> See [Meta-Factory Guide](./META_FACTORY_GUIDE.md) for complete documentation.
+
+## Quick Start (Modern - Meta-Factory)
+
+### 1. Create Test File
+
+```bash
+# Create new test file
+touch tests/unit/layer-a-analysis/my-feature.test.js
+```
+
+### 2. Use Meta-Factory Template (Recommended)
+
+```javascript
+/**
+ * @fileoverview Tests for My Feature
+ * 
+ * Description of what these tests cover.
+ * Uses Meta-Factory pattern for standardized contracts.
+ * 
+ * @module tests/unit/layer-a-analysis/my-feature
+ */
+
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { SystemMapBuilder } from '#test-factories/graph-test.factory.js';
+import { myFeature } from '#layer-a/my-feature.js';
+
+// Generate standardized test suite with contracts
+createAnalysisTestSuite({
+  module: 'my-feature',
+  exports: { myFeature },
+  analyzeFn: myFeature,
+  expectedFields: { results: 'array', total: 'number' },
+  createMockInput: () => SystemMapBuilder.create().withFile('src/test.js').build(),
+  specificTests: [
+    {
+      name: 'should handle specific scenario',
+      fn: async () => {
+        const input = createSpecificScenario();
+        const result = await myFeature(input);
+        expect(result.specificProperty).toBe('expected');
+      }
+    }
+  ]
+});
+```
+
+## Quick Start (Legacy - Manual)
 
 ### 1. Create Test File
 
@@ -46,6 +95,108 @@ describe('My Feature', () => {
       expect(result).toBeDefined();
     });
   });
+});
+```
+
+## 🏭 Meta-Factory Pattern (Recommended)
+
+### Why Use Meta-Factory?
+
+- **DRY**: Define contracts once, reuse everywhere
+- **Consistency**: All tests follow same structure
+- **Maintainability**: Change contract in one place
+- **Readability**: Less boilerplate, more meaning
+
+### Available Quick-Start Functions
+
+```javascript
+import { 
+  createAnalysisTestSuite,      // For analysis functions
+  createDetectorTestSuite,      // For detector classes
+  createUtilityTestSuite,       // For utility functions
+  createTestSuite               // For custom configurations
+} from '#test-factories/test-suite-generator';
+```
+
+### Example: Analysis Function
+
+```javascript
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { SystemMapBuilder } from '#test-factories/graph-test.factory.js';
+import { analyzeCoupling } from '#layer-a/analyses/tier2/coupling.js';
+
+createAnalysisTestSuite({
+  module: 'analyses/tier2/coupling',
+  exports: { analyzeCoupling },
+  analyzeFn: analyzeCoupling,
+  expectedFields: { 
+    couplings: 'array', 
+    maxCoupling: 'number' 
+  },
+  createMockInput: () => SystemMapBuilder.create()
+    .withFile('src/a.js')
+    .withFile('src/b.js')
+    .build(),
+  specificTests: [
+    {
+      name: 'detects bidirectional coupling',
+      fn: async () => {
+        const systemMap = {
+          files: {
+            'a.js': { dependsOn: ['b.js'], usedBy: [] },
+            'b.js': { dependsOn: [], usedBy: ['a.js'] }
+          }
+        };
+        const result = await analyzeCoupling(systemMap);
+        expect(result.total).toBe(1);
+        expect(result.maxCoupling).toBe(1);
+      }
+    }
+  ]
+});
+```
+
+### Example: Utility Function
+
+```javascript
+import { createUtilityTestSuite } from '#test-factories/test-suite-generator';
+import { formatDate } from '#layer-a/utils/date-utils.js';
+
+createUtilityTestSuite({
+  module: 'utils/date-utils',
+  exports: { formatDate },
+  fn: formatDate,
+  expectedSafeResult: null,
+  specificTests: [
+    {
+      name: 'formats ISO date correctly',
+      fn: () => {
+        const result = formatDate('2024-01-15');
+        expect(result).toBe('Jan 15, 2024');
+      }
+    }
+  ]
+});
+```
+
+### Example: Custom Configuration
+
+```javascript
+import { createTestSuite } from '#test-factories/test-suite-generator';
+import { myComplexModule } from '#layer-a/complex-module.js';
+
+createTestSuite({
+  module: 'complex-module',
+  exports: { myComplexModule },
+  contracts: ['structure', 'error-handling', 'runtime', 'async'],
+  contractOptions: {
+    testFn: myComplexModule,
+    async: true,
+    expectedSafeResult: { success: false }
+  },
+  specificTests: [
+    // Your specific tests here
+  ]
 });
 ```
 

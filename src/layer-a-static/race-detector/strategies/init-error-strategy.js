@@ -6,7 +6,7 @@
  * @module race-detector/strategies/init-error-strategy
  */
 
-import { RaceDetectionStrategy } from './race-detection-strategy.js';
+import { RaceDetectionStrategy } from './race-detection-strategy/index.js';
 
 /**
  * Strategy for detecting initialization races

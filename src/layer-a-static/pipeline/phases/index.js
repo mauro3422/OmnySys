@@ -7,5 +7,5 @@
  */
 
 export { ExtractionPhase } from './base-phase.js';
-export { AtomExtractionPhase } from './atom-extraction-phase.js';
+export { AtomExtractionPhase } from './atom-extraction/index.js';
 export { ChainBuildingPhase } from './chain-building-phase.js';

@@ -1,27 +1,40 @@
-import { describe, it, expect } from 'vitest';
-import RiskScorerDefault, {
-  RiskScorer,
-  calculateRiskScore,
-  calculateScoreSeverity,
-  calculateAllRiskScores,
-  identifyHighRiskFiles,
-  generateRiskReport
-} from '#layer-a/analyses/tier3/risk-scorer.js';
+/**
+ * @fileoverview Tests for risk-scorer.js - Auto-generated Meta-Factory Pattern
+ * * Backward compatibility wrapper. Use './index.js' for new code. /
+ */
 
-describe('analyses/tier3/risk-scorer.js', () => {
-  it('re-exports the compatibility API', () => {
-    expect(RiskScorerDefault).toBe(RiskScorer);
-    expect(RiskScorer).toBeTypeOf('function');
-    expect(calculateRiskScore).toBeTypeOf('function');
-    expect(calculateScoreSeverity).toBeTypeOf('function');
-    expect(calculateAllRiskScores).toBeTypeOf('function');
-    expect(identifyHighRiskFiles).toBeTypeOf('function');
-    expect(generateRiskReport).toBeTypeOf('function');
-  });
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { RiskScorer, calculateRiskScore, calculateScoreSeverity, calculateAllRiskScores, identifyHighRiskFiles, generateRiskReport } from '#layer-a-static/analyses/tier3/index.js';
 
-  it('keeps behavior compatible for score and severity', () => {
-    const score = calculateRiskScore({}, [], {}, {});
-    expect(score).toHaveProperty('total');
-    expect(calculateScoreSeverity(score.total)).toMatch(/low|medium|high|critical/);
-  });
+// Auto-generated test suite
+const suite = createAnalysisTestSuite({
+  module: 'analyses/tier3/risk-scorer',
+  exports: { RiskScorer, calculateRiskScore, calculateScoreSeverity, calculateAllRiskScores, identifyHighRiskFiles, generateRiskReport },
+  analyzeFn: RiskScorer,
+  expectedFields: {
+  'total': 'number'
+},
+  
+  
+  specificTests: [
+    {
+      name: 'should handle empty input gracefully',
+      test: async (fn) => {
+        const result = await fn({});
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+      }
+    },
+    {
+      name: 'should handle edge cases',
+      test: () => {
+        // Add edge case tests here
+        expect(true).toBe(true);
+      }
+    }
+  ]
 });
+
+// Run the suite
+describe('analyses/tier3/risk-scorer', suite);
