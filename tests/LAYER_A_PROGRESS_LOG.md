@@ -320,6 +320,42 @@
 - Layer A test files in tree: `419`
 - Remaining direct source files without 1:1 test filename: `264`
 
+## 2026-02-15 - Extractors Metadata Batch #1 (Error-Flow + Performance-Impact + Contracts)
+- Added 20 new no-mock tests for metadata extractor internals:
+  - Error Flow:
+    - `extractors/metadata/error-flow.test.js`
+    - `extractors/metadata/error-flow/index.test.js`
+    - `extractors/metadata/error-flow/extractors/catch-extractor.test.js`
+    - `extractors/metadata/error-flow/extractors/throw-extractor.test.js`
+    - `extractors/metadata/error-flow/extractors/error-flow-extractor.test.js`
+    - `extractors/metadata/error-flow/analyzers/propagation-analyzer.test.js`
+  - Performance Impact:
+    - `extractors/metadata/performance-impact.test.js`
+    - `extractors/metadata/performance-impact/index.test.js`
+    - `extractors/metadata/performance-impact/analyzers/*.test.js` (3 files)
+    - `extractors/metadata/performance-impact/metrics/*.test.js` (2 files)
+    - `extractors/metadata/performance-impact/reports/*.test.js` (2 files)
+  - Metadata contracts/utilities:
+    - `extractors/metadata/jsdoc-contracts.test.js`
+    - `extractors/metadata/runtime-contracts.test.js`
+    - `extractors/metadata/performance-hints.test.js`
+    - `extractors/metadata/historical-metadata.test.js`
+    - `extractors/metadata/index.test.js`
+- Focused validation:
+  - `20/20` files passed
+  - `27/27` tests passed
+- Coverage impact:
+  - `extractors` direct gaps: `169` -> `149`
+  - `metadata` direct gaps: `49` -> `29`
+  - Remaining metadata work is concentrated in:
+    - `temporal-connections/*`
+    - `type-contracts/*`
+    - `temporal-patterns.js`
+
+## 2026-02-15 - Coverage Snapshot After Extractors Metadata Batch #1
+- Layer A test files in tree: `439`
+- Remaining direct source files without 1:1 test filename: `244`
+
 ## Commit Traceability Recommendation
 - Keep one commit per batch:
   1. `test(layer-a): structural import stabilization`

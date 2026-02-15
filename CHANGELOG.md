@@ -21,6 +21,7 @@
 - Added Race Detector coverage batch #2 (8 new no-mock test files, 15 tests passing) for core matchers, pattern detectors, phase enrich/summary, and strategy metadata factories/registries; race-detector direct gaps reduced to `33`.
 - Added Race Detector coverage batch #3 (14 new no-mock test files, 22 tests passing) for lock analyzer internals (detectors/analysis/utils/class/index + strategy base mapping), reducing race-detector direct gaps to `19`.
 - Added Race Detector coverage batch #4 (19 new no-mock test files, 23 tests passing) for timing analyzer internals and full pattern-matcher stack (wrappers, detectors, registries, context/helpers); race-detector direct gaps reduced to `0` with explicit blocker-evidence assertions for known import-path mismatch in matcher core.
+- Added Extractors Metadata coverage batch #1 (20 new no-mock test files, 27 tests passing) for error-flow and performance-impact modular stacks plus jsdoc/runtime/performance hints/historical/index contracts, reducing extractor gaps from `169` to `149`.
 
 ## ðŸ“‹ **Index of Version-Specific Changelogs**
 
