@@ -1,14 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
+/**
+ * @fileoverview Tests for module-system/__tests__/utils.test - Meta-Factory Pattern
+ */
 
-describe('module-system/__tests__/utils.test.js', () => {
-  it('exists as source-level test artifact with utility coverage intent', () => {
-    const p = path.resolve('src/layer-a-static/module-system/__tests__/utils.test.js');
-    expect(fs.existsSync(p)).toBe(true);
-    const src = fs.readFileSync(p, 'utf8');
-    expect(src).toContain('findMolecule');
-    expect(src).toContain('aggregateSideEffects');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/module-system/__tests__/utils.test.js';
+
+createAnalysisTestSuite({
+  module: 'module-system/__tests__/utils.test',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-

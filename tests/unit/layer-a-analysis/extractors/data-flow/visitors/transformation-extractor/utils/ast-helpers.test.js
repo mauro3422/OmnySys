@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/data-flow/visitors/transformation-extractor/utils/ast-helpers - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/data-flow/visitors/transformation-extractor/utils/ast-helpers.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/data-flow/visitors/transformation-extractor/utils/ast-helpers.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/data-flow/visitors/transformation-extractor/utils/ast-helpers.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/data-flow/visitors/transformation-extractor/utils/ast-helpers',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

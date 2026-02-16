@@ -1,74 +1,85 @@
 /**
- * @fileoverview strategies/index.test.js
+ * @fileoverview Tests for race-detector/strategies/index.js - Meta-Factory Pattern
  * 
- * Tests for strategy index exports.
+ * Barrel export for all race detection strategies
  * 
  * @module tests/unit/layer-a-analysis/race-detector/strategies/index
  */
 
-import { describe, it, expect } from 'vitest';
+import { createUtilityTestSuite } from '#test-factories/test-suite-generator';
+import { 
+  RaceDetectionStrategy, 
+  ReadWriteRaceStrategy, 
+  WriteWriteRaceStrategy, 
+  InitErrorStrategy 
+} from '#layer-a/race-detector/strategies/index.js';
 
-describe('Strategies Index', () => {
-  describe('Module Exports', () => {
-    it('should export RaceDetectionStrategy', async () => {
-      const { RaceDetectionStrategy } = await import('#layer-a/race-detector/strategies/index.js');
-      expect(RaceDetectionStrategy).toBeDefined();
-      expect(typeof RaceDetectionStrategy).toBe('function');
-    });
-
-    it('should export ReadWriteRaceStrategy', async () => {
-      const { ReadWriteRaceStrategy } = await import('#layer-a/race-detector/strategies/index.js');
-      expect(ReadWriteRaceStrategy).toBeDefined();
-      expect(typeof ReadWriteRaceStrategy).toBe('function');
-    });
-
-    it('should export WriteWriteRaceStrategy', async () => {
-      const { WriteWriteRaceStrategy } = await import('#layer-a/race-detector/strategies/index.js');
-      expect(WriteWriteRaceStrategy).toBeDefined();
-      expect(typeof WriteWriteRaceStrategy).toBe('function');
-    });
-
-    it('should export InitErrorStrategy', async () => {
-      const { InitErrorStrategy } = await import('#layer-a/race-detector/strategies/index.js');
-      expect(InitErrorStrategy).toBeDefined();
-      expect(typeof InitErrorStrategy).toBe('function');
-    });
-  });
-
-  describe('Strategy Inheritance', () => {
-    it('all strategies should extend RaceDetectionStrategy', async () => {
-      const { 
-        RaceDetectionStrategy, 
-        ReadWriteRaceStrategy, 
-        WriteWriteRaceStrategy, 
-        InitErrorStrategy 
-      } = await import('#layer-a/race-detector/strategies/index.js');
-      
-      const rwStrategy = new ReadWriteRaceStrategy();
-      const wwStrategy = new WriteWriteRaceStrategy();
-      const ieStrategy = new InitErrorStrategy();
-      
-      expect(rwStrategy).toBeInstanceOf(RaceDetectionStrategy);
-      expect(wwStrategy).toBeInstanceOf(RaceDetectionStrategy);
-      expect(ieStrategy).toBeInstanceOf(RaceDetectionStrategy);
-    });
-
-    it('all strategies should implement getRaceType', async () => {
-      const { ReadWriteRaceStrategy, WriteWriteRaceStrategy, InitErrorStrategy } = 
-        await import('#layer-a/race-detector/strategies/index.js');
-      
-      expect(new ReadWriteRaceStrategy().getRaceType()).toBe('RW');
-      expect(new WriteWriteRaceStrategy().getRaceType()).toBe('WW');
-      expect(new InitErrorStrategy().getRaceType()).toBe('IE');
-    });
-
-    it('all strategies should implement detect method', async () => {
-      const { ReadWriteRaceStrategy, WriteWriteRaceStrategy, InitErrorStrategy } = 
-        await import('#layer-a/race-detector/strategies/index.js');
-      
-      expect(typeof new ReadWriteRaceStrategy().detect).toBe('function');
-      expect(typeof new WriteWriteRaceStrategy().detect).toBe('function');
-      expect(typeof new InitErrorStrategy().detect).toBe('function');
-    });
-  });
+createUtilityTestSuite({
+  module: 'race-detector/strategies/index',
+  exports: { 
+    RaceDetectionStrategy, 
+    ReadWriteRaceStrategy, 
+    WriteWriteRaceStrategy, 
+    InitErrorStrategy 
+  },
+  fn: null,
+  expectedSafeResult: null,
+  specificTests: [
+    {
+      name: 'exports RaceDetectionStrategy class',
+      fn: () => {
+        expect(RaceDetectionStrategy).toBeDefined();
+        expect(typeof RaceDetectionStrategy).toBe('function');
+      }
+    },
+    {
+      name: 'exports ReadWriteRaceStrategy class',
+      fn: () => {
+        expect(ReadWriteRaceStrategy).toBeDefined();
+        expect(typeof ReadWriteRaceStrategy).toBe('function');
+      }
+    },
+    {
+      name: 'exports WriteWriteRaceStrategy class',
+      fn: () => {
+        expect(WriteWriteRaceStrategy).toBeDefined();
+        expect(typeof WriteWriteRaceStrategy).toBe('function');
+      }
+    },
+    {
+      name: 'exports InitErrorStrategy class',
+      fn: () => {
+        expect(InitErrorStrategy).toBeDefined();
+        expect(typeof InitErrorStrategy).toBe('function');
+      }
+    },
+    {
+      name: 'all strategies extend RaceDetectionStrategy',
+      fn: () => {
+        const rwStrategy = new ReadWriteRaceStrategy({});
+        const wwStrategy = new WriteWriteRaceStrategy({});
+        const ieStrategy = new InitErrorStrategy({});
+        
+        expect(rwStrategy).toBeInstanceOf(RaceDetectionStrategy);
+        expect(wwStrategy).toBeInstanceOf(RaceDetectionStrategy);
+        expect(ieStrategy).toBeInstanceOf(RaceDetectionStrategy);
+      }
+    },
+    {
+      name: 'all strategies implement getRaceType',
+      fn: () => {
+        expect(new ReadWriteRaceStrategy({}).getRaceType()).toBe('RW');
+        expect(new WriteWriteRaceStrategy({}).getRaceType()).toBe('WW');
+        expect(new InitErrorStrategy({}).getRaceType()).toBe('IE');
+      }
+    },
+    {
+      name: 'all strategies implement detect method',
+      fn: () => {
+        expect(typeof new ReadWriteRaceStrategy({}).detect).toBe('function');
+        expect(typeof new WriteWriteRaceStrategy({}).detect).toBe('function');
+        expect(typeof new InitErrorStrategy({}).detect).toBe('function');
+      }
+    }
+  ]
 });

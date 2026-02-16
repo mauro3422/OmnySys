@@ -5,7 +5,7 @@
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { BrokenConnectionsDetector } from '#layer-a-static/analyses/tier3/detectors/BrokenConnectionsDetector.js';
+import { BrokenConnectionsDetector } from '#layer-a/analyses/tier3/detectors/BrokenConnectionsDetector.js';
 
 // Auto-generated test suite
 const suite = createAnalysisTestSuite({

@@ -22,6 +22,19 @@ createAnalysisTestSuite({
     problematicCount: 'number',
     recommendation: 'string'
   },
+  contractOptions: {
+    async: false,
+    exportNames: ['findCircularFunctionDeps'],
+    expectedSafeResult: {
+      total: 0,
+      cycles: [],
+      classifications: [],
+      validCount: 0,
+      problematicCount: 0,
+      hasMutualRecursion: false,
+      recommendation: 'No circular function dependencies detected'
+    }
+  },
   specificTests: [
     {
       name: 'should return empty result for empty systemMap',

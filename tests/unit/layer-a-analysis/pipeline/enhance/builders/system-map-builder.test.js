@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest';
+/**
+ * @fileoverview Tests for pipeline/enhance/builders/system-map-builder - Meta-Factory Pattern
+ */
 
-describe('pipeline/enhance/builders/system-map-builder.js', () => {
-  it('fails import while architecture-utils legacy path is unresolved', async () => {
-    await expect(import('#layer-a/pipeline/enhance/builders/system-map-builder.js')).rejects.toThrow(/architecture-utils/i);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/enhance/builders/system-map-builder.js';
+
+createAnalysisTestSuite({
+  module: 'pipeline/enhance/builders/system-map-builder',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

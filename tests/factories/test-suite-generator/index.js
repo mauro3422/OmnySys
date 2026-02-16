@@ -150,6 +150,7 @@ export function createUtilityTestSuite(config) {
     exports,
     fn,
     expectedSafeResult,
+    contractOptions = {},
     specificTests = []
   } = config;
 
@@ -159,7 +160,8 @@ export function createUtilityTestSuite(config) {
     contracts: ['structure', 'error-handling'],
     contractOptions: {
       testFn: fn,
-      expectedSafeResult
+      expectedSafeResult,
+      ...contractOptions
     },
     specificTests
   });

@@ -1,9 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import CrossFunctionGraphBuilderDefault, { CrossFunctionGraphBuilder } from '#layer-a/pipeline/molecular-chains/cross-function-graph-builder.js';
+/**
+ * @fileoverview Tests for pipeline/molecular-chains/cross-function-graph-builder - Meta-Factory Pattern
+ */
 
-describe('pipeline/molecular-chains/cross-function-graph-builder.js', () => {
-  it('re-exports graph builder compatibility wrapper', () => {
-    expect(CrossFunctionGraphBuilder).toBeTypeOf('function');
-    expect(CrossFunctionGraphBuilderDefault).toBe(CrossFunctionGraphBuilder);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/molecular-chains/cross-function-graph-builder.js';
+
+createAnalysisTestSuite({
+  module: 'pipeline/molecular-chains/cross-function-graph-builder',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

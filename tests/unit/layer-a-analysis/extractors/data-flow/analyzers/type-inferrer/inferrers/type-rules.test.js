@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/data-flow/analyzers/type-inferrer/inferrers/type-rules - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/data-flow/analyzers/type-inferrer/inferrers/type-rules.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/data-flow/analyzers/type-inferrer/inferrers/type-rules.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/data-flow/analyzers/type-inferrer/inferrers/type-rules.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/data-flow/analyzers/type-inferrer/inferrers/type-rules',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

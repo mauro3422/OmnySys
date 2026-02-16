@@ -5,7 +5,7 @@
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { DeadCodeDetector } from '#layer-a-static/analyses/tier3/detectors/DeadCodeDetector.js';
+import { DeadCodeDetector } from '#layer-a/analyses/tier3/detectors/DeadCodeDetector.js';
 
 // Auto-generated test suite
 const suite = createAnalysisTestSuite({

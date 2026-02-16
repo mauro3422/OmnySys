@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/utils - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/utils.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/utils.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/utils.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/utils',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

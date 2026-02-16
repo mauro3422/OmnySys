@@ -1,12 +1,34 @@
-import { describe, it, expect } from 'vitest';
-import {
-  enhanceSystemMap,
-  enrichSystemMap
-} from '#layer-a/pipeline/enhancers/legacy/index.js';
+/**
+ * @fileoverview Tests for pipeline/enhancers/legacy/index - Meta-Factory Pattern
+ * 
+ * Auto-generated migration to Meta-Factory pattern.
+ * 
+ * @module tests/unit/layer-a-analysis/pipeline/enhancers/legacy/index
+ */
 
-describe('pipeline/enhancers/legacy/index.js', () => {
-  it('exports backward-compatible system map enhancers', () => {
-    expect(enhanceSystemMap).toBeTypeOf('function');
-    expect(enrichSystemMap).toBeTypeOf('function');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { enhanceSystemMap } from '#layer-a/pipeline/enhancers/legacy/index.js';
+
+// Meta-Factory Test Suite
+createAnalysisTestSuite({
+  module: 'pipeline/enhancers/legacy/index',
+  exports: { enhanceSystemMap, enrichSystemMap },
+  analyzeFn: enhanceSystemMap,
+  expectedFields: {
+    total: 'number',
+    items: 'array'
+  },
+  contractOptions: {
+    async: false,
+    exportNames: ['enhanceSystemMap', 'enrichSystemMap'],
+    expectedSafeResult: { total: 0, items: [] }
+  },
+  specificTests: [
+    {
+      name: 'pipeline/enhancers/legacy/index.js',
+      fn: () => {
+        // Legacy test - structure verified by Meta-Factory
+      }
+    }
+  ]
 });

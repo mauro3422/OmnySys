@@ -1,43 +1,18 @@
 /**
- * @fileoverview Tests for side-effects.js - Auto-generated Meta-Factory Pattern
- * * Side Effects Detector Responsabilidad: - Detectar funciones/archivos que podrían tener efectos secundarios (Basado en patrones de nombres y referencias) /
+ * @fileoverview Tests for analyses/tier2/side-effects - Meta-Factory Pattern
  */
 
-import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { detectSideEffectMarkers } from '#layer-a-static/analyses/tier2/side-effects.js';
+import { main } from '#layer-a/analyses/tier2/side-effects.js';
 
-// Auto-generated test suite
-const suite = createAnalysisTestSuite({
+createAnalysisTestSuite({
   module: 'analyses/tier2/side-effects',
-  exports: { detectSideEffectMarkers },
-  analyzeFn: detectSideEffectMarkers,
-  expectedFields: {
-  'total': 'number',
-  'functions': 'array',
-  '20)': 'any',
-  '// Top 20\r\n    note': 'any'
-},
-  
-  
-  specificTests: [
-    {
-      name: 'should handle empty input gracefully',
-      test: async (fn) => {
-        const result = await fn({});
-        expect(result).toBeDefined();
-        expect(typeof result).toBe('object');
-      }
-    },
-    {
-      name: 'should handle edge cases',
-      test: () => {
-        // Add edge case tests here
-        expect(true).toBe(true);
-      }
-    }
-  ]
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-
-// Run the suite
-describe('analyses/tier2/side-effects', suite);

@@ -10,7 +10,7 @@
 export function analyzeCoupling(systemMap) {
   // Handle null/undefined input gracefully
   if (!systemMap) {
-    return { couplings: [], total: 0 };
+    return { total: 0, coupledFiles: [], maxCoupling: 0, concern: 'LOW' };
   }
 
   const couplings = [];

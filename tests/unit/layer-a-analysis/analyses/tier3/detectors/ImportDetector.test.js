@@ -5,7 +5,7 @@
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { ImportDetector } from '#layer-a-static/analyses/tier3/detectors/ImportDetector.js';
+import { ImportDetector } from '#layer-a/analyses/tier3/detectors/ImportDetector.js';
 
 // Auto-generated test suite
 const suite = createAnalysisTestSuite({

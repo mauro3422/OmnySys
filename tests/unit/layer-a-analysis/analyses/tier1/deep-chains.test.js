@@ -18,11 +18,21 @@ const suite = createAnalysisTestSuite({
     chains: 'array',
     recommendation: 'string'
   },
+  contractOptions: {
+    async: false,
+    exportNames: ['findDeepDependencyChains'],
+    expectedSafeResult: {
+      totalDeepChains: 0,
+      maxDepth: 0,
+      chains: [],
+      recommendation: 'No dependency data available'
+    }
+  },
   createMockInput: () => SystemMapBuilder.create().build(),
   specificTests: [
     {
       name: 'should not report chains shorter than 5',
-      test: (analyzeFn) => {
+      fn: () => {
         const systemMap = SystemMapBuilder.create()
           .withFile('src/a.js')
           .withFile('src/b.js')
@@ -34,13 +44,13 @@ const suite = createAnalysisTestSuite({
           .withFunctionLink('src/b.js:b', 'src/c.js:c')
           .build();
         
-        const result = analyzeFn(systemMap);
+        const result = findDeepDependencyChains(systemMap);
         expect(result.totalDeepChains).toBe(0);
       }
     },
     {
       name: 'should detect chains with depth >= 5',
-      test: (analyzeFn) => {
+      fn: () => {
         const builder = SystemMapBuilder.create();
         
         // Create chain: a -> b -> c -> d -> e
@@ -56,13 +66,13 @@ const suite = createAnalysisTestSuite({
           }
         });
         
-        const result = analyzeFn(builder.build());
+        const result = findDeepDependencyChains(builder.build());
         expect(result.totalDeepChains).toBeGreaterThan(0);
       }
     },
     {
       name: 'should return maxDepth of detected chains',
-      test: (analyzeFn) => {
+      fn: () => {
         const builder = SystemMapBuilder.create();
         
         // Create chain: a -> b -> c -> d -> e -> f
@@ -78,13 +88,13 @@ const suite = createAnalysisTestSuite({
           }
         });
         
-        const result = analyzeFn(builder.build());
+        const result = findDeepDependencyChains(builder.build());
         expect(result.maxDepth).toBeGreaterThanOrEqual(5);
       }
     },
     {
       name: 'should limit chains to top 10',
-      test: (analyzeFn) => {
+      fn: () => {
         const builder = SystemMapBuilder.create();
         
         // Create multiple entry points with deep chains
@@ -102,13 +112,13 @@ const suite = createAnalysisTestSuite({
           });
         }
         
-        const result = analyzeFn(builder.build());
+        const result = findDeepDependencyChains(builder.build());
         expect(result.chains.length).toBeLessThanOrEqual(10);
       }
     },
     {
       name: 'should sort chains by depth descending',
-      test: (analyzeFn) => {
+      fn: () => {
         const builder = SystemMapBuilder.create();
         
         // Create chains of different depths
@@ -127,7 +137,7 @@ const suite = createAnalysisTestSuite({
           });
         });
         
-        const result = analyzeFn(builder.build());
+        const result = findDeepDependencyChains(builder.build());
         
         for (let i = 1; i < result.chains.length; i++) {
           expect(result.chains[i-1].depth).toBeGreaterThanOrEqual(result.chains[i].depth);
@@ -136,7 +146,7 @@ const suite = createAnalysisTestSuite({
     },
     {
       name: 'should include impact description in chains',
-      test: (analyzeFn) => {
+      fn: () => {
         const builder = SystemMapBuilder.create();
         
         const files = Array.from({ length: 6 }, (_, i) => `f${i}`);
@@ -151,7 +161,7 @@ const suite = createAnalysisTestSuite({
           }
         });
         
-        const result = analyzeFn(builder.build());
+        const result = findDeepDependencyChains(builder.build());
         
         if (result.chains.length > 0) {
           expect(result.chains[0].impact).toContain('Changing root function affects');
@@ -160,7 +170,7 @@ const suite = createAnalysisTestSuite({
     },
     {
       name: 'should avoid revisiting nodes in a path',
-      test: (analyzeFn) => {
+      fn: () => {
         const systemMap = SystemMapBuilder.create()
           .withFile('src/a.js')
           .withFile('src/b.js')
@@ -170,7 +180,7 @@ const suite = createAnalysisTestSuite({
           .withFunctionLink('src/b.js:b', 'src/a.js:a') // Cycle back
           .build();
         
-        const result = analyzeFn(systemMap);
+        const result = findDeepDependencyChains(systemMap);
         
         // Should not get stuck in infinite loop
         expect(result).toBeDefined();

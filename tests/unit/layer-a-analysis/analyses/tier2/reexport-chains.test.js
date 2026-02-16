@@ -1,42 +1,18 @@
 /**
- * @fileoverview Tests for reexport-chains.js - Auto-generated Meta-Factory Pattern
- * * Re-export Chains Analyzer Responsabilidad: - Rastrear cadenas de re-exports (A→B→C) /
+ * @fileoverview Tests for analyses/tier2/reexport-chains - Meta-Factory Pattern
  */
 
-import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { analyzeReexportChains } from '#layer-a-static/analyses/tier2/reexport-chains.js';
+import { main } from '#layer-a/analyses/tier2/reexport-chains.js';
 
-// Auto-generated test suite
-const suite = createAnalysisTestSuite({
+createAnalysisTestSuite({
   module: 'analyses/tier2/reexport-chains',
-  exports: { analyzeReexportChains },
-  analyzeFn: analyzeReexportChains,
-  expectedFields: {
-  'total': 'number',
-  'chains': 'array',
-  'recommendation': 'string'
-},
-  
-  
-  specificTests: [
-    {
-      name: 'should handle empty input gracefully',
-      test: async (fn) => {
-        const result = await fn({});
-        expect(result).toBeDefined();
-        expect(typeof result).toBe('object');
-      }
-    },
-    {
-      name: 'should handle edge cases',
-      test: () => {
-        // Add edge case tests here
-        expect(true).toBe(true);
-      }
-    }
-  ]
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-
-// Run the suite
-describe('analyses/tier2/reexport-chains', suite);

@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/comprehensive-extractor/completeness/index - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/comprehensive-extractor/completeness/index.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/comprehensive-extractor/completeness/index.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/comprehensive-extractor/completeness/index.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/comprehensive-extractor/completeness/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

@@ -7,6 +7,11 @@
  */
 
 export function extractCycleMetadata(cycle, atomsIndex) {
+  // Handle null/undefined input gracefully
+  if (!cycle || !Array.isArray(cycle)) {
+    return [];
+  }
+  
   return cycle.map(filePath => {
     const fileData = atomsIndex[filePath] || {};
     const atoms = fileData.atoms || [];

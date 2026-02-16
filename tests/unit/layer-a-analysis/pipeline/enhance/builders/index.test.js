@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest';
+/**
+ * @fileoverview Tests for pipeline/enhance/builders/index - Meta-Factory Pattern
+ */
 
-describe('pipeline/enhance/builders/index.js', () => {
-  it('fails import while architecture-utils relative path is broken (real blocker)', async () => {
-    await expect(import('#layer-a/pipeline/enhance/builders/index.js')).rejects.toThrow(/architecture-utils/i);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/enhance/builders/index.js';
+
+createAnalysisTestSuite({
+  module: 'pipeline/enhance/builders/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

@@ -1,33 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import ArgumentMapperDefault, {
-  ArgumentMapper,
-  TransformType,
-  detectTransform,
-  extractArgumentCode,
-  extractRootVariable,
-  analyzeDataFlow,
-  trackReturnUsage,
-  detectChainedTransforms,
-  calculateChainComplexity,
-  calculateConfidence,
-  findVariableUsages,
-  escapeRegex
-} from '#layer-a/pipeline/molecular-chains/argument-mapper/index.js';
+/**
+ * @fileoverview Tests for pipeline/molecular-chains/argument-mapper/index - Meta-Factory Pattern
+ */
 
-describe('pipeline/molecular-chains/argument-mapper/index.js', () => {
-  it('exports argument-mapper API surface', () => {
-    expect(ArgumentMapper).toBeTypeOf('function');
-    expect(TransformType).toBeTypeOf('object');
-    expect(detectTransform).toBeTypeOf('function');
-    expect(extractArgumentCode).toBeTypeOf('function');
-    expect(extractRootVariable).toBeTypeOf('function');
-    expect(analyzeDataFlow).toBeTypeOf('function');
-    expect(trackReturnUsage).toBeTypeOf('function');
-    expect(detectChainedTransforms).toBeTypeOf('function');
-    expect(calculateChainComplexity).toBeTypeOf('function');
-    expect(calculateConfidence).toBeTypeOf('function');
-    expect(findVariableUsages).toBeTypeOf('function');
-    expect(escapeRegex).toBeTypeOf('function');
-    expect(ArgumentMapperDefault).toBe(ArgumentMapper);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/molecular-chains/argument-mapper/index.js';
+
+createAnalysisTestSuite({
+  module: 'pipeline/molecular-chains/argument-mapper/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

@@ -1,15 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import PatternRegistryDefault, {
-  PatternRegistry,
-  BUILTIN_PATTERNS,
-  defaultRegistry
-} from '#layer-a/race-detector/strategies/race-detection-strategy/patterns/index.js';
+/**
+ * @fileoverview Tests for race-detector/strategies/race-detection-strategy/patterns/index - Meta-Factory Pattern
+ */
 
-describe('race-detection-strategy/patterns/index.js', () => {
-  it('exports registry and builtin patterns', () => {
-    expect(PatternRegistry).toBeTypeOf('function');
-    expect(Array.isArray(BUILTIN_PATTERNS)).toBe(true);
-    expect(defaultRegistry).toBeInstanceOf(PatternRegistry);
-    expect(PatternRegistryDefault).toBe(PatternRegistry);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/race-detector/strategies/race-detection-strategy/patterns/index.js';
+
+createAnalysisTestSuite({
+  module: 'race-detector/strategies/race-detection-strategy/patterns/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

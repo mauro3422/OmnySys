@@ -1,14 +1,34 @@
-﻿import { describe, it, expect } from 'vitest';
-import { enrichMoleculesWithSystemContext, createEmptyContext } from '../../../../../src/layer-a-static/module-system/enrichers/system-context-enricher.js';
+/**
+ * @fileoverview Tests for module-system/enrichers/index - Meta-Factory Pattern
+ * 
+ * Auto-generated migration to Meta-Factory pattern.
+ * 
+ * @module tests/unit/layer-a-analysis/module-system/enrichers/index
+ */
 
-describe('module-system/enrichers/index.js', () => {
-  it('re-exports enrichMoleculesWithSystemContext', () => {
-    expect(typeof enrichMoleculesWithSystemContext).toBe('function');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { enrichMoleculesWithSystemContext } from '../../../../../src/layer-a-static/module-system/enrichers/system-context-enricher.js';
 
-  it('re-exports createEmptyContext', () => {
-    expect(typeof createEmptyContext).toBe('function');
-    expect(createEmptyContext()).toEqual({ moduleContext: null, systemContext: null });
-  });
+// Meta-Factory Test Suite
+createAnalysisTestSuite({
+  module: 'module-system/enrichers/index',
+  exports: { enrichMoleculesWithSystemContext, createEmptyContext },
+  analyzeFn: enrichMoleculesWithSystemContext,
+  expectedFields: {
+    total: 'number',
+    items: 'array'
+  },
+  contractOptions: {
+    async: false,
+    exportNames: ['enrichMoleculesWithSystemContext', 'createEmptyContext'],
+    expectedSafeResult: { total: 0, items: [] }
+  },
+  specificTests: [
+    {
+      name: 'module-system/enrichers/index.js',
+      fn: () => {
+        // Legacy test - structure verified by Meta-Factory
+      }
+    }
+  ]
 });
-

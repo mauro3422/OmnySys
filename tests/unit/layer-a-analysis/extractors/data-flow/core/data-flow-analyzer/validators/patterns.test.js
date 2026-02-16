@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/data-flow/core/data-flow-analyzer/validators/patterns - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/data-flow/core/data-flow-analyzer/validators/patterns.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/data-flow/core/data-flow-analyzer/validators/patterns.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/data-flow/core/data-flow-analyzer/validators/patterns.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/data-flow/core/data-flow-analyzer/validators/patterns',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

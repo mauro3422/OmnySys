@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/typescript/index - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/typescript/index.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/typescript/index.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/typescript/index.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/typescript/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

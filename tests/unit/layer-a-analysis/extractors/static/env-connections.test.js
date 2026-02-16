@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/static/env-connections - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/static/env-connections.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/static/env-connections.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/static/env-connections.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/static/env-connections',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

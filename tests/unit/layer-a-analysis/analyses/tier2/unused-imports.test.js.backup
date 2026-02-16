@@ -1,0 +1,12 @@
+/**
+ * @fileoverview Tests for unused-imports.js - Meta-Factory Pattern
+ */
+
+import { describe, it, expect } from 'vitest';
+import { findUnusedImports } from '#layer-a/analyses/tier2/unused-imports.js';
+
+describe('analyses/tier2/unused-imports', () => {
+  it('should export findUnusedImports', () => {
+    expect(typeof findUnusedImports).toBe('function');
+  });
+});

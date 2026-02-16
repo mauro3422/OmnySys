@@ -1,21 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import MolecularChainsDefault, {
-  ChainBuilder,
-  ChainIdGenerator,
-  ChainStepBuilder,
-  ChainSummaryBuilder,
-  isValidChainNode,
-  getUniqueFunctions
-} from '#layer-a/pipeline/molecular-chains/index.js';
+/**
+ * @fileoverview Tests for pipeline/molecular-chains/index - Meta-Factory Pattern
+ */
 
-describe('pipeline/molecular-chains/index.js', () => {
-  it('exports public API', () => {
-    expect(ChainBuilder).toBeTypeOf('function');
-    expect(ChainIdGenerator).toBeTypeOf('function');
-    expect(ChainStepBuilder).toBeTypeOf('function');
-    expect(ChainSummaryBuilder).toBeTypeOf('function');
-    expect(isValidChainNode).toBeTypeOf('function');
-    expect(getUniqueFunctions).toBeTypeOf('function');
-    expect(MolecularChainsDefault).toBe(ChainBuilder);
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/molecular-chains/index.js';
+
+createAnalysisTestSuite({
+  module: 'pipeline/molecular-chains/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

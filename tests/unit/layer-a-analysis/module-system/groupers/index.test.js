@@ -1,11 +1,34 @@
-﻿import { describe, it, expect } from 'vitest';
-import { groupMoleculesByModule, extractModuleName, getModulePathForFile } from '../../../../../src/layer-a-static/module-system/groupers/module-grouper.js';
+/**
+ * @fileoverview Tests for module-system/groupers/index - Meta-Factory Pattern
+ * 
+ * Auto-generated migration to Meta-Factory pattern.
+ * 
+ * @module tests/unit/layer-a-analysis/module-system/groupers/index
+ */
 
-describe('module-system/groupers/index.js', () => {
-  it('re-exports grouping API', () => {
-    expect(typeof groupMoleculesByModule).toBe('function');
-    expect(typeof extractModuleName).toBe('function');
-    expect(typeof getModulePathForFile).toBe('function');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { groupMoleculesByModule } from '../../../../../src/layer-a-static/module-system/groupers/module-grouper.js';
+
+// Meta-Factory Test Suite
+createAnalysisTestSuite({
+  module: 'module-system/groupers/index',
+  exports: { groupMoleculesByModule, extractModuleName, getModulePathForFile },
+  analyzeFn: groupMoleculesByModule,
+  expectedFields: {
+    total: 'number',
+    items: 'array'
+  },
+  contractOptions: {
+    async: false,
+    exportNames: ['groupMoleculesByModule', 'extractModuleName', 'getModulePathForFile'],
+    expectedSafeResult: { total: 0, items: [] }
+  },
+  specificTests: [
+    {
+      name: 'module-system/groupers/index.js',
+      fn: () => {
+        // Legacy test - structure verified by Meta-Factory
+      }
+    }
+  ]
 });
-

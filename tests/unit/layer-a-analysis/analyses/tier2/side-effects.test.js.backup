@@ -1,0 +1,12 @@
+/**
+ * @fileoverview Tests for side-effects.js - Meta-Factory Pattern
+ */
+
+import { describe, it, expect } from 'vitest';
+import { detectSideEffectMarkers } from '#layer-a/analyses/tier2/side-effects.js';
+
+describe('analyses/tier2/side-effects', () => {
+  it('should export detectSideEffectMarkers', () => {
+    expect(typeof detectSideEffectMarkers).toBe('function');
+  });
+});

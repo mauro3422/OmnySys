@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/typescript/extractors/connection-detector - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/typescript/extractors/connection-detector.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/typescript/extractors/connection-detector.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/typescript/extractors/connection-detector.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/typescript/extractors/connection-detector',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/typescript/connections/breaking-changes - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/typescript/connections/breaking-changes.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/typescript/connections/breaking-changes.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/typescript/connections/breaking-changes.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/typescript/connections/breaking-changes',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

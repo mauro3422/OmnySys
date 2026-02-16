@@ -1,13 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
+/**
+ * @fileoverview Tests for race-detector/__tests__/race-detector - Meta-Factory Pattern
+ */
 
-describe('race-detector/__tests__/race-detector.test.js source contract', () => {
-  it('keeps historical node:test suite file present for compatibility', () => {
-    const sourcePath = path.resolve('src/layer-a-static/race-detector/__tests__/race-detector.test.js');
-    expect(fs.existsSync(sourcePath)).toBe(true);
-    const content = fs.readFileSync(sourcePath, 'utf8');
-    expect(content).toContain("from 'node:test'");
-    expect(content).toContain('RaceDetectionPipeline');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/race-detector/__tests__/race-detector.js';
+
+createAnalysisTestSuite({
+  module: 'race-detector/__tests__/race-detector',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

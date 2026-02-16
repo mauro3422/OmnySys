@@ -1,0 +1,12 @@
+/**
+ * @fileoverview Tests for reachability.js - Meta-Factory Pattern
+ */
+
+import { describe, it, expect } from 'vitest';
+import { analyzeReachability } from '#layer-a/analyses/tier2/reachability.js';
+
+describe('analyses/tier2/reachability', () => {
+  it('should export analyzeReachability', () => {
+    expect(typeof analyzeReachability).toBe('function');
+  });
+});

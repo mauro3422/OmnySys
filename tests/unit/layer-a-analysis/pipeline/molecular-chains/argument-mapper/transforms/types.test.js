@@ -1,18 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import TransformTypeDefault, { TransformType } from '#layer-a/pipeline/molecular-chains/argument-mapper/transforms/types.js';
+/**
+ * @fileoverview Tests for pipeline/molecular-chains/argument-mapper/transforms/types - Meta-Factory Pattern
+ */
 
-describe('pipeline/molecular-chains/argument-mapper/transforms/types.js', () => {
-  it('exports transform enum with expected keys', () => {
-    expect(TransformType).toHaveProperty('PROPERTY_ACCESS');
-    expect(TransformType).toHaveProperty('DIRECT_PASS');
-    expect(TransformType).toHaveProperty('CALL_RESULT');
-    expect(TransformType).toHaveProperty('LITERAL');
-    expect(TransformType).toHaveProperty('SPREAD');
-    expect(TransformType).toHaveProperty('UNKNOWN');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/pipeline/molecular-chains/argument-mapper/transforms/types.js';
 
-  it('default export points to TransformType enum', () => {
-    expect(TransformTypeDefault).toBe(TransformType);
-  });
+createAnalysisTestSuite({
+  module: 'pipeline/molecular-chains/argument-mapper/transforms/types',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-

@@ -1,47 +1,18 @@
 /**
- * @fileoverview Tests for reachability.js - Auto-generated Meta-Factory Pattern
- * * Reachability Analyzer Responsabilidad: - Analizar qué código es alcanzable desde puntos de entrada /
+ * @fileoverview Tests for analyses/tier2/reachability - Meta-Factory Pattern
  */
 
-import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { analyzeReachability } from '#layer-a-static/analyses/tier2/reachability.js';
+import { main } from '#layer-a/analyses/tier2/reachability.js';
 
-// Auto-generated test suite
-const suite = createAnalysisTestSuite({
+createAnalysisTestSuite({
   module: 'analyses/tier2/reachability',
-  exports: { analyzeReachability },
-  analyzeFn: analyzeReachability,
-  expectedFields: {
-  'totalFiles': 'any',
-  'reachable': 'any',
-  'unreachable': 'any',
-  'reachablePercent': 'any',
-  'likelyEntryPoints': 'any',
-  'deadCodeFiles': 'any',
-  '10)': 'any',
-  'concern': 'any'
-},
-  
-  
-  specificTests: [
-    {
-      name: 'should handle empty input gracefully',
-      test: async (fn) => {
-        const result = await fn({});
-        expect(result).toBeDefined();
-        expect(typeof result).toBe('object');
-      }
-    },
-    {
-      name: 'should handle edge cases',
-      test: () => {
-        // Add edge case tests here
-        expect(true).toBe(true);
-      }
-    }
-  ]
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-
-// Run the suite
-describe('analyses/tier2/reachability', suite);

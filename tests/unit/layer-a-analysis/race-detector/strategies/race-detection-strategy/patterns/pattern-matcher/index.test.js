@@ -1,9 +1,18 @@
-import { describe, it, expect } from 'vitest';
+/**
+ * @fileoverview Tests for race-detector/strategies/race-detection-strategy/patterns/pattern-matcher/index - Meta-Factory Pattern
+ */
 
-describe('race-detector/.../patterns/pattern-matcher/index.js', () => {
-  it('currently exposes import-path blocker from matcher core', async () => {
-    await expect(
-      import('#layer-a/race-detector/strategies/race-detection-strategy/patterns/pattern-matcher/index.js')
-    ).rejects.toThrow("Cannot find module '../../analyzers/shared-state-analyzer.js'");
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/race-detector/strategies/race-detection-strategy/patterns/pattern-matcher/index.js';
+
+createAnalysisTestSuite({
+  module: 'race-detector/strategies/race-detection-strategy/patterns/pattern-matcher/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

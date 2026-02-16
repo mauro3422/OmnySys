@@ -1,0 +1,12 @@
+/**
+ * @fileoverview Tests for reexport-chains.js - Meta-Factory Pattern
+ */
+
+import { describe, it, expect } from 'vitest';
+import { analyzeReexportChains } from '#layer-a/analyses/tier2/reexport-chains.js';
+
+describe('analyses/tier2/reexport-chains', () => {
+  it('should export analyzeReexportChains', () => {
+    expect(typeof analyzeReexportChains).toBe('function');
+  });
+});

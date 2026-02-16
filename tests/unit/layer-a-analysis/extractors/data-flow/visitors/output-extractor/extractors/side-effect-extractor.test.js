@@ -1,6 +1,18 @@
-import { describe } from 'vitest';
-import { runExtractorContracts } from '#test-factories/extractor-contracts.factory.js';
+/**
+ * @fileoverview Tests for extractors/data-flow/visitors/output-extractor/extractors/side-effect-extractor - Meta-Factory Pattern
+ */
 
-describe('layer-a-static/extractors/data-flow/visitors/output-extractor/extractors/side-effect-extractor.js', () => {
-  runExtractorContracts({ sourceRelativePath: 'extractors/data-flow/visitors/output-extractor/extractors/side-effect-extractor.js' });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/extractors/data-flow/visitors/output-extractor/extractors/side-effect-extractor.js';
+
+createAnalysisTestSuite({
+  module: 'extractors/data-flow/visitors/output-extractor/extractors/side-effect-extractor',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

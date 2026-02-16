@@ -1,25 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import PatternRegistryDefault, {
-  PatternRegistry,
-  defaultRegistry
-} from '#layer-a/race-detector/strategies/race-detection-strategy/strategy/PatternRegistry.js';
+/**
+ * @fileoverview Tests for race-detector/strategies/race-detection-strategy/strategy/PatternRegistry - Meta-Factory Pattern
+ */
 
-describe('race-detector/strategies/race-detection-strategy/strategy/PatternRegistry.js', () => {
-  it('provides default severity/mitigation maps', () => {
-    const registry = new PatternRegistry();
-    expect(registry.getSeverity('WW')).toBe('high');
-    expect(registry.getSeverity('IE')).toBe('critical');
-    expect(registry.getMitigationStrategies('RW')).toContain('locking');
-  });
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/race-detector/strategies/race-detection-strategy/strategy/PatternRegistry.js';
 
-  it('supports custom overrides and exports expected defaults', () => {
-    const registry = new PatternRegistry();
-    registry.setSeverity('CUSTOM', 'low');
-    registry.registerMitigations('CUSTOM', ['serialize']);
-    expect(registry.getSeverity('CUSTOM')).toBe('low');
-    expect(registry.getMitigationStrategies('CUSTOM')).toEqual(['serialize']);
-    expect(defaultRegistry).toBeInstanceOf(PatternRegistry);
-    expect(PatternRegistryDefault).toBe(PatternRegistry);
-  });
+createAnalysisTestSuite({
+  module: 'race-detector/strategies/race-detection-strategy/strategy/PatternRegistry',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });
-

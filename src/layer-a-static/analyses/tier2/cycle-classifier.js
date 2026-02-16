@@ -14,6 +14,16 @@ import { evaluateRules } from './cycle-rules.js';
 const logger = createLogger('OmnySys:cycle-classifier');
 
 export function classifyCycle(cycle, atomsIndex) {
+  // Handle null/undefined input gracefully
+  if (!cycle || !Array.isArray(cycle) || cycle.length === 0) {
+    return {
+      severity: 'LOW',
+      category: 'UNKNOWN',
+      explanation: 'No cycle detected',
+      autoIgnore: false
+    };
+  }
+  
   try {
     const metadata = extractCycleMetadata(cycle, atomsIndex);
     const derived = deriveCycleProperties(metadata);

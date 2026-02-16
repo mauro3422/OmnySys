@@ -5,7 +5,7 @@
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { DuplicateDetector } from '#layer-a-static/analyses/tier3/detectors/DuplicateDetector.js';
+import { DuplicateDetector } from '#layer-a/analyses/tier3/detectors/DuplicateDetector.js';
 
 // Auto-generated test suite
 const suite = createAnalysisTestSuite({

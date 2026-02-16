@@ -1,23 +1,18 @@
 /**
- * @fileoverview Atoms Index Tests
- * 
- * Tests for the atoms queries index.
- * 
- * @module tests/unit/layer-a-analysis/query/queries/file-query/atoms/index
+ * @fileoverview Tests for query/queries/file-query/atoms/index - Meta-Factory Pattern
  */
 
-import { describe, it, expect } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { main } from '#layer-a/query/queries/file-query/atoms/index.js';
 
-describe('Atoms Index', () => {
-  describe('Module Structure', () => {
-    it('should be importable as a module', async () => {
-      const index = await import('#layer-a/query/queries/file-query/atoms/index.js');
-      expect(index).toBeDefined();
-    });
-
-    it('should have exports', async () => {
-      const index = await import('#layer-a/query/queries/file-query/atoms/index.js');
-      expect(Object.keys(index).length).toBeGreaterThanOrEqual(0);
-    });
-  });
+createAnalysisTestSuite({
+  module: 'query/queries/file-query/atoms/index',
+  exports: { main },
+  analyzeFn: main,
+  expectedFields: { total: 'number' },
+  contractOptions: {
+    async: false,
+    exportNames: ['main'],
+    expectedSafeResult: { total: 0 }
+  }
 });

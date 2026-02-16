@@ -5,7 +5,7 @@
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
-import { WorkerDetector } from '#layer-a-static/analyses/tier3/detectors/WorkerDetector.js';
+import { WorkerDetector } from '#layer-a/analyses/tier3/detectors/WorkerDetector.js';
 
 // Auto-generated test suite
 const suite = createAnalysisTestSuite({
