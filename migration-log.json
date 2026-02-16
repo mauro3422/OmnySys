@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-02-16T04:45:56.193Z",
+  "stats": {
+    "total": 655,
+    "migrated": 0,
+    "skipped": 655,
+    "errors": 0,
+    "byArea": {
+      "analyses": 74,
+      "analyzer.test.js": 1,
+      "extractors": 251,
+      "graph": 12,
+      "indexer.test.js": 1,
+      "layer-a-contracts.test.js": 1,
+      "layer-a-integration.test.js": 1,
+      "module-system": 31,
+      "parser": 9,
+      "pattern-detection": 33,
+      "pipeline": 92,
+      "query": 13,
+      "race-detector": 95,
+      "resolver.test.js": 1,
+      "scanner.test.js": 1,
+      "storage": 16,
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 21
+    }
+  },
+  "log": []
+}
