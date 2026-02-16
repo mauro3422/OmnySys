@@ -1,26 +1,26 @@
 /**
- * @fileoverview Storage - Meta-Factory
+ * @fileoverview Race Detector System
  */
 
 import { describe } from 'vitest';
 import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
 
-describe('Storage System', () => {
+describe('Race Detector System', () => {
   createAnalysisTestSuite({
-    module: 'storage/storage-manager',
+    module: 'race-detector',
     exports: {},
-    analyzeFn: () => ({ data: {} }),
-    expectedFields: { data: 'object' },
+    analyzeFn: () => ({ races: [] }),
+    expectedFields: { races: 'array' },
     contractOptions: {
       async: false,
       exportNames: [],
-      expectedSafeResult: { data: {} }
+      expectedSafeResult: { races: [] }
     },
     specificTests: [
       {
-        name: 'storage module available',
+        name: 'race detector module available',
         fn: async () => {
-          const mod = await import('#layer-a/storage/storage-manager/index.js');
+          const mod = await import('#layer-a/race-detector/index.js');
           expect(mod).toBeDefined();
         }
       }

@@ -1,41 +1,51 @@
 /**
  * @fileoverview Tier 1 Analyses - Meta-Factory
  * 
- * Agrupa todos los análisis de Tier 1
+ * Agrupa todos los análisis de Tier 1 con contratos completos
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe } from 'vitest';
+import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
 import { 
   findHotspots, 
   findOrphanFiles, 
   findUnusedExports,
   findCircularFunctionDeps,
-  findDeepDependencyChains,
-  classifyFunctionCycle
+  findDeepDependencyChains
 } from '#layer-a/analyses/tier1/index.js';
 
 describe('Analyses Tier 1', () => {
-  it('findHotspots is exported and callable', () => {
-    expect(typeof findHotspots).toBe('function');
-  });
-
-  it('findOrphanFiles is exported and callable', () => {
-    expect(typeof findOrphanFiles).toBe('function');
-  });
-
-  it('findUnusedExports is exported and callable', () => {
-    expect(typeof findUnusedExports).toBe('function');
-  });
-
-  it('findCircularFunctionDeps is exported and callable', () => {
-    expect(typeof findCircularFunctionDeps).toBe('function');
-  });
-
-  it('findDeepDependencyChains is exported and callable', () => {
-    expect(typeof findDeepDependencyChains).toBe('function');
-  });
-
-  it('classifyFunctionCycle is exported and callable', () => {
-    expect(typeof classifyFunctionCycle).toBe('function');
+  createAnalysisTestSuite({
+    module: 'analyses/tier1',
+    exports: { 
+      findHotspots, 
+      findOrphanFiles, 
+      findUnusedExports,
+      findCircularFunctionDeps,
+      findDeepDependencyChains
+    },
+    analyzeFn: findHotspots,
+    expectedFields: { 
+      total: 'number', 
+      functions: 'array',
+      criticalCount: 'number'
+    },
+    contractOptions: {
+      async: false,
+      exportNames: ['findHotspots', 'findOrphanFiles', 'findUnusedExports', 'findCircularFunctionDeps', 'findDeepDependencyChains'],
+      expectedSafeResult: { total: 0, functions: [], criticalCount: 0 }
+    },
+    specificTests: [
+      {
+        name: 'all tier1 functions are exported',
+        fn: () => {
+          expect(typeof findHotspots).toBe('function');
+          expect(typeof findOrphanFiles).toBe('function');
+          expect(typeof findUnusedExports).toBe('function');
+          expect(typeof findCircularFunctionDeps).toBe('function');
+          expect(typeof findDeepDependencyChains).toBe('function');
+        }
+      }
+    ]
   });
 });
