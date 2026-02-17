@@ -151,13 +151,12 @@ describe('Pattern Detection Engine', () => {
     it('should continue with other detectors if one fails', async () => {
       const engine = new PatternDetectionEngine();
       
-      // Temporarily replace a detector with a failing one
-      const originalDetector = engine.registry.get('deepChains');
-      engine.registry.register({
-        id: 'deepChains',
+      // Add a failing detector with a unique id (not replacing existing ones)
+      engine.addDetector({
+        id: 'failing-detector-2',
         loader: () => Promise.resolve({ 
           default: class FailingDetector extends PatternDetector {
-            async detect() { throw new Error('Deep chains failed'); }
+            async detect() { throw new Error('Detector failed'); }
           }
         }),
         priority: 100

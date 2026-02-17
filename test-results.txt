@@ -1,0 +1,120 @@
+node.exe : 
+En C:\Users\mauro\AppData\Roaming\npm\
+npx.ps1: 24 Car?cter: 5
++     & "node$exe"  "$basedir/node_mod
+ules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpec 
+   ified: (:String) [], RemoteExcept  
+  ion
+    + FullyQualifiedErrorId : NativeC 
+   ommandError
+ 
+[31m?????????????????????[39m[1m[4
+1m Startup Error [49m[22m[31m??????
+??????????????????[39m
+Error: Failed to load custom Reporter 
+from basic
+    at loadCustomReporterModule (file:
+///C:/Dev/OmnySystem/node_modules/vite
+st/dist/chunks/cli-api.B7PN_QUv.js:105
+93:9)
+    at file:///C:/Dev/OmnySystem/node_
+modules/vitest/dist/chunks/cli-api.B7P
+N_QUv.js:10609:23
+    ... 3 lines matching cause stack 
+trace ...
+    at _createServer (file:///C:/Dev/O
+mnySystem/node_modules/vite/dist/node/
+chunks/config.js:25603:86)
+    at createViteServer (file:///C:/De
+v/OmnySystem/node_modules/vitest/dist/
+chunks/cli-api.B7PN_QUv.js:9870:17)
+    at createVitest (file:///C:/Dev/Om
+nySystem/node_modules/vitest/dist/chun
+ks/cli-api.B7PN_QUv.js:13186:17)
+    at prepareVitest (file:///C:/Dev/O
+mnySystem/node_modules/vitest/dist/chu
+nks/cli-api.B7PN_QUv.js:13548:14)
+    at startVitest (file:///C:/Dev/Omn
+ySystem/node_modules/vitest/dist/chunk
+s/cli-api.B7PN_QUv.js:13494:14) {
+  [cause]: Error: Failed to load url 
+basic (resolved id: basic). Does the 
+file exist?
+      at reviveInvokeError (file:///C:
+/Dev/OmnySystem/node_modules/vite/dist
+/node/module-runner.js:475:14)
+      at Object.invoke (file:///C:/Dev
+/OmnySystem/node_modules/vite/dist/nod
+e/module-runner.js:491:33)
+      at ServerModuleRunner.getModuleI
+nformation (file:///C:/Dev/OmnySystem/
+node_modules/vite/dist/node/module-run
+ner.js:1086:7)
+      at ServerModuleRunner.import (fi
+le:///C:/Dev/OmnySystem/node_modules/v
+ite/dist/node/module-runner.js:1013:23
+)
+      at loadCustomReporterModule (fil
+e:///C:/Dev/OmnySystem/node_modules/vi
+test/dist/chunks/cli-api.B7PN_QUv.js:1
+0591:26)
+      at file:///C:/Dev/OmnySystem/nod
+e_modules/vitest/dist/chunks/cli-api.B
+7PN_QUv.js:10609:23
+      at async Promise.all (index 0)
+      at Vitest._setServer (file:///C:
+/Dev/OmnySystem/node_modules/vitest/di
+st/chunks/cli-api.B7PN_QUv.js:12251:13
+8)
+      at 
+BasicMinimalPluginContext.handler (fil
+e:///C:/Dev/OmnySystem/node_modules/vi
+test/dist/chunks/cli-api.B7PN_QUv.js:1
+3158:6)
+      at _createServer (file:///C:/Dev
+/OmnySystem/node_modules/vite/dist/nod
+e/chunks/config.js:25603:86) {
+    code: 'ERR_LOAD_URL',
+    runnerError: Error: RunnerError
+        at reviveInvokeError (file:///
+C:/Dev/OmnySystem/node_modules/vite/di
+st/node/module-runner.js:476:64)
+        at Object.invoke (file:///C:/D
+ev/OmnySystem/node_modules/vite/dist/n
+ode/module-runner.js:491:33)
+        at ServerModuleRunner.getModul
+eInformation (file:///C:/Dev/OmnySyste
+m/node_modules/vite/dist/node/module-r
+unner.js:1086:7)
+        at ServerModuleRunner.import (
+file:///C:/Dev/OmnySystem/node_modules
+/vite/dist/node/module-runner.js:1013:
+23)
+        at loadCustomReporterModule (f
+ile:///C:/Dev/OmnySystem/node_modules/
+vitest/dist/chunks/cli-api.B7PN_QUv.js
+:10591:26)
+        at file:///C:/Dev/OmnySystem/n
+ode_modules/vitest/dist/chunks/cli-api
+.B7PN_QUv.js:10609:23
+        at async Promise.all (index 0)
+        at Vitest._setServer (file:///
+C:/Dev/OmnySystem/node_modules/vitest/
+dist/chunks/cli-api.B7PN_QUv.js:12251:
+138)
+        at 
+BasicMinimalPluginContext.handler (fil
+e:///C:/Dev/OmnySystem/node_modules/vi
+test/dist/chunks/cli-api.B7PN_QUv.js:1
+3158:6)
+        at _createServer (file:///C:/D
+ev/OmnySystem/node_modules/vite/dist/n
+ode/chunks/config.js:25603:86)
+  }
+}
+
+
+

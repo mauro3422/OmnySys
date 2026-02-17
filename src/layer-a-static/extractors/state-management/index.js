@@ -19,21 +19,26 @@ export {
 // Utilidades
 export { getLineNumber, extractStatePaths, truncate, createResult } from './utils.js';
 
-// Redux extractors
-export { extractRedux, extractSelectors, extractActions, extractReducers, extractStores, extractThunks } from './redux/redux-extractor.js';
+// Redux extractors - import for local use and re-export
+import { extractRedux, extractSelectors, extractActions, extractReducers, extractStores, extractThunks } from './redux/redux-extractor.js';
+export { extractRedux, extractSelectors, extractActions, extractReducers, extractStores, extractThunks };
 export { detectUseSelectors, detectConnectHOC, detectMapStateFunctions, detectAllSelectors } from './redux/selector-detector.js';
 export { detectSlices, detectStores, detectSlicesAndStores } from './redux/slice-detector.js';
 export { detectUseDispatch, detectAsyncThunks, detectDispatchCalls, detectAllActions } from './redux/thunk-detector.js';
 
-// Context extractors
-export { extractContext, extractContexts, extractProviders, extractConsumers } from './context/context-extractor.js';
+// Context extractors - import for local use and re-export
+import { extractContext, extractContexts, extractProviders, extractConsumers } from './context/context-extractor.js';
+export { extractContext, extractContexts, extractProviders, extractConsumers };
 export { detectContextCreations, detectProviders, detectAllProviders } from './context/provider-detector.js';
 export { detectUseContext, detectContextConsumers, detectUseContextNew, detectAllConsumers } from './context/consumer-detector.js';
 
-// Connections
-export { detectSelectorConnections, indexStatePaths, getFilesUsingPath } from './connections/selector-connections.js';
-export { detectContextConnections, indexContextProviders, indexContextConsumers, getAllContextNames } from './connections/context-connections.js';
-export { detectStoreStructure, getSlicesByFile, getAllSliceNames, getStoreStats } from './connections/store-structure.js';
+// Connections - import for local use and re-export
+import { detectSelectorConnections, indexStatePaths, getFilesUsingPath } from './connections/selector-connections.js';
+import { detectContextConnections, indexContextProviders, indexContextConsumers, getAllContextNames } from './connections/context-connections.js';
+import { detectStoreStructure, getSlicesByFile, getAllSliceNames, getStoreStats } from './connections/store-structure.js';
+export { detectSelectorConnections, indexStatePaths, getFilesUsingPath };
+export { detectContextConnections, indexContextProviders, indexContextConsumers, getAllContextNames };
+export { detectStoreStructure, getSlicesByFile, getAllSliceNames, getStoreStats };
 
 /**
  * Extrae análisis completo de Redux/Context de un archivo
@@ -51,6 +56,8 @@ export function extractReduxContextFromFile(filePath, code) {
 }
 
 // 🆕 NUEVO: Wrappers simplificados para comprehensive-extractor
+// Las funciones extractRedux y extractContext ya están importadas arriba
+
 export function extractReduxSlices(code) {
   const result = extractRedux(code);
   return result.slices || [];
@@ -86,7 +93,6 @@ export function extractStoreStructure(code) {
 }
 
 export function extractSelectorConnections(code, allFiles = {}) {
-  // Wrapper simplificado - en implementación real usaría el detector completo
   const result = extractRedux(code);
   const connections = [];
   for (const selector of result.selectors || []) {
@@ -102,7 +108,6 @@ export function extractSelectorConnections(code, allFiles = {}) {
 }
 
 export function extractContextConnections(code, allFiles = {}) {
-  // Wrapper simplificado - mapea a formato esperado por tests
   const result = extractContext(code);
   return {
     provides: result.providers?.map(p => p.contextName) || [],

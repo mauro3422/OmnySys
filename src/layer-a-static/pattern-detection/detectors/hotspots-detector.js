@@ -41,7 +41,7 @@ export class HotspotsDetector extends PatternDetector {
       };
     }
 
-    const config = this.config;
+    const config = this.config || {};
     const minUsageThreshold = config.minUsageThreshold || 10;
     const highUsageThreshold = config.highUsageThreshold || 20;
     
