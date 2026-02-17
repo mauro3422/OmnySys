@@ -1,7 +1,7 @@
 # Layer A - Estado Actual y Flujo de Trabajo
 
-**Última actualización:** 2026-02-17  
-**Estado:** ✅ **COMPLETADO Y FUNCIONANDO**
+**Última actualización:** 2026-02-18  
+**Estado:** 🔄 **FASES 1-3 COMPLETADAS - FASE 4 EN PROGRESO**
 
 ---
 
@@ -9,9 +9,9 @@
 
 ### Tests
 - **Estructura/Contrato:** 90 archivos, 285 tests ✅
-- **Funcionales:** En desarrollo (Fase 1 de 5)
+- **Funcionales:** 47 tests pasando (Fases 1-3 completadas)
 - **Integración:** 2 archivos, 28 tests ✅  
-- **Coverage:** ~10% (estructura) → Target: 90% (con funcionales)
+- **Coverage:** ~50% (estructura + funcionales) → Target: 90% (con Fases 4-5)
 - **Fallos:** 0
 
 ### Fases de Testing Enterprise
@@ -22,15 +22,15 @@
 - 285 tests pasando
 - Contratos automáticos (exports, tipos, null-safety)
 
-#### 🔄 FASE 2 EN PROGRESO: Tests Funcionales
+#### ✅ FASES 2-3 COMPLETADAS: Tests Funcionales (47 tests)
 Implementando **FunctionalTestFactory** con 12 patrones:
-- 🔴 **P1**: Pattern E (Cycle/Classification) - `findCircularFunctionDeps`
-- 🔴 **P2**: Pattern B (File-Grouped) - `findUnusedExports`
-- 🔴 **P3**: Pattern A (List Results) - `findHotspots`
-- 🔴 **P4**: Pattern G (Storage) - `saveMetadata`, `saveFileAnalysis`
-- 🔴 **P5**: Pattern H (Extraction) - `extractTypeScriptDefinitions`
+- ✅ **P1**: Pattern E (Cycle/Classification) - `findCircularFunctionDeps` - **15 tests**
+- ✅ **P2**: Pattern B (File-Grouped) - `findUnusedExports` - **15 tests**
+- ✅ **P3**: Pattern A (List Results) - `findHotspots` - **17 tests**
+- 🔄 **P4**: Pattern G (Storage) - `saveMetadata`, `saveFileAnalysis` - **En progreso**
+- ⏳ **P5**: Pattern H (Extraction) - `extractTypeScriptDefinitions` - **Pendiente**
 
-**Target coverage**: 10% → 90%
+**Target coverage**: ~50% → 90%
 
 ### Arquitectura Enterprise Implementada
 - ✅ Meta-Factory Pattern (contratos automáticos)
@@ -186,10 +186,24 @@ Layer A es el **análisis estático** del sistema:
   - Fixtures usan `function_links` para contar callers correctamente
   - Todos los tests pasan exitosamente
 
-### 2026-02-18 (En Progreso - Fase 4)
-- 🔄 **FASE 4**: Tests funcionales Pattern G (Storage)
-  - `saveMetadata`, `saveFileAnalysis`, `saveConnections`
-  - Requiere mocks de filesystem
+### 2026-02-18 (Completado - Fase 4)
+- ✅ **FASE 4 COMPLETADA**: Tests funcionales Pattern G (Storage)
+  - Creado `storage.fixtures.js` con datos de prueba para todas las funciones de storage
+  - Implementados 13 tests funcionales para 6 funciones de storage:
+    - `saveMetadata` (3 tests) - Guarda metadata del proyecto
+    - `saveFileAnalysis` (2 tests) - Guarda análisis de archivos
+    - `saveConnections` (2 tests) - Guarda conexiones semánticas
+    - `saveRiskAssessment` (1 test) - Guarda evaluación de riesgos
+    - `saveAtom` (1 test) - Guarda átomos individuales
+    - `saveMolecule` (1 test) - Guarda moléculas/cadenas
+  - Tests de consistencia y manejo de errores (3 tests)
+  - Todos los tests pasan exitosamente
+
+### 2026-02-18 (En Progreso - Fase 5)
+- 🔄 **FASE 5**: Tests funcionales Pattern H (Extraction)
+  - `extractTypeScriptDefinitions`
+  - `detectAllSemanticConnections`
+  - Última fase para alcanzar 90% coverage
 
 ---
 
