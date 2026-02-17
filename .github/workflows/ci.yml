@@ -25,7 +25,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run Layer A Core Tests
       run: npm run test:layer-a:core -- --reporter=verbose
@@ -57,7 +57,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run Contract Tests
       run: npm run test:contracts -- --reporter=verbose
@@ -86,7 +86,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run ${{ matrix.extractor }} Extractor Tests
       run: npm run test:layer-a:extractor:${{ matrix.extractor }} -- --reporter=verbose
@@ -112,7 +112,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run Integration Tests
       run: npm run test:integration -- --reporter=verbose
@@ -137,7 +137,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run E2E Tests
       run: npm run test:e2e -- --reporter=verbose
@@ -161,7 +161,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Validate Project Structure
       run: |
@@ -201,7 +201,7 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
     
     - name: Run Performance Tests
       run: npm run test:performance -- --reporter=verbose
