@@ -6,15 +6,5 @@
  * @module tests/factories/layer-b-metadata
  */
 
-export {
-  MetadataBuilder,
-  EnrichedResultsBuilder,
-  FileAnalysisBuilder
-} from './builders.js';
-
-export {
-  default,
-  MetadataBuilder,
-  EnrichedResultsBuilder,
-  FileAnalysisBuilder
-} from './builders.js';
+export { MetadataBuilder, EnrichedResultsBuilder, FileAnalysisBuilder } from './builders.js';
+export { default } from './builders.js';

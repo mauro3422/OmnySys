@@ -6,13 +6,5 @@
  * @module tests/factories/layer-b-lineage
  */
 
-export {
-  AtomBuilder,
-  ShadowBuilder
-} from './builders.js';
-
-export {
-  default,
-  AtomBuilder,
-  ShadowBuilder
-} from './builders.js';
+export { AtomBuilder, ShadowBuilder } from './builders.js';
+export { default } from './builders.js';

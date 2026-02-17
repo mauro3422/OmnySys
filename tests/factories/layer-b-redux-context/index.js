@@ -6,15 +6,5 @@
  * @module tests/factories/layer-b-redux-context
  */
 
-export {
-  ReduxCodeBuilder,
-  ContextCodeBuilder,
-  MixedCodeBuilder
-} from './builders.js';
-
-export {
-  default,
-  ReduxCodeBuilder,
-  ContextCodeBuilder,
-  MixedCodeBuilder
-} from './builders.js';
+export { ReduxCodeBuilder, ContextCodeBuilder, MixedCodeBuilder } from './builders.js';
+export { default } from './builders.js';
