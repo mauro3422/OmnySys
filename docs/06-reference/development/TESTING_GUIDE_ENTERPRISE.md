@@ -314,13 +314,186 @@ echo "✅ Listo para push"
 
 ---
 
+## 🏭 Nivel 4: Tests Funcionales por Patrones (Nuevo)
+
+> **Extensión del Meta-Factory para tests que ejecutan código real**
+
+### Problema Detectado
+Los tests de contrato verifican que las funciones **existan**, pero no ejecutan la lógica real:
+- Coverage actual: **~10%** (sólo estructura)
+- Necesitamos: **~80%** (lógica real ejecutada)
+
+### Solución: FunctionalTestFactory
+
+```javascript
+// tests/factories/functional-test.factory.js
+export function createFunctionalTestSuite({
+  pattern,           // 'cycle-classification', 'file-grouped', etc.
+  functions,         // [findCircularFunctionDeps, findCircularImports]
+  fixtures,          // Datos de prueba del patrón
+  mocks,            // { fs: mockFs, path: mockPath }
+  assertions        // Validaciones específicas del patrón
+}) {
+  // Genera automáticamente tests funcionales:
+  // ✅ Happy path (caso exitoso)
+  // ✅ Edge cases (vacío, null, extremos)
+  // ✅ Error handling (excepciones, errores)
+  // ✅ Verificación de estructura de retorno
+}
+```
+
+### 12 Patrones de Retorno Identificados
+
+| Patrón | Estructura | Ejemplo | Prioridad |
+|--------|------------|---------|-----------|
+| **Pattern A** | `{ total, items[] }` | `findHotspots()` → `{ total, functions, criticalCount }` | 🔴 P3 |
+| **Pattern B** | `{ total, byFile: {} }` | `findUnusedExports()` → `{ totalUnused, byFile }` | 🔴 P2 |
+| **Pattern C** | `{ total, files[], subsetCount }` | `findOrphanFiles()` → `{ total, files, deadCodeCount }` | 🟡 Sec |
+| **Pattern D** | `{ totalX, maxY, items[], recommendation }` | `findDeepDependencyChains()` | 🟡 Sec |
+| **Pattern E** | `{ total, cycles[], classifications[] }` | `findCircularFunctionDeps()` | 🔴 P1 |
+| **Pattern F** | `{ score, grade, breakdown: {} }` | `calculateQualityMetrics()` | 🟡 Sec |
+| **Pattern G** | `string (path)` / `{ paths }` | `saveMetadata()`, `saveFileAnalysis()` | 🔴 P4 |
+| **Pattern H** | `{ data[], metadata }` / `[]` | `extractTypeScriptDefinitions()` | 🔴 P5 |
+| **Pattern I** | `object \| null \| throws` | `getFileAnalysis()`, `loadMolecule()` | 🟡 Sec |
+| **Pattern J** | `{ nodes[], edges[] }` | `getDependencyGraph()` | 🟡 Sec |
+| **Pattern K** | `string[]` | `getFileDependencies()` | 🟡 Sec |
+| **Pattern L** | `{ report: { summary }, scores }` | `getRiskAssessment()` | 🟡 Sec |
+
+### Ejemplo: Pattern E (Cycle/Classification)
+
+```javascript
+// tests/functional/patterns/cycle-classification.functional.test.js
+import { createFunctionalTestSuite } from '#test-factories/functional-test.factory';
+import { 
+  findCircularFunctionDeps,
+  findCircularImports 
+} from '#layer-a/analyses/tier1/index.js';
+import { cycleFixtures } from '../fixtures/patterns/cycle.fixtures.js';
+import { mockRegistry } from '../../mocks/registry.js';
+
+describe('Pattern E: Cycle/Classification', () => {
+  createFunctionalTestSuite({
+    pattern: 'cycle-classification',
+    functions: [findCircularFunctionDeps, findCircularImports],
+    fixtures: cycleFixtures,  // { validSystemMap, noCycles, mutualRecursion }
+    mocks: {
+      fs: mockRegistry.fs.successfulWrite(),
+      path: mockRegistry.path.posix
+    },
+    assertions: {
+      // Validaciones automáticas para TODAS las funciones del patrón:
+      mustHaveTotal: true,
+      mustHaveCycles: true,
+      mustHaveClassifications: true,
+      mustClassifySeverity: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+      mustHandleEmpty: true,  // systemMap vacío → { total: 0, ... }
+      mustDetectMutualRecursion: true
+    }
+  });
+});
+```
+
+**Tests generados automáticamente:**
+1. ✅ Con ciclos reales → verifica estructura completa
+2. ✅ Sin ciclos → verifica `{ total: 0, cycles: [] }`
+3. ✅ Recursión mutua → detecta correctamente
+4. ✅ Clasificación automática → severidad correcta
+5. ✅ systemMap null → retorna defaults seguros
+
+### Arquitectura de Fixtures
+
+```javascript
+// tests/fixtures/patterns/cycle.fixtures.js
+export const cycleFixtures = {
+  // Datos de entrada
+  validSystemMap: {
+    files: {
+      'src/a.js': { 
+        atoms: [{ name: 'funcA', calls: ['funcB'] }]
+      },
+      'src/b.js': {
+        atoms: [{ name: 'funcB', calls: ['funcA'] }]  // Ciclo!
+      }
+    }
+  },
+  
+  noCycles: {
+    files: {
+      'src/a.js': { atoms: [{ name: 'funcA', calls: ['funcC'] }] },
+      'src/b.js': { atoms: [{ name: 'funcB', calls: [] }] }
+    }
+  },
+  
+  // Resultados esperados
+  expected: {
+    withCycles: {
+      total: 1,
+      cycles: [[{ file: 'src/a.js', function: 'funcA' }, ...]],
+      classifications: [{
+        severity: 'HIGH',
+        category: 'MUTUAL_RECURSION',
+        explanation: expect.any(String),
+        autoIgnore: false
+      }],
+      problematicCount: 1
+    },
+    withoutCycles: {
+      total: 0,
+      cycles: [],
+      classifications: [],
+      problematicCount: 0
+    }
+  }
+};
+```
+
+### Plan de Implementación (5 Fases)
+
+#### Fase 1: Pattern E - Cycle/Classification 🔴
+**Target**: +15% coverage (25% total)
+- Funciones: `findCircularFunctionDeps`, `findCircularImports`
+- Tests: Detección de ciclos, clasificación, recursión mutua
+
+#### Fase 2: Pattern B - File-Grouped 🔴
+**Target**: +15% coverage (40% total)
+- Funciones: `findUnusedExports`, `findUnusedImports`
+- Tests: Agrupación por archivo, cálculo de totales
+
+#### Fase 3: Pattern A - List Results 🔴
+**Target**: +15% coverage (55% total)
+- Funciones: `findHotspots`, `detectSideEffectMarkers`
+- Tests: Listas ordenadas, sub-conteos (criticalCount)
+
+#### Fase 4: Pattern G - Storage 🔴
+**Target**: +20% coverage (75% total)
+- Funciones: `saveMetadata`, `saveFileAnalysis`, `saveConnections`
+- Tests: Mock de filesystem, creación de directorios, errores
+
+#### Fase 5: Pattern H - Extraction 🔴
+**Target**: +15% coverage (90% total)
+- Funciones: `extractTypeScriptDefinitions`, `detectAllSemanticConnections`
+- Tests: Código real, extracción de definiciones
+
+**Resultado**: **~90% coverage** (excede meta de 80%)
+
+### Ventajas del Enfoque
+
+1. **Escalable**: Un factory por patrón cubre múltiples funciones
+2. **Mantenible**: Cambios en el patrón → un solo lugar
+3. **Consistente**: Todos los tests del patrón verifican lo mismo
+4. **Rápido**: No 1x1, tests generados automáticamente
+5. **Multi-lenguaje**: Patrones son agnósticos (Python/Java reutilizan)
+
+---
+
 ## 🎯 Metas de Coverage
 
-### Layer A (Actual): ~5%
-- ✅ Estructura: 100%
-- ✅ Contratos: 100%
-- ⚠️ Lógica interna: ~5%
-- **Acción**: Tests funcionales reales
+### Layer A - Evolución:
+| Fase | Coverage | Tests | Estado |
+|------|----------|-------|--------|
+| Contratos | ~10% | 285 | ✅ Completado |
+| Funcional P1-P3 | ~55% | +100 | 🔄 En progreso |
+| Funcional P4-P5 | ~90% | +80 | ⏳ Pendiente |
 
 ### Meta Global:
 - **v0.8.0**: 50% coverage (todas las capas)

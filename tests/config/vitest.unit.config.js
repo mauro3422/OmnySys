@@ -8,6 +8,7 @@ export default defineConfig({
     include: [
       'tests/unit/**/*.test.js',
       'tests/contracts/**/*.test.js',
+      'tests/functional/**/*.test.js',
     ],
     exclude: [
       'node_modules',

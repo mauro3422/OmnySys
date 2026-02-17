@@ -8,13 +8,33 @@
 ## ✅ Estado Actual
 
 ### Tests
-- **Unitarios:** 86 archivos, 240 tests ✅
+- **Estructura/Contrato:** 90 archivos, 285 tests ✅
+- **Funcionales:** En desarrollo (Fase 1 de 5)
 - **Integración:** 2 archivos, 28 tests ✅  
-- **Total:** 88 archivos, 268 tests ✅
+- **Coverage:** ~10% (estructura) → Target: 90% (con funcionales)
 - **Fallos:** 0
+
+### Fases de Testing Enterprise
+
+#### ✅ FASE 1 COMPLETADA: Tests de Estructura
+- Meta-Factory Pattern implementado
+- 90 archivos de test agrupados por patrones
+- 285 tests pasando
+- Contratos automáticos (exports, tipos, null-safety)
+
+#### 🔄 FASE 2 EN PROGRESO: Tests Funcionales
+Implementando **FunctionalTestFactory** con 12 patrones:
+- 🔴 **P1**: Pattern E (Cycle/Classification) - `findCircularFunctionDeps`
+- 🔴 **P2**: Pattern B (File-Grouped) - `findUnusedExports`
+- 🔴 **P3**: Pattern A (List Results) - `findHotspots`
+- 🔴 **P4**: Pattern G (Storage) - `saveMetadata`, `saveFileAnalysis`
+- 🔴 **P5**: Pattern H (Extraction) - `extractTypeScriptDefinitions`
+
+**Target coverage**: 10% → 90%
 
 ### Arquitectura Enterprise Implementada
 - ✅ Meta-Factory Pattern (contratos automáticos)
+- ✅ FunctionalTestFactory (tests de lógica real)
 - ✅ Integration Test Factory (flujos completos)
 - ✅ 0 código legacy (sin vi.mock)
 - ✅ Null-safety en source code
@@ -109,9 +129,15 @@ Layer A es el **análisis estático** del sistema:
 - `tests/integration/smoke.test.js.disabled` - Layer C roto
 
 ### Próximos pasos:
-1. Arreglar código de Layer C (orchestrator/MCP) en el futuro
-2. Volver a habilitar smoke test cuando Layer C funcione
-3. Mantener tests de Layer A siempre pasando
+1. 🔄 **FASE 2A**: Implementar FunctionalTestFactory + Pattern E (Cycle/Classification)
+2. 🔄 **FASE 2B**: Tests funcionales Pattern B (File-Grouped)
+3. 🔄 **FASE 2C**: Tests funcionales Pattern A (List Results)
+4. 🔄 **FASE 2D**: Tests funcionales Pattern G (Storage)
+5. 🔄 **FASE 2E**: Tests funcionales Pattern H (Extraction)
+6. ✅ Verificar coverage ~90%
+7. ⏳ Pasar a Layer B con mismo patrón
+8. ⏳ Arreglar código de Layer C (orchestrator/MCP)
+9. ⏳ Volver a habilitar smoke test cuando Layer C funcione
 
 ---
 
@@ -125,13 +151,30 @@ Layer A es el **análisis estático** del sistema:
 
 ## 📝 Registro de Cambios Recientes
 
-### 2026-02-17
+### 2026-02-17 (Actual)
 - ✅ Agregados tests funcionales reales (detectan bugs)
 - ✅ Arreglados bugs de null-safety en analyses
 - ✅ Arreglados imports de directorios (temporal-connections/index.js)
 - ✅ Agregado package-lock.json para CI
 - ✅ Configurado CI para ignorar postinstall
 - ✅ Deshabilitado smoke test de Layer C (roto)
+
+### 2026-02-18 (Completado)
+- ✅ **FASE 1 COMPLETADA**: FunctionalTestFactory + Pattern E (Cycle/Classification)
+  - Creado `FunctionalTestFactory` en `tests/factories/functional/`
+  - Implementados fixtures para ciclos de dependencias
+  - 15 tests funcionales pasando para `findCircularFunctionDeps`
+  - Sistema de mocks reutilizable en `tests/mocks/registry.js`
+  - Coverage: Tests ejecutan código real (no solo verifican existencia)
+- ✅ Documentación actualizada con patrones de retorno
+- ✅ Identificados 12 patrones de retorno en Layer A
+- ✅ Plan de 5 fases para 90% coverage
+- ✅ Arquitectura de fixtures y mocks definida
+
+### 2026-02-18 (En Progreso - Fase 2)
+- 🔄 **FASE 2**: Tests funcionales Pattern B (File-Grouped)
+  - `findUnusedExports` → `{ totalUnused, byFile: {} }`
+  - `findUnusedImports` → `{ total, byFile: {}, recommendation }`
 
 ---
 
