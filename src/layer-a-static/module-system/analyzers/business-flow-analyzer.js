@@ -117,28 +117,5 @@ function inferFlowName(entry) {
   return entry.handler.function;
 }
 
-/**
- * Infiere módulo desde nombre de función
- * @param {string} functionName - Nombre de función
- * @returns {string|null} - Módulo inferido
- */
-function inferModuleFromCall(functionName) {
-  const patterns = [
-    { prefix: /^db\./, module: 'database' },
-    { prefix: /^redis\./, module: 'redis' },
-    { prefix: /^cache\./, module: 'cache' },
-    { prefix: /^logger\./, module: 'logger' },
-    { prefix: /^config\./, module: 'config' }
-  ];
-  
-  for (const { prefix, module } of patterns) {
-    if (prefix.test(functionName)) {
-      return module;
-    }
-  }
-  
-  return null;
-}
-
 // Import path para uso interno
 import path from 'path';

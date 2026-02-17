@@ -176,3 +176,6 @@ export function createRuntimeContract({ modulePath, name, importFn }) {
     it('MUST load without runtime errors', async () => {
       const mod = await importFn();
       expect(mod).toBeDefined();
+    });
+  });
+}
