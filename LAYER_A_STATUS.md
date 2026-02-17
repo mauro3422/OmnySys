@@ -171,10 +171,17 @@ Layer A es el **análisis estático** del sistema:
 - ✅ Plan de 5 fases para 90% coverage
 - ✅ Arquitectura de fixtures y mocks definida
 
-### 2026-02-18 (En Progreso - Fase 2)
-- 🔄 **FASE 2**: Tests funcionales Pattern B (File-Grouped)
-  - `findUnusedExports` → `{ totalUnused, byFile: {} }`
-  - `findUnusedImports` → `{ total, byFile: {}, recommendation }`
+### 2026-02-18 (Completado - Fase 2)
+- ✅ **FASE 2 COMPLETADA**: Tests funcionales Pattern B (File-Grouped)
+  - Creado `file-grouped.fixtures.js` con 8 escenarios de prueba
+  - Implementados 15 tests funcionales para `findUnusedExports`
+  - Tests verifican: detección correcta, agrupación por archivo, barrel exports, manejo de null
+  - Todos los tests pasan exitosamente
+
+### 2026-02-18 (En Progreso - Fase 3)
+- 🔄 **FASE 3**: Tests funcionales Pattern A (List Results)
+  - `findHotspots` → `{ total, functions[], criticalCount }`
+  - `detectSideEffectMarkers` → `{ total, functions[], note }`
 
 ---
 
