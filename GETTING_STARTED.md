@@ -116,10 +116,61 @@ get_impact_map("src/nuevo-archivo.js")
 
 ---
 
+## Testing y Desarrollo
+
+### Flujo de Trabajo para Desarrolladores
+
+**ANTES de hacer push a GitHub, ejecutar:**
+
+```bash
+# 1. Instalar dependencias (sin iniciar servicios)
+npm ci --ignore-scripts
+
+# 2. Ejecutar tests de Layer A (obligatorio)
+npm run test:layer-a:core
+
+# 3. Ejecutar tests de integración
+npm run test:integration
+
+# 4. Validar sintaxis (IMPORTANTE - no olvidar!)
+npm run validate
+
+# 5. Si TODO pasa, hacer push
+git push origin main
+```
+
+### Comandos de Test
+
+```bash
+# Tests unitarios de Layer A
+npm run test:layer-a:core
+
+# Tests de integración
+npm run test:integration
+
+# Validación de sintaxis
+npm run validate
+
+# Todos los tests
+npm test
+```
+
+### Estado de Tests
+
+- ✅ **86 archivos** de tests unitarios
+- ✅ **2 archivos** de tests de integración
+- ✅ **268 tests** pasando
+- ✅ **0 fallos**
+
+Ver [LAYER_A_STATUS.md](LAYER_A_STATUS.md) para detalles completos.
+
+---
+
 ## Documentacion
 
 - [README.md](README.md) - Vision general
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Diseno tecnico
+- [LAYER_A_STATUS.md](LAYER_A_STATUS.md) - Estado actual de Layer A + Flujo de trabajo
 - [docs/INDEX.md](docs/INDEX.md) - Indice completo de documentacion
 - [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) - Documentacion detallada de tools
 - [ROADMAP.md](ROADMAP.md) - Plan de desarrollo
