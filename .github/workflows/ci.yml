@@ -30,13 +30,85 @@ jobs:
     - name: Run Layer A Core Tests
       run: npm run test:layer-a:core -- --reporter=verbose
       
-    - name: Upload coverage
+    - name: Upload Layer A coverage
       if: github.ref == 'refs/heads/main'
       uses: codecov/codecov-action@v3
       with:
         files: ./coverage/lcov.info
         flags: layer-a-core
         name: layer-a-core
+
+  # ============================================
+  # LAYER B SEMANTIC (Después de Layer A)
+  # ============================================
+  layer-b-semantic:
+    name: 🧠 Layer B Semantic
+    runs-on: ubuntu-latest
+    needs: layer-a-core
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+    
+    - name: Run Layer B Semantic Tests
+      run: npm run test:layer-b -- --reporter=verbose
+      continue-on-error: true  # Allow failures during development
+    
+    - name: Upload Layer B coverage
+      if: always() && github.ref == 'refs/heads/main'
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage/lcov.info
+        flags: layer-b-semantic
+        name: layer-b-semantic
+
+  # ============================================
+  # LAYER B MODULES (Paralelo - por módulo)
+  # ============================================
+  layer-b-modules:
+    name: 🧩 Layer B - ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    needs: layer-b-semantic
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    strategy:
+      fail-fast: false
+      matrix:
+        module: 
+          - validators
+          - schema-validator
+          - metadata-contract
+          - issue-detectors
+          - redux-context-extractor
+          - project-analyzer
+          - llm-analyzer
+          - prompt-engine
+          - lineage-validator
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+    
+    - name: Run ${{ matrix.module }} Tests
+      run: npm test -- --run tests/unit/layer-b-semantic/${{ matrix.module }} --reporter=verbose
+      continue-on-error: true
 
   # ============================================
   # CONTRACT TESTS (Obligatorio para todos)
@@ -73,8 +145,7 @@ jobs:
       fail-fast: false
       matrix:
         extractor: [javascript]
-        # FUTURE: [javascript, typescript, python, go, rust]
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -90,7 +161,7 @@ jobs:
     
     - name: Run ${{ matrix.extractor }} Extractor Tests
       run: npm run test:layer-a:extractor:${{ matrix.extractor }} -- --reporter=verbose
-      continue-on-error: true  # Don't fail entire CI if one extractor fails
+      continue-on-error: true
 
   # ============================================
   # INTEGRATION TESTS (Después de unit)
@@ -98,7 +169,7 @@ jobs:
   integration:
     name: 🔗 Integration Tests
     runs-on: ubuntu-latest
-    needs: [layer-a-core, contracts]
+    needs: [layer-a-core, layer-b-semantic, contracts]
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     
     steps:
@@ -141,7 +212,7 @@ jobs:
     
     - name: Run E2E Tests
       run: npm run test:e2e -- --reporter=verbose
-      continue-on-error: true  # E2E can be flaky
+      continue-on-error: true
 
   # ============================================
   # STRUCTURAL VALIDATION
@@ -213,7 +284,7 @@ jobs:
   summary:
     name: 📊 Test Summary
     runs-on: ubuntu-latest
-    needs: [layer-a-core, contracts, extractors, integration, validate]
+    needs: [layer-a-core, layer-b-semantic, layer-b-modules, contracts, extractors, integration, validate]
     if: always()
     
     steps:
@@ -223,6 +294,8 @@ jobs:
         echo "📊 CI Summary"
         echo "========================================="
         echo "Layer A Core: ${{ needs.layer-a-core.result }}"
+        echo "Layer B Semantic: ${{ needs.layer-b-semantic.result }}"
+        echo "Layer B Modules: ${{ needs.layer-b-modules.result }}"
         echo "Contracts: ${{ needs.contracts.result }}"
         echo "Extractors: ${{ needs.extractors.result }}"
         echo "Integration: ${{ needs.integration.result }}"

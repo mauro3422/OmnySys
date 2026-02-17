@@ -23,17 +23,20 @@ export function detectOrphanedFiles(enrichedResults) {
 
     const semantic = analysis.semanticAnalysis || {};
     const sideEffects = semantic.sideEffects || {};
-    const hasSemanticConnections =
-      (analysis.semanticConnections || []).length > 0 ||
+    
+    const hasCrossFileConnections = (analysis.semanticConnections || []).length > 0;
+    
+    const hasEvents =
+      (semantic.eventPatterns?.eventEmitters?.length || 0) > 0 ||
+      (semantic.eventPatterns?.eventListeners?.length || 0) > 0;
+    
+    const hasSharedState =
       (semantic.sharedState?.reads?.length || 0) > 0 ||
       (semantic.sharedState?.writes?.length || 0) > 0 ||
       (semantic.sharedState?.readProperties?.length || 0) > 0 ||
-      (semantic.sharedState?.writeProperties?.length || 0) > 0 ||
-      (semantic.eventPatterns?.eventEmitters?.length || 0) > 0 ||
-      (semantic.eventPatterns?.eventListeners?.length || 0) > 0;
+      (semantic.sharedState?.writeProperties?.length || 0) > 0;
 
-    // Casos sospechosos
-    if (sideEffects.hasGlobalAccess && !hasSemanticConnections) {
+    if (sideEffects.hasGlobalAccess && !hasCrossFileConnections) {
       issues.push({
         type: 'orphan-with-global-access',
         file: filePath,
@@ -44,7 +47,7 @@ export function detectOrphanedFiles(enrichedResults) {
           sharedStateReads: semantic.sharedState?.reads || semantic.sharedState?.readProperties || []
         }
       });
-    } else if (sideEffects.usesLocalStorage && !hasSemanticConnections) {
+    } else if (sideEffects.usesLocalStorage && !hasCrossFileConnections) {
       issues.push({
         type: 'orphan-with-localstorage',
         file: filePath,
@@ -54,25 +57,19 @@ export function detectOrphanedFiles(enrichedResults) {
           hasLocalStorage: true
         }
       });
-    } else if (semantic.eventPatterns) {
-      const hasEvents =
-        (semantic.eventPatterns.eventEmitters || []).length > 0 ||
-        (semantic.eventPatterns.eventListeners || []).length > 0;
-
-      if (hasEvents && !hasSemanticConnections) {
-        issues.push({
-          type: 'orphan-with-events',
-          file: filePath,
-          severity: 'medium',
-          reason: 'File has no imports/exports but emits/listens to events',
-          evidence: {
-            events: {
-              emits: semantic.eventPatterns.eventEmitters || [],
-              listens: semantic.eventPatterns.eventListeners || []
-            }
+    } else if (hasEvents && !hasCrossFileConnections) {
+      issues.push({
+        type: 'orphan-with-events',
+        file: filePath,
+        severity: 'medium',
+        reason: 'File has no imports/exports but emits/listens to events',
+        evidence: {
+          events: {
+            emits: semantic.eventPatterns?.eventEmitters || [],
+            listens: semantic.eventPatterns?.eventListeners || []
           }
-        });
-      }
+        }
+      });
     }
   }
 

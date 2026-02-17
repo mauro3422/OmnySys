@@ -81,10 +81,12 @@ function buildOrphanInfo(filePath, analysis, orphanInfo) {
  * @returns {boolean}
  */
 function detectSideEffects(semantic) {
-  return (semantic.sharedState?.writes?.length > 0) ||
-         (semantic.eventPatterns?.eventEmitters?.length > 0) ||
-         semantic.sideEffects?.hasGlobalAccess ||
-         semantic.sideEffects?.usesLocalStorage;
+  const hasStateWrites = (semantic.sharedState?.writes?.length || 0) > 0;
+  const hasEmitters = (semantic.eventPatterns?.eventEmitters?.length || 0) > 0;
+  const hasGlobal = !!semantic.sideEffects?.hasGlobalAccess;
+  const hasLocalStorage = !!semantic.sideEffects?.usesLocalStorage;
+  
+  return hasStateWrites || hasEmitters || hasGlobal || hasLocalStorage;
 }
 
 /**

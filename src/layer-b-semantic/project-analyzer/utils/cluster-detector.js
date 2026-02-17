@@ -75,7 +75,7 @@ function buildClusterInfo(cluster, cohesionMatrix, index) {
   const commonDir = findCommonDirectory(clusterFiles);
   const clusterName = commonDir
     ? path.basename(commonDir) || 'root'
-    : `cluster-${index + 1}`;
+    : 'root';
 
   return {
     name: clusterName,
@@ -95,7 +95,14 @@ export function findCommonDirectory(files) {
   if (files.length === 0) return '';
   if (files.length === 1) return path.dirname(files[0]);
 
-  const dirs = files.map(f => path.dirname(f).split(path.sep));
+  const normalizedFiles = files.map(f => f.replace(/\\/g, '/'));
+  const dirs = normalizedFiles.map(f => {
+    const dir = f.substring(0, f.lastIndexOf('/'));
+    return dir ? dir.split('/') : [];
+  });
+  
+  if (dirs.length === 0 || dirs[0].length === 0) return '';
+  
   let commonParts = [];
 
   for (let i = 0; i < dirs[0].length; i++) {
@@ -107,5 +114,5 @@ export function findCommonDirectory(files) {
     }
   }
 
-  return commonParts.join(path.sep);
+  return commonParts.join('/');
 }

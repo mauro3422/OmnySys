@@ -15,29 +15,27 @@ import { ARRAY_LIMITS, TYPESCRIPT_EXTENSIONS } from '../constants.js';
  * @param {Object} semanticAnalysis - Análisis semántico estático
  * @returns {Object} - Metadatos estandarizados
  */
-export function buildStandardMetadata(fileAnalysis, filePath, semanticAnalysis = {}) {
+export function buildStandardMetadata(fileAnalysis, filePath, externalSemanticAnalysis = {}) {
+  const semanticAnalysis = fileAnalysis.semanticAnalysis || externalSemanticAnalysis;
+  
   const exports = extractExports(fileAnalysis);
   const usedBy = fileAnalysis.usedBy || [];
   const imports = fileAnalysis.imports || [];
   const functions = fileAnalysis.functions || [];
 
-  // Extraer datos semánticos
   const localStorageKeys = extractLocalStorageKeys(semanticAnalysis);
   const eventNames = extractEventNames(semanticAnalysis);
 
   return {
-    // Campos base
     filePath,
     exportCount: exports.length,
     dependentCount: usedBy.length,
     importCount: imports.length,
     functionCount: functions.length,
 
-    // Arrays limitados
     exports: limitArray(exports, ARRAY_LIMITS.EXPORTS),
     dependents: limitArray(usedBy, ARRAY_LIMITS.DEPENDENTS),
 
-    // Flags de características
     hasDynamicImports: detectDynamicImports(semanticAnalysis),
     hasTypeScript: isTypeScript(filePath),
     hasCSSInJS: false,
@@ -47,12 +45,10 @@ export function buildStandardMetadata(fileAnalysis, filePath, semanticAnalysis =
     hasAsyncPatterns: false,
     hasJSDoc: false,
 
-    // Datos específicos
     localStorageKeys,
     eventNames,
     envVars: [],
 
-    // Flags adicionales
     hasRuntimeContracts: false,
     hasErrorHandling: false,
     hasBuildTimeDeps: false,
@@ -66,7 +62,8 @@ export function buildStandardMetadata(fileAnalysis, filePath, semanticAnalysis =
  */
 function extractExports(fileAnalysis) {
   return (fileAnalysis.exports || [])
-    .map(e => typeof e === 'string' ? e : e.name)
+    .filter(e => e != null)
+    .map(e => typeof e === 'string' ? e : e?.name)
     .filter(Boolean);
 }
 

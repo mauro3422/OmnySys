@@ -78,6 +78,6 @@ export function validateMatch(atom, shadow) {
  */
 function computeSimilarity(dna1, dna2) {
   // Importar desde dna-extractor para consistencia
-  const { compareDNA } = require('../../../layer-a-static/extractors/metadata/dna-extractor.js');
+  const { compareDNA } = require('../../../../layer-a-static/extractors/metadata/dna-extractor.js');
   return compareDNA(dna1, dna2);
 }

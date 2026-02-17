@@ -5,9 +5,11 @@
  * @version 2.0.0
  */
 
-export { extractRedux } from './redux/redux-extractor.js';
-export { extractContext } from './context/context-extractor.js';
-export { getLineNumber } from './utils/location-helpers.js';
+import { extractRedux } from './redux/redux-extractor.js';
+import { extractContext } from './context/context-extractor.js';
+import { getLineNumber } from './utils/location-helpers.js';
+
+export { extractRedux, extractContext, getLineNumber };
 
 export function extractReduxAndContext(code) {
   return {

@@ -43,8 +43,9 @@ This repository uses a modular changelog structure for better organization and m
 
 | Version | File | Description |
 |---------|------|-------------|
-| **[0.9.10]** | `changelog/v0.9.10-layer-a-test-coverage.md` | **Layer A Test Coverage - 527+ Tests** (Latest - Stable) |
-| **[0.9.9]** | `changelog/v0.9.9-tier3-analysis-complete.md` | **Tier 3 Analysis Complete - 440 Tests** |
+| **[0.9.13]** | `changelog/v0.9.13-layer-b-test-coverage.md` | **Layer B Test Coverage + Cross-Layer Integration - 1,222 Tests** (Latest - Stable) |
+| **[0.9.12]** | `changelog/v0.9.12-layer-a-test-coverage.md` | **Layer A Test Coverage - 687 Tests** |
+| **[0.9.10]** | `changelog/v0.9.10-layer-a-test-coverage.md` | **Layer A Test Coverage - 527+ Tests** |
 | **[0.9.8]** | `changelog/v0.9.8-layer-a-analysis-audit.md` | **Layer A Analysis Audit - 79 Tests, Tier 1-2 Complete** |
 | **[0.9.7]** | `changelog/v0.9.7-layer-a-core-test-audit.md` | **Layer A Core Test Audit - 90 Tests 100% Passing** |
 | **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** |

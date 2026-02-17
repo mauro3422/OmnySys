@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { detectGodObject, detectOrphanModule } from '../../metadata-contract/index.js';
+import { detectGodObject, detectOrphanModule } from '../../../metadata-contract/index.js';
 
 export const detectGodObjectArchetype = (metadata) => {
   const totalDependents = (metadata.dependentCount || 0) + (metadata.semanticDependentCount || 0);
