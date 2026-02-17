@@ -58,7 +58,7 @@ export function findOrphanFiles(systemMap) {
       orphans.push({
         file: filePath,
         type: isLikelyEntryPoint(filePath) ? 'ENTRY_POINT' : 'DEAD_CODE',
-        functions: (systemMap.functions[filePath] || []).length,
+        functions: ((systemMap.files[filePath] && systemMap.files[filePath].functions) || []).length,
         recommendation: isLikelyEntryPoint(filePath)
           ? 'This is likely your entry point - ignore'
           : 'Consider removing or linking this file'

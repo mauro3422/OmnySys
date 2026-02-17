@@ -8,12 +8,16 @@
  * @returns {object} - Reporte de cadenas de re-exports
  */
 export function analyzeReexportChains(systemMap) {
+  if (!systemMap || !systemMap.files) {
+    return { total: 0, chains: [] };
+  }
+  
   const chains = [];
   const visited = new Set();
 
   // Buscar archivos que solo reexportan (no tienen funciones originales)
   for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
-    const functions = systemMap.functions[filePath] || [];
+    const functions = (systemMap.files[filePath] && systemMap.files[filePath].functions) || [];
     const isBarrel = functions.length === 0 && fileNode.exports.length > 0 && fileNode.imports.length > 0;
 
     if (isBarrel && !visited.has(filePath)) {

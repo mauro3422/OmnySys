@@ -9,6 +9,10 @@
  * @returns {object} - Reporte de posibles side effects
  */
 export function detectSideEffectMarkers(systemMap) {
+  if (!systemMap || !systemMap.files) {
+    return { total: 0, markers: [] };
+  }
+  
   const markers = [];
   const sideEffectPatterns = [
     'init',
@@ -24,7 +28,7 @@ export function detectSideEffectMarkers(systemMap) {
   ];
 
   for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
-    const fileFunctions = systemMap.functions[filePath] || [];
+    const fileFunctions = (systemMap.files[filePath] && systemMap.files[filePath].functions) || [];
 
     for (const func of fileFunctions) {
       const funcNameLower = func.name.toLowerCase();

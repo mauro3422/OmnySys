@@ -72,7 +72,9 @@ export function findUnusedExports(systemMap) {
     const unusedInFile = [];
 
     // Obtener las funciones exportadas de este archivo
-    const fileFunctions = systemMap.functions[filePath] || [];
+    const fileFunctions = (systemMap.functions && systemMap.functions[filePath]) || 
+                          (systemMap.files && systemMap.files[filePath] && systemMap.files[filePath].functions) || 
+                          [];
 
     for (const func of fileFunctions) {
       if (!func.isExported) continue;

@@ -10,6 +10,10 @@
  * @returns {object} - Reporte de imports sin usar
  */
 export function findUnusedImports(systemMap) {
+  if (!systemMap || !systemMap.files) {
+    return { total: 0, byFile: {} };
+  }
+  
   const unusedByFile = {};
   let totalUnused = 0;
 
@@ -20,7 +24,7 @@ export function findUnusedImports(systemMap) {
     const allCalls = new Set();
 
     // 1. Calls dentro de funciones
-    for (const func of systemMap.functions[filePath] || []) {
+    for (const func of (systemMap.files[filePath] && systemMap.files[filePath].functions) || []) {
       for (const call of func.calls) {
         allCalls.add(call.name); // Puede ser "tier1", "tier1.findHotspots", "traverse", etc.
       }
