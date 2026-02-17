@@ -11,11 +11,10 @@ import { extractSideEffects } from '#layer-a/extractors/metadata/side-effects.js
 import { extractCallGraph } from '#layer-a/extractors/metadata/call-graph.js';
 import { extractDataFlow as extractDataFlowV2 } from '#layer-a/extractors/data-flow/index.js';
 import { extractTemporalPatterns } from '#layer-a/extractors/metadata/temporal-patterns.js';
-import { extractTemporalPatterns as extractTemporalConnections } from '#layer-a/extractors/metadata/temporal-connections.js';
-import { extractPerformanceHints } from '#layer-a/extractors/metadata/performance-hints.js';
-import { extractPerformanceMetrics } from '#layer-a/extractors/metadata/performance-impact.js';
-import { extractTypeContracts } from '#layer-a/extractors/metadata/type-contracts.js';
-import { extractErrorFlow } from '#layer-a/extractors/metadata/error-flow.js';
+import { extractTemporalPatterns as extractTemporalConnections } from '#layer-a/extractors/metadata/temporal-connections/index.js';
+import { extractPerformanceMetrics } from '#layer-a/extractors/metadata/performance-impact/index.js';
+import { extractTypeContracts } from '#layer-a/extractors/metadata/type-contracts/index.js';
+import { extractErrorFlow } from '#layer-a/extractors/metadata/error-flow/index.js';
 import { logger } from '#utils/logger.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';
