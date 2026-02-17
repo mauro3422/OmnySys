@@ -178,10 +178,18 @@ Layer A es el **análisis estático** del sistema:
   - Tests verifican: detección correcta, agrupación por archivo, barrel exports, manejo de null
   - Todos los tests pasan exitosamente
 
-### 2026-02-18 (En Progreso - Fase 3)
-- 🔄 **FASE 3**: Tests funcionales Pattern A (List Results)
-  - `findHotspots` → `{ total, functions[], criticalCount }`
-  - `detectSideEffectMarkers` → `{ total, functions[], note }`
+### 2026-02-18 (Completado - Fase 3)
+- ✅ **FASE 3 COMPLETADA**: Tests funcionales Pattern A (List Results)
+  - Creado `list-results.fixtures.js` con 6 escenarios de prueba
+  - Implementados 17 tests funcionales para `findHotspots`
+  - Tests verifican: detección de hotspots por callers (>= 5), criticalCount, ordenamiento
+  - Fixtures usan `function_links` para contar callers correctamente
+  - Todos los tests pasan exitosamente
+
+### 2026-02-18 (En Progreso - Fase 4)
+- 🔄 **FASE 4**: Tests funcionales Pattern G (Storage)
+  - `saveMetadata`, `saveFileAnalysis`, `saveConnections`
+  - Requiere mocks de filesystem
 
 ---
 
