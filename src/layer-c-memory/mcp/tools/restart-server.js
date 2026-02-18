@@ -89,18 +89,25 @@ export async function restart_server(args, context) {
         ReadyStep
       } = await import('../core/initialization/steps/index.js');
 
-      // Crear nuevo pipeline SIN McpSetupStep
+      // Crear nuevo pipeline SIN McpSetupStep NI InstanceDetectionStep
       // ⚠️ CRITICAL: McpSetupStep MUST NOT be re-run during restart.
       // The MCP protocol is already configured on the active stdio connection.
       // Re-running it would re-configure the transport, causing:
       //   - "Cannot call write after a stream was destroyed" errors
       //   - Duplicate server instances in the IDE
       //   - Broken stdio pipe between IDE and MCP
+      //
+      // ⚠️ ORDER MATTERS (same as initial pipeline):
+      // 1. LayerAAnalysisStep — re-check/re-run static analysis if files changed
+      // 2. CacheInitStep      — load fresh data BEFORE orchestrator starts
+      // 3. LLMSetupStep       — start LLM in background
+      // 4. OrchestratorInitStep — init orchestrator (requires cache to exist)
+      // 5. ReadyStep          — finalize
       server.pipeline = new InitializationPipeline([
-        new LLMSetupStep(),
         new LayerAAnalysisStep(),
-        new OrchestratorInitStep(),
         new CacheInitStep(),
+        new LLMSetupStep(),
+        new OrchestratorInitStep(),
         new ReadyStep()
       ]);
 

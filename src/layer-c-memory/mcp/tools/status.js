@@ -13,7 +13,7 @@ const logger = createLogger('OmnySys:status');
 export async function get_server_status(args, context) {
   const { orchestrator, cache, projectPath, server } = context;
   
-  logger.error(`[Tool] get_server_status()`);
+  logger.info(`[Tool] get_server_status()`);
 
   // Siempre disponible: información básica del sistema
   const status = {

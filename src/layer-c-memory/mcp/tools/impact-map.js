@@ -15,7 +15,7 @@ export async function get_impact_map(args, context) {
   const { filePath } = args;
   const { orchestrator, projectPath, server } = context;
   
-  logger.error(`[Tool] get_impact_map("${filePath}")`);
+  logger.info(`[Tool] get_impact_map("${filePath}")`);
 
   // Check if analyzed
   let fileData = await getFileAnalysis(projectPath, filePath);

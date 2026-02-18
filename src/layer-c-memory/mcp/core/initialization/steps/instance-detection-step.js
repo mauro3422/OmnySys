@@ -199,7 +199,7 @@ export class InstanceDetectionStep extends InitializationStep {
             }
 
             try {
-                const { Orchestrator } = await import('#core/orchestrator.js');
+                const { Orchestrator } = await import('#core/orchestrator/index.js');
                 server.orchestrator = new Orchestrator(server.projectPath, {
                     enableFileWatcher: true,
                     enableWebSocket: false,

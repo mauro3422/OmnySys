@@ -14,7 +14,7 @@ export async function search_files(args, context) {
   const { pattern } = args;
   const { projectPath, server } = context;
   
-  logger.error(`[Tool] search_files("${pattern}")`);
+  logger.info(`[Tool] search_files("${pattern}")`);
 
   try {
     // Usar metadata indexada (más rápido que escanear disco)
