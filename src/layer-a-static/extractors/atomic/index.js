@@ -18,7 +18,8 @@
  */
 
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
+const traverse = _traverse.default ?? _traverse;
 import { extractFunctionDeclaration, extractFunctionExpression } from './function-extractor.js';
 import { extractArrowFunction } from './arrow-extractor.js';
 import { extractClassMethod, extractPrivateMethod, extractAccessor } from './class-method-extractor.js';

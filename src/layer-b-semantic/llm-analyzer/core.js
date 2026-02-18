@@ -8,7 +8,7 @@
  */
 
 import { LLMClient } from '../../ai/llm-client.js';
-import { UnifiedCacheManager } from '#core/cache/manager/index.js';
+import { getCacheManager } from '#core/cache/singleton.js';
 import { 
   validateLLMResponse, 
   calculateDynamicTimeout,
@@ -54,10 +54,9 @@ export class LLMAnalyzer {
       logger.warn('💡 Start servers with: src/ai/scripts/brain_gpu.bat');
     }
 
-    // Inicializar caché unificado si está habilitado
+    // Inicializar caché unificado si está habilitado (singleton — O(1) tras primera llamada)
     if (this.config.analysis.enableLLMCache) {
-      this.cache = new UnifiedCacheManager(this.projectPath);
-      await this.cache.initialize();
+      this.cache = await getCacheManager(this.projectPath);
     }
 
     return this.initialized;

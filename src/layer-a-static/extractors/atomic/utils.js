@@ -7,8 +7,6 @@
  * @module extractors/atomic/utils
  */
 
-import traverse from '@babel/traverse';
-
 /**
  * Crea la estructura base de un átomo
  * Siguiendo SSOT: Estructura única y consistente

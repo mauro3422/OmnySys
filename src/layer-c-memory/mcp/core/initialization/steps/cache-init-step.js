@@ -10,7 +10,7 @@
  */
 
 import { InitializationStep } from './base-step.js';
-import { UnifiedCacheManager } from '#core/cache/manager/index.js';
+import { getCacheManager } from '#core/cache/singleton.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:init:step');
@@ -31,12 +31,7 @@ export class CacheInitStep extends InitializationStep {
 
     const startTime = performance.now();
 
-    server.cache = new UnifiedCacheManager(server.projectPath, {
-      enableChangeDetection: true,
-      cascadeInvalidation: true
-    });
-
-    await server.cache.initialize();
+    server.cache = await getCacheManager(server.projectPath);
 
     // Preload critical data
     const { getProjectMetadata } = await import('#layer-c/query/apis/project-api.js');

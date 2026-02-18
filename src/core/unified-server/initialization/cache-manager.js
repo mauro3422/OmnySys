@@ -9,7 +9,7 @@
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
 import { getAllConnections } from '#layer-c/query/apis/connections-api.js';
 import { getRiskAssessment } from '#layer-c/query/apis/risk-api.js';
-import { UnifiedCacheManager } from '#core/cache/manager/index.js';
+import { getCacheManager } from '#core/cache/singleton.js';
 
 /**
  * Inicializa MCP Server - Cache y datos
@@ -21,13 +21,8 @@ export async function initializeCache(projectPath) {
   logger.info('STEP 1: MCP Server Initialization');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const cache = new UnifiedCacheManager(projectPath, {
-    enableChangeDetection: true,
-    cascadeInvalidation: true
-  });
-  
-  await cache.initialize();
-  logger.info('  ✓ Unified cache initialized');
+  const cache = await getCacheManager(projectPath);
+  logger.info('  ✓ Unified cache initialized (singleton)');
 
   return { cache };
 }

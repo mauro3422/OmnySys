@@ -1,6 +1,6 @@
 {
   "name": "omnysys",
-  "version": "0.9.5",
+  "version": "0.9.17",
   "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
   "main": "omny.js",
   "bin": {

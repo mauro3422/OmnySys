@@ -26,7 +26,7 @@ export class JobAnalyzer {
    * Analyze a job
    */
   async analyze(job, jobId) {
-    const { signal } = this.worker.state.currentJob;
+    const signal = this.worker.state.currentJob?.signal;
 
     try {
       this.callbacks.onProgress?.(job, 10);
@@ -45,7 +45,7 @@ export class JobAnalyzer {
         result = await this.runStaticAnalysis(job);
       }
 
-      if (signal.aborted) {
+      if (signal?.aborted) {
         throw new Error('Analysis aborted');
       }
 
@@ -129,7 +129,7 @@ export class JobAnalyzer {
       analysisType: job.archetypes?.[0] || 'default'
     }]);
 
-    if (signal.aborted) {
+    if (signal?.aborted) {
       throw new Error('Analysis aborted');
     }
 

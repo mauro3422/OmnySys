@@ -1,565 +1,244 @@
-# OmnySys - Roadmap de Desarrollo
+# OmnySys — Roadmap de Desarrollo
 
-**Versión actual**: v0.7.1 - Data Flow Fractal Phase 1 ✅  
-**Última actualización**: 2026-02-09  
-**Estado**: Production Ready - Core Stable
+**Versión actual**: v0.9.16  
+**Última actualización**: 2026-02-18  
+**Estado**: 🔧 Estabilización — tests pasando, runtime en proceso de limpieza
 
 ---
 
-## 🎯 Propósito Central (El "Por Qué")
+## 🎯 Propósito Central
 
 > **"Dar a las IAs el contexto exacto de un archivo específico, como si un desarrollador senior que conoce TODO el codebase estuviera sentado al lado"**
 
-### La Metáfora: De Cajas a Electrones
+### La Metáfora: Cajas → Átomos → Electrones
 
 ```
-SISTEMA TRADICIONAL (v0.5):
-┌─────────────────────────────────────────┐
-│  Levantas una caja (archivo)            │
-│  └── Ves cables (imports/exports)       │
-│      └── "Este archivo importa React"   │
-│                                         │
-│  ❌ No sabes QUÉ hace la función        │
-│  ❌ No sabes CÓMO fluyen los datos      │
-│  ❌ No sabes el IMPACTO de cambiar X    │
-└─────────────────────────────────────────┘
+SISTEMA TRADICIONAL:
+┌─────────────────────────────────────┐
+│  Levantas una caja (archivo)        │
+│  └── Ves cables (imports/exports)   │
+│  ❌ No sabes qué hace la función    │
+│  ❌ No sabes el impacto de cambiar X│
+└─────────────────────────────────────┘
 
-OMNYSYS v0.6 (Molecular):
-┌─────────────────────────────────────────┐
-│  Dentro de la caja hay ÁTOMOS          │
-│  └── Cada función es un átomo           │
-│      └── Con propiedades (metadata)     │
-│                                         │
-│  ✅ Sabes que existe processOrder()     │
-│  ✅ Sabes que tiene 3 parámetros        │
-│  ✅ Sabes que llama a calculateTotal    │
-│  ❌ Pero NO sabes qué hace cada uno     │
-└─────────────────────────────────────────┘
+OMNYSYS (Molecular):
+┌─────────────────────────────────────┐
+│  Dentro de la caja hay ÁTOMOS       │
+│  └── Cada función es un átomo       │
+│  ✅ Sabes que existe processOrder() │
+│  ✅ Sabes que tiene 3 parámetros    │
+│  ✅ Sabes que llama a calculateTotal│
+└─────────────────────────────────────┘
 
-OMNYSYS v0.7+ (Data Flow Fractal):
-┌─────────────────────────────────────────┐
-│  Dentro del átomo hay ELECTRONES        │
-│  └── Fluyen por ÓRBITAS definidas       │
-│                                         │
-│  ✅ "order entra por aquí"              │
-│  ✅ "se transforma en total aquí"       │
-│  ✅ "sale como orderId aquí"            │
-│  ✅ "Si cambias order.items, afecta X"  │
-│                                         │
-│  ⚡ Contexto COMPLETO para la IA        │
-└─────────────────────────────────────────┘
-```
-
-### Más Allá del Código: Patrones Universales
-
-Esta arquitectura aplica a **cualquier sistema complejo**:
-
-| Dominio | "Cajas" | "Átomos" | "Electrones" |
-|---------|---------|----------|--------------|
-| **Software** | Archivos | Funciones | Flujo de datos |
-| **Organizaciones** | Departamentos | Procesos | Información |
-| **Hardware** | PCBs | Componentes | Señales eléctricas |
-| **Biología** | Células | Organelos | Moléculas |
-| **Legal** | Contratos | Cláusulas | Derechos/Obligaciones |
-
-> **OmnySys es un motor de comprensión de sistemas complejos, usando código como primer caso de uso.**
-
----
-
-## 🧬 Evolución del Sistema
-
-```
-v0.5 - Box Test (2026-01)
-   └── Levantas la caja, ves cables (conexiones entre archivos)
-   └── 11 arquetipos de archivos
-   └── 57 campos de metadata
-   
-v0.6 - Molecular (2026-02-08)
-   └── Dentro de la caja hay átomos (funciones)
-   └── 14 herramientas MCP (3 atómicas nuevas)
-   └── Análisis función por función
-   └── 4 Pilares consolidados
-   
-v0.7 - Data Flow Fractal (2026-02-09)
-   └── Dentro del átomo ves electrones orbitando
-   └── Fase 1: Inputs → Transforms → Outputs
-   └── Meta-Validator: 4 capas de validación
-   └── Logger System: 475+ logs centralizados
-   
-v0.8 - IDE Consciente (Próximo)
-   └── Simulación del flujo de datos
-   └── Predicción de impacto antes de escribir
-   └── Autocompletado basado en contexto real
-   
-v1.0 - Artificial Intuition (Futuro)
-   └── La IA "entiende" el sistema como un senior
-   └── Sugerencias de refactoring proactivas
-   └── Detección de bugs antes de que existan
+OMNYSYS (Data Flow):
+┌─────────────────────────────────────┐
+│  Dentro del átomo hay ELECTRONES    │
+│  ✅ "order entra por aquí"          │
+│  ✅ "se transforma en total aquí"   │
+│  ✅ "sale como orderId aquí"        │
+│  ✅ "Si cambias order.items → 8 archivos afectados" │
+└─────────────────────────────────────┘
 ```
 
 ---
 
 ## ✅ Fases Completadas
 
-### ✅ FASE 0-5: Fundamentos (v0.1 - v0.5)
+### ✅ v0.1 – v0.5 — Fundamentos (Completado)
+- Capa A: Parser, imports/exports, grafo de dependencias, 15+ detectores
+- Capa B: Análisis híbrido estático + IA, validadores, conexiones semánticas
+- Capa C: 14 herramientas MCP, caché unificado, WebSocket, BatchProcessor
+- 11 arquetipos de archivos, 57 campos de metadata
 
-**Capa A (Static)**: Parser, imports/exports, grafo de dependencias, 15+ detectores  
-**Capa B (Semantic)**: Análisis híbrido (estático + IA), validadores, conexiones semánticas  
-**Capa C (Memory)**: MCP tools, caché unificado, WebSocket, BatchProcessor  
-**Orchestrator**: AnalysisQueue, FileWatcher, StateManager, ProcessManager  
+### ✅ v0.6.0 — Arquitectura Molecular (Completado)
+- Funciones (átomos) como unidad primaria de análisis
+- 7 arquetipos atómicos: god-function, fragile-network, hot-path, etc.
+- Motor de derivación: archivos derivan propiedades de sus funciones
+- 3 herramientas MCP atómicas: `get_function_details`, `get_molecule_summary`, `get_atomic_functions`
+- Confidence-based LLM bypass: 70% → 90% bypass rate
 
-**Resultado**: 14 herramientas MCP funcionando, sistema estable, 451 archivos.
+### ✅ v0.7.x — Race Conditions + Data Flow v1 (Completado)
+- Race detector 100% activo (8 TODOs implementados)
+- Data Flow v2 graph-based (Fase 1)
+- Logger system: 475+ console.log migrados a sistema jerárquico
+- Meta-Validator: 4 capas de validación
+- Shadow Registry: sistema de linaje de archivos
 
----
+### ✅ v0.8.0 — Hot Reload + Query Refactor (Completado)
+- HotReloadManager: auto-recarga de módulos en desarrollo
+- Query refactoring: APIs más limpias
+- Self-improvement capability
 
-### ✅ FASE 6: Molecular Architecture (v0.6.0)
+### ✅ v0.9.0 — Pattern Detection Engine V2 (Completado)
+- 99.8% reducción de falsos positivos (473 issues → 1 real)
+- Quality Score: 0/100 → 99/100
+- Detectores smart con scoring inteligente basado en AST
 
-**El Gran Salto**: De archivos a funciones como unidad atómica.
+### ✅ v0.9.1 — MCP Pipeline Hotfix (Completado)
+- Startup 85% más rápido: ~2s (antes 30-35s)
+- Fixed: orden de inicialización LLM
+- Fixed: cache duplication entre Orchestrator y sistema
 
-```javascript
-// ANTES (v0.5): Análisis a nivel archivo
-{
-  "src/api.js": {
-    exports: ["processOrder"],
-    imports: ["calculateTotal"],
-    type: "network-hub"
-  }
-}
+### ✅ v0.9.2 — LLMService Architecture Refactor (Completado)
+- LLMService Singleton con circuit breaker
+- Real-time metrics: latencia, errores, throughput
+- 50% menos code duplication en LLM clients
 
-// DESPUÉS (v0.6): Análisis a nivel función
-{
-  "atoms": {
-    "src/api.js::processOrder": {
-      type: "fragile-network",
-      severity: 8,
-      complexity: 35,
-      calls: ["calculateTotal"],
-      calledBy: ["UserCard.jsx::loadUser"]
-    },
-    "src/api.js::validateToken": {
-      type: "validator",
-      severity: 3,
-      complexity: 8
-    }
-  }
-}
-```
+### ✅ v0.9.3 – v0.9.4 — Modular Refactoring (Completado)
+- 59 monolitos → 400+ módulos especializados
+- 984 archivos JavaScript, todos con < 350 líneas
+- SOLID principles aplicados en todo el sistema
 
-**Deliverables**:
-- ✅ Sistema atómico (funciones con metadata completa)
-- ✅ Tools atómicas: `get_function_details()`, `get_molecule_summary()`
-- ✅ Archetypes atómicos: god-function, fragile-network, validator, etc.
-- ✅ Derivación molecular: archivos componen sus propiedades de átomos
-- ✅ 4 Pilares documentados: Box Test, Metadata Insights, Atomic Composition, Fractal A→B→C
+### ✅ v0.9.5 – v0.9.6 — Cleanup: Wrappers y Deuda Técnica (Completado)
+- 18 wrappers legacy eliminados
+- -594 líneas de código innecesario
+- 100% modular, sin indirecciones
 
----
+### ✅ v0.9.7 – v0.9.9 — Layer A Test Audit (Completado)
+- 90 tests core (Parser, Scanner, Graph, Contracts)
+- 440 tests tier 3 (Risk Scoring, Detectors, Advanced)
+- Contract Testing pattern para multi-language support
+- 8 Critical Fixes: ESM traverse, null-safety, import hoisting
 
-### ✅ FASE 7: Race Conditions + Robustez (v0.7.0 - v0.7.1)
+### ✅ v0.9.10 – v0.9.13 — Test Coverage Masivo (Completado)
+- 527+ tests Layer A
+- 1,222 tests total (Layer A + B + Cross-Layer)
+- 12 Factories implementadas
+- 23 Source Fixes detectados por los tests
 
-**Detectar el invisible**: Cuando dos funciones async pueden pisarse.
+### ✅ v0.9.14 – v0.9.15 — Layer Graph Architecture (Completado)
+- Layer Graph creada como capa separada
+- 17 módulos, 54 exports públicos
+- Movido de Layer A: `graph/`, `algorithms/`, `builders/`, `query/`
+- Core refactorizado: cache ahora vive en `src/core/cache/`
+- 75 tests nuevos para layer-graph
 
-```javascript
-// Detectado automáticamente:
-async updateCart() { localStorage.cart = ... }      // ← WRITE
-async applyDiscount() { localStorage.cart = ... }   // ← WRITE (RACE!)
-
-// Sistema alerta:
-⚠️  WW Race Condition detected in localStorage.cart
-   Severity: HIGH
-   Mitigation: Add lock or transaction
-```
-
-**Deliverables**:
-- ✅ **8 TODOs implementados**: sameBusinessFlow, findCapturedVariables, etc.
-- ✅ **27+ tests**: Derivation engine + Race detector
-- ✅ **Logger System**: 475+ console.log → sistema jerárquico
-- ✅ **Refactorización masiva**: 69% menos líneas de código, SOLID/SSOT
-- ✅ **Meta-Validator**: 4 capas de validación de integridad
-
----
-
-### ✅ FASE 8: Data Flow Fractal - Fase 1 (v0.7.1) ✅ ACTUAL
-
-**Ver el flujo de datos**: inputs → transforms → outputs
-
-**Logros v0.7.1**:
-- ✅ Data Flow v2 (graph-based) implementado
-- ✅ 5 nuevos metadata extractors
-- ✅ Transform Registry (50+ patterns)
-- ✅ Module System Phase 3 completo
-
-```javascript
-// Metadata extraída automáticamente:
-{
-  name: "processOrder",
-  dataFlow: {
-    inputs: [
-      { name: "order", usages: [
-        { type: "property_access", property: "items", passedTo: "calculateTotal" },
-        { type: "spread", passedTo: "saveOrder" }
-      ]}
-    ],
-    transformations: [
-      { from: "order.items", to: "total", via: "calculateTotal", operation: "calculation" },
-      { from: ["total", "discount"], to: "finalTotal", operation: "arithmetic" }
-    ],
-    outputs: [
-      { type: "side_effect", target: "saveOrder", operation: "persistence" },
-      { type: "return", shape: "{ orderId, total }" }
-    ]
-  },
-  analysis: {
-    coherence: 85,      // 0-100 qué tan coherente es el flujo
-    unusedInputs: [],   // parámetros no usados
-    deadVariables: []   // variables definidas pero no usadas
-  }
-}
-```
-
-**Deliverables**:
-- ✅ **Input Extractor**: Parámetros simples, destructuring, rest
-- ✅ **Transformation Extractor**: Asignaciones, operaciones, llamadas
-- ✅ **Output Extractor**: Returns, side effects, throws
-- ✅ **Flow Analyzer**: Detecta inputs no usados, variables muertas
-- ✅ Integrado en pipeline de extracción
+### ✅ v0.9.16 — Layer Cleanup: Remove Duplications (Completado)
+- Eliminado `layer-b-semantic/redux-context-extractor/` (duplicaba Layer A)
+- Eliminado `layer-b-semantic/advanced-extractors.js` (wrapper deprecated)
+- 59 tests eliminados (del módulo duplicado)
+- Arquitectura limpia: Layer B sin duplicación de extractores
 
 ---
 
-## 🏗️ Fases en Progreso / Próximas
+## 🔧 Estado Actual — Estabilización (v0.9.17 en proceso)
 
-### 🔄 FASE 9: Data Flow Fractal - Fases 2-3
-
-**Estimado**: 1-2 semanas  
-**Propósito**: Entender el SIGNIFICADO del código para ML y detección de patrones.
-
-#### Fase 2: Análisis Semántico (Nombres)
-
-```javascript
-// Extraer significado del nombre de función:
-"validateUserPayment" → {
-  verbo: "validate",
-  dominio: "user",
-  entidad: "payment",
-  tipoOperacion: "validation",
-  confidence: 0.95
-}
-
-"fetchUserData" → {
-  verbo: "fetch",
-  dominio: "user",
-  entidad: "data",
-  tipoOperacion: "network_read",
-  confidence: 0.98
-}
+### Tests: ✅ Saludable
+```
+283 archivos de test → 283 pasando
+4,044 tests → 4,044 en verde, 35 skipped
+Tiempo: ~21s
 ```
 
-**Para qué sirve**:
-- Agrupar funciones por propósito semántico
-- Detectar inconsistencias (función llamada "validate" que hace "delete")
-- Catalogar para entrenamiento de IA
-
-#### Fase 3: Estandarización de Patrones
-
-```javascript
-// Convertir código específico a patrón universal:
-
-// Original A:              Original B:
-validateUser(user)        validateOrder(order)
-
-// Estandarizado (ambos):
-VALIDATE_FUNC(ENTITY_PARAM)
-
-// Pattern hash: "a3f7d29c1b5e..."
-// Flow type: "validation"
+### Runtime: ⚠️ Issues a resolver
+```
+26 imports rotos detectados por scripts/detect-broken-imports.js
+Causa: refactorización masiva dejó referencias sin actualizar
+Impacto: MCP server puede fallar al cargar ciertos módulos
 ```
 
-**Índice de Patrones** (`.omnysysdata/patterns/{hash}.json`):
-```javascript
-{
-  hash: "a3f7d29c1b5e",
-  pattern: "VALIDATE_FUNC(ENTITY_PARAM)",
-  atoms: [
-    "src/api.js::processOrder",
-    "src/cart.js::processCart",
-    "src/orders.js::processPayment"
-  ],
-  count: 15,
-  statistics: {
-    avgComplexity: 12.4,
-    commonDomains: ["order", "payment", "cart"],
-    successRate: 0.94  // % que funcionan correctamente
-  },
-  trainingReady: true  // Exportable para ML
-}
-```
-
-**Deliverables**:
-- [ ] Semantic name parser (verb-noun patterns)
-- [ ] Pattern standardization engine
-- [ ] Pattern index manager
-- [ ] Exportación a datasets de entrenamiento
+### Documentación: ✅ Recién actualizada (2026-02-18)
 
 ---
 
-### ⏭️ FASE 10: Data Flow Fractal - Fases 4-7 (El Core del IDE)
+## 🚧 Próximos Pasos Inmediatos
 
-**Estimado**: 3-4 semanas  
-**Propósito**: Conectar todo para simular y predecir.
+### Prioridad 1: Fixes de Runtime (v0.9.17) 🔴
+**Tiempo estimado**: 2-3 días
 
-#### Fase 4: Cadenas Cross-Function
+Los 26 imports rotos se dividen en 3 categorías:
 
-```
-processOrder(order) 
-  → llama a: calculateTotal(order.items)
-  → recibe: total
-  → pasa a: applyDiscount(total)
-  → recibe: finalTotal
-  → retorna: { orderId, finalTotal }
-  
-// Cadena completa del viaje del dato:
-order.items → calculateTotal → total → applyDiscount → finalTotal → return
-```
+**a) Paths incorrectos** (archivo existe, path equivocado):
+- `src/core/layer-c-memory/...` → debería ser `src/layer-c-memory/...`
+- `src/layer-a-static/utils/logger.js` → debería ser `src/utils/logger.js`
+- `src/layer-a-static/shared/architecture-utils.js` → debería ser `src/shared/architecture-utils.js`
+- `src/layer-a-static/extractors/extractors/metadata/...` → path duplicado
 
-**Deliverables**:
-- [ ] Cross-function data flow tracking
-- [ ] Chain builder (conectar output de A con input de B)
-- [ ] Dead data detection (datos que no llegan a ningún output)
+**b) Archivos planificados pero nunca creados** (crear stubs):
+- `src/layer-a-static/analyses/tier3/event-pattern-detector.js`
+- `src/layer-a-static/analyses/tier3/broken-connections-detector.js`
+- `src/layer-a-static/extractors/metadata/security-patterns.js`
+- `src/layer-b-semantic/prompt-engine/prompt-templates/your-analysis-type.js`
 
-#### Fase 5: Race Conditions (✅ Ya implementado en v0.7.0)
+**c) Race detector analyzers faltantes** (crear implementaciones):
+- `shared-state-analyzer.js`
+- `timing-analyzer.js`
+- `lock-analyzer.js`
 
-Ya tenemos detección completa de race conditions en shared state.
+### Prioridad 2: Tests de Import (v0.9.17) 🟡
+**Tiempo estimado**: 1 día
 
-#### Fase 6: Motor de Simulación ⭐ CRÍTICO
+Agregar tests de integración que importen módulos reales (no mocks) para detectar imports rotos antes de que lleguen a producción:
 
 ```javascript
-// Simular: "Qué pasa si order.items es null?"
-
-simulator.run({
-  entryPoint: "processOrder",
-  input: { order: { items: null }, userId: 123 }
+// tests/integration/import-health.test.js
+describe('All modules load correctly', () => {
+  test('Layer A exports load', async () => {
+    await expect(import('#layer-a/analyzer.js')).resolves.toBeDefined();
+  });
+  // ... etc
 });
-
-// Resultado:
-Step 1: processOrder recibe order={items: null}
-Step 2: calculateTotal(order.items) → ERROR: Cannot read property of null
-Step 3: ❌ Simulación falla en línea 15
-
-// Sugerencia automática:
-💡 Agregar validación: if (!order?.items) throw new ValidationError(...)
 ```
 
-**Deliverables**:
-- [ ] Virtual Data Flow Simulator
-- [ ] Test probe injection (inyectar valores de prueba)
-- [ ] Path prediction (predecir caminos de ejecución)
-- [ ] Impact pre-analysis (antes de escribir código)
+### Prioridad 3: Smoke Test Layer C (v0.9.17) 🟡
+**Tiempo estimado**: 2-3 días
 
-#### Fase 7: Nivel Módulo y Sistema
-
-```javascript
-// Análisis a nivel de carpeta (feature):
-auth/
-  ├── login.js      → Entry point
-  ├── validate.js   → Transformer
-  └── store.js      → Side effect
-
-// Metadata derivada:
-{
-  module: "auth",
-  flowType: "entry-transform-persist",
-  inputs: ["credentials"],
-  outputs: ["session", "localStorage.session"],
-  risk: "HIGH" // Porque maneja auth + storage
-}
-```
+Rehabilitar y arreglar `tests/integration/smoke.test.js.disabled`.
+El MCP server debe poder iniciar y responder a `get_server_status()` en un test E2E.
 
 ---
 
-### ⏭️ FASE 11: IDE Consciente (El "OmnyIDE")
+## 🔮 Roadmap Futuro
 
-**Estimado**: 2-3 meses  
-**Visión**: Un IDE que "entiende" tu código como un senior developer.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    IDE CONSCIENTE                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  💡 Autocompletado Contextual                                   │
-│  Escribes: "order."                                             │
-│  Sugiere: "items" (usado en calculateTotal), "id" (en return)  │
-│  NO sugiere: "metadata" (nunca usado en esta función)          │
-│                                                                 │
-│  🔮 Predicción de Impacto (antes de guardar)                    │
-│  "Si cambias este parámetro, afecta 12 archivos"               │
-│  "¿Quieres ver el análisis de impacto?"                        │
-│                                                                 │
-│  🧪 Test Generation                                            │
-│  "Detecté un edge case no manejado: order.items vacío"         │
-│  "¿Generar test para este caso?"                               │
-│                                                                 │
-│  🚨 Prevenición de Bugs                                        │
-│  "⚠️  Esta función puede causar race condition con línea 45"   │
-│  "Sugerencia: Agregar await o mutex"                           │
-│                                                                 │
-│  📊 System Health Dashboard                                     │
-│  "Deuda técnica: 3 archivos god-object detectados"             │
-│  "Riesgo acumulado en módulo 'payment': 8.5/10"                │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Implementación**: VS Code Extension + Web UI
-
-**Deliverables**:
-- [ ] VS Code Extension con integración MCP
-- [ ] Panel de System Health en tiempo real
-- [ ] Impact Preview (antes de guardar archivo)
-- [ ] Decoraciones de riesgo en el editor
-- [ ] Autocompletado basado en data flow
-
----
-
-### ⏭️ FASE 12: Artificial Intuition (v1.0)
-
-**Visión**: La IA no solo sugiere, "siente" el sistema.
-
-```javascript
-// La IA detecta patrones de riesgo automáticamente:
-
-"He visto este patrón antes..."
-"3 veces en proyectos similares, cambiar X sin actualizar Y"
-"causó bugs en producción."
-
-"Recomendación: Agregar validación de Y antes de mergear."
-```
-
-**Basado en**:
-- Catálogo de patrones de .omnysysdata/patterns/
-- Historial de cambios exitosos vs fallidos
-- ML entrenado en patrones universales
-
----
-
-## 📊 Estado Actual Detallado
-
-### Componentes Core
-
-| Componente | Estado | Archivos | Cobertura | Notas |
-|------------|--------|----------|-----------|-------|
-| **Capa A (Static)** | 95% ✅ | 206 archivos, 444 exports | 70% | Parser, extractors, graph, data flow |
-| **Capa B (Semantic)** | 100% ✅ | 79 archivos | 60% | LLM analysis, validators, archetypes |
-| **Capa C (Memory/MCP)** | 98% ✅ | 41 módulos | 60% | 14 tools, cache, WebSocket |
-| **Orchestrator** | 95% ✅ | ~25 | 40% | Queue, workers, file watcher |
-| **Race Detector** | 100% ✅ | ~15 | 70% | 8 TODOs implementados |
-| **Meta-Validator** | 80% ✅ | ~10 | 30% | 4 capas, Source/Derivation funcionando |
-| **Data Flow Fractal** | 30% 🔄 | ~8 | 20% | Fase 1 lista, 2-7 pendientes |
-| **TOTAL** | **85%** | **451 archivos** | **55%** | |
-
-### Data Flow Fractal - Progreso Detallado
-
-| Fase | Descripción | Estado | Bloquea |
-|------|-------------|--------|---------|
-| **Fase 1** | Data Flow Atómico | ✅ 100% | - |
-| **Fase 2** | Análisis Semántico | ⏭️ 0% | Fase 1 |
-| **Fase 3** | Estandarización | ⏭️ 0% | Fase 2 |
-| **Fase 4** | Cadenas Cross-Function | ⏭️ 0% | Fase 1 |
-| **Fase 5** | Race Conditions | ✅ 100% | - |
-| **Fase 6** | Simulación | ⏭️ 0% | Fase 4 |
-| **Fase 7** | Nivel Sistema | ⏭️ 0% | Fase 6 |
-
----
-
-## 🎯 Decisiones de Diseño Clave
-
-### 1. "Cables, No Señales"
-
-No rastreamos VALORES (user.name = "John"), rastreamos CONEXIONES (user → validate → save).
-
-**Por qué**:
-- 97% cobertura vs 20% si rastreamos valores
-- No necesitamos ejecutar el código
-- Funciona con eval(), dynamic imports, etc.
-- Los valores son para runtime, las conexiones son para análisis estático
-
-### 2. Zero LLM para Extracción
-
-Toda la extracción es determinística (AST + regex). LLM solo para:
-- Confidence < 0.8
-- Semantic analysis de nombres
-- Casos ambiguos
-
-**Resultado**: 90%+ de archivos sin necesidad de LLM.
-
-### 3. Fractal A→B→C
-
-Mismo patrón en todas las escalas:
-```
-Átomo:   Inputs → Transform → Output
-Molécula: Exports → Chains → Returns
-Módulo:  Imports → Flows → Exports
-Sistema: Entry → Processing → Response
-```
-
-### 4. Single Source of Truth (SSOT)
-
-Los átomos tienen la verdad. Las moléculas DERIVAN de átomos. Si cambia un átomo, se invalida todo hacia arriba.
-
----
-
-## 🚀 Próximos Pasos Inmediatos
-
-### Prioridad 1: Data Flow Fase 2-3 (Semana 1-2)
-- Parser semántico de nombres de funciones
-- Engine de estandarización de patrones
+### v0.9.18 — Data Flow Semántico
+- Análisis semántico de nombres de funciones (verb-noun patterns)
+- Estandarización de patrones cross-function
 - Índice de patrones para ML
 
-### Prioridad 2: Data Flow Fase 4 (Semana 3-4)
-- Cross-function chain builder
-- Conectar outputs con inputs entre funciones
-- Detección de "data sinks" (datos que mueren)
+### v0.9.19 — Cross-Function Chains
+- Seguimiento del flujo de datos entre funciones
+- `order.items → calculateTotal → total → applyDiscount → finalTotal`
+- Detección de "data sinks" (datos que mueren sin usarse)
 
-### Prioridad 3: Integración Completa (Semana 5-6)
-- Meta-Validator usando datos reales
-- Pipeline de análisis con data flow
-- Tests end-to-end con proyectos reales
+### v0.9.20 — Motor de Simulación
+- Simular: "¿Qué pasa si order.items es null?"
+- Virtual Data Flow Simulator
+- Test probe injection
 
-### Prioridad 4: IDE Consciente (Mes 2-3)
-- VS Code Extension básica
-- Autocompletado contextual
-- Impact Preview
+### v1.0.0 — Sistema Estable y Completo
+- Todos los imports rotos resueltos ✅
+- Coverage global > 70% ✅
+- Smoke test E2E funcionando ✅
+- Data Flow Semántico implementado ✅
+- Documentación sincronizada con código ✅
+- Soporte Python/Go (básico)
 
----
+### v1.1.0 — IDE Consciente
+- VS Code Extension con integración MCP
+- Panel de System Health en tiempo real
+- Impact Preview antes de guardar archivo
+- Autocompletado basado en data flow
 
-## 📚 Documentación Clave
-
-| Documento | Descripción | Estado |
-|-----------|-------------|--------|
-| `docs/FISICA_DEL_SOFTWARE.md` | Visión UNIFICADA del sistema | ✅ Actualizado |
-| `docs/DATA_FLOW/README.md` | Arquitectura Fractal completa | ✅ Actualizado |
-| `docs/architecture/CORE_PRINCIPLES.md` | Los 4 Pilares | ✅ Actualizado |
-| `docs/OMNY_IDE_CONSCIENTE_PRACTICO.md` | Roadmap al IDE | ✅ Actualizado |
-| `changelog/v0.7.1.md` | Cambios recientes | ✅ Actualizado |
-| `PLAN_MAESTRO_CORRECCION.md` | Plan técnico detallado | ✅ Completo |
-
----
-
-## 🎓 Metáforas para Recordar
-
-### Para Usuarios (Desarrolladores):
-> **"OmnySys es como tener un desarrollador senior que ya leyó TODO tu código, sentado a tu lado. Cuando vas a cambar algo, te dice: 'Espera, eso afecta a 12 archivos, mira...'"**
-
-### Para Clientes (Empresas):
-> **"OmnySys reduce el tiempo de onboarding a codebase de semanas a minutos. Un desarrollador nuevo puede hacer cambios seguros en su primer día."**
-
-### Para Inversores:
-> **"OmnySys es el Google Maps para código. No solo sabe QUÉ calles existen, sabe CÓMO llegar de A a B. Aplicamos esto a software hoy, pero el motor sirve para cualquier sistema complejo."**
-
-### Para la Comunidad (Open Source):
-> **"OmnySys democratiza el conocimiento de sistemas complejos. Antes necesitabas 6 meses para entender un codebase grande. Ahora necesitas 6 minutos preguntándole a la IA."**
+### v2.0.0 — Artificial Intuition
+- La IA detecta patrones de riesgo basándose en historial
+- ML entrenado en patrones universales del codebase
+- Sugerencias proactivas de refactoring
 
 ---
 
-**OmnySys v0.7.1 - Del código al conocimiento.**
+## 📊 Métricas de Evolución
 
-*"Levantas la caja, ves los cables. Miras dentro, ves los átomos. Ves más allá, ves los electrones bailando. Eso es OmnySys."*
+| Versión | Tests | Cobertura | Módulos | Herramientas |
+|---------|-------|-----------|---------|-------------|
+| v0.5 | ~18 | ~5% | 11 arquetipos | 11 MCP |
+| v0.7 | 350+ | ~15% | modular | 14 MCP |
+| v0.9.7 | 527+ | ~26% | 400+ | 14 MCP |
+| v0.9.13 | 1,222 | ~35% | 500+ | 14 MCP |
+| **v0.9.16** | **4,044** | **~40%** | **500+** | **14 MCP** |
+| v1.0 (target) | 6,000+ | 70%+ | 500+ | 14+ MCP |
+
+---
+
+## 🎓 La Visión en Una Frase
+
+> **"OmnySys es como Google Maps para código. No solo sabe QUÉ calles existen, sabe CÓMO llegar de A a B con todos los riesgos del camino."**

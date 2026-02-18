@@ -4,7 +4,7 @@
  * @module pipeline/enhance/builders
  */
 
-import { detectGodObject, detectOrphanModule } from '../../../shared/architecture-utils.js';
+import { detectGodObject, detectOrphanModule } from '#shared/architecture-utils.js';
 
 /**
  * Detecta arquetipos arquitectónicos

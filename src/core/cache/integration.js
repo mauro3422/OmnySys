@@ -173,7 +173,7 @@ async function loadLLMInsights(cacheManager, filePath, version) {
   }
 }
 
-import { getDecisionAuditLogger } from '../layer-c-memory/shadow-registry/audit-logger.js';
+import { getDecisionAuditLogger } from '#layer-c/shadow-registry/audit-logger.js';
 
 /**
  * Invalida caché de archivos dependientes cuando cambian sus dependencias

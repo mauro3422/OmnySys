@@ -6,7 +6,7 @@
  * @module function-cycle-classifier/cycles/classifier
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 import { FUNCTION_CYCLE_RULES } from '../classifiers/rules.js';
 import { buildMetadataIndex } from '../utils/metadata.js';
 

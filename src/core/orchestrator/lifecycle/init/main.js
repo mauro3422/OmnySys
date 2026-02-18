@@ -1,7 +1,7 @@
 import path from 'path';
 import { StateManager } from '../../../state-manager.js';
 import { AnalysisWorker } from '../../../worker/AnalysisWorker.js';
-import { UnifiedCacheManager } from '#core/cache/manager/index.js';
+import { getCacheManager } from '#core/cache/singleton.js';
 import { loadAIConfig } from '../../../../ai/llm-client.js';
 import { LLMService } from '../../../../services/llm-service.js';
 import { createLogger } from '../../../../utils/logger.js';
@@ -19,12 +19,8 @@ export async function initialize() {
     this.cache = this.options.cache;
     logger.info('  ✅ Using shared cache from server');
   } else {
-    this.cache = new UnifiedCacheManager(this.projectPath, {
-      enableChangeDetection: true,
-      cascadeInvalidation: true
-    });
-    await this.cache.initialize();
-    logger.info('  ✅ Cache initialized');
+    this.cache = await getCacheManager(this.projectPath);
+    logger.info('  ✅ Cache initialized (singleton)');
   }
 
   // Initialize state manager

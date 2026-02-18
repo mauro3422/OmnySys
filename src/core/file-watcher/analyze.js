@@ -132,7 +132,10 @@ export async function analyzeFile(filePath, fullPath) {
   );
 
   // Guardar átomos individualmente (SSOT)
-  for (const atom of molecularStructure.atoms) {
+  // Null-check: extractMolecularStructure puede retornar null si el análisis falla
+  const moleculeAtoms = molecularStructure?.atoms ?? [];
+
+  for (const atom of moleculeAtoms) {
     await saveAtom(this.rootPath, filePath, atom.name, atom);
   }
 
@@ -140,7 +143,7 @@ export async function analyzeFile(filePath, fullPath) {
   await saveMolecule(this.rootPath, filePath, {
     filePath,
     type: 'molecule',
-    atoms: molecularStructure.atoms.map(a => a.id),
+    atoms: moleculeAtoms.map(a => a.id),
     extractedAt: new Date().toISOString()
   });
 
@@ -167,8 +170,8 @@ export async function analyzeFile(filePath, fullPath) {
       line: f.line,
       isExported: f.isExported
     })),
-    atomIds: molecularStructure.atoms.map(a => a.id),
-    atomCount: molecularStructure.atoms.length,
+    atomIds: moleculeAtoms.map(a => a.id),
+    atomCount: moleculeAtoms.length,
     calls: parsed.calls || [],
     semanticConnections: [
       ...staticConnections.all.map(conn => ({

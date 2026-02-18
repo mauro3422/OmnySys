@@ -8,16 +8,22 @@ describe('services/index.js', () => {
       expect(typeof services.LLMService).toBe('function');
     });
 
-    it('BUG: services/index.js does not export analyzeWithLLM', () => {
-      expect(services.analyzeWithLLM).toBeUndefined();
+    // Previously these were "BUG:" tests documenting missing exports.
+    // Fixed in v0.9.16: llm-service.js wrapper now correctly exports these
+    // convenience functions from the modular sub-structure.
+    it('should export analyzeWithLLM (convenience function)', () => {
+      expect(services.analyzeWithLLM).toBeDefined();
+      expect(typeof services.analyzeWithLLM).toBe('function');
     });
 
-    it('BUG: services/index.js does not export isLLMAvailable', () => {
-      expect(services.isLLMAvailable).toBeUndefined();
+    it('should export isLLMAvailable (convenience function)', () => {
+      expect(services.isLLMAvailable).toBeDefined();
+      expect(typeof services.isLLMAvailable).toBe('function');
     });
 
-    it('BUG: services/index.js does not export waitForLLM', () => {
-      expect(services.waitForLLM).toBeUndefined();
+    it('should export waitForLLM (convenience function)', () => {
+      expect(services.waitForLLM).toBeDefined();
+      expect(typeof services.waitForLLM).toBe('function');
     });
 
     it('should have default export', () => {

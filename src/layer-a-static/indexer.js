@@ -1,7 +1,7 @@
 import path from 'path';
 
 import { generateAnalysisReport } from './analyzer.js';
-import { UnifiedCacheManager } from '#core/cache/manager/index.js';
+import { getCacheManager } from '#core/cache/singleton.js';
 
 import { loadProjectInfo, scanProjectFiles } from './pipeline/scan.js';
 import { parseFiles } from './pipeline/parse.js';
@@ -66,9 +66,8 @@ export async function indexProject(rootPath, options = {}) {
   logger.info(`ðŸ“ Project root: ${absoluteRootPath}\n`);
 
   try {
-    // NUEVO: Inicializar Unified Cache Manager
-    const cacheManager = new UnifiedCacheManager(absoluteRootPath);
-    await cacheManager.initialize();
+    // Obtener instancia singleton del cache (O(1) si ya fue inicializado)
+    const cacheManager = await getCacheManager(absoluteRootPath);
 
     // Paso 1: Detectar info del proyecto
     await loadProjectInfo(absoluteRootPath, verbose);
