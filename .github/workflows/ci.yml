@@ -87,7 +87,6 @@ jobs:
           - schema-validator
           - metadata-contract
           - issue-detectors
-          - redux-context-extractor
           - project-analyzer
           - llm-analyzer
           - prompt-engine

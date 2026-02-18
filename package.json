@@ -37,7 +37,6 @@
     "test:layer-b:schema-validator": "vitest run tests/unit/layer-b-semantic/schema-validator --config tests/config/vitest.unit.config.js",
     "test:layer-b:metadata-contract": "vitest run tests/unit/layer-b-semantic/metadata-contract --config tests/config/vitest.unit.config.js",
     "test:layer-b:issue-detectors": "vitest run tests/unit/layer-b-semantic/issue-detectors --config tests/config/vitest.unit.config.js",
-    "test:layer-b:redux-context": "vitest run tests/unit/layer-b-semantic/redux-context-extractor --config tests/config/vitest.unit.config.js",
     "test:layer-b:project-analyzer": "vitest run tests/unit/layer-b-semantic/project-analyzer --config tests/config/vitest.unit.config.js",
     "test:layer-b:llm-analyzer": "vitest run tests/unit/layer-b-semantic/llm-analyzer --config tests/config/vitest.unit.config.js",
     "test:layer-b:prompt-engine": "vitest run tests/unit/layer-b-semantic/prompt-engine --config tests/config/vitest.unit.config.js",
