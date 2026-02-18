@@ -33,7 +33,7 @@ import {
   saveConnections,
   saveRiskAssessment 
 } from '#layer-c/storage/index.js';
-import { getProjectStats } from '#layer-a/query/queries/project-query.js';
+import { getProjectStats } from '#layer-c/query/queries/project-query.js';
 
 describe('Layer A: Extended Integration Workflows', () => {
   let testProjectPath;

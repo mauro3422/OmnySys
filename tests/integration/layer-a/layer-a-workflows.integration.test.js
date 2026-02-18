@@ -28,10 +28,10 @@ import {
 } from '#layer-c/storage/index.js';
 import { 
   getProjectMetadata
-} from '#layer-a/query/queries/project-query.js';
+} from '#layer-c/query/queries/project-query.js';
 import {
   getFileAnalysis
-} from '#layer-a/query/queries/file-query.js';
+} from '#layer-c/query/queries/file-query.js';
 
 describe('Layer A: Integration Workflows', () => {
   let testProjectPath;

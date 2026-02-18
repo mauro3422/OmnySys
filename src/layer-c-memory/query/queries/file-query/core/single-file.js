@@ -5,7 +5,7 @@
 
 import path from 'path';
 import { getDataDirectory } from '#layer-c/storage/index.js';
-import { readJSON } from '#layer-a/query/readers/json-reader.js';
+import { readJSON } from '#layer-c/query/readers/json-reader.js';
 
 /**
  * Normalizes file path to be relative to root

@@ -14,14 +14,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import * as queryApis from '#layer-a/query/apis/index.js';
-import * as projectQuery from '#layer-a/query/queries/project-query.js';
-import * as fileQuery from '#layer-a/query/queries/file-query.js';
-import * as dependencyQuery from '#layer-a/query/queries/dependency-query.js';
-import * as connectionsQuery from '#layer-a/query/queries/connections-query.js';
-import * as riskQuery from '#layer-a/query/queries/risk-query.js';
-import * as exportApi from '#layer-a/query/export.js';
-import * as jsonReader from '#layer-a/query/readers/json-reader.js';
+import * as queryApis from '#layer-c/query/apis/index.js';
+import * as projectQuery from '#layer-c/query/queries/project-query.js';
+import * as fileQuery from '#layer-c/query/queries/file-query.js';
+import * as dependencyQuery from '#layer-c/query/queries/dependency-query.js';
+import * as connectionsQuery from '#layer-c/query/queries/connections-query.js';
+import * as riskQuery from '#layer-c/query/queries/risk-query.js';
+import * as exportApi from '#layer-c/query/export.js';
+import * as jsonReader from '#layer-c/query/readers/json-reader.js';
 
 describe('Query System - Project API', () => {
   it('exports all project query functions', () => {

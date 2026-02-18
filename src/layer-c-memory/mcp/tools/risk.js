@@ -3,8 +3,8 @@
  * Returns a risk assessment of the entire project
  */
 
-import { getProjectMetadata } from '#layer-a/query/apis/project-api.js';
-import { getRiskAssessment } from '#layer-a/query/apis/risk-api.js';
+import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
+import { getRiskAssessment } from '#layer-c/query/apis/risk-api.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';

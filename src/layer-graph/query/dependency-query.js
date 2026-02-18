@@ -6,8 +6,8 @@
  * @module query/queries/dependency-query
  */
 
-import { getFileAnalysis } from '#layer-a/query/queries/file-query/core/single-file.js';
-import { getProjectMetadata } from '#layer-a/query/queries/project-query.js';
+import { getFileAnalysis } from '#layer-c/query/queries/file-query/core/single-file.js';
+import { getProjectMetadata } from '#layer-c/query/queries/project-query.js';
 
 /**
  * Obtiene el grafo de dependencias de un archivo

@@ -9,7 +9,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getFileAnalysis } from '#layer-a/query/apis/file-api.js';
+import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:call:graph');

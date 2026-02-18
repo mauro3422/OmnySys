@@ -8,9 +8,9 @@ describe('Query System', () => {
   it('query APIs are available', async () => {
     // query/index.js fue eliminado, usar APIs especializadas
     const apis = [
-      '#layer-a/query/apis/export-api.js',
-      '#layer-a/query/apis/import-api.js',
-      '#layer-a/query/apis/function-api.js'
+      '#layer-c/query/apis/export-api.js',
+      '#layer-c/query/apis/import-api.js',
+      '#layer-c/query/apis/function-api.js'
     ];
     
     let availableCount = 0;

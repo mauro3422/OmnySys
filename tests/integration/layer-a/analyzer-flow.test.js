@@ -214,7 +214,7 @@ describe('Layer A Integration Flows', () => {
     flow: async (systemMap) => {
       try {
         // Importar queries
-        const query = await import('#layer-a/query/index.js');
+        const query = await import('#layer-c/query/index.js');
         
         // Ejecutar consultas
         const results = {

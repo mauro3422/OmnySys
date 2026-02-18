@@ -3,7 +3,7 @@
  * Lista todas las funciones de un archivo con sus arquetipos
  */
 
-import { getFileAnalysisWithAtoms } from '#layer-a/query/queries/file-query.js';
+import { getFileAnalysisWithAtoms } from '#layer-c/query/queries/file-query.js';
 
 export async function get_atomic_functions(args, context) {
   const { filePath } = args;
