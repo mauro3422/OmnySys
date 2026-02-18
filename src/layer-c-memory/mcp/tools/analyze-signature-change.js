@@ -4,7 +4,7 @@
  * Predice qué se rompe si agregás/modificás parámetros
  */
 
-import { analyzeFunctionSignature } from './lib/ast-analyzer.js';
+import { analyzeFunctionSignature } from './lib/analysis/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:analyze:signature:change');

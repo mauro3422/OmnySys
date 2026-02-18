@@ -1,6 +1,6 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.16  
+**Versión**: v0.9.17  
 **Última actualización**: 2026-02-18
 
 ---
@@ -313,13 +313,33 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 
 ---
 
-## Issues Conocidos (v0.9.16)
+## Estado de Salud (v0.9.17)
+
+### Tests
+
+| Métrica | Valor |
+|---------|-------|
+| Archivos de test | 286/286 ✅ |
+| Tests pasando | 4,115 |
+| Tests skipped | 35 |
+| Tiempo de suite | ~22 segundos |
+| Imports rotos (src/) | 0 ✅ |
+
+### Issues Resueltos en v0.9.17
+
+| Issue | Estado |
+|-------|--------|
+| 13 falsos positivos en detect-broken-imports.js | ✅ Resuelto — script v2 con `stripNonCodeContent()` |
+| Smoke test deshabilitado | ✅ Resuelto — `tests/integration/smoke.test.js` (17 tests) |
+| Tests no detectaban imports rotos en runtime | ✅ Resuelto — `tests/integration/import-health.test.js` (27 tests) |
+| `ast-analyzer.js` deprecado importado en 3 tools | ✅ Resuelto — migrado a `./lib/analysis/index.js` |
+| Cache Singleton OOM (213 jobs × 2045 files) | ✅ Resuelto — `getCacheManager(projectPath)` singleton |
+
+### Issues Conocidos Pendientes
 
 | Issue | Impacto | Prioridad |
 |-------|---------|-----------|
-| 26 imports rotos en runtime | No arranca en algunos flujos | 🔴 Alta |
-| Smoke test de Layer C deshabilitado | No hay test E2E del MCP server | 🟡 Media |
+| `@babel/traverse` import en re-análisis incremental | Falla en análisis incremental | 🟠 Alto |
 | Layer C coverage ~30% | Riesgo de regresiones | 🟡 Media |
-| Tests no detectan imports rotos | Falsa sensación de estabilidad | 🟡 Media |
 
-Ver **[PLAN_ESTABILIZACION.md](PLAN_ESTABILIZACION.md)** para el plan de resolución.
+Ver **[PLAN_ESTABILIZACION.md](PLAN_ESTABILIZACION.md)** para el historial completo y plan de resolución.

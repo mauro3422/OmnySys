@@ -4,7 +4,7 @@
  * Muestra TODOS los lugares donde se usa una función/clase
  */
 
-import { findCallSites } from './lib/ast-analyzer.js';
+import { findCallSites } from './lib/analysis/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:get:call:graph');

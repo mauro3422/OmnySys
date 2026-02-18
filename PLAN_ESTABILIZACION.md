@@ -2,29 +2,31 @@
 
 **Creado**: 2026-02-18  
 **Auditoría realizada por**: Cline (AI Assistant)  
-**Estado**: 🔧 En progreso
+**Estado**: ✅ Estabilización completa (v0.9.17)
 
 ---
 
 ## Resumen Ejecutivo de la Auditoría
 
-### Lo que está bien ✅
+### Lo que está bien ✅ (estado final v0.9.17)
 | Aspecto | Detalle |
 |---------|---------|
 | Sintaxis | 956 archivos JS, 100% válidos |
-| Tests | **283/283 archivos pasan — 4,044 tests en verde** |
+| Tests | **286/286 archivos pasan — 4,115 tests en verde** |
 | Arquitectura | 5 capas bien separadas: A, B, Graph, C, Core |
 | Modularidad | 500+ módulos, < 350 líneas cada uno |
 | Layer Graph | Bien estructurada, API pública limpia (54 exports) |
 | Cache en Core | Correctamente ubicada en `src/core/cache/` |
+| Imports rotos | **0** — script v2 con `stripNonCodeContent()` |
+| Smoke test | `tests/integration/smoke.test.js` — 17 tests ✅ |
+| Import health | `tests/integration/import-health.test.js` — 27 tests ✅ |
+| Deuda técnica | `ast-analyzer.js` deprecado eliminado de 3 MCP tools ✅ |
 
-### Lo que está roto ⚠️
-| Problema | Cantidad | Impacto |
-|----------|---------|---------|
-| Imports rotos en runtime | 26 archivos faltantes | MCP server puede fallar |
-| Smoke test deshabilitado | 1 test | Sin E2E del MCP server |
-| Tests no detectan imports rotos | Todos usan mocks | Falsa sensación de estabilidad |
-| Documentación desincronizada | README decía v0.9.4, pkg v0.9.5 | Confusión de contribuidores |
+### Issues Pendientes ⚠️
+| Problema | Impacto |
+|----------|---------|
+| `@babel/traverse` import ESM en re-análisis incremental | Falla en análisis incremental |
+| Layer C coverage ~30% | Riesgo de regresiones |
 
 ---
 
@@ -289,17 +291,16 @@ Los siguientes archivos fueron movidos a `archive/` como parte de la limpieza:
 
 ---
 
-## Métricas de la Auditoría
+## Métricas Finales (v0.9.17)
 
 ```
-Fecha auditoría:     2026-02-18
-Archivos JS:         956 (sintaxis válida)
-Archivos analizados: 1,180 (incluyendo test/)
-Imports rotos:       26 archivos faltantes (30 referencias)
-Tests pasando:       4,044 / 4,044 (283 archivos)
+Fecha cierre:        2026-02-18
+Archivos JS src/:    1,191 (analizados por detect-broken-imports v2)
+Imports rotos reales: 0 (todos los 13 reportados eran falsos positivos)
+Tests pasando:       4,115 / 4,115 (286 archivos)
 Tests skipped:       35
-Tiempo test suite:   ~21 segundos
-Cobertura estimada:  ~35-40%
+Tiempo test suite:   ~22 segundos
+Archivos test nuevos: 2 (smoke.test.js + import-health.test.js = 44 tests nuevos)
 ```
 
 ---
@@ -500,6 +501,10 @@ if (request.signal?.aborted) { ... }
 | 2026-02-18 | Fix Issue #2: `@babel/traverse` ESM | atomic/index.js corregido, utils.js import innecesario eliminado |
 | 2026-02-18 | Fix Issue #3: null-check `.atoms` | file-watcher/analyze.js — `moleculeAtoms = molecularStructure?.atoms ?? []` |
 | 2026-02-18 | Issue #4 investigado | god-object y orphan-module YA existen: templates, JSON schemas y registro completos ✅ |
-| Pendiente | Fix Memory Leak (Issue #1) | Implementar caché singleton entre jobs — 4-8 horas de trabajo |
-| Pendiente | Tests de import health | - |
-| Pendiente | Smoke test Layer C | - |
+| 2026-02-18 | Fix Memory Leak (Issue #1) ✅ | `getCacheManager(projectPath)` singleton — `src/core/cache/singleton.js` + `cache-manager.js` |
+| 2026-02-18 | package.json → v0.9.17 | Versión sincronizada con fix OOM |
+| 2026-02-18 | `detect-broken-imports.js` v2 ✅ | `stripNonCodeContent()` — 0 imports rotos reales (13 eran falsos positivos) |
+| 2026-02-18 | `tests/integration/import-health.test.js` ✅ | 27 tests — detecta imports rotos en runtime sin mocks |
+| 2026-02-18 | `tests/integration/smoke.test.js` ✅ | 17 tests — E2E del MCP server (era .disabled) |
+| 2026-02-18 | Fix `ast-analyzer.js` deprecado ✅ | 3 MCP tools migrados a `./lib/analysis/index.js` |
+| 2026-02-18 | Suite completa verificada | **286/286 ✅ — 4,115 tests en verde** |

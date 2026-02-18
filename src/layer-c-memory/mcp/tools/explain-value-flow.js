@@ -4,7 +4,7 @@
  * Muestra: inputs → symbol → outputs → consumers
  */
 
-import { analyzeValueFlow } from './lib/ast-analyzer.js';
+import { analyzeValueFlow } from './lib/analysis/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:explain:value:flow');
