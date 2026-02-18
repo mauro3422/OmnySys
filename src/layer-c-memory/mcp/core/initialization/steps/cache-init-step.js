@@ -10,7 +10,7 @@
  */
 
 import { InitializationStep } from './base-step.js';
-import { UnifiedCacheManager } from '#core/unified-cache-manager/index.js';
+import { UnifiedCacheManager } from '#core/cache/manager/index.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:init:step');

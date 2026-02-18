@@ -1,7 +1,7 @@
 import path from 'path';
 
 import { generateAnalysisReport } from './analyzer.js';
-import { UnifiedCacheManager } from '../core/unified-cache-manager.js';
+import { UnifiedCacheManager } from '#core/cache/manager/index.js';
 
 import { loadProjectInfo, scanProjectFiles } from './pipeline/scan.js';
 import { parseFiles } from './pipeline/parse.js';

@@ -16,8 +16,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
-import { CacheInvalidator } from '../src/core/cache-invalidator/index.js';
-import { UnifiedCacheManager } from '../src/core/unified-cache-manager/index.js';
+import { CacheInvalidator } from '../src/core/cache/invalidator/index.js';
+import { UnifiedCacheManager } from '../src/core/cache/manager/index.js';
 
 describe('CacheInvalidator', () => {
   let cacheManager;

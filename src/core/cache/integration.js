@@ -5,9 +5,9 @@
  * Reemplaza el uso separado de AnalysisCache y LLMCache.
  */
 
-import { UnifiedCacheManager, ChangeType } from './unified-cache-manager.js';
-import { hashContent } from './unified-cache-manager/index.js';
-import { createLogger } from '../utils/logger.js';
+import { UnifiedCacheManager, ChangeType } from './manager/index.js';
+import { hashContent } from './manager/index.js';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:integration');
 

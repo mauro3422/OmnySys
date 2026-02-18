@@ -8,7 +8,7 @@
  */
 
 import { LLMClient } from '../../ai/llm-client.js';
-import { UnifiedCacheManager } from '../../core/unified-cache-manager.js';
+import { UnifiedCacheManager } from '#core/cache/manager/index.js';
 import { 
   validateLLMResponse, 
   calculateDynamicTimeout,

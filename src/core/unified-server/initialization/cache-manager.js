@@ -9,7 +9,7 @@
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
 import { getAllConnections } from '#layer-c/query/apis/connections-api.js';
 import { getRiskAssessment } from '#layer-c/query/apis/risk-api.js';
-import { UnifiedCacheManager } from '../../unified-cache-manager.js';
+import { UnifiedCacheManager } from '#core/cache/manager/index.js';
 
 /**
  * Inicializa MCP Server - Cache y datos

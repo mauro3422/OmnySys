@@ -18,7 +18,7 @@ const logger = createLogger('OmnySys:error:recovery');
  */
 export async function clearCache(projectPath, stats) {
   try {
-    const { UnifiedCacheManager } = await import('../../unified-cache-manager.js');
+    const { UnifiedCacheManager } = await import('#core/cache/manager/index.js');
     const cache = new UnifiedCacheManager(projectPath);
     await cache.clear();
     logger.info('🗑️  Caché limpiado automáticamente');
