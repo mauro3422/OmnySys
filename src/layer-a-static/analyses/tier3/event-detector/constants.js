@@ -48,7 +48,7 @@ export const DEFAULT_BABEL_PLUGINS = [
   'classProperties',
   'exportExtensions',
   'asyncGenerators',
-  ['pipelineOperator', { proposal: 'hack', topicToken: '#' }],
+  // NOTE: pipelineOperator removed - conflicts with shebangs and private fields
   'nullishCoalescingOperator',
   'optionalChaining',
   'partialApplication'

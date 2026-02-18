@@ -16,6 +16,10 @@ export function getBabelPlugins(filePath) {
   const isJSX = filePath.endsWith('.jsx') || filePath.endsWith('.tsx');
 
   // TypeScript and Flow are mutually exclusive
+  // NOTE: pipelineOperator removed - the 'hack' proposal with topicToken '#'
+  // conflicts with shebangs (#!/usr/bin/env node) and private fields (#field).
+  // Only data-flow/index.js PARSER_OPTIONS has it, as it's the only code
+  // that needs to parse |> pipelines with # topic token.
   const plugins = [
     'jsx',
     'objectRestSpread',
@@ -23,7 +27,6 @@ export function getBabelPlugins(filePath) {
     'classProperties',
     'exportExtensions',
     'asyncGenerators',
-    ['pipelineOperator', { proposal: 'hack', topicToken: '#' }],
     'nullishCoalescingOperator',
     'optionalChaining',
     'partialApplication'
