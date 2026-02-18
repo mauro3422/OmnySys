@@ -7,7 +7,7 @@
  * @module graph/algorithms/impact-analyzer
  */
 
-import { createImpactInfo } from '../types.js';
+import { createImpactInfo } from '../core/types.js';
 
 // Niveles de riesgo
 export const RISK_LEVELS = {

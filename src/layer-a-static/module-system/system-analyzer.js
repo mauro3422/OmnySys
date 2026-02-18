@@ -18,7 +18,7 @@ import {
 
 import { detectBusinessFlows } from './analyzers/business-flow-analyzer.js';
 import { detectArchitecturalPatterns } from './analyzers/pattern-analyzer.js';
-import { buildSystemGraph, mapModuleConnections } from './builders/system-graph-builder.js';
+import { buildSystemGraph, mapModuleConnections } from '#layer-graph/index.js';
 import { findMolecule, getAllAtoms } from './utils.js';
 import { logger } from '../../utils/logger.js';
 

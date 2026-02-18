@@ -10,7 +10,7 @@
  */
 
 import { InitializationStep } from './base-step.js';
-import { Orchestrator } from '#core/orchestrator.js';
+import { Orchestrator } from '#core/orchestrator/index.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:orchestrator:init:step');

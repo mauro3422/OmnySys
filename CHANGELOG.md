@@ -15,74 +15,33 @@ All notable changes to this project are documented in this file and organized by
 ### Latest Versions
 
 | Version | Date | Description |
-- Added `tests/LAYER_A_PROGRESS_LOG.md` to preserve baseline-to-current traceability for commits and future audits.
-- Added Tier3 structural coverage batch (8 new test files, 23 tests passing) for `analyses/tier3` export surfaces and event-detector facade contracts, explicitly in "tests first, bugfixes later" mode.
-- Added Pipeline structural coverage batch #1 (13 new test files, 24 tests passing) for `pipeline/enhance*` and `pipeline/enhancers*` index/wrapper contracts.
-- Converted `pipeline/enhancers` test suites to real-module execution (removed mocks from enhancer orchestrator/metadata/connection/legacy tests), preserving real runtime blocker evidence (`RiskScorer is not defined`).
-- Added Race Detector structural coverage batch #1 (8 new no-mock test files, 13 tests passing).
-- Added Pipeline structural coverage batch #2 (19 new no-mock test files, 31 tests passing) for molecular-chains/argument-mapper/graph-builder index layers and atom-extraction utility indexes.
-- Added Pipeline structural coverage batch #3 (10 new no-mock test files, 16 tests passing) for enhance core files and phase/compat wrappers, with explicit assertions for real runtime blockers instead of mocks.
-- Added Pipeline structural coverage batch #4 (22 new no-mock test files, 74 tests passing) for concrete `argument-mapper`, `graph-builder`, and `atom-extraction` modules; direct pipeline gaps now `0` (full 1:1 source-test mapping in `src/layer-a-static/pipeline`).
-- Added Race Detector coverage batch #2 (8 new no-mock test files, 15 tests passing) for core matchers, pattern detectors, phase enrich/summary, and strategy metadata factories/registries; race-detector direct gaps reduced to `33`.
-- Added Race Detector coverage batch #3 (14 new no-mock test files, 22 tests passing) for lock analyzer internals (detectors/analysis/utils/class/index + strategy base mapping), reducing race-detector direct gaps to `19`.
-- Added Race Detector coverage batch #4 (19 new no-mock test files, 23 tests passing) for timing analyzer internals and full pattern-matcher stack (wrappers, detectors, registries, context/helpers); race-detector direct gaps reduced to `0` with explicit blocker-evidence assertions for known import-path mismatch in matcher core.
-- Added Extractors Metadata coverage batch #1 (20 new no-mock test files, 27 tests passing) for error-flow and performance-impact modular stacks plus jsdoc/runtime/performance hints/historical/index contracts, reducing extractor gaps from `169` to `149`.
-- Added Extractors Metadata coverage batch #2 (29 new no-mock test files, 58 tests passing) for full `temporal-connections`, `temporal-patterns`, and `type-contracts` stacks; `metadata` direct gaps reduced from `29` to `0`, and Layer A snapshot moved to `468` test files with `216` direct gaps remaining.
-- Added residual closure batch for Layer A direct mapping: `query/apis/index.js` and `race-detector/__tests__/race-detector.test.js` now have matching no-mock tests (`2/2` passing), bringing snapshot to `470` test files and `214` direct gaps remaining.
-- Added Analyses Tier1 batch #1 (15 new no-mock tests, `30/30` passing) covering `helpers`, `hotspots`, `orphan-files`, `unused-exports`, and `function-cycle-classifier` modular core; reduced `analyses` gaps from `48` to `33` and overall snapshot to `485` test files with `199` direct gaps remaining.
-- Added Analyses batch #2 (33 new no-mock tests, `44/44` passing) covering remaining Tier2/Tier3 modules plus `V2_ALGORITHMS_PROPOSAL`; `analyses` direct gaps reduced from `33` to `0`, with Layer A snapshot now at `518` test files and `166` direct gaps remaining.
-- Added Storage batch #1 (16 new no-mock tests, `16/16` passing) for complete storage-manager direct mapping (`storage-manager`, `setup`, `utils`, `atoms`, `molecules`, `files`); `storage` direct gaps reduced from `16` to `0`, snapshot now `534` test files and `150` direct gaps remaining.
-- Added Module-System + Pattern-Detection batch #1 (30 new no-mock tests, `73/73` passing) to close all remaining direct gaps in both systems; snapshot now `564` test files with `120` direct gaps remaining (`extractors` only). Documented known blocker in `shared-detector.js` (broken relative import) through explicit blocker-evidence test instead of mocks.
-- Added Extractors batch #3 (120 new tests, Factory + Contracts pattern) to close all remaining extractor direct gaps with a shared harness in `tests/factories/extractor-contracts.factory.js`; focused validation for this batch: `120/120` files and `360/360` tests passing (chunked execution). Layer A snapshot now `684` test files and `0` direct gaps (1:1 source-test mapping complete for `src/layer-a-static`).
-
-## ðŸ“‹ **Index of Version-Specific Changelogs**
-
-This repository uses a modular changelog structure for better organization and maintainability. Each major version has its own dedicated file in the `changelog/` directory.
-
-### **📁 Version Files**
-
-| Version | File | Description |
 |---------|------|-------------|
-| **[0.9.13]** | `changelog/v0.9.13-layer-b-test-coverage.md` | **Layer B Test Coverage + Cross-Layer Integration - 1,222 Tests** (Latest - Stable) |
-| **[0.9.12]** | `changelog/v0.9.12-layer-a-test-coverage.md` | **Layer A Test Coverage - 687 Tests** |
-| **[0.9.10]** | `changelog/v0.9.10-layer-a-test-coverage.md` | **Layer A Test Coverage - 527+ Tests** |
-| **[0.9.8]** | `changelog/v0.9.8-layer-a-analysis-audit.md` | **Layer A Analysis Audit - 79 Tests, Tier 1-2 Complete** |
-| **[0.9.7]** | `changelog/v0.9.7-layer-a-core-test-audit.md` | **Layer A Core Test Audit - 90 Tests 100% Passing** |
-| **[0.9.6]** | `changelog/v0.9.6-CLEANUP-WRAPPERS.md` | **Cleanup - Eliminación de 18 Wrappers Legacy** |
-| **[0.9.5]** | `changelog/v0.9.5-complete-modular-refactor.md` | **Complete Modular Refactoring Phase 2** |
-| **[0.9.4]** | `changelog/v0.9.4-COMPLETE.md` | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** |
-| **[0.9.3]** | `changelog/v0.9.3-modular-refactor.md` | **Massive Modular Refactoring - 5 Monoliths → 56 Modules** |
-| **[0.9.2]** | `changelog/v0.9.2-llm-service-refactor.md` | **LLMService Architecture Refactor - Circuit Breaker & Metrics** |
-| **[0.9.1]** | `changelog/v0.9.1.md` | **MCP Pipeline Hotfix - Critical Initialization Fixes** |
-| **[0.9.0]** | `changelog/v0.9.0.md` | **Pattern Detection Engine V2 - Intelligent Analysis** |
-| **[0.8.0]** | `changelog/v0.8.0.md` | **Query Refactor + Hot-Reload + Self-Improvement** |
-| **[0.7.2]** | `changelog/v0.7.2.md` | **BUG #47 Fix + 89 Extractores + Verification** |
-| **[0.7.1]** | `changelog/v0.7.1.md` + 3 sub-docs | **Race Conditions + Shadow Registry + 4 Extractores + Audit** |
-| **[0.7.0]** | `changelog/v0.7.0.md` | **Architecture Refactoring - SOLID/SSOT/Fractal** (Stable) |
-| **[0.6.2]** | `changelog/v0.6.2.md` | **Tunnel Vision Solver + Critical Bugfix** (Stable) |
-| **[0.6.1]** | `changelog/v0.6.1.md` | **Documentation Overhaul & System Audit** |
-| **[0.6.0]** | `changelog/v0.6.0.md` | **Molecular Architecture - Atomic Analysis System** |
-| **[0.5.4]** | `changelog/v0.5.4.md` | **8 New Metadata Extractors + Network Hub Archetype** |
-| **[0.5.1]** | `changelog/v0.5.1.md` | **Bug Fixes & MCP Optimization** |
-| **[0.5.0]** | `changelog/v0.5.0.md` | **Layer A/B Unification & Orchestrator** |
-| **[0.4.6]** | `changelog/v0.4.6.md` | **Metadata Contract & Plug & Play Architecture** |
-| **[0.4.5]** | `changelog/v0.4.5.md` | **MCP Server as Unified Entry Point** |
-| **[0.4.4]** | `changelog/v0.4.4.md` | **Unified Cache System** |
-| **[0.4.3]** | `changelog/v0.4.3.md` | **Bug Fixes & Stability Improvements** |
-| **[0.4.2]** | `changelog/v0.4.2.md` | **Phase 3.9: Context Optimization & Function Analysis** |
-| **[0.4.0-0.4.1]** | `changelog/v0.4.0.md` | **Phase 3.8: Capa B - Semantic Enrichment** |
-| **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
-| **[0.3.0-0.3.4]** | `changelog/v0.3.0-v0.3.4.md` | **Phase 3: Automated Analysis & Quality Reporting** |
-| **[0.3.1-0.3.4]** | `changelog/v0.3.1-v0.3.4.md` | **Import Quality Analysis & Modular Architecture** |
-| **[0.3.0]** | `changelog/v0.3.0.md` | **Core Automated Analysis & Quality Reporting** |
-| **[0.2.0]** | `changelog/v0.2.0.md` | **Phase 2: Function-Level Tracking** |
-| **[0.1.0]** | `changelog/v0.1.0.md` | **Phase 1: Layer A - Static Analysis** |
-| **[0.0.0]** | `changelog/v0.0.0.md` | **Initial Project Setup** |
-| **[0.1.0-0.2.0]** | `changelog/v0.1.0-v0.2.0.md` | **Combined Early Phases Reference** |
+| **[0.9.5]** | 2026-02-18 | **Layer Graph Architecture + Deuda Técnica** (Latest) - See `changelog/v0.9.5-layer-graph-architecture.md` |
+| **[0.9.13]** | 2026-02-14 | **Layer B Test Coverage + Cross-Layer Integration - 1,222 Tests** |
+| **[0.9.12]** | 2026-02-13 | **Layer A Test Coverage - 687 Tests** |
+| **[0.9.10]** | 2026-02-11 | **Layer A Test Coverage - 527+ Tests** |
+| **[0.9.8]** | 2026-02-10 | **Layer A Analysis Audit - 79 Tests, Tier 1-2 Complete** |
+| **[0.9.7]** | 2026-02-09 | **Layer A Core Test Audit - 90 Tests 100% Passing** |
+| **[0.9.6]** | 2026-02-08 | **Cleanup - Eliminación de 18 Wrappers Legacy** |
+| **[0.9.4]** | 2026-02-07 | **COMPLETE Modular Refactoring - 59 Monoliths → 400+ Modules** |
+| **[0.9.3]** | 2026-02-06 | **Massive Modular Refactoring - 5 Monoliths → 56 Modules** |
+| **[0.9.2]** | 2026-02-05 | **LLMService Architecture Refactor - Circuit Breaker & Metrics** |
+| **[0.9.1]** | 2026-02-04 | **MCP Pipeline Hotfix - Critical Initialization Fixes** |
+| **[0.9.0]** | 2026-02-03 | **Pattern Detection Engine V2 - Intelligent Analysis** |
+| **[0.8.0]** | 2026-02-02 | **Query Refactor + Hot-Reload + Self-Improvement** |
+| **[0.7.x]** | Earlier | See `changelog/` for full history |
 
-### **🚀 Latest Release: v0.9.10 (2026-02-14) - Layer A MASSIVE Test Coverage**
+---
 
-**Layer A Test Coverage MASSIVE Expansion**: Expansión masiva usando **10 sub-agentes paralelos**. Se pasó de **527 tests** a **4,045+ tests** con **159 archivos de test** y **12 factories**. Cobertura expandida a Graph, Parser, Query, Module-System, Pattern-Detection, Race-Detector y Extractors.
+## 🚀 Latest Release: v0.9.5 (2026-02-18)
+
+**Layer Graph Architecture**: Nueva capa dedicada para el sistema de grafos con API unificada, consolidación de 17 archivos dispersos, y limpieza de deuda técnica en core/.
+
+### Highlights
+- ✨ **Layer Graph** creada con 17 módulos y 54 exports
+- 🧹 **Deuda técnica**: 4 wrappers y 5 carpetas vacías eliminadas
+- 📚 **Documentación**: 4 nuevos docs de arquitectura
+- ✅ **Tests**: 75 tests nuevos para layer-graph
 
 **Key Changes**:
 - ✅ **4,045+ Tests Passing**: +668% desde v0.9.9

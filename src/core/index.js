@@ -13,8 +13,8 @@ export { WorkerState } from './worker/WorkerState.js';
 // Jobs
 export { JobAnalyzer } from './jobs/JobAnalyzer.js';
 
-// Graph
-export * as graph from './graph/index.js';
+// Graph (re-exportado desde layer-graph)
+export * as graph from '#layer-graph/index.js';
 export {
   buildSystemMap,
   buildSystemMap as buildGraph,
@@ -33,7 +33,7 @@ export {
   generateRecommendation,
   findHighImpactFiles,
   RISK_LEVELS
-} from './graph/index.js';
+} from '#layer-graph/index.js';
 
 // Storage
 export * as storage from './storage/index.js';

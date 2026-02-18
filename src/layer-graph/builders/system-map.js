@@ -11,7 +11,7 @@ import {
   createEmptySystemMap, 
   createFileNode, 
   createDependency 
-} from '../types.js';
+} from '../core/types.js';
 import { 
   normalizePath, 
   getDisplayPath, 

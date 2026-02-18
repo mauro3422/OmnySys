@@ -6,7 +6,7 @@
  * @module graph/builders/function-links
  */
 
-import { createFunctionLink } from '../types.js';
+import { createFunctionLink } from '../core/types.js';
 import { resolveAllFunctionCalls } from '../resolvers/function-resolver.js';
 
 /**

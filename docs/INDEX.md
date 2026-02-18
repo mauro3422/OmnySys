@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.4  
-**Última actualización**: 2026-02-14  
-**Estado**: ✅ **CONSOLIDADO**
+**Versión**: v0.9.5  
+**Última actualización**: 2026-02-18  
+**Estado**: ✅ **CONSOLIDADO + Layer Graph**
 
 ---
 
@@ -47,6 +47,9 @@ docs/
 | Documento | Descripción |
 |-----------|-------------|
 | [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) |
+| [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
+| [code-physics.md](02-architecture/code-physics.md) | **⭐ NUEVO - Código como Física**: Entropía, auto-reparación, sociedades de átomos |
+| [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ NUEVO - Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
 | [context-selection.md](02-architecture/context-selection.md) | Algoritmos de selección de contexto |
 | **data-flow/** | |
 | ├─ [README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |
@@ -55,6 +58,30 @@ docs/
 | └─ [roadmap.md](02-architecture/data-flow/roadmap.md) | Fases 2-5 planificadas |
 | [shadow-registry.md](02-architecture/shadow-registry.md) | ADN + ciclo de vida de código |
 | [archetypes.md](02-architecture/archetypes.md) | Catálogo de arquetipos + sistema de confianza |
+
+---
+
+## 📐 Layers del Sistema
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER GRAPH (Nivel 0)                                          │
+│  "El cerebro matemático - grafo con pesos dinámicos"           │
+│  src/layer-graph/                                               │
+├─────────────────────────────────────────────────────────────────┤
+│  LAYER A: STATIC (Nivel 1)                                      │
+│  "Qué puedo saber SIN ejecutar el código"                      │
+│  src/layer-a-static/                                            │
+├─────────────────────────────────────────────────────────────────┤
+│  LAYER B: SEMANTIC (Nivel 2)                                    │
+│  "Qué SIGNIFICA lo que encontré en A"                          │
+│  src/layer-b-semantic/                                          │
+├─────────────────────────────────────────────────────────────────┤
+│  LAYER C: MEMORY (Nivel 3)                                      │
+│  "Cómo exponer y persistir el conocimiento"                    │
+│  src/layer-c-memory/                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 

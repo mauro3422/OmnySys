@@ -1,6 +1,6 @@
 {
   "name": "omnysys",
-  "version": "0.7.1",
+  "version": "0.9.5",
   "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
   "main": "omny.js",
   "bin": {
@@ -52,6 +52,8 @@
     "test:core:atomic-editor": "vitest run tests/unit/core/atomic-editor --config tests/config/vitest.unit.config.js",
     "test:core:orchestrator": "vitest run tests/unit/core/orchestrator --config tests/config/vitest.unit.config.js",
     "test:core:unified-server": "vitest run tests/unit/core/unified-server --config tests/config/vitest.unit.config.js",
+    "test:layer-graph": "vitest run tests/unit/layer-graph --config tests/config/vitest.unit.config.js",
+    "test:layer-graph:contracts": "vitest run tests/contracts/layer-graph --config tests/config/vitest.unit.config.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:coverage:layer-a": "vitest run tests/unit/layer-a --config tests/config/vitest.unit.config.js --coverage",
@@ -85,6 +87,7 @@
     "#cli/*": "./src/cli/*",
     "#config/*": "./src/config/*",
     "#core/*": "./src/core/*",
+    "#layer-graph/*": "./src/layer-graph/*",
     "#layer-a/*": "./src/layer-a-static/*",
     "#layer-b/*": "./src/layer-b-semantic/*",
     "#layer-c/*": "./src/layer-c-memory/*",
