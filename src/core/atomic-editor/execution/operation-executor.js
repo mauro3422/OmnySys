@@ -95,18 +95,18 @@ export async function executeOperation(operation, options) {
       }
     }
 
-    // Phase 4: Prepare undo
-    let undoData = null;
-    if (enableUndo) {
-      undoData = await operation.prepareUndo();
-    }
-
-    // Phase 5: Execute
+    // Phase 4: Execute
     logger.info(`  ⚡ Executing ${operation.type}...`);
     const result = await operation.execute();
 
     if (!result.success) {
       throw result.error || new Error('Operation failed');
+    }
+
+    // Phase 5: Prepare undo (after execute, so operation has original content)
+    let undoData = null;
+    if (enableUndo) {
+      undoData = await operation.prepareUndo();
     }
 
     logger.info(`  ✅ Operation complete`);

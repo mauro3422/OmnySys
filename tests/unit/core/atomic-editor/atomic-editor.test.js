@@ -49,12 +49,12 @@ describe('AtomicEditor', () => {
   });
 
   describe('edit()', () => {
-    it.skip('BUG: path.join undefined in operation.validate()', async () => {
+    it('edits file successfully', async () => {
       const result = await editor.edit('test.js', 'const x = 1;', 'const x = 100;');
       expect(result.success).toBe(true);
     });
 
-    it.skip('BUG: path.join undefined - preserves other content', async () => {
+    it('preserves other content when editing', async () => {
       await editor.edit('test.js', 'const x = 1;', 'const x = 999;');
       const content = await fs.readFile(testFile, 'utf-8');
       expect(content).toContain('const y = 2;');
@@ -72,7 +72,7 @@ describe('AtomicEditor', () => {
       ).rejects.toThrow();
     });
 
-    it.skip('BUG: path.join undefined - emits atom:modified event', async () => {
+    it('emits atom:modified event on edit', async () => {
       let eventFired = false;
       editor.on('atom:modified', () => { eventFired = true; });
       await editor.edit('test.js', 'const x = 1;', 'const x = 10;');
@@ -122,7 +122,7 @@ describe('AtomicEditor', () => {
   });
 
   describe('undo()', () => {
-    it.skip('BUG: depends on edit() which has path.join bug', async () => {
+    it('undoes edit successfully', async () => {
       await editor.edit('test.js', 'const x = 1;', 'const x = 999;');
       const result = await editor.undo();
       expect(result.success).toBe(true);
@@ -138,7 +138,7 @@ describe('AtomicEditor', () => {
   });
 
   describe('redo()', () => {
-    it.skip('BUG: depends on edit() which has path.join bug', async () => {
+    it('redoes edit successfully', async () => {
       await editor.edit('test.js', 'const x = 1;', 'const x = 999;');
       await editor.undo();
       const result = await editor.redo();
@@ -160,7 +160,7 @@ describe('AtomicEditor', () => {
       expect(info.canUndo).toBe(false);
     });
 
-    it.skip('BUG: depends on edit() which has path.join bug', async () => {
+    it('shows canUndo after edit', async () => {
       await editor.edit('test.js', 'const x = 1;', 'const x = 10;');
       const info = editor.getHistoryInfo();
       expect(info.canUndo).toBe(true);
@@ -168,7 +168,7 @@ describe('AtomicEditor', () => {
   });
 
   describe('insert()', () => {
-    it.skip('BUG: path.join undefined in operation.validate()', async () => {
+    it('inserts content successfully', async () => {
       const result = await editor.insert('test.js', {
         content: '// inserted comment\n',
         atLine: 1
@@ -178,7 +178,7 @@ describe('AtomicEditor', () => {
   });
 
   describe('delete()', () => {
-    it.skip('BUG: path.join undefined in operation.validate()', async () => {
+    it('deletes content successfully', async () => {
       const result = await editor.delete('test.js', {
         content: 'const x = 1;\n'
       });

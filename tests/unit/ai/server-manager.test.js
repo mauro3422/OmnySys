@@ -259,7 +259,7 @@ describe('ServerManager', () => {
   });
 
   describe('healthCheck', () => {
-    it.skip('SKIP: requires LLM server - should check gpu health', async () => {
+    it.skip('SKIP: requires LLM server running - checks gpu health via HTTP', async () => {
       const manager = new ServerManager({});
       
       const result = await manager.healthCheck();
@@ -268,7 +268,7 @@ describe('ServerManager', () => {
       expect(result).toHaveProperty('cpu');
     });
 
-    it.skip('SKIP: requires LLM server - should mark servers unavailable on failure', async () => {
+    it.skip('SKIP: requires LLM server running - marks servers unavailable on connection failure', async () => {
       const manager = new ServerManager({
         llm: { gpu: { port: 99999 } }
       });
@@ -278,7 +278,7 @@ describe('ServerManager', () => {
       expect(result.gpu).toBe(false);
     });
 
-    it('should not check cpu when fallback disabled', async () => {
+    it('does not check cpu when fallback disabled', async () => {
       const config = AIConfigBuilder.create()
         .withCPUFallback(false)
         .build();

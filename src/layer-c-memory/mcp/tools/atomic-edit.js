@@ -52,9 +52,9 @@ export async function atomic_edit(args, context) {
       file: filePath,
       message: `✅ Atomic edit successful`,
       impact: {
-        affectedFiles: result.impact.affectedFiles.length,
-        changedSymbols: result.impact.changedSymbols,
-        severity: result.impact.severity
+        affectedFiles: result.impact?.affectedFiles?.length || 0,
+        changedSymbols: result.impact?.changedSymbols || [],
+        severity: result.impact?.severity || 'none'
       },
       validation: {
         syntaxValid: true,
@@ -66,7 +66,7 @@ export async function atomic_edit(args, context) {
     logger.error(`[Tool] atomic_edit failed: ${error.message}`);
     
     // Detectar si es error de sintaxis
-    if (error.message.includes('Syntax error')) {
+    if (error.message.includes('Syntax error') || error.message.includes('SyntaxError')) {
       return {
         error: 'SYNTAX_ERROR',
         message: error.message,

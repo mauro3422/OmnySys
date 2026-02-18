@@ -14,6 +14,10 @@ import { readJSON } from '#layer-c/query/readers/json-reader.js';
  * @returns {string} - Normalized relative path
  */
 function normalizeFilePath(rootPath, filePath) {
+  if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
+    return null;
+  }
+  
   let normalizedPath = filePath;
   const normalizedFilePath = filePath.replace(/\\/g, '/');
   const normalizedRootPath = rootPath.replace(/\\/g, '/');
@@ -32,9 +36,13 @@ function normalizeFilePath(rootPath, filePath) {
  * @returns {Promise<object>} - Datos completos del archivo
  */
 export async function getFileAnalysis(rootPath, filePath) {
+  const normalizedPath = normalizeFilePath(rootPath, filePath);
+  
+  if (!normalizedPath) {
+    return null;
+  }
+  
   const dataPath = getDataDirectory(rootPath).replace(/\\/g, '/');
-  const normalizedPath = normalizeFilePath(rootPath, filePath).replace(/\\/g, '/');
-
-  const filePart = path.posix.join(dataPath, 'files', normalizedPath + '.json');
+  const filePart = path.posix.join(dataPath, 'files', normalizedPath.replace(/\\/g, '/') + '.json');
   return await readJSON(filePart);
 }

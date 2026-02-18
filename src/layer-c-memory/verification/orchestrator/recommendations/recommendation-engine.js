@@ -23,17 +23,16 @@
 export function generateRecommendations(allIssues) {
   const recommendations = [];
   
-  // Detectar patrones de issues
   const hasPathIssues = allIssues.some(i => 
-    i.category === 'structure' && i.message.includes('path')
+    i.category === 'structure' && i.message?.includes('path')
   );
   
   const hasMissingAtoms = allIssues.some(i =>
-    i.message.includes('no atoms')
+    i.message?.includes('no atoms')
   );
   
   const hasOrphanedAtoms = allIssues.some(i =>
-    i.message.includes('non-existent file')
+    i.message?.includes('non-existent file')
   );
   
   if (hasPathIssues) {

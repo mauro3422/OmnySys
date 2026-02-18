@@ -15,6 +15,7 @@ import { normalizePath } from '../../../utils/path-utils.js';
  * @returns {string} - Formato detectado
  */
 export function detectPathFormat(filePath) {
+  if (!filePath || typeof filePath !== 'string') return 'unknown';
   if (filePath.includes(':\\')) return 'windows-absolute';
   if (filePath.includes('C:')) return 'windows-absolute';
   if (filePath.startsWith('/')) return 'unix-absolute';

@@ -134,7 +134,7 @@ describe('get_impact_map', () => {
   });
 
   describe('handles missing file', () => {
-    it.skip('BUG: getFileAnalysis throws instead of returning null when file missing', async () => {
+    it('returns status when file not found', async () => {
       mockContext.server.initialized = false;
 
       const result = await get_impact_map({ filePath: 'missing.js' }, mockContext);
@@ -175,16 +175,18 @@ describe('get_impact_map', () => {
   });
 
   describe('handles invalid input', () => {
-    it.skip('BUG: handles missing filePath gracefully - throws error in normalizeFilePath', async () => {
+    it('handles missing filePath gracefully', async () => {
       const result = await get_impact_map({}, mockContext);
 
       expect(result).toBeDefined();
+      expect(result).toHaveProperty('status');
     });
 
-    it.skip('BUG: handles empty string filePath - throws error reading file', async () => {
+    it('handles empty string filePath', async () => {
       const result = await get_impact_map({ filePath: '' }, mockContext);
 
       expect(result).toBeDefined();
+      expect(result).toHaveProperty('status');
     });
   });
 });

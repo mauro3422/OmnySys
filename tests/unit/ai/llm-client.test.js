@@ -34,7 +34,7 @@ describe('LLMClient', () => {
   });
 
   describe('healthCheck', () => {
-    it.skip('SKIP: requires LLM server - should return health status', async () => {
+    it.skip('SKIP: requires LLM server running - returns health status from real server', async () => {
       const health = await client.healthCheck();
       
       expect(health).toHaveProperty('gpu');
@@ -43,7 +43,7 @@ describe('LLMClient', () => {
       expect(typeof health.cpu).toBe('boolean');
     });
 
-    it('should delegate to serverManager', () => {
+    it('delegates to serverManager', () => {
       expect(typeof client.healthCheck).toBe('function');
     });
   });
@@ -73,7 +73,7 @@ describe('LLMClient', () => {
   });
 
   describe('analyze', () => {
-    it.skip('SKIP: requires LLM server - should analyze with prompt', async () => {
+    it.skip('SKIP: requires LLM server running - analyzes prompt with real server', async () => {
       client.serverManager.servers.gpu.available = true;
       
       const result = await client.analyze('test prompt');
@@ -81,11 +81,11 @@ describe('LLMClient', () => {
       expect(result).toBeDefined();
     });
 
-    it('should delegate to analyzer', () => {
+    it('delegates to analyzer', () => {
       expect(typeof client.analyze).toBe('function');
     });
 
-    it.skip('SKIP: requires LLM server - should pass options correctly', async () => {
+    it('accepts options parameter', () => {
       client.serverManager.servers.cpu.available = true;
       
       const options = { mode: 'cpu', systemPrompt: 'Custom prompt' };
@@ -95,7 +95,7 @@ describe('LLMClient', () => {
   });
 
   describe('analyzeParallel', () => {
-    it.skip('SKIP: requires LLM server - should analyze multiple prompts', async () => {
+    it.skip('SKIP: requires LLM server running - analyzes multiple prompts with real server', async () => {
       client.serverManager.servers.gpu.available = true;
       
       const prompts = ['prompt1', 'prompt2', 'prompt3'];
@@ -104,13 +104,13 @@ describe('LLMClient', () => {
       expect(results).toHaveLength(3);
     });
 
-    it('should delegate to parallelAnalyzer', () => {
+    it('delegates to parallelAnalyzer', () => {
       expect(typeof client.analyzeParallel).toBe('function');
     });
   });
 
   describe('analyzeParallelWithSystemPrompts', () => {
-    it.skip('SKIP: requires LLM server - should analyze with custom system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - analyzes with custom system prompts', async () => {
       client.serverManager.servers.gpu.available = true;
       
       const userPrompts = ['prompt1', 'prompt2'];
@@ -121,13 +121,13 @@ describe('LLMClient', () => {
       expect(results).toHaveLength(2);
     });
 
-    it('should delegate to parallelAnalyzer', () => {
+    it('delegates to parallelAnalyzer', () => {
       expect(typeof client.analyzeParallelWithSystemPrompts).toBe('function');
     });
   });
 
   describe('analyzeBatch', () => {
-    it.skip('SKIP: requires LLM server - should analyze batch', async () => {
+    it.skip('SKIP: requires LLM server running - analyzes batch with real server', async () => {
       client.serverManager.servers.gpu.available = true;
       
       const prompts = ['p1', 'p2', 'p3', 'p4'];
@@ -136,13 +136,13 @@ describe('LLMClient', () => {
       expect(results).toHaveLength(4);
     });
 
-    it('should delegate to batchAnalyzer', () => {
+    it('delegates to batchAnalyzer', () => {
       expect(typeof client.analyzeBatch).toBe('function');
     });
   });
 
   describe('analyzeBatchWithPrompts', () => {
-    it.skip('SKIP: requires LLM server - should analyze batch with custom prompts', async () => {
+    it.skip('SKIP: requires LLM server running - analyzes batch with custom prompts', async () => {
       client.serverManager.servers.gpu.available = true;
       
       const userPrompts = ['p1', 'p2'];
@@ -153,7 +153,7 @@ describe('LLMClient', () => {
       expect(results).toHaveLength(2);
     });
 
-    it('should delegate to batchAnalyzer', () => {
+    it('delegates to batchAnalyzer', () => {
       expect(typeof client.analyzeBatchWithPrompts).toBe('function');
     });
   });

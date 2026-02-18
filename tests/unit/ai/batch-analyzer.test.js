@@ -29,7 +29,7 @@ describe('BatchAnalyzer', () => {
   });
 
   describe('analyzeBatch', () => {
-    it.skip('SKIP: requires LLM server - should process prompts in batches', async () => {
+    it.skip('SKIP: requires LLM server running - processes prompts in batches', async () => {
       serverManager.servers.gpu.available = true;
       
       const prompts = ['p1', 'p2', 'p3', 'p4'];
@@ -38,7 +38,7 @@ describe('BatchAnalyzer', () => {
       expect(results).toHaveLength(4);
     });
 
-    it.skip('SKIP: requires LLM server - should respect max concurrent limit', async () => {
+    it.skip('SKIP: requires LLM server running - respects max concurrent limit', async () => {
       serverManager.servers.gpu.available = true;
       
       const prompts = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
@@ -46,7 +46,7 @@ describe('BatchAnalyzer', () => {
       await batchAnalyzer.analyzeBatch(prompts, 'gpu');
     });
 
-    it.skip('SKIP: requires LLM server - should handle errors gracefully', async () => {
+    it.skip('SKIP: requires LLM server running - handles errors gracefully', async () => {
       serverManager.servers.gpu.available = true;
       
       const prompts = ['valid', null, 'also valid'];
@@ -55,7 +55,7 @@ describe('BatchAnalyzer', () => {
       expect(results[1]).toHaveProperty('error');
     });
 
-    it.skip('SKIP: requires LLM server - should return empty array for empty input', async () => {
+    it('returns empty array for empty input', async () => {
       const results = await batchAnalyzer.analyzeBatch([], 'gpu');
       
       expect(results).toEqual([]);
@@ -63,7 +63,7 @@ describe('BatchAnalyzer', () => {
   });
 
   describe('analyzeBatchWithPrompts', () => {
-    it.skip('SKIP: requires LLM server - should process with custom system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - processes with custom system prompts', async () => {
       serverManager.servers.gpu.available = true;
       
       const userPrompts = ['u1', 'u2'];
@@ -74,7 +74,7 @@ describe('BatchAnalyzer', () => {
       expect(results).toHaveLength(2);
     });
 
-    it.skip('SKIP: requires LLM server - should handle mismatched prompt arrays', async () => {
+    it.skip('SKIP: requires LLM server running - handles mismatched prompt arrays', async () => {
       serverManager.servers.gpu.available = true;
       
       const userPrompts = ['u1', 'u2', 'u3'];
@@ -85,7 +85,7 @@ describe('BatchAnalyzer', () => {
       expect(results).toHaveLength(3);
     });
 
-    it.skip('SKIP: requires LLM server - should handle empty system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - handles empty system prompts', async () => {
       serverManager.servers.gpu.available = true;
       
       const userPrompts = ['u1', 'u2'];

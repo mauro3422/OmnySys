@@ -14,10 +14,16 @@ import fs from 'fs/promises';
  * @returns {Promise<object>} - Contenido parseado
  */
 export async function readJSON(filePath) {
+  if (!filePath || typeof filePath !== 'string') {
+    return null;
+  }
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(content);
   } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+      return null;
+    }
     throw new Error(`Failed to read ${filePath}: ${error.message}`);
   }
 }

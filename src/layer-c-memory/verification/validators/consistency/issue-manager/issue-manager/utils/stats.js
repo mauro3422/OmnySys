@@ -24,7 +24,7 @@ export function calculateStats(issues) {
       i.system === DataSystem.ATOMS
     ).length,
     missingFiles: issues.filter(i =>
-      i.message.includes('non-existent file')
+      i.message?.includes('non-existent file')
     ).length,
     pathIssues: issues.filter(i =>
       i.category === IssueCategory.STRUCTURE
@@ -45,10 +45,10 @@ export function generateSummary(issues, cache) {
     totalFiles: cache.files?.size || 0,
     totalConnections: cache.connections?.length || 0,
     orphanedAtoms: issues.filter(i => 
-      i.message.includes('non-existent file')
+      i.message?.includes('non-existent file')
     ).length,
     orphanedFiles: issues.filter(i =>
-      i.message.includes('no atoms')
+      i.message?.includes('no atoms')
     ).length,
     bySeverity: countBySeverity(issues)
   };

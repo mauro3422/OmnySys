@@ -146,13 +146,13 @@ export class DuplicationDetector {
     const issues = this.issues.getIssues();
     return {
       exportInconsistencies: issues.filter(i => 
-        i.message.includes('Export information duplicated')
+        i.message?.includes('Export information duplicated')
       ).length,
       duplicateAtoms: issues.filter(i =>
-        i.message.includes('Duplicate atom ID')
+        i.message?.includes('Duplicate atom ID')
       ).length,
       duplicateFiles: issues.filter(i =>
-        i.message.includes('Duplicate file entry')
+        i.message?.includes('Duplicate file entry')
       ).length
     };
   }

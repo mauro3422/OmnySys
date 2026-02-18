@@ -80,7 +80,7 @@ describe('Orchestrator', () => {
   });
 
   describe('atomicEdit()', () => {
-    it.skip('BUG: atomicEdit fails with singleton/projectPath issue', async () => {
+    it('edits file successfully', async () => {
       const testFile = 'test.js';
       const testPath = path.join(tempDir, testFile);
       await fs.writeFile(testPath, 'const x = 1;', 'utf-8');
@@ -92,7 +92,7 @@ describe('Orchestrator', () => {
       expect(content).toBe('const x = 2;');
     });
 
-    it.skip('BUG: atomicEdit fails with singleton/projectPath issue', async () => {
+    it('throws on non-existent old string', async () => {
       const testFile = 'test2.js';
       const testPath = path.join(tempDir, testFile);
       await fs.writeFile(testPath, 'const x = 1;', 'utf-8');
@@ -102,10 +102,10 @@ describe('Orchestrator', () => {
       ).rejects.toThrow();
     });
 
-    it.skip('BUG: atomicEdit fails with singleton/projectPath issue', async () => {
+    it('returns file info on success', async () => {
       const testFile = 'test3.js';
       const testPath = path.join(tempDir, testFile);
-      await fs.writeFile(testPath, 'hello world', 'utf-8');
+      await fs.writeFile(testPath, 'const hello = 1;', 'utf-8');
       
       const result = await orchestrator.atomicEdit(testFile, 'hello', 'goodbye');
       
@@ -115,7 +115,7 @@ describe('Orchestrator', () => {
   });
 
   describe('atomicWrite()', () => {
-    it.skip('BUG: atomicWrite fails with singleton/projectPath issue', async () => {
+    it('creates new file', async () => {
       const testFile = 'new-file.js';
       const content = 'export default function() {}';
       
@@ -126,7 +126,7 @@ describe('Orchestrator', () => {
       expect(written).toBe(content);
     });
 
-    it.skip('BUG: atomicWrite fails with singleton/projectPath issue', async () => {
+    it('overwrites existing file', async () => {
       const testFile = 'overwrite.js';
       const testPath = path.join(tempDir, testFile);
       await fs.writeFile(testPath, 'old content', 'utf-8');

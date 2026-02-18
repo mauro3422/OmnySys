@@ -145,13 +145,13 @@ export class AtomsFilesValidator {
     const issues = this.issues.getIssues();
     return {
       orphanedAtoms: issues.filter(i => 
-        i.message.includes('non-existent file')
+        i.message?.includes('non-existent file')
       ).length,
       orphanedFiles: issues.filter(i =>
-        i.message.includes('no atoms')
+        i.message?.includes('no atoms')
       ).length,
       exportMismatches: issues.filter(i =>
-        i.message.includes('Export status mismatch')
+        i.message?.includes('Export status mismatch')
       ).length
     };
   }

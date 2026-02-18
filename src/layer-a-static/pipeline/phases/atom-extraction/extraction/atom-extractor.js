@@ -15,6 +15,7 @@ import { extractTemporalPatterns as extractTemporalConnections } from '#layer-a/
 import { extractPerformanceMetrics } from '#layer-a/extractors/metadata/performance-impact/index.js';
 import { extractTypeContracts } from '#layer-a/extractors/metadata/type-contracts/index.js';
 import { extractErrorFlow } from '#layer-a/extractors/metadata/error-flow/index.js';
+import { extractPerformanceHints } from '#layer-a/extractors/metadata/performance-hints.js';
 import { logger } from '#utils/logger.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';

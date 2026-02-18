@@ -125,7 +125,7 @@ describe('ExportConsistencyRule', () => {
       expect(validationResult.valid).toBe(true);
     });
 
-    it.skip('BUG: returns invalid when export missing from code', async () => {
+    it.skip('TODO: ExportConsistencyRule should detect exports missing from code', async () => {
       await fs.writeFile(path.join(tempDir, 'test.js'), 'const foo = 1;');
       
       const entity = {
@@ -141,7 +141,7 @@ describe('ExportConsistencyRule', () => {
       expect(validationResult.field).toBe('export.bar');
     });
 
-    it.skip('BUG: warns when file has exports but none registered', async () => {
+    it.skip('TODO: ExportConsistencyRule should return warning not error for unregistered exports', async () => {
       await fs.writeFile(path.join(tempDir, 'test.js'), 'export const foo = 1;');
       
       const entity = {
@@ -284,7 +284,7 @@ describe('ImportResolutionRule', () => {
       expect(validationResult.valid).toBe(true);
     });
 
-    it.skip('BUG: returns warning for missing relative imports', async () => {
+    it.skip('TODO: ImportResolutionRule should detect missing relative imports', async () => {
       await fs.writeFile(path.join(tempDir, 'main.js'), "import { missing } from './missing.js';");
       
       const entity = {

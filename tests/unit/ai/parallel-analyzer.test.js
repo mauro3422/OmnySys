@@ -29,7 +29,7 @@ describe('ParallelAnalyzer', () => {
   });
 
   describe('analyzeParallel', () => {
-    it.skip('SKIP: requires LLM server - should distribute across servers', async () => {
+    it.skip('SKIP: requires LLM server running - distributes across servers', async () => {
       serverManager.servers.gpu.available = true;
       serverManager.servers.cpu.available = true;
       
@@ -39,7 +39,7 @@ describe('ParallelAnalyzer', () => {
       expect(results).toHaveLength(4);
     });
 
-    it.skip('SKIP: requires LLM server - should use gpu only when cpu fallback disabled', async () => {
+    it.skip('SKIP: requires LLM server running - uses gpu only when cpu fallback disabled', async () => {
       const config = AIConfigBuilder.create()
         .withCPUFallback(false)
         .build();
@@ -56,7 +56,7 @@ describe('ParallelAnalyzer', () => {
       expect(results).toHaveLength(3);
     });
 
-    it.skip('SKIP: requires LLM server - should handle single prompt', async () => {
+    it.skip('SKIP: requires LLM server running - handles single prompt', async () => {
       serverManager.servers.gpu.available = true;
       
       const results = await parallelAnalyzer.analyzeParallel(['single']);
@@ -64,13 +64,13 @@ describe('ParallelAnalyzer', () => {
       expect(results).toHaveLength(1);
     });
 
-    it.skip('SKIP: requires LLM server - should handle empty array', async () => {
+    it('returns empty array for empty input', async () => {
       const results = await parallelAnalyzer.analyzeParallel([]);
       
       expect(results).toEqual([]);
     });
 
-    it.skip('SKIP: requires LLM server - should maintain order', async () => {
+    it.skip('SKIP: requires LLM server running - maintains order', async () => {
       serverManager.servers.gpu.available = true;
       serverManager.servers.cpu.available = true;
       
@@ -82,7 +82,7 @@ describe('ParallelAnalyzer', () => {
   });
 
   describe('analyzeParallelWithSystemPrompts', () => {
-    it.skip('SKIP: requires LLM server - should distribute with system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - distributes with system prompts', async () => {
       serverManager.servers.gpu.available = true;
       serverManager.servers.cpu.available = true;
       
@@ -94,7 +94,7 @@ describe('ParallelAnalyzer', () => {
       expect(results).toHaveLength(4);
     });
 
-    it.skip('SKIP: requires LLM server - should handle empty system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - handles empty system prompts', async () => {
       serverManager.servers.gpu.available = true;
       
       const userPrompts = ['u1', 'u2'];
@@ -104,7 +104,7 @@ describe('ParallelAnalyzer', () => {
       expect(results).toHaveLength(2);
     });
 
-    it.skip('SKIP: requires LLM server - should handle partial system prompts', async () => {
+    it.skip('SKIP: requires LLM server running - handles partial system prompts', async () => {
       serverManager.servers.gpu.available = true;
       
       const userPrompts = ['u1', 'u2', 'u3'];

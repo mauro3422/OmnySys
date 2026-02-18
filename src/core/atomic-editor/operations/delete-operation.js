@@ -9,6 +9,7 @@
 
 import { BaseOperation } from './base-operation.js';
 import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * @typedef {Object} DeleteOptions
@@ -223,8 +224,7 @@ export class DeleteOperation extends BaseOperation {
     };
   }
 
-  async _getAbsolutePath() {
-    const { path } = await import('path');
+  _getAbsolutePath() {
     return path.join(this.context.projectPath, this.filePath);
   }
 }

@@ -66,7 +66,7 @@ describe('ModifyOperation', () => {
       expect(result.error).toContain('newString is required');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - validates oldString exists in file', async () => {
+    it('validates oldString exists in file', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'const x = 1;', 'utf-8');
 
@@ -81,7 +81,7 @@ describe('ModifyOperation', () => {
       expect(result.error).toContain('oldString not found');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - detects multiple matches without all flag', async () => {
+    it('detects multiple matches without all flag', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'foo foo foo', 'utf-8');
 
@@ -96,7 +96,7 @@ describe('ModifyOperation', () => {
       expect(result.error).toContain('Multiple matches');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - allows multiple matches with all flag', async () => {
+    it('allows multiple matches with all flag', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'foo foo foo', 'utf-8');
 
@@ -125,7 +125,7 @@ describe('ModifyOperation', () => {
   });
 
   describe('execute()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - replaces oldString with newString', async () => {
+    it('replaces oldString with newString', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'const old = 1;', 'utf-8');
@@ -142,7 +142,7 @@ describe('ModifyOperation', () => {
       expect(content).toBe('const new = 1;');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - returns position of modification', async () => {
+    it('returns position of modification', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'line1\nline2\nconst old = 1;', 'utf-8');
 
@@ -158,7 +158,7 @@ describe('ModifyOperation', () => {
       expect(result.position.line).toBe(3);
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - replaces all when all flag is set', async () => {
+    it('replaces all when all flag is set', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'foo bar foo baz foo', 'utf-8');
@@ -190,7 +190,7 @@ describe('ModifyOperation', () => {
   });
 
   describe('undo()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - restores original content', async () => {
+    it('restores original content after modify', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'old code', 'utf-8');
@@ -272,7 +272,7 @@ describe('InsertOperation', () => {
       expect(result.error).toContain('Only one position option');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - validates after pattern exists', async () => {
+    it('validates after pattern exists', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'some content', 'utf-8');
 
@@ -287,7 +287,7 @@ describe('InsertOperation', () => {
       expect(result.error).toContain('Pattern not found');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - passes when after pattern exists', async () => {
+    it('passes when after pattern exists', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'some pattern here', 'utf-8');
 
@@ -303,7 +303,7 @@ describe('InsertOperation', () => {
   });
 
   describe('execute()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - inserts at specific line', async () => {
+    it('inserts at specific line', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'line1\nline2\nline3', 'utf-8');
@@ -320,7 +320,7 @@ describe('InsertOperation', () => {
       expect(content).toBe('line1\ninserted\nline2\nline3');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - inserts after pattern', async () => {
+    it('inserts after pattern', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'start marker end', 'utf-8');
@@ -337,7 +337,7 @@ describe('InsertOperation', () => {
       expect(content).toBe('start markerinserted end');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - inserts before pattern', async () => {
+    it('inserts before pattern', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'start marker end', 'utf-8');
@@ -354,7 +354,7 @@ describe('InsertOperation', () => {
       expect(content).toBe('start insertedmarker end');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - inserts at end by default', async () => {
+    it('inserts at end by default', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'existing content', 'utf-8');
@@ -372,7 +372,7 @@ describe('InsertOperation', () => {
   });
 
   describe('undo()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - restores original content', async () => {
+    it('restores original content after insert', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'original', 'utf-8');
@@ -447,7 +447,7 @@ describe('DeleteOperation', () => {
       expect(result.valid).toBe(false);
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - validates content exists', async () => {
+    it('validates content exists', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'some content', 'utf-8');
 
@@ -461,7 +461,7 @@ describe('DeleteOperation', () => {
       expect(result.error).toContain('Content not found');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - validates line range', async () => {
+    it('validates line range', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'line1\nline2\nline3', 'utf-8');
 
@@ -475,7 +475,7 @@ describe('DeleteOperation', () => {
       expect(result.error).toContain('Invalid fromLine');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - validates pattern regex', async () => {
+    it('validates pattern regex', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'src', 'test.js'), 'some content', 'utf-8');
 
@@ -491,7 +491,7 @@ describe('DeleteOperation', () => {
   });
 
   describe('execute()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - deletes exact content', async () => {
+    it('deletes exact content', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'keep delete this keep', 'utf-8');
@@ -507,7 +507,7 @@ describe('DeleteOperation', () => {
       expect(content).toBe('keep keep');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - deletes line range', async () => {
+    it('deletes line range', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'line1\nline2\nline3\nline4\nline5', 'utf-8');
@@ -524,7 +524,7 @@ describe('DeleteOperation', () => {
       expect(content).toBe('line1\nline4\nline5');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - deletes single line', async () => {
+    it('deletes single line', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'line1\ntarget\nline3', 'utf-8');
@@ -540,7 +540,7 @@ describe('DeleteOperation', () => {
       expect(content).toBe('line1\nline3');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - deletes by pattern', async () => {
+    it('deletes by pattern', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'foo bar baz', 'utf-8');
@@ -556,7 +556,7 @@ describe('DeleteOperation', () => {
       expect(content).toBe('foo baz');
     });
 
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - returns deleted content length', async () => {
+    it('returns deleted content length', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'some content to delete', 'utf-8');
@@ -573,7 +573,7 @@ describe('DeleteOperation', () => {
   });
 
   describe('undo()', () => {
-    it.skip('BUG: _getAbsolutePath uses destructuring on default export - restores original content', async () => {
+    it('restores original content after delete', async () => {
       await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
       const testFile = path.join(tempDir, 'src', 'test.js');
       await fs.writeFile(testFile, 'original content here', 'utf-8');

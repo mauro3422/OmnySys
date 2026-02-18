@@ -7,7 +7,8 @@
  */
 
 // Scorers
-export { RiskScorer } from './scorers/RiskScorer.js';
+import { RiskScorer } from './scorers/RiskScorer.js';
+export { RiskScorer };
 
 // Calculators
 export {

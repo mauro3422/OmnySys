@@ -120,13 +120,13 @@ export class FilesConnectionsValidator {
     const issues = this.issues.getIssues();
     return {
       missingSourceFiles: issues.filter(i => 
-        i.message.includes('non-existent source file')
+        i.message?.includes('non-existent source file')
       ).length,
       missingTargetFiles: issues.filter(i => 
-        i.message.includes('non-existent target file')
+        i.message?.includes('non-existent target file')
       ).length,
       bidirectionalityIssues: issues.filter(i =>
-        i.message.includes('not reflected in usedBy')
+        i.message?.includes('not reflected in usedBy')
       ).length
     };
   }
