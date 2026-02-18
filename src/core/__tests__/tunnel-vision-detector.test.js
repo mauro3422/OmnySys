@@ -10,6 +10,7 @@ import {
   formatAlert,
   getStats,
   cleanupHistory,
+  clearHistory,
   getModificationHistory
 } from '../tunnel-vision-detector/index.js';
 
@@ -23,7 +24,7 @@ import { getAtomDetails, getFileAnalysisWithAtoms } from '../../layer-c-memory/q
 
 describe('tunnel-vision-detector', () => {
   beforeEach(() => {
-    cleanupHistory();
+    clearHistory();
     vi.clearAllMocks();
   });
   

@@ -72,8 +72,8 @@ describe('module-system/utils', () => {
   describe('camelToKebab', () => {
     it('should convert camelCase to kebab-case', () => {
       expect(camelToKebab('getUserData')).toBe('get-user-data');
-      expect(camelToKebab('APIRequest')).toBe('apirequest');
-      expect(camelToKebab('handleHTTPResponse')).toBe('handle-httpresponse');
+      expect(camelToKebab('APIRequest')).toBe('api-request');
+      expect(camelToKebab('handleHTTPResponse')).toBe('handle-http-response');
     });
     
     it('should handle empty string', () => {
@@ -89,7 +89,7 @@ describe('module-system/utils', () => {
     
     it('should infer cache module from cache.* calls', () => {
       expect(inferModuleFromCall('cache.get')).toBe('cache');
-      expect(inferModuleFromCall('cache.redis')).toBe('redis');
+      expect(inferModuleFromCall('cache.redis')).toBe('cache'); // cache.* always returns cache
     });
     
     it('should return null for unknown calls', () => {

@@ -7,7 +7,7 @@
  * @module tunnel-vision-detector/detectors/file-detector
  */
 
-import { getFileAnalysisWithAtoms } from '../../layer-c-memory/query/apis/file-api.js';
+import { getFileAnalysisWithAtoms } from '../../../layer-c-memory/query/apis/file-api.js';
 
 /**
  * Detects tunnel vision at file level

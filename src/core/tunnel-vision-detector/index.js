@@ -183,6 +183,13 @@ export function cleanupHistory() {
   return detector.cleanup();
 }
 
+/**
+ * Clears all modifications (for testing)
+ */
+export function clearHistory() {
+  return detector.tracker.clear();
+}
+
 // Export all components for advanced usage
 export {
   AtomicDetector,
