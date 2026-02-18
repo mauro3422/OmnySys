@@ -44,7 +44,7 @@ export async function buildPrompt(code, filePath, staticAnalysis, projectContext
       analysisType: promptConfig.analysisType
     };
   } catch (error) {
-    logger.error(`Error building prompt for ${filePath}:`, error.message);
+    logger.error(`Error building prompt for ${filePath}:`, error.stack ?? error.message ?? String(error));
     // Fallback a prompts básicos
     return {
       systemPrompt: `You are a code analyzer. Return ONLY valid JSON.`,

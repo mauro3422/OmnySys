@@ -48,7 +48,7 @@ export const DEFAULT_BABEL_PLUGINS = [
   'classProperties',
   'exportExtensions',
   'asyncGenerators',
-  ['pipelineOperator', { proposal: 'minimal' }],
+  ['pipelineOperator', { proposal: 'hack', topicToken: '#' }],
   'nullishCoalescingOperator',
   'optionalChaining',
   'partialApplication'

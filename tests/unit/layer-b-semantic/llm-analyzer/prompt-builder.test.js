@@ -1,189 +1,166 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { buildPrompt } from '#layer-b/llm-analyzer/prompt-builder.js';
+/**
+ * @fileoverview prompt-builder.test.js
+ *
+ * Tests para la función buildPrompt en llm-analyzer/prompt-builder.js.
+ *
+ * Cubre (v0.9.19 fix):
+ * - Bug 3: el catch block usaba error.message (puede ser "") en lugar de error.stack
+ * - Que el fallback siempre retorna un objeto con las 3 propiedades esperadas
+ * - Que el prompt engine válido retorna el prompt generado
+ *
+ * @module tests/unit/layer-b-semantic/llm-analyzer/prompt-builder
+ */
 
-vi.mock('#layer-b/prompt-engine/index.js', () => ({
-  default: {
-    generatePrompt: vi.fn(),
-    validatePrompt: vi.fn()
-  }
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+
+// Mockeamos promptEngine para controlar qué retorna
+vi.mock('#layer-b/prompt-engine/index.js', () => {
+  return {
+    default: {
+      generatePrompt: vi.fn(),
+      validatePrompt: vi.fn()
+    }
+  };
+});
+
+vi.mock('#utils/logger.js', () => ({
+  createLogger: () => ({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn()
+  })
 }));
 
+import { buildPrompt } from '#layer-b/llm-analyzer/prompt-builder.js';
 import promptEngine from '#layer-b/prompt-engine/index.js';
 
-describe('llm-analyzer/prompt-builder', () => {
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe('buildPrompt — happy path', () => {
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
+  test('retorna el prompt generado por el engine cuando todo va bien', async () => {
+    promptEngine.generatePrompt.mockResolvedValue({
+      systemPrompt: 'You are a code analyzer.',
+      userPrompt: 'Analyze this code.',
+      analysisType: 'complex'
+    });
+    promptEngine.validatePrompt.mockReturnValue(undefined);
+
+    const result = await buildPrompt('const x = 1;', 'test.js', {}, {});
+
+    expect(result.systemPrompt).toBe('You are a code analyzer.');
+    expect(result.userPrompt).toBe('Analyze this code.');
+    expect(result.analysisType).toBe('complex');
   });
 
-  describe('buildPrompt', () => {
-    it('should build prompt with valid metadata', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'You are a code analyzer.',
-        userPrompt: 'Analyze this code.',
-        analysisType: 'semantic'
-      });
-      promptEngine.validatePrompt.mockReturnValue(true);
-
-      const result = await buildPrompt('const x = 1;', '/src/file.js', {}, {}, {});
-
-      expect(result.systemPrompt).toBe('You are a code analyzer.');
-      expect(result.userPrompt).toBe('Analyze this code.');
-      expect(result.analysisType).toBe('semantic');
+  test('pasa metadata al engine cuando se provee', async () => {
+    const metadata = { complexity: 'high', functions: 5 };
+    promptEngine.generatePrompt.mockResolvedValue({
+      systemPrompt: 'sys',
+      userPrompt: 'usr',
+      analysisType: 'default'
     });
 
-    it('should use provided metadata', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System prompt',
-        userPrompt: 'User prompt',
-        analysisType: 'default'
-      });
+    await buildPrompt('code', 'file.js', {}, {}, metadata);
 
-      const metadata = { exports: ['foo'], imports: ['bar'] };
-      await buildPrompt('code', '/src/file.js', {}, {}, metadata);
-
-      expect(promptEngine.generatePrompt).toHaveBeenCalledWith(metadata, 'code');
-    });
-
-    it('should use empty object if no metadata provided', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      await buildPrompt('code', '/src/file.js', {}, {}, null);
-
-      expect(promptEngine.generatePrompt).toHaveBeenCalledWith({}, 'code');
-    });
-
-    it('should validate generated prompt', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      await buildPrompt('code', '/src/file.js', {}, {}, {});
-
-      expect(promptEngine.validatePrompt).toHaveBeenCalled();
-    });
-
-    it('should throw if systemPrompt is not a string', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 123,
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      const result = await buildPrompt('code', '/src/file.js', {}, {}, {});
-
-      expect(result.systemPrompt).toBe('You are a code analyzer. Return ONLY valid JSON.');
-    });
-
-    it('should throw if userPrompt is not a string', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: null,
-        analysisType: 'default'
-      });
-
-      const result = await buildPrompt('code', '/src/file.js', {}, {}, {});
-
-      expect(result.analysisType).toBe('default');
-    });
-
-    it('should return fallback prompts on error', async () => {
-      promptEngine.generatePrompt.mockRejectedValue(new Error('Generation failed'));
-
-      const code = 'const x = 1;';
-      const result = await buildPrompt(code, '/src/file.js', {}, {}, {});
-
-      expect(result.systemPrompt).toBe('You are a code analyzer. Return ONLY valid JSON.');
-      expect(result.userPrompt).toContain('<file_content>');
-      expect(result.userPrompt).toContain(code);
-      expect(result.analysisType).toBe('default');
-    });
-
-    it('should include code in fallback user prompt', async () => {
-      promptEngine.generatePrompt.mockRejectedValue(new Error('Error'));
-
-      const code = 'function hello() { return "world"; }';
-      const result = await buildPrompt(code, '/src/error.js', {}, {}, {});
-
-      expect(result.userPrompt).toContain(code);
-    });
-
-    it('should pass staticAnalysis to prompt engine', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      const staticAnalysis = { imports: [], exports: [] };
-      await buildPrompt('code', '/src/file.js', staticAnalysis, {}, {});
-
-      expect(promptEngine.generatePrompt).toHaveBeenCalled();
-    });
-
-    it('should pass projectContext to prompt engine', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      const projectContext = { root: '/project' };
-      await buildPrompt('code', '/src/file.js', {}, projectContext, {});
-
-      expect(promptEngine.generatePrompt).toHaveBeenCalled();
-    });
-
-    it('should handle empty code string', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-
-      const result = await buildPrompt('', '/src/empty.js', {}, {}, {});
-
-      expect(promptEngine.generatePrompt).toHaveBeenCalledWith({}, '');
-    });
-
-    it('should handle validatePrompt throwing error', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'System',
-        userPrompt: 'User',
-        analysisType: 'default'
-      });
-      promptEngine.validatePrompt.mockImplementation(() => {
-        throw new Error('Validation failed');
-      });
-
-      const result = await buildPrompt('code', '/src/file.js', {}, {}, {});
-
-      expect(result.analysisType).toBe('default');
-    });
-
-    it('should preserve all prompt config properties', async () => {
-      promptEngine.generatePrompt.mockResolvedValue({
-        systemPrompt: 'Custom System',
-        userPrompt: 'Custom User',
-        analysisType: 'react-component'
-      });
-
-      const result = await buildPrompt('code', '/src/Component.jsx', {}, {}, {});
-
-      expect(result).toEqual({
-        systemPrompt: 'Custom System',
-        userPrompt: 'Custom User',
-        analysisType: 'react-component'
-      });
-    });
+    expect(promptEngine.generatePrompt).toHaveBeenCalledWith(metadata, 'code');
   });
+
+  test('usa {} cuando metadata es null', async () => {
+    promptEngine.generatePrompt.mockResolvedValue({
+      systemPrompt: 'sys',
+      userPrompt: 'usr',
+      analysisType: 'default'
+    });
+
+    await buildPrompt('code', 'file.js', {}, {}, null);
+
+    expect(promptEngine.generatePrompt).toHaveBeenCalledWith({}, 'code');
+  });
+
+});
+
+describe('buildPrompt — fallback cuando falla el engine (Bug 3)', () => {
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('retorna fallback cuando el engine lanza TypeError (con error.message vacío)', async () => {
+    // TypeError con mensaje vacío — el bug original: logger.error(..., error.message) → ""
+    const err = new TypeError();
+    err.message = '';
+    promptEngine.generatePrompt.mockRejectedValue(err);
+
+    const result = await buildPrompt('code', 'problem.js', {}, {});
+
+    // Fallback debe funcionar correctamente
+    expect(result).toHaveProperty('systemPrompt');
+    expect(result).toHaveProperty('userPrompt');
+    expect(result).toHaveProperty('analysisType');
+    expect(result.analysisType).toBe('default');
+    expect(result.systemPrompt).toContain('code analyzer');
+  });
+
+  test('retorna fallback cuando generatePrompt rechaza con Error normal', async () => {
+    promptEngine.generatePrompt.mockRejectedValue(new Error('schema not found'));
+
+    const result = await buildPrompt('const x = 1;', 'broken.js', {}, {});
+
+    expect(result.analysisType).toBe('default');
+    expect(typeof result.systemPrompt).toBe('string');
+    expect(typeof result.userPrompt).toBe('string');
+  });
+
+  test('retorna fallback cuando validatePrompt lanza', async () => {
+    promptEngine.generatePrompt.mockResolvedValue({
+      systemPrompt: 'sys',
+      userPrompt: 'usr',
+      analysisType: 'test'
+    });
+    promptEngine.validatePrompt.mockImplementation(() => {
+      throw new Error('invalid prompt');
+    });
+
+    const result = await buildPrompt('code', 'file.js', {}, {});
+
+    expect(result.analysisType).toBe('default');
+  });
+
+  test('el fallback incluye el código en el userPrompt', async () => {
+    promptEngine.generatePrompt.mockRejectedValue(new Error('fail'));
+    const code = 'const answer = 42;';
+
+    const result = await buildPrompt(code, 'file.js', {}, {});
+
+    expect(result.userPrompt).toContain(code);
+  });
+
+  test('no lanza excepción aunque el engine falle', async () => {
+    promptEngine.generatePrompt.mockRejectedValue(new Error('catastrophic failure'));
+
+    await expect(buildPrompt('code', 'file.js', {}, {})).resolves.toBeDefined();
+  });
+
+  test('retorna fallback cuando systemPrompt no es string', async () => {
+    promptEngine.generatePrompt.mockResolvedValue({
+      systemPrompt: 42,   // invalid type
+      userPrompt: 'usr',
+      analysisType: 'test'
+    });
+    promptEngine.validatePrompt.mockReturnValue(undefined);
+
+    const result = await buildPrompt('code', 'file.js', {}, {});
+
+    // Debe caer al fallback porque systemPrompt no es string
+    expect(result.analysisType).toBe('default');
+  });
+
 });

@@ -18,7 +18,7 @@ export function inferShape(node) {
   if (!node) return 'undefined';
 
   if (node.type === 'ObjectExpression') {
-    const props = node.properties
+    const props = (node.properties || [])
       .filter(p => p.type === 'ObjectProperty' || p.type === 'Property')
       .map(p => p.key.name || p.key.value);
     return props.length > 0 ? `{ ${props.join(', ')} }` : '{}';

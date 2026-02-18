@@ -32,7 +32,9 @@ const logger = console; // Simplificado para demo
 const PARSER_CONFIG = {
   sourceType: 'module',
   plugins: [
-    'jsx', 'typescript', 'classProperties', 'classPrivateMethods'
+    'jsx', 'typescript', 'classProperties', 'classPrivateMethods',
+    // Pipeline operator support (|> syntax) — required for omnysystem.js and similar files
+    ['pipelineOperator', { proposal: 'hack', topicToken: '#' }]
   ]
 };
 

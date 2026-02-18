@@ -60,7 +60,7 @@ export class GraphBuilder {
   connectNodes() {
     for (const [nodeId, node] of this.nodes) {
       // Para cada input del nodo, buscar qué nodo lo produce
-      for (const input of node.inputs) {
+      for (const input of (node.inputs || [])) {
         if (input.sourceType === 'variable' && input.name) {
           const producerId = this.scope.get(input.name);
           
@@ -243,7 +243,7 @@ export class GraphBuilder {
     // Nodos
     lines.push('\nNodes:');
     for (const [id, node] of this.nodes) {
-      const inputs = node.inputs.map(i => i.name || i.value || '?').join(', ');
+      const inputs = (node.inputs || []).map(i => i.name || i.value || '?').join(', ');
       const output = node.output?.name || 'void';
       lines.push(`  ${id}: ${inputs} → [${node.type}] → ${output}`);
     }
