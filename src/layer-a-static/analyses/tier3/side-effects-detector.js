@@ -14,7 +14,7 @@
  * @module side-effects-detector
  */
 
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
 import { parse } from '@babel/parser';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -80,7 +80,7 @@ export function detectSideEffects(code, filePath = '') {
 
     let currentFunction = 'module-level';
 
-    const traverseFn = traverse.default || traverse;
+    const traverseFn = _traverse.default ?? _traverse;
     traverseFn(ast, {
       FunctionDeclaration(nodePath) {
         currentFunction = nodePath.node.id?.name || 'anonymous-function';

@@ -6,7 +6,7 @@
  * @module analyses/tier3/event-detector/detector
  */
 
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
 import { parseCodeToAST } from './parser.js';
 import { EVENT_PATTERNS } from './constants.js';
 import { extractEventName, getConfidence, getObjectName, getMethodName, isMethodCall } from './ast-utils.js';
@@ -28,7 +28,7 @@ export function detectEventPatterns(code, filePath = '') {
 
   let currentFunction = 'module-level';
 
-  const traverseFn = traverse.default || traverse;
+  const traverseFn = _traverse.default ?? _traverse;
   traverseFn(ast, {
     FunctionDeclaration(nodePath) {
       currentFunction = nodePath.node.id?.name || 'anonymous-function';

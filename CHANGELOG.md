@@ -16,7 +16,10 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.5]** | 2026-02-18 | **Layer Graph Architecture + Deuda Técnica** (Latest) - See `changelog/v0.9.5-layer-graph-architecture.md` |
+| **[0.9.17]** | 2026-02-18 | **Estabilización completa + Deuda Técnica eliminada** (Latest) - See `changelog/v0.9.17-cache-singleton-oom-fix.md` |
+| **[0.9.16]** | 2026-02-18 | **Layer Cleanup + Duplicaciones** |
+| **[0.9.15]** | 2026-02-18 | **Architecture Refactor: Graph → Core** |
+| **[0.9.5]** | 2026-02-18 | **Layer Graph Architecture + Deuda Técnica** - See `changelog/v0.9.5-layer-graph-architecture.md` |
 | **[0.9.13]** | 2026-02-14 | **Layer B Test Coverage + Cross-Layer Integration - 1,222 Tests** |
 | **[0.9.12]** | 2026-02-13 | **Layer A Test Coverage - 687 Tests** |
 | **[0.9.10]** | 2026-02-11 | **Layer A Test Coverage - 527+ Tests** |
