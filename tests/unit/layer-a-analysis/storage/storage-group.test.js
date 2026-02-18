@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import * as storage from '#core/storage/index.js';
+import * as storage from '#layer-c/storage/index.js';
 
 describe('Storage System - Completo', () => {
   it('exports all storage functions', () => {

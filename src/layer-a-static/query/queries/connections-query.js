@@ -7,7 +7,7 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '#core/storage/index.js';
+import { getDataDirectory } from '#layer-c/storage/index.js';
 import { readJSON, fileExists } from '../readers/json-reader.js';
 
 /**

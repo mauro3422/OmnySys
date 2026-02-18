@@ -7,7 +7,7 @@ import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { extractAtoms } from '../extractors/atomic/index.js';
-import { saveAtom } from '#core/storage/atoms/atom.js';
+import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:single:file');

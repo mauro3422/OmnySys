@@ -32,7 +32,7 @@ import {
   saveFileAnalysis,
   saveConnections,
   saveRiskAssessment 
-} from '#core/storage/index.js';
+} from '#layer-c/storage/index.js';
 import { getProjectStats } from '#layer-a/query/queries/project-query.js';
 
 describe('Layer A: Extended Integration Workflows', () => {

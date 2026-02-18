@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { readJSON, fileExists } from './readers/json-reader.js';
-import { getDataDirectory } from '#core/storage/index.js';
+import { getDataDirectory } from '#layer-c/storage/index.js';
 
 /**
  * Exporta el sistema completo a un archivo JSON unificado

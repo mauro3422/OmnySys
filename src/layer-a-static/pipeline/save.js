@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { savePartitionedSystemMap } from '#core/storage/index.js';
+import { savePartitionedSystemMap } from '#layer-c/storage/index.js';
 import { DATA_DIR } from '#config/paths.js';
 import { createLogger } from '../../utils/logger.js';
 

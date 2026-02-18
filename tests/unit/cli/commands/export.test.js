@@ -7,11 +7,11 @@ vi.mock('#layer-a/query/apis/export-api.js', () => ({
   exportFullSystemMapToFile: vi.fn()
 }));
 
-vi.mock('#core/storage/setup/index.js', () => ({
+vi.mock('#layer-c/storage/setup/index.js', () => ({
   hasExistingAnalysis: vi.fn()
 }));
 
-const { hasExistingAnalysis } = await import('#core/storage/setup/index.js');
+const { hasExistingAnalysis } = await import('#layer-c/storage/setup/index.js');
 const { exportFullSystemMapToFile } = await import('#layer-a/query/apis/export-api.js');
 const { exportMapLogic, exportMap } = await import('#cli/commands/export.js');
 

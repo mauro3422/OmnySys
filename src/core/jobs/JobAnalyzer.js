@@ -116,7 +116,7 @@ export class JobAnalyzer {
     }
 
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract.js');
-    const { saveFileAnalysis } = await import('#core/storage/index.js');
+    const { saveFileAnalysis } = await import('#layer-c/storage/index.js');
 
     const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
     const code = await this.getFileCode(job);

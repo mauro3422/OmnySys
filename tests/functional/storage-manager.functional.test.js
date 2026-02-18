@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import * as storageManager from '#core/storage/index.js';
+import * as storageManager from '#layer-c/storage/index.js';
 
 describe('Storage Manager - Functional Tests', () => {
   

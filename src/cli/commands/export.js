@@ -1,6 +1,6 @@
 import path from 'path';
 import { exportFullSystemMapToFile } from '../../layer-a-static/query/apis/export-api.js';
-import { hasExistingAnalysis } from '#core/storage/setup/index.js';
+import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
 import { resolveProjectPath } from '../utils/paths.js';
 
 export async function exportMapLogic(projectPath, options = {}) {

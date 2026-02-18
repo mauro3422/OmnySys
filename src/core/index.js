@@ -35,8 +35,8 @@ export {
   RISK_LEVELS
 } from '#layer-graph/index.js';
 
-// Storage
-export * as storage from './storage/index.js';
+// Storage (re-exportado desde layer-c-memory)
+export * as storage from '#layer-c/storage/index.js';
 export {
   calculateFileHash,
   createDataDirectory,
@@ -51,7 +51,7 @@ export {
   loadMolecule,
   saveAtom,
   loadAtoms
-} from './storage/index.js';
+} from '#layer-c/storage/index.js';
 
 // Default export
 export { AnalysisWorker as default } from './worker/AnalysisWorker.js';

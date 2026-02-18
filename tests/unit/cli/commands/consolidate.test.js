@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-vi.mock('#core/orchestrator.js', () => ({
+vi.mock('#core/orchestrator/index.js', () => ({
   Orchestrator: vi.fn().mockImplementation(function() {
     this._listeners = {};
     this.on = (event, callback) => {
@@ -20,11 +20,11 @@ vi.mock('#core/orchestrator.js', () => ({
   })
 }));
 
-vi.mock('#core/storage/setup/index.js', () => ({
+vi.mock('#layer-c/storage/setup/index.js', () => ({
   hasExistingAnalysis: vi.fn()
 }));
 
-const { hasExistingAnalysis } = await import('#core/storage/setup/index.js');
+const { hasExistingAnalysis } = await import('#layer-c/storage/setup/index.js');
 const { consolidateLogic, consolidate } = await import('#cli/commands/consolidate.js');
 
 describe('consolidateLogic', () => {
