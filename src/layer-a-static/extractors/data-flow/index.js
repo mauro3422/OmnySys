@@ -34,6 +34,8 @@ const PARSER_OPTIONS = {
   sourceType: 'module',
   allowImportExportEverywhere: true,
   allowReturnOutsideFunction: true,
+  // Allow shebang (#!/usr/bin/env node) at the start of files
+  allowHashBang: true,
   plugins: [
     'jsx',
     'typescript',
@@ -43,10 +45,12 @@ const PARSER_OPTIONS = {
     'dynamicImport',
     'optionalChaining',
     'nullishCoalescing',
-    'topLevelAwait',
-    // Pipeline operator support (|> syntax) — required for omnysystem.js and similar files
-    // Using 'hack' proposal (the TC39 champion's recommended option)
-    ['pipelineOperator', { proposal: 'hack', topicToken: '#' }]
+    'topLevelAwait'
+    // NOTE: pipelineOperator removed - conflicts with shebangs and private fields (#)
+    // The hack proposal's topicToken '#' collides with:
+    // - Shebangs: #!/usr/bin/env node
+    // - Private fields: #field
+    // Since data-flow extracts from ALL files, it must be generic
   ]
 };
 

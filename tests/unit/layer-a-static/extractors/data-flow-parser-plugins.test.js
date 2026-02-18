@@ -2,23 +2,12 @@
  * @fileoverview data-flow-parser-plugins.test.js
  *
  * Tests para verificar que el parser del data-flow extractor
- * soporta correctamente sintaxis JavaScript no-estándar o stage-3.
+ * soporta correctamente sintaxis JavaScript moderna.
  *
- * Contexto del bug (corregido en v0.9.18):
- * El parser de `data-flow/index.js` no incluía el plugin `pipelineOperator`.
- * Archivos como `omnysystem.js` usan la sintaxis `|>` (pipeline operator),
- * lo que causaba cientos de "Data flow extraction failed" silenciosos.
- *
- * Cubre:
- * - Pipeline operator (|>) con proposal 'hack' — antes causaba parse error
- * - TypeScript — ya funcionaba
- * - JSX — ya funcionaba
- * - Optional chaining (?.) — ya funcionaba
- * - Nullish coalescing (??) — ya funcionaba
- * - Top-level await — ya funcionaba
- * - Dynamic imports — ya funcionaba
- * - Decoradores — ya funcionaba
- * - Graceful degradation: archivos con error retornan { error } sin lanzar
+ * NOTA v0.9.21: pipelineOperator fue REMOVIDO del data-flow parser
+ * porque el token '#' del hack proposal conflictea con:
+ * - Shebangs: #!/usr/bin/env node
+ * - Private fields: #field
  *
  * @module tests/unit/layer-a-static/extractors/data-flow-parser-plugins
  */
@@ -33,45 +22,36 @@ function assertNoError(result) {
   expect(result.error).toBeUndefined();
 }
 
-// ─── Tests: Pipeline Operator (el bug principal) ──────────────────────────────
+// ─── Tests: Shebang support (v0.9.21 fix) ─────────────────────────────────────
 
-describe('extractDataFlow — pipeline operator (|>) support', () => {
+describe('extractDataFlow — shebang support', () => {
 
-  test('parsea código con pipeline operator hack proposal sin error', () => {
-    // Este es exactamente el tipo de código que estaba en omnysystem.js
+  test('parsea archivos con shebang sin error', () => {
+    const code = `#!/usr/bin/env node
+
+import { main } from './lib.js';
+main();
+`;
+    const result = extractDataFlow(code);
+    assertNoError(result);
+  });
+
+});
+
+// ─── Tests: Pipeline Operator NO soportado ───────────────────────────────────
+
+describe('extractDataFlow — pipeline operator NO soportado', () => {
+
+  test('retorna error para código con pipeline operator', () => {
+    // pipelineOperator fue removido porque el token '#' conflictea con shebangs
     const code = `
       const double = x => x * 2;
-      const addOne = x => x + 1;
-      const result = 5 |> double(#) |> addOne(#);
+      const result = 5 |> double(#);
     `;
     const result = extractDataFlow(code);
-    assertNoError(result);
-    expect(result.graph).toBeDefined();
-  });
-
-  test('parsea pipeline operator con múltiples transformaciones', () => {
-    const code = `
-      function process(value) {
-        return value 
-          |> trim(#)
-          |> toUpperCase(#)
-          |> split(#, ',');
-      }
-    `;
-    const result = extractDataFlow(code);
-    assertNoError(result);
-  });
-
-  test('parsea pipeline operator mixto con otras expresiones', () => {
-    const code = `
-      export const transform = (data) => {
-        const cleaned = data |> normalize(#);
-        return { result: cleaned |> validate(#) };
-      };
-    `;
-    const result = extractDataFlow(code);
-    assertNoError(result);
-    expect(result.outputs).toBeDefined();
+    // Debe retornar un error, no crashear
+    expect(result).toBeDefined();
+    expect(result.error).toBeDefined();
   });
 
 });

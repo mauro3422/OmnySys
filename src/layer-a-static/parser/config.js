@@ -53,6 +53,8 @@ export function getParserOptions(filePath) {
     sourceType: 'module',
     allowImportExportEverywhere: true,
     allowReturnOutsideFunction: true,
+    // Allow shebang (#!/usr/bin/env node) at the start of files
+    allowHashBang: true,
     plugins: getBabelPlugins(filePath)
   };
 }
