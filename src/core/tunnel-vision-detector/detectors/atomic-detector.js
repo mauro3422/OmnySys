@@ -7,7 +7,7 @@
  * @module tunnel-vision-detector/detectors/atomic-detector
  */
 
-import { getAtomDetails } from '../../layer-a-static/query/apis/file-api.js';
+import { getAtomDetails } from '../../layer-c-memory/query/apis/file-api.js';
 
 /**
  * Detects tunnel vision for individual atoms

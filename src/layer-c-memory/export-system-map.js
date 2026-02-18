@@ -14,7 +14,7 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exportFullSystemMapToFile } from '../layer-a-static/query/apis/export-api.js';
+import { exportFullSystemMapToFile } from '../layer-c-memory/query/apis/export-api.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { createLogger } from '../utils/logger.js';

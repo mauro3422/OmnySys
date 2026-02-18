@@ -124,7 +124,7 @@ describe('Layer B Integration: Detector Pipeline', () => {
         })
         .build();
       
-      const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+      const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
       const issues = detectOrphanedFiles(enrichedResults);
       
       expect(issues.length).toBeGreaterThan(0);
@@ -247,7 +247,7 @@ describe('Layer B Integration: Cross-Module Flow', () => {
     const issues = [];
     
     // Detectar con múltiples detectores
-    const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+    const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
     issues.push(...detectOrphanedFiles(enrichedResults));
     
     expect(issues.length).toBe(2);

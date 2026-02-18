@@ -97,7 +97,7 @@ export class JobAnalyzer {
    */
   async runStaticAnalysis(job) {
     logger.info(`📊 Using static analysis for ${path.basename(job.filePath)}`);
-    const { getFileAnalysis } = await import('../../layer-a-static/query/apis/file-api.js');
+    const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     return await getFileAnalysis(this.rootPath, job.filePath);
   }
 

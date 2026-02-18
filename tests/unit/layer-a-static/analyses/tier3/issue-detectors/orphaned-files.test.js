@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectOrphanedFiles } from '#layer-b/issue-detectors/orphaned-files.js';
-import { EnrichedResultsBuilder } from '../../../factories/layer-b-metadata/builders.js';
+import { detectOrphanedFiles } from '#layer-a/analyses/tier3/issue-detectors/orphaned-files.js';
+import { EnrichedResultsBuilder } from '../../../../../factories/layer-b-metadata/builders.js';
 
 describe('issue-detectors/orphaned-files', () => {
   describe('detectOrphanedFiles', () => {

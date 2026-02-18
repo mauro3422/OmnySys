@@ -6,7 +6,7 @@
  * @module unified-server/tools/search-tools
  */
 
-import { findFiles } from '../../../layer-a-static/query/apis/project-api.js';
+import { findFiles } from '../../../layer-c-memory/query/apis/project-api.js';
 
 /**
  * Busca archivos por patrón

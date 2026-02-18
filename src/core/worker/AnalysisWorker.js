@@ -91,7 +91,7 @@ export class AnalysisWorker {
    * Check if file was already analyzed
    */
   async isAnalyzed(filePath) {
-    const { getFileAnalysis } = await import('../../layer-a-static/query/apis/file-api.js');
+    const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     try {
       const analysis = await getFileAnalysis(this.rootPath, filePath);
       return analysis !== null;

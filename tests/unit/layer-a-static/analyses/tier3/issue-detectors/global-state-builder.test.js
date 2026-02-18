@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildGlobalState } from '#layer-b/issue-detectors/global-state-builder.js';
+import { buildGlobalState } from '#layer-a/analyses/tier3/issue-detectors/global-state-builder.js';
 
 describe('issue-detectors/global-state-builder', () => {
   describe('buildGlobalState', () => {

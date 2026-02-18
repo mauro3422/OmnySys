@@ -1,7 +1,7 @@
 import path from 'path';
 import { watch } from 'fs';
 
-import { getProjectMetadata } from '../../layer-a-static/query/apis/project-api.js';
+import { getProjectMetadata } from '../../layer-c-memory/query/apis/project-api.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('file-watcher');

@@ -6,7 +6,7 @@
  * @module unified-server/tools/status-tools
  */
 
-import { getProjectMetadata } from '../../../layer-a-static/query/apis/project-api.js';
+import { getProjectMetadata } from '../../../layer-c-memory/query/apis/project-api.js';
 
 /**
  * Obtiene estado completo del servidor
@@ -65,7 +65,7 @@ export async function getFilesStatus() {
  */
 export async function getFileTool(filePath) {
   try {
-    const { getFileAnalysis } = await import('../../../layer-a-static/query/apis/file-api.js');
+    const { getFileAnalysis } = await import('../../../layer-c-memory/query/apis/file-api.js');
     const fileData = await getFileAnalysis(this.projectPath, filePath);
     return {
       path: filePath,

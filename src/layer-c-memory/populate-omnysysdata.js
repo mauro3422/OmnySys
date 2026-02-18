@@ -13,10 +13,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getProjectMetadata, getProjectStats } from '../layer-a-static/query/apis/project-api.js';
-import { getFileAnalysis } from '../layer-a-static/query/apis/file-api.js';
-import { getAllConnections } from '../layer-a-static/query/apis/connections-api.js';
-import { getRiskAssessment } from '../layer-a-static/query/apis/risk-api.js';
+import { getProjectMetadata, getProjectStats } from '../layer-c-memory/query/apis/project-api.js';
+import { getFileAnalysis } from '../layer-c-memory/query/apis/file-api.js';
+import { getAllConnections } from '../layer-c-memory/query/apis/connections-api.js';
+import { getRiskAssessment } from '../layer-c-memory/query/apis/risk-api.js';
 import { createOmnySysDataStructure } from './omnysysdata-generator.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

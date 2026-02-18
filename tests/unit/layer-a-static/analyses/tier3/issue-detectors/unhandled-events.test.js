@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectUnhandledEvents } from '#layer-b/issue-detectors/unhandled-events.js';
+import { detectUnhandledEvents } from '#layer-a/analyses/tier3/issue-detectors/unhandled-events.js';
 
 describe('issue-detectors/unhandled-events', () => {
   describe('detectUnhandledEvents', () => {

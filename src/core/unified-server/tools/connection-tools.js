@@ -6,7 +6,7 @@
  * @module unified-server/tools/connection-tools
  */
 
-import { getAllConnections } from '../../../layer-a-static/query/apis/connections-api.js';
+import { getAllConnections } from '../../../layer-c-memory/query/apis/connections-api.js';
 
 /**
  * Explica la conexión entre dos archivos

@@ -1,5 +1,5 @@
 import path from 'path';
-import { exportFullSystemMapToFile } from '../../layer-a-static/query/apis/export-api.js';
+import { exportFullSystemMapToFile } from '../../layer-c-memory/query/apis/export-api.js';
 import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
 import { resolveProjectPath } from '../utils/paths.js';
 

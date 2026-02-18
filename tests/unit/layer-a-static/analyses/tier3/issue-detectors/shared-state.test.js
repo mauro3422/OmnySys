@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   detectUndefinedSharedState,
   detectDeadSharedState
-} from '#layer-b/issue-detectors/shared-state.js';
+} from '#layer-a/analyses/tier3/issue-detectors/shared-state.js';
 
 describe('issue-detectors/shared-state', () => {
   describe('detectUndefinedSharedState', () => {

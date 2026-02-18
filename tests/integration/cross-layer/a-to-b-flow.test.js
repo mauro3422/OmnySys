@@ -134,7 +134,7 @@ describe('Cross-Layer: Full Pipeline Flow', () => {
       const systemMap = CROSS_LAYER_FIXTURES.orphanProject();
       
       // Step 2: Layer B issue detection
-      const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+      const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
       
       const enrichedResults = {
         files: systemMap.files

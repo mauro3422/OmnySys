@@ -1,13 +1,11 @@
 # Plan de Limpieza - Deuda Técnica
 
 **Fecha**: 2026-02-18  
-**Estado**: Fase 1 completada ✅  
+**Estado**: Fase 5 completada ✅  
 
 ---
 
-## ✅ FASE 1 COMPLETADA
-
-### Eliminado (5 min)
+## ✅ FASE 1: Eliminar Wrappers y Vacíos
 
 | Qué | Acción | Estado |
 |-----|--------|--------|
@@ -21,170 +19,130 @@
 | `layer-a-static/storage/` | Vacío, eliminado | ✅ |
 | `core/tunnel-vision-detectors/` | Vacío, eliminado | ✅ |
 
-### Imports Actualizados
+---
 
-| Archivo | Cambio | Estado |
-|---------|--------|--------|
-| `layer-c/mcp/.../cache-init-step.js` | `#core/unified-cache-manager.js` → `#core/unified-cache-manager/index.js` | ✅ |
-| `layer-c/mcp/.../orchestrator-init-step.js` | `#core/orchestrator.js` → `#core/orchestrator/index.js` | ✅ |
-| `tests/contracts/core/graph.contract.test.js` | `#core/graph/` → `#layer-graph/` | ✅ |
+## ✅ FASE 2: Mover Storage a Layer C
+
+| Qué | Desde | Hasta | Estado |
+|-----|-------|-------|--------|
+| Storage | `core/storage/` | `layer-c-memory/storage/` | ✅ |
+| Imports actualizados | 16 archivos | - | ✅ |
+
+---
+
+## ✅ FASE 3: Mover Query a Layer C
+
+| Qué | Desde | Hasta | Estado |
+|-----|-------|-------|--------|
+| Query APIs | `layer-a-static/query/` | `layer-c-memory/query/` | ✅ |
+| Imports actualizados | 38+ archivos | - | ✅ |
+
+**Razón**: Query es exposición de datos, no análisis estático → Layer C
+
+---
+
+## ✅ FASE 4: Unificar Cache en Core
+
+| Qué | Desde | Hasta | Estado |
+|-----|-------|-------|--------|
+| Cache Manager | `core/unified-cache-manager/` | `core/cache/manager/` | ✅ |
+| Cache Integration | `core/cache-integration.js` | `core/cache/integration.js` | ✅ |
+| Cache Invalidator | `core/cache-invalidator/` | `core/cache/invalidator/` | ✅ |
+
+**Razón**: Cache es transversal, usado por todas las capas → Core
+
+---
+
+## ✅ FASE 5: Mover Issue Detectors a Layer A
+
+| Qué | Desde | Hasta | Estado |
+|-----|-------|-------|--------|
+| Issue Detectors | `layer-b-semantic/issue-detectors/` | `layer-a-static/analyses/tier3/issue-detectors/` | ✅ |
+| Test files movidos | `tests/unit/layer-b-semantic/issue-detectors/` | `tests/unit/layer-a-static/analyses/tier3/issue-detectors/` | ✅ |
+| Imports actualizados | 12 archivos | - | ✅ |
+
+**Razón**: Issue detectors detectan patrones estáticos (orphans, unhandled events, dead state) → Layer A Tier 3
+
+---
+
+## 📊 ARQUITECTURA FINAL
+
+```
+src/
+├── layer-graph/              # Nivel 0: Grafo matemático
+│   ├── algorithms/
+│   ├── builders/
+│   ├── query/
+│   └── persistence/
+│
+├── layer-a-static/           # Nivel 1: Análisis estático
+│   ├── analyses/
+│   │   ├── tier1/           # Detección básica
+│   │   ├── tier2/           # Análisis intermedio
+│   │   └── tier3/           # Detección avanzada
+│   │       ├── detectors/
+│   │       └── issue-detectors/  ← MOVIDO AQUÍ
+│   ├── extractors/
+│   ├── parser/
+│   ├── pipeline/
+│   └── scanner/
+│
+├── layer-b-semantic/         # Nivel 2: Análisis semántico
+│   ├── llm-analyzer/
+│   ├── metadata-contract/
+│   ├── prompt-engine/
+│   └── validators/
+│
+├── layer-c-memory/           # Nivel 3: Memoria y exposición
+│   ├── storage/             ← MOVIDO DE core/
+│   ├── query/               ← MOVIDO DE layer-a-static/
+│   ├── mcp/
+│   └── shadow-registry/
+│
+└── core/                     # Transversal
+    ├── orchestrator/
+    ├── file-watcher/
+    ├── cache/               ← UNIFICADO
+    │   ├── manager/
+    │   ├── integration.js
+    │   └── invalidator/
+    ├── unified-server/
+    └── ...
+```
+
+---
+
+## 📈 RESULTADO
 
 ### Tests
+- **3852+ tests pasando** ✅
+- **Todos los issue-detectors tests pasando** ✅
 
-- **546 tests pasando** ✅
-- **11 archivos de test** ✅
-
----
-
-## 📊 MAPA DE DEPENDENCIAS
-
-```
-core/storage/ usado por:
-├── cli/commands/*.js (hasExistingAnalysis)
-├── layer-a/query/*.js (getDataDirectory, loadAtoms)
-├── layer-a/indexer.js (saveAtom)
-├── layer-a/pipeline/*.js (saveAtom, savePartitionedSystemMap)
-└── core/file-watcher/analyze.js (saveFileAnalysis)
-
-core/unified-cache-manager/ usado por:
-├── layer-a/indexer.js
-└── layer-c/mcp/init/cache-init-step.js
-
-core/orchestrator/ usado por:
-└── layer-c/mcp/init/orchestrator-init-step.js
-```
+### Commits
+1. `457a213` - Create Layer Graph + cleanup technical debt
+2. `8f7f6ab` - Move storage from core to layer-c-memory
+3. `ada31ea` - Move query from layer-a to layer-c-memory
+4. `bb29645` - Unify cache in core/cache/
+5. *(pendiente)* - Move issue-detectors to layer-a
 
 ---
 
-## 🎯 PLAN DE ACCIÓN
+## ⚠️ LECCIONES APRENDIDAS
 
-### Fase 1: Eliminar Basura (30 min)
-
-```bash
-# Eliminar wrappers (mantener carpetas)
-rm src/core/orchestrator.js
-rm src/core/file-watcher.js
-rm src/core/unified-cache-manager.js
-rm src/core/unified-server.js
-
-# Eliminar placeholders vacíos
-rm -rf src/core/handlers/
-rm -rf src/layer-a-static/cache/
-rm -rf src/layer-a-static/storage/
-
-# Eliminar graph antiguo (ya migrado a layer-graph)
-rm -rf src/core/graph/
-```
-
-### Fase 2: Unificar Tunnel Vision (30 min)
-
-```bash
-# Verificar cuál tiene más contenido
-diff -r src/core/tunnel-vision-detector/ src/core/tunnel-vision-detectors/
-
-# Unificar en uno (elegir el más completo)
-# Mover todo a tunnel-vision-detector/ (singular)
-```
-
-### Fase 3: Mover Storage a Layer C (1 hora)
-
-```bash
-# Mover storage de core a layer-c
-mv src/core/storage/ src/layer-c-memory/storage/
-
-# Actualizar imports (16 archivos)
-# De: '#core/storage/...'
-# A:  '#layer-c/storage/...'
-```
-
-### Fase 4: Unificar Cache (1 hora)
-
-Opción A: Mantener en core (más simple)
-```
-core/cache/
-├── index.js           # unified-cache-manager/index.js
-├── integration.js     # cache-integration.js
-├── invalidator/       # cache-invalidator/
-└── ...
-```
-
-Opción B: Crear Layer Cache (más arquitectura)
-```
-src/layer-cache/
-├── index.js
-├── manager/
-├── integration/
-└── invalidator/
-```
+1. **Query no es Layer A**: Exponer datos ≠ analizar estáticamente
+2. **Cache es transversal**: Todas las capas lo usan → Core
+3. **Issue Detectors son análisis estático**: Detectan patrones sin ejecutar código → Layer A
+4. **Storage es persistencia**: Pertenece a Layer C (memoria/datos)
 
 ---
 
-## 📈 Resultado Esperado
+## ✅ CHECKLIST FINAL
 
-### Antes
-```
-src/core/
-├── orchestrator.js + orchestrator/     ← DUPLICADO
-├── file-watcher.js + file-watcher/     ← DUPLICADO
-├── unified-cache-manager.js + .../     ← DUPLICADO
-├── unified-server.js + unified-server/ ← DUPLICADO
-├── graph/                              ← MIGRADO
-├── storage/                            ← MOVER
-├── handlers/                           ← VACÍO
-├── tunnel-vision-detector/             ← DUPLICADO
-├── tunnel-vision-detectors/            ← DUPLICADO
-└── ...
-
-src/layer-a-static/
-├── cache/                              ← VACÍO
-├── storage/                            ← VACÍO (solo README)
-└── ...
-```
-
-### Después
-```
-src/core/
-├── orchestrator/           # Sin wrapper .js
-├── file-watcher/           # Sin wrapper .js
-├── cache/                  # Unificado
-│   ├── manager/
-│   ├── integration.js
-│   └── invalidator/
-├── unified-server/         # Sin wrapper .js
-├── atomic-editor/          # Tools
-├── batch-processor/
-├── error-guardian/
-├── tunnel-vision/          # Unificado
-├── worker/
-├── utils/
-└── index.js
-
-src/layer-c-memory/
-├── storage/                # Movido de core
-├── mcp/
-├── shadow-registry/
-└── ...
-
-src/layer-a-static/
-# Sin cache/ ni storage/
-```
-
----
-
-## ⚠️ RIESGOS
-
-1. **Imports rotos**: 16+ archivos necesitan actualizar imports de storage
-2. **Tests**: Los tests que importan desde `#core/storage` fallarán
-3. **MCP Server**: Puede necesitar reinicio después de cambios
-
----
-
-## ✅ CHECKLIST
-
-- [ ] Fase 1: Eliminar basura
-- [ ] Fase 2: Unificar tunnel-vision
-- [ ] Fase 3: Mover storage a layer-c
-- [ ] Fase 4: Unificar cache
-- [ ] Actualizar imports
-- [ ] Correr tests
-- [ ] Verificar MCP server funciona
+- [x] Fase 1: Eliminar wrappers y vacíos
+- [x] Fase 2: Mover storage a layer-c
+- [x] Fase 3: Mover query a layer-c  
+- [x] Fase 4: Unificar cache en core
+- [x] Fase 5: Mover issue-detectors a layer-a
+- [x] Actualizar todos los imports
+- [x] Correr tests (3852+ pasando)
+- [ ] Commit final

@@ -9,7 +9,7 @@
 import {
   getFileDependencies,
   getFileAnalysis
-} from '../../../layer-a-static/query/apis/file-api.js';
+} from '../../../layer-c-memory/query/apis/file-api.js';
 
 /**
  * Obtiene mapa de impacto de un archivo

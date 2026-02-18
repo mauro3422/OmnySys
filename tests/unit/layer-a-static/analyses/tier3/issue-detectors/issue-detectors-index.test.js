@@ -17,8 +17,8 @@ import {
   detectConnectionHotspots,
   detectSuspiciousPatterns,
   generateIssuesReport
-} from '#layer-b/issue-detectors/index.js';
-import { EnrichedResultsBuilder } from '../../../factories/layer-b-metadata/builders.js';
+} from '#layer-a/analyses/tier3/issue-detectors/index.js';
+import { EnrichedResultsBuilder } from '../../../../../factories/layer-b-metadata/builders.js';
 
 describe('issue-detectors/index', () => {
   describe('exports', () => {

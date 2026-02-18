@@ -57,7 +57,7 @@ const LAYER_B_EXPORTS = [
   },
   {
     name: 'Orphan Detector',
-    module: '#layer-b/issue-detectors/orphaned-files.js',
+    module: '#layer-a/analyses/tier3/issue-detectors/orphaned-files.js',
     exports: ['detectOrphanedFiles']
   },
   {

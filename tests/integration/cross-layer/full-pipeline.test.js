@@ -92,7 +92,7 @@ describe('Full Pipeline: Static → Semantic → Output', () => {
       const systemMap = CROSS_LAYER_FIXTURES.orphanProject();
       
       // Step 2: Layer B - Issue Detection
-      const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+      const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
       
       const issues = detectOrphanedFiles({ files: systemMap.files });
       
@@ -282,7 +282,7 @@ describe('Full Pipeline: Output Generation', () => {
   it('should generate issue report', async () => {
     const systemMap = CROSS_LAYER_FIXTURES.orphanProject();
     
-    const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+    const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
     
     const issues = detectOrphanedFiles({ files: systemMap.files });
     
@@ -322,7 +322,7 @@ describe('Full Pipeline: Edge Cases', () => {
       })
       .build();
     
-    const { detectOrphanedFiles } = await import('#layer-b/issue-detectors/orphaned-files.js');
+    const { detectOrphanedFiles } = await import('#layer-a/analyses/tier3/issue-detectors/orphaned-files.js');
     const { detectGodObject } = await import('#layer-b/metadata-contract/detectors/architectural-patterns.js');
     
     const issues = [
