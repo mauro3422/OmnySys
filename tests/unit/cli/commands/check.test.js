@@ -3,11 +3,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-vi.mock('#layer-a/storage/storage-manager/setup/index.js', () => ({
+vi.mock('#core/storage/setup/index.js', () => ({
   hasExistingAnalysis: vi.fn()
 }));
 
-const { hasExistingAnalysis } = await import('#layer-a/storage/storage-manager/setup/index.js');
+const { hasExistingAnalysis } = await import('#core/storage/setup/index.js');
 const { checkLogic, check } = await import('#cli/commands/check.js');
 
 describe('checkLogic', () => {

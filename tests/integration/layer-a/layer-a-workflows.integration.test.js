@@ -25,7 +25,7 @@ import {
 import { 
   saveMetadata, 
   saveFileAnalysis 
-} from '#layer-a/storage/storage-manager/index.js';
+} from '#core/storage/index.js';
 import { 
   getProjectMetadata
 } from '#layer-a/query/queries/project-query.js';

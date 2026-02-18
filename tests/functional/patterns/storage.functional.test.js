@@ -27,7 +27,7 @@ let saveAtom;
 let saveMolecule;
 
 try {
-  const storage = await import('#layer-a/storage/storage-manager/index.js');
+  const storage = await import('#core/storage/index.js');
   saveMetadata = storage.saveMetadata;
   saveFileAnalysis = storage.saveFileAnalysis;
   saveConnections = storage.saveConnections;

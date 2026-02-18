@@ -62,7 +62,7 @@ describe('Layer A Integration Contracts', () => {
       testExchange: async () => {
         try {
           const moduleSystem = await import('#layer-a/module-system/index.js');
-          const graph = await import('#layer-a/graph/index.js');
+          const graph = await import('#core/graph/index.js');
           
           return Object.keys(moduleSystem).length > 0 && 
                  Object.keys(graph).length > 0;

@@ -17,7 +17,7 @@ import {
   calculateTransitiveDependents,
   createEmptySystemMap,
   createFileNode
-} from '../../../../src/layer-a-static/graph/index.js';
+} from '#core/graph/index.js';
 
 describe('Layer A - Graph', () => {
   

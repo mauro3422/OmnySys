@@ -1,4 +1,4 @@
-import { buildGraph } from '../graph/index.js';
+import { buildGraph } from '#core/graph/index.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:graph');

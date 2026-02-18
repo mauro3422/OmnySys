@@ -1,6 +1,6 @@
 import path from 'path';
 import { analyzeLogic } from './analyze.js';
-import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager/setup/index.js';
+import { hasExistingAnalysis } from '#core/storage/setup/index.js';
 import { indexProject } from '../../layer-a-static/indexer.js';
 import { exists } from '../utils/paths.js';
 

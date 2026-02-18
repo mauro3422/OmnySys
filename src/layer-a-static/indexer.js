@@ -19,7 +19,7 @@ import {
   printSummary
 } from './pipeline/save.js';
 import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
-import { saveAtom } from './storage/storage-manager/atoms/atom.js';
+import { saveAtom } from '#core/storage/atoms/atom.js';
 
 /**
  * Indexer - Orquestador principal de Capa A

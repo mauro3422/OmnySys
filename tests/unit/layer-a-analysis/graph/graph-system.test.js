@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import * as graph from '#layer-a/graph/index.js';
+import * as graph from '#core/graph/index.js';
 
 describe('Graph System', () => {
   it('graph system exports are available', () => {

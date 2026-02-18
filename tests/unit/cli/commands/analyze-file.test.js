@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-vi.mock('#layer-a/storage/storage-manager/setup/index.js', () => ({
+vi.mock('#core/storage/setup/index.js', () => ({
   hasExistingAnalysis: vi.fn().mockResolvedValue(true)
 }));
 
@@ -15,7 +15,7 @@ vi.mock('#cli/commands/analyze.js', () => ({
   analyzeLogic: vi.fn().mockResolvedValue({ success: true, exitCode: 0 })
 }));
 
-const { hasExistingAnalysis } = await import('#layer-a/storage/storage-manager/setup/index.js');
+const { hasExistingAnalysis } = await import('#core/storage/setup/index.js');
 const { indexProject } = await import('#layer-a/indexer.js');
 const { analyzeLogic } = await import('#cli/commands/analyze.js');
 const { analyzeFileLogic, analyzeFile } = await import('#cli/commands/analyze-file.js');

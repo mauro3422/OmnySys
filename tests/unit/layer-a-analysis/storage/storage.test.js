@@ -20,7 +20,7 @@ describe('Storage System', () => {
       {
         name: 'storage module available',
         fn: async () => {
-          const mod = await import('#layer-a/storage/storage-manager/index.js');
+          const mod = await import('#core/storage/index.js');
           expect(mod).toBeDefined();
         }
       }
