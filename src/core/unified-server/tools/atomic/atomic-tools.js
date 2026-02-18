@@ -15,7 +15,7 @@
 import {
   getAtomDetails,
   getFileAnalysisWithAtoms
-} from '../../../layer-c-memory/query/apis/file-api.js';
+} from '../../../../layer-c-memory/query/apis/file-api.js';
 
 import { getRiskReason, getRiskLevel, calculateRiskMetrics } from './helpers/risk-helpers.js';
 import { getRecommendation, getAllRecommendations } from './recommendations/archetype-recommendations.js';

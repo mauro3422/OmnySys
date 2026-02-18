@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { Orchestrator } from '../../core/orchestrator.js';
+import { Orchestrator } from '../../core/orchestrator/index.js';
 import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
 import { resolveProjectPath } from '../utils/paths.js';
 import { getEnhancedMapPath, getIssuesPath } from '#config/paths.js';

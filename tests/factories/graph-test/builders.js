@@ -7,7 +7,7 @@ import {
   createFileNode,
   createDependency,
   createFunctionLink
-} from '../../../src/layer-a-static/graph/types.js';
+} from '../../../src/layer-graph/core/types.js';
 
 export class GraphBuilder {
   constructor() {

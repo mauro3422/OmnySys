@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { OmnySysMCPServer } from '../../layer-c-memory/mcp/core/server-class.js';
-import { OmnySysUnifiedServer } from '../../core/unified-server.js';
+import { OmnySysUnifiedServer } from '../../core/unified-server/index.js';
 import { resolveProjectPath } from '../utils/paths.js';
 
 export async function serveLogic(projectPath, options = {}) {

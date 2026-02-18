@@ -6,7 +6,7 @@
  * @module unified-server/initialization/file-watcher-init
  */
 
-import { FileWatcher } from '../../file-watcher.js';
+import { FileWatcher } from '../../file-watcher/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:file:watcher:init');

@@ -2,7 +2,7 @@
  * @fileoverview Graph Test Factory - Main Factory
  */
 
-import { createFileNode, createImpactInfo } from '../../../src/layer-a-static/graph/types.js';
+import { createFileNode, createImpactInfo } from '../../../src/layer-graph/core/types.js';
 import { SystemMapBuilder } from './builders.js';
 import { GraphScenarios } from './scenarios.js';
 
