@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('prompt-engine:schema-resolver');
@@ -57,7 +59,10 @@ function generateCandidates(analysisType) {
 }
 
 /**
- * Resuelve el schema JSON para un tipo de análisis
+ * Resuelve el schema JSON para un tipo de análisis.
+ * Usa fs.readFile + JSON.parse en lugar de import() con assert/with
+ * para compatibilidad con Node 18, 20 y 22.
+ *
  * @param {string} analysisType - Tipo de análisis
  * @returns {Promise<Object>} - Schema cargado
  */
@@ -67,8 +72,9 @@ export async function resolveSchema(analysisType) {
   for (const schemaFile of candidates) {
     try {
       const schemaUrl = new URL(`../json-schemas/${schemaFile}`, import.meta.url);
-      const schemaModule = await import(schemaUrl, { assert: { type: 'json' } });
-      const schema = schemaModule.default || schemaModule;
+      const schemaPath = fileURLToPath(schemaUrl);
+      const content = await readFile(schemaPath, 'utf8');
+      const schema = JSON.parse(content);
       
       logger.debug(`Loaded schema: ${schemaFile}`);
       return schema;

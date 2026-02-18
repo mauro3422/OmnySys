@@ -19,7 +19,7 @@ const logger = createLogger('OmnySys:response:normalizer');
  * @returns {object|null} - Respuesta normalizada o null
  */
 export function normalizeResponse(response, filePath, confidenceThreshold = 0.7) {
-  logger.info(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response).substring(0, 200));
+  logger.info(`🔍 DEBUG normalizeResponse: ${filePath}`, JSON.stringify(response)?.substring(0, 200) ?? '(undefined)');
 
   if (!response || response.error) {
     logger.warn(`⚠️  Invalid LLM response for ${filePath}`);
@@ -34,7 +34,7 @@ export function normalizeResponse(response, filePath, confidenceThreshold = 0.7)
 
   // Buscar campos en diferentes niveles del objeto response
   const baseResponse = response.analysisResult || response.analysisresult || response;
-  const confidence = baseResponse.confidence || response.confidence || 0.8;
+  const confidence = baseResponse.confidence ?? response.confidence ?? 0.8;
   const reasoning = baseResponse.reasoning || response.reasoning || 'No reasoning provided';
 
   // Schema simplificado para LFM2-Extract

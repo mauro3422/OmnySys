@@ -16,7 +16,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.17]** | 2026-02-18 | **Estabilización completa + Deuda Técnica eliminada** (Latest) - See `changelog/v0.9.17-cache-singleton-oom-fix.md` |
+| **[0.9.18]** | 2026-02-18 | **Runtime Bugfix: 6 bugs en arranque MCP** (Latest) - See `changelog/v0.9.18-runtime-bugfix.md` |
+| **[0.9.17]** | 2026-02-18 | **Estabilización completa + Deuda Técnica eliminada** - See `changelog/v0.9.17-cache-singleton-oom-fix.md` |
 | **[0.9.16]** | 2026-02-18 | **Layer Cleanup + Duplicaciones** |
 | **[0.9.15]** | 2026-02-18 | **Architecture Refactor: Graph → Core** |
 | **[0.9.5]** | 2026-02-18 | **Layer Graph Architecture + Deuda Técnica** - See `changelog/v0.9.5-layer-graph-architecture.md` |

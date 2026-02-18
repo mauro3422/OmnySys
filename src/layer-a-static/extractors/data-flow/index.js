@@ -43,7 +43,10 @@ const PARSER_OPTIONS = {
     'dynamicImport',
     'optionalChaining',
     'nullishCoalescing',
-    'topLevelAwait'
+    'topLevelAwait',
+    // Pipeline operator support (|> syntax) — required for omnysystem.js and similar files
+    // Using 'hack' proposal (the TC39 champion's recommended option)
+    ['pipelineOperator', { proposal: 'hack', topicToken: '#' }]
   ]
 };
 

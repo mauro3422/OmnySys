@@ -65,10 +65,14 @@ export async function initialize() {
   this._startLLMHealthChecker();
 
   // Analyze complex files with LLM based on Layer A metadata
+  // IMPORTANT: set flag BEFORE calling to prevent health-checker from double-triggering
+  this._llmAnalysisTriggered = true;
   this._analyzeComplexFilesWithLLM().then(() => {
     logger.info("✅ LLM analysis queue ready");
   }).catch(err => {
     logger.error("❌ LLM analysis setup failed:", err.message);
+    // Reset flag so health-checker can retry if the analysis failed
+    this._llmAnalysisTriggered = false;
   });
 
   logger.info('✅ Orchestrator initialized\n');
