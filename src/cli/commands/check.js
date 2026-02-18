@@ -1,16 +1,20 @@
-﻿import fs from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager/setup/index.js';
 import { normalizePath } from '../utils/paths.js';
 
 const SEPARATOR = '------------------------------------------------------------';
 
-export async function check(filePath) {
+export async function checkLogic(filePath, options = {}) {
+  const { silent = false } = options;
+
   if (!filePath) {
-    console.error('\nError: No file specified!');
-    console.error('\nUsage: omnysystem check <file-path>');
-    console.error('   Example: omnysystem check src/api.js\n');
-    process.exit(1);
+    if (!silent) {
+      console.error('\nError: No file specified!');
+      console.error('\nUsage: omnysystem check <file-path>');
+      console.error('   Example: omnysystem check src/api.js\n');
+    }
+    return { success: false, error: 'No file specified', exitCode: 1 };
   }
 
   const absoluteFilePath = path.isAbsolute(filePath)
@@ -19,17 +23,21 @@ export async function check(filePath) {
 
   const projectPath = process.cwd();
 
-  console.log(`\nImpact Analysis: ${path.basename(filePath)}\n`);
-  console.log(`Project: ${projectPath}`);
-  console.log(`File: ${filePath}\n`);
+  if (!silent) {
+    console.log(`\nImpact Analysis: ${path.basename(filePath)}\n`);
+    console.log(`Project: ${projectPath}`);
+    console.log(`File: ${filePath}\n`);
+  }
 
   try {
     const hasAnalysis = await hasExistingAnalysis(projectPath);
     if (!hasAnalysis) {
-      console.error('No analysis data found!');
-      console.error('\nRun first:');
-      console.error('   omnysystem analyze .\n');
-      process.exit(1);
+      if (!silent) {
+        console.error('No analysis data found!');
+        console.error('\nRun first:');
+        console.error('   omnysystem analyze .\n');
+      }
+      return { success: false, error: 'No analysis data found', exitCode: 1 };
     }
 
     const systemMapPath = path.join(projectPath, 'system-map-enhanced.json');
@@ -50,59 +58,63 @@ export async function check(filePath) {
     }
 
     if (!fileData) {
-      console.error(`File not found in analysis: ${filePath}`);
-      console.error('\nAvailable files:');
-      const availableFiles = Object.keys(systemMap.files || {}).slice(0, 10);
-      for (const f of availableFiles) {
-        console.error(`   - ${f}`);
+      if (!silent) {
+        console.error(`File not found in analysis: ${filePath}`);
+        console.error('\nAvailable files:');
+        const availableFiles = Object.keys(systemMap.files || {}).slice(0, 10);
+        for (const f of availableFiles) {
+          console.error(`   - ${f}`);
+        }
+        console.error('   ...\n');
       }
-      console.error('   ...\n');
-      process.exit(1);
+      return { success: false, error: `File not found in analysis: ${filePath}`, exitCode: 1 };
     }
+
+    const output = [];
 
     if (matchedPath && matchedPath !== filePath) {
-      console.log(`Resolved file path: ${matchedPath}\n`);
+      output.push(`Resolved file path: ${matchedPath}\n`);
     }
 
-    console.log(`${SEPARATOR}\n`);
+    output.push(`${SEPARATOR}\n`);
 
-    console.log('FILE METRICS');
-    console.log(`   Functions: ${fileData.functions?.length || 0}`);
-    console.log(`   Exports: ${fileData.exports?.length || 0}`);
-    console.log(`   Imports: ${fileData.imports?.length || 0}`);
-    console.log(`   Risk Score: ${fileData.riskScore?.total || 0}/10 (${fileData.riskScore?.severity || 'low'})`);
-    console.log();
+    output.push('FILE METRICS');
+    output.push(`   Functions: ${fileData.functions?.length || 0}`);
+    output.push(`   Exports: ${fileData.exports?.length || 0}`);
+    output.push(`   Imports: ${fileData.imports?.length || 0}`);
+    output.push(`   Risk Score: ${fileData.riskScore?.total || 0}/10 (${fileData.riskScore?.severity || 'low'})`);
+    output.push('');
 
-    console.log('DEPENDENCIES');
+    output.push('DEPENDENCIES');
     if (fileData.dependsOn?.length > 0) {
-      console.log('   This file imports from:');
+      output.push('   This file imports from:');
       for (const dep of fileData.dependsOn.slice(0, 10)) {
-        console.log(`     - ${dep}`);
+        output.push(`     - ${dep}`);
       }
       if (fileData.dependsOn.length > 10) {
-        console.log(`     ... and ${fileData.dependsOn.length - 10} more`);
+        output.push(`     ... and ${fileData.dependsOn.length - 10} more`);
       }
     } else {
-      console.log('   No imports (standalone file)');
+      output.push('   No imports (standalone file)');
     }
-    console.log();
+    output.push('');
 
     if (fileData.usedBy?.length > 0) {
-      console.log('IMPORTED BY:');
+      output.push('IMPORTED BY:');
       for (const user of fileData.usedBy.slice(0, 10)) {
-        console.log(`     - ${user}`);
+        output.push(`     - ${user}`);
       }
       if (fileData.usedBy.length > 10) {
-        console.log(`     ... and ${fileData.usedBy.length - 10} more`);
+        output.push(`     ... and ${fileData.usedBy.length - 10} more`);
       }
-      console.log(`\n   Changing exports will break ${fileData.usedBy.length} file(s)\n`);
+      output.push(`\n   Changing exports will break ${fileData.usedBy.length} file(s)\n`);
     } else {
-      console.log('   Not imported by any file\n');
+      output.push('   Not imported by any file\n');
     }
 
     const connections = fileData.semanticConnections || [];
     if (connections.length > 0) {
-      console.log('SEMANTIC CONNECTIONS (Hidden Dependencies)');
+      output.push('SEMANTIC CONNECTIONS (Hidden Dependencies)');
 
       const byType = {};
       for (const conn of connections) {
@@ -111,63 +123,63 @@ export async function check(filePath) {
       }
 
       for (const [type, conns] of Object.entries(byType)) {
-        console.log(`   ${type.toUpperCase()}:`);
+        output.push(`   ${type.toUpperCase()}:`);
         for (const conn of conns.slice(0, 5)) {
-          console.log(`     - ${conn.target} ${conn.key ? `(${conn.key})` : ''}`);
+          output.push(`     - ${conn.target} ${conn.key ? `(${conn.key})` : ''}`);
         }
         if (conns.length > 5) {
-          console.log(`     ... and ${conns.length - 5} more`);
+          output.push(`     ... and ${conns.length - 5} more`);
         }
       }
-      console.log();
+      output.push('');
     }
 
     if (fileData.metadata) {
       const md = fileData.metadata;
 
       if (md.jsdocContracts?.all?.length > 0) {
-        console.log('JSDoc CONTRACTS');
-        console.log(`   Documented functions: ${md.jsdocContracts.all.length}`);
+        output.push('JSDoc CONTRACTS');
+        output.push(`   Documented functions: ${md.jsdocContracts.all.length}`);
         for (const contract of md.jsdocContracts.all.slice(0, 3)) {
           if (contract.params?.length > 0) {
             const params = contract.params.map(p => `${p.name}: ${p.type}`).join(', ');
-            console.log(`     - params: ${params}`);
+            output.push(`     - params: ${params}`);
           }
         }
-        console.log();
+        output.push('');
       }
 
       if (md.asyncPatterns?.all?.length > 0) {
-        console.log('ASYNC PATTERNS');
-        console.log(`   Async functions: ${md.asyncPatterns.asyncFunctions?.length || 0}`);
-        console.log(`   Promise chains: ${md.asyncPatterns.promiseChains?.length || 0}`);
+        output.push('ASYNC PATTERNS');
+        output.push(`   Async functions: ${md.asyncPatterns.asyncFunctions?.length || 0}`);
+        output.push(`   Promise chains: ${md.asyncPatterns.promiseChains?.length || 0}`);
         if (md.asyncPatterns.raceConditions?.length > 0) {
-          console.log(`   Potential race conditions: ${md.asyncPatterns.raceConditions.length}`);
+          output.push(`   Potential race conditions: ${md.asyncPatterns.raceConditions.length}`);
         }
-        console.log();
+        output.push('');
       }
 
       if (md.errorHandling?.all?.length > 0) {
-        console.log('ERROR HANDLING');
-        console.log(`   Try blocks: ${md.errorHandling.tryBlocks?.length || 0}`);
-        console.log(`   Custom errors: ${md.errorHandling.customErrors?.length || 0}`);
-        console.log();
+        output.push('ERROR HANDLING');
+        output.push(`   Try blocks: ${md.errorHandling.tryBlocks?.length || 0}`);
+        output.push(`   Custom errors: ${md.errorHandling.customErrors?.length || 0}`);
+        output.push('');
       }
 
       if (md.buildTimeDeps?.devFlags?.length > 0) {
-        console.log('BUILD-TIME DEPENDENCIES');
+        output.push('BUILD-TIME DEPENDENCIES');
         const flags = md.buildTimeDeps.devFlags.map(f => f.name || f.type).join(', ');
-        console.log(`   Flags: ${flags}`);
-        console.log();
+        output.push(`   Flags: ${flags}`);
+        output.push('');
       }
     }
 
     if (fileData.brokenConnections?.length > 0) {
-      console.log('BROKEN CONNECTIONS');
+      output.push('BROKEN CONNECTIONS');
       for (const broken of fileData.brokenConnections.slice(0, 5)) {
-        console.log(`   - ${broken.type}: ${broken.reason}`);
+        output.push(`   - ${broken.type}: ${broken.reason}`);
       }
-      console.log();
+      output.push('');
     }
 
     if (fileData.sideEffects) {
@@ -177,47 +189,64 @@ export async function check(filePath) {
         se.accessesWindow;
 
       if (hasSideEffects) {
-        console.log('SIDE EFFECTS');
-        if (se.usesLocalStorage) console.log('   - Uses localStorage/sessionStorage');
-        if (se.makesNetworkCalls) console.log('   - Makes network calls');
-        if (se.accessesWindow) console.log('   - Accesses window object');
-        if (se.hasEventListeners) console.log('   - Adds event listeners');
-        if (se.hasGlobalAccess) console.log('   - Accesses global variables');
-        console.log();
+        output.push('SIDE EFFECTS');
+        if (se.usesLocalStorage) output.push('   - Uses localStorage/sessionStorage');
+        if (se.makesNetworkCalls) output.push('   - Makes network calls');
+        if (se.accessesWindow) output.push('   - Accesses window object');
+        if (se.hasEventListeners) output.push('   - Adds event listeners');
+        if (se.hasGlobalAccess) output.push('   - Accesses global variables');
+        output.push('');
       }
     }
 
-    console.log(SEPARATOR);
-    console.log('RECOMMENDATIONS\n');
+    output.push(SEPARATOR);
+    output.push('RECOMMENDATIONS\n');
 
     if (fileData.riskScore?.severity === 'high' || fileData.riskScore?.severity === 'critical') {
-      console.log('   HIGH RISK: This file is complex and widely used.');
-      console.log('      Consider splitting into smaller modules.\n');
+      output.push('   HIGH RISK: This file is complex and widely used.');
+      output.push('      Consider splitting into smaller modules.\n');
     }
 
     if (fileData.usedBy?.length > 5) {
-      console.log('   WIDELY USED: Changing this file affects many others.');
-      console.log('      Review all dependents before making changes.\n');
+      output.push('   WIDELY USED: Changing this file affects many others.');
+      output.push('      Review all dependents before making changes.\n');
     }
 
     if (connections.length > 0) {
-      console.log('   HIDDEN CONNECTIONS: This file has semantic connections');
-      console.log('      that static analysis alone would not detect.\n');
+      output.push('   HIDDEN CONNECTIONS: This file has semantic connections');
+      output.push('      that static analysis alone would not detect.\n');
     }
 
     if (!fileData.usedBy || fileData.usedBy.length === 0) {
-      console.log('   ORPHAN FILE: Not used by any other file.');
+      output.push('   ORPHAN FILE: Not used by any other file.');
       if (!fileData.imports || fileData.imports.length === 0) {
-        console.log('      Consider removing if truly dead code.\n');
+        output.push('      Consider removing if truly dead code.\n');
       }
     }
 
-    console.log(SEPARATOR + '\n');
+    output.push(SEPARATOR + '\n');
 
-    process.exit(0);
+    if (!silent) {
+      output.forEach(line => console.log(line));
+    }
+
+    return {
+      success: true,
+      exitCode: 0,
+      fileData,
+      matchedPath,
+      output: output.join('\n')
+    };
   } catch (error) {
-    console.error('\nCheck failed:');
-    console.error(`   ${error.message}\n`);
-    process.exit(1);
+    if (!silent) {
+      console.error('\nCheck failed:');
+      console.error(`   ${error.message}\n`);
+    }
+    return { success: false, error: error.message, exitCode: 1 };
   }
+}
+
+export async function check(filePath) {
+  const result = await checkLogic(filePath);
+  process.exit(result.exitCode);
 }

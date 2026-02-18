@@ -1,5 +1,5 @@
-import { WebSocketManager } from '../../websocket/index.js';
-import { createLogger } from '../../../utils/logger.js';
+import { WebSocketManager } from '../../../websocket/index.js';
+import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 

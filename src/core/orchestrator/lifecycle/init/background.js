@@ -1,6 +1,6 @@
-import { indexProject } from '../../../layer-a-static/indexer.js';
-import { LLMService } from '../../../services/llm-service.js';
-import { createLogger } from '../../../utils/logger.js';
+import { indexProject } from '../../../../layer-a-static/indexer.js';
+import { LLMService } from '../../../../services/llm-service.js';
+import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 

@@ -1,15 +1,19 @@
-﻿import path from 'path';
-import { analyze } from './analyze.js';
+import path from 'path';
+import { analyzeLogic } from './analyze.js';
 import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manager/setup/index.js';
 import { indexProject } from '../../layer-a-static/indexer.js';
 import { exists } from '../utils/paths.js';
 
-export async function analyzeFile(filePath) {
+export async function analyzeFileLogic(filePath, options = {}) {
+  const { silent = false } = options;
+
   if (!filePath) {
-    console.error('\nError: No file specified!');
-    console.error('\nUsage:');
-    console.error('   omnysystem analyze-file <path/to/file.js>\n');
-    process.exit(1);
+    if (!silent) {
+      console.error('\nError: No file specified!');
+      console.error('\nUsage:');
+      console.error('   omnysystem analyze-file <path/to/file.js>\n');
+    }
+    return { success: false, error: 'No file specified', exitCode: 1 };
   }
 
   const absoluteFilePath = path.isAbsolute(filePath)
@@ -30,40 +34,53 @@ export async function analyzeFile(filePath) {
   }
 
   if (!foundRoot) {
-    console.warn('Warning: Could not find project root, using file directory');
+    if (!silent) console.warn('Warning: Could not find project root, using file directory');
     projectPath = path.dirname(absoluteFilePath);
   }
 
   const relativeFilePath = path.relative(projectPath, absoluteFilePath).replace(/\\/g, '/');
 
-  console.log('\nOmniSystem Single-File Analysis\n');
-  console.log(`Project: ${projectPath}`);
-  console.log(`File: ${relativeFilePath}\n`);
+  if (!silent) {
+    console.log('\nOmniSystem Single-File Analysis\n');
+    console.log(`Project: ${projectPath}`);
+    console.log(`File: ${relativeFilePath}\n`);
+  }
 
   const hasAnalysis = await hasExistingAnalysis(projectPath);
   if (!hasAnalysis) {
-    console.log('Info: No existing project analysis found.');
-    console.log('Running full project analysis first...\n');
-    await analyze(projectPath, { singleFile: relativeFilePath });
-    return;
+    if (!silent) {
+      console.log('Info: No existing project analysis found.');
+      console.log('Running full project analysis first...\n');
+    }
+    const result = await analyzeLogic(projectPath, { singleFile: relativeFilePath, silent });
+    return result;
   }
 
-  console.log('Using existing project context\n');
+  if (!silent) console.log('Using existing project context\n');
 
   try {
     await indexProject(projectPath, {
-      verbose: true,
+      verbose: !silent,
       singleFile: relativeFilePath,
       incremental: true
     });
 
-    console.log('\nFile analysis complete!\n');
-    console.log(`Results saved to: .omnysysdata/files/${relativeFilePath}.json\n`);
+    if (!silent) {
+      console.log('\nFile analysis complete!\n');
+      console.log(`Results saved to: .omnysysdata/files/${relativeFilePath}.json\n`);
+    }
 
-    process.exit(0);
+    return { success: true, exitCode: 0, projectPath, relativeFilePath };
   } catch (error) {
-    console.error('\nAnalysis failed:');
-    console.error(`   ${error.message}\n`);
-    process.exit(1);
+    if (!silent) {
+      console.error('\nAnalysis failed:');
+      console.error(`   ${error.message}\n`);
+    }
+    return { success: false, error: error.message, exitCode: 1 };
   }
+}
+
+export async function analyzeFile(filePath) {
+  const result = await analyzeFileLogic(filePath);
+  process.exit(result.exitCode);
 }

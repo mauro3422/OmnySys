@@ -10,7 +10,7 @@
  */
 
 import { detectAllSemanticConnections } from '../../../extractors/static/index.js';
-import { calculateAllRiskScores, generateRiskReport } from '../../../analyses/tier3/risk-scorer.js';
+import { calculateAllRiskScores, generateRiskReport } from '../../../analyses/tier3/index.js';
 import { buildSourceCodeMap } from '../builders/source-code-builder.js';
 import { collectSemanticIssues } from '../analyzers/semantic-issue-analyzer.js';
 

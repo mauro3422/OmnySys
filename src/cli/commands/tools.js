@@ -1,11 +1,3 @@
-/**
- * @fileoverview Tools Command
- * 
- * List available tools
- * 
- * @module cli/commands/tools
- */
-
 import { checkMCP, PORTS } from '../utils/port-checker.js';
 import { log } from '../utils/logger.js';
 
@@ -25,25 +17,58 @@ const TOOL_DESCRIPTIONS = {
   explain_value_flow: 'Shows data flow: inputs → symbol → outputs → consumers'
 };
 
-export async function execute() {
+export async function toolsLogic(options = {}) {
+  const { silent = false } = options;
+
   const running = await checkMCP();
   if (!running) {
-    log('MCP Server no está corriendo', 'error');
-    log('Ejecuta: omnysys up', 'warning');
-    return;
+    return {
+      success: false,
+      exitCode: 1,
+      error: 'MCP Server is not running',
+      hint: 'Run: omnysys up'
+    };
   }
-  
+
   try {
     const response = await fetch(`http://localhost:${PORTS.mcp}/tools`);
     const data = await response.json();
-    
-    console.log('\n🛠️  Herramientas disponibles:\n');
-    data.tools.forEach((tool, i) => {
-      const icon = TOOL_ICONS[i] || '•';
-      console.log(`  ${icon} ${tool.name}`);
-      console.log(`     ${TOOL_DESCRIPTIONS[tool.name] || tool.description}\n`);
-    });
-  } catch (e) {
-    log('Error al obtener herramientas', 'error');
+
+    const tools = data.tools.map((tool, i) => ({
+      name: tool.name,
+      description: TOOL_DESCRIPTIONS[tool.name] || tool.description,
+      icon: TOOL_ICONS[i] || '•'
+    }));
+
+    return {
+      success: true,
+      exitCode: 0,
+      tools,
+      count: tools.length
+    };
+  } catch (error) {
+    return {
+      success: false,
+      exitCode: 1,
+      error: `Error fetching tools: ${error.message}`
+    };
   }
+}
+
+export async function execute() {
+  const result = await toolsLogic();
+
+  if (!result.success) {
+    log(result.error, 'error');
+    if (result.hint) {
+      log(result.hint, 'warning');
+    }
+    return;
+  }
+
+  console.log('\n🛠️  Herramientas disponibles:\n');
+  result.tools.forEach(tool => {
+    console.log(`  ${tool.icon} ${tool.name}`);
+    console.log(`     ${tool.description}\n`);
+  });
 }

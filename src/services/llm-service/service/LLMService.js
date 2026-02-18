@@ -4,7 +4,7 @@
  * @version 0.9.4
  */
 
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../../utils/logger.js';
 import { LocalProvider } from '../providers/local-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';

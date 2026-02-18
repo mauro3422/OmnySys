@@ -1,6 +1,6 @@
-import { FileWatcher } from '../../file-watcher.js';
-import { BatchProcessor } from '../../batch-processor/index.js';
-import { createLogger } from '../../../utils/logger.js';
+import { FileWatcher } from '../../../file-watcher/index.js';
+import { BatchProcessor } from '../../../batch-processor/index.js';
+import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 

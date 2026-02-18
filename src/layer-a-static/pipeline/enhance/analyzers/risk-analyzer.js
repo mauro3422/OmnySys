@@ -4,7 +4,7 @@
  * @module pipeline/enhance/analyzers
  */
 
-import { calculateAllRiskScores, generateRiskReport } from '../../../analyses/tier3/risk-scorer.js';
+import { calculateAllRiskScores, generateRiskReport } from '../../../analyses/tier3/index.js';
 import { analyzeBrokenConnections } from '../../../analyses/tier3/broken-connections-detector.js';
 import { createLogger } from '../../../../utils/logger.js';
 

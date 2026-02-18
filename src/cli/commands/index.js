@@ -1,9 +1,3 @@
-/**
- * @fileoverview Commands Index
- * 
- * @module cli/commands
- */
-
 import * as up from './up.js';
 import * as down from './down.js';
 import * as status from './status.js';
@@ -22,16 +16,21 @@ export const commands = {
   help
 };
 
-/**
- * Find command by name or alias
- * @param {string} name - Command name
- * @returns {Object|null} Command module
- */
 export function findCommand(name) {
   for (const cmd of Object.values(commands)) {
-    if (cmd.aliases.includes(name)) {
+    if (cmd.aliases && cmd.aliases.includes(name)) {
       return cmd;
     }
   }
   return null;
+}
+
+export async function findCommandLogic(name) {
+  const cmd = findCommand(name);
+  if (!cmd) return null;
+  
+  const logicName = Object.keys(cmd).find(k => k.endsWith('Logic'));
+  if (!logicName) return null;
+  
+  return cmd[logicName];
 }

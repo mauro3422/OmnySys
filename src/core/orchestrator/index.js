@@ -3,6 +3,10 @@ import path from 'path';
 import { AnalysisQueue } from '../analysis-queue.js';
 import { getDataPath } from '#config/paths.js';
 import { getAtomicEditor } from '../atomic-editor/index.js';
+import { AtomicEditor } from '../atomic-editor/AtomicEditor.js';
+import { createLogger } from '../../utils/logger.js';
+
+const logger = createLogger('OmnySys:orchestrator');
 
 import * as lifecycle from './lifecycle.js';
 import * as queueing from './queueing.js';
@@ -63,7 +67,7 @@ class Orchestrator extends EventEmitter {
     this.analysisCompleteEmitted = false;
 
     // Atomic Editor - Para ediciones seguras con vibración
-    this.atomicEditor = getAtomicEditor(projectPath, this);
+    this.atomicEditor = getAtomicEditor(() => new AtomicEditor(projectPath, this));
     this._setupAtomicEditor();
     
     // Cache Invalidator - Para invalidación síncrona de caché

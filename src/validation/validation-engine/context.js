@@ -31,7 +31,8 @@ export class ValidationContext {
     logger.info('Loading validation context...');
     await this.fileLoader.loadFiles();
     await this.fileLoader.loadIndex();
-    logger.info(`Context loaded: ${this.files.size} files`);\n    return this;
+    logger.info(`Context loaded: ${this.files.size} files`);
+    return this;
   }
 
   async getSource(filePath) {

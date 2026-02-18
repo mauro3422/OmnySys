@@ -5,22 +5,27 @@ import { hasExistingAnalysis } from '../../layer-a-static/storage/storage-manage
 import { resolveProjectPath } from '../utils/paths.js';
 import { getEnhancedMapPath, getIssuesPath } from '#config/paths.js';
 
-export async function consolidate(projectPath) {
+export async function consolidateLogic(projectPath, options = {}) {
+  const { silent = false } = options;
   const absolutePath = resolveProjectPath(projectPath);
 
-  console.log('\nOmniSystem Iterative Consolidation (Orchestrator)\n');
-  console.log(`Project: ${absolutePath}\n`);
+  if (!silent) {
+    console.log('\nOmniSystem Iterative Consolidation (Orchestrator)\n');
+    console.log(`Project: ${absolutePath}\n`);
+  }
 
   try {
     const hasAnalysis = await hasExistingAnalysis(absolutePath);
     if (!hasAnalysis) {
-      console.error('No analysis data found!');
-      console.error('\nRun first:');
-      console.error('   omnysystem analyze <project>\n');
-      process.exit(1);
+      if (!silent) {
+        console.error('No analysis data found!');
+        console.error('\nRun first:');
+        console.error('   omnysystem analyze <project>\n');
+      }
+      return { success: false, error: 'No analysis data found', exitCode: 1 };
     }
 
-    console.log('Initializing Orchestrator...\n');
+    if (!silent) console.log('Initializing Orchestrator...\n');
     const orchestrator = new Orchestrator(absolutePath, {
       enableFileWatcher: false,
       enableWebSocket: false,
@@ -36,12 +41,14 @@ export async function consolidate(projectPath) {
       orchestrator.initialize();
 
       orchestrator.on('indexing:completed', () => {
-        console.log('\nLayer A (Static Analysis) completed');
-        console.log('Starting Layer B (LLM Analysis)...\n');
+        if (!silent) {
+          console.log('\nLayer A (Static Analysis) completed');
+          console.log('Starting Layer B (LLM Analysis)...\n');
+        }
       });
 
       orchestrator.on('analysis:complete', () => {
-        console.log('\nAnalysis complete!');
+        if (!silent) console.log('\nAnalysis complete!');
         resolve();
       });
 
@@ -80,24 +87,41 @@ export async function consolidate(projectPath) {
       // No issues file
     }
 
-    console.log('\nConsolidation complete!\n');
-    console.log('Results:');
-    console.log(`  - Iterations: ${finalStats?.iterations || 1}`);
-    console.log(`  - Files analyzed: ${finalStats?.totalFiles || enhancedMap.metadata.totalFiles}`);
-    console.log(`  - Issues found: ${issuesReport.stats?.totalIssues || 0}`);
-    if (issuesReport.stats?.totalIssues > 0) {
-      console.log(`    - High severity: ${issuesReport.stats.bySeverity?.high || 0}`);
-      console.log(`    - Medium severity: ${issuesReport.stats.bySeverity?.medium || 0}`);
-      console.log(`    - Low severity: ${issuesReport.stats.bySeverity?.low || 0}`);
+    if (!silent) {
+      console.log('\nConsolidation complete!\n');
+      console.log('Results:');
+      console.log(`  - Iterations: ${finalStats?.iterations || 1}`);
+      console.log(`  - Files analyzed: ${finalStats?.totalFiles || enhancedMap.metadata.totalFiles}`);
+      console.log(`  - Issues found: ${issuesReport.stats?.totalIssues || 0}`);
+      if (issuesReport.stats?.totalIssues > 0) {
+        console.log(`    - High severity: ${issuesReport.stats.bySeverity?.high || 0}`);
+        console.log(`    - Medium severity: ${issuesReport.stats.bySeverity?.medium || 0}`);
+        console.log(`    - Low severity: ${issuesReport.stats.bySeverity?.low || 0}`);
+      }
+      console.log('\nView detailed analysis:');
+      console.log(`   ${getIssuesPath('.')}\n`);
     }
-    console.log('\nView detailed analysis:');
-    console.log(`   ${getIssuesPath('.')}\n`);
 
-    process.exit(0);
+    return {
+      success: true,
+      exitCode: 0,
+      stats: {
+        iterations: finalStats?.iterations || 1,
+        totalFiles: finalStats?.totalFiles || enhancedMap.metadata.totalFiles,
+        totalIssues: issuesReport.stats?.totalIssues || 0
+      }
+    };
   } catch (error) {
-    console.error('\nConsolidation failed:');
-    console.error(`   ${error.message}\n`);
-    console.error(error.stack);
-    process.exit(1);
+    if (!silent) {
+      console.error('\nConsolidation failed:');
+      console.error(`   ${error.message}\n`);
+      console.error(error.stack);
+    }
+    return { success: false, error: error.message, exitCode: 1 };
   }
+}
+
+export async function consolidate(projectPath) {
+  const result = await consolidateLogic(projectPath);
+  process.exit(result.exitCode);
 }

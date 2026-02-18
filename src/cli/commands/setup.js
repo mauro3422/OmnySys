@@ -1,27 +1,53 @@
-/**
- * @fileoverview Setup Command
- * 
- * Configure OpenCode and verify installation
- * 
- * @module cli/commands/setup
- */
-
 import { setupOpenCode, getOpenCodeConfigPath } from '../utils/opencode-config.js';
 import { PORTS } from '../utils/port-checker.js';
 import { log } from '../utils/logger.js';
 
 export const aliases = ['setup'];
 
+export async function setupLogic(options = {}) {
+  const { silent = false } = options;
+
+  try {
+    const configured = await setupOpenCode();
+
+    if (configured) {
+      return {
+        success: true,
+        exitCode: 0,
+        configured: true,
+        config: {
+          llmPort: PORTS.llm,
+          mcpPort: PORTS.mcp,
+          configPath: getOpenCodeConfigPath()
+        }
+      };
+    } else {
+      return {
+        success: false,
+        exitCode: 1,
+        configured: false,
+        error: 'Could not configure OpenCode automatically'
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      exitCode: 1,
+      error: error.message
+    };
+  }
+}
+
 export async function execute() {
   log('Configurando OmnySys...', 'loading');
-  const configured = await setupOpenCode();
+  const result = await setupLogic();
   
-  if (configured) {
+  if (result.success) {
     log('\n✅ Configuración completa', 'success');
     log('   OpenCode: Configurado');
-    log(`   LLM Port: ${PORTS.llm}`);
-    log(`   MCP Port: ${PORTS.mcp}`);
-    log(`   Config: ${getOpenCodeConfigPath()}`);
+    log(`   LLM Port: ${result.config.llmPort}`);
+    log(`   MCP Port: ${result.config.mcpPort}`);
+    log(`   Config: ${result.config.configPath}`);
   } else {
     log('No se pudo configurar OpenCode automáticamente', 'warning');
   }

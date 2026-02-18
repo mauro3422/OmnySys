@@ -34,6 +34,7 @@ export { ValidationReport, ValidationResult, ValidationSeverity } from '../core/
 // Función de conveniencia para validación rápida
 import path from 'path';
 import { ValidationEngine } from './ValidationEngine.js';
+import { ValidationContext } from './context.js';
 
 /**
  * Función de conveniencia para validación rápida

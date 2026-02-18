@@ -1,26 +1,34 @@
-#!/usr/bin/env node
-
-/**
- * CLI Command: serve
- * 
- * Inicia el servidor MCP de OmnySys.
- * Por defecto usa el servidor unificado. Para modo legacy MCP puro usar --legacy.
- */
-
 import fs from 'fs/promises';
 import path from 'path';
 import { OmnySysMCPServer } from '../../layer-c-memory/mcp/core/server-class.js';
 import { OmnySysUnifiedServer } from '../../core/unified-server.js';
 import { resolveProjectPath } from '../utils/paths.js';
 
+export async function serveLogic(projectPath, options = {}) {
+  const { silent = false, legacy = false, unified = true, mockServer = false } = options;
+  const absolutePath = resolveProjectPath(projectPath);
+
+  const useUnified = unified && !legacy;
+
+  return {
+    success: true,
+    exitCode: 0,
+    projectPath: absolutePath,
+    mode: useUnified ? 'unified' : 'legacy',
+    serverConfig: {
+      unified: useUnified,
+      legacy: !useUnified
+    }
+  };
+}
+
 export async function serve(projectPath, options = {}) {
   const absolutePath = resolveProjectPath(projectPath);
   const { 
-    unified = true,  // Por defecto usa servidor unificado
-    legacy = false   // Modo legacy MCP puro
+    unified = true,
+    legacy = false
   } = options;
 
-  // Modo Unified Server (recomendado)
   if (unified && !legacy) {
     console.log('\n╔═══════════════════════════════════════════════════════════════╗');
     console.log('║     OmnySys Unified Server                                ║');
@@ -36,7 +44,7 @@ export async function serve(projectPath, options = {}) {
     try {
       await server.initialize();
       console.log('💡 Server running. Press Ctrl+C to stop.\n');
-      await new Promise(() => {}); // Keep alive
+      await new Promise(() => {});
     } catch (error) {
       console.error('Failed to start server:', error);
       process.exit(1);
@@ -44,7 +52,6 @@ export async function serve(projectPath, options = {}) {
     return;
   }
 
-  // Modo Legacy MCP Puro
   console.log('\n╔═══════════════════════════════════════════════════════════════╗');
   console.log('║     OmnySys MCP Server (Legacy Mode)                      ║');
   console.log('║     MCP Protocol via stdio                                    ║');
@@ -66,7 +73,7 @@ export async function serve(projectPath, options = {}) {
   try {
     await server.run();
     console.log('💡 Server running. Press Ctrl+C to stop.\n');
-    await new Promise(() => {}); // Keep alive
+    await new Promise(() => {});
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

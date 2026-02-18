@@ -4,12 +4,12 @@ import crypto from 'crypto';
 
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { resolveImport, getResolutionConfig } from '../../layer-a-static/resolver.js';
-import { saveFileAnalysis as persistFileAnalysis } from '../../layer-a-static/storage/storage-manager.js';
+import { saveFileAnalysis as persistFileAnalysis } from '../../layer-a-static/storage/storage-manager/index.js';
 import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
 import { extractMolecularStructure } from '../../layer-a-static/pipeline/molecular-extractor.js';
-import { saveAtom, saveMolecule } from '../../layer-a-static/storage/storage-manager.js';
+import { saveAtom, saveMolecule } from '../../layer-a-static/storage/storage-manager/index.js';
 
 /**
  * Calcula hash del contenido de un archivo

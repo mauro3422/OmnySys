@@ -6,7 +6,7 @@
  * @module llm-service/cache/response-cache/storage/cache-maintenance
  */
 
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:llm:cache');
 

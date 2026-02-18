@@ -7,7 +7,7 @@
  * @module llm-service/cache/response-cache
  */
 
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../../../utils/logger.js';
 import { CacheEntry } from './cache/cache-entry.js';
 import { generateKey } from './cache/key-generator.js';
 import { get, set, has, del } from './storage/cache-operations.js';

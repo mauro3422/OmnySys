@@ -7,7 +7,7 @@
  */
 
 import { CacheEntry } from '../cache/cache-entry.js';
-import { createLogger } from '../../../../utils/logger.js';
+import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:llm:cache');
 
