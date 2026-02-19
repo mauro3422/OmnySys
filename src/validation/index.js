@@ -19,26 +19,26 @@
  */
 
 // Core
-export { 
-  ValidationResult, 
-  ValidationReport, 
-  ValidationSeverity, 
+export {
+  ValidationResult,
+  ValidationReport,
+  ValidationSeverity,
   ValidationType,
-  createReport 
-} from './core/validation-result.js';
+  createReport
+} from './core/results/index.js';
 
-export { 
-  RuleRegistry, 
-  ValidationRule, 
-  getGlobalRegistry, 
-  createRule 
-} from './core/rule-registry.js';
+export {
+  RuleRegistry,
+  ValidationRule,
+  getGlobalRegistry,
+  createRule
+} from './core/rules/index.js';
 
-export { 
-  ValidationEngine, 
-  ValidationContext, 
-  validate 
-} from './core/validation-engine.js';
+export {
+  ValidationEngine,
+  ValidationContext,
+  validate
+} from './validation-engine/index.js';
 
 // Source Validation Rules
 export { FileExistenceRule } from './rules/source/file-existence.js';
@@ -90,14 +90,18 @@ export const LAYERS = {
 };
 
 /**
- * Registra todas las reglas built-in
- * Esta función se llama automáticamente al importar el módulo
+ * Registra todas las reglas built-in (source + derivation + invariants)
  */
 export async function registerBuiltinRules(registry = getGlobalRegistry()) {
-  // TODO: Importar y registrar todas las reglas built-in
-  // Esto se hará a medida que implementemos cada capa
-  
-  logger.info('Builtin rules registered');
+  const { registerSourceRules } = await import('./rules/source/index.js');
+  const { registerDerivationRules } = await import('./rules/derivation/index.js');
+  const { registerInvariants } = await import('./invariants/system-invariants.js');
+
+  registerSourceRules(registry);
+  registerDerivationRules(registry);
+  registerInvariants(registry);
+
+  logger.info('Builtin rules registered (source + derivation + invariants)');
   return registry;
 }
 

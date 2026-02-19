@@ -91,12 +91,32 @@ export function findFunctionNode(ast) {
     const body = ast.program.body || [];
     for (const node of body) {
       if (node.type === 'FunctionDeclaration') return node;
-      if (node.type === 'ExportNamedDeclaration' && node.declaration?.type === 'FunctionDeclaration') {
-        return node.declaration;
+      // const fn = () => {} or const fn = function() {}
+      if (node.type === 'VariableDeclaration') {
+        for (const decl of node.declarations) {
+          if (decl.init?.type === 'ArrowFunctionExpression' ||
+              decl.init?.type === 'FunctionExpression') {
+            return decl.init;
+          }
+        }
+      }
+      if (node.type === 'ExportNamedDeclaration') {
+        if (node.declaration?.type === 'FunctionDeclaration') {
+          return node.declaration;
+        }
+        // export const fn = () => {}
+        if (node.declaration?.type === 'VariableDeclaration') {
+          for (const decl of node.declaration.declarations) {
+            if (decl.init?.type === 'ArrowFunctionExpression' ||
+                decl.init?.type === 'FunctionExpression') {
+              return decl.init;
+            }
+          }
+        }
       }
       if (node.type === 'ExportDefaultDeclaration') {
         const decl = node.declaration;
-        if (decl?.type === 'FunctionDeclaration' || 
+        if (decl?.type === 'FunctionDeclaration' ||
             decl?.type === 'FunctionExpression' ||
             decl?.type === 'ArrowFunctionExpression') {
           return decl;

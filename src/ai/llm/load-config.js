@@ -24,7 +24,7 @@ export async function loadAIConfig(configPath) {
     const content = await fs.readFile(absolutePath, 'utf-8');
     return JSON.parse(content);
   } catch (error) {
-    console.error('Failed to load AI config:', error.message);
+    if (process.env.DEBUG) process.stderr.write(`[load-config] Failed to load AI config: ${error.message}\n`);
     // Retornar config por defecto con LLM habilitado (auto-detect)
     // El sistema usará IA cuando los metadatos indiquen casos complejos
     return {

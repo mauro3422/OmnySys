@@ -3,7 +3,7 @@
  * Obtiene detalles atómicos de una función específica
  */
 
-import { getAtomDetails } from '#layer-c/query/queries/file-query.js';
+import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
 
 export async function get_function_details(args, context) {
   const { filePath, functionName } = args;

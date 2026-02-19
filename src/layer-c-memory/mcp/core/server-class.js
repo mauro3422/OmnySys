@@ -43,7 +43,7 @@ import {
   ReadyStep
 } from './initialization/steps/index.js';
 import { getErrorGuardian } from '../../../core/error-guardian/index.js';
-import { HotReloadManager } from './hot-reload-manager.js';
+import { HotReloadManager } from './hot-reload-manager/index.js';
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';

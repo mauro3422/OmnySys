@@ -7,7 +7,7 @@
  * @module validation-engine/reports/report-builder
  */
 
-import { ValidationReport, ValidationResult, ValidationSeverity } from '../../core/validation-result.js';
+import { ValidationReport, ValidationResult, ValidationSeverity } from '../../core/results/index.js';
 
 /**
  * Builder para construcción paso a paso de reportes

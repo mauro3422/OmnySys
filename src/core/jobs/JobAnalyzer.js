@@ -108,7 +108,7 @@ export class JobAnalyzer {
     logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
     
     const llmService = await this.worker._getLLMService();
-    console.log(`[Worker:${jobId}] LLM service = ${!!llmService}`);
+    logger.debug(`[Worker:${jobId}] LLM service = ${!!llmService}`);
     
     if (!llmService) {
       logger.warn(`   ⚠️  LLM not available, using static analysis only`);

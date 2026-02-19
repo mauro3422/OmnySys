@@ -21,7 +21,7 @@ export async function isolateAffectedComponent(analysis, stats) {
   // Log de la acción (silencioso si no hay console)
   try {
     if (typeof process !== 'undefined' && process.env?.DEBUG) {
-      console.log(`[isolation] Isolating component: ${component}`);
+      process.stderr.write(`[isolation] Isolating component: ${component}\n`);
     }
   } catch (_) { /* ignore */ }
 

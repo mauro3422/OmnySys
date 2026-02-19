@@ -32,7 +32,7 @@ export function deserializeGraph(jsonStr) {
   try {
     return JSON.parse(jsonStr);
   } catch (error) {
-    console.error('Error deserializing graph:', error.message);
+    // Non-fatal: callers handle null as "no graph available"
     return null;
   }
 }

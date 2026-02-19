@@ -2,7 +2,7 @@ import path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import { loadAIConfig } from '../../ai/llm-client.js';
-import { LLMService } from '../../services/llm-service.js';
+import { LLMService } from '../../services/llm-service/index.js';
 import { exists, repoRoot } from '../utils/paths.js';
 import { isBrainServerStarting, isPortInUse } from '../utils/llm.js';
 import { showHelp } from '../help.js';

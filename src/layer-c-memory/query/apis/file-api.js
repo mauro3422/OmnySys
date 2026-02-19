@@ -17,7 +17,7 @@ export {
   getFileAnalysisWithAtoms,
   getAtomDetails,
   findAtomsByArchetype
-} from '../queries/file-query.js';
+} from '../queries/file-query/index.js';
 
 // Re-exports de readers (comúnmente usados juntos con file queries)
 export { readJSON, readMultipleJSON, fileExists } from '../readers/json-reader.js';

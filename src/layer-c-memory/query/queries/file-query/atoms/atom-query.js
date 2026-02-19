@@ -3,7 +3,11 @@
  * @module query/queries/file-query/atoms/atom-query
  */
 
+import fs from 'fs/promises';
+import path from 'path';
 import { loadAtoms } from '#layer-c/storage/index.js';
+
+const DATA_DIR = '.omnysysdata';
 
 /**
  * Builds atom ID from file path and function name
@@ -43,13 +47,52 @@ export async function getAtomDetails(rootPath, filePath, functionName, cache = n
 }
 
 /**
+ * Recursively collect all .json files under a directory.
+ * @param {string} dir
+ * @returns {Promise<string[]>}
+ */
+async function walkJsonFiles(dir) {
+  const results = [];
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...await walkJsonFiles(full));
+    } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/**
  * Busca átomos por arquetipo en todo el proyecto
  * @param {string} rootPath - Raíz del proyecto
  * @param {string} archetypeType - Tipo de arquetipo (e.g., 'dead-function', 'hot-path')
  * @returns {Promise<Array>} - Lista de átomos con ese arquetipo
  */
 export async function findAtomsByArchetype(rootPath, archetypeType) {
-  // TODO: Esto requeriría escanear todos los archivos
-  // Por ahora, retornar array vacío
-  return [];
+  const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+  const jsonFiles = await walkJsonFiles(atomsDir);
+
+  const matches = [];
+  for (const filePath of jsonFiles) {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const atom = JSON.parse(content);
+      const atomArchetype = atom.archetype || atom.metadata?.archetype;
+      if (atomArchetype?.type === archetypeType) {
+        matches.push(atom);
+      }
+    } catch {
+      // Archivo corrupto o no es un átomo válido — ignorar
+    }
+  }
+
+  return matches;
 }

@@ -96,14 +96,26 @@ export function findFunctionNode(ast) {
     const body = ast.program.body || [];
     for (const node of body) {
       if (node.type === 'FunctionDeclaration') return node;
-      if (node.type === 'ExportNamedDeclaration' && node.declaration?.type === 'FunctionDeclaration') {
-        return node.declaration;
+      // const fn = () => {} or const fn = function() {}
+      if (node.type === 'VariableDeclaration') {
+        for (const decl of node.declarations) {
+          if (isFunctionNode(decl.init)) return decl.init;
+        }
+      }
+      if (node.type === 'ExportNamedDeclaration') {
+        if (node.declaration?.type === 'FunctionDeclaration') {
+          return node.declaration;
+        }
+        // export const fn = () => {}
+        if (node.declaration?.type === 'VariableDeclaration') {
+          for (const decl of node.declaration.declarations) {
+            if (isFunctionNode(decl.init)) return decl.init;
+          }
+        }
       }
       if (node.type === 'ExportDefaultDeclaration') {
         const decl = node.declaration;
-        if (isFunctionNode(decl)) {
-          return decl;
-        }
+        if (isFunctionNode(decl)) return decl;
       }
     }
   }

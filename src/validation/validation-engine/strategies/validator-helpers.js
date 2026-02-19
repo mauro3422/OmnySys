@@ -4,7 +4,7 @@
  * @module validation-engine/strategies/validator-helpers
  */
 
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationResult } from '../../core/results/index.js';
 
 /**
  * Agrupa reglas por tipo de entidad

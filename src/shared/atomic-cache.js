@@ -11,7 +11,7 @@
  * @module shared/atomic-cache
  */
 
-import { DerivationCache } from './derivation-engine.js';
+import { DerivationCache } from './derivation-engine/index.js';
 
 /**
  * AtomicCache - Gestiona caché de átomos con invalidación inteligente

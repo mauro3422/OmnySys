@@ -5,7 +5,7 @@
 
 import { getFileAnalysis } from '../core/single-file.js';
 import { loadAtoms, loadMolecule } from '#layer-c/storage/index.js';
-import { composeMolecularMetadata } from '#shared/derivation-engine.js';
+import { composeMolecularMetadata } from '#shared/derivation-engine/index.js';
 
 /**
  * Loads atoms with cache integration

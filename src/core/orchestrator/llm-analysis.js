@@ -3,7 +3,7 @@ import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
 import { createLogger } from '../../utils/logger.js';
 import { getDecisionAuditLogger } from '../../layer-c-memory/shadow-registry/audit-logger.js';
-import { LLMService } from '../../services/llm-service.js';
+import { LLMService } from '../../services/llm-service/index.js';
 
 const logger = createLogger('OmnySys:llm:analysis');
 
@@ -56,7 +56,6 @@ function shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer) {
  */
 export async function _analyzeComplexFilesWithLLM() {
   logger.info('\n🤖 Orchestrator: Analyzing complex files with LLM...');
-  console.log('[LLM-ANALYSIS] Starting LLM analysis of files...');
 
   try {
     // Importar dependencias dinámicamente
@@ -174,7 +173,6 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     if (filesNeedingLLM.length === 0) {
-      console.log('[LLM-ANALYSIS] No files need LLM analysis (static analysis sufficient)');
       logger.info('   i  No files need LLM analysis (static analysis sufficient)');
       logger.info('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
@@ -191,7 +189,6 @@ export async function _analyzeComplexFilesWithLLM() {
     this.processedFiles.clear();
     this.analysisCompleteEmitted = false;
 
-    console.log(`[LLM-ANALYSIS] Found ${filesNeedingLLM.length} files needing LLM analysis`);
     logger.info(`   📊 Found ${filesNeedingLLM.length} files needing LLM analysis`);
 
     // Agregar archivos a la cola con prioridad

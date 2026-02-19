@@ -29,7 +29,7 @@ export {
 export { ReportBuilder, ReportFormatter } from './reports/index.js';
 
 // Re-exportar clases de resultados para conveniencia
-export { ValidationReport, ValidationResult, ValidationSeverity } from '../core/validation-result.js';
+export { ValidationReport, ValidationResult, ValidationSeverity } from '../core/results/index.js';
 
 // Función de conveniencia para validación rápida
 import path from 'path';

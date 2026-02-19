@@ -92,7 +92,8 @@ export class StrategyRegistry {
         }
       } catch (error) {
         // Log but continue with other strategies
-        console.warn(`Strategy ${strategy.name} failed:`, error.message);
+        // Log strategy failure but continue with remaining strategies
+        if (process.env.DEBUG) process.stderr.write(`[type-contracts] Strategy ${strategy.name} failed: ${error.message}\n`);
       }
     }
     return results;

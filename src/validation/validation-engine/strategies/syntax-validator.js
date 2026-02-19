@@ -8,7 +8,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationResult } from '../../core/results/index.js';
 import { BaseValidationStrategy } from './base-strategy.js';
 
 const logger = createLogger('OmnySys:validation:syntax');

@@ -7,7 +7,7 @@
  */
 
 import { isLikelyEntryPoint } from '../helpers.js';
-import { classifyFile } from '../../../layer-c-memory/verification/utils/path-utils.js';
+import { classifyFile } from '#shared/utils/path-utils.js';
 
 /**
  * Encuentra archivos sin dependencias (entrada points o código muerto)

@@ -1,5 +1,5 @@
 import { isPublicAPI } from '../helpers.js';
-import { classifyFile } from '../../../layer-c-memory/verification/utils/path-utils.js';
+import { classifyFile } from '#shared/utils/path-utils.js';
 
 /**
  * Unused Exports Analyzer

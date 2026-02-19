@@ -7,7 +7,7 @@
  */
 
 import { createLogger } from '../../shared/logger-system.js';
-import { LLMService } from '../../services/llm-service.js';
+import { LLMService } from '../../services/llm-service/index.js';
 import { WorkerState } from './WorkerState.js';
 import { JobAnalyzer } from '../jobs/JobAnalyzer.js';
 
@@ -135,10 +135,10 @@ export class AnalysisWorker {
    */
   async analyze(job) {
     const jobId = Math.random().toString(36).substring(2, 8);
-    console.log(`[Worker:${jobId}] ✅ START analyze() for ${job.filePath}`);
-    
+    logger.debug(`[Worker:${jobId}] ✅ START analyze() for ${job.filePath}`);
+
     if (this.state.isPaused) {
-      console.log(`[Worker:${jobId}] Worker is PAUSED`);
+      logger.debug(`[Worker:${jobId}] Worker is PAUSED`);
       return;
     }
 

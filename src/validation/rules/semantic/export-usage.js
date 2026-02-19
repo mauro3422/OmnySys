@@ -7,8 +7,8 @@
  * @module validation/rules/semantic/export-usage
  */
 
-import { ValidationRule } from '../../core/rule-registry.js';
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationRule } from '../../core/rules/index.js';
+import { ValidationResult } from '../../core/results/index.js';
 
 export const ExportUsageRule = new ValidationRule({
   id: 'semantic.export-usage',

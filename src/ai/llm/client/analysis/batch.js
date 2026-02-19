@@ -1,3 +1,7 @@
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:llm:batch');
+
 /**
  * Batch Analyzer - Handles batch processing with concurrency limits
  */
@@ -23,8 +27,8 @@ export class BatchAnalyzer {
       const batchResults = await Promise.all(
         batchPrompts.map((prompt, idx) => 
           this.analyzer.analyze(prompt, { mode }).catch(err => {
-            console.error(`❌ LLM analyze error for prompt ${i + idx}:`, err.message);
-            console.error(`Prompt preview: ${prompt.slice(0, 200)}...`);
+            logger.error(`❌ LLM analyze error for prompt ${i + idx}: ${err.message}`);
+            logger.debug(`Prompt preview: ${prompt.slice(0, 200)}...`);
             return { error: err.message };
           })
         )
@@ -54,8 +58,8 @@ export class BatchAnalyzer {
         batchUserPrompts.map((prompt, idx) => {
           const systemPrompt = batchSystemPrompts[idx] || null;
           return this.analyzer.analyze(prompt, { mode, systemPrompt }).catch(err => {
-            console.error(`❌ LLM analyze error for prompt ${i + idx}:`, err.message);
-            console.error(`Prompt preview: ${prompt.slice(0, 200)}...`);
+            logger.error(`❌ LLM analyze error for prompt ${i + idx}: ${err.message}`);
+            logger.debug(`Prompt preview: ${prompt.slice(0, 200)}...`);
             return { error: err.message };
           });
         })

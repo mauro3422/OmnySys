@@ -9,8 +9,8 @@
  * @module validation/rules/derivation/risk-calculation
  */
 
-import { ValidationRule } from '../../core/rule-registry.js';
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationRule } from '../../core/rules/index.js';
+import { ValidationResult } from '../../core/results/index.js';
 
 export const RiskCalculationRule = new ValidationRule({
   id: 'derivation.risk-calculation',

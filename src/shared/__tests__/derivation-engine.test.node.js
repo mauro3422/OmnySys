@@ -14,7 +14,7 @@ import {
   DerivationCache, 
   composeMolecularMetadata,
   validateAtoms 
-} from '../derivation-engine.js';
+} from '../derivation-engine/index.js';
 
 describe('DerivationRules', () => {
   describe('moleculeArchetype', () => {

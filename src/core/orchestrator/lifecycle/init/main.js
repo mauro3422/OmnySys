@@ -3,7 +3,7 @@ import { StateManager } from '../../../state-manager.js';
 import { AnalysisWorker } from '../../../worker/AnalysisWorker.js';
 import { getCacheManager } from '#core/cache/singleton.js';
 import { loadAIConfig } from '../../../../ai/llm-client.js';
-import { LLMService } from '../../../../services/llm-service.js';
+import { LLMService } from '../../../../services/llm-service/index.js';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');

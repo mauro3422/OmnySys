@@ -1,7 +1,7 @@
 ﻿import path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
-import { LLMService } from '../../services/llm-service.js';
+import { LLMService } from '../../services/llm-service/index.js';
 import { exists, repoRoot } from './paths.js';
 
 const execAsync = promisify(exec);

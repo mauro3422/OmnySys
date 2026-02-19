@@ -133,7 +133,7 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     }
 
   } catch (error) {
-    console.warn('Warning: Enhancement partially failed:', error.message);
+    if (process.env.DEBUG) process.stderr.write(`[system-map-enhancer] Enhancement partially failed: ${error.message}\n`);
     // Ensure minimum structure exists
     enhanced.connections = enhanced.connections || { sharedState: [], eventListeners: [], total: 0 };
     enhanced.riskAssessment = enhanced.riskAssessment || { scores: {}, report: { summary: {} } };

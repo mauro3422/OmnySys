@@ -12,7 +12,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../utils/logger.js';
-import { validateForLineage } from '../../layer-b-semantic/validators/lineage-validator.js';
+import { validateForLineage } from '../../layer-b-semantic/validators/lineage-validator/index.js';
 import { registerDeath, reconstructLineage } from './lineage-tracker.js';
 import { ShadowStatus } from './types.js';
 import { ShadowCache } from './cache/lru-cache.js';

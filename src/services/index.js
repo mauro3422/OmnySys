@@ -9,12 +9,7 @@
  * @module services
  */
 
-export { 
-  LLMService,
-  analyzeWithLLM,
-  isLLMAvailable,
-  waitForLLM
-} from './llm-service.js';
+export { LLMService } from './llm-service/index.js';
 
 // Re-export default
-export { default } from './llm-service.js';
+export { default } from './llm-service/index.js';

@@ -16,7 +16,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { createLogger } from '../../utils/logger.js';
+
+const execFileAsync = promisify(execFile);
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -184,19 +188,36 @@ export async function getAtomsForFile(filePath) {
 }
 
 /**
- * Obtiene commits recientes (para contexto de muerte)
+ * Obtiene commits recientes del repo git (para contexto de muerte de átomos).
+ * Retorna [] si git no está disponible o el directorio no es un repo.
+ * @returns {Promise<Array<{hash: string, message: string}>>}
  */
 export async function getRecentCommits() {
-  // TODO: Integrar con git si está disponible
-  return [];
+  const cwd = this.dataPath ? path.dirname(this.dataPath) : process.cwd();
+  try {
+    const { stdout } = await execFileAsync(
+      'git', ['log', '--oneline', '-n', '10'],
+      { cwd, timeout: 3000 }
+    );
+    return stdout.trim().split('\n').filter(Boolean).map(line => {
+      const spaceIdx = line.indexOf(' ');
+      return {
+        hash: line.slice(0, spaceIdx),
+        message: line.slice(spaceIdx + 1)
+      };
+    });
+  } catch {
+    // git no disponible, no es un repo, o timeout — no es un error fatal
+    return [];
+  }
 }
 
 /**
  * Borra metadata del archivo en .omnysysdata/files/
  */
 export async function removeFileMetadata(filePath) {
-  const safePath = filePath.replace(/[\/]/g, '_');
-  const metadataPath = path.join(this.dataPath, 'files', `${safePath}.json`);
+  // Path must match saveFileAnalysis: .omnysysdata/files/{dir}/{basename}.json
+  const metadataPath = path.join(this.dataPath, 'files', filePath) + '.json';
 
   try {
     await fs.unlink(metadataPath);
@@ -242,12 +263,41 @@ export async function removeAtomMetadata(filePath) {
 }
 
 /**
- * Limpia relaciones del archivo con otros
+ * Limpia relaciones del archivo con otros módulos.
+ * Lee los imports del archivo antes de borrarlo y emite eventos
+ * 'import:orphaned' para que otros subsistemas reaccionen.
  */
 export async function cleanupRelationships(filePath) {
-  // TODO: Remover referencias en otros archivos que importaban este
-  // Por ahora solo lo registramos
   logger.debug(`🧹 Cleaning up relationships for ${filePath}`);
+
+  // La metadata aún existe porque cleanupRelationships se llama
+  // antes de removeFileMetadata en handleFileDeleted.
+  const fileName = path.basename(filePath);
+  const fileDir = path.dirname(filePath);
+  const metadataPath = path.join(this.dataPath, 'files', fileDir, `${fileName}.json`);
+
+  try {
+    const content = await fs.readFile(metadataPath, 'utf-8');
+    const metadata = JSON.parse(content);
+    const imports = metadata.imports || [];
+
+    if (imports.length > 0) {
+      logger.debug(`  ${filePath} tenía ${imports.length} import(s) — emitiendo import:orphaned`);
+      for (const imported of imports) {
+        const importedPath = typeof imported === 'string' ? imported : (imported.path || imported.from || '');
+        if (importedPath) {
+          this.emit('import:orphaned', {
+            importer: filePath,
+            imported: importedPath,
+            reason: 'importer_deleted'
+          });
+        }
+      }
+    }
+  } catch {
+    // No existe metadata o no es parseable — sin relaciones que limpiar
+    logger.debug(`  Sin metadata para ${filePath}, skip relationship cleanup`);
+  }
 }
 
 /**
@@ -271,12 +321,41 @@ export async function notifyDependents(filePath, reason) {
 }
 
 /**
- * Obtiene archivos que dependen de este
+ * Obtiene archivos que dependen de este (lo importan).
+ * Lee el system-map persistido en .omnysysdata/system-map-enhanced.json.
+ * @param {string} filePath - Path relativo del archivo
+ * @returns {Promise<string[]>} - Paths de archivos que importan este archivo
  */
 export async function getDependents(filePath) {
-  // Leer system-map o connections para encontrar quién importa este archivo
-  // Por ahora retornamos array vacío - implementar con system-map
-  return [];
+  const systemMapPath = path.join(this.dataPath, 'system-map-enhanced.json');
+
+  try {
+    const content = await fs.readFile(systemMapPath, 'utf-8');
+    const systemMap = JSON.parse(content);
+
+    // Normalizar el filePath para comparación: forward slashes, sin leading ./
+    const normalized = filePath.replace(/\\/g, '/').replace(/^\.\//, '');
+
+    // Buscar el nodo directamente
+    const fileNode = systemMap.files?.[normalized] || systemMap.files?.[filePath];
+    if (fileNode?.usedBy?.length > 0) {
+      return fileNode.usedBy;
+    }
+
+    // Fallback: escanear todos los nodos buscando dependsOn que incluya este archivo
+    const dependents = [];
+    for (const [fp, node] of Object.entries(systemMap.files || {})) {
+      if ((node.dependsOn || []).some(dep =>
+        dep === normalized || dep === filePath || dep.endsWith(normalized)
+      )) {
+        dependents.push(fp);
+      }
+    }
+    return dependents;
+  } catch {
+    // system-map no existe o no es legible — sin dependientes conocidos
+    return [];
+  }
 }
 
 // Nota: handleImportChanges y handleExportChanges se implementarán en analyze.js si son necesarias

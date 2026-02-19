@@ -1,4 +1,7 @@
 import { cleanLLMResponse, normalizeAnalysisResponse } from '../../response-cleaner.js';
+import { createLogger } from '../../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:LLMClient');
 
 /**
  * Analyzer - Single analysis method for LLM requests
@@ -41,7 +44,7 @@ export class Analyzer {
       let response;
       try {
         const serverUrl = this.serverManager.getServerUrl(server);
-        console.log(`📡 [LLMClient] Sending request to ${serverUrl} (timeout: ${timeoutMs}ms)`);
+        logger.info(`📡 Sending request to ${serverUrl} (timeout: ${timeoutMs}ms)`);
 
         response = await fetch(`${serverUrl}/v1/chat/completions`, {
           method: 'POST',
@@ -64,7 +67,7 @@ export class Analyzer {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ LLM HTTP ERROR ${response.status}: ${errorText.slice(0, 500)}`);
+        logger.error(`❌ LLM HTTP ERROR ${response.status}: ${errorText.slice(0, 500)}`);
         throw new Error(`LLM server error: ${response.status} ${response.statusText}`);
       }
 
@@ -75,8 +78,7 @@ export class Analyzer {
         throw new Error('Empty response from LLM server');
       }
 
-      // DEBUG: Log raw LLM response
-      console.log(`\n🤖 RAW LLM RESPONSE (length: ${content.length} chars):\n${content.slice(0, 1000)}\n...\n`);
+      logger.debug(`🤖 RAW LLM RESPONSE (length: ${content.length} chars):\n${content.slice(0, 1000)}`);
 
       // Try to parse as JSON (with markdown cleanup)
       return this._parseResponse(content);
@@ -107,7 +109,7 @@ export class Analyzer {
       };
     } catch (parseError) {
       // If not valid JSON, return default structure
-      console.warn('LLM response is not valid JSON:', content);
+      logger.warn('LLM response is not valid JSON:', content.slice(0, 200));
       return {
         sharedState: [],
         events: [],

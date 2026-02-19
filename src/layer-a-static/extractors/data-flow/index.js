@@ -62,39 +62,48 @@ const PARSER_OPTIONS = {
  */
 export function extractDataFlow(code, options = {}) {
   logger.debug('Extracting data flow...');
-  
+
   try {
     // Parse the code
     const ast = parse(code, PARSER_OPTIONS);
-    
-    // Build the transformation graph
-    const graphBuilder = new GraphBuilder();
-    const graph = graphBuilder.build(ast);
-    
-    // Extract components
-    const inputExtractor = new InputExtractor();
-    const transformationExtractor = new TransformationExtractor();
-    const outputExtractor = new OutputExtractor();
-    
+
+    const functionName = options.functionName || '<anonymous>';
+
+    // Extract components in order — each step feeds the next
+    const inputExtractor = new InputExtractor(code, functionName);
     const inputs = inputExtractor.extract(ast);
+
+    const transformationExtractor = new TransformationExtractor(code, inputs);
     const transformations = transformationExtractor.extract(ast);
+
+    const outputExtractor = new OutputExtractor(code, transformations);
     const outputs = outputExtractor.extract(ast);
-    
+
+    // Build the transformation graph (populated from extractor results)
+    const graphBuilder = new GraphBuilder();
+    const graph = graphBuilder.build();
+
+    // Run flow coherence analysis
+    const flowAnalysis = options.analyzeFlow
+      ? new DataFlowAnalyzer(inputs, transformations, outputs).analyze()
+      : null;
+
     // Run advanced analysis (from data-flow-v2)
-    const invariants = options.detectInvariants 
-      ? new InvariantDetector(graph).detect() 
+    const invariants = options.detectInvariants
+      ? new InvariantDetector(graph).detect()
       : [];
-    
+
     const inferredTypes = options.inferTypes
       ? new TypeInferrer(graph).infer()
       : {};
-    
+
     return {
       graph,
       inputs,
       transformations,
       outputs,
       analysis: {
+        ...(flowAnalysis && { flow: flowAnalysis }),
         invariants,
         inferredTypes
       },

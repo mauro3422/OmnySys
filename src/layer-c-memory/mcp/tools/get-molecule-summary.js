@@ -3,7 +3,7 @@
  * Obtiene resumen molecular de un archivo (todas sus funciones/atoms)
  */
 
-import { getFileAnalysisWithAtoms } from '#layer-c/query/queries/file-query.js';
+import { getFileAnalysisWithAtoms } from '#layer-c/query/queries/file-query/index.js';
 
 export async function get_molecule_summary(args, context) {
   const { filePath } = args;

@@ -8,7 +8,7 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { compareDNA } from '../../../layer-a-static/extractors/metadata/dna-extractor.js';
-import { validateMatch } from '../../../layer-b-semantic/validators/lineage-validator.js';
+import { validateMatch } from '../../../layer-b-semantic/validators/lineage-validator/index.js';
 import { ShadowStatus } from '../types.js';
 import { isValidDNA } from '../dna/dna-helpers.js';
 

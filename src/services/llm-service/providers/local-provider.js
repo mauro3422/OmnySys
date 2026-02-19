@@ -8,7 +8,7 @@
  */
 
 import { BaseProvider } from './base-provider.js';
-import { LLMClient } from '../../../ai/llm/client.js';
+import { LLMClient } from '../../../ai/llm/client/index.js';
 import { loadAIConfig } from '../../../ai/llm/load-config.js';
 import { createLogger } from '../../../utils/logger.js';
 

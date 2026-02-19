@@ -7,8 +7,8 @@
  * @module validation/invariants/system-invariants
  */
 
-import { ValidationRule } from '../core/rule-registry.js';
-import { ValidationResult } from '../core/validation-result.js';
+import { ValidationRule } from '../core/rules/index.js';
+import { ValidationResult } from '../core/results/index.js';
 
 /**
  * Invariante: Todos los IDs deben ser únicos

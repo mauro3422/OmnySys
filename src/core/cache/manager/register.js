@@ -68,9 +68,9 @@ export async function registerFile(filePath, content, metadata = null) {
   existingEntry.version++;
   existingEntry.timestamp = Date.now();
   
-  // 🆕 NUEVO: Log de qué tipo de cambio ocurrió
-  if (metadataChanged && !contentChanged) {
-    console.log(`[Cache] Metadata changed for ${filePath} (content unchanged)`);
+  // Log metadata-only changes in debug mode
+  if (metadataChanged && !contentChanged && process.env.DEBUG) {
+    process.stderr.write(`[Cache] Metadata changed for ${filePath} (content unchanged)\n`);
   }
 
   // Determinar qué se necesita re-analizar

@@ -7,8 +7,8 @@
  * @module verification/orchestrator
  */
 
-import { IntegrityValidator } from '../validators/integrity-validator.js';
-import { ConsistencyValidator } from '../validators/consistency-validator.js';
+import { IntegrityValidator } from '../validators/integrity/index.js';
+import { ConsistencyValidator } from '../validators/consistency/index.js';
 import { VerificationStatus } from '../types/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { generateReport } from './reporters/report-generator.js';

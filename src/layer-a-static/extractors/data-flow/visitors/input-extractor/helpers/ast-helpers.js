@@ -25,8 +25,28 @@ export function findFunctionNode(ast) {
       if (node.type === 'FunctionDeclaration') {
         return node;
       }
-      if (node.type === 'ExportNamedDeclaration' && node.declaration?.type === 'FunctionDeclaration') {
-        return node.declaration;
+      // const fn = () => {} or const fn = function() {}
+      if (node.type === 'VariableDeclaration') {
+        for (const decl of node.declarations) {
+          if (decl.init?.type === 'ArrowFunctionExpression' ||
+              decl.init?.type === 'FunctionExpression') {
+            return decl.init;
+          }
+        }
+      }
+      if (node.type === 'ExportNamedDeclaration') {
+        if (node.declaration?.type === 'FunctionDeclaration') {
+          return node.declaration;
+        }
+        // export const fn = () => {}
+        if (node.declaration?.type === 'VariableDeclaration') {
+          for (const decl of node.declaration.declarations) {
+            if (decl.init?.type === 'ArrowFunctionExpression' ||
+                decl.init?.type === 'FunctionExpression') {
+              return decl.init;
+            }
+          }
+        }
       }
       if (node.type === 'ExportDefaultDeclaration' &&
         (node.declaration?.type === 'FunctionDeclaration' ||

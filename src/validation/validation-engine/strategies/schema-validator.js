@@ -5,7 +5,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationResult } from '../../core/results/index.js';
 import { BaseValidationStrategy } from './base-strategy.js';
 import { groupRulesByEntity, getDerivationEntities, validateEntityRules } from './validator-helpers.js';
 

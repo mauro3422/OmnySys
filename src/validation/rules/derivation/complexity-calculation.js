@@ -9,8 +9,8 @@
  * @module validation/rules/derivation/complexity-calculation
  */
 
-import { ValidationRule } from '../../core/rule-registry.js';
-import { ValidationResult } from '../../core/validation-result.js';
+import { ValidationRule } from '../../core/rules/index.js';
+import { ValidationResult } from '../../core/results/index.js';
 
 export const ComplexityCalculationRule = new ValidationRule({
   id: 'derivation.complexity-calculation',
