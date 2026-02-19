@@ -8,8 +8,8 @@
  */
 
 // Handlers
-export { ErrorClassifier, SEVERITY, ERROR_PATTERNS } from './handlers/error-classifier.js';
-export { RecoveryHandler, RECOVERY_ACTIONS } from './handlers/recovery-handler.js';
+export { ErrorClassifier, SEVERITY, ERROR_PATTERNS } from './handlers/error-classifier/index.js';
+export { RecoveryHandler, RECOVERY_ACTIONS } from './handlers/recovery-handler/index.js';
 
 // Strategies
 export { RetryStrategy, RETRY_CONFIG } from './strategies/retry-strategy.js';

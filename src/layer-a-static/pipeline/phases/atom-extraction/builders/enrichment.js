@@ -7,7 +7,7 @@
  */
 
 import { extractDNA } from '#layer-a/extractors/metadata/dna-extractor.js';
-import { validateForLineage } from '#layer-b/validators/lineage-validator.js';
+import { validateForLineage } from '#layer-b/validators/lineage-validator/index.js';
 import { logger } from '#utils/logger.js';
 
 /**

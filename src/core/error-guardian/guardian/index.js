@@ -25,8 +25,8 @@ import { createExecutionWrapper } from './execution/execution-wrapper.js';
 import { createInitialStats, resetStats, aggregateStats } from './state/stats-manager.js';
 
 // External components
-import { ErrorClassifier } from '../handlers/error-classifier.js';
-import { RecoveryHandler } from '../handlers/recovery-handler.js';
+import { ErrorClassifier } from '../handlers/error-classifier/index.js';
+import { RecoveryHandler } from '../handlers/recovery-handler/index.js';
 import { RetryStrategy } from '../strategies/retry-strategy.js';
 import { FallbackStrategy } from '../strategies/fallback-strategy.js';
 import { CircuitBreaker } from '../strategies/circuit-breaker.js';

@@ -8,7 +8,7 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:orchestrator');
 
-import * as lifecycle from './lifecycle.js';
+import * as lifecycle from './lifecycle/index.js';
 import * as queueing from './queueing.js';
 import * as llmAnalysis from './llm-analysis.js';
 import * as iterative from './iterative.js';
