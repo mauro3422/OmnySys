@@ -19,12 +19,51 @@ export async function restart_server(args, context) {
   try {
     logger.info('🔄 Reiniciando servidor OmnySys...');
 
+    // ── TRUE RESTART via proxy ────────────────────────────────────────────
+    // Si corremos bajo mcp-server.js (proxy), process.send() está disponible.
+    // El proxy mata este proceso y spawna uno nuevo → ESM cache limpio.
+    // La conexión stdio de Claude Code NO se interrumpe.
+    if (typeof process.send === 'function') {
+      logger.info('📡 Enviando señal de restart al proxy (true Node.js restart)...');
+
+      // Limpiar caché en disco si se pidió, antes de morir
+      if (clearCache && cache) {
+        logger.info('🧹 Limpiando caché antes de reiniciar...');
+        await cache.clear();
+        if (reanalyze) {
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          const dataDir = path.join(server.projectPath, '.omnysysdata');
+          const filesDir = path.join(dataDir, 'files');
+          const indexFile = path.join(dataDir, 'index.json');
+          await fs.rm(filesDir, { recursive: true, force: true }).catch(() => {});
+          await fs.unlink(indexFile).catch(() => {});
+          logger.info('✅ Análisis anterior eliminado');
+        }
+      }
+
+      // Señalar al proxy — el proxy espera 300ms y luego mata+respawnea
+      process.send({ type: 'restart', clearCache });
+
+      return {
+        success: true,
+        restarting: true,
+        restartType: 'true_process_restart',
+        clearCache,
+        reanalyze,
+        timestamp: new Date().toISOString(),
+        message: 'Proxy received restart signal. New Node.js process will start in ~1s with fresh ESM cache. Claude Code connection stays alive.'
+      };
+    }
+    // ── FALLBACK: component-only restart (standalone mode, no proxy) ─────
+
     const result = {
       restarting: true,
+      restartType: 'component_restart',
       clearCache: clearCache,
       reanalyze: reanalyze,
       timestamp: new Date().toISOString(),
-      message: 'Server restart initiated. Please wait...'
+      message: 'Server restart initiated (component-only — run via npm run mcp for true restart).'
     };
 
     // Paso 1: Limpiar caché si se solicita

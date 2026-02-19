@@ -1,153 +1,168 @@
 #!/usr/bin/env node
 
 /**
- * OmnySys MCP Server - Entry Point Único
+ * OmnySys MCP Server - Proxy Entry Point
  *
- * Usa OmnySysMCPServer con MCP SDK oficial
- * Compatible con Claude Desktop, OpenCode, y otros clientes MCP
+ * Mantiene la conexión stdio con Claude Code viva mientras permite
+ * reinicios verdaderos del servidor (nuevo proceso Node.js = ESM cache limpio).
  *
- * Usage: node src/layer-c-memory/mcp-server.js /path/to/project
+ * Arquitectura:
+ *   Claude Code  ←── stdio ──→  [mcp-server.js (proxy)]  ←── IPC + pipes ──→  [mcp-server-worker.js]
+ *                                  (nunca muere)                                   (se puede reiniciar)
  *
- * ⚡ CRITICAL FIX: This file redirects stderr to a log file BEFORE any imports
- *    to prevent EPIPE errors with MCP stdio transport. DO NOT move the stderr
- *    redirect code below - it must execute FIRST.
+ * Restart flow:
+ *   1. restart_server tool llama process.send({ type: 'restart' })
+ *   2. El proxy recibe el mensaje, espera 300ms (para que la respuesta MCP llegue a Claude)
+ *   3. Mata el worker con SIGTERM
+ *   4. Spawna un nuevo worker → ESM cache vacío → módulos recargados desde disco
+ *   5. Claude Code no pierde conexión — el pipe stdio nunca se cortó
+ *
+ * ⚡ CRITICAL: stderr redirect MUST be first to prevent EPIPE on handshake.
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔧 STEP 1: Redirect stderr to file BEFORE ANY OTHER CODE
+// STEP 1: Redirect stderr to log file BEFORE any imports
 // ═══════════════════════════════════════════════════════════════════════════
-// This MUST be the first code that runs to prevent EPIPE errors.
-// MCP SDK uses stdio (stdin/stdout) for JSON communication. If stderr receives
-// any output during the handshake, it can cause "EPIPE: broken pipe" errors.
 
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
 const logsDir = path.join(projectRoot, 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 const logFile = path.join(logsDir, 'mcp-server.log');
 
 // Truncate log file at session start so each new MCP session starts clean
 fs.writeFileSync(logFile, '');
 
-// Redirect ALL stderr writes to the log file
-// This includes console.error(), logger.info(), and any other stderr output
-const originalStderrWrite = process.stderr.write.bind(process.stderr);
-process.stderr.write = function(chunk, encoding, callback) {
-  // Write to file instead of stderr pipe
-  fs.appendFileSync(logFile, chunk);
+function log(msg) {
+  const ts = new Date().toISOString().slice(11, 23);
+  fs.appendFileSync(logFile, `[proxy] ${ts} ${msg}\n`);
+}
 
-  // Call callback if provided (handling different signatures)
-  if (typeof encoding === 'function') {
-    encoding(); // encoding is actually the callback
-  } else if (callback) {
-    callback();
-  }
+// Redirect proxy's own stderr to log file
+process.stderr.write = function(chunk, encoding, callback) {
+  fs.appendFileSync(logFile, chunk);
+  if (typeof encoding === 'function') encoding();
+  else if (callback) callback();
   return true;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔧 STEP 2: NOW import modules (logging is now safe)
+// STEP 2: Proxy logic — spawn worker and forward stdio
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { spawn } from 'child_process';
-import os from 'os';
-import { createLogger } from '../utils/logger.js';
+const workerPath = path.join(__dirname, 'mcp-server-worker.js');
+const projectPath = process.argv[2] || process.cwd();
 
-const logger = createLogger('OmnySys:mcp:server');
+let child = null;
+let pendingStdin = [];
+let isRestarting = false;
 
+function spawnWorker() {
+  log('Spawning worker...');
 
+  // Inherit Node.js flags (e.g. --max-old-space-size) from proxy process
+  const execArgv = process.execArgv.filter(a =>
+    a.startsWith('--max-old-space-size') || a.startsWith('--inspect')
+  );
 
-async function main() {
-  const projectPath = process.argv[2] || process.cwd();
-  // FIX: Use normalize instead of resolve to avoid path duplication
-  // path.resolve() can duplicate paths on Windows if cwd is inside the target
-  const absolutePath = path.isAbsolute(projectPath)
-    ? path.normalize(projectPath)
-    : path.resolve(projectPath);
-
-  // --- Spawn MCP logs terminal ---
-  const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
-  if (fs.existsSync(batPath)) {
-    let logsTerminal;
-    const platform = os.platform();
-    
-    if (platform === 'win32') {
-      // Windows: abrir terminal VISIBLE con logs
-      logsTerminal = spawn('cmd.exe', ['/c', 'start', batPath], {
-        detached: true,
-        stdio: 'ignore'
-      });
-    } else if (platform === 'darwin') {
-      // macOS: usar Terminal.app
-      logsTerminal = spawn('osascript', ['-e', `tell application "Terminal" to do script "cd '${projectRoot}' && tail -f logs/mcp-server.log"`], {
-        detached: true,
-        stdio: 'ignore'
-      });
-    } else {
-      // Linux: usar xterm o gnome-terminal
-      const terminalCmd = fs.existsSync('/usr/bin/gnome-terminal') ? 'gnome-terminal' : 'xterm';
-      logsTerminal = spawn(terminalCmd, ['--', 'tail', '-f', path.join(projectRoot, 'logs/mcp-server.log')], {
-        detached: true,
-        stdio: 'ignore'
-      });
+  child = spawn(process.execPath, [...execArgv, workerPath, projectPath], {
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    env: {
+      ...process.env,
+      OMNYSYS_LOGS_SPAWNED: '1'  // Evitar que el worker lance otra terminal de logs
     }
-    
-    if (logsTerminal) {
-      logsTerminal.unref();
-      logger.info('📺 MCP Logs terminal spawned');
-    }
+  });
+
+  log(`Worker PID: ${child.pid}`);
+
+  // Flush buffered stdin to new worker
+  for (const chunk of pendingStdin) {
+    child.stdin.write(chunk);
   }
+  pendingStdin = [];
 
-  logger.info(`📂 Project: ${absolutePath}`);
-  logger.info('🚀 Starting OmnySys MCP Server...\n');
-
-  const server = new OmnySysMCPServer(absolutePath);
-
-  // Cleanup graceful
-  process.on('SIGINT', async () => {
-    logger.info('\n👋 Received SIGINT, shutting down gracefully...');
-    await server.shutdown();
-    process.exit(0);
+  // Forward worker stdout → our stdout (MCP JSON-RPC responses to Claude Code)
+  child.stdout.on('data', (chunk) => {
+    process.stdout.write(chunk);
   });
 
-  process.on('SIGTERM', async () => {
-    logger.info('\n👋 Received SIGTERM, shutting down gracefully...');
-    await server.shutdown();
-    process.exit(0);
+  // Forward worker stderr → log file
+  child.stderr.on('data', (chunk) => {
+    fs.appendFileSync(logFile, chunk);
   });
 
-  process.on('uncaughtException', async (error) => {
-    // Ignore EPIPE errors - they occur when client disconnects unexpectedly
-    // This is normal behavior for MCP stdio transport and should not crash the server
-    const isEpipe = error.code === 'EPIPE' || 
-                    (error.message && error.message.includes('EPIPE')) ||
-                    (error.message && error.message.includes('broken pipe'));
-    
-    if (isEpipe) {
-      logger.debug('⚠️  EPIPE ignored (client disconnected)');
-      return; // Don't crash on EPIPE
+  // Listen for restart signal from worker (sent by restart-server.js tool)
+  child.on('message', (msg) => {
+    if (msg?.type === 'restart') {
+      log(`Restart requested (clearCache=${msg.clearCache})`);
+      scheduleRestart();
     }
-
-    logger.error('\n❌ Uncaught exception:', error);
-    await server.shutdown();
-    process.exit(1);
   });
 
-  try {
-    // El servidor se inicializa en background después del handshake MCP
-    await server.run();
-  } catch (error) {
-    logger.info('Fatal error:', error);
-    await server.shutdown();
-    process.exit(1);
-  }
+  // Auto-restart on unexpected crash
+  child.on('exit', (code, signal) => {
+    if (!isRestarting) {
+      log(`Worker exited unexpectedly (code=${code}, signal=${signal}). Restarting in 1s...`);
+      setTimeout(() => spawnWorker(), 1000);
+    }
+  });
+
+  child.on('error', (err) => {
+    log(`Worker spawn error: ${err.message}`);
+  });
 }
 
-main();
+function scheduleRestart() {
+  if (isRestarting) return;
+  isRestarting = true;
+
+  // Wait for current MCP response to flush before killing worker
+  setTimeout(() => {
+    log('Sending SIGTERM to worker...');
+    if (child && !child.killed) {
+      child.kill('SIGTERM');
+    }
+
+    setTimeout(() => {
+      isRestarting = false;
+      log('Spawning fresh worker (clean ESM cache)...');
+      spawnWorker();
+    }, 500);
+  }, 300);
+}
+
+// Forward stdin from Claude Code → worker (buffer if worker not ready)
+process.stdin.on('data', (chunk) => {
+  if (child && !child.killed && child.stdin.writable) {
+    child.stdin.write(chunk);
+  } else {
+    pendingStdin.push(chunk);
+  }
+});
+
+process.stdin.on('end', () => {
+  log('stdin closed — Claude Code disconnected. Shutting down.');
+  if (child && !child.killed) child.kill('SIGTERM');
+  process.exit(0);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  log('SIGINT received');
+  if (child && !child.killed) child.kill('SIGTERM');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  log('SIGTERM received');
+  if (child && !child.killed) child.kill('SIGTERM');
+  process.exit(0);
+});
+
+log(`OmnySys MCP Proxy started. Project: ${projectPath}`);
+spawnWorker();
