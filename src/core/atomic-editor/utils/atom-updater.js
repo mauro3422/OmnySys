@@ -46,8 +46,8 @@ export async function updateAtom(filePath, orchestrator, projectPath, impact) {
  */
 export async function invalidateCache(filePath, projectPath) {
   try {
-    const { getUnifiedCache } = await import('#core/cache/manager/index.js');
-    const cache = getUnifiedCache(projectPath);
+    const { getCacheManager } = await import('#core/cache/singleton.js');
+    const cache = await getCacheManager(projectPath);
     
     if (cache) {
       cache.invalidate(`analysis:${filePath}`);
