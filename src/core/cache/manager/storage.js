@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { ChangeType } from './constants.js';
+import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:storage');

@@ -101,12 +101,3 @@ export const ArchetypeType = {
   SINGLETON: 'singleton'
 };
 
-// Backward compatibility aliases (deprecated, will be removed in v1.0)
-/** @deprecated Use FileChangeType instead */
-export const ChangeType = FileChangeType;
-
-/** @deprecated Use SemanticChangeType instead */
-export const CacheChangeType = SemanticChangeType;
-
-/** @deprecated Use SemanticChangeType instead */
-export const BatchChangeType = SemanticChangeType;

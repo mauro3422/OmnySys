@@ -1,6 +1,7 @@
 import path from 'path';
 
-import { CACHE_DIR, INDEX_FILE, ChangeType } from './constants.js';
+import { CACHE_DIR, INDEX_FILE } from '#config/paths.js';
+import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 import { detectChangeType } from './utils.js';
 
 import * as storage from './storage.js';

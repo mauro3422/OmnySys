@@ -1,5 +1,5 @@
 ﻿import crypto from 'crypto';
-import { ChangeType } from './constants.js';
+import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 
 /**
  * Calcula hash del contenido

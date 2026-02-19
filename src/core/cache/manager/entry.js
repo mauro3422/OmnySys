@@ -1,4 +1,4 @@
-import { ChangeType } from './constants.js';
+import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 
 /**
  * Entrada de caché para un archivo

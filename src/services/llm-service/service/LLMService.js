@@ -10,7 +10,7 @@ import { OpenAIProvider } from '../providers/openai-provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { RequestHandler } from '../handlers/request-handler.js';
 import { ResponseHandler } from '../handlers/response-handler.js';
-import { ResponseCache } from '../cache/response-cache.js';
+import { ResponseCache } from '../cache/response-cache/index.js';
 import { HealthChecker } from '../health/health-checker.js';
 import { MetricsTracker } from '../metrics/metrics-tracker.js';
 import { processBatch } from '../batch/batch-processor.js';

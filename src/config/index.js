@@ -51,8 +51,4 @@ export {
   AnalysisState,
   ConnectionType,
   ArchetypeType,
-  // Backward compatibility
-  ChangeType,
-  CacheChangeType,
-  BatchChangeType
 } from './change-types.js';
