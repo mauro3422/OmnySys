@@ -10,6 +10,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { safeReadJson } from '../../../utils/json-safe.js';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:ground-truth-validator:context');
 
 export class ValidationContext {
   constructor(projectPath, omnysysPath) {
@@ -47,7 +50,7 @@ export class ValidationContext {
         }
       }
     } catch (error) {
-      console.error('Error loading atoms:', error);
+      logger.error('Error loading atoms:', error.message);
     }
 
     this._cache.set('atoms', atoms);

@@ -61,7 +61,7 @@ export async function _analyzeComplexFilesWithLLM() {
     // Importar dependencias dinámicamente
     const { LLMAnalyzer } = await import('../../layer-b-semantic/llm-analyzer/index.js');
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
-    const { detectArchetypes } = await import('../../layer-b-semantic/prompt-engine/PROMPT_REGISTRY.js');
+    const { detectArchetypes } = await import('../../layer-b-semantic/prompt-engine/prompt-registry/index.js');
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract/index.js');
 
     // Usar LLMService para verificar disponibilidad

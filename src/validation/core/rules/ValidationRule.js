@@ -3,7 +3,7 @@
  * @module validation/core/rules/ValidationRule
  */
 
-import { ValidationResult, ValidationSeverity } from '../validation-result.js';
+import { ValidationResult, ValidationSeverity } from '../results/index.js';
 
 /**
  * Clase base para todas las reglas de validación

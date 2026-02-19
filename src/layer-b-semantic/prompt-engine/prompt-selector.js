@@ -17,7 +17,7 @@ import {
   selectArchetypeBySeverity,
   getTemplateForType,
   ARCHETYPE_REGISTRY
-} from './PROMPT_REGISTRY.js';
+} from './prompt-registry/index.js';
 import { validateMetadata } from '../metadata-contract/index.js';
 import { createLogger } from '../../utils/logger.js';
 
