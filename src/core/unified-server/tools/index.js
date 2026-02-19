@@ -27,7 +27,7 @@ export {
   getMoleculeSummary,
   analyzeFunctionChange,
   getAtomicFunctions
-} from './atomic-tools.js';
+} from './atomic/atomic-tools.js';
 
 // Server Management Tools
 export { restartServer, clearAnalysisCache } from './server-tools.js';

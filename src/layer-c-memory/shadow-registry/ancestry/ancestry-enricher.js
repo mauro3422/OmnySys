@@ -7,7 +7,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { propagateInheritance } from '../lineage-tracker.js';
+import { propagateInheritance } from '../lineage-tracker/index.js';
 import { findBestMatch } from '../search/similarity-search.js';
 
 const logger = createLogger('OmnySys:shadow-registry:ancestry');

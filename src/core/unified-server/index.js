@@ -7,7 +7,7 @@ import { AnalysisQueue } from '../analysis-queue.js';
 import * as init from './initialization/index.js';
 import * as api from './api.js';
 import * as orchestrator from './orchestrator.js';
-import * as tools from './tools.js';
+import * as tools from './tools/index.js';
 import { printStatus } from './status.js';
 import { shutdown } from './lifecycle.js';
 import { createLogger } from '../../utils/logger.js';
