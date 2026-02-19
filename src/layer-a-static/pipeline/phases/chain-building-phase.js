@@ -37,19 +37,14 @@ export class ChainBuildingPhase extends ExtractionPhase {
 
     try {
       // Dynamically import chain builders
-      const { buildMolecularChains, enrichAtomsWithChains } = await import('../molecular-chains/index.js');
-      
+      const { ChainBuilder } = await import('../molecular-chains/index.js');
+
       // Build chains
-      const chainData = buildMolecularChains(atoms);
-      
-      // Enrich atoms
-      const enrichedAtoms = enrichAtomsWithChains(atoms, chainData);
+      const chainData = new ChainBuilder(atoms).build();
 
       // Update context
-      context.atoms = enrichedAtoms;
       context.molecularChains = {
         chains: chainData.chains,
-        graph: chainData.graph,
         summary: chainData.summary
       };
 

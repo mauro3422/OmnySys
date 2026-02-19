@@ -29,13 +29,21 @@ export async function analyzeFunctionSignature(projectPath, targetFile, symbolNa
       'utf-8'
     );
     
-    // Extraer firma actual
-    const functionRegex = new RegExp(
-      `export\\s+(?:async\\s+)?function\\s+${symbolName}\\s*\\(([^)]*)\\)`,
-      'i'
-    );
-    
-    const match = content.match(functionRegex);
+    // Extraer firma actual — busca tanto funciones top-level como métodos de clase
+    const patterns = [
+      // export function name(...) / export async function name(...)
+      new RegExp(`export\\s+(?:async\\s+)?function\\s+${symbolName}\\s*\\(([^)]*)\\)`, 'i'),
+      // class method: name(...) { / async name(...) {
+      new RegExp(`(?:^|\\s)(?:async\\s+)?${symbolName}\\s*\\(([^)]*)\\)\\s*\\{`, 'm'),
+      // static method: static name(...)
+      new RegExp(`static\\s+(?:async\\s+)?${symbolName}\\s*\\(([^)]*)\\)`, 'm'),
+    ];
+
+    let match = null;
+    for (const regex of patterns) {
+      match = content.match(regex);
+      if (match) break;
+    }
     if (match) {
       results.currentSignature = `${symbolName}(${match[1]})`;
     }

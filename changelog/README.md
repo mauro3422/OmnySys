@@ -12,6 +12,8 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.29-preprocessor-framework-mcp-fixes.md](v0.9.29-preprocessor-framework-mcp-fixes.md) | 2026-02-19 | **Preprocessor Framework + Import Cleanup (v0.9.20–28) + MCP Stability** |
+| [v0.9.18-runtime-bugfix.md](v0.9.18-runtime-bugfix.md) | 2026-02-18 | Runtime Bugfix: 6 bugs en arranque MCP |
 | [unreleased-2026-02-15-factories-refactor.md](unreleased-2026-02-15-factories-refactor.md) | 2026-02-15 | **UNRELEASED** - Test Factories Modularization + Layer A Stabilization |
 | [v0.9.10.md](v0.9.10.md) | 2026-02-14 | Layer A MASSIVE Test Coverage - 4,045+ Tests |
 | [v0.9.9.md](v0.9.9.md) | 2026-02-14 | Tier 3 Analysis Complete - 440 Tests |

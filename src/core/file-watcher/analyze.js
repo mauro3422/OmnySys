@@ -181,7 +181,7 @@ export async function analyzeFile(filePath, fullPath) {
         confidence: conn.confidence,
         detectedBy: 'static-extractor'
       })),
-      ...advancedConnections.connections.map(conn => ({
+      ...(advancedConnections.all || []).map(conn => ({
         target: conn.targetFile,
         type: conn.via,
         channelName: conn.channelName,

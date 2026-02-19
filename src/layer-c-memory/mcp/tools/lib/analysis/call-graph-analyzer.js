@@ -33,14 +33,18 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
       };
     }
     
-    // Verificar que el símbolo existe (incluyendo reexports)
+    // Verificar que el símbolo existe (incluyendo reexports y métodos de clase)
     const exportInfo = targetAnalysis.exports?.find(e => e.name === symbolName);
-    const hasDefinition = targetAnalysis.definitions?.some(d => d.name === symbolName);
-    
+    // Class methods are stored as "ClassName.methodName" in definitions
+    const hasDefinition = targetAnalysis.definitions?.some(
+      d => d.name === symbolName || d.name === symbolName || d.name?.endsWith(`.${symbolName}`)
+    );
+
     if (!exportInfo && !hasDefinition) {
-      return { 
+      return {
         error: `Symbol '${symbolName}' not found in ${targetFile}`,
-        availableExports: targetAnalysis.exports?.map(e => e.name) || []
+        availableExports: targetAnalysis.exports?.map(e => e.name) || [],
+        availableDefinitions: targetAnalysis.definitions?.map(d => d.name) || []
       };
     }
     

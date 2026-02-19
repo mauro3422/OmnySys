@@ -195,7 +195,9 @@ export function parseFile(filePath, code) {
 export async function parseFileFromDisk(filePath) {
   try {
     const code = await fs.readFile(filePath, 'utf-8');
-    return parseFile(filePath, code);
+    const fileInfo = parseFile(filePath, code);
+    fileInfo.source = code; // Store raw source so downstream can use it for extractFunctionCode
+    return fileInfo;
   } catch (error) {
     logger.error(`Error reading file ${filePath}:`, error);
     return {

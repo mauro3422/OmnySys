@@ -32,6 +32,9 @@ if (!fs.existsSync(logsDir)) {
 }
 const logFile = path.join(logsDir, 'mcp-server.log');
 
+// Truncate log file at session start so each new MCP session starts clean
+fs.writeFileSync(logFile, '');
+
 // Redirect ALL stderr writes to the log file
 // This includes console.error(), logger.info(), and any other stderr output
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
