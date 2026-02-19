@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import * as queryApis from '#layer-c/query/apis/index.js';
 import * as projectQuery from '#layer-c/query/queries/project-query.js';
-import * as fileQuery from '#layer-c/query/queries/file-query.js';
+import * as fileQuery from '#layer-c/query/queries/file-query/index.js';
 import * as dependencyQuery from '#layer-c/query/queries/dependency-query.js';
 import * as connectionsQuery from '#layer-c/query/queries/connections-query.js';
 import * as riskQuery from '#layer-c/query/queries/risk-query.js';

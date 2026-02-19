@@ -15,7 +15,7 @@ import {
   AtomValidator,
   MoleculeValidator,
   CrossReferenceValidator
-} from '#shared/data-integrity-validator.js';
+} from '#shared/data-integrity-validator/index.js';
 import {
   AtomBuilder,
   MoleculeBuilder,

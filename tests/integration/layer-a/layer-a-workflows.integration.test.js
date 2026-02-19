@@ -31,7 +31,7 @@ import {
 } from '#layer-c/query/queries/project-query.js';
 import {
   getFileAnalysis
-} from '#layer-c/query/queries/file-query.js';
+} from '#layer-c/query/queries/file-query/index.js';
 
 describe('Layer A: Integration Workflows', () => {
   let testProjectPath;

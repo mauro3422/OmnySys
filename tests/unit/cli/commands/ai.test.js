@@ -4,7 +4,7 @@ vi.mock('#ai/llm-client.js', () => ({
   loadAIConfig: vi.fn()
 }));
 
-vi.mock('#services/llm-service.js', () => ({
+vi.mock('#services/llm-service/index.js', () => ({
   LLMService: {
     getInstance: vi.fn()
   }
@@ -30,7 +30,7 @@ vi.mock('util', () => ({
 }));
 
 const { loadAIConfig } = await import('#ai/llm-client.js');
-const { LLMService } = await import('#services/llm-service.js');
+const { LLMService } = await import('#services/llm-service/index.js');
 const { isBrainServerStarting, isPortInUse } = await import('#cli/utils/llm.js');
 const { exists } = await import('#cli/utils/paths.js');
 const { aiLogic, ai } = await import('#cli/commands/ai.js');

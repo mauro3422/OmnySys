@@ -18,7 +18,7 @@ import {
   BaseValidator,
   AtomValidator,
   CallGraphValidator
-} from '#shared/ground-truth-validator.js';
+} from '#shared/ground-truth-validator/index.js';
 import {
   AtomBuilder,
   OmnySystemDataBuilder

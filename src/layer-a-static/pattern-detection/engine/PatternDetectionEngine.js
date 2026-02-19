@@ -37,7 +37,7 @@ export class PatternDetectionEngine {
   registerDefaultDetectors() {
     const detectors = [
       { id: 'deepChains', loader: () => import('../detectors/deep-chains-detector.js'), priority: 100 },
-      { id: 'sharedObjects', loader: () => import('../detectors/shared-objects-detector.js'), priority: 90 },
+      { id: 'sharedObjects', loader: () => import('../detectors/shared-objects-detector/index.js'), priority: 90 },
       { id: 'coupling', loader: () => import('../detectors/coupling-detector.js'), priority: 80 },
       { id: 'hotspots', loader: () => import('../detectors/hotspots-detector.js'), priority: 70 }
     ];

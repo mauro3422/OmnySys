@@ -76,7 +76,11 @@
       "Bash(git -C \"C:/Dev/OmnySystem\" status --short src/shared/)",
       "Bash(git -C \"C:/Dev/OmnySystem\" status --short -- \"src/shared/utils/\")",
       "Bash(git -C \"C:/Dev/OmnySystem\" status)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(git diff-tree:*)",
+      "Bash(git -C /c/Dev/OmnySystem log --oneline -5)",
+      "Bash(git -C /c/Dev/OmnySystem log --oneline)",
+      "Bash(git -C C:/Dev/OmnySystem log --oneline -- tests/unit/cli/commands/ai.test.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

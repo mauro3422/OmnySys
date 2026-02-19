@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { ConsistencyValidator } from '#layer-c/verification/validators/consistency-validator.js';
+import { ConsistencyValidator } from '#layer-c/verification/validators/consistency/index.js';
 import { VerificationStatus, Severity } from '#layer-c/verification/types/index.js';
 
 function createValidAtom(id, filePath) {

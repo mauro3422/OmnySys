@@ -50,10 +50,11 @@ describe('Analyses - Detectores', () => {
     contractOptions: {
       async: false,
       exportNames: ['findDeepDependencyChains'],
-      expectedSafeResult: { 
-        totalDeepChains: 0, 
-        chains: [], 
+      expectedSafeResult: {
+        totalDeepChains: 0,
+        chains: [],
         maxDepth: 0,
+        averageRisk: 0,
         recommendation: 'No dependency data available'
       }
     }

@@ -32,7 +32,7 @@ import {
   DerivationRules,
   getAvailableRules,
   hasRule
-} from '#shared/derivation-engine.js';
+} from '#shared/derivation-engine/index.js';
 import { AtomBuilder } from '../../factories/shared/builders.js';
 
 describe('DerivationCache - Basic Operations', () => {
