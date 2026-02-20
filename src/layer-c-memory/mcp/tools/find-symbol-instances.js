@@ -256,28 +256,38 @@ async function autoDetectDuplicates(atoms, minInstances = 2) {
         return (a.complexity || 0) - (b.complexity || 0);
       })[0];
       
+      // Get all unique names in this duplicate group
+      const uniqueNames = [...new Set(atomsList.map(a => a.name))];
+      const displayName = uniqueNames.length === 1 
+        ? `"${uniqueNames[0]}"`
+        : `${uniqueNames.length} funciones con código idéntico`;
+      
       duplicates.push({
         hash: hash.slice(0, 16) + '...',
         symbolName: atomsList[0].name,
+        allNames: uniqueNames,
         count: atomsList.length,
         riskScore: Math.round(riskScore),
         totalUsage,
         potentialSavings: (atomsList.length - 1) * (atomsList[0].linesOfCode || 0),
+        linesOfCode: atomsList[0].linesOfCode,
         canonical: {
           file: canonical.filePath,
           line: canonical.line,
-          usage: canonical.calledBy?.length || 0
+          usage: canonical.calledBy?.length || 0,
+          name: canonical.name
         },
         instances: atomsList.map(a => ({
           file: a.filePath,
           line: a.line,
+          name: a.name,
           usage: a.calledBy?.length || 0,
           complexity: a.complexity,
           isCanonical: a.id === canonical.id
         })).sort((a, b) => b.usage - a.usage),
         recommendation: atomsList.length > 2 
-          ? `CRÍTICO: ${atomsList.length} copias idénticas de "${atomsList[0].name}". Consolidar en ${canonical.filePath}`
-          : `Duplicado: "${atomsList[0].name}" existe en ${atomsList.length} archivos. Usar la versión de ${canonical.filePath}`
+          ? `CRÍTICO: ${atomsList.length} copias idénticas (${uniqueNames.join(', ')}). Consolidar en ${canonical.filePath}`
+          : `Duplicado: Código idéntico en ${atomsList.length} archivos (${uniqueNames.join(', ')}). Usar la versión de ${canonical.filePath}`
       });
     }
   }
@@ -310,8 +320,10 @@ export async function find_symbol_instances(args, context) {
           potentialSavingsLOC: totalSavings
         },
         duplicates: duplicates.map(d => ({
-          symbol: d.symbolName,
+          primaryName: d.symbolName,
+          allNames: d.allNames,
           count: d.count,
+          linesOfCode: d.linesOfCode,
           riskScore: d.riskScore,
           canonical: d.canonical,
           instances: d.instances,
