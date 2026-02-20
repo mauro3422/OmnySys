@@ -61,6 +61,14 @@ export const ATOM_PURPOSES = {
     isDead: false,
     icon: '🚀'
   },
+  ANALYSIS_SCRIPT: {
+    name: 'Analysis Tool',
+    description: 'Audit/analysis script - internal tooling, not production code',
+    isDead: false,
+    icon: '🔍',
+    isInternalTool: true,
+    priority: 'low'
+  },
   CLASS_METHOD: {
     name: 'Class Method',
     description: 'Method in a class (may be called dynamically)',
@@ -111,8 +119,20 @@ export function deduceAtomPurpose(atom, allAtoms, files) {
     };
   }
   
-  // Check 3: Is it in scripts/? → SCRIPT_MAIN
+  // Check 3: Is it in scripts/? → ANALYSIS_SCRIPT (audit tools) or SCRIPT_MAIN
   if (filePath.startsWith('scripts/')) {
+    const analysisPatterns = /audit|analyze|check|detect|find|inspect|investigate|scan|validate/i;
+    const isAnalysisTool = analysisPatterns.test(filePath) || analysisPatterns.test(atom.name);
+    
+    if (isAnalysisTool) {
+      return {
+        purpose: 'ANALYSIS_SCRIPT',
+        reason: 'Audit/analysis script - internal tooling',
+        confidence: 0.9,
+        isDead: false
+      };
+    }
+    
     return {
       purpose: 'SCRIPT_MAIN',
       reason: 'Function in script file',

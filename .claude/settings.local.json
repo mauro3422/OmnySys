@@ -118,7 +118,12 @@
       "Bash(# Check what omnysystem.js is \\(the parse error file\\) file C:/Dev/OmnySystem/omnysystem.js || head -c 20 C:/Dev/OmnySystem/omnysystem.js)",
       "Bash(xxd:*)",
       "Bash(# Check where flowType=''data'' comes from - it''s variables/constants, not functions python -c \"\" import json, glob, collections all_atoms = glob.glob\\(''C:/Dev/OmnySystem/.omnysysdata/atoms/src/**/*.json'', recursive=True\\) data_types = collections.Counter\\(\\) for path in all_atoms: try: with open\\(path\\) as f: d = json.load\\(f\\) if d.get\\(''dna'',{}\\).get\\(''flowType''\\) == ''data'': data_types[d.get\\(''functionType'',''?''\\)] += 1 except: pass print\\(''functionType breakdown for flowType=data:'', dict\\(data_types\\)\\) \"\" # Check what''s left: god functions, remaining issues grep -rn \"\"flowType.*data\\\\|''data''\"\" C:/Dev/OmnySystem/src/layer-a-static/extractors/atomic --include=\"\"*.js\"\")",
-      "mcp__omnysys__get_atom_history"
+      "mcp__omnysys__get_atom_history",
+      "mcp__omnysys__atomic_edit",
+      "mcp__omnysys__atomic_write",
+      "mcp__omnysys__get_atom_schema",
+      "Bash(xargs -I{} sh -c 'echo \"\"=== {} ===\"\" && cat {} | python3 -c \"\"import json,sys; a=json.load\\(sys.stdin\\); print\\(\\\\\"\"type:\\\\\"\", a.get\\(\\\\\"\"type\\\\\"\"\\), \\\\\"\"isTestCallback:\\\\\"\", a.get\\(\\\\\"\"isTestCallback\\\\\"\"\\)\\)\"\"')",
+      "Bash(xargs:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

@@ -90,11 +90,22 @@ function findDuplicates(atoms, minOccurrences) {
   };
 }
 
-function findComplexityHotspots(atoms) {
+function findComplexityHotspots(atoms, excludeInternalTools = true) {
   const byFile = new Map();
   
   for (const atom of atoms) {
     if (!atom.filePath) continue;
+    
+    // Skip internal analysis scripts
+    if (excludeInternalTools && (
+      atom.purpose === 'ANALYSIS_SCRIPT' ||
+      atom.filePath?.startsWith('scripts/audit') ||
+      atom.filePath?.startsWith('scripts/analyze') ||
+      atom.filePath?.startsWith('scripts/validate') ||
+      atom.filePath?.startsWith('scripts/investigate')
+    )) {
+      continue;
+    }
     
     if (!byFile.has(atom.filePath)) {
       byFile.set(atom.filePath, { atoms: [], totalComplexity: 0, totalLOC: 0 });
@@ -126,9 +137,25 @@ function findComplexityHotspots(atoms) {
   return hotspots.sort((a, b) => b.totalComplexity - a.totalComplexity).slice(0, 10);
 }
 
-function findGodFunctions(atoms, threshold = 15) {
-  return atoms
-    .filter(a => (a.complexity || 0) >= threshold)
+function findGodFunctions(atoms, threshold = 15, excludeInternalTools = true) {
+  const filtered = atoms.filter(a => {
+    if ((a.complexity || 0) < threshold) return false;
+    
+    // Skip internal analysis scripts unless explicitly included
+    if (excludeInternalTools && (
+      a.purpose === 'ANALYSIS_SCRIPT' ||
+      a.filePath?.startsWith('scripts/audit') ||
+      a.filePath?.startsWith('scripts/analyze') ||
+      a.filePath?.startsWith('scripts/validate') ||
+      a.filePath?.startsWith('scripts/investigate')
+    )) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  return filtered
     .map(a => ({
       id: a.id,
       name: a.name,
@@ -140,6 +167,7 @@ function findGodFunctions(atoms, threshold = 15) {
       linesOfCode: a.linesOfCode,
       bigO: a.performance?.complexity?.bigO,
       flowType: a.dna?.flowType,
+      purpose: a.purpose,
       recommendation: getGodFunctionRecommendation(a)
     }))
     .sort((a, b) => b.complexity - a.complexity);

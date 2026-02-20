@@ -128,27 +128,53 @@ function calculateCohesion(atoms) {
   };
 }
 
-function getHealthDistribution(atoms) {
+function isAnalysisScript(atom) {
+  return atom.purpose === 'ANALYSIS_SCRIPT' ||
+    atom.filePath?.startsWith('scripts/audit') ||
+    atom.filePath?.startsWith('scripts/analyze') ||
+    atom.filePath?.startsWith('scripts/validate') ||
+    atom.filePath?.startsWith('scripts/investigate') ||
+    atom.filePath?.startsWith('scripts/check');
+}
+
+function getHealthDistribution(atoms, separateInternalTools = true) {
   const distribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   const unhealthy = [];
+  const internalTools = [];
   
   for (const atom of atoms) {
     const health = calculateAtomHealth(atom);
     distribution[health.grade]++;
     
     if (health.grade === 'F' || health.grade === 'D') {
-      unhealthy.push({
+      const entry = {
         id: atom.id,
         name: atom.name,
         file: atom.filePath,
         score: health.score,
         grade: health.grade,
         violations: health.violations
-      });
+      };
+      
+      // Separate internal analysis tools from production code
+      if (separateInternalTools && isAnalysisScript(atom)) {
+        entry.note = 'Internal analysis script - low priority for refactoring';
+        internalTools.push(entry);
+      } else {
+        unhealthy.push(entry);
+      }
     }
   }
   
-  return { distribution, unhealthy: unhealthy.slice(0, 20) };
+  // Sort: production code first, then internal tools
+  unhealthy.sort((a, b) => b.score - a.score);
+  internalTools.sort((a, b) => b.score - a.score);
+  
+  return { 
+    distribution, 
+    unhealthy: unhealthy.slice(0, 20),
+    internalTools: internalTools.length > 0 ? internalTools.slice(0, 10) : undefined
+  };
 }
 
 export async function get_health_metrics(args, context) {
@@ -188,6 +214,7 @@ export async function get_health_metrics(args, context) {
         topFiles: includeDetails ? cohesion.topFiles : cohesion.topFiles.slice(0, 5)
       },
       unhealthyAtoms: healthDist.unhealthy,
+      internalTools: healthDist.internalTools,
       recommendations: []
     };
     
