@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:hot-reload:strategy');
@@ -58,7 +59,10 @@ export class BaseStrategy {
    * @returns {string} Unique import URL
    */
   _generateUniqueImport(modulePath, prefix = 'reload') {
-    return `${modulePath}?${prefix}=${Date.now()}`;
+    // En Windows, path.resolve() devuelve C:\... que no es válido para ESM import().
+    // Hay que convertir a file:///C:/... usando pathToFileURL.
+    const fileUrl = pathToFileURL(modulePath).href;
+    return `${fileUrl}?${prefix}=${Date.now()}`;
   }
 
   /**

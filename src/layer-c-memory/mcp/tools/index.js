@@ -3,8 +3,8 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (20):
- *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection
+ * TOOLS ACTIVAS (21):
+ *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
@@ -40,6 +40,7 @@ import { get_health_metrics } from './get-health-metrics.js';
 import { get_async_analysis } from './get-async-analysis.js';
 import { get_atom_history } from './get-atom-history.js';
 import { get_removed_atoms } from './get-removed-atoms.js';
+import { trace_variable_impact } from './trace-variable-impact.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -50,6 +51,20 @@ export const toolDefinitions = [
       type: 'object',
       properties: { filePath: { type: 'string' }, ...PAGINATION_SCHEMA },
       required: ['filePath']
+    }
+  },
+  {
+    name: 'trace_variable_impact',
+    description: 'Traces how a variable propagates through the call graph using weighted influence propagation (like PageRank). Shows which functions are impacted if you change a variable, parameter, or data structure — with impact scores per hop.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the source function' },
+        symbolName: { type: 'string', description: 'Name of the function where the variable originates' },
+        variableName: { type: 'string', description: 'Name of the variable/parameter to trace (e.g. "parsedFiles", "allAtoms")' },
+        maxDepth: { type: 'number', description: 'Maximum hops to trace (default: 3)', default: 3 }
+      },
+      required: ['filePath', 'symbolName', 'variableName']
     }
   },
   {
@@ -301,6 +316,7 @@ export const toolHandlers = {
   get_impact_map,
   analyze_change,
   explain_connection,
+  trace_variable_impact,
   // Riesgo
   get_risk_assessment,
   get_health_metrics,

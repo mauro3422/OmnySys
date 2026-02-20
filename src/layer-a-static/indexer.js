@@ -107,8 +107,11 @@ export async function indexProject(rootPath, options = {}) {
       logger.info(`  🧹 Freed ~${Math.round(freedMemory / 1024 / 1024)}MB of source code from memory`);
     }
 
-    // Paso 4: Resolver imports
-    const { resolvedImports } = await resolveImports(parsedFiles, absoluteRootPath, verbose);
+    // Paso 4+7a: Resolver imports y preparar dataDir EN PARALELO (independientes)
+    const [{ resolvedImports }, dataDir] = await Promise.all([
+      resolveImports(parsedFiles, absoluteRootPath, verbose),
+      ensureDataDir(absoluteRootPath)
+    ]);
 
     // Paso 5: Normalizar paths a proyecto-relativo
     if (verbose) logger.info('ðŸ"„ Normalizing paths...');
@@ -130,15 +133,12 @@ export async function indexProject(rootPath, options = {}) {
       logger.info(`  ✓ Unknown: ${stats.unknown || 0}\n`);
     }
 
-    // Paso 7: Guardar grafo en .OmnySysData/
-    const dataDir = await ensureDataDir(absoluteRootPath);
-    await saveSystemMap(dataDir, outputPath, systemMap, verbose);
-
-    // Paso 8+9: Análisis y enhanced map EN PARALELO
+    // Paso 7+8+9: Guardar grafo + Análisis + Enhanced map EN PARALELO
     if (verbose) logger.info('🔍 Analyzing code quality...');
     const atomsIndex = buildAtomsIndex(normalizedParsedFiles);
 
-    const [analysisReport, enhancedSystemMap] = await Promise.all([
+    const [, analysisReport, enhancedSystemMap] = await Promise.all([
+      saveSystemMap(dataDir, outputPath, systemMap, verbose),
       generateAnalysisReport(systemMap, atomsIndex),
       generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose, skipLLM)
     ]);
@@ -225,31 +225,47 @@ async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose) {
     if (parsedFile.atoms) allAtoms.push(...parsedFile.atoms);
   }
 
-  // 3.6a: Function calledBy
-  if (verbose) logger.info('🔗 Building cross-file calledBy index...');
   const index = buildAtomIndex(allAtoms);
-  await linkFunctionCalledBy(allAtoms, absoluteRootPath, index, verbose);
+
+  // 3.6a: Function calledBy
+  try {
+    if (verbose) logger.info('🔗 Building cross-file calledBy index...');
+    await linkFunctionCalledBy(allAtoms, absoluteRootPath, index, verbose);
+  } catch (err) {
+    logger.warn(`  ⚠️ function-linker failed: ${err.message}`);
+  }
 
   // 3.6b: Variable reference calledBy
-  if (verbose) logger.info('🔗 Building cross-file variable reference index...');
-  await linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  try {
+    if (verbose) logger.info('🔗 Building cross-file variable reference index...');
+    await linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  } catch (err) {
+    logger.warn(`  ⚠️ variable-linker failed: ${err.message}`);
+  }
 
   // 3.6c: Mixin + namespace import calledBy
-  if (verbose) logger.info('🔗 Resolving mixin/namespace import calledBy links...');
-  const { namespaceLinks, mixinLinks } = await linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
-  if (verbose) logger.info(`  ✓ ${namespaceLinks} namespace + ${mixinLinks} mixin this.* links\n`);
+  try {
+    if (verbose) logger.info('🔗 Resolving mixin/namespace import calledBy links...');
+    const { namespaceLinks, mixinLinks } = await linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+    if (verbose) logger.info(`  ✓ ${namespaceLinks} namespace + ${mixinLinks} mixin this.* links\n`);
+  } catch (err) {
+    logger.warn(`  ⚠️ mixin-linker failed: ${err.message}`);
+  }
 
   // 3.7: Class instantiation calledBy
-  if (verbose) logger.info('🏗️  Resolving class instantiation calledBy links...');
-  const { resolved: classResolved, classesTracked } = resolveClassInstantiationCalledBy(allAtoms);
-  if (verbose) logger.info(`  ✓ ${classResolved} class method calledBy links resolved (${classesTracked} classes tracked)\n`);
-
-  if (classResolved > 0) {
-    await Promise.allSettled(
-      allAtoms
-        .filter(a => a.calledBy?.length > 0 && a.filePath && a.name)
-        .map(a => saveAtom(absoluteRootPath, a.filePath, a.name, a))
-    );
+  try {
+    if (verbose) logger.info('🏗️  Resolving class instantiation calledBy links...');
+    const { resolved: classResolved, classesTracked } = resolveClassInstantiationCalledBy(allAtoms);
+    if (verbose) logger.info(`  ✓ ${classResolved} class method calledBy links resolved (${classesTracked} classes tracked)\n`);
+    if (classResolved > 0) {
+      await Promise.allSettled(
+        allAtoms
+          .filter(a => a.calledBy?.length > 0 && a.filePath && a.name)
+          .map(a => saveAtom(absoluteRootPath, a.filePath, a.name, a))
+      );
+    }
+  } catch (err) {
+    logger.warn(`  ⚠️ class-instantiation-tracker failed: ${err.message}`);
   }
 
   // 3.8: Caller Pattern Detection
