@@ -202,21 +202,13 @@ async function tool_get_impact_map(filePath) {
       console.log(`      • ${exp.name}`);
     }
     
-    // UsedBy (quién importa este archivo)
+  // UsedBy (quién importa este archivo)
     const usedBy = fileData.usedBy || fileData.dependsOn || [];
     console.log(`\n⚠️  USED BY (archivos que importan este): ${usedBy.length}`);
     for (const user of usedBy.slice(0, 10)) {
       console.log(`      • ${user}`);
     }
   }
-  console.log(`\n📊 IMPACT MAP: ${filePath}`);
-  console.log('═'.repeat(70));
-  
-  const atoms = await loadAtoms();
-  const systemMap = await loadSystemMap();
-  
-  // Normalizar path
-  filePath = filePath.replace(/\\/g, '/');
   
   // Átomos en el archivo
   const fileAtoms = Array.from(atoms.values()).filter(a => 

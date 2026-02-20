@@ -84,6 +84,12 @@ export class HotReloadManager {
       return;
     }
 
+    // Ignore changes while system is indexing (prevents analysis loop)
+    if (this.server.isIndexing) {
+      logger.debug(`Ignoring change during indexing: ${filename}`);
+      return;
+    }
+
     // Classify the module
     const moduleInfo = this.classifier.classify(filename);
 
