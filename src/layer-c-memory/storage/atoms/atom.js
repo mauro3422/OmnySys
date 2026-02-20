@@ -73,3 +73,38 @@ export async function loadAtoms(rootPath, filePath) {
     return [];
   }
 }
+
+/**
+ * Carga TODOS los átomos del proyecto
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @returns {array} - Array de todos los atoms
+ */
+export async function getAllAtoms(rootPath) {
+  const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+  const atoms = [];
+  
+  async function scanDir(dir) {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await scanDir(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.json')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf-8');
+            atoms.push(JSON.parse(content));
+          } catch {
+            // Skip malformed files
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+  }
+  
+  await scanDir(atomsDir);
+  return atoms;
+}

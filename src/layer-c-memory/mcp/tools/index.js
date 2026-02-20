@@ -3,12 +3,13 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (17):
+ * TOOLS ACTIVAS (19):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
- *   Sociedad:             get_atom_society, detect_patterns
+ *   Sociedad:             get_atom_society, detect_patterns, get_async_analysis
+ *   Historia:             get_atom_history
  *   Utilidades:           search_files, get_server_status, restart_server
  *   Editor atómico:       atomic_edit, atomic_write
  *
@@ -35,6 +36,8 @@ import { atomic_edit, atomic_write } from './atomic-edit.js';
 import { get_atom_society } from './get-atom-society.js';
 import { detect_patterns } from './detect-patterns.js';
 import { get_health_metrics } from './get-health-metrics.js';
+import { get_async_analysis } from './get-async-analysis.js';
+import { get_atom_history } from './get-atom-history.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -125,12 +128,13 @@ export const toolDefinitions = [
   // ── FUNCIONES / ÁTOMOS ───────────────────────────────────────────────────
   {
     name: 'get_function_details',
-    description: 'Gets detailed atomic information about a specific function including archetype, complexity, and call graph',
+    description: 'Gets COMPLETE atomic information about a function including performance, async analysis, error flow, data flow, DNA, and recommendations',
     inputSchema: {
       type: 'object',
       properties: {
         filePath: { type: 'string', description: 'Path to the file containing the function' },
-        functionName: { type: 'string', description: 'Name of the function' }
+        functionName: { type: 'string', description: 'Name of the function' },
+        includeTransformations: { type: 'boolean', description: 'Include detailed transformations (can be large)', default: false }
       },
       required: ['filePath', 'functionName']
     }
@@ -161,7 +165,7 @@ export const toolDefinitions = [
   },
   {
     name: 'detect_patterns',
-    description: 'Detects code patterns: duplicates (via DNA hash), god functions, fragile network calls, and complexity patterns',
+    description: 'Detects code patterns: duplicates (via DNA hash), similar code (via pattern hash), god functions, fragile network calls, dead code, and complexity hotspots',
     inputSchema: {
       type: 'object',
       properties: {
@@ -184,6 +188,35 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Optional: filter by file path' },
         includeDetails: { type: 'boolean', description: 'Include detailed file-level metrics', default: false }
       }
+    }
+  },
+  // ── ANÁLISIS ASYNC ───────────────────────────────────────────────────────
+  {
+    name: 'get_async_analysis',
+    description: 'Deep async analysis with actionable recommendations: waterfall detection, parallelization opportunities, Promise.all suggestions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: filter by file path' },
+        riskLevel: { type: 'string', enum: ['all', 'high', 'medium', 'low'], description: 'Filter by risk level', default: 'all' },
+        includeRecommendations: { type: 'boolean', description: 'Include actionable recommendations', default: true },
+        minSequentialAwaits: { type: 'number', description: 'Minimum sequential awaits to flag as issue', default: 3 }
+      }
+    }
+  },
+  // ── HISTORIA ─────────────────────────────────────────────────────────────
+  {
+    name: 'get_atom_history',
+    description: 'Gets git history for an atom/function: commits, authors, blame info, and recent changes',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the function' },
+        functionName: { type: 'string', description: 'Name of the function' },
+        maxCommits: { type: 'number', description: 'Maximum commits to return', default: 10 },
+        includeDiff: { type: 'boolean', description: 'Include diff stats for each commit', default: false }
+      },
+      required: ['filePath', 'functionName']
     }
   },
   // ── UTILIDADES ───────────────────────────────────────────────────────────
@@ -257,6 +290,9 @@ export const toolHandlers = {
   // Sociedad de átomos
   get_atom_society,
   detect_patterns,
+  get_async_analysis,
+  // Historia
+  get_atom_history,
   // Utilidades
   search_files,
   get_server_status,

@@ -45,5 +45,6 @@ export {
 // Atom Operations
 export {
   saveAtom,
-  loadAtoms
+  loadAtoms,
+  getAllAtoms
 } from './atoms/index.js';

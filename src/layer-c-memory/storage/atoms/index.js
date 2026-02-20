@@ -1,1 +1,1 @@
-export { saveAtom, loadAtoms } from './atom.js';
+export { saveAtom, loadAtoms, getAllAtoms } from './atom.js';
