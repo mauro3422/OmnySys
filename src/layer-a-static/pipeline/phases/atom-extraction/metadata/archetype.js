@@ -26,7 +26,9 @@ export function detectAtomArchetype(atomMetadata) {
   const callerCount = calledBy?.length || 0;
   const isClassMethod = !!className;
 
-  if (complexity > 20 && (externalCallCount > 5 || callerCount > 10)) {
+  // God function: excessive complexity OR high complexity with many connections
+  if (complexity > 50 || linesOfCode > 150 ||
+      (complexity > 20 && (externalCallCount > 5 || callerCount > 10))) {
     return { type: 'god-function', severity: 10, confidence: 1.0 };
   }
 

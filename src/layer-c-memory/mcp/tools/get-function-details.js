@@ -81,7 +81,15 @@ export async function get_function_details(args, context) {
         hasLogging: atom.hasLogging,
         networkEndpoints: atom.networkEndpoints || []
       },
-      
+
+      // Scores derivados de la metadata estática (sin LLM)
+      derived: atom.derived ? {
+        fragilityScore: atom.derived.fragilityScore,   // 0-1: prob. de romper si se modifica
+        testabilityScore: atom.derived.testabilityScore, // 0-1: facilidad de testear
+        couplingScore: atom.derived.couplingScore,       // n: conexiones totales
+        changeRisk: atom.derived.changeRisk              // 0-1: impacto de un cambio
+      } : null,
+
       meta: atom._meta || null
     };
 

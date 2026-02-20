@@ -72,17 +72,8 @@ export {
 // porque dependen de layer-a-storage
 // ============================================
 
-// export { getDependencyGraph, getTransitiveDependents } from './query/dependency-query.js';
-// export { queryImpact, calculateImpactRisk, summarizeImpact } from './query/impact-query.js';
-// export { findCallSites } from './query/call-graph-analyzer.js';
-
-// Export async query functions for direct import
-export const asyncQueries = {
-  getDependencyGraph: async () => (await import('./query/dependency-query.js')).getDependencyGraph,
-  getTransitiveDependents: async () => (await import('./query/dependency-query.js')).getTransitiveDependents,
-  queryImpact: async () => (await import('./query/impact-query.js')).queryImpact,
-  findCallSites: async () => (await import('./query/call-graph-analyzer.js')).findCallSites
-};
+export { getDependencyGraph, getTransitiveDependents } from './query/dependency-query.js';
+export { findCallSites } from './query/call-graph-analyzer.js';
 
 // ============================================
 // RESOLVERS: Resolución de símbolos

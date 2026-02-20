@@ -82,15 +82,24 @@ export class InferenceStrategy extends ExtractionStrategy {
 
   inferTypeFromUsage(code, paramName) {
     const escaped = paramName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // Patrones de uso
+
+    // Destructuring: const { x, y } = param  OR  const { x } = param
+    if (new RegExp(`\\{[^}]+\\}\\s*=\\s*${escaped}`).test(code)) return 'Object';
+
+    // Path-like: param ends with Path/Dir/File/Url → string
+    if (/Path|Dir|File|Url|Uri|Name|Key|Id$/.test(paramName)) return 'string';
+
+    // Patrones de uso ordenados por especificidad (mayor primero)
     const patterns = [
-      { test: new RegExp(`${escaped}\\.length`), type: 'string | Array' },
-      { test: new RegExp(`${escaped}\\.`), type: 'Object' },
-      { test: new RegExp(`${escaped}\\s*\\(`), type: 'Function' },
-      { test: new RegExp(`${escaped}\\s*[+*/-]`), type: 'number' },
       { test: new RegExp(`${escaped}\\s*\\+\\s*['\"]`), type: 'string' },
-      { test: /await\s+\w+/, type: 'Promise' }
+      { test: new RegExp(`${escaped}\\.length`), type: 'string | Array' },
+      { test: new RegExp(`typeof\\s+${escaped}\\s*===?\\s*['"]string`), type: 'string' },
+      { test: new RegExp(`typeof\\s+${escaped}\\s*===?\\s*['"]number`), type: 'number' },
+      { test: new RegExp(`Array\\.isArray\\(${escaped}\\)`), type: 'Array' },
+      { test: new RegExp(`${escaped}\\s*[+*/-]\\s*\\d`), type: 'number' },
+      { test: new RegExp(`await\\s+${escaped}`), type: 'Promise' },
+      { test: new RegExp(`${escaped}\\s*\\(`), type: 'Function' },
+      { test: new RegExp(`${escaped}\\.`), type: 'Object' }
     ];
 
     for (const { test, type } of patterns) {

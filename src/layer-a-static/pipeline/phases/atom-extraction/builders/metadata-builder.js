@@ -47,8 +47,11 @@ export function buildAtomMetadata({
     // Complexity
     complexity,
 
-    // Side effects
-    hasSideEffects: sideEffects.all.length > 0,
+    // Side effects — combina regex extractor + dataFlow AST outputs (más preciso)
+    hasSideEffects: sideEffects.all.length > 0 ||
+      (dataFlowV2?.outputs || dataFlowV2?.real?.outputs || []).some(
+        o => o.type === 'side_effect' || o.isSideEffect === true
+      ),
     hasNetworkCalls: sideEffects.networkCalls.length > 0,
     hasDomManipulation: sideEffects.domManipulations.length > 0,
     hasStorageAccess: sideEffects.storageAccess.length > 0,
@@ -91,7 +94,7 @@ export function buildAtomMetadata({
     // Temporal Connections
     temporal: {
       patterns: temporalPatterns,
-      executionOrder: null // Se llena en cross-reference
+      executionOrder: temporalPatterns?.executionOrder || null
     },
 
     // Type Contracts
@@ -110,6 +113,18 @@ export function buildAtomMetadata({
     dataFlowAnalysis: dataFlowV2?.analysis || null,
     hasDataFlow: dataFlowV2 !== null && (dataFlowV2.inputs?.length > 0 || dataFlowV2.real?.inputs?.length > 0),
 
+    // Derived scores — computed purely from existing metadata (no LLM needed)
+    derived: {
+      // 0-1: probabilidad de romper si se modifica este átomo
+      fragilityScore: computeFragilityScore(complexity, callGraph, errorFlow, performanceHints),
+      // 0-1: qué tan fácil es escribir un test unitario para este átomo
+      testabilityScore: computeTestabilityScore(complexity, sideEffects, performanceHints, functionInfo),
+      // coupling: cuántas conexiones tiene (no normalizado — valor absoluto)
+      couplingScore: (callGraph.externalCalls?.length || 0) + (callGraph.internalCalls?.length || 0),
+      // changeRisk: base desde complexity + isExported; se recalcula con calledBy en cross-file pass
+      changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
+    },
+
     // DNA & Lineage
     dna: null,
     lineage: null,
@@ -122,6 +137,43 @@ export function buildAtomMetadata({
       confidence: dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
     }
   };
+}
+
+/**
+ * Fragility: probabilidad de romper si se modifica.
+ * Factores: complejidad, loops anidados, error propagation parcial, operaciones bloqueantes.
+ */
+function computeFragilityScore(complexity, callGraph, errorFlow, performanceHints) {
+  let score = 0;
+  score += Math.min(0.4, complexity / 100);                            // complejidad (max 0.4)
+  score += (performanceHints?.nestedLoops?.length > 0) ? 0.2 : 0;    // nested loops
+  score += (errorFlow?.propagation === 'partial') ? 0.2 : 0;          // error handling parcial
+  score += (performanceHints?.blockingOperations?.length > 0) ? 0.1 : 0; // blocking
+  score += Math.min(0.1, (callGraph?.externalCalls?.length || 0) / 20); // acoplamiento externo
+  return Math.round(Math.min(1, score) * 100) / 100;
+}
+
+/**
+ * Testability: qué tan fácil es testear este átomo.
+ * Alta complejidad, side effects, async, y muchos parámetros reducen la testeabilidad.
+ */
+function computeTestabilityScore(complexity, sideEffects, performanceHints, functionInfo) {
+  let score = 1;
+  score -= Math.min(0.4, complexity / 80);                            // complejidad baja el score
+  score -= (sideEffects?.all?.length > 0) ? 0.2 : 0;                 // side effects
+  score -= (performanceHints?.nestedLoops?.length > 0) ? 0.15 : 0;   // nested loops
+  score -= (functionInfo?.isAsync) ? 0.1 : 0;                        // async adds complexity
+  score -= Math.min(0.15, ((functionInfo?.params?.length || 0) / 10)); // muchos params
+  return Math.round(Math.max(0, score) * 100) / 100;
+}
+
+/**
+ * changeRisk base (sin calledBy aún). Se sobreescribe en el cross-file pass.
+ */
+function computeBaseChangeRisk(complexity, isExported) {
+  const exportRisk = isExported ? 0.2 : 0;
+  const complexityRisk = Math.min(0.3, complexity / 100);
+  return Math.round((exportRisk + complexityRisk) * 100) / 100;
 }
 
 export default buildAtomMetadata;

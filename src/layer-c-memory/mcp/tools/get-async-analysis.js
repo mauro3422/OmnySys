@@ -69,15 +69,23 @@ export async function get_async_analysis(args, context) {
         else analysis.summary.lowRisk++;
 
         if (includeRecommendations && asyncInfo.flowAnalysis.allRecommendations) {
+          const existingRecs = new Set(
+            analysis.recommendations
+              .filter(r => r.atom === atom.id)
+              .map(r => r.recommendation)
+          );
           for (const rec of asyncInfo.flowAnalysis.allRecommendations) {
-            analysis.recommendations.push({
-              atom: atom.id,
-              atomName: atom.name,
-              file: atom.filePath,
-              line: atom.line,
-              recommendation: rec,
-              risk: risk
-            });
+            if (!existingRecs.has(rec)) {
+              existingRecs.add(rec);
+              analysis.recommendations.push({
+                atom: atom.id,
+                atomName: atom.name,
+                file: atom.filePath,
+                line: atom.line,
+                recommendation: rec,
+                risk: risk
+              });
+            }
           }
         }
       }
@@ -155,18 +163,21 @@ function analyzeAsyncIssues(atom, asyncInfo, minSequentialAwaits) {
     });
   }
 
-  if (!asyncInfo.hasPromiseAll && asyncInfo.sequentialCount >= 3) {
-    const estimatedSaving = `Potential ~${Math.round((1 - 1/asyncInfo.sequentialCount) * 100)}% time reduction if parallelizable`;
+  // Solo agregar missing_parallelization si NO hay ya un waterfall_awaits para este atom
+  // (evita duplicar el mismo problema con dos nombres distintos)
+  const alreadyWaterfall = issues.some(i => i.type === 'waterfall_awaits');
+  if (!alreadyWaterfall && !asyncInfo.hasPromiseAll && asyncInfo.sequentialCount >= 5) {
+    const estimatedSaving = `Potential ~${Math.round((1 - 1/asyncInfo.sequentialCount) * 100)}% time reduction IF operations are truly independent`;
     issues.push({
       atom: atom.id,
       atomName: atom.name,
       file: atom.filePath,
       line: atom.line,
       type: 'missing_parallelization',
-      risk: 'medium',
-      description: 'Multiple sequential operations that might be parallelizable',
+      risk: 'low',
+      description: `${asyncInfo.sequentialCount} sequential operations — verify if any are independent`,
       impact: estimatedSaving,
-      suggestion: 'Analyze if operations can run in parallel with Promise.all'
+      suggestion: 'Review data dependencies between awaits before applying Promise.all'
     });
   }
 
@@ -184,9 +195,13 @@ function analyzeAsyncIssues(atom, asyncInfo, minSequentialAwaits) {
     });
   }
 
+  // flowAnalysis puede duplicar patrones ya detectados arriba (ej: sequential-awaits vs waterfall_awaits).
+  // Solo agregamos issues de flowAnalysis que aporten información nueva no cubierta.
+  const COVERED_BY_LOCAL = new Set(['sequential-awaits', 'waterfall', 'missing_parallelization']);
   if (asyncInfo.flowAnalysis?.analyses) {
     for (const analysis of asyncInfo.flowAnalysis.analyses) {
-      if (analysis.riskLevel === 'high' && !issues.find(i => i.type === analysis.pattern)) {
+      const alreadyCovered = COVERED_BY_LOCAL.has(analysis.pattern) && issues.length > 0;
+      if (analysis.riskLevel === 'high' && !alreadyCovered && !issues.find(i => i.type === analysis.pattern)) {
         issues.push({
           atom: atom.id,
           atomName: atom.name,

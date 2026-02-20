@@ -15,6 +15,7 @@ import {
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
 import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
+import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
@@ -86,7 +87,11 @@ export class McpSetupStep extends InitializationStep {
       server
     };
 
-    const result = await handler(args, context);
+    const rawResult = await handler(args, context);
+
+    // Middleware: paginación automática sobre todos los arrays top-level.
+    // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.
+    const result = applyPagination(rawResult, args || {});
 
     const elapsed = (performance.now() - startTime).toFixed(2);
     logger.info(`   ✅ Completed in ${elapsed}ms\n`);

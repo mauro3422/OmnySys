@@ -3,49 +3,38 @@
  * Detecta sociedades de átomos: cadenas, clusters y hubs
  */
 
-import { loadAtoms } from '#layer-c/storage/index.js';
-import fs from 'fs/promises';
-import path from 'path';
-
-async function loadAllAtoms(projectPath) {
-  const atomsDir = path.join(projectPath, '.omnysysdata', 'atoms');
-  const atoms = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            atoms.push(JSON.parse(content));
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
+import { getAllAtoms } from '#layer-c/storage/index.js';
 
 function findChains(atoms, maxDepth = 5) {
-  const atomMap = new Map();
-  const exportedAtoms = atoms.filter(a => a.isExported && a.calls?.length > 0);
-  
+  // Índice primario: id completo → atom
+  const atomById = new Map();
+  // Índice secundario: nombre simple → atoms exportados de diferentes archivos
+  // (los calls solo guardan {name, type, line} sin file ni targetId)
+  const atomsByName = new Map();
+
   for (const atom of atoms) {
-    atomMap.set(atom.id, atom);
+    atomById.set(atom.id, atom);
+    if (atom.isExported) {
+      if (!atomsByName.has(atom.name)) atomsByName.set(atom.name, []);
+      atomsByName.get(atom.name).push(atom);
+    }
   }
-  
+
+  const exportedAtoms = atoms.filter(a => a.isExported && a.calls?.length > 0);
   const chains = [];
   const visited = new Set();
-  
+
+  function findCrossFileTarget(callName, callerFilePath) {
+    // Primero intentar por targetId/file si existen (futuro)
+    if (!callName) return null;
+    const candidates = atomsByName.get(callName) || [];
+    // Preferir atoms exportados de otro archivo
+    return candidates.find(a => a.filePath !== callerFilePath) || null;
+  }
+
   function traceChain(atom, chain = [], depth = 0) {
     if (depth >= maxDepth || visited.has(atom.id)) return chain;
-    
+
     visited.add(atom.id);
     chain.push({
       id: atom.id,
@@ -54,16 +43,21 @@ function findChains(atoms, maxDepth = 5) {
       purpose: atom.purpose,
       archetype: atom.archetype?.type
     });
-    
+
     const calls = atom.calls || [];
     for (const call of calls) {
-      const targetAtom = atomMap.get(call.targetId || `${call.file}::${call.name}`);
+      // Intentar lookup por targetId completo primero, luego por nombre cross-file
+      const targetAtom =
+        atomById.get(call.targetId) ||
+        atomById.get(`${call.file}::${call.name}`) ||
+        findCrossFileTarget(call.name, atom.filePath);
+
       if (targetAtom && targetAtom.filePath !== atom.filePath) {
         traceChain(targetAtom, chain, depth + 1);
         break;
       }
     }
-    
+
     return chain;
   }
   
@@ -79,7 +73,7 @@ function findChains(atoms, maxDepth = 5) {
     }
   }
   
-  return chains.sort((a, b) => b.depth - a.depth).slice(0, 20);
+  return chains.sort((a, b) => b.depth - a.depth).slice(0, 15);
 }
 
 function findClusters(atoms) {
@@ -112,7 +106,8 @@ function findClusters(atoms) {
           id: m.id,
           name: m.name,
           file: m.filePath,
-          purpose: m.purpose
+          purpose: m.purpose,
+          archetype: m.archetype?.type
         }))
       });
       
@@ -166,7 +161,7 @@ export async function get_atom_society(args, context) {
   const { projectPath } = context;
   
   try {
-    const allAtoms = await loadAllAtoms(projectPath);
+    const allAtoms = await getAllAtoms(projectPath);
     
     let targetAtoms = allAtoms;
     if (filePath) {
@@ -182,34 +177,28 @@ export async function get_atom_society(args, context) {
     const withCallers = allAtoms.filter(a => a.calledBy?.length > 0).length;
     const exported = allAtoms.filter(a => a.isExported).length;
     
+    // Arrays exposed at top-level so the pagination middleware can reach them.
+    // counts/insights are objects → middleware skips them (correct).
     return {
       summary: {
         totalAtoms,
         withCallers,
         exported,
-        coverage: ((withCallers / totalAtoms) * 100).toFixed(1) + '%'
-      },
-      chains: {
-        count: chains.length,
-        top: chains.slice(0, maxChains)
-      },
-      clusters: {
-        count: clusters.length,
-        top: clusters
-      },
-      hubs: {
-        count: hubs.length,
-        top: hubs
-      },
-      orphans: {
-        count: orphans.length,
-        top: orphans
+        coverage: ((withCallers / totalAtoms) * 100).toFixed(1) + '%',
+        chainCount: chains.length,
+        clusterCount: clusters.length,
+        hubCount: hubs.length,
+        orphanCount: orphans.length
       },
       insights: {
-        mostConnected: hubs[0] || null,
-        longestChain: chains[0] || null,
-        biggestCluster: clusters[0] || null
-      }
+        mostConnected: hubs[0] ? { name: hubs[0].name, file: hubs[0].file, callers: hubs[0].callers } : null,
+        longestChain: chains[0] ? { entry: chains[0].entry, depth: chains[0].depth } : null,
+        biggestCluster: clusters[0] ? { size: clusters[0].size, cohesion: clusters[0].cohesion, firstMember: clusters[0].members[0]?.name } : null
+      },
+      chains: chains.slice(0, maxChains),
+      clusters,
+      hubs,
+      orphans
     };
   } catch (error) {
     return { error: error.message };

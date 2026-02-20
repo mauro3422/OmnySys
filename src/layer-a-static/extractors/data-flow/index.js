@@ -82,8 +82,43 @@ export function extractDataFlow(codeOrNode, options = {}) {
     const outputExtractor = new OutputExtractor(code, transformations);
     const outputs = outputExtractor.extract(ast);
 
-    // Build the transformation graph (populated from extractor results)
+    // Build the transformation graph from extracted inputs/transformations/outputs
     const graphBuilder = new GraphBuilder();
+
+    for (const input of inputs) {
+      graphBuilder.addNode({
+        type: 'INPUT',
+        category: 'input',
+        inputs: [],
+        output: { name: input.name },
+        properties: { paramPosition: input.position, hasDefault: input.hasDefault }
+      });
+    }
+
+    for (const t of transformations) {
+      const fromSources = Array.isArray(t.from) ? t.from : (t.from ? [t.from] : []);
+      graphBuilder.addNode({
+        type: t.operation || 'TRANSFORM',
+        category: 'transform',
+        inputs: fromSources.map(s => ({ sourceType: 'variable', name: typeof s === 'string' ? s : s.name })),
+        output: t.to ? { name: t.to } : null,
+        properties: { operation: t.operation, via: t.via, line: t.line },
+        location: t.line ? { line: t.line } : null
+      });
+    }
+
+    for (const output of outputs) {
+      const isSideEffect = output.type === 'side_effect' || output.isSideEffect === true;
+      graphBuilder.addNode({
+        type: isSideEffect ? 'SIDE_EFFECT' : (output.type === 'return' ? 'RETURN' : 'OUTPUT'),
+        category: isSideEffect ? 'side_effect' : 'output',
+        inputs: [],
+        output: null,
+        properties: { line: output.line },
+        location: output.line ? { line: output.line } : null
+      });
+    }
+
     const graph = graphBuilder.build();
 
     // Run flow coherence analysis

@@ -76,14 +76,17 @@ export async function loadAtoms(rootPath, filePath) {
 
 /**
  * Carga TODOS los átomos del proyecto
+ * Por defecto excluye atoms con lineage.status='removed' (históricos).
  *
  * @param {string} rootPath - Raíz del proyecto
- * @returns {array} - Array de todos los atoms
+ * @param {object} options
+ * @param {boolean} options.includeRemoved - Si true, incluye atoms removidos. Default: false
+ * @returns {array} - Array de todos los atoms activos
  */
-export async function getAllAtoms(rootPath) {
+export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const atoms = [];
-  
+
   async function scanDir(dir) {
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -94,7 +97,10 @@ export async function getAllAtoms(rootPath) {
         } else if (entry.isFile() && entry.name.endsWith('.json')) {
           try {
             const content = await fs.readFile(fullPath, 'utf-8');
-            atoms.push(JSON.parse(content));
+            const atom = JSON.parse(content);
+            if (includeRemoved || atom.lineage?.status !== 'removed') {
+              atoms.push(atom);
+            }
           } catch {
             // Skip malformed files
           }
@@ -104,7 +110,49 @@ export async function getAllAtoms(rootPath) {
       // Directory doesn't exist or can't be read
     }
   }
-  
+
+  await scanDir(atomsDir);
+  return atoms;
+}
+
+/**
+ * Carga SOLO los átomos removidos (historial de funciones eliminadas).
+ * Útil para detectar código duplicado antes de escribir algo nuevo.
+ *
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} [filePath] - Filtrar por archivo específico (opcional)
+ * @returns {array} - Array de atoms removidos
+ */
+export async function getRemovedAtoms(rootPath, filePath = null) {
+  const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+  const atoms = [];
+
+  async function scanDir(dir) {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await scanDir(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.json')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf-8');
+            const atom = JSON.parse(content);
+            if (atom.lineage?.status === 'removed') {
+              if (!filePath || (atom.filePath || atom.file || '').includes(filePath)) {
+                atoms.push(atom);
+              }
+            }
+          } catch {
+            // Skip malformed files
+          }
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+  }
+
   await scanDir(atomsDir);
   return atoms;
 }

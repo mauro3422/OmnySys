@@ -192,7 +192,15 @@ function buildVariableAtom(varInfo, filePath, varType = 'constant') {
     isDeadCode: false,
     
     // calledBy se poblará en cross-file linkage
-    calledBy: []
+    calledBy: [],
+
+    // Derived scores (consistent with function atoms)
+    derived: {
+      fragilityScore: 0,
+      testabilityScore: 1,
+      couplingScore: 0,
+      changeRisk: varInfo.riskLevel === 'high' ? 0.4 : (varInfo.riskLevel === 'medium' ? 0.2 : 0.1)
+    }
   };
 }
 
@@ -269,7 +277,7 @@ async function extractDataFlowSafe(functionInfo, functionCode, filePath) {
     if (input) {
       return await extractDataFlowV2(
         input,
-        { functionName: functionInfo.name }
+        { functionName: functionInfo.name, inferTypes: true }
       );
     }
   } catch (error) {

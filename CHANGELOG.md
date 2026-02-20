@@ -4,7 +4,10 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.39 - Full Metadata Exposure + 2 New MCP Tools](changelog/v0.9.39-full-metadata-mcp-tools.md)** - Latest release
+- **[v0.9.42 - FileWatcher Pipeline Robustness](changelog/v0.9.42-filewatcher-robustness.md)** - Latest release
+- **[v0.9.41 - Removed Atom Lineage + get_removed_atoms MCP Tool](changelog/v0.9.41-removed-atom-lineage.md)**
+- **[v0.9.40 - Recursive Pagination Middleware + MCP Tool Fixes](changelog/v0.9.40-pagination-middleware.md)**
+- **[v0.9.39 - Full Metadata Exposure + 2 New MCP Tools](changelog/v0.9.39-full-metadata-mcp-tools.md)**
 - **[v0.9.38 - Caller Pattern Detection + calledBy Enhancement](changelog/v0.9.38-caller-pattern.md)**
 - **[v0.9.37 - LLM-Free Mode + Bug Fixes + Tool Consolidation](changelog/v0.9.37-impact-map-enhanced.md)**
 - **[Changelog Directory](changelog/)** - All version-specific changelogs
@@ -18,7 +21,10 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.39]** | 2026-02-20 | **Full Metadata Exposure + 2 New MCP Tools (19 total)** (Latest) |
+| **[0.9.42]** | 2026-02-20 | **FileWatcher Pipeline Robustness - 5 bugs críticos corregidos** (Latest) |
+| **[0.9.41]** | 2026-02-20 | **Removed Atom Lineage + get_removed_atoms MCP Tool (20 total)** |
+| **[0.9.40]** | 2026-02-20 | **Recursive Pagination Middleware + MCP Tool Fixes** |
+| **[0.9.39]** | 2026-02-20 | **Full Metadata Exposure + 2 New MCP Tools (19 total)** |
 | **[0.9.38]** | 2026-02-20 | **Caller Pattern Detection + calledBy Enhancement (99.9% real coverage)** |
 | **[0.9.37]** | 2026-02-20 | **LLM-Free Mode + 4 Bug Fixes + Tool Consolidation (16→14)** |
 | **[0.9.35]** | 2026-02-19 | **File Culture Classifier - ZERO LLM classification system** - See `changelog/v0.9.35-file-culture-classifier.md` |
@@ -47,7 +53,30 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.39 (2026-02-20)
+## 🚀 Latest Release: v0.9.40 (2026-02-20)
+
+**Recursive Pagination Middleware**: Sistema de paginación automática recursiva implementado como middleware central. Todas las herramientas obtienen paginación sin cambios individuales. Fix de duplicados en `get_async_analysis`. Conectado `layer-graph/query` al sistema activo. **19 MCP Tools sin overflow.**
+
+### What's New
+- `pagination.js` — middleware central con paginación recursiva (top-level + nested arrays)
+- `PAGINATION_SCHEMA` — fragment reutilizable en 9 tools
+- Fix: `get_async_analysis` — eliminados issues y recomendaciones duplicadas por atom
+- Fix: `get_atom_society` — `insights` compacto, sin overflow
+- Fix: `detect_patterns` — modo `all` retorna overview; tipos específicos retornan full data paginada
+- Refactor: `analyzeSingleFile` complexity 50 → 20 (7 helpers)
+- Eliminado: `loadAllAtoms` duplicado en 3 MCP tools (~72 LOC)
+- Conectado: `layer-graph/query/call-graph-analyzer` → re-export en MCP tools
+
+### Highlights
+- ✨ **19/19 tools** responden sin token overflow
+- ✨ **Paginación recursiva** — `_pagination.fields` reporta dot-paths en cualquier nivel de anidamiento
+- ✨ **DEFAULT_LIMIT = 10** — balance óptimo entre datos ricos y tokens
+- ✨ **AI navigation**: `hasMore + nextOffset` en cada campo paginado
+- 🧹 **~272 LOC** de duplicación eliminada
+
+---
+
+## Previous Release: v0.9.39 (2026-02-20)
 
 **Full Metadata Exposure**: Las herramientas MCP ahora devuelven TODA la metadata disponible. +2 nuevas herramientas de análisis profundo. **19 MCP Tools total.**
 

@@ -3,33 +3,7 @@
  * Calcula métricas de salud del código: entropía, cohesión, límites
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-
-async function loadAllAtoms(projectPath) {
-  const atomsDir = path.join(projectPath, '.omnysysdata', 'atoms');
-  const atoms = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            atoms.push(JSON.parse(content));
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
+import { getAllAtoms } from '#layer-c/storage/index.js';
 
 const LIMITS = {
   complexity: { max: 15, weight: 0.25 },
@@ -182,7 +156,7 @@ export async function get_health_metrics(args, context) {
   const { projectPath } = context;
   
   try {
-    const atoms = await loadAllAtoms(projectPath);
+    const atoms = await getAllAtoms(projectPath);
     
     let targetAtoms = atoms;
     if (filePath) {

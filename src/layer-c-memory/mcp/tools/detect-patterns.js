@@ -3,33 +3,7 @@
  * Detecta patrones de código usando DNA structural hash y pattern hash
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-
-async function loadAllAtoms(projectPath) {
-  const atomsDir = path.join(projectPath, '.omnysysdata', 'atoms');
-  const atoms = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            atoms.push(JSON.parse(content));
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
+import { getAllAtoms } from '#layer-c/storage/index.js';
 
 function findDuplicates(atoms, minOccurrences) {
   const byStructuralHash = new Map();
@@ -62,7 +36,7 @@ function findDuplicates(atoms, minOccurrences) {
         hash,
         count: atomsList.length,
         similarity: 100,
-        atoms: atomsList.map(a => ({
+        atoms: atomsList.slice(0, 8).map(a => ({
           id: a.id,
           name: a.name,
           file: a.filePath,
@@ -90,7 +64,7 @@ function findDuplicates(atoms, minOccurrences) {
           similarity: 80,
           flowType: atomsList[0].dna?.flowType,
           operationSequence: atomsList[0].dna?.operationSequence?.slice(0, 10),
-          atoms: atomsList.map(a => ({
+          atoms: atomsList.slice(0, 8).map(a => ({
             id: a.id,
             name: a.name,
             file: a.filePath,
@@ -106,8 +80,8 @@ function findDuplicates(atoms, minOccurrences) {
   }
   
   return {
-    exactDuplicates: exactDuplicates.sort((a, b) => b.count - a.count).slice(0, 15),
-    similarCode: similarCode.sort((a, b) => b.count - a.count).slice(0, 15),
+    exactDuplicates: exactDuplicates.sort((a, b) => b.count - a.count).slice(0, 10),
+    similarCode: similarCode.sort((a, b) => b.count - a.count).slice(0, 10),
     summary: {
       exactDuplicatesFound: exactDuplicates.length,
       similarCodeFound: similarCode.length,
@@ -338,7 +312,7 @@ export async function detect_patterns(args, context) {
   const { projectPath } = context;
   
   try {
-    const atoms = await loadAllAtoms(projectPath);
+    const atoms = await getAllAtoms(projectPath);
     
     const result = {
       summary: {
@@ -349,31 +323,45 @@ export async function detect_patterns(args, context) {
       }
     };
     
-    if (patternType === 'all' || patternType === 'duplicates') {
+    if (patternType === 'all') {
+      // Overview mode: top 5 per category + counts. Use specific patternType for full details.
+      const dups = findDuplicates(atoms, minOccurrences);
+      const godFns = findGodFunctions(atoms);
+      const fragile = findFragileNetworkCalls(atoms);
+      const dead = findDeadCode(atoms);
+      const unusual = findUnusualPatterns(atoms);
+
+      result.overview = {
+        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" for full details',
+        duplicates: { exact: dups.summary.exactDuplicatesFound, similar: dups.summary.similarCodeFound, potentialSavingsLOC: dups.summary.potentialSavingsLOC, top3: dups.exactDuplicates.slice(0, 3).map(d => ({ hash: d.hash, count: d.count, example: d.atoms[0] })) },
+        godFunctions: { count: godFns.length, top5: godFns.slice(0, 5).map(g => ({ name: g.name, file: g.file, complexity: g.complexity, linesOfCode: g.linesOfCode })) },
+        fragileNetwork: { fragile: fragile.fragile.length, wellHandled: fragile.wellHandled.length, top5: fragile.fragile.slice(0, 5).map(f => ({ name: f.name, file: f.file, risk: f.risk, issue: f.issue })) },
+        deadCode: { count: dead.length, top5: dead.slice(0, 5).map(d => ({ name: d.name, file: d.file, linesOfCode: d.linesOfCode })) },
+        unusedExports: { count: unusual.unusedExports.length, top5: unusual.unusedExports.slice(0, 5) },
+        complexityHotspots: findComplexityHotspots(atoms).slice(0, 5).map(h => ({ file: h.file, totalComplexity: h.totalComplexity, atomCount: h.atomCount }))
+      };
+    }
+
+    if (patternType === 'duplicates') {
       result.duplicates = findDuplicates(atoms, minOccurrences);
     }
-    
-    if (patternType === 'all' || patternType === 'complexity') {
+
+    if (patternType === 'complexity') {
       result.complexityHotspots = findComplexityHotspots(atoms);
     }
-    
-    if (patternType === 'all' || patternType === 'archetype') {
-      result.archetypePatterns = findByArchetypePattern(atoms);
+
+    if (patternType === 'archetype') {
+      result.archetypePatterns = findByArchetypePattern(atoms).slice(0, 20);
     }
-    
-    if (patternType === 'all' || patternType === 'god-functions') {
+
+    if (patternType === 'god-functions') {
       result.godFunctions = findGodFunctions(atoms);
     }
-    
-    if (patternType === 'all' || patternType === 'fragile-network') {
+
+    if (patternType === 'fragile-network') {
       result.fragileNetwork = findFragileNetworkCalls(atoms);
     }
 
-    if (patternType === 'all') {
-      result.deadCode = findDeadCode(atoms);
-      result.unusualPatterns = findUnusualPatterns(atoms);
-    }
-    
     return result;
   } catch (error) {
     return { error: error.message };

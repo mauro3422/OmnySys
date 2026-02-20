@@ -3,13 +3,13 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (19):
+ * TOOLS ACTIVAS (20):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
  *   Sociedad:             get_atom_society, detect_patterns, get_async_analysis
- *   Historia:             get_atom_history
+ *   Historia:             get_atom_history, get_removed_atoms
  *   Utilidades:           search_files, get_server_status, restart_server
  *   Editor atómico:       atomic_edit, atomic_write
  *
@@ -20,6 +20,7 @@
  * @module mcp/tools
  */
 
+import { PAGINATION_SCHEMA } from '../core/pagination.js';
 import { get_impact_map } from './impact-map.js';
 import { analyze_change } from './analyze-change.js';
 import { explain_connection } from './connection.js';
@@ -38,6 +39,7 @@ import { detect_patterns } from './detect-patterns.js';
 import { get_health_metrics } from './get-health-metrics.js';
 import { get_async_analysis } from './get-async-analysis.js';
 import { get_atom_history } from './get-atom-history.js';
+import { get_removed_atoms } from './get-removed-atoms.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -46,7 +48,7 @@ export const toolDefinitions = [
     description: 'Returns a complete impact map for a file',
     inputSchema: {
       type: 'object',
-      properties: { filePath: { type: 'string' } },
+      properties: { filePath: { type: 'string' }, ...PAGINATION_SCHEMA },
       required: ['filePath']
     }
   },
@@ -81,7 +83,8 @@ export const toolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        minSeverity: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'medium' }
+        minSeverity: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+        ...PAGINATION_SCHEMA
       }
     }
   },
@@ -94,7 +97,8 @@ export const toolDefinitions = [
       properties: {
         filePath: { type: 'string', description: 'Path to the file containing the symbol' },
         symbolName: { type: 'string', description: 'Name of the function/class/variable' },
-        includeContext: { type: 'boolean', description: 'Include code context for each call site', default: true }
+        includeContext: { type: 'boolean', description: 'Include code context for each call site', default: true },
+        ...PAGINATION_SCHEMA
       },
       required: ['filePath', 'symbolName']
     }
@@ -159,7 +163,8 @@ export const toolDefinitions = [
       properties: {
         filePath: { type: 'string', description: 'Optional: filter by file path' },
         minCallers: { type: 'number', description: 'Minimum callers to be considered a hub', default: 5 },
-        maxChains: { type: 'number', description: 'Maximum chains to return', default: 10 }
+        maxChains: { type: 'number', description: 'Maximum chains to return', default: 10 },
+        ...PAGINATION_SCHEMA
       }
     }
   },
@@ -175,7 +180,8 @@ export const toolDefinitions = [
           description: 'Type of pattern to detect',
           default: 'all'
         },
-        minOccurrences: { type: 'number', description: 'Minimum occurrences for a pattern', default: 2 }
+        minOccurrences: { type: 'number', description: 'Minimum occurrences for a pattern', default: 2 },
+        ...PAGINATION_SCHEMA
       }
     }
   },
@@ -186,7 +192,8 @@ export const toolDefinitions = [
       type: 'object',
       properties: {
         filePath: { type: 'string', description: 'Optional: filter by file path' },
-        includeDetails: { type: 'boolean', description: 'Include detailed file-level metrics', default: false }
+        includeDetails: { type: 'boolean', description: 'Include detailed file-level metrics', default: false },
+        ...PAGINATION_SCHEMA
       }
     }
   },
@@ -200,7 +207,8 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Optional: filter by file path' },
         riskLevel: { type: 'string', enum: ['all', 'high', 'medium', 'low'], description: 'Filter by risk level', default: 'all' },
         includeRecommendations: { type: 'boolean', description: 'Include actionable recommendations', default: true },
-        minSequentialAwaits: { type: 'number', description: 'Minimum sequential awaits to flag as issue', default: 3 }
+        minSequentialAwaits: { type: 'number', description: 'Minimum sequential awaits to flag as issue', default: 3 },
+        ...PAGINATION_SCHEMA
       }
     }
   },
@@ -214,7 +222,8 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Path to the file containing the function' },
         functionName: { type: 'string', description: 'Name of the function' },
         maxCommits: { type: 'number', description: 'Maximum commits to return', default: 10 },
-        includeDiff: { type: 'boolean', description: 'Include diff stats for each commit', default: false }
+        includeDiff: { type: 'boolean', description: 'Include diff stats for each commit', default: false },
+        ...PAGINATION_SCHEMA
       },
       required: ['filePath', 'functionName']
     }
@@ -225,7 +234,7 @@ export const toolDefinitions = [
     description: 'Search for files in the project by pattern',
     inputSchema: {
       type: 'object',
-      properties: { pattern: { type: 'string' } },
+      properties: { pattern: { type: 'string' }, ...PAGINATION_SCHEMA },
       required: ['pattern']
     }
   },
@@ -256,6 +265,21 @@ export const toolDefinitions = [
         newString: { type: 'string', description: 'New text to insert' }
       },
       required: ['filePath', 'oldString', 'newString']
+    }
+  },
+  {
+    name: 'get_removed_atoms',
+    description: 'Shows history of atoms (functions) removed from source files. Use to detect code duplication before re-implementing something that already existed, track technical debt, and understand code evolution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Filter by specific file path (optional)' },
+        minComplexity: { type: 'number', description: 'Only show removed atoms with complexity >= N. Default: 0 (all)' },
+        minCallers: { type: 'number', description: 'Only show atoms that had at least N callers when removed. Default: 0' },
+        limit: { type: 'number', description: 'Max atoms to return. Default: 50' },
+        ...PAGINATION_SCHEMA
+      },
+      required: []
     }
   },
   {
@@ -293,6 +317,7 @@ export const toolHandlers = {
   get_async_analysis,
   // Historia
   get_atom_history,
+  get_removed_atoms,
   // Utilidades
   search_files,
   get_server_status,

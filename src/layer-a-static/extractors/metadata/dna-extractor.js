@@ -123,20 +123,34 @@ function computePatternHash(dataFlow) {
 
 /**
  * Detecta el tipo de flujo de datos
+ * Usa los nombres de operación reales del sistema (property_access, function_call, etc.)
  */
 function detectFlowType(dataFlow) {
   const operations = (dataFlow.transformations || []).map(t => t.operation);
-  const hasRead = operations.some(o => ['read', 'fetch', 'query'].includes(o));
-  const hasTransform = operations.some(o => ['calculation', 'arithmetic', 'merge'].includes(o));
-  const hasWrite = (dataFlow.outputs || []).some(o => o.type === 'side_effect');
-  const hasReturn = (dataFlow.outputs || []).some(o => o.type === 'return');
 
+  // "Read" = acceder datos externos, llamar funciones, acceder propiedades
+  const READ_OPS = new Set(['property_access', 'array_index_access', 'function_call', 'await_function_call', 'instantiation']);
+  // "Transform" = procesar/calcular datos
+  const TRANSFORM_OPS = new Set(['binary_operation', 'unary_operation', 'template_literal', 'conditional', 'object_literal', 'array_literal']);
+  // "Write" = mutar estado externo
+  const WRITE_OPS = new Set(['mutation', 'update']);
+
+  const hasRead = operations.some(o => READ_OPS.has(o));
+  const hasTransform = operations.some(o => TRANSFORM_OPS.has(o));
+  const hasWrite = (dataFlow.outputs || []).some(o => o.type === 'side_effect' || o.isSideEffect) ||
+                   operations.some(o => WRITE_OPS.has(o));
+  const hasReturn = (dataFlow.outputs || []).some(o => o.type === 'return');
+  const hasThrowOnly = !hasReturn && (dataFlow.outputs || []).some(o => o.type === 'throw');
+
+  if (hasThrowOnly && !hasWrite) return 'guard';
   if (hasRead && hasTransform && hasWrite && hasReturn) return 'read-transform-persist-return';
   if (hasRead && hasTransform && hasReturn) return 'read-transform-return';
+  if (hasRead && hasWrite && hasReturn) return 'read-persist-return';
   if (hasRead && hasWrite) return 'read-persist';
   if (hasTransform && hasReturn) return 'transform-return';
   if (hasRead && hasReturn) return 'read-return';
   if (hasWrite) return 'side-effect-only';
+  if (hasReturn) return 'passthrough';
 
   return 'unknown';
 }
@@ -190,18 +204,77 @@ function computeComplexity(dataFlow) {
 }
 
 /**
- * Computa huella semántica para matching aproximado
+ * Computa huella semántica para matching aproximado.
+ * Si hay análisis semántico LLM lo usa directamente.
+ * Si no, deriva verb/domain/entity desde nombre + metadata estática.
  */
 function computeSemanticFingerprint(atom) {
-  if (!atom.semantic) return 'unknown';
+  if (atom.semantic?.verb && atom.semantic.verb !== 'unknown') {
+    return [atom.semantic.verb, atom.semantic.domain || 'unknown', atom.semantic.entity || 'unknown'].join(':');
+  }
 
-  const parts = [
-    atom.semantic.verb || 'unknown',
-    atom.semantic.domain || 'unknown',
-    atom.semantic.entity || 'unknown'
+  // Derivar desde nombre del átomo
+  const name = atom.name || '';
+  const verb = deriveVerb(name);
+  const domain = deriveDomain(atom);
+  const entity = deriveEntity(name, verb);
+
+  return `${verb}:${domain}:${entity}`;
+}
+
+/**
+ * Extrae el verbo semántico del nombre de la función
+ */
+function deriveVerb(name) {
+  const verbPrefixes = [
+    'get', 'set', 'fetch', 'load', 'save', 'update', 'delete', 'remove',
+    'create', 'build', 'make', 'generate', 'compute', 'calculate', 'parse',
+    'format', 'transform', 'convert', 'extract', 'detect', 'analyze',
+    'validate', 'check', 'verify', 'resolve', 'init', 'start', 'stop',
+    'run', 'execute', 'process', 'handle', 'register', 'index', 'scan',
+    'search', 'find', 'filter', 'sort', 'merge', 'apply', 'emit', 'send',
+    'read', 'write', 'render', 'encode', 'decode', 'serialize', 'normalize'
   ];
 
-  return parts.join(':');
+  const lower = name.charAt(0).toLowerCase() + name.slice(1);
+  for (const v of verbPrefixes) {
+    if (lower.startsWith(v) && lower.length > v.length) return v;
+    if (lower === v) return v;
+  }
+  return 'process';
+}
+
+/**
+ * Deriva el dominio desde el propósito, archetype y callerPattern del átomo
+ */
+function deriveDomain(atom) {
+  const purpose = atom.purpose || '';
+  if (purpose === 'API_EXPORT') return 'api';
+  if (purpose === 'INTERNAL_HELPER') return 'internal';
+  if (purpose === 'TEST_HELPER') return 'test';
+  if (purpose === 'CONFIG') return 'config';
+
+  const flowType = atom.dataFlow?.flowType || '';
+  if (flowType.includes('read')) return 'io';
+  if (flowType.includes('persist')) return 'persistence';
+  if (flowType.includes('transform')) return 'transform';
+
+  return 'core';
+}
+
+/**
+ * Deriva la entidad principal desde el nombre (lo que viene después del verbo)
+ */
+function deriveEntity(name, verb) {
+  if (!name || !verb) return 'unknown';
+  // Quitar el verbo del inicio y tomar lo que queda en camelCase
+  const rest = name.startsWith(verb)
+    ? name.slice(verb.length)
+    : name;
+  if (!rest) return 'unknown';
+  // Separar camelCase en tokens y tomar el último (la entidad)
+  const tokens = rest.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
+  return tokens[tokens.length - 1].toLowerCase() || 'unknown';
 }
 
 /**

@@ -29,12 +29,16 @@ export function validateCoherence(atom) {
   if (atom.dna?.flowType && atom.dataFlow?.transformations) {
     const operations = atom.dataFlow.transformations.map(t => t.operation);
     
-    if (atom.dna.flowType.includes('read') && !operations.some(o => ['read', 'fetch'].includes(o))) {
-      errors.push('FlowType says "read" but no read operation found');
+    // "read" en flowType cubre: property_access, function_call, await_function_call, etc.
+    const READ_OPS = new Set(['read', 'fetch', 'query', 'property_access', 'array_index_access', 'function_call', 'await_function_call', 'instantiation']);
+    if (atom.dna.flowType.includes('read') && !operations.some(o => READ_OPS.has(o))) {
+      errors.push('FlowType says "read" but no read-like operation found');
     }
-    
-    if (atom.dna.flowType.includes('persist') && !atom.dataFlow.outputs?.some(o => o.type === 'side_effect')) {
-      errors.push('FlowType says "persist" but no side effect output found');
+
+    if (atom.dna.flowType.includes('persist') &&
+        !atom.dataFlow.outputs?.some(o => o.type === 'side_effect' || o.isSideEffect) &&
+        !operations.some(o => ['mutation', 'update'].includes(o))) {
+      errors.push('FlowType says "persist" but no side effect output or mutation found');
     }
   }
   

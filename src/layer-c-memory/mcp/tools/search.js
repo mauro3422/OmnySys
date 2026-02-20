@@ -4,6 +4,7 @@
  */
 
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
+import { getAllAtoms } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:search');
@@ -25,27 +26,37 @@ export async function search_files(args, context) {
     // Buscar por path de archivo
     const pathMatches = allFiles.filter(f => f.toLowerCase().includes(lowerPattern));
 
-    // Buscar por símbolos exportados/definidos en cada archivo
+    // Buscar por nombres de átomos (funciones, clases, variables)
     const symbolMatches = [];
-    for (const [filePath, fileInfo] of Object.entries(fileIndex)) {
-      if (pathMatches.includes(filePath)) continue;
-      const exports = Array.isArray(fileInfo.exports) 
-        ? fileInfo.exports.map(e => e.name || e).join(' ') 
-        : '';
-      const defs = Array.isArray(fileInfo.definitions) 
-        ? fileInfo.definitions.map(d => d.name || d).join(' ') 
-        : '';
-      if ((exports + ' ' + defs).toLowerCase().includes(lowerPattern)) {
-        symbolMatches.push(filePath);
+    try {
+      const atoms = await getAllAtoms(projectPath);
+      const matchedFiles = new Set(pathMatches);
+      const symbolFileHits = new Map(); // filePath → [matchedNames]
+
+      for (const atom of atoms) {
+        if (matchedFiles.has(atom.filePath)) continue;
+        const name = (atom.name || '').toLowerCase();
+        const fingerprint = (atom.dna?.semanticFingerprint || '').toLowerCase();
+        if (name.includes(lowerPattern) || fingerprint.includes(lowerPattern)) {
+          if (!symbolFileHits.has(atom.filePath)) symbolFileHits.set(atom.filePath, []);
+          symbolFileHits.get(atom.filePath).push(atom.name);
+        }
       }
+
+      for (const [filePath, names] of symbolFileHits) {
+        symbolMatches.push({ path: filePath, symbols: names.slice(0, 5) });
+      }
+    } catch {
+      // Symbol search optional — path matches still returned
     }
 
-    const allMatches = [...pathMatches, ...symbolMatches];
+    const allMatchPaths = [...pathMatches, ...symbolMatches.map(m => m.path)];
 
     return {
       pattern,
-      found: allMatches.length,
-      files: allMatches.slice(0, 20),
+      found: allMatchPaths.length,
+      files: pathMatches.slice(0, 20),
+      symbolFiles: symbolMatches.slice(0, 10),
       byType: {
         pathMatches: pathMatches.length,
         symbolMatches: symbolMatches.length

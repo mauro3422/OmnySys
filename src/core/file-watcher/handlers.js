@@ -19,6 +19,7 @@ import path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { createLogger } from '../../utils/logger.js';
+import { loadAtoms, saveAtom as saveAtomToStorage } from '#layer-c/storage/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -67,25 +68,31 @@ export async function enrichAtomsWithAncestry(filePath) {
 }
 
 /**
- * Guarda un átomo enriquecido
+ * Guarda un átomo enriquecido usando la capa de storage
+ * (path nested: atoms/{dir}/{file}/{fn}.json)
  */
 export async function saveAtom(atom, filePath) {
-  const safePath = filePath.replace(/[\/]/g, '_');
-  const atomsDir = path.join(this.dataPath, 'atoms', safePath);
-  
-  const atomFile = path.join(atomsDir, `${atom.name}.json`);
-  await fs.writeFile(atomFile, JSON.stringify(atom, null, 2));
+  await saveAtomToStorage(this.rootPath, filePath, atom.name, atom);
 }
 
 /**
  * Maneja modificación de archivo
+ * Incluye hash-dedup: si el contenido no cambió, skip (evita re-análisis innecesarios)
  */
 export async function handleFileModified(filePath, fullPath) {
+  // Hash-dedup: evitar re-análisis si el contenido es idéntico (e.g. doble evento del OS)
+  const newHash = await this._calculateContentHash(fullPath);
+  const oldHash = this.fileHashes?.get(filePath);
+  if (newHash && oldHash && newHash === oldHash) {
+    logger.debug(`⏭️  ${filePath} - skipped (content unchanged)`);
+    return;
+  }
+  if (newHash && this.fileHashes) {
+    this.fileHashes.set(filePath, newHash);
+  }
+
   logger.info(`📝 ${filePath} - modified`);
-  
-  // Re-analizar
   await this.analyzeAndIndex(filePath, fullPath, true);
-  
   this.emit('file:modified', { filePath });
 }
 
@@ -163,28 +170,15 @@ export async function createShadowsForFile(filePath) {
 
 /**
  * Obtiene átomos de un archivo desde .omnysysdata/
+ * Usa la capa de storage (path nested: atoms/{dir}/{file}/{fn}.json)
  */
 export async function getAtomsForFile(filePath) {
-  const safePath = filePath.replace(/[\/]/g, '_');
-  const atomsDir = path.join(this.dataPath, 'atoms', safePath);
-  
-  const atoms = [];
-  
   try {
-    const files = await fs.readdir(atomsDir);
-    
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const content = await fs.readFile(path.join(atomsDir, file), 'utf-8');
-        atoms.push(JSON.parse(content));
-      }
-    }
+    return await loadAtoms(this.rootPath, filePath);
   } catch (error) {
-    // No hay átomos o directorio no existe
     logger.debug(`No atoms found for ${filePath}`);
+    return [];
   }
-  
-  return atoms;
 }
 
 /**
@@ -232,11 +226,13 @@ export async function removeFileMetadata(filePath) {
 
 /**
  * Borra átomos asociados al archivo
+ * Usa path nested: atoms/{fileDir}/{fileName}/ (sin extensión)
  */
 export async function removeAtomMetadata(filePath) {
   const atomsDir = path.join(this.dataPath, 'atoms');
-  const safeDir = filePath.replace(/[\/]/g, '_');
-  const atomDirPath = path.join(atomsDir, safeDir);
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const atomDirPath = path.join(atomsDir, fileDir, fileName);
 
   try {
     // Verificar si existe el directorio de átomos

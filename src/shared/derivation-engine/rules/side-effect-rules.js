@@ -60,6 +60,7 @@ export function moleculeHasAsyncPatterns(atoms) {
  */
 export function moleculeHasSideEffects(atoms) {
   return atoms.some(a =>
+    a.hasSideEffects ||
     a.hasNetworkCalls ||
     a.hasDomManipulation ||
     a.hasStorageAccess ||

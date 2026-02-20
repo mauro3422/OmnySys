@@ -9,7 +9,7 @@ import { detectAllSemanticConnections } from '../../layer-a-static/extractors/st
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
 import { extractMolecularStructure } from '../../layer-a-static/pipeline/molecular-extractor.js';
-import { saveAtom, saveMolecule } from '#layer-c/storage/index.js';
+import { saveAtom, saveMolecule, loadAtoms } from '#layer-c/storage/index.js';
 
 /**
  * Calcula hash del contenido de un archivo
@@ -134,6 +134,15 @@ export async function analyzeFile(filePath, fullPath) {
   // Guardar átomos individualmente (SSOT)
   // Null-check: extractMolecularStructure puede retornar null si el análisis falla
   const moleculeAtoms = molecularStructure?.atoms ?? [];
+
+  // Detectar funciones removidas: cargar atoms previos y marcar las que desaparecieron
+  const previousAtoms = await loadAtoms(this.rootPath, filePath);
+  const newAtomNames = new Set(moleculeAtoms.filter(a => a.name).map(a => a.name));
+  for (const prev of previousAtoms) {
+    if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {
+      await saveAtom(this.rootPath, filePath, prev.name, _markAtomAsRemoved(prev));
+    }
+  }
 
   for (const atom of moleculeAtoms) {
     await saveAtom(this.rootPath, filePath, atom.name, atom);
@@ -276,6 +285,29 @@ export async function removeFromIndex(filePath) {
  * @param {boolean} isUpdate - Indica si es una actualización (no usado actualmente)
  * @returns {Promise<Object>} - Análisis del archivo
  */
+/**
+ * Marca un atom como removido preservando su metadata como snapshot histórico.
+ * Mismo comportamiento que single-file.js::markAtomAsRemoved (DRY candidate).
+ */
+function _markAtomAsRemoved(atom) {
+  return {
+    ...atom,
+    purpose: 'REMOVED',
+    isDeadCode: true,
+    callerPattern: { id: 'removed', label: 'Eliminado', reason: 'Function no longer exists in source file' },
+    lineage: {
+      status: 'removed',
+      removedAt: new Date().toISOString(),
+      lastSeenAt: atom.extractedAt || atom.analyzedAt || null,
+      lastSeenLine: atom.line || null,
+      snapshotLOC: atom.linesOfCode ?? atom.lines ?? null,
+      snapshotComplexity: atom.complexity ?? null,
+      snapshotCallers: Array.isArray(atom.calledBy) ? atom.calledBy.length : 0,
+      dnaHash: atom.dna?.structuralHash || atom.dna?.patternHash || null
+    }
+  };
+}
+
 export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
   // 1. Analizar archivo
   const analysis = await analyzeFile.call(this, filePath, fullPath);
