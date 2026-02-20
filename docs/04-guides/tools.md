@@ -1,18 +1,23 @@
 # Guía de Herramientas MCP
 
-**Versión**: v0.9.4  
-**Total**: 14 herramientas implementadas  
-**Endpoint**: `http://localhost:9999/tools/`
+**Versión**: v0.9.44
+**Total**: 23 herramientas implementadas
+**Última actualización**: 2026-02-20
 
 ---
 
 ## Índice Rápido
 
-| Categoría | Herramientas |
-|-----------|--------------|
-| **Atómicas** (funciones) | `getFunctionDetails`, `getAtomicFunctions`, `analyzeFunctionChange` |
-| **Moléculares** (archivos) | `getImpactMap`, `analyzeChange`, `explainConnection`, `getMoleculeSummary` |
-| **Sistema** | `getFullStatus`, `getFilesStatus`, `getFileTool`, `getRisk`, `searchFiles`, `restartServer`, `clearAnalysisCache` |
+| Categoría | Herramientas | Cantidad |
+|-----------|--------------|----------|
+| **Impacto** | `get_impact_map`, `analyze_change`, `trace_variable_impact`, `explain_connection`, `analyze_signature_change` | 5 |
+| **Análisis de Código** | `get_call_graph`, `explain_value_flow`, `get_function_details`, `get_molecule_summary` | 4 |
+| **Métricas y Salud** | `get_risk_assessment`, `get_health_metrics`, `detect_patterns`, `get_async_analysis` | 4 |
+| **Sociedad de Átomos** | `get_atom_society`, `get_atom_history`, `get_removed_atoms` | 3 |
+| **Búsqueda y Sistema** | `search_files`, `get_server_status`, `restart_server` | 3 |
+| **Editor Atómico** | `atomic_edit`, `atomic_write` | 2 |
+| **Refactoring y Validación** | `suggest_refactoring`, `validate_imports` | 2 |
+| **TOTAL** | | **23** |
 
 ---
 
@@ -467,16 +472,217 @@ curl -s http://localhost:9999/tools/getFullStatus | jq
 
 ---
 
-## Tools en Desarrollo
+## Herramientas Avanzadas (Nuevas en v0.9.44)
 
-Las siguientes herramientas están documentadas pero aún no implementadas:
+### `get_async_analysis`
 
-| Tool | Estado | Descripción planeada |
-|------|--------|---------------------|
-| `getCallGraph` | 🚧 Pendiente | Grafo completo de llamadas de una función |
-| `analyzeSignatureChange` | 🚧 Pendiente | Impacto de cambiar firma de función |
-| `explainValueFlow` | 🚧 Pendiente | Flujo de datos: inputs → outputs → consumers |
-| `getTunnelVisionStats` | 🚧 Pendiente | Estadísticas de prevención de visión de túnel |
+**Descripción**: Análisis profundo de async/await con detección de waterfalls y recomendaciones de optimización.
+
+**Parámetros**:
+- `filePath` (string, opcional): Filtrar por archivo específico
+- `riskLevel` (string): 'all', 'high', 'medium', 'low'
+- `minSequentialAwaits` (number): Mínimo de awaits seguidos para flaggear (default: 3)
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/get_async_analysis \
+  -H "Content-Type: application/json" \
+  -d '{"riskLevel": "high"}'
+```
+
+**Retorna**:
+```json
+{
+  "summary": {
+    "totalAtoms": 5828,
+    "asyncAtoms": 872,
+    "withIssues": 218,
+    "highRisk": 40
+  },
+  "issues": [
+    {
+      "atom": "src/core/orchestrator.js::processBatch",
+      "type": "waterfall_awaits",
+      "risk": "high",
+      "description": "18 sequential awaits detected",
+      "suggestion": "Consider Promise.all for independent ops"
+    }
+  ]
+}
+```
+
+---
+
+### `detect_patterns`
+
+**Descripción**: Detecta patrones de código: duplicados, similar code, god functions, código muerto.
+
+**Parámetros**:
+- `patternType` (enum): 'all', 'duplicates', 'complexity', 'god-functions', 'fragile-network'
+- `minOccurrences` (number): Mínimo de ocurrencias (default: 2)
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/detect_patterns \
+  -H "Content-Type: application/json" \
+  -d '{"patternType": "god-functions"}'
+```
+
+**Retorna**:
+```json
+{
+  "summary": {
+    "exactDuplicates": 437,
+    "similarPatterns": 121,
+    "potentialSavingsLOC": 19301
+  },
+  "godFunctions": [
+    {
+      "name": "checkLogic",
+      "file": "src/cli/commands/check.js",
+      "complexity": 72,
+      "linesOfCode": 240
+    }
+  ]
+}
+```
+
+---
+
+### `get_atom_society`
+
+**Descripción**: Detecta "sociedades" de átomos: chains (cadenas), clusters (grupos), hubs (altamente conectados), orphans (huérfanos).
+
+**Parámetros**:
+- `filePath` (string, opcional): Filtrar por archivo
+- `minCallers` (number): Mínimo callers para ser hub (default: 5)
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/get_atom_society \
+  -H "Content-Type: application/json" \
+  -d '{"minCallers": 10}'
+```
+
+**Retorna**:
+```json
+{
+  "summary": {
+    "totalAtoms": 5828,
+    "chainCount": 15,
+    "clusterCount": 10,
+    "hubCount": 20,
+    "orphanCount": 20
+  },
+  "insights": {
+    "mostConnected": {
+      "name": "has",
+      "callers": 224
+    },
+    "longestChain": {
+      "entry": "invalidateCache",
+      "depth": 5
+    }
+  },
+  "chains": [...],
+  "clusters": [...],
+  "hubs": [...],
+  "orphans": [...]
+}
+```
+
+---
+
+### `get_atom_history`
+
+**Descripción**: Obtiene historial Git de un átomo específico (commits, autores, blame).
+
+**Parámetros**:
+- `filePath` (string): Ruta del archivo
+- `functionName` (string): Nombre de la función
+- `maxCommits` (number): Máximo commits (default: 10)
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/get_atom_history \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filePath": "src/core/orchestrator.js",
+    "functionName": "processJob"
+  }'
+```
+
+---
+
+### `get_removed_atoms`
+
+**Descripción**: Muestra átomos eliminados del código (útil para detectar duplicación accidental).
+
+**Parámetros**:
+- `filePath` (string, opcional): Filtrar por archivo
+- `minComplexity` (number): Solo átomos con complexity >= N
+- `minCallers` (number): Solo átomos con N+ callers cuando se eliminaron
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/get_removed_atoms \
+  -H "Content-Type: application/json" \
+  -d '{"minCallers": 5}'
+```
+
+---
+
+### `atomic_edit`
+
+**Descripción**: Edita archivos con validación atómica. Valida sintaxis ANTES de guardar, propaga vibración a dependientes, invalida cachés automáticamente.
+
+**Parámetros**:
+- `filePath` (string): Archivo a editar
+- `oldString` (string): Texto a reemplazar
+- `newString` (string): Nuevo texto
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/atomic_edit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filePath": "src/utils.js",
+    "oldString": "function old() { return 1; }",
+    "newString": "function new() { return 2; }"
+  }'
+```
+
+**Retorna**:
+```json
+{
+  "success": true,
+  "impact": {
+    "affectedFiles": 3,
+    "changedSymbols": ["old"],
+    "severity": "medium"
+  }
+}
+```
+
+---
+
+### `atomic_write`
+
+**Descripción**: Escribe archivos nuevos con validación atómica. Valida sintaxis antes de escribir e indexa inmediatamente.
+
+**Parámetros**:
+- `filePath` (string): Ruta del nuevo archivo
+- `content` (string): Contenido completo
+
+**Ejemplo**:
+```bash
+curl -X POST http://localhost:9999/tools/atomic_write \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filePath": "src/new-module.js",
+    "content": "export function helper() { return true; }"
+  }'
+```
 
 ---
 

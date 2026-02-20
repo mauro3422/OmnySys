@@ -307,6 +307,258 @@ function findByArchetypePattern(atoms) {
   return result.sort((a, b) => b.count - a.count);
 }
 
+/**
+ * Find circular dependencies between files
+ */
+function findCircularDependencies(atoms) {
+  const cycles = [];
+  const visited = new Set();
+  const recursionStack = new Set();
+  
+  // Build graph: file -> files it imports from
+  const graph = new Map();
+  
+  for (const atom of atoms) {
+    if (!atom.filePath) continue;
+    
+    if (!graph.has(atom.filePath)) {
+      graph.set(atom.filePath, new Set());
+    }
+    
+    // Add imports as dependencies
+    if (atom.calls) {
+      for (const call of atom.calls) {
+        if (call.filePath && call.filePath !== atom.filePath) {
+          graph.get(atom.filePath).add(call.filePath);
+        }
+      }
+    }
+  }
+  
+  // DFS to find cycles
+  function dfs(node, path) {
+    if (recursionStack.has(node)) {
+      // Found cycle
+      const cycleStart = path.indexOf(node);
+      const cycle = path.slice(cycleStart).concat([node]);
+      
+      // Check if this exact cycle was already found
+      const cycleKey = cycle.sort().join('->');
+      if (!visited.has(cycleKey)) {
+        visited.add(cycleKey);
+        cycles.push({
+          type: 'import-cycle',
+          files: cycle,
+          length: cycle.length - 1,
+          severity: cycle.length > 3 ? 'high' : 'medium',
+          suggestion: 'Consider extracting shared code to a separate module'
+        });
+      }
+      return;
+    }
+    
+    if (visited.has(node) && !recursionStack.has(node)) {
+      return; // Already processed
+    }
+    
+    recursionStack.add(node);
+    path.push(node);
+    
+    const neighbors = graph.get(node) || new Set();
+    for (const neighbor of neighbors) {
+      dfs(neighbor, [...path]);
+    }
+    
+    recursionStack.delete(node);
+  }
+  
+  for (const file of graph.keys()) {
+    if (!recursionStack.has(file)) {
+      dfs(file, []);
+    }
+  }
+  
+  return cycles.slice(0, 10); // Limit to top 10 cycles
+}
+
+/**
+ * Check if a file is a test file
+ */
+function isTestFile(filePath) {
+  if (!filePath) return false;
+  return filePath.includes('.test.') || 
+         filePath.includes('.spec.') ||
+         filePath.includes('__tests__');
+}
+
+/**
+ * Find test coverage gaps and relationships
+ */
+function findTestCoverageGaps(atoms, fileData = {}) {
+  const gaps = [];
+  const testRelations = [];
+  const orphanedTests = [];
+  const testStats = {
+    totalTestFiles: 0,
+    totalTests: 0,
+    functionsWithTests: new Set(),
+    functionsWithoutTests: new Set()
+  };
+  
+  // First pass: identify all test atoms and their imports
+  const testAtoms = atoms.filter(atom => isTestFile(atom.filePath));
+  const nonTestAtoms = atoms.filter(atom => !isTestFile(atom.filePath));
+  
+  testStats.totalTests = testAtoms.length;
+  
+  // Build map of test file -> functions it tests
+  const testFileToFunctions = new Map();
+  
+  for (const testAtom of testAtoms) {
+    if (!testFileToFunctions.has(testAtom.filePath)) {
+      testFileToFunctions.set(testAtom.filePath, {
+        testFile: testAtom.filePath,
+        testFunctions: [],
+        testedFunctions: [],
+        imports: []
+      });
+      testStats.totalTestFiles++;
+    }
+    
+    testFileToFunctions.get(testAtom.filePath).testFunctions.push(testAtom);
+    
+    // Check imports to find what functions this test imports
+    if (testAtom.imports) {
+      for (const imp of testAtom.imports) {
+        const source = imp.source || imp.module;
+        if (!source) continue;
+        
+        // Skip if it's importing from another test file
+        if (isTestFile(source)) continue;
+        
+        testFileToFunctions.get(testAtom.filePath).imports.push({
+          source,
+          specifiers: imp.specifiers?.map(s => s.local) || []
+        });
+      }
+    }
+  }
+  
+  // Second pass: match tests to functions
+  for (const [testFile, testInfo] of testFileToFunctions) {
+    for (const imp of testInfo.imports) {
+      // Find atoms in the imported file
+      const importedAtoms = nonTestAtoms.filter(atom => 
+        atom.filePath && (
+          atom.filePath.includes(imp.source) ||
+          imp.source.includes(atom.filePath.replace(/\\/g, '/').split('/').pop()?.replace('.js', ''))
+        )
+      );
+      
+      for (const atom of importedAtoms) {
+        // Check if this function is imported
+        const isImported = imp.specifiers.length === 0 || // Default import
+                          imp.specifiers.includes(atom.name) ||
+                          imp.specifiers.includes('*');
+        
+        if (isImported && atom.isExported) {
+          testInfo.testedFunctions.push({
+            id: atom.id,
+            name: atom.name,
+            file: atom.filePath,
+            complexity: atom.complexity
+          });
+          testStats.functionsWithTests.add(atom.id);
+        }
+      }
+    }
+    
+    // If test has imports but no matched functions, it might be testing something else
+    if (testInfo.imports.length > 0 && testInfo.testedFunctions.length === 0) {
+      orphanedTests.push({
+        testFile: testFile,
+        reason: 'Test imports modules but no specific functions matched',
+        imports: testInfo.imports.map(i => i.source)
+      });
+    }
+  }
+  
+  // Third pass: find functions without tests
+  for (const atom of nonTestAtoms) {
+    if (!atom.isExported) continue;
+    if (atom.purpose === 'TEST_HELPER') continue;
+    if (atom.filePath?.includes('test')) continue;
+    
+    if (!testStats.functionsWithTests.has(atom.id)) {
+      testStats.functionsWithoutTests.add(atom.id);
+      
+      const riskScore = calculateRiskForTesting(atom);
+      
+      if (riskScore > 3) {
+        gaps.push({
+          id: atom.id,
+          name: atom.name,
+          file: atom.filePath,
+          line: atom.line,
+          complexity: atom.complexity,
+          calledBy: atom.calledBy?.length || 0,
+          riskScore,
+          severity: riskScore > 8 ? 'high' : (riskScore > 5 ? 'medium' : 'low'),
+          reason: 'Exported function with no test coverage',
+          suggestion: `Write tests for ${atom.name}() - complexity: ${atom.complexity}, called by ${atom.calledBy?.length || 0} functions`
+        });
+      }
+    }
+  }
+  
+  // Build test relations for high-value functions
+  for (const [testFile, testInfo] of testFileToFunctions) {
+    if (testInfo.testedFunctions.length > 0) {
+      testRelations.push({
+        testFile: testFile,
+        testedFunctions: testInfo.testedFunctions.slice(0, 5),
+        coverage: testInfo.testedFunctions.length > 3 ? 'partial' : 'minimal'
+      });
+    }
+  }
+  
+  return {
+    gaps: gaps.sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
+    testRelations: testRelations.slice(0, 15),
+    orphanedTests: orphanedTests.slice(0, 10),
+    stats: {
+      totalTestFiles: testStats.totalTestFiles,
+      totalTestAtoms: testStats.totalTests,
+      functionsWithTests: testStats.functionsWithTests.size,
+      functionsWithoutTests: testStats.functionsWithoutTests.size,
+      coveragePercent: testStats.functionsWithTests.size + testStats.functionsWithoutTests.size > 0 
+        ? Math.round((testStats.functionsWithTests.size / (testStats.functionsWithTests.size + testStats.functionsWithoutTests.size)) * 100)
+        : 0
+    }
+  };
+}
+
+function calculateRiskForTesting(atom) {
+  let score = 0;
+  
+  // Higher complexity = higher risk
+  score += (atom.complexity || 0) * 2;
+  
+  // More callers = more important to test
+  score += (atom.calledBy?.length || 0);
+  
+  // Network operations are risky
+  if (atom.hasNetworkCalls) score += 5;
+  
+  // Async functions need testing
+  if (atom.isAsync) score += 2;
+  
+  // Error handling should be tested
+  if (!atom.hasErrorHandling && atom.hasNetworkCalls) score += 5;
+  
+  return Math.min(score, 10);
+}
+
 export async function detect_patterns(args, context) {
   const { patternType = 'all', minOccurrences = 2 } = args;
   const { projectPath } = context;
@@ -330,15 +582,24 @@ export async function detect_patterns(args, context) {
       const fragile = findFragileNetworkCalls(atoms);
       const dead = findDeadCode(atoms);
       const unusual = findUnusualPatterns(atoms);
+      const cycles = findCircularDependencies(atoms);
+      const testCoverage = findTestCoverageGaps(atoms);
 
       result.overview = {
-        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" for full details',
+        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" for full details',
         duplicates: { exact: dups.summary.exactDuplicatesFound, similar: dups.summary.similarCodeFound, potentialSavingsLOC: dups.summary.potentialSavingsLOC, top3: dups.exactDuplicates.slice(0, 3).map(d => ({ hash: d.hash, count: d.count, example: d.atoms[0] })) },
         godFunctions: { count: godFns.length, top5: godFns.slice(0, 5).map(g => ({ name: g.name, file: g.file, complexity: g.complexity, linesOfCode: g.linesOfCode })) },
         fragileNetwork: { fragile: fragile.fragile.length, wellHandled: fragile.wellHandled.length, top5: fragile.fragile.slice(0, 5).map(f => ({ name: f.name, file: f.file, risk: f.risk, issue: f.issue })) },
         deadCode: { count: dead.length, top5: dead.slice(0, 5).map(d => ({ name: d.name, file: d.file, linesOfCode: d.linesOfCode })) },
         unusedExports: { count: unusual.unusedExports.length, top5: unusual.unusedExports.slice(0, 5) },
-        complexityHotspots: findComplexityHotspots(atoms).slice(0, 5).map(h => ({ file: h.file, totalComplexity: h.totalComplexity, atomCount: h.atomCount }))
+        complexityHotspots: findComplexityHotspots(atoms).slice(0, 5).map(h => ({ file: h.file, totalComplexity: h.totalComplexity, atomCount: h.atomCount })),
+        circularDependencies: { count: cycles.length, top3: cycles.slice(0, 3).map(c => ({ files: c.files.slice(0, 3), length: c.length, severity: c.severity })) },
+        testCoverage: {
+          stats: testCoverage.stats,
+          gapsCount: testCoverage.gaps.length,
+          orphanedTestsCount: testCoverage.orphanedTests.length,
+          top3: testCoverage.gaps.slice(0, 3).map(t => ({ name: t.name, file: t.file, riskScore: t.riskScore }))
+        }
       };
     }
 
@@ -360,6 +621,15 @@ export async function detect_patterns(args, context) {
 
     if (patternType === 'fragile-network') {
       result.fragileNetwork = findFragileNetworkCalls(atoms);
+    }
+
+    if (patternType === 'circular') {
+      result.circularDependencies = findCircularDependencies(atoms);
+    }
+
+    if (patternType === 'test-coverage') {
+      const coverage = findTestCoverageGaps(atoms);
+      result.testCoverage = coverage;
     }
 
     return result;

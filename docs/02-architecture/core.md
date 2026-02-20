@@ -51,17 +51,17 @@ Responsabilidad:
 ### Extraccion de Metadata por Archivo
 
 El parser AST (@babel/parser) extrae de cada archivo:
-- `imports[]` â€” ESM, CommonJS, dynamic imports (source, specifiers, type)
-- `exports[]` â€” Named, default, re-exports (type, name, kind)
-- `definitions[]` â€” Funciones y clases (name, params, line)
-- `calls[]` â€” Llamadas a funciones
-- `functions[]` â€” Info detallada (id, name, params, isExported, calls internos)
+- `imports[]` — ESM, CommonJS, dynamic imports (source, specifiers, type)
+- `exports[]` — Named, default, re-exports (type, name, kind)
+- `definitions[]` — Funciones y clases (name, params, line)
+- `calls[]` — Llamadas a funciones
+- `functions[]` — Info detallada (id, name, params, isExported, calls internos)
 
 Los extractores estaticos (regex) extraen:
-- `localStorage` â€” reads y writes con key (ej: `setItem('token', ...)`)
-- `events` â€” listeners y emitters con nombre (ej: `emit('save')`, `on('save', ...)`)
-- `globals` â€” reads y writes a `window.*` (ej: `window.config = ...`)
-- `envVars` â€” variables de entorno `process.env.*`
+- `localStorage` — reads y writes con key (ej: `setItem('token', ...)`)
+- `events` — listeners y emitters con nombre (ej: `emit('save')`, `on('save', ...)`)
+- `globals` — reads y writes a `window.*` (ej: `window.config = ...`)
+- `envVars` — variables de entorno `process.env.*`
 - Redux: selectors, actions, slices, stores
 - Context: createContext, Provider, useContext
 - Communication: WebSocket, Workers, BroadcastChannel, fetch, postMessage
@@ -81,23 +81,23 @@ Para cada par de archivos (A, B):
 ```
 
 Cada conexion incluye:
-- `sourceFile`, `targetFile` â€” los dos archivos conectados
-- `type` â€” tipo de conexion
-- `via` â€” el dato compartido (key, event name, property)
-- `direction` â€” quien escribe y quien lee (ej: "A writes, B reads")
-- `confidence` â€” 1.0 para conexiones estaticas
-- `detectedBy` â€” "static-extractor"
+- `sourceFile`, `targetFile` — los dos archivos conectados
+- `type` — tipo de conexion
+- `via` — el dato compartido (key, event name, property)
+- `direction` — quien escribe y quien lee (ej: "A writes, B reads")
+- `confidence` — 1.0 para conexiones estaticas
+- `detectedBy` — "static-extractor"
 
 **Estas conexiones NO necesitan LLM.** Son hechos verificables extraidos con regex.
 
 ### Salida de Layer A
 
-- `.omnysysdata/system-map.json` â€” Grafo de dependencias
-- `.omnysysdata/system-map-enhanced.json` â€” Grafo con conexiones semanticas
-- `.omnysysdata/index.json` â€” Metadata del proyecto
-- `.omnysysdata/files/**` â€” Analisis individual por archivo
-- `.omnysysdata/connections/**` â€” Conexiones entre archivos
-- `.omnysysdata/risks/**` â€” Riesgos detectados
+- `.omnysysdata/system-map.json` — Grafo de dependencias
+- `.omnysysdata/system-map-enhanced.json` — Grafo con conexiones semanticas
+- `.omnysysdata/index.json` — Metadata del proyecto
+- `.omnysysdata/files/**` — Analisis individual por archivo
+- `.omnysysdata/connections/**` — Conexiones entre archivos
+- `.omnysysdata/risks/**` — Riesgos detectados
 
 Regla: **No usa LLM. Todo es determinista.**
 
@@ -125,7 +125,7 @@ Si archetypes.length > 0 --> candidato para LLM (pasa a Gate 2)
 Si archetypes.length === 0 --> NO necesita LLM
 ```
 
-**Gate 2: Bypass Check â€” Las conexiones estaticas ya resuelven el caso?** (`analysis-decider.js`)
+**Gate 2: Bypass Check — Las conexiones estaticas ya resuelven el caso?** (`analysis-decider.js`)
 
 No todos los arquetipos necesitan LLM. Si Layer A ya resolvio las conexiones con confidence 1.0, gastar LLM es desperdiciar recursos.
 
@@ -174,8 +174,8 @@ Huerfano CON global access o localStorage? ---------> SI LLM (sospechoso)
 
 ### Salida del Orchestrator
 
-- `llmInsights` por archivo â€” Se agrega al JSON existente sin sobrescribir metadata estatica.
-- `.omnysysdata/semantic-issues.json` â€” Issues detectados cross-project.
+- `llmInsights` por archivo — Se agrega al JSON existente sin sobrescribir metadata estatica.
+- `.omnysysdata/semantic-issues.json` — Issues detectados cross-project.
 
 Reglas:
 - No re-extrae datos estaticos.

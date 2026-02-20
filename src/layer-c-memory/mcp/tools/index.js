@@ -3,7 +3,7 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (21):
+ * TOOLS ACTIVAS (23):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
@@ -12,6 +12,8 @@
  *   Historia:             get_atom_history, get_removed_atoms
  *   Utilidades:           search_files, get_server_status, restart_server
  *   Editor atómico:       atomic_edit, atomic_write
+ *   Refactoring:          suggest_refactoring
+ *   Validación:           validate_imports
  *
  * ELIMINADAS:
  *   get_atomic_functions  → fusionada en get_molecule_summary (duplicado)
@@ -41,6 +43,8 @@ import { get_async_analysis } from './get-async-analysis.js';
 import { get_atom_history } from './get-atom-history.js';
 import { get_removed_atoms } from './get-removed-atoms.js';
 import { trace_variable_impact } from './trace-variable-impact.js';
+import { suggest_refactoring } from './suggest-refactoring.js';
+import { validate_imports } from './validate-imports.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -308,6 +312,35 @@ export const toolDefinitions = [
       },
       required: ['filePath', 'content']
     }
+  },
+  // ── SUGERENCIAS DE REFACTORING ───────────────────────────────────────────
+  {
+    name: 'suggest_refactoring',
+    description: 'Analyzes code and suggests specific refactoring improvements: extract functions, rename variables, add error handling, optimize performance, split large files, and improve cohesion',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: filter by specific file path' },
+        severity: { type: 'string', enum: ['all', 'high', 'medium', 'low'], default: 'all', description: 'Filter suggestions by severity' },
+        limit: { type: 'number', description: 'Maximum suggestions to return', default: 20 },
+        ...PAGINATION_SCHEMA
+      }
+    }
+  },
+  // ── VALIDACIÓN DE IMPORTS ────────────────────────────────────────────────
+  {
+    name: 'validate_imports',
+    description: 'Validates imports in files: detects broken imports, unused imports, and circular dependencies',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: validate specific file only' },
+        checkUnused: { type: 'boolean', default: true, description: 'Check for unused imports' },
+        checkBroken: { type: 'boolean', default: true, description: 'Check for broken/missing imports' },
+        checkCircular: { type: 'boolean', default: false, description: 'Check for circular dependencies' },
+        ...PAGINATION_SCHEMA
+      }
+    }
   }
 ];
 
@@ -340,5 +373,9 @@ export const toolHandlers = {
   restart_server,
   // Editor atómico
   atomic_edit,
-  atomic_write
+  atomic_write,
+  // Refactoring
+  suggest_refactoring,
+  // Validación
+  validate_imports
 };

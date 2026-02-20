@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.18  
+**Versión**: v0.9.44  
 **Última actualización**: 2026-02-20  
-**Estado**: ✅ **CONSOLIDADO + Layer Graph + Data Flow**
+**Estado**: ✅ **CONSOLIDADO + 21 Tools MCP + Richer Archetypes**
 
 ---
 
@@ -39,7 +39,7 @@ docs/
 | **(raíz)** | [INSTALL.md](../INSTALL.md) | Guía de instalación completa |
 | **(raíz)** | [GETTING_STARTED.md](../GETTING_STARTED.md) | Primeros pasos |
 | **04-guides/** | [quickstart.md](04-guides/quickstart.md) | Empezar en 5 minutos |
-| **04-guides/** | [tools.md](04-guides/tools.md) | 14 herramientas MCP |
+| **04-guides/** | [tools.md](04-guides/tools.md) | **23 herramientas MCP** |
 
 ---
 

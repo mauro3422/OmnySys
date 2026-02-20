@@ -1,7 +1,8 @@
 # Integración MCP con IDEs
 
-**Versión**: v0.7.1  
-**Soportado**: Claude Code, VS Code + Copilot, Cline
+**Versión**: v0.9.44  
+**Soportado**: Claude Code, VS Code + Copilot, Cline, OpenCode  
+**Total Tools**: 21 implementadas
 
 ---
 
@@ -16,7 +17,7 @@ Crear `.mcp.json` en la raíz del proyecto:
   "mcpServers": {
     "omnysys": {
       "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp/index.js"]
+      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js"]
     }
   }
 }
@@ -28,7 +29,7 @@ Crear `.mcp.json` en la raíz del proyecto:
   "mcpServers": {
     "omnysys": {
       "command": "node",
-      "args": ["src/layer-c-memory/mcp/index.js"]
+      "args": ["src/layer-c-memory/mcp-server.js"]
     }
   }
 }
@@ -63,7 +64,7 @@ claude
     "omnysys": {
       "type": "stdio",
       "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp/index.js"],
+      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js"],
       "env": {}
     }
   }
@@ -77,7 +78,7 @@ claude
     "omnysys": {
       "type": "stdio",
       "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp/index.js"]
+      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js"]
     }
   }
 }
@@ -104,7 +105,7 @@ En Cline settings (UI):
     {
       "name": "omnysys",
       "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp/index.js"],
+      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js"],
       "transportType": "stdio"
     }
   ]
@@ -117,15 +118,39 @@ Cline detecta automáticamente las tools disponibles.
 
 ---
 
+## OpenCode (CLI)
+
+### Configuración
+
+Crear `opencode.json` en la raíz del proyecto:
+
+```json
+{
+  "mcp": {
+    "servers": [{
+      "name": "omnysys",
+      "command": "node",
+      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js", "/ruta/a/tu/proyecto"]
+    }]
+  }
+}
+```
+
+### Uso
+
+OpenCode detecta automáticamente las 21 tools MCP disponibles.
+
+---
+
 ## Troubleshooting
 
 ### "MCP Server not found"
 ```bash
 # Verificar ruta
-ls /ruta/a/OmnySys/src/layer-c-memory/mcp/index.js
+ls /ruta/a/OmnySys/src/layer-c-memory/mcp-server.js
 
 # Probar manualmente
-node /ruta/a/OmnySys/src/layer-c-memory/mcp/index.js
+node /ruta/a/OmnySys/src/layer-c-memory/mcp-server.js
 ```
 
 ### "Connection refused"
@@ -140,7 +165,7 @@ npm restart
 ### Tools no aparecen
 ```bash
 # Verificar que el servidor MCP exporta tools
-cat /ruta/a/OmnySys/src/layer-c-memory/mcp/index.js | grep "tools"
+ls /ruta/a/OmnySys/src/layer-c-memory/mcp/tools/
 ```
 
 ---
