@@ -604,6 +604,122 @@ function calculateRiskForTesting(atom) {
   return Math.min(score, 10);
 }
 
+/**
+ * Detecta deuda arquitectónica (archivos que violan SOLID/SSOT)
+ * Se activa cuando: >250 líneas AND (múltiples responsabilidades OR duplicados OR complejidad alta)
+ */
+function findArchitecturalDebt(atoms) {
+  const debtFiles = [];
+  
+  // Agrupar átomos por archivo
+  const byFile = new Map();
+  for (const atom of atoms) {
+    if (!atom.filePath) continue;
+    if (isAnalysisScript(atom)) continue; // Ignorar scripts de análisis
+    
+    if (!byFile.has(atom.filePath)) {
+      byFile.set(atom.filePath, {
+        atoms: [],
+        totalLines: 0,
+        responsibilities: new Set(),
+        hasDuplicates: false,
+        maxComplexity: 0
+      });
+    }
+    
+    const fileData = byFile.get(atom.filePath);
+    fileData.atoms.push(atom);
+    fileData.totalLines += atom.linesOfCode || 0;
+    fileData.maxComplexity = Math.max(fileData.maxComplexity, atom.complexity || 0);
+    
+    // Detectar responsabilidades por flowType
+    if (atom.dna?.flowType) {
+      fileData.responsibilities.add(atom.dna.flowType);
+    }
+    
+    // Detectar por propósito/archetype
+    if (atom.purpose) {
+      fileData.responsibilities.add(atom.purpose);
+    }
+    if (atom.archetype?.type) {
+      fileData.responsibilities.add(atom.archetype.type);
+    }
+  }
+  
+  // Detectar duplicados por archivo
+  const duplicates = findDuplicates(atoms, 2);
+  const filesWithDuplicates = new Set();
+  duplicates.exactDuplicates.forEach(dup => {
+    dup.atoms.forEach(atom => {
+      if (atom.file) filesWithDuplicates.add(atom.file);
+    });
+  });
+  
+  // Evaluar cada archivo
+  for (const [filePath, fileData] of byFile) {
+    const lines = fileData.totalLines;
+    const responsibilities = fileData.responsibilities.size;
+    const hasDuplicates = filesWithDuplicates.has(filePath);
+    const maxComplexity = fileData.maxComplexity;
+    
+    // Criterios de deuda arquitectónica
+    const hasTooManyLines = lines > 250;
+    const hasTooManyResponsibilities = responsibilities > 3;
+    const hasHighComplexity = maxComplexity > 30;
+    
+    // Se activa si cumple: líneas grandes AND (responsabilidades múltiples OR duplicados OR complejidad alta)
+    if (hasTooManyLines && (hasTooManyResponsibilities || hasDuplicates || hasHighComplexity)) {
+      const violations = [];
+      if (hasTooManyLines) violations.push(`Archivo muy grande (${lines} líneas)`);
+      if (hasTooManyResponsibilities) violations.push(`${responsibilities} responsabilidades distintas`);
+      if (hasDuplicates) violations.push('Contiene código duplicado');
+      if (hasHighComplexity) violations.push(`Complejidad máxima ${maxComplexity}`);
+      
+      // Calcular score de deuda
+      const debtScore = (
+        (lines > 250 ? 20 : 0) +
+        (responsibilities > 3 ? responsibilities * 10 : 0) +
+        (hasDuplicates ? 15 : 0) +
+        (maxComplexity > 30 ? (maxComplexity - 30) * 2 : 0)
+      );
+      
+      debtFiles.push({
+        file: filePath,
+        lines,
+        atomCount: fileData.atoms.length,
+        responsibilities: [...fileData.responsibilities].slice(0, 5),
+        responsibilityCount: responsibilities,
+        maxComplexity,
+        hasDuplicates,
+        violations,
+        debtScore,
+        severity: debtScore > 60 ? 'critical' : (debtScore > 40 ? 'high' : 'medium'),
+        topAtoms: fileData.atoms
+          .sort((a, b) => (b.complexity || 0) - (a.complexity || 0))
+          .slice(0, 3)
+          .map(a => ({
+            name: a.name,
+            complexity: a.complexity,
+            linesOfCode: a.linesOfCode,
+            purpose: a.purpose
+          })),
+        recommendation: `Dividir en módulos más pequeños (< 250 líneas). ${violations.join('. ')}`
+      });
+    }
+  }
+  
+  return debtFiles.sort((a, b) => b.debtScore - a.debtScore).slice(0, 15);
+}
+
+/**
+ * Check if atom is an analysis script (internal tool)
+ */
+function isAnalysisScript(atom) {
+  return atom.purpose === 'ANALYSIS_SCRIPT' ||
+    atom.filePath?.startsWith('scripts/audit') ||
+    atom.filePath?.startsWith('scripts/analyze');
+}
+
 export async function detect_patterns(args, context) {
   const { patternType = 'all', minOccurrences = 2 } = args;
   const { projectPath } = context;
@@ -629,9 +745,10 @@ export async function detect_patterns(args, context) {
       const unusual = findUnusualPatterns(atoms);
       const cycles = findCircularDependencies(atoms);
       const testCoverage = findTestCoverageGaps(atoms);
+      const archDebt = findArchitecturalDebt(atoms);
 
       result.overview = {
-        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" for full details',
+        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" | "architectural-debt" for full details',
         duplicates: { exact: dups.summary.exactDuplicatesFound, similar: dups.summary.similarCodeFound, potentialSavingsLOC: dups.summary.potentialSavingsLOC, top3: dups.exactDuplicates.slice(0, 3).map(d => ({ hash: d.hash, count: d.count, example: d.atoms[0] })) },
         godFunctions: { count: godFns.length, top5: godFns.slice(0, 5).map(g => ({ name: g.name, file: g.file, complexity: g.complexity, linesOfCode: g.linesOfCode })) },
         fragileNetwork: { fragile: fragile.fragile.length, wellHandled: fragile.wellHandled.length, top5: fragile.fragile.slice(0, 5).map(f => ({ name: f.name, file: f.file, risk: f.risk, issue: f.issue })) },
@@ -644,6 +761,16 @@ export async function detect_patterns(args, context) {
           gapsCount: testCoverage.gaps.length,
           orphanedTestsCount: testCoverage.orphanedTests.length,
           top3: testCoverage.gaps.slice(0, 3).map(t => ({ name: t.name, file: t.file, riskScore: t.riskScore }))
+        },
+        architecturalDebt: {
+          count: archDebt.length,
+          critical: archDebt.filter(d => d.severity === 'critical').length,
+          top3: archDebt.slice(0, 3).map(d => ({ 
+            file: d.file, 
+            lines: d.lines, 
+            violations: d.violations,
+            debtScore: d.debtScore 
+          }))
         }
       };
     }
@@ -675,6 +802,11 @@ export async function detect_patterns(args, context) {
     if (patternType === 'test-coverage') {
       const coverage = findTestCoverageGaps(atoms);
       result.testCoverage = coverage;
+    }
+
+    if (patternType === 'architectural-debt') {
+      result.architecturalDebt = findArchitecturalDebt(atoms);
+      result.summary.debtExplanation = 'Files > 250 lines with multiple responsibilities, duplicates, or high complexity. Consider splitting into smaller modules (< 250 lines each).';
     }
 
     return result;

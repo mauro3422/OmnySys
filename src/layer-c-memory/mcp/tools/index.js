@@ -253,14 +253,14 @@ export const toolDefinitions = [
   },
   {
     name: 'detect_patterns',
-    description: 'Detects code patterns: duplicates (via DNA hash), similar code (via pattern hash), god functions, fragile network calls, dead code, and complexity hotspots',
+    description: 'Detects code patterns: duplicates (via DNA hash), similar code (via pattern hash), god functions, fragile network calls, dead code, complexity hotspots, circular dependencies, test coverage gaps, and architectural debt (files >250 lines with multiple responsibilities)',
     inputSchema: {
       type: 'object',
       properties: {
         patternType: { 
           type: 'string', 
-          enum: ['all', 'duplicates', 'complexity', 'archetype', 'god-functions', 'fragile-network'],
-          description: 'Type of pattern to detect',
+          enum: ['all', 'duplicates', 'complexity', 'archetype', 'god-functions', 'fragile-network', 'circular', 'test-coverage', 'architectural-debt'],
+          description: 'Type of pattern to detect. architectural-debt: finds files >250 lines with multiple responsibilities, duplicates, or high complexity',
           default: 'all'
         },
         minOccurrences: { type: 'number', description: 'Minimum occurrences for a pattern', default: 2 },
