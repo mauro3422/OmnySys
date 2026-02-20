@@ -21,6 +21,8 @@
  * @param {Object} atomMetadata - Atom metadata
  * @returns {Object} - Archetype with type, severity, and confidence
  */
+const TEST_CALLBACK_RE = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
+
 export function detectAtomArchetype(atomMetadata) {
   const {
     complexity,
@@ -46,6 +48,7 @@ export function detectAtomArchetype(atomMetadata) {
   const fingerprint = dna?.semanticFingerprint || '';
   const couplingScore = derived?.couplingScore ?? (calls.length + internalCalls.length);
   const nameLow = name.toLowerCase();
+  const isTestCallback = TEST_CALLBACK_RE.test(name);
 
   // ── CRÍTICOS (siempre ganan) ──────────────────────────────────────────────
 
@@ -53,6 +56,12 @@ export function detectAtomArchetype(atomMetadata) {
   if (complexity > 50 || linesOfCode > 150 ||
       (complexity > 20 && (externalCallCount > 5 || callerCount > 10))) {
     return { type: 'god-function', severity: 10, confidence: 1.0 };
+  }
+
+  // Test callback: invocado por el runner, nunca por código de producción
+  // No aplica dead-function ni fragile-network a callbacks de test
+  if (isTestCallback) {
+    return { type: 'test-callback', severity: 1, confidence: 1.0 };
   }
 
   // Fragile network: llama red sin manejo de errores

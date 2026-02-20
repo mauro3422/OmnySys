@@ -14,6 +14,7 @@
  *   Editor atómico:       atomic_edit, atomic_write
  *   Refactoring:          suggest_refactoring
  *   Validación:           validate_imports
+ *   Schema / Debug:       get_atom_schema
  *
  * ELIMINADAS:
  *   get_atomic_functions  → fusionada en get_molecule_summary (duplicado)
@@ -45,6 +46,7 @@ import { get_removed_atoms } from './get-removed-atoms.js';
 import { trace_variable_impact } from './trace-variable-impact.js';
 import { suggest_refactoring } from './suggest-refactoring.js';
 import { validate_imports } from './validate-imports.js';
+import { get_atom_schema } from './get-atom-schema.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -327,6 +329,29 @@ export const toolDefinitions = [
       }
     }
   },
+  // ── SCHEMA / DEBUG ───────────────────────────────────────────────────────
+  {
+    name: 'get_atom_schema',
+    description: 'Inspects the live atom index and returns a dynamic schema of available metadata fields for a given atom type. Use this to debug extractors, understand what data exists, and check which MCP tools consume each field. Useful in verbose mode.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        atomType: {
+          type: 'string',
+          description: 'Filter by atom type. Options: testCallback, function, arrow, expression, method, variable, constant, config — or any archetype/testCallbackType value (describe, it, test, etc.)'
+        },
+        sampleSize: {
+          type: 'number',
+          description: 'Number of sample atoms to return (default: 3)',
+          default: 3
+        },
+        focusField: {
+          type: 'string',
+          description: 'Optional: show detailed evolution breakdown for a specific field (e.g. "complexity", "linesOfCode", "calls")'
+        }
+      }
+    }
+  },
   // ── VALIDACIÓN DE IMPORTS ────────────────────────────────────────────────
   {
     name: 'validate_imports',
@@ -377,5 +402,7 @@ export const toolHandlers = {
   // Refactoring
   suggest_refactoring,
   // Validación
-  validate_imports
+  validate_imports,
+  // Schema / Debug
+  get_atom_schema
 };

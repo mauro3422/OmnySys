@@ -170,6 +170,9 @@ function findFragileNetworkCalls(atoms) {
   
   for (const atom of atoms) {
     if (!atom.hasNetworkCalls) continue;
+    // Los callbacks de test no son código de producción — no tienen red real
+    if (atom.isTestCallback) continue;
+    if (isTestFile(atom.filePath)) continue;
     
     const info = {
       id: atom.id,
@@ -483,7 +486,21 @@ function findTestCoverageGaps(atoms, fileData = {}) {
     }
   }
   
-  // Third pass: find functions without tests
+  // Third pass (call-based): usar calls[] de isTestCallback para cobertura precisa
+  // Cada it('...', () => { ... }) ahora es un átomo con calls[] que apunta a producción
+  const callbackAtoms = atoms.filter(a => a.isTestCallback && isTestFile(a.filePath));
+  for (const cb of callbackAtoms) {
+    for (const call of (cb.calls || [])) {
+      const callName = typeof call === 'string' ? call : (call.name || call.callee);
+      if (!callName) continue;
+      const matched = nonTestAtoms.find(a => a.name === callName || a.fullName === callName);
+      if (matched && matched.isExported) {
+        testStats.functionsWithTests.add(matched.id);
+      }
+    }
+  }
+
+  // Fourth pass: find functions without tests
   for (const atom of nonTestAtoms) {
     if (!atom.isExported) continue;
     if (atom.purpose === 'TEST_HELPER') continue;

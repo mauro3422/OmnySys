@@ -22,10 +22,11 @@ const traverse = _traverse.default || _traverse;
 import { getParserOptions } from './config.js';
 import { extractESMImport, extractCommonJSRequire, extractDynamicImport } from './extractors/imports.js';
 import { extractNamedExports, extractDefaultExport } from './extractors/exports.js';
-import { extractFunctionDefinition, extractArrowFunction, extractFunctionExpression, extractClassDefinition, extractVariableExports } from './extractors/definitions.js';
+import { extractFunctionDefinition, extractArrowFunction, extractFunctionExpression, extractClassDefinition, extractVariableExports, extractTestCallback } from './extractors/definitions.js';
 import { extractTSInterface, extractTSTypeAlias, extractTSEnum, extractTSTypeReference } from './extractors/typescript.js';
 import { extractCallExpression, extractIdentifierRef } from './extractors/calls.js';
 import { createLogger } from '../../utils/logger.js';
+import { getFileId } from './helpers.js';
 
 const logger = createLogger('OmnySys:index');
 
@@ -132,6 +133,15 @@ export function parseFile(filePath, code) {
         else if (node.init?.type === 'FunctionExpression' && node.id?.type === 'Identifier') {
           extractFunctionExpression(nodePath, filePath, fileInfo);
         }
+      },
+
+      // Callbacks de test: describe('...', () => {}), it('...', () => {}), etc.
+      // Solo se extrae metadata (sin node: node) para evitar explosión de memoria.
+      ArrowFunctionExpression(nodePath) {
+        extractTestCallback(nodePath, filePath, fileInfo);
+      },
+      FunctionExpression(nodePath) {
+        extractTestCallback(nodePath, filePath, fileInfo);
       },
 
       // TypeScript
