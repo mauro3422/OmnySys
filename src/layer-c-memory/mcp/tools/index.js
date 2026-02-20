@@ -3,11 +3,12 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (14):
+ * TOOLS ACTIVAS (17):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection
- *   Riesgo:               get_risk_assessment
+ *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
+ *   Sociedad:             get_atom_society, detect_patterns
  *   Utilidades:           search_files, get_server_status, restart_server
  *   Editor atómico:       atomic_edit, atomic_write
  *
@@ -31,6 +32,9 @@ import { get_function_details } from './get-function-details.js';
 import { get_molecule_summary } from './get-molecule-summary.js';
 import { restart_server } from './restart-server.js';
 import { atomic_edit, atomic_write } from './atomic-edit.js';
+import { get_atom_society } from './get-atom-society.js';
+import { detect_patterns } from './detect-patterns.js';
+import { get_health_metrics } from './get-health-metrics.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -142,6 +146,46 @@ export const toolDefinitions = [
       required: ['filePath']
     }
   },
+  // ── SOCIEDAD DE ÁTOMOS ───────────────────────────────────────────────────
+  {
+    name: 'get_atom_society',
+    description: 'Detects atom societies: chains (A→B→C), clusters (mutually connected), hubs (highly connected), and orphans (unused)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: filter by file path' },
+        minCallers: { type: 'number', description: 'Minimum callers to be considered a hub', default: 5 },
+        maxChains: { type: 'number', description: 'Maximum chains to return', default: 10 }
+      }
+    }
+  },
+  {
+    name: 'detect_patterns',
+    description: 'Detects code patterns: duplicates (via DNA hash), god functions, fragile network calls, and complexity patterns',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternType: { 
+          type: 'string', 
+          enum: ['all', 'duplicates', 'complexity', 'archetype', 'god-functions', 'fragile-network'],
+          description: 'Type of pattern to detect',
+          default: 'all'
+        },
+        minOccurrences: { type: 'number', description: 'Minimum occurrences for a pattern', default: 2 }
+      }
+    }
+  },
+  {
+    name: 'get_health_metrics',
+    description: 'Calculates code health metrics: entropy, cohesion, health distribution, and recommendations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: filter by file path' },
+        includeDetails: { type: 'boolean', description: 'Include detailed file-level metrics', default: false }
+      }
+    }
+  },
   // ── UTILIDADES ───────────────────────────────────────────────────────────
   {
     name: 'search_files',
@@ -202,6 +246,7 @@ export const toolHandlers = {
   explain_connection,
   // Riesgo
   get_risk_assessment,
+  get_health_metrics,
   // Análisis de código
   get_call_graph,
   analyze_signature_change,
@@ -209,6 +254,9 @@ export const toolHandlers = {
   // Funciones / átomos
   get_function_details,
   get_molecule_summary,
+  // Sociedad de átomos
+  get_atom_society,
+  detect_patterns,
   // Utilidades
   search_files,
   get_server_status,
