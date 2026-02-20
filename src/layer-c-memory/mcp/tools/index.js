@@ -3,8 +3,8 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (23):
- *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact
+ * TOOLS ACTIVAS (24):
+ *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact, trace_data_journey
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
@@ -47,6 +47,7 @@ import { trace_variable_impact } from './trace-variable-impact.js';
 import { suggest_refactoring } from './suggest-refactoring.js';
 import { validate_imports } from './validate-imports.js';
 import { get_atom_schema } from './get-atom-schema.js';
+import { trace_data_journey } from './trace-data-journey.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -57,6 +58,20 @@ export const toolDefinitions = [
       type: 'object',
       properties: { filePath: { type: 'string' }, ...PAGINATION_SCHEMA },
       required: ['filePath']
+    }
+  },
+  {
+    name: 'trace_data_journey',
+    description: 'Traces the deterministic journey of a variable/parameter across cross-file call chains, following actual argument→parameter mappings. Use when you want to know exactly where a specific value (e.g. userId, filePath, config) flows across module boundaries.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file containing the source function' },
+        symbolName: { type: 'string', description: 'Name of the function where the variable originates' },
+        variableName: { type: 'string', description: 'Name of the variable/parameter to trace (e.g. "filePath", "userId")' },
+        maxDepth: { type: 'number', description: 'Maximum hops to trace (default: 5)', default: 5 }
+      },
+      required: ['filePath', 'symbolName', 'variableName']
     }
   },
   {
@@ -375,6 +390,7 @@ export const toolHandlers = {
   analyze_change,
   explain_connection,
   trace_variable_impact,
+  trace_data_journey,
   // Riesgo
   get_risk_assessment,
   get_health_metrics,
