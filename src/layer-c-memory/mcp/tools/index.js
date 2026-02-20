@@ -3,7 +3,7 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (27):
+ * TOOLS ACTIVAS (28):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact, trace_data_journey
  *   Simulación:           simulate_data_journey
  *   Módulos:              get_module_overview
@@ -17,6 +17,7 @@
  *   Editor atómico:       atomic_edit, atomic_write
  *   Refactoring:          suggest_refactoring
  *   Validación:           validate_imports
+ *   Búsqueda:             find_symbol_instances
  *   Schema / Debug:       get_atom_schema
  *
  * ELIMINADAS:
@@ -54,6 +55,7 @@ import { trace_data_journey } from './trace-data-journey.js';
 import { get_module_overview } from './get-module-overview.js';
 import { detect_race_conditions } from './detect-race-conditions.js';
 import { simulate_data_journey } from './simulate-data-journey.js';
+import { find_symbol_instances } from './find-symbol-instances.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -427,6 +429,26 @@ export const toolDefinitions = [
         ...PAGINATION_SCHEMA
       }
     }
+  },
+  // ── BÚSQUEDA DE SÍMBOLOS ─────────────────────────────────────────────────
+  {
+    name: 'find_symbol_instances',
+    description: 'Finds all instances of a symbol (function/variable) in the project, detects duplicates, determines which one is actually used, and warns about conflicts. Prevents editing the wrong file by showing primary vs alternate implementations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbolName: { 
+          type: 'string', 
+          description: 'Name of the function or variable to find (e.g., "detectAtomPurpose")' 
+        },
+        includeSimilar: { 
+          type: 'boolean', 
+          default: false, 
+          description: 'Also include functions with similar names' 
+        }
+      },
+      required: ['symbolName']
+    }
   }
 ];
 
@@ -465,6 +487,8 @@ export const toolHandlers = {
   suggest_refactoring,
   // Validación
   validate_imports,
+  // Búsqueda de símbolos
+  find_symbol_instances,
   // Schema / Debug
   get_atom_schema,
   // Módulos & Sistema
