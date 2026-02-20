@@ -109,7 +109,47 @@ export function createFunctionLink(from, to, callInfo = {}) {
     type: 'call',
     line: callInfo.line,
     file_from: callInfo.fileFrom,
-    file_to: callInfo.fileTo
+    file_to: callInfo.fileTo,
+    // v0.9.36: Purpose-aware edges
+    purpose: callInfo.purpose || null,
+    weight: callInfo.weight || 1.0,
+    callType: callInfo.callType || 'sync'
+  };
+}
+
+/**
+ * Crea un nodo de evento para el event graph
+ * @param {string} name - Nombre del evento
+ * @param {Object} eventInfo - Info del evento
+ * @returns {EventNode}
+ */
+export function createEventNode(name, eventInfo = {}) {
+  return {
+    id: `event:${name}`,
+    type: 'event',
+    name,
+    emitter: eventInfo.emitter || null,
+    handlers: eventInfo.handlers || [],
+    file: eventInfo.file || null,
+    line: eventInfo.line || null
+  };
+}
+
+/**
+ * Crea un cluster de átomos
+ * @param {string} name - Nombre del cluster
+ * @param {Object} clusterInfo - Info del cluster
+ * @returns {ClusterNode}
+ */
+export function createClusterNode(name, clusterInfo = {}) {
+  return {
+    id: `cluster:${name}`,
+    type: 'cluster',
+    name,
+    atoms: clusterInfo.atoms || [],
+    file: clusterInfo.file || null,
+    purposes: clusterInfo.purposes || [],
+    cohesion: clusterInfo.cohesion || 0
   };
 }
 

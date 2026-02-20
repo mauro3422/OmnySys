@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[Unreleased Changes](changelog/unreleased-2026-02-15-factories-refactor.md)** - Latest work in progress
+- **[v0.9.36 - Atom Purpose + Graph System](changelog/v0.9.36-atom-purpose.md)** - Latest release
 - **[Changelog Directory](changelog/)** - All version-specific changelogs
 - **[Changelog Index](changelog/README.md)** - Complete version index
 

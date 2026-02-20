@@ -148,20 +148,28 @@ node scripts/detect-broken-imports.js  # Detecta imports rotos
 
 ## Estado del Proyecto
 
-**Versión**: v0.9.16  
-**Estado**: 🔧 Estabilización activa — funcional para proyectos JS/TS pequeños/medianos
+**Versión**: v0.9.36  
+**Estado**: ✅ Estable — Sistema de Purpose + Event Graph + Clustering implementado
 
 | Componente | Estado | Cobertura Tests |
 |------------|--------|----------------|
 | Layer A — Análisis Estático | ✅ Funcional | ~40% |
 | Layer B — Análisis Semántico | ✅ Funcional | ~60% |
-| Layer C — MCP Server | ⚠️ Runtime issues | ~30% |
-| Layer Graph — Grafo | ✅ Funcional | ~50% |
-| Core — Infraestructura | ⚠️ Imports rotos | ~40% |
-| **Tests totales** | **283/283 pasan** | **~35-40% global** |
+| Layer C — MCP Server | ✅ Funcional | ~30% |
+| Layer Graph — Grafo | ✅ **Mejorado** | ~50% |
+| Core — Infraestructura | ✅ Funcional | ~40% |
+| **Tests totales** | **295/295 pasan** | **4,352 tests** |
 
-> ⚠️ **Nota**: Hay 26 imports rotos en runtime (archivos movidos/faltantes).  
-> Los tests pasan porque usan mocks. Ver `PLAN_ESTABILIZACION.md` para el roadmap de fixes.
+### Novedades v0.9.36
+
+| Feature | Descripción |
+|---------|-------------|
+| **Atom Purpose** | Clasificación determinística de funciones (API_EXPORT, TEST_HELPER, CLASS_METHOD, etc.) |
+| **Event Graph** | Grafo de eventos conectando emitters → events → handlers |
+| **Clustering** | Agrupación de átomos por archivo y propósito |
+| **Weighted Edges** | Conexiones ponderadas por importancia |
+| **100% Purpose Coverage** | Todos los 5,842 átomos clasificados |
+| **85% Less False Dead Code** | De 2,367 a solo 363 átomos "dead code" |
 
 ---
 

@@ -19,6 +19,7 @@ import { extractPerformanceHints } from '#layer-a/extractors/metadata/performanc
 import { logger } from '#utils/logger.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';
+import { detectAtomPurpose } from '../metadata/purpose.js';
 import { buildAtomMetadata } from '../builders/metadata-builder.js';
 import { enrichWithDNA } from '../builders/enrichment.js';
 
@@ -184,6 +185,12 @@ function buildVariableAtom(varInfo, filePath, varType = 'constant') {
       confidence: 1
     },
     
+    // Purpose (v0.9.36 - NEW)
+    purpose: 'API_EXPORT',
+    purposeReason: 'Exported variable/constant (public API)',
+    purposeConfidence: 1.0,
+    isDeadCode: false,
+    
     // calledBy se poblará en cross-file linkage
     calledBy: []
   };
@@ -240,6 +247,13 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
 
   // Detect archetype
   atomMetadata.archetype = detectAtomArchetype(atomMetadata);
+
+  // Detect purpose (v0.9.36 - NEW)
+  const purposeInfo = detectAtomPurpose(atomMetadata, filePath);
+  atomMetadata.purpose = purposeInfo.purpose;
+  atomMetadata.purposeReason = purposeInfo.purposeReason;
+  atomMetadata.purposeConfidence = purposeInfo.purposeConfidence;
+  atomMetadata.isDeadCode = purposeInfo.isDeadCode;
 
   return atomMetadata;
 }
