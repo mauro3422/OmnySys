@@ -4,7 +4,8 @@
  * Coordina todos los validadores individuales
  */
 
-import { getFileAnalysis, getProjectMetadata } from '#layer-c/query/apis/file-api.js';
+import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
+import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 import { findBrokenImports } from './broken.js';
 import { findNonExistentImports } from './non-existent.js';
