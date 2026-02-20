@@ -168,8 +168,8 @@ export async function detect_race_conditions(args, context) {
 
   const allAtoms = await getAllAtoms(projectPath);
 
-  // Filter to async atoms only (race conditions need async)
-  let asyncAtoms = allAtoms.filter(a => a.isAsync);
+  // Filter to async production atoms only (exclude test callbacks)
+  let asyncAtoms = allAtoms.filter(a => a.isAsync && !a.isTestCallback);
 
   if (filePath) {
     const norm = filePath.replace(/\\/g, '/');

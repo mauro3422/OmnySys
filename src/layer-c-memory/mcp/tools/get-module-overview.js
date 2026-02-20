@@ -10,6 +10,7 @@
  * @module mcp/tools/get-module-overview
  */
 
+import path from 'path';
 import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
 import { analyzeModules } from '#layer-a/module-system/index.js';
 import { createLogger } from '../../../utils/logger.js';
@@ -18,17 +19,24 @@ const logger = createLogger('OmnySys:module-overview');
 
 /**
  * Build pseudo-molecules from atoms grouped by filePath.
- * Molecules are what analyzeModules() expects.
+ * Molecules need absolute filePaths because groupMoleculesByModule
+ * calls path.relative(projectRoot, mol.filePath).
  */
-function buildMoleculesFromAtoms(allAtoms) {
+function buildMoleculesFromAtoms(allAtoms, projectRoot) {
   const byFile = new Map();
 
   for (const atom of allAtoms) {
-    const fp = atom.filePath;
-    if (!byFile.has(fp)) {
-      byFile.set(fp, { filePath: fp, type: 'molecule', atoms: [], atomCount: 0 });
+    const relFp = atom.filePath;
+    if (!relFp) continue;
+    // Ensure absolute path for the grouper
+    const absFp = path.isAbsolute(relFp)
+      ? relFp
+      : path.join(projectRoot, relFp);
+
+    if (!byFile.has(absFp)) {
+      byFile.set(absFp, { filePath: absFp, type: 'molecule', atoms: [], atomCount: 0 });
     }
-    const mol = byFile.get(fp);
+    const mol = byFile.get(absFp);
     mol.atoms.push(atom);
     mol.atomCount++;
   }
@@ -43,7 +51,7 @@ export async function get_module_overview(args, context) {
   logger.debug('Phase 3: get_module_overview');
 
   const allAtoms = await getAllAtoms(projectPath);
-  const molecules = buildMoleculesFromAtoms(allAtoms);
+  const molecules = buildMoleculesFromAtoms(allAtoms, projectPath);
 
   let moduleData;
   try {
@@ -59,7 +67,7 @@ export async function get_module_overview(args, context) {
   if (modulePath) {
     const norm = modulePath.replace(/\\/g, '/');
     filteredModules = modules.filter(m =>
-      m.path?.includes(norm) || m.name?.includes(norm)
+      m.modulePath?.includes(norm) || m.moduleName?.includes(norm)
     );
   }
 
@@ -82,10 +90,10 @@ export async function get_module_overview(args, context) {
       externalDependencies: system.externalDependencies?.slice(0, 10) || [],
     } : null,
     modules: sorted.map(m => ({
-      name: m.name || m.path,
-      path: m.path,
+      name: m.moduleName || m.name || m.path,
+      path: m.modulePath || m.path,
       fileCount: m.files?.length || m.molecules?.length || 0,
-      atomCount: m.atoms?.length || 0,
+      atomCount: m.files?.reduce((s, f) => s + (f.atomCount || 0), 0) || 0,
       metrics: m.metrics || null,
       entryPoints: m.entryPoints?.slice(0, 5) || [],
       dependencies: m.dependencies?.slice(0, 5) || [],
