@@ -45,6 +45,10 @@ export function buildAtomMetadata({
     className: functionInfo.className || null,
     functionType: functionInfo.type || 'declaration',
 
+    // Test callback identity (set by extractTestCallback in definitions.js)
+    isTestCallback: functionInfo.isTestCallback || false,
+    testCallbackType: functionInfo.testCallbackType || null,
+
     // Complexity
     complexity,
 

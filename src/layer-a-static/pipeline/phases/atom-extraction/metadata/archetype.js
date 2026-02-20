@@ -48,7 +48,8 @@ export function detectAtomArchetype(atomMetadata) {
   const fingerprint = dna?.semanticFingerprint || '';
   const couplingScore = derived?.couplingScore ?? (calls.length + internalCalls.length);
   const nameLow = name.toLowerCase();
-  const isTestCallback = TEST_CALLBACK_RE.test(name);
+  // isTestCallback: campo persistido (post-fix metadata-builder) o regex por nombre como fallback
+  const isTestCallback = atomMetadata.isTestCallback === true || TEST_CALLBACK_RE.test(name);
 
   // ── CRÍTICOS (siempre ganan) ──────────────────────────────────────────────
 

@@ -11,7 +11,8 @@
 import { getAllAtoms } from '#layer-c/storage/index.js';
 
 const TEST_CALLBACK_PATTERN = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
-const isTestAtom = a => TEST_CALLBACK_PATTERN.test(a.name);
+// isTestCallback: usa el campo persistido si existe (post v0.9.47), regex como fallback
+const isTestAtom = a => a.isTestCallback === true || TEST_CALLBACK_PATTERN.test(a.name);
 
 const ATOM_TYPE_FILTERS = {
   testCallback:  a => isTestAtom(a),
@@ -26,7 +27,7 @@ const ATOM_TYPE_FILTERS = {
 
 // Which MCP tools actively use each field
 const FIELD_TOOL_COVERAGE = {
-  isTestCallback:    ['get_atom_schema'],          // detect_patterns: pending
+  isTestCallback:    ['get_atom_schema', 'detect_patterns'],
   testCallbackType:  ['get_atom_schema'],
   calls:             ['get_call_graph', 'explain_value_flow', 'trace_variable_impact', 'detect_patterns'],
   calledBy:          ['get_call_graph', 'get_impact_map', 'analyze_change'],
@@ -39,7 +40,15 @@ const FIELD_TOOL_COVERAGE = {
   performance:       ['get_function_details', 'get_health_metrics'],
   imports:           ['detect_patterns', 'validate_imports'],
   archetype:         ['get_molecule_summary', 'detect_patterns'],
-  purpose:           ['get_molecule_summary'],
+  purpose:           ['get_molecule_summary', 'get_atom_society'],
+  callerPattern:     ['get_function_details', 'get_atom_society'],
+  derived:           ['get_function_details', 'suggest_refactoring', 'get_health_metrics'],
+  typeContracts:     ['get_function_details'],
+  temporal:          ['get_function_details', 'get_async_analysis'],
+  _meta:             ['get_function_details'],
+  functionType:      ['get_atom_schema', 'get_molecule_summary'],
+  className:         ['get_molecule_summary', 'get_call_graph'],
+  linesOfCode:       ['get_function_details', 'get_health_metrics', 'suggest_refactoring', 'detect_patterns'],
 };
 
 /**
@@ -336,17 +345,20 @@ export async function get_atom_schema(args, context) {
       id: a.id,
       name: a.name,
       type: a.type,
+      functionType: a.functionType,
       archetype: a.archetype,
       purpose: a.purpose,
       filePath: a.filePath,
       line: a.line,
-      isTestCallback: a.isTestCallback,
-      testCallbackType: a.testCallbackType,
+      isTestCallback: a.isTestCallback || false,
+      testCallbackType: a.testCallbackType || null,
       calls: (a.calls || []).slice(0, 8).map(c => typeof c === 'string' ? c : c.name),
       calledBy: (a.calledBy || []).slice(0, 5),
       isExported: a.isExported,
+      isAsync: a.isAsync || false,
       complexity: a.complexity,
       linesOfCode: a.linesOfCode,
+      derived: a.derived || null,
     })),
   };
 }
