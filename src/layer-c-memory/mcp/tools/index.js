@@ -3,8 +3,11 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (24):
+ * TOOLS ACTIVAS (27):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact, trace_data_journey
+ *   Simulación:           simulate_data_journey
+ *   Módulos:              get_module_overview
+ *   Concurrencia:         detect_race_conditions
  *   Riesgo:               get_risk_assessment, get_health_metrics
  *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
  *   Funciones:            get_function_details, get_molecule_summary
@@ -48,6 +51,9 @@ import { suggest_refactoring } from './suggest-refactoring.js';
 import { validate_imports } from './validate-imports.js';
 import { get_atom_schema } from './get-atom-schema.js';
 import { trace_data_journey } from './trace-data-journey.js';
+import { get_module_overview } from './get-module-overview.js';
+import { detect_race_conditions } from './detect-race-conditions.js';
+import { simulate_data_journey } from './simulate-data-journey.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -58,6 +64,45 @@ export const toolDefinitions = [
       type: 'object',
       properties: { filePath: { type: 'string' }, ...PAGINATION_SCHEMA },
       required: ['filePath']
+    }
+  },
+  // ── MÓDULOS & SISTEMA ────────────────────────────────────────────────────
+  {
+    name: 'get_module_overview',
+    description: 'Phase 3: Module & System level analysis. Groups atoms by directory/module, derives hierarchy, entrypoints, dependencies, and health metrics per module.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        modulePath: { type: 'string', description: 'Optional: filter to specific module/directory (e.g. "src/auth")' },
+        topN: { type: 'number', description: 'Max modules to return, sorted by complexity (default: 10)', default: 10 }
+      }
+    }
+  },
+  // ── CONCURRENCIA ─────────────────────────────────────────────────────────
+  {
+    name: 'detect_race_conditions',
+    description: 'Phase 4: Detects race conditions in async code. Finds WW (write-write), RW (read-write), and IE (init-error) races by analyzing shared resource access patterns across async atoms.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Optional: limit analysis to a specific file' },
+        minSeverity: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], default: 'low', description: 'Minimum severity to report' },
+        limit: { type: 'number', description: 'Max races to return (default: 20)', default: 20 }
+      }
+    }
+  },
+  // ── SIMULACIÓN ───────────────────────────────────────────────────────────
+  {
+    name: 'simulate_data_journey',
+    description: 'Phase 5: Full simulation engine. Walks ALL outgoing cross-file edges from an entry function, aggregating side effects, security risks (unvalidated sinks), complexity, and async waterfall detection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the entry function file' },
+        symbolName: { type: 'string', description: 'Name of the entry function to simulate from' },
+        maxDepth: { type: 'number', description: 'Maximum hops to walk (default: 6)', default: 6 }
+      },
+      required: ['filePath', 'symbolName']
     }
   },
   {
@@ -420,5 +465,11 @@ export const toolHandlers = {
   // Validación
   validate_imports,
   // Schema / Debug
-  get_atom_schema
+  get_atom_schema,
+  // Módulos & Sistema
+  get_module_overview,
+  // Concurrencia
+  detect_race_conditions,
+  // Simulación
+  simulate_data_journey
 };
