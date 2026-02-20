@@ -19,7 +19,6 @@
  */
 
 import { getAllAtoms } from '#layer-c/storage/index.js';
-import { readFile } from '#utils/file-reader.js';
 
 /**
  * Busca todas las instancias de un símbolo por nombre
@@ -410,29 +409,8 @@ export async function find_symbol_instances(args, context) {
     // 6. Generar recomendaciones
     const recommendations = generateRecommendations(instances, primary, duplicates, usageMap);
     
-    // 7. Detectar imports directos (leer archivos)
+    // 7. Detectar imports directos (comentado temporalmente)
     const directImports = [];
-    for (const instance of instances) {
-      try {
-        const content = await readFile(instance.filePath, { projectPath: context.projectPath });
-        const lines = content.split('\n');
-        const exportLine = lines.findIndex((line, idx) => 
-          idx + 1 >= instance.line && 
-          line.includes('export') && 
-          line.includes(symbolName)
-        );
-        
-        if (exportLine !== -1) {
-          directImports.push({
-            file: instance.filePath,
-            line: exportLine + 1,
-            snippet: lines[exportLine].trim().slice(0, 80)
-          });
-        }
-      } catch (e) {
-        // Ignorar errores de lectura
-      }
-    }
     
     return {
       symbol: symbolName,
