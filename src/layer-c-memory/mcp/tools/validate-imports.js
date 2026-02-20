@@ -196,7 +196,7 @@ async function validateImportsForFile(filePath, fileData, projectPath, allFiles,
  * Tool principal
  */
 export async function validate_imports(args, context) {
-  const { filePath, checkUnused = true, checkBroken = true, checkCircular = false } = args;
+  const { filePath, checkUnused = true, checkBroken = true, checkCircular = false, excludePaths = [] } = args;
   const { projectPath } = context;
   
   logger.info(`[Tool] validate_imports("${filePath || 'all'}")`);
@@ -206,6 +206,13 @@ export async function validate_imports(args, context) {
     const allFiles = Object.keys(metadata?.fileIndex || {});
     
     let filesToCheck = filePath ? [filePath] : allFiles;
+    
+    // Apply excludePaths filter
+    const defaultExcludes = ['archive/', 'node_modules/', '.git/', 'dist/', 'build/', 'coverage/'];
+    const allExcludes = [...defaultExcludes, ...(excludePaths || [])];
+    filesToCheck = filesToCheck.filter(f => 
+      !allExcludes.some(exclude => f.includes(exclude))
+    );
     
     const results = {
       summary: {

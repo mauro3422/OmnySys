@@ -93,7 +93,14 @@ export async function get_async_analysis(args, context) {
       }
 
       const optimizations = findOptimizations(atom, asyncInfo);
-      analysis.optimizations.push(...optimizations);
+      // Deduplicate optimizations by atom id and type
+      for (const opt of optimizations) {
+        const optKey = `${opt.atom}:${opt.type}`;
+        const existingOpt = analysis.optimizations.find(o => `${o.atom}:${o.type}` === optKey);
+        if (!existingOpt) {
+          analysis.optimizations.push(opt);
+        }
+      }
     }
 
     if (riskLevel !== 'all') {

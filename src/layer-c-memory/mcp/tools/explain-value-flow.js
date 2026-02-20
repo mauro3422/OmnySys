@@ -54,7 +54,10 @@ export async function explain_value_flow(args, context) {
         statement: o.statement,
         inferredType: o.type
       })) || [],
-      dependencies: flow.dependencies || [],
+      dependencies: (flow.dependencies || []).map(d => {
+        if (typeof d === 'string') return { name: d, type: 'unknown', context: 'unknown' };
+        return d;
+      }),
       consumers: flow.consumers || []
     };
     

@@ -106,8 +106,51 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
       const body = extractFunctionBody(content, symbolName);
       if (body) {
         const calls = body.match(/\b(\w+)\s*\(/g) || [];
+        const nativeMethods = new Set([
+          // Array methods
+          'concat', 'copyWithin', 'entries', 'every', 'fill', 'filter', 'find', 'findIndex', 'flat',
+          'flatMap', 'forEach', 'includes', 'indexOf', 'join', 'keys', 'lastIndexOf', 'map', 'pop',
+          'push', 'reduce', 'reduceRight', 'reverse', 'shift', 'slice', 'some', 'sort', 'splice',
+          'toLocaleString', 'toString', 'unshift', 'values', 'at', 'length',
+          // String methods
+          'charAt', 'charCodeAt', 'codePointAt', 'endsWith', 'fromCharCode', 'fromCodePoint',
+          'includes', 'indexOf', 'lastIndexOf', 'localeCompare', 'match', 'matchAll', 'normalize',
+          'padEnd', 'padStart', 'raw', 'repeat', 'replace', 'replaceAll', 'search', 'slice', 'split',
+          'startsWith', 'substring', 'substr', 'toLocaleLowerCase', 'toLocaleUpperCase', 'toLowerCase',
+          'toString', 'toUpperCase', 'trim', 'trimEnd', 'trimStart', 'valueOf',
+          // Object methods
+          'assign', 'create', 'defineProperties', 'defineProperty', 'entries', 'freeze',
+          'fromEntries', 'getOwnPropertyDescriptor', 'getOwnPropertyDescriptors', 'getOwnPropertyNames',
+          'getOwnPropertySymbols', 'getPrototypeOf', 'is', 'isExtensible', 'isFrozen', 'isSealed',
+          'keys', 'preventExtensions', 'seal', 'setPrototypeOf', 'values', 'hasOwnProperty',
+          'isPrototypeOf', 'propertyIsEnumerable',
+          // Promise methods
+          'all', 'allSettled', 'any', 'race', 'reject', 'resolve', 'then', 'catch', 'finally',
+          // JSON methods
+          'parse', 'stringify',
+          // Math methods (commonly used without Math.)
+          'abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cbrt', 'ceil',
+          'clz32', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'fround', 'hypot', 'imul', 'log',
+          'log1p', 'log2', 'log10', 'max', 'min', 'pow', 'random', 'round', 'sign', 'sin',
+          'sinh', 'sqrt', 'tan', 'tanh', 'trunc',
+          // Console methods
+          'log', 'error', 'warn', 'info', 'debug', 'table', 'trace', 'dir', 'time', 'timeEnd',
+          'assert', 'clear', 'count', 'countReset', 'group', 'groupEnd', 'groupCollapsed',
+          // Other common globals
+          'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURI', 'encodeURIComponent',
+          'decodeURI', 'decodeURIComponent', 'escape', 'unescape', 'eval', 'Number', 'String',
+          'Boolean', 'Array', 'Object', 'Date', 'RegExp', 'Error', 'Map', 'Set', 'WeakMap',
+          'WeakSet', 'Symbol', 'BigInt', 'Proxy', 'Reflect', 'Intl', 'setTimeout', 'setInterval',
+          'clearTimeout', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'
+        ]);
+        
         flow.dependencies = [...new Set(calls.map(c => c.replace('(', '').trim()))]
-          .filter(c => !['if', 'while', 'for', 'switch', 'catch'].includes(c))
+          .filter(c => !['if', 'while', 'for', 'switch', 'catch', 'return'].includes(c))
+          .map(c => ({
+            name: c,
+            type: nativeMethods.has(c) ? 'native' : 'unknown',
+            context: nativeMethods.has(c) ? 'JavaScript built-in' : 'Project or external'
+          }))
           .slice(0, 10);
       }
     }

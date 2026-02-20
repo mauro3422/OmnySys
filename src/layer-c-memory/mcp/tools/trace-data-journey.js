@@ -162,6 +162,16 @@ export async function trace_data_journey(args, context) {
     });
   }
 
+  // Build journey explanation for empty results
+  let explanation = null;
+  if (steps.length === 0) {
+    if (!varInSource) {
+      explanation = `Variable "${variableName}" was not found in the source function's parameters or data flow. It might be a local variable that doesn't cross function boundaries.`;
+    } else {
+      explanation = `Variable "${variableName}" is used locally in ${symbolName} but is not passed to any other functions across file boundaries. This is expected for local variables.`;
+    }
+  }
+
   return {
     source: {
       id: sourceAtom.id,
@@ -179,7 +189,8 @@ export async function trace_data_journey(args, context) {
       crossesFileBoundaries: uniqueFiles.size > 0
     },
     journey: byDepth,
-    rawSteps: steps.slice(0, 50) // cap at 50 for safety
+    rawSteps: steps.slice(0, 50), // cap at 50 for safety
+    ...(explanation && { explanation })
   };
 }
 
