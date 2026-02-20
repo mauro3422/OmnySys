@@ -6,11 +6,13 @@
 import { getAllAtoms } from '#layer-c/storage/index.js';
 
 export async function get_async_analysis(args, context) {
-  const { 
-    filePath, 
+  const {
+    filePath,
     riskLevel = 'all',
     includeRecommendations = true,
-    minSequentialAwaits = 3 
+    minSequentialAwaits = 3,
+    limit = 20,
+    offset = 0
   } = args;
   const { projectPath } = context;
   
@@ -101,10 +103,27 @@ export async function get_async_analysis(args, context) {
 
     analysis.issues.sort((a, b) => riskOrder(b.risk) - riskOrder(a.risk));
     analysis.recommendations.sort((a, b) => riskOrder(b.risk) - riskOrder(a.risk));
-    analysis.optimizations = analysis.optimizations.slice(0, 20);
 
-    analysis.topIssues = analysis.issues.slice(0, 10);
-    analysis.topRecommendations = analysis.recommendations.slice(0, 10);
+    const totalIssues = analysis.issues.length;
+    const totalRecs = analysis.recommendations.length;
+    const totalOpts = analysis.optimizations.length;
+
+    analysis.issues = analysis.issues.slice(offset, offset + limit);
+    analysis.recommendations = analysis.recommendations.slice(offset, offset + limit);
+    analysis.optimizations = analysis.optimizations.slice(0, limit);
+
+    // Trim nested pattern arrays
+    for (const key of Object.keys(analysis.patterns)) {
+      analysis.patterns[key] = analysis.patterns[key].slice(0, limit);
+    }
+
+    analysis._pagination = {
+      offset,
+      limit,
+      issues: { total: totalIssues, returned: analysis.issues.length, hasMore: offset + limit < totalIssues },
+      recommendations: { total: totalRecs, returned: analysis.recommendations.length, hasMore: offset + limit < totalRecs },
+      optimizations: { total: totalOpts, returned: analysis.optimizations.length }
+    };
 
     return analysis;
   } catch (error) {

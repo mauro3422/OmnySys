@@ -25,14 +25,6 @@ export async function analyze_signature_change(args, context) {
   }
   
   try {
-    // Verificar si el servidor está listo
-    if (!server?.initialized) {
-      return {
-        warning: 'Server is still initializing, using available data',
-        initialized: false
-      };
-    }
-    
     const result = await analyzeFunctionSignature(
       projectPath,
       filePath,

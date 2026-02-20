@@ -25,14 +25,6 @@ export async function explain_value_flow(args, context) {
   }
   
   try {
-    // Verificar si el servidor está listo
-    if (!server?.initialized) {
-      return {
-        warning: 'Server is still initializing, using available data',
-        initialized: false
-      };
-    }
-    
     const flow = await analyzeValueFlow(projectPath, filePath, symbolName);
     
     if (flow.error) {
