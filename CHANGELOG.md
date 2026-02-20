@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.45 - MCP Tools Enhancement + Test Coverage Detection](changelog/v0.9.45-mcp-enhancement.md)** - Latest release
+- **[v0.9.46 - MCP Tools Bug Fixes + Quality Improvements](changelog/v0.9.46-mcp-bugfixes.md)** - Latest release
+- **[v0.9.45 - MCP Tools Enhancement + Test Coverage Detection](changelog/v0.9.45-mcp-enhancement.md)**
 - **[v0.9.44 - Richer Archetypes + Connection Bridge Detection](changelog/v0.9.44-richer-archetypes-connection.md)**
 - **[v0.9.43 - Mixin & Namespace Import calledBy Detection](changelog/v0.9.43-mixin-namespace-calledby.md)**
 - **[v0.9.42 - FileWatcher Pipeline Robustness](changelog/v0.9.42-filewatcher-robustness.md)**
@@ -24,7 +25,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.45]** | 2026-02-20 | **MCP Tools Enhancement: 2 nuevas tools + Test Coverage Detection** (Latest) |
+| **[0.9.46]** | 2026-02-20 | **MCP Tools Bug Fixes: 4 tools mejorados + Technical Debt Audit** (Latest) |
+| **[0.9.45]** | 2026-02-20 | **MCP Tools Enhancement: 2 nuevas tools + Test Coverage Detection** |
 | **[0.9.44]** | 2026-02-20 | **Richer Archetypes (14 tipos) + Connection Bridge Detection** |
 | **[0.9.43]** | 2026-02-20 | **Mixin & Namespace Import calledBy Detection** |
 | **[0.9.42]** | 2026-02-20 | **FileWatcher Pipeline Robustness - 5 bugs críticos corregidos** |
@@ -59,7 +61,25 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.45 (2026-02-20)
+## 🚀 Latest Release: v0.9.46 (2026-02-20)
+
+**MCP Tools Bug Fixes**: Corrección de problemas menores en 4 herramientas + auditoría completa de deuda técnica. Mejoras de calidad en `get_async_analysis`, `explain_value_flow`, `validate_imports` y `trace_data_journey`. Sistema operativo con 99/100 health score.
+
+### Fixed Tools
+- `get_async_analysis` - Deduplicación de optimizaciones (evita duplicados)
+- `explain_value_flow` - Dependencies ahora incluyen tipo y contexto (native vs project)
+- `validate_imports` - Exclusión automática de `archive/` y otros directorios legacy
+- `trace_data_journey` - Mensajes explicativos cuando no hay journey
+
+### Technical Debt Analysis
+- **7,462 átomos** analizados (health score: 99/100)
+- **192 god-functions** detectados (requieren refactorización)
+- **18 race conditions** identificadas (3 críticas)
+- **22 átomos** con grado F (peor health)
+
+---
+
+## Previous Release: v0.9.45 (2026-02-20)
 
 **MCP Tools Enhancement**: 2 nuevas herramientas de refactoring, mejoras en `search_files` (glob patterns) y `detect_patterns` (test coverage detection). Documentación completa actualizada. **23 MCP Tools total.**
 
