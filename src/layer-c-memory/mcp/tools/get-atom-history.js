@@ -179,14 +179,16 @@ async function getRecentChanges(projectPath, filePath, startLine, endLine) {
     
     if (!result.stdout.trim()) return [];
     
-    return result.stdout.trim().split('\n').map(line => {
-      const parts = line.split('|');
-      return {
-        shortHash: parts[0],
-        date: parts[1],
-        message: parts.slice(2).join('|')
-      };
-    });
+    return result.stdout.trim().split('\n')
+      .filter(line => /^[0-9a-f]{4,}\|/.test(line))  // only lines matching "hash|date|message"
+      .map(line => {
+        const parts = line.split('|');
+        return {
+          shortHash: parts[0],
+          date: parts[1],
+          message: parts.slice(2).join('|')
+        };
+      });
   } catch {
     return [];
   }

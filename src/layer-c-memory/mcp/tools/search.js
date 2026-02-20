@@ -167,8 +167,10 @@ export async function search_files(args, context) {
     }
 
     // Auto-detect search type based on pattern
-    const detectedType = searchType === 'auto' 
-      ? (pattern.includes(' ') || pattern.includes('{') ? 'content' : 'path')
+    const looksLikeCode = pattern.includes(' ') || pattern.includes('{');
+    const looksLikeSymbol = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(pattern); // single identifier
+    const detectedType = searchType === 'auto'
+      ? (looksLikeCode ? 'content' : 'path')
       : searchType;
 
     const lowerPattern = pattern.toLowerCase();
@@ -181,8 +183,8 @@ export async function search_files(args, context) {
       pathMatches = await searchByPath(pattern, allFiles, projectPath);
     }
 
-    // Symbol search
-    if (detectedType === 'symbol' || detectedType === 'auto') {
+    // Symbol search — always run for 'symbol', also run for 'path' when pattern is a pure identifier
+    if (detectedType === 'symbol' || detectedType === 'auto' || (detectedType === 'path' && looksLikeSymbol)) {
       const atoms = await getAllAtoms(projectPath);
       const matchedFiles = new Set(pathMatches);
       symbolMatches = await searchBySymbol(pattern, atoms, matchedFiles);
