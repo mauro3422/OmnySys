@@ -4,10 +4,18 @@
  * Encuentra todas las instancias de un símbolo (función/variable) en el proyecto,
  * detecta cuáles son duplicados, cuál se usa realmente, y advierte sobre conflictos.
  * 
+ * También incluye modo auto-detección que escanea TODO el proyecto buscando duplicados
+ * sin necesidad de especificar un nombre. Ideal para encontrar deuda técnica oculta.
+ * 
  * Útil para:
  * - Evitar editar el archivo equivocado (como me pasó con purpose.js)
  * - Detectar código duplicado entre archivos
  * - Encontrar la implementación "real" vs copias sin usar
+ * - Priorizar refactorización de duplicados críticos
+ * 
+ * Modos de uso:
+ * 1. Búsqueda específica: { symbolName: "detectAtomPurpose" }
+ * 2. Auto-detección: { autoDetect: true } - escanea todos los duplicados
  */
 
 import { getAllAtoms } from '#layer-c/storage/index.js';
@@ -204,16 +212,135 @@ function generateRecommendations(instances, primary, duplicates, usageMap) {
 }
 
 /**
+ * Auto-detecta duplicados críticos en todo el proyecto
+ * Escanea todos los átomos buscando funciones duplicadas que deberían unificarse
+ */
+async function autoDetectDuplicates(atoms, minInstances = 2) {
+  // Agrupar por hash estructural (código idéntico)
+  const byHash = new Map();
+  
+  for (const atom of atoms) {
+    // Solo considerar funciones con nombre y exportadas
+    if (!atom.name || atom.name === 'anonymous') continue;
+    if (atom.linesOfCode < 5) continue; // Ignorar funciones muy pequeñas
+    
+    const hash = atom.dna?.structuralHash;
+    if (!hash) continue;
+    
+    if (!byHash.has(hash)) {
+      byHash.set(hash, []);
+    }
+    byHash.get(hash).push(atom);
+  }
+  
+  // Encontrar grupos con múltiples instancias
+  const duplicates = [];
+  for (const [hash, atomsList] of byHash) {
+    if (atomsList.length >= minInstances) {
+      // Calcular score de riesgo para este duplicado
+      const totalUsage = atomsList.reduce((sum, a) => sum + (a.calledBy?.length || 0), 0);
+      const maxComplexity = Math.max(...atomsList.map(a => a.complexity || 0));
+      const totalLines = atomsList.reduce((sum, a) => sum + (a.linesOfCode || 0), 0);
+      
+      // Score: cuanto más se usa y más grande, más crítico
+      const riskScore = (totalUsage * 2) + (maxComplexity * 3) + (totalLines / 10);
+      
+      // Determinar cuál es la instancia "canónica" (la más usada o la de src/)
+      const canonical = atomsList.sort((a, b) => {
+        const usageA = a.calledBy?.length || 0;
+        const usageB = b.calledBy?.length || 0;
+        // Priorizar: 1) Más usada, 2) En src/ (no scripts/), 3) Menor complejidad
+        if (usageB !== usageA) return usageB - usageA;
+        if (a.filePath?.startsWith('src/') && !b.filePath?.startsWith('src/')) return -1;
+        if (!a.filePath?.startsWith('src/') && b.filePath?.startsWith('src/')) return 1;
+        return (a.complexity || 0) - (b.complexity || 0);
+      })[0];
+      
+      duplicates.push({
+        hash: hash.slice(0, 16) + '...',
+        symbolName: atomsList[0].name,
+        count: atomsList.length,
+        riskScore: Math.round(riskScore),
+        totalUsage,
+        potentialSavings: (atomsList.length - 1) * (atomsList[0].linesOfCode || 0),
+        canonical: {
+          file: canonical.filePath,
+          line: canonical.line,
+          usage: canonical.calledBy?.length || 0
+        },
+        instances: atomsList.map(a => ({
+          file: a.filePath,
+          line: a.line,
+          usage: a.calledBy?.length || 0,
+          complexity: a.complexity,
+          isCanonical: a.id === canonical.id
+        })).sort((a, b) => b.usage - a.usage),
+        recommendation: atomsList.length > 2 
+          ? `CRÍTICO: ${atomsList.length} copias idénticas de "${atomsList[0].name}". Consolidar en ${canonical.filePath}`
+          : `Duplicado: "${atomsList[0].name}" existe en ${atomsList.length} archivos. Usar la versión de ${canonical.filePath}`
+      });
+    }
+  }
+  
+  // Ordenar por riesgo (más críticos primero)
+  return duplicates.sort((a, b) => b.riskScore - a.riskScore).slice(0, 20);
+}
+
+/**
  * Tool principal
  */
 export async function find_symbol_instances(args, context) {
-  const { symbolName, includeSimilar = false, projectPath } = args;
+  const { symbolName, includeSimilar = false, autoDetect = false, projectPath } = args;
   
-  if (!symbolName) {
-    return {
-      error: 'symbolName es requerido',
-      usage: 'find_symbol_instances({ symbolName: "nombreFuncion" })'
-    };
+  // Modo auto-detección: no requiere symbolName
+  if (autoDetect || !symbolName) {
+    try {
+      const atoms = await getAllAtoms(projectPath || context.projectPath);
+      const duplicates = await autoDetectDuplicates(atoms);
+      
+      const criticalCount = duplicates.filter(d => d.count > 2).length;
+      const totalSavings = duplicates.reduce((sum, d) => sum + d.potentialSavings, 0);
+      
+      return {
+        mode: 'auto_detect',
+        summary: {
+          totalDuplicatesFound: duplicates.length,
+          criticalDuplicates: criticalCount,
+          totalInstances: duplicates.reduce((sum, d) => sum + d.count, 0),
+          potentialSavingsLOC: totalSavings
+        },
+        duplicates: duplicates.map(d => ({
+          symbol: d.symbolName,
+          count: d.count,
+          riskScore: d.riskScore,
+          canonical: d.canonical,
+          instances: d.instances,
+          recommendation: d.recommendation
+        })),
+        topPriority: duplicates.slice(0, 5).map(d => ({
+          symbol: d.symbolName,
+          action: `Consolidar ${d.count} copias en ${d.canonical.file}`,
+          savings: `${d.potentialSavings} LOC`
+        })),
+        recommendations: [
+          {
+            type: 'info',
+            message: `Se encontraron ${duplicates.length} grupos de funciones duplicadas`,
+            action: 'review_top_5'
+          },
+          ...(criticalCount > 0 ? [{
+            type: 'warning',
+            message: `${criticalCount} duplicados tienen más de 2 copias - prioridad alta`,
+            action: 'address_critical_first'
+          }] : [])
+        ]
+      };
+    } catch (error) {
+      return {
+        error: error.message,
+        stack: error.stack
+      };
+    }
   }
   
   try {

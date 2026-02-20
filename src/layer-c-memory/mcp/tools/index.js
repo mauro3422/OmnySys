@@ -433,21 +433,25 @@ export const toolDefinitions = [
   // ── BÚSQUEDA DE SÍMBOLOS ─────────────────────────────────────────────────
   {
     name: 'find_symbol_instances',
-    description: 'Finds all instances of a symbol (function/variable) in the project, detects duplicates, determines which one is actually used, and warns about conflicts. Prevents editing the wrong file by showing primary vs alternate implementations.',
+    description: 'Finds all instances of a symbol (function/variable) in the project, detects duplicates, determines which one is actually used, and warns about conflicts. Prevents editing the wrong file by showing primary vs alternate implementations. Use autoDetect=true to scan all duplicates without specifying a symbol name.',
     inputSchema: {
       type: 'object',
       properties: {
         symbolName: { 
           type: 'string', 
-          description: 'Name of the function or variable to find (e.g., "detectAtomPurpose")' 
+          description: 'Name of the function or variable to find (e.g., "detectAtomPurpose"). Not required if autoDetect=true.' 
+        },
+        autoDetect: { 
+          type: 'boolean', 
+          default: false, 
+          description: 'Auto-detect all duplicate functions in the project. When true, symbolName is optional and the tool scans all atoms for duplicates automatically.' 
         },
         includeSimilar: { 
           type: 'boolean', 
           default: false, 
           description: 'Also include functions with similar names' 
         }
-      },
-      required: ['symbolName']
+      }
     }
   }
 ];
