@@ -37,7 +37,7 @@ export async function startLLM() {
  * @returns {Promise<boolean>} Success
  */
 export async function startMCP() {
-  PROCESSES.mcp = spawn('node', ['mcp-http-server.js', '9999'], {
+  PROCESSES.mcp = spawn('node', ['src/layer-c-memory/mcp-server.js'], {
     detached: true,
     stdio: 'ignore'
   });
