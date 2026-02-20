@@ -94,6 +94,11 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
+          const trimmedLine = line.trim();
+
+          // Skip import/export declarations — they reference the symbol but are never call sites
+          if (/^import\s/.test(trimmedLine) || /^export\s*\{/.test(trimmedLine)) continue;
+
           let match = null;
           let callType = 'function_call';
 
