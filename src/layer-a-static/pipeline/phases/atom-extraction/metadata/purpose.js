@@ -151,8 +151,31 @@ export function detectAtomPurpose(atom, filePath = '') {
       isDeadCode: false
     };
   }
-  
-  // Default: Potential dead code
+
+  // Check 11: Class methods — called via instance, static analysis no puede
+  // trackear `new Clase().method()` sin class instantiation tracker.
+  // No marcar DEAD_CODE — usar CLASS_METHOD que ya existe.
+  if (atom.className || atom.functionType === 'method' || archetype === 'class-method') {
+    return {
+      purpose: 'CLASS_METHOD',
+      purposeReason: `Class method${atom.className ? ` in ${atom.className}` : ''} — called via instance (static tracker needed)`,
+      purposeConfidence: 0.75,
+      isDeadCode: false
+    };
+  }
+
+  // Check final: ¿tiene calledBy registrado? → alguien la llama, no es dead code
+  const calledByCount = Array.isArray(atom.calledBy) ? atom.calledBy.length : (atom.calledBy || 0);
+  if (calledByCount > 0) {
+    return {
+      purpose: 'INTERNAL_HELPER',
+      purposeReason: `Called by ${calledByCount} caller(s) — internal helper`,
+      purposeConfidence: 0.8,
+      isDeadCode: false
+    };
+  }
+
+  // Default: Potential dead code — solo para funciones standalone sin callers
   return {
     purpose: 'DEAD_CODE',
     purposeReason: 'No evidence of use found in metadata',

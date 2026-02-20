@@ -66,9 +66,21 @@ function spawnWorker() {
   log('Spawning worker...');
 
   // Inherit Node.js flags (e.g. --max-old-space-size) from proxy process
+  // DEFAULT: 8GB para análisis de proyectos grandes (si no está configurado)
+  const hasMemoryFlag = process.execArgv.some(a => a.startsWith('--max-old-space-size'));
   const execArgv = process.execArgv.filter(a =>
     a.startsWith('--max-old-space-size') || a.startsWith('--inspect')
   );
+  
+  // Si no hay flag de memoria, agregar 8GB default
+  if (!hasMemoryFlag) {
+    execArgv.push('--max-old-space-size=8192');
+  }
+
+  // Exponer gc() global para forzar GC entre Layer A y análisis LLM
+  if (!execArgv.includes('--expose-gc')) {
+    execArgv.push('--expose-gc');
+  }
 
   child = spawn(process.execPath, [...execArgv, workerPath, projectPath], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],

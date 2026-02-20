@@ -33,30 +33,12 @@ export class LLMSetupStep extends InitializationStep {
   }
 
   async execute(server) {
-    logger.info('AI Server Setup (Background)');
-
-    try {
-      const { startLLMBackground } = await import('../../llm-starter.js');
-      
-      // Start LLM in background (non-blocking)
-      const started = await startLLMBackground(server.OmnySysRoot);
-      
-      if (started) {
-        logger.info('  🚀 LLM server starting in background...');
-        logger.info('     Will be ready in 10-30 seconds');
-        logger.info('     Orchestrator will connect when ready');
-      } else {
-        logger.info('  ℹ️  LLM not started (already running or disabled)');
-      }
-      
-      return true;
-    } catch (error) {
-      logger.info(`  ⚠️  LLM setup failed: ${error.message}`);
-      if (process.env.DEBUG) {
-        logger.info(`  🐛 Error stack: ${error.stack}`);
-      }
-      return true; // Don't fail if LLM unavailable
-    }
+    logger.info('AI Server Setup');
+    // LLM desactivado — análisis derivado estáticamente desde átomos.
+    // Reactivar cuando se identifiquen casos que genuinamente requieran LLM
+    // (e.g., dynamic imports con variables, event names dinámicos).
+    logger.info('  ℹ️  LLM desactivado — insights derivados de átomos (estático)');
+    return true;
   }
 }
 

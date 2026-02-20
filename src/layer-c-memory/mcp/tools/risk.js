@@ -108,8 +108,9 @@ export async function get_risk_assessment(args, context) {
     const minLevel = severityOrder[minSeverity] || 1;
     const filteredHotspots = hotspots.filter(h => severityOrder[h.severity] >= minLevel);
     
-    const totalIssues = criticalCount + highCount + mediumCount + lowCount;
-    
+    // totalIssues = solo medium+ (low no es un issue accionable)
+    const totalIssues = criticalCount + highCount + mediumCount;
+
     return {
       summary: {
         totalFiles,
@@ -118,7 +119,7 @@ export async function get_risk_assessment(args, context) {
         highCount,
         mediumCount,
         lowCount,
-        tunnelVisionIntegrated: true  // 🆕 Indicar que incluye datos de Tunnel Vision
+        tunnelVisionIntegrated: true
       },
       topRiskFiles: filteredHotspots.slice(0, 10),
       recommendation:

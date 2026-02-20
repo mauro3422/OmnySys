@@ -1,8 +1,8 @@
 # OmnySys — Roadmap de Desarrollo
 
-**Versión actual**: v0.9.16  
-**Última actualización**: 2026-02-18  
-**Estado**: 🔧 Estabilización — tests pasando, runtime en proceso de limpieza
+**Versión actual**: v0.9.36  
+**Última actualización**: 2026-02-19  
+**Estado**: ✅ Estable — 4,366 tests pasando, 0 imports rotos, deuda técnica controlada
 
 ---
 
@@ -121,70 +121,54 @@ OMNYSYS (Data Flow):
 
 ---
 
-## 🔧 Estado Actual — Estabilización (v0.9.17 en proceso)
+## 🔧 Estado Actual — Estable (v0.9.36)
 
 ### Tests: ✅ Saludable
 ```
-283 archivos de test → 283 pasando
-4,044 tests → 4,044 en verde, 35 skipped
+297 archivos de test → 297 pasando
+4,366 tests → 4,366 en verde, 35 skipped
 Tiempo: ~21s
 ```
 
-### Runtime: ⚠️ Issues a resolver
+### Runtime: ✅ Sin issues críticos
 ```
-26 imports rotos detectados por scripts/detect-broken-imports.js
-Causa: refactorización masiva dejó referencias sin actualizar
-Impacto: MCP server puede fallar al cargar ciertos módulos
+0 imports rotos (verificado con scripts/detect-broken-imports.js)
+1,177 archivos JavaScript en src/
+Deuda técnica controlada (< 1%)
 ```
 
-### Documentación: ✅ Recién actualizada (2026-02-18)
+### Documentación: ✅ Actualizada (2026-02-19)
 
 ---
 
 ## 🚧 Próximos Pasos Inmediatos
 
-### Prioridad 1: Fixes de Runtime (v0.9.17) 🔴
+### Prioridad 1: Mejorar Coverage de Layer C 🟡
+**Tiempo estimado**: 1-2 semanas
+
+Layer C tiene ~30% de cobertura de tests. Objetivo: alcanzar 50%+.
+
+**Acciones**:
+- Identificar módulos sin tests en `src/layer-c-memory/`
+- Crear tests unitarios para herramientas MCP
+- Mejorar tests de integración del servidor
+
+### Prioridad 2: Investigar Tests Skipped (35 tests) 🟡
 **Tiempo estimado**: 2-3 días
 
-Los 26 imports rotos se dividen en 3 categorías:
+Hay 35 tests marcados como `skip`. Necesitan ser investigados:
+- ¿Por qué están deshabilitados?
+- ¿Se pueden rehabilitar?
+- ¿O deben eliminarse?
 
-**a) Paths incorrectos** (archivo existe, path equivocado):
-- `src/core/layer-c-memory/...` → debería ser `src/layer-c-memory/...`
-- `src/layer-a-static/utils/logger.js` → debería ser `src/utils/logger.js`
-- `src/layer-a-static/shared/architecture-utils.js` → debería ser `src/shared/architecture-utils.js`
-- `src/layer-a-static/extractors/extractors/metadata/...` → path duplicado
-
-**b) Archivos planificados pero nunca creados** (crear stubs):
-- `src/layer-a-static/analyses/tier3/event-pattern-detector.js`
-- `src/layer-a-static/analyses/tier3/broken-connections-detector.js`
-- `src/layer-a-static/extractors/metadata/security-patterns.js`
-- `src/layer-b-semantic/prompt-engine/prompt-templates/your-analysis-type.js`
-
-**c) Race detector analyzers faltantes** (crear implementaciones):
-- `shared-state-analyzer.js`
-- `timing-analyzer.js`
-- `lock-analyzer.js`
-
-### Prioridad 2: Tests de Import (v0.9.17) 🟡
+### Prioridad 3: Integrar Scripts de Validación en CI/CD 🟢
 **Tiempo estimado**: 1 día
 
-Agregar tests de integración que importen módulos reales (no mocks) para detectar imports rotos antes de que lleguen a producción:
+Los scripts de validación están listos pero no integrados:
+- `scripts/detect-broken-imports.js` — 0 imports rotos ✅
+- `scripts/validate-syntax.js` — sintaxis validada ✅
 
-```javascript
-// tests/integration/import-health.test.js
-describe('All modules load correctly', () => {
-  test('Layer A exports load', async () => {
-    await expect(import('#layer-a/analyzer.js')).resolves.toBeDefined();
-  });
-  // ... etc
-});
-```
-
-### Prioridad 3: Smoke Test Layer C (v0.9.17) 🟡
-**Tiempo estimado**: 2-3 días
-
-Rehabilitar y arreglar `tests/integration/smoke.test.js.disabled`.
-El MCP server debe poder iniciar y responder a `get_server_status()` en un test E2E.
+**Acción**: Agregar a GitHub Actions o similar.
 
 ---
 
@@ -234,7 +218,8 @@ El MCP server debe poder iniciar y responder a `get_server_status()` en un test 
 | v0.7 | 350+ | ~15% | modular | 14 MCP |
 | v0.9.7 | 527+ | ~26% | 400+ | 14 MCP |
 | v0.9.13 | 1,222 | ~35% | 500+ | 14 MCP |
-| **v0.9.16** | **4,044** | **~40%** | **500+** | **14 MCP** |
+| v0.9.17 | 4,115 | ~40% | 500+ | 14 MCP |
+| **v0.9.36** | **4,366** | **~45%** | **500+** | **14 MCP** |
 | v1.0 (target) | 6,000+ | 70%+ | 500+ | 14+ MCP |
 
 ---

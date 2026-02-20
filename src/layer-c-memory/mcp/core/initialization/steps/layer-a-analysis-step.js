@@ -42,6 +42,13 @@ export class LayerAAnalysisStep extends InitializationStep {
       logger.info('  ⚠️  Analysis warning:', result.error);
     }
 
+    // Forzar GC para liberar ASTs y estructuras de Layer A antes de iniciar LLM.
+    // Layer A puede usar varios GB en parsedFiles/systemMap que deben liberarse ahora.
+    if (typeof global.gc === 'function') {
+      global.gc();
+      logger.info('  🧹 GC forced after Layer A — memory freed before LLM analysis');
+    }
+
     return true;
   }
 

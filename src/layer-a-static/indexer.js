@@ -21,6 +21,7 @@ import {
 import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { enrichWithCulture } from './analysis/file-culture-classifier.js';
+import { resolveClassInstantiationCalledBy } from './pipeline/phases/calledby/class-instantiation-tracker.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -228,7 +229,24 @@ export async function indexProject(rootPath, options = {}) {
         }
       }
 
-      if (verbose) logger.info(`  ✓ ${crossFileLinks} cross-file + ${intraFileLinks} intra-file calledBy links (${updatedAtoms.length} atoms updated)\n`);
+      if (verbose) logger.info(`  ✓ ${crossFileLinks} cross-file + ${intraFileLinks} intra-file calledBy links (${updatedAtoms.length} atoms updated)`);
+
+      // 🆕 PASO 3.7: Class instantiation tracker
+      // Resuelve calledBy para métodos llamados via `new Clase().metodo()`
+      // El linker anterior solo resuelve imports directos, no instanciaciones.
+      if (verbose) logger.info('🏗️  Resolving class instantiation calledBy links...');
+      const { resolved: classResolved, classesTracked } = resolveClassInstantiationCalledBy(allAtoms);
+      if (verbose) logger.info(`  ✓ ${classResolved} class method calledBy links resolved (${classesTracked} classes tracked)\n`);
+
+      // Persistir átomos actualizados por el class tracker
+      if (classResolved > 0) {
+        const classUpdated = allAtoms.filter(a => a.calledBy && a.calledBy.length > 0);
+        for (const atom of classUpdated) {
+          if (atom.filePath && atom.name) {
+            await saveAtom(absoluteRootPath, atom.filePath, atom.name, atom);
+          }
+        }
+      }
     }
 
     // 🧹 MEMORY OPTIMIZATION: Clear source code from parsed files to free memory

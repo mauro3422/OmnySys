@@ -22,16 +22,20 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
   const { verbose = true, incremental = false } = options;
 
   try {
-    // Cargar systemMap existente si hay análisis previo
-    let existingMap = null;
+    // En modo incremental (LLM jobs) NO cargar system-map-enhanced.json:
+    // pesa ~87MB y cargarlo + stringificarlo por cada job causa OOM con 200+ jobs.
+    // Los datos particionados en .omnysysdata/files/ ya se actualizan directamente.
     const systemMapPath = path.join(absoluteRootPath, '.omnysysdata', 'system-map-enhanced.json');
+    let existingMap = null;
 
-    try {
-      const content = await fs.readFile(systemMapPath, 'utf-8');
-      existingMap = JSON.parse(content);
-      if (verbose) logger.info('  âœ“ Loaded existing project context\n');
-    } catch {
-      if (verbose) logger.info('  â„¹ï¸  No existing analysis found, starting fresh\n');
+    if (!incremental) {
+      try {
+        const content = await fs.readFile(systemMapPath, 'utf-8');
+        existingMap = JSON.parse(content);
+        if (verbose) logger.info('  âœ“ Loaded existing project context\n');
+      } catch {
+        if (verbose) logger.info('  â„¹ï¸  No existing analysis found, starting fresh\n');
+      }
     }
 
     // Paso 1: Parsear solo el archivo objetivo

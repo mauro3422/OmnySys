@@ -76,14 +76,50 @@ export async function get_impact_map(args, context) {
     }
   }
 
+  // Procesar imports
+  const imports = fileData?.imports || [];
+  const internalImports = imports.filter(i => {
+    const src = i.source || i.module || '';
+    return src.startsWith('./') || src.startsWith('../') || src.startsWith('#');
+  });
+  const externalImports = imports.filter(i => {
+    const src = i.source || i.module || '';
+    return !src.startsWith('./') && !src.startsWith('../') && !src.startsWith('#');
+  });
+
   return {
     file: filePath,
+    // IMPORTS (qué necesita este archivo)
+    imports: {
+      total: imports.length,
+      internal: internalImports.map(i => ({
+        source: i.source || i.module,
+        names: i.specifiers?.map(s => s.local) || ['*']
+      })).slice(0, 20),
+      external: externalImports.map(i => i.source || i.module).slice(0, 10)
+    },
+    // EXPORTS (qué provee)
+    exports: fileData?.exports?.map(e => e.name) || [],
+    definitions: fileData?.definitions?.map(d => ({
+      name: d.name,
+      type: d.type,
+      line: d.line
+    })) || [],
+    // IMPACTO (quién depende de este)
     directlyAffects: directlyAffects || [],
-    transitiveAffects: transitiveAffects.slice(0, 20), // Limitar para no sobrecargar
-    semanticConnections: fileData?.semanticConnections || [],
+    transitiveAffects: transitiveAffects.slice(0, 20),
     totalAffected: directlyAffects.length + transitiveAffects.length,
+    // ANÁLISIS SEMÁNTICO
+    semanticConnections: (fileData?.semanticConnections || []).slice(0, 10),
+    semanticAnalysis: {
+      events: fileData?.semanticAnalysis?.events?.all?.slice(0, 10) || [],
+      localStorage: fileData?.semanticAnalysis?.localStorage?.all || [],
+      globals: fileData?.semanticAnalysis?.globals?.all || []
+    },
+    // RIESGO
     riskLevel: fileData?.riskScore?.severity || 'low',
+    riskScore: fileData?.riskScore?.total || 0,
     subsystem: fileData?.subsystem || 'unknown',
-    exports: fileData?.exports?.map(e => e.name) || []
+    culture: fileData?.culture || 'unknown'
   };
 }

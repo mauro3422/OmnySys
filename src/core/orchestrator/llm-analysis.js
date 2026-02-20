@@ -78,6 +78,7 @@ export async function _analyzeComplexFilesWithLLM() {
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     const { detectArchetypes } = await import('../../layer-b-semantic/prompt-engine/prompt-registry/index.js');
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract/index.js');
+    const { decideFromAtoms } = await import('../../layer-b-semantic/atom-decider/index.js');
 
     // Usar LLMService para verificar disponibilidad
     const llmService = await LLMService.getInstance();
@@ -160,17 +161,35 @@ export async function _analyzeComplexFilesWithLLM() {
           return; // Ya tiene análisis LLM, saltear
         }
 
-        // Detectar arquetipos basado en metadatos estandarizados
-        const metadata = buildPromptMetadata(filePath, fileAnalysis);
-        const archetypes = detectArchetypes(metadata);
+        // --- NUEVO v0.9.37: Decisión primaria desde datos de átomos ---
+        // Los átomos ya tienen purpose + archetype a nivel función.
+        // Agregar esos datos directamente es más preciso que re-detectar desde stats.
+        const atomDecision = decideFromAtoms(fileAnalysis);
 
-        // DEBUG: Log de arquetipos detectados
-        if (archetypes.length > 0) {
-          logger.info(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+        let needsLLM;
+        let archetypes;
+
+        if (atomDecision.decided) {
+          needsLLM = atomDecision.needsLLM;
+          // Convertir arquetipo derivado al formato esperado por el resto del sistema
+          archetypes = atomDecision.fileArchetype
+            ? [{ type: atomDecision.fileArchetype, severity: 5, requiresLLM: needsLLM }]
+            : [];
+          if (atomDecision.fileArchetype) {
+            logger.info(`   🧬 ${filePath}: Arquetipo derivado de átomos: ${atomDecision.fileArchetype} (${atomDecision.reason})`);
+          }
+        } else {
+          // --- FALLBACK: Sistema de arquetipos de archivo ---
+          // Se usa cuando los átomos no tienen suficiente cobertura de purpose/archetype
+          const metadata = buildPromptMetadata(filePath, fileAnalysis);
+          archetypes = detectArchetypes(metadata);
+
+          if (archetypes.length > 0) {
+            logger.info(`   🔍 ${filePath}: Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`);
+          }
+
+          needsLLM = shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer);
         }
-
-        // Decidir si necesita LLM basado en arquetipos y Gates de decisión
-        const needsLLM = shouldUseLLM(archetypes, fileAnalysis, llmAnalyzer);
 
         // Loguear decisión arquitectónica
         const auditLogger = getDecisionAuditLogger(this.projectPath);
@@ -184,7 +203,7 @@ export async function _analyzeComplexFilesWithLLM() {
             filePath,
             `Arquetipos detectados: ${archetypes.map(a => a.type).join(', ')}`,
             aiConfig?.model || 'unknown',
-            { archetypes, metadata: metadata.summary }
+            { archetypes, source: atomDecision.decided ? 'atom-decider' : 'archetype-detector' }
           );
 
           // Loguear arquetipos detectados

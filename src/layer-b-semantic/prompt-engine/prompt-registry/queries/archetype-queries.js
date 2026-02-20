@@ -22,7 +22,7 @@ export const detectArchetypes = (metadata, logger) =>
         return false;
       }
     })
-    .map(a => ({ type: a.type, severity: Number.isFinite(a.severity) ? a.severity : 0 }));
+    .map(a => ({ type: a.type, severity: Number.isFinite(a.severity) ? a.severity : 0, requiresLLM: a.requiresLLM }));
 
 export const selectArchetypeBySeverity = (archetypes) =>
   archetypes.length === 0 ? 'default' : archetypes.sort((a, b) => b.severity - a.severity)[0].type;

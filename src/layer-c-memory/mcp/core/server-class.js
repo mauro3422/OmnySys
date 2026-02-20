@@ -165,18 +165,23 @@ export class OmnySysMCPServer extends EventEmitter {
    * Initializes and connects to stdio for MCP communication
    */
   async run() {
-    await this.initialize();
+    // Conectar el transport ANTES de la inicialización pesada (Layer A, cache, etc.)
+    // para que Claude Code reciba la respuesta al handshake `initialize` de inmediato
+    // y no corte la conexión por timeout mientras Layer A analiza el proyecto.
+    const mcpSetup = new McpSetupStep();
+    mcpSetup.execute(this); // crea this.server + registra handlers
 
-    if (!this.server) {
-      throw new Error('MCP server not initialized');
-    }
-
-    // Connect to stdio for MCP protocol communication
     const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
+    logger.info('🔌 MCP Server pre-conectado (inicializando en background...)\n');
 
-    logger.info('🔌 MCP Server connected via stdio\n');
+    // Ahora correr la inicialización completa. El transport ya está activo,
+    // así que Claude Code puede enviar/recibir mensajes durante este tiempo.
+    // McpSetupStep detectará server.server existente y saltará re-creación.
+    await this.initialize();
+
+    logger.info('✅ MCP Server listo y operacional\n');
   }
 
   /**

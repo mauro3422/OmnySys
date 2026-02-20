@@ -32,19 +32,14 @@ export class McpSetupStep extends InitializationStep {
   execute(server) {
     logger.info('MCP Protocol Setup');
 
-    // ⚠️ SAFETY GUARD: Never re-create the MCP Server if it already exists.
-    // The Server instance is bound to the stdio transport — replacing it
-    // would destroy the active IDE connection and cause EPIPE/stream errors.
-    if (server.server) {
-      logger.info('  ⚠️  MCP server already configured — skipping re-initialization');
-      logger.info(`  ℹ️  ${toolDefinitions.length} tools still registered`);
-      return true;
+    // ⚠️ SAFETY GUARD: Never re-crear el MCP Server si ya existe (está bound al transport).
+    // Si ya existe, solo re-registrar los handlers (caso: pre-conectado antes de initialize()).
+    if (!server.server) {
+      server.server = new Server(
+        { name: 'omnysys', version: '3.0.0' },
+        { capabilities: { tools: {} } }
+      );
     }
-
-    server.server = new Server(
-      { name: 'omnysys', version: '3.0.0' },
-      { capabilities: { tools: {} } }
-    );
 
     // List tools handler
     server.server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -63,6 +58,13 @@ export class McpSetupStep extends InitializationStep {
   }
 
   async handleToolCall(request, server) {
+    // Si el servidor todavía está inicializando (Layer A, cache, etc.), avisar y esperar.
+    if (!server.initialized) {
+      return {
+        content: [{ type: 'text', text: '⏳ OmnySys se está inicializando (análisis estático en progreso). Reintentá en unos segundos.' }]
+      };
+    }
+
     const { name, arguments: args } = request.params;
     const handler = toolHandlers[name];
 

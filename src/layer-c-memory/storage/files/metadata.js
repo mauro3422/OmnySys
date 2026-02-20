@@ -26,7 +26,12 @@ export async function saveMetadata(rootPath, metadata, fileIndex) {
   };
 
   const indexPath = path.join(dataPath, 'index.json');
-  await fs.writeFile(indexPath, JSON.stringify(indexData, null, 2));
+  const tmpPath = indexPath + '.tmp';
+
+  // Escritura atómica: escribir a .tmp y renombrar, para que index.json
+  // nunca quede en estado parcial si el proceso es interrumpido mid-write.
+  await fs.writeFile(tmpPath, JSON.stringify(indexData, null, 2));
+  await fs.rename(tmpPath, indexPath);
 
   return indexPath;
 }

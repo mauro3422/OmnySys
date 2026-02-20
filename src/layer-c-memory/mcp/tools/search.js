@@ -17,21 +17,35 @@ export async function search_files(args, context) {
   logger.info(`[Tool] search_files("${pattern}")`);
 
   try {
-    // Usar metadata indexada (más rápido que escanear disco)
     const metadata = await getProjectMetadata(projectPath);
     const fileIndex = metadata?.fileIndex || metadata?.files || {};
-    
-    // Filtrar archivos que coincidan con el patrón
     const allFiles = Object.keys(fileIndex);
-    const results = allFiles.filter(filePath => {
-      // Buscar en el path completo del archivo
-      return filePath.toLowerCase().includes(pattern.toLowerCase());
-    });
+    const lowerPattern = pattern.toLowerCase();
+
+    // Buscar por path de archivo
+    const pathMatches = allFiles.filter(f => f.toLowerCase().includes(lowerPattern));
+
+    // Buscar por símbolos exportados/definidos en cada archivo
+    const symbolMatches = [];
+    for (const [filePath, fileInfo] of Object.entries(fileIndex)) {
+      if (pathMatches.includes(filePath)) continue;
+      const exports = fileInfo.exports?.map(e => e.name || e).join(' ') || '';
+      const defs = fileInfo.definitions?.map(d => d.name || d).join(' ') || '';
+      if ((exports + ' ' + defs).toLowerCase().includes(lowerPattern)) {
+        symbolMatches.push(filePath);
+      }
+    }
+
+    const allMatches = [...pathMatches, ...symbolMatches];
 
     return {
       pattern,
-      found: results.length,
-      files: results.slice(0, 20),
+      found: allMatches.length,
+      files: allMatches.slice(0, 20),
+      byType: {
+        pathMatches: pathMatches.length,
+        symbolMatches: symbolMatches.length
+      },
       totalIndexed: allFiles.length
     };
   } catch (error) {

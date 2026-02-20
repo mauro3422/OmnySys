@@ -23,6 +23,10 @@ const logger = createLogger('OmnySys:analysis:checker');
 async function hasExistingAnalysis(projectPath) {
   try {
     const indexPath = path.join(projectPath, DATA_DIR, 'index.json');
+
+    // Limpiar .tmp huérfano de una sesión interrumpida
+    try { await fs.unlink(indexPath + '.tmp'); } catch { /* no existe, ok */ }
+
     await fs.access(indexPath);
     return true;
   } catch {

@@ -1,5 +1,4 @@
 import { indexProject } from '../../../../layer-a-static/indexer.js';
-import { LLMService } from '../../../../services/llm-service/index.js';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');
@@ -18,18 +17,11 @@ export async function startBackgroundIndexing() {
   logger.info('\n🚀 Starting background indexing...\n');
   this.isIndexing = true;
 
-  // Check LLM availability via service
-  let llmAvailable = false;
-  if (this.options.autoStartLLM) {
-    const service = await LLMService.getInstance();
-    llmAvailable = await service.waitForAvailable(10000);
-  }
-
-  // Start indexing in background (don't await)
+  // Start indexing in background (don't await) — LLM desactivado, skipLLM siempre true
   indexProject(this.projectPath, {
     outputPath: 'system-map.json',
     verbose: true,
-    skipLLM: !llmAvailable
+    skipLLM: true
   }).then((result) => {
     logger.info('\n✅ Background indexing completed');
     this.isIndexing = false;

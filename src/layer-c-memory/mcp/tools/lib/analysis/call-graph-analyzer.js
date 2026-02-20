@@ -153,7 +153,12 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
               code: line.trim(),
               context: context,
               type: callType,
-              importType: importInfo ? (importInfo.type || 'unknown') : 'unknown',
+              importType: importInfo
+                ? (importInfo.specifiers?.some(s => s.type === 'namespace') ? 'namespace'
+                  : importInfo.specifiers?.some(s => s.type === 'default' || s.imported === 'default') ? 'default'
+                  : importInfo.specifiers?.length > 0 ? 'named'
+                  : importInfo.type || 'unknown')
+                : 'unknown',
               alias: localName !== symbolName ? localName : null,
               namespace: namespaceName
             });

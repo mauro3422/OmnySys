@@ -104,7 +104,12 @@
       "mcp__omnysys__analyze_signature_change",
       "Bash(npx vitest run tests/unit/layer-a-static/parser/ --reporter=verbose)",
       "Bash(npx vitest run:*)",
-      "mcp__omnysys__restart_server"
+      "mcp__omnysys__restart_server",
+      "Bash(npm run test:layer-a:core:*)",
+      "Bash(git -C C:/Dev/OmnySystem log --oneline -10 -- src/layer-c-memory/mcp/analysis-checker.js)",
+      "Bash(git -C C:/Dev/OmnySystem diff HEAD~3 HEAD -- src/layer-c-memory/mcp/analysis-checker.js)",
+      "Bash(git -C C:/Dev/OmnySystem log --oneline -10 -- src/layer-c-memory/mcp/core/initialization/steps/layer-a-analysis-step.js)",
+      "Bash(git -C C:/Dev/OmnySystem diff HEAD~3 HEAD -- src/layer-c-memory/mcp/core/initialization/steps/layer-a-analysis-step.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

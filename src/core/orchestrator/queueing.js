@@ -22,7 +22,7 @@ export async function analyzeAndWait(filePath, timeoutMs = 60000) {
   }
 
   // Trigger processing if we have capacity
-  if (this.activeJobs < this.maxConcurrentAnalyses) {
+  if (this.activeJobs < (this.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT)) {
     this._processNext();
   }
 

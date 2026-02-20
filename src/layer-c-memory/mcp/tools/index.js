@@ -1,25 +1,22 @@
 /**
- * @fileoverview MCP Tools Registry - Herramientas para Claude/OpenCode
- * 
- * ⚠️  IMPORTANTE: Este archivo contiene las TOOLS OFICIALES DEL MCP
- *      que Claude y OpenCode pueden invocar via el protocolo MCP.
- * 
- * 📍 Ubicación: src/layer-c-memory/mcp/tools/
- * 🎯 Uso: Protocolo MCP (Model Context Protocol) para Claude Code
- * 🔌 Expuesto via: server.setRequestHandler(ListToolsRequestSchema, ...)
- * 
- * Diferencia con unified-server/tools.js:
- * - ESTE archivo (mcp/tools/): Tools invocables por Claude via MCP
- * - unified-server/tools.js: Métodos internos del servidor REST API (puertos 9999/9998)
- * 
- * Para agregar una nueva tool MCP:
- * 1. Crear archivo en esta carpeta (ej: my-tool.js)
- * 2. Exportar función con nombre snake_case
- * 3. Agregar a toolDefinitions y toolHandlers abajo
- * 4. El servidor la detectará automáticamente
- * 
+ * @fileoverview MCP Tools Registry
+ *
+ * Tools invocables por Claude via protocolo MCP.
+ *
+ * TOOLS ACTIVAS (14):
+ *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection
+ *   Riesgo:               get_risk_assessment
+ *   Código:               get_call_graph, analyze_signature_change, explain_value_flow
+ *   Funciones:            get_function_details, get_molecule_summary
+ *   Utilidades:           search_files, get_server_status, restart_server
+ *   Editor atómico:       atomic_edit, atomic_write
+ *
+ * ELIMINADAS:
+ *   get_atomic_functions  → fusionada en get_molecule_summary (duplicado)
+ *   get_tunnel_vision_stats → dead code (no linkada en el sistema)
+ *
  * @module mcp/tools
- */ 
+ */
 
 import { get_impact_map } from './impact-map.js';
 import { analyze_change } from './analyze-change.js';
@@ -30,17 +27,13 @@ import { get_server_status } from './status.js';
 import { get_call_graph } from './get-call-graph.js';
 import { analyze_signature_change } from './analyze-signature-change.js';
 import { explain_value_flow } from './explain-value-flow.js';
-// Atomic/Molecular Tools (v0.6.0)
 import { get_function_details } from './get-function-details.js';
 import { get_molecule_summary } from './get-molecule-summary.js';
-import { get_atomic_functions } from './get-atomic-functions.js';
 import { restart_server } from './restart-server.js';
-// Tunnel Vision Detection (v0.6.0)
-import getTunnelVisionStats from './get-tunnel-vision-stats.js';
-// Atomic Editor Tools (v0.7.2)
 import { atomic_edit, atomic_write } from './atomic-edit.js';
 
 export const toolDefinitions = [
+  // ── IMPACTO ──────────────────────────────────────────────────────────────
   {
     name: 'get_impact_map',
     description: 'Returns a complete impact map for a file',
@@ -74,6 +67,7 @@ export const toolDefinitions = [
       required: ['fileA', 'fileB']
     }
   },
+  // ── RIESGO ───────────────────────────────────────────────────────────────
   {
     name: 'get_risk_assessment',
     description: 'Returns a risk assessment of the entire project',
@@ -84,21 +78,7 @@ export const toolDefinitions = [
       }
     }
   },
-  {
-    name: 'search_files',
-    description: 'Search for files in the project by pattern',
-    inputSchema: {
-      type: 'object',
-      properties: { pattern: { type: 'string' } },
-      required: ['pattern']
-    }
-  },
-  {
-    name: 'get_server_status',
-    description: 'Returns the complete status of the OmnySys server',
-    inputSchema: { type: 'object', properties: {} }
-  },
-  // ========== OMNISCIENCE TOOLS ==========
+  // ── ANÁLISIS DE CÓDIGO ───────────────────────────────────────────────────
   {
     name: 'get_call_graph',
     description: 'Shows ALL call sites of a symbol - who calls what, where, and how',
@@ -138,7 +118,7 @@ export const toolDefinitions = [
       required: ['filePath', 'symbolName']
     }
   },
-  // ========== ATOMIC/MOLECULAR TOOLS ==========
+  // ── FUNCIONES / ÁTOMOS ───────────────────────────────────────────────────
   {
     name: 'get_function_details',
     description: 'Gets detailed atomic information about a specific function including archetype, complexity, and call graph',
@@ -153,7 +133,7 @@ export const toolDefinitions = [
   },
   {
     name: 'get_molecule_summary',
-    description: 'Gets molecular summary of a file - all functions with their archetypes and insights',
+    description: 'Gets molecular summary of a file - all functions with their archetypes and insights, organized by archetype and visibility',
     inputSchema: {
       type: 'object',
       properties: {
@@ -162,16 +142,20 @@ export const toolDefinitions = [
       required: ['filePath']
     }
   },
+  // ── UTILIDADES ───────────────────────────────────────────────────────────
   {
-    name: 'get_atomic_functions',
-    description: 'Lists all atomic functions in a file organized by archetype and visibility',
+    name: 'search_files',
+    description: 'Search for files in the project by pattern',
     inputSchema: {
       type: 'object',
-      properties: {
-        filePath: { type: 'string', description: 'Path to the file' }
-      },
-      required: ['filePath']
+      properties: { pattern: { type: 'string' } },
+      required: ['pattern']
     }
+  },
+  {
+    name: 'get_server_status',
+    description: 'Returns the complete status of the OmnySys server',
+    inputSchema: { type: 'object', properties: {} }
   },
   {
     name: 'restart_server',
@@ -183,20 +167,7 @@ export const toolDefinitions = [
       }
     }
   },
-  // ========== TUNNEL VISION DETECTION ==========
-  {
-    name: 'get_tunnel_vision_stats',
-    description: 'Obtiene estadísticas de eventos de Tunnel Vision detectados - muestra cuántos casos se detectaron, archivos problemáticos, severidades, y recomendaciones de refactoring',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includePatterns: { type: 'boolean', description: 'Include pattern analysis (most frequent files, severities, etc.)', default: true },
-        includeEvents: { type: 'boolean', description: 'Include recent events details', default: false },
-        limit: { type: 'number', description: 'Maximum number of recent events to return', default: 10 }
-      }
-    }
-  },
-  // ========== ATOMIC EDITOR TOOLS ==========
+  // ── EDITOR ATÓMICO ───────────────────────────────────────────────────────
   {
     name: 'atomic_edit',
     description: 'Edits a file with atomic validation - validates syntax, propagates vibration to dependents, and prevents breaking changes. Use this instead of normal edit for safer code changes.',
@@ -225,24 +196,24 @@ export const toolDefinitions = [
 ];
 
 export const toolHandlers = {
+  // Impacto
   get_impact_map,
   analyze_change,
   explain_connection,
+  // Riesgo
   get_risk_assessment,
-  search_files,
-  get_server_status,
-  // OMNISCIENCE TOOLS
+  // Análisis de código
   get_call_graph,
   analyze_signature_change,
   explain_value_flow,
-  // ATOMIC/MOLECULAR TOOLS
+  // Funciones / átomos
   get_function_details,
   get_molecule_summary,
-  get_atomic_functions,
+  // Utilidades
+  search_files,
+  get_server_status,
   restart_server,
-  // TUNNEL VISION DETECTION
-  get_tunnel_vision_stats: getTunnelVisionStats,
-  // ATOMIC EDITOR TOOLS
+  // Editor atómico
   atomic_edit,
   atomic_write
 };

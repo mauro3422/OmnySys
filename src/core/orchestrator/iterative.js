@@ -24,6 +24,7 @@ export async function _startIterativeAnalysis() {
     // Check all analyzed files for high-confidence suggestions
     for (const filePath of this.indexedFiles) {
       const analysis = await getFileAnalysis(this.projectPath, filePath);
+      // LLM desactivado — iterative analysis no aplica sin llmInsights
       if (!analysis || !analysis.llmInsights) continue;
 
       const llmInsights = analysis.llmInsights;
