@@ -418,7 +418,7 @@ export const toolDefinitions = [
   // ── VALIDACIÓN DE IMPORTS ────────────────────────────────────────────────
   {
     name: 'validate_imports',
-    description: 'Validates imports in files: detects broken imports, unused imports, and circular dependencies',
+    description: 'Validates imports in files: detects broken imports, unused imports, circular dependencies, and non-existent modules. Use checkFileExistence=true to verify that imported modules actually exist in the filesystem (catches errors like "#utils/file-reader.js" that don\'t exist).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -426,6 +426,8 @@ export const toolDefinitions = [
         checkUnused: { type: 'boolean', default: true, description: 'Check for unused imports' },
         checkBroken: { type: 'boolean', default: true, description: 'Check for broken/missing imports' },
         checkCircular: { type: 'boolean', default: false, description: 'Check for circular dependencies' },
+        checkFileExistence: { type: 'boolean', default: false, description: 'Verify that imported modules actually exist in the filesystem. This catches errors like importing "#utils/non-existent" which would crash at runtime.' },
+        excludePaths: { type: 'array', items: { type: 'string' }, description: 'Array of path patterns to exclude from validation (e.g., ["archive/", "node_modules/"])' },
         ...PAGINATION_SCHEMA
       }
     }

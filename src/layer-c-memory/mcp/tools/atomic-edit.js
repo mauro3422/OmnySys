@@ -13,8 +13,46 @@
 
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
 import { createLogger } from '../../../utils/logger.js';
+import { checkImportExists } from './validate-imports.js';
 
 const logger = createLogger('OmnySys:atomic:edit:tool');
+
+/**
+ * Extrae imports de un string de código
+ */
+function extractImports(code) {
+  const imports = [];
+  const importRegex = /import\s+(?:{[^}]+}|[^'"]+)?\s*from\s+['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = importRegex.exec(code)) !== null) {
+    imports.push(match[1] || match[2]);
+  }
+  return imports;
+}
+
+/**
+ * Valida que todos los imports en el nuevo código existan
+ */
+async function validateImportsInEdit(filePath, newString, projectPath) {
+  const imports = extractImports(newString);
+  const brokenImports = [];
+  
+  for (const importPath of imports) {
+    // Solo validar imports de proyecto (no node_modules)
+    if (importPath.startsWith('.') || importPath.startsWith('#')) {
+      const check = await checkImportExists(importPath, filePath, projectPath);
+      if (!check.exists) {
+        brokenImports.push({
+          import: importPath,
+          attemptedPaths: check.attemptedPaths,
+          suggestion: `Verificar que el módulo "${importPath}" exista. Intentado: ${check.attemptedPaths.slice(0, 3).join(', ')}`
+        });
+      }
+    }
+  }
+  
+  return brokenImports;
+}
 
 /**
  * Tool: atomic_edit
@@ -41,10 +79,24 @@ export async function atomic_edit(args, context) {
   }
   
   try {
-    // Obtener atomic editor del orchestrator
+    // PASO 1: Validar que los imports en el nuevo código existan
+    const brokenImports = await validateImportsInEdit(filePath, newString, projectPath);
+    if (brokenImports.length > 0) {
+      return {
+        error: 'BROKEN_IMPORTS',
+        message: `Found ${brokenImports.length} broken imports in the edit`,
+        file: filePath,
+        brokenImports,
+        severity: 'critical',
+        canProceed: false,
+        suggestion: 'Fix the imports before proceeding. Use validate_imports({ filePath, checkFileExistence: true }) for details.'
+      };
+    }
+    
+    // PASO 2: Obtener atomic editor del orchestrator
     const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
     
-    // Realizar edición atómica
+    // PASO 3: Realizar edición atómica
     const result = await atomicEditor.edit(filePath, oldString, newString);
     
     return {
@@ -103,6 +155,21 @@ export async function atomic_write(args, context) {
   }
   
   try {
+    // PASO 1: Validar que los imports en el nuevo código existan
+    const brokenImports = await validateImportsInEdit(filePath, content, projectPath);
+    if (brokenImports.length > 0) {
+      return {
+        error: 'BROKEN_IMPORTS',
+        message: `Found ${brokenImports.length} broken imports in the new file`,
+        file: filePath,
+        brokenImports,
+        severity: 'critical',
+        canProceed: false,
+        suggestion: 'Fix the imports before proceeding. Use validate_imports({ filePath, checkFileExistence: true }) for details.'
+      };
+    }
+    
+    // PASO 2: Escribir archivo
     const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
     
     const result = await atomicEditor.write(filePath, content);
@@ -112,7 +179,8 @@ export async function atomic_write(args, context) {
       file: filePath,
       message: `✅ Atomic write successful`,
       validation: {
-        syntaxValid: true
+        syntaxValid: true,
+        importsValid: true
       }
     };
     

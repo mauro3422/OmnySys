@@ -12,6 +12,34 @@ import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:validate:imports');
 
+/**
+ * Sugiere alternativas para un import que no existe
+ */
+function getImportSuggestion(importSource, attemptedPaths) {
+  // Sugerencias comunes basadas en patrones
+  const suggestions = [];
+  
+  // Si es un import de #utils, sugerir alternativas comunes
+  if (importSource.startsWith('#utils/')) {
+    suggestions.push('Use "fs/promises" para operaciones de archivo nativas de Node.js');
+    suggestions.push('Verificar si existe en src/utils/ con otro nombre');
+  }
+  
+  // Si termina en .js, sugerir probar sin extensión o con /index.js
+  if (importSource.endsWith('.js')) {
+    const withoutExt = importSource.slice(0, -3);
+    suggestions.push(`Try "${withoutExt}" or "${withoutExt}/index.js"`);
+  }
+  
+  // Si es un módulo interno, verificar typos
+  const parts = importSource.split('/');
+  if (parts.length > 1) {
+    suggestions.push(`Verificar que "${parts[parts.length - 1]}" exista en ${parts.slice(0, -1).join('/')}`);
+  }
+  
+  return suggestions.length > 0 ? suggestions[0] : 'Verificar el path del import';
+}
+
 async function fileExists(filePath) {
   try {
     await fs.access(filePath);
@@ -65,12 +93,50 @@ function resolveImportPath(importSource, currentFile, projectPath) {
   return [importSource];
 }
 
-async function validateImportsForFile(filePath, fileData, projectPath, allFiles, fileContent) {
+/**
+ * Verifica si un módulo importado realmente existe en el sistema de archivos
+ * @param {string} importSource - El path del import (ej: "#utils/file-reader.js")
+ * @param {string} currentFile - Archivo que hace el import
+ * @param {string} projectPath - Path del proyecto
+ * @returns {Promise<{exists: boolean, resolvedPath: string|null, attemptedPaths: string[]}>}
+ */
+export async function checkImportExists(importSource, currentFile, projectPath) {
+  const possiblePaths = resolveImportPath(importSource, currentFile, projectPath);
+  const attemptedPaths = [];
+  
+  for (const p of possiblePaths) {
+    if (p === 'node_module') {
+      return { exists: true, resolvedPath: importSource, attemptedPaths: [importSource] };
+    }
+    
+    attemptedPaths.push(p);
+    
+    // Verificar existencia real en disco
+    if (await fileExists(p)) {
+      return { exists: true, resolvedPath: p, attemptedPaths };
+    }
+    
+    // También probar con /index.js o /index.ts si es un directorio
+    const indexPaths = [`${p}/index.js`, `${p}/index.ts`];
+    for (const indexPath of indexPaths) {
+      attemptedPaths.push(indexPath);
+      if (await fileExists(indexPath)) {
+        return { exists: true, resolvedPath: indexPath, attemptedPaths };
+      }
+    }
+  }
+  
+  return { exists: false, resolvedPath: null, attemptedPaths };
+}
+
+async function validateImportsForFile(filePath, fileData, projectPath, allFiles, fileContent, options = {}) {
+  const { checkFileExistence = false } = options;
   const issues = {
     broken: [],
     unused: [],
     missing: [],
-    circular: []
+    circular: [],
+    nonExistent: [] // Nuevo: imports que no existen en el filesystem
   };
   
   const imports = fileData?.imports || [];
@@ -98,30 +164,53 @@ async function validateImportsForFile(filePath, fileData, projectPath, allFiles,
     }
     
     // Check if import resolves
-    const possiblePaths = resolveImportPath(source, filePath, projectPath);
     let found = false;
     let resolvedPath = null;
+    let attemptedPaths = [];
     
-    for (const p of possiblePaths) {
-      if (p === 'node_module') {
-        found = true;
-        break;
+    if (checkFileExistence) {
+      // Validación estricta: verificar existencia real en filesystem
+      const checkResult = await checkImportExists(source, filePath, projectPath);
+      found = checkResult.exists;
+      resolvedPath = checkResult.resolvedPath;
+      attemptedPaths = checkResult.attemptedPaths;
+      
+      if (!found) {
+        issues.nonExistent.push({
+          import: source,
+          line: imp.line,
+          reason: 'Module does not exist in filesystem',
+          attemptedPaths: attemptedPaths.slice(0, 5),
+          suggestion: getImportSuggestion(source, attemptedPaths)
+        });
+        continue;
       }
-      if (await fileExists(p) || allFiles.some(f => f === p || f.replace(/\\/g, '/') === p.replace(/\\/g, '/'))) {
-        found = true;
-        resolvedPath = p;
-        break;
+    } else {
+      // Validación básica: solo verificar que el path se pueda resolver
+      const possiblePaths = resolveImportPath(source, filePath, projectPath);
+      attemptedPaths = possiblePaths;
+      
+      for (const p of possiblePaths) {
+        if (p === 'node_module') {
+          found = true;
+          break;
+        }
+        if (await fileExists(p) || allFiles.some(f => f === p || f.replace(/\\/g, '/') === p.replace(/\\/g, '/'))) {
+          found = true;
+          resolvedPath = p;
+          break;
+        }
       }
-    }
-    
-    if (!found) {
-      issues.broken.push({
-        import: source,
-        line: imp.line,
-        reason: 'Cannot resolve import path',
-        attemptedPaths: possiblePaths.slice(0, 3)
-      });
-      continue;
+      
+      if (!found) {
+        issues.broken.push({
+          import: source,
+          line: imp.line,
+          reason: 'Cannot resolve import path',
+          attemptedPaths: possiblePaths.slice(0, 3)
+        });
+        continue;
+      }
     }
     
     // Check if imported symbols are used
@@ -196,7 +285,7 @@ async function validateImportsForFile(filePath, fileData, projectPath, allFiles,
  * Tool principal
  */
 export async function validate_imports(args, context) {
-  const { filePath, checkUnused = true, checkBroken = true, checkCircular = false, excludePaths = [] } = args;
+  const { filePath, checkUnused = true, checkBroken = true, checkCircular = false, checkFileExistence = false, excludePaths = [] } = args;
   const { projectPath } = context;
   
   logger.info(`[Tool] validate_imports("${filePath || 'all'}")`);
@@ -237,11 +326,12 @@ export async function validate_imports(args, context) {
         // Skip if can't read
       }
       
-      const issues = await validateImportsForFile(f, fileData, projectPath, allFiles, fileContent);
+      const issues = await validateImportsForFile(f, fileData, projectPath, allFiles, fileContent, { checkFileExistence });
       
       const hasIssues = issues.broken.length > 0 || 
                        issues.unused.length > 0 || 
-                       issues.circular.length > 0;
+                       issues.circular.length > 0 ||
+                       issues.nonExistent?.length > 0;
       
       if (hasIssues) {
         results.files.push({
@@ -249,10 +339,12 @@ export async function validate_imports(args, context) {
           broken: checkBroken ? issues.broken : [],
           unused: checkUnused ? issues.unused : [],
           circular: checkCircular ? issues.circular : [],
+          nonExistent: checkFileExistence ? issues.nonExistent : [],
           summary: {
             brokenCount: issues.broken.length,
             unusedCount: issues.unused.length,
-            circularCount: issues.circular.length
+            circularCount: issues.circular.length,
+            nonExistentCount: issues.nonExistent?.length || 0
           }
         });
         
@@ -260,6 +352,7 @@ export async function validate_imports(args, context) {
         results.summary.totalBroken += issues.broken.length;
         results.summary.totalUnused += issues.unused.length;
         results.summary.totalCircular += issues.circular.length;
+        results.summary.totalNonExistent = (results.summary.totalNonExistent || 0) + (issues.nonExistent?.length || 0);
       }
       
       results.summary.filesChecked++;
