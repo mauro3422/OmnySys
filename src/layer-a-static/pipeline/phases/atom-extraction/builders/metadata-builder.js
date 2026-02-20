@@ -25,7 +25,8 @@ export function buildAtomMetadata({
   performanceHints,
   performanceMetrics,
   dataFlowV2,
-  functionCode
+  functionCode,
+  imports = []
 }) {
   return {
     // Identity — use relative filePath (already normalized) to avoid absolute-path IDs
@@ -128,6 +129,14 @@ export function buildAtomMetadata({
     // DNA & Lineage
     dna: null,
     lineage: null,
+
+    // File-level imports (available to this atom)
+    imports: imports.map(imp => ({
+      source: imp.source || imp.module,
+      type: imp.type,
+      specifiers: imp.names || imp.specifiers || [],
+      line: imp.line
+    })),
 
     // Metadata
     extractedAt: new Date().toISOString(),

@@ -34,24 +34,27 @@ import { enrichWithDNA } from '../builders/enrichment.js';
 export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
   const atoms = [];
   
+  // Get file-level imports
+  const fileImports = fileInfo.imports || [];
+  
   // Process functions (existing)
   const functionAtoms = await Promise.all(
     (fileInfo.functions || []).map(async (functionInfo) => {
       const functionCode = extractFunctionCode(code, functionInfo);
-      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath);
+      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports);
     })
   );
   atoms.push(...functionAtoms);
   
   // Process constantExports (v0.9.34 - new)
   const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
-    return buildVariableAtom(constInfo, filePath, 'constant');
+    return buildVariableAtom(constInfo, filePath, 'constant', fileImports);
   });
   atoms.push(...constantAtoms);
   
   // Process objectExports as config atoms (v0.9.34 - new)
   const objectAtoms = (fileInfo.objectExports || []).map(objInfo => {
-    return buildVariableAtom(objInfo, filePath, 'config');
+    return buildVariableAtom(objInfo, filePath, 'config', fileImports);
   });
   atoms.push(...objectAtoms);
   
@@ -63,9 +66,10 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
  * @param {Object} varInfo - Variable info from parser
  * @param {string} filePath - File path
  * @param {string} varType - 'constant' or 'config'
+ * @param {Array} imports - File-level imports
  * @returns {Object} - Atom metadata
  */
-function buildVariableAtom(varInfo, filePath, varType = 'constant') {
+function buildVariableAtom(varInfo, filePath, varType = 'constant', imports = []) {
   const name = varInfo.name;
   const line = varInfo.line || 0;
   
@@ -194,6 +198,14 @@ function buildVariableAtom(varInfo, filePath, varType = 'constant') {
     // calledBy se poblará en cross-file linkage
     calledBy: [],
 
+    // File-level imports (available to this atom)
+    imports: imports.map(imp => ({
+      source: imp.source || imp.module,
+      type: imp.type,
+      specifiers: imp.names || imp.specifiers || [],
+      line: imp.line
+    })),
+
     // Derived scores (consistent with function atoms)
     derived: {
       fragilityScore: 0,
@@ -212,7 +224,7 @@ function buildVariableAtom(varInfo, filePath, varType = 'constant') {
  * @param {string} filePath - File path
  * @returns {Promise<Object>} - Atom metadata
  */
-export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath) {
+export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = []) {
   // Extract various metadata aspects
   const sideEffects = extractSideEffects(functionCode);
   const callGraph = extractCallGraph(functionCode);
@@ -247,7 +259,8 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     performanceHints,
     performanceMetrics,
     dataFlowV2,
-    functionCode
+    functionCode,
+    imports
   });
 
   // Post-process with DNA and lineage
