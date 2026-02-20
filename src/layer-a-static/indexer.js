@@ -22,6 +22,7 @@ import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js'
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { enrichWithCulture } from './analysis/file-culture-classifier.js';
 import { resolveClassInstantiationCalledBy } from './pipeline/phases/calledby/class-instantiation-tracker.js';
+import { enrichWithCallerPattern } from './pipeline/phases/atom-extraction/metadata/caller-pattern.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -231,6 +232,92 @@ export async function indexProject(rootPath, options = {}) {
 
       if (verbose) logger.info(`  ✓ ${crossFileLinks} cross-file + ${intraFileLinks} intra-file calledBy links (${updatedAtoms.length} atoms updated)`);
 
+      // 🆕 PASO 3.6b: Cross-file VARIABLE reference linkage (optimizado)
+      // Las variables/constants exportadas no tienen "calls" pero sí referencias.
+      // Usamos los imports de cada archivo para saber qué buscar.
+      if (verbose) logger.info('🔗 Building cross-file variable reference index...');
+      let variableLinks = 0;
+      
+      // Obtener todos los archivos que importan cada símbolo
+      // Group atoms by name for quick lookup
+      const exportedVarAtoms = new Map();
+      for (const atom of allAtoms) {
+        if (atom.isExported && (atom.type === 'variable' || atom.functionType === 'variable')) {
+          if (!exportedVarAtoms.has(atom.name)) {
+            exportedVarAtoms.set(atom.name, []);
+          }
+          exportedVarAtoms.get(atom.name).push(atom);
+        }
+      }
+      
+      if (verbose) logger.info(`  📊 Found ${exportedVarAtoms.size} exported variable names`);
+      
+      // Para cada archivo, buscar referencias en el source
+      for (const [absPath, parsedFile] of Object.entries(parsedFiles)) {
+        const source = parsedFile.source;
+        if (!source) continue;
+        
+        // Obtener path relativo
+        const filePath = path.relative(absoluteRootPath, absPath).replace(/\\/g, '/');
+        const imports = parsedFile.imports || [];
+        if (imports.length === 0) continue;
+        
+        const lines = source.split('\n');
+        
+        // Para cada import en este archivo
+        for (const imp of imports) {
+          const specifiers = imp.specifiers || [];
+          for (const spec of specifiers) {
+            const importedName = spec.local || spec.imported || spec.name;
+            if (!importedName) continue;
+            
+            // Buscar si es una variable exportada
+            const varAtoms = exportedVarAtoms.get(importedName);
+            if (!varAtoms || varAtoms.length === 0) continue;
+            
+            // Buscar el átomo target (de otro archivo)
+            const targetAtom = varAtoms.find(a => a.filePath !== filePath);
+            if (!targetAtom) continue;
+            
+            // Buscar referencias en el código
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              // Saltar líneas de import/export
+              if (line.includes('import ') || line.includes('export ') || line.includes('require(')) continue;
+              
+              // Detectar referencia (no llamada, no declaración)
+              const hasReference = new RegExp(`\\b${importedName}\\b`).test(line) && 
+                                   !line.includes(`${importedName}(`) && 
+                                   !new RegExp(`(function|const|let|var|class)\\s+${importedName}\\b`).test(line);
+              
+              if (hasReference) {
+                // Agregar caller - usar path relativo
+                const callerFileId = filePath;
+                if (!targetAtom.calledBy) targetAtom.calledBy = [];
+                if (!targetAtom.calledBy.includes(callerFileId)) {
+                  targetAtom.calledBy.push(callerFileId);
+                  variableLinks++;
+                }
+                break; // Solo contar una vez por archivo
+              }
+            }
+          }
+        }
+      }
+      
+      // Persistir átomos actualizados por variable references
+      if (variableLinks > 0) {
+        const varUpdated = allAtoms.filter(a => a.calledBy && a.calledBy.length > 0);
+        for (const atom of varUpdated) {
+          if (atom.filePath && atom.name) {
+            await saveAtom(absoluteRootPath, atom.filePath, atom.name, atom);
+          }
+        }
+      }
+      
+      if (verbose) logger.info(`  ✓ ${variableLinks} variable reference links added`);
+
       // 🆕 PASO 3.7: Class instantiation tracker
       // Resuelve calledBy para métodos llamados via `new Clase().metodo()`
       // El linker anterior solo resuelve imports directos, no instanciaciones.
@@ -246,6 +333,34 @@ export async function indexProject(rootPath, options = {}) {
             await saveAtom(absoluteRootPath, atom.filePath, atom.name, atom);
           }
         }
+      }
+
+      // 🆕 PASO 3.8: Caller Pattern Detection
+      // Detecta el patrón de llamada para cada átomo
+      // Responde: ¿POR QUÉ no tiene calledBy?
+      if (verbose) logger.info('🏷️  Detecting caller patterns...');
+      enrichWithCallerPattern(allAtoms);
+      
+      // Calcular estadísticas de patrones
+      const patternStats = {};
+      for (const atom of allAtoms) {
+        const patternId = atom.callerPattern?.id || 'unknown';
+        patternStats[patternId] = (patternStats[patternId] || 0) + 1;
+      }
+      
+      // Persistir todos los átomos con callerPattern
+      for (const atom of allAtoms) {
+        if (atom.filePath && atom.name && atom.callerPattern) {
+          await saveAtom(absoluteRootPath, atom.filePath, atom.name, atom);
+        }
+      }
+      
+      if (verbose) {
+        const topPatterns = Object.entries(patternStats)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([id, count]) => `${id}: ${count}`);
+        logger.info(`  ✓ Caller patterns: ${topPatterns.join(', ')}\n`);
       }
     }
 

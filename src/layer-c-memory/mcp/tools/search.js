@@ -29,8 +29,12 @@ export async function search_files(args, context) {
     const symbolMatches = [];
     for (const [filePath, fileInfo] of Object.entries(fileIndex)) {
       if (pathMatches.includes(filePath)) continue;
-      const exports = fileInfo.exports?.map(e => e.name || e).join(' ') || '';
-      const defs = fileInfo.definitions?.map(d => d.name || d).join(' ') || '';
+      const exports = Array.isArray(fileInfo.exports) 
+        ? fileInfo.exports.map(e => e.name || e).join(' ') 
+        : '';
+      const defs = Array.isArray(fileInfo.definitions) 
+        ? fileInfo.definitions.map(d => d.name || d).join(' ') 
+        : '';
       if ((exports + ' ' + defs).toLowerCase().includes(lowerPattern)) {
         symbolMatches.push(filePath);
       }

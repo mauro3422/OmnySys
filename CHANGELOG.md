@@ -4,8 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.37 - LLM-Free Mode + Bug Fixes + Tool Consolidation](changelog/v0.9.37-impact-map-enhanced.md)** - Latest release
-- **[v0.9.36 - Atom Purpose + Graph System](changelog/v0.9.36-atom-purpose.md)**
+- **[v0.9.38 - Caller Pattern Detection + calledBy Enhancement](changelog/v0.9.38-caller-pattern.md)** - Latest release
+- **[v0.9.37 - LLM-Free Mode + Bug Fixes + Tool Consolidation](changelog/v0.9.37-impact-map-enhanced.md)**
 - **[Changelog Directory](changelog/)** - All version-specific changelogs
 - **[Changelog Index](changelog/README.md)** - Complete version index
 
@@ -17,8 +17,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.37]** | 2026-02-20 | **LLM-Free Mode + 4 Bug Fixes + Tool Consolidation (16→14)** (Latest) |
-| **[0.9.36]** | 2026-02-20 | **Atom Purpose + Graph Persistence + MCP Tools** - See `changelog/v0.9.36-atom-purpose.md` |
+| **[0.9.38]** | 2026-02-20 | **Caller Pattern Detection + calledBy Enhancement (99.9% real coverage)** (Latest) |
+| **[0.9.37]** | 2026-02-20 | **LLM-Free Mode + 4 Bug Fixes + Tool Consolidation (16→14)** |
 | **[0.9.35]** | 2026-02-19 | **File Culture Classifier - ZERO LLM classification system** - See `changelog/v0.9.35-file-culture-classifier.md` |
 | **[0.9.31]** | 2026-02-19 | **Cross-file calledBy index + LLM Metadata Completeness Score + OOM Fix** - See `changelog/v0.9.31-calledby-llm-completeness.md` |
 | **[0.9.30]** | 2026-02-19 | **Bug Fixes: Data Flow via AST Node + Atom ID Normalization + ChainBuilder Stack Overflow** - See `changelog/v0.9.30-dataflow-ast-node-fixes.md` |
@@ -45,9 +45,9 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.29 (2026-02-19)
+## 🚀 Latest Release: v0.9.38 (2026-02-20)
 
-**Layer Graph Architecture**: Nueva capa dedicada para el sistema de grafos con API unificada, consolidación de 17 archivos dispersos, y limpieza de deuda técnica en core/.
+**Caller Pattern Detection**: Nuevo sistema que explica POR QUÉ un átomo no tiene calledBy. Coverage "real" de 99.9%. +2 bug fixes.
 
 ### Highlights
 - ✨ **Layer Graph** creada con 17 módulos y 54 exports

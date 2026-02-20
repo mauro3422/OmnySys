@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.5  
-**Última actualización**: 2026-02-18  
-**Estado**: ✅ **CONSOLIDADO + Layer Graph**
+**Versión**: v0.9.18  
+**Última actualización**: 2026-02-20  
+**Estado**: ✅ **CONSOLIDADO + Layer Graph + Data Flow**
 
 ---
 
@@ -14,6 +14,7 @@ docs/
 ├── 02-architecture/   🏗️ Arquitectura técnica
 ├── 03-orchestrator/   ⚙️ Orquestador y flujo de datos
 ├── 04-guides/         🛠️ Guías prácticas
+├── 04-maintenance/    🔧 Issues y mejoras
 ├── 05-roadmap/        🔮 Roadmap e investigación
 ├── 06-reference/      📚 Referencia técnica (esencial)
 └── archive/           🗄️ Archivo histórico
@@ -48,9 +49,10 @@ docs/
 |-----------|-------------|
 | [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) |
 | [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
-| [code-physics.md](02-architecture/code-physics.md) | **⭐ NUEVO - Código como Física**: Entropía, auto-reparación, sociedades de átomos |
-| [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ NUEVO - Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
-| [file-cultures.md](02-architecture/file-cultures.md) | **⭐ NUEVO - Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |
+| [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ NUEVO - Flujo de Datos**: Layer A → Storage → MCP Tools |
+| [code-physics.md](02-architecture/code-physics.md) | **⭐ Código como Física**: Entropía, auto-reparación, sociedades de átomos |
+| [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
+| [file-cultures.md](02-architecture/file-cultures.md) | **⭐ Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |
 | [context-selection.md](02-architecture/context-selection.md) | Algoritmos de selección de contexto |
 | **data-flow/** | |
 | ├─ [README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |
@@ -136,6 +138,14 @@ docs/
 | [development/modular-architecture-guide.md](06-reference/development/modular-architecture-guide.md) | **⭐ Nueva - Guía de arquitectura modular** |
 | [mcp/mcp-tools-detailed.md](06-reference/mcp/mcp-tools-detailed.md) | Documentación detallada de tools |
 | [decisions/ADR-001-type-based-prompt-selection.md](06-reference/decisions/ADR-001-type-based-prompt-selection.md) | Decisiones arquitectónicas |
+
+---
+
+## 🔧 Mantenimiento (04-maintenance/)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [ISSUES_AND_IMPROVEMENTS.md](04-maintenance/ISSUES_AND_IMPROVEMENTS.md) | **⭐ NUEVO - Issues conocidos y mejoras propuestas** |
 
 ---
 

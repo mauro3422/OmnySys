@@ -119,6 +119,14 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
           if (new RegExp(`\\b${localName}\\s*\\(`).test(line)) {
             match = { type: 'direct', name: localName };
           }
+          // Patrón 1b: Referencia a variable/constante (no llamada)
+          else if (new RegExp(`\\b${localName}\\b`).test(line) && 
+                   !line.includes(`${localName}(`) && 
+                   !line.includes(`${localName}.`) &&
+                   !new RegExp(`(function|const|let|var|import|export)\\s+${localName}`).test(line)) {
+            match = { type: 'reference', name: localName };
+            callType = 'variable_reference';
+          }
           // Patrón 2: Llamada con namespace namespace.localName(
           else if (namespaceName && new RegExp(`\\b${namespaceName}\\.${localName}\\s*\\(`).test(line)) {
             match = { type: 'namespace', name: `${namespaceName}.${localName}` };

@@ -1,7 +1,7 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.17  
-**Última actualización**: 2026-02-18
+**Versión**: v0.9.18  
+**Última actualización**: 2026-02-20
 
 ---
 
@@ -239,7 +239,28 @@ export * from '#layer-c/storage/index.js'; // storage
 [Archivo .js en tu proyecto]
         │
         ▼
-Layer A: Scanner → Parser → Extractors
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER A: Análisis Estático (100% determinístico, sin LLM)      │
+│  ───────────────────────────────────────────────────────────    │
+│  Scanner → Parser → AtomExtractionPhase → CrossFileLinker       │
+│                              │                                   │
+│                              ▼                                   │
+│                    ┌─────────────────┐                          │
+│                    │    ÁTOMO        │                          │
+│                    │ ─────────────── │                          │
+│                    │ • complexity    │   100% coverage          │
+│                    │ • dataFlow      │   100% coverage          │
+│                    │ • dna           │   99.7% coverage         │
+│                    │ • archetype     │   99.7% coverage         │
+│                    │ • purpose       │   100% coverage          │
+│                    │ • calledBy      │   41.5% coverage         │
+│                    │ • calls         │   66.3% coverage         │
+│                    │ • typeContracts │   99.7% coverage         │
+│                    │ • performance   │   99.7% coverage         │
+│                    │ • temporal      │   ~100% coverage         │
+│                    │ • errorFlow     │   ~100% coverage         │
+│                    └─────────────────┘                          │
+└─────────────────────────────────────────────────────────────────┘
         │
         ▼
 Layer Graph: buildSystemMap() → SystemMap
@@ -248,17 +269,81 @@ Layer Graph: buildSystemMap() → SystemMap
 Layer A: Analyses (tier1, tier2, tier3)
         │
         ▼
-Layer B: Archetypes + Validators (+ LLM si es necesario)
+Layer B: Archetypes + Validators (LLM bypass en 90%+ casos)
         │
         ▼
-Layer C Storage: .omnysysdata/{atoms,files,molecules}/
+┌─────────────────────────────────────────────────────────────────┐
+│  STORAGE: .omnysysdata/                                         │
+│  ───────────────────────────────────────────────────────────    │
+│  atoms/           → Un JSON por FUNCIÓN (5,984 archivos)       │
+│  files/           → Un JSON por archivo (1,747 archivos)       │
+│  molecules/       → Metadata derivada de átomos                │
+│  connections/     → Conexiones semánticas                      │
+│  risks/           → Evaluación de riesgo                       │
+└─────────────────────────────────────────────────────────────────┘
         │
         ▼
 Core Cache: RAM cache para acceso rápido
         │
         ▼
-Layer C MCP Tools: Respuesta a la IA
+┌─────────────────────────────────────────────────────────────────┐
+│  LAYER C: MCP Server (14 herramientas)                         │
+│  ───────────────────────────────────────────────────────────    │
+│  Query APIs → Derivation Engine → MCP Tools                    │
+│       │              │                │                         │
+│       ▼              ▼                ▼                         │
+│   file-api.js   composeMolecular  impact-map.js                │
+│   project-api.js  Metadata()      get-call-graph.js            │
+│   risk-api.js                    get-molecule-summary.js       │
+│                                  analyze-change.js             │
+│                                  ... (14 tools)                │
+└─────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+[Claude / OpenCode - IA]
 ```
+
+Ver **[docs/02-architecture/DATA_FLOW.md](docs/02-architecture/DATA_FLOW.md)** para detalles completos.
+
+---
+
+## Sociedad de Átomos
+
+Los átomos (funciones) no existen aislados. Forman **sociedades** conectadas por:
+
+### Propósitos Detectados
+
+```javascript
+const ATOM_PURPOSES = {
+  API_EXPORT:       '📤 Exportado - API pública',
+  EVENT_HANDLER:    '⚡ Maneja eventos/lifecycle',
+  TEST_HELPER:      '🧪 Función en test',
+  TIMER_ASYNC:      '⏱️ Timer o async pattern',
+  NETWORK_HANDLER:  '🌐 Hace llamadas de red',
+  INTERNAL_HELPER:  '🔧 Helper interno',
+  CONFIG_SETUP:     '⚙️ Configuración',
+  SCRIPT_MAIN:      '🚀 Entry point de script',
+  CLASS_METHOD:     '📦 Método de clase',
+  DEAD_CODE:        '💀 Sin evidencia de uso'
+};
+```
+
+### Cadena de Propósitos
+
+```
+API_EXPORT → INTERNAL_HELPER → INTERNAL_HELPER → EVENT_HANDLER
+     │              │                 │                │
+     ▼              ▼                 ▼                ▼
+[handleRequest] → [validateInput] → [processData] → [logEvent]
+```
+
+### Detección de Sociedades (Roadmap)
+
+- **Cadenas**: A → B → C → D (pipelines)
+- **Clusters**: Funciones mutuamente conectadas
+- **Hubs**: Funciones con > 10 callers
+
+Ver **[docs/02-architecture/code-physics.md](docs/02-architecture/code-physics.md)** para el concepto completo.
 
 ---
 
@@ -313,7 +398,18 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 
 ---
 
-## Estado de Salud (v0.9.17)
+## Estado de Salud (v0.9.18)
+
+### Métricas del Sistema
+
+| Métrica | Valor |
+|---------|-------|
+| Archivos analizados | 1,747 |
+| Átomos extraídos | 5,984 |
+| Herramientas MCP | 14 |
+| Coverage calledBy | 44.7% |
+| Culture coverage | 99.5% |
+| Health Score | 77.9/100 |
 
 ### Tests
 
@@ -325,21 +421,19 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 | Tiempo de suite | ~22 segundos |
 | Imports rotos (src/) | 0 ✅ |
 
-### Issues Resueltos en v0.9.17
+### Issues Resueltos en v0.9.18
 
 | Issue | Estado |
 |-------|--------|
-| 13 falsos positivos en detect-broken-imports.js | ✅ Resuelto — script v2 con `stripNonCodeContent()` |
-| Smoke test deshabilitado | ✅ Resuelto — `tests/integration/smoke.test.js` (17 tests) |
-| Tests no detectaban imports rotos en runtime | ✅ Resuelto — `tests/integration/import-health.test.js` (27 tests) |
-| `ast-analyzer.js` deprecado importado en 3 tools | ✅ Resuelto — migrado a `./lib/analysis/index.js` |
-| Cache Singleton OOM (213 jobs × 2045 files) | ✅ Resuelto — `getCacheManager(projectPath)` singleton |
+| `search_files` error `map is not a function` | ✅ Fixeado — validación `Array.isArray()` |
+| `get_call_graph` no detecta referencias a variables | ✅ Fixeado — nuevo patrón `variable_reference` |
 
 ### Issues Conocidos Pendientes
 
 | Issue | Impacto | Prioridad |
 |-------|---------|-----------|
+| 59 dependencias inconsistentes (usedBy ↔ dependsOn) | Datos levemente desactualizados | 🟡 Media |
 | `@babel/traverse` import en re-análisis incremental | Falla en análisis incremental | 🟠 Alto |
 | Layer C coverage ~30% | Riesgo de regresiones | 🟡 Media |
 
-Ver **[PLAN_ESTABILIZACION.md](PLAN_ESTABILIZACION.md)** para el historial completo y plan de resolución.
+Ver **[docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md](docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md)** para issues completos y mejoras propuestas.
