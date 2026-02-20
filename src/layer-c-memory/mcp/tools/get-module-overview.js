@@ -96,7 +96,7 @@ export async function get_module_overview(args, context) {
       atomCount: m.files?.reduce((s, f) => s + (f.atomCount || 0), 0) || 0,
       metrics: m.metrics || null,
       entryPoints: m.entryPoints?.slice(0, 5) || [],
-      dependencies: m.dependencies?.slice(0, 5) || [],
+      imports: (m.imports || m.dependencies || []).slice(0, 8),
       patterns: m.patterns?.slice(0, 5) || [],
     })),
     hint: filteredModules.length === 0 && modulePath
