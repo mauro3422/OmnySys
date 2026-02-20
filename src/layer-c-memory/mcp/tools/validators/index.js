@@ -204,6 +204,6 @@ export async function validate_imports(args, context) {
 }
 
 // Re-exportar para uso externo
-export { checkImportExists } from './utils/file-utils.js';
-export { resolveImportPath } from './resolvers/path-resolver.js';
-export { getImportSuggestion } from './utils/suggestions.js';
+export { checkImportExists } from '../utils/file-utils.js';
+export { resolveImportPath } from '../resolvers/path-resolver.js';
+export { getImportSuggestion } from '../utils/suggestions.js';
