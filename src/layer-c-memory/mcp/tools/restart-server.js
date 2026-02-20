@@ -34,11 +34,14 @@ export async function restart_server(args, context) {
           const fs = await import('fs/promises');
           const path = await import('path');
           const dataDir = path.join(server.projectPath, '.omnysysdata');
-          const filesDir = path.join(dataDir, 'files');
-          const indexFile = path.join(dataDir, 'index.json');
-          await fs.rm(filesDir, { recursive: true, force: true }).catch(() => {});
-          await fs.unlink(indexFile).catch(() => {});
-          logger.info('✅ Análisis anterior eliminado');
+          // Borrar toda la estructura de análisis para forzar reindex completo
+          // Incluye atoms/ y molecules/ para que el nuevo parser regenere todo
+          const toDelete = ['files', 'atoms', 'molecules'];
+          for (const dir of toDelete) {
+            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => {});
+          }
+          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => {});
+          logger.info('✅ Análisis anterior eliminado (atoms + molecules + files + index)');
         }
       }
 
@@ -73,20 +76,19 @@ export async function restart_server(args, context) {
 
       // También limpiar archivos del sistema si se solicita re-análisis completo
       if (reanalyze) {
-        logger.info('🗑️  Eliminando análisis anterior...');
+        logger.info('🗑️  Eliminando análisis anterior (reindex completo)...');
         const fs = await import('fs/promises');
         const path = await import('path');
         const dataDir = path.join(server.projectPath, '.omnysysdata');
 
         try {
-          // Eliminar solo los archivos de análisis, no la configuración
-          const filesDir = path.join(dataDir, 'files');
-          const indexFile = path.join(dataDir, 'index.json');
+          const toDelete = ['files', 'atoms', 'molecules'];
+          for (const dir of toDelete) {
+            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => {});
+          }
+          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => {});
 
-          await fs.rm(filesDir, { recursive: true, force: true });
-          await fs.unlink(indexFile).catch(() => { });
-
-          logger.info('✅ Análisis anterior eliminado');
+          logger.info('✅ Análisis anterior eliminado (atoms + molecules + files + index)');
           result.analysisCleared = true;
         } catch (err) {
           logger.warn('⚠️  No se pudo eliminar análisis anterior:', err.message);

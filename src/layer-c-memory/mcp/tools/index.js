@@ -326,11 +326,12 @@ export const toolDefinitions = [
   },
   {
     name: 'restart_server',
-    description: 'Restarts the OmnySys server to load updated code. Use this after making changes to the codebase.',
+    description: 'Restarts the OmnySys server to load updated code. Use clearCache+reanalyze to force a full reindex of all project atoms (needed after parser changes like new fields in calls[].args).',
     inputSchema: {
       type: 'object',
       properties: {
-        clearCache: { type: 'boolean', description: 'Clear analysis cache before restart', default: false }
+        clearCache: { type: 'boolean', description: 'Clear analysis cache before restart', default: false },
+        reanalyze: { type: 'boolean', description: 'Force full reindex of all project files — deletes .omnysysdata atoms/molecules/files and rebuilds from scratch. Use when parser changes affect atom structure.', default: false }
       }
     }
   },
