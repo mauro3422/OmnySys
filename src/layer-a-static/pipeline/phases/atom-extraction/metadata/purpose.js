@@ -19,6 +19,7 @@ export const ATOM_PURPOSES = {
   INTERNAL_HELPER: { name: 'Internal Helper', description: 'Helper called within file', isDead: false, icon: '🔧' },
   CONFIG_SETUP: { name: 'Config/Setup', description: 'Configuration or setup function', isDead: false, icon: '⚙️' },
   SCRIPT_MAIN: { name: 'Script Entry', description: 'Main function in script', isDead: false, icon: '🚀' },
+  ANALYSIS_SCRIPT: { name: 'Analysis Script', description: 'Audit/analysis script - internal tooling, not production code', isDead: false, icon: '🔍', isInternalTool: true },
   CLASS_METHOD: { name: 'Class Method', description: 'Method in a class (may be called dynamically)', isDead: false, icon: '📦' },
   DEAD_CODE: { name: 'Potential Dead Code', description: 'No evidence of use - review needed', isDead: true, icon: '💀' }
 };
@@ -54,8 +55,20 @@ export function detectAtomPurpose(atom, filePath = '') {
     };
   }
   
-  // Check 3: Is it in scripts/? → SCRIPT_MAIN
+  // Check 3: Is it in scripts/? → ANALYSIS_SCRIPT (audit tools) or SCRIPT_MAIN
   if (filePath.startsWith('scripts/')) {
+    const analysisPatterns = /audit|analyze|check|detect|find|inspect|investigate|scan|validate/i;
+    const isAnalysisTool = analysisPatterns.test(filePath) || analysisPatterns.test(atom.name);
+    
+    if (isAnalysisTool) {
+      return {
+        purpose: 'ANALYSIS_SCRIPT',
+        purposeReason: 'Audit/analysis script - internal tooling',
+        purposeConfidence: 0.9,
+        isDeadCode: false
+      };
+    }
+    
     return {
       purpose: 'SCRIPT_MAIN',
       purposeReason: 'Function in script file',
