@@ -6,10 +6,10 @@
 
 import { getFileAnalysis, getProjectMetadata } from '#layer-c/query/apis/file-api.js';
 import { createLogger } from '../../../utils/logger.js';
-import { findBrokenImports } from './validators/broken.js';
-import { findNonExistentImports } from './validators/non-existent.js';
-import { findUnusedImports } from './validators/unused.js';
-import { findCircularImports } from './validators/circular.js';
+import { findBrokenImports } from './broken.js';
+import { findNonExistentImports } from './non-existent.js';
+import { findUnusedImports } from './unused.js';
+import { findCircularImports } from './circular.js';
 import fs from 'fs/promises';
 
 const logger = createLogger('OmnySys:validate:imports');
