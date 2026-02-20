@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.43 - Mixin & Namespace Import calledBy Detection](changelog/v0.9.43-mixin-namespace-calledby.md)** - Latest release
+- **[v0.9.44 - Richer Archetypes + Connection Bridge Detection](changelog/v0.9.44-richer-archetypes-connection.md)** - Latest release
+- **[v0.9.43 - Mixin & Namespace Import calledBy Detection](changelog/v0.9.43-mixin-namespace-calledby.md)**
 - **[v0.9.42 - FileWatcher Pipeline Robustness](changelog/v0.9.42-filewatcher-robustness.md)**
 - **[v0.9.41 - Removed Atom Lineage + get_removed_atoms MCP Tool](changelog/v0.9.41-removed-atom-lineage.md)**
 - **[v0.9.40 - Recursive Pagination Middleware + MCP Tool Fixes](changelog/v0.9.40-pagination-middleware.md)**
@@ -22,7 +23,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.43]** | 2026-02-20 | **Mixin & Namespace Import calledBy Detection** (Latest) |
+| **[0.9.44]** | 2026-02-20 | **Richer Archetypes (14 tipos) + Connection Bridge Detection** (Latest) |
+| **[0.9.43]** | 2026-02-20 | **Mixin & Namespace Import calledBy Detection** |
 | **[0.9.42]** | 2026-02-20 | **FileWatcher Pipeline Robustness - 5 bugs críticos corregidos** |
 | **[0.9.41]** | 2026-02-20 | **Removed Atom Lineage + get_removed_atoms MCP Tool (20 total)** |
 | **[0.9.40]** | 2026-02-20 | **Recursive Pagination Middleware + MCP Tool Fixes** |

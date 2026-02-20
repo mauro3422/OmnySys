@@ -105,6 +105,69 @@ export async function explain_connection(args, context) {
     }
   }
 
+  // 6. Buscar puente indirecto: archivo C que importe A y llame métodos de B (o viceversa)
+  // Caso típico: mixin pattern — index.js hace `import * as A` + `Object.assign(X, A)`,
+  // y B llama `this.fn()` donde fn viene de A.
+  if (connections.length === 0) {
+    try {
+      const { getAllAtoms } = await import('#layer-c/storage/atoms/atom.js');
+      const allAtoms = await getAllAtoms(projectPath);
+
+      // Átomos de A y B para buscar calledBy cruzado
+      const atomsA = allAtoms.filter(a => a.filePath === fileA || a.filePath?.endsWith('/' + fileA));
+      const atomsB = allAtoms.filter(a => a.filePath === fileB || a.filePath?.endsWith('/' + fileB));
+
+      // Callers de funciones de A que vengan de B (o viceversa)
+      const callersOfA = new Set(atomsA.flatMap(a => a.calledBy || []));
+      const callersOfB = new Set(atomsB.flatMap(a => a.calledBy || []));
+
+      // Buscar IDs de atoms de B que llaman a A
+      const bCallsA = atomsB.some(a => {
+        const id = a.id || `${a.filePath}::${a.name}`;
+        return callersOfA.has(id);
+      });
+      const aCallsB = atomsA.some(a => {
+        const id = a.id || `${a.filePath}::${a.name}`;
+        return callersOfB.has(id);
+      });
+
+      if (bCallsA) {
+        connections.push({
+          type: 'mixin-call',
+          direction: `${fileB} → calls (via this.*) → ${fileA}`,
+          reason: `${fileB} calls functions defined in ${fileA} via mixin/prototype delegation`,
+          confidence: 0.9
+        });
+      }
+      if (aCallsB) {
+        connections.push({
+          type: 'mixin-call',
+          direction: `${fileA} → calls (via this.*) → ${fileB}`,
+          reason: `${fileA} calls functions defined in ${fileB} via mixin/prototype delegation`,
+          confidence: 0.9
+        });
+      }
+
+      // Buscar archivo puente: C que importe A y también importe B
+      if (connections.length === 0) {
+        const importsA = fileDataA.imports?.map(i => i.source || i.resolvedPath) || [];
+        const importsB = fileDataB.imports?.map(i => i.source || i.resolvedPath) || [];
+        const sharedImports = importsA.filter(i => importsB.includes(i));
+        if (sharedImports.length > 0) {
+          connections.push({
+            type: 'shared-dependency',
+            direction: `${fileA} ← ${sharedImports[0]} → ${fileB}`,
+            reason: `Both files import from '${sharedImports[0]}'`,
+            sharedModules: sharedImports.slice(0, 3),
+            confidence: 0.7
+          });
+        }
+      }
+    } catch {
+      // silencioso si falla
+    }
+  }
+
   if (connections.length === 0) {
     return {
       fileA,
