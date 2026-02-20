@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.38 - Caller Pattern Detection + calledBy Enhancement](changelog/v0.9.38-caller-pattern.md)** - Latest release
+- **[v0.9.39 - Full Metadata Exposure + 2 New MCP Tools](changelog/v0.9.39-full-metadata-mcp-tools.md)** - Latest release
+- **[v0.9.38 - Caller Pattern Detection + calledBy Enhancement](changelog/v0.9.38-caller-pattern.md)**
 - **[v0.9.37 - LLM-Free Mode + Bug Fixes + Tool Consolidation](changelog/v0.9.37-impact-map-enhanced.md)**
 - **[Changelog Directory](changelog/)** - All version-specific changelogs
 - **[Changelog Index](changelog/README.md)** - Complete version index
@@ -17,7 +18,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.38]** | 2026-02-20 | **Caller Pattern Detection + calledBy Enhancement (99.9% real coverage)** (Latest) |
+| **[0.9.39]** | 2026-02-20 | **Full Metadata Exposure + 2 New MCP Tools (19 total)** (Latest) |
+| **[0.9.38]** | 2026-02-20 | **Caller Pattern Detection + calledBy Enhancement (99.9% real coverage)** |
 | **[0.9.37]** | 2026-02-20 | **LLM-Free Mode + 4 Bug Fixes + Tool Consolidation (16→14)** |
 | **[0.9.35]** | 2026-02-19 | **File Culture Classifier - ZERO LLM classification system** - See `changelog/v0.9.35-file-culture-classifier.md` |
 | **[0.9.31]** | 2026-02-19 | **Cross-file calledBy index + LLM Metadata Completeness Score + OOM Fix** - See `changelog/v0.9.31-calledby-llm-completeness.md` |
@@ -45,7 +47,28 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.38 (2026-02-20)
+## 🚀 Latest Release: v0.9.39 (2026-02-20)
+
+**Full Metadata Exposure**: Las herramientas MCP ahora devuelven TODA la metadata disponible. +2 nuevas herramientas de análisis profundo. **19 MCP Tools total.**
+
+### New Tools
+- `get_async_analysis` - Análisis profundo de async con recommendations (867 async atoms, 38 high risk)
+- `get_atom_history` - Historial Git de átomos con commits, authors, blame
+
+### Enhanced Tools
+- `get_function_details` - Ahora devuelve: performance, asyncAnalysis, errorFlow, dataFlow, dna completos
+- `detect_patterns` - Usa patternHash para detectar código similar (412 duplicados, 17K LOC savings)
+
+### Highlights
+- ✨ **412 exact duplicates** detectados via structuralHash
+- ✨ **125 similar code patterns** via patternHash
+- ✨ **17,039 LOC** potential savings identificados
+- ✨ **867 async atoms** analizados con recommendations
+- 📚 **Metadata completa**: bigO, heavyCalls, tryBlocks, transformations, etc.
+
+---
+
+## Previous Release: v0.9.38 (2026-02-20)
 
 **Caller Pattern Detection**: Nuevo sistema que explica POR QUÉ un átomo no tiene calledBy. Coverage "real" de 99.9%. +2 bug fixes.
 
