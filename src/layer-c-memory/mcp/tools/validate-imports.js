@@ -55,9 +55,14 @@ function resolveImportPath(importSource, currentFile, projectPath) {
   // Relative imports
   if (importSource.startsWith('./') || importSource.startsWith('../')) {
     const resolved = path.resolve(currentDir, importSource);
-    // Try with and without extension
-    const extensions = ['', '.js', '.ts', '.jsx', '.tsx', '/index.js', '/index.ts'];
-    return extensions.map(ext => resolved + ext);
+    // Try with and without extension (avoid double .js.js)
+    const hasExt = path.extname(resolved);
+    if (hasExt) {
+      // Already has extension, just try as-is
+      return [resolved];
+    }
+    const extensions = ['.js', '.ts', '.jsx', '.tsx', '/index.js', '/index.ts'];
+    return [resolved, ...extensions.map(ext => resolved + ext)];
   }
   
   // Path aliases (e.g., #core/*, #layer-c/*)
@@ -80,7 +85,10 @@ function resolveImportPath(importSource, currentFile, projectPath) {
     for (const [alias, realPath] of Object.entries(aliasMap)) {
       if (importSource.startsWith(alias)) {
         const relativePath = importSource.slice(alias.length + 1); // +1 for /
-        return [path.join(projectPath, realPath, relativePath + '.js')];
+        // Avoid double extension (.js.js)
+        const hasExt = path.extname(relativePath);
+        const finalPath = hasExt ? relativePath : relativePath + '.js';
+        return [path.join(projectPath, realPath, finalPath)];
       }
     }
   }
