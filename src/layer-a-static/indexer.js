@@ -20,6 +20,7 @@ import {
 } from './pipeline/save.js';
 import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
+import { enrichWithCulture } from './analysis/file-culture-classifier.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -129,6 +130,107 @@ export async function indexProject(rootPath, options = {}) {
       logger.info(`  ✓ Individual atoms saved to .omnysysdata/atoms/\n`);
     }
 
+    // 🆕 PASO 3.6: Cross-file calledBy linkage (MEJORADO v0.9.34)
+    // buildCallGraph() only sees atoms within a single file.
+    // Here we build the global reverse-index: for every call in every atom,
+    // find the atom that defines that function (in any file) and add the caller to its calledBy.
+    if (verbose) logger.info('🔗 Building cross-file calledBy index...');
+    {
+      // Collect ALL atoms across all files
+      const allAtoms = [];
+      for (const parsedFile of Object.values(parsedFiles)) {
+        if (parsedFile.atoms) allAtoms.push(...parsedFile.atoms);
+      }
+
+      // Build MULTI-LEVEL lookup (v0.9.34 fix)
+      const atomBySimpleName = new Map();      // "info" → [atom1, atom2, ...]
+      const atomByQualifiedName = new Map();   // "Logger.info" → atom
+      const atomByFilePath = new Map();        // full id → atom
+
+      for (const atom of allAtoms) {
+        // Por nombre simple (puede haber múltiples candidatos)
+        if (!atomBySimpleName.has(atom.name)) {
+          atomBySimpleName.set(atom.name, []);
+        }
+        atomBySimpleName.get(atom.name).push(atom);
+        
+        // Por nombre calificado (único) - para métodos de clase
+        if (atom.className) {
+          const qualifiedName = `${atom.className}.${atom.name}`;
+          atomByQualifiedName.set(qualifiedName, atom);
+        }
+        
+        // Por ID completo (único)
+        atomByFilePath.set(atom.id, atom);
+      }
+
+      // Smart lookup function
+      function findTargetAtom(callName, callerAtom) {
+        // 1. Buscar por nombre calificado primero (más preciso)
+        if (callName && callName.includes('.')) {
+          return atomByQualifiedName.get(callName);
+        }
+        
+        // 2. Buscar por nombre simple
+        const candidates = atomBySimpleName.get(callName) || [];
+        
+        if (candidates.length === 0) return null;
+        if (candidates.length === 1) return candidates[0];
+        
+        // 3. Si hay múltiples candidatos, preferir:
+        //    - Exportado sobre no exportado
+        //    - Archivo diferente al caller
+        const exported = candidates.find(a => a.isExported);
+        if (exported) return exported;
+        
+        const differentFile = candidates.find(a => a.filePath !== callerAtom.filePath);
+        if (differentFile) return differentFile;
+        
+        return candidates[0];
+      }
+
+      // For each atom's ALL calls (not just external), find the target atom and add calledBy
+      let crossFileLinks = 0;
+      let intraFileLinks = 0;
+      
+      for (const callerAtom of allAtoms) {
+        // Considerar TODAS las llamadas
+        const allCalls = [
+          ...(callerAtom.calls || []),
+          ...(callerAtom.internalCalls || []),
+          ...(callerAtom.externalCalls || [])
+        ];
+        
+        for (const call of allCalls) {
+          if (!call.name) continue;
+          
+          const targetAtom = findTargetAtom(call.name, callerAtom);
+          if (targetAtom && targetAtom.id !== callerAtom.id) {
+            if (!targetAtom.calledBy) targetAtom.calledBy = [];
+            if (!targetAtom.calledBy.includes(callerAtom.id)) {
+              targetAtom.calledBy.push(callerAtom.id);
+              if (targetAtom.filePath !== callerAtom.filePath) {
+                crossFileLinks++;
+              } else {
+                intraFileLinks++;
+              }
+            }
+          }
+        }
+      }
+
+      // Persist updated atoms back to disk (only those whose calledBy grew)
+      const updatedAtoms = allAtoms.filter(a => a.calledBy && a.calledBy.length > 0);
+      for (const atom of updatedAtoms) {
+        const filePath = atom.filePath;
+        if (filePath && atom.name) {
+          await saveAtom(absoluteRootPath, filePath, atom.name, atom);
+        }
+      }
+
+      if (verbose) logger.info(`  ✓ ${crossFileLinks} cross-file + ${intraFileLinks} intra-file calledBy links (${updatedAtoms.length} atoms updated)\n`);
+    }
+
     // 🧹 MEMORY OPTIMIZATION: Clear source code from parsed files to free memory
     // The source is no longer needed after atom extraction
     let freedMemory = 0;
@@ -153,6 +255,17 @@ export async function indexProject(rootPath, options = {}) {
 
     // Paso 6: Construir grafo
     const systemMap = buildSystemGraph(normalizedParsedFiles, normalizedResolvedImports, verbose);
+    
+    // 🆕 PASO 6.5: Clasificar culturas de archivos (ZERO LLM)
+    if (verbose) logger.info('🏷️  Classifying file cultures...');
+    enrichWithCulture(systemMap);
+    if (verbose) {
+      const stats = systemMap.metadata?.cultureStats || {};
+      logger.info(`  ✓ Citizens: ${stats.citizen || 0}, Auditors: ${stats.auditor || 0}`);
+      logger.info(`  ✓ Gatekeepers: ${stats.gatekeeper || 0}, Laws: ${stats.laws || 0}`);
+      logger.info(`  ✓ EntryPoints: ${stats.entrypoint || 0}, Scripts: ${stats.script || 0}`);
+      logger.info(`  ✓ Unknown: ${stats.unknown || 0}\n`);
+    }
 
     // Paso 7: Guardar grafo en .OmnySysData/
     const dataDir = await ensureDataDir(absoluteRootPath);

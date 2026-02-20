@@ -119,14 +119,12 @@ describe('buildPrompt — fallback cuando falla el engine (Bug 3)', () => {
     expect(typeof result.userPrompt).toBe('string');
   });
 
-  test('retorna fallback cuando validatePrompt lanza', async () => {
+  test('retorna fallback cuando generatePrompt retorna systemPrompt inválido', async () => {
+    // Si generatePrompt retorna un systemPrompt que no es string, debe caer al fallback
     promptEngine.generatePrompt.mockResolvedValue({
-      systemPrompt: 'sys',
+      systemPrompt: null,  // Invalid
       userPrompt: 'usr',
       analysisType: 'test'
-    });
-    promptEngine.validatePrompt.mockImplementation(() => {
-      throw new Error('invalid prompt');
     });
 
     const result = await buildPrompt('code', 'file.js', {}, {});

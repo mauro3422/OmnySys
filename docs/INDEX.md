@@ -50,6 +50,7 @@ docs/
 | [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
 | [code-physics.md](02-architecture/code-physics.md) | **⭐ NUEVO - Código como Física**: Entropía, auto-reparación, sociedades de átomos |
 | [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ NUEVO - Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
+| [file-cultures.md](02-architecture/file-cultures.md) | **⭐ NUEVO - Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |
 | [context-selection.md](02-architecture/context-selection.md) | Algoritmos de selección de contexto |
 | **data-flow/** | |
 | ├─ [README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |

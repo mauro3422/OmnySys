@@ -80,9 +80,10 @@ export function parseFile(filePath, code) {
       ExportNamedDeclaration(nodePath) {
         fileInfo.exports.push(...extractNamedExports(nodePath));
         
-        // Si tiene declaración, procesarla
+        // Si tiene declaración de variables, extraer constantes y objetos
         const node = nodePath.node;
         if (node.declaration?.type === 'VariableDeclaration') {
+          // Pasar el path correcto para que extractVariableExports pueda navegar
           extractVariableExports(nodePath.get('declaration'), fileInfo);
         }
       },

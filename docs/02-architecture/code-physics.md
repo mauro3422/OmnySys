@@ -190,7 +190,9 @@ applyFix(file, oldImport, newImport);
 
 ### La Idea
 
-Las funciones no existen en aislamiento. Forman **sociedades** con reglas emergentes:
+Las funciones (átomos) no existen en aislamiento. Forman **sociedades** con reglas emergentes:
+
+> **Nota**: Los archivos (moléculas) también tienen roles sociales. Ver [file-cultures.md](./file-cultures.md) para la clasificación de culturas (Aduanero, Leyes Físicas, Auditor, Script, Ciudadano).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐

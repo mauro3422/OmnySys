@@ -71,32 +71,78 @@ export function extractCallGraph(code) {
     }
   }
 
-  // Extract function calls
-  const callPattern = /(\w+)\s*\(/g;
+  // Extract function calls (v0.9.34 - improved detection)
+  // Pattern 1: simple call - functionName(
+  const simpleCallPattern = /(\w+)\s*\(/g;
   let callMatch;
-  while ((callMatch = callPattern.exec(code)) !== null) {
+  while ((callMatch = simpleCallPattern.exec(code)) !== null) {
     const callee = callMatch[1];
     const line = getLineNumber(code, callMatch.index);
 
-    // Skip common keywords
-    if (['if', 'for', 'while', 'switch', 'catch', 'function', 'return'].includes(callee)) {
+    // Skip common keywords and builtins
+    if (['if', 'for', 'while', 'switch', 'catch', 'function', 'return', 
+         'console', 'JSON', 'Object', 'Array', 'String', 'Number', 'Boolean',
+         'Promise', 'Map', 'Set', 'Date', 'Math', 'Error', 'setTimeout', 
+         'setInterval', 'clearTimeout', 'clearInterval', 'fetch', 'require'].includes(callee)) {
       continue;
     }
 
     if (definedFunctions.has(callee)) {
-      // Internal call
-      internalCalls.push({
-        callee,
-        line,
-        type: 'internal'
-      });
+      internalCalls.push({ callee, line, type: 'internal' });
     } else if (importedSymbols.has(callee)) {
-      // External call
-      externalCalls.push({
-        callee,
-        line,
-        type: 'external'
-      });
+      externalCalls.push({ callee, line, type: 'external' });
+    }
+  }
+
+  // Pattern 2: member call - this.method( or obj.method(
+  const memberCallPattern = /(?:this|(\w+))\.(\w+)\s*\(/g;
+  let memberMatch;
+  while ((memberMatch = memberCallPattern.exec(code)) !== null) {
+    const objName = memberMatch[1] || 'this';
+    const methodName = memberMatch[2];
+    const line = getLineNumber(code, memberMatch.index);
+    const fullName = `${objName}.${methodName}`;
+
+    // Skip known builtins
+    const builtinMethods = ['log', 'info', 'warn', 'error', 'debug', 'trace',
+      'push', 'pop', 'shift', 'unshift', 'splice', 'slice', 'map', 'filter', 
+      'find', 'reduce', 'forEach', 'some', 'every', 'includes', 'indexOf',
+      'join', 'split', 'trim', 'toLowerCase', 'toUpperCase', 'replace',
+      'match', 'test', 'toString', 'valueOf', 'hasOwnProperty', 'keys', 
+      'values', 'entries', 'assign', 'freeze', 'seal', 'parse', 'stringify',
+      'then', 'catch', 'finally', 'resolve', 'reject', 'all', 'race',
+      'addEventListener', 'removeEventListener', 'appendChild', 'removeChild'];
+    
+    if (builtinMethods.includes(methodName)) {
+      continue;
+    }
+
+    // Check if it's a call to an imported object's method
+    if (importedSymbols.has(objName)) {
+      externalCalls.push({ callee: fullName, name: methodName, object: objName, line, type: 'external' });
+    } else {
+      // Assume internal (this.method or local object)
+      internalCalls.push({ callee: fullName, name: methodName, object: objName, line, type: 'internal' });
+    }
+  }
+
+  // Pattern 3: constructor calls - new ClassName(
+  const constructorPattern = /new\s+(\w+)\s*\(/g;
+  let constructorMatch;
+  while ((constructorMatch = constructorPattern.exec(code)) !== null) {
+    const className = constructorMatch[1];
+    const line = getLineNumber(code, constructorMatch.index);
+    
+    // Skip builtins
+    if (['Promise', 'Map', 'Set', 'Date', 'Error', 'TypeError', 'ReferenceError',
+         'Array', 'Object', 'String', 'Number', 'Boolean', 'RegExp'].includes(className)) {
+      continue;
+    }
+    
+    if (importedSymbols.has(className)) {
+      externalCalls.push({ callee: className, line, type: 'constructor', isExternal: true });
+    } else {
+      internalCalls.push({ callee: className, line, type: 'constructor' });
     }
   }
 

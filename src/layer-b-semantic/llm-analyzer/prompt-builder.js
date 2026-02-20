@@ -27,9 +27,6 @@ export async function buildPrompt(code, filePath, staticAnalysis, projectContext
     // Usar el Prompt Engine para generar el prompt basado en metadatos
     const promptConfig = await promptEngine.generatePrompt(metadata || {}, code);
     
-    // Validar el prompt generado
-    promptEngine.validatePrompt(promptConfig);
-    
     // Asegurar que los prompts sean strings válidos
     if (typeof promptConfig.systemPrompt !== 'string') {
       throw new Error(`Invalid systemPrompt type: ${typeof promptConfig.systemPrompt}`);
@@ -44,7 +41,7 @@ export async function buildPrompt(code, filePath, staticAnalysis, projectContext
       analysisType: promptConfig.analysisType
     };
   } catch (error) {
-    logger.error(`Error building prompt for ${filePath}:`, error.stack ?? error.message ?? String(error));
+    logger.error(`Error building prompt for ${filePath}:`, error);
     // Fallback a prompts básicos
     return {
       systemPrompt: `You are a code analyzer. Return ONLY valid JSON.`,

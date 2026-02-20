@@ -114,6 +114,7 @@ export class ChainBuilder {
    * @returns {Object} - Chain object
    */
   buildChainFromAtom(atom, visited) {
+    visited.add(atom.id);
     const chain = {
       id: this.idGenerator.generate(),
       entryFunction: atom.name,

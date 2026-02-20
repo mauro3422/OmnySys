@@ -16,7 +16,10 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.29]** | 2026-02-19 | **Preprocessor Framework + Import Cleanup + MCP Stability** (Latest) - See `changelog/v0.9.29-preprocessor-framework-mcp-fixes.md` |
+| **[0.9.35]** | 2026-02-19 | **File Culture Classifier - ZERO LLM classification system** (Latest) - See `changelog/v0.9.35-file-culture-classifier.md` |
+| **[0.9.31]** | 2026-02-19 | **Cross-file calledBy index + LLM Metadata Completeness Score + OOM Fix** - See `changelog/v0.9.31-calledby-llm-completeness.md` |
+| **[0.9.30]** | 2026-02-19 | **Bug Fixes: Data Flow via AST Node + Atom ID Normalization + ChainBuilder Stack Overflow** - See `changelog/v0.9.30-dataflow-ast-node-fixes.md` |
+| **[0.9.29]** | 2026-02-19 | **Preprocessor Framework + Import Cleanup + MCP Stability** - See `changelog/v0.9.29-preprocessor-framework-mcp-fixes.md` |
 | **[0.9.20–0.9.28]** | 2026-02-18/19 | **Import Cleanup: 0 broken imports en 1152 archivos** - Ver changelog v0.9.29 (consolidado) |
 | **[0.9.18]** | 2026-02-18 | **Runtime Bugfix: 6 bugs en arranque MCP** - See `changelog/v0.9.18-runtime-bugfix.md` |
 | **[0.9.17]** | 2026-02-18 | **Estabilización completa + Deuda Técnica eliminada** - See `changelog/v0.9.17-cache-singleton-oom-fix.md` |

@@ -31,12 +31,162 @@ import { enrichWithDNA } from '../builders/enrichment.js';
  * @returns {Promise<Array>} - Array of atom metadata
  */
 export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
-  return Promise.all(
+  const atoms = [];
+  
+  // Process functions (existing)
+  const functionAtoms = await Promise.all(
     (fileInfo.functions || []).map(async (functionInfo) => {
       const functionCode = extractFunctionCode(code, functionInfo);
       return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath);
     })
   );
+  atoms.push(...functionAtoms);
+  
+  // Process constantExports (v0.9.34 - new)
+  const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
+    return buildVariableAtom(constInfo, filePath, 'constant');
+  });
+  atoms.push(...constantAtoms);
+  
+  // Process objectExports as config atoms (v0.9.34 - new)
+  const objectAtoms = (fileInfo.objectExports || []).map(objInfo => {
+    return buildVariableAtom(objInfo, filePath, 'config');
+  });
+  atoms.push(...objectAtoms);
+  
+  return atoms;
+}
+
+/**
+ * Build an atom for a variable/constant export
+ * @param {Object} varInfo - Variable info from parser
+ * @param {string} filePath - File path
+ * @param {string} varType - 'constant' or 'config'
+ * @returns {Object} - Atom metadata
+ */
+function buildVariableAtom(varInfo, filePath, varType = 'constant') {
+  const name = varInfo.name;
+  const line = varInfo.line || 0;
+  
+  return {
+    id: `${filePath}::${name}`,
+    name,
+    type: 'variable',
+    filePath,
+    line,
+    endLine: line,
+    linesOfCode: 1,
+    
+    // Variable-specific
+    kind: 'const',
+    valueType: varType === 'config' ? 'object' : (varInfo.valueType || 'unknown'),
+    valueProperties: varInfo.properties || varInfo.propertyDetails || [],
+    isSignificant: varType === 'config',
+    
+    // Export status
+    isExported: true,
+    
+    // Metadata estándar
+    complexity: 1,
+    hasSideEffects: false,
+    hasNetworkCalls: false,
+    hasDomManipulation: false,
+    hasStorageAccess: false,
+    hasLogging: false,
+    networkEndpoints: [],
+    
+    // Calls
+    calls: [],
+    internalCalls: [],
+    externalCalls: [],
+    externalCallCount: 0,
+    
+    // Compatibilidad
+    className: null,
+    functionType: 'variable',
+    isAsync: false,
+    hasErrorHandling: false,
+    hasNestedLoops: false,
+    hasBlockingOps: false,
+    
+    // Temporal
+    hasLifecycleHooks: false,
+    lifecycleHooks: [],
+    hasCleanupPatterns: false,
+    temporal: {
+      patterns: { timers: [], asyncPatterns: null, events: [], lifecycleHooks: [], executionOrder: { mustRunBefore: [], mustRunAfter: [], canRunInParallel: [] } },
+      executionOrder: null
+    },
+    
+    // TypeContracts
+    typeContracts: {
+      params: [],
+      returns: null,
+      throws: [],
+      generics: [],
+      signature: `const ${name}: ${varType}`,
+      confidence: 0.8
+    },
+    
+    // Error flow
+    errorFlow: { throws: [], catches: [], tryBlocks: [], unhandledCalls: [], propagation: 'none' },
+    
+    // Performance
+    performance: {
+      complexity: { cyclomatic: 1, cognitive: 0, bigO: 'O(1)' },
+      expensiveOps: { nestedLoops: 0, recursion: false, blockingOps: [], heavyCalls: [] },
+      resources: { network: false, disk: false, memory: 'low', dom: false },
+      estimates: { executionTime: 'instant', blocking: false, async: false, expensiveWithCache: false },
+      impactScore: 0
+    },
+    
+    // Data flow
+    dataFlow: {
+      graph: { nodes: [], edges: [], meta: { totalNodes: 0, totalEdges: 0 } },
+      inputs: [],
+      transformations: [],
+      outputs: [{ type: 'variable', name, valueType: varType, line }],
+      analysis: { invariants: [], inferredTypes: {} },
+      _meta: { extractedAt: new Date().toISOString(), version: '1.0.0' }
+    },
+    hasDataFlow: true,
+    dataFlowAnalysis: { invariants: [], inferredTypes: {} },
+    
+    // DNA
+    dna: {
+      structuralHash: `var-${name}-${line}`,
+      patternHash: varType,
+      flowType: 'data',
+      operationSequence: ['declare'],
+      complexityScore: 1,
+      inputCount: 0,
+      outputCount: 1,
+      transformationCount: 0,
+      semanticFingerprint: 'variable',
+      extractedAt: new Date().toISOString(),
+      version: '1.0',
+      id: `var-${name}`
+    },
+    
+    lineage: null,
+    extractedAt: new Date().toISOString(),
+    
+    _meta: {
+      dataFlowVersion: '1.0.0-fractal',
+      extractionTime: new Date().toISOString(),
+      confidence: 0.7
+    },
+    
+    // Archetype
+    archetype: {
+      type: varType === 'config' ? 'config' : 'constant',
+      severity: varInfo.riskLevel === 'high' ? 3 : (varInfo.riskLevel === 'medium' ? 2 : 1),
+      confidence: 1
+    },
+    
+    // calledBy se poblará en cross-file linkage
+    calledBy: []
+  };
 }
 
 /**
@@ -100,13 +250,12 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
  */
 async function extractDataFlowSafe(functionInfo, functionCode, filePath) {
   try {
-    const functionAst = functionInfo.node || functionInfo.ast;
-    if (functionAst) {
+    // Prefer the already-parsed AST node to avoid re-parsing (fixes class methods)
+    const input = functionInfo.node || functionCode;
+    if (input) {
       return await extractDataFlowV2(
-        functionAst,
-        functionCode,
-        functionInfo.name,
-        filePath
+        input,
+        { functionName: functionInfo.name }
       );
     }
   } catch (error) {

@@ -15,17 +15,30 @@ import path from 'path';
  */
 export function getFileId(filePath) {
   if (!filePath) return 'unknown';
-  
-  // Usar el path relativo completo para evitar colisiones
-  // Ej: src/api/userService.js -> src_api_userService
-  // Primero remover extensión, luego normalizar path
-  const withoutExt = filePath.replace(/\.[^.]+$/, '');
-  const normalized = withoutExt
-    .replace(/\\/g, '_')  // Windows backslash
-    .replace(/\//g, '_')  // Unix slash
-    .replace(/^_|_$/g, '')  // Remover leading/trailing underscores
-    .replace(/[^a-zA-Z0-9_]/g, '');  // Remover caracteres especiales
-  
+
+  // Normalize to forward slashes
+  let normalized = filePath.replace(/\\/g, '/');
+
+  // If absolute path, strip everything up to the first project-relative segment
+  // Looks for markers like /src/, /lib/, /app/, /packages/
+  if (path.isAbsolute(normalized) || /^[a-zA-Z]:\//.test(normalized)) {
+    const markers = ['/src/', '/lib/', '/app/', '/packages/'];
+    for (const marker of markers) {
+      const idx = normalized.indexOf(marker);
+      if (idx !== -1) {
+        normalized = normalized.slice(idx + 1); // e.g. "src/layer-a/..."
+        break;
+      }
+    }
+  }
+
+  // Remove extension, then replace separators and special chars with underscores
+  normalized = normalized
+    .replace(/\.[^.]+$/, '')
+    .replace(/\//g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '')
+    .replace(/^_|_$/g, '');
+
   return normalized || 'unknown';
 }
 

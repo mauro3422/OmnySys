@@ -23,6 +23,7 @@ const traverse = _traverse.default ?? _traverse;
 import { extractFunctionDeclaration, extractFunctionExpression } from './function-extractor.js';
 import { extractArrowFunction } from './arrow-extractor.js';
 import { extractClassMethod, extractPrivateMethod, extractAccessor } from './class-method-extractor.js';
+import { extractVariable } from './variable-extractor.js';
 
 const logger = console; // Simplificado para demo
 
@@ -102,6 +103,32 @@ export function extractAtoms(code, filePath) {
         const className = getClassName(path);
         atoms.push(extractPrivateMethod(path, filePath, className));
       }
+    },
+    
+    // Variables/Constantes (v0.9.34 - nuevo)
+    // Solo exportadas y que NO sean funciones/arrows (ya cubiertas)
+    VariableDeclarator(path) {
+      // Solo top-level
+      if (!isTopLevelVariable(path)) return;
+      
+      const init = path.node.init;
+      // Skip si es función o arrow (ya cubiertas por otros visitors)
+      if (init && (init.type === 'FunctionExpression' || init.type === 'ArrowFunctionExpression')) {
+        return;
+      }
+      
+      // Detectar si está exportado
+      const parentDecl = path.parent;
+      const grandParent = path.parentPath?.parent;
+      const isExported = grandParent?.type === 'ExportNamedDeclaration' ||
+                         (parentDecl?.type === 'VariableDeclaration' && 
+                          path.parentPath?.parentPath?.node?.type === 'ExportNamedDeclaration');
+      
+      const kind = parentDecl?.kind || 'const';
+      const variable = extractVariable(path, filePath, isExported, kind);
+      if (variable) {
+        atoms.push(variable);
+      }
     }
   });
   
@@ -166,6 +193,26 @@ function getClassName(path) {
     current = current.parentPath;
   }
   return 'AnonymousClass';
+}
+
+/**
+ * Check if VariableDeclarator is top-level (direct child of Program or Export)
+ */
+function isTopLevelVariable(path) {
+  const parent = path.parent;
+  const grandParent = path.parentPath?.parent;
+  
+  // Direct: const x = ... at program level
+  if (parent?.type === 'VariableDeclaration' && grandParent?.type === 'Program') {
+    return true;
+  }
+  
+  // Exported: export const x = ...
+  if (parent?.type === 'VariableDeclaration' && grandParent?.type === 'ExportNamedDeclaration') {
+    return true;
+  }
+  
+  return false;
 }
 
 export default extractAtoms;

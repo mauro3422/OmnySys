@@ -117,6 +117,12 @@ export class JobAnalyzer {
 
     const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract/index.js');
     const { saveFileAnalysis } = await import('#layer-c/storage/index.js');
+    const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
+
+    // Load fileAnalysis from disk if not in job (avoids keeping all 200+ analyses in RAM)
+    if (!job.fileAnalysis) {
+      job.fileAnalysis = await getFileAnalysis(this.rootPath, job.filePath);
+    }
 
     const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
     const code = await this.getFileCode(job);
@@ -145,6 +151,10 @@ export class JobAnalyzer {
     };
 
     await saveFileAnalysis(this.rootPath, job.filePath, mergedResult);
+
+    // Release large objects from job to allow GC
+    job.fileAnalysis = null;
+
     return mergedResult;
   }
 

@@ -198,21 +198,27 @@ export function buildSystemMap(parsedFiles, resolvedImports) {
   // ============================================
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     const normalized = normalizePath(filePath);
+    const fileNode = systemMap.files[normalized];
 
     if (fileInfo.typeDefinitions?.length > 0) {
       systemMap.typeDefinitions[normalized] = fileInfo.typeDefinitions;
+      if (fileNode) fileNode.typeDefinitions = fileInfo.typeDefinitions;
     }
     if (fileInfo.enumDefinitions?.length > 0) {
       systemMap.enumDefinitions[normalized] = fileInfo.enumDefinitions;
+      if (fileNode) fileNode.enumDefinitions = fileInfo.enumDefinitions;
     }
     if (fileInfo.constantExports?.length > 0) {
       systemMap.constantExports[normalized] = fileInfo.constantExports;
+      if (fileNode) fileNode.constantExports = fileInfo.constantExports;
     }
     if (fileInfo.objectExports?.length > 0) {
       systemMap.objectExports[normalized] = fileInfo.objectExports;
+      if (fileNode) fileNode.objectExports = fileInfo.objectExports;
     }
     if (fileInfo.typeUsages?.length > 0) {
       systemMap.typeUsages[normalized] = fileInfo.typeUsages;
+      if (fileNode) fileNode.typeUsages = fileInfo.typeUsages;
     }
   }
 

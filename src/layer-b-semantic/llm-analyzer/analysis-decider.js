@@ -5,201 +5,199 @@
  * 
  * ARCHITECTURE: Layer B (Confidence-Based Decision)
  * Bridges Layer A (static) and Layer C (LLM) - decides when LLM is necessary
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * 📋 EXTENSION GUIDE - Adding New LLM Decision Criteria
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * To add a new criterion for when to use LLM analysis:
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * OPTION A: New Detection Criterion (e.g., Security Review, Performance Analysis)
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * Use this when you want to force LLM analysis for specific code patterns
- * that static analysis can't fully evaluate.
- *
- * 1️⃣  CREATE DETECTOR FUNCTION (add after existing check functions, line ~170+)
- *
- *     /**
- *      * Checks if file needs security review from LLM
- *      * Examples: crypto usage, auth logic, input validation
- *      * /
- *     function needsSecurityReview(fileAnalysis) {
- *       const atoms = fileAnalysis.atoms || [];
- *       
- *       // Check for security-sensitive patterns in atoms
- *       return atoms.some(atom => {
- *         // Uses crypto/auth APIs
- *         const securityCalls = ['crypto', 'bcrypt', 'jwt', 'auth'];
- *         const hasSecurityCalls = atom.calls?.some(call => 
- *           securityCalls.some(api => call.name?.toLowerCase().includes(api))
- *         );
- *         
- *         // Handles user input
- * *         const handlesUserInput = atom.params?.some(p => 
- *           ['userInput', 'data', 'payload'].includes(p.name)
- *         );
- *         
- *         return hasSecurityCalls || handlesUserInput;
- *       });
- *     }
- *
- * 2️⃣  ADD CHECK to needsLLMAnalysis() (line ~23-66):
- *
- *     // 8. Security-sensitive code -> SÍ LLM (for security review)
- *     if (needsSecurityReview(fileAnalysis)) {
- *       return true;
- *     }
- *
- * 3️⃣  UPDATE CONFIDENCE SCORING (if applicable):
- *     If this check represents a gap in static analysis confidence,
- *     also update any confidence calculation to reflect this.
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * OPTION B: Refine Existing Criterion
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * To make an existing check more precise:
- *
- * EXAMPLE: Making hasUnresolvedEvents more precise
- *
- *     // BEFORE (line ~93-109):
- *     function hasUnresolvedEvents(fileAnalysis) {
- *       const eventNames = semanticAnalysis.events?.all || [];
- *       const resolvedEvents = (fileAnalysis.semanticConnections || [])
- *         .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
- *         .map(c => c.event || c.via);
- *       return eventNames.some(e => !resolvedEvents.includes(e.event || e));
- *     }
- *
- *     // AFTER (more sophisticated):
- *     function hasUnresolvedEvents(fileAnalysis) {
- *       const eventNames = semanticAnalysis.events?.all || [];
- *       
- *       // NEW: Consider event patterns (some are always OK)
- *       const safeEventPatterns = ['click', 'submit', 'load']; // Standard DOM events
- *       const suspiciousEvents = eventNames.filter(e => {
- *         const eventName = e.event || e;
- *         // Custom events (with colons) need more scrutiny
- *         const isCustomEvent = eventName.includes(':');
- *         // High-frequency events might indicate performance issues
- *         const isHighFrequency = ['scroll', 'mousemove', 'resize'].includes(eventName);
- *         return isCustomEvent || isHighFrequency;
- *       });
- *       
- *       const resolvedEvents = (fileAnalysis.semanticConnections || [])
- *         .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
- *         .map(c => c.event || c.via);
- *       
- *       // Only LLM if there are suspicious unresolved events
- *       return suspiciousEvents.some(e => !resolvedEvents.includes(e.event || e));
- *     }
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * ⚠️  PRINCIPLES TO MAINTAIN
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * ✓ BYPASS FIRST: Default to NOT using LLM (confidence >= 0.8)
- * ✓ Evidence-based: Each check must look at specific atom/file metadata
- * ✓ Performance: Keep checks fast (O(n) where n = atoms in file)
- * ✓ SSOT: Don't duplicate detection logic from molecular-extractor.js
- *   Instead, check the atom metadata that extractor already produced
- * ✓ Layer B only: This file INTERPRETS metadata, doesn't extract new data
- *
- * 🔗  RELATED FILES:
- *     - molecular-extractor.js: Source of atom metadata we check
- *     - prompt-engine/: Where LLM prompts are built for files that need analysis
- *     - llm-analyzer/core.js: Where the actual LLM calls happen
- *
- * 📊  BYPASS RATE TARGET: 90%+
- *     Measure: console.log how often we return false vs true
- *     If bypass rate drops, criteria are too broad - refine them
- *
- * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 🆕 v0.9.33: Integración con Inference Engine
+ * El Inference Engine deduce patrones SIN LLM, reduciendo aún más las llamadas.
+ * Si el Inference Engine puede resolver algo → BYPASS LLM
  *
  * @module llm-analyzer/analysis-decider
  * @phase Layer B (Decision Logic)
- * @dependencies NONE (pure functions over metadata)
  */
+
+// 🆕 v0.9.33: Importar Inference Engine para deducir sin LLM
+import { inferFromFile } from '../inference-engine/index.js';
+
+/**
+ * Calcula un score de completitud de metadatos estáticos para un archivo (0.0 - 1.0)
+ *
+ * La idea: si Layer A ya extrajo datos ricos para un archivo, el LLM no aporta nada nuevo.
+ * Si hay "huecos oscuros" (sin callers, sin imports, sin exports, sin dataFlow),
+ * el LLM puede llenar esos vacíos con razonamiento semántico.
+ *
+ * @param {object} fileAnalysis - Análisis completo del archivo
+ * @returns {{ score: number, gaps: string[] }} - score 0-1 y lista de campos faltantes
+ */
+export function computeMetadataCompleteness(fileAnalysis) {
+  const gaps = [];
+  let filled = 0;
+  const total = 6; // campos fiables disponibles en el file-level JSON
+
+  const atoms = fileAnalysis.atoms || [];
+  const imports = fileAnalysis.imports || [];
+  const exports = fileAnalysis.exports || [];
+  const usedBy = fileAnalysis.usedBy || [];
+  const semanticConnections = fileAnalysis.semanticConnections || [];
+  const totalAtoms = fileAnalysis.totalAtoms || atoms.length;
+  const filePath = fileAnalysis.filePath || '';
+
+  // EXCEPCIONES: Archivos que NO necesitan LLM por naturaleza
+  const isEntryPoint = imports.length > 0 && usedBy.length === 0;
+  const isTypeFile = filePath.endsWith('.d.ts') || 
+                     filePath.includes('/types/') || 
+                     filePath.includes('/@types/');
+  const isConfigFile = filePath.includes('config') || 
+                       filePath.includes('constant') || 
+                       filePath.includes('.config.');
+  const isTestFile = filePath.includes('.test.') || 
+                     filePath.includes('.spec.') || 
+                     filePath.includes('/tests/');
+  const isUtilityFile = filePath.includes('/utils/') || 
+                        filePath.includes('/helpers/');
+
+  // Si es un archivo especial, retornar score alto sin análisis
+  if (isTypeFile || isConfigFile || isTestFile) {
+    return { score: 1.0, gaps: [] };
+  }
+
+  // 1. ¿Tiene átomos extraídos?
+  if (totalAtoms > 0 || isConfigFile || isEntryPoint) filled++;
+  else gaps.push('no-atoms');
+
+  // 2. ¿Alguien usa este archivo?
+  if (usedBy.length > 0 || isEntryPoint) filled++;
+  else gaps.push('no-usedby');
+
+  // 3. ¿Tiene dataFlow en al menos un átomo?
+  const hasDataFlow = atoms.some(a => a.dataFlow && (
+    (a.dataFlow.inputs && a.dataFlow.inputs.length > 0) ||
+    (a.dataFlow.outputs && a.dataFlow.outputs.length > 0)
+  ));
+  if (hasDataFlow || isUtilityFile || totalAtoms === 0) filled++;
+  else gaps.push('no-dataflow');
+
+  // 4. ¿Tiene calls en al menos un átomo?
+  const hasCalls = atoms.some(a => (a.calls || []).length > 0);
+  if (hasCalls || totalAtoms === 0 || isConfigFile) filled++;
+  else gaps.push('no-calls');
+
+  // 5. ¿Tiene imports o exports?
+  if (imports.length > 0 || exports.length > 0 || isEntryPoint) filled++;
+  else gaps.push('isolated-module');
+
+  // 6. ¿Conexiones semánticas resueltas?
+  if (semanticConnections.length > 0) filled++;
+  else {
+    const semanticAnalysis = fileAnalysis.semanticAnalysis || {};
+    const hasSemanticSignals = (semanticAnalysis.events?.all?.length > 0) ||
+                               (semanticAnalysis.localStorage?.all?.length > 0) ||
+                               (semanticAnalysis.globals?.all?.length > 0);
+    if (!hasSemanticSignals) filled++;
+    else gaps.push('unresolved-semantic');
+  }
+
+  return { score: filled / total, gaps };
+}
+
+/**
+ * 🆕 v0.9.33: Usa el Inference Engine para deducir patrones SIN LLM
+ * 
+ * Si el Inference Engine puede resolver patrones con alta confianza,
+ * NO necesitamos LLM.
+ * 
+ * @param {object} fileAnalysis - Análisis del archivo
+ * @returns {{ canBypass: boolean, inferredPatterns: object, confidence: number }}
+ */
+function tryInferWithoutLLM(fileAnalysis) {
+  try {
+    const inferences = inferFromFile(fileAnalysis);
+    
+    // Si el Inference Engine encontró patrones con alta confianza
+    const patterns = inferences.patterns || {};
+    const risk = inferences.risk || {};
+    
+    // Calcular confianza de las inferencias
+    const hasHighConfidencePatterns = Object.values(patterns).some(p => 
+      p && typeof p === 'object' && p.confidence >= 0.8
+    );
+    
+    const hasResolvedRisk = risk.severity && risk.severity !== 'unknown';
+    
+    // Si el Inference Engine pudo deducir patrones → BYPASS LLM
+    if (hasHighConfidencePatterns || hasResolvedRisk) {
+      return {
+        canBypass: true,
+        inferredPatterns: patterns,
+        confidence: hasHighConfidencePatterns ? 0.9 : 0.7,
+        reason: 'Inference Engine resolved patterns'
+      };
+    }
+    
+    return { canBypass: false, inferredPatterns: patterns, confidence: 0 };
+  } catch (error) {
+    // Si el Inference Engine falla, continuar con análisis normal
+    return { canBypass: false, error: error.message };
+  }
+}
 
 /**
  * Determina si un archivo necesita análisis LLM
  *
- * ESTRATEGIA OPTIMIZADA v0.6:
- * - NO gastar LLM si las conexiones estáticas ya cubrieron el caso
- * - SÍ analizar solo cuando hay eventos/state NO resueltos por Layer A
- * - SÍ analizar código dinámico (no se puede resolver estáticamente)
- * - SÍ analizar archivos huérfanos sin explicación
+ * ESTRATEGIA v0.9.33 — Inference Engine + Metadata Completeness:
+ * 
+ * 1. Intentar deducir con Inference Engine (SIN LLM)
+ * 2. Si el Inference Engine resuelve → BYPASS
+ * 3. Si no, verificar completitud de metadatos
+ * 4. Si score alto (≥0.75) → BYPASS
+ * 5. Si score bajo pero gaps no significativos → BYPASS
+ * 6. Solo si hay gaps significativos → LLM
+ *
+ * Casos que SIEMPRE activan LLM independiente del score:
+ * - Dynamic imports / eval (imposibles de resolver estáticamente)
+ * - Archivos sin absolutamente ningún dato (fileAnalysis=null)
  *
  * @param {object} semanticAnalysis - Resultados del análisis semántico (staticAnalysis)
- * @param {object} fileAnalysis - Info completa del archivo (imports, usedBy, semanticConnections)
+ * @param {object} fileAnalysis - Info completa del archivo
  * @param {number} confidenceThreshold - Umbral de confianza (default 0.7)
  * @returns {boolean} - true si necesita análisis LLM
  */
 export function needsLLMAnalysis(semanticAnalysis, fileAnalysis = null, confidenceThreshold = 0.7) {
-  // Sin fileAnalysis, no podemos determinar si las conexiones están resueltas
-  if (!fileAnalysis) {
-    return true; // Fallback seguro
+  // Sin fileAnalysis, cero conocimiento → LLM obligatorio
+  if (!fileAnalysis) return true;
+
+  // OVERRIDE 1: Dynamic imports/eval → LLM siempre (no resoluble estáticamente)
+  if (hasDynamicCode(semanticAnalysis)) return true;
+
+  // 🆕 v0.9.33: GATE 0 - Intentar Inference Engine primero
+  const inference = tryInferWithoutLLM(fileAnalysis);
+  if (inference.canBypass) {
+    // El Inference Engine pudo deducir patrones → NO necesita LLM
+    // Guardar inferencias en fileAnalysis para uso posterior
+    fileAnalysis.inferredPatterns = inference.inferredPatterns;
+    return false;
   }
 
-  // 1. Huérfano sin explicación -> SÍ LLM
-  if (isOrphanWithNoConnections(fileAnalysis)) {
-    return true;
-  }
+  // Calcular completitud de metadatos estáticos
+  const { score, gaps } = computeMetadataCompleteness(fileAnalysis);
 
-  // 2. Dynamic imports/eval -> SÍ LLM (no se puede resolver estáticamente)
-  if (hasDynamicCode(semanticAnalysis)) {
-    return true;
-  }
+  // OVERRIDE 2: Score perfecto → skip LLM sin más checks
+  const COMPLETENESS_THRESHOLD = 0.75;
+  if (score >= COMPLETENESS_THRESHOLD) return false;
 
-  // 3. Eventos: solo si hay eventos NO resueltos por conexiones estáticas
-  if (hasUnresolvedEvents(fileAnalysis)) {
-    return true;
-  }
+  // Score bajo → LLM activa, pero solo si hay gaps significativos
+  const significantGaps = ['no-atoms', 'no-callers', 'unresolved-semantic', 'no-dataflow'];
+  const hasSignificantGap = gaps.some(g => significantGaps.includes(g));
 
-  // 4. Shared state: solo si hay state NO cruzado estáticamente
-  if (hasUnresolvedSharedState(fileAnalysis)) {
-    return true;
-  }
-
-  // 5. Conexiones de baja confianza -> SÍ LLM
-  if (hasLowConfidenceConnections(fileAnalysis, confidenceThreshold)) {
-    return true;
-  }
-
-  // 6. Network calls: solo si hay endpoints NO cross-referenciados
-  if (hasUnresolvedNetworkConnections(fileAnalysis)) {
-    return true;
-  }
-
-  // 7. Lifecycle hooks: solo si NO tienen cleanup o contexto resuelto
-  if (hasUnresolvedLifecycleConnections(fileAnalysis)) {
-    return true;
-  }
-
-  // Si llegamos aquí, Layer A ya cubrió todas las conexiones
-  return false;
-}
-
-/**
- * Verifica si un archivo es huérfano sin ninguna conexión detectada
- */
-function isOrphanWithNoConnections(fileAnalysis) {
-  const hasImports = (fileAnalysis.imports || []).length > 0;
-  const hasUsedBy = (fileAnalysis.usedBy || []).length > 0;
-  const hasSemanticConnections = (fileAnalysis.semanticConnections || []).length > 0;
-  return !hasImports && !hasUsedBy && !hasSemanticConnections;
+  return hasSignificantGap;
 }
 
 /**
  * Verifica si tiene código dinámico que no se puede analizar estáticamente
  */
 function hasDynamicCode(semanticAnalysis) {
-  return semanticAnalysis.hasDynamicImports ||
-         semanticAnalysis.hasEval ||
-         (semanticAnalysis.dynamicImports && semanticAnalysis.dynamicImports.length > 0) ||
-         semanticAnalysis.sideEffects?.some(
+  return semanticAnalysis?.hasDynamicImports ||
+         semanticAnalysis?.hasEval ||
+         (semanticAnalysis?.dynamicImports && semanticAnalysis.dynamicImports.length > 0) ||
+         semanticAnalysis?.sideEffects?.some(
            effect => effect.includes('dynamic') || effect.includes('eval')
          );
 }
@@ -209,16 +207,11 @@ function hasDynamicCode(semanticAnalysis) {
  */
 function hasUnresolvedEvents(fileAnalysis) {
   const semanticAnalysis = fileAnalysis.semanticAnalysis || fileAnalysis;
-
-  // Obtener todos los eventos detectados
   const eventNames = semanticAnalysis.events?.all || [];
-
-  // Obtener eventos ya resueltos con confidence >= 1.0
   const resolvedEvents = (fileAnalysis.semanticConnections || [])
     .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
     .map(c => c.event || c.via);
 
-  // Si hay eventos que NO tienen conexión estática resuelta
   return eventNames.some(e => {
     const eventName = e.event || e;
     return !resolvedEvents.includes(eventName);
@@ -230,18 +223,14 @@ function hasUnresolvedEvents(fileAnalysis) {
  */
 function hasUnresolvedSharedState(fileAnalysis) {
   const semanticAnalysis = fileAnalysis.semanticAnalysis || fileAnalysis;
-
-  // Obtener keys de localStorage y globals detectados
   const storageKeys = semanticAnalysis.localStorage?.all || [];
   const globalAccess = semanticAnalysis.globals?.all || [];
 
-  // Obtener conexiones ya resueltas con confidence >= 1.0
   const resolvedConnections = (fileAnalysis.semanticConnections || [])
     .filter(c => (c.type === 'localStorage' || c.type === 'globalVariable') && c.confidence >= 1.0);
 
   const resolvedKeys = resolvedConnections.map(c => c.key || c.property || c.via);
 
-  // Verificar si hay storage/globals sin resolver
   const unresolvedStorage = storageKeys.some(s => {
     const key = s.key || s;
     return !resolvedKeys.includes(key);
@@ -260,41 +249,4 @@ function hasUnresolvedSharedState(fileAnalysis) {
  */
 function hasLowConfidenceConnections(fileAnalysis, threshold = 0.7) {
   return (fileAnalysis.semanticConnections || []).some(c => c.confidence < threshold);
-}
-
-/**
- * Verifica si tiene network calls con endpoints NO resueltos
- * NUEVO: Si tiene fetch() a los mismos endpoints que otro archivo, hay acoplamiento
- */
-function hasUnresolvedNetworkConnections(fileAnalysis) {
-  const metadata = fileAnalysis.metadata || {};
-  const endpoints = metadata.sideEffects?.networkCalls || [];
-
-  if (endpoints.length === 0) return false;
-
-  // Verificar si hay conexiones semanticas con confidence >= 1.0 para cada endpoint
-  const resolvedRoutes = (fileAnalysis.semanticConnections || [])
-    .filter(c => c.type === 'shared-route' && c.confidence >= 1.0)
-    .map(c => c.route);
-
-  // Si hay endpoints que NO tienen conexión resuelta, necesita LLM
-  return endpoints.some(endpoint => {
-    const code = endpoint.code || '';
-    return !resolvedRoutes.some(route => code.includes(route));
-  });
-}
-
-/**
- * Verifica si tiene lifecycle hooks sin cleanup o sin contexto resuelto
- * NUEVO: Lifecycle hooks que NO tienen cleanup son auto-contenidos
- */
-function hasUnresolvedLifecycleConnections(fileAnalysis) {
-  const metadata = fileAnalysis.metadata || {};
-  const hooks = metadata.temporal?.lifecycleHooks || [];
-
-  if (hooks.length === 0) return false;
-
-  // Si todos los hooks tienen cleanup, están auto-contenidos (no necesita LLM)
-  const cleanups = metadata.temporal?.cleanupPatterns || [];
-  return cleanups.length < hooks.length;
 }

@@ -28,8 +28,8 @@ export function buildAtomMetadata({
   functionCode
 }) {
   return {
-    // Identity
-    id: functionInfo.id,
+    // Identity — use relative filePath (already normalized) to avoid absolute-path IDs
+    id: `${filePath}::${functionInfo.fullName || functionInfo.name}`,
     name: functionInfo.name,
     type: 'atom',
     filePath: filePath,
@@ -55,11 +55,27 @@ export function buildAtomMetadata({
     hasLogging: sideEffects.consoleUsage.length > 0,
     networkEndpoints: sideEffects.networkCalls.map(c => c.url || c.endpoint).filter(Boolean),
 
-    // Call graph
-    calls: functionInfo.calls || [],
+    // Call graph (v0.9.34 - unified calls from all sources)
     internalCalls: callGraph.internalCalls || [],
     externalCalls: callGraph.externalCalls || [],
     externalCallCount: (callGraph.externalCalls || []).length,
+    // Unified calls: combine functionInfo.calls with callGraph results
+    calls: [
+      ...(functionInfo.calls || []),
+      ...(callGraph.internalCalls || []).map(c => ({
+        name: c.name || c.callee,
+        type: c.type || 'internal',
+        line: c.line
+      })),
+      ...(callGraph.externalCalls || []).map(c => ({
+        name: c.name || c.callee,
+        type: 'external',
+        line: c.line
+      }))
+    ].filter((call, index, self) => 
+      // Deduplicate by name+line
+      index === self.findIndex(c => c.name === call.name && c.line === call.line)
+    ),
 
     // Error handling
     hasErrorHandling: /try\s*\{/.test(functionCode) || /if\s*\(.*\)\s*throw/.test(functionCode),

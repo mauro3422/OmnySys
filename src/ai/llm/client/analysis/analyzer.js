@@ -56,7 +56,7 @@ export class Analyzer {
               { role: 'user', content: prompt }
             ],
             temperature: 0.1,
-            max_tokens: 1000,
+            max_tokens: 2048,
             stream: false
           }),
           signal: controller.signal

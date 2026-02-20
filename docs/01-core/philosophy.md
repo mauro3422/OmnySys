@@ -104,12 +104,17 @@ Sistema: Entry   → Business  → Side Effects
 | **Universo** | Sistema (Proyecto) | Todo el código |
 | **Galaxia** | Módulo (Feature) | Carpeta de funcionalidad |
 | **Planeta** | Molécula (Archivo) | Archivo con funciones |
-| **Átomo** | Función | Unidad básica de ejecución |
+| **Átomo** ⭐ | Función | **Unidad básica de ejecución** |
 | **Núcleo** | Lógica interna | El algoritmo de la función |
-| **Electrones** | Datos fluyendo | Parámetros → transformaciones → returns |
+| **Electrones** | Variables, parámetros | Partículas subatómicas dentro del átomo |
+| **Protones** | Statements, líneas | Partículas subatómicas que forman la lógica |
+| **Partículas sueltas** | Constantes exportadas | Config/objectExports sin átomo contenedor |
 | **Orbitales** | Conexiones | Cómo los datos viajan entre funciones |
 | **Enlaces químicos** | Llamadas entre funciones | A llama a B |
 | **Campo gravitacional** | Side effects globales | localStorage, eventos, DB |
+| **Culturas** | Roles sociales | Aduanero, Leyes, Auditor, Script, Ciudadano |
+
+> **Nota importante**: Las constantes y configuraciones NO son átomos. Son **partículas sueltas** (electrones sin átomo). Los archivos que solo contienen estas partículas se clasifican como "Leyes Físicas" - ver [file-cultures.md](../02-architecture/file-cultures.md).
 
 ### Jerarquía de Derivación
 

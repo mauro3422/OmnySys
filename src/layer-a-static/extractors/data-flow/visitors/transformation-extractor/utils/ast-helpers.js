@@ -77,9 +77,11 @@ export function getAssignmentTarget(node) {
  */
 export function isFunctionNode(node) {
   if (!node) return false;
-  return node.type === 'FunctionDeclaration' || 
-         node.type === 'FunctionExpression' || 
-         node.type === 'ArrowFunctionExpression';
+  return node.type === 'FunctionDeclaration' ||
+         node.type === 'FunctionExpression' ||
+         node.type === 'ArrowFunctionExpression' ||
+         node.type === 'ClassMethod' ||
+         node.type === 'ObjectMethod';
 }
 
 /**

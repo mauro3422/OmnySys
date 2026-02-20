@@ -52,6 +52,19 @@ const extractors = {
 {
   filePath: 'src/api.js',
   
+  // Cultura del archivo (ver file-cultures.md)
+  culture: 'ciudadano',  // 'aduanero' | 'leyes' | 'auditor' | 'script' | 'ciudadano' | 'desconocido'
+  cultureRole: 'Lógica de negocio productiva',
+  
+  // Partículas sueltas (constantes exportadas SIN función contenedora)
+  objectExports: [
+    { name: 'BATCH_SIZE', value: 20, type: 'number' },
+    { name: 'TIMEOUTS', value: { default: 30000, max: 60000 }, type: 'object' }
+  ],
+  constantExports: [
+    { name: 'DEFAULT_TIMEOUT', value: 30000, type: 'number' }
+  ],
+  
   // Side Effects
   sideEffects: {
     hasNetworkCalls: true,

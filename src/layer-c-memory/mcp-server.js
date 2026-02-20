@@ -130,6 +130,8 @@ function scheduleRestart() {
 
     setTimeout(() => {
       isRestarting = false;
+      // Truncate log so the debug terminal starts clean on each restart
+      fs.writeFileSync(logFile, '');
       log('Spawning fresh worker (clean ESM cache)...');
       spawnWorker();
     }, 500);
@@ -163,6 +165,25 @@ process.on('SIGTERM', () => {
   if (child && !child.killed) child.kill('SIGTERM');
   process.exit(0);
 });
+
+// ─── Debug terminal (flag: --debug-terminal) ────────────────────────────────
+// Agrega "--debug-terminal" a los args en .mcp.json para ver logs en una
+// ventana de terminal mientras debugueás. Quitalo cuando no lo necesites.
+const debugTerminal = process.argv.includes('--debug-terminal');
+if (debugTerminal) {
+  const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
+  if (fs.existsSync(batPath)) {
+    const t = spawn('cmd.exe', ['/c', 'start', batPath], { detached: true, stdio: 'ignore' });
+    t.unref();
+    log('📺 Debug terminal spawned (mcp-logs.bat)');
+  } else {
+    // Fallback: PowerShell con tail del log file
+    const t = spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command',
+      `Get-Content -Path '${logFile}' -Wait -Tail 50`], { detached: true, stdio: 'ignore' });
+    t.unref();
+    log('📺 Debug terminal spawned (PowerShell fallback)');
+  }
+}
 
 log(`OmnySys MCP Proxy started. Project: ${projectPath}`);
 spawnWorker();

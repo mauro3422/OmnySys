@@ -1,11 +1,26 @@
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import { safeReadJson } from '#utils/json-safe.js';
 import { createLogger } from '../../utils/logger.js';
 import { getDecisionAuditLogger } from '../../layer-c-memory/shadow-registry/audit-logger.js';
 import { LLMService } from '../../services/llm-service/index.js';
 
 const logger = createLogger('OmnySys:llm:analysis');
+
+/**
+ * Calcula hash MD5 del contenido de un archivo
+ * @param {string} fullPath - Ruta absoluta al archivo
+ * @returns {Promise<string|null>} - Hash MD5 o null si hay error
+ */
+async function calculateContentHash(fullPath) {
+  try {
+    const content = await fs.readFile(fullPath, 'utf-8');
+    return crypto.createHash('md5').update(content).digest('hex');
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Determina si un archivo necesita LLM basado en arquetipos y Gates de decisión
@@ -95,22 +110,53 @@ export async function _analyzeComplexFilesWithLLM() {
     }
 
     const filesNeedingLLM = [];
+    let skippedUnchanged = 0;
+    let skippedHasLLM = 0;
+
+    // 🆕 v0.9.33: REMOVED MAX_LLM_PER_RUN
+    // Filosofía: El sistema debe procesar TODOS los archivos que necesiten LLM.
+    // El análisis estático (átomos + metadatos + graph) debe ser suficiente
+    // para que la mayoría de archivos NO necesiten LLM.
+    // Si muchos archivos necesitan LLM, el problema está en el análisis estático,
+    // no en limitar artificialmente el procesamiento.
+    // 
+    // El sistema de background + contentHash comparison maneja el load.
 
     // Revisar cada archivo en el índice - PROCESAMIENTO PARALELO POR BATCHES
     const entries = Object.entries(index.fileIndex || {});
     const BATCH_SIZE = 5; // Mantener en 5 para evitar problemas de memoria
+    const totalFiles = entries.length;
+
+    logger.info(`   📁 Scanning ${totalFiles} files in index...`);
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE);
 
       // Procesar batch en paralelo
       await Promise.all(batch.map(async ([filePath, fileInfo]) => {
+        // 🆕 v0.9.32: Verificar si el archivo cambió desde el último análisis
+        // comparando el hash guardado en el index vs el hash actual
+        const fullPath = path.join(this.projectPath, filePath);
+        const currentHash = await calculateContentHash(fullPath);
+        const lastHash = fileInfo.hash;
+
+        // Si el hash es igual y ya tiene LLM insights, skippear completamente
+        if (currentHash && lastHash && currentHash === lastHash) {
+          // Archivo sin cambios - verificar si ya tiene análisis LLM
+          const fileAnalysis = await getFileAnalysis(this.projectPath, filePath);
+          if (fileAnalysis?.llmInsights) {
+            skippedUnchanged++;
+            return; // Sin cambios y ya procesado
+          }
+        }
+
         // Obtener análisis completo del archivo
         const fileAnalysis = await getFileAnalysis(this.projectPath, filePath);
         if (!fileAnalysis) return;
 
         // Verificar si ya fue procesado por LLM
         if (fileAnalysis.llmInsights) {
+          skippedHasLLM++;
           return; // Ya tiene análisis LLM, saltear
         }
 
@@ -153,7 +199,8 @@ export async function _analyzeComplexFilesWithLLM() {
 
           filesNeedingLLM.push({
             filePath,
-            fileAnalysis,
+            // fileAnalysis NOT stored here — worker loads it fresh from disk
+            // Storing it here + in queue caused OOM with 200+ files (3.6GB)
             archetypes: archetypes.map(a => a.type),
             priority: this._calculateLLMPriority(archetypes, metadata)
           });
@@ -172,8 +219,11 @@ export async function _analyzeComplexFilesWithLLM() {
       await new Promise(resolve => setImmediate(resolve));
     }
 
+    // Log de estadísticas de filtrado
+    logger.info(`   📊 Scan complete: ${totalFiles} total | ${skippedUnchanged} unchanged (skipped) | ${skippedHasLLM} already have LLM`);
+
     if (filesNeedingLLM.length === 0) {
-      logger.info('   i  No files need LLM analysis (static analysis sufficient)');
+      logger.info('   ℹ️  No files need LLM analysis (static analysis sufficient)');
       logger.info('   ✅ Emitting analysis:complete event');
       // Emitir evento de completado aunque no haya archivos para analizar
       this.emit('analysis:complete', {
@@ -196,8 +246,8 @@ export async function _analyzeComplexFilesWithLLM() {
       this.queue.enqueueJob({
         filePath: file.filePath,
         needsLLM: true,
-        archetypes: file.archetypes,
-        fileAnalysis: file.fileAnalysis
+        archetypes: file.archetypes
+        // fileAnalysis NOT passed — worker loads it from disk in runLayerAAnalysis()
       }, file.priority);
 
       logger.info(`   ➕ Added to queue: ${file.filePath} (${file.priority}) - ${file.archetypes.join(', ')}`);

@@ -15,7 +15,9 @@
 export function findFunctionNode(ast) {
   if (ast && (ast.type === 'FunctionDeclaration' ||
     ast.type === 'FunctionExpression' ||
-    ast.type === 'ArrowFunctionExpression')) {
+    ast.type === 'ArrowFunctionExpression' ||
+    ast.type === 'ClassMethod' ||
+    ast.type === 'ObjectMethod')) {
     return ast;
   }
 

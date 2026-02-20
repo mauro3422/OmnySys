@@ -45,16 +45,24 @@ export class Logger {
 
   warn(message, ...args) {
     if (this._shouldLog('warn')) {
-      process.stderr.write(this._format(message, 'warn') + '\n');
+      const extra = args.length ? ' ' + args.map(a => (a instanceof Error ? a.message : String(a))).join(' ') : '';
+      process.stderr.write(this._format(message, 'warn') + extra + '\n');
     }
   }
 
   error(message, error, ...args) {
     if (this._shouldLog('error')) {
       const formatted = this._format(message, 'error');
-      const errorMsg = error?.message ? ` ${error.message}` : '';
+      let errorMsg = '';
+      if (error instanceof Error) {
+        errorMsg = ` ${error.message}`;
+      } else if (typeof error === 'string' && error) {
+        errorMsg = ` ${error}`;
+      } else if (error != null) {
+        errorMsg = ` ${String(error)}`;
+      }
       process.stderr.write(formatted + errorMsg + '\n');
-      if (error?.stack && process.env.LOG_LEVEL === 'debug') {
+      if (error instanceof Error && error.stack && process.env.LOG_LEVEL === 'debug') {
         process.stderr.write(error.stack + '\n');
       }
     }

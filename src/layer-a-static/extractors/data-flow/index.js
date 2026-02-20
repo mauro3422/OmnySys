@@ -56,16 +56,19 @@ const PARSER_OPTIONS = {
 
 /**
  * Extracts data flow from a function
- * @param {string} code - Function source code
+ * @param {string|Object} codeOrNode - Function source code string OR Babel AST node
  * @param {Object} options - Extraction options
  * @returns {Object} Data flow analysis result
  */
-export function extractDataFlow(code, options = {}) {
+export function extractDataFlow(codeOrNode, options = {}) {
   logger.debug('Extracting data flow...');
 
   try {
-    // Parse the code
-    const ast = parse(code, PARSER_OPTIONS);
+    // Accept either a source code string or an already-parsed AST node
+    const code = typeof codeOrNode === 'string' ? codeOrNode : '';
+    const ast = typeof codeOrNode === 'string'
+      ? parse(codeOrNode, PARSER_OPTIONS)
+      : codeOrNode;
 
     const functionName = options.functionName || '<anonymous>';
 
