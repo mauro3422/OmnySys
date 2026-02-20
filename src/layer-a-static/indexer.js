@@ -25,6 +25,7 @@ import { resolveClassInstantiationCalledBy } from './pipeline/phases/calledby/cl
 import { enrichWithCallerPattern } from './pipeline/phases/atom-extraction/metadata/caller-pattern.js';
 import { buildAtomIndex, linkFunctionCalledBy } from './pipeline/phases/calledby/function-linker.js';
 import { linkVariableCalledBy } from './pipeline/phases/calledby/variable-linker.js';
+import { linkMixinNamespaceCalledBy } from './pipeline/phases/calledby/mixin-namespace-linker.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -232,6 +233,11 @@ async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose) {
   // 3.6b: Variable reference calledBy
   if (verbose) logger.info('🔗 Building cross-file variable reference index...');
   await linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+
+  // 3.6c: Mixin + namespace import calledBy
+  if (verbose) logger.info('🔗 Resolving mixin/namespace import calledBy links...');
+  const { namespaceLinks, mixinLinks } = await linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  if (verbose) logger.info(`  ✓ ${namespaceLinks} namespace + ${mixinLinks} mixin this.* links\n`);
 
   // 3.7: Class instantiation calledBy
   if (verbose) logger.info('🏗️  Resolving class instantiation calledBy links...');
