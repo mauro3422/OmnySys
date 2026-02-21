@@ -45,42 +45,47 @@ describe('compareDNA', () => {
   });
 
   it('structuralHash match contributes 40%', () => {
-    const a = dna({ structuralHash: 'SAME', patternHash: 'DIFF-A', operationSequence: ['x'], semanticFingerprint: 'a:b:c' });
-    const b = dna({ structuralHash: 'SAME', patternHash: 'DIFF-B', operationSequence: ['y'], semanticFingerprint: 'x:y:z' });
+    // Aislar solo structural: flowTypes distintos + ops de distinta longitud
+    const a = dna({ structuralHash: 'SAME', patternHash: 'DIFF-A', flowType: 'flow-unique-a', operationSequence: ['x'], semanticFingerprint: 'a:b:c' });
+    const b = dna({ structuralHash: 'SAME', patternHash: 'DIFF-B', flowType: 'flow-unique-b', operationSequence: ['y', 'z'], semanticFingerprint: 'x:y:z' });
     const result = compareDNA(a, b);
-    // Only structural matches (0.4) — pattern, ops, semantic all differ
+    // structural match (0.4), pattern differ + flowType differ (0), ops differ length (0), semantic differ (0) → 0.4
     expect(result).toBeCloseTo(0.4, 1);
   });
 
   it('same flowType but different patternHash gives partial pattern score (15%)', () => {
+    // Aislar solo flowType partial: ops de distinta longitud para evitar +0.1
     const a = dna({ structuralHash: 'DIFF-A', patternHash: 'PA', flowType: 'same-flow', operationSequence: ['x'], semanticFingerprint: 'a:b:c' });
-    const b = dna({ structuralHash: 'DIFF-B', patternHash: 'PB', flowType: 'same-flow', operationSequence: ['y'], semanticFingerprint: 'x:y:z' });
+    const b = dna({ structuralHash: 'DIFF-B', patternHash: 'PB', flowType: 'same-flow', operationSequence: ['y', 'z'], semanticFingerprint: 'x:y:z' });
     const result = compareDNA(a, b);
-    // 0.15 (pattern partial) / 1.0
+    // structural differ (0), pattern partial same flowType (0.15), ops differ length (0), semantic differ (0) → 0.15
     expect(result).toBeCloseTo(0.15, 1);
   });
 
   it('same operationSequence contributes 20%', () => {
     const ops = ['receive', 'return'];
-    const a = dna({ structuralHash: 'DA', patternHash: 'PA', operationSequence: ops, semanticFingerprint: 'a:b:c' });
-    const b = dna({ structuralHash: 'DB', patternHash: 'PB', operationSequence: [...ops], semanticFingerprint: 'x:y:z' });
+    // Aislar solo ops: flowTypes distintos + structural differ
+    const a = dna({ structuralHash: 'DA', patternHash: 'PA', flowType: 'flow-unique-a', operationSequence: ops, semanticFingerprint: 'a:b:c' });
+    const b = dna({ structuralHash: 'DB', patternHash: 'PB', flowType: 'flow-unique-b', operationSequence: [...ops], semanticFingerprint: 'x:y:z' });
     const result = compareDNA(a, b);
-    // Only ops match (0.2)
+    // structural differ (0), pattern differ + flowType differ (0), ops same (0.2), semantic differ (0) → 0.2
     expect(result).toBeCloseTo(0.2, 1);
   });
 
   it('same semanticFingerprint contributes 10%', () => {
     const fp = 'get:core:data';
-    const a = dna({ structuralHash: 'DA', patternHash: 'PA', operationSequence: ['x'], semanticFingerprint: fp });
-    const b = dna({ structuralHash: 'DB', patternHash: 'PB', operationSequence: ['y'], semanticFingerprint: fp });
+    // Aislar solo semantic: flowTypes distintos + ops de distinta longitud
+    const a = dna({ structuralHash: 'DA', patternHash: 'PA', flowType: 'flow-unique-a', operationSequence: ['x'], semanticFingerprint: fp });
+    const b = dna({ structuralHash: 'DB', patternHash: 'PB', flowType: 'flow-unique-b', operationSequence: ['y', 'z'], semanticFingerprint: fp });
     const result = compareDNA(a, b);
-    // Only semantic matches (0.1)
+    // structural differ (0), pattern differ (0), ops differ length (0), semantic same (0.1) → 0.1
     expect(result).toBeCloseTo(0.1, 1);
   });
 
   it('completely different DNAs return low similarity', () => {
+    // Todo distinto: flowTypes distintos + ops de distinta longitud
     const a = dna({ structuralHash: 'A', patternHash: 'PA', flowType: 'fa', operationSequence: ['x'], semanticFingerprint: 'a:b:c' });
-    const b = dna({ structuralHash: 'B', patternHash: 'PB', flowType: 'fb', operationSequence: ['y'], semanticFingerprint: 'x:y:z' });
+    const b = dna({ structuralHash: 'B', patternHash: 'PB', flowType: 'fb', operationSequence: ['y', 'z'], semanticFingerprint: 'x:y:z' });
     expect(compareDNA(a, b)).toBe(0);
   });
 
