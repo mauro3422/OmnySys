@@ -9,34 +9,94 @@
 import { generateTypedInputs } from './input-generator.js';
 import { resolveFactory, resolveBuilderForParam, resolveFactoryImportPath } from './factory-catalog.js';
 
+// Máximo de tests por archivo — evita describe blocks gigantes
+const MAX_TESTS_PER_FILE = 12;
+
+/**
+ * Selecciona y ordena los tests más valiosos respetando el cap.
+ * Estrategia: 1 happy-path obligatorio + branches (high) + edge-cases hasta MAX.
+ */
+function selectTests(tests) {
+  const happy   = tests.filter(t => t.type === 'happy-path');
+  const branches = tests.filter(t => t.type === 'branch' && t.priority === 'high');
+  const edges   = tests.filter(t => t.type === 'edge-case' && t.priority !== 'low');
+  const rest    = tests.filter(t =>
+    !happy.includes(t) && !branches.includes(t) && !edges.includes(t)
+  );
+
+  const selected = [
+    ...happy.slice(0, 1),          // siempre 1 happy-path
+    ...branches,                   // todos los branches high-priority
+    ...edges,                      // edge-cases medium+
+    ...rest,
+  ].slice(0, MAX_TESTS_PER_FILE);
+
+  return selected;
+}
+
+/**
+ * Agrupa tests por tipo para nested describes.
+ * Retorna un mapa: label → tests[]
+ */
+function groupByType(tests) {
+  const groups = new Map();
+  for (const t of tests) {
+    const label =
+      t.type === 'happy-path' ? 'happy path' :
+      t.type === 'branch'     ? 'branches'   :
+      t.type === 'edge-case'  ? 'edge cases' :
+      t.type === 'error-throw'? 'error handling' :
+      'other';
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(t);
+  }
+  return groups;
+}
+
 /**
  * Genera codigo de test completo
  */
 export function generateTestCode(atom, tests, options = {}) {
   const { useRealFactories = true } = options;
-  const hasSideEffects = atom.hasSideEffects || 
-                         atom.sideEffects?.hasStorageAccess || 
+  const hasSideEffects = atom.hasSideEffects ||
+                         atom.sideEffects?.hasStorageAccess ||
                          atom.sideEffects?.hasNetworkCalls;
   const needSandbox = hasSideEffects || tests.some(t => t.needsSandbox);
 
+  // Seleccionar los tests más valiosos respetando el cap
+  const selected = selectTests(tests);
+
   // Recopilar neededImports de todos los branch tests
-  const branchImports = collectBranchImports(tests);
-  
+  const branchImports = collectBranchImports(selected);
+
   let code = '';
-  
+
   // Imports
   code += generateImports(atom, useRealFactories, needSandbox, branchImports);
-  
-  // Describe block
+
+  // Describe principal
   code += `describe('${atom.name}', () => {\n`;
-  
-  // Generar cada test
-  for (const test of tests) {
-    code += generateTestCase(atom, test, useRealFactories && needSandbox);
+
+  // Agrupar en nested describes si hay más de un tipo
+  const groups = groupByType(selected);
+  const useNested = groups.size > 1;
+
+  if (useNested) {
+    for (const [label, groupTests] of groups) {
+      code += `  describe('${label}', () => {\n`;
+      for (const test of groupTests) {
+        code += generateTestCase(atom, test, useRealFactories && needSandbox, '    ');
+      }
+      code += `  });\n\n`;
+    }
+  } else {
+    for (const test of selected) {
+      code += generateTestCase(atom, test, useRealFactories && needSandbox);
+    }
   }
-  
+
   code += `});\n`;
-  
+
   return code;
 }
 
@@ -102,52 +162,54 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
 
 /**
  * Genera un caso de test individual
+ * @param {string} indent - Indentación base (default '  ' para nivel top-level describe)
  */
-export function generateTestCase(atom, test, useSandbox) {
+export function generateTestCase(atom, test, useSandbox, indent = '  ') {
   let code = '';
   const inputs = atom.dataFlow?.inputs || [];
   const isAsync = atom.isAsync;
-  
+  const inner = indent + '  ';
+
   const needsAsync = isAsync || useSandbox;
-  code += `  it('${test.name}', ${needsAsync ? 'async ' : ''}() => {\n`;
-  
+  code += `${indent}it('${test.name}', ${needsAsync ? 'async ' : ''}() => {\n`;
+
   // Setup comments si hay
   if (test.setup?.length > 0) {
     for (const line of test.setup) {
-      code += `    ${line}\n`;
+      code += `${inner}${line}\n`;
     }
   }
-  
+
   // Generar llamada con inputs — pasar atom para usar factory builders si aplica
   const inputCall = generateInputCall(inputs, test.inputs, atom);
-  
+
   // Determinar si es un test de throw
   const isThrowTest = test.type === 'error-throw' || test.assertion?.includes('toThrow');
-  
+
   if (useSandbox) {
-    code += `    await withSandbox({}, async (sandbox) => {\n`;
+    code += `${inner}await withSandbox({}, async (sandbox) => {\n`;
     if (isThrowTest && isAsync) {
-      code += `      await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
+      code += `${inner}  await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
-      code += `      expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
+      code += `${inner}  expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
     } else {
-      code += `      const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
-      code += `      ${test.assertion};\n`;
+      code += `${inner}  const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
+      code += `${inner}  ${test.assertion};\n`;
     }
-    code += `    });\n`;
+    code += `${inner}});\n`;
   } else {
     if (isThrowTest && isAsync) {
-      code += `    await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
+      code += `${inner}await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
-      code += `    expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
+      code += `${inner}expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
     } else {
-      code += `    const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
-      code += `    ${test.assertion};\n`;
+      code += `${inner}const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
+      code += `${inner}${test.assertion};\n`;
     }
   }
-  
-  code += `  });\n\n`;
-  
+
+  code += `${indent}});\n\n`;
+
   return code;
 }
 
