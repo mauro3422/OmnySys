@@ -17,6 +17,7 @@ import {
   analyzeSourceForTests,
   generateSpecificTests 
 } from './source-analyzer.js';
+import { extractBranches } from './branch-extractor.js';
 
 /**
  * Analiza una funcion y genera tests sugeridos basados en metadata rica
@@ -44,12 +45,19 @@ export async function analyzeFunctionForTests(atom, projectPath) {
   // Test 3: Edge cases basados en inputs
   tests.push(...createEdgeCaseTests(inputs, atom));
   
-  // Test 4: Tests basados en análisis del código fuente
+  // Test 4: Branch-driven tests — UN test por branch del código fuente (estrategia principal)
   if (sourceCode) {
-    const sourceTests = generateSpecificTests(sourceCode, atom, sourcePatterns);
-    tests.push(...sourceTests.slice(0, 3)); // Limitar a 3 tests de código fuente
+    const sourceLines = sourceCode.split('\n');
+    const branches = extractBranches(sourceLines, atom);
+    if (branches.length > 0) {
+      tests.push(...createBranchTests(branches, atom));
+    } else {
+      // Fallback: análisis de patrones del código fuente
+      const sourceTests = generateSpecificTests(sourceCode, atom, sourcePatterns);
+      tests.push(...sourceTests.slice(0, 3));
+    }
   }
-  
+
   // Test 5: Tests basados en archetype
   tests.push(...createArchetypeTests(atom, archetype, inputs, typeContracts));
   
@@ -353,6 +361,36 @@ function createBranchCoverageTest(complexity, inputs, typeContracts, atom) {
     assertion: 'expect(result).toBeDefined()',
     priority: 'medium'
   };
+}
+
+/**
+ * Convierte branches extraídos en test cases con assertion y inputs reales
+ */
+function createBranchTests(branches, atom) {
+  return branches.map(branch => {
+    // Convertir inputHints a strings para el generador de inputs
+    const inputs = {};
+    for (const [param, hint] of Object.entries(branch.inputHints || {})) {
+      if (typeof hint === 'object' && !Array.isArray(hint)) {
+        inputs[param] = JSON.stringify(hint);
+      } else if (Array.isArray(hint)) {
+        inputs[param] = JSON.stringify(hint);
+      } else {
+        inputs[param] = String(hint);
+      }
+    }
+
+    return {
+      name: branch.testName,
+      type: 'branch',
+      description: `Branch: ${branch.condition || 'default'} → return ${branch.returnExpr}`,
+      inputs,
+      assertion: branch.assertion,
+      neededImports: branch.neededImports, // para que el code-generator los agregue
+      priority: branch.condition ? 'high' : 'medium',
+      source: 'branch-extraction'
+    };
+  });
 }
 
 /**

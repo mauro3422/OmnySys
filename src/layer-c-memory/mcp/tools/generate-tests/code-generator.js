@@ -18,11 +18,14 @@ export function generateTestCode(atom, tests, options = {}) {
                          atom.sideEffects?.hasStorageAccess || 
                          atom.sideEffects?.hasNetworkCalls;
   const needSandbox = hasSideEffects || tests.some(t => t.needsSandbox);
+
+  // Recopilar neededImports de todos los branch tests
+  const branchImports = collectBranchImports(tests);
   
   let code = '';
   
   // Imports
-  code += generateImports(atom, useRealFactories, needSandbox);
+  code += generateImports(atom, useRealFactories, needSandbox, branchImports);
   
   // Describe block
   code += `describe('${atom.name}', () => {\n`;
@@ -40,7 +43,22 @@ export function generateTestCode(atom, tests, options = {}) {
 /**
  * Genera los imports necesarios
  */
-function generateImports(atom, useRealFactories, needSandbox) {
+/**
+ * Agrupa los neededImports de todos los branch tests en un mapa source→[names]
+ */
+function collectBranchImports(tests) {
+  const map = new Map(); // source → Set<name>
+  for (const test of tests) {
+    for (const imp of test.neededImports || []) {
+      if (!imp?.name || !imp?.from) continue;
+      if (!map.has(imp.from)) map.set(imp.from, new Set());
+      map.get(imp.from).add(imp.name);
+    }
+  }
+  return map;
+}
+
+function generateImports(atom, useRealFactories, needSandbox, branchImports = new Map()) {
   let code = '';
   
   // Imports base
@@ -62,6 +80,17 @@ function generateImports(atom, useRealFactories, needSandbox) {
     }
   }
   
+  // Imports de constantes necesarias para branch tests (Priority, ChangeType, etc.)
+  for (const [source, names] of branchImports.entries()) {
+    // Intentar resolver alias primero, sino usar el path tal cual (ya tiene ./ o ../)
+    let resolvedSource = resolveImportAlias(source);
+    if (!resolvedSource || resolvedSource === source) {
+      // Limpiar doble slash o ./. artifacts
+      resolvedSource = source.replace(/\/\.\//g, '/').replace(/^\.\//, './');
+    }
+    code += `import { ${[...names].join(', ')} } from '${resolvedSource}';\n`;
+  }
+
   // Import de la función — mapear src/ a alias # para compatibilidad con vitest
   const importPath = resolveImportAlias(atom.filePath);
   code += `import { ${atom.name} } from '${importPath}';\n`;
