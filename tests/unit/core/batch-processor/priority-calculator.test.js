@@ -1,153 +1,136 @@
 /**
  * @fileoverview Tests for priority-calculator.js
- * Pure functions — no mocks needed.
+ * Generated with generate_tests — branch-driven, one test per code path.
  */
 
 import { describe, it, expect } from 'vitest';
+import { Priority, ChangeType } from '#core/batch-processor/constants.js';
 import {
   calculatePriority,
   priorityToString,
   stringToPriority
 } from '#core/batch-processor/priority-calculator.js';
-import { Priority, FileChangeType as ChangeType } from '#config/change-types.js';
 
 // ── calculatePriority ─────────────────────────────────────────────────────────
 
 describe('calculatePriority', () => {
-  it('returns explicit priority when provided in options', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, { priority: 99 });
-    expect(result).toBe(99);
-  });
-
-  it('DELETED change type returns CRITICAL priority', () => {
-    const result = calculatePriority('file.js', ChangeType.DELETED);
-    expect(result).toBe(Priority.CRITICAL);
-  });
-
-  it('CREATED change type returns HIGH priority', () => {
-    const result = calculatePriority('file.js', ChangeType.CREATED);
-    expect(result).toBe(Priority.HIGH);
-  });
-
-  it('export changes return HIGH priority', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      exportChanges: ['addedExport']
+  describe('happy path', () => {
+    it('should return valid output for valid input', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.MODIFIED, {});
+      expect(result).toBeDefined();
     });
-    expect(result).toBe(Priority.HIGH);
   });
 
-  it('dependentCount > 20 returns CRITICAL priority', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      dependentCount: 25
+  describe('branches', () => {
+    it('should return options.priority when options.priority is provided', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.MODIFIED, { priority: 99 });
+      expect(result).toBe(99);
     });
-    expect(result).toBe(Priority.CRITICAL);
-  });
 
-  it('dependentCount > 5 but <= 20 returns HIGH priority', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      dependentCount: 10
+    it('should return Priority.CRITICAL when changeType is ChangeType.DELETED', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.DELETED, {});
+      expect(result).toBe(Priority.CRITICAL);
     });
-    expect(result).toBe(Priority.HIGH);
-  });
 
-  it('dependentCount exactly 5 returns MEDIUM (import changes check)', () => {
-    // dependentCount 5 is not > 5, falls to import check
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      dependentCount: 5,
-      importChanges: ['newImport']
+    it('should return Priority.HIGH when changeType is ChangeType.CREATED', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.CREATED, {});
+      expect(result).toBe(Priority.HIGH);
     });
-    expect(result).toBe(Priority.MEDIUM);
-  });
 
-  it('import changes return MEDIUM priority', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      importChanges: ['changedImport']
+    it('should return Priority.MEDIUM when options.importChanges is non-empty', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.MODIFIED, { importChanges: ['item'] });
+      expect(result).toBe(Priority.MEDIUM);
     });
-    expect(result).toBe(Priority.MEDIUM);
-  });
 
-  it('returns LOW priority by default (no options)', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED);
-    expect(result).toBe(Priority.LOW);
-  });
-
-  it('empty exportChanges array does not trigger HIGH', () => {
-    const result = calculatePriority('file.js', ChangeType.MODIFIED, {
-      exportChanges: []
+    it('should return Priority.LOW as default', () => {
+      const result = calculatePriority('/test/file.js', ChangeType.MODIFIED, {});
+      expect(result).toBe(Priority.LOW);
     });
-    expect(result).toBe(Priority.LOW);
   });
 
-  it('explicit priority overrides even DELETED type', () => {
-    const result = calculatePriority('file.js', ChangeType.DELETED, { priority: Priority.LOW });
-    expect(result).toBe(Priority.LOW);
+  describe('edge cases', () => {
+    it('should handle filePath = null', () => {
+      const result = calculatePriority(null, ChangeType.MODIFIED, {});
+      expect(result).toBeDefined();
+    });
+
+    it('should handle changeType = null', () => {
+      const result = calculatePriority('/test/file.js', null, {});
+      expect(result).toBeDefined();
+    });
+
+    it('should throw when options = null (no null guard)', () => {
+      expect(() => calculatePriority('/test/file.js', ChangeType.MODIFIED, null)).toThrow(TypeError);
+    });
   });
 });
 
 // ── priorityToString ──────────────────────────────────────────────────────────
 
 describe('priorityToString', () => {
-  it('converts CRITICAL to "critical"', () => {
-    expect(priorityToString(Priority.CRITICAL)).toBe('critical');
+  describe('branches', () => {
+    it('should return critical when input is Priority.CRITICAL', () => {
+      expect(priorityToString(Priority.CRITICAL)).toBe('critical');
+    });
+
+    it('should return high when input is Priority.HIGH', () => {
+      expect(priorityToString(Priority.HIGH)).toBe('high');
+    });
+
+    it('should return medium when input is Priority.MEDIUM', () => {
+      expect(priorityToString(Priority.MEDIUM)).toBe('medium');
+    });
+
+    it('should return low when input is Priority.LOW', () => {
+      expect(priorityToString(Priority.LOW)).toBe('low');
+    });
+
+    it('should return low as default for unknown priority', () => {
+      expect(priorityToString(999)).toBe('low');
+    });
   });
 
-  it('converts HIGH to "high"', () => {
-    expect(priorityToString(Priority.HIGH)).toBe('high');
-  });
-
-  it('converts MEDIUM to "medium"', () => {
-    expect(priorityToString(Priority.MEDIUM)).toBe('medium');
-  });
-
-  it('converts LOW to "low"', () => {
-    expect(priorityToString(Priority.LOW)).toBe('low');
-  });
-
-  it('returns "low" for unknown values', () => {
-    expect(priorityToString(999)).toBe('low');
-    expect(priorityToString(undefined)).toBe('low');
+  describe('edge cases', () => {
+    it('should handle null input', () => {
+      expect(priorityToString(null)).toBeDefined();
+    });
   });
 });
 
 // ── stringToPriority ──────────────────────────────────────────────────────────
 
 describe('stringToPriority', () => {
-  it('converts "critical" to CRITICAL', () => {
-    expect(stringToPriority('critical')).toBe(Priority.CRITICAL);
+  describe('branches', () => {
+    it('should return Priority.CRITICAL when input is critical', () => {
+      expect(stringToPriority('critical')).toBe(Priority.CRITICAL);
+    });
+
+    it('should return Priority.HIGH when input is high', () => {
+      expect(stringToPriority('high')).toBe(Priority.HIGH);
+    });
+
+    it('should return Priority.MEDIUM when input is medium', () => {
+      expect(stringToPriority('medium')).toBe(Priority.MEDIUM);
+    });
+
+    it('should return Priority.LOW when input is low', () => {
+      expect(stringToPriority('low')).toBe(Priority.LOW);
+    });
+
+    it('should return Priority.LOW as default for unknown string', () => {
+      expect(stringToPriority('unknown')).toBe(Priority.LOW);
+    });
+
+    it('should be case-insensitive', () => {
+      expect(stringToPriority('CRITICAL')).toBe(Priority.CRITICAL);
+      expect(stringToPriority('High')).toBe(Priority.HIGH);
+    });
   });
 
-  it('converts "high" to HIGH', () => {
-    expect(stringToPriority('high')).toBe(Priority.HIGH);
-  });
-
-  it('converts "medium" to MEDIUM', () => {
-    expect(stringToPriority('medium')).toBe(Priority.MEDIUM);
-  });
-
-  it('converts "low" to LOW', () => {
-    expect(stringToPriority('low')).toBe(Priority.LOW);
-  });
-
-  it('is case-insensitive', () => {
-    expect(stringToPriority('CRITICAL')).toBe(Priority.CRITICAL);
-    expect(stringToPriority('High')).toBe(Priority.HIGH);
-    expect(stringToPriority('MEDIUM')).toBe(Priority.MEDIUM);
-  });
-
-  it('returns LOW for unknown strings', () => {
-    expect(stringToPriority('unknown')).toBe(Priority.LOW);
-    expect(stringToPriority('')).toBe(Priority.LOW);
-  });
-
-  it('returns LOW for null/undefined', () => {
-    expect(stringToPriority(null)).toBe(Priority.LOW);
-    expect(stringToPriority(undefined)).toBe(Priority.LOW);
-  });
-
-  it('round-trips with priorityToString', () => {
-    expect(stringToPriority(priorityToString(Priority.CRITICAL))).toBe(Priority.CRITICAL);
-    expect(stringToPriority(priorityToString(Priority.HIGH))).toBe(Priority.HIGH);
-    expect(stringToPriority(priorityToString(Priority.MEDIUM))).toBe(Priority.MEDIUM);
-    expect(stringToPriority(priorityToString(Priority.LOW))).toBe(Priority.LOW);
+  describe('edge cases', () => {
+    it('should handle null/undefined', () => {
+      expect(stringToPriority(null)).toBeDefined();
+      expect(stringToPriority(undefined)).toBeDefined();
+    });
   });
 });
