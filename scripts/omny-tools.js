@@ -17,72 +17,7 @@
  *   node scripts/omny-tools.js search <term>      # Buscar funciones
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_PATH = path.join(__dirname, '..');
-const DATA_DIR = path.join(ROOT_PATH, '.omnysysdata');
-
-// ============================================================================
-// DATA LOADERS
-// ============================================================================
-
-let _atoms = null;
-let _systemMap = null;
-let _index = null;
-
-async function loadAtoms() {
-  if (_atoms) return _atoms;
-  
-  _atoms = new Map();
-  const atomsDir = path.join(DATA_DIR, 'atoms');
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            if (data.id) _atoms.set(data.id, data);
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  await scanDir(atomsDir);
-  return _atoms;
-}
-
-async function loadSystemMap() {
-  if (_systemMap) return _systemMap;
-  
-  try {
-    const content = await fs.readFile(path.join(DATA_DIR, 'system-map.json'), 'utf-8');
-    _systemMap = JSON.parse(content);
-  } catch {
-    _systemMap = { files: {} };
-  }
-  return _systemMap;
-}
-
-async function loadIndex() {
-  if (_index) return _index;
-  
-  try {
-    const content = await fs.readFile(path.join(DATA_DIR, 'index.json'), 'utf-8');
-    _index = JSON.parse(content);
-  } catch {
-    _index = {};
-  }
-  return _index;
-}
+import { loadAtoms, loadSystemMap, loadIndex } from './omny-tools-data.js';
 
 // ============================================================================
 // TOOLS (simulando MCP tools)

@@ -15,6 +15,8 @@ function dna(overrides = {}) {
   return {
     id:                 'abc123def456',
     structuralHash:     'struct-hash-01',
+    contextualHash:     'context-hash-01',
+    semanticHash:       'semantic-hash-01',
     patternHash:        'pattern-hash-01',
     flowType:           'read-transform-return',
     operationSequence:  ['receive', 'property_access', 'return'],
@@ -23,8 +25,9 @@ function dna(overrides = {}) {
     outputCount:        1,
     transformationCount:1,
     semanticFingerprint:'get:core:data',
+    duplicabilityScore: 75,
     extractedAt:        new Date().toISOString(),
-    version:            '1.0',
+    version:            '2.0',
     ...overrides
   };
 }

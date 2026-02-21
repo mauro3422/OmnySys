@@ -13,6 +13,44 @@
  * Orden importa — más específico primero.
  */
 const FACTORY_CATALOG = [
+  // Test Factories - Comprehensive Extractor
+  {
+    pathPrefix: 'tests/factories/comprehensive-extractor-test',
+    factoryPath: 'tests/factories/comprehensive-extractor-test/builders/index.js',
+    builders: {
+      config:  { name: 'ExtractionConfigBuilder', call: 'ExtractionConfigBuilder.minimal()' },
+      class:   { name: 'ClassExtractionBuilder', call: 'ClassExtractionBuilder.simpleClass()' },
+      function:{ name: 'FunctionExtractionBuilder', call: 'FunctionExtractionBuilder.simpleFunction()' },
+      import:  { name: 'ImportExportBuilder', call: 'ImportExportBuilder.es6Imports()' },
+      ast:     { name: 'ASTBuilder', call: 'ASTBuilder.withFunctionDeclaration().build()' },
+      default: { name: 'ExtractionConfigBuilder', call: 'ExtractionConfigBuilder.minimal()' }
+    }
+  },
+  // Test Factories - Module System
+  {
+    pathPrefix: 'tests/factories/module-system-test',
+    factoryPath: 'tests/factories/module-system-test/builders/index.js',
+    builders: {
+      module:  { name: 'ModuleBuilder', call: 'ModuleBuilder.withSimpleModule().build()' },
+      dependency: { name: 'DependencyBuilder', call: 'DependencyBuilder.simple().build()' },
+      default: { name: 'ModuleBuilder', call: 'ModuleBuilder.withSimpleModule().build()' }
+    }
+  },
+  // Test Factories - Query
+  {
+    pathPrefix: 'tests/factories/query-test',
+    factoryPath: 'tests/factories/query-test/builders/index.js',
+    builders: {
+      project: { name: 'ProjectDataBuilder', call: 'ProjectDataBuilder.create().build()' },
+      file:    { name: 'FileDataBuilder', call: 'FileDataBuilder.create().build()' },
+      connection: { name: 'ConnectionBuilder', call: 'ConnectionBuilder.create().build()' },
+      query:   { name: 'QueryBuilder', call: 'QueryBuilder.create().build()' },
+      scenario:{ name: 'QueryScenarios', call: 'QueryScenarios.emptyProject()' },
+      fs:      { name: 'MockFileSystem', call: 'MockFileSystem.create().build()' },
+      default: { name: 'QueryBuilder', call: 'QueryBuilder.create().build()' }
+    }
+  },
+  // Source Code Factories
   {
     pathPrefix: 'src/core/atomic-editor',
     factoryPath: 'tests/factories/core-atomic-editor/builders.js',

@@ -57,7 +57,10 @@ import { get_module_overview } from './get-module-overview.js';
 import { detect_race_conditions } from './detect-race-conditions.js';
 import { simulate_data_journey } from './simulate-data-journey.js';
 import { find_symbol_instances } from './find-symbol-instances.js';
-import { generate_tests, generate_batch_tests } from './generate-tests/index.js';
+import { 
+  generate_tests, 
+  generate_batch_tests
+} from './generate-tests/index.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -461,17 +464,27 @@ export const toolDefinitions = [
   // ── GENERACIÓN DE TESTS ──────────────────────────────────────────────────
   {
     name: 'generate_tests',
-    description: 'Generates test cases automatically based on function analysis. Uses the knowledge graph to create relevant tests with real factories instead of mocks. Analyzes function complexity, parameters, async nature, and side effects to suggest appropriate test cases.',
+    description: 'Analyzes functions/classes and suggests tests. Mode analysis by default - returns metrics, detected patterns, and suggestions without generating code. Use action: "generate" to see generated test code. Supports both functions and classes (with special builder pattern detection).',
     inputSchema: {
       type: 'object',
       properties: {
         filePath: { 
           type: 'string', 
-          description: 'Path to the file containing the function to test (e.g., "src/utils/math.js")' 
+          description: 'Path to the file to analyze (e.g., "src/utils/math.js" or "tests/factories/builders.js")' 
         },
         functionName: { 
           type: 'string', 
-          description: 'Name of the function to generate tests for (e.g., "add")' 
+          description: 'Name of the function to analyze (optional - if not provided, analyzes entire file)' 
+        },
+        className: {
+          type: 'string',
+          description: 'Name of the class to analyze (optional - alternative to functionName for classes)'
+        },
+        action: {
+          type: 'string',
+          enum: ['analyze', 'generate'],
+          default: 'analyze',
+          description: 'Mode: "analyze" returns metrics and suggestions, "generate" returns actual test code'
         },
         options: {
           type: 'object',
@@ -479,17 +492,27 @@ export const toolDefinitions = [
             useRealFactories: {
               type: 'boolean',
               default: true,
-              description: 'Use real filesystem factories instead of mocks'
+              description: 'Use real filesystem factories instead of mocks (for generate mode)'
             },
             includeEdgeCases: {
               type: 'boolean',
               default: true,
-              description: 'Include edge case tests based on complexity analysis'
+              description: 'Include edge case tests based on complexity analysis (for generate mode)'
+            },
+            includeChainingTests: {
+              type: 'boolean',
+              default: true,
+              description: 'For classes: include tests that verify methods return this for chaining'
+            },
+            includeImmutabilityTests: {
+              type: 'boolean',
+              default: true,
+              description: 'For classes: include tests that verify builder immutability'
             }
           }
         }
       },
-      required: ['filePath', 'functionName']
+      required: ['filePath']
     }
   },
   {

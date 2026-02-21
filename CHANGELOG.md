@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.50 - Technical Debt Audit: God Function Refactoring Pass 2](changelog/v0.9.50-technical-debt-refactor.md)** - Latest release
+- **[v0.9.51 - Robust FileWatcher + Test Factory Refactoring](changelog/v0.9.51-robust-filewatcher-refactoring.md)** - Latest release
+- **[v0.9.50 - Technical Debt Audit: God Function Refactoring Pass 2](changelog/v0.9.50-technical-debt-refactor.md)**
 - **[v0.9.48 - Semantic Domain + Test Generator + Registry System](changelog/v0.9.48-semantic-domain-test-generator.md)**
 - **[v0.9.47 - Massive Refactoring: 77% code reduction](changelog/v0.9.47-massive-refactoring.md)**
 - **[v0.9.46 - MCP Tools Bug Fixes + Quality Improvements](changelog/v0.9.46-mcp-bugfixes.md)**
@@ -28,7 +29,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.50]** | 2026-02-21 | **Technical Debt Audit: God Function Refactoring Pass 2 — 8 files, 359 LOC removed** (Latest) |
+| **[0.9.51]** | 2026-02-21 | **Robust FileWatcher + 6 Test Factories Refactored — Smart Batch Processor, Incremental Analysis** (Latest) |
+| **[0.9.50]** | 2026-02-21 | **Technical Debt Audit: God Function Refactoring Pass 2 — 8 files, 359 LOC removed** |
 | **[0.9.48]** | 2026-02-21 | **Semantic Domain + Test Generator + Registry System: 30 MCP tools, 43 files changed** |
 | **[0.9.47]** | 2026-02-21 | **Massive Refactoring: 77% code reduction, 5 files refactored** |
 | **[0.9.46]** | 2026-02-20 | **MCP Tools Bug Fixes: 4 tools mejorados + Technical Debt Audit** |
@@ -67,7 +69,51 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.48 (2026-02-21)
+## 🚀 Latest Release: v0.9.51 (2026-02-21)
+
+**Robust FileWatcher + Test Factory Refactoring**: Sistema de file-watching robusto con procesamiento incremental, Smart Batch Processor, y refactorización masiva de 6 test factories. **34 nuevos módulos creados, deuda técnica reducida 25%.**
+
+### Major Features
+
+#### 1. Smart Batch Processor
+- **Ventana de tiempo adaptativa**: 500ms → 5000ms según volumen de cambios
+- **Detección automática de cambios masivos**: Umbral de 5 cambios/segundo
+- **Procesamiento ordenado**: delete → create → modify
+- **Cooldown inteligente**: Pausa después de batches grandes
+
+#### 2. Incremental Analyzer
+- **Invalidación selectiva de cache**: Solo archivos afectados
+- **Actualización de dependencias transitivas**: Detecta impacto en archivos dependientes
+- **Procesamiento en 3 fases**: Agrupa cambios por tipo y prioridad
+- **Reutilización de análisis**: Mantiene cache de archivos sin cambios
+
+#### 3. Test Factory Refactoring (6 archivos → 34 módulos)
+| Archivo Original | Líneas | Nuevos Módulos |
+|-----------------|--------|----------------|
+| `query-test/builders.js` | 545 | 8 módulos |
+| `css-in-js-test/builders.js` | 595 | 5 módulos |
+| `race-detector-test/builders.js` | 605 | 8 módulos |
+| `state-management-test/builders.js` | 611 | 4 módulos |
+| `data-flow-test/builders.js` | 430 | 3 módulos |
+| `batch-processor.js` | 253 | 6 módulos |
+
+### Files Changed
+
+| Tipo | Cantidad |
+|------|----------|
+| Nuevos archivos | 40+ |
+| Archivos refactorizados | 6 |
+| Líneas eliminadas | ~3,000 |
+| Deuda técnica reducida | 25% |
+
+### Cache Invalidation Fix
+- **Problema**: Cache no se actualizaba durante refactorizaciones masivas
+- **Solución**: SmartBatchProcessor detecta y procesa cambios masivos automáticamente
+- **Resultado**: No requiere reinicio completo del servidor después de cambios
+
+---
+
+## 🚀 Previous Release: v0.9.48 (2026-02-21)
 
 **Semantic Domain + Test Generator + Registry System**: Nueva infraestructura de metadata con detección semántica automática, generador de tests MCP, y sistema de registro centralizado. **30 MCP Tools total. 43 archivos modificados.**
 

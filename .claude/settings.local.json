@@ -123,7 +123,14 @@
       "mcp__omnysys__atomic_write",
       "mcp__omnysys__get_atom_schema",
       "Bash(xargs -I{} sh -c 'echo \"\"=== {} ===\"\" && cat {} | python3 -c \"\"import json,sys; a=json.load\\(sys.stdin\\); print\\(\\\\\"\"type:\\\\\"\", a.get\\(\\\\\"\"type\\\\\"\"\\), \\\\\"\"isTestCallback:\\\\\"\", a.get\\(\\\\\"\"isTestCallback\\\\\"\"\\)\\)\"\"')",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "mcp__omnysys__get_module_overview",
+      "mcp__omnysys__validate_imports",
+      "mcp__omnysys__simulate_data_journey",
+      "Bash(git:*)",
+      "mcp__omnysys__find_symbol_instances",
+      "mcp__omnysys__generate_tests",
+      "mcp__omnysys__generate_batch_tests"
     ],
     "additionalDirectories": [
       "c:\\Users\\mauro\\OneDrive\\Escritorio\\📁 PROYECTOS\\Desarrollo\\aver"

@@ -10,10 +10,14 @@ const logger = createLogger('OmnySys:lifecycle');
 export async function _initializeFileWatcher() {
   logger.info('👁️  Initializing File Watcher...');
 
+  // Obtener o crear cacheInvalidator
+  const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
+  
   this.fileWatcher = new FileWatcher(this.projectPath, {
     debounceMs: 500,
     batchDelayMs: 1000,
-    maxConcurrent: 3
+    maxConcurrent: 3,
+    cacheInvalidator  // Pasar al FileWatcher para invalidación automática
   });
 
   this.fileWatcher.on('file:created', (event) => {
@@ -21,24 +25,8 @@ export async function _initializeFileWatcher() {
   });
 
   this.fileWatcher.on('file:modified', async (event) => {
-    logger.info(`🗑️  Cache invalidation starting for: ${event.filePath}`);
-
-    const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
-
-    try {
-      const result = await cacheInvalidator.invalidateSync(event.filePath);
-
-      if (!result.success) {
-        logger.error(`❌ Cache invalidation failed for ${event.filePath}:`, result.error);
-        return;
-      }
-
-      logger.info(`✅ Cache invalidated (${result.duration}ms): ${event.filePath}`);
-      this.batchProcessor?.addChange(event.filePath, 'modified');
-
-    } catch (error) {
-      logger.error(`💥 Unexpected error during cache invalidation:`, error.message);
-    }
+    // Cache invalidation now happens automatically inside FileWatcher
+    this.batchProcessor?.addChange(event.filePath, 'modified');
   });
 
   this.fileWatcher.on('file:deleted', (event) => {

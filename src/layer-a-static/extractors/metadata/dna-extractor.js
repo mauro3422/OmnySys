@@ -15,11 +15,14 @@ import { createHash } from 'crypto';
  * Estructura del ADN de un átomo
  * @typedef {Object} AtomDNA
  * @property {string} structuralHash - Hash de la estructura (input/output/transformation)
+ * @property {string} contextualHash - Hash estructural + contexto (archetype, purpose)
+ * @property {string} semanticHash - Hash estructural + contexto + semántica
  * @property {string} patternHash - Hash del patrón estandarizado
  * @property {string} flowType - Tipo de flujo (read-transform-persist, etc.)
  * @property {string[]} operationSequence - Secuencia de operaciones
  * @property {number} complexityScore - Complejidad (1-10)
  * @property {string} semanticFingerprint - Huella semántica (verb+domain+entity)
+ * @property {number} duplicabilityScore - Score de qué tan duplicable es (0-100)
  */
 
 /**
@@ -34,9 +37,12 @@ import { createHash } from 'crypto';
 export function extractDNA(atom) {
   if (!atom || !atom.dataFlow) {
     // Graceful fallback for atoms without dataFlow (e.g., config files, simple exports)
+    const fallbackHash = 'no-dataflow';
     return {
-      structuralHash: 'no-dataflow',
-      patternHash: 'no-dataflow',
+      structuralHash: fallbackHash,
+      contextualHash: fallbackHash,
+      semanticHash: fallbackHash,
+      patternHash: fallbackHash,
       flowType: 'unknown',
       operationSequence: [],
       complexityScore: 1,
@@ -44,15 +50,27 @@ export function extractDNA(atom) {
       outputCount: 0,
       transformationCount: 0,
       semanticFingerprint: 'unknown',
+      duplicabilityScore: 0, // No duplicable
       extractedAt: new Date().toISOString(),
-      version: '1.0',
-      id: 'no-dataflow'
+      version: '2.0',
+      id: fallbackHash
     };
   }
 
+  // Calcular hashes jerárquicos
+  const structuralHash = computeStructuralHash(atom.dataFlow);
+  const contextualHash = computeContextualHash(atom, structuralHash);
+  const semanticHash = computeSemanticHash(atom, contextualHash);
+
   const dna = {
-    // Identidad estructural (inmutable ante cambios de nombre)
-    structuralHash: computeStructuralHash(atom.dataFlow),
+    // Nivel 1: Estructura pura (para detectar patrones)
+    structuralHash,
+
+    // Nivel 2: Estructura + Contexto (para detectar duplicados reales)
+    contextualHash,
+
+    // Nivel 3: Estructura + Contexto + Semántica (para duplicados exactos)
+    semanticHash,
 
     // Patrón de flujo (categoría alta)
     patternHash: atom.standardized?.patternHash || computePatternHash(atom.dataFlow),
@@ -70,9 +88,12 @@ export function extractDNA(atom) {
     // Huella semántica (para matching aproximado)
     semanticFingerprint: computeSemanticFingerprint(atom),
 
+    // Score de duplicabilidad (para filtrar falsos positivos)
+    duplicabilityScore: computeDuplicabilityScore(atom),
+
     // Metadatos de extracción
     extractedAt: new Date().toISOString(),
-    version: '1.0'
+    version: '2.0'
   };
 
   // ID único del ADN (para trazabilidad)
@@ -105,6 +126,111 @@ function computeStructuralHash(dataFlow) {
     .update(JSON.stringify(structure))
     .digest('hex')
     .substring(0, 16);
+}
+
+/**
+ * Computa hash contextual (estructura + contexto del átomo)
+ * Incluye archetype, purpose, y test callback type para diferenciar
+ * funciones similares en contextos diferentes
+ */
+function computeContextualHash(atom, structuralHash) {
+  const context = {
+    structuralHash,
+    archetype: atom.archetype?.type || 'unknown',
+    archetypeSeverity: atom.archetype?.severity || 0,
+    purpose: atom.purpose || 'unknown',
+    isTestCallback: atom.isTestCallback || false,
+    testCallbackType: atom.testCallbackType || null,
+    className: atom.className || null,
+    isExported: atom.isExported || false,
+    isAsync: atom.isAsync || false
+  };
+
+  return createHash('sha256')
+    .update(JSON.stringify(context))
+    .digest('hex')
+    .substring(0, 16);
+}
+
+/**
+ * Computa hash semántico (contexto + fingerprint semántico)
+ * Para detectar duplicados exactos incluyendo significado
+ */
+function computeSemanticHash(atom, contextualHash) {
+  const semantic = {
+    contextualHash,
+    semanticFingerprint: computeSemanticFingerprint(atom),
+    name: atom.name || 'unknown',
+    complexity: atom.complexity || 1,
+    linesOfCode: atom.linesOfCode || 1
+  };
+
+  return createHash('sha256')
+    .update(JSON.stringify(semantic))
+    .digest('hex')
+    .substring(0, 16);
+}
+
+/**
+ * Computa score de duplicabilidad (0-100)
+ * Penaliza patrones legítimos que no son duplicación real
+ */
+function computeDuplicabilityScore(atom) {
+  let score = 100; // Base
+
+  // Penalizar callbacks de test framework (beforeEach, it, describe)
+  if (atom.isTestCallback) {
+    score -= 60;
+    if (atom.testCallbackType === 'beforeEach') score -= 20;
+    if (atom.testCallbackType === 'afterEach') score -= 20;
+  }
+
+  // Penalizar métodos de clase simples (posible polimorfismo)
+  if (atom.archetype?.type === 'class-method' && atom.complexity === 1 && atom.linesOfCode <= 5) {
+    score -= 40;
+  }
+
+  // Penalizar getters/setters simples
+  if (atom.archetype?.type === 'class-method' && atom.name) {
+    const name = atom.name.toLowerCase();
+    if (name.startsWith('get') || name.startsWith('set') || name.startsWith('is')) {
+      if (atom.complexity === 1 && atom.linesOfCode <= 3) {
+        score -= 50;
+      }
+    }
+  }
+
+  // Penalizar constructores que solo llaman super()
+  if (atom.name === 'constructor' && atom.complexity <= 2 && atom.linesOfCode <= 5) {
+    score -= 45;
+  }
+
+  // Penalizar helpers de test
+  if (atom.purpose === 'TEST_HELPER') {
+    score -= 35;
+  }
+
+  // Bonificar código de negocio real
+  if (atom.purpose === 'API_EXPORT' && atom.isExported) {
+    score += 15;
+  }
+
+  // Bonificar complejidad moderada-alta (código de negocio)
+  if (atom.complexity >= 5) {
+    score += 10;
+  }
+
+  // Bonificar funciones largas (más probable que sean duplicación real)
+  if (atom.linesOfCode > 20) {
+    score += 15;
+  }
+
+  // Bonificar funciones con side effects (lógica de negocio)
+  if (atom.dataFlow?.outputs?.some(o => o.type === 'side_effect')) {
+    score += 10;
+  }
+
+  return Math.max(0, Math.min(100, score));
 }
 
 /**
@@ -282,7 +408,7 @@ function deriveEntity(name, verb) {
  */
 function computeDNAId(dna) {
   return createHash('sha256')
-    .update(`${dna.structuralHash}:${dna.patternHash}:${dna.semanticFingerprint}`)
+    .update(`${dna.semanticHash}:${dna.patternHash}:${dna.semanticFingerprint}`)
     .digest('hex')
     .substring(0, 16);
 }

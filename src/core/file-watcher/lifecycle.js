@@ -3,6 +3,8 @@ import { watch } from 'fs';
 
 import { getProjectMetadata } from '../../layer-c-memory/query/apis/project-api.js';
 import { createLogger } from '../../utils/logger.js';
+import { SmartBatchProcessor } from './batch-processor/index.js';
+import { IncrementalAnalyzer } from './incremental-analyzer.js';
 
 const logger = createLogger('file-watcher');
 
@@ -13,6 +15,30 @@ export async function initialize() {
   if (this.options.verbose) {
     logger.info('FileWatcher initializing...');
   }
+
+  // Inicializar SmartBatchProcessor si está habilitado
+  if (this.options.useSmartBatch) {
+    this.batchProcessor = new SmartBatchProcessor({
+      debounceMs: this.options.debounceMs,
+      maxConcurrent: this.options.maxConcurrent,
+      verbose: this.options.verbose
+    });
+    
+    // Configurar callback para procesar batches
+    this.batchProcessor.onProcessBatch = async (changes) => {
+      await this._processBatchChanges(changes);
+    };
+    
+    if (this.options.verbose) {
+      logger.info('✅ SmartBatchProcessor initialized');
+    }
+  }
+  
+  // Inicializar IncrementalAnalyzer
+  this.incrementalAnalyzer = new IncrementalAnalyzer(
+    this.cacheInvalidator?.cache,
+    this.rootPath
+  );
 
   // Cargar estado actual del proyecto
   await this.loadCurrentState();
@@ -25,7 +51,8 @@ export async function initialize() {
     logger.info('FileWatcher ready', {
       debounce: this.options.debounceMs,
       batchDelay: this.options.batchDelayMs,
-      maxConcurrent: this.options.maxConcurrent
+      maxConcurrent: this.options.maxConcurrent,
+      smartBatch: this.options.useSmartBatch
     });
   }
 
@@ -140,11 +167,18 @@ export async function notifyChange(filePath, changeType = 'modified') {
 
   // Agregar a pendientes con timestamp
   const timestamp = Date.now();
-  this.pendingChanges.set(relativePath, {
+  const changeInfo = {
     type: changeType,
     timestamp,
     fullPath: filePath
-  });
+  };
+  
+  this.pendingChanges.set(relativePath, changeInfo);
+  
+  // También registrar en SmartBatchProcessor si está activo
+  if (this.batchProcessor && this.options.useSmartBatch) {
+    this.batchProcessor.addChange(relativePath, changeInfo);
+  }
 
   this.stats.totalChanges++;
 
@@ -157,9 +191,21 @@ export async function notifyChange(filePath, changeType = 'modified') {
 
 /**
  * Procesa cambios pendientes
+ * Usa SmartBatchProcessor si está disponible
  */
 export async function processPendingChanges() {
-  if (!this.isRunning || this.pendingChanges.size === 0) {
+  if (!this.isRunning) {
+    return;
+  }
+  
+  // Si tenemos SmartBatchProcessor activo, usarlo
+  if (this.batchProcessor && this.options.useSmartBatch) {
+    await this._processWithBatchProcessor();
+    return;
+  }
+  
+  // Fallback al comportamiento original
+  if (this.pendingChanges.size === 0) {
     return;
   }
 
@@ -190,6 +236,62 @@ export async function processPendingChanges() {
   // Limpiar procesados de pendientes
   for (const change of toProcess) {
     this.pendingChanges.delete(change.filePath);
+  }
+}
+
+/**
+ * Procesa cambios usando el SmartBatchProcessor
+ */
+export async function _processWithBatchProcessor() {
+  // Agregar cambios pendientes al batch processor
+  for (const [filePath, changeInfo] of this.pendingChanges) {
+    this.batchProcessor.addChange(filePath, changeInfo);
+    this.pendingChanges.delete(filePath);
+  }
+  
+  // Verificar si hay cambios listos
+  if (!this.batchProcessor.hasReadyChanges()) {
+    return;
+  }
+  
+  // Procesar batch
+  const result = await this.batchProcessor.processBatch(
+    async (change) => this.processChange(change)
+  );
+  
+  // Actualizar estadísticas
+  this.stats.batchesProcessed++;
+  this.stats.avgBatchSize = this.batchProcessor.getStats().avgBatchSize;
+  
+  if (result.processed > 0 && this.options.verbose) {
+    logger.info(`📦 Batch completado: ${result.processed} archivos procesados`);
+  }
+}
+
+/**
+ * Procesa un batch de cambios (usado por el SmartBatchProcessor)
+ */
+export async function _processBatchChanges(changes) {
+  // Usar el analizador incremental si está disponible
+  if (this.incrementalAnalyzer) {
+    const result = await this.incrementalAnalyzer.processBatch(changes);
+    
+    // Emitir eventos por cada cambio procesado
+    for (const changeResult of result.results) {
+      if (changeResult.success) {
+        this.emit(`file:${changeResult.changeType}`, { 
+          filePath: changeResult.filePath,
+          result: changeResult
+        });
+      }
+    }
+    
+    return result;
+  }
+  
+  // Fallback: procesar uno por uno
+  for (const change of changes) {
+    await this.processChange(change);
   }
 }
 
@@ -254,6 +356,25 @@ export async function stop() {
   if (this.processingInterval) {
     clearInterval(this.processingInterval);
     this.processingInterval = null;
+  }
+
+  // Procesar últimos cambios pendientes si hay batch processor
+  if (this.batchProcessor && this.options.useSmartBatch) {
+    const pendingCount = this.batchProcessor.getBufferedCount();
+    if (pendingCount > 0) {
+      if (this.options.verbose) {
+        logger.info(`Processing ${pendingCount} pending changes before stop...`);
+      }
+      await this._processWithBatchProcessor();
+    }
+    
+    // Limpiar batch processor
+    this.batchProcessor.clear();
+  }
+  
+  // Limpiar incremental analyzer
+  if (this.incrementalAnalyzer) {
+    this.incrementalAnalyzer.clear();
   }
 
   // Esperar a que terminen procesos pendientes

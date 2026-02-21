@@ -74,6 +74,21 @@ export async function handleFileModified(filePath, fullPath) {
   }
 
   logger.info(`[MODIFIED] ${filePath}`);
+  
+  // Invalidar cache si existe cacheInvalidator
+  if (this.cacheInvalidator) {
+    try {
+      const result = await this.cacheInvalidator.invalidateSync(filePath);
+      if (result.success) {
+        logger.info(`✅ Cache invalidated (${result.duration}ms): ${filePath}`);
+      } else {
+        logger.warn(`⚠️ Cache invalidation failed: ${filePath}`, result.error);
+      }
+    } catch (error) {
+      logger.error(`❌ Error during cache invalidation: ${filePath}`, error.message);
+    }
+  }
+  
   await this.analyzeAndIndex(filePath, fullPath, true);
   this.emit('file:modified', { filePath });
 }

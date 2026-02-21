@@ -8,7 +8,7 @@ export {
   FunctionExtractionBuilder,
   ImportExportBuilder,
   ASTBuilder
-} from './comprehensive-extractor-test/builders.js';
+} from './comprehensive-extractor-test/builders/index.js';
 
 export { ExtractionScenarioFactory } from './comprehensive-extractor-test/scenarios.js';
 
@@ -24,7 +24,7 @@ import {
   FunctionExtractionBuilder,
   ImportExportBuilder,
   ASTBuilder
-} from './comprehensive-extractor-test/builders.js';
+} from './comprehensive-extractor-test/builders/index.js';
 import { ExtractionScenarioFactory } from './comprehensive-extractor-test/scenarios.js';
 import {
   ExtractionValidator,

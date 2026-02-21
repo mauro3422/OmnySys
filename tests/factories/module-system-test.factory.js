@@ -10,7 +10,7 @@ export {
   ImportBuilder,
   AtomBuilder,
   EntryPointBuilder
-} from './module-system-test/builders.js';
+} from './module-system-test/builders/index.js';
 
 export { TestScenarios } from './module-system-test/scenarios.js';
 

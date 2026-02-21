@@ -59,9 +59,18 @@ export async function detect_patterns(args, context) {
         note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" | "architectural-debt" for full details',
         duplicates: { 
           exact: dups.summary.exactDuplicatesFound, 
-          similar: dups.summary.similarCodeFound, 
-          potentialSavingsLOC: dups.summary.potentialSavingsLOC, 
-          top3: dups.exactDuplicates.slice(0, 3).map(d => ({ hash: d.hash, count: d.count, example: d.atoms[0] })) 
+          contextual: dups.summary.contextualDuplicatesFound,
+          structuralPatterns: dups.summary.structuralPatternsFound,
+          atomsExcluded: dups.summary.atomsExcluded,
+          potentialSavingsLOC: dups.summary.potentialSavingsLOC,
+          avgDuplicabilityScore: dups.summary.avgDuplicabilityScore,
+          top3: dups.exactDuplicates.slice(0, 3).map(d => ({ 
+            hash: d.hash, 
+            count: d.count, 
+            hashType: d.hashType,
+            avgDuplicabilityScore: d.avgDuplicabilityScore,
+            example: d.atoms[0] 
+          })) 
         },
         godFunctions: { 
           count: godFns.length, 
