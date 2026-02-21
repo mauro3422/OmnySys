@@ -20,7 +20,78 @@ import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:side:effects:detector');
 
+// ── API sets (module-level constants) ─────────────────────────────────────────
+const GLOBAL_OBJECTS = new Set(['window', 'global', 'globalThis']);
+const STORAGE_OBJECTS = new Set(['localStorage', 'sessionStorage', 'indexedDB']);
+const NETWORK_APIS = new Set(['fetch', 'axios', 'request', 'post', 'get', 'put', 'delete', 'patch', 'XMLHttpRequest']);
+const LISTENER_APIS = new Set(['addEventListener', 'on', 'once', 'subscribe', 'addListener']);
+const TIMER_APIS = new Set(['setTimeout', 'setInterval', 'setImmediate', 'requestAnimationFrame']);
+const DOM_APIS = new Set(['appendChild', 'removeChild', 'insertBefore', 'replaceChild', 'innerHTML', 'textContent', 'setAttribute', 'classList', 'style']);
 
+// ── Visitor handlers ──────────────────────────────────────────────────────────
+
+function visitMemberExpression(nodePath, currentFunction, sideEffects, details) {
+  const node = nodePath.node;
+  const objName = node.object.name;
+
+  if (GLOBAL_OBJECTS.has(objName)) {
+    sideEffects.hasGlobalAccess = true;
+    sideEffects.accessesWindow = true;
+    details.globalAccessLocations.push({ line: node.loc?.start?.line || 0, function: currentFunction, object: objName, property: node.property.name });
+    if (nodePath.parent.type === 'AssignmentExpression' && nodePath.parent.left === node) {
+      sideEffects.modifiesGlobalState = true;
+      details.globalStateModificationLocations.push({ line: node.loc?.start?.line || 0, function: currentFunction, target: `${objName}.${node.property.name}` });
+    }
+  }
+
+  if (objName === 'document') {
+    sideEffects.modifiesDOM = true;
+    details.domModificationLocations.push({ line: node.loc?.start?.line || 0, function: currentFunction, method: node.property.name });
+  }
+
+  if (STORAGE_OBJECTS.has(objName)) {
+    sideEffects.usesLocalStorage = true;
+    details.storageAccessLocations.push({ line: node.loc?.start?.line || 0, function: currentFunction, storage: objName });
+  }
+}
+
+function visitCallExpression(nodePath, currentFunction, sideEffects, details) {
+  const node = nodePath.node;
+  const callee = node.callee;
+  const funcName = callee.type === 'Identifier' ? callee.name : callee.type === 'MemberExpression' ? callee.property.name : '';
+  if (!funcName) return;
+
+  const line = node.loc?.start?.line || 0;
+
+  if (NETWORK_APIS.has(funcName)) {
+    sideEffects.makesNetworkCalls = true;
+    details.networkCallLocations.push({ line, function: currentFunction, api: funcName });
+  }
+  if (LISTENER_APIS.has(funcName)) {
+    sideEffects.hasEventListeners = true;
+    details.eventListenerLocations.push({ line, function: currentFunction, method: funcName });
+  }
+  if (TIMER_APIS.has(funcName)) {
+    sideEffects.usesTimers = true;
+    details.timerLocations.push({ line, function: currentFunction, timer: funcName });
+  }
+  if (DOM_APIS.has(funcName)) {
+    sideEffects.modifiesDOM = true;
+    details.domModificationLocations.push({ line, function: currentFunction, method: funcName });
+  }
+}
+
+function buildParserPlugins(filePath) {
+  const plugins = [
+    'jsx', 'objectRestSpread', 'decorators', 'classProperties', 'exportExtensions',
+    'asyncGenerators', ['pipelineOperator', { proposal: 'minimal' }],
+    'nullishCoalescingOperator', 'optionalChaining', 'partialApplication'
+  ];
+  if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
+    plugins.push(['typescript', { isTSX: filePath.endsWith('.tsx') }]);
+  }
+  return plugins;
+}
 
 /**
  * Detecta side effects en un archivo
@@ -31,183 +102,32 @@ const logger = createLogger('OmnySys:side:effects:detector');
  */
 export function detectSideEffects(code, filePath = '') {
   const sideEffects = {
-    hasGlobalAccess: false,
-    modifiesDOM: false,
-    makesNetworkCalls: false,
-    usesLocalStorage: false,
-    accessesWindow: false,
-    modifiesGlobalState: false,
-    hasEventListeners: false,
-    usesTimers: false
+    hasGlobalAccess: false, modifiesDOM: false, makesNetworkCalls: false,
+    usesLocalStorage: false, accessesWindow: false, modifiesGlobalState: false,
+    hasEventListeners: false, usesTimers: false
   };
-
   const details = {
-    globalAccessLocations: [],
-    domModificationLocations: [],
-    networkCallLocations: [],
-    storageAccessLocations: [],
-    windowAccessLocations: [],
-    globalStateModificationLocations: [],
-    eventListenerLocations: [],
-    timerLocations: []
+    globalAccessLocations: [], domModificationLocations: [], networkCallLocations: [],
+    storageAccessLocations: [], windowAccessLocations: [], globalStateModificationLocations: [],
+    eventListenerLocations: [], timerLocations: []
   };
 
   try {
-    const isTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
-    const plugins = [
-      'jsx',
-      'objectRestSpread',
-      'decorators',
-      'classProperties',
-      'exportExtensions',
-      'asyncGenerators',
-      ['pipelineOperator', { proposal: 'minimal' }],
-      'nullishCoalescingOperator',
-      'optionalChaining',
-      'partialApplication'
-    ];
-
-    if (isTypeScript) {
-      plugins.push(['typescript', { isTSX: filePath.endsWith('.tsx') }]);
-    }
-
     const ast = parse(code, {
       sourceType: 'module',
       allowImportExportEverywhere: true,
       allowReturnOutsideFunction: true,
-      plugins
+      plugins: buildParserPlugins(filePath)
     });
 
     let currentFunction = 'module-level';
-
     const traverseFn = _traverse.default ?? _traverse;
+
     traverseFn(ast, {
-      FunctionDeclaration(nodePath) {
-        currentFunction = nodePath.node.id?.name || 'anonymous-function';
-      },
-      ArrowFunctionExpression(nodePath) {
-        currentFunction = nodePath.node.id?.name || 'anonymous-arrow';
-      },
-
-      // Detectar acceso a window/global
-      MemberExpression(nodePath) {
-        const node = nodePath.node;
-
-        // window.*, global.*, globalThis.*
-        if (['window', 'global', 'globalThis'].includes(node.object.name)) {
-          sideEffects.hasGlobalAccess = true;
-          sideEffects.accessesWindow = true;
-
-          details.globalAccessLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            object: node.object.name,
-            property: node.property.name
-          });
-
-          // Si es asignación -> modifiesGlobalState
-          if (nodePath.parent.type === 'AssignmentExpression' && nodePath.parent.left === node) {
-            sideEffects.modifiesGlobalState = true;
-            details.globalStateModificationLocations.push({
-              line: node.loc?.start?.line || 0,
-              function: currentFunction,
-              target: `${node.object.name}.${node.property.name}`
-            });
-          }
-        }
-
-        // document.*, querySelector, etc. -> DOM
-        if (node.object.name === 'document') {
-          sideEffects.modifiesDOM = true;
-          details.domModificationLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            method: node.property.name
-          });
-        }
-
-        // localStorage, sessionStorage, indexedDB
-        if (['localStorage', 'sessionStorage', 'indexedDB'].includes(node.object.name)) {
-          sideEffects.usesLocalStorage = true;
-          details.storageAccessLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            storage: node.object.name
-          });
-        }
-      },
-
-      // Detectar llamadas a funciones (fetch, XMLHttpRequest, setTimeout, etc.)
-      CallExpression(nodePath) {
-        const node = nodePath.node;
-        const callee = node.callee;
-
-        // Nombre de la función/método
-        let funcName = '';
-
-        if (callee.type === 'Identifier') {
-          funcName = callee.name;
-        } else if (callee.type === 'MemberExpression') {
-          funcName = callee.property.name;
-        }
-
-        // Network APIs
-        const networkAPIs = ['fetch', 'axios', 'request', 'post', 'get', 'put', 'delete', 'patch'];
-        if (networkAPIs.includes(funcName)) {
-          sideEffects.makesNetworkCalls = true;
-          details.networkCallLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            api: funcName
-          });
-        }
-
-        // XMLHttpRequest constructor
-        if (funcName === 'XMLHttpRequest') {
-          sideEffects.makesNetworkCalls = true;
-          details.networkCallLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            api: 'XMLHttpRequest'
-          });
-        }
-
-        // Event listeners
-        const listenerAPIs = ['addEventListener', 'on', 'once', 'subscribe', 'addListener'];
-        if (listenerAPIs.includes(funcName)) {
-          sideEffects.hasEventListeners = true;
-          details.eventListenerLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            method: funcName
-          });
-        }
-
-        // Timers
-        const timerAPIs = ['setTimeout', 'setInterval', 'setImmediate', 'requestAnimationFrame'];
-        if (timerAPIs.includes(funcName)) {
-          sideEffects.usesTimers = true;
-          details.timerLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            timer: funcName
-          });
-        }
-
-        // DOM methods
-        const domAPIs = [
-          'appendChild', 'removeChild', 'insertBefore', 'replaceChild',
-          'innerHTML', 'textContent', 'setAttribute', 'classList', 'style'
-        ];
-        if (domAPIs.includes(funcName)) {
-          sideEffects.modifiesDOM = true;
-          details.domModificationLocations.push({
-            line: node.loc?.start?.line || 0,
-            function: currentFunction,
-            method: funcName
-          });
-        }
-      }
+      FunctionDeclaration(np) { currentFunction = np.node.id?.name || 'anonymous-function'; },
+      ArrowFunctionExpression(np) { currentFunction = np.node.id?.name || 'anonymous-arrow'; },
+      MemberExpression(np) { visitMemberExpression(np, currentFunction, sideEffects, details); },
+      CallExpression(np) { visitCallExpression(np, currentFunction, sideEffects, details); }
     });
   } catch (error) {
     logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
