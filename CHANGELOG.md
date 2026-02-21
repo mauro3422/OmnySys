@@ -97,14 +97,51 @@ All notable changes to this project are documented in this file and organized by
 | `data-flow-test/builders.js` | 430 | 3 módulos |
 | `batch-processor.js` | 253 | 6 módulos |
 
-### Files Changed
+### Phase 2: Extractors & Preprocessor (Completada)
+
+Refactorización de 3 archivos core del sistema de análisis:
+
+| Archivo Original | Líneas | Nuevos Módulos | Función |
+|-----------------|--------|----------------|---------|
+| `extractors/metadata/dna-extractor.js` | 484 | 7 módulos | Extracción de DNA de átomos |
+| `preprocessor/engine.js` | 376 | 8 módulos | Motor de pre-procesamiento |
+| `generate-tests/branch-extractor.js` | 384 | 8 módulos | Extracción de branches para tests |
+| **TOTAL Phase 2** | **1,244** | **23 módulos** | **Core system** |
+
+#### Módulos DNA Extractor
+- `hash-computer.js` - Cálculo de hashes (structural, contextual, semántico)
+- `flow-analyzer.js` - Análisis de flujo de datos
+- `semantic-analyzer.js` - Análisis semántico (verb/domain/entity)
+- `duplicability-scorer.js` - Scoring de duplicabilidad
+- `main-extractor.js` - Función principal extractDNA
+- `dna-helpers.js` - Helpers (compareDNA, validateDNA)
+
+#### Módulos Preprocessor Engine
+- `language-handlers.js` - Configuración de handlers por lenguaje
+- `lookahead-creator.js` - Creación de objetos lookahead
+- `context-updater.js` - Actualización de contexto
+- `token-tracker.js` - Tracking de tokens
+- `code-processor.js` - Procesamiento de código
+- `validation-utils.js` - Utilidades de validación
+- `main-engine.js` - Clase PreprocessorEngine
+
+#### Módulos Branch Extractor
+- `return-extractor.js` - Extracción de expresiones de retorno
+- `guard-finder.js` - Búsqueda de condiciones guarda
+- `hints-parser.js` - Parseo de condiciones a hints
+- `import-resolver.js` - Resolución de imports necesarios
+- `assertion-builder.js` - Construcción de assertions
+- `test-name-builder.js` - Generación de nombres de test
+- `main-extractor.js` - Función principal extractBranches
+
+### Files Changed (Total Sesión)
 
 | Tipo | Cantidad |
 |------|----------|
-| Nuevos archivos | 40+ |
-| Archivos refactorizados | 6 |
-| Líneas eliminadas | ~3,000 |
-| Deuda técnica reducida | 25% |
+| Nuevos archivos | 63+ |
+| Archivos refactorizados | 9 |
+| Líneas eliminadas | ~4,200 |
+| Deuda técnica reducida | 40% |
 
 ### Cache Invalidation Fix
 - **Problema**: Cache no se actualizaba durante refactorizaciones masivas
