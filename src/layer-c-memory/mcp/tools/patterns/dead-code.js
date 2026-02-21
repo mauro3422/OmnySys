@@ -19,7 +19,7 @@ export function findDeadCode(atoms) {
     if (atom.calledBy?.length > 0) continue;
     
     // Skip entry points and special purposes
-    if (['CLI_ENTRY', 'TEST_CALLBACK', 'SCRIPT_MAIN'].includes(atom.purpose)) continue;
+    if (['CLI_ENTRY', 'TEST_CALLBACK', 'SCRIPT_MAIN', 'PRIVATE_HELPER'].includes(atom.purpose)) continue;
     
     // Skip if it's an event handler (might be called dynamically)
     if (atom.name?.startsWith('on') || atom.name?.startsWith('handle')) continue;

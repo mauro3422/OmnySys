@@ -12,6 +12,7 @@ import { logger } from '#utils/logger.js';
 import { extractAtoms } from './extraction/atom-extractor.js';
 import { buildCallGraph } from './graph/call-graph.js';
 import { recalculateArchetypes } from './metadata/archetype.js';
+import { recalculatePurposes } from './metadata/purpose.js';
 
 /**
  * Phase 1: Extract atomic metadata from functions
@@ -43,6 +44,10 @@ export class AtomExtractionPhase extends ExtractionPhase {
 
     // Recalculate archetypes with calledBy info
     recalculateArchetypes(atoms);
+
+    // Recalculate purposes — DEAD_CODE atoms that have intra-file callers
+    // become PRIVATE_HELPER (buildCallGraph fills calledBy AFTER per-atom extraction)
+    recalculatePurposes(atoms);
 
     context.atoms = atoms;
     context.atomCount = atoms.length;

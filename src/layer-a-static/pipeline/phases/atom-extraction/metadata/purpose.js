@@ -21,6 +21,7 @@ export const ATOM_PURPOSES = {
   SCRIPT_MAIN: { name: 'Script Entry', description: 'Main function in script', isDead: false, icon: '🚀' },
   ANALYSIS_SCRIPT: { name: 'Analysis Script', description: 'Audit/analysis script - internal tooling, not production code', isDead: false, icon: '🔍', isInternalTool: true },
   CLASS_METHOD: { name: 'Class Method', description: 'Method in a class (may be called dynamically)', isDead: false, icon: '📦' },
+  PRIVATE_HELPER: { name: 'Private Helper', description: 'Private function called only within the same file (intra-file call)', isDead: false, icon: '🔒' },
   DEAD_CODE: { name: 'Potential Dead Code', description: 'No evidence of use - review needed', isDead: true, icon: '💀' }
 };
 
@@ -197,4 +198,28 @@ export function detectAtomPurpose(atom, filePath = '') {
   };
 }
 
-export default { detectAtomPurpose, ATOM_PURPOSES };
+/**
+ * Re-evaluates purpose for atoms classified as DEAD_CODE after the call graph
+ * is built. At extraction time, calledBy is empty for all atoms. buildCallGraph()
+ * fills calledBy with intra-file callers — so any atom with calledBy > 0 that was
+ * tentatively marked DEAD_CODE is actually a PRIVATE_HELPER.
+ *
+ * Must be called AFTER buildCallGraph().
+ *
+ * @param {Array} atoms - All atoms from a single file (post call-graph)
+ */
+export function recalculatePurposes(atoms) {
+  for (const atom of atoms) {
+    if (atom.purpose !== 'DEAD_CODE') continue;
+
+    // If buildCallGraph found intra-file callers, reclassify as PRIVATE_HELPER
+    if (atom.calledBy?.length > 0) {
+      atom.purpose = 'PRIVATE_HELPER';
+      atom.purposeReason = `Called by ${atom.calledBy.length} sibling atom(s) within the same file`;
+      atom.purposeConfidence = 0.95;
+      atom.isDeadCode = false;
+    }
+  }
+}
+
+export default { detectAtomPurpose, recalculatePurposes, ATOM_PURPOSES };
