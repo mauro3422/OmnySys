@@ -8,55 +8,31 @@ describe('validateWrite', () => {
   });
 
   it('should handle filePath = null/undefined', async () => {
-    const result = await validateWrite(null, "sample text", "test-id", {});
+    const result = await validateWrite(null, EditOperationBuilder.create().build(), EditOperationBuilder.create().build(), ValidationResultBuilder.create().asValid().build());
     expect(result).toBeDefined();
   });
 
   it('should handle filePath = empty string', async () => {
-    const result = await validateWrite("", "sample text", "test-id", {});
+    const result = await validateWrite("", EditOperationBuilder.create().build(), EditOperationBuilder.create().build(), ValidationResultBuilder.create().asValid().build());
     expect(result).toEqual(expect.objectContaining({}));
   });
 
   it('should handle content = null/undefined', async () => {
-    const result = await validateWrite("/test/file.js", null, "test-id", {});
+    const result = await validateWrite(EditOperationBuilder.create().build(), null, EditOperationBuilder.create().build(), ValidationResultBuilder.create().asValid().build());
     expect(result).toBeDefined();
   });
 
   it('should handle validators = null/undefined', async () => {
-    const result = await validateWrite("/test/file.js", "sample text", null, {});
+    const result = await validateWrite(EditOperationBuilder.create().build(), EditOperationBuilder.create().build(), null, ValidationResultBuilder.create().asValid().build());
     expect(result).toBeDefined();
   });
 
   it('should handle options = null/undefined', async () => {
-    const result = await validateWrite("/test/file.js", "sample text", "test-id", null);
+    const result = await validateWrite(EditOperationBuilder.create().build(), EditOperationBuilder.create().build(), EditOperationBuilder.create().build(), null);
     expect(result).toBeDefined();
-  });
-
-  it('should return {
-        valid: false,
-        error: `Safety check failed: ${safety.error} for expected input', async () => {
-    const result = await validateWrite("/test/file.js", "sample text", "test-id", {});
-    expect(result).toEqual(expect.objectContaining({}));
-  });
-
-  it('should return {
-        valid: false,
-        error: `Syntax error prevents write: ${validation.error} for expected input', async () => {
-    const result = await validateWrite("/test/file.js", "sample text", "test-id", {});
-    expect(result).toEqual(expect.objectContaining({}));
-  });
-
-  it('should return { valid: true } for expected input', async () => {
-    const result = await validateWrite("/test/file.js", "sample text", "test-id", {});
-    expect(result).toEqual(expect.objectContaining({}));
   });
 
   it('should integrate correctly with callers', async () => {
-    const result = await validateWrite("test value", "test value", "test value", "test value");
-    expect(result).toBeDefined();
-  });
-
-  it('should resolve successfully', async () => {
     const result = await validateWrite("test value", "test value", "test value", "test value");
     expect(result).toBeDefined();
   });

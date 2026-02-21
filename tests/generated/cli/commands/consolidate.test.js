@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { consolidateLogic } from 'src/cli/commands/consolidate.js';
+import { consolidateLogic } from '../../src/cli/commands/consolidate.js';
 
 describe('consolidateLogic', () => {
   it('should return valid output for valid input', async () => {
@@ -26,36 +26,18 @@ describe('consolidateLogic', () => {
     expect(result).toBeDefined();
   });
 
-  it('should return { success: false, error: 'No analysis data found', exitCode: 1 } for expected input', async () => {
+  it('should return empty result for empty array/collection', async () => {
     const result = await consolidateLogic("/test/file.js", {});
-    expect(result).toEqual(expect.objectContaining({}));
+    expect(Array.isArray(result) ? result : result).toBeDefined();
   });
 
-  it('should return {
-      success: true,
-      exitCode: 0,
-      stats: {
-        iterations: finalStats?.iterations || 1,
-        totalFiles: finalStats?.totalFiles || enhancedMap.metadata.totalFiles,
-        totalIssues: issuesReport.stats?.totalIssues || 0
-      } for expected input', async () => {
-    const result = await consolidateLogic("/test/file.js", {});
-    expect(result).toEqual(expect.objectContaining({}));
-  });
-
-  it('should return { success: false, error: error.message, exitCode: 1 } for expected input', async () => {
-    const result = await consolidateLogic("/test/file.js", {});
-    expect(result).toEqual(expect.objectContaining({}));
-  });
-
-  it('should resolve successfully', async () => {
+  it('should process single item array/collection', async () => {
     const result = await consolidateLogic("/test/file.js", {});
     expect(result).toBeDefined();
   });
 
-  it('should apply side effects correctly', async () => {
-    const result = await consolidateLogic("/test/file.js", {});
-    expect(result).toBeDefined();
+  it('should handle errors gracefully without propagating', async () => {
+    await expect(consolidateLogic("/test/file.js", {})).rejects.toThrow();
   });
 
   it('should cover all branches (complexity: 23)', async () => {

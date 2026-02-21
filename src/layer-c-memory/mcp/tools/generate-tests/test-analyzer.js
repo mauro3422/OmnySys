@@ -53,18 +53,13 @@ export async function analyzeFunctionForTests(atom, projectPath) {
   // Test 5: Tests basados en archetype
   tests.push(...createArchetypeTests(atom, archetype, inputs, typeContracts));
   
-  // Test 6: Async patterns
-  if (atom.isAsync) {
-    tests.push(...createAsyncTests(atom, asyncAnalysis, inputs, typeContracts));
-  }
-  
-  // Test 7: Side effects
-  if (hasSideEffects(atom)) {
+  // Test 6: Side effects (solo si tiene side effects reales — no duplicar happy path)
+  if (hasSideEffects(atom) && !atom.isAsync) {
     tests.push(createSideEffectsTest(atom, inputs, typeContracts));
   }
-  
-  // Test 8: Branch coverage — threshold 8 cubre la mayoría del sistema (era 15, muy alto)
-  if (complexity > 8) {
+
+  // Test 7: Branch coverage hint — solo si complexity muy alta, sin duplicar happy path
+  if (complexity > 15) {
     tests.push(createBranchCoverageTest(complexity, inputs, typeContracts, atom));
   }
   

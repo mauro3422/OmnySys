@@ -72,8 +72,8 @@ export function analyzeSourceForTests(sourceCode, atom) {
 function extractReturnPatterns(sourceCode) {
   const patterns = [];
   
-  // Buscar returns con valores específicos
-  const returnRegex = /return\s+({[^}]*}|\[[^\]]*\]|"[^"]*"|'[^']*'|\d+|true|false|null)/g;
+  // Buscar returns con valores específicos — solo literales simples (no multiline)
+  const returnRegex = /return\s+(true|false|null|\d+|"[^"\n]{1,40}"|'[^'\n]{1,40}'|\[[^\]\n]{0,40}\])/g;
   let match;
   
   while ((match = returnRegex.exec(sourceCode)) !== null) {
@@ -258,10 +258,44 @@ function buildAssertionFromReturnValue(value) {
   if (value === 'null')  return 'expect(result).toBeNull()';
   if (value === '0')     return 'expect(result).toBe(0)';
   if (/^\d+$/.test(value)) return `expect(result).toBe(${value})`;
-  if (value.startsWith('"') || value.startsWith("'")) return 'expect(typeof result).toBe("string")';
+  if (value.startsWith('"') || value.startsWith("'")) {
+    // Literal string conocido — verificar valor exacto si es corto
+    const inner = value.slice(1, -1);
+    if (inner.length <= 20 && /^[\w\-]+$/.test(inner)) return `expect(result).toBe(${value})`;
+    return 'expect(typeof result).toBe("string")';
+  }
   if (value.startsWith('[')) return 'expect(Array.isArray(result)).toBe(true)';
-  if (value.startsWith('{')) return 'expect(result).toEqual(expect.objectContaining({}))';
+  if (value.startsWith('{')) {
+    // Intentar extraer campos conocidos del objeto literal
+    const fields = extractObjectFields(value);
+    if (fields.length > 0) {
+      const containsExpr = fields.map(f => `${f.key}: ${f.assertion}`).join(', ');
+      return `expect(result).toEqual(expect.objectContaining({ ${containsExpr} }))`;
+    }
+    return 'expect(result).toEqual(expect.objectContaining({}))';
+  }
   return 'expect(result).toBeDefined()';
+}
+
+/**
+ * Extrae pares clave:assertion de un objeto literal simple como `{ valid: true, errors }`
+ */
+function extractObjectFields(objStr) {
+  const fields = [];
+  // Matchear pares key: value simples (sin anidado)
+  const pairRegex = /(\w+)\s*:\s*(true|false|null|\d+|"[^"]{1,20}"|'[^']{1,20}')/g;
+  let m;
+  while ((m = pairRegex.exec(objStr)) !== null) {
+    const [, key, val] = m;
+    let assertion;
+    if (val === 'true')  assertion = 'true';
+    else if (val === 'false') assertion = 'false';
+    else if (val === 'null')  assertion = 'null';
+    else if (/^\d+$/.test(val)) assertion = val;
+    else assertion = `expect.any(String)`;
+    fields.push({ key, assertion });
+  }
+  return fields.slice(0, 3); // máximo 3 campos
 }
 
 /**
@@ -290,8 +324,10 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
       case 'return-value': {
         // Use the actual return value to build a precise assertion
         const assertion = buildAssertionFromReturnValue(pattern.value);
+        // Sanitize: no newlines, max 60 chars for test name
+        const valueSummary = pattern.value.replace(/\s+/g, ' ').slice(0, 40);
         tests.push({
-          name: `should return ${pattern.value} for expected input`,
+          name: `should return ${valueSummary} for matching input`,
           type: 'return-value',
           inputs: {},
           assertion,

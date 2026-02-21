@@ -7,6 +7,7 @@
  */
 
 import { generateTypedInputs } from './input-generator.js';
+import { resolveFactory, resolveBuilderForParam, resolveFactoryImportPath } from './factory-catalog.js';
 
 /**
  * Genera codigo de test completo
@@ -45,9 +46,20 @@ function generateImports(atom, useRealFactories, needSandbox) {
   // Imports base
   code += `import { describe, it, expect, vi } from 'vitest';\n`;
   
-  // Import sandbox si hay side effects
-  if (useRealFactories && needSandbox) {
-    code += `import { withSandbox } from '#test-factories/real/index.js';\n`;
+  // Import factory builders si existen para este módulo
+  if (useRealFactories) {
+    const factoryEntry = resolveFactory(atom.filePath);
+    if (factoryEntry?.factoryPath) {
+      const importPath = resolveFactoryImportPath(factoryEntry.factoryPath);
+      // Extraer nombres de builders únicos (sin 'default' key)
+      const builderNames = Object.values(factoryEntry.builders || {})
+        .filter(b => b && b.name)
+        .map(b => b.name);
+      const uniqueBuilders = [...new Set(builderNames)];
+      if (uniqueBuilders.length > 0) {
+        code += `import { ${uniqueBuilders.join(', ')} } from '${importPath}';\n`;
+      }
+    }
   }
   
   // Import de la función — mapear src/ a alias # para compatibilidad con vitest
@@ -77,8 +89,8 @@ export function generateTestCase(atom, test, useSandbox) {
     }
   }
   
-  // Generar llamada con inputs
-  const inputCall = generateInputCall(inputs, test.inputs);
+  // Generar llamada con inputs — pasar atom para usar factory builders si aplica
+  const inputCall = generateInputCall(inputs, test.inputs, atom);
   
   // Determinar si es un test de throw
   const isThrowTest = test.type === 'error-throw' || test.assertion?.includes('toThrow');
@@ -113,12 +125,19 @@ export function generateTestCase(atom, test, useSandbox) {
 /**
  * Genera la llamada con inputs — fallback tipado en lugar de '{}' genérico
  */
-export function generateInputCall(inputs, testInputs) {
+export function generateInputCall(inputs, testInputs, atom) {
   if (!inputs || inputs.length === 0) return '';
+
+  const factoryEntry = atom ? resolveFactory(atom.filePath) : null;
 
   return inputs.map(i => {
     if (testInputs && i.name in testInputs) {
       return testInputs[i.name];
+    }
+    // Intentar builder del catálogo de factories
+    if (factoryEntry) {
+      const builder = resolveBuilderForParam(i.name, factoryEntry);
+      if (builder) return builder.call;
     }
     // Fallback tipado según el tipo inferido del parámetro
     return inferFallbackValue(i);
@@ -158,14 +177,15 @@ function inferFallbackValue(input) {
  */
 function resolveImportAlias(filePath) {
   const p = filePath.replace(/\\/g, '/');
-  if (p.startsWith('src/ai/'))          return p.replace('src/ai/', '#ai/');
-  if (p.startsWith('src/core/'))        return p.replace('src/core/', '#core/');
+  if (p.startsWith('src/ai/'))             return p.replace('src/ai/', '#ai/');
+  if (p.startsWith('src/core/'))           return p.replace('src/core/', '#core/');
   if (p.startsWith('src/layer-a-static/')) return p.replace('src/layer-a-static/', '#layer-a/');
   if (p.startsWith('src/layer-b-semantic/')) return p.replace('src/layer-b-semantic/', '#layer-b/');
   if (p.startsWith('src/layer-c-memory/')) return p.replace('src/layer-c-memory/', '#layer-c/');
-  if (p.startsWith('src/layer-graph/')) return p.replace('src/layer-graph/', '#layer-graph/');
-  if (p.startsWith('src/config/'))      return p.replace('src/config/', '#config/');
-  return p; // fallback sin alias
+  if (p.startsWith('src/layer-graph/'))    return p.replace('src/layer-graph/', '#layer-graph/');
+  if (p.startsWith('src/config/'))         return p.replace('src/config/', '#config/');
+  // No alias disponible — usar path relativo desde raíz del proyecto (compatible con vitest rootDir)
+  return `../../${p}`;
 }
 
 export default {
