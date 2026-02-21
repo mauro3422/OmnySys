@@ -92,6 +92,12 @@ function extractReturnExpr(line) {
  *     seguir buscando.
  */
 function findGuardCondition(sourceLines, returnRelIdx) {
+  // Caso especial: case X: return Y en la misma línea
+  const selfLine = (sourceLines[returnRelIdx] || '').trim();
+  const sameCaseMatch = selfLine.match(/^case\s+(.+?)\s*:/);
+  if (sameCaseMatch) return `=== ${sameCaseMatch[1].trim()}`;
+  if (/^default\s*:/.test(selfLine)) return null;
+
   let depth = 0;
 
   for (let i = returnRelIdx - 1; i >= 0; i--) {
@@ -146,6 +152,14 @@ function parseConditionToInputHints(condition, atomInputs) {
 
   const hints = {};
   const inputNames = atomInputs.map(i => i.name);
+
+  // Switch case shorthand: "=== Value" (sin param explícito — el param es el subject del switch)
+  // Usar el primer input del átomo como param implícito
+  const switchMatch = condition.match(/^===\s*(.+)$/);
+  if (switchMatch && inputNames.length > 0) {
+    hints[inputNames[0]] = switchMatch[1].trim();
+    return hints;
+  }
 
   // === comparisons: param === Value
   const eqMatch = condition.match(/^(\w+(?:\.\w+)*)\s*===?\s*(.+)$/);
@@ -329,7 +343,13 @@ function buildTestName(condition, returnExpr, fnName) {
     return `should return ${sanitizeName(returnExpr)} as default`;
   }
 
-  // === comparisons
+  // Switch case shorthand: "=== Value"
+  const switchMatch = condition.match(/^===\s*(.+)$/);
+  if (switchMatch) {
+    return `should return ${sanitizeName(returnExpr)} when input is ${sanitizeName(switchMatch[1])}`;
+  }
+
+  // === comparisons: param === Value
   const eqMatch = condition.match(/^(\w+)\s*===?\s*(.+)$/);
   if (eqMatch) {
     return `should return ${sanitizeName(returnExpr)} when ${eqMatch[1]} is ${sanitizeName(eqMatch[2])}`;
