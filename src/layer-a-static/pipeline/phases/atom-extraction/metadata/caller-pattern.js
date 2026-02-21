@@ -122,6 +122,27 @@ export const CALLER_PATTERNS = {
   }
 };
 
+// ── File-type detection helpers ───────────────────────────────────────────────
+
+function isTestFile(filePath) {
+  return filePath.includes('.test.') || filePath.includes('.spec.') ||
+    filePath.includes('/tests/') || filePath.includes('__tests__/') ||
+    filePath.includes('test-cases/') || filePath.startsWith('test-');
+}
+
+function isScriptOrInstallFile(filePath) {
+  return filePath.startsWith('scripts/') || filePath === 'install.js' || filePath.startsWith('install/');
+}
+
+function isClassMethod(atom) {
+  return !!(atom.className || atom.functionType === 'method' || atom.archetype?.type === 'class-method');
+}
+
+function isHandlerName(name) {
+  return name.includes('Handler') || name.includes('Controller') ||
+    name.includes('Route') || name.includes('Middleware');
+}
+
 /**
  * Detecta el patrón de llamada de un átomo
  * @param {Object} atom - El átomo con metadata
@@ -130,156 +151,67 @@ export const CALLER_PATTERNS = {
  */
 export function detectCallerPattern(atom, filePath = '') {
   const calledByCount = atom.calledBy?.length || 0;
-  
-  // 1. Si tiene calledBy, es llamada directa
+
   if (calledByCount > 0) {
-    return {
-      pattern: CALLER_PATTERNS.DIRECT_CALL,
-      reason: `Called by ${calledByCount} caller(s)`,
-      confidence: 1.0
-    };
+    return { pattern: CALLER_PATTERNS.DIRECT_CALL, reason: `Called by ${calledByCount} caller(s)`, confidence: 1.0 };
   }
-  
-  // 2. Archived code
+
   if (filePath.startsWith('archive/')) {
-    return {
-      pattern: CALLER_PATTERNS.ARCHIVED,
-      reason: 'Code in archive directory',
-      confidence: 1.0
-    };
+    return { pattern: CALLER_PATTERNS.ARCHIVED, reason: 'Code in archive directory', confidence: 1.0 };
   }
-  
-  // 3. Class method - llamado via instancia
-  if (atom.className || atom.functionType === 'method' || atom.archetype?.type === 'class-method') {
-    return {
-      pattern: CALLER_PATTERNS.CLASS_INSTANCE,
-      reason: `Method of class ${atom.className || 'unknown'}`,
-      confidence: 0.95
-    };
+
+  if (isClassMethod(atom)) {
+    return { pattern: CALLER_PATTERNS.CLASS_INSTANCE, reason: `Method of class ${atom.className || 'unknown'}`, confidence: 0.95 };
   }
-  
-  // 4. Test helper - llamado por framework
-  if (filePath.includes('.test.') || filePath.includes('.spec.') || 
-      filePath.includes('/tests/') || filePath.includes('__tests__/') ||
-      filePath.includes('test-cases/') || filePath.startsWith('test-')) {
-    return {
-      pattern: CALLER_PATTERNS.TEST_FRAMEWORK,
-      reason: 'Function in test file (called by test framework)',
-      confidence: 1.0
-    };
+
+  if (isTestFile(filePath)) {
+    return { pattern: CALLER_PATTERNS.TEST_FRAMEWORK, reason: 'Function in test file (called by test framework)', confidence: 1.0 };
   }
-  
-  // 5. Script constant or entry point
-  if (filePath.startsWith('scripts/') || filePath === 'install.js' || filePath.startsWith('install/')) {
-    // Constants like ROOT_PATH, __dirname, etc.
+
+  if (isScriptOrInstallFile(filePath)) {
     if (atom.archetype?.type === 'constant' || atom.archetype?.type === 'config') {
-      return {
-        pattern: CALLER_PATTERNS.SCRIPT_CONSTANT,
-        reason: 'Internal script constant',
-        confidence: 0.95
-      };
+      return { pattern: CALLER_PATTERNS.SCRIPT_CONSTANT, reason: 'Internal script constant', confidence: 0.95 };
     }
-    // Script entry point
     if (atom.name === 'main' || atom.isExported === false) {
-      return {
-        pattern: CALLER_PATTERNS.ENTRY_POINT,
-        reason: 'Script entry point',
-        confidence: 0.95
-      };
+      return { pattern: CALLER_PATTERNS.ENTRY_POINT, reason: 'Script entry point', confidence: 0.95 };
     }
   }
-  
-  // 6. CLI command
+
   if (filePath.includes('/cli/commands/') && atom.isExported) {
-    return {
-      pattern: CALLER_PATTERNS.CLI_COMMAND,
-      reason: 'CLI command (registered in CLI router)',
-      confidence: 0.9
-    };
+    return { pattern: CALLER_PATTERNS.CLI_COMMAND, reason: 'CLI command (registered in CLI router)', confidence: 0.9 };
   }
-  
-  // 7. Event callback - tiene temporal patterns de events
-  if (atom.temporal?.patterns?.events?.length > 0 || 
-      atom.hasEventListeners || 
-      atom.lifecycleHooks?.length > 0) {
-    return {
-      pattern: CALLER_PATTERNS.EVENT_CALLBACK,
-      reason: 'Has event listeners or lifecycle hooks',
-      confidence: 0.85
-    };
+
+  if (atom.temporal?.patterns?.events?.length > 0 || atom.hasEventListeners || atom.lifecycleHooks?.length > 0) {
+    return { pattern: CALLER_PATTERNS.EVENT_CALLBACK, reason: 'Has event listeners or lifecycle hooks', confidence: 0.85 };
   }
-  
-  // 8. Archetype dead-function
+
   if (atom.archetype?.type === 'dead-function') {
-    return {
-      pattern: CALLER_PATTERNS.TRULY_DEAD,
-      reason: 'Archetype classified as dead-function',
-      confidence: 0.9
-    };
+    return { pattern: CALLER_PATTERNS.TRULY_DEAD, reason: 'Archetype classified as dead-function', confidence: 0.9 };
   }
-  
-  // 9. Purpose DEAD_CODE
+
   if (atom.purpose === 'DEAD_CODE') {
-    return {
-      pattern: CALLER_PATTERNS.TRULY_DEAD,
-      reason: 'Purpose classified as DEAD_CODE',
-      confidence: 0.85
-    };
+    return { pattern: CALLER_PATTERNS.TRULY_DEAD, reason: 'Purpose classified as DEAD_CODE', confidence: 0.85 };
   }
-  
-  // 10. Internal constant (not exported, archetype constant/config)
+
   if (!atom.isExported && (atom.archetype?.type === 'constant' || atom.archetype?.type === 'config')) {
-    return {
-      pattern: CALLER_PATTERNS.INTERNAL_CONSTANT,
-      reason: 'Internal constant (file scope)',
-      confidence: 0.9
-    };
+    return { pattern: CALLER_PATTERNS.INTERNAL_CONSTANT, reason: 'Internal constant (file scope)', confidence: 0.9 };
   }
-  
-  // 11. Exportado pero sin callers - podría ser entry point o re-export
+
   if (atom.isExported) {
-    // Check si es un archivo "index" que re-exporta
     if (filePath.endsWith('/index.js') || filePath.includes('/index.ts')) {
-      return {
-        pattern: CALLER_PATTERNS.RE_EXPORT,
-        reason: 'Exported from index file (likely re-export)',
-        confidence: 0.7
-      };
+      return { pattern: CALLER_PATTERNS.RE_EXPORT, reason: 'Exported from index file (likely re-export)', confidence: 0.7 };
     }
-    
-    // Handler/controller pattern
-    if (atom.name.includes('Handler') || atom.name.includes('Controller') || 
-        atom.name.includes('Route') || atom.name.includes('Middleware')) {
-      return {
-        pattern: CALLER_PATTERNS.ENTRY_POINT,
-        reason: 'Handler/Controller pattern (entry point)',
-        confidence: 0.85
-      };
+    if (isHandlerName(atom.name)) {
+      return { pattern: CALLER_PATTERNS.ENTRY_POINT, reason: 'Handler/Controller pattern (entry point)', confidence: 0.85 };
     }
-    
-    // Default: re-export o entry point
-    return {
-      pattern: CALLER_PATTERNS.ENTRY_POINT,
-      reason: 'Exported but no callers detected (entry point)',
-      confidence: 0.6
-    };
+    return { pattern: CALLER_PATTERNS.ENTRY_POINT, reason: 'Exported but no callers detected (entry point)', confidence: 0.6 };
   }
-  
-  // 12. Dynamic import hint
+
   if (atom.temporal?.patterns?.asyncPatterns?.includes?.('dynamic-import')) {
-    return {
-      pattern: CALLER_PATTERNS.DYNAMIC_IMPORT,
-      reason: 'Loaded via dynamic import',
-      confidence: 0.8
-    };
+    return { pattern: CALLER_PATTERNS.DYNAMIC_IMPORT, reason: 'Loaded via dynamic import', confidence: 0.8 };
   }
-  
-  // Default: unknown
-  return {
-    pattern: CALLER_PATTERNS.UNKNOWN,
-    reason: 'Could not determine caller pattern',
-    confidence: 0.3
-  };
+
+  return { pattern: CALLER_PATTERNS.UNKNOWN, reason: 'Could not determine caller pattern', confidence: 0.3 };
 }
 
 /**

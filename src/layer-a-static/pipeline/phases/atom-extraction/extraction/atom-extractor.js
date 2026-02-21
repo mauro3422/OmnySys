@@ -7,22 +7,27 @@
  */
 
 import { extractFunctionCode } from '#shared/utils/ast-utils.js';
-import { extractSideEffects } from '#layer-a/extractors/metadata/side-effects.js';
-import { extractCallGraph } from '#layer-a/extractors/metadata/call-graph.js';
 import { extractDataFlow as extractDataFlowV2 } from '#layer-a/extractors/data-flow/index.js';
-import { extractTemporalPatterns } from '#layer-a/extractors/metadata/temporal-patterns.js';
-import { extractTemporalPatterns as extractTemporalConnections } from '#layer-a/extractors/metadata/temporal-connections/index.js';
-import { extractPerformanceMetrics } from '#layer-a/extractors/metadata/performance-impact/index.js';
-import { extractTypeContracts } from '#layer-a/extractors/metadata/type-contracts/index.js';
-import { extractErrorFlow } from '#layer-a/extractors/metadata/error-flow/index.js';
-import { extractPerformanceHints } from '#layer-a/extractors/metadata/performance-hints.js';
-import { extractSemanticDomain } from '#layer-a/extractors/metadata/semantic-domain.js';
+import { getAtomLevelExtractors } from '#layer-a/extractors/metadata/registry.js';
 import { logger } from '#utils/logger.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';
 import { detectAtomPurpose } from '../metadata/purpose.js';
 import { buildAtomMetadata } from '../builders/metadata-builder.js';
 import { enrichWithDNA } from '../builders/enrichment.js';
+
+// Base URL for dynamic imports of atom-level extractors
+// atom-extractor.js lives in: src/layer-a-static/pipeline/phases/atom-extraction/extraction/
+// extractors live in:         src/layer-a-static/extractors/metadata/
+// → 4 levels up from extraction/ to reach layer-a-static/
+const EXTRACTORS_BASE = new URL('../../../../extractors/metadata/', import.meta.url).href;
+
+/**
+ * Cache of dynamically imported extractor functions.
+ * Populated once on first call, reused for all subsequent atoms.
+ * @type {Map<string, Function>}
+ */
+const _extractorCache = new Map();
 
 /**
  * Extract metadata for all atoms from file info
@@ -218,54 +223,79 @@ function buildVariableAtom(varInfo, filePath, varType = 'constant', imports = []
 }
 
 /**
+ * Load an extractor function from the registry, with caching.
+ * @param {Object} entry - Registry entry
+ * @returns {Promise<Function>}
+ */
+async function loadExtractor(entry) {
+  if (_extractorCache.has(entry.name)) {
+    return _extractorCache.get(entry.name);
+  }
+  const url = new URL(entry.file, EXTRACTORS_BASE).href;
+  const mod = await import(url);
+  const fn = mod[entry.function];
+  if (typeof fn !== 'function') {
+    throw new Error(`Extractor "${entry.name}" export "${entry.function}" is not a function in ${url}`);
+  }
+  _extractorCache.set(entry.name, fn);
+  return fn;
+}
+
+/**
+ * Run all registered atom-level extractors in order.
+ * Each extractor's result is stored in results[entry.name] and available
+ * to subsequent extractors via ctx.results.
+ * @param {Object} ctx - { functionCode, functionInfo, fileMetadata, filePath }
+ * @returns {Promise<Object>} - Map of extractor name → result
+ */
+async function runAtomExtractors(ctx) {
+  const results = {};
+  ctx.results = results;
+
+  for (const entry of getAtomLevelExtractors()) {
+    try {
+      const fn = await loadExtractor(entry);
+      const args = entry.getArgs(ctx);
+      results[entry.name] = fn(...args);
+    } catch (err) {
+      logger.warn(`Extractor "${entry.name}" failed: ${err.message}`);
+      results[entry.name] = null;
+    }
+  }
+
+  return results;
+}
+
+/**
  * Extract metadata for a single atom
  * @param {Object} functionInfo - Function info from parser
  * @param {string} functionCode - Extracted function source code
  * @param {Object} fileMetadata - File-level metadata
  * @param {string} filePath - File path
+ * @param {Array} imports - File-level imports
  * @returns {Promise<Object>} - Atom metadata
  */
 export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = []) {
-  // Extract various metadata aspects
-  const sideEffects = extractSideEffects(functionCode);
-  const callGraph = extractCallGraph(functionCode);
-  const temporal = extractTemporalPatterns(functionCode);
-  const performanceHints = extractPerformanceHints(functionCode);
+  // Run all registered atom-level extractors
+  const extractorResults = await runAtomExtractors({ functionCode, functionInfo, fileMetadata, filePath });
 
-  // Enriched connection systems
-  const performanceMetrics = extractPerformanceMetrics(functionCode, performanceHints);
-  const typeContracts = extractTypeContracts(functionCode, fileMetadata.jsdoc, functionInfo);
-  const errorFlow = extractErrorFlow(functionCode, typeContracts);
-  const temporalPatterns = extractTemporalConnections(functionCode, functionInfo);
-
-  // Data flow analysis (optional, may fail gracefully)
+  // Data flow analysis (optional, may fail gracefully) — kept separate because it's async + uses AST node
   const dataFlowV2 = await extractDataFlowSafe(functionInfo, functionCode, filePath);
-
-  // Semantic domain detection (v2.1.0 - NEW)
-  const semanticDomain = extractSemanticDomain(functionCode, functionInfo.name, filePath);
 
   // Calculate metrics
   const complexity = calculateComplexity(functionCode);
   const linesOfCode = functionCode.split('\n').length;
 
-  // Build atom metadata
+  // Build atom metadata — spreads extractorResults so metadata-builder can destructure what it needs
   const atomMetadata = buildAtomMetadata({
     functionInfo,
     filePath,
     linesOfCode,
     complexity,
-    sideEffects,
-    callGraph,
-    temporal,
-    temporalPatterns,
-    typeContracts,
-    errorFlow,
-    performanceHints,
-    performanceMetrics,
     dataFlowV2,
-    semanticDomain,
     functionCode,
-    imports
+    imports,
+    ...extractorResults
   });
 
   // Post-process with DNA and lineage

@@ -397,7 +397,7 @@ export const toolDefinitions = [
   // ── SCHEMA / DEBUG ───────────────────────────────────────────────────────
   {
     name: 'get_atom_schema',
-    description: 'Inspects the live atom index and returns a dynamic schema of available metadata fields for a given atom type. Use this to debug extractors, understand what data exists, and check which MCP tools consume each field. Useful in verbose mode.',
+    description: 'Inspects the live atom index and returns a dynamic schema of available metadata fields for a given atom type. Use this to debug extractors, understand what data exists, and check which MCP tools consume each field. Includes fieldCoverage report: shows orphaned fields (metadata extracted but consumed by 0 tools) vs covered fields. Useful in verbose mode.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -510,9 +510,9 @@ export const toolDefinitions = [
         },
         sortBy: {
           type: 'string',
-          enum: ['risk', 'complexity', 'name'],
+          enum: ['risk', 'complexity', 'fragility', 'name'],
           default: 'risk',
-          description: 'Sort order for prioritization'
+          description: 'Sort order for prioritization. fragility = prioriza funciones con mayor fragilityScore (más propensas a romperse)'
         },
         dryRun: {
           type: 'boolean',

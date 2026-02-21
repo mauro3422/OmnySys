@@ -16,6 +16,7 @@ export function buildAtomMetadata({
   filePath,
   linesOfCode,
   complexity,
+  // Extractor results (names match EXTRACTOR_REGISTRY entries)
   sideEffects,
   callGraph,
   temporal,
@@ -24,11 +25,18 @@ export function buildAtomMetadata({
   errorFlow,
   performanceHints,
   performanceMetrics,
-  dataFlowV2,
   semanticDomain,
+  // Data flow (kept separate — async + AST-based)
+  dataFlowV2,
   functionCode,
   imports = []
 }) {
+  // Normalize extractor results — guard against null/undefined when an extractor fails gracefully
+  const se = sideEffects || { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] };
+  const cg = callGraph || { internalCalls: [], externalCalls: [] };
+  const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
+  const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
+
   return {
     // Identity — use relative filePath (already normalized) to avoid absolute-path IDs
     id: `${filePath}::${functionInfo.fullName || functionInfo.name}`,
@@ -54,34 +62,34 @@ export function buildAtomMetadata({
     complexity,
 
     // Side effects — combina regex extractor + dataFlow AST outputs (más preciso)
-    hasSideEffects: sideEffects.all.length > 0 ||
+    hasSideEffects: se.all.length > 0 ||
       (dataFlowV2?.outputs || dataFlowV2?.real?.outputs || []).some(
         o => o.type === 'side_effect' || o.isSideEffect === true
       ),
-    hasNetworkCalls: sideEffects.networkCalls.length > 0,
-    hasDomManipulation: sideEffects.domManipulations.length > 0,
-    hasStorageAccess: sideEffects.storageAccess.length > 0,
-    hasLogging: sideEffects.consoleUsage.length > 0,
-    networkEndpoints: sideEffects.networkCalls.map(c => c.url || c.endpoint).filter(Boolean),
+    hasNetworkCalls: se.networkCalls.length > 0,
+    hasDomManipulation: se.domManipulations.length > 0,
+    hasStorageAccess: se.storageAccess.length > 0,
+    hasLogging: se.consoleUsage.length > 0,
+    networkEndpoints: se.networkCalls.map(c => c.url || c.endpoint).filter(Boolean),
 
     // Call graph (v0.9.34 - unified calls from all sources)
-    internalCalls: callGraph.internalCalls || [],
-    externalCalls: callGraph.externalCalls || [],
-    externalCallCount: (callGraph.externalCalls || []).length,
+    internalCalls: cg.internalCalls || [],
+    externalCalls: cg.externalCalls || [],
+    externalCallCount: (cg.externalCalls || []).length,
     // Unified calls: combine functionInfo.calls with callGraph results
     calls: [
       ...(functionInfo.calls || []),
-      ...(callGraph.internalCalls || []).map(c => ({
+      ...(cg.internalCalls || []).map(c => ({
         name: c.name || c.callee,
         type: c.type || 'internal',
         line: c.line
       })),
-      ...(callGraph.externalCalls || []).map(c => ({
+      ...(cg.externalCalls || []).map(c => ({
         name: c.name || c.callee,
         type: 'external',
         line: c.line
       }))
-    ].filter((call, index, self) => 
+    ].filter((call, index, self) =>
       // Deduplicate by name+line
       index === self.findIndex(c => c.name === call.name && c.line === call.line)
     ),
@@ -93,9 +101,9 @@ export function buildAtomMetadata({
     isAsync: functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
     // Temporal
-    hasLifecycleHooks: temporal.lifecycleHooks.length > 0,
-    lifecycleHooks: temporal.lifecycleHooks,
-    hasCleanupPatterns: temporal.cleanupPatterns.length > 0,
+    hasLifecycleHooks: tmp.lifecycleHooks.length > 0,
+    lifecycleHooks: tmp.lifecycleHooks,
+    hasCleanupPatterns: tmp.cleanupPatterns.length > 0,
 
     // Temporal Connections
     temporal: {
@@ -110,8 +118,8 @@ export function buildAtomMetadata({
     errorFlow: errorFlow,
 
     // Performance
-    hasNestedLoops: performanceHints.nestedLoops.length > 0,
-    hasBlockingOps: performanceHints.blockingOperations.length > 0,
+    hasNestedLoops: ph.nestedLoops.length > 0,
+    hasBlockingOps: ph.blockingOperations.length > 0,
     performance: performanceMetrics,
 
     // Data Flow Fractal
@@ -122,11 +130,11 @@ export function buildAtomMetadata({
     // Derived scores — computed purely from existing metadata (no LLM needed)
     derived: {
       // 0-1: probabilidad de romper si se modifica este átomo
-      fragilityScore: computeFragilityScore(complexity, callGraph, errorFlow, performanceHints),
+      fragilityScore: computeFragilityScore(complexity, cg, errorFlow, ph),
       // 0-1: qué tan fácil es escribir un test unitario para este átomo
-      testabilityScore: computeTestabilityScore(complexity, sideEffects, performanceHints, functionInfo),
+      testabilityScore: computeTestabilityScore(complexity, se, ph, functionInfo),
       // coupling: cuántas conexiones tiene (no normalizado — valor absoluto)
-      couplingScore: (callGraph.externalCalls?.length || 0) + (callGraph.internalCalls?.length || 0),
+      couplingScore: (cg.externalCalls?.length || 0) + (cg.internalCalls?.length || 0),
       // changeRisk: base desde complexity + isExported; se recalcula con calledBy en cross-file pass
       changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
     },

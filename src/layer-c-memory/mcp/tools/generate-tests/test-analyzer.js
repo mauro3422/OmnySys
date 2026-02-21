@@ -63,8 +63,8 @@ export async function analyzeFunctionForTests(atom, projectPath) {
     tests.push(createSideEffectsTest(atom, inputs, typeContracts));
   }
   
-  // Test 8: Branch coverage para alta complejidad
-  if (complexity > 15) {
+  // Test 8: Branch coverage — threshold 8 cubre la mayoría del sistema (era 15, muy alto)
+  if (complexity > 8) {
     tests.push(createBranchCoverageTest(complexity, inputs, typeContracts, atom));
   }
   
@@ -84,7 +84,7 @@ function createHappyPathTest(inputs, outputs, typeContracts, atom, sourcePattern
     description: 'Caso exitoso basico con inputs validos',
     inputs: generateTypedInputs(inputs, typeContracts, atom),
     setup: generateSetup(atom),
-    assertion: generateAssertion(outputs, atom.name, typeContracts),
+    assertion: generateAssertion(outputs, atom.name, typeContracts, atom),
     priority: 'high',
     sourceExample: sourceExample?.value
   };
@@ -116,79 +116,160 @@ function createThrowTests(errorFlow, inputs, typeContracts, atom) {
 }
 
 /**
- * Crea tests de edge cases
+ * Crea tests de edge cases para TODOS los inputs (no solo los primeros 2)
  */
 function createEdgeCaseTests(inputs) {
   const tests = [];
-  
-  for (const input of inputs.slice(0, 2)) {
+
+  for (const input of inputs) {
+    // null/undefined para todos los parámetros
     tests.push({
       name: `should handle ${input.name} = null/undefined`,
       type: 'edge-case',
       description: `Edge case: ${input.name} vacio`,
       inputs: { [input.name]: 'null' },
       assertion: 'expect(result).toBeDefined()',
-      priority: 'medium'
+      priority: input.hasDefault ? 'low' : 'medium'
     });
+
+    // Si el parámetro es string, también probar cadena vacía
+    if (input.type === 'string' || input.name.toLowerCase().includes('text') ||
+        input.name.toLowerCase().includes('code') || input.name.toLowerCase().includes('path')) {
+      tests.push({
+        name: `should handle ${input.name} = empty string`,
+        type: 'edge-case',
+        description: `Edge case: ${input.name} cadena vacía`,
+        inputs: { [input.name]: '""' },
+        assertion: 'expect(result).toBeDefined()',
+        priority: 'low'
+      });
+    }
   }
-  
+
   return tests;
 }
 
 /**
- * Crea tests basados en archetype
+ * Crea tests basados en archetype, callerPattern y dna.flowType
  */
 function createArchetypeTests(atom, archetype, inputs, typeContracts) {
   const tests = [];
   const typedInputs = generateTypedInputs(inputs, typeContracts, atom);
-  
+  const callerPattern = atom.callerPattern?.id || 'direct_call';
+  const dnaFlow = atom.dna?.flowType || '';
+  const calledBy = atom.calledBy || [];
+
+  // Adaptar el nombre/descripción según cómo se invoca
+  const invocationNote = callerPattern === 'callback'
+    ? ' (invocado como callback)'
+    : callerPattern === 'event_handler'
+      ? ' (invocado como event handler)'
+      : '';
+
+  // Si tiene callers reales, sugerir integration test
+  if (calledBy.length > 0 && calledBy.length <= 5) {
+    const callerNames = calledBy.map(c => c.split('::').pop()).join(', ');
+    tests.push({
+      name: `should integrate correctly with callers`,
+      type: 'integration',
+      description: `Llamado desde: ${callerNames}`,
+      inputs: typedInputs,
+      assertion: 'expect(result).toBeDefined()',
+      priority: 'medium',
+      note: `Callers reales: ${calledBy.slice(0, 3).join(', ')}`
+    });
+  }
+
   switch (archetype) {
-    case 'orchestrator':
+    case 'orchestrator': {
+      const internalCalls = atom.callGraph?.callsList?.filter(c => c.type !== 'native').slice(0, 5) || [];
       tests.push({
-        name: `should orchestrate internal calls correctly`,
+        name: `should orchestrate internal calls correctly${invocationNote}`,
         type: 'integration',
-        description: 'Test de integracion para orquestador',
+        description: `Orquesta: ${internalCalls.map(c => c.name).join(', ') || 'múltiples funciones'}`,
         inputs: typedInputs,
         assertion: 'expect(result).toBeDefined()',
-        internalCalls: atom.callGraph?.callsList?.slice(0, 5),
+        internalCalls,
         priority: 'medium'
       });
       break;
-      
-    case 'transformer':
+    }
+
+    case 'transformer': {
+      // DNA flowType guía la assertion
+      const transformAssertion = dnaFlow.includes('return')
+        ? 'expect(result).not.toEqual(expect.objectContaining({}))'  // debe ser distinto del input
+        : 'expect(result).toBeDefined()';
       tests.push({
-        name: `should transform input to expected output`,
+        name: `should transform input to expected output${invocationNote}`,
         type: 'transformation',
-        description: 'Test de transformacion',
+        description: `Flow: ${dnaFlow || 'transform'}`,
         inputs: typedInputs,
-        assertion: 'expect(result).toBeDefined()',
+        assertion: transformAssertion,
         priority: 'medium'
       });
       break;
-      
+    }
+
     case 'validator':
       tests.push({
-        name: `should return boolean validation result`,
+        name: `should return boolean validation result${invocationNote}`,
         type: 'validation',
-        description: 'Test de validacion',
+        description: 'Valida y retorna boolean',
         inputs: typedInputs,
         assertion: 'expect(typeof result).toBe("boolean")',
         priority: 'medium'
       });
+      // También test de caso inválido para validators
+      tests.push({
+        name: `should return false for invalid input`,
+        type: 'validation-negative',
+        description: 'Caso inválido retorna false',
+        inputs: generateInvalidInputs(inputs),
+        assertion: 'expect(result).toBe(false)',
+        priority: 'high'
+      });
       break;
-      
+
     case 'handler':
       tests.push({
-        name: `should handle event/data correctly`,
+        name: `should handle event/data correctly${invocationNote}`,
         type: 'handler',
-        description: 'Test de handler',
+        description: callerPattern === 'event_handler'
+          ? 'Handler de evento — verificar que no lanza'
+          : 'Procesa datos de entrada',
+        inputs: typedInputs,
+        assertion: callerPattern === 'event_handler'
+          ? 'expect(() => result).not.toThrow()'
+          : 'expect(result).toBeDefined()',
+        priority: 'medium'
+      });
+      break;
+
+    case 'factory':
+      tests.push({
+        name: `should create and return a valid object`,
+        type: 'factory',
+        description: `Factory — DNA: ${dnaFlow || 'create-return'}`,
+        inputs: typedInputs,
+        assertion: 'expect(result).toEqual(expect.objectContaining({}))',
+        priority: 'high'
+      });
+      break;
+
+    case 'persister':
+      tests.push({
+        name: `should persist data without throwing`,
+        type: 'persister',
+        description: 'Persiste datos — verificar que completa sin error',
         inputs: typedInputs,
         assertion: 'expect(result).toBeDefined()',
+        needsSandbox: true,
         priority: 'medium'
       });
       break;
   }
-  
+
   return tests;
 }
 
@@ -273,28 +354,52 @@ function generateSetup(atom) {
 }
 
 /**
- * Genera asercion basada en outputs y typeContracts
+ * Genera asercion basada en outputs, typeContracts y dataFlow
  */
-function generateAssertion(outputs, functionName, typeContracts) {
+function generateAssertion(outputs, functionName, typeContracts, atom) {
   const returns = typeContracts?.returns;
-  
+  const dnaFlow = atom?.dna?.flowType || '';
+
+  // boolean
   if (returns?.type === 'boolean') {
     return 'expect(typeof result).toBe("boolean")';
   }
-  
-  if (returns?.type === 'Object' || returns?.type === 'object') {
-    return 'expect(result).toEqual(expect.objectContaining({}))';
-  }
-  
+
+  // string
   if (returns?.type === 'string') {
     return 'expect(typeof result).toBe("string")';
   }
-  
-  const returnOutput = outputs?.find(o => o.type === 'return');
-  if (returnOutput) {
+
+  // array
+  if (returns?.type === 'array' || returns?.type === 'Array') {
+    return 'expect(Array.isArray(result)).toBe(true)';
+  }
+
+  // number
+  if (returns?.type === 'number' || returns?.type === 'Number') {
+    return 'expect(typeof result).toBe("number")';
+  }
+
+  // object con campos conocidos del dataFlow
+  if (returns?.type === 'Object' || returns?.type === 'object') {
+    const sideEffectOutputs = outputs?.filter(o => o.isSideEffect === false && o.type === 'return') || [];
+    if (sideEffectOutputs.length > 0) {
+      return 'expect(result).toEqual(expect.objectContaining({}))';
+    }
+    return 'expect(result).not.toBeNull()';
+  }
+
+  // DNA flowType: si es read-return, el resultado es el valor leído
+  if (dnaFlow.includes('read') && dnaFlow.includes('return')) {
     return 'expect(result).toBeDefined()';
   }
-  
+
+  // Si solo hay side effects (no return), verificar que no lanza
+  const hasReturn = outputs?.some(o => o.type === 'return');
+  if (!hasReturn && outputs?.some(o => o.isSideEffect)) {
+    return 'expect(() => result).not.toThrow()';
+  }
+
   return 'expect(result).toBeDefined()';
 }
 

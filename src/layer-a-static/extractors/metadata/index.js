@@ -187,9 +187,11 @@ export function extractAllMetadata(filePath, code) {
 export function extractAtomMetadata(filePath, functionName, functionCode) {
   const metadata = {};
   
-  // Por ahora solo semanticDomain es de nivel átomo
-  // En el futuro se pueden agregar más
-  metadata.semanticDomain = extractSemanticDomain(functionCode, functionName, filePath);
+  const code = typeof functionCode === 'string' ? functionCode : '';
+  const name = typeof functionName === 'string' ? functionName : '';
+  const path = typeof filePath === 'string' ? filePath : '';
+
+  metadata.semanticDomain = extractSemanticDomain(code, name, path);
   
   return metadata;
 }

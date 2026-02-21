@@ -2,7 +2,7 @@
 
 ## System: OmnySys MCP
 
-This project uses a custom MCP (Model Context Protocol) system with 28 code analysis tools. **You MUST use these tools before any edit**.
+This project uses a custom MCP (Model Context Protocol) system with 30 code analysis tools. **You MUST use these tools before any edit**.
 
 ---
 

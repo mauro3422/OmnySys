@@ -6,6 +6,8 @@
  * @module mcp/tools/generate-tests/batch-generator
  */
 
+import fs from 'fs/promises';
+import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
 import { detect_patterns } from '../detect-patterns.js';
@@ -48,8 +50,19 @@ export async function generate_batch_tests(args, context) {
       };
     }
     
+    // Enriquecer gaps con fragilityScore del átomo (para mejor ordering)
+    // Lo hacemos en un mini-pass antes de ordenar
+    const enrichedGaps = await Promise.all(
+      gaps.map(async g => {
+        try {
+          const a = await getAtomDetails(projectPath, g.file, g.name, cache);
+          return { ...g, fragilityScore: a?.derived?.fragilityScore || 0, testabilityScore: a?.derived?.testabilityScore || 0 };
+        } catch { return g; }
+      })
+    );
+
     // Filtrar por complejidad mínima
-    const filteredGaps = gaps.filter(g => (g.complexity || 0) >= minComplexity);
+    const filteredGaps = enrichedGaps.filter(g => (g.complexity || 0) >= minComplexity);
     
     // Ordenar
     const sortedGaps = sortGaps(filteredGaps, sortBy);
@@ -99,14 +112,22 @@ export async function generate_batch_tests(args, context) {
 }
 
 /**
- * Ordena gaps por criterio
+ * Ordena gaps por criterio — incorpora fragilityScore del atom.derived
+ * para priorizar funciones que más se rompen
  */
 function sortGaps(gaps, sortBy) {
   switch (sortBy) {
     case 'risk':
-      return [...gaps].sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+      // Combina riskScore del gap con fragilityScore del átomo
+      return [...gaps].sort((a, b) => {
+        const scoreA = (b.riskScore || 0) + ((b.fragilityScore || 0) * 5);
+        const scoreB = (a.riskScore || 0) + ((a.fragilityScore || 0) * 5);
+        return scoreA - scoreB;
+      });
     case 'complexity':
       return [...gaps].sort((a, b) => (b.complexity || 0) - (a.complexity || 0));
+    case 'fragility':
+      return [...gaps].sort((a, b) => (b.fragilityScore || 0) - (a.fragilityScore || 0));
     case 'name':
       return [...gaps].sort((a, b) => a.name.localeCompare(b.name));
     default:
@@ -143,6 +164,8 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
       file: gap.file,
       complexity: atom.complexity,
       archetype: atom.archetype?.type,
+      fragilityScore: atom.derived?.fragilityScore || 0,
+      testabilityScore: atom.derived?.testabilityScore || 0,
       riskScore
     },
     test: {
@@ -153,14 +176,20 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
     },
     dryRun
   };
-  
-  // Si no es dry run, escribir el archivo
+
   if (!dryRun) {
-    // TODO: Implementar escritura de archivo
-    result.written = false;
-    result.message = 'File writing not implemented yet - use dryRun=true';
+    try {
+      const absolutePath = path.join(projectPath, testFilePath);
+      await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+      await fs.writeFile(absolutePath, testCode, 'utf-8');
+      result.written = true;
+      result.writtenTo = testFilePath;
+    } catch (writeError) {
+      result.written = false;
+      result.writeError = writeError.message;
+    }
   }
-  
+
   return result;
 }
 

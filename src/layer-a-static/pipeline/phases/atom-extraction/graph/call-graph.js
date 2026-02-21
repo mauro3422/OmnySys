@@ -29,6 +29,8 @@ export function buildCallGraph(atoms) {
     atom.calls.forEach(call => {
       call.type = definedFunctions.has(call.name) ? 'internal' : 'external';
     });
+    // Sync externalCallCount with actual classified calls (fixes #3 - was stuck at 0)
+    atom.externalCallCount = atom.calls.filter(c => c.type === 'external').length;
   });
 
   // Second pass: build calledBy

@@ -241,10 +241,16 @@ const DOMAIN_PATTERNS = {
  * @returns {Object} - Dominio detectado con metadata
  */
 export function extractSemanticDomain(code, functionName = '', filePath = '') {
+  if (!code || typeof code !== 'string') {
+    return { primary: 'unknown', confidence: 0, allDomains: [], purpose: 'unknown',
+      inputPatterns: [], outputPatterns: [], patterns: [], timestamp: new Date().toISOString() };
+  }
+
   const domains = [];
   const detectedPatterns = [];
   
   // Analizar cada dominio
+  // Complejidad: O(D × P) donde D y P son constantes (DOMAIN_PATTERNS estático)
   for (const [domainName, config] of Object.entries(DOMAIN_PATTERNS)) {
     const matches = [];
     

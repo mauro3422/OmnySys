@@ -28,74 +28,80 @@ import { inferFromFile } from '../inference-engine/index.js';
  * @returns {{ score: number, gaps: string[] }} - score 0-1 y lista de campos faltantes
  */
 export function computeMetadataCompleteness(fileAnalysis) {
-  const gaps = [];
-  let filled = 0;
-  const total = 6; // campos fiables disponibles en el file-level JSON
-
-  const atoms = fileAnalysis.atoms || [];
-  const imports = fileAnalysis.imports || [];
-  const exports = fileAnalysis.exports || [];
-  const usedBy = fileAnalysis.usedBy || [];
-  const semanticConnections = fileAnalysis.semanticConnections || [];
+  const atoms      = fileAnalysis.atoms || [];
+  const imports    = fileAnalysis.imports || [];
+  const exports    = fileAnalysis.exports || [];
+  const usedBy     = fileAnalysis.usedBy || [];
+  const filePath   = fileAnalysis.filePath || '';
   const totalAtoms = fileAnalysis.totalAtoms || atoms.length;
-  const filePath = fileAnalysis.filePath || '';
 
-  // EXCEPCIONES: Archivos que NO necesitan LLM por naturaleza
-  const isEntryPoint = imports.length > 0 && usedBy.length === 0;
-  const isTypeFile = filePath.endsWith('.d.ts') || 
-                     filePath.includes('/types/') || 
-                     filePath.includes('/@types/');
-  const isConfigFile = filePath.includes('config') || 
-                       filePath.includes('constant') || 
-                       filePath.includes('.config.');
-  const isTestFile = filePath.includes('.test.') || 
-                     filePath.includes('.spec.') || 
-                     filePath.includes('/tests/');
-  const isUtilityFile = filePath.includes('/utils/') || 
-                        filePath.includes('/helpers/');
+  const flags = classifyFile(filePath, imports, usedBy);
 
-  // Si es un archivo especial, retornar score alto sin análisis
-  if (isTypeFile || isConfigFile || isTestFile) {
+  // Archivos especiales no necesitan LLM
+  if (flags.isTypeFile || flags.isConfigFile || flags.isTestFile) {
     return { score: 1.0, gaps: [] };
   }
 
-  // 1. ¿Tiene átomos extraídos?
-  if (totalAtoms > 0 || isConfigFile || isEntryPoint) filled++;
-  else gaps.push('no-atoms');
+  const gaps = [];
+  let filled = 0;
+  const total = 6;
 
-  // 2. ¿Alguien usa este archivo?
-  if (usedBy.length > 0 || isEntryPoint) filled++;
-  else gaps.push('no-usedby');
-
-  // 3. ¿Tiene dataFlow en al menos un átomo?
-  const hasDataFlow = atoms.some(a => a.dataFlow && (
-    (a.dataFlow.inputs && a.dataFlow.inputs.length > 0) ||
-    (a.dataFlow.outputs && a.dataFlow.outputs.length > 0)
-  ));
-  if (hasDataFlow || isUtilityFile || totalAtoms === 0) filled++;
-  else gaps.push('no-dataflow');
-
-  // 4. ¿Tiene calls en al menos un átomo?
-  const hasCalls = atoms.some(a => (a.calls || []).length > 0);
-  if (hasCalls || totalAtoms === 0 || isConfigFile) filled++;
-  else gaps.push('no-calls');
-
-  // 5. ¿Tiene imports o exports?
-  if (imports.length > 0 || exports.length > 0 || isEntryPoint) filled++;
-  else gaps.push('isolated-module');
-
-  // 6. ¿Conexiones semánticas resueltas?
-  if (semanticConnections.length > 0) filled++;
-  else {
-    const semanticAnalysis = fileAnalysis.semanticAnalysis || {};
-    const hasSemanticSignals = (semanticAnalysis.events?.all?.length > 0) ||
-                               (semanticAnalysis.localStorage?.all?.length > 0) ||
-                               (semanticAnalysis.globals?.all?.length > 0);
-    if (!hasSemanticSignals) filled++;
-    else gaps.push('unresolved-semantic');
-  }
+  filled += checkAtoms(totalAtoms, flags, gaps);
+  filled += checkUsedBy(usedBy, flags, gaps);
+  filled += checkDataFlow(atoms, flags, totalAtoms, gaps);
+  filled += checkCalls(atoms, totalAtoms, flags, gaps);
+  filled += checkImportsExports(imports, exports, flags, gaps);
+  filled += checkSemanticConnections(fileAnalysis, gaps);
 
   return { score: filled / total, gaps };
+}
+
+function classifyFile(filePath, imports, usedBy) {
+  return {
+    isEntryPoint:  imports.length > 0 && usedBy.length === 0,
+    isTypeFile:    filePath.endsWith('.d.ts') || filePath.includes('/types/') || filePath.includes('/@types/'),
+    isConfigFile:  filePath.includes('config') || filePath.includes('constant') || filePath.includes('.config.'),
+    isTestFile:    filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('/tests/'),
+    isUtilityFile: filePath.includes('/utils/') || filePath.includes('/helpers/')
+  };
+}
+
+function checkAtoms(totalAtoms, { isConfigFile, isEntryPoint }, gaps) {
+  if (totalAtoms > 0 || isConfigFile || isEntryPoint) return 1;
+  gaps.push('no-atoms'); return 0;
+}
+
+function checkUsedBy(usedBy, { isEntryPoint }, gaps) {
+  if (usedBy.length > 0 || isEntryPoint) return 1;
+  gaps.push('no-usedby'); return 0;
+}
+
+function checkDataFlow(atoms, { isUtilityFile }, totalAtoms, gaps) {
+  const hasDataFlow = atoms.some(a =>
+    a.dataFlow && (a.dataFlow.inputs?.length > 0 || a.dataFlow.outputs?.length > 0)
+  );
+  if (hasDataFlow || isUtilityFile || totalAtoms === 0) return 1;
+  gaps.push('no-dataflow'); return 0;
+}
+
+function checkCalls(atoms, totalAtoms, { isConfigFile }, gaps) {
+  const hasCalls = atoms.some(a => (a.calls || []).length > 0);
+  if (hasCalls || totalAtoms === 0 || isConfigFile) return 1;
+  gaps.push('no-calls'); return 0;
+}
+
+function checkImportsExports(imports, exports, { isEntryPoint }, gaps) {
+  if (imports.length > 0 || exports.length > 0 || isEntryPoint) return 1;
+  gaps.push('isolated-module'); return 0;
+}
+
+function checkSemanticConnections(fileAnalysis, gaps) {
+  const semanticConnections = fileAnalysis.semanticConnections || [];
+  if (semanticConnections.length > 0) return 1;
+  const sa = fileAnalysis.semanticAnalysis || {};
+  const hasSignals = sa.events?.all?.length > 0 || sa.localStorage?.all?.length > 0 || sa.globals?.all?.length > 0;
+  if (!hasSignals) return 1;
+  gaps.push('unresolved-semantic'); return 0;
 }
 
 /**
@@ -202,51 +208,3 @@ function hasDynamicCode(semanticAnalysis) {
          );
 }
 
-/**
- * Verifica si hay eventos que NO fueron resueltos por conexiones estáticas
- */
-function hasUnresolvedEvents(fileAnalysis) {
-  const semanticAnalysis = fileAnalysis.semanticAnalysis || fileAnalysis;
-  const eventNames = semanticAnalysis.events?.all || [];
-  const resolvedEvents = (fileAnalysis.semanticConnections || [])
-    .filter(c => c.type === 'eventListener' && c.confidence >= 1.0)
-    .map(c => c.event || c.via);
-
-  return eventNames.some(e => {
-    const eventName = e.event || e;
-    return !resolvedEvents.includes(eventName);
-  });
-}
-
-/**
- * Verifica si hay shared state que NO fue resuelto por conexiones estáticas
- */
-function hasUnresolvedSharedState(fileAnalysis) {
-  const semanticAnalysis = fileAnalysis.semanticAnalysis || fileAnalysis;
-  const storageKeys = semanticAnalysis.localStorage?.all || [];
-  const globalAccess = semanticAnalysis.globals?.all || [];
-
-  const resolvedConnections = (fileAnalysis.semanticConnections || [])
-    .filter(c => (c.type === 'localStorage' || c.type === 'globalVariable') && c.confidence >= 1.0);
-
-  const resolvedKeys = resolvedConnections.map(c => c.key || c.property || c.via);
-
-  const unresolvedStorage = storageKeys.some(s => {
-    const key = s.key || s;
-    return !resolvedKeys.includes(key);
-  });
-
-  const unresolvedGlobals = globalAccess.some(g => {
-    const prop = g.property || g;
-    return !resolvedKeys.includes(prop);
-  });
-
-  return unresolvedStorage || unresolvedGlobals;
-}
-
-/**
- * Verifica si hay conexiones de baja confianza que necesitan análisis LLM
- */
-function hasLowConfidenceConnections(fileAnalysis, threshold = 0.7) {
-  return (fileAnalysis.semanticConnections || []).some(c => c.confidence < threshold);
-}

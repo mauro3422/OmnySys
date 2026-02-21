@@ -110,17 +110,46 @@ export function generateTestCase(atom, test, useSandbox) {
 }
 
 /**
- * Genera la llamada con inputs
+ * Genera la llamada con inputs — fallback tipado en lugar de '{}' genérico
  */
 export function generateInputCall(inputs, testInputs) {
   if (!inputs || inputs.length === 0) return '';
-  
+
   return inputs.map(i => {
     if (testInputs && i.name in testInputs) {
       return testInputs[i.name];
     }
-    return '{}';
+    // Fallback tipado según el tipo inferido del parámetro
+    return inferFallbackValue(i);
   }).join(', ');
+}
+
+/**
+ * Infiere un valor de fallback razonable según el tipo y nombre del parámetro
+ */
+function inferFallbackValue(input) {
+  const n = (input.name || '').toLowerCase();
+  const t = (input.type || '').toLowerCase();
+
+  if (n.includes('path') || n.includes('file')) return '"/test/file.js"';
+  if (n.includes('url'))                          return '"https://example.com"';
+  if (n.includes('id'))                           return '"test-id"';
+  if (n.includes('name'))                         return '"test-name"';
+  if (n.includes('code') || n.includes('source')) return '"const x = 1;"';
+  if (n.includes('text') || n.includes('content'))return '"sample text"';
+  if (n.includes('options') || n.includes('opts') || n.includes('config')) return '{}';
+  if (n.includes('callback') || n.includes('fn') || n.includes('handler')) return 'vi.fn()';
+  if (n.includes('arr') || n.includes('list') || n.includes('items'))      return '[]';
+
+  switch (t) {
+    case 'string':   return '"test-value"';
+    case 'number':   return '0';
+    case 'boolean':  return 'true';
+    case 'array':    return '[]';
+    case 'function': return 'vi.fn()';
+    case 'object':   return '{}';
+    default:         return '{}';
+  }
 }
 
 export default {

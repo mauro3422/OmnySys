@@ -26,8 +26,7 @@ const ATOM_TYPE_FILTERS = {
   config:        a => a.type === 'config',
 };
 
-// Obtener coverage del registry dinámicamente
-// Se actualiza automáticamente cuando se agregan nuevos extractors
+// Calculado en module-level: el registry es estático, se refresca con restart_server
 const FIELD_TOOL_COVERAGE = getFieldToolCoverage();
 
 /**
@@ -311,12 +310,25 @@ export async function get_atom_schema(args, context) {
     (_, i) => filtered[i * step]
   );
 
+  // Reporte de cobertura: qué campos del registry tienen tools que los consumen
+  const allFields = getAvailableFields();
+  const orphaned = allFields.filter(f => !f.usedByTools || f.usedByTools.length === 0);
+  const covered  = allFields.filter(f => f.usedByTools && f.usedByTools.length > 0);
+  const fieldCoverage = {
+    total: allFields.length,
+    covered: covered.length,
+    orphaned: orphaned.length,
+    pct: `${Math.round((covered.length / allFields.length) * 100)}%`,
+    orphanedFields: orphaned.map(f => ({ name: f.name, level: f.level || f.source, description: f.description })),
+  };
+
   return {
     filter: filterUsed,
     totalAtoms: allAtoms.length,
     matchingAtoms: filtered.length,
     inventory,
     keyMetrics,
+    fieldCoverage,
     correlations,
     evolution,
     schema,

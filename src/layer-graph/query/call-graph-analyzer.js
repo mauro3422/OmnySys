@@ -69,88 +69,22 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
         const depPath = path.join(projectPath, depFile);
         const content = await fs.readFile(depPath, 'utf-8');
         const lines = content.split('\n');
-
         const depAnalysis = await getFileAnalysis(projectPath, depFile);
 
-        const importInfo = depAnalysis?.imports?.find(imp => {
-          const resolvedPath = imp.resolvedPath || imp.source;
-          return resolvedPath && (resolvedPath.includes(targetFile) || targetFile.includes(resolvedPath));
-        });
-
-        let localName = symbolName;
-        let namespaceName = null;
-
-        if (importInfo) {
-          const specifier = importInfo.specifiers?.find(s =>
-            s.imported === symbolName || s.name === symbolName
-          );
-          if (specifier?.local && specifier.local !== symbolName) {
-            localName = specifier.local;
-          }
-          if (importInfo.specifiers?.some(s => s.type === 'namespace')) {
-            namespaceName = importInfo.specifiers.find(s => s.type === 'namespace')?.local || 'namespace';
-          }
-        }
+        const { localName, namespaceName, importType } = resolveImportInfo(depAnalysis, targetFile, symbolName);
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
-          const trimmedLine = line.trim();
+          if (/^import\s/.test(line.trim()) || /^export\s*\{/.test(line.trim())) continue;
 
-          // Skip import/export declarations — they reference the symbol but are never call sites
-          if (/^import\s/.test(trimmedLine) || /^export\s*\{/.test(trimmedLine)) continue;
+          const matched = matchCallSite(line, localName, namespaceName);
+          if (!matched) continue;
 
-          let match = null;
-          let callType = 'function_call';
-
-          if (new RegExp(`\\b${localName}\\s*\\(`).test(line)) {
-            match = { type: 'direct', name: localName };
-          } else if (new RegExp(`\\b${localName}\\b`).test(line) &&
-                   !line.includes(`${localName}(`) &&
-                   !line.includes(`${localName}.`) &&
-                   !new RegExp(`(function|const|let|var|import|export)\\s+${localName}`).test(line)) {
-            match = { type: 'reference', name: localName };
-            callType = 'variable_reference';
-          } else if (namespaceName && new RegExp(`\\b${namespaceName}\\.${localName}\\s*\\(`).test(line)) {
-            match = { type: 'namespace', name: `${namespaceName}.${localName}` };
-            callType = 'namespace_call';
-          } else if (new RegExp(`new\\s+${localName}\\s*\\(`).test(line)) {
-            match = { type: 'new', name: `new ${localName}` };
-            callType = 'instantiation';
-          } else if (new RegExp(`\\.${localName}\\s*\\(`).test(line)) {
-            match = { type: 'method', name: `.${localName}` };
-            callType = 'method_call';
-          } else if (new RegExp(`\\b${localName}\\.(call|apply)\\s*\\(`).test(line)) {
-            match = { type: 'call/apply', name: `${localName}.call/apply` };
-            callType = 'call_apply';
-          }
-
-          if (match) {
-            const contextStart = Math.max(0, i - 2);
-            const contextEnd = Math.min(lines.length, i + 3);
-            const context = lines.slice(contextStart, contextEnd).join('\n');
-
-            callSites.push({
-              file: depFile,
-              line: i + 1,
-              column: line.indexOf(match.name) + 1,
-              code: line.trim(),
-              context,
-              type: callType,
-              importType: importInfo
-                ? (importInfo.specifiers?.some(s => s.type === 'namespace') ? 'namespace'
-                  : importInfo.specifiers?.some(s => s.type === 'default' || s.imported === 'default') ? 'default'
-                  : importInfo.specifiers?.length > 0 ? 'named'
-                  : importInfo.type || 'unknown')
-                : 'unknown',
-              alias: localName !== symbolName ? localName : null,
-              namespace: namespaceName
-            });
-          }
+          const context = lines.slice(Math.max(0, i - 2), Math.min(lines.length, i + 3)).join('\n');
+          callSites.push(buildCallSiteEntry(depFile, i, line, matched, importType, localName, namespaceName, symbolName, context));
         }
-
       } catch (error) {
         logger.warn(`  ⚠️  Could not analyze ${depFile}: ${error.message}`);
-        continue;
       }
     }
 
@@ -174,4 +108,75 @@ export async function findCallSites(projectPath, targetFile, symbolName) {
     logger.error(`Error in findCallSites: ${error.message}`);
     return { error: error.message };
   }
+}
+
+// ── Helpers privados ──────────────────────────────────────────────────────────
+
+/**
+ * Resuelve el nombre local y namespace de un símbolo en un archivo dependiente
+ */
+function resolveImportInfo(depAnalysis, targetFile, symbolName) {
+  const importInfo = depAnalysis?.imports?.find(imp => {
+    const resolvedPath = imp.resolvedPath || imp.source;
+    return resolvedPath && (resolvedPath.includes(targetFile) || targetFile.includes(resolvedPath));
+  });
+
+  let localName = symbolName;
+  let namespaceName = null;
+
+  if (importInfo) {
+    const specifier = importInfo.specifiers?.find(s => s.imported === symbolName || s.name === symbolName);
+    if (specifier?.local && specifier.local !== symbolName) localName = specifier.local;
+    if (importInfo.specifiers?.some(s => s.type === 'namespace')) {
+      namespaceName = importInfo.specifiers.find(s => s.type === 'namespace')?.local || 'namespace';
+    }
+  }
+
+  const importType = importInfo
+    ? (importInfo.specifiers?.some(s => s.type === 'namespace') ? 'namespace'
+      : importInfo.specifiers?.some(s => s.type === 'default' || s.imported === 'default') ? 'default'
+      : importInfo.specifiers?.length > 0 ? 'named'
+      : importInfo.type || 'unknown')
+    : 'unknown';
+
+  return { localName, namespaceName, importType };
+}
+
+/**
+ * Detecta si una línea contiene un call site del símbolo
+ * @returns {{ type, name, callType } | null}
+ */
+function matchCallSite(line, localName, namespaceName) {
+  if (new RegExp(`\\b${localName}\\s*\\(`).test(line))
+    return { type: 'direct', name: localName, callType: 'function_call' };
+  if (namespaceName && new RegExp(`\\b${namespaceName}\\.${localName}\\s*\\(`).test(line))
+    return { type: 'namespace', name: `${namespaceName}.${localName}`, callType: 'namespace_call' };
+  if (new RegExp(`new\\s+${localName}\\s*\\(`).test(line))
+    return { type: 'new', name: `new ${localName}`, callType: 'instantiation' };
+  if (new RegExp(`\\.${localName}\\s*\\(`).test(line))
+    return { type: 'method', name: `.${localName}`, callType: 'method_call' };
+  if (new RegExp(`\\b${localName}\\.(call|apply)\\s*\\(`).test(line))
+    return { type: 'call/apply', name: `${localName}.call/apply`, callType: 'call_apply' };
+  if (new RegExp(`\\b${localName}\\b`).test(line) &&
+      !line.includes(`${localName}(`) && !line.includes(`${localName}.`) &&
+      !new RegExp(`(function|const|let|var|import|export)\\s+${localName}`).test(line))
+    return { type: 'reference', name: localName, callType: 'variable_reference' };
+  return null;
+}
+
+/**
+ * Construye el objeto de un call site encontrado
+ */
+function buildCallSiteEntry(depFile, lineIdx, line, matched, importType, localName, namespaceName, symbolName, context) {
+  return {
+    file: depFile,
+    line: lineIdx + 1,
+    column: line.indexOf(matched.name) + 1,
+    code: line.trim(),
+    context,
+    type: matched.callType,
+    importType,
+    alias: localName !== symbolName ? localName : null,
+    namespace: namespaceName
+  };
 }

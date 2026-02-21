@@ -1,25 +1,8 @@
 /**
  * Tool: trace_variable_impact
  *
- * Rastrea el impacto de cambiar una variable a través del grafo de átomos.
- *
- * MATEMÁTICA:
- *   Esto es propagación de influencia en un grafo dirigido ponderado.
- *   Cada átomo es un nodo. Cada llamada donde se pasa una variable es una arista.
- *   El peso del impacto decae con cada salto (hop):
- *
- *     impact(hop=0) = 1.0                          (fuente del cambio)
- *     impact(hop=n) = impact(hop=n-1) × α × boost  (propagación)
- *
- *   donde:
- *     α     = 0.75  — factor de decaimiento por salto (cada hop pierde 25% de certeza)
- *     boost = min(1.0, usageCount / 5) — si la variable aparece mucho en el callee,
- *             la conexión es más fuerte (más probable que se rompa)
- *
- *   Mismo modelo matemático que:
- *     - PageRank (propagación de autoridad en grafo)
- *     - Modelos SIR en epidemiología (infección que se propaga con tasa β)
- *     - Redes bayesianas (propagación de creencias)
+ * Weighted BFS influence propagation through the atom call graph.
+ * Math model: PageRank-like decay (α=0.75/hop, boost=usageCount/5).
  *
  * @module mcp/tools/trace-variable-impact
  */
@@ -36,6 +19,26 @@ const DECAY = 0.75;
  * Dado un átomo fuente y el nombre de una variable, rastrea cómo fluye
  * ese dato hacia los átomos que llama — con pesos de impacto.
  */
+// ── Private helpers ───────────────────────────────────────────────────────────
+
+function buildAtomIndices(allAtoms) {
+  const byId = new Map(allAtoms.map(a => [a.id, a]));
+  const byName = new Map();
+  for (const a of allAtoms) {
+    if (!a.name) continue;
+    if (!byName.has(a.name)) byName.set(a.name, []);
+    byName.get(a.name).push(a);
+  }
+  return { byId, byName };
+}
+
+function findSourceAtom(allAtoms, filePath, symbolName) {
+  return allAtoms.find(a =>
+    a.name === symbolName &&
+    (a.filePath === filePath || a.filePath?.endsWith('/' + filePath) || a.id?.startsWith(filePath))
+  ) || null;
+}
+
 export async function trace_variable_impact(args, context) {
   const { filePath, symbolName, variableName, maxDepth = 3 } = args;
   const { projectPath } = context;
@@ -49,22 +52,9 @@ export async function trace_variable_impact(args, context) {
   }
 
   const allAtoms = await getAllAtoms(projectPath);
+  const { byName } = buildAtomIndices(allAtoms);
 
-  // Índice: id → atom  y  name → [atoms]
-  const byId = new Map(allAtoms.map(a => [a.id, a]));
-  const byName = new Map();
-  for (const a of allAtoms) {
-    if (!a.name) continue;
-    if (!byName.has(a.name)) byName.set(a.name, []);
-    byName.get(a.name).push(a);
-  }
-
-  // Encontrar átomo fuente
-  const sourceAtom = allAtoms.find(a =>
-    a.name === symbolName &&
-    (a.filePath === filePath || a.filePath?.endsWith('/' + filePath) || a.id?.startsWith(filePath))
-  );
-
+  const sourceAtom = findSourceAtom(allAtoms, filePath, symbolName);
   if (!sourceAtom) {
     return {
       error: `Atom not found: ${filePath}::${symbolName}`,

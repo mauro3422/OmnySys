@@ -2,7 +2,7 @@
 
 ## Sistema: OmnySys MCP
 
-Este proyecto usa un sistema MCP (Model Context Protocol) personalizado con 28 herramientas de análisis de código. **DEBES usar estas herramientas antes de cualquier edición**.
+Este proyecto usa un sistema MCP (Model Context Protocol) personalizado con 30 herramientas de análisis de código. **DEBES usar estas herramientas antes de cualquier edición**.
 
 ---
 
@@ -191,7 +191,7 @@ await atomic_edit({
 
 ## Métricas del Sistema
 
-- **Total Tools**: 28
+- **Total Tools**: 30
 - **Health Score Target**: >95/100
 - **Max Lines per File**: 250
 - **Max Complexity**: 15

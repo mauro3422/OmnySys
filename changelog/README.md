@@ -12,6 +12,8 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.49-bugfixes-refactoring.md](v0.9.49-bugfixes-refactoring.md) | 2026-02-21 | **Bugfixes + Refactoring God Functions + Test Generator Improvements** |
+| [v0.9.48-semantic-domain-test-generator.md](v0.9.48-semantic-domain-test-generator.md) | 2026-02-21 | Semantic Domain + Test Generator + Registry System |
 | [v0.9.29-preprocessor-framework-mcp-fixes.md](v0.9.29-preprocessor-framework-mcp-fixes.md) | 2026-02-19 | **Preprocessor Framework + Import Cleanup (v0.9.20–28) + MCP Stability** |
 | [v0.9.18-runtime-bugfix.md](v0.9.18-runtime-bugfix.md) | 2026-02-18 | Runtime Bugfix: 6 bugs en arranque MCP |
 | [unreleased-2026-02-15-factories-refactor.md](unreleased-2026-02-15-factories-refactor.md) | 2026-02-15 | **UNRELEASED** - Test Factories Modularization + Layer A Stabilization |
