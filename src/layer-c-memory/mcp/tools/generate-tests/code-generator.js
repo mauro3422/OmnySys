@@ -50,8 +50,8 @@ function generateImports(atom, useRealFactories, needSandbox) {
     code += `import { withSandbox } from '#test-factories/real/index.js';\n`;
   }
   
-  // Import de la función
-  const importPath = atom.filePath.replace(/\\/g, '/');
+  // Import de la función — mapear src/ a alias # para compatibilidad con vitest
+  const importPath = resolveImportAlias(atom.filePath);
   code += `import { ${atom.name} } from '${importPath}';\n`;
   
   code += `\n`;
@@ -151,6 +151,21 @@ function inferFallbackValue(input) {
     case 'object':   return '{}';
     default:         return '{}';
   }
+}
+
+/**
+ * Mapea rutas src/ a los alias # definidos en package.json#imports
+ */
+function resolveImportAlias(filePath) {
+  const p = filePath.replace(/\\/g, '/');
+  if (p.startsWith('src/ai/'))          return p.replace('src/ai/', '#ai/');
+  if (p.startsWith('src/core/'))        return p.replace('src/core/', '#core/');
+  if (p.startsWith('src/layer-a-static/')) return p.replace('src/layer-a-static/', '#layer-a/');
+  if (p.startsWith('src/layer-b-semantic/')) return p.replace('src/layer-b-semantic/', '#layer-b/');
+  if (p.startsWith('src/layer-c-memory/')) return p.replace('src/layer-c-memory/', '#layer-c/');
+  if (p.startsWith('src/layer-graph/')) return p.replace('src/layer-graph/', '#layer-graph/');
+  if (p.startsWith('src/config/'))      return p.replace('src/config/', '#config/');
+  return p; // fallback sin alias
 }
 
 export default {
