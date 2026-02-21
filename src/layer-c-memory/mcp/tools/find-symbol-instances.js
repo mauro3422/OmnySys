@@ -295,155 +295,72 @@ async function autoDetectDuplicates(atoms, minInstances = 2) {
   return duplicates.sort((a, b) => b.riskScore - a.riskScore).slice(0, 20);
 }
 
+// ── Branch helpers for find_symbol_instances ─────────────────────────────────
+
+async function handleAutoDetect(resolvedPath) {
+  const atoms = await getAllAtoms(resolvedPath);
+  const duplicates = await autoDetectDuplicates(atoms);
+  const criticalCount = duplicates.filter(d => d.count > 2).length;
+  const totalSavings = duplicates.reduce((sum, d) => sum + d.potentialSavings, 0);
+  return {
+    mode: 'auto_detect',
+    summary: { totalDuplicatesFound: duplicates.length, criticalDuplicates: criticalCount, totalInstances: duplicates.reduce((sum, d) => sum + d.count, 0), potentialSavingsLOC: totalSavings },
+    duplicates: duplicates.map(d => ({ primaryName: d.symbolName, allNames: d.allNames, count: d.count, linesOfCode: d.linesOfCode, riskScore: d.riskScore, canonical: d.canonical, instances: d.instances, recommendation: d.recommendation })),
+    topPriority: duplicates.slice(0, 5).map(d => ({ symbol: d.symbolName, action: `Consolidar ${d.count} copias en ${d.canonical.file}`, savings: `${d.potentialSavings} LOC` })),
+    recommendations: [
+      { type: 'info', message: `Se encontraron ${duplicates.length} grupos de funciones duplicadas`, action: 'review_top_5' },
+      ...(criticalCount > 0 ? [{ type: 'warning', message: `${criticalCount} duplicados tienen más de 2 copias - prioridad alta`, action: 'address_critical_first' }] : [])
+    ]
+  };
+}
+
+function buildInstanceDetails(instances, usageMap, primary, duplicates) {
+  return instances.map(instance => {
+    const usage = usageMap.get(instance.filePath);
+    const isPrimary = primary && instance.filePath === primary.filePath;
+    const isDuplicate = duplicates.some(d => d.instances.some(i => i.file === instance.filePath));
+    return {
+      id: instance.id, file: instance.filePath, line: instance.line,
+      isExported: instance.isExported, complexity: instance.complexity, linesOfCode: instance.linesOfCode,
+      structuralHash: instance.dna?.structuralHash?.slice(0, 16) + '...',
+      usage: { importedBy: usage?.imports?.length || 0, calledBy: usage?.calls?.length || 0, total: usage?.totalUsage || 0 },
+      status: isPrimary ? '✅ PRIMARY' : (usage?.totalUsage === 0 ? '⚠️ UNUSED' : 'ℹ️ ALT'),
+      isPrimary, isUnused: usage?.totalUsage === 0, isDuplicate
+    };
+  }).sort((a, b) => b.usage.total - a.usage.total);
+}
+
+async function handleSymbolSearch(symbolName, resolvedPath) {
+  const atoms = await getAllAtoms(resolvedPath);
+  const instances = findAllInstances(atoms, symbolName);
+  if (instances.length === 0) {
+    return { symbol: symbolName, found: false, message: `No se encontró ninguna función/variable llamada "${symbolName}"`, suggestion: 'Verifica el nombre o usa search_files para encontrar el nombre correcto' };
+  }
+  const usageMap = analyzeUsage(atoms, instances, symbolName);
+  const duplicates = detectDuplicates(instances);
+  const primary = determinePrimary(instances, usageMap);
+  const instanceDetails = buildInstanceDetails(instances, usageMap, primary, duplicates);
+  return {
+    symbol: symbolName, found: true,
+    summary: { totalInstances: instances.length, primaryInstance: primary ? { file: primary.filePath, line: primary.line } : null, duplicateGroups: duplicates.length, unusedInstances: instanceDetails.filter(i => i.isUnused).length },
+    instances: instanceDetails,
+    duplicates: duplicates.map(d => ({ hash: d.hash, count: d.count, files: d.instances.map(i => i.file) })),
+    directImports: [],
+    recommendations: generateRecommendations(instances, primary, duplicates, usageMap),
+    action: primary ? { type: 'edit', file: primary.filePath, line: primary.line, message: `Editar esta instancia (usada ${usageMap.get(primary.filePath)?.totalUsage || 0} veces)` } : null
+  };
+}
+
 /**
  * Tool principal
  */
 export async function find_symbol_instances(args, context) {
-  const { symbolName, includeSimilar = false, autoDetect = false, projectPath } = args;
-  
-  // Modo auto-detección: no requiere symbolName
-  if (autoDetect || !symbolName) {
-    try {
-      const atoms = await getAllAtoms(projectPath || context.projectPath);
-      const duplicates = await autoDetectDuplicates(atoms);
-      
-      const criticalCount = duplicates.filter(d => d.count > 2).length;
-      const totalSavings = duplicates.reduce((sum, d) => sum + d.potentialSavings, 0);
-      
-      return {
-        mode: 'auto_detect',
-        summary: {
-          totalDuplicatesFound: duplicates.length,
-          criticalDuplicates: criticalCount,
-          totalInstances: duplicates.reduce((sum, d) => sum + d.count, 0),
-          potentialSavingsLOC: totalSavings
-        },
-        duplicates: duplicates.map(d => ({
-          primaryName: d.symbolName,
-          allNames: d.allNames,
-          count: d.count,
-          linesOfCode: d.linesOfCode,
-          riskScore: d.riskScore,
-          canonical: d.canonical,
-          instances: d.instances,
-          recommendation: d.recommendation
-        })),
-        topPriority: duplicates.slice(0, 5).map(d => ({
-          symbol: d.symbolName,
-          action: `Consolidar ${d.count} copias en ${d.canonical.file}`,
-          savings: `${d.potentialSavings} LOC`
-        })),
-        recommendations: [
-          {
-            type: 'info',
-            message: `Se encontraron ${duplicates.length} grupos de funciones duplicadas`,
-            action: 'review_top_5'
-          },
-          ...(criticalCount > 0 ? [{
-            type: 'warning',
-            message: `${criticalCount} duplicados tienen más de 2 copias - prioridad alta`,
-            action: 'address_critical_first'
-          }] : [])
-        ]
-      };
-    } catch (error) {
-      return {
-        error: error.message,
-        stack: error.stack
-      };
-    }
-  }
-  
+  const { symbolName, autoDetect = false, projectPath } = args;
+  const resolvedPath = projectPath || context.projectPath;
   try {
-    const atoms = await getAllAtoms(projectPath || context.projectPath);
-    
-    // 1. Encontrar todas las instancias
-    const instances = findAllInstances(atoms, symbolName);
-    
-    if (instances.length === 0) {
-      return {
-        symbol: symbolName,
-        found: false,
-        message: `No se encontró ninguna función/variable llamada "${symbolName}"`,
-        suggestion: 'Verifica el nombre o usa search_files para encontrar el nombre correcto'
-      };
-    }
-    
-    // 2. Analizar uso de cada instancia
-    const usageMap = analyzeUsage(atoms, instances, symbolName);
-    
-    // 3. Detectar duplicados
-    const duplicates = detectDuplicates(instances);
-    
-    // 4. Determinar primaria
-    const primary = determinePrimary(instances, usageMap);
-    
-    // 5. Generar resultados detallados
-    const instanceDetails = instances.map(instance => {
-      const usage = usageMap.get(instance.filePath);
-      const isPrimary = primary && instance.filePath === primary.filePath;
-      const isDuplicate = duplicates.some(d => 
-        d.instances.some(i => i.file === instance.filePath)
-      );
-      
-      return {
-        id: instance.id,
-        file: instance.filePath,
-        line: instance.line,
-        isExported: instance.isExported,
-        complexity: instance.complexity,
-        linesOfCode: instance.linesOfCode,
-        structuralHash: instance.dna?.structuralHash?.slice(0, 16) + '...',
-        usage: {
-          importedBy: usage?.imports?.length || 0,
-          calledBy: usage?.calls?.length || 0,
-          total: usage?.totalUsage || 0
-        },
-        status: isPrimary ? '✅ PRIMARY' : (usage?.totalUsage === 0 ? '⚠️ UNUSED' : 'ℹ️ ALT'),
-        isPrimary,
-        isUnused: usage?.totalUsage === 0,
-        isDuplicate
-      };
-    }).sort((a, b) => b.usage.total - a.usage.total);
-    
-    // 6. Generar recomendaciones
-    const recommendations = generateRecommendations(instances, primary, duplicates, usageMap);
-    
-    // 7. Detectar imports directos (comentado temporalmente)
-    const directImports = [];
-    
-    return {
-      symbol: symbolName,
-      found: true,
-      summary: {
-        totalInstances: instances.length,
-        primaryInstance: primary ? {
-          file: primary.filePath,
-          line: primary.line
-        } : null,
-        duplicateGroups: duplicates.length,
-        unusedInstances: instanceDetails.filter(i => i.isUnused).length
-      },
-      instances: instanceDetails,
-      duplicates: duplicates.map(d => ({
-        hash: d.hash,
-        count: d.count,
-        files: d.instances.map(i => i.file)
-      })),
-      directImports,
-      recommendations,
-      action: primary ? {
-        type: 'edit',
-        file: primary.filePath,
-        line: primary.line,
-        message: `Editar esta instancia (usada ${usageMap.get(primary.filePath)?.totalUsage || 0} veces)`
-      } : null
-    };
-    
+    if (autoDetect || !symbolName) return await handleAutoDetect(resolvedPath);
+    return await handleSymbolSearch(symbolName, resolvedPath);
   } catch (error) {
-    return {
-      error: error.message,
-      stack: error.stack
-    };
+    return { error: error.message, stack: error.stack };
   }
 }

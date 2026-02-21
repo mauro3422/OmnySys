@@ -30,212 +30,142 @@ import {
 import { buildExportIndex } from './export-index.js';
 import { buildFunctionLinks } from './function-links.js';
 
-/**
- * Construye el grafo de dependencias del sistema
- * 
- * @param {Object.<string, FileInfo>} parsedFiles - Mapa { filePath: FileInfo }
- * @param {Object.<string, ImportInfo[]>} resolvedImports - Mapa { filePath: { sourceImport: resolution } }
- * @returns {SystemMap} - SystemMap completo con FileNodes y Dependencies
- */
-export function buildSystemMap(parsedFiles, resolvedImports) {
-  const systemMap = createEmptySystemMap();
-  
-  // Handle null/undefined inputs
-  if (!parsedFiles) return systemMap;
-  resolvedImports = resolvedImports || {};
-  
-  // Normalizar paths para búsquedas rápidas
-  const filesByPath = {};
-  const allFilePaths = new Set();
+// ── Private phase helpers ─────────────────────────────────────────────────────
 
-  // ============================================
-  // FASE 1: Crear nodos de archivo
-  // ============================================
+function buildFileNodes(parsedFiles) {
+  const allFilePaths = new Set();
+  const files = {};
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     const normalized = normalizePath(filePath);
-    filesByPath[normalized] = fileInfo;
     allFilePaths.add(normalized);
-
-    systemMap.files[normalized] = createFileNode(
-      normalized,
-      getDisplayPath(normalized),
-      fileInfo
-    );
+    files[normalized] = createFileNode(normalized, getDisplayPath(normalized), fileInfo);
   }
+  return { allFilePaths, files };
+}
 
-  // ============================================
-  // FASE 2: Construir índice de exports
-  // ============================================
-  systemMap.exportIndex = buildExportIndex(parsedFiles, allFilePaths);
+function processSingleImport(normalizedFrom, importInfo, systemMap, dependencySet) {
+  if (importInfo?.type === 'dynamic' && importInfo.source) {
+    if (importInfo.source !== '<dynamic>') {
+      const normalizedTo = normalizePath(importInfo.source);
+      if (systemMap.files[normalizedTo]) {
+        const depKey = `${normalizedFrom} -> ${normalizedTo}`;
+        if (!dependencySet.has(depKey)) {
+          dependencySet.add(depKey);
+          systemMap.dependencies.push(createDependency(normalizedFrom, normalizedTo, { ...importInfo, dynamic: true, confidence: 0.8 }));
+          systemMap.files[normalizedFrom].dependsOn.push(normalizedTo);
+          systemMap.files[normalizedTo].usedBy.push(normalizedFrom);
+        }
+      }
+    }
+    return;
+  }
+  if (!importInfo.resolved) {
+    if (!systemMap.unresolvedImports[normalizedFrom]) systemMap.unresolvedImports[normalizedFrom] = [];
+    systemMap.unresolvedImports[normalizedFrom].push({ source: importInfo.source || importInfo.importSource, type: importInfo.type, reason: importInfo.reason, severity: importInfo.type === 'unresolved' ? 'HIGH' : 'LOW' });
+    return;
+  }
+  const normalizedTo = normalizePath(importInfo.resolved);
+  if (!systemMap.files[normalizedTo]) return;
+  const depKey = `${normalizedFrom} -> ${normalizedTo}`;
+  if (!dependencySet.has(depKey)) {
+    dependencySet.add(depKey);
+    systemMap.dependencies.push(createDependency(normalizedFrom, normalizedTo, importInfo));
+    systemMap.files[normalizedFrom].dependsOn.push(normalizedTo);
+    systemMap.files[normalizedTo].usedBy.push(normalizedFrom);
+  }
+}
 
-  // ============================================
-  // FASE 3: Procesar imports y crear dependencias
-  // ============================================
-  const dependencySet = new Set(); // Para evitar duplicados
-
+function processDependencies(resolvedImports, systemMap) {
+  const dependencySet = new Set();
   for (const [filePath, imports] of Object.entries(resolvedImports)) {
     const normalizedFrom = normalizePath(filePath);
-
-    if (!systemMap.files[normalizedFrom]) {
-      continue; // Archivo no en el grafo
-    }
-
+    if (!systemMap.files[normalizedFrom]) continue;
     for (const importInfo of imports) {
-      // Si es un import dinámico resuelto, procesarlo como dependencia potencial
-      if (importInfo && importInfo.type === 'dynamic' && importInfo.source) {
-        // Para imports dinámicos con path conocido (ej: import('./utils.js'))
-        if (importInfo.source !== '<dynamic>') {
-          const normalizedTo = normalizePath(importInfo.source);
-          
-          if (systemMap.files[normalizedTo]) {
-            const depKey = `${normalizedFrom} -> ${normalizedTo}`;
-            if (!dependencySet.has(depKey)) {
-              dependencySet.add(depKey);
-              
-              systemMap.dependencies.push(
-                createDependency(normalizedFrom, normalizedTo, {
-                  ...importInfo,
-                  dynamic: true,
-                  confidence: 0.8 // Menor confianza que estático
-                })
-              );
-              
-              systemMap.files[normalizedFrom].dependsOn.push(normalizedTo);
-              systemMap.files[normalizedTo].usedBy.push(normalizedFrom);
-            }
-          }
-        }
-        // Los imports dinámicos con variables se registran como potenciales
-        continue;
-      }
-      
-      // Capturar imports no resueltos (que no son dinámicos)
-      if (!importInfo.resolved) {
-        if (!systemMap.unresolvedImports[normalizedFrom]) {
-          systemMap.unresolvedImports[normalizedFrom] = [];
-        }
-        systemMap.unresolvedImports[normalizedFrom].push({
-          source: importInfo.source || importInfo.importSource,
-          type: importInfo.type,
-          reason: importInfo.reason,
-          severity: importInfo.type === 'unresolved' ? 'HIGH' : 'LOW'
-        });
-        continue;
-      }
-
-      const normalizedTo = normalizePath(importInfo.resolved);
-
-      // Verificar si el archivo destino está en el grafo
-      if (!systemMap.files[normalizedTo]) {
-        continue; // Archivo no está en el proyecto
-      }
-
-      // Crear dependency (evitar duplicados)
-      const depKey = `${normalizedFrom} -> ${normalizedTo}`;
-      if (!dependencySet.has(depKey)) {
-        dependencySet.add(depKey);
-
-        systemMap.dependencies.push(
-          createDependency(normalizedFrom, normalizedTo, importInfo)
-        );
-
-        // Actualizar referencias bidireccionales
-        systemMap.files[normalizedFrom].dependsOn.push(normalizedTo);
-        systemMap.files[normalizedTo].usedBy.push(normalizedFrom);
-      }
+      processSingleImport(normalizedFrom, importInfo, systemMap, dependencySet);
     }
   }
+}
 
-  // ============================================
-  // FASE 4: Eliminar duplicados en relaciones
-  // ============================================
-  for (const fileNode of Object.values(systemMap.files)) {
-    fileNode.usedBy = uniquePaths(fileNode.usedBy);
-    fileNode.dependsOn = uniquePaths(fileNode.dependsOn);
-  }
-
-  // ============================================
-  // FASE 5: Detectar ciclos
-  // ============================================
-  systemMap.metadata.cyclesDetected = detectCycles(systemMap.files);
-
-  // ============================================
-  // FASE 6: Calcular dependencias transitivas
-  // ============================================
+function calculateAllTransitive(allFilePaths, systemMap) {
   for (const filePath of allFilePaths) {
-    const fileNode = systemMap.files[filePath];
-    const transitive = calculateTransitiveDependencies(
-      filePath,
-      systemMap.files,
-      new Set()
-    );
-    fileNode.transitiveDepends = Array.from(transitive);
+    systemMap.files[filePath].transitiveDepends = Array.from(calculateTransitiveDependencies(filePath, systemMap.files, new Set()));
   }
-
-  // Calcular transitive dependents
   for (const filePath of allFilePaths) {
-    const fileNode = systemMap.files[filePath];
-    const transitive = calculateTransitiveDependents(
-      filePath,
-      systemMap.files,
-      new Set()
-    );
-    fileNode.transitiveDependents = Array.from(transitive);
+    systemMap.files[filePath].transitiveDependents = Array.from(calculateTransitiveDependents(filePath, systemMap.files, new Set()));
   }
+}
 
-  // ============================================
-  // FASE 7: Procesar funciones y enlaces
-  // ============================================
-  const { functions, function_links } = buildFunctionLinks(
-    parsedFiles,
-    resolvedImports
-  );
-  systemMap.functions = functions;
-  systemMap.function_links = function_links;
-
-  // ============================================
-  // FASE 8: Procesar Tier 3 data (types, enums, etc.)
-  // ============================================
+function processTier3Data(parsedFiles, systemMap) {
+  const fields = ['typeDefinitions', 'enumDefinitions', 'constantExports', 'objectExports', 'typeUsages'];
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
     const normalized = normalizePath(filePath);
     const fileNode = systemMap.files[normalized];
-
-    if (fileInfo.typeDefinitions?.length > 0) {
-      systemMap.typeDefinitions[normalized] = fileInfo.typeDefinitions;
-      if (fileNode) fileNode.typeDefinitions = fileInfo.typeDefinitions;
-    }
-    if (fileInfo.enumDefinitions?.length > 0) {
-      systemMap.enumDefinitions[normalized] = fileInfo.enumDefinitions;
-      if (fileNode) fileNode.enumDefinitions = fileInfo.enumDefinitions;
-    }
-    if (fileInfo.constantExports?.length > 0) {
-      systemMap.constantExports[normalized] = fileInfo.constantExports;
-      if (fileNode) fileNode.constantExports = fileInfo.constantExports;
-    }
-    if (fileInfo.objectExports?.length > 0) {
-      systemMap.objectExports[normalized] = fileInfo.objectExports;
-      if (fileNode) fileNode.objectExports = fileInfo.objectExports;
-    }
-    if (fileInfo.typeUsages?.length > 0) {
-      systemMap.typeUsages[normalized] = fileInfo.typeUsages;
-      if (fileNode) fileNode.typeUsages = fileInfo.typeUsages;
+    for (const field of fields) {
+      if (fileInfo[field]?.length > 0) {
+        systemMap[field][normalized] = fileInfo[field];
+        if (fileNode) fileNode[field] = fileInfo[field];
+      }
     }
   }
+}
 
-  // ============================================
-  // FASE 9: Calcular métricas
-  // ============================================
+function computeMetrics(allFilePaths, systemMap) {
   systemMap.metadata.totalFiles = allFilePaths.size;
   systemMap.metadata.totalDependencies = systemMap.dependencies.length;
   systemMap.metadata.totalFunctions = countTotalFunctions(systemMap.functions);
   systemMap.metadata.totalFunctionLinks = systemMap.function_links.length;
   systemMap.metadata.totalUnresolved = countUnresolvedImports(systemMap.unresolvedImports);
   systemMap.metadata.totalReexports = systemMap.reexportChains.length;
-  // Tier 3 metrics
   systemMap.metadata.totalTypes = countTotalItems(systemMap.typeDefinitions);
   systemMap.metadata.totalEnums = countTotalItems(systemMap.enumDefinitions);
   systemMap.metadata.totalConstants = countTotalItems(systemMap.constantExports);
   systemMap.metadata.totalSharedObjects = countTotalItems(systemMap.objectExports);
+}
+
+/**
+ * Construye el grafo de dependencias del sistema
+ *
+ * @param {Object.<string, FileInfo>} parsedFiles - Mapa { filePath: FileInfo }
+ * @param {Object.<string, ImportInfo[]>} resolvedImports - Mapa { filePath: { sourceImport: resolution } }
+ * @returns {SystemMap} - SystemMap completo con FileNodes y Dependencies
+ */
+export function buildSystemMap(parsedFiles, resolvedImports) {
+  const systemMap = createEmptySystemMap();
+  if (!parsedFiles) return systemMap;
+  resolvedImports = resolvedImports || {};
+
+  // Fase 1: nodos de archivo
+  const { allFilePaths, files } = buildFileNodes(parsedFiles);
+  systemMap.files = files;
+
+  // Fase 2: índice de exports
+  systemMap.exportIndex = buildExportIndex(parsedFiles, allFilePaths);
+
+  // Fase 3: imports → dependencias
+  processDependencies(resolvedImports, systemMap);
+
+  // Fase 4: deduplicar relaciones
+  for (const fileNode of Object.values(systemMap.files)) {
+    fileNode.usedBy = uniquePaths(fileNode.usedBy);
+    fileNode.dependsOn = uniquePaths(fileNode.dependsOn);
+  }
+
+  // Fase 5: detectar ciclos
+  systemMap.metadata.cyclesDetected = detectCycles(systemMap.files);
+
+  // Fase 6: dependencias transitivas
+  calculateAllTransitive(allFilePaths, systemMap);
+
+  // Fase 7: funciones y enlaces
+  const { functions, function_links } = buildFunctionLinks(parsedFiles, resolvedImports);
+  systemMap.functions = functions;
+  systemMap.function_links = function_links;
+
+  // Fase 8: Tier 3 data
+  processTier3Data(parsedFiles, systemMap);
+
+  // Fase 9: métricas
+  computeMetrics(allFilePaths, systemMap);
 
   return systemMap;
 }

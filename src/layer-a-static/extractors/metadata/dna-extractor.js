@@ -356,9 +356,3 @@ export function validateDNA(dna) {
   };
 }
 
-class DNAExtractionError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'DNAExtractionError';
-  }
-}

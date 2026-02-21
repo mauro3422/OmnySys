@@ -224,133 +224,84 @@ function deriveSchema(atoms) {
     });
 }
 
+// ── Helpers for get_atom_schema ───────────────────────────────────────────────
+
+function buildInventory(allAtoms) {
+  return Object.fromEntries(Object.entries(ATOM_TYPE_FILTERS).map(([k, fn]) => [k, allAtoms.filter(fn).length]));
+}
+
+function filterAtoms(allAtoms, atomType) {
+  if (!atomType) return { filtered: allAtoms, filterUsed: 'all' };
+  if (ATOM_TYPE_FILTERS[atomType]) return { filtered: allAtoms.filter(ATOM_TYPE_FILTERS[atomType]), filterUsed: atomType };
+  return { filtered: allAtoms.filter(a => a.type === atomType || a.functionType === atomType || a.archetype?.type === atomType || a.testCallbackType === atomType), filterUsed: atomType };
+}
+
+function computeEvolution(analysisSet, focusField) {
+  const KEY_FIELDS = ['complexity', 'linesOfCode', 'externalCallCount'];
+  const evolution = {};
+  for (const field of KEY_FIELDS) {
+    if (analysisSet.some(a => typeof a[field] === 'number' && a[field] > 0))
+      evolution[field] = fieldEvolution(analysisSet, field);
+  }
+  if (focusField && !KEY_FIELDS.includes(focusField))
+    evolution[focusField] = fieldEvolution(analysisSet, focusField);
+  return evolution;
+}
+
+function buildKeyMetrics(filtered) {
+  return {
+    total:             filtered.length,
+    withCalls:         filtered.filter(a => a.calls?.length > 0).length,
+    withCalledBy:      filtered.filter(a => a.calledBy?.length > 0).length,
+    withComplexity:    filtered.filter(a => a.complexity > 0).length,
+    withDNA:           filtered.filter(a => a.dna?.structuralHash).length,
+    withDataFlow:      filtered.filter(a => a.dataFlow?.inputs?.length > 0).length,
+    exported:          filtered.filter(a => a.isExported).length,
+    async:             filtered.filter(a => a.isAsync).length,
+    withErrorHandling: filtered.filter(a => a.hasErrorHandling).length,
+  };
+}
+
+function buildSample(filtered, sampleSize) {
+  const step = Math.max(1, Math.floor(filtered.length / sampleSize));
+  return Array.from({ length: Math.min(sampleSize, filtered.length) }, (_, i) => {
+    const a = filtered[i * step];
+    return { id: a.id, name: a.name, type: a.type, functionType: a.functionType, archetype: a.archetype, purpose: a.purpose, filePath: a.filePath, line: a.line, isTestCallback: a.isTestCallback || false, testCallbackType: a.testCallbackType || null, calls: (a.calls || []).slice(0, 8).map(c => typeof c === 'string' ? c : c.name), calledBy: (a.calledBy || []).slice(0, 5), isExported: a.isExported, isAsync: a.isAsync || false, complexity: a.complexity, linesOfCode: a.linesOfCode, derived: a.derived || null };
+  });
+}
+
+function buildFieldCoverage() {
+  const allFields = getAvailableFields();
+  const orphaned = allFields.filter(f => !f.usedByTools?.length);
+  const covered  = allFields.filter(f => f.usedByTools?.length > 0);
+  return { total: allFields.length, covered: covered.length, orphaned: orphaned.length, pct: `${Math.round((covered.length / allFields.length) * 100)}%`, orphanedFields: orphaned.map(f => ({ name: f.name, level: f.level || f.source, description: f.description })) };
+}
+
 export async function get_atom_schema(args, context) {
   const { atomType, sampleSize = 3, focusField } = args;
   const { projectPath } = context;
 
   const allAtoms = await getAllAtoms(projectPath);
-
-  // Inventario global de tipos disponibles (para orientación)
-  const inventory = {
-    testCallback:  allAtoms.filter(ATOM_TYPE_FILTERS.testCallback).length,
-    function:      allAtoms.filter(ATOM_TYPE_FILTERS.function).length,
-    arrow:         allAtoms.filter(ATOM_TYPE_FILTERS.arrow).length,
-    expression:    allAtoms.filter(ATOM_TYPE_FILTERS.expression).length,
-    method:        allAtoms.filter(ATOM_TYPE_FILTERS.method).length,
-    variable:      allAtoms.filter(ATOM_TYPE_FILTERS.variable).length,
-    constant:      allAtoms.filter(ATOM_TYPE_FILTERS.constant).length,
-    config:        allAtoms.filter(ATOM_TYPE_FILTERS.config).length,
-  };
-
-  // Filtrar por tipo si se especifica
-  let filtered = allAtoms;
-  let filterUsed = 'all';
-
-  if (atomType && ATOM_TYPE_FILTERS[atomType]) {
-    filtered = allAtoms.filter(ATOM_TYPE_FILTERS[atomType]);
-    filterUsed = atomType;
-  } else if (atomType) {
-    filtered = allAtoms.filter(a =>
-      a.type === atomType ||
-      a.functionType === atomType ||
-      a.archetype?.type === atomType ||
-      a.testCallbackType === atomType
-    );
-    filterUsed = atomType;
-  }
+  const inventory = buildInventory(allAtoms);
+  const { filtered, filterUsed } = filterAtoms(allAtoms, atomType);
 
   if (filtered.length === 0) {
-    return {
-      error: `No atoms found for type "${atomType}"`,
-      inventory,
-      totalAtoms: allAtoms.length,
-    };
+    return { error: `No atoms found for type "${atomType}"`, inventory, totalAtoms: allAtoms.length };
   }
 
-  // Usar hasta 500 átomos para el análisis (representativo sin ser lento)
   const analysisSet = filtered.slice(0, Math.min(500, filtered.length));
-
-  // Schema dinámico con math + distribuciones
-  const schema = deriveSchema(analysisSet);
-
-  // Evolución de campos numéricos clave por archetype y purpose
-  const numericKeyFields = ['complexity', 'linesOfCode', 'externalCallCount'];
-  const evolution = {};
-  for (const field of numericKeyFields) {
-    const hasData = analysisSet.some(a => typeof a[field] === 'number' && a[field] > 0);
-    if (hasData) {
-      evolution[field] = fieldEvolution(analysisSet, field);
-    }
-  }
-  // Si se pidió un campo específico, añadir su evolución también
-  if (focusField && !numericKeyFields.includes(focusField)) {
-    evolution[focusField] = fieldEvolution(analysisSet, focusField);
-  }
-
-  // Correlaciones entre campos numéricos
-  const correlations = computeCorrelations(analysisSet);
-
-  // Métricas de salud del tipo
-  const keyMetrics = {
-    total:            filtered.length,
-    withCalls:        filtered.filter(a => a.calls?.length > 0).length,
-    withCalledBy:     filtered.filter(a => a.calledBy?.length > 0).length,
-    withComplexity:   filtered.filter(a => a.complexity > 0).length,
-    withDNA:          filtered.filter(a => a.dna?.structuralHash).length,
-    withDataFlow:     filtered.filter(a => a.dataFlow?.inputs?.length > 0).length,
-    exported:         filtered.filter(a => a.isExported).length,
-    async:            filtered.filter(a => a.isAsync).length,
-    withErrorHandling: filtered.filter(a => a.hasErrorHandling).length,
-  };
-
-  // Muestra representativa
-  const step = Math.max(1, Math.floor(filtered.length / sampleSize));
-  const sample = Array.from(
-    { length: Math.min(sampleSize, filtered.length) },
-    (_, i) => filtered[i * step]
-  );
-
-  // Reporte de cobertura: qué campos del registry tienen tools que los consumen
-  const allFields = getAvailableFields();
-  const orphaned = allFields.filter(f => !f.usedByTools || f.usedByTools.length === 0);
-  const covered  = allFields.filter(f => f.usedByTools && f.usedByTools.length > 0);
-  const fieldCoverage = {
-    total: allFields.length,
-    covered: covered.length,
-    orphaned: orphaned.length,
-    pct: `${Math.round((covered.length / allFields.length) * 100)}%`,
-    orphanedFields: orphaned.map(f => ({ name: f.name, level: f.level || f.source, description: f.description })),
-  };
 
   return {
     filter: filterUsed,
     totalAtoms: allAtoms.length,
     matchingAtoms: filtered.length,
     inventory,
-    keyMetrics,
-    fieldCoverage,
-    correlations,
-    evolution,
-    schema,
-    sampleAtoms: sample.map(a => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,
-      functionType: a.functionType,
-      archetype: a.archetype,
-      purpose: a.purpose,
-      filePath: a.filePath,
-      line: a.line,
-      isTestCallback: a.isTestCallback || false,
-      testCallbackType: a.testCallbackType || null,
-      calls: (a.calls || []).slice(0, 8).map(c => typeof c === 'string' ? c : c.name),
-      calledBy: (a.calledBy || []).slice(0, 5),
-      isExported: a.isExported,
-      isAsync: a.isAsync || false,
-      complexity: a.complexity,
-      linesOfCode: a.linesOfCode,
-      derived: a.derived || null,
-    })),
+    keyMetrics:    buildKeyMetrics(filtered),
+    fieldCoverage: buildFieldCoverage(),
+    correlations:  computeCorrelations(analysisSet),
+    evolution:     computeEvolution(analysisSet, focusField),
+    schema:        deriveSchema(analysisSet),
+    sampleAtoms:   buildSample(filtered, sampleSize),
   };
 }
 

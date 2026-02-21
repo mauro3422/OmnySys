@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.48 - Semantic Domain + Test Generator + Registry System](changelog/v0.9.48-semantic-domain-test-generator.md)** - Latest release
+- **[v0.9.50 - Technical Debt Audit: God Function Refactoring Pass 2](changelog/v0.9.50-technical-debt-refactor.md)** - Latest release
+- **[v0.9.48 - Semantic Domain + Test Generator + Registry System](changelog/v0.9.48-semantic-domain-test-generator.md)**
 - **[v0.9.47 - Massive Refactoring: 77% code reduction](changelog/v0.9.47-massive-refactoring.md)**
 - **[v0.9.46 - MCP Tools Bug Fixes + Quality Improvements](changelog/v0.9.46-mcp-bugfixes.md)**
 - **[v0.9.45 - MCP Tools Enhancement + Test Coverage Detection](changelog/v0.9.45-mcp-enhancement.md)**
@@ -27,7 +28,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.48]** | 2026-02-21 | **Semantic Domain + Test Generator + Registry System: 30 MCP tools, 43 files changed** (Latest) |
+| **[0.9.50]** | 2026-02-21 | **Technical Debt Audit: God Function Refactoring Pass 2 — 8 files, 359 LOC removed** (Latest) |
+| **[0.9.48]** | 2026-02-21 | **Semantic Domain + Test Generator + Registry System: 30 MCP tools, 43 files changed** |
 | **[0.9.47]** | 2026-02-21 | **Massive Refactoring: 77% code reduction, 5 files refactored** |
 | **[0.9.46]** | 2026-02-20 | **MCP Tools Bug Fixes: 4 tools mejorados + Technical Debt Audit** |
 | **[0.9.45]** | 2026-02-20 | **MCP Tools Enhancement: 2 nuevas tools + Test Coverage Detection** |
