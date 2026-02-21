@@ -42,7 +42,7 @@ export async function analyzeFunctionForTests(atom, projectPath) {
   tests.push(...createThrowTests(errorFlow, inputs, typeContracts, atom));
   
   // Test 3: Edge cases basados en inputs
-  tests.push(...createEdgeCaseTests(inputs));
+  tests.push(...createEdgeCaseTests(inputs, atom));
   
   // Test 4: Tests basados en análisis del código fuente
   if (sourceCode) {
@@ -68,7 +68,13 @@ export async function analyzeFunctionForTests(atom, projectPath) {
     tests.push(createBranchCoverageTest(complexity, inputs, typeContracts, atom));
   }
   
-  return tests;
+  // Deduplicate by test name across all generators
+  const seen = new Set();
+  return tests.filter(t => {
+    if (seen.has(t.name)) return false;
+    seen.add(t.name);
+    return true;
+  });
 }
 
 /**
@@ -118,7 +124,7 @@ function createThrowTests(errorFlow, inputs, typeContracts, atom) {
 /**
  * Crea tests de edge cases para TODOS los inputs (no solo los primeros 2)
  */
-function createEdgeCaseTests(inputs) {
+function createEdgeCaseTests(inputs, atom) {
   const tests = [];
 
   for (const input of inputs) {
@@ -128,19 +134,35 @@ function createEdgeCaseTests(inputs) {
       type: 'edge-case',
       description: `Edge case: ${input.name} vacio`,
       inputs: { [input.name]: 'null' },
-      assertion: 'expect(result).toBeDefined()',
+      assertion: generateEdgeCaseAssertion(input.name, atom),
       priority: input.hasDefault ? 'low' : 'medium'
     });
 
     // Si el parámetro es string, también probar cadena vacía
     if (input.type === 'string' || input.name.toLowerCase().includes('text') ||
         input.name.toLowerCase().includes('code') || input.name.toLowerCase().includes('path')) {
+      const emptyAssertion = generateAssertion(
+        atom?.dataFlow?.outputs, atom?.name, atom?.typeContracts, atom
+      );
       tests.push({
         name: `should handle ${input.name} = empty string`,
         type: 'edge-case',
         description: `Edge case: ${input.name} cadena vacía`,
         inputs: { [input.name]: '""' },
-        assertion: 'expect(result).toBeDefined()',
+        assertion: emptyAssertion,
+        priority: 'low'
+      });
+    }
+
+    // Si el parámetro es array, probar array vacío
+    if (input.type === 'array' || input.name.toLowerCase().includes('arr') ||
+        input.name.toLowerCase().includes('list') || input.name.toLowerCase().includes('items')) {
+      tests.push({
+        name: `should handle ${input.name} = empty array`,
+        type: 'edge-case',
+        description: `Edge case: ${input.name} array vacío`,
+        inputs: { [input.name]: '[]' },
+        assertion: generateAssertion(atom?.dataFlow?.outputs, atom?.name, atom?.typeContracts, atom),
         priority: 'low'
       });
     }
@@ -354,52 +376,88 @@ function generateSetup(atom) {
 }
 
 /**
- * Genera asercion basada en outputs, typeContracts y dataFlow
+ * Genera asercion basada en outputs, typeContracts, dataFlow, DNA y nombre de función
  */
 function generateAssertion(outputs, functionName, typeContracts, atom) {
   const returns = typeContracts?.returns;
   const dnaFlow = atom?.dna?.flowType || '';
+  const dnaOps  = atom?.dna?.operationSequence || [];
 
-  // boolean
-  if (returns?.type === 'boolean') {
+  // 1. typeContracts.returns — más fiable que cualquier heurística
+  if (returns?.type === 'boolean') return 'expect(typeof result).toBe("boolean")';
+  if (returns?.type === 'string')  return 'expect(typeof result).toBe("string")';
+  if (returns?.type === 'number' || returns?.type === 'Number') return 'expect(typeof result).toBe("number")';
+  if (returns?.type === 'array'  || returns?.type === 'Array')  return 'expect(Array.isArray(result)).toBe(true)';
+  if (returns?.type === 'Object' || returns?.type === 'object') {
+    const knownFields = outputs?.filter(o => !o.isSideEffect && o.type === 'return' && o.name) || [];
+    if (knownFields.length > 0) {
+      const fields = knownFields.slice(0, 3).map(o => `${o.name}: expect.anything()`).join(', ');
+      return `expect(result).toEqual(expect.objectContaining({ ${fields} }))`;
+    }
+    return 'expect(result).toEqual(expect.objectContaining({}))';
+  }
+
+  // 2. Function name conventions — very reliable signal
+  const name = (functionName || '').toLowerCase();
+  if (/^(is|has|can|should|check|validate|verify)/.test(name)) {
     return 'expect(typeof result).toBe("boolean")';
   }
-
-  // string
-  if (returns?.type === 'string') {
-    return 'expect(typeof result).toBe("string")';
-  }
-
-  // array
-  if (returns?.type === 'array' || returns?.type === 'Array') {
-    return 'expect(Array.isArray(result)).toBe(true)';
-  }
-
-  // number
-  if (returns?.type === 'number' || returns?.type === 'Number') {
+  if (/^(count|size|length|total|num)/.test(name)) {
     return 'expect(typeof result).toBe("number")';
   }
-
-  // object con campos conocidos del dataFlow
-  if (returns?.type === 'Object' || returns?.type === 'object') {
-    const sideEffectOutputs = outputs?.filter(o => o.isSideEffect === false && o.type === 'return') || [];
-    if (sideEffectOutputs.length > 0) {
-      return 'expect(result).toEqual(expect.objectContaining({}))';
-    }
-    return 'expect(result).not.toBeNull()';
+  if (/^(get|find|fetch|read|load|retrieve|select)/.test(name)) {
+    return 'expect(result).toBeDefined()';
   }
-
-  // DNA flowType: si es read-return, el resultado es el valor leído
-  if (dnaFlow.includes('read') && dnaFlow.includes('return')) {
+  if (/^(create|build|make|new|construct|generate|produce)/.test(name)) {
+    return 'expect(result).toEqual(expect.objectContaining({}))';
+  }
+  if (/^(to|format|stringify|serialize|encode|decode|convert|transform|parse)/.test(name)) {
     return 'expect(result).toBeDefined()';
   }
 
-  // Si solo hay side effects (no return), verificar que no lanza
+  // 3. DNA operationSequence — if no 'return' op, function is side-effect only
+  if (dnaOps.length > 0 && !dnaOps.includes('return') && !dnaOps.includes('property_access')) {
+    return 'expect(() => result).not.toThrow()';
+  }
+
+  // 4. DNA flowType hints
+  if (dnaFlow.includes('validate') || dnaFlow.includes('check')) {
+    return 'expect(typeof result).toBe("boolean")';
+  }
+  if (dnaFlow.includes('transform') || dnaFlow.includes('convert')) {
+    return 'expect(result).toBeDefined()';
+  }
+
+  // 5. dataFlow outputs fallback
   const hasReturn = outputs?.some(o => o.type === 'return');
   if (!hasReturn && outputs?.some(o => o.isSideEffect)) {
     return 'expect(() => result).not.toThrow()';
   }
 
+  return 'expect(result).toBeDefined()';
+}
+
+/**
+ * Infiere assertion para edge cases (null/undefined/empty input)
+ * basada en si la función tiene guards o throws para ese parámetro
+ */
+function generateEdgeCaseAssertion(paramName, atom) {
+  const throws = atom?.errorFlow?.throws || [];
+  const throwsOnNull = throws.some(t => {
+    const cond = (t.condition || '').toLowerCase();
+    return cond.includes(paramName.toLowerCase()) || cond.includes('null') || cond.includes('!');
+  });
+  if (throwsOnNull) {
+    return atom?.isAsync
+      ? `await expect(${atom.name}(null)).rejects.toThrow()`
+      : `expect(() => ${atom.name}(null)).toThrow()`;
+  }
+  // Guard returns: function likely returns null/undefined/false gracefully
+  const name = (atom?.name || '').toLowerCase();
+  // is*/has*/can* return raw booleans; validate*/check* may return {valid,errors} objects
+  if (/^(is|has|can)/.test(name))             return 'expect(result).toBe(false)';
+  if (/^(validate|check)/.test(name))         return 'expect(result).toBeDefined()';
+  if (/^(get|find|fetch|select)/.test(name))  return 'expect(result).toBeNull()';
   return 'expect(result).toBeDefined()';
 }
 

@@ -67,7 +67,8 @@ export function generateTestCase(atom, test, useSandbox) {
   const inputs = atom.dataFlow?.inputs || [];
   const isAsync = atom.isAsync;
   
-  code += `  it('${test.name}', ${isAsync ? 'async ' : ''}() => {\n`;
+  const needsAsync = isAsync || useSandbox;
+  code += `  it('${test.name}', ${needsAsync ? 'async ' : ''}() => {\n`;
   
   // Setup comments si hay
   if (test.setup?.length > 0) {

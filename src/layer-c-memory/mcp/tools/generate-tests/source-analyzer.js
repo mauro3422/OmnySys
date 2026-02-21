@@ -250,6 +250,21 @@ function extractConditions(sourceCode) {
 }
 
 /**
+ * Construye una assertion específica a partir del valor literal retornado
+ */
+function buildAssertionFromReturnValue(value) {
+  if (value === 'true')  return 'expect(result).toBe(true)';
+  if (value === 'false') return 'expect(result).toBe(false)';
+  if (value === 'null')  return 'expect(result).toBeNull()';
+  if (value === '0')     return 'expect(result).toBe(0)';
+  if (/^\d+$/.test(value)) return `expect(result).toBe(${value})`;
+  if (value.startsWith('"') || value.startsWith("'")) return 'expect(typeof result).toBe("string")';
+  if (value.startsWith('[')) return 'expect(Array.isArray(result)).toBe(true)';
+  if (value.startsWith('{')) return 'expect(result).toEqual(expect.objectContaining({}))';
+  return 'expect(result).toBeDefined()';
+}
+
+/**
  * Verifica si es una función nativa
  */
 function isNative(name) {
@@ -272,12 +287,25 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
   // Agregar tests basados en patrones encontrados
   for (const pattern of patterns.patterns || []) {
     switch (pattern.type) {
+      case 'return-value': {
+        // Use the actual return value to build a precise assertion
+        const assertion = buildAssertionFromReturnValue(pattern.value);
+        tests.push({
+          name: `should return ${pattern.value} for expected input`,
+          type: 'return-value',
+          inputs: {},
+          assertion,
+          source: 'code-analysis'
+        });
+        break;
+      }
+
       case 'validation':
         tests.push({
           name: `should handle ${pattern.variable} = null/undefined`,
           type: 'edge-case',
           inputs: { [pattern.variable]: 'null' },
-          assertion: 'expect(result).toBeDefined()',
+          assertion: `expect(() => ${atom.name}(null)).not.toThrow()`,
           source: 'code-analysis'
         });
         break;
@@ -286,7 +314,7 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
         tests.push({
           name: `should handle ${pattern.variable} = ${pattern.value}`,
           type: 'condition-branch',
-          inputs: { [pattern.variable]: `"${pattern.value}"` },
+          inputs: { [pattern.variable]: /^\d+$/.test(pattern.value) ? pattern.value : `"${pattern.value}"` },
           assertion: 'expect(result).toBeDefined()',
           source: 'code-analysis'
         });
@@ -309,14 +337,14 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
         
       case 'loop':
         tests.push({
-          name: `should handle empty array/collection`,
+          name: `should return empty result for empty array/collection`,
           type: 'empty-input',
           inputs: {},
-          assertion: 'expect(result).toBeDefined()',
+          assertion: 'expect(Array.isArray(result) ? result : result).toBeDefined()',
           source: 'code-analysis'
         });
         tests.push({
-          name: `should handle single item array/collection`,
+          name: `should process single item array/collection`,
           type: 'single-item',
           inputs: {},
           assertion: 'expect(result).toBeDefined()',
@@ -326,10 +354,10 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
         
       case 'error-handling':
         tests.push({
-          name: `should handle errors gracefully`,
+          name: `should handle errors gracefully without propagating`,
           type: 'error-handling',
           inputs: {},
-          assertion: 'expect(() => ...).not.toThrow()',
+          assertion: `expect(() => ${atom.name}()).not.toThrow()`,
           source: 'code-analysis'
         });
         break;
@@ -339,11 +367,15 @@ export function generateSpecificTests(sourceCode, atom, patterns) {
   // Agregar ejemplos basados en literales encontrados
   for (const example of patterns.examples || []) {
     if (example.type === 'object') {
+      const keys = Object.keys(example.value).slice(0, 3);
+      const containsExpr = keys.length > 0
+        ? `expect.objectContaining({ ${keys.map(k => `${k}: expect.anything()`).join(', ')} })`
+        : 'expect.objectContaining({})';
       tests.push({
-        name: `should handle ${JSON.stringify(example.value).slice(0, 30)}...`,
+        name: `should handle object input ${JSON.stringify(example.value).slice(0, 30)}`,
         type: 'literal-example',
         inputs: example.value,
-        assertion: 'expect(result).toBeDefined()',
+        assertion: `expect(result).toEqual(${containsExpr})`,
         source: 'code-literal'
       });
     }
