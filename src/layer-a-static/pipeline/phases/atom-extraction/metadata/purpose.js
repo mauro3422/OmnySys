@@ -11,208 +11,136 @@
  * Propósitos posibles de un átomo
  */
 export const ATOM_PURPOSES = {
-  API_EXPORT: { name: 'API Export', description: 'Exported function - part of public API', isDead: false, icon: '📤' },
-  EVENT_HANDLER: { name: 'Event Handler', description: 'Handles events/lifecycle hooks', isDead: false, icon: '⚡' },
-  TEST_HELPER: { name: 'Test Helper', description: 'Function in test file', isDead: false, icon: '🧪' },
-  TIMER_ASYNC: { name: 'Timer/Async', description: 'Timer callback or async pattern', isDead: false, icon: '⏱️' },
-  NETWORK_HANDLER: { name: 'Network Handler', description: 'Makes network calls', isDead: false, icon: '🌐' },
-  INTERNAL_HELPER: { name: 'Internal Helper', description: 'Helper called within file', isDead: false, icon: '🔧' },
-  CONFIG_SETUP: { name: 'Config/Setup', description: 'Configuration or setup function', isDead: false, icon: '⚙️' },
-  SCRIPT_MAIN: { name: 'Script Entry', description: 'Main function in script', isDead: false, icon: '🚀' },
-  ANALYSIS_SCRIPT: { name: 'Analysis Script', description: 'Audit/analysis script - internal tooling, not production code', isDead: false, icon: '🔍', isInternalTool: true },
-  CLASS_METHOD: { name: 'Class Method', description: 'Method in a class (may be called dynamically)', isDead: false, icon: '📦' },
-  PRIVATE_HELPER: { name: 'Private Helper', description: 'Private function called only within the same file (intra-file call)', isDead: false, icon: '🔒' },
-  DEAD_CODE: { name: 'Potential Dead Code', description: 'No evidence of use - review needed', isDead: true, icon: '💀' }
+  API_EXPORT:     { name: 'API Export',      description: 'Exported function - part of public API',                   isDead: false, icon: '📤' },
+  EVENT_HANDLER:  { name: 'Event Handler',   description: 'Handles events/lifecycle hooks',                           isDead: false, icon: '⚡' },
+  TEST_HELPER:    { name: 'Test Helper',     description: 'Function in test file',                                    isDead: false, icon: '🧪' },
+  TIMER_ASYNC:    { name: 'Timer/Async',     description: 'Timer callback or async pattern',                          isDead: false, icon: '⏱️' },
+  NETWORK_HANDLER:{ name: 'Network Handler', description: 'Makes network calls',                                      isDead: false, icon: '🌐' },
+  INTERNAL_HELPER:{ name: 'Internal Helper', description: 'Helper called within file',                                isDead: false, icon: '🔧' },
+  PRIVATE_HELPER: { name: 'Private Helper',  description: 'Private function called only within the same file',        isDead: false, icon: '🔒' },
+  CONFIG_SETUP:   { name: 'Config/Setup',    description: 'Configuration or setup function',                          isDead: false, icon: '⚙️' },
+  SCRIPT_MAIN:    { name: 'Script Entry',    description: 'Main function in script',                                  isDead: false, icon: '🚀' },
+  ANALYSIS_SCRIPT:{ name: 'Analysis Script', description: 'Audit/analysis script - internal tooling',                 isDead: false, icon: '🔍', isInternalTool: true },
+  CLASS_METHOD:   { name: 'Class Method',    description: 'Method in a class (may be called dynamically)',            isDead: false, icon: '📦' },
+  DEAD_CODE:      { name: 'Potential Dead Code', description: 'No evidence of use - review needed',                   isDead: true,  icon: '💀' }
 };
 
-/**
- * Deduce el propósito de un átomo basándose en su metadata
- * @param {Object} atom - El átomo con metadata ya extraída
- * @param {string} filePath - Ruta del archivo
- * @returns {Object} - Información de propósito {purpose, purposeReason, purposeConfidence, isDeadCode}
- */
-export function detectAtomPurpose(atom, filePath = '') {
-  // Check 1: Is it exported? → API_EXPORT
-  if (atom.isExported === true) {
-    return {
-      purpose: 'API_EXPORT',
-      purposeReason: 'Function is exported (public API)',
-      purposeConfidence: 1.0,
-      isDeadCode: false
-    };
+// ── Private check helpers ─────────────────────────────────────────────────────
+
+function checkExported(atom) {
+  if (atom.isExported !== true) return null;
+  return { purpose: 'API_EXPORT', purposeReason: 'Function is exported (public API)', purposeConfidence: 1.0, isDeadCode: false };
+}
+
+function checkTestFile(filePath) {
+  const inTest = filePath.includes('.test.') || filePath.includes('.spec.') ||
+                 filePath.includes('tests/') || filePath.includes('test-cases/') ||
+                 filePath.includes('__tests__/');
+  if (!inTest) return null;
+  return { purpose: 'TEST_HELPER', purposeReason: 'Function in test file', purposeConfidence: 1.0, isDeadCode: false };
+}
+
+function checkScript(atom, filePath) {
+  if (!filePath.startsWith('scripts/')) return null;
+  const analysisPattern = /audit|analyze|check|detect|find|inspect|investigate|scan|validate/i;
+  if (analysisPattern.test(filePath) || analysisPattern.test(atom.name)) {
+    return { purpose: 'ANALYSIS_SCRIPT', purposeReason: 'Audit/analysis script - internal tooling', purposeConfidence: 0.9, isDeadCode: false };
   }
-  
-  // Check 2: Is it in a test file? → TEST_HELPER
-  if (filePath.includes('.test.') || 
-      filePath.includes('.spec.') || 
-      filePath.includes('tests/') ||
-      filePath.includes('test-cases/') ||
-      filePath.includes('__tests__/')) {
-    return {
-      purpose: 'TEST_HELPER',
-      purposeReason: 'Function in test file',
-      purposeConfidence: 1.0,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 3: Is it in scripts/? → ANALYSIS_SCRIPT (audit tools) or SCRIPT_MAIN
-  if (filePath.startsWith('scripts/')) {
-    const analysisPatterns = /audit|analyze|check|detect|find|inspect|investigate|scan|validate/i;
-    const isAnalysisTool = analysisPatterns.test(filePath) || analysisPatterns.test(atom.name);
-    
-    if (isAnalysisTool) {
-      return {
-        purpose: 'ANALYSIS_SCRIPT',
-        purposeReason: 'Audit/analysis script - internal tooling',
-        purposeConfidence: 0.9,
-        isDeadCode: false
-      };
-    }
-    
-    return {
-      purpose: 'SCRIPT_MAIN',
-      purposeReason: 'Function in script file',
-      purposeConfidence: 0.9,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 4: Is it a config file? → CONFIG_SETUP
-  if (filePath.includes('/config/') || filePath.startsWith('src/config/')) {
-    return {
-      purpose: 'CONFIG_SETUP',
-      purposeReason: 'Function in config/constants file',
-      purposeConfidence: 0.9,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 5: Is it a class method? → CLASS_METHOD
-  if (atom.functionType === 'method' || atom.className || atom.type === 'method') {
-    return {
-      purpose: 'CLASS_METHOD',
-      purposeReason: `Class method${atom.className ? ` in ${atom.className}` : ''}`,
-      purposeConfidence: 0.85,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 6: Has lifecycle hooks? → EVENT_HANDLER
-  const lifecycleHooks = atom.lifecycleHooks || [];
-  const temporal = atom.temporal || {};
-  const hasLifecycle = lifecycleHooks.length > 0;
-  const hasEventListeners = temporal?.patterns?.events?.length > 0;
-  
-  if (hasLifecycle || hasEventListeners) {
-    return {
-      purpose: 'EVENT_HANDLER',
-      purposeReason: `Has lifecycle hooks (${lifecycleHooks.length}) or events`,
-      purposeConfidence: 0.95,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 7: Has timers? → TIMER_ASYNC
-  const timers = temporal?.patterns?.timers || [];
-  const hasTimers = timers.length > 0;
-  const isAsync = atom.isAsync;
-  
-  if (hasTimers || (isAsync && atom.hasSideEffects)) {
-    return {
-      purpose: 'TIMER_ASYNC',
-      purposeReason: `Has timers (${timers.length}) or async pattern with side effects`,
-      purposeConfidence: 0.85,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 8: Has network calls? → NETWORK_HANDLER
-  if (atom.hasNetworkCalls || (atom.networkEndpoints && atom.networkEndpoints.length > 0)) {
-    return {
-      purpose: 'NETWORK_HANDLER',
-      purposeReason: `Has network calls (${atom.networkEndpoints?.length || 0} endpoints)`,
-      purposeConfidence: 0.9,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 9: Has DOM manipulation? → EVENT_HANDLER
-  if (atom.hasDomManipulation) {
-    return {
-      purpose: 'EVENT_HANDLER',
-      purposeReason: 'Has DOM manipulation (UI handler)',
-      purposeConfidence: 0.8,
-      isDeadCode: false
-    };
-  }
-  
-  // Check 10: Check archetype for clues
+  return { purpose: 'SCRIPT_MAIN', purposeReason: 'Function in script file', purposeConfidence: 0.9, isDeadCode: false };
+}
+
+function checkConfig(filePath) {
+  if (!filePath.includes('/config/') && !filePath.startsWith('src/config/')) return null;
+  return { purpose: 'CONFIG_SETUP', purposeReason: 'Function in config/constants file', purposeConfidence: 0.9, isDeadCode: false };
+}
+
+function checkClassMethod(atom) {
+  if (atom.functionType !== 'method' && !atom.className && atom.type !== 'method') return null;
+  const where = atom.className ? ` in ${atom.className}` : '';
+  return { purpose: 'CLASS_METHOD', purposeReason: `Class method${where}`, purposeConfidence: 0.85, isDeadCode: false };
+}
+
+function checkLifecycle(atom) {
+  const hasLifecycle = (atom.lifecycleHooks || []).length > 0;
+  const hasEvents    = (atom.temporal?.patterns?.events || []).length > 0;
+  if (!hasLifecycle && !hasEvents) return null;
+  return { purpose: 'EVENT_HANDLER', purposeReason: `Has lifecycle hooks (${(atom.lifecycleHooks||[]).length}) or events`, purposeConfidence: 0.95, isDeadCode: false };
+}
+
+function checkTimerAsync(atom) {
+  const hasTimers = (atom.temporal?.patterns?.timers || []).length > 0;
+  if (!hasTimers && !(atom.isAsync && atom.hasSideEffects)) return null;
+  return { purpose: 'TIMER_ASYNC', purposeReason: `Has timers or async pattern with side effects`, purposeConfidence: 0.85, isDeadCode: false };
+}
+
+function checkNetwork(atom) {
+  if (!atom.hasNetworkCalls && !(atom.networkEndpoints?.length > 0)) return null;
+  return { purpose: 'NETWORK_HANDLER', purposeReason: `Has network calls (${atom.networkEndpoints?.length || 0} endpoints)`, purposeConfidence: 0.9, isDeadCode: false };
+}
+
+function checkDom(atom) {
+  if (!atom.hasDomManipulation) return null;
+  return { purpose: 'EVENT_HANDLER', purposeReason: 'Has DOM manipulation (UI handler)', purposeConfidence: 0.8, isDeadCode: false };
+}
+
+function checkArchetype(atom) {
   const archetype = atom.archetype?.type;
   if (archetype === 'hot-path') {
-    return {
-      purpose: 'API_EXPORT',
-      purposeReason: 'Hot path atom (likely entry point)',
-      purposeConfidence: 0.8,
-      isDeadCode: false
-    };
+    return { purpose: 'API_EXPORT', purposeReason: 'Hot path atom (likely entry point)', purposeConfidence: 0.8, isDeadCode: false };
   }
   if (archetype === 'validator' || archetype === 'transformer') {
-    return {
-      purpose: 'INTERNAL_HELPER',
-      purposeReason: `${archetype} function`,
-      purposeConfidence: 0.85,
-      isDeadCode: false
-    };
+    return { purpose: 'INTERNAL_HELPER', purposeReason: `${archetype} function`, purposeConfidence: 0.85, isDeadCode: false };
   }
-
-  // Check 11: Class methods — called via instance, static analysis no puede
-  // trackear `new Clase().method()` sin class instantiation tracker.
-  // No marcar DEAD_CODE — usar CLASS_METHOD que ya existe.
   if (atom.className || atom.functionType === 'method' || archetype === 'class-method') {
-    return {
-      purpose: 'CLASS_METHOD',
-      purposeReason: `Class method${atom.className ? ` in ${atom.className}` : ''} — called via instance (static tracker needed)`,
-      purposeConfidence: 0.75,
-      isDeadCode: false
-    };
+    const where = atom.className ? ` in ${atom.className}` : '';
+    return { purpose: 'CLASS_METHOD', purposeReason: `Class method${where} — called via instance`, purposeConfidence: 0.75, isDeadCode: false };
   }
+  return null;
+}
 
-  // Check final: ¿tiene calledBy registrado? → alguien la llama, no es dead code
-  const calledByCount = Array.isArray(atom.calledBy) ? atom.calledBy.length : (atom.calledBy || 0);
-  if (calledByCount > 0) {
-    return {
-      purpose: 'INTERNAL_HELPER',
-      purposeReason: `Called by ${calledByCount} caller(s) — internal helper`,
-      purposeConfidence: 0.8,
-      isDeadCode: false
-    };
-  }
+function checkCalledBy(atom) {
+  const count = Array.isArray(atom.calledBy) ? atom.calledBy.length : (atom.calledBy || 0);
+  if (count <= 0) return null;
+  return { purpose: 'INTERNAL_HELPER', purposeReason: `Called by ${count} caller(s) — internal helper`, purposeConfidence: 0.8, isDeadCode: false };
+}
 
-  // Default: Potential dead code — solo para funciones standalone sin callers
-  return {
-    purpose: 'DEAD_CODE',
-    purposeReason: 'No evidence of use found in metadata',
-    purposeConfidence: 0.5,
-    isDeadCode: true
-  };
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Deduce el propósito de un átomo basándose en su metadata.
+ * Runs at extraction time — calledBy may be empty until buildCallGraph().
+ * @param {Object} atom - El átomo con metadata ya extraída
+ * @param {string} filePath - Ruta del archivo
+ * @returns {Object} {purpose, purposeReason, purposeConfidence, isDeadCode}
+ */
+export function detectAtomPurpose(atom, filePath = '') {
+  return (
+    checkExported(atom)      ||
+    checkTestFile(filePath)  ||
+    checkScript(atom, filePath) ||
+    checkConfig(filePath)    ||
+    checkClassMethod(atom)   ||
+    checkLifecycle(atom)     ||
+    checkTimerAsync(atom)    ||
+    checkNetwork(atom)       ||
+    checkDom(atom)           ||
+    checkArchetype(atom)     ||
+    checkCalledBy(atom)      ||
+    { purpose: 'DEAD_CODE', purposeReason: 'No evidence of use found in metadata', purposeConfidence: 0.5, isDeadCode: true }
+  );
 }
 
 /**
  * Re-evaluates purpose for atoms classified as DEAD_CODE after the call graph
- * is built. At extraction time, calledBy is empty for all atoms. buildCallGraph()
- * fills calledBy with intra-file callers — so any atom with calledBy > 0 that was
- * tentatively marked DEAD_CODE is actually a PRIVATE_HELPER.
+ * is built. buildCallGraph() fills calledBy with intra-file callers — so any
+ * atom with calledBy > 0 that was tentatively marked DEAD_CODE is PRIVATE_HELPER.
  *
  * Must be called AFTER buildCallGraph().
- *
  * @param {Array} atoms - All atoms from a single file (post call-graph)
  */
 export function recalculatePurposes(atoms) {
   for (const atom of atoms) {
     if (atom.purpose !== 'DEAD_CODE') continue;
-
-    // If buildCallGraph found intra-file callers, reclassify as PRIVATE_HELPER
     if (atom.calledBy?.length > 0) {
       atom.purpose = 'PRIVATE_HELPER';
       atom.purposeReason = `Called by ${atom.calledBy.length} sibling atom(s) within the same file`;
