@@ -188,9 +188,9 @@ function parseConditionToInputHints(condition, atomInputs) {
       if (path.includes('.')) {
         const field = path.split('.').slice(1).join('.');
         hints[paramName] = hints[paramName] || {};
-        setDeepValue(hints[paramName], field, ["'item'"]);
+        setDeepValue(hints[paramName], field, ['item']);
       } else {
-        hints[paramName] = ["'item'"];
+        hints[paramName] = ['item'];
       }
     }
     return hints;

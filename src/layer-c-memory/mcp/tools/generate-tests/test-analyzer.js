@@ -366,18 +366,42 @@ function createBranchCoverageTest(complexity, inputs, typeContracts, atom) {
 /**
  * Convierte branches extraídos en test cases con assertion y inputs reales
  */
+/**
+ * Convierte un hint de input a código JS válido (no JSON).
+ * - Objetos: { key: value } con claves sin comillas
+ * - Arrays: ['item', ...]
+ * - Identificadores como ChangeType.DELETED: sin comillas
+ * - Strings literales: entre comillas simples
+ */
+function hintToJsCode(hint) {
+  if (hint === null || hint === undefined) return 'null';
+  if (typeof hint === 'number' || typeof hint === 'boolean') return String(hint);
+  if (typeof hint === 'string') {
+    // Expresiones JS ya formateadas — identifiers, member expressions, keywords
+    if (/^[A-Z]\w*\.[A-Z_]+$/.test(hint)) return hint;          // ChangeType.DELETED
+    if (/^\d+(\.\d+)?$/.test(hint))        return hint;          // números
+    if (/^["']/.test(hint))                return hint;          // ya tiene comillas
+    if (/^(null|undefined|true|false)$/.test(hint)) return hint; // keywords
+    return `'${hint.replace(/'/g, "\\'")}'`;                     // string literal
+  }
+  if (Array.isArray(hint)) {
+    return `[${hint.map(hintToJsCode).join(', ')}]`;
+  }
+  if (typeof hint === 'object') {
+    const pairs = Object.entries(hint)
+      .map(([k, v]) => `${k}: ${hintToJsCode(v)}`)
+      .join(', ');
+    return `{ ${pairs} }`;
+  }
+  return String(hint);
+}
+
 function createBranchTests(branches, atom) {
   return branches.map(branch => {
-    // Convertir inputHints a strings para el generador de inputs
+    // Convertir inputHints a código JS válido (no JSON strings)
     const inputs = {};
     for (const [param, hint] of Object.entries(branch.inputHints || {})) {
-      if (typeof hint === 'object' && !Array.isArray(hint)) {
-        inputs[param] = JSON.stringify(hint);
-      } else if (Array.isArray(hint)) {
-        inputs[param] = JSON.stringify(hint);
-      } else {
-        inputs[param] = String(hint);
-      }
+      inputs[param] = hintToJsCode(hint);
     }
 
     return {

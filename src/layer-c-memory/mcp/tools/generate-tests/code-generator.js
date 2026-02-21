@@ -16,18 +16,26 @@ const MAX_TESTS_PER_FILE = 12;
  * Selecciona y ordena los tests más valiosos respetando el cap.
  * Estrategia: 1 happy-path obligatorio + branches (high) + edge-cases hasta MAX.
  */
+// Tipos de tests con bajo valor — se descartan si hay cap
+const LOW_VALUE_TYPES = new Set(['integration', 'branch-coverage', 'other']);
+
 function selectTests(tests) {
-  const happy   = tests.filter(t => t.type === 'happy-path');
-  const branches = tests.filter(t => t.type === 'branch' && t.priority === 'high');
-  const edges   = tests.filter(t => t.type === 'edge-case' && t.priority !== 'low');
-  const rest    = tests.filter(t =>
-    !happy.includes(t) && !branches.includes(t) && !edges.includes(t)
+  const happy      = tests.filter(t => t.type === 'happy-path');
+  const throws     = tests.filter(t => t.type === 'error-throw');
+  const branches   = tests.filter(t => t.type === 'branch' && t.priority === 'high');
+  const edges      = tests.filter(t => t.type === 'edge-case' && t.priority !== 'low');
+  // Resto: solo incluir si no son low-value y quedan slots
+  const rest       = tests.filter(t =>
+    !happy.includes(t) && !throws.includes(t) &&
+    !branches.includes(t) && !edges.includes(t) &&
+    !LOW_VALUE_TYPES.has(t.type)
   );
 
   const selected = [
-    ...happy.slice(0, 1),          // siempre 1 happy-path
-    ...branches,                   // todos los branches high-priority
-    ...edges,                      // edge-cases medium+
+    ...happy.slice(0, 1),   // siempre 1 happy-path
+    ...throws,              // todos los throw tests (alto valor)
+    ...branches,            // todos los branches high-priority
+    ...edges,               // edge-cases medium+
     ...rest,
   ].slice(0, MAX_TESTS_PER_FILE);
 
