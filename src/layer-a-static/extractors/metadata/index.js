@@ -29,11 +29,11 @@
  *       };
  *     }
  *
- * 2️⃣  EXPORT from this file
- *     Add to both exports sections below
+ * 2️⃣  ADD TO REGISTRY in registry.js
+ *     Just add one entry to EXTRACTOR_REGISTRY array
  *
- * 3️⃣  ADD TO extractAllMetadata()
- *     Include in the returned object
+ * 3️⃣  IMPORT AND USE in extractAllMetadata() below
+ *     Add import and include in the metadata object
  *
  * ⚠️  PRINCIPLES:
  *     ✓ Pure functions: same input = same output
@@ -46,6 +46,18 @@
  * @module extractors/metadata
  * @phase Layer A
  */
+
+// ============================================
+// Registry - Single source of truth
+// ============================================
+export { 
+  EXTRACTOR_REGISTRY, 
+  getFileLevelExtractors, 
+  getAtomLevelExtractors,
+  getExtractor,
+  getAvailableFields,
+  getFieldToolCoverage 
+} from './registry.js';
 
 // ============================================
 // Re-exports of all metadata extractors
@@ -77,6 +89,7 @@ export { extractDNA } from './dna-extractor.js';
 export { extractErrorFlow } from './error-flow/index.js';
 export { extractPerformanceMetrics } from './performance-impact/index.js';
 export { extractTypeContracts } from './type-contracts/index.js';
+export { extractSemanticDomain } from './semantic-domain.js';
 
 // ============================================
 // Orchestrator function - aggregates all metadata
@@ -99,11 +112,11 @@ import { extractDNA } from './dna-extractor.js';
 import { extractErrorFlow } from './error-flow/index.js';
 import { extractPerformanceMetrics } from './performance-impact/index.js';
 import { extractTypeContracts } from './type-contracts/index.js';
+import { extractSemanticDomain } from './semantic-domain.js';
+import { EXTRACTOR_REGISTRY } from './registry.js';
 import { createLogger } from '#utils/logger.js';
 
-const logger = createLogger('OmnySys:index');
-
-
+const logger = createLogger('OmnySys:metadata-extractors');
 
 /**
  * Extrae TODOS los metadatos de un archivo
@@ -151,13 +164,33 @@ export function extractAllMetadata(filePath, code) {
     errorFlow: extractErrorFlow(code),
     performanceMetrics: extractPerformanceMetrics(code),
     typeContracts: extractTypeContracts(code),
+    semanticDomain: extractSemanticDomain(code, '', filePath),
     
-    // Extraction metadata
+    // Extraction metadata - usar el registry para contar
     timestamp: new Date().toISOString(),
-    extractorsVersion: '2.0.0',
-    extractorCount: 15
+    extractorsVersion: '2.1.0',
+    extractorCount: EXTRACTOR_REGISTRY.length
   };
 
+  return metadata;
+}
+
+/**
+ * Extrae metadata para un átomo específico (función individual)
+ * Llama a los extractores de nivel 'atom' con el código de la función
+ *
+ * @param {string} filePath - Ruta del archivo
+ * @param {string} functionName - Nombre de la función
+ * @param {string} functionCode - Código fuente de la función
+ * @returns {Object} - Metadata específica del átomo
+ */
+export function extractAtomMetadata(filePath, functionName, functionCode) {
+  const metadata = {};
+  
+  // Por ahora solo semanticDomain es de nivel átomo
+  // En el futuro se pueden agregar más
+  metadata.semanticDomain = extractSemanticDomain(functionCode, functionName, filePath);
+  
   return metadata;
 }
 

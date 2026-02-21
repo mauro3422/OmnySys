@@ -25,6 +25,7 @@ export function buildAtomMetadata({
   performanceHints,
   performanceMetrics,
   dataFlowV2,
+  semanticDomain,
   functionCode,
   imports = []
 }) {
@@ -129,6 +130,9 @@ export function buildAtomMetadata({
       // changeRisk: base desde complexity + isExported; se recalcula con calledBy en cross-file pass
       changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
     },
+
+    // Semantic Domain (v2.1.0 - NEW)
+    semanticDomain: semanticDomain || null,
 
     // DNA & Lineage
     dna: null,

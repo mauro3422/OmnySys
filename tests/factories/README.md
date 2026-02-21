@@ -6,6 +6,70 @@
 - Avoid monolithic files that are hard to maintain.
 - Preserve backward compatibility through stable entrypoints.
 - Follow SSOT (Single Source of Truth) principle.
+- **Use real implementations instead of mocks** (NEW)
+
+## 🆕 Real Factories (NEW - Replaces Mocks)
+
+The `real/` directory contains **Real Factories** that create actual files and projects instead of mocks.
+
+```
+tests/factories/
+├── real/                          # Real Factories (NO MOCKS)
+│   ├── filesystem.factory.js      # Creates real files/directories
+│   ├── project.factory.js         # Creates real projects
+│   ├── index.js                   # Public API
+│   └── MIGRATION_GUIDE.md         # How to migrate from mocks
+│
+├── test-suite-generator/          # Meta-Factory for test generation
+│   ├── contracts.js               # Reusable contract tests (SSOT)
+│   ├── core.js                    # Test suite generator logic
+│   ├── index.js                   # Public API
+│   └── test/
+│       └── meta-factory.validation.test.js
+│
+├── extractor-test.factory.js      # Data factory (legacy pattern)
+├── graph-test.factory.js          # Data factory
+├── ...                            # Other data factories
+```
+
+### Why Real Factories?
+
+| Aspect | Mocks (OLD) | Real Factories (NEW) |
+|--------|-------------|---------------------|
+| **Fragility** | High - breaks with implementation changes | Low - tests behavior, not internals |
+| **Confidence** | Low - mocks may not match reality | High - tests real system |
+| **Maintainability** | Hard - mocks need updates | Easy - just use the system |
+| **Debugging** | Hard - mocks hide real issues | Easy - real errors surface |
+
+### Quick Start
+
+```javascript
+// ❌ OLD: Mock-based test (fragile)
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn().mockResolvedValue('fake')
+}));
+
+// ✅ NEW: Real factory test (robust)
+import { withSandbox } from '#test-factories/real/index.js';
+
+await withSandbox({ 'test.js': 'real content' }, async (sandbox) => {
+  const content = await sandbox.readFile('test.js');
+  expect(content).toBe('real content'); // Real filesystem
+});
+```
+
+### Available Real Factories
+
+- **FileSystemFactory** - Creates real files/directories in temp folder
+- **ProjectFactory** - Creates complete projects with templates
+- **createSandbox** - Quick helper for simple cases
+- **withSandbox** - Auto-cleanup version
+- **createTestProject** - Creates projects from templates
+- **withProject** - Auto-cleanup for projects
+
+### Migration
+
+See `real/MIGRATION_GUIDE.md` for detailed migration instructions.
 
 ## 🆕 Meta-Factory (NEW)
 

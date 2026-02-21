@@ -9,6 +9,7 @@
  */
 
 import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
 
 const TEST_CALLBACK_PATTERN = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
 // isTestCallback: usa el campo persistido si existe (post v0.9.47), regex como fallback
@@ -25,31 +26,9 @@ const ATOM_TYPE_FILTERS = {
   config:        a => a.type === 'config',
 };
 
-// Which MCP tools actively use each field
-const FIELD_TOOL_COVERAGE = {
-  isTestCallback:    ['get_atom_schema', 'detect_patterns'],
-  testCallbackType:  ['get_atom_schema'],
-  calls:             ['get_call_graph', 'explain_value_flow', 'trace_variable_impact', 'detect_patterns'],
-  calledBy:          ['get_call_graph', 'get_impact_map', 'analyze_change'],
-  complexity:        ['get_function_details', 'get_health_metrics', 'suggest_refactoring', 'detect_patterns'],
-  isExported:        ['detect_patterns', 'get_impact_map'],
-  isAsync:           ['get_async_analysis', 'get_function_details'],
-  dna:               ['detect_patterns'],
-  dataFlow:          ['explain_value_flow', 'get_function_details'],
-  errorFlow:         ['get_function_details'],
-  performance:       ['get_function_details', 'get_health_metrics'],
-  imports:           ['detect_patterns', 'validate_imports'],
-  archetype:         ['get_molecule_summary', 'detect_patterns'],
-  purpose:           ['get_molecule_summary', 'get_atom_society'],
-  callerPattern:     ['get_function_details', 'get_atom_society'],
-  derived:           ['get_function_details', 'suggest_refactoring', 'get_health_metrics'],
-  typeContracts:     ['get_function_details'],
-  temporal:          ['get_function_details', 'get_async_analysis'],
-  _meta:             ['get_function_details'],
-  functionType:      ['get_atom_schema', 'get_molecule_summary'],
-  className:         ['get_molecule_summary', 'get_call_graph'],
-  linesOfCode:       ['get_function_details', 'get_health_metrics', 'suggest_refactoring', 'detect_patterns'],
-};
+// Obtener coverage del registry dinámicamente
+// Se actualiza automáticamente cuando se agregan nuevos extractors
+const FIELD_TOOL_COVERAGE = getFieldToolCoverage();
 
 /**
  * Estadísticas matemáticas para valores numéricos

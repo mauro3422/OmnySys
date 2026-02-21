@@ -3,7 +3,7 @@
  *
  * Tools invocables por Claude via protocolo MCP.
  *
- * TOOLS ACTIVAS (28):
+ * TOOLS ACTIVAS (30):
  *   Análisis de impacto:  get_impact_map, analyze_change, explain_connection, trace_variable_impact, trace_data_journey
  *   Simulación:           simulate_data_journey
  *   Módulos:              get_module_overview
@@ -18,6 +18,7 @@
  *   Refactoring:          suggest_refactoring
  *   Validación:           validate_imports
  *   Búsqueda:             find_symbol_instances
+ *   Generación de Tests:  generate_tests, generate_batch_tests
  *   Schema / Debug:       get_atom_schema
  *
  * ELIMINADAS:
@@ -56,6 +57,7 @@ import { get_module_overview } from './get-module-overview.js';
 import { detect_race_conditions } from './detect-race-conditions.js';
 import { simulate_data_journey } from './simulate-data-journey.js';
 import { find_symbol_instances } from './find-symbol-instances.js';
+import { generate_tests, generate_batch_tests } from './generate-tests/index.js';
 
 export const toolDefinitions = [
   // ── IMPACTO ──────────────────────────────────────────────────────────────
@@ -455,6 +457,75 @@ export const toolDefinitions = [
         }
       }
     }
+  },
+  // ── GENERACIÓN DE TESTS ──────────────────────────────────────────────────
+  {
+    name: 'generate_tests',
+    description: 'Generates test cases automatically based on function analysis. Uses the knowledge graph to create relevant tests with real factories instead of mocks. Analyzes function complexity, parameters, async nature, and side effects to suggest appropriate test cases.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { 
+          type: 'string', 
+          description: 'Path to the file containing the function to test (e.g., "src/utils/math.js")' 
+        },
+        functionName: { 
+          type: 'string', 
+          description: 'Name of the function to generate tests for (e.g., "add")' 
+        },
+        options: {
+          type: 'object',
+          properties: {
+            useRealFactories: {
+              type: 'boolean',
+              default: true,
+              description: 'Use real filesystem factories instead of mocks'
+            },
+            includeEdgeCases: {
+              type: 'boolean',
+              default: true,
+              description: 'Include edge case tests based on complexity analysis'
+            }
+          }
+        }
+      },
+      required: ['filePath', 'functionName']
+    }
+  },
+  {
+    name: 'generate_batch_tests',
+    description: 'Generates tests for multiple functions without test coverage in batch. Uses detect_patterns to find coverage gaps and generates tests for the highest priority functions. Returns test code for each function.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          default: 10,
+          description: 'Maximum number of functions to process (default: 10)'
+        },
+        minComplexity: {
+          type: 'number',
+          default: 5,
+          description: 'Minimum complexity to include (default: 5)'
+        },
+        sortBy: {
+          type: 'string',
+          enum: ['risk', 'complexity', 'name'],
+          default: 'risk',
+          description: 'Sort order for prioritization'
+        },
+        dryRun: {
+          type: 'boolean',
+          default: true,
+          description: 'If true, returns test code without writing files'
+        },
+        outputPath: {
+          type: 'string',
+          default: 'tests/generated',
+          description: 'Output directory for generated tests'
+        }
+      }
+    }
   }
 ];
 
@@ -495,6 +566,9 @@ export const toolHandlers = {
   validate_imports,
   // Búsqueda de símbolos
   find_symbol_instances,
+  // Generación de tests
+  generate_tests,
+  generate_batch_tests,
   // Schema / Debug
   get_atom_schema,
   // Módulos & Sistema

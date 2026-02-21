@@ -16,6 +16,7 @@ import { extractPerformanceMetrics } from '#layer-a/extractors/metadata/performa
 import { extractTypeContracts } from '#layer-a/extractors/metadata/type-contracts/index.js';
 import { extractErrorFlow } from '#layer-a/extractors/metadata/error-flow/index.js';
 import { extractPerformanceHints } from '#layer-a/extractors/metadata/performance-hints.js';
+import { extractSemanticDomain } from '#layer-a/extractors/metadata/semantic-domain.js';
 import { logger } from '#utils/logger.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';
@@ -240,6 +241,9 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
   // Data flow analysis (optional, may fail gracefully)
   const dataFlowV2 = await extractDataFlowSafe(functionInfo, functionCode, filePath);
 
+  // Semantic domain detection (v2.1.0 - NEW)
+  const semanticDomain = extractSemanticDomain(functionCode, functionInfo.name, filePath);
+
   // Calculate metrics
   const complexity = calculateComplexity(functionCode);
   const linesOfCode = functionCode.split('\n').length;
@@ -259,6 +263,7 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     performanceHints,
     performanceMetrics,
     dataFlowV2,
+    semanticDomain,
     functionCode,
     imports
   });

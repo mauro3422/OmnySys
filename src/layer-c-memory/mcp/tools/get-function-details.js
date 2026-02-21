@@ -90,6 +90,9 @@ export async function get_function_details(args, context) {
         changeRisk: atom.derived.changeRisk              // 0-1: impacto de un cambio
       } : null,
 
+      // Dominio semántico detectado
+      semanticDomain: atom.semanticDomain || null,
+
       meta: atom._meta || null
     };
 
