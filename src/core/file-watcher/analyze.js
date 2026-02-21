@@ -70,27 +70,15 @@ export function _detectChangeType(oldAnalysis, newAnalysis) {
   return changes;
 }
 
-/**
- * Analiza un archivo individual
- */
-export async function analyzeFile(filePath, fullPath) {
-  // Parsear archivo
-  const parsed = await parseFileFromDisk(fullPath);
-  if (!parsed) {
-    throw new Error('Failed to parse file');
-  }
+// ── Private helpers for analyzeFile ──────────────────────────────────────────
 
-  // Resolver imports
-  const resolutionConfig = await getResolutionConfig(this.rootPath);
+async function resolveAllImports(parsed, fullPath, rootPath) {
+  const resolutionConfig = await getResolutionConfig(rootPath);
   const resolvedImports = [];
-
   for (const importStmt of parsed.imports || []) {
-    const sources = Array.isArray(importStmt.source)
-      ? importStmt.source
-      : [importStmt.source];
-
+    const sources = Array.isArray(importStmt.source) ? importStmt.source : [importStmt.source];
     for (const source of sources) {
-      const result = await resolveImport(source, fullPath, this.rootPath, resolutionConfig.aliases);
+      const result = await resolveImport(source, fullPath, rootPath, resolutionConfig.aliases);
       resolvedImports.push({
         source,
         resolved: result.resolved,
@@ -100,65 +88,24 @@ export async function analyzeFile(filePath, fullPath) {
       });
     }
   }
+  return resolvedImports;
+}
 
-  // Detectar conexiones semánticas
-  const fileSourceCode = { [filePath]: parsed.source || '' };
-
-  // Parsear dependencias para conexiones
+async function loadDependencySources(resolvedImports, filePath, parsedSource, rootPath) {
+  const fileSourceCode = { [filePath]: parsedSource };
   for (const imp of resolvedImports) {
     if (imp.type === 'local' && imp.resolved) {
       try {
-        const depPath = path.join(this.rootPath, imp.resolved);
-        const depContent = await fs.readFile(depPath, 'utf-8');
-        fileSourceCode[imp.resolved] = depContent;
-      } catch (e) {
+        fileSourceCode[imp.resolved] = await fs.readFile(path.join(rootPath, imp.resolved), 'utf-8');
+      } catch {
         // Ignorar errores de dependencias
       }
     }
   }
+  return fileSourceCode;
+}
 
-  const staticConnections = detectAllSemanticConnections(fileSourceCode);
-  const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
-
-  // Extraer metadatos
-  const metadata = extractAllMetadata(filePath, parsed.source || '');
-
-  // Extraer estructura molecular (átomos + molécula)
-  const molecularStructure = extractMolecularStructure(
-    filePath,
-    parsed.source || '',
-    parsed,
-    metadata
-  );
-
-  // Guardar átomos individualmente (SSOT)
-  // Null-check: extractMolecularStructure puede retornar null si el análisis falla
-  const moleculeAtoms = molecularStructure?.atoms ?? [];
-
-  // Detectar funciones removidas: cargar atoms previos y marcar las que desaparecieron
-  const previousAtoms = await loadAtoms(this.rootPath, filePath);
-  const newAtomNames = new Set(moleculeAtoms.filter(a => a.name).map(a => a.name));
-  for (const prev of previousAtoms) {
-    if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {
-      await saveAtom(this.rootPath, filePath, prev.name, _markAtomAsRemoved(prev));
-    }
-  }
-
-  for (const atom of moleculeAtoms) {
-    await saveAtom(this.rootPath, filePath, atom.name, atom);
-  }
-
-  // Guardar molécula
-  await saveMolecule(this.rootPath, filePath, {
-    filePath,
-    type: 'molecule',
-    atoms: moleculeAtoms.map(a => a.id),
-    extractedAt: new Date().toISOString()
-  });
-
-  // Construir análisis completo (SSOT - Single Source of Truth)
-  // Los átomos (funciones enriquecidas) se guardan individualmente en atoms/
-  // Aquí solo guardamos referencias para evitar duplicación
+function buildFileResult(filePath, parsed, resolvedImports, staticConnections, advancedConnections, metadata, moleculeAtoms, contentHash) {
   return {
     filePath,
     fileName: path.basename(filePath),
@@ -171,31 +118,18 @@ export async function analyzeFile(filePath, fullPath) {
     })),
     exports: parsed.exports || [],
     definitions: parsed.definitions || [],
-    // NO guardar functions completos - están en atoms/ (SSOT)
-    // Solo guardar referencias básicas para identificación rápida
-    functionRefs: (parsed.functions || []).map(f => ({
-      id: f.id,
-      name: f.name,
-      line: f.line,
-      isExported: f.isExported
-    })),
+    functionRefs: (parsed.functions || []).map(f => ({ id: f.id, name: f.name, line: f.line, isExported: f.isExported })),
     atomIds: moleculeAtoms.map(a => a.id),
     atomCount: moleculeAtoms.length,
     calls: parsed.calls || [],
     semanticConnections: [
       ...staticConnections.all.map(conn => ({
-        target: conn.targetFile,
-        type: conn.via,
-        key: conn.key || conn.event,
-        confidence: conn.confidence,
-        detectedBy: 'static-extractor'
+        target: conn.targetFile, type: conn.via, key: conn.key || conn.event,
+        confidence: conn.confidence, detectedBy: 'static-extractor'
       })),
       ...(advancedConnections.all || []).map(conn => ({
-        target: conn.targetFile,
-        type: conn.via,
-        channelName: conn.channelName,
-        confidence: conn.confidence,
-        detectedBy: 'advanced-extractor'
+        target: conn.targetFile, type: conn.via, channelName: conn.channelName,
+        confidence: conn.confidence, detectedBy: 'advanced-extractor'
       }))
     ],
     metadata: {
@@ -203,7 +137,6 @@ export async function analyzeFile(filePath, fullPath) {
       asyncPatterns: metadata.async || { all: [] },
       errorHandling: metadata.errors || { all: [] },
       buildTimeDeps: metadata.build || { envVars: [] },
-      // New metadata fields
       sideEffects: metadata.sideEffects || { all: [] },
       callGraph: metadata.callGraph || { all: [] },
       dataFlow: metadata.dataFlow || { all: [] },
@@ -213,9 +146,49 @@ export async function analyzeFile(filePath, fullPath) {
       performance: metadata.performance || { all: [] },
       historical: metadata.historical || {}
     },
-    contentHash: await this._calculateContentHash(fullPath),
+    contentHash,
     analyzedAt: new Date().toISOString()
   };
+}
+
+/**
+ * Analiza un archivo individual
+ */
+export async function analyzeFile(filePath, fullPath) {
+  const parsed = await parseFileFromDisk(fullPath);
+  if (!parsed) throw new Error('Failed to parse file');
+
+  const resolvedImports = await resolveAllImports(parsed, fullPath, this.rootPath);
+  const fileSourceCode = await loadDependencySources(resolvedImports, filePath, parsed.source || '', this.rootPath);
+
+  const staticConnections = detectAllSemanticConnections(fileSourceCode);
+  const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
+
+  const metadata = extractAllMetadata(filePath, parsed.source || '');
+  const molecularStructure = extractMolecularStructure(filePath, parsed.source || '', parsed, metadata);
+  const moleculeAtoms = molecularStructure?.atoms ?? [];
+
+  // Detectar funciones removidas
+  const previousAtoms = await loadAtoms(this.rootPath, filePath);
+  const newAtomNames = new Set(moleculeAtoms.filter(a => a.name).map(a => a.name));
+  for (const prev of previousAtoms) {
+    if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {
+      await saveAtom(this.rootPath, filePath, prev.name, _markAtomAsRemoved(prev));
+    }
+  }
+
+  for (const atom of moleculeAtoms) {
+    await saveAtom(this.rootPath, filePath, atom.name, atom);
+  }
+
+  await saveMolecule(this.rootPath, filePath, {
+    filePath, type: 'molecule',
+    atoms: moleculeAtoms.map(a => a.id),
+    extractedAt: new Date().toISOString()
+  });
+
+  const contentHash = await this._calculateContentHash(fullPath);
+  return buildFileResult(filePath, parsed, resolvedImports, staticConnections, advancedConnections, metadata, moleculeAtoms, contentHash);
 }
 
 /**

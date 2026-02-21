@@ -11,6 +11,24 @@ import fs from 'fs/promises';
 import path from 'path';
 import { findCallSites } from './call-graph-analyzer.js';
 
+// Métodos nativos de JS — se excluyen del análisis de dependencias
+const NATIVE_METHODS = new Set([
+  'concat','copyWithin','entries','every','fill','filter','find','findIndex','flat','flatMap',
+  'forEach','includes','indexOf','join','keys','lastIndexOf','map','pop','push','reduce',
+  'reduceRight','reverse','shift','slice','some','sort','splice','unshift','values','at',
+  'charAt','charCodeAt','endsWith','fromCharCode','localeCompare','match','matchAll','normalize',
+  'padEnd','padStart','repeat','replace','replaceAll','search','split','startsWith','substring',
+  'toLowerCase','toUpperCase','trim','trimEnd','trimStart','valueOf','assign','create','freeze',
+  'fromEntries','getOwnPropertyNames','getPrototypeOf','is','keys','seal','setPrototypeOf',
+  'all','allSettled','any','race','reject','resolve','then','catch','finally',
+  'parse','stringify',
+  'abs','ceil','floor','max','min','pow','random','round','sqrt','trunc',
+  'log','error','warn','info','debug','table','trace',
+  'parseInt','parseFloat','isNaN','isFinite','encodeURIComponent','decodeURIComponent',
+  'Number','String','Boolean','Array','Object','Date','RegExp','Error','Map','Set',
+  'setTimeout','setInterval','clearTimeout','clearInterval'
+]);
+
 /**
  * Analiza el flujo de valores de un símbolo
  */
@@ -105,52 +123,21 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
       // Buscar dependencias (otras funciones llamadas)
       const body = extractFunctionBody(content, symbolName);
       if (body) {
-        const calls = body.match(/\b(\w+)\s*\(/g) || [];
-        const nativeMethods = new Set([
-          // Array methods
-          'concat', 'copyWithin', 'entries', 'every', 'fill', 'filter', 'find', 'findIndex', 'flat',
-          'flatMap', 'forEach', 'includes', 'indexOf', 'join', 'keys', 'lastIndexOf', 'map', 'pop',
-          'push', 'reduce', 'reduceRight', 'reverse', 'shift', 'slice', 'some', 'sort', 'splice',
-          'toLocaleString', 'toString', 'unshift', 'values', 'at', 'length',
-          // String methods
-          'charAt', 'charCodeAt', 'codePointAt', 'endsWith', 'fromCharCode', 'fromCodePoint',
-          'includes', 'indexOf', 'lastIndexOf', 'localeCompare', 'match', 'matchAll', 'normalize',
-          'padEnd', 'padStart', 'raw', 'repeat', 'replace', 'replaceAll', 'search', 'slice', 'split',
-          'startsWith', 'substring', 'substr', 'toLocaleLowerCase', 'toLocaleUpperCase', 'toLowerCase',
-          'toString', 'toUpperCase', 'trim', 'trimEnd', 'trimStart', 'valueOf',
-          // Object methods
-          'assign', 'create', 'defineProperties', 'defineProperty', 'entries', 'freeze',
-          'fromEntries', 'getOwnPropertyDescriptor', 'getOwnPropertyDescriptors', 'getOwnPropertyNames',
-          'getOwnPropertySymbols', 'getPrototypeOf', 'is', 'isExtensible', 'isFrozen', 'isSealed',
-          'keys', 'preventExtensions', 'seal', 'setPrototypeOf', 'values', 'hasOwnProperty',
-          'isPrototypeOf', 'propertyIsEnumerable',
-          // Promise methods
-          'all', 'allSettled', 'any', 'race', 'reject', 'resolve', 'then', 'catch', 'finally',
-          // JSON methods
-          'parse', 'stringify',
-          // Math methods (commonly used without Math.)
-          'abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'cbrt', 'ceil',
-          'clz32', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'fround', 'hypot', 'imul', 'log',
-          'log1p', 'log2', 'log10', 'max', 'min', 'pow', 'random', 'round', 'sign', 'sin',
-          'sinh', 'sqrt', 'tan', 'tanh', 'trunc',
-          // Console methods
-          'log', 'error', 'warn', 'info', 'debug', 'table', 'trace', 'dir', 'time', 'timeEnd',
-          'assert', 'clear', 'count', 'countReset', 'group', 'groupEnd', 'groupCollapsed',
-          // Other common globals
-          'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURI', 'encodeURIComponent',
-          'decodeURI', 'decodeURIComponent', 'escape', 'unescape', 'eval', 'Number', 'String',
-          'Boolean', 'Array', 'Object', 'Date', 'RegExp', 'Error', 'Map', 'Set', 'WeakMap',
-          'WeakSet', 'Symbol', 'BigInt', 'Proxy', 'Reflect', 'Intl', 'setTimeout', 'setInterval',
-          'clearTimeout', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'
-        ]);
-        
-        flow.dependencies = [...new Set(calls.map(c => c.replace('(', '').trim()))]
+        const callMatches = body.match(/\b(\w+)\s*\(/g) || [];
+        flow.dependencies = [...new Set(callMatches.map(c => c.replace('(', '').trim()))]
           .filter(c => !['if', 'while', 'for', 'switch', 'catch', 'return'].includes(c))
-          .map(c => ({
-            name: c,
-            type: nativeMethods.has(c) ? 'native' : 'unknown',
-            context: nativeMethods.has(c) ? 'JavaScript built-in' : 'Project or external'
-          }))
+          .filter(c => !NATIVE_METHODS.has(c))
+          .map(c => {
+            // Intentar extraer los argumentos reales de la llamada
+            const callLine = body.match(new RegExp(`\\b${c}\\s*\\([^)]*\\)`))?.[0] || '';
+            const args = callLine ? extractArguments(callLine) : [];
+            return {
+              name: c,
+              type: 'unknown',
+              context: 'Project or external',
+              args: args.slice(0, 5)
+            };
+          })
           .slice(0, 10);
       }
     }
@@ -174,39 +161,10 @@ export async function analyzeValueFlow(projectPath, targetFile, symbolName) {
 
 // ============ UTILIDADES ============
 
-async function findAllJsFiles(dir, files = []) {
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.isDirectory() && !entry.name.includes('node_modules')) {
-        await findAllJsFiles(fullPath, files);
-      } else if (entry.isFile() && /\.(js|ts|jsx|tsx)$/.test(entry.name)) {
-        files.push(fullPath);
-      }
-    }
-  } catch {
-    // Skip directories that can't be read
-  }
-
-  return files;
-}
-
-function parseSignature(signature) {
-  if (!signature || signature.trim() === '') return [];
-
-  return signature.split(',').map(param => {
-    const [name, type] = param.split(':').map(s => s.trim());
-    return {
-      name: name.replace(/\?\s*$/, '').replace(/\s*=\s*.+$/, ''),
-      optional: param.includes('?') || param.includes('='),
-      type: type || 'unknown'
-    };
-  }).filter(p => p.name);
-}
-
+/**
+ * Extrae los argumentos de una línea de llamada respetando paréntesis anidados.
+ * Ej: "fn(a, fn2(b, c), d)" → ["a", "fn2(b, c)", "d"]
+ */
 function extractArguments(callLine) {
   const match = callLine.match(/\((.*)\)/);
   if (!match) return [];
