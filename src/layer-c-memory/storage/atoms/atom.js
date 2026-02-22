@@ -14,6 +14,20 @@ const DATA_DIR = '.omnysysdata';
  * @param {object} atomData - Metadata del átomo
  * @returns {string} - Ruta del archivo guardado
  */
+/**
+ * Sanitiza un nombre para usarlo como nombre de archivo seguro
+ * @param {string} name - Nombre a sanitizar
+ * @returns {string} Nombre seguro para archivo
+ */
+function sanitizeFileName(name) {
+  // Reemplazar caracteres inválidos en Windows/Linux/Mac
+  return name
+    .replace(/[<>:"/\\|?*]/g, '_')  // Caracteres inválidos en Windows
+    .replace(/\s+/g, '_')             // Espacios
+    .replace(/_{2,}/g, '_')           // Múltiples underscores
+    .substring(0, 200);               // Limitar longitud
+}
+
 export async function saveAtom(rootPath, filePath, functionName, atomData) {
   try {
     const dataPath = path.join(rootPath, DATA_DIR);
@@ -28,7 +42,9 @@ export async function saveAtom(rootPath, filePath, functionName, atomData) {
     const targetDir = path.join(atomsDir, fileDir, fileName);
     await fs.mkdir(targetDir, { recursive: true });
 
-    const targetPath = path.join(targetDir, `${functionName}.json`);
+    // 🆕 Sanitizar nombre de función para nombre de archivo seguro
+    const safeFunctionName = sanitizeFileName(functionName);
+    const targetPath = path.join(targetDir, `${safeFunctionName}.json`);
 
     await fs.writeFile(targetPath, JSON.stringify(atomData, null, 2));
     
