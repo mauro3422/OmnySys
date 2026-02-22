@@ -10,6 +10,7 @@
  * @module core/file-watcher/incremental-analyzer
  */
 
+import path from 'path';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:file-watcher:incremental');
@@ -175,10 +176,25 @@ export class IncrementalAnalyzer {
     
     logger.debug(`✏️ Archivo modificado: ${filePath}`);
     
-    return {
-      action: 'incremental-analysis',
-      contentChanged: true
-    };
+    // 🆕 Realizar análisis del archivo
+    try {
+      const { analyzeAndIndex } = await import('../analyze.js');
+      const fullPath = path.join(this.projectPath, filePath);
+      const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
+      
+      return {
+        action: 'analyzed',
+        contentChanged: true,
+        atomsFound: analysis.molecule?.atoms?.length || 0
+      };
+    } catch (error) {
+      logger.error(`❌ Error analizando ${filePath}:`, error.message);
+      return {
+        action: 'error',
+        contentChanged: true,
+        error: error.message
+      };
+    }
   }
 
   /**

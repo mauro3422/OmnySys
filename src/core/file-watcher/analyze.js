@@ -1,7 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import { createLogger } from '../../utils/logger.js';
 
+const logger = createLogger('OmnySys:analyze');
 const DATA_DIR = '.omnysysdata';
 
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
@@ -231,10 +233,14 @@ export async function analyzeFile(filePath, fullPath) {
 
   // 🆕 Sistema de guardado incremental
   // Guardar solo los campos que realmente cambiaron
+  logger.debug(`🔄 About to save ${moleculeAtoms.length} atoms incrementally for ${filePath}`);
   const saveResults = await saveAtomsIncremental(this.rootPath, filePath, moleculeAtoms);
+  logger.debug(`✅ Incremental save result: ${JSON.stringify(saveResults)}`);
   
   if (saveResults.updated > 0) {
     logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated, ${saveResults.totalFieldsChanged} fields)`);
+  } else {
+    logger.debug(`ℹ️ No atoms updated for ${filePath} (created: ${saveResults.created}, unchanged: ${saveResults.unchanged})`);
   }
 
   // 🧹 LIMPIEZA: Eliminar archivos JSON de átomos que ya no existen en el código

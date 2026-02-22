@@ -8,6 +8,7 @@ import { detectAllAdvancedConnections } from '../extractors/communication/index.
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { extractAtoms } from '../extractors/atomic/index.js';
 import { saveAtom, loadAtoms } from '#layer-c/storage/atoms/atom.js';
+import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:single:file');
@@ -126,31 +127,15 @@ async function detectConnections(parsedFile, targetFilePath, resolvedImports, ab
 }
 
 async function saveAtoms(absoluteRootPath, singleFile, atoms) {
-  // Cargar atoms previos para detectar funciones que desaparecieron
-  const previousAtoms = await loadAtoms(absoluteRootPath, singleFile);
-  const newAtomNames = new Set(atoms.filter(a => a.name).map(a => a.name));
-
-  // Marcar como REMOVED los atoms que ya no existen en el archivo
-  for (const prev of previousAtoms) {
-    if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {
-      try {
-        await saveAtom(absoluteRootPath, singleFile, prev.name, markAtomAsRemoved(prev));
-        logger.debug(`🪦 Marked as removed: ${prev.name} (was in ${singleFile})`);
-      } catch (err) {
-        logger.warn(`  ⚠️ Failed to mark atom ${prev.name} as removed: ${err.message}`);
-      }
-    }
+  // 🆕 Usar sistema de guardado incremental
+  const results = await saveAtomsIncremental(absoluteRootPath, singleFile, atoms);
+  
+  if (results.updated > 0) {
+    logger.info(`⚡ Incremental save: ${singleFile} (${results.updated} updated, ${results.totalFieldsChanged} fields)`);
   }
-
-  // Guardar atoms nuevos/actualizados normalmente
-  for (const atom of atoms) {
-    if (atom.name) {
-      try {
-        await saveAtom(absoluteRootPath, singleFile, atom.name, atom);
-      } catch (err) {
-        logger.warn(`  ⚠️ Failed to save atom ${atom.name}: ${err.message}`);
-      }
-    }
+  
+  if (results.errors > 0) {
+    logger.warn(`⚠️ ${results.errors} atoms failed to save`);
   }
 }
 
