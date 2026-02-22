@@ -1,55 +1,29 @@
-import fs from 'fs/promises';
 import path from 'path';
-
-console.log('🔥 ATOM.JS MODULE LOADED - Version with logs');
+import { gracefulWriteFile, gracefulMkdir, gracefulReadFile, gracefulReaddir } from './graceful-write.js';
 
 const DATA_DIR = '.omnysysdata';
 
-/**
- * Guarda el análisis atómico de una función
- *
- * @param {string} rootPath - Raíz del proyecto
- * @param {string} filePath - Ruta relativa del archivo
- * @param {string} functionName - Nombre de la función
- * @param {object} atomData - Metadata del átomo
- * @returns {string} - Ruta del archivo guardado
- */
-/**
- * Sanitiza un nombre para usarlo como nombre de archivo seguro
- * @param {string} name - Nombre a sanitizar
- * @returns {string} Nombre seguro para archivo
- */
 function sanitizeFileName(name) {
-  // Reemplazar caracteres inválidos en Windows/Linux/Mac
   return name
-    .replace(/[<>:"/\\|?*]/g, '_')  // Caracteres inválidos en Windows
-    .replace(/\s+/g, '_')             // Espacios
-    .replace(/_{2,}/g, '_')           // Múltiples underscores
-    .substring(0, 200);               // Limitar longitud
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .substring(0, 200);
 }
 
 export async function saveAtom(rootPath, filePath, functionName, atomData) {
+  const dataPath = path.join(rootPath, DATA_DIR);
+  const atomsDir = path.join(dataPath, 'atoms');
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const targetDir = path.join(atomsDir, fileDir, fileName);
+  const safeFunctionName = sanitizeFileName(functionName);
+  const targetPath = path.join(targetDir, `${safeFunctionName}.json`);
+
   try {
-    const dataPath = path.join(rootPath, DATA_DIR);
-
-    // Crear directorio atoms/ si no existe
-    const atomsDir = path.join(dataPath, 'atoms');
-    await fs.mkdir(atomsDir, { recursive: true });
-
-    // Crear estructura: atoms/{filePath}/{functionName}.json
-    const fileDir = path.dirname(filePath);
-    const fileName = path.basename(filePath, path.extname(filePath));
-    const targetDir = path.join(atomsDir, fileDir, fileName);
-    await fs.mkdir(targetDir, { recursive: true });
-
-    // 🆕 Sanitizar nombre de función para nombre de archivo seguro
-    const safeFunctionName = sanitizeFileName(functionName);
-    const targetPath = path.join(targetDir, `${safeFunctionName}.json`);
-
-    await fs.writeFile(targetPath, JSON.stringify(atomData, null, 2));
-    
-    console.log(`💾 Atom saved: ${targetPath}`);
-
+    await gracefulMkdir(targetDir, { recursive: true });
+    const jsonContent = JSON.stringify(atomData, null, 2);
+    await gracefulWriteFile(targetPath, jsonContent, 'utf-8');
     return targetPath;
   } catch (error) {
     console.error(`❌ Error saving atom ${filePath}::${functionName}:`, error.message);
@@ -57,20 +31,11 @@ export async function saveAtom(rootPath, filePath, functionName, atomData) {
   }
 }
 
-/**
- * Carga todos los átomos de un archivo
- *
- * @param {string} rootPath - Raíz del proyecto
- * @param {string} filePath - Ruta relativa del archivo
- * @returns {array} - Array de atoms
- */
 export async function loadAtoms(rootPath, filePath) {
   const dataPath = path.join(rootPath, DATA_DIR);
   const atomsDir = path.join(dataPath, 'atoms');
 
-  // 🆕 FIX: Normalizar filePath para que sea relativo al rootPath
   let normalizedPath = filePath;
-  // Normalizar separadores de path para comparación cross-platform
   const normalizedFilePath = filePath.replace(/\\/g, '/');
   const normalizedRootPath = rootPath.replace(/\\/g, '/');
 
@@ -83,12 +48,12 @@ export async function loadAtoms(rootPath, filePath) {
   const targetDir = path.join(atomsDir, fileDir, fileName);
 
   try {
-    const files = await fs.readdir(targetDir);
+    const files = await gracefulReaddir(targetDir);
     const atoms = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
-        const content = await fs.readFile(path.join(targetDir, file), 'utf-8');
+        const content = await gracefulReadFile(path.join(targetDir, file));
         atoms.push(JSON.parse(content));
       }
     }
@@ -99,40 +64,29 @@ export async function loadAtoms(rootPath, filePath) {
   }
 }
 
-/**
- * Carga TODOS los átomos del proyecto
- * Por defecto excluye atoms con lineage.status='removed' (históricos).
- *
- * @param {string} rootPath - Raíz del proyecto
- * @param {object} options
- * @param {boolean} options.includeRemoved - Si true, incluye atoms removidos. Default: false
- * @returns {array} - Array de todos los atoms activos
- */
 export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const atoms = [];
 
   async function scanDir(dir) {
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const entries = await gracefulReaddir(dir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           await scanDir(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.json')) {
           try {
-            const content = await fs.readFile(fullPath, 'utf-8');
+            const content = await gracefulReadFile(fullPath);
             const atom = JSON.parse(content);
             if (includeRemoved || atom.lineage?.status !== 'removed') {
               atoms.push(atom);
             }
           } catch {
-            // Skip malformed files
           }
         }
       }
     } catch {
-      // Directory doesn't exist or can't be read
     }
   }
 
@@ -154,14 +108,14 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
 
   async function scanDir(dir) {
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const entries = await gracefulReaddir(dir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           await scanDir(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.json')) {
           try {
-            const content = await fs.readFile(fullPath, 'utf-8');
+            const content = await gracefulReadFile(fullPath);
             const atom = JSON.parse(content);
             if (atom.lineage?.status === 'removed') {
               if (!filePath || (atom.filePath || atom.file || '').includes(filePath)) {
@@ -169,12 +123,10 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
               }
             }
           } catch {
-            // Skip malformed files
           }
         }
       }
     } catch {
-      // Directory doesn't exist or can't be read
     }
   }
 
@@ -182,22 +134,6 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
   return atoms;
 }
 
-/**
- * Consulta ATÓMICA selectiva: filtra átomos SIN cargar todos en memoria.
- * Usa early-exit para escalar a proyectos grandes (1M+ átomos).
- * 
- * @param {string} rootPath - Raíz del proyecto
- * @param {Object} filter - Criterios de filtro (todos opcionales)
- * @param {boolean} filter.isAsync - Solo async
- * @param {boolean} filter.isExported - Solo exportados
- * @param {string} filter.archetype - Filtrar por archetype
- * @param {string} filter.purpose - Filtrar por purpose
- * @param {number} filter.minComplexity - Complejidad mínima
- * @param {string} filter.filePath - Contiene esta ruta
- * @param {string} filter.name - Nombre exacto del átomo
- * @param {number} limit - Máximo a retornar (default: 1000)
- * @returns {Promise<Array>} Átomos que pasan el filtro
- */
 export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const results = [];
@@ -206,7 +142,7 @@ export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
     if (results.length >= limit) return;
     
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const entries = await gracefulReaddir(dir, { withFileTypes: true });
       
       for (const entry of entries) {
         if (results.length >= limit) break;
@@ -217,7 +153,7 @@ export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
           await scanAndFilter(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.json')) {
           try {
-            const content = await fs.readFile(fullPath, 'utf-8');
+            const content = await gracefulReadFile(fullPath);
             const atom = JSON.parse(content);
             
             if (filter.isAsync !== undefined && atom.isAsync !== filter.isAsync) continue;
@@ -231,12 +167,10 @@ export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
             
             results.push(atom);
           } catch {
-            // Skip malformed
           }
         }
       }
     } catch {
-      // Directory error
     }
   }
   
