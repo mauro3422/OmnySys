@@ -18,6 +18,7 @@
 
 import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
 import { createLogger } from '../../../utils/logger.js';
+import { isAnalysisScript, isTestCallback } from '../core/analysis-checker/utils/script-classifier.js';
 
 const logger = createLogger('OmnySys:detect-races');
 
@@ -168,8 +169,13 @@ export async function detect_race_conditions(args, context) {
 
   const allAtoms = await getAllAtoms(projectPath);
 
-  // Filter to async production atoms only (exclude test callbacks)
-  let asyncAtoms = allAtoms.filter(a => a.isAsync && !a.isTestCallback);
+  // Filter to async production atoms only (exclude test callbacks y scripts de análisis)
+  let asyncAtoms = allAtoms.filter(a => {
+    if (!a.isAsync) return false;
+    if (isTestCallback(a)) return false;
+    if (isAnalysisScript(a)) return false; // 🆕 Usar clasificador inteligente
+    return true;
+  });
 
   if (filePath) {
     const norm = filePath.replace(/\\/g, '/');

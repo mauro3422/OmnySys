@@ -12,6 +12,8 @@ import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/co
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
 import { extractMolecularStructure } from '../../layer-a-static/pipeline/molecular-extractor.js';
 import { saveAtom, saveMolecule, loadAtoms } from '#layer-c/storage/index.js';
+import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
+import { invalidateAtomCaches } from '#layer-c/cache/smart-cache-invalidator.js';
 
 /**
  * Calcula hash del contenido de un archivo
@@ -227,12 +229,29 @@ export async function analyzeFile(filePath, fullPath) {
     }
   }
 
-  for (const atom of moleculeAtoms) {
-    await saveAtom(this.rootPath, filePath, atom.name, atom);
+  // 🆕 Sistema de guardado incremental
+  // Guardar solo los campos que realmente cambiaron
+  const saveResults = await saveAtomsIncremental(this.rootPath, filePath, moleculeAtoms);
+  
+  if (saveResults.updated > 0) {
+    logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated, ${saveResults.totalFieldsChanged} fields)`);
   }
 
   // 🧹 LIMPIEZA: Eliminar archivos JSON de átomos que ya no existen en el código
   await cleanupOrphanedAtomFiles(this.rootPath, filePath, newAtomNames);
+  
+  // 🆕 Invalidación selectiva de caché para átomos modificados
+  for (const atom of moleculeAtoms) {
+    const atomId = `${filePath}::${atom.name}`;
+    // Detectar campos cambiados usando el version manager
+    const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
+    const vm = new AtomVersionManager(this.rootPath);
+    const changes = await vm.detectChanges(atomId, atom);
+    
+    if (changes.hasChanges && !changes.isNew) {
+      await invalidateAtomCaches(atomId, changes.fields);
+    }
+  }
 
   await saveMolecule(this.rootPath, filePath, {
     filePath, type: 'molecule',

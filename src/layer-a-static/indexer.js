@@ -20,6 +20,7 @@ import {
 } from './pipeline/save.js';
 import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
+import { enrichAtom } from './pipeline/phases/atom-extraction/metadata/purpose-enricher.js';
 import { enrichWithCulture } from './analysis/file-culture-classifier.js';
 import { resolveClassInstantiationCalledBy } from './pipeline/phases/calledby/class-instantiation-tracker.js';
 import { enrichWithCallerPattern } from './pipeline/phases/atom-extraction/metadata/caller-pattern.js';
@@ -193,10 +194,14 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
       parsedFile.atomCount = context.atomCount || 0;
       totalAtomsExtracted += context.atomCount || 0;
 
-      // Save atoms to disk in parallel
+      // 🆕 Enrich atoms with better purpose and archetype detection
       if (context.atoms && context.atoms.length > 0) {
+        const enrichedAtoms = context.atoms.map(atom => enrichAtom(atom));
+        context.atoms = enrichedAtoms;
+        
+        // Save enriched atoms to disk in parallel
         await Promise.allSettled(
-          context.atoms
+          enrichedAtoms
             .filter(atom => atom.name)
             .map(atom => saveAtom(absoluteRootPath, relativeFilePath, atom.name, atom))
         );
