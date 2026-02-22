@@ -8,7 +8,7 @@ import {
   GlobalBuilder,
   RouteBuilder,
   StorageBuilder
-} from './builders.js';
+} from './builders/index.js';
 
 export const StaticScenarios = {
   /**

@@ -9,7 +9,7 @@ export {
   StorageBuilder,
   GlobalBuilder,
   StaticConnectionBuilder
-} from './static-extractor-test/builders.js';
+} from './static-extractor-test/builders/index.js';
 
 export { StaticScenarios } from './static-extractor-test/scenarios.js';
 export { StaticValidators } from './static-extractor-test/validators.js';
@@ -21,7 +21,7 @@ import {
   StorageBuilder,
   GlobalBuilder,
   StaticConnectionBuilder
-} from './static-extractor-test/builders.js';
+} from './static-extractor-test/builders/index.js';
 import { StaticScenarios } from './static-extractor-test/scenarios.js';
 import { StaticValidators } from './static-extractor-test/validators.js';
 
