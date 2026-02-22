@@ -1,6 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+console.log('🔥 ATOM.JS MODULE LOADED - Version with logs');
+
 const DATA_DIR = '.omnysysdata';
 
 /**
@@ -13,23 +15,30 @@ const DATA_DIR = '.omnysysdata';
  * @returns {string} - Ruta del archivo guardado
  */
 export async function saveAtom(rootPath, filePath, functionName, atomData) {
-  const dataPath = path.join(rootPath, DATA_DIR);
+  try {
+    const dataPath = path.join(rootPath, DATA_DIR);
 
-  // Crear directorio atoms/ si no existe
-  const atomsDir = path.join(dataPath, 'atoms');
-  await fs.mkdir(atomsDir, { recursive: true });
+    // Crear directorio atoms/ si no existe
+    const atomsDir = path.join(dataPath, 'atoms');
+    await fs.mkdir(atomsDir, { recursive: true });
 
-  // Crear estructura: atoms/{filePath}/{functionName}.json
-  const fileDir = path.dirname(filePath);
-  const fileName = path.basename(filePath, path.extname(filePath));
-  const targetDir = path.join(atomsDir, fileDir, fileName);
-  await fs.mkdir(targetDir, { recursive: true });
+    // Crear estructura: atoms/{filePath}/{functionName}.json
+    const fileDir = path.dirname(filePath);
+    const fileName = path.basename(filePath, path.extname(filePath));
+    const targetDir = path.join(atomsDir, fileDir, fileName);
+    await fs.mkdir(targetDir, { recursive: true });
 
-  const targetPath = path.join(targetDir, `${functionName}.json`);
+    const targetPath = path.join(targetDir, `${functionName}.json`);
 
-  await fs.writeFile(targetPath, JSON.stringify(atomData, null, 2));
+    await fs.writeFile(targetPath, JSON.stringify(atomData, null, 2));
+    
+    console.log(`💾 Atom saved: ${targetPath}`);
 
-  return targetPath;
+    return targetPath;
+  } catch (error) {
+    console.error(`❌ Error saving atom ${filePath}::${functionName}:`, error.message);
+    throw error;
+  }
 }
 
 /**

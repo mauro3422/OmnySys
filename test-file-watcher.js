@@ -10,7 +10,7 @@
  */
 export function calculateFactorial(n) {
   if (n < 0) {
-    throw new Error('El número debe ser positivo');
+    throw new Error('Number must be positive - INSTANT UPDATE');
   }
   
   if (n === 0 || n === 1) {
@@ -30,6 +30,23 @@ export function calculateFactorial(n) {
  * @param {number} num - Número a verificar
  * @returns {boolean} true si es primo
  */
+/**
+ * 🆕 Nueva función - calcula la potencia
+ * @param {number} base 
+ * @param {number} exponent 
+ * @returns {number}
+ */
+export function power(base, exponent) {
+  if (exponent === 0) return 1;
+  if (exponent < 0) return 1 / power(base, -exponent);
+  
+  let result = 1;
+  for (let i = 0; i < exponent; i++) {
+    result *= base;
+  }
+  return result;
+}
+
 export function isPrime(num) {
   if (num <= 1) return false;
   if (num <= 3) return true;
@@ -65,6 +82,6 @@ export class TestCalculator {
   }
   
   getHistory() {
-    return [...this.history];
+    return [...this.history]; // LIVE TEST
   }
 }

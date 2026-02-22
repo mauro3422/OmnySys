@@ -130,8 +130,17 @@ async function saveAtoms(absoluteRootPath, singleFile, atoms) {
   // 🆕 Usar sistema de guardado incremental
   const results = await saveAtomsIncremental(absoluteRootPath, singleFile, atoms);
   
+  // 📝 Log para cualquier operación (creación o actualización)
   if (results.updated > 0) {
     logger.info(`⚡ Incremental save: ${singleFile} (${results.updated} updated, ${results.totalFieldsChanged} fields)`);
+  }
+  
+  if (results.created > 0) {
+    logger.info(`✨ New atoms: ${singleFile} (${results.created} created)`);
+  }
+  
+  if (results.unchanged > 0) {
+    logger.debug(`⏭️ Unchanged: ${singleFile} (${results.unchanged} atoms)`);
   }
   
   if (results.errors > 0) {
