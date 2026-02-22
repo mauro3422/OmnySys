@@ -7,7 +7,7 @@ export {
   FileProcessingBuilder,
   MolecularChainBuilder,
   EnhancerBuilder
-} from './pipeline-test/builders.js';
+} from './pipeline-test/builders/index.js';
 
 export {
   createMockFileSystem,
@@ -24,7 +24,7 @@ import {
   FileProcessingBuilder,
   MolecularChainBuilder,
   EnhancerBuilder
-} from './pipeline-test/builders.js';
+} from './pipeline-test/builders/index.js';
 import {
   createMockFileSystem,
   createMockLogger,

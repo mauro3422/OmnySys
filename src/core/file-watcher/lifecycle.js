@@ -1,5 +1,6 @@
 import path from 'path';
 import { watch } from 'fs';
+import { access } from 'fs/promises';
 
 import { getProjectMetadata } from '../../layer-c-memory/query/apis/project-api.js';
 import { createLogger } from '../../utils/logger.js';
@@ -77,7 +78,7 @@ export function startWatching() {
     this.fsWatcher = watch(
       this.rootPath,
       { recursive: true },
-      (eventType, filename) => {
+      async (eventType, filename) => {
         // Ignorar si no hay filename o está vacío
         if (!filename) return;
         
@@ -85,14 +86,24 @@ export function startWatching() {
         const fullPath = path.join(this.rootPath, filename);
         
         // Determinar tipo de cambio
-        // 'rename' = archivo creado o eliminado
+        // 'rename' = archivo creado o eliminado (hay que verificar si existe)
         // 'change' = archivo modificado
-        const changeType = eventType === 'rename' 
-          ? 'created'  // fs.watch reporta 'rename' para nuevos archivos
-          : 'modified';
+        let changeType;
+        if (eventType === 'rename') {
+          // fs.watch reporta 'rename' tanto para crear como eliminar
+          // Verificamos si el archivo existe para determinar cuál ocurrió
+          try {
+            await access(fullPath);
+            changeType = 'created';  // Archivo existe → fue creado
+          } catch {
+            changeType = 'deleted';  // Archivo no existe → fue eliminado
+          }
+        } else {
+          changeType = 'modified';
+        }
         
         // Notificar el cambio
-        this.notifyChange(fullPath, changeType);
+        await this.notifyChange(fullPath, changeType);
       }
     );
 

@@ -2,7 +2,7 @@
  * @fileoverview Root Infrastructure Test Factory - Scenarios
  */
 
-import { AtomsIndexBuilder, ProjectStructureBuilder, SystemMapBuilder } from './builders.js';
+import { AtomsIndexBuilder, ProjectStructureBuilder, SystemMapBuilder } from './builders/index.js';
 
 export const InfrastructureScenarios = {
   emptyProject() {

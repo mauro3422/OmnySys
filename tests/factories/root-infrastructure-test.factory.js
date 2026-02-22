@@ -6,7 +6,7 @@ export {
   SystemMapBuilder,
   ProjectStructureBuilder,
   AtomsIndexBuilder
-} from './root-infrastructure-test/builders.js';
+} from './root-infrastructure-test/builders/index.js';
 
 export {
   createMockScannerOutput,
@@ -26,7 +26,7 @@ import {
   SystemMapBuilder,
   ProjectStructureBuilder,
   AtomsIndexBuilder
-} from './root-infrastructure-test/builders.js';
+} from './root-infrastructure-test/builders/index.js';
 import {
   createMockScannerOutput,
   createMockResolverResult,
