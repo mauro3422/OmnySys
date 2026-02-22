@@ -25,6 +25,7 @@ export function extractArrowFunction(path, filePath) {
     type: 'arrow',
     file: filePath,
     line: node.loc?.start?.line,
+    endLine: node.loc?.end?.line,
     column: node.loc?.start?.column,
     signature: extractSignature(node),
     dataFlow: extractDataFlow(path),

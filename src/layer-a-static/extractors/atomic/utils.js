@@ -20,6 +20,7 @@ export function createAtom(data) {
     type: data.type,
     file: data.file,
     line: data.line,
+    endLine: data.endLine || data.dataFlow?.lines?.end || data.line,
     column: data.column,
     className: data.className || null,
     signature: data.signature,
