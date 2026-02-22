@@ -231,10 +231,33 @@ export async function analyzeFile(filePath, fullPath) {
     }
   }
 
+  // 🛡️ PROTECCIÓN: Ignorar átomos recientemente editados por atomic-edit
+  const RECENT_EDIT_THRESHOLD = 2000; // 2 segundos
+  const now = Date.now();
+  const atomsToSave = [];
+  const atomsToSkip = [];
+  
+  for (const atom of moleculeAtoms) {
+    const prevAtom = previousAtoms.find(p => p.name === atom.name);
+    if (prevAtom && 
+        prevAtom._meta?.source === 'atomic-edit' && 
+        prevAtom._meta?.lastModified && 
+        (now - prevAtom._meta.lastModified) < RECENT_EDIT_THRESHOLD) {
+      atomsToSkip.push(atom.name);
+      logger.debug(`[PROTECTED] Skipping ${atom.name} - recently edited by atomic-edit (${now - prevAtom._meta.lastModified}ms ago)`);
+    } else {
+      atomsToSave.push(atom);
+    }
+  }
+  
+  if (atomsToSkip.length > 0) {
+    logger.info(`[FILE_WATCHER] Protected ${atomsToSkip.length} atoms from atomic-edit: ${atomsToSkip.join(', ')}`);
+  }
+
   // 🆕 Sistema de guardado incremental
   // Guardar solo los campos que realmente cambiaron
-  logger.debug(`🔄 About to save ${moleculeAtoms.length} atoms incrementally for ${filePath}`);
-  const saveResults = await saveAtomsIncremental(this.rootPath, filePath, moleculeAtoms);
+  logger.debug(`🔄 About to save ${atomsToSave.length} atoms incrementally for ${filePath}`);
+  const saveResults = await saveAtomsIncremental(this.rootPath, filePath, atomsToSave, { source: 'file-watcher' });
   logger.debug(`✅ Incremental save result: ${JSON.stringify(saveResults)}`);
   
   if (saveResults.updated > 0) {

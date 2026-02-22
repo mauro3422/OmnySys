@@ -3,7 +3,7 @@
  * @module layer-c-memory/mcp/tools/find-symbol-instances/handlers
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAtomsByName } from '#layer-c/storage/index.js';
 import { findAllInstances } from './instance-finder.js';
 import { analyzeUsage } from './usage-analyzer.js';
 import { detectDuplicates } from './duplicate-detector.js';
@@ -59,20 +59,39 @@ export async function handleAutoDetect(resolvedPath) {
 
 /**
  * Maneja la búsqueda de símbolos específicos
+ * 🚀 OPTIMIZADO: Usa getAtomsByName() en lugar de getAllAtoms()
  * @param {string} symbolName - Symbol name to search
  * @param {string} resolvedPath - Project path
  * @returns {Object} - Symbol search result
  */
 export async function handleSymbolSearch(symbolName, resolvedPath) {
-  const atoms = await getAllAtoms(resolvedPath);
-  const instances = findAllInstances(atoms, symbolName);
+  // 🚀 OPTIMIZADO: Solo cargar átomos con ese nombre específico
+  const instances = await getAtomsByName(resolvedPath, symbolName, 100);
+  
   if (instances.length === 0) {
     return { symbol: symbolName, found: false, message: `No se encontró ninguna función/variable llamada "${symbolName}"`, suggestion: 'Verifica el nombre o usa search_files para encontrar el nombre correcto' };
   }
-  const usageMap = analyzeUsage(atoms, instances, symbolName);
+  
+  // Para análisis de uso necesitamos más contexto, cargar solo archivos relevantes
+  const relevantFiles = [...new Set(instances.map(i => i.filePath))];
+  const usageMap = new Map();
+  for (const file of relevantFiles.slice(0, 10)) {
+    try {
+      const { loadAtoms } = await import('#layer-c/storage/index.js');
+      const fileAtoms = await loadAtoms(resolvedPath, file);
+      const usage = analyzeUsage(fileAtoms, instances.filter(i => i.filePath === file), symbolName);
+      if (usage.size > 0) {
+        usage.forEach((v, k) => usageMap.set(k, v));
+      }
+    } catch {
+      // Skip files that can't be loaded
+    }
+  }
+  
   const duplicates = detectDuplicates(instances);
   const primary = determinePrimary(instances, usageMap);
   const instanceDetails = buildInstanceDetails(instances, usageMap, primary, duplicates);
+  
   return {
     symbol: symbolName, found: true,
     summary: { totalInstances: instances.length, primaryInstance: primary ? { file: primary.filePath, line: primary.line } : null, duplicateGroups: duplicates.length, unusedInstances: instanceDetails.filter(i => i.isUnused).length },
@@ -80,6 +99,6 @@ export async function handleSymbolSearch(symbolName, resolvedPath) {
     duplicates: duplicates.map(d => ({ hash: d.hash, count: d.count, files: d.instances.map(i => i.file) })),
     directImports: [],
     recommendations: generateRecommendations(instances, primary, duplicates, usageMap),
-    action: primary ? { type: 'edit', file: primary.filePath, line: primary.line, message: `Editar esta instancia (usada ${usageMap.get(primary.filePath)?.totalUsage || 0} veces)` } : null
+    action: primary ? { type: 'edit', file: primary.filePath, line: primary.line, message: `Editar esta instancia` } : null
   };
 }

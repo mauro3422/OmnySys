@@ -23,7 +23,7 @@ import {
  * @param {string} response - Respuesta cruda
  * @returns {string} - JSON limpio
  */
-export function cleanLLMResponse(response) {
+export function cleanLLMResponse(response, strictMode = false) {
   if (!response || typeof response !== 'string') {
     return response;
   }

@@ -13,7 +13,7 @@ const logger = createLogger('OmnySys:response:cleaner');
  * @param {string} response - Respuesta cruda del LLM
  * @returns {string} - JSON limpio
  */
-export function cleanLLMResponse(response) {
+export function cleanLLMResponse(response, maxLength = 10000) {
   if (!response || typeof response !== 'string') {
     return response;
   }

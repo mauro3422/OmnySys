@@ -46,5 +46,13 @@ export {
 export {
   saveAtom,
   loadAtoms,
-  getAllAtoms
+  getAllAtoms,
+  queryAtoms,
+  getAsyncAtoms,
+  getExportedAtoms,
+  getAtomsByArchetype,
+  getAtomsByPurpose,
+  getComplexAtoms,
+  getAtomsInFile,
+  getAtomsByName
 } from './atoms/index.js';

@@ -26,6 +26,25 @@ const ATOM_TYPE_FILTERS = {
   config:        a => a.type === 'config',
 };
 
+/**
+ * Extrae campos derivados de async de un átomo
+ * Esto permite que el schema muestre estadísticas de async patterns
+ */
+function extractAsyncDerivedFields(atom) {
+  const temporal = atom.temporal?.patterns || atom.temporal || {};
+  const asyncPatterns = temporal.asyncPatterns || {};
+  const flowAnalysis = temporal.asyncFlowAnalysis || {};
+  
+  return {
+    sequentialAwaitsCount: asyncPatterns.sequentialOperations?.[0]?.count || 0,
+    asyncRiskLevel: flowAnalysis.overallRisk || 'none',
+    hasPromiseAll: asyncPatterns.hasPromiseAll || false,
+    hasPromiseChain: asyncPatterns.hasPromiseChain || false,
+    asyncEventCount: (temporal.events || []).length,
+    parallelOpCount: (asyncPatterns.parallelOperations || []).length,
+  };
+}
+
 // Calculado en module-level: el registry es estático, se refresca con restart_server
 const FIELD_TOOL_COVERAGE = getFieldToolCoverage();
 
@@ -237,7 +256,7 @@ function filterAtoms(allAtoms, atomType) {
 }
 
 function computeEvolution(analysisSet, focusField) {
-  const KEY_FIELDS = ['complexity', 'linesOfCode', 'externalCallCount'];
+  const KEY_FIELDS = ['complexity', 'linesOfCode', 'externalCallCount', 'sequentialAwaitsCount', 'asyncEventCount'];
   const evolution = {};
   for (const field of KEY_FIELDS) {
     if (analysisSet.some(a => typeof a[field] === 'number' && a[field] > 0))
@@ -289,7 +308,13 @@ export async function get_atom_schema(args, context) {
     return { error: `No atoms found for type "${atomType}"`, inventory, totalAtoms: allAtoms.length };
   }
 
-  const analysisSet = filtered.slice(0, Math.min(500, filtered.length));
+  // Enriquecer átomos con campos derivados de async para que aparezcan en schema
+  const enrichedAtoms = filtered.map(atom => ({
+    ...atom,
+    ...extractAsyncDerivedFields(atom)
+  }));
+
+  const analysisSet = enrichedAtoms.slice(0, Math.min(500, enrichedAtoms.length));
 
   return {
     filter: filterUsed,

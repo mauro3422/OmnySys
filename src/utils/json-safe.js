@@ -12,8 +12,6 @@ import { createLogger } from './logger.js';
 
 const logger = createLogger('OmnySys:json:safe');
 
-
-
 /**
  * Safely read and parse a JSON file
  * @param {string} filePath - Path to JSON file
@@ -26,16 +24,21 @@ export async function safeReadJson(filePath, defaultValue = null) {
     return JSON.parse(content);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      // File doesn't exist
+      // File doesn't exist - not an error, just return default
       return defaultValue;
     }
     if (error instanceof SyntaxError) {
-      // Invalid JSON
-      logger.error(`[safeReadJson] Invalid JSON in ${filePath}:`, error.message);
+      // Invalid JSON - log and return default
+      logger.warn(`[safeReadJson] Invalid JSON in ${filePath}: ${error.message}`);
+      return defaultValue;
+    }
+    if (error.code === 'EACCES' || error.code === 'EPERM') {
+      // Permission denied
+      logger.error(`[safeReadJson] Permission denied reading ${filePath}`);
       return defaultValue;
     }
     // Other errors
-    logger.error(`[safeReadJson] Error reading ${filePath}:`, error.message);
+    logger.error(`[safeReadJson] Error reading ${filePath}: ${error.message}`);
     return defaultValue;
   }
 }

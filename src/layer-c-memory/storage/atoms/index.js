@@ -1,4 +1,16 @@
-export { saveAtom, loadAtoms, getAllAtoms } from './atom.js';
+export { 
+  saveAtom, 
+  loadAtoms, 
+  getAllAtoms,
+  queryAtoms,
+  getAsyncAtoms,
+  getExportedAtoms,
+  getAtomsByArchetype,
+  getAtomsByPurpose,
+  getComplexAtoms,
+  getAtomsInFile,
+  getAtomsByName
+} from './atom.js';
 
 // 🆕 Sistema de guardado incremental
 export { 

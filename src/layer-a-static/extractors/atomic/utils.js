@@ -42,12 +42,24 @@ export function createAtom(data) {
  */
 export function extractSignature(node) {
   return {
-    params: (node.params || []).map((param, index) => ({
-      name: param.name || `param${index}`,
-      position: index,
-      optional: param.optional || false,
-      type: inferParamType(param)
-    })),
+    params: (node.params || []).map((param, index) => {
+      // Detectar si es opcional: tiene valor por defecto (AssignmentPattern) o está marcado como optional
+      const isOptional = param.optional || 
+                         param.type === 'AssignmentPattern' ||
+                         (param.type === 'Identifier' && param.default !== undefined);
+      
+      // Obtener nombre real (puede estar anidado en AssignmentPattern)
+      const paramName = param.name || 
+                        (param.left && param.left.name) || 
+                        `param${index}`;
+      
+      return {
+        name: paramName,
+        position: index,
+        optional: isOptional,
+        type: inferParamType(param)
+      };
+    }),
     returnType: inferReturnType(node),
     async: node.async || false,
     generator: node.generator || false
@@ -125,14 +137,20 @@ export function extractCalls(path) {
       if (callee) {
         calls.push({
           callee,
-          line: innerPath.node.loc?.start?.line
+          line: innerPath.node.loc?.start?.line,
+          argumentCount: innerPath.node.arguments?.length || 0,
+          arguments: (innerPath.node.arguments || []).map((arg, idx) => ({
+            position: idx,
+            type: arg.type,
+            isSpread: arg.type === 'SpreadElement'
+          }))
         });
       }
     }
   });
   
-  // Dedupe
-  return [...new Map(calls.map(c => [c.callee, c])).values()];
+  // Dedupe - ahora incluye argumentos en la key para detectar llamadas distintas
+  return [...new Map(calls.map(c => [`${c.callee}:${c.argumentCount}`, c])).values()];
 }
 
 /**

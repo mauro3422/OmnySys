@@ -31,7 +31,7 @@ async function loadAtomById(rootPath, atomId) {
  * Realiza un merge inteligente entre el átomo existente y los nuevos datos
  * @private
  */
-function mergeAtoms(existingAtom, newData, changedFields) {
+function mergeAtoms(existingAtom, newData, changedFields, source = 'unknown') {
   const merged = { ...existingAtom };
   
   // Actualizar solo los campos que cambiaron
@@ -45,7 +45,8 @@ function mergeAtoms(existingAtom, newData, changedFields) {
     lastModified: Date.now(),
     modifiedFields: changedFields,
     version: (merged._meta?.version || 0) + 1,
-    incrementalUpdate: true
+    incrementalUpdate: true,
+    source
   };
   
   return merged;
@@ -91,7 +92,8 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
         _meta: {
           createdAt: Date.now(),
           version: 1,
-          incrementalUpdate: false
+          incrementalUpdate: false,
+          source: options.source || 'unknown'
         }
       });
       
@@ -122,7 +124,7 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
     }
     
     // 6. Merge inteligente
-    const mergedAtom = mergeAtoms(existingAtom, atomData, changeDetection.fields);
+    const mergedAtom = mergeAtoms(existingAtom, atomData, changeDetection.fields, options.source || 'unknown');
     
     // 7. Guardar átomo mergeado
     await saveAtom(rootPath, filePath, functionName, mergedAtom);
@@ -175,9 +177,11 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
  * @param {string} rootPath - Ruta raíz del proyecto  
  * @param {string} filePath - Ruta relativa del archivo
  * @param {Array<Object>} atoms - Array de átomos a guardar
+ * @param {Object} options - Opciones adicionales
+ * @param {string} options.source - Origen del cambio (atomic-edit, file-watcher, etc.)
  * @returns {Promise<Object>} Estadísticas del batch
  */
-export async function saveAtomsIncremental(rootPath, filePath, atoms) {
+export async function saveAtomsIncremental(rootPath, filePath, atoms, options = {}) {
   const startTime = Date.now();
   const results = {
     created: 0,
@@ -192,7 +196,7 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms) {
   for (const atom of atoms) {
     if (!atom.name) continue;
     
-    const result = await saveAtomIncremental(rootPath, filePath, atom.name, atom);
+    const result = await saveAtomIncremental(rootPath, filePath, atom.name, atom, options);
     
     switch (result.action) {
       case 'created':

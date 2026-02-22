@@ -5,7 +5,7 @@
  * @module mcp/tools/async-analysis
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAsyncAtoms, queryAtoms } from '#layer-c/storage/index.js';
 import { extractAsyncInfo } from './extractors/index.js';
 import { analyzeAsyncIssues, categorizePattern, findOptimizations } from './analyzers/index.js';
 import { riskOrder } from './utils/index.js';
@@ -22,15 +22,17 @@ export async function get_async_analysis(args, context) {
   const { projectPath } = context;
   
   try {
-    const atoms = await getAllAtoms(projectPath);
-    
-    if (!atoms || atoms.length === 0) {
-      return { error: 'No atoms found. Run analysis first.' };
-    }
-
-    let filteredAtoms = atoms;
+    // 🚀 OPTIMIZADO: Usar queries selectivas según el filtro
+    // Si hay filePath, filtrar en la query. Si no, solo async atoms.
+    let filteredAtoms;
     if (filePath) {
-      filteredAtoms = atoms.filter(a => a.filePath?.includes(filePath));
+      filteredAtoms = await queryAtoms(projectPath, { isAsync: true, filePath }, 500);
+    } else {
+      filteredAtoms = await getAsyncAtoms(projectPath);
+    }
+    
+    if (!filteredAtoms || filteredAtoms.length === 0) {
+      return { error: 'No atoms found. Run analysis first.' };
     }
 
     const analysis = {
@@ -55,8 +57,7 @@ export async function get_async_analysis(args, context) {
 
     for (const atom of filteredAtoms) {
       const asyncInfo = extractAsyncInfo(atom);
-      
-      if (!asyncInfo.isAsync) continue;
+      // Todos los átomos en filteredAtoms son async (filtrado en query)
       
       analysis.summary.asyncAtoms++;
       

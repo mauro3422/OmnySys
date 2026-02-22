@@ -4,7 +4,7 @@
  */
 
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, queryAtoms } from '#layer-c/storage/index.js';
 import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import fs from 'fs/promises';
 import { glob } from 'fs/promises';
@@ -185,7 +185,10 @@ export async function search_files(args, context) {
 
     // Symbol search — always run for 'symbol', also run for 'path' when pattern is a pure identifier
     if (detectedType === 'symbol' || detectedType === 'auto' || (detectedType === 'path' && looksLikeSymbol)) {
-      const atoms = await getAllAtoms(projectPath);
+      // 🚀 OPTIMIZADO: Usar queryAtoms con filtro de nombre si es símbolo simple
+      const atoms = looksLikeSymbol 
+        ? await queryAtoms(projectPath, { name: pattern }, 500)
+        : await getAllAtoms(projectPath);
       const matchedFiles = new Set(pathMatches);
       symbolMatches = await searchBySymbol(pattern, atoms, matchedFiles);
     }

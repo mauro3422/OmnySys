@@ -99,25 +99,24 @@ function getNamespaceConfig(namespace) {
 }
 
 /**
- * Format log message
+ * Format as JSON
  */
-function formatMessage(level, namespace, message, meta, format) {
-  const timestamp = new Date().toISOString();
-  const levelName = Object.keys(LogLevel).find(k => LogLevel[k] === level);
-  
-  if (format === 'json') {
-    return JSON.stringify({
-      timestamp,
-      level: levelName,
-      namespace,
-      message,
-      ...meta,
-      pid: process.pid,
-      env: ENV
-    });
-  }
-  
-  // Pretty format
+function formatAsJSON(timestamp, levelName, namespace, message, meta) {
+  return JSON.stringify({
+    timestamp,
+    level: levelName,
+    namespace,
+    message,
+    ...meta,
+    pid: process.pid,
+    env: ENV
+  });
+}
+
+/**
+ * Format as pretty/colorized
+ */
+function formatAsPretty(timestamp, levelName, namespace, message, meta) {
   const colors = {
     DEBUG: '\x1b[36m',  // Cyan
     INFO: '\x1b[32m',   // Green
@@ -143,6 +142,20 @@ function formatMessage(level, namespace, message, meta, format) {
   }
   
   return output;
+}
+
+/**
+ * Format log message
+ */
+function formatMessage(level, namespace, message, meta, format) {
+  const timestamp = new Date().toISOString();
+  const levelName = Object.keys(LogLevel).find(k => LogLevel[k] === level);
+  
+  if (format === 'json') {
+    return formatAsJSON(timestamp, levelName, namespace, message, meta);
+  }
+  
+  return formatAsPretty(timestamp, levelName, namespace, message, meta);
 }
 
 /**

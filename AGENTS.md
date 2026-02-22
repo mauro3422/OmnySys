@@ -108,22 +108,12 @@ const files = await search_files({
   pattern: "**/*feature*.js" 
 });
 
-// Step 2: Validate imports
-const validation = await validate_imports({ 
-  filePath: "new-file.js",
-  checkFileExistence: true 
-});
-
-// Step 3: Check impact
-const impact = await get_impact_map({ 
-  filePath: "new-file.js" 
-});
-
-// Step 4: Create file
+// Step 2: Create file (atomic_write validates automatically)
 await atomic_write({ 
   filePath: "new-file.js",
   content: "..."
 });
+// ⚠️ atomic_write validates: imports, paths, duplicates automatically
 ```
 
 ### 3. Fix a Bug
@@ -156,6 +146,43 @@ await atomic_edit({
 
 ---
 
+## Built-in Validation System
+
+`atomic_edit` and `atomic_write` now include **automatic validation**:
+
+### What gets validated automatically:
+1. ✅ File existence (prevents editing non-existent files)
+2. ✅ Path validation (detects invalid characters, absolute paths)
+3. ✅ Import validation (checks all imports exist before saving)
+4. ✅ Duplicate detection (warns about functions with same name)
+5. ✅ Impact analysis (shows what files will be affected)
+
+### Validation Results:
+```javascript
+// If validation fails, you'll get detailed errors:
+{
+  error: 'VALIDATION_FAILED',
+  errors: ['❌ File does not exist: src/utils/missing.js'],
+  warnings: ['⚠️ This change will affect 5 files directly'],
+  context: { suggestions: ['src/utils/helper.js'] },
+  canProceed: false
+}
+```
+
+### Manual Validation (if needed):
+```javascript
+// Pre-edit validation
+validateBeforeEdit({ filePath: "src/file.js", symbolName: "myFunc" });
+
+// Pre-write validation  
+validateBeforeWrite({ filePath: "src/new-file.js" });
+
+// Get line context
+getLineContext(filePath, lineNumber, contextLines = 5);
+```
+
+---
+
 ## Anti-Patterns (DON'T DO)
 
 ❌ **NEVER**:
@@ -164,8 +191,11 @@ await atomic_edit({
 - Change signatures without `analyze_signature_change`
 - Refactor without `get_impact_map`
 - Create files without validating imports first
+- **Use plain `edit` - always use `atomic_edit` for safety**
 
 ✅ **ALWAYS**:
+- Use `atomic_edit` instead of `edit` (has built-in validation)
+- Use `atomic_write` instead of `write` (has built-in validation)
 - Validate imports before saving
 - Check impact before editing
 - Use `limit` on large queries

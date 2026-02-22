@@ -181,3 +181,98 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
   await scanDir(atomsDir);
   return atoms;
 }
+
+/**
+ * Consulta ATÓMICA selectiva: filtra átomos SIN cargar todos en memoria.
+ * Usa early-exit para escalar a proyectos grandes (1M+ átomos).
+ * 
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {Object} filter - Criterios de filtro (todos opcionales)
+ * @param {boolean} filter.isAsync - Solo async
+ * @param {boolean} filter.isExported - Solo exportados
+ * @param {string} filter.archetype - Filtrar por archetype
+ * @param {string} filter.purpose - Filtrar por purpose
+ * @param {number} filter.minComplexity - Complejidad mínima
+ * @param {string} filter.filePath - Contiene esta ruta
+ * @param {string} filter.name - Nombre exacto del átomo
+ * @param {number} limit - Máximo a retornar (default: 1000)
+ * @returns {Promise<Array>} Átomos que pasan el filtro
+ */
+export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
+  const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+  const results = [];
+  
+  async function scanAndFilter(dir) {
+    if (results.length >= limit) return;
+    
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (results.length >= limit) break;
+        
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isDirectory()) {
+          await scanAndFilter(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.json')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf-8');
+            const atom = JSON.parse(content);
+            
+            if (filter.isAsync !== undefined && atom.isAsync !== filter.isAsync) continue;
+            if (filter.isExported !== undefined && atom.isExported !== filter.isExported) continue;
+            if (filter.archetype && atom.archetype?.type !== filter.archetype) continue;
+            if (filter.purpose && atom.purpose !== filter.purpose) continue;
+            if (filter.minComplexity !== undefined && (atom.complexity || 0) < filter.minComplexity) continue;
+            if (filter.filePath && !atom.filePath?.includes(filter.filePath)) continue;
+            if (filter.name && atom.name !== filter.name) continue;
+            if (atom.lineage?.status === 'removed') continue;
+            
+            results.push(atom);
+          } catch {
+            // Skip malformed
+          }
+        }
+      }
+    } catch {
+      // Directory error
+    }
+  }
+  
+  await scanAndFilter(atomsDir);
+  return results;
+}
+
+/**
+ * Atajos optimizados para queries frecuentes.
+ * Usar estos en lugar de getAllAtoms() cuando sea posible.
+ */
+
+export async function getAsyncAtoms(rootPath, limit = 2000) {
+  return queryAtoms(rootPath, { isAsync: true }, limit);
+}
+
+export async function getExportedAtoms(rootPath, limit = 3000) {
+  return queryAtoms(rootPath, { isExported: true }, limit);
+}
+
+export async function getAtomsByArchetype(rootPath, archetype, limit = 500) {
+  return queryAtoms(rootPath, { archetype }, limit);
+}
+
+export async function getAtomsByPurpose(rootPath, purpose, limit = 500) {
+  return queryAtoms(rootPath, { purpose }, limit);
+}
+
+export async function getComplexAtoms(rootPath, minComplexity = 15, limit = 200) {
+  return queryAtoms(rootPath, { minComplexity }, limit);
+}
+
+export async function getAtomsInFile(rootPath, filePath, limit = 100) {
+  return queryAtoms(rootPath, { filePath }, limit);
+}
+
+export async function getAtomsByName(rootPath, name, limit = 50) {
+  return queryAtoms(rootPath, { name }, limit);
+}
