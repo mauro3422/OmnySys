@@ -33,13 +33,24 @@ export class LayerAAnalysisStep extends InitializationStep {
   async execute(server) {
     logger.info('Layer A - Static Analysis');
 
-    const { checkAndRunAnalysis } = await import('../../analysis-checker.js');
-    const result = await checkAndRunAnalysis(server.projectPath);
+    // 🆕 Usar análisis inteligente con estrategias optimizadas
+    const { checkAndRunAnalysisSmart } = await import('../../analysis-checker.js');
+    
+    const result = await checkAndRunAnalysisSmart(server.projectPath, {
+      orchestrator: server.orchestrator || null,
+      reloadMetadataFn: () => server.reloadMetadata?.() || Promise.resolve()
+    });
 
-    if (result.success) {
-      logger.info(`  ✅ Analysis complete: ${result.fileCount} files, ${result.atomCount} atoms`);
+    // Loguear resultado según la estrategia usada
+    if (result.ran) {
+      const strategyIcon = result.incremental ? '🔄' : '🚀';
+      logger.info(`  ${strategyIcon} Analysis complete: ${result.strategy}`);
+      logger.info(`     Files analyzed: ${result.filesAnalyzed}${result.filesChanged ? ` (${result.filesChanged} changed)` : ''}`);
+      if (result.duration) {
+        logger.info(`     Duration: ${result.duration.toFixed(2)}s`);
+      }
     } else {
-      logger.info('  ⚠️  Analysis warning:', result.error);
+      logger.info(`  📦 Loaded existing analysis: ${result.filesAnalyzed} files (no changes)`);
     }
 
     // Forzar GC para liberar ASTs y estructuras de Layer A antes de iniciar LLM.

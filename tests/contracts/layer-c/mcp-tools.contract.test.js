@@ -1,45 +1,32 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+/**
+ * @fileoverview MCP Tools Contract Test
+ * 
+ * Tests de contrato para verificar la estructura de herramientas MCP.
+ * 
+ * @module tests/contracts/layer-c/mcp-tools.contract.test
+ */
 
-const TOOL_NAMES = [
-  'get_impact_map',
-  'analyze_change',
-  'explain_connection',
-  'get_risk_assessment',
-  'search_files',
-  'get_server_status',
-  'get_call_graph',
-  'analyze_signature_change',
-  'explain_value_flow',
-  'get_function_details',
-  'get_molecule_summary',
-  'get_atomic_functions',
-  'restart_server',
-  'get_tunnel_vision_stats',
-  'atomic_edit',
-  'atomic_write'
-];
-
-const REQUIRED_TOOL_DEFINITION_FIELDS = ['name', 'description', 'inputSchema'];
+import { describe, it, expect } from 'vitest';
+import { 
+  TOOL_NAMES, 
+  REQUIRED_TOOL_DEFINITION_FIELDS,
+  importToolsModule,
+  expectIfAvailable 
+} from './helpers/index.js';
 
 describe('MCP Tools Contract', () => {
   describe('Tool Definitions', () => {
     let toolDefinitions;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolDefinitions = mod.toolDefinitions;
-      } catch (e) {
-        toolDefinitions = null;
-      }
+      const mod = await importToolsModule();
+      toolDefinitions = mod?.toolDefinitions;
     });
 
     it('MUST export toolDefinitions array', () => {
-      if (!toolDefinitions) {
-        expect(true).toBe(true);
-        return;
-      }
-      expect(Array.isArray(toolDefinitions)).toBe(true);
+      expectIfAvailable(toolDefinitions, () => {
+        expect(Array.isArray(toolDefinitions)).toBe(true);
+      });
     });
 
     it('toolDefinitions MUST not be empty', () => {
@@ -72,24 +59,11 @@ describe('MCP Tools Contract', () => {
       });
     });
 
-    it('each tool inputSchema MUST be an object', () => {
+    it('each tool inputSchema MUST be an object with type "object"', () => {
       if (!toolDefinitions) return;
       toolDefinitions.forEach(tool => {
         expect(typeof tool.inputSchema).toBe('object');
         expect(tool.inputSchema).not.toBeNull();
-      });
-    });
-
-    it('each tool inputSchema MUST have type property', () => {
-      if (!toolDefinitions) return;
-      toolDefinitions.forEach(tool => {
-        expect(tool.inputSchema).toHaveProperty('type');
-      });
-    });
-
-    it('each tool inputSchema type MUST be "object"', () => {
-      if (!toolDefinitions) return;
-      toolDefinitions.forEach(tool => {
         expect(tool.inputSchema.type).toBe('object');
       });
     });
@@ -105,26 +79,17 @@ describe('MCP Tools Contract', () => {
 
   describe('Tool Handlers', () => {
     let toolHandlers;
-    let toolDefinitions;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolHandlers = mod.toolHandlers;
-        toolDefinitions = mod.toolDefinitions;
-      } catch (e) {
-        toolHandlers = null;
-        toolDefinitions = null;
-      }
+      const mod = await importToolsModule();
+      toolHandlers = mod?.toolHandlers;
     });
 
     it('MUST export toolHandlers object', () => {
-      if (!toolHandlers) {
-        expect(true).toBe(true);
-        return;
-      }
-      expect(typeof toolHandlers).toBe('object');
-      expect(toolHandlers).not.toBeNull();
+      expectIfAvailable(toolHandlers, () => {
+        expect(typeof toolHandlers).toBe('object');
+        expect(toolHandlers).not.toBeNull();
+      });
     });
 
     TOOL_NAMES.forEach(toolName => {
@@ -134,10 +99,8 @@ describe('MCP Tools Contract', () => {
       });
 
       it(`handler for ${toolName} MUST be a function`, () => {
-        if (!toolHandlers) return;
-        if (toolHandlers[toolName]) {
-          expect(typeof toolHandlers[toolName]).toBe('function');
-        }
+        if (!toolHandlers?.[toolName]) return;
+        expect(typeof toolHandlers[toolName]).toBe('function');
       });
     });
   });
@@ -147,14 +110,9 @@ describe('MCP Tools Contract', () => {
     let toolHandlers;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolDefinitions = mod.toolDefinitions;
-        toolHandlers = mod.toolHandlers;
-      } catch (e) {
-        toolDefinitions = null;
-        toolHandlers = null;
-      }
+      const mod = await importToolsModule();
+      toolDefinitions = mod?.toolDefinitions;
+      toolHandlers = mod?.toolHandlers;
     });
 
     it('every defined tool MUST have a handler', () => {
@@ -182,12 +140,8 @@ describe('MCP Tools Contract', () => {
     let toolDefinitions;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolDefinitions = mod.toolDefinitions;
-      } catch (e) {
-        toolDefinitions = null;
-      }
+      const mod = await importToolsModule();
+      toolDefinitions = mod?.toolDefinitions;
     });
 
     it('all tool names MUST use snake_case', () => {
@@ -209,12 +163,8 @@ describe('MCP Tools Contract', () => {
     let toolDefinitions;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolDefinitions = mod.toolDefinitions;
-      } catch (e) {
-        toolDefinitions = null;
-      }
+      const mod = await importToolsModule();
+      toolDefinitions = mod?.toolDefinitions;
     });
 
     it('tools with required params MUST have required array', () => {
@@ -244,17 +194,13 @@ describe('MCP Tools Contract', () => {
     let toolHandlers;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/mcp/tools/index.js');
-        toolHandlers = mod.toolHandlers;
-      } catch (e) {
-        toolHandlers = null;
-      }
+      const mod = await importToolsModule();
+      toolHandlers = mod?.toolHandlers;
     });
 
     TOOL_NAMES.forEach(toolName => {
       it(`${toolName} handler MUST be callable`, () => {
-        if (!toolHandlers || !toolHandlers[toolName]) return;
+        if (!toolHandlers?.[toolName]) return;
         expect(typeof toolHandlers[toolName]).toBe('function');
       });
     });

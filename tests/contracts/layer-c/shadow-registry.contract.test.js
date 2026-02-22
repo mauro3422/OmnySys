@@ -1,60 +1,25 @@
+/**
+ * @fileoverview Shadow Registry Contract Test
+ * 
+ * Tests de contrato para Shadow Registry.
+ * 
+ * @module tests/contracts/layer-c/shadow-registry.contract.test
+ */
+
 import { describe, it, expect, beforeAll } from 'vitest';
-
-const SHADOW_REGISTRY_EXPORTS = [
-  'ShadowRegistry',
-  'getShadowRegistry',
-  'resetShadowRegistry',
-  'ShadowStorage',
-  'IndexManager',
-  'ShadowCache',
-  'createFallbackDNA',
-  'extractOrCreateDNA',
-  'isValidDNA',
-  'getDNASummary',
-  'findSimilarShadows',
-  'findBestMatch',
-  'createGenesisAncestry',
-  'createInheritedAncestry',
-  'enrichWithAncestry',
-  'calculateVibrationScore',
-  'reconstructFullLineage',
-  'ShadowStatus'
-];
-
-const SHADOW_REGISTRY_METHODS = [
-  'initialize',
-  'createShadow',
-  'findSimilar',
-  'getShadow',
-  'markReplaced',
-  'getLineage',
-  'listShadows',
-  'enrichWithAncestry'
-];
-
-const LINEAGE_TRACKER_EXPORTS = [
-  'registerBirth',
-  'registerDeath',
-  'detectEvolutionType',
-  'calculateInheritance',
-  'propagateInheritance',
-  'calculateVibrationScore',
-  'generateShadowId',
-  'extractMetadata',
-  'reconstructLineage',
-  'compareLineage'
-];
+import {
+  SHADOW_REGISTRY_EXPORTS,
+  SHADOW_REGISTRY_METHODS,
+  LINEAGE_TRACKER_EXPORTS,
+  safeImport
+} from './helpers/index.js';
 
 describe('Shadow Registry Contract', () => {
   describe('ShadowRegistry Module Exports', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/shadow-registry/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/shadow-registry/index.js');
     });
 
     it('MUST be importable', () => {
@@ -77,12 +42,8 @@ describe('Shadow Registry Contract', () => {
     let ShadowRegistry;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/shadow-registry/index.js');
-        ShadowRegistry = mod.ShadowRegistry;
-      } catch (e) {
-        ShadowRegistry = null;
-      }
+      const mod = await safeImport('#layer-c/shadow-registry/index.js');
+      ShadowRegistry = mod?.ShadowRegistry;
     });
 
     it('MUST be a class', () => {
@@ -104,11 +65,7 @@ describe('Shadow Registry Contract', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/shadow-registry/lineage-tracker/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/shadow-registry/lineage-tracker/index.js');
     });
 
     it('MUST be importable', () => {
@@ -138,12 +95,8 @@ describe('Shadow Registry Contract', () => {
     let ShadowStatus;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/shadow-registry/index.js');
-        ShadowStatus = mod.ShadowStatus;
-      } catch (e) {
-        ShadowStatus = null;
-      }
+      const mod = await safeImport('#layer-c/shadow-registry/index.js');
+      ShadowStatus = mod?.ShadowStatus;
     });
 
     it('MUST be defined', () => {
@@ -151,24 +104,11 @@ describe('Shadow Registry Contract', () => {
       expect(ShadowStatus).toBeDefined();
     });
 
-    it('MUST have DELETED status', () => {
-      if (!ShadowStatus) return;
-      expect(ShadowStatus.DELETED).toBe('deleted');
-    });
-
-    it('MUST have REPLACED status', () => {
-      if (!ShadowStatus) return;
-      expect(ShadowStatus.REPLACED).toBe('replaced');
-    });
-
-    it('MUST have MERGED status', () => {
-      if (!ShadowStatus) return;
-      expect(ShadowStatus.MERGED).toBe('merged');
-    });
-
-    it('MUST have SPLIT status', () => {
-      if (!ShadowStatus) return;
-      expect(ShadowStatus.SPLIT).toBe('split');
+    ['DELETED', 'REPLACED', 'MERGED', 'SPLIT'].forEach(status => {
+      it(`MUST have ${status} status`, () => {
+        if (!ShadowStatus) return;
+        expect(ShadowStatus[status]).toBe(status.toLowerCase());
+      });
     });
   });
 
@@ -177,104 +117,48 @@ describe('Shadow Registry Contract', () => {
     let instance;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/shadow-registry/index.js');
-        ShadowRegistry = mod.ShadowRegistry;
+      const mod = await safeImport('#layer-c/shadow-registry/index.js');
+      ShadowRegistry = mod?.ShadowRegistry;
+      if (ShadowRegistry) {
         instance = new ShadowRegistry('/tmp/test');
-      } catch (e) {
-        ShadowRegistry = null;
-        instance = null;
       }
     });
 
-    it('initialize MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.initialize();
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('createShadow MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.createShadow({});
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('findSimilar MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.findSimilar({});
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('getShadow MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.getShadow('test-id');
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('markReplaced MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.markReplaced('shadow-id', 'replacement-id');
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('getLineage MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.getLineage('shadow-id');
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('listShadows MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.listShadows({});
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('enrichWithAncestry MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.enrichWithAncestry({});
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
+    ['initialize', 'createShadow', 'findSimilar', 'getShadow', 
+     'markReplaced', 'getLineage', 'listShadows', 'enrichWithAncestry'].forEach(method => {
+      it(`${method} MUST be async (return Promise)`, () => {
+        if (!instance) return;
+        let result;
+        if (method === 'getShadow' || method === 'getLineage' || method === 'markReplaced') {
+          result = instance[method]('test-id');
+        } else if (method === 'createShadow' || method === 'findSimilar' || method === 'listShadows' || method === 'enrichWithAncestry') {
+          result = instance[method]({});
+        } else {
+          result = instance[method]();
+        }
+        if (result?.catch) result.catch(() => {});
+        expect(result).toBeInstanceOf(Promise);
+      });
     });
   });
 
   describe('Return Type Patterns', () => {
-    let registerDeath;
-    let registerBirth;
-    let reconstructLineage;
+    let registerDeath, registerBirth, reconstructLineage;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/shadow-registry/lineage-tracker/index.js');
-        registerDeath = mod.registerDeath;
-        registerBirth = mod.registerBirth;
-        reconstructLineage = mod.reconstructLineage;
-      } catch (e) {}
+      const mod = await safeImport('#layer-c/shadow-registry/lineage-tracker/index.js');
+      registerDeath = mod?.registerDeath;
+      registerBirth = mod?.registerBirth;
+      reconstructLineage = mod?.reconstructLineage;
     });
 
-    it('registerDeath MUST return object with shadowId', () => {
+    it('registerDeath MUST return object with shadowId, originalId, status', () => {
       if (!registerDeath) return;
       const result = registerDeath({ id: 'test' });
       expect(result).toHaveProperty('shadowId');
-      expect(typeof result.shadowId).toBe('string');
-    });
-
-    it('registerDeath MUST return object with originalId', () => {
-      if (!registerDeath) return;
-      const result = registerDeath({ id: 'test' });
       expect(result).toHaveProperty('originalId');
-    });
-
-    it('registerDeath MUST return object with status', () => {
-      if (!registerDeath) return;
-      const result = registerDeath({ id: 'test' });
       expect(result).toHaveProperty('status');
+      expect(typeof result.shadowId).toBe('string');
     });
 
     it('registerBirth MUST return object with generation', () => {

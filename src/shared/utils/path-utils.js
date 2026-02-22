@@ -86,6 +86,27 @@ export function isScriptFile(filePath) {
  * @param {string} filePath
  * @returns {{ type: string, description: string, priority?: string, extractable?: boolean }}
  */
+/**
+ * 🆕 Función de prueba - valida si un path es absoluto
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+export function isAbsolutePath(filePath) {
+  if (!filePath) return false;
+  return filePath.startsWith('/') || /^[a-zA-Z]:/.test(filePath);
+}
+
+/**
+ * 🆕 Función de prueba - extrae la extensión del archivo
+ * @param {string} filePath
+ * @returns {string}
+ */
+export function getFileExtension(filePath) {
+  if (!filePath) return '';
+  const lastDot = filePath.lastIndexOf('.');
+  return lastDot > 0 ? filePath.slice(lastDot) : '';
+}
+
 export function classifyFile(filePath) {
   if (!filePath) {
     return { type: 'unknown', description: 'Unknown file type' };

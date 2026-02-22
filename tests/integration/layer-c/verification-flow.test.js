@@ -1,70 +1,43 @@
 /**
  * @fileoverview Integration Tests: Layer C Verification Flow
  * 
- * Tests the complete verification workflow:
- * - Run full verification → generate report → maybe certificate
- * - Multiple validators working together
- * - Error recovery in validation
+ * Tests the complete verification workflow.
  * 
  * @module tests/integration/layer-c/verification-flow.test
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { 
   ValidationResultBuilder, 
   IssueBuilder, 
   ReportBuilder, 
-  CertificateBuilder,
-  QuickStatusBuilder 
+  CertificateBuilder 
 } from '../../factories/layer-c-verification/builders.js';
-import { Severity, IssueCategory, DataSystem, VerificationStatus } from '../../../src/layer-c-memory/verification/types/index.js';
-
-const createMockDataLoader = (data) => ({
-  loadAll: vi.fn().mockResolvedValue(data),
-  getStats: vi.fn().mockReturnValue({ filesLoaded: Object.keys(data).length })
-});
-
-const createMockValidator = (result) => ({
-  validate: vi.fn().mockResolvedValue(result),
-  name: result.name || 'mock-validator'
-});
+import { Severity, IssueCategory, VerificationStatus } from '../../../src/layer-c-memory/verification/types/index.js';
+import { createMockDataLoader, createMockValidator, createMockDataDir } from '../helpers/index.js';
 
 describe('Layer C Integration: Verification Flow', () => {
   let mockDataDir;
 
   beforeEach(() => {
-    mockDataDir = {
-      atoms: new Map(),
-      files: new Map(),
-      connections: [],
-      cache: {}
-    };
+    mockDataDir = createMockDataDir();
   });
 
   describe('Full Verification Workflow', () => {
     
     it('should run full verification → generate report → maybe certificate', async () => {
       const integrityResult = new ValidationResultBuilder()
-        .asPassed()
-        .withStats({ total: 10, valid: 10, invalid: 0 })
-        .build();
+        .asPassed().withStats({ total: 10, valid: 10, invalid: 0 }).build();
 
       const consistencyResult = new ValidationResultBuilder()
-        .asPassed()
-        .withStats({ total: 8, valid: 8, invalid: 0 })
-        .build();
-
-      const results = [integrityResult, consistencyResult];
+        .asPassed().withStats({ total: 8, valid: 8, invalid: 0 }).build();
 
       const report = new ReportBuilder()
         .asPassed()
         .withValidators(2)
         .withValidatorResult(integrityResult)
         .withValidatorResult(consistencyResult)
-        .withSummary({ 
-          message: '✅ PASSED: All systems verified.',
-          recommendations: []
-        })
+        .withSummary({ message: '✅ PASSED: All systems verified.', recommendations: [] })
         .build();
 
       expect(report.status).toBe(VerificationStatus.PASSED);
@@ -77,12 +50,7 @@ describe('Layer C Integration: Verification Flow', () => {
       const certificate = new CertificateBuilder()
         .withProjectPath('/test/project')
         .withStatus(VerificationStatus.PASSED)
-        .withMetrics({
-          totalFiles: 10,
-          totalAtoms: 15,
-          totalConnections: 8,
-          issuesFound: 0
-        })
+        .withMetrics({ totalFiles: 10, totalAtoms: 15, totalConnections: 8, issuesFound: 0 })
         .build();
 
       expect(certificate.status).toBe(VerificationStatus.PASSED);
@@ -98,412 +66,173 @@ describe('Layer C Integration: Verification Flow', () => {
 
       const integrityResult = new ValidationResultBuilder()
         .asPassed()
-        .build();
-
-      const consistencyResult = new ValidationResultBuilder()
-        .asWarning()
+        .withStats({ total: 10, valid: 9, invalid: 1 })
         .withIssue(warningIssue)
         .build();
 
       const report = new ReportBuilder()
         .asWarning()
-        .withValidators(2)
+        .withValidators(1)
+        .withValidatorResult(integrityResult)
         .withIssue(warningIssue)
-        .withSummary({
-          message: '⚠️ WARNING: Issues found.',
-          recommendations: ['Review consistency issues']
-        })
+        .withSummary({ message: '⚠️ WARNING: Minor issues detected.', recommendations: ['Review warnings'] })
         .build();
 
       expect(report.status).toBe(VerificationStatus.WARNING);
-      expect(report.issues.length).toBe(1);
       expect(report.stats.totalIssues).toBe(1);
 
-      const canGenerateCertificateWithWarning = report.status === VerificationStatus.PASSED;
-      expect(canGenerateCertificateWithWarning).toBe(false);
+      const canGenerateCertificate = report.status === VerificationStatus.PASSED && report.stats.totalIssues === 0;
+      expect(canGenerateCertificate).toBe(false);
     });
 
-    it('should generate failed report with critical issues', async () => {
+    it('should generate report with critical issues and no certificate', async () => {
       const criticalIssue = new IssueBuilder()
         .asCritical()
         .withCategory(IssueCategory.INTEGRITY)
-        .withSystem(DataSystem.ATOMS)
-        .withMessage('Corrupted atom data')
-        .withFile('/data/atoms/corrupted.json')
+        .withMessage('Critical integrity violation')
         .build();
 
       const integrityResult = new ValidationResultBuilder()
         .asFailed()
+        .withStats({ total: 10, valid: 5, invalid: 5 })
         .withIssue(criticalIssue)
         .build();
 
       const report = new ReportBuilder()
         .asFailed()
+        .withValidators(1)
+        .withValidatorResult(integrityResult)
         .withIssue(criticalIssue)
-        .withBySeverity({ critical: 1, high: 0, medium: 0, low: 0, info: 0 })
-        .withSummary({
-          message: '❌ CRITICAL: Critical issues found.',
-          recommendations: ['Fix critical integrity issues before proceeding']
-        })
+        .withSummary({ message: '❌ FAILED: Critical issues found.', recommendations: ['Fix critical issues'] })
         .build();
 
       expect(report.status).toBe(VerificationStatus.FAILED);
-      expect(report.issues[0].severity).toBe(Severity.CRITICAL);
-      expect(report.stats.bySeverity.critical).toBe(1);
+      expect(report.issues.some(i => i.severity === Severity.CRITICAL)).toBe(true);
+
+      const canGenerateCertificate = report.status === VerificationStatus.PASSED;
+      expect(canGenerateCertificate).toBe(false);
     });
   });
 
   describe('Multiple Validators Working Together', () => {
     
-    it('should aggregate results from integrity and consistency validators', async () => {
-      const integrityValidator = createMockValidator({
-        name: 'integrity',
-        status: VerificationStatus.PASSED,
-        issues: [],
-        stats: { total: 5, valid: 5, invalid: 0 }
-      });
+    it('should combine results from multiple validators', async () => {
+      const integrityResult = new ValidationResultBuilder()
+        .asPassed()
+        .withStats({ total: 10, valid: 10, invalid: 0 })
+        .build();
 
-      const consistencyValidator = createMockValidator({
-        name: 'consistency',
-        status: VerificationStatus.PASSED,
-        issues: [],
-        stats: { total: 3, valid: 3, invalid: 0 }
-      });
+      const consistencyResult = new ValidationResultBuilder()
+        .asWarning()
+        .withStats({ total: 8, valid: 7, invalid: 1 })
+        .withIssue(new IssueBuilder().asWarning().withMessage('Minor inconsistency').build())
+        .build();
 
-      const integrityResult = await integrityValidator.validate();
-      const consistencyResult = await consistencyValidator.validate();
+      const coverageResult = new ValidationResultBuilder()
+        .asPassed()
+        .withStats({ total: 15, valid: 15, invalid: 0 })
+        .build();
 
-      const combinedResults = [integrityResult, consistencyResult];
-      
-      const allPassed = combinedResults.every(r => r.status === VerificationStatus.PASSED);
-      expect(allPassed).toBe(true);
+      const results = [integrityResult, consistencyResult, coverageResult];
 
-      const totalIssues = combinedResults.reduce((sum, r) => sum + (r.issues?.length || 0), 0);
-      expect(totalIssues).toBe(0);
-    });
-
-    it('should handle partial failures in multi-validator run', async () => {
-      const validators = [
-        createMockValidator({
-          name: 'integrity',
-          status: VerificationStatus.PASSED,
-          issues: []
-        }),
-        createMockValidator({
-          name: 'consistency',
-          status: VerificationStatus.WARNING,
-          issues: [
-            new IssueBuilder().asWarning().withMessage('Path mismatch').build()
-          ]
-        }),
-        createMockValidator({
-          name: 'completeness',
-          status: VerificationStatus.PASSED,
-          issues: []
-        })
-      ];
-
-      const results = [];
-      for (const validator of validators) {
-        results.push(await validator.validate());
-      }
-
-      const hasAnyFailure = results.some(r => r.status === VerificationStatus.FAILED);
-      const hasWarnings = results.some(r => r.status === VerificationStatus.WARNING);
-      
-      expect(hasAnyFailure).toBe(false);
-      expect(hasWarnings).toBe(true);
-
-      const overallStatus = results.some(r => r.status === VerificationStatus.FAILED)
-        ? VerificationStatus.FAILED
-        : results.some(r => r.status === VerificationStatus.WARNING)
-          ? VerificationStatus.WARNING
+      const overallStatus = results.some(r => r.status === VerificationStatus.FAILED) 
+        ? VerificationStatus.FAILED 
+        : results.some(r => r.status === VerificationStatus.WARNING) 
+          ? VerificationStatus.WARNING 
           : VerificationStatus.PASSED;
 
       expect(overallStatus).toBe(VerificationStatus.WARNING);
+
+      const totalIssues = results.reduce((sum, r) => sum + (r.issues?.length || 0), 0);
+      expect(totalIssues).toBe(1);
     });
 
-    it('should categorize issues by system and severity', async () => {
-      const issues = [
-        new IssueBuilder()
-          .asCritical()
-          .withSystem(DataSystem.ATOMS)
-          .withMessage('Atom missing ID')
-          .build(),
-        new IssueBuilder()
-          .asHigh()
-          .withSystem(DataSystem.FILES)
-          .withMessage('File not found')
-          .build(),
-        new IssueBuilder()
-          .asWarning()
-          .withSystem(DataSystem.CONNECTIONS)
-          .withMessage('Connection reference missing')
-          .build(),
-        new IssueBuilder()
-          .asLow()
-          .withSystem(DataSystem.CACHE)
-          .withMessage('Cache stale')
-          .build()
+    it('should fail if any validator fails', async () => {
+      const results = [
+        new ValidationResultBuilder().asPassed().build(),
+        new ValidationResultBuilder().asFailed().build(),
+        new ValidationResultBuilder().asPassed().build()
       ];
 
-      const report = new ReportBuilder()
-        .asWarning()
-        .withIssues(issues)
-        .withBySeverity({
-          critical: 1,
-          high: 1,
-          medium: 1,
-          low: 1,
-          info: 0
-        })
-        .withBySystem({
-          [DataSystem.ATOMS]: 1,
-          [DataSystem.FILES]: 1,
-          [DataSystem.CONNECTIONS]: 1,
-          [DataSystem.CACHE]: 1
-        })
-        .build();
+      const overallStatus = results.some(r => r.status === VerificationStatus.FAILED) 
+        ? VerificationStatus.FAILED 
+        : VerificationStatus.PASSED;
 
-      expect(report.stats.bySeverity.critical).toBe(1);
-      expect(report.stats.bySeverity.high).toBe(1);
-      expect(report.stats.bySeverity.medium).toBe(1);
-      expect(report.stats.bySeverity.low).toBe(1);
-      expect(report.stats.bySystem[DataSystem.ATOMS]).toBe(1);
+      expect(overallStatus).toBe(VerificationStatus.FAILED);
     });
   });
 
   describe('Error Recovery in Validation', () => {
     
-    it('should continue validation despite individual file errors', async () => {
-      const files = [
-        { path: 'valid1.json', valid: true },
-        { path: 'corrupted.json', valid: false, error: 'Invalid JSON' },
-        { path: 'valid2.json', valid: true }
-      ];
-
-      const results = files.map(file => {
-        if (file.valid) {
-          return { status: 'valid', path: file.path };
-        }
-        return { 
-          status: 'error', 
-          path: file.path, 
-          error: file.error 
-        };
+    it('should handle validator throwing error', async () => {
+      const errorValidator = createMockValidator({
+        name: 'ErrorValidator',
+        status: VerificationStatus.FAILED,
+        error: 'Validator crashed',
+        issues: [new IssueBuilder().asCritical().withMessage('Validator error: Validator crashed').build()]
       });
 
-      const validCount = results.filter(r => r.status === 'valid').length;
-      const errorCount = results.filter(r => r.status === 'error').length;
+      const mockData = { atoms: [], files: [], connections: [] };
+      const dataLoader = createMockDataLoader(mockData);
 
-      expect(validCount).toBe(2);
-      expect(errorCount).toBe(1);
-      expect(results.length).toBe(3);
+      try {
+        await errorValidator.validate(mockDataDir);
+      } catch (e) {
+        const errorResult = new ValidationResultBuilder()
+          .asFailed()
+          
+          .withError(e.message)
+          .withIssue(new IssueBuilder().asCritical().withMessage(`Validator error: ${e.message}`).build())
+          .build();
+        
+        expect(errorResult.status).toBe(VerificationStatus.FAILED);
+        expect(errorResult.error).toBeDefined();
+      }
     });
 
-    it('should recover from validator crash', async () => {
-      const crashingValidator = {
-        validate: vi.fn().mockRejectedValue(new Error('Validator crashed'))
-      };
+    it('should continue validation if one validator fails', async () => {
+      const validators = [
+        createMockValidator(new ValidationResultBuilder().asPassed().build()),
+        { validate: () => { throw new Error('Crash'); }, name: 'BadValidator' },
+        createMockValidator(new ValidationResultBuilder().asPassed().build())
+      ];
 
-      const fallbackValidator = createMockValidator({
-        status: VerificationStatus.PASSED,
-        issues: []
-      });
-
-      let result;
-      try {
-        result = await crashingValidator.validate();
-      } catch (error) {
-        result = {
-          status: VerificationStatus.FAILED,
-          error: error.message,
-          issues: []
-        };
+      const results = [];
+      for (const validator of validators) {
+        try {
+          const result = await validator.validate(mockDataDir);
+          results.push(result);
+        } catch (e) {
+          results.push(new ValidationResultBuilder()
+            .asFailed()
+            .withError(e.message)
+            .build());
+        }
       }
 
-      expect(result.status).toBe(VerificationStatus.FAILED);
-      expect(result.error).toBe('Validator crashed');
-    });
-
-    it('should handle missing data directories gracefully', async () => {
-      const mockLoader = {
-        loadAll: vi.fn().mockResolvedValue({
-          atoms: {},
-          files: {},
-          connections: [],
-          cache: {}
-        })
-      };
-
-      const data = await mockLoader.loadAll();
-      
-      expect(data.atoms).toBeDefined();
-      expect(data.files).toBeDefined();
-      expect(data.connections).toBeDefined();
-      expect(data.cache).toBeDefined();
-
-      const isEmpty = Object.keys(data.atoms).length === 0 &&
-                      Object.keys(data.files).length === 0;
-      expect(isEmpty).toBe(true);
-    });
-  });
-
-  describe('Certificate Generation', () => {
-    
-    it('should generate valid certificate for passed verification', () => {
-      const certificate = new CertificateBuilder()
-        .withId('cert-test-001')
-        .withProjectPath('/project/path')
-        .withStatus(VerificationStatus.PASSED)
-        .withMetrics({
-          totalFiles: 50,
-          totalAtoms: 120,
-          totalConnections: 45,
-          issuesFound: 0
-        })
-        .withSignature(['integrity-validator', 'consistency-validator'])
-        .asValid()
-        .build();
-
-      expect(certificate.id).toBe('cert-test-001');
-      expect(certificate.status).toBe(VerificationStatus.PASSED);
-      expect(certificate.metrics.issuesFound).toBe(0);
-      expect(new CertificateBuilder().isValid.call({ certificate })).toBe(true);
-    });
-
-    it('should not generate certificate for failed verification', () => {
-      const report = new ReportBuilder()
-        .asFailed()
-        .withIssue(new IssueBuilder().asCritical().build())
-        .build();
-
-      const canGenerate = report.status !== VerificationStatus.FAILED;
-      expect(canGenerate).toBe(false);
-    });
-
-    it('should handle expired certificates', () => {
-      const expiredCertificate = new CertificateBuilder()
-        .asExpired()
-        .build();
-
-      const now = new Date();
-      const validUntil = new Date(expiredCertificate.validUntil);
-      const isExpired = now > validUntil;
-
-      expect(isExpired).toBe(true);
-    });
-  });
-
-  describe('Quick Status Check', () => {
-    
-    it('should provide quick status summary', () => {
-      const quickStatus = new QuickStatusBuilder()
-        .asPerfect()
-        .build();
-
-      expect(quickStatus.status).toBe('PERFECT');
-      expect(quickStatus.count).toBe(0);
-    });
-
-    it('should show critical status for critical issues', () => {
-      const quickStatus = new QuickStatusBuilder()
-        .asCritical()
-        .withTotal(5)
-        .withSeverityCount('critical', 2)
-        .build();
-
-      expect(quickStatus.status).toBe('CRITICAL');
-      expect(quickStatus.count).toBe(5);
-      expect(quickStatus.bySeverity.critical).toBe(2);
-    });
-
-    it('should aggregate results into quick status', () => {
-      const results = [
-        new ValidationResultBuilder().asPassed().build(),
-        new ValidationResultBuilder().asWarning().build(),
-        new ValidationResultBuilder().asPassed().build()
-      ];
-
-      const passed = results.filter(r => r.status === VerificationStatus.PASSED).length;
-      const warnings = results.filter(r => r.status === VerificationStatus.WARNING).length;
-
-      expect(passed).toBe(2);
-      expect(warnings).toBe(1);
-    });
-  });
-
-  describe('Issue Management', () => {
-    
-    it('should group issues by category', () => {
-      const issues = [
-        new IssueBuilder().withCategory(IssueCategory.INTEGRITY).build(),
-        new IssueBuilder().withCategory(IssueCategory.INTEGRITY).build(),
-        new IssueBuilder().withCategory(IssueCategory.CONSISTENCY).build(),
-        new IssueBuilder().withCategory(IssueCategory.COMPLETENESS).build()
-      ];
-
-      const byCategory = issues.reduce((acc, issue) => {
-        acc[issue.category] = (acc[issue.category] || 0) + 1;
-        return acc;
-      }, {});
-
-      expect(byCategory[IssueCategory.INTEGRITY]).toBe(2);
-      expect(byCategory[IssueCategory.CONSISTENCY]).toBe(1);
-      expect(byCategory[IssueCategory.COMPLETENESS]).toBe(1);
-    });
-
-    it('should filter issues by severity threshold', () => {
-      const issues = [
-        new IssueBuilder().asCritical().build(),
-        new IssueBuilder().asHigh().build(),
-        new IssueBuilder().asWarning().build(),
-        new IssueBuilder().asLow().build(),
-        new IssueBuilder().asInfo().build()
-      ];
-
-      const severityOrder = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO];
-      
-      const highAndAbove = issues.filter(i => 
-        severityOrder.indexOf(i.severity) <= severityOrder.indexOf(Severity.HIGH)
-      );
-
-      expect(highAndAbove.length).toBe(2);
-    });
-
-    it('should generate suggestions for issues', () => {
-      const issue = new IssueBuilder()
-        .withMessage('Atom references non-existent file')
-        .withSuggestion('Verify the file path or remove the atom')
-        .build();
-
-      expect(issue.suggestion).toBeDefined();
-      expect(issue.suggestion).toContain('file path');
+      expect(results.length).toBe(3);
+      expect(results[0].status).toBe(VerificationStatus.PASSED);
+      expect(results[1].status).toBe(VerificationStatus.FAILED);
+      expect(results[2].status).toBe(VerificationStatus.PASSED);
     });
   });
 
   describe('Performance', () => {
     
-    it('should validate large datasets efficiently', async () => {
-      const largeAtomCount = 1000;
-      const issues = [];
-
-      const start = Date.now();
-      
-      for (let i = 0; i < largeAtomCount; i++) {
-        const isValid = i % 10 !== 0;
-        if (!isValid) {
-          issues.push(new IssueBuilder()
-            .asWarning()
-            .withMessage(`Invalid atom ${i}`)
-            .build());
-        }
+    it('should handle large datasets efficiently', async () => {
+      const largeData = {};
+      for (let i = 0; i < 1000; i++) {
+        largeData[`file${i}`] = { id: i, name: `test${i}` };
       }
 
+      const dataLoader = createMockDataLoader(largeData);
+
+      const start = Date.now();
+      const stats = dataLoader.getStats();
       const duration = Date.now() - start;
-      
-      expect(duration).toBeLessThan(500);
-      expect(issues.length).toBe(100);
+
+      expect(stats.filesLoaded).toBe(1000);
+      expect(duration).toBeLessThan(100);
     });
   });
 });

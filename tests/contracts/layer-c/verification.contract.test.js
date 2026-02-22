@@ -1,71 +1,27 @@
+/**
+ * @fileoverview Verification Contract Test
+ * 
+ * Tests de contrato para Verification system.
+ * 
+ * @module tests/contracts/layer-c/verification.contract.test
+ */
+
 import { describe, it, expect, beforeAll } from 'vitest';
-
-const ORCHESTRATOR_EXPORTS = [
-  'VerificationOrchestrator',
-  'generateReport',
-  'generateSummary',
-  'groupIssuesByCategory',
-  'calculateIssueStats',
-  'generateRecommendations',
-  'prioritizeRecommendations',
-  'filterRecommendationsByPriority',
-  'generateCertificate',
-  'generateCertificateId',
-  'calculateValidity',
-  'calculateHash',
-  'isCertificateValid',
-  'canGenerateCertificate',
-  'getQuickStatus',
-  'determineStatus',
-  'countBySeverity',
-  'hasCriticalIssues',
-  'hasHighSeverityIssues',
-  'ValidatorRegistry',
-  'globalValidatorRegistry',
-  'registerStandardValidators'
-];
-
-const ORCHESTRATOR_METHODS = [
-  'verify',
-  'registerValidators',
-  'runValidations',
-  'maybeGenerateCertificate',
-  'getQuickStatus'
-];
-
-const VERIFICATION_TYPES_EXPORTS = [
-  'Severity',
-  'IssueCategory',
-  'DataSystem',
-  'VerificationStatus'
-];
-
-const REPORT_GENERATOR_EXPORTS = [
-  'generateReport',
-  'generateSummary',
-  'groupIssuesByCategory',
-  'calculateIssueStats'
-];
-
-const CERTIFICATE_GENERATOR_EXPORTS = [
-  'generateCertificate',
-  'generateCertificateId',
-  'calculateValidity',
-  'calculateHash',
-  'isCertificateValid',
-  'canGenerateCertificate'
-];
+import {
+  ORCHESTRATOR_EXPORTS,
+  ORCHESTRATOR_METHODS,
+  VERIFICATION_TYPES_EXPORTS,
+  REPORT_GENERATOR_EXPORTS,
+  CERTIFICATE_GENERATOR_EXPORTS,
+  safeImport
+} from './helpers/index.js';
 
 describe('Verification Contract', () => {
   describe('VerificationOrchestrator Module Exports', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/verification/orchestrator/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/verification/orchestrator/index.js');
     });
 
     it('MUST be importable', () => {
@@ -88,12 +44,8 @@ describe('Verification Contract', () => {
     let VerificationOrchestrator;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/verification/orchestrator/index.js');
-        VerificationOrchestrator = mod.VerificationOrchestrator;
-      } catch (e) {
-        VerificationOrchestrator = null;
-      }
+      const mod = await safeImport('#layer-c/verification/orchestrator/index.js');
+      VerificationOrchestrator = mod?.VerificationOrchestrator;
     });
 
     it('MUST be a class', () => {
@@ -115,11 +67,7 @@ describe('Verification Contract', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/verification/types/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/verification/types/index.js');
     });
 
     it('MUST be importable', () => {
@@ -142,32 +90,15 @@ describe('Verification Contract', () => {
     let VerificationStatus;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/verification/types/index.js');
-        VerificationStatus = mod.VerificationStatus;
-      } catch (e) {
-        VerificationStatus = null;
-      }
+      const mod = await safeImport('#layer-c/verification/types/index.js');
+      VerificationStatus = mod?.VerificationStatus;
     });
 
-    it('MUST have PASSED status', () => {
-      if (!VerificationStatus) return;
-      expect(VerificationStatus.PASSED).toBe('passed');
-    });
-
-    it('MUST have FAILED status', () => {
-      if (!VerificationStatus) return;
-      expect(VerificationStatus.FAILED).toBe('failed');
-    });
-
-    it('MUST have WARNING status', () => {
-      if (!VerificationStatus) return;
-      expect(VerificationStatus.WARNING).toBe('warning');
-    });
-
-    it('MUST have SKIPPED status', () => {
-      if (!VerificationStatus) return;
-      expect(VerificationStatus.SKIPPED).toBe('skipped');
+    ['PASSED', 'FAILED', 'WARNING', 'SKIPPED'].forEach(status => {
+      it(`MUST have ${status} status`, () => {
+        if (!VerificationStatus) return;
+        expect(VerificationStatus[status]).toBe(status.toLowerCase());
+      });
     });
   });
 
@@ -175,37 +106,15 @@ describe('Verification Contract', () => {
     let Severity;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/verification/types/index.js');
-        Severity = mod.Severity;
-      } catch (e) {
-        Severity = null;
-      }
+      const mod = await safeImport('#layer-c/verification/types/index.js');
+      Severity = mod?.Severity;
     });
 
-    it('MUST have CRITICAL severity', () => {
-      if (!Severity) return;
-      expect(Severity.CRITICAL).toBe('critical');
-    });
-
-    it('MUST have HIGH severity', () => {
-      if (!Severity) return;
-      expect(Severity.HIGH).toBe('high');
-    });
-
-    it('MUST have MEDIUM severity', () => {
-      if (!Severity) return;
-      expect(Severity.MEDIUM).toBe('medium');
-    });
-
-    it('MUST have LOW severity', () => {
-      if (!Severity) return;
-      expect(Severity.LOW).toBe('low');
-    });
-
-    it('MUST have INFO severity', () => {
-      if (!Severity) return;
-      expect(Severity.INFO).toBe('info');
+    ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].forEach(level => {
+      it(`MUST have ${level} severity`, () => {
+        if (!Severity) return;
+        expect(Severity[level]).toBe(level.toLowerCase());
+      });
     });
   });
 
@@ -213,11 +122,7 @@ describe('Verification Contract', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/verification/orchestrator/reporters/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/verification/orchestrator/reporters/index.js');
     });
 
     it('MUST be importable', () => {
@@ -247,11 +152,7 @@ describe('Verification Contract', () => {
     let mod;
 
     beforeAll(async () => {
-      try {
-        mod = await import('#layer-c/verification/orchestrator/certificates/index.js');
-      } catch (e) {
-        mod = null;
-      }
+      mod = await safeImport('#layer-c/verification/orchestrator/certificates/index.js');
     });
 
     it('MUST be importable', () => {
@@ -278,99 +179,65 @@ describe('Verification Contract', () => {
   });
 
   describe('Validators', () => {
-    let IntegrityValidator;
-    let ConsistencyValidator;
+    let IntegrityValidator, ConsistencyValidator;
 
     beforeAll(async () => {
-      try {
-        const intMod = await import('#layer-c/verification/validators/integrity-validator.js');
-        IntegrityValidator = intMod.IntegrityValidator;
-      } catch (e) {}
+      const intMod = await safeImport('#layer-c/verification/validators/integrity-validator.js');
+      IntegrityValidator = intMod?.IntegrityValidator;
 
-      try {
-        const conMod = await import('#layer-c/verification/validators/consistency-validator.js');
-        ConsistencyValidator = conMod.ConsistencyValidator;
-      } catch (e) {}
+      const conMod = await safeImport('#layer-c/verification/validators/consistency-validator.js');
+      ConsistencyValidator = conMod?.ConsistencyValidator;
     });
 
-    describe('IntegrityValidator', () => {
-      it('MUST be a class', () => {
-        if (!IntegrityValidator) return;
-        expect(typeof IntegrityValidator).toBe('function');
-      });
+    ['IntegrityValidator', 'ConsistencyValidator'].forEach(validatorName => {
+      const Validator = validatorName === 'IntegrityValidator' ? IntegrityValidator : ConsistencyValidator;
 
-      it('MUST have validate method', () => {
-        if (!IntegrityValidator) return;
-        const instance = new IntegrityValidator('/tmp/test');
-        expect(instance.validate).toBeDefined();
-        expect(typeof instance.validate).toBe('function');
-      });
+      describe(validatorName, () => {
+        it('MUST be a class', () => {
+          if (!Validator) return;
+          expect(typeof Validator).toBe('function');
+        });
 
-      it('validate MUST be async', () => {
-        if (!IntegrityValidator) return;
-        const instance = new IntegrityValidator('/tmp/test');
-        const result = instance.validate();
-        expect(result).toBeInstanceOf(Promise);
-      });
-    });
+        it('MUST have validate method', () => {
+          if (!Validator) return;
+          const instance = new Validator('/tmp/test');
+          expect(instance.validate).toBeDefined();
+          expect(typeof instance.validate).toBe('function');
+        });
 
-    describe('ConsistencyValidator', () => {
-      it('MUST be a class', () => {
-        if (!ConsistencyValidator) return;
-        expect(typeof ConsistencyValidator).toBe('function');
-      });
-
-      it('MUST have validate method', () => {
-        if (!ConsistencyValidator) return;
-        const instance = new ConsistencyValidator('/tmp/test');
-        expect(instance.validate).toBeDefined();
-        expect(typeof instance.validate).toBe('function');
-      });
-
-      it('validate MUST be async', () => {
-        if (!ConsistencyValidator) return;
-        const instance = new ConsistencyValidator('/tmp/test');
-        const result = instance.validate();
-        expect(result).toBeInstanceOf(Promise);
+        it('validate MUST be async', () => {
+          if (!Validator) return;
+          const instance = new Validator('/tmp/test');
+          const result = instance.validate();
+          expect(result).toBeInstanceOf(Promise);
+        });
       });
     });
   });
 
   describe('Function Signatures', () => {
-    let VerificationOrchestrator;
-    let instance;
+    let VerificationOrchestrator, instance;
 
     beforeAll(async () => {
-      try {
-        const mod = await import('#layer-c/verification/orchestrator/index.js');
-        VerificationOrchestrator = mod.VerificationOrchestrator;
+      const mod = await safeImport('#layer-c/verification/orchestrator/index.js');
+      VerificationOrchestrator = mod?.VerificationOrchestrator;
+      if (VerificationOrchestrator) {
         instance = new VerificationOrchestrator('/tmp/test');
-      } catch (e) {
-        VerificationOrchestrator = null;
-        instance = null;
       }
     });
 
-    it('verify MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.verify();
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('runValidations MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const result = instance.runValidations();
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
-    });
-
-    it('maybeGenerateCertificate MUST be async (return Promise)', () => {
-      if (!instance) return;
-      const minimalReport = { status: 'passed', issues: [], stats: [] };
-      const result = instance.maybeGenerateCertificate(minimalReport);
-      result.catch(() => {});
-      expect(result).toBeInstanceOf(Promise);
+    ['verify', 'runValidations', 'maybeGenerateCertificate'].forEach(method => {
+      it(`${method} MUST be async (return Promise)`, () => {
+        if (!instance) return;
+        let result;
+        if (method === 'maybeGenerateCertificate') {
+          result = instance[method]({ status: 'passed', issues: [], stats: [] });
+        } else {
+          result = instance[method]();
+        }
+        if (result?.catch) result.catch(() => {});
+        expect(result).toBeInstanceOf(Promise);
+      });
     });
 
     it('getQuickStatus MUST return object', () => {

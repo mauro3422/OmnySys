@@ -2,6 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
+const DATA_DIR = '.omnysysdata';
+
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { resolveImport, getResolutionConfig } from '../../layer-a-static/resolver.js';
 import { saveFileAnalysis as persistFileAnalysis } from '#layer-c/storage/index.js';
@@ -105,6 +107,54 @@ async function loadDependencySources(resolvedImports, filePath, parsedSource, ro
   return fileSourceCode;
 }
 
+/**
+ * 🧹 Limpia archivos JSON de átomos que ya no existen en el código fuente
+ * 
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta relativa del archivo
+ * @param {Set} validAtomNames - Set con los nombres de átomos válidos (que existen en el código)
+ */
+async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
+  try {
+    const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+    const fileDir = path.dirname(filePath);
+    const fileName = path.basename(filePath, path.extname(filePath));
+    const targetDir = path.join(atomsDir, fileDir, fileName);
+    
+    // Verificar si el directorio existe
+    try {
+      await fs.access(targetDir);
+    } catch {
+      return; // Directorio no existe, nada que limpiar
+    }
+    
+    // Leer todos los archivos JSON en el directorio
+    const files = await fs.readdir(targetDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+    
+    let cleanedCount = 0;
+    
+    for (const jsonFile of jsonFiles) {
+      // Extraer el nombre del átomo del nombre del archivo (quitar .json)
+      const atomName = jsonFile.slice(0, -5);
+      
+      // Si el átomo no está en la lista de válidos, eliminar el archivo
+      if (!validAtomNames.has(atomName)) {
+        const fileToDelete = path.join(targetDir, jsonFile);
+        await fs.unlink(fileToDelete);
+        cleanedCount++;
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`🧹 Eliminados ${cleanedCount} átomos obsoletos de ${filePath}`);
+    }
+  } catch (error) {
+    // No propagar errores de limpieza - no es crítico
+    console.warn(`⚠️ Error limpiando átomos obsoletos de ${filePath}:`, error.message);
+  }
+}
+
 function buildFileResult(filePath, parsed, resolvedImports, staticConnections, advancedConnections, metadata, moleculeAtoms, contentHash) {
   return {
     filePath,
@@ -180,6 +230,9 @@ export async function analyzeFile(filePath, fullPath) {
   for (const atom of moleculeAtoms) {
     await saveAtom(this.rootPath, filePath, atom.name, atom);
   }
+
+  // 🧹 LIMPIEZA: Eliminar archivos JSON de átomos que ya no existen en el código
+  await cleanupOrphanedAtomFiles(this.rootPath, filePath, newAtomNames);
 
   await saveMolecule(this.rootPath, filePath, {
     filePath, type: 'molecule',

@@ -84,6 +84,7 @@ function spawnWorker() {
 
   child = spawn(process.execPath, [...execArgv, workerPath, projectPath], {
     stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    windowsHide: true,
     env: {
       ...process.env,
       OMNYSYS_LOGS_SPAWNED: '1'  // Evitar que el worker lance otra terminal de logs
@@ -179,22 +180,30 @@ process.on('SIGTERM', () => {
 });
 
 // ─── Debug terminal (flag: --debug-terminal) ────────────────────────────────
-// Agrega "--debug-terminal" a los args en .mcp.json para ver logs en una
-// ventana de terminal mientras debugueás. Quitalo cuando no lo necesites.
-const debugTerminal = process.argv.includes('--debug-terminal');
+// Agrega "--debug-terminal" a los args o setea OMNYSYS_DEBUG_TERMINAL=1
+// en el environment para ver logs en una ventana de terminal.
+const debugTerminal = process.argv.includes('--debug-terminal') || process.env.OMNYSYS_DEBUG_TERMINAL === '1';
 if (debugTerminal) {
+  log('🔍 Debug terminal flag detected, opening window...');
   const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
   if (fs.existsSync(batPath)) {
+    log(`📺 Opening debug terminal via ${batPath}`);
     const t = spawn('cmd.exe', ['/c', 'start', batPath], { detached: true, stdio: 'ignore' });
     t.unref();
     log('📺 Debug terminal spawned (mcp-logs.bat)');
   } else {
     // Fallback: PowerShell con tail del log file
+    log(`📺 Opening debug terminal via PowerShell (${logFile})`);
     const t = spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command',
       `Get-Content -Path '${logFile}' -Wait -Tail 50`], { detached: true, stdio: 'ignore' });
+    t.on('error', (err) => {
+      log(`❌ Failed to spawn debug terminal: ${err.message}`);
+    });
     t.unref();
     log('📺 Debug terminal spawned (PowerShell fallback)');
   }
+} else {
+  log('ℹ️ Debug terminal flag not detected, running in background mode');
 }
 
 log(`OmnySys MCP Proxy started. Project: ${projectPath}`);

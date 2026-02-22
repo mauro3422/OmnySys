@@ -5,10 +5,10 @@
 
 import { logger } from '#utils/logger.js';
 
-// atom-extractor.js lives in: src/layer-a-static/pipeline/phases/atom-extraction/extraction/
+// atom-extractor.js lives in: src/layer-a-static/pipeline/phases/atom-extraction/extraction/atom-extractor/
 // extractors live in:         src/layer-a-static/extractors/metadata/
-// → 4 levels up from extraction/ to reach layer-a-static/
-const EXTRACTORS_BASE = new URL('../../../../extractors/metadata/', import.meta.url).href;
+// → 5 levels up from atom-extractor/ to reach layer-a-static/
+const EXTRACTORS_BASE = new URL('../../../../../extractors/metadata/', import.meta.url).href;
 
 const _extractorCache = new Map();
 

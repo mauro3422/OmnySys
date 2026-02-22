@@ -33,7 +33,8 @@ export function findArchitecturalDebt(atoms) {
     
     const fileData = byFile.get(atom.filePath);
     fileData.atoms.push(atom);
-    fileData.totalLines += atom.linesOfCode || 0;
+    // FIX: Usar endLine máximo en lugar de sumar linesOfCode (evita doble conteo de átomos anidados)
+    fileData.totalLines = Math.max(fileData.totalLines, atom.endLine || atom.line || 0);
     fileData.maxComplexity = Math.max(fileData.maxComplexity, atom.complexity || 0);
     
     // Detectar responsabilidades por flowType

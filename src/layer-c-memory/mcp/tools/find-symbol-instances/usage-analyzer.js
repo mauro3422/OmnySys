@@ -17,6 +17,12 @@ export function analyzeUsage(atoms, instances, symbolName) {
   
   for (const instance of instances) {
     const filePath = instance.filePath;
+    
+    // 🐛 FIX: Skip instances without filePath
+    if (!filePath) {
+      continue;
+    }
+    
     usageMap.set(filePath, {
       imports: [],
       calls: [],
@@ -26,7 +32,8 @@ export function analyzeUsage(atoms, instances, symbolName) {
     for (const atom of atoms) {
       if (atom.imports) {
         for (const imp of atom.imports) {
-          if (imp.source && imp.source.includes(filePath.replace('.js', ''))) {
+          // 🐛 FIX: Safe replace with null check
+          if (imp.source && filePath && imp.source.includes(filePath.replace('.js', ''))) {
             usageMap.get(filePath).imports.push({
               file: atom.filePath,
               atom: atom.name

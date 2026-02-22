@@ -29,7 +29,8 @@ export function findComplexityHotspots(atoms, excludeInternalTools = true) {
     const fileData = byFile.get(atom.filePath);
     fileData.atoms.push(atom);
     fileData.totalComplexity += atom.complexity || 0;
-    fileData.totalLOC += atom.linesOfCode || 0;
+    // FIX: Usar endLine máximo en lugar de sumar linesOfCode (evita doble conteo)
+    fileData.totalLOC = Math.max(fileData.totalLOC, atom.endLine || atom.line || 0);
   }
   
   const hotspots = [];
