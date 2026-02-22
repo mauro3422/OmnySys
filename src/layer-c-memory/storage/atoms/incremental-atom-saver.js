@@ -1,23 +1,23 @@
 /**
  * @fileoverview incremental-atom-saver.js
  *
- * Sistema de guardado incremental de átomos.
- * Solo actualiza los campos que realmente cambiaron, evitando reescribir
- * todo el archivo JSON cuando solo un campo fue modificado.
+ * Sistema de guardado incremental de átomos con rate limiting.
+ * Solo actualiza los campos que realmente cambiaron.
+ * Usa WriteQueue para evitar EMFILE durante reindexados masivos.
  *
  * @module layer-c-memory/storage/atoms/incremental-atom-saver
  */
 
+import path from 'path';
 import { loadAtoms, saveAtom } from './atom.js';
 import { AtomVersionManager } from './atom-version-manager.js';
+import { getWriteQueue } from './write-queue.js';
+import { writeJSON, gracefulMkdir, gracefulReadFile } from './graceful-write.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:incremental-saver');
+const DATA_DIR = '.omnysysdata';
 
-/**
- * Carga un átomo específico por su ID
- * @private
- */
 async function loadAtomById(rootPath, atomId) {
   const parts = atomId.split('::');
   if (parts.length !== 2) return null;
@@ -27,19 +27,13 @@ async function loadAtomById(rootPath, atomId) {
   return atoms.find(a => a.name === functionName) || null;
 }
 
-/**
- * Realiza un merge inteligente entre el átomo existente y los nuevos datos
- * @private
- */
 function mergeAtoms(existingAtom, newData, changedFields, source = 'unknown') {
   const merged = { ...existingAtom };
   
-  // Actualizar solo los campos que cambiaron
   for (const field of changedFields) {
     merged[field] = newData[field];
   }
   
-  // Actualizar metadata de modificación
   merged._meta = {
     ...merged._meta,
     lastModified: Date.now(),
@@ -52,29 +46,27 @@ function mergeAtoms(existingAtom, newData, changedFields, source = 'unknown') {
   return merged;
 }
 
-/**
- * Guarda un átomo de forma incremental
- * 
- * @param {string} rootPath - Ruta raíz del proyecto
- * @param {string} filePath - Ruta relativa del archivo
- * @param {string} functionName - Nombre de la función
- * @param {Object} atomData - Datos del átomo
- * @param {Object} options - Opciones
- * @param {boolean} options.forceFull - Forzar guardado completo (no incremental)
- * @returns {Promise<Object>} Resultado del guardado
- */
+function getAtomPath(rootPath, filePath, functionName) {
+  const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const safeName = functionName
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .substring(0, 200);
+  return path.join(atomsDir, fileDir, fileName, `${safeName}.json`);
+}
+
 export async function saveAtomIncremental(rootPath, filePath, functionName, atomData, options = {}) {
   const startTime = Date.now();
   const atomId = `${filePath}::${functionName}`;
+  const queue = getWriteQueue();
   
   try {
-    // 1. Inicializar version manager
     const versionManager = new AtomVersionManager(rootPath);
-    
-    // 2. Detectar qué cambió
     const changeDetection = await versionManager.detectChanges(atomId, atomData);
     
-    // 3. Si no hay cambios, retornar inmediatamente
     if (!changeDetection.hasChanges && !options.forceFull) {
       return {
         success: true,
@@ -85,9 +77,10 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
       };
     }
     
-    // 4. Si es nuevo, guardar completo
+    const targetPath = getAtomPath(rootPath, filePath, functionName);
+    
     if (changeDetection.isNew) {
-      await saveAtom(rootPath, filePath, functionName, {
+      const dataToSave = {
         ...atomData,
         _meta: {
           createdAt: Date.now(),
@@ -95,7 +88,12 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
           incrementalUpdate: false,
           source: options.source || 'unknown'
         }
-      });
+      };
+      
+      await queue.add(async () => {
+        await gracefulMkdir(path.dirname(targetPath), { recursive: true });
+        await writeJSON(targetPath, dataToSave);
+      }, { id: `atom-new-${atomId}`, priority: 1 });
       
       await versionManager.trackAtomVersion(atomId, atomData);
       await versionManager.flush();
@@ -109,12 +107,15 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
       };
     }
     
-    // 5. Cargar átomo existente
     const existingAtom = await loadAtomById(rootPath, atomId);
     if (!existingAtom) {
-      // No debería pasar, pero por si acaso
       logger.warn(`Atom ${atomId} not found for incremental update, creating new`);
-      await saveAtom(rootPath, filePath, functionName, atomData);
+      
+      await queue.add(async () => {
+        await gracefulMkdir(path.dirname(targetPath), { recursive: true });
+        await writeJSON(targetPath, atomData);
+      }, { id: `atom-fallback-${atomId}` });
+      
       return {
         success: true,
         action: 'created',
@@ -123,13 +124,12 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
       };
     }
     
-    // 6. Merge inteligente
     const mergedAtom = mergeAtoms(existingAtom, atomData, changeDetection.fields, options.source || 'unknown');
     
-    // 7. Guardar átomo mergeado
-    await saveAtom(rootPath, filePath, functionName, mergedAtom);
+    await queue.add(async () => {
+      await writeJSON(targetPath, mergedAtom);
+    }, { id: `atom-update-${atomId}`, priority: 2 });
     
-    // 8. Actualizar versión
     await versionManager.trackAtomVersion(atomId, atomData);
     await versionManager.flush();
     
@@ -151,7 +151,6 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
   } catch (error) {
     logger.error(`Failed to save atom ${atomId} incrementally:`, error);
     
-    // Fallback: guardar completo
     try {
       await saveAtom(rootPath, filePath, functionName, atomData);
       return {
@@ -171,16 +170,6 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
   }
 }
 
-/**
- * Guarda múltiples átomos de forma incremental (batch)
- * 
- * @param {string} rootPath - Ruta raíz del proyecto  
- * @param {string} filePath - Ruta relativa del archivo
- * @param {Array<Object>} atoms - Array de átomos a guardar
- * @param {Object} options - Opciones adicionales
- * @param {string} options.source - Origen del cambio (atomic-edit, file-watcher, etc.)
- * @returns {Promise<Object>} Estadísticas del batch
- */
 export async function saveAtomsIncremental(rootPath, filePath, atoms, options = {}) {
   const startTime = Date.now();
   const results = {
@@ -191,35 +180,43 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
     totalFieldsChanged: 0
   };
   
+  const queue = getWriteQueue();
   const versionManager = new AtomVersionManager(rootPath);
   
-  for (const atom of atoms) {
-    if (!atom.name) continue;
-    
-    const result = await saveAtomIncremental(rootPath, filePath, atom.name, atom, options);
-    
-    switch (result.action) {
-      case 'created':
-        results.created++;
-        break;
-      case 'updated':
-        results.updated++;
-        results.totalFieldsChanged += result.fieldsChanged || 0;
-        break;
-      case 'unchanged':
-        results.unchanged++;
-        break;
-      default:
-        results.errors++;
-    }
+  const tasks = atoms
+    .filter(atom => atom.name)
+    .map(atom => async () => {
+      const result = await saveAtomIncremental(rootPath, filePath, atom.name, atom, options);
+      
+      switch (result.action) {
+        case 'created': results.created++; break;
+        case 'updated': 
+          results.updated++;
+          results.totalFieldsChanged += result.fieldsChanged || 0;
+          break;
+        case 'unchanged': results.unchanged++; break;
+        default: results.errors++;
+      }
+      
+      return result;
+    });
+  
+  if (tasks.length > 0) {
+    await queue.addAll(tasks, { id: `batch-${filePath}` });
   }
   
-  // Flush versiones al final del batch
   await versionManager.flush();
   
   return {
     ...results,
     duration: Date.now() - startTime,
-    atomsProcessed: atoms.length
+    atomsProcessed: atoms.length,
+    queueStatus: queue.status
+  };
+}
+
+export function getSaverStats() {
+  return {
+    queue: getWriteQueue().status
   };
 }

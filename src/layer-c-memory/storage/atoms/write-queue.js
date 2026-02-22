@@ -28,8 +28,8 @@ import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:write-queue');
 
-const DEFAULT_CONCURRENCY = 50;
-const DEFAULT_QUEUE_LIMIT = 1000;
+const DEFAULT_CONCURRENCY = 20;
+const DEFAULT_QUEUE_LIMIT = 500;
 const EMFILE_RETRY_DELAY = 100;
 const MAX_EMFILE_RETRIES = 5;
 
