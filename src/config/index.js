@@ -11,22 +11,13 @@
 export {
   DATA_DIR,
   CACHE_DIR,
-  UNIFIED_CACHE_DIR,
   INDEX_FILE,
   SYSTEM_MAP_FILE,
-  ENHANCED_MAP_FILE,
   ISSUES_FILE,
-  ORCHESTRATOR_STATE_FILE,
-  CACHE_INDEX_FILE,
   getIndexPath,
   getSystemMapPath,
-  getEnhancedMapPath,
   getIssuesPath,
-  getOrchestratorStatePath,
-  getCacheDir,
-  getUnifiedCacheDir,
-  getDataPath,
-  getFileAnalysisPath
+  getDataPath
 } from './paths.js';
 
 // Limits
