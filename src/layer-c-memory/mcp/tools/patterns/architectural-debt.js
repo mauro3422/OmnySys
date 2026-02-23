@@ -7,6 +7,51 @@ import { isAnalysisScript } from './utils.js';
 import { findDuplicates } from './duplicates.js';
 
 /**
+ * Analiza violaciones de SOLID en un archivo
+ * @param {Object} fileData - Datos del archivo
+ * @returns {Object} Violaciones de SOLID
+ */
+function analyzeSOLID(atoms, fileData) {
+  const violations = {
+    SRP: null,
+    OCP: null,
+    DIP: null,
+    ISP: null
+  };
+  
+  const { operations, totalAtoms } = fileData;
+  
+  // SRP: Múltiples responsabilidades
+  if (fileData.responsibilities.size > 3) {
+    violations.SRP = {
+      issue: `${fileData.responsibilities.size} responsabilidades distintas`,
+      details: [...fileData.responsibilities].slice(0, 5),
+      recommendation: 'Separar en módulos por responsabilidad'
+    };
+  }
+  
+  // OCP: Muchas funciones exportadas = difícil de extender
+  const exportedCount = atoms.filter(a => a.isExported).length;
+  if (exportedCount > 8) {
+    violations.OCP = {
+      issue: `${exportedCount} funciones exportadas`,
+      recommendation: 'Considerar extensiones en lugar de modificaciones'
+    };
+  }
+  
+  // DIP: Dependencias concretas
+  const hasExternalDeps = atoms.some(a => a.calls?.length > 5);
+  if (hasExternalDeps) {
+    violations.DIP = {
+      issue: 'Múltiples dependencias externas',
+      recommendation: 'Invertir dependencias usando abstracciones'
+    };
+  }
+  
+  return violations;
+}
+
+/**
  * Detecta deuda arquitectónica (archivos que violan SOLID/SSOT)
  * Se activa cuando: >250 líneas AND (múltiples responsabilidades OR duplicados OR complejidad alta)
  * @param {Array} atoms - Lista de átomos
@@ -27,13 +72,13 @@ export function findArchitecturalDebt(atoms) {
         totalLines: 0,
         responsibilities: new Set(),
         hasDuplicates: false,
-        maxComplexity: 0
+        maxComplexity: 0,
+        operations: new Set()
       });
     }
     
     const fileData = byFile.get(atom.filePath);
     fileData.atoms.push(atom);
-    // FIX: Usar endLine máximo en lugar de sumar linesOfCode (evita doble conteo de átomos anidados)
     fileData.totalLines = Math.max(fileData.totalLines, atom.endLine || atom.line || 0);
     fileData.maxComplexity = Math.max(fileData.maxComplexity, atom.complexity || 0);
     
@@ -48,6 +93,13 @@ export function findArchitecturalDebt(atoms) {
     }
     if (atom.archetype?.type) {
       fileData.responsibilities.add(atom.archetype.type);
+    }
+    
+    // Operaciones técnicas
+    if (atom.dna?.operations) {
+      for (const op of atom.dna.operations) {
+        fileData.operations.add(op);
+      }
     }
   }
   
@@ -99,6 +151,10 @@ export function findArchitecturalDebt(atoms) {
         violations,
         debtScore,
         severity: debtScore > 60 ? 'critical' : (debtScore > 40 ? 'high' : 'medium'),
+        solidViolations: analyzeSOLID(fileData.atoms, {
+          ...fileData,
+          totalAtoms: fileData.atoms.length
+        }),
         topAtoms: fileData.atoms
           .sort((a, b) => (b.complexity || 0) - (a.complexity || 0))
           .slice(0, 3)

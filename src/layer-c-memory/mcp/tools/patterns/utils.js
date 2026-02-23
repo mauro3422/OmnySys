@@ -25,7 +25,12 @@ export function isTestFile(filePath) {
   if (!filePath) return false;
   return filePath.includes('.test.') || 
          filePath.includes('.spec.') ||
-         filePath.includes('__tests__');
+         filePath.includes('__tests__') ||
+         filePath.includes('/tests/') ||
+         filePath.includes('/test/') ||
+         filePath.includes('/factories/') ||
+         filePath.endsWith('.test.js') ||
+         filePath.endsWith('.spec.js');
 }
 
 /**

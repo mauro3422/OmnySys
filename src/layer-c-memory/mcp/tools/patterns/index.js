@@ -19,6 +19,7 @@ import { findByArchetypePattern } from './archetype-patterns.js';
 import { findCircularDependencies } from './circular-deps.js';
 import { findTestCoverageGaps } from './test-coverage.js';
 import { findArchitecturalDebt } from './architectural-debt.js';
+import { findLargeMonolithic } from './large-monolithic.js';
 
 /**
  * Detecta patrones de código
@@ -109,6 +110,17 @@ export async function detect_patterns(args, context) {
             violations: d.violations,
             debtScore: d.debtScore 
           }))
+        },
+        largeMonolithic: {
+          count: findLargeMonolithic(atoms).length,
+          note: 'Files >250 lines with SINGLE dominant purpose but multiple technical operations',
+          top3: findLargeMonolithic(atoms).slice(0, 3).map(d => ({
+            file: d.file,
+            lines: d.lines,
+            dominantPurpose: d.dominantPurpose || d.dominantArchetype,
+            operationCount: d.operationCount,
+            solidViolations: Object.entries(d.solidViolations).filter(([k,v]) => v).map(([k]) => k)
+          }))
         }
       };
     }
@@ -144,6 +156,11 @@ export async function detect_patterns(args, context) {
     if (patternType === 'architectural-debt') {
       result.architecturalDebt = findArchitecturalDebt(atoms);
       result.summary.debtExplanation = 'Files > 250 lines with multiple responsibilities, duplicates, or high complexity. Consider splitting into smaller modules (< 250 lines each).';
+    }
+
+    if (patternType === 'large-monolithic') {
+      result.largeMonolithic = findLargeMonolithic(atoms);
+      result.summary.monolithicExplanation = 'Files > 250 lines with a SINGLE dominant purpose but multiple technical operations (violates SRP). Unlike architectural-debt which detects multiple purposes, this detects monoliths that do one thing but in many ways.';
     }
 
     return result;
