@@ -265,18 +265,9 @@ export class IndexOperations {
 
   /**
    * Guarda índice en disco
+   * @deprecated - Ya no se usa, SQLite es la fuente de datos
    */
   async saveIndex() {
-    try {
-      this.cache.index.timestamp = Date.now();
-      await fs.writeFile(
-        this.cache.indexPath, 
-        JSON.stringify(this.cache.index, null, 2)
-      );
-      logger.debug('💾 Saved cache index to disk');
-    } catch (error) {
-      logger.error('❌ Failed to save cache index:', error.message);
-      throw error;
-    }
+    return;
   }
 }

@@ -234,13 +234,13 @@ async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, existi
       const now = new Date().toISOString();
       
       repo.db.prepare(`
-        INSERT OR REPLACE INTO files (path, imports, exports, definitions, atoms_count, analyzed_at)
+        INSERT OR REPLACE INTO files (path, imports_json, exports_json, module_name, atom_count, last_analyzed)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(
         singleFile,
         JSON.stringify(fileAnalysis.imports || []),
         JSON.stringify(fileAnalysis.exports || []),
-        JSON.stringify(fileAnalysis.definitions || []),
+        null,
         fileAnalysis.totalAtoms || 0,
         now
       );
