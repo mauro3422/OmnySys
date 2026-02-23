@@ -26,6 +26,7 @@ import { enrichWithCallerPattern } from './pipeline/phases/atom-extraction/metad
 import { buildAtomIndex, linkFunctionCalledBy } from './pipeline/phases/calledby/function-linker.js';
 import { linkVariableCalledBy } from './pipeline/phases/calledby/variable-linker.js';
 import { linkMixinNamespaceCalledBy } from './pipeline/phases/calledby/mixin-namespace-linker.js';
+import { linkExportObjectReferences } from './pipeline/phases/calledby/export-object-references.js';
 
 /**
  * Indexer - Orquestador principal de Capa A
@@ -338,6 +339,18 @@ async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose) {
     timerClass.end(verbose);
   } catch (err) {
     logger.warn(`  ⚠️ class-instantiation-tracker failed: ${err.message}`);
+  }
+
+  // 3.7b: Export object references (e.g., export const handlers = { func1, func2 })
+  try {
+    const timerExportObj = startTimer('6f. Export object references');
+    if (verbose) logger.info('🔗 Resolving export object function references...');
+    const { referenceLinks, updatedAtoms } = await linkExportObjectReferences(allAtoms, parsedFiles, absoluteRootPath, verbose);
+    if (verbose) logger.info(`  ✓ ${referenceLinks} export object reference links\n`);
+    updatedAtoms.forEach(a => modifiedAtoms.add(a));
+    timerExportObj.end(verbose);
+  } catch (err) {
+    logger.warn(`  ⚠️ export-object-references failed: ${err.message}`);
   }
 
   // 3.8: Caller Pattern Detection
