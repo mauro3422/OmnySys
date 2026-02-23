@@ -1,18 +1,18 @@
 /**
  * Data loading utilities for check command
+ * Uses SQLite for data loading
  * @module src/cli/commands/check/data-loader
  */
 
-import fs from 'fs/promises';
-import path from 'path';
 import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { normalizePath } from '../../utils/paths.js';
 
 /**
- * Loads file data from system map
+ * Loads file data from SQLite
  * @param {string} projectPath - Project root path
  * @param {string} filePath - File path to check
- * @returns {Promise<{success: boolean, fileData?: object, matchedPath?: string, systemMap?: object, error?: string, exitCode?: number, availableFiles?: string[], hint?: string}>} Load result
+ * @returns {Promise<{success: boolean, fileData?: object, matchedPath?: string, atoms?: object[], error?: string, exitCode?: number, availableFiles?: string[], hint?: string}>} Load result
  */
 export async function loadFileData(projectPath, filePath) {
   const hasAnalysis = await hasExistingAnalysis(projectPath);
@@ -25,32 +25,44 @@ export async function loadFileData(projectPath, filePath) {
     };
   }
 
-  const systemMapPath = path.join(projectPath, 'system-map-enhanced.json');
-  const systemMapContent = await fs.readFile(systemMapPath, 'utf-8');
-  const systemMap = JSON.parse(systemMapContent);
-
-  const normalizedFilePath = normalizePath(filePath);
-  let fileData = null;
-  let matchedPath = null;
-
-  for (const [key, value] of Object.entries(systemMap.files || {})) {
-    const normalizedKey = normalizePath(key);
-    if (normalizedKey.endsWith(normalizedFilePath) || normalizedFilePath.endsWith(normalizedKey)) {
-      fileData = value;
-      matchedPath = key;
-      break;
+  try {
+    const repo = getRepository(projectPath);
+    
+    const normalizedFilePath = normalizePath(filePath);
+    
+    const atoms = repo.query({ filePath: normalizedFilePath, limit: 100 });
+    
+    if (!atoms || atoms.length === 0) {
+      const allAtoms = repo.query({ limit: 1000 });
+      const availableFiles = [...new Set(allAtoms.map(a => a.file_path))].slice(0, 10);
+      
+      return {
+        success: false,
+        error: `File not found in analysis: ${filePath}`,
+        exitCode: 1,
+        availableFiles
+      };
     }
-  }
-
-  if (!fileData) {
-    const availableFiles = Object.keys(systemMap.files || {}).slice(0, 10);
+    
+    const fileData = {
+      filePath: normalizedFilePath,
+      atoms: atoms,
+      totalAtoms: atoms.length,
+      imports: atoms.flatMap(a => a.imports || []),
+      exports: atoms.filter(a => a.isExported).map(a => a.name)
+    };
+    
+    return { 
+      success: true, 
+      fileData, 
+      matchedPath: normalizedFilePath, 
+      atoms 
+    };
+  } catch (error) {
     return {
       success: false,
-      error: `File not found in analysis: ${filePath}`,
-      exitCode: 1,
-      availableFiles
+      error: `Error loading from SQLite: ${error.message}`,
+      exitCode: 1
     };
   }
-
-  return { success: true, fileData, matchedPath, systemMap };
 }

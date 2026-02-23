@@ -1,7 +1,7 @@
 # Flujo de Datos - OmnySys
 
-**Versión**: v0.9.17
-**Última actualización**: 2026-02-20
+**Versión**: v0.9.57
+**Última actualización**: 2026-02-23
 
 ---
 
@@ -40,27 +40,30 @@
 │        │                                                                     │
 │        ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  STORAGE: .omnysysdata/                                              │   │
+│   │  STORAGE: SQLite Database (.omnysysdata/omnysys.db)                 │   │
 │   │  ───────────────────────────────────────────────────────────────    │   │
-│   │  atoms/           → Un archivo JSON por función                     │   │
-│   │  files/           → Un archivo JSON por archivo                     │   │
-│   │  molecules/       → Metadata derivada de átomos                     │   │
-│   │  connections/     → Conexiones semánticas                           │   │
-│   │  risks/           → Evaluación de riesgo                            │   │
+│   │  atoms             → Tabla de átomos (funciones, variables)        │   │
+│   │  atom_relations    → Grafo de dependencias entre átomos            │   │
+│   │  files             → Metadatos por archivo                          │   │
+│   │  system_files      → Extensión para System Map                      │   │
+│   │  file_dependencies → Dependencias entre archivos                    │   │
+│   │  semantic_connections → Conexiones semánticas                       │   │
+│   │  risk_assessments  → Evaluación de riesgo por archivo              │   │
+│   │  atom_events       → Event sourcing para audit trail               │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │        │                                                                     │
 │        ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │  LAYER C: Memory / MCP Server                                        │   │
 │   │  ───────────────────────────────────────────────────────────────    │   │
-│   │  Query APIs → Derivation Engine → 14 MCP Tools                      │   │
+│   │  Query APIs → Derivation Engine → 30 MCP Tools                      │   │
 │   │       │              │                   │                           │   │
 │   │       ▼              ▼                   ▼                           │   │
 │   │   file-api.js   composeMolecular    impact-map.js                   │   │
 │   │   project-api.js  Metadata()        get-call-graph.js               │   │
 │   │   risk-api.js                        get-molecule-summary.js         │   │
 │   │                                      analyze-change.js               │   │
-│   │                                      ...                             │   │
+│   │                                      ... (30 tools)                  │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │        │                                                                     │
 │        ▼                                                                     │
@@ -148,65 +151,105 @@ Archivo.js
 
 ---
 
-## Fase 2: Storage
+## Fase 2: Storage (SQLite)
 
 ### Ubicación
-`.omnysysdata/`
+`.omnysysdata/omnysys.db`
 
-### Estructura
+### Base de Datos SQLite
+
+OmnySys usa **SQLite** con configuración optimizada para performance:
+
+```javascript
+// Configuración SQLite (connection.js)
+journal_mode = WAL          // Write-Ahead Logging
+cache_size = 64000          // 64MB cache
+synchronous = NORMAL        // Balance safety/performance
+temp_store = MEMORY         // Temp tables en RAM
+page_size = 4096            // Páginas de 4KB
+foreign_keys = ON           // Integridad referencial
+busy_timeout = 5000         // 5s timeout
+```
+
+### Tablas Principales
 
 ```
-.omnysysdata/
-├── index.json                    # Índice global del proyecto
-├── system-map.json               # Grafo completo (~300MB)
-├── system-map-enhanced.json      # Con análisis semántico
-├── system-map-analysis.json      # Métricas agregadas
+omnysys.db
+├── atoms               # Átomos (funciones, variables)
+│   ├── id              # Identificador único
+│   ├── name            # Nombre del átomo
+│   ├── file_path       # Archivo fuente
+│   ├── type            # function | arrow | variable | constant
+│   ├── complexity      # Complejidad ciclomática
+│   ├── archetype       # Clasificación semántica
+│   ├── purpose         # API_EXPORT, INTERNAL_HELPER, etc.
+│   ├── data_flow       # JSON: flujo de datos
+│   ├── dna             # JSON: hash estructural
+│   ├── calls           # JSON: llamadas que hace
+│   ├── called_by       # JSON: callers
+│   └── ...             # 50+ campos de metadata
 │
-├── files/                        # Un JSON por archivo
-│   └── src/
-│       └── layer-c-memory/
-│           └── mcp/
-│               └── tools/
-│                   └── index.js.json
+├── atom_relations      # Grafo de dependencias
+│   ├── caller_id       # Átomo que llama
+│   ├── callee_id       # Átomo llamado
+│   ├── call_type       # direct | dynamic | bridge
+│   └── context         # JSON: contexto de la llamada
 │
-├── atoms/                        # Un JSON por FUNCIÓN
-│   └── src/
-│       └── layer-c-memory/
-│           └── mcp/
-│               └── tools/
-│                   ├── index/
-│                   │   ├── toolDefinitions.json
-│                   │   └── toolHandlers.json
-│                   └── impact-map/
-│                       ├── get_impact_map.json
-│                       └── logger.json
-│
-├── molecules/                    # Metadata derivada por archivo
-│   └── src/
-│       └── .../
-│           └── file.js.molecule.json
-│
-├── connections/                  # Conexiones semánticas
-│   ├── shared-state.json
-│   └── event-listeners.json
-│
-└── risks/
-    └── assessment.json
+├── files               # Metadatos por archivo
+├── system_files        # Extensión para System Map
+├── file_dependencies   # Dependencias entre archivos
+├── semantic_connections # Conexiones semánticas
+├── risk_assessments    # Evaluación de riesgo
+├── atom_events         # Event sourcing
+└── modules             # Agrupación lógica
+```
+
+### Índices para Queries Rápidas
+
+```sql
+CREATE INDEX idx_atoms_importance ON atoms(importance_score DESC);
+CREATE INDEX idx_atoms_propagation ON atoms(propagation_score DESC);
+CREATE INDEX idx_atoms_complexity ON atoms(complexity DESC);
+CREATE INDEX idx_atoms_file ON atoms(file_path);
+CREATE INDEX idx_relations_caller ON atom_relations(caller_id);
+CREATE INDEX idx_relations_callee ON atom_relations(callee_id);
 ```
 
 ### APIs de Storage
 
 ```javascript
-// src/layer-c-memory/storage/index.js
+// src/layer-c-memory/storage/repository/repository-factory.js
 
-// Átomos
-import { saveAtom, loadAtoms } from './atoms/index.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 
-// Moléculas
-import { saveMolecule, loadMolecule } from './molecules/index.js';
+// Obtener repositorio (SQLite por defecto)
+const repo = getRepository();
 
-// Files
-import { saveFileAnalysis, saveMetadata } from './files/index.js';
+// Operaciones CRUD
+const atom = repo.getById('src/file.js::functionName');
+repo.save(atom);
+repo.delete(atom.id);
+
+// Queries
+const atoms = repo.query({ filePath: 'src/file.js' });
+const callers = repo.getCallers('src/file.js::functionName');
+
+// Bulk operations
+repo.saveMany(atoms);
+repo.saveRelationsBulk(relations);
+```
+
+### Feature Flags
+
+```bash
+# Usar SQLite (default)
+OMNY_SQLITE=true
+
+# Forzar JSON legacy (no recomendado)
+OMNY_SQLITE=false
+
+# Dual write (migración)
+OMNY_DUAL_WRITE=true
 ```
 
 ---
@@ -273,24 +316,18 @@ function composeMolecularMetadata(filePath, atoms) {
 ### Ubicación
 `src/layer-c-memory/mcp/tools/`
 
-### Herramientas (14)
+### Herramientas (30)
 
-| Herramienta | Propósito | Datos que Usa |
-|-------------|-----------|---------------|
-| `get_impact_map` | Mapa de impacto de archivo | files/, usedBy |
-| `analyze_change` | Impacto de cambiar símbolo | get_impact_map |
-| `explain_connection` | Conexión entre 2 archivos | imports, usedBy |
-| `get_risk_assessment` | Evaluación de riesgo | risks/, metadata |
-| `get_call_graph` | Call sites de símbolo | atoms/, calls |
-| `analyze_signature_change` | Breaking changes | calls, signature |
-| `explain_value_flow` | Flujo de datos | dataFlow, calls |
-| `get_function_details` | Detalles de función | atoms/ completo |
-| `get_molecule_summary` | Resumen de archivo | atoms/ + derived |
-| `search_files` | Búsqueda de archivos | fileIndex |
-| `get_server_status` | Estado del servidor | metadata, cache |
-| `restart_server` | Reiniciar servidor | - |
-| `atomic_edit` | Edición segura | files/ |
-| `atomic_write` | Escritura segura | files/ |
+| Categoría | Herramientas |
+|-----------|--------------|
+| **Impacto** | `get_impact_map`, `analyze_change`, `trace_variable_impact`, `trace_data_journey`, `explain_connection`, `analyze_signature_change` |
+| **Código** | `get_call_graph`, `explain_value_flow`, `get_function_details`, `get_molecule_summary`, `find_symbol_instances` |
+| **Métricas** | `get_risk_assessment`, `get_health_metrics`, `detect_patterns`, `get_async_analysis`, `detect_race_conditions` |
+| **Sociedad** | `get_atom_society`, `get_atom_history`, `get_removed_atoms` |
+| **Sistema** | `search_files`, `get_server_status`, `restart_server`, `get_atom_schema` |
+| **Editor** | `atomic_edit`, `atomic_write` |
+| **Refactoring** | `suggest_refactoring`, `validate_imports` |
+| **Testing** | `generate_tests`, `generate_batch_tests` |
 
 ### Flujo de una Query Típica
 
@@ -389,12 +426,14 @@ function detectSociety(atoms) {
 
 | Métrica | Valor |
 |---------|-------|
-| Archivos analizados | 1,747 |
-| Átomos extraídos | 5,984 |
-| Herramientas MCP | 14 |
+| Archivos analizados | 1,800+ |
+| Átomos extraídos | 12,000+ |
+| Herramientas MCP | 30 |
 | Coverage calledBy | 44.7% |
 | Culture coverage | 99.5% |
-| Health Score | 77.9/100 |
+| Health Score | 99/100 |
+| Base de datos | SQLite (WAL mode) |
+| Tablas | 10 |
 
 ---
 

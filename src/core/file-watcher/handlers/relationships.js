@@ -2,13 +2,13 @@
  * @fileoverview relationships.js
  * 
  * Gestion de dependencias y relaciones entre archivos.
+ * Usa SQLite para consultar dependencias.
  * 
  * @module file-watcher/handlers/relationships
  */
 
-import fs from 'fs/promises';
-import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 
 const logger = createLogger('OmnySys:file-watcher:relations');
 
@@ -33,34 +33,28 @@ export async function notifyDependents(filePath, reason) {
 
 /**
  * Obtiene archivos que dependen de este (lo importan).
- * Lee el system-map persistido en .omnysysdata/system-map-enhanced.json.
+ * Consulta SQLite para obtener dependientes.
  * @param {string} filePath - Path relativo del archivo
  * @returns {Promise<string[]>} - Paths de archivos que importan este archivo
  */
 export async function getDependents(filePath) {
-  const systemMapPath = path.join(this.dataPath, 'system-map-enhanced.json');
-
   try {
-    const content = await fs.readFile(systemMapPath, 'utf-8');
-    const systemMap = JSON.parse(content);
-
+    const repo = getRepository(this.projectPath);
+    
+    if (!repo.db) {
+      return [];
+    }
+    
     const normalized = filePath.replace(/\\/g, '/').replace(/^\.\//, '');
-
-    const fileNode = systemMap.files?.[normalized] || systemMap.files?.[filePath];
-    if (fileNode?.usedBy?.length > 0) {
-      return fileNode.usedBy;
-    }
-
-    const dependents = [];
-    for (const [fp, node] of Object.entries(systemMap.files || {})) {
-      if ((node.dependsOn || []).some(dep =>
-        dep === normalized || dep === filePath || dep.endsWith(normalized)
-      )) {
-        dependents.push(fp);
-      }
-    }
-    return dependents;
-  } catch {
+    
+    const rows = repo.db.prepare(`
+      SELECT DISTINCT from_file FROM file_dependencies 
+      WHERE to_file = ? OR to_file LIKE ?
+    `).all(normalized, `%${normalized}`);
+    
+    return rows.map(r => r.from_file);
+  } catch (error) {
+    logger.debug(`[getDependents] Error querying SQLite: ${error.message}`);
     return [];
   }
 }

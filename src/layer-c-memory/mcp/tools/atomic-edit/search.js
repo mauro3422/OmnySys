@@ -1,61 +1,40 @@
 /**
- * @fileoverview Búsquedas selectivas de átomos
- * Funciones optimizadas que NO cargan todo el grafo
+ * @fileoverview Búsquedas selectivas de átomos usando SQLite
+ * Funciones optimizadas que consultan la base de datos directamente
  */
 
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
-import { loadAtoms } from '#layer-c/storage/index.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 
 const logger = createLogger('OmnySys:atomic:search');
 
 /**
- * Busca átomos por nombre de forma eficiente (O(1) - O(log n))
- * NO carga todo el grafo, solo busca índices
+ * Busca átomos por nombre de forma eficiente usando SQLite
+ * @param {string} atomName - Nombre del átomo a buscar
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {Object} options - Opciones de búsqueda
+ * @returns {Promise<Array>} Array de átomos encontrados
  */
 export async function findAtomsByName(atomName, projectPath, options = {}) {
   const atoms = [];
   
   try {
-    const { glob } = await import('glob');
-    const pattern = path.join(projectPath, '**/*.js');
-    const files = await glob(pattern, { 
-      ignore: ['**/node_modules/**', '**/.omnysysdata/**'],
-      absolute: true
-    });
+    const repo = getRepository(projectPath);
     
-    const recentFiles = files.slice(0, 50);
+    const results = repo.findByName(atomName);
     
-    for (const file of recentFiles) {
-      try {
-        const fileAtoms = await loadAtoms(projectPath, path.relative(projectPath, file));
-        const matches = fileAtoms.filter(a => a.name === atomName);
-        atoms.push(...matches);
-        
-        if (atoms.length >= 10) break;
-      } catch {
-        // Ignorar archivos que no pueden parsearse
-      }
-    }
-    
-    const fs = await import('fs/promises');
-    const indexPath = path.join(projectPath, '.omnysysdata', 'indexes', 'atom-names.json');
-    
-    try {
-      const indexContent = await fs.readFile(indexPath, 'utf-8');
-      const nameIndex = JSON.parse(indexContent);
-      
-      if (nameIndex[atomName]) {
-        for (const location of nameIndex[atomName]) {
-          const fileAtoms = await loadAtoms(projectPath, location.filePath);
-          const match = fileAtoms.find(a => a.name === atomName && a.line === location.line);
-          if (match && !atoms.find(a => a.id === match.id)) {
-            atoms.push(match);
-          }
-        }
-      }
-    } catch {
-      // Índice no existe
+    for (const atom of results.slice(0, 20)) {
+      atoms.push({
+        id: atom.id,
+        name: atom.name,
+        filePath: atom.file_path,
+        line: atom.line,
+        type: atom.type,
+        complexity: atom.complexity,
+        archetype: atom.archetype,
+        purpose: atom.purpose
+      });
     }
     
   } catch (error) {
@@ -66,59 +45,41 @@ export async function findAtomsByName(atomName, projectPath, options = {}) {
 }
 
 /**
- * Busca callers de una función específica de forma eficiente
+ * Busca callers de una función específica usando SQLite
+ * @param {string} functionName - Nombre de la función
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {string} excludeFile - Archivo a excluir (opcional)
+ * @returns {Promise<Array>} Array de callers encontrados
  */
 export async function findCallersEfficient(functionName, projectPath, excludeFile = null) {
   const callers = [];
   
   try {
-    const fs = await import('fs/promises');
-    const refsPath = path.join(projectPath, '.omnysysdata', 'indexes', 'call-references.json');
+    const repo = getRepository(projectPath);
     
-    try {
-      const refsContent = await fs.readFile(refsPath, 'utf-8');
-      const references = JSON.parse(refsContent);
+    const atomIdPattern = `::${functionName}`;
+    
+    const allAtoms = repo.query({ limit: 1000 });
+    
+    for (const atom of allAtoms) {
+      if (excludeFile && atom.file_path?.includes(excludeFile)) continue;
       
-      if (references[functionName]) {
-        for (const ref of references[functionName]) {
-          if (excludeFile && ref.filePath.includes(excludeFile)) continue;
-          
-          const fileAtoms = await loadAtoms(projectPath, ref.filePath);
-          const caller = fileAtoms.find(a => 
-            a.calls?.some(c => c.callee === functionName || c.callee?.endsWith(`::${functionName}`))
-          );
-          
-          if (caller) {
-            callers.push({
-              name: caller.name,
-              filePath: ref.filePath,
-              line: caller.line,
-              argumentCount: ref.argumentCount
-            });
-          }
-          
-          if (callers.length >= 20) break;
-        }
-      }
-    } catch {
-      const { glob } = await import('glob');
-      const files = await glob(path.join(projectPath, 'src/**/*.js'), { absolute: true });
+      const calls = atom.calls;
+      if (!calls || !Array.isArray(calls)) continue;
       
-      for (const file of files.slice(0, 30)) {
-        const relPath = path.relative(projectPath, file);
-        if (excludeFile && relPath.includes(excludeFile)) continue;
-        
-        const fileAtoms = await loadAtoms(projectPath, relPath);
-        const matches = fileAtoms.filter(a => 
-          a.calls?.some(c => c.callee === functionName || c.callee?.endsWith(`::${functionName}`))
-        );
-        
-        callers.push(...matches.map(m => ({
-          name: m.name,
-          filePath: relPath,
-          line: m.line,
-          argumentCount: m.calls?.find(c => c.callee === functionName)?.argumentCount
-        })));
+      const matchingCall = calls.find(c => 
+        c.callee === functionName || 
+        c.callee?.endsWith(atomIdPattern) ||
+        c.target === functionName
+      );
+      
+      if (matchingCall) {
+        callers.push({
+          name: atom.name,
+          filePath: atom.file_path,
+          line: atom.line,
+          argumentCount: matchingCall.argumentCount || matchingCall.args?.length
+        });
         
         if (callers.length >= 20) break;
       }

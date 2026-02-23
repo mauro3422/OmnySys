@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.44  
-**Última actualización**: 2026-02-20  
-**Estado**: ✅ **CONSOLIDADO + 21 Tools MCP + Richer Archetypes**
+**Versión**: v0.9.57  
+**Última actualización**: 2026-02-23  
+**Estado**: ✅ **SQLite Database + 30 Tools MCP + Modular Architecture**
 
 ---
 
@@ -39,7 +39,7 @@ docs/
 | **(raíz)** | [INSTALL.md](../INSTALL.md) | Guía de instalación completa |
 | **(raíz)** | [GETTING_STARTED.md](../GETTING_STARTED.md) | Primeros pasos |
 | **04-guides/** | [quickstart.md](04-guides/quickstart.md) | Empezar en 5 minutos |
-| **04-guides/** | [tools.md](04-guides/tools.md) | **23 herramientas MCP** |
+| **04-guides/** | [tools.md](04-guides/tools.md) | **30 herramientas MCP** |
 
 ---
 
@@ -49,7 +49,7 @@ docs/
 |-----------|-------------|
 | [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) |
 | [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
-| [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ NUEVO - Flujo de Datos**: Layer A → Storage → MCP Tools |
+| [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ Flujo de Datos**: Layer A → SQLite → MCP Tools |
 | [code-physics.md](02-architecture/code-physics.md) | **⭐ Código como Física**: Entropía, auto-reparación, sociedades de átomos |
 | [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
 | [file-cultures.md](02-architecture/file-cultures.md) | **⭐ Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |
@@ -61,6 +61,12 @@ docs/
 | └─ [roadmap.md](02-architecture/data-flow/roadmap.md) | Fases 2-5 planificadas |
 | [shadow-registry.md](02-architecture/shadow-registry.md) | ADN + ciclo de vida de código |
 | [archetypes.md](02-architecture/archetypes.md) | Catálogo de arquetipos + sistema de confianza |
+
+### 🗄️ Storage (docs/architecture/)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [delta-graph-migration.md](architecture/delta-graph-migration.md) | **⭐ SQLite Migration**: Por qué migrar de JSON a SQLite |
 
 ---
 

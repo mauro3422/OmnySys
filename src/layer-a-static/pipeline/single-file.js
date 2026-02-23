@@ -7,8 +7,7 @@ import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { extractAtoms } from '../extractors/atomic/index.js';
-import { saveAtom, loadAtoms } from '#layer-c/storage/atoms/atom.js';
-import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:single:file');
@@ -71,15 +70,25 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
 
 async function loadExistingMap(absoluteRootPath, incremental, verbose) {
   if (incremental) return null;
-  const systemMapPath = path.join(absoluteRootPath, '.omnysysdata', 'system-map-enhanced.json');
+  
   try {
-    const content = await fs.readFile(systemMapPath, 'utf-8');
-    if (verbose) logger.info('  ✓ Loaded existing project context\n');
-    return JSON.parse(content);
+    const repo = getRepository(absoluteRootPath);
+    const allAtoms = repo.query({ limit: 10000 });
+    
+    if (allAtoms && allAtoms.length > 0) {
+      if (verbose) logger.info('  ✓ Loaded existing project context from SQLite\n');
+      return { 
+        files: {},
+        atoms: allAtoms,
+        metadata: { lastUpdated: new Date().toISOString() }
+      };
+    }
   } catch {
-    if (verbose) logger.info('  ℹ️  No existing analysis found, starting fresh\n');
-    return null;
+    // SQLite no inicializado
   }
+  
+  if (verbose) logger.info('  ℹ️  No existing analysis found, starting fresh\n');
+  return null;
 }
 
 async function resolveFileImports(parsedFile, targetFilePath, absoluteRootPath) {
@@ -127,24 +136,20 @@ async function detectConnections(parsedFile, targetFilePath, resolvedImports, ab
 }
 
 async function saveAtoms(absoluteRootPath, singleFile, atoms) {
-  // 🆕 Usar sistema de guardado incremental
-  const results = await saveAtomsIncremental(absoluteRootPath, singleFile, atoms);
-  
-  // 📝 Log para cualquier operación (creación o actualización)
-  if (results.updated > 0) {
-    logger.info(`⚡ Incremental save: ${singleFile} (${results.updated} updated, ${results.totalFieldsChanged} fields)`);
-  }
-  
-  if (results.created > 0) {
-    logger.info(`✨ New atoms: ${singleFile} (${results.created} created)`);
-  }
-  
-  if (results.unchanged > 0) {
-    logger.debug(`⏭️ Unchanged: ${singleFile} (${results.unchanged} atoms)`);
-  }
-  
-  if (results.errors > 0) {
-    logger.warn(`⚠️ ${results.errors} atoms failed to save`);
+  try {
+    const repo = getRepository(absoluteRootPath);
+    
+    const atomsWithId = atoms.map(atom => ({
+      ...atom,
+      id: atom.id || `${singleFile}::${atom.name}`,
+      file_path: singleFile
+    }));
+    
+    repo.saveMany(atomsWithId);
+    
+    logger.info(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
+  } catch (error) {
+    logger.warn(`⚠️ Error saving atoms for ${singleFile}: ${error.message}`);
   }
 }
 
@@ -222,27 +227,35 @@ function buildFileAnalysis(singleFile, parsedFile, resolvedImports, staticConnec
 }
 
 async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, existingMap, incremental, verbose) {
-  const outputDir = path.join(absoluteRootPath, '.omnysysdata', 'files', path.dirname(singleFile));
-  await fs.mkdir(outputDir, { recursive: true });
-
-  const outputPath = path.join(outputDir, `${path.basename(singleFile)}.json`);
-  await fs.writeFile(outputPath, JSON.stringify(fileAnalysis, null, 2), 'utf-8');
-
-  if (existingMap && incremental) {
-    const systemMapPath = path.join(absoluteRootPath, '.omnysysdata', 'system-map-enhanced.json');
-    existingMap.files[singleFile] = fileAnalysis;
-    existingMap.metadata.lastUpdated = new Date().toISOString();
-    await fs.writeFile(systemMapPath, JSON.stringify(existingMap, null, 2), 'utf-8');
-    if (verbose) logger.info('  ✓ Updated .omnysysdata/system-map-enhanced.json\n');
+  try {
+    const repo = getRepository(absoluteRootPath);
+    
+    if (repo.db) {
+      const now = new Date().toISOString();
+      
+      repo.db.prepare(`
+        INSERT OR REPLACE INTO files (path, imports, exports, definitions, atoms_count, analyzed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        singleFile,
+        JSON.stringify(fileAnalysis.imports || []),
+        JSON.stringify(fileAnalysis.exports || []),
+        JSON.stringify(fileAnalysis.definitions || []),
+        fileAnalysis.totalAtoms || 0,
+        now
+      );
+      
+      if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);
+    }
+  } catch (error) {
+    logger.warn(`⚠️ Error saving file result to SQLite: ${error.message}`);
   }
-
-  return outputPath;
+  
+  return singleFile;
 }
 
 function printSummary(absoluteRootPath, singleFile, fileAnalysis) {
-  const outputPath = path.join(absoluteRootPath, '.omnysysdata', 'files',
-    path.dirname(singleFile), `${path.basename(singleFile)}.json`);
-  logger.info(`💾 Results saved to: ${path.relative(absoluteRootPath, outputPath)}`);
+  logger.info(`💾 Results saved to SQLite for: ${singleFile}`);
   logger.info(`\n📊 Summary:`);
   logger.info(`  - Imports: ${fileAnalysis.imports.length}`);
   logger.info(`  - Exports: ${fileAnalysis.exports.length}`);

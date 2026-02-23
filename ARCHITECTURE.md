@@ -1,7 +1,7 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.18  
-**Última actualización**: 2026-02-20
+**Versión**: v0.9.57  
+**Última actualización**: 2026-02-23
 
 ---
 
@@ -273,13 +273,22 @@ Layer B: Archetypes + Validators (LLM bypass en 90%+ casos)
         │
         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  STORAGE: .omnysysdata/                                         │
+│  STORAGE: SQLite Database (.omnysysdata/omnysys.db)            │
 │  ───────────────────────────────────────────────────────────    │
-│  atoms/           → Un JSON por FUNCIÓN (5,984 archivos)       │
-│  files/           → Un JSON por archivo (1,747 archivos)       │
-│  molecules/       → Metadata derivada de átomos                │
-│  connections/     → Conexiones semánticas                      │
-│  risks/           → Evaluación de riesgo                       │
+│  atoms             → Tabla de átomos (funciones, variables)    │
+│  atom_relations    → Grafo de dependencias entre átomos        │
+│  files             → Metadatos por archivo                      │
+│  system_files      → Extensión para System Map                  │
+│  file_dependencies → Dependencias entre archivos                │
+│  semantic_connections → Conexiones semánticas                   │
+│  risk_assessments  → Evaluación de riesgo por archivo          │
+│  atom_events       → Event sourcing para audit trail           │
+│                                                                   │
+│  Configuración SQLite:                                          │
+│  • journal_mode = WAL (Write-Ahead Logging)                     │
+│  • cache_size = 64MB                                            │
+│  • synchronous = NORMAL                                         │
+│  • foreign_keys = ON                                            │
 └─────────────────────────────────────────────────────────────────┘
         │
         ▼
@@ -287,7 +296,7 @@ Core Cache: RAM cache para acceso rápido
         │
         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  LAYER C: MCP Server (14 herramientas)                         │
+│  LAYER C: MCP Server (30 herramientas)                         │
 │  ───────────────────────────────────────────────────────────    │
 │  Query APIs → Derivation Engine → MCP Tools                    │
 │       │              │                │                         │
@@ -296,7 +305,7 @@ Core Cache: RAM cache para acceso rápido
 │   project-api.js  Metadata()      get-call-graph.js            │
 │   risk-api.js                    get-molecule-summary.js       │
 │                                  analyze-change.js             │
-│                                  ... (14 tools)                │
+│                                  ... (30 tools)                │
 └─────────────────────────────────────────────────────────────────┘
         │
         ▼
@@ -398,42 +407,45 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 
 ---
 
-## Estado de Salud (v0.9.18)
+## Estado de Salud (v0.9.57)
 
 ### Métricas del Sistema
 
 | Métrica | Valor |
 |---------|-------|
-| Archivos analizados | 1,747 |
-| Átomos extraídos | 5,984 |
-| Herramientas MCP | 14 |
+| Archivos analizados | 1,800+ |
+| Átomos extraídos | 12,000+ |
+| Herramientas MCP | 30 |
 | Coverage calledBy | 44.7% |
 | Culture coverage | 99.5% |
-| Health Score | 77.9/100 |
+| Health Score | 99/100 |
+| Base de datos | SQLite (WAL mode) |
 
 ### Tests
 
 | Métrica | Valor |
 |---------|-------|
-| Archivos de test | 286/286 ✅ |
-| Tests pasando | 4,115 |
+| Archivos de test | 300+ ✅ |
+| Tests pasando | 4,500+ |
 | Tests skipped | 35 |
-| Tiempo de suite | ~22 segundos |
+| Tiempo de suite | ~25 segundos |
 | Imports rotos (src/) | 0 ✅ |
 
-### Issues Resueltos en v0.9.18
+### Novedades v0.9.57
 
-| Issue | Estado |
-|-------|--------|
-| `search_files` error `map is not a function` | ✅ Fixeado — validación `Array.isArray()` |
-| `get_call_graph` no detecta referencias a variables | ✅ Fixeado — nuevo patrón `variable_reference` |
+| Feature | Descripción |
+|---------|-------------|
+| SQLite Database | Base de datos con WAL mode, mejor performance |
+| 30 MCP Tools | 8 categorías completas |
+| Bulk Operations | Inserciones masivas single-transaction |
+| Modular SQLite | Adapter dividido en 6 módulos |
 
 ### Issues Conocidos Pendientes
 
 | Issue | Impacto | Prioridad |
 |-------|---------|-----------|
+| Archivos JSON legacy aún referenciados | Datos duplicados | 🟡 Media |
 | 59 dependencias inconsistentes (usedBy ↔ dependsOn) | Datos levemente desactualizados | 🟡 Media |
-| `@babel/traverse` import en re-análisis incremental | Falla en análisis incremental | 🟠 Alto |
-| Layer C coverage ~30% | Riesgo de regresiones | 🟡 Media |
+| Layer C coverage ~35% | Riesgo de regresiones | 🟡 Media |
 
 Ver **[docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md](docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md)** para issues completos y mejoras propuestas.

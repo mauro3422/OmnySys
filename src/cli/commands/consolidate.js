@@ -2,8 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Orchestrator } from '../../core/orchestrator/index.js';
 import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
+import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { resolveProjectPath } from '../utils/paths.js';
-import { getEnhancedMapPath, getIssuesPath } from '#config/paths.js';
+import { getIssuesPath } from '#config/paths.js';
 
 export async function consolidateLogic(projectPath, options = {}) {
   const { silent = false } = options;
@@ -61,23 +62,9 @@ export async function consolidateLogic(projectPath, options = {}) {
       }, 30 * 60 * 1000);
     });
 
-    const enhancedCandidates = [
-      getEnhancedMapPath(absolutePath),
-      path.join(absolutePath, 'system-map-enhanced.json')
-    ];
-    let enhancedMap = null;
-    for (const candidate of enhancedCandidates) {
-      try {
-        const content = await fs.readFile(candidate, 'utf-8');
-        enhancedMap = JSON.parse(content);
-        break;
-      } catch {
-        // Try next candidate
-      }
-    }
-    if (!enhancedMap) {
-      enhancedMap = { metadata: { totalFiles: finalStats?.totalFiles || 0 } };
-    }
+    const repo = getRepository(absolutePath);
+    const allAtoms = repo.query({ limit: 50000 });
+    const totalFiles = new Set(allAtoms.map(a => a.file_path)).size;
 
     const issuesPath = getIssuesPath(absolutePath);
     let issuesReport = { stats: { totalIssues: 0 } };
@@ -91,7 +78,8 @@ export async function consolidateLogic(projectPath, options = {}) {
       console.log('\nConsolidation complete!\n');
       console.log('Results:');
       console.log(`  - Iterations: ${finalStats?.iterations || 1}`);
-      console.log(`  - Files analyzed: ${finalStats?.totalFiles || enhancedMap.metadata.totalFiles}`);
+      console.log(`  - Files analyzed: ${finalStats?.totalFiles || totalFiles}`);
+      console.log(`  - Atoms: ${allAtoms.length}`);
       console.log(`  - Issues found: ${issuesReport.stats?.totalIssues || 0}`);
       if (issuesReport.stats?.totalIssues > 0) {
         console.log(`    - High severity: ${issuesReport.stats.bySeverity?.high || 0}`);
@@ -107,7 +95,8 @@ export async function consolidateLogic(projectPath, options = {}) {
       exitCode: 0,
       stats: {
         iterations: finalStats?.iterations || 1,
-        totalFiles: finalStats?.totalFiles || enhancedMap.metadata.totalFiles,
+        totalFiles: finalStats?.totalFiles || totalFiles,
+        totalAtoms: allAtoms.length,
         totalIssues: issuesReport.stats?.totalIssues || 0
       }
     };

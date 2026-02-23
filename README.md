@@ -53,7 +53,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 
 ---
 
-## Las 23 Herramientas MCP
+## Las 30 Herramientas MCP
 
 ### Impacto y Análisis de Cambios
 | Herramienta | Qué hace | Cuándo usar |
@@ -61,6 +61,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `get_impact_map(file)` | Archivos afectados por un cambio | Antes de editar cualquier archivo |
 | `analyze_change(file, symbol)` | Impacto de cambiar un símbolo | Evaluando riesgo |
 | `trace_variable_impact(file, fn, var)` | Propagación de variable (PageRank) | Cambiando estructuras de datos |
+| `trace_data_journey(file, fn, var)` | Flujo de datos de variable específica | Auditar seguridad de datos |
 | `explain_connection(a, b)` | Por qué dos archivos están conectados | Entendiendo arquitectura |
 | `analyze_signature_change(...)` | Breaking changes de firma | Cambiando APIs |
 
@@ -71,6 +72,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `explain_value_flow(...)` | Inputs → proceso → outputs | Data pipelines |
 | `get_function_details(file, fn)` | Metadata completa de función | Análisis detallado |
 | `get_molecule_summary(file)` | Resumen de archivo con insights | Vista completa de archivo |
+| `find_symbol_instances(symbol)` | Encuentra todas las instancias de un símbolo | Debugging |
 
 ### Métricas y Salud
 | Herramienta | Qué hace | Cuándo usar |
@@ -79,6 +81,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `get_health_metrics()` | Métricas de salud del código | Auditar calidad |
 | `detect_patterns(type)` | Duplicados, god functions, dead code | Optimizando codebase |
 | `get_async_analysis()` | Análisis async con recommendations | Optimizando performance |
+| `detect_race_conditions()` | Detecta race conditions en async | Seguridad concurrente |
 
 ### Sociedad de Átomos
 | Herramienta | Qué hace | Cuándo usar |
@@ -93,6 +96,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `search_files(pattern)` | Buscar archivos por patrón | Navegando codebase |
 | `get_server_status()` | Estado del sistema | Diagnóstico |
 | `restart_server()` | Reinicia servidor y recarga datos | Después de cambios en código |
+| `get_atom_schema(type)` | Schema de metadatos de átomos | Debugging |
 
 ### Editor Atómico
 | Herramienta | Qué hace | Cuándo usar |
@@ -105,6 +109,12 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 |-------------|----------|-------------|
 | `suggest_refactoring(file)` | Sugiere mejoras específicas de código | Antes de refactorizar |
 | `validate_imports(file)` | Detecta imports rotos/no usados | Limpiar código |
+
+### Testing
+| Herramienta | Qué hace | Cuándo usar |
+|-------------|----------|-------------|
+| `generate_tests(file, fn)` | Genera tests para una función | Aumentar cobertura |
+| `generate_batch_tests()` | Genera tests en batch | Cobertura masiva |
 
 ---
 
@@ -182,30 +192,29 @@ node scripts/detect-broken-imports.js  # Detecta imports rotos
 
 ## Estado del Proyecto
 
-**Versión**: v0.9.44  
-**Estado**: ✅ **Estable — 21 Tools MCP + Richer Archetypes + Connection Bridge Detection**
+**Versión**: v0.9.57  
+**Estado**: ✅ **Estable — 30 Tools MCP + SQLite Database + Richer Archetypes**
 
 | Componente | Estado | Cobertura Tests |
 |------------|--------|----------------|
 | Layer A — Análisis Estático | ✅ Funcional | ~40% |
 | Layer B — Análisis Semántico | ✅ Funcional | ~60% |
-| Layer C — MCP Server | ✅ **21 Tools** | ~30% |
+| Layer C — MCP Server | ✅ **30 Tools** | ~30% |
 | Layer Graph — Grafo | ✅ **Mejorado** | ~50% |
 | Core — Infraestructura | ✅ Funcional | ~40% |
-| **Tests totales** | ✅ **Pasando** | **~4,352 tests** |
+| **SQLite Database** | ✅ **Production** | ~35% |
+| **Tests totales** | ✅ **Pasando** | **~4,500+ tests** |
 
-### Novedades v0.9.44
+### Novedades v0.9.57
 
 | Feature | Descripción |
 |---------|-------------|
-| **23 Tools MCP** | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Refactoring |
-| **14 Archetypes** | Clasificación determinística con confidence scoring |
-| **Connection Bridge Detection** | Detección de conexiones indirectas (mixins, namespaces) |
+| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
+| **30 Tools MCP** | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Testing |
+| **Bulk Operations** | Inserciones masivas en single-transaction (64% más rápido) |
 | **Atomic Editor** | `atomic_edit` y `atomic_write` con validación sintáctica |
 | **Pagination Recursiva** | Middleware de paginación automática para todas las tools |
-| **5,828 Átomos Analizados** | 99% health score, 45.9% coverage |
-| **15 Chains Detectadas** | Call chains de profundidad 3-5 niveles |
-| **20 Hubs Identificados** | Funciones altamente conectadas (hasta 224 callers) |
+| **Modular SQLite** | Adapter dividido en 6 módulos (606→764 LOC) |
 
 ---
 
