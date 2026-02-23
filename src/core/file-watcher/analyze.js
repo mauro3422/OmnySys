@@ -114,13 +114,15 @@ async function loadDependencySources(resolvedImports, filePath, parsedSource, ro
 }
 
 /**
- * 🧹 Limpia archivos JSON de átomos que ya no existen en el código fuente
+ * 🧹 Limpia átomos que ya no existen en el código fuente
+ * Elimina tanto archivos JSON como registros en SQLite
  * 
  * @param {string} rootPath - Raíz del proyecto
  * @param {string} filePath - Ruta relativa del archivo
  * @param {Set} validAtomNames - Set con los nombres de átomos válidos (que existen en el código)
  */
 async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
+  // 🧹 1. Limpiar archivos JSON (legacy)
   try {
     const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
     const fileDir = path.dirname(filePath);
@@ -156,8 +158,44 @@ async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
       console.log(`🧹 Eliminados ${cleanedCount} átomos obsoletos de ${filePath}`);
     }
   } catch (error) {
-    // No propagar errores de limpieza - no es crítico
-    console.warn(`⚠️ Error limpiando átomos obsoletos de ${filePath}:`, error.message);
+    // No propagar errores de limpieza JSON - no es crítico
+    console.warn(`⚠️ Error limpiando átomos obsoletos (JSON):`, error.message);
+  }
+
+  // 🧹 2. Marcar átomos como REMOVED en SQLite (preserva lineage)
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(rootPath);
+    
+    if (!repo?.db) return;
+    
+    // Obtener todos los átomos del archivo
+    const existingAtoms = repo.db.prepare(
+      'SELECT id, name, purpose FROM atoms WHERE file_path = ?'
+    ).all(filePath);
+    
+    let markedCount = 0;
+    
+    for (const atom of existingAtoms) {
+      // Solo marcar como removed si no está ya marcado y no está en la lista válida
+      if (atom.purpose !== 'REMOVED' && !validAtomNames.has(atom.name)) {
+        repo.db.prepare(`
+          UPDATE atoms 
+          SET purpose = 'REMOVED', 
+              is_dead_code = 1,
+              caller_pattern = 'removed',
+              lineage = json_set(COALESCE(lineage, '{}'), '$.status', 'removed', '$.removedAt', datetime('now'))
+          WHERE id = ?
+        `).run(atom.id);
+        markedCount++;
+      }
+    }
+    
+    if (markedCount > 0) {
+      console.log(`🧹 Marcados como REMOVED: ${markedCount} átomos de ${filePath}`);
+    }
+  } catch (error) {
+    console.warn(`⚠️ Error marcando átomos como REMOVED:`, error.message);
   }
 }
 

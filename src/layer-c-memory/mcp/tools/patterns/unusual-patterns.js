@@ -26,6 +26,9 @@ export function findUnusualPatterns(atoms) {
     if (isTestRelated(atom)) continue;
     if (isAnalysisScript(atom)) continue;
     
+    // 🧹 FIX: Skip atoms marked as removed (they're in lineage, not active code)
+    if (atom.purpose === 'REMOVED' || atom.isDeadCode) continue;
+    
     // Unused exports: exported but never called
     if (atom.isExported && (!atom.calledBy || atom.calledBy.length === 0)) {
       // 🔄 FIX 2: Skip dynamically used exports
