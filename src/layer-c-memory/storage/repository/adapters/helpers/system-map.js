@@ -133,8 +133,8 @@ export function loadSystemMap(db) {
 
 function ensureFilesExist(db, filePaths, now) {
   const stmt = db.prepare(`
-    INSERT OR IGNORE INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
-    VALUES (?, ?, 0, 0, 0)
+    INSERT OR IGNORE INTO files (path, last_analyzed, atom_count, total_complexity, total_lines, imports_json, exports_json)
+    VALUES (?, ?, 0, 0, 0, '[]', '[]')
   `);
   
   for (const filePath of filePaths) {

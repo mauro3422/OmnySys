@@ -129,8 +129,8 @@ export function rowToAtom(row) {
     testabilityScore: row.testability_score,
     
     // Contadores
-    calls: safeParseJson(row.calls_json) || [],
-    calledBy: safeParseJson(row.called_by_json) || [],
+    calls: safeParseJson(row.calls_json, []) || [],
+    calledBy: safeParseJson(row.called_by_json, []) || [],
     dependencyDepth: row.dependency_depth,
     externalCallCount: row.external_call_count,
     
@@ -186,10 +186,14 @@ export function safeJson(val) {
 }
 
 // Helper para parsear JSON de forma segura
-export function safeParseJson(str) {
+export function safeParseJson(str, defaultValue = null) {
+  if (!str || str === '' || str === 'null' || str === 'undefined') {
+    return defaultValue;
+  }
   try {
-    return JSON.parse(str || '{}');
+    const parsed = JSON.parse(str);
+    return parsed;
   } catch (e) {
-    return {};
+    return defaultValue;
   }
 }

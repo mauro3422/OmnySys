@@ -102,6 +102,32 @@ class ConnectionManager {
       
       this.db.exec(schema);
       
+      // Migración: agregar columnas faltantes a tabla 'files' si no existen
+      // SQLite no soporta ADD COLUMN IF NOT EXISTS en versiones antiguas
+      const tableInfo = this.db.prepare('PRAGMA table_info(files)').all();
+      const existingColumns = tableInfo.map(col => col.name);
+      
+      if (!existingColumns.includes('module_name')) {
+        this.db.exec('ALTER TABLE files ADD COLUMN module_name TEXT');
+      }
+      if (!existingColumns.includes('imports_json')) {
+        this.db.exec("ALTER TABLE files ADD COLUMN imports_json TEXT DEFAULT '[]'");
+      }
+      if (!existingColumns.includes('exports_json')) {
+        this.db.exec("ALTER TABLE files ADD COLUMN exports_json TEXT DEFAULT '[]'");
+      }
+      
+      // Migración: agregar columnas faltantes a tabla 'atoms'
+      const atomsInfo = this.db.prepare('PRAGMA table_info(atoms)').all();
+      const atomColumns = atomsInfo.map(col => col.name);
+      
+      if (!atomColumns.includes('called_by_json')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN called_by_json TEXT DEFAULT '[]'");
+      }
+      if (!atomColumns.includes('function_type')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN function_type TEXT DEFAULT 'declaration'");
+      }
+      
       logger.debug('[Connection] Schema initialized');
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
