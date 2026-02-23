@@ -302,55 +302,21 @@ export async function saveFileAnalysis(filePath, analysis) {
 }
 
 /**
- * Actualiza índice global con información del archivo
+ * Actualiza índice en SQLite con información del archivo
+ * Ya no escribe JSON
  */
 export async function updateFileIndex(filePath, analysis) {
-  const indexPath = path.join(this.dataPath, 'index.json');
-
-  let indexData;
-  try {
-    const content = await fs.readFile(indexPath, 'utf-8');
-    indexData = JSON.parse(content);
-  } catch {
-    indexData = { metadata: {}, fileIndex: {} };
-  }
-
-  const contentHash = analysis.contentHash || await this._calculateContentHash(path.join(this.rootPath, filePath));
-
-  // Actualizar entrada del archivo
-  indexData.fileIndex[filePath] = {
-    hash: contentHash,
-    exports: analysis.exports?.length || 0,
-    imports: analysis.imports?.length || 0,
-    semanticConnections: analysis.semanticConnections?.length || 0,
-    lastAnalyzed: analysis.analyzedAt
-  };
-
-  // Actualizar metadata global
-  indexData.metadata.lastUpdated = new Date().toISOString();
-  indexData.metadata.totalFiles = Object.keys(indexData.fileIndex).length;
-
-  await fs.writeFile(indexPath, JSON.stringify(indexData, null, 2));
+  // El índice ahora se maneja automáticamente vía SQLite
+  // Los atoms se guardan directamente en la DB
+  // No necesitamos mantener un index.json separado
 }
 
 /**
- * Remueve archivo del índice
+ * Remueve archivo del índice (no-op ya que SQLite maneja esto)
  */
 export async function removeFromIndex(filePath) {
-  const indexPath = path.join(this.dataPath, 'index.json');
-
-  try {
-    const content = await fs.readFile(indexPath, 'utf-8');
-    const indexData = JSON.parse(content);
-
-    delete indexData.fileIndex[filePath];
-    indexData.metadata.lastUpdated = new Date().toISOString();
-    indexData.metadata.totalFiles = Object.keys(indexData.fileIndex).length;
-
-    await fs.writeFile(indexPath, JSON.stringify(indexData, null, 2));
-  } catch (error) {
-    // Ignorar errores de índice no existente
-  }
+  // El índice ahora se maneja automáticamente vía SQLite
+  // No necesitamos mantener un index.json separado
 }
 
 /**

@@ -1,25 +1,22 @@
-import fs from 'fs/promises';
-import path from 'path';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:issues');
-
-
 
 /**
  * Finaliza el análisis y emite el evento complete
  */
 export async function _finalizeAnalysis() {
   if (this.analysisCompleteEmitted) {
-    return; // Evitar múltiples emisiones
+    return;
   }
 
   this.analysisCompleteEmitted = true;
 
-  logger.info('\nðŸ” Detecting semantic issues...');
+  logger.info('\n🔍 Detecting semantic issues...');
   const issuesReport = await this._detectSemanticIssues();
 
-  logger.info('\nâœ… Analysis complete!');
+  logger.info('\n✅ Analysis complete!');
 
   this.emit('analysis:complete', {
     iterations: this.iteration,
@@ -30,15 +27,15 @@ export async function _finalizeAnalysis() {
 
 /**
  * Detect semantic issues across all analyzed files
+ * Guarda en SQLite en lugar de JSON
  */
 export async function _detectSemanticIssues() {
-  logger.info('\nðŸ” Detecting semantic issues...');
+  logger.info('\n🔍 Detecting semantic issues...');
 
   try {
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     const { detectSemanticIssues } = await import('../../layer-a-static/analyses/tier3/issue-detectors/index.js');
 
-    // Build system map from all analyzed files
     const systemMap = {
       files: {},
       metadata: {
@@ -54,24 +51,45 @@ export async function _detectSemanticIssues() {
       }
     }
 
-    // Detect issues
     const issuesReport = detectSemanticIssues(systemMap);
 
-    // Save issues report
-    const issuesPath = path.join(this.OmnySysDataPath, 'semantic-issues.json');
-    await fs.writeFile(issuesPath, JSON.stringify(issuesReport, null, 2), 'utf-8');
-
-    logger.info(`  âœ“ Found ${issuesReport.stats?.totalIssues || 0} semantic issues`);
-    if (issuesReport.stats?.totalIssues > 0) {
-      logger.info(`    â€¢ High: ${issuesReport.stats.bySeverity?.high || 0}`);
-      logger.info(`    â€¢ Medium: ${issuesReport.stats.bySeverity?.medium || 0}`);
-      logger.info(`    â€¢ Low: ${issuesReport.stats.bySeverity?.low || 0}`);
+    // Save to SQLite instead of JSON
+    const repo = getRepository(this.projectPath);
+    if (repo && repo.db) {
+      // Clear existing issues
+      repo.db.prepare('DELETE FROM semantic_issues').run();
+      
+      // Insert new issues
+      const insertStmt = repo.db.prepare(`
+        INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      for (const issue of issuesReport.issues || []) {
+        insertStmt.run(
+          issue.file || issue.filePath || 'unknown',
+          issue.type || issue.issue_type || 'unknown',
+          issue.severity || 'low',
+          issue.message || '',
+          issue.line || issue.line_number || null,
+          JSON.stringify(issue.context || {}),
+          new Date().toISOString()
+        );
+      }
+      
+      logger.info(`  ✅ Saved ${issuesReport.stats?.totalIssues || 0} issues to SQLite`);
     }
 
-    // El evento analysis:complete se emite desde _finalizeAnalysis
+    logger.info(`  ✅ Found ${issuesReport.stats?.totalIssues || 0} semantic issues`);
+    if (issuesReport.stats?.totalIssues > 0) {
+      logger.info(`    • High: ${issuesReport.stats.bySeverity?.high || 0}`);
+      logger.info(`    • Medium: ${issuesReport.stats.bySeverity?.medium || 0}`);
+      logger.info(`    • Low: ${issuesReport.stats.bySeverity?.low || 0}`);
+    }
+
     return issuesReport;
   } catch (error) {
-    logger.error('  âŒ Error detecting semantic issues:', error.message);
+    logger.error('  ❌ Error detecting semantic issues:', error.message);
     return { stats: { totalIssues: 0 } };
   }
 }

@@ -128,6 +128,22 @@ class ConnectionManager {
         this.db.exec("ALTER TABLE atoms ADD COLUMN function_type TEXT DEFAULT 'declaration'");
       }
       
+      // Migración v2.1: agregar tabla cache si no existe
+      const cacheTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='cache_entries'").get();
+      if (!cacheTableInfo) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS cache_entries (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            expiry INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cache_expiry ON cache_entries(expiry);
+        `);
+        logger.info('[Connection] Created cache_entries table');
+      }
+      
       logger.debug('[Connection] Schema initialized');
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);

@@ -25,6 +25,22 @@ const logger = createLogger('OmnySys:detect-races');
 const SEVERITY = { critical: 4, high: 3, medium: 2, low: 1 };
 
 /**
+ * Resource keys that are thread-safe / atomic (no race conditions)
+ * SQLite, Redis, y otros stores atómicos
+ */
+const SAFE_RESOURCES = new Set([
+  'call:set',           // ramCache.set ahora usa SQLite
+  'call:get',           // ramCache.get ahora usa SQLite  
+  'call:write',         // atomic write con SQLite
+  'call:get',           // atomic read con SQLite
+  'call:validateWrite', // AtomicEditor ahora usa FileLockManager
+  'db:sqlite',          // SQLite es thread-safe
+  'db:better-sqlite3',  // driver específico
+  'cache:sqlite',       // cache en SQLite
+  'cache_entries',      // tabla de cache
+]);
+
+/**
  * Infer read vs write from atom metadata
  */
 function inferAccessType(atom, resourceKey) {
@@ -98,6 +114,12 @@ function detectRacesFromAtoms(asyncAtoms) {
   let raceId = 1;
 
   for (const [resource, atoms] of byResource) {
+    // Skip safe resources (SQLite, Redis, atomic stores)
+    if (SAFE_RESOURCES.has(resource)) {
+      logger.debug(`Skipping safe resource: ${resource}`);
+      continue;
+    }
+    
     if (atoms.length < 2) continue;
 
     const accesses = atoms.map(a => ({

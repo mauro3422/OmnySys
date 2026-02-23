@@ -342,9 +342,23 @@ CREATE TABLE IF NOT EXISTS system_metadata (
     updated_at TEXT NOT NULL
 );
 
+-- Tabla de cache transitorio (reemplaza Map() en memoria)
+CREATE TABLE IF NOT EXISTS cache_entries (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    expiry INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cache_expiry ON cache_entries(expiry);
+
 -- Insertar version del schema
 INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
-VALUES ('schema_version', '2.0', datetime('now'));
+VALUES ('schema_version', '2.1', datetime('now'));
+
+INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
+VALUES ('cache_sqlite_enabled', 'true', datetime('now'));
 
 INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
 VALUES ('system_map_enabled', 'true', datetime('now'));

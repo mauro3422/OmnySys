@@ -21,6 +21,38 @@ import { updateAtom, emitModificationSuccess, emitAtomCreated } from './utils/at
 const logger = createLogger('OmnySys:atomic:editor');
 
 /**
+ * Simple file locking mechanism to prevent race conditions
+ * when multiple processes try to write the same file
+ */
+class FileLockManager {
+  constructor() {
+    this.locks = new Map();
+    this.waiting = new Map();
+  }
+
+  async acquire(filePath) {
+    while (this.locks.has(filePath)) {
+      if (!this.waiting.has(filePath)) {
+        this.waiting.set(filePath, []);
+      }
+      await new Promise(resolve => this.waiting.get(filePath).push(resolve));
+    }
+    this.locks.set(filePath, Date.now());
+  }
+
+  release(filePath) {
+    this.locks.delete(filePath);
+    const waiters = this.waiting.get(filePath);
+    if (waiters && waiters.length > 0) {
+      const next = waiters.shift();
+      if (next) next();
+    }
+  }
+}
+
+const fileLock = new FileLockManager();
+
+/**
  * Editor Atómico - Conecta ediciones con el sistema de átomos
  * @extends EventEmitter
  */
@@ -99,35 +131,43 @@ export class AtomicEditor extends EventEmitter {
   async write(filePath, content, options = {}) {
     logger.info(`📝 Atomic Write: ${filePath}`);
 
-    // Validate write
-    const validation = await validateWrite(filePath, content, {
-      syntax: this.syntaxValidator,
-      safety: this.safetyValidator
-    }, this.options);
+    // Acquire lock to prevent race condition
+    await fileLock.acquire(filePath);
+    
+    try {
+      // Validate write
+      const validation = await validateWrite(filePath, content, {
+        syntax: this.syntaxValidator,
+        safety: this.safetyValidator
+      }, this.options);
 
-    if (!validation.valid) {
-      this.emit('atom:validation:failed', {
-        file: filePath,
-        error: validation.error,
-        line: validation.line,
-        column: validation.column,
-        isNewFile: true
-      });
-      throw new Error(validation.error);
+      if (!validation.valid) {
+        this.emit('atom:validation:failed', {
+          file: filePath,
+          error: validation.error,
+          line: validation.line,
+          column: validation.column,
+          isNewFile: true
+        });
+        throw new Error(validation.error);
+      }
+
+      // Write file
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const absolutePath = path.join(this.projectPath, filePath);
+      await fs.writeFile(absolutePath, content, 'utf-8');
+
+      // Update atom
+      await updateAtom(filePath, this.orchestrator, this.projectPath, {});
+      emitAtomCreated(this.emit.bind(this), filePath);
+
+      logger.info(`  ✅ Atomic write complete`);
+      return { success: true, file: filePath };
+    } finally {
+      // Always release lock
+      fileLock.release(filePath);
     }
-
-    // Write file
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const absolutePath = path.join(this.projectPath, filePath);
-    await fs.writeFile(absolutePath, content, 'utf-8');
-
-    // Update atom
-    await updateAtom(filePath, this.orchestrator, this.projectPath, {});
-    emitAtomCreated(this.emit.bind(this), filePath);
-
-    logger.info(`  ✅ Atomic write complete`);
-    return { success: true, file: filePath };
   }
 
   // ==========================================

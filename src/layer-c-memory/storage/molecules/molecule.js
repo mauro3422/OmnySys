@@ -1,66 +1,27 @@
-import fs from 'fs/promises';
-import path from 'path';
-
-const DATA_DIR = '.omnysysdata';
-
 /**
- * Guarda estructura molecular de un archivo
+ * Guarda estructura molecular en SQLite (derivado de atoms)
+ * Ya no escribe archivos JSON - molecules se derivan de atoms
  *
  * @param {string} rootPath - Raíz del proyecto
  * @param {string} filePath - Ruta relativa del archivo
- * @param {object} molecularData - Estructura molecular (atoms + derivations)
- * @returns {string} - Ruta del archivo guardado
+ * @param {object} molecularData - Estructura molecular (no se guarda - derivado de atoms)
+ * @returns {boolean} - true (simulado)
  */
 export async function saveMolecule(rootPath, filePath, molecularData) {
-  const dataPath = path.join(rootPath, DATA_DIR);
-
-  // Crear directorio molecules/ si no existe
-  const moleculesDir = path.join(dataPath, 'molecules');
-  await fs.mkdir(moleculesDir, { recursive: true });
-
-  // Crear estructura de directorios que refleja el proyecto
-  const fileDir = path.dirname(filePath);
-  const targetDir = path.join(moleculesDir, fileDir);
-  await fs.mkdir(targetDir, { recursive: true });
-
-  // Guardar archivo con nombre original + .molecule.json
-  const fileName = path.basename(filePath);
-  const targetPath = path.join(targetDir, `${fileName}.molecule.json`);
-
-  await fs.writeFile(targetPath, JSON.stringify(molecularData, null, 2));
-
-  return targetPath;
+  // Los molecules se derivan on-demand desde la tabla atoms
+  // No necesitamos guardar archivos JSON redundantes
+  return true;
 }
 
 /**
- * Carga estructura molecular de un archivo
+ * Carga estructura molecular (derivado de atoms en SQLite)
+ * Ya no lee archivos JSON
  *
  * @param {string} rootPath - Raíz del proyecto
  * @param {string} filePath - Ruta relativa del archivo
- * @returns {object|null} - Molecular data o null si no existe
+ * @returns {null} - null (debe derivarse de atoms)
  */
 export async function loadMolecule(rootPath, filePath) {
-  const dataPath = path.join(rootPath, DATA_DIR);
-  const moleculesDir = path.join(dataPath, 'molecules');
-
-  // 🆕 FIX: Normalizar filePath para que sea relativo al rootPath
-  let normalizedPath = filePath;
-  // Normalizar separadores de path para comparación cross-platform
-  const normalizedFilePath = filePath.replace(/\\/g, '/');
-  const normalizedRootPath = rootPath.replace(/\\/g, '/');
-
-  if (path.isAbsolute(filePath) && normalizedFilePath.startsWith(normalizedRootPath)) {
-    normalizedPath = path.relative(rootPath, filePath);
-  }
-
-  const fileDir = path.dirname(normalizedPath);
-  const fileName = path.basename(normalizedPath);
-  const targetPath = path.join(moleculesDir, fileDir, `${fileName}.molecule.json`);
-
-  try {
-    const content = await fs.readFile(targetPath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
+  // Los molecules se derivan de atoms, no se cargan desde JSON
+  return null;
 }
