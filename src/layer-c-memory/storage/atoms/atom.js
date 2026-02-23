@@ -334,44 +334,7 @@ export async function getAsyncAtoms(rootPath) {
   return await queryAtoms(rootPath, { isAsync: true });
 }
 
-/**
- * Obtiene átomos exportados
- * @param {string} rootPath - Ruta del proyecto
- * @returns {Promise<Array>} Átomos exportados
- */
-export async function getExportedAtoms(rootPath) {
-  return await queryAtoms(rootPath, { isExported: true });
-}
-
-/**
- * Obtiene átomos por arquetipo
- * @param {string} rootPath - Ruta del proyecto
- * @param {string} archetype - Tipo de arquetipo
- * @returns {Promise<Array>} Átomos del arquetipo
- */
-export async function getAtomsByArchetype(rootPath, archetype) {
-  return await queryAtoms(rootPath, { archetype });
-}
-
-/**
- * Obtiene átomos por propósito
- * @param {string} rootPath - Ruta del proyecto
- * @param {string} purpose - Propósito
- * @returns {Promise<Array>} Átomos con ese propósito
- */
-export async function getAtomsByPurpose(rootPath, purpose) {
-  return await queryAtoms(rootPath, { purpose });
-}
-
-/**
- * Obtiene átomos complejos (alta complejidad)
- * @param {string} rootPath - Ruta del proyecto
- * @param {number} threshold - Umbral de complejidad (default: 10)
- * @returns {Promise<Array>} Átomos complejos
- */
-export async function getComplexAtoms(rootPath, threshold = 10) {
-  return await queryAtoms(rootPath, { minComplexity: threshold });
-}
+// DEAD CODE REMOVED: getExportedAtoms, getAtomsByArchetype, getAtomsByPurpose, getComplexAtoms
 
 /**
  * Obtiene átomos en un archivo

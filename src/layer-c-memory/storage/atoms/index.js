@@ -4,10 +4,6 @@ export {
   getAllAtoms,
   queryAtoms,
   getAsyncAtoms,
-  getExportedAtoms,
-  getAtomsByArchetype,
-  getAtomsByPurpose,
-  getComplexAtoms,
   getAtomsInFile,
   getAtomsByName
 } from './atom.js';
