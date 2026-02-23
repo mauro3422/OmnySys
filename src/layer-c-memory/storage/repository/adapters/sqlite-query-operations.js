@@ -75,7 +75,8 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
     const sortOrder = options.sortOrder || 'ASC';
     sql += ` ORDER BY ${sortField} ${sortOrder}`;
     
-    const limit = options.limit || 1000;
+    // 0 = sin límite (cargar todos), default 50000 para evitar overflow
+    const limit = options.limit === 0 ? Infinity : (options.limit || 50000);
     const offset = options.offset || 0;
     sql += ` LIMIT ${limit} OFFSET ${offset}`;
     
@@ -86,7 +87,8 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
   }
 
   getAll(options = {}) {
-    const limit = options.limit || 10000;
+    // 0 = sin límite (cargar todos), default 50000 para evitar overflow
+    const limit = options.limit === 0 ? Infinity : (options.limit || 50000);
     const offset = options.offset || 0;
     
     const rows = this.statements.getAll.all(limit, offset);
