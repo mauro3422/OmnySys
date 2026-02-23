@@ -74,11 +74,11 @@ export async function reloadMetadata(context) {
     // Notificar a clientes WebSocket
     wsManager?.broadcast({
       type: 'analysis:completed',
-      filesAnalyzed: metadata?.metadata?.totalFiles || 0,
+      filesAnalyzed: metadata?.stats?.totalFiles || 0,
       timestamp: Date.now()
     });
     
-    logger.info(`📊 Data refreshed: ${metadata?.metadata?.totalFiles || 0} files`);
+    logger.info(`📊 Data refreshed: ${metadata?.stats?.totalFiles || 0} files`);
   } catch (error) {
     logger.error('Failed to reload metadata:', error.message);
   }

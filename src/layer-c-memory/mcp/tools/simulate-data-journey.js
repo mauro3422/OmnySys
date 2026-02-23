@@ -15,7 +15,7 @@
  * @module mcp/tools/simulate-data-journey
  */
 
-import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
+import { getAtomsInFile, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { CrossFileResolver } from '#layer-a/pipeline/molecular-chains/cross-file/CrossFileResolver.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -140,14 +140,55 @@ export async function simulate_data_journey(args, context) {
 
   logger.debug(`Phase 5: Simulating journey from ${symbolName}`);
 
-  const allAtoms = await getAllAtoms(projectPath);
+  // 🚀 OPTIMIZADO: Cargar átomos del archivo específico
+  let atoms = await getAtomsInFile(projectPath, filePath);
   
-  // ENRIQUECIMIENTO ESTÁNDAR: Agregar stats de relaciones
-  const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+  if (!atoms || atoms.length === 0) {
+    return {
+      error: `No atoms found in file: ${filePath}`,
+      hint: 'Use get_molecule_summary to list atoms in this file.'
+    };
+  }
+  
+  // ENRIQUECIMIENTO: Cargar TODAS las relaciones (internas + externas)
+  let enrichedAtoms = await enrichAtomsWithRelations(atoms, {
+    scope: 'ids',
+    ids: atoms.map(a => a.id),
     withStats: true,
     withCallers: true,
     withCallees: true
   }, projectPath);
+  
+  // 🚀 CARGAR ÁTOMOS EXTERNOS RELACIONADOS (callers/callees de otros archivos)
+  const externalIds = new Set();
+  for (const atom of enrichedAtoms) {
+    if (atom.callers) {
+      for (const callerId of atom.callers) {
+        if (!atoms.find(a => a.id === callerId)) externalIds.add(callerId);
+      }
+    }
+    if (atom.callees) {
+      for (const calleeId of atom.callees) {
+        if (!atoms.find(a => a.id === calleeId)) externalIds.add(calleeId);
+      }
+    }
+  }
+  
+  // Si hay átomos externos, enriquecer el grafo cargándolos también
+  if (externalIds.size > 0) {
+    const { queryAtoms } = await import('#layer-c/storage/index.js');
+    const externalAtoms = await queryAtoms(projectPath, { ids: Array.from(externalIds) });
+    if (externalAtoms && externalAtoms.length > 0) {
+      const enrichedExternal = await enrichAtomsWithRelations(externalAtoms, {
+        scope: 'ids',
+        ids: externalAtoms.map(a => a.id),
+        withStats: true,
+        withCallers: true,
+        withCallees: true
+      }, projectPath);
+      enrichedAtoms = [...enrichedAtoms, ...enrichedExternal];
+    }
+  }
 
   // Find entry atom
   const normalizedFile = filePath.replace(/\\/g, '/').replace(/^.*?src\//, 'src/');

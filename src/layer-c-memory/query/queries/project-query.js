@@ -36,14 +36,24 @@ export async function getProjectMetadata(rootPath) {
           }
         }
         
-        // Get files count from atoms table
+        // Get files count from atoms table (source of truth)
         const atomsCount = repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get();
         const filesCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms').get();
         
-        metadata.stats = metadata.stats || {
-          totalAtoms: atomsCount?.count || 0,
-          totalFiles: filesCount?.count || 0
+        // Get stats from system_map_metadata if available, otherwise use atoms count
+        const systemMapMeta = metadata.system_map_metadata || {};
+        metadata.stats = {
+          totalAtoms: atomsCount?.count || systemMapMeta.totalFunctions || 0,
+          totalFiles: filesCount?.count || systemMapMeta.totalFiles || 0
         };
+        
+        // Use system_map_metadata totals as fallback
+        if (!metadata.totalFiles && systemMapMeta.totalFiles) {
+          metadata.totalFiles = systemMapMeta.totalFiles;
+        }
+        if (!metadata.totalFunctions && systemMapMeta.totalFunctions) {
+          metadata.totalFunctions = systemMapMeta.totalFunctions;
+        }
         
         // Get files list from atoms table
         const files = repo.db.prepare('SELECT DISTINCT file_path FROM atoms LIMIT 1000').all();

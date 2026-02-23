@@ -9,7 +9,7 @@
  * @module mcp/tools/trace-variable-impact
  */
 
-import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
+import { queryAtoms, getAtomsInFile, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:trace-variable');
@@ -53,14 +53,61 @@ export async function trace_variable_impact(args, context) {
     };
   }
 
-  const allAtoms = await getAllAtoms(projectPath);
+  // 🚀 OPTIMIZADO: Cargar átomos del archivo específico
+  let atoms;
+  if (filePath) {
+    atoms = await getAtomsInFile(projectPath, filePath);
+  } else {
+    const allAtoms = await queryAtoms(projectPath, {});
+    atoms = allAtoms.filter(a => a.name === symbolName);
+  }
   
-  // ENRIQUECIMIENTO ESTÁNDAR: Agregar stats de relaciones
-  const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+  if (!atoms || atoms.length === 0) {
+    return {
+      error: `No atoms found for: ${filePath || symbolName}`,
+      suggestion: 'Check filePath or symbolName'
+    };
+  }
+  
+  // ENRIQUECIMIENTO: Cargar TODAS las relaciones (internas + externas)
+  let enrichedAtoms = await enrichAtomsWithRelations(atoms, {
+    scope: 'ids',
+    ids: atoms.map(a => a.id),
     withStats: true,
     withCallers: true,
     withCallees: true
   }, projectPath);
+  
+  // 🚀 CARGAR ÁTOMOS EXTERNOS RELACIONADOS (callers/callees de otros archivos)
+  const externalIds = new Set();
+  for (const atom of enrichedAtoms) {
+    if (atom.callers) {
+      for (const callerId of atom.callers) {
+        if (!atoms.find(a => a.id === callerId)) externalIds.add(callerId);
+      }
+    }
+    if (atom.callees) {
+      for (const calleeId of atom.callees) {
+        if (!atoms.find(a => a.id === calleeId)) externalIds.add(calleeId);
+      }
+    }
+  }
+  
+  // Si hay átomos externos, enriquecer el grafo cargándolos también
+  if (externalIds.size > 0) {
+    const { queryAtoms: queryAtomsStorage } = await import('#layer-c/storage/index.js');
+    const externalAtoms = await queryAtomsStorage(projectPath, { ids: Array.from(externalIds) });
+    if (externalAtoms && externalAtoms.length > 0) {
+      const enrichedExternal = await enrichAtomsWithRelations(externalAtoms, {
+        scope: 'ids',
+        ids: externalAtoms.map(a => a.id),
+        withStats: true,
+        withCallers: true,
+        withCallees: true
+      }, projectPath);
+      enrichedAtoms = [...enrichedAtoms, ...enrichedExternal];
+    }
+  }
   
   const { byName } = buildAtomIndices(enrichedAtoms);
 

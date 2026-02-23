@@ -28,8 +28,8 @@ export async function getFullStatus() {
     },
     project: {
       path: this.projectPath,
-      totalFiles: this.metadata?.metadata?.totalFiles || 0,
-      totalFunctions: this.metadata?.metadata?.totalFunctions || 0
+      totalFiles: this.metadata?.stats?.totalFiles || 0,
+      totalFunctions: this.metadata?.stats?.totalAtoms || 0
     },
     cache: this.cache.getCacheStats()
   };

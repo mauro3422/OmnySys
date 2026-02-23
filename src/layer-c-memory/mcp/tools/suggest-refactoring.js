@@ -3,7 +3,7 @@
  * Sugiere mejoras de refactoring basadas en análisis del código
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAtomsInFile } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { analyzeExtractFunction } from './suggest-refactoring/extract-analyzer.js';
 import { analyzeNaming } from './suggest-refactoring/naming-analyzer.js';
@@ -44,12 +44,10 @@ export async function suggest_refactoring(args, context) {
   logger.info(`[Tool] suggest_refactoring("${filePath || 'all'}")`);
   
   try {
-    let atoms = await getAllAtoms(projectPath);
-    
-    // Filtrar por archivo si se especifica
-    if (filePath) {
-      atoms = atoms.filter(a => a.filePath === filePath || a.filePath?.endsWith('/' + filePath));
-    }
+    // 🚀 OPTIMIZADO: Si hay filePath, cargar solo átomos de ese archivo
+    const atoms = filePath 
+      ? await getAtomsInFile(projectPath, filePath)
+      : await getAllAtoms(projectPath);
     
     const allSuggestions = [
       ...analyzeExtractFunction(atoms, filePath),

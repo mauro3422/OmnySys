@@ -72,7 +72,7 @@ export class IndexingDecisionEngine {
    * @private
    */
   _calculateMetrics(metadata, changes) {
-    const totalFiles = metadata?.metadata?.totalFiles || 
+    const totalFiles = metadata?.stats?.totalFiles || 
                       Object.keys(metadata?.fileIndex || {}).length || 
                       0;
     

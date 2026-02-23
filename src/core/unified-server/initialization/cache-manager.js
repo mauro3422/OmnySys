@@ -47,7 +47,7 @@ export async function loadExistingData(context) {
   cache.set('assessment', assessment);
   logger.info('  ✓ Risk assessment cached');
 
-  logger.info(`  📊 ${metadata?.metadata?.totalFiles || 0} files indexed\n`);
+  logger.info(`  📊 ${metadata?.stats?.totalFiles || 0} files indexed\n`);
   
   return metadata;
 }

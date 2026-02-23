@@ -3,7 +3,7 @@
  * Calcula métricas de salud del código: entropía, cohesión, límites
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAtomsInFile } from '#layer-c/storage/index.js';
 
 const LIMITS = {
   complexity: { max: 15, weight: 0.25 },
@@ -182,11 +182,21 @@ export async function get_health_metrics(args, context) {
   const { projectPath } = context;
   
   try {
-    const atoms = await getAllAtoms(projectPath);
-    
-    let targetAtoms = atoms;
+    // 🚀 OPTIMIZADO: Si hay filePath, cargar solo átomos de ese archivo
+    let targetAtoms;
     if (filePath) {
-      targetAtoms = atoms.filter(a => a.filePath === filePath);
+      targetAtoms = await getAtomsInFile(projectPath, filePath);
+    } else {
+      targetAtoms = await getAllAtoms(projectPath);
+    }
+    
+    if (!targetAtoms || targetAtoms.length === 0) {
+      return {
+        summary: { totalAtoms: 0, overallScore: 100, grade: 'A', averageComplexity: '0' },
+        healthDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+        unhealthyAtoms: [],
+        recommendation: 'No atoms found'
+      };
     }
     
     const healthDist = getHealthDistribution(targetAtoms);

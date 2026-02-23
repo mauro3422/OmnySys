@@ -38,9 +38,9 @@ export async function get_server_status(args, context) {
   try {
     const metadata = await getProjectMetadata(projectPath);
     status.metadata = {
-      totalFiles: metadata?.metadata?.totalFiles || metadata?.totalFiles || 0,
-      totalFunctions: metadata?.metadata?.totalFunctions || metadata?.totalFunctions || 0,
-      lastAnalyzed: metadata?.metadata?.analyzedAt || metadata?.indexedAt || null
+      totalFiles: metadata?.stats?.totalFiles || metadata?.totalFiles || 0,
+      totalFunctions: metadata?.stats?.totalAtoms || metadata?.totalFunctions || 0,
+      lastAnalyzed: metadata?.system_map_metadata?.analyzedAt || metadata?.indexedAt || null
     };
   } catch (e) {
     status.metadata = { error: 'Metadata not available', message: e.message };

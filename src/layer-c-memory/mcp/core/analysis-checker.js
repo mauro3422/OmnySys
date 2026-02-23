@@ -49,14 +49,14 @@ export async function checkAndRunAnalysis(projectPath) {
     }
 
     const metadata = await getProjectMetadata(projectPath);
-    const fileCount = metadata?.metadata?.totalFiles || 0;
+    const fileCount = metadata?.stats?.totalFiles || 0;
 
     logger.info(`✅ Found existing analysis: ${fileCount} files`);
 
     const hasValidBaseAnalysis =
       fileCount > 0 &&
       (metadata?.fileIndex || metadata?.files) &&
-      metadata?.metadata?.enhanced === true;
+      metadata?.system_map_metadata?.enhanced === true;
 
     if (!hasValidBaseAnalysis) {
       logger.info('   🚨 Analysis incomplete, running Layer A...');
@@ -160,7 +160,7 @@ export async function checkAndRunAnalysisSmart(projectPath, options = {}) {
 
     // Paso 2: Cargar metadata existente
     const metadata = await getProjectMetadata(projectPath);
-    const fileCount = metadata?.metadata?.totalFiles || 0;
+    const fileCount = metadata?.stats?.totalFiles || 0;
 
     logger.info(`✅ Found existing analysis: ${fileCount} files`);
 

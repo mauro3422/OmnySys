@@ -60,6 +60,17 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
       params.push(filter.maxComplexity);
     }
     
+    if (filter.ids && filter.ids.length > 0) {
+      const placeholders = filter.ids.map(() => '?').join(',');
+      sql += ` AND id IN (${placeholders})`;
+      params.push(...filter.ids);
+    }
+    
+    if (filter.name) {
+      sql += ' AND name LIKE ?';
+      params.push(`%${filter.name}%`);
+    }
+    
     const sortField = options.sortBy || 'id';
     const sortOrder = options.sortOrder || 'ASC';
     sql += ` ORDER BY ${sortField} ${sortOrder}`;
