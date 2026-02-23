@@ -11,65 +11,93 @@
  * @returns {object} - Métricas de calidad
  */
 export function calculateQualityMetrics(analyses) {
-  // Scoring (0-100)
   let score = 100;
 
-  // Penalties (destructuring de analyses precalculados)
-  if (analyses.unusedExports.totalUnused > 0)
-    score -= Math.min(20, analyses.unusedExports.totalUnused);
-  if (analyses.orphanFiles.deadCodeCount > 0)
-    score -= Math.min(15, analyses.orphanFiles.deadCodeCount * 5);
-  if (analyses.hotspots.criticalCount > 0)
-    score -= Math.min(25, analyses.hotspots.criticalCount * 10);
-  // Circular function deps: penalizar solo si es excesivo (>10)
-  // La mayoría son funciones recursivas legítimas (DFS, traversal)
-  // Solo contar ciclos de funciones problemáticos (no recursión válida)
-  const problematicFunctionCycles = analyses.circularFunctionDeps?.problematicCount || 0;
-  if (problematicFunctionCycles > 0)
-    score -= Math.min(15, problematicFunctionCycles * 5);
-  if (analyses.deepDependencyChains.totalDeepChains > 0)
-    score -= Math.min(20, analyses.deepDependencyChains.totalDeepChains * 2);
-  if (analyses.couplingAnalysis.concern === 'HIGH') score -= 15;
-  // Penalizar imports problemáticos
-  if (analyses.unresolvedImports.total > 0)
-    score -= Math.min(25, analyses.unresolvedImports.total * 5);
-  // Solo penalizar ciclos problemáticos (no los arquitectónicamente válidos)
-  const problematicCycles = analyses.circularImports.problematicCount || 0;
-  if (problematicCycles > 0)
-    score -= Math.min(20, problematicCycles * 10);
-  if (analyses.unusedImports.total > 0)
-    score -= Math.min(15, Math.ceil(analyses.unusedImports.total / 2));
-
-  // TIER 3: Penalizar estado compartido mutable y high-risk types/constants
-  if (analyses.sharedObjects && analyses.sharedObjects.criticalObjects.length > 0)
-    score -= Math.min(20, analyses.sharedObjects.criticalObjects.length * 10);
-  if (analyses.typeUsage && analyses.typeUsage.highRiskCount > 0)
-    score -= Math.min(10, analyses.typeUsage.highRiskCount * 2);
-  if (analyses.constantUsage && analyses.constantUsage.hotspotConstants.length > 0)
-    score -= Math.min(10, analyses.constantUsage.hotspotConstants.length * 2);
-  if (analyses.enumUsage && analyses.enumUsage.highRiskCount > 0)
-    score -= Math.min(10, analyses.enumUsage.highRiskCount * 2);
+  // Extract each penalty to a separate function for lower complexity
+  score -= calculateUnusedExportsPenalty(analyses.unusedExports);
+  score -= calculateDeadCodePenalty(analyses.orphanFiles);
+  score -= calculateHotspotsPenalty(analyses.hotspots);
+  score -= calculateCircularFunctionPenalty(analyses.circularFunctionDeps);
+  score -= calculateDeepChainsPenalty(analyses.deepDependencyChains);
+  score -= calculateCouplingPenalty(analyses.couplingAnalysis);
+  score -= calculateUnresolvedImportsPenalty(analyses.unresolvedImports);
+  score -= calculateCircularImportsPenalty(analyses.circularImports);
+  score -= calculateUnusedImportsPenalty(analyses.unusedImports);
+  score -= calculateSharedObjectsPenalty(analyses.sharedObjects);
+  score -= calculateTypeUsagePenalty(analyses.typeUsage);
+  score -= calculateConstantUsagePenalty(analyses.constantUsage);
+  score -= calculateEnumUsagePenalty(analyses.enumUsage);
 
   score = Math.max(0, Math.min(100, score));
 
-  const grade =
-    score >= 85 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
+  const grade = score >= 85 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 45 ? 'D' : 'F';
 
+  return buildMetricsResult(analyses, score, grade);
+}
+
+function calculateUnusedExportsPenalty(unusedExports) {
+  return Math.min(20, unusedExports.totalUnused || 0);
+}
+
+function calculateDeadCodePenalty(orphanFiles) {
+  return Math.min(15, (orphanFiles.deadCodeCount || 0) * 5);
+}
+
+function calculateHotspotsPenalty(hotspots) {
+  return Math.min(25, (hotspots.criticalCount || 0) * 10);
+}
+
+function calculateCircularFunctionPenalty(circularFunctionDeps) {
+  const problematicCount = circularFunctionDeps?.problematicCount || 0;
+  return Math.min(15, problematicCount * 5);
+}
+
+function calculateDeepChainsPenalty(deepDependencyChains) {
+  return Math.min(20, (deepDependencyChains.totalDeepChains || 0) * 2);
+}
+
+function calculateCouplingPenalty(couplingAnalysis) {
+  return couplingAnalysis?.concern === 'HIGH' ? 15 : 0;
+}
+
+function calculateUnresolvedImportsPenalty(unresolvedImports) {
+  return Math.min(25, (unresolvedImports.total || 0) * 5);
+}
+
+function calculateCircularImportsPenalty(circularImports) {
+  const problematicCount = circularImports?.problematicCount || 0;
+  return Math.min(20, problematicCount * 10);
+}
+
+function calculateUnusedImportsPenalty(unusedImports) {
+  return Math.min(15, Math.ceil((unusedImports.total || 0) / 2));
+}
+
+function calculateSharedObjectsPenalty(sharedObjects) {
+  if (!sharedObjects) return 0;
+  return Math.min(20, (sharedObjects.criticalObjects?.length || 0) * 10);
+}
+
+function calculateTypeUsagePenalty(typeUsage) {
+  if (!typeUsage) return 0;
+  return Math.min(10, (typeUsage.highRiskCount || 0) * 2);
+}
+
+function calculateConstantUsagePenalty(constantUsage) {
+  if (!constantUsage) return 0;
+  return Math.min(10, (constantUsage.hotspotConstants?.length || 0) * 2);
+}
+
+function calculateEnumUsagePenalty(enumUsage) {
+  if (!enumUsage) return 0;
+  return Math.min(10, (enumUsage.highRiskCount || 0) * 2);
+}
+
+function buildMetricsResult(analyses, score, grade) {
   return {
-    score: score,
-    grade: grade,
-    totalIssues:
-      analyses.unusedExports.totalUnused +
-      analyses.orphanFiles.total +
-      analyses.hotspots.total +
-      (analyses.circularFunctionDeps?.problematicCount || 0) +
-      analyses.unresolvedImports.total +
-      (analyses.circularImports.problematicCount || 0) +
-      analyses.unusedImports.total +
-      (analyses.sharedObjects?.criticalObjects.length || 0) +
-      (analyses.typeUsage?.highRiskCount || 0) +
-      (analyses.constantUsage?.hotspotConstants.length || 0) +
-      (analyses.enumUsage?.highRiskCount || 0),
+    score,
+    grade,
+    totalIssues: sumTotalIssues(analyses),
     breakdown: {
       unusedExports: analyses.unusedExports.totalUnused,
       orphanFiles: analyses.orphanFiles.deadCodeCount,
@@ -81,11 +109,24 @@ export function calculateQualityMetrics(analyses) {
       circularImports: analyses.circularImports.total,
       unusedImports: analyses.unusedImports.total,
       reexportChains: analyses.reexportChains.total,
-      // TIER 3
-      sharedObjects: analyses.sharedObjects?.criticalObjects.length || 0,
+      sharedObjects: analyses.sharedObjects?.criticalObjects?.length || 0,
       highRiskTypes: analyses.typeUsage?.highRiskCount || 0,
-      hotspotConstants: analyses.constantUsage?.hotspotConstants.length || 0,
+      hotspotConstants: analyses.constantUsage?.hotspotConstants?.length || 0,
       highRiskEnums: analyses.enumUsage?.highRiskCount || 0
     }
   };
+}
+
+function sumTotalIssues(analyses) {
+  return (analyses.unusedExports.totalUnused || 0) +
+    (analyses.orphanFiles.total || 0) +
+    (analyses.hotspots.total || 0) +
+    (analyses.circularFunctionDeps?.problematicCount || 0) +
+    (analyses.unresolvedImports.total || 0) +
+    (analyses.circularImports?.problematicCount || 0) +
+    (analyses.unusedImports.total || 0) +
+    (analyses.sharedObjects?.criticalObjects?.length || 0) +
+    (analyses.typeUsage?.highRiskCount || 0) +
+    (analyses.constantUsage?.hotspotConstants?.length || 0) +
+    (analyses.enumUsage?.highRiskCount || 0);
 }
