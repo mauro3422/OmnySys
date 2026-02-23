@@ -28,15 +28,16 @@ const logger = createLogger('OmnySys:shadow-registry');
  * Shadow Registry - Clase principal
  */
 export class ShadowRegistry {
-  constructor(dataPath) {
+  constructor(dataPath, rootPath = null) {
     this.dataPath = dataPath;
+    this.rootPath = rootPath || dataPath.replace('.omnysysdata', '');
     this.shadowsPath = path.join(dataPath, 'shadows');
     this.indexPath = path.join(this.shadowsPath, 'index.json');
     this.initialized = false;
     
     // Componentes modulares
     this.cache = new ShadowCache(100);
-    this.storage = new ShadowStorage(this.shadowsPath);
+    this.storage = new ShadowStorage(this.shadowsPath, this.rootPath);
     this.indexManager = new IndexManager(this.indexPath);
   }
 
