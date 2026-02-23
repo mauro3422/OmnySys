@@ -83,7 +83,11 @@ export function atomToRow(atom) {
     performance_json: safeJson(atom.performance),
     dna_json: safeJson(atom.dna),
     derived_json: safeJson(atom.derived),
-    _meta_json: safeJson(atom._meta || atom.meta)
+    _meta_json: safeJson(atom._meta || atom.meta),
+    
+    // Relations and type
+    called_by_json: safeJson(atom.calledBy || []),
+    function_type: safeString(atom.functionType || atom.type || 'declaration')
   };
 }
 

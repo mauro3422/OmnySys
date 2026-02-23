@@ -52,7 +52,8 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
       row.callers_count, row.callees_count, row.dependency_depth, row.external_call_count,
       row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
       row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
-      row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json
+      row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
+      row.called_by_json, row.function_type
     ];
     
     this.statements.insertAtom.run(values);
