@@ -10,15 +10,12 @@
  *   - Estimated execution complexity per step
  *   - Race condition hotspots along the path
  *
- * vs trace_data_journey:
- *   - trace_data_journey: follows a specific variable argument-by-argument
- *   - simulate_data_journey: walks ALL outgoing edges from entry, giving
- *     a full reachability picture with risk aggregation
+ * USA el módulo estándar de enrichment para relaciones.
  *
  * @module mcp/tools/simulate-data-journey
  */
 
-import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { CrossFileResolver } from '#layer-a/pipeline/molecular-chains/cross-file/CrossFileResolver.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -144,10 +141,17 @@ export async function simulate_data_journey(args, context) {
   logger.debug(`Phase 5: Simulating journey from ${symbolName}`);
 
   const allAtoms = await getAllAtoms(projectPath);
+  
+  // ENRIQUECIMIENTO ESTÁNDAR: Agregar stats de relaciones
+  const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+    withStats: true,
+    withCallers: true,
+    withCallees: true
+  }, projectPath);
 
   // Find entry atom
   const normalizedFile = filePath.replace(/\\/g, '/').replace(/^.*?src\//, 'src/');
-  const entryAtom = allAtoms.find(a =>
+  const entryAtom = enrichedAtoms.find(a =>
     a.name === symbolName &&
     (a.filePath === filePath ||
      a.filePath?.endsWith(normalizedFile) ||
@@ -162,9 +166,9 @@ export async function simulate_data_journey(args, context) {
   }
 
   // Build cross-file edge map
-  const resolver = new CrossFileResolver(allAtoms);
+  const resolver = new CrossFileResolver(enrichedAtoms);
   const edgeMap = resolver.buildEdgeMap();
-  const byId = new Map(allAtoms.map(a => [a.id, a]));
+  const byId = new Map(enrichedAtoms.map(a => [a.id, a]));
 
   // Walk the graph
   const steps = simulateWalk(entryAtom, edgeMap, byId, maxDepth);

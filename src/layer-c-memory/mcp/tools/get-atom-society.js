@@ -1,9 +1,11 @@
 /**
  * MCP Tool: get_atom_society
  * Detecta sociedades de átomos: cadenas, clusters y hubs
+ * 
+ * Usa el módulo estándar de enrichment para cargar relaciones eficientemente.
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 
 function findChains(atoms, maxDepth = 5) {
   // Índice primario: id completo → atom
@@ -121,13 +123,13 @@ function findClusters(atoms) {
 }
 
 function findHubs(atoms, minCallers = 5) {
-  const hubs = atoms
-    .filter(a => (a.calledBy?.length || 0) >= minCallers)
+  return atoms
+    .filter(a => (a.callerCount || 0) >= minCallers)
     .map(a => ({
       id: a.id,
       name: a.name,
       file: a.filePath,
-      callers: a.calledBy?.length || 0,
+      callers: a.callerCount || 0,
       purpose: a.purpose,
       archetype: a.archetype?.type,
       complexity: a.complexity
@@ -140,7 +142,7 @@ function findHubs(atoms, minCallers = 5) {
 function findOrphans(atoms) {
   return atoms
     .filter(a => 
-      (!a.calledBy || a.calledBy.length === 0) && 
+      (!a.callerCount || a.callerCount === 0) && 
       a.isExported && 
       a.callerPattern?.id !== 'entry_point' &&
       a.callerPattern?.id !== 'test_framework' &&
@@ -161,11 +163,17 @@ export async function get_atom_society(args, context) {
   const { projectPath } = context;
   
   try {
+    // Cargar átomos y enriquecerlos con relaciones (ESTÁNDAR)
     const allAtoms = await getAllAtoms(projectPath);
+    const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+      withStats: true,
+      withCallers: false,
+      withCallees: false
+    }, projectPath);
     
-    let targetAtoms = allAtoms;
+    let targetAtoms = enrichedAtoms;
     if (filePath) {
-      targetAtoms = allAtoms.filter(a => a.filePath === filePath);
+      targetAtoms = enrichedAtoms.filter(a => a.filePath === filePath);
     }
     
     const chains = findChains(targetAtoms);
@@ -173,9 +181,9 @@ export async function get_atom_society(args, context) {
     const hubs = findHubs(targetAtoms, minCallers);
     const orphans = findOrphans(targetAtoms);
     
-    const totalAtoms = allAtoms.length;
-    const withCallers = allAtoms.filter(a => a.calledBy?.length > 0).length;
-    const exported = allAtoms.filter(a => a.isExported).length;
+    const totalAtoms = enrichedAtoms.length;
+    const withCallers = enrichedAtoms.filter(a => a.callerCount > 0).length;
+    const exported = enrichedAtoms.filter(a => a.isExported).length;
     
     // Arrays exposed at top-level so the pagination middleware can reach them.
     // counts/insights are objects → middleware skips them (correct).

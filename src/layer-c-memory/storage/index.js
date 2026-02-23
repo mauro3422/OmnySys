@@ -44,3 +44,11 @@ export {
   getAtomsInFile,
   getAtomsByName
 } from './atoms/index.js';
+
+// Enrichment Operations (ESTÁNDAR para relations)
+export {
+  enrichAtomsWithRelations,
+  enrichAtomsForFile,
+  enrichAtomWithFullRelations,
+  getRelationStats
+} from './enrichment/index.js';

@@ -4,10 +4,12 @@
  * Weighted BFS influence propagation through the atom call graph.
  * Math model: PageRank-like decay (α=0.75/hop, boost=usageCount/5).
  *
+ * USA el módulo estándar de enrichment para relaciones.
+ *
  * @module mcp/tools/trace-variable-impact
  */
 
-import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:trace-variable');
@@ -52,9 +54,17 @@ export async function trace_variable_impact(args, context) {
   }
 
   const allAtoms = await getAllAtoms(projectPath);
-  const { byName } = buildAtomIndices(allAtoms);
+  
+  // ENRIQUECIMIENTO ESTÁNDAR: Agregar stats de relaciones
+  const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+    withStats: true,
+    withCallers: true,
+    withCallees: true
+  }, projectPath);
+  
+  const { byName } = buildAtomIndices(enrichedAtoms);
 
-  const sourceAtom = findSourceAtom(allAtoms, filePath, symbolName);
+  const sourceAtom = findSourceAtom(enrichedAtoms, filePath, symbolName);
   if (!sourceAtom) {
     return {
       error: `Atom not found: ${filePath}::${symbolName}`,

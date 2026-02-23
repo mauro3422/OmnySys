@@ -129,10 +129,13 @@ export function rowToAtom(row) {
     testabilityScore: row.testability_score,
     
     // Contadores
-    calledBy: [], // Se llena por separado
-    calls: [],    // Se llena por separado
+    calls: safeParseJson(row.calls_json) || [],
+    calledBy: safeParseJson(row.called_by_json) || [],
     dependencyDepth: row.dependency_depth,
     externalCallCount: row.external_call_count,
+    
+    // Legacy compatibility - función declarada vs arrow vs método
+    functionType: row.function_type || 'declaration',
     
     // JSON parseados
     signature: safeParseJson(row.signature_json),

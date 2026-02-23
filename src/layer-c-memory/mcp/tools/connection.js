@@ -1,9 +1,12 @@
 /**
  * Tool: explain_connection
  * Explains why two files are connected
+ * 
+ * USA el módulo estándar de enrichment para relaciones.
  */
 
 import { getFileAnalysis, getFileDependents } from '#layer-c/query/apis/file-api.js';
+import { enrichAtomsWithRelations, enrichAtomsForFile } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:connection');
@@ -57,12 +60,43 @@ function checkSharedEvents(fileDataA, fileDataB) {
 async function checkAtomCallGraph(projectPath, fileDataA, fileDataB, fileA, fileB) {
   const results = [];
   try {
-    const { getAllAtoms } = await import('#layer-c/storage/atoms/atom.js');
-    const allAtoms = await getAllAtoms(projectPath);
-    const atomsA = allAtoms.filter(a => a.filePath === fileA || a.filePath?.endsWith('/' + fileA));
-    const atomsB = allAtoms.filter(a => a.filePath === fileB || a.filePath?.endsWith('/' + fileB));
-    const callersOfA = new Set(atomsA.flatMap(a => a.calledBy || []));
-    const callersOfB = new Set(atomsB.flatMap(a => a.calledBy || []));
+    // Usar enrichment para obtener relaciones eficientemente
+    const atomsA = await enrichAtomsForFile([], projectPath);
+    const atomsB = await enrichAtomsForFile([], projectPath);
+    
+    // Obtener átomos de cada archivo usando repo directamente
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    
+    let allAtomsA = [];
+    let allAtomsB = [];
+    
+    if (repo && repo.db) {
+      const atoms = repo.db.prepare(`
+        SELECT id, name, file_path FROM atoms 
+        WHERE file_path = ? OR file_path LIKE ?
+      `).all(fileA, `%/${fileA}`);
+      
+      allAtomsA = atoms.filter(a => a.file_path === fileA || a.file_path?.endsWith('/' + fileA));
+      allAtomsB = atoms.filter(a => a.file_path === fileB || a.file_path?.endsWith('/' + fileB));
+    }
+    
+    const atomsAData = await enrichAtomsWithRelations(allAtomsA, {
+      scope: 'ids',
+      ids: allAtomsA.map(a => a.id),
+      withStats: true,
+      withCallers: true
+    }, projectPath);
+    
+    const atomsBData = await enrichAtomsWithRelations(allAtomsB, {
+      scope: 'ids', 
+      ids: allAtomsB.map(a => a.id),
+      withStats: true,
+      withCallers: true
+    }, projectPath);
+    
+    const callersOfA = new Set(atomsAData.flatMap(a => a.callers || []));
+    const callersOfB = new Set(atomsBData.flatMap(a => a.callers || []));
 
     if (atomsB.some(a => callersOfA.has(a.id || `${a.filePath}::${a.name}`)))
       results.push({ type: 'mixin-call', direction: `${fileB} → calls (via this.*) → ${fileA}`, reason: `${fileB} calls functions defined in ${fileA} via mixin/prototype delegation`, confidence: 0.9 });

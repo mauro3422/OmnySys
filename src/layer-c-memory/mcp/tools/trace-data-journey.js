@@ -5,24 +5,12 @@
  * function through cross-file call chains, following actual argument→parameter
  * mappings rather than probabilistic PageRank weights.
  *
- * Unlike trace_variable_impact (which uses influence propagation), this tool
- * performs a DFS along CrossFileEdge connections where the tracked variable
- * is explicitly passed as an argument to the callee.
- *
- * USE WHEN:
- *   - You know a specific variable (e.g. `filePath`, `userId`, `config`)
- *     and want to see where it flows across module boundaries
- *   - You want deterministic: "X is passed to Y which passes it to Z"
- *   - Debugging data corruption: find all functions that mutate a value
- *
- * vs trace_variable_impact:
- *   - impact: probabilistic, uses calledBy graph, PageRank-like, no arg tracking
- *   - journey: deterministic, uses calls[].args, follows actual argument flow
+ * USA el módulo estándar de enrichment para relaciones.
  *
  * @module mcp/tools/trace-data-journey
  */
 
-import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { CrossFileResolver } from '#layer-a/pipeline/molecular-chains/cross-file/CrossFileResolver.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -112,10 +100,17 @@ export async function trace_data_journey(args, context) {
   logger.debug(`Tracing journey of "${variableName}" from ${symbolName} in ${filePath}`);
 
   const allAtoms = await getAllAtoms(projectPath);
+  
+  // ENRIQUECIMIENTO ESTÁNDAR: Agregar stats de relaciones
+  const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, {
+    withStats: true,
+    withCallers: true,
+    withCallees: true
+  }, projectPath);
 
   // Find source atom
   const normalizedFile = filePath.replace(/\\/g, '/').replace(/^.*?src\//, 'src/');
-  const sourceAtom = allAtoms.find(a =>
+  const sourceAtom = enrichedAtoms.find(a =>
     a.name === symbolName &&
     (a.filePath === filePath ||
      a.filePath?.endsWith(normalizedFile) ||
@@ -135,9 +130,9 @@ export async function trace_data_journey(args, context) {
     (sourceAtom.calls || []).some(c => (c.args || []).some(a => a.variable === variableName));
 
   // Build cross-file edge map (query-time, no storage needed)
-  const resolver = new CrossFileResolver(allAtoms);
+  const resolver = new CrossFileResolver(enrichedAtoms);
   const edgeMap = resolver.buildEdgeMap();
-  const byId = new Map(allAtoms.map(a => [a.id, a]));
+  const byId = new Map(enrichedAtoms.map(a => [a.id, a]));
 
   // Trace the journey
   const steps = traceJourney(sourceAtom.id, variableName, edgeMap, byId, maxDepth);
