@@ -60,13 +60,25 @@ export async function saveAtom(rootPath, filePath, functionName, atomData) {
 /**
  * Carga átomos de un archivo
  * Usa SQLite si OMNY_SQLITE=true, sino JSON legacy
+ * @param {string} rootPath - Ruta del proyecto
+ * @param {string} filePath - Ruta del archivo
+ * @param {Object} options - Opciones
+ * @param {boolean} options.includeRemoved - Incluir átomos marcados como eliminados
  */
-export async function loadAtoms(rootPath, filePath) {
+export async function loadAtoms(rootPath, filePath, options = {}) {
+  const { includeRemoved = false } = options;
+  
   if (USE_SQLITE) {
     try {
       const repo = getRepository(rootPath);
       const normalizedPath = normalizeFilePath(rootPath, filePath);
-      return repo.getByFile(normalizedPath); // Sync
+      let atoms = repo.getByFile(normalizedPath); // Sync
+      
+      if (!includeRemoved) {
+        atoms = atoms.filter(a => a.lineage?.status !== 'removed');
+      }
+      
+      return atoms;
     } catch (error) {
       logger.error(`[loadAtoms] SQLite error: ${error.message}`);
       return [];

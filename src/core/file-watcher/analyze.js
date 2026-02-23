@@ -225,7 +225,8 @@ export async function analyzeFile(filePath, fullPath) {
   const moleculeAtoms = molecularStructure?.atoms ?? [];
 
   // Detectar funciones removidas
-  const previousAtoms = await loadAtoms(this.rootPath, filePath);
+  // FIX: includeRemoved=true para detectar átomos que ya estaban marcados como removed
+  const previousAtoms = await loadAtoms(this.rootPath, filePath, { includeRemoved: true });
   const newAtomNames = new Set(moleculeAtoms.filter(a => a.name).map(a => a.name));
   for (const prev of previousAtoms) {
     if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {

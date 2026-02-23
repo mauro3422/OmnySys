@@ -57,7 +57,7 @@ export async function detect_patterns(args, context) {
       const archDebt = findArchitecturalDebt(atoms);
 
       result.overview = {
-        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" | "architectural-debt" for full details',
+        note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" | "architectural-debt" | "large-monolithic" | "unused-exports" for full details',
         duplicates: { 
           exact: dups.summary.exactDuplicatesFound, 
           contextual: dups.summary.contextualDuplicatesFound,
@@ -161,6 +161,13 @@ export async function detect_patterns(args, context) {
     if (patternType === 'large-monolithic') {
       result.largeMonolithic = findLargeMonolithic(atoms);
       result.summary.monolithicExplanation = 'Files > 250 lines with a SINGLE dominant purpose but multiple technical operations (violates SRP). Unlike architectural-debt which detects multiple purposes, this detects monoliths that do one thing but in many ways.';
+    }
+
+    if (patternType === 'unused-exports') {
+      const unusual = findUnusualPatterns(atoms);
+      result.unusedExports = unusual.unusedExports;
+      result.summary.unusedExportsCount = unusual.unusedExports.length;
+      result.summary.unusedExportsExplanation = 'Functions/const that are exported but never called from other code. These are dead code candidates - consider removing or verifying they are actually used.';
     }
 
     return result;
