@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { CACHE_DIR, INDEX_FILE } from '#config/paths.js';
+import { DATA_DIR } from '#config/paths.js';
 import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 import { detectChangeType } from './utils.js';
 
@@ -14,12 +14,14 @@ import * as atoms from './atoms.js';
 
 /**
  * Unified Cache Manager
+ * Now uses SQLite as primary storage - these paths are for reference only
  */
 class UnifiedCacheManager {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.cacheDir = path.join(projectPath, CACHE_DIR);
-    this.indexPath = path.join(this.cacheDir, INDEX_FILE);
+    // These are kept for reference but not used - SQLite is the source
+    this.cacheDir = path.join(projectPath, DATA_DIR, 'cache');
+    this.indexPath = path.join(this.cacheDir, 'index.json');
 
     // Índice en memoria (persistente)
     this.index = {

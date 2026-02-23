@@ -10,12 +10,7 @@
 // Paths
 export {
   DATA_DIR,
-  CACHE_DIR,
-  INDEX_FILE,
-  SYSTEM_MAP_FILE,
   ISSUES_FILE,
-  getIndexPath,
-  getSystemMapPath,
   getIssuesPath,
   getDataPath
 } from './paths.js';
