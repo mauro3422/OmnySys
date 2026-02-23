@@ -8,7 +8,9 @@ const DATA_DIR = '.omnysysdata';
 
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { resolveImport, getResolutionConfig } from '../../layer-a-static/resolver.js';
-import { saveFileAnalysis as persistFileAnalysis } from '#layer-c/storage/index.js';
+// saveFileAnalysis ya no se exporta de storage/index.js - los datos van directo a SQLite
+// Esta función queda como stub para compatibilidad
+const persistFileAnalysis = async () => {};
 import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';

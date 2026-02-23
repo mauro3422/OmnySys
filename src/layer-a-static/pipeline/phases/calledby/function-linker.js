@@ -7,7 +7,7 @@
  * @module pipeline/phases/calledby/function-linker
  */
 
-import { saveAtom } from '#layer-c/storage/atoms/atom.js';
+
 
 /**
  * Builds a multi-level atom lookup index from allAtoms.
@@ -92,10 +92,10 @@ export async function linkFunctionCalledBy(allAtoms, absoluteRootPath, index, ve
     }
   }
 
-  // Persist + recompute changeRisk for updated atoms
+  // Recompute changeRisk for updated atoms (sin guardar - se hace bulk al final)
   const updatedAtoms = allAtoms.filter(a => a.calledBy && a.calledBy.length > 0);
-  await Promise.allSettled(updatedAtoms.map(async atom => {
-    if (!atom.filePath || !atom.name) return;
+  for (const atom of updatedAtoms) {
+    if (!atom.filePath || !atom.name) continue;
     if (atom.derived) {
       const calledByCount = atom.calledBy.length;
       const complexity = atom.complexity || 1;
@@ -104,13 +104,12 @@ export async function linkFunctionCalledBy(allAtoms, absoluteRootPath, index, ve
         Math.min(1, (calledByCount / 20) * 0.5 + (complexity / 100) * 0.3 + exportRisk) * 100
       ) / 100;
     }
-    await saveAtom(absoluteRootPath, atom.filePath, atom.name, atom);
-  }));
+  }
 
   if (verbose) {
     const logger = (await import('#utils/logger.js')).createLogger('OmnySys:indexer');
     logger.info(`  ✓ ${crossFileLinks} cross-file + ${intraFileLinks} intra-file calledBy links (${updatedAtoms.length} atoms updated)`);
   }
 
-  return { crossFileLinks, intraFileLinks };
+  return { crossFileLinks, intraFileLinks, updatedAtoms };
 }

@@ -12,10 +12,8 @@ const DATA_DIR = '.omnysysdata';
 export async function createDataDirectory(rootPath) {
   const dataPath = path.join(rootPath, DATA_DIR);
 
+  // Solo crear directorio raíz - SQLite maneja todo internamente
   await fs.mkdir(dataPath, { recursive: true });
-  await fs.mkdir(path.join(dataPath, 'files'), { recursive: true });
-  await fs.mkdir(path.join(dataPath, 'connections'), { recursive: true });
-  await fs.mkdir(path.join(dataPath, 'risks'), { recursive: true });
 
   return dataPath;
 }
@@ -32,6 +30,7 @@ export function getDataDirectory(rootPath) {
 
 /**
  * Verifica si existe análisis previo
+ * Ahora verifica el archivo SQLite en lugar de index.json
  *
  * @param {string} rootPath - Raíz del proyecto
  * @returns {boolean} - true si existe análisis previo
@@ -39,8 +38,9 @@ export function getDataDirectory(rootPath) {
 export async function hasExistingAnalysis(rootPath) {
   try {
     const dataPath = getDataDirectory(rootPath);
-    const indexPath = path.join(dataPath, 'index.json');
-    await fs.access(indexPath);
+    // Verificar archivo SQLite principal
+    const dbPath = path.join(dataPath, 'omnysys.db');
+    await fs.access(dbPath);
     return true;
   } catch {
     return false;

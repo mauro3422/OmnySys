@@ -1,56 +1,27 @@
 /**
- * Change detection utilities
+ * Change detection utilities - Usa hashes de contenido en lugar de timestamps
  * @module mcp/core/analysis-checker/change-detector
  */
 
 import { scanCurrentFiles } from './file-scanner.js';
+import { detectRealChanges } from '../../../../layer-c-memory/storage/cache/hash-cache.js';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:analysis:checker');
 
 /**
- * Detectar cambios entre proyecto y cache
+ * Detectar cambios entre proyecto y cache usando hashes de contenido
  * @param {string} projectPath - Project root path
- * @param {Object} metadata - Project metadata
+ * @param {Object} metadata - Project metadata (ya no se usa, mantenido para compatibilidad)
  * @returns {Promise<Object>} - Changes object
  */
 export async function detectCacheChanges(projectPath, metadata) {
   try {
     const currentFiles = await scanCurrentFiles(projectPath);
-    const currentFileMap = new Map(currentFiles.map(f => [f.path, f]));
+    const filePaths = currentFiles.map(f => f.path);
     
-    const cachedFiles = metadata?.fileIndex || metadata?.files || {};
-    const cachedFileSet = new Set(Object.keys(cachedFiles));
-    
-    const changes = {
-      newFiles: [],
-      modifiedFiles: [],
-      deletedFiles: [],
-      unchangedFiles: []
-    };
-    
-    for (const [filePath, fileInfo] of currentFileMap) {
-      const normalizedPath = filePath.replace(/\\/g, '/');
-      
-      if (!cachedFileSet.has(normalizedPath)) {
-        changes.newFiles.push(normalizedPath);
-      } else {
-        const cachedInfo = cachedFiles[normalizedPath];
-        const cachedTime = cachedInfo?.lastAnalyzed || cachedInfo?.metadata?.lastAnalyzed || 0;
-        
-        if (fileInfo.mtime > cachedTime) {
-          changes.modifiedFiles.push(normalizedPath);
-        } else {
-          changes.unchangedFiles.push(normalizedPath);
-        }
-      }
-    }
-    
-    for (const cachedPath of cachedFileSet) {
-      if (!currentFileMap.has(cachedPath)) {
-        changes.deletedFiles.push(cachedPath);
-      }
-    }
+    // Usar sistema de hash cache persistente
+    const changes = await detectRealChanges(projectPath, filePaths, true);
     
     return changes;
   } catch (error) {

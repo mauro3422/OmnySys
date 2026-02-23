@@ -60,9 +60,8 @@ export async function analyzeAllFiles(parsedFiles, absoluteRootPath) {
     const projectRelative = filePath.replace(/\\/g, '/');
 
     try {
-      // Leer código fuente
-      const fs = await import('fs/promises');
-      const code = await fs.readFile(filePath, 'utf-8');
+      // Usar código ya en memoria desde el parseo (evita leer disco 2 veces)
+      const code = fileInfo.source || fileInfo.code || '';
       fileSourceCode[projectRelative] = code;
 
       // Analizar archivo

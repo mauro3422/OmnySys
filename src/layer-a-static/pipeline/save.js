@@ -1,62 +1,62 @@
-import fs from 'fs/promises';
-import path from 'path';
-
-import { savePartitionedSystemMap } from '#layer-c/storage/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { DATA_DIR } from '#config/paths.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:save');
 
-
-
 export async function ensureDataDir(absoluteRootPath) {
+  // Crear directorio para SQLite si no existe
+  const fs = await import('fs/promises');
+  const path = await import('path');
   const dataDir = path.join(absoluteRootPath, DATA_DIR);
   await fs.mkdir(dataDir, { recursive: true });
   return dataDir;
 }
 
-export async function saveSystemMap(dataDir, outputPath, systemMap, verbose = true) {
-  if (verbose) logger.info('\uD83D\uDCBE Saving graph...');
-  const outputFullPath = path.join(dataDir, outputPath);
-  await fs.writeFile(outputFullPath, JSON.stringify(systemMap, null, 2));
-  if (verbose) logger.info(`  \u2714 Saved to: ${DATA_DIR}/${outputPath}\n`);
-  return outputFullPath;
-}
-
-export async function saveAnalysisReport(dataDir, outputPath, analysisReport, verbose = true) {
-  const analysisOutputPath = outputPath.replace('.json', '-analysis.json');
-  const analysisFullPath = path.join(dataDir, analysisOutputPath);
-  await fs.writeFile(analysisFullPath, JSON.stringify(analysisReport, null, 2));
-  if (verbose) logger.info(`  \u2714 Analysis saved to: ${DATA_DIR}/${analysisOutputPath}\n`);
-  return analysisOutputPath;
-}
-
-export async function saveEnhancedSystemMap(dataDir, outputPath, enhancedSystemMap, verbose = true) {
-  const enhancedOutputPath = outputPath.replace('.json', '-enhanced.json');
-  const enhancedFullPath = path.join(dataDir, enhancedOutputPath);
-  await fs.writeFile(enhancedFullPath, JSON.stringify(enhancedSystemMap, null, 2));
-  if (verbose) logger.info(`  \u2714 Enhanced map saved to: ${DATA_DIR}/${enhancedOutputPath}\n`);
-  return enhancedOutputPath;
-}
-
-export async function savePartitionedData(absoluteRootPath, enhancedSystemMap, verbose = true) {
-  if (verbose) logger.info('\uD83D\uDCBE Saving partitioned data to ${DATA_DIR}/...');
-  const partitionedPaths = await savePartitionedSystemMap(absoluteRootPath, enhancedSystemMap);
-  if (verbose) {
-    logger.info('  \u2714 Metadata saved to: ${DATA_DIR}/index.json');
-    logger.info(`  \u2714 ${partitionedPaths.files.length} files saved to: ${DATA_DIR}/files/`);
-    logger.info('  \u2714 Connections saved to: ${DATA_DIR}/connections/');
-    logger.info('  \u2714 Risk assessment saved to: ${DATA_DIR}/risks/\n');
+export async function saveSystemMap(systemMap, verbose = true, rootPath = null) {
+  if (verbose) logger.info('💾 Saving graph...');
+  
+  if (!rootPath) {
+    throw new Error('rootPath is required for SQLite storage');
   }
-  return partitionedPaths;
+  
+  const repo = getRepository(rootPath);
+  if (!repo.saveSystemMap) {
+    throw new Error('Repository does not support saveSystemMap');
+  }
+  
+  repo.saveSystemMap(systemMap);
+  
+  if (verbose) {
+    logger.info(`  ✔ Saved to SQLite: ${Object.keys(systemMap.files || {}).length} files\n`);
+  }
+  
+  return '[SQLite]';
+}
+
+export async function saveEnhancedSystemMap(enhancedSystemMap, verbose = true, rootPath = null) {
+  if (!rootPath) {
+    throw new Error('rootPath is required for SQLite storage');
+  }
+  
+  const repo = getRepository(rootPath);
+  if (!repo.saveSystemMap) {
+    throw new Error('Repository does not support saveSystemMap');
+  }
+  
+  repo.saveSystemMap(enhancedSystemMap);
+  
+  if (verbose) {
+    logger.info(`  ✔ Saved to SQLite (enhanced)\n`);
+  }
+  
+  return '[SQLite]';
 }
 
 export function printSummary({
   systemMap,
   analysisReport,
-  enhancedSystemMap,
-  enhancedOutputPath,
-  partitionedPaths
+  enhancedSystemMap
 }) {
   const meta = systemMap?.metadata || {};
   const quality = analysisReport?.qualityMetrics || {};
@@ -96,8 +96,8 @@ export function printSummary({
   - Low severity: ${issues.bySeverity?.low || 0}
 
 \uD83D\uDCBE STORAGE:
-  - Monolithic JSON: ${DATA_DIR}/${enhancedOutputPath} (${(JSON.stringify(enhancedSystemMap || {}).length / 1024).toFixed(2)} KB)
-  - Partitioned data: ${DATA_DIR}/ directory (${partitionedPaths?.files?.length || 0} files)
-  - Query API available via query-service.js
+  - SQLite Database: ${DATA_DIR}/omnysys.db
+  - Atoms: ${meta.totalAtoms || 'N/A'}
+  - Query API: SQLite + MCP tools
       `);
 }

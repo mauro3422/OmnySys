@@ -1,20 +1,14 @@
 /**
- * Storage Manager - Gestiona el guardado particionado de datos de análisis
+ * Storage Manager - All data stored in SQLite
  *
  * Estructura de datos:
  * .omnysysdata/
- *   ├── index.json              (metadata + índice ligero)
- *   ├── files/
- *   │   └── {relative-path}/    (espejo de estructura del proyecto)
- *   │       └── file.json
- *   ├── connections/
- *   │   ├── shared-state.json
- *   │   └── event-listeners.json
- *   ├── risks/
- *   │   └── assessment.json
- *   ├── molecules/              (estructuras moleculares)
- *   ├── atoms/                  (análisis atómico)
- *   └── cache.json              (cache de análisis)
+ *   ├── omnysys.db              (SQLite database with all data)
+ *   ├── omnysys.db-wal          (Write-ahead log)
+ *   └── omnysys.db-shm          (Shared memory)
+ *
+ * All operations go through the SQLite repository pattern.
+ * JSON file generation has been removed.
  */
 
 // Utils
@@ -27,14 +21,8 @@ export {
   hasExistingAnalysis
 } from './setup/index.js';
 
-// File Operations
-export {
-  saveMetadata,
-  saveFileAnalysis,
-  saveConnections,
-  saveRiskAssessment,
-  savePartitionedSystemMap
-} from './files/index.js';
+// File Operations (kept for backwards compatibility)
+export { savePartitionedSystemMap } from './files/index.js';
 
 // Molecule Operations
 export {
@@ -42,7 +30,7 @@ export {
   loadMolecule
 } from './molecules/index.js';
 
-// Atom Operations
+// Atom Operations (all SQLite-based)
 export {
   saveAtom,
   loadAtoms,

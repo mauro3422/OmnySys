@@ -8,17 +8,16 @@
  */
 
 import path from 'path';
-import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 
 /**
  * Links calledBy for exported variable/constant atoms.
- * Mutates atoms in place and persists updates to disk.
+ * Mutates atoms in place. Los cambios se persisten en bulk al final.
  *
  * @param {Object[]} allAtoms
  * @param {Object} parsedFiles - { [absPath]: parsedFile }
  * @param {string} absoluteRootPath
  * @param {boolean} verbose
- * @returns {Promise<number>} Number of variable links added
+ * @returns {Promise<{variableLinks: number, updatedAtoms: Array}>} Number of variable links added and updated atoms
  */
 export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose) {
   const logger = verbose
@@ -71,14 +70,14 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
     }
   }
 
-  if (variableLinks > 0) {
-    const toSave = allAtoms.filter(a => a.calledBy && a.calledBy.length > 0 && a.filePath && a.name);
-    await Promise.allSettled(toSave.map(a => saveAtom(absoluteRootPath, a.filePath, a.name, a)));
-  }
+  // Retornar átomos modificados para bulk save (sin guardar individualmente)
+  const updatedAtoms = variableLinks > 0 
+    ? allAtoms.filter(a => a.calledBy && a.calledBy.length > 0 && a.filePath && a.name)
+    : [];
 
   if (verbose) logger.info(`  ✓ ${variableLinks} variable reference links added`);
 
-  return variableLinks;
+  return { variableLinks, updatedAtoms };
 }
 
 /**

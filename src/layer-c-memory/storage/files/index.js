@@ -1,5 +1,5 @@
-export { saveMetadata } from './metadata.js';
-export { saveFileAnalysis } from './file-analysis.js';
-export { saveConnections } from './connections.js';
-export { saveRiskAssessment } from './risks.js';
+// Storage files module - JSON generation removed
+// All data is now stored in SQLite via the repository pattern
+
+// Kept for backwards compatibility but does nothing
 export { savePartitionedSystemMap } from './system-map.js';

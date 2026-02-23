@@ -30,7 +30,6 @@
  */
 
 import path from 'path';
-import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FASE 1: Construir mapa de namespace imports por archivo
@@ -270,11 +269,8 @@ export async function linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absolute
     }
   }
 
-  // Persistir átomos actualizados
-  const updated = allAtoms.filter(a => a.calledBy?.length > 0 && a.filePath && a.name);
-  await Promise.allSettled(
-    updated.map(a => saveAtom(absoluteRootPath, a.filePath, a.name, a))
-  );
+  // Retornar átomos modificados para bulk save (sin guardar individualmente)
+  const updatedAtoms = allAtoms.filter(a => a.calledBy?.length > 0 && a.filePath && a.name);
 
   if (verbose) {
     const { createLogger } = await import('#utils/logger.js');
@@ -282,5 +278,5 @@ export async function linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absolute
     logger.info(`  ✓ ${namespaceLinks} namespace import links + ${mixinLinks} mixin (this.*) links`);
   }
 
-  return { namespaceLinks, mixinLinks };
+  return { namespaceLinks, mixinLinks, updatedAtoms };
 }

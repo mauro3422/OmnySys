@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.56 - Performance Optimization & Architectural Refactoring](changelog/v0.9.56-performance-optimization.md)** - Selective queries (100x faster), atomic-edit modularized (1,616 to 7 files), async stats (Latest)
+- **[v0.9.57 - SQLite Bulk Operations & Architecture Modularization](changelog/v0.9.57-sqlite-modularization.md)** - Split 606-line monolith into 6 modules, 64% performance improvement, single-transaction bulk inserts (Latest)
+- **[v0.9.56 - Performance Optimization & Architectural Refactoring](changelog/v0.9.56-performance-optimization.md)** - Selective queries (100x faster), atomic-edit modularized (1,616 to 7 files), async stats
 
 - **[v0.9.56 - Performance Optimization & Architectural Refactoring](changelog/v0.9.56-performance-optimization.md)** - Selective queries (100x faster), atomic-edit modularized (1,616→7 files), async stats (Latest)
 - **[v0.9.55 - Atomic Edit System: Breaking Change Detection & Rollback](changelog/v0.9.55-atomic-edit-system.md)** - Production-ready atomic editor with optimistic concurrency control, automatic rollback, and 20+ validated test cases
@@ -36,7 +37,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.56]** | 2026-02-22 | **⚡ Performance Optimization — Selective queries (100x faster), atomic-edit modularized, async stats** (Latest) |
+| **[0.9.57]** | 2026-02-23 | **🏗️ SQLite Modularization — Split 606→764 LOC into 6 modules, 64% faster, single-transaction bulk** (Latest) |
+| **[0.9.56]** | 2026-02-22 | **⚡ Performance Optimization — Selective queries (100x faster), atomic-edit modularized, async stats** |
 | **[0.9.55]** | 2026-02-22 | **🚀 Atomic Edit System — Production-ready atomic editor with automatic rollback, optimistic concurrency control, 20+ test cases** (Latest) |
 | **[0.9.54]** | 2026-02-22 | **🏆 ZERO Technical Debt Achievement — 13 files refactored (100%), 5,235 → 2,212 LOC (-58%), 127 tests passing** |
 | **[0.9.53]** | 2026-02-22 | **Technical Debt Phase 2 + Multi-IDE Support: 3 MCP Tools Refactored + OpenCode/Claude Compatibility** |
