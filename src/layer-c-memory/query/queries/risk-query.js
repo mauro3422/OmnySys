@@ -2,28 +2,128 @@
  * @fileoverview risk-query.js
  *
  * Consultas de evaluación de riesgos
- * INTEGRADO: Ahora incluye eventos de Tunnel Vision
+ * MIGRADO: Ahora usa SQLite en lugar de archivos JSON
  *
  * @module query/queries/risk-query
  */
 
 import path from 'path';
 import { getDataDirectory } from '#layer-c/storage/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { readJSON, fileExists } from '../readers/json-reader.js';
 
 /**
  * Obtiene el assessment de riesgos completo
- * INTEGRADO: Incluye eventos de Tunnel Vision
+ * MIGRADO: Ahora consulta SQLite primero, fallback a JSON legacy
  * 
  * @param {string} rootPath - Raíz del proyecto
  * @returns {Promise<object>}
  */
 export async function getRiskAssessment(rootPath) {
+  // 1. PRIORIDAD: Consultar SQLite
+  try {
+    const repo = getRepository(rootPath);
+    if (repo && repo.db) {
+      const riskRows = repo.db.prepare(`
+        SELECT file_path, risk_score, risk_level, factors_json, 
+               shared_state_count, external_deps_count, complexity_score, 
+               propagation_score, assessed_at
+        FROM risk_assessments 
+        WHERE risk_level IN ('critical', 'high', 'medium')
+        ORDER BY risk_score DESC
+      `).all();
+      
+      if (riskRows && riskRows.length > 0) {
+        const criticalRiskFiles = [];
+        const highRiskFiles = [];
+        const mediumRiskFiles = [];
+        
+        let criticalCount = 0, highCount = 0, mediumCount = 0;
+        
+        for (const row of riskRows) {
+          const fileRisk = {
+            file: row.file_path,
+            severity: row.risk_level.toUpperCase(),
+            score: row.risk_score,
+            reason: JSON.parse(row.factors_json || '[]').slice(0, 3).map(f => f.type || 'unknown').join(', ') || 'Multiple risk factors',
+            factors: JSON.parse(row.factors_json || '[]'),
+            source: 'sqlite'
+          };
+          
+          if (row.risk_level === 'critical') {
+            criticalRiskFiles.push(fileRisk);
+            criticalCount++;
+          } else if (row.risk_level === 'high') {
+            highRiskFiles.push(fileRisk);
+            highCount++;
+          } else {
+            mediumRiskFiles.push(fileRisk);
+            mediumCount++;
+          }
+        }
+        
+        // 2. 🆕 INTEGRACIÓN: Tunnel Vision stats (legacy fallback)
+        const tunnelVisionStats = await getTunnelVisionStats(rootPath);
+        
+        let assessment = {
+          report: {
+            summary: {
+              criticalCount,
+              highCount,
+              mediumCount,
+              lowCount: 0,
+              totalFiles: riskRows.length
+            },
+            criticalRiskFiles,
+            highRiskFiles,
+            mediumRiskFiles
+          },
+          scores: {}
+        };
+        
+        // Merge tunnel vision if available
+        if (tunnelVisionStats && tunnelVisionStats.totalEvents > 0) {
+          const criticalEvents = tunnelVisionStats.events?.filter(e => e.severity === 'CRITICAL') || [];
+          if (criticalEvents.length > 0) {
+            assessment.report.summary.criticalCount += criticalEvents.length;
+            const tunnelVisionCriticalFiles = criticalEvents.map(e => ({
+              file: e.modifiedFile || e.file,
+              severity: 'CRITICAL',
+              reason: `Tunnel Vision: Afecta ${e.affectedFiles?.total || e.affectedCount || 0} archivos`,
+              affectedCount: e.affectedFiles?.total || e.affectedCount || 0,
+              source: 'tunnel-vision',
+              timestamp: e.timestamp
+            }));
+            assessment.report.criticalRiskFiles = [...assessment.report.criticalRiskFiles, ...tunnelVisionCriticalFiles];
+            assessment.tunnelVision = {
+              integrated: true,
+              totalEvents: tunnelVisionStats.totalEvents,
+              criticalEvents: criticalEvents.length,
+              lastUpdated: tunnelVisionStats.lastUpdated
+            };
+          }
+        }
+        
+        return assessment;
+      }
+    }
+  } catch (err) {
+    console.error(`[getRiskAssessment] SQLite error: ${err.message}`);
+  }
+  
+  // Fallback legacy: JSON files
+  return getRiskAssessmentLegacy(rootPath);
+}
+
+/**
+ * Fallback legacy: Lee risk assessment desde JSON
+ * @deprecated Usar getRiskAssessment() que prioriza SQLite
+ */
+async function getRiskAssessmentLegacy(rootPath) {
   const dataPath = getDataDirectory(rootPath);
   const risksDir = path.join(dataPath, 'risks');
   const assessmentPath = path.join(risksDir, 'assessment.json');
 
-  // 1. Leer assessment base
   let assessment = {
     report: {
       summary: {
@@ -42,7 +142,6 @@ export async function getRiskAssessment(rootPath) {
 
   if (await fileExists(assessmentPath)) {
     const fileData = await readJSON(assessmentPath);
-    // Merge with defaults to ensure all required properties exist
     assessment = {
       report: {
         summary: {
@@ -61,20 +160,11 @@ export async function getRiskAssessment(rootPath) {
     };
   }
 
-  // 2. 🆕 INTEGRACIÓN: Leer eventos de Tunnel Vision
   const tunnelVisionStats = await getTunnelVisionStats(rootPath);
-  
-  // 3. 🆕 MERGE: Combinar datos de tunnel vision con risk assessment
   if (tunnelVisionStats && tunnelVisionStats.totalEvents > 0) {
-    // Agregar eventos CRITICAL de tunnel vision
-    // NOTA: Los eventos usan 'modifiedFile' y 'affectedFiles.total'
     const criticalEvents = tunnelVisionStats.events?.filter(e => e.severity === 'CRITICAL') || [];
-    
     if (criticalEvents.length > 0) {
-      // Actualizar contadores
       assessment.report.summary.criticalCount += criticalEvents.length;
-      
-      // Agregar archivos críticos de tunnel vision
       const tunnelVisionCriticalFiles = criticalEvents.map(e => ({
         file: e.modifiedFile || e.file,
         severity: 'CRITICAL',
@@ -83,17 +173,7 @@ export async function getRiskAssessment(rootPath) {
         source: 'tunnel-vision',
         timestamp: e.timestamp
       }));
-      
-      // Merge sin duplicados
-      const existingFiles = new Set(assessment.report.criticalRiskFiles?.map(f => f.file) || []);
-      for (const file of tunnelVisionCriticalFiles) {
-        if (!existingFiles.has(file.file)) {
-          assessment.report.criticalRiskFiles = assessment.report.criticalRiskFiles || [];
-          assessment.report.criticalRiskFiles.push(file);
-        }
-      }
-      
-      // 🆕 Agregar metadata de integración
+      assessment.report.criticalRiskFiles = [...assessment.report.criticalRiskFiles, ...tunnelVisionCriticalFiles];
       assessment.tunnelVision = {
         integrated: true,
         totalEvents: tunnelVisionStats.totalEvents,
