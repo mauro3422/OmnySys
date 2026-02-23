@@ -94,43 +94,4 @@ export async function getRiskAssessment(rootPath) {
   };
 }
 
-/**
- * Obtiene todos los archivos con riesgo
- * @param {string} rootPath - Raíz del proyecto
- * @returns {Promise<array>}
- */
-export async function getAllRiskFiles(rootPath) {
-  const repo = getRepository(rootPath);
-  
-  if (!repo || !repo.db) {
-    throw new Error('SQLite not available. Run analysis first.');
-  }
-  
-  return repo.db.prepare(`
-    SELECT file_path, risk_score, risk_level, factors_json
-    FROM risk_assessments 
-    ORDER BY risk_score DESC
-  `).all();
-}
-
-/**
- * Obtiene archivos de alto riesgo
- * @param {string} rootPath - Raíz del proyecto
- * @param {number} limit - Límite de resultados
- * @returns {Promise<array>}
- */
-export async function getHighRiskFiles(rootPath, limit = 20) {
-  const repo = getRepository(rootPath);
-  
-  if (!repo || !repo.db) {
-    throw new Error('SQLite not available. Run analysis first.');
-  }
-  
-  return repo.db.prepare(`
-    SELECT file_path, risk_score, risk_level, factors_json
-    FROM risk_assessments 
-    WHERE risk_level IN ('critical', 'high')
-    ORDER BY risk_score DESC
-    LIMIT ?
-  `).all(limit);
-}
+// DEAD CODE REMOVED: getAllRiskFiles, getHighRiskFiles (never used)
