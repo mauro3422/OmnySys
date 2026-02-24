@@ -2,9 +2,12 @@
  * Tool: explain_value_flow
  * Explica el flujo de datos de un símbolo
  * Muestra: inputs → symbol → outputs → consumers
+ * 
+ * PATRÓN: Usa enrichAtomsWithRelations para datos graph.* deterministas
  */
 
 import { analyzeValueFlow } from './lib/analysis/index.js';
+import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:explain:value:flow');
@@ -35,6 +38,16 @@ export async function explain_value_flow(args, context) {
         suggestion: 'Verify the symbol exists and is exported'
       };
     }
+    
+    // PATRÓN: Enriquecer átomo objetivo con graph.*
+    const targetAtomId = `${filePath}::${symbolName}`;
+    const enrichedAtoms = await enrichAtomsWithRelations([{
+      id: targetAtomId,
+      name: symbolName,
+      filePath: filePath
+    }], { withStats: true }, projectPath);
+    
+    const targetWithGraph = enrichedAtoms[0]?.graph || null;
     
     // Construir visualización del flujo
     const flowDiagram = {
@@ -89,6 +102,8 @@ export async function explain_value_flow(args, context) {
       symbol: symbolName,
       file: filePath,
       type: flow.type,
+      // PATRÓN: Datos del grafo enriquecidos
+      graph: targetWithGraph,
       signature: {
         inputs: flow.inputs || [],
         hasReturnType: (flow.outputs?.length || 0) > 0

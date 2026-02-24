@@ -84,7 +84,8 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       'extracted_at', 'updated_at', 'change_frequency', 'age_days', 'generation',
       'signature_json', 'data_flow_json', 'calls_json', 'temporal_json',
       'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',
-      'called_by_json', 'function_type'
+      'called_by_json', 'function_type',
+      'has_error_handling', 'has_network_calls'
     ];
     
     const columnStr = columns.join(', ');
@@ -116,7 +117,8 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
             row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
             row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
             row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
-            row.called_by_json, row.function_type
+            row.called_by_json, row.function_type,
+            row.has_error_handling, row.has_network_calls
           ];
         });
         

@@ -9,6 +9,7 @@
 import { inferHeuristicType } from './heuristic-inferrer.js';
 import { resolveInputType, findProducerNode } from '../utils/input-resolver.js';
 import { inferUnionType } from './union-inferrer.js';
+import { inferTypeFromParamName } from './type-rules.js';
 
 /**
  * Infiere tipo de un nodo específico
@@ -26,6 +27,12 @@ export function inferNodeType(node, typeRules, typeMap, graph) {
     return inferHeuristicType(node);
   }
 
+  // INPUT: inferir desde nombre del parámetro
+  if (node.type === 'INPUT') {
+    const paramName = node.output?.name || node.properties?.name || '';
+    return inferTypeFromParamName(paramName);
+  }
+  
   // Verificar compatibilidad de inputs
   const inputTypes = (node.inputs || []).map(input => 
     resolveInputType(input, typeMap, graph)
@@ -50,6 +57,11 @@ export function inferNodeType(node, typeRules, typeMap, graph) {
   if (rule.out === 'any' && node.type === 'PROPERTY_ACCESS') {
     // Para property access, no podemos saber sin análisis adicional
     return 'any';
+  }
+
+  if (rule.out === 'infer_from_name') {
+    // Para nodos que requieren inferencia especial
+    return inferHeuristicType(node);
   }
 
   return rule.out;

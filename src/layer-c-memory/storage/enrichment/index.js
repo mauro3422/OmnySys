@@ -25,12 +25,74 @@ import { getRepository } from '../repository/index.js';
  */
 
 /**
- * Enriquece átomos con sus relaciones de forma eficiente.
+ * Calcula centralidad (PageRank-like) basado en grado de entrada/salida
+ * @param {number} inDegree - Número de callers
+ * @param {number} outDegree - Número de callees
+ * @returns {Object} { centrality, classification }
+ */
+function calculateCentrality(inDegree, outDegree) {
+  const centrality = inDegree / (outDegree + 1);
+  let classification = 'LEAF';
+  if (centrality > 10) classification = 'HUB';
+  else if (centrality > 2) classification = 'BRIDGE';
+  
+  return {
+    centrality: parseFloat(centrality.toFixed(3)),
+    classification,
+    inDegree,
+    outDegree
+  };
+}
+
+/**
+ * Calcula score de propagación - qué tanto se afecta el grafo si este átomo cambia
+ * @param {number} inDegree - Número de atoms que dependen de este
+ * @param {number} outDegree - Número de atoms que este usa
+ * @returns {Object} { propagationScore, impactLevel }
+ */
+function calculatePropagationScore(inDegree, outDegree) {
+  const score = (inDegree * 0.6) + (outDegree * 0.4);
+  const impactLevel = score > 10 ? 'HIGH' : score > 5 ? 'MEDIUM' : 'LOW';
+  
+  return {
+    propagationScore: parseFloat(score.toFixed(3)),
+    impactLevel
+  };
+}
+
+/**
+ * Predice riesgo de breaking changes basado en centralidad
+ * @param {Object} centrality - Resultado de calculateCentrality
+ * @param {number} fragilityScore - Score de fragilidad del átomo (0-1)
+ * @returns {Object} { riskScore, riskLevel, prediction }
+ */
+function predictBreakingRisk(centrality, fragilityScore = 0.3) {
+  const riskScore = (centrality.inDegree * 0.5) + (centrality.outDegree * 0.3) + (fragilityScore * 0.2);
+  let riskLevel = 'LOW';
+  let prediction = 'Cambios seguros';
+  
+  if (riskScore > 0.7) {
+    riskLevel = 'HIGH';
+    prediction = 'Alto riesgo: muchos dependents';
+  } else if (riskScore > 0.4) {
+    riskLevel = 'MEDIUM';
+    prediction = 'Riesgo moderado';
+  }
+  
+  return {
+    riskScore: parseFloat(riskScore.toFixed(3)),
+    riskLevel,
+    prediction
+  };
+}
+
+/**
+ * Enriquece átomos con relaciones de forma eficiente.
  *
  * FUNCIONAMIENTO:
  * - Por defecto carga solo estadísticas (counts) - rápido
  * - Con withCallers/withCallees carga las listas completas
- * - Soporta enrichment por archivo, por ID, o por lista de IDs
+ * - YA CALCULA: centrality, propagation, risk - determinista
  *
  * @param {Array|Object} atoms - Átomo(s) a enriquecer
  * @param {EnrichmentOptions} options - Opciones de enrichment
@@ -114,9 +176,12 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
     const enrichedAtoms = atomsArray.map(atom => {
       const enriched = { ...atom };
 
+      const inDegree = callersMap.get(atom.id)?.size || 0;
+      const outDegree = calleesMap.get(atom.id)?.size || 0;
+
       if (withStats) {
-        enriched.callerCount = callersMap.get(atom.id)?.size || 0;
-        enriched.calleeCount = calleesMap.get(atom.id)?.size || 0;
+        enriched.callerCount = inDegree;
+        enriched.calleeCount = outDegree;
       }
 
       if (withCallers) {
@@ -126,6 +191,24 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
       if (withCallees) {
         enriched.callees = Array.from(calleesMap.get(atom.id) || []);
       }
+
+      // ÁLGEBRA DE GRAFOS: Calcular centrality, propagation y risk automáticamente
+      const centrality = calculateCentrality(inDegree, outDegree);
+      const propagation = calculatePropagationScore(inDegree, outDegree);
+      const risk = predictBreakingRisk(centrality, atom.fragility_score || 0.3);
+      
+      // Agregar valores derivados al átomo enriquecido
+      enriched.graph = {
+        centrality: centrality.centrality,
+        centralityClassification: centrality.classification,
+        inDegree: centrality.inDegree,
+        outDegree: centrality.outDegree,
+        propagationScore: propagation.propagationScore,
+        propagationLevel: propagation.impactLevel,
+        riskScore: risk.riskScore,
+        riskLevel: risk.riskLevel,
+        riskPrediction: risk.prediction
+      };
 
       return enriched;
     });
@@ -232,9 +315,81 @@ export async function getRelationStats(atomIds, projectPath) {
   }
 }
 
+/**
+ * Persiste los datos del grafo en la tabla atoms.
+ * Calcula centrality, propagation, risk y guarda en la DB.
+ * 
+ * @param {string} projectPath - Ruta del proyecto
+ * @param {string[]} atomIds - Lista de átomos a actualizar (opcional, todos si no se especifica)
+ */
+export async function persistGraphMetrics(projectPath, atomIds = null) {
+  try {
+    const repo = getRepository(projectPath);
+    if (!repo || !repo.db) {
+      console.warn('[persistGraphMetrics] No repo available');
+      return;
+    }
+
+    let atomsToUpdate;
+    if (atomIds && atomIds.length > 0) {
+      // Actualizar solo los átomos especificados
+      const placeholders = atomIds.map(() => '?').join(',');
+      atomsToUpdate = repo.db.prepare(`
+        SELECT id FROM atoms WHERE id IN (${placeholders})
+      `).all(...atomIds).map(a => a.id);
+    } else {
+      // Actualizar todos los átomos
+      atomsToUpdate = repo.db.prepare(`SELECT id FROM atoms`).all().map(a => a.id);
+    }
+
+    // Obtener estadísticas de relaciones
+    const statsMap = await getRelationStats(atomsToUpdate, projectPath);
+
+    // Calcular y persistir métricas
+    for (const atomId of atomsToUpdate) {
+      const stats = statsMap.get(atomId) || { callerCount: 0, calleeCount: 0 };
+      const inDegree = stats.callerCount;
+      const outDegree = stats.calleeCount;
+
+      // Calcular usando las funciones de algebra de grafos
+      const centrality = calculateCentrality(inDegree, outDegree);
+      const propagation = calculatePropagationScore(inDegree, outDegree);
+      const risk = predictBreakingRisk(centrality, 0.3);
+
+      // Actualizar en la base de datos
+      repo.db.prepare(`
+        UPDATE atoms SET 
+          in_degree = ?,
+          out_degree = ?,
+          centrality_score = ?,
+          centrality_classification = ?,
+          propagation_score = ?,
+          risk_level = ?,
+          risk_prediction = ?
+        WHERE id = ?
+      `).run(
+        inDegree,
+        outDegree,
+        centrality.centrality,
+        centrality.classification,
+        propagation.propagationScore,
+        risk.riskLevel,
+        risk.prediction,
+        atomId
+      );
+    }
+
+    console.log(`[persistGraphMetrics] Updated ${atomsToUpdate.length} atoms with graph metrics`);
+
+  } catch (err) {
+    console.error('[persistGraphMetrics] Error:', err.message);
+  }
+}
+
 export default {
   enrichAtomsWithRelations,
   enrichAtomsForFile,
   enrichAtomWithFullRelations,
-  getRelationStats
+  getRelationStats,
+  persistGraphMetrics
 };

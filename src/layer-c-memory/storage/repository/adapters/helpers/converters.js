@@ -43,14 +43,16 @@ export function atomToRow(atom) {
     is_async: safeBoolInt(atom.isAsync || atom.async),
     is_test_callback: safeBoolInt(atom.isTestCallback),
     test_callback_type: safeString(atom.testCallbackType),
+    has_error_handling: safeBoolInt(atom.hasErrorHandling),
+    has_network_calls: safeBoolInt(atom.hasNetworkCalls),
     
-    // Clasificacion
+    // Clasificacion - purpose puede ser string o objeto { type, reason, confidence }
     archetype_type: safeString(atom.archetype?.type || atom.archetype),
     archetype_severity: safeNumber(atom.archetype?.severity),
     archetype_confidence: safeNumber(atom.archetype?.confidence),
-    purpose_type: safeString(atom.purpose),
-    purpose_confidence: safeNumber(atom.purposeConfidence),
-    is_dead_code: safeBoolInt(atom.isDeadCode),
+    purpose_type: safePurpose(atom.purpose),
+    purpose_confidence: safeNumber(atom.purposeConfidence || atom.purpose?.confidence),
+    is_dead_code: safeBoolInt(atom.isDeadCode || atom.purpose?.isDeadCode),
     
     // Vectores matematicos - REAL numbers
     importance_score: safeNumber(atom.importanceScore || atom.derived?.fragilityScore, 0),
@@ -113,6 +115,8 @@ export function rowToAtom(row) {
     isAsync: Boolean(row.is_async),
     isTestCallback: Boolean(row.is_test_callback),
     testCallbackType: row.test_callback_type,
+    hasErrorHandling: Boolean(row.has_error_handling),
+    hasNetworkCalls: Boolean(row.has_network_calls),
     
     archetype: row.archetype_type ? {
       type: row.archetype_type,
@@ -164,6 +168,15 @@ export function rowToAtom(row) {
 export function safeNumber(val, defaultVal = 0) {
   const num = Number(val);
   return Number.isFinite(num) ? num : defaultVal;
+}
+
+// Helper para extraer el type del purpose (puede ser string o objeto)
+export function safePurpose(purpose) {
+  if (!purpose) return null;
+  if (typeof purpose === 'string') return purpose;
+  if (typeof purpose === 'object' && purpose.type) return purpose.type;
+  // Si es objeto sin type, intentar stringify (fallback)
+  return String(purpose);
 }
 
 // Helper para asegurar strings

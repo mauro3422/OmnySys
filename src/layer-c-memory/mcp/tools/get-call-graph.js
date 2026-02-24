@@ -2,9 +2,12 @@
  * Tool: get_call_graph
  * Obtiene el grafo de llamadas de un símbolo específico
  * Muestra TODOS los lugares donde se usa una función/clase
+ * 
+ * PATRÓN: Usa enrichAtomsWithRelations para datos graph.* deterministas
  */
 
 import { findCallSites } from './lib/analysis/index.js';
+import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:get:call:graph');
@@ -39,6 +42,16 @@ export async function get_call_graph(args, context) {
     // Calcular métricas adicionales
     const uniqueFiles = [...new Set(result.callSites.map(site => site.file))];
     
+    // PATRÓN: Enriquecer átomo objetivo con graph.*
+    const targetAtomId = `${filePath}::${symbolName}`;
+    const enrichedAtoms = await enrichAtomsWithRelations([{
+      id: targetAtomId,
+      name: symbolName,
+      filePath: filePath
+    }], { withStats: true }, projectPath);
+    
+    const targetWithGraph = enrichedAtoms[0]?.graph || null;
+    
     // Agrupar por archivo
     const byFile = {};
     for (const site of result.callSites) {
@@ -57,6 +70,8 @@ export async function get_call_graph(args, context) {
       symbol: symbolName,
       definedIn: filePath,
       exportType: result.exportType,
+      // PATRÓN: Datos del grafo enriquecidos
+      graph: targetWithGraph,
       summary: {
         totalCallSites: result.totalCallSites,
         uniqueFiles: uniqueFiles.length,

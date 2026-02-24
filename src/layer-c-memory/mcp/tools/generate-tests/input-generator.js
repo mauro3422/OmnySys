@@ -13,7 +13,7 @@ import { generateInvalidInputs } from './input-generator/invalid-generators.js';
 
 /**
  * Genera inputs tipados basados en el análisis completo del átomo
- * @param {Array} inputs - Function inputs
+ * @param {Array} inputs - Function inputs (del dataFlow)
  * @param {Object} typeContracts - Type contracts
  * @param {Object} atom - Atom metadata
  * @returns {Object} - Generated typed inputs
@@ -26,7 +26,8 @@ export function generateTypedInputs(inputs, typeContracts, atom = {}) {
   
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
-    const paramType = params[i]?.type || input.type;
+    // Usar el tipo del input de dataFlow primero, luego typeContracts, luego el tipo del átomo
+    const paramType = input.type || params[i]?.type || atom.dataFlow?.inputs?.[i]?.type;
     result[input.name] = generateSampleValueForType(paramType, input.name, atom);
   }
   return result;

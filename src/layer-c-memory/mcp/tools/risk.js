@@ -4,7 +4,7 @@
  * MIGRADO: Ahora usa SQLite en lugar de archivos JSON
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -68,6 +68,20 @@ function calculateFileRisk(atoms) {
     score += highChangeFreq.length;
   }
   
+  // Factor 7: ÁLGEBRA DE GRAFOS - Alto riesgo desde el grafo (centrality + propagation)
+  const graphHighRisk = atoms.filter(a => a.graph?.riskLevel === 'HIGH');
+  if (graphHighRisk.length > 0) {
+    factors.push({ type: 'graph-high-risk', count: graphHighRisk.length, severity: 'critical' });
+    score += graphHighRisk.length * 5;
+  }
+  
+  // Factor 8: ÁLGEBRA DE GRAFOS - HUBs (muchos dependents)
+  const hubs = atoms.filter(a => a.graph?.centralityClassification === 'HUB');
+  if (hubs.length > 0) {
+    factors.push({ type: 'graph-hubs', count: hubs.length, severity: 'high' });
+    score += hubs.length * 3;
+  }
+  
   // Determinar severidad
   let severity = 'low';
   if (score >= 20) severity = 'critical';
@@ -83,7 +97,14 @@ export async function get_risk_assessment(args, context) {
   
   try {
     // Cargar todos los átomos desde SQLite
-    const allAtoms = await getAllAtoms(projectPath);
+    let allAtoms = await getAllAtoms(projectPath);
+    
+    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
+    allAtoms = await enrichAtomsWithRelations(allAtoms, {
+      withStats: true,
+      withCallers: false,
+      withCallees: false
+    }, projectPath);
     
     if (!allAtoms || allAtoms.length === 0) {
       return {

@@ -4,7 +4,7 @@
  */
 
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
-import { getAllAtoms, queryAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, queryAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import fs from 'fs/promises';
 import { glob } from 'fs/promises';
@@ -60,7 +60,14 @@ async function searchBySymbol(pattern, atoms, excludeFiles) {
       symbolFileHits.get(atom.filePath).push({
         name: atom.name,
         type: atom.type,
-        line: atom.line
+        line: atom.line,
+        // ÁLGEBRA DE GRAFOS: Incluir datos del grafo
+        graph: atom.graph ? {
+          centrality: atom.graph.centrality,
+          centralityClassification: atom.graph.centralityClassification,
+          riskLevel: atom.graph.riskLevel,
+          propagationScore: atom.graph.propagationScore
+        } : null
       });
     }
   }
@@ -154,7 +161,9 @@ export async function search_files(args, context) {
     
     // If code snippet provided, find similar code
     if (codeSnippet) {
-      const atoms = await getAllAtoms(projectPath);
+      let atoms = await getAllAtoms(projectPath);
+      // ÁLGEBRA DE GRAFOS: Enriquecer con centrality
+      atoms = await enrichAtomsWithRelations(atoms, { withStats: true }, projectPath);
       const similar = await findSimilarCode(codeSnippet, atoms);
       
       return {
@@ -185,10 +194,12 @@ export async function search_files(args, context) {
 
     // Symbol search — always run for 'symbol', also run for 'path' when pattern is a pure identifier
     if (detectedType === 'symbol' || detectedType === 'auto' || (detectedType === 'path' && looksLikeSymbol)) {
-      // 🚀 OPTIMIZADO: Usar queryAtoms con filtro de nombre si es símbolo simple
-      const atoms = looksLikeSymbol 
-        ? await queryAtoms(projectPath, { name: pattern }, 500)
+      // 🚀 OPTIMIZADO: Sin límite - el query ya es específico por nombre
+      let atoms = looksLikeSymbol 
+        ? await queryAtoms(projectPath, { name: pattern })
         : await getAllAtoms(projectPath);
+      // ÁLGEBRA DE GRAFOS: Enriquecer con centrality
+      atoms = await enrichAtomsWithRelations(atoms, { withStats: true }, projectPath);
       const matchedFiles = new Set(pathMatches);
       symbolMatches = await searchBySymbol(pattern, atoms, matchedFiles);
     }
@@ -216,7 +227,14 @@ export async function search_files(args, context) {
         symbolMatches: symbolMatches.length,
         contentMatches: contentMatches.length
       },
-      totalIndexed: allFiles.length
+      totalIndexed: allFiles.length,
+      // ÁLGEBRA DE GRAFOS: Graph stats de los atoms encontrados
+      graphStats: symbolMatches.length > 0 ? {
+        hubs: symbolMatches.filter(m => m.graph?.centralityClassification === 'HUB').length,
+        bridges: symbolMatches.filter(m => m.graph?.centralityClassification === 'BRIDGE').length,
+        avgCentrality: (symbolMatches.reduce((sum, m) => sum + (m.graph?.centrality || 0), 0) / symbolMatches.length).toFixed(3),
+        highRisk: symbolMatches.filter(m => m.graph?.riskLevel === 'HIGH').length
+      } : null
     };
   } catch (error) {
     logger.error(`[Tool] search_files failed: ${error.message}`);

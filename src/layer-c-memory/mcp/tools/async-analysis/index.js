@@ -5,7 +5,7 @@
  * @module mcp/tools/async-analysis
  */
 
-import { getAllAtoms, getAsyncAtoms, queryAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAsyncAtoms, queryAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { extractAsyncInfo } from './extractors/index.js';
 import { analyzeAsyncIssues, categorizePattern, findOptimizations } from './analyzers/index.js';
 import { riskOrder } from './utils/index.js';
@@ -22,14 +22,16 @@ export async function get_async_analysis(args, context) {
   const { projectPath } = context;
   
   try {
-    // 🚀 OPTIMIZADO: Usar queries selectivas según el filtro
-    // Si hay filePath, filtrar en la query. Si no, solo async atoms.
+    // 🚀 OPTIMIZADO: Sin límite - el query ya es específico por filePath o isAsync
     let filteredAtoms;
     if (filePath) {
-      filteredAtoms = await queryAtoms(projectPath, { isAsync: true, filePath }, 500);
+      filteredAtoms = await queryAtoms(projectPath, { isAsync: true, filePath });
     } else {
       filteredAtoms = await getAsyncAtoms(projectPath);
     }
+    
+    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality
+    filteredAtoms = await enrichAtomsWithRelations(filteredAtoms, { withStats: true }, projectPath);
     
     if (!filteredAtoms || filteredAtoms.length === 0) {
       return { error: 'No atoms found. Run analysis first.' };
@@ -42,7 +44,13 @@ export async function get_async_analysis(args, context) {
         withIssues: 0,
         highRisk: 0,
         mediumRisk: 0,
-        lowRisk: 0
+        lowRisk: 0,
+        // ÁLGEBRA DE GRAFOS
+        graph: {
+          hubs: filteredAtoms.filter(a => a.graph?.centralityClassification === 'HUB').length,
+          avgCentrality: (filteredAtoms.reduce((sum, a) => sum + (a.graph?.centrality || 0), 0) / filteredAtoms.length).toFixed(3),
+          highRiskAsync: filteredAtoms.filter(a => a.graph?.riskLevel === 'HIGH').length
+        }
       },
       patterns: {
         sequentialAwaits: [],

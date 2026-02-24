@@ -11,7 +11,7 @@ import Database from 'better-sqlite3';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createLogger } from '#utils/logger.js';
-import { readFileSync } from 'fs';
+import { readFileSync, mkdirSync, existsSync } from 'fs';
 
 const logger = createLogger('OmnySys:Storage:Connection');
 
@@ -37,6 +37,13 @@ class ConnectionManager {
     }
 
     this.dbPath = resolve(projectPath, '.omnysysdata', 'omnysys.db');
+    
+    // Crear directorio si no existe
+    const dataDir = resolve(projectPath, '.omnysysdata');
+    if (!existsSync(dataDir)) {
+      logger.info(`[Connection] Creating data directory: ${dataDir}`);
+      mkdirSync(dataDir, { recursive: true });
+    }
     
     logger.info(`[Connection] Initializing SQLite at: ${this.dbPath}`);
 
@@ -126,6 +133,26 @@ class ConnectionManager {
       }
       if (!atomColumns.includes('function_type')) {
         this.db.exec("ALTER TABLE atoms ADD COLUMN function_type TEXT DEFAULT 'declaration'");
+      }
+      
+      // Migración v2.2: columnas de Algebra de Grafos
+      if (!atomColumns.includes('in_degree')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN in_degree INTEGER DEFAULT 0");
+      }
+      if (!atomColumns.includes('out_degree')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN out_degree INTEGER DEFAULT 0");
+      }
+      if (!atomColumns.includes('centrality_score')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN centrality_score REAL DEFAULT 0");
+      }
+      if (!atomColumns.includes('centrality_classification')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN centrality_classification TEXT");
+      }
+      if (!atomColumns.includes('risk_level')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN risk_level TEXT");
+      }
+      if (!atomColumns.includes('risk_prediction')) {
+        this.db.exec("ALTER TABLE atoms ADD COLUMN risk_prediction TEXT");
       }
       
       // Migración v2.1: agregar tabla cache si no existe

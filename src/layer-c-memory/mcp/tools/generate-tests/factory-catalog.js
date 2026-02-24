@@ -136,13 +136,18 @@ export function resolveBuilderForParam(paramName, factoryEntry) {
  * Calcula el path relativo de la factory desde el archivo de test generado.
  * Los tests se generan en tests/generated/**, las factories están en tests/factories/**.
  * @param {string} factoryPath - Ej: "tests/factories/core-atomic-editor/builders.js"
- * @param {string} testOutputPath - Ej: "tests/generated/core/atomic-editor/..."
+ * @param {string} testOutputPath - Ej: "tests/generated/core/atomic-editor/..." (optional)
  * @returns {string} - Import path relativo
  */
-export function resolveFactoryImportPath(factoryPath) {
+export function resolveFactoryImportPath(factoryPath, testOutputPath = 'tests/generated') {
   if (!factoryPath) return null;
-  // Desde tests/generated/** → ../../factories/...
-  return factoryPath.replace('tests/factories/', '../../factories/');
+  
+  // Calcular profundidad del path de salida
+  const depth = (testOutputPath.match(/\//g) || []).length;
+  const upLevels = '../'.repeat(depth);
+  
+  // Reemplazar tests/factories/ con el path relativo
+  return factoryPath.replace('tests/factories/', upLevels + 'factories/');
 }
 
 export default { resolveFactory, resolveBuilderForParam, resolveFactoryImportPath };

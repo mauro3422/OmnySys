@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS atoms (
     fragility_score REAL DEFAULT 0,        -- Probabilidad de romperse (0-1)
     testability_score REAL DEFAULT 0,      -- Facilidad de testing (0-1)
     
+    -- Grafos: vectores de Algebra de Grafos
+    in_degree INTEGER DEFAULT 0,           -- Número de callers (entrada)
+    out_degree INTEGER DEFAULT 0,           -- Número de callees (salida)
+    centrality_score REAL DEFAULT 0,       -- centrality = in_degree / (out_degree + 1)
+    centrality_classification TEXT,         -- 'HUB', 'BRIDGE', 'LEAF'
+    risk_level TEXT,                       -- 'HIGH', 'MEDIUM', 'LOW'
+    risk_prediction TEXT,                  -- Descripción del riesgo
+    
     -- Contadores relacionales
     callers_count INTEGER DEFAULT 0,
     callees_count INTEGER DEFAULT 0,

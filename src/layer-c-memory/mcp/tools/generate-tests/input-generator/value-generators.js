@@ -4,6 +4,139 @@
  */
 
 /**
+ * Genera valor basado en tipo inferido del dataFlow
+ * @param {string} inferredType - Tipo inferido
+ * @param {string} paramName - Nombre del parámetro
+ * @returns {string|null} - Valor generado
+ */
+function generateFromInferredType(inferredType, paramName) {
+  if (!inferredType || inferredType === 'unknown') return null;
+  
+  const t = inferredType.toLowerCase();
+  const n = paramName.toLowerCase();
+  
+  // Tipos HTTP/Express directamente del inferrer
+  if (t === 'httprequest') {
+    return '{ body: {}, params: {}, query: {}, headers: {}, method: "GET", path: "/test" }';
+  }
+  if (t === 'httpresponse') {
+    return 'vi.fn(() => ({ status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() }))';
+  }
+  
+  // Tipos primitivos
+  if (t === 'string') return '"sample-string"';
+  if (t === 'number' || t === 'int' || t === 'float') return '42';
+  if (t === 'boolean') return 'true';
+  if (t === 'array') return '[]';
+  if (t === 'object') return '{}';
+  if (t === 'function') return 'vi.fn()';
+  if (t === 'promise') return 'Promise.resolve({})';
+  if (t === 'error') return 'new Error("test error")';
+  
+  // Arrays con tipos genéricos
+  if (t.includes('array<') || t.includes('[]')) {
+    const innerType = t.replace(/array<|>|[]/g, '').trim();
+    if (innerType === 'string') return '["item1", "item2"]';
+    if (innerType === 'number') return '[1, 2, 3]';
+    if (innerType === 'object') return '[{}]';
+    return '[]';
+  }
+  
+  // Objetos conocidos por nombre de parámetro (fallback)
+  if (n.includes('request') || n.includes('req')) {
+    return '{ body: {}, params: {}, query: {} }';
+  }
+  if (n.includes('response') || n.includes('res')) {
+    return 'vi.fn(() => ({ status: vi.fn(() => ({ json: vi.fn() })) }))';
+  }
+  if (n.includes('state') || n.includes('manager')) {
+    return '{ paused: false, resume: vi.fn(), pause: vi.fn() }';
+  }
+  if (n.includes('config') || n.includes('options')) {
+    return '{ enabled: true, timeout: 5000 }';
+  }
+  
+  return null;
+}
+
+/**
+ * Detecta el tipo de objeto basado en cómo se usa en el callGraph
+ * @param {string} name - Nombre del parámetro
+ * @param {Object} callGraph - Metadatos del callGraph
+ * @returns {string|null} - Tipo detectado
+ */
+function detectObjectTypeFromCalls(name, callGraph) {
+  if (!callGraph?.callsList) return null;
+  
+  const nameLower = name.toLowerCase();
+  const calls = callGraph.callsList;
+  
+  // Detectar arrays por uso de métodos de array
+  const arrayMethods = ['some', 'map', 'filter', 'reduce', 'forEach', 'find', 'findIndex', 'every', 'includes', 'push', 'pop', 'shift', 'unshift', 'sort', 'slice', 'splice', 'concat', 'join', 'flat', 'flatMap'];
+  for (const call of calls) {
+    if (arrayMethods.includes(call.name)) {
+      return 'array';
+    }
+  }
+  
+  // Detectar response HTTP (Express-style)
+  if (nameLower === 'res' || nameLower === 'response') {
+    const hasStatus = calls.some(c => c.name === 'status');
+    const hasJson = calls.some(c => c.name === 'json');
+    if (hasStatus || hasJson) {
+      return 'httpResponse';
+    }
+  }
+  
+  // Detectar request HTTP
+  if (nameLower === 'req' || nameLower === 'request') {
+    const hasBody = calls.some(c => c.name === 'body');
+    const hasParams = calls.some(c => c.name === 'params');
+    const hasQuery = calls.some(c => c.name === 'query');
+    if (hasBody || hasParams || hasQuery) {
+      return 'httpRequest';
+    }
+  }
+  
+  // Detectar state/manager
+  if (nameLower === 'state' || nameLower === 'manager') {
+    const hasPause = calls.some(c => c.name === 'pause' || c.name === 'resume');
+    const hasStart = calls.some(c => c.name === 'start' || c.name === 'stop');
+    if (hasPause || hasStart) {
+      return 'stateManager';
+    }
+  }
+  
+  // Detectar callback/handler
+  if (nameLower.includes('callback') || nameLower.includes('handler') || nameLower.includes('next')) {
+    return 'callback';
+  }
+  
+  return null;
+}
+
+/**
+ * Genera mock basado en el tipo detectado
+ * @param {string} type - Tipo de objeto
+ * @param {string} name - Nombre del parámetro
+ * @returns {string} - Mock generado
+ */
+function generateMockByType(type, name) {
+  switch (type) {
+    case 'httpResponse':
+      return 'vi.fn(() => ({ status: vi.fn(() => ({ json: vi.fn() })) }))';
+    case 'httpRequest':
+      return '{ body: {}, params: {}, query: {} }';
+    case 'stateManager':
+      return '{ paused: false, resume: vi.fn(), pause: vi.fn() }';
+    case 'callback':
+      return 'vi.fn()';
+    default:
+      return null;
+  }
+}
+
+/**
  * Genera valor de muestra basado en tipo, nombre y contexto del átomo
  * @param {string} type - Parameter type
  * @param {string} name - Parameter name
@@ -13,7 +146,26 @@
 export function generateSampleValueForType(type, name = '', atom = {}) {
   const nameLower = name.toLowerCase();
   const archetype = atom.archetype?.type || '';
+  const callGraph = atom.callGraph || {};
   const semanticDomain = atom.semanticDomain;
+  const dataFlow = atom.dataFlow || {};
+  const inferredTypes = dataFlow?.analysis?.inferredTypes;
+  
+  // PRIORIDAD -1: Usar inferredTypes del dataFlow si está disponible
+  if (inferredTypes?.variables?.[nameLower]) {
+    const inferredType = inferredTypes.variables[nameLower];
+    if (inferredType && inferredType !== 'unknown') {
+      const inferredValue = generateFromInferredType(inferredType, name);
+      if (inferredValue) return inferredValue;
+    }
+  }
+  
+  // PRIORIDAD 0: Usar callGraph para detectar tipos de objetos
+  const detectedType = detectObjectTypeFromCalls(name, callGraph);
+  if (detectedType) {
+    const mock = generateMockByType(detectedType, name);
+    if (mock) return mock;
+  }
   
   // PRIORIDAD 1: Usar semanticDomain si está disponible
   if (semanticDomain?.primary && semanticDomain.inputPatterns) {
@@ -25,23 +177,23 @@ export function generateSampleValueForType(type, name = '', atom = {}) {
   if (nameLower.includes('options') || nameLower.includes('config') || nameLower.includes('opts')) {
     return generateOptionsInput(atom);
   }
-  
+
   if (nameLower.includes('operation') || nameLower === 'op') {
     return generateOperationInput(atom);
   }
-  
+
   if (archetype === 'orchestrator' && atom.callGraph?.callsList) {
     return generateOrchestratorInput(name, atom);
   }
-  
+
   if (nameLower.includes('callback') || nameLower.includes('fn') || nameLower.includes('handler')) {
     return 'vi.fn()';
   }
-  
+
   if (nameLower.includes('file') || nameLower.includes('path')) {
     return '"/test/file.js"';
   }
-  
+
   if (nameLower.includes('text') || nameLower.includes('content') || nameLower.includes('string')) {
     return '"sample text"';
   }

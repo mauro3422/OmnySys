@@ -8,17 +8,11 @@
 
 import fs from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
+import { generateSessionId } from '../utils/session.js';
 import { TUNNEL_VISION_LOG } from '../storage/paths.js';
 import { updateStats } from '../stats/calculator.js';
 
 const logger = createLogger('OmnySys:tunnel:vision:logger');
-
-/**
- * Genera un session ID único para trackear sesiones
- */
-function generateSessionId() {
-  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
 
 /**
  * Guarda un evento de tunnel vision detectado

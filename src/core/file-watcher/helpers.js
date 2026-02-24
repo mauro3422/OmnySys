@@ -1,4 +1,6 @@
-﻿/**
+﻿import { generateSessionId } from '../tunnel-vision-logger/utils/session.js';
+
+/**
  * Verifica si un archivo es relevante para análisis
  */
 export function isRelevantFile(filePath) {
@@ -43,8 +45,4 @@ export async function logTunnelVisionEvent(alert) {
   return await logTunnelVisionEvent(alert, {
     sessionId: this._sessionId || generateSessionId()
   });
-}
-
-function generateSessionId() {
-  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }

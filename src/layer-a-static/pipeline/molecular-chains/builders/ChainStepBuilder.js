@@ -82,9 +82,10 @@ export class ChainStepBuilder {
         
         return caller.calls?.some(c => 
           c.name === atom.name && 
-          (c.args || []).some(arg => 
-            arg.name === input.name || arg.includes(input.name)
-          )
+          (c.args || []).some(arg => {
+            const argStr = typeof arg === 'string' ? arg : arg?.name || '';
+            return argStr === input.name || argStr.includes(input.name);
+          })
         );
       });
       

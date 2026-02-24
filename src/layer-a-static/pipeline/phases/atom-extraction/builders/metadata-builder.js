@@ -129,8 +129,9 @@ export function buildAtomMetadata({
     // Call graph
     ...buildCallFields(functionInfo, cg),
 
-    // Code patterns
-    hasErrorHandling: /try\s*\{/.test(functionCode) || /if\s*\(.*\)\s*throw/.test(functionCode),
+    // Code patterns - Error handling detection
+    hasErrorHandling: (functionCode || '').includes('try') || 
+                      (functionCode || '').includes('catch'),
     isAsync:          functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
     // Temporal

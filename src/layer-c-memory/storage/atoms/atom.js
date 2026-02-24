@@ -227,7 +227,7 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
  * Query flexible de átomos
  * Usa SQLite si OMNY_SQLITE=true, sino JSON legacy
  */
-export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
+export async function queryAtoms(rootPath, filter = {}, limit = null) {
   if (USE_SQLITE) {
     try {
       const repo = getRepository(rootPath);
@@ -241,15 +241,16 @@ export async function queryAtoms(rootPath, filter = {}, limit = 1000) {
   // Legacy JSON
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const results = [];
+  const maxResults = limit === null ? Infinity : limit;
   
   async function scanAndFilter(dir) {
-    if (results.length >= limit) return;
+    if (results.length >= maxResults) return;
     
     try {
       const entries = await gracefulReaddir(dir, { withFileTypes: true });
       
       for (const entry of entries) {
-        if (results.length >= limit) break;
+        if (results.length >= maxResults) break;
         
         const fullPath = path.join(dir, entry.name);
         

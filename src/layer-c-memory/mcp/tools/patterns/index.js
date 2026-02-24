@@ -8,7 +8,7 @@
  * @module patterns
  */
 
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { findDuplicates } from './duplicates.js';
 import { findComplexityHotspots } from './complexity-hotspots.js';
 import { findGodFunctions } from './god-functions.js';
@@ -34,13 +34,29 @@ export async function detect_patterns(args, context) {
   const { projectPath } = context;
   
   try {
-    const atoms = await getAllAtoms(projectPath);
+    let atoms = await getAllAtoms(projectPath);
+    
+    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
+    atoms = await enrichAtomsWithRelations(atoms, {
+      withStats: true,
+      withCallers: false,
+      withCallees: false
+    }, projectPath);
     
     const result = {
       summary: {
         totalAtoms: atoms.length,
         withDna: atoms.filter(a => a.dna?.structuralHash).length,
         withPatternHash: atoms.filter(a => a.dna?.patternHash).length,
+        // ÁLGEBRA DE GRAFOS: Stats del grafo
+        graphStats: {
+          hubs: atoms.filter(a => a.graph?.centralityClassification === 'HUB').length,
+          bridges: atoms.filter(a => a.graph?.centralityClassification === 'BRIDGE').length,
+          leaves: atoms.filter(a => a.graph?.centralityClassification === 'LEAF').length,
+          avgCentrality: (atoms.reduce((sum, a) => sum + (a.graph?.centrality || 0), 0) / atoms.length).toFixed(3),
+          highRisk: atoms.filter(a => a.graph?.riskLevel === 'HIGH').length,
+          avgPropagationScore: (atoms.reduce((sum, a) => sum + (a.graph?.propagationScore || 0), 0) / atoms.length).toFixed(3)
+        },
         analyzedAt: new Date().toISOString()
       }
     };
@@ -50,7 +66,7 @@ export async function detect_patterns(args, context) {
       const dups = findDuplicates(atoms, minOccurrences);
       const godFns = findGodFunctions(atoms);
       const fragile = findFragileNetworkCalls(atoms);
-      const dead = findDeadCode(atoms);
+      const dead = await findDeadCode(atoms, projectPath); // 🎯 MEJORADO: pasa projectPath para verificar auto-ejecución
       const unusual = findUnusualPatterns(atoms);
       const cycles = findCircularDependencies(atoms);
       const testCoverage = findTestCoverageGaps(atoms);

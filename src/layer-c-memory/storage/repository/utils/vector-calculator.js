@@ -1,12 +1,46 @@
 /**
- * @fileoverview vector-calculator.js
- * 
  * Calcula vectores matematicos para atomos.
  * Estos vectores son usados en Semantic Algebra para operaciones
  * determinísticas sobre el grafo de código.
  * 
  * @module storage/repository/utils/vector-calculator
  */
+
+/**
+ * Calcula ageDays y changeFrequency desde metadatos del átomo
+ * Sin necesidad de git - usa extractedAt y updatedAt
+ * 
+ * Nota: updatedAt puede no estar disponible durante el enriquecimiento inicial.
+ * En ese caso, usamos la fecha actual como referencia.
+ */
+function calculateTemporalVectors(atom) {
+  const now = new Date();
+  const extractedAt = atom.extractedAt || atom._meta?.extractedAt;
+  
+  // Calcular ageDays: días desde que se extrajo el átomo
+  let ageDays = 0;
+  if (extractedAt) {
+    const extracted = new Date(extractedAt);
+    const diffMs = now - extracted;
+    ageDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+  
+  // Calcular changeFrequency
+  // Si el átomo ya existía (tiene updatedAt diferente de extractedAt), cuenta como cambio
+  // Si es nuevo (updatedAt ≈ extractedAt), initially es 0 pero se actualizará en siguientes análisis
+  const updatedAt = atom.updatedAt;
+  let changeFrequency = 0;
+  if (extractedAt && updatedAt) {
+    const extracted = new Date(extractedAt);
+    const updated = new Date(updatedAt);
+    // Si updated es significativamente diferente de extracted, hubo cambios
+    if (updated - extracted > 1000) {
+      changeFrequency = 1;
+    }
+  }
+  
+  return { ageDays, changeFrequency };
+}
 
 /**
  * Calcula todos los vectores matematicos de un atomo
@@ -20,6 +54,13 @@ export function calculateAtomVectors(atom, context = {}) {
     callees = [],
     gitHistory = null
   } = context;
+
+  // Calcular vectores temporales desde metadatos del átomo (sin git)
+  const temporal = calculateTemporalVectors(atom);
+  
+  // Si hay gitHistory, usarlo para sobreescribir (git tiene más precisión)
+  const ageDays = gitHistory?.ageDays ?? temporal.ageDays;
+  const changeFrequency = gitHistory?.changeFrequency ?? temporal.changeFrequency;
 
   return {
     // Vectores estructurales
@@ -37,9 +78,9 @@ export function calculateAtomVectors(atom, context = {}) {
     cohesionScore: calculateCohesion(atom),
     couplingScore: calculateCoupling(atom, context),
     
-    // Vectores temporales
-    changeFrequency: gitHistory?.changeFrequency || 0,
-    ageDays: gitHistory?.ageDays || 0,
+    // Vectores temporales (desde metadatos del átomo, sin git)
+    changeFrequency,
+    ageDays,
     
     // Vectores calculados para Semantic Algebra
     importance: calculateImportance(atom, context),
@@ -158,11 +199,23 @@ export function calculateImportance(atom, context = {}) {
 /**
  * Calcula estabilidad (0-1)
  * Estable = pocos cambios en el tiempo
+ * Puede usar gitHistory o metadatos del átomo
  */
 export function calculateStability(atom, gitHistory = null) {
-  if (!gitHistory) return 1.0; // Default: estable
+  // Usar gitHistory si está disponible, sino usar metadatos del átomo
+  const changeFreq = gitHistory?.changeFrequency ?? 
+    (() => {
+      const extractedAt = atom.extractedAt || atom._meta?.extractedAt;
+      const updatedAt = atom.updatedAt;
+      if (extractedAt && updatedAt) {
+        const extracted = new Date(extractedAt);
+        const updated = new Date(updatedAt);
+        return (updated - extracted > 1000) ? 1 : 0;
+      }
+      return 0;
+    })();
   
-  const changeFreq = gitHistory.changeFrequency || 0;
+  if (!changeFreq) return 1.0; // Default: estable
   
   // Estabilidad inversamente proporcional a frecuencia de cambios
   // 0 cambios/dia = 1.0, 1 cambio/dia = 0.0

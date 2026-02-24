@@ -32,7 +32,25 @@ export function generateAssertion(outputs, functionName, typeContracts, atom) {
   const returns = typeContracts?.returns;
   const dnaFlow = atom?.dna?.flowType || '';
   const dnaOps  = atom?.dna?.operationSequence || [];
-
+  const outputsList = atom?.dataFlow?.outputs || [];
+  
+  // PRIORIDAD 1: Usar los outputs del dataFlow
+  if (outputsList.length > 0) {
+    // Si los outputs tienen valores específicos (true, false, etc), usarlos
+    const boolOutputs = outputsList.filter(o => o.value === 'true' || o.value === 'false');
+    if (boolOutputs.length > 0) {
+      return 'expect(typeof result).toBe("boolean")';
+    }
+    
+    // Si retorna valores específicos
+    const returnOutputs = outputsList.filter(o => o.type === 'return' && o.value);
+    if (returnOutputs.length > 0) {
+      const hasNull = returnOutputs.some(o => o.value === 'null' || o.value === '<null()>');
+      if (hasNull) return 'expect(result).toBeDefined()';
+    }
+  }
+  
+  // PRIORIDAD 2: typeContracts
   if (returns?.type === 'boolean') return 'expect(typeof result).toBe("boolean")';
   if (returns?.type === 'string')  return 'expect(typeof result).toBe("string")';
   if (returns?.type === 'number' || returns?.type === 'Number') return 'expect(typeof result).toBe("number")';
@@ -47,6 +65,8 @@ export function generateAssertion(outputs, functionName, typeContracts, atom) {
   }
 
   const name = (functionName || '').toLowerCase();
+  
+  // PRIORIDAD 3: Inferir por nombre de función
   if (/^(is|has|can|should|check|validate|verify)/.test(name)) {
     return 'expect(typeof result).toBe("boolean")';
   }
@@ -63,6 +83,7 @@ export function generateAssertion(outputs, functionName, typeContracts, atom) {
     return 'expect(result).toBeDefined()';
   }
 
+  // PRIORIDAD 4: DNA flow
   if (dnaOps.length > 0 && !dnaOps.includes('return') && !dnaOps.includes('property_access')) {
     return 'expect(() => result).not.toThrow()';
   }

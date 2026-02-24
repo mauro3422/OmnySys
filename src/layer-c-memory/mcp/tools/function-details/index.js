@@ -2,10 +2,13 @@
  * @fileoverview MCP Tool: get_function_details
  * Obtiene detalles completos de una función/átomo con TODA la metadata disponible
  * 
+ * PATRÓN: Usa enrichAtomsWithRelations para datos graph.* deterministas
+ * 
  * @module mcp/tools/function-details
  */
 
 import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
+import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import {
   summarizeCalls,
   buildPerformanceSection,
@@ -30,6 +33,15 @@ export async function get_function_details(args, context) {
       };
     }
 
+    // PATRÓN: Enriquecer átomo con graph.*
+    const enrichedAtoms = await enrichAtomsWithRelations([atom], {
+      withStats: true,
+      withCallers: true,
+      withCallees: false
+    }, projectPath);
+    
+    const atomWithGraph = enrichedAtoms[0] || atom;
+
     const result = {
       atom: {
         id: atom.id,
@@ -48,10 +60,10 @@ export async function get_function_details(args, context) {
       archetype: atom.archetype || null,
 
       purpose: atom.purpose ? {
-        type: atom.purpose,
-        reason: atom.purposeReason,
-        confidence: atom.purposeConfidence,
-        isDeadCode: atom.isDeadCode
+        type: typeof atom.purpose === 'object' ? atom.purpose?.type : atom.purpose,
+        reason: atom.purpose?.reason || atom.purposeReason,
+        confidence: atom.purpose?.confidence || atom.purposeConfidence,
+        isDeadCode: atom.purpose?.isDeadCode || atom.isDeadCode
       } : null,
 
       callerPattern: atom.callerPattern || null,
@@ -103,6 +115,9 @@ export async function get_function_details(args, context) {
 
       // Dominio semántico detectado
       semanticDomain: atom.semanticDomain || null,
+
+      // PATRÓN: Datos del grafo enriquecidos
+      graph: atomWithGraph.graph || null,
 
       meta: atom._meta || null
     };

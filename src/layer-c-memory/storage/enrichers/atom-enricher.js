@@ -125,4 +125,49 @@ export function enrichAtoms(atoms, context = {}) {
   return finalEnriched;
 }
 
-export default { enrichAtom, enrichAtoms };
+/**
+ * Re-enriquece átomos existentes con vectores actualizados
+ * Esto asegura que mejoras en los enrichers se apliquen a átomos ya guardados
+ * @param {string} rootPath - Ruta del proyecto
+ * @param {boolean} verbose - Modo verbose
+ */
+export async function reEnrichExistingAtoms(rootPath, verbose = false) {
+  const { queryAtoms, saveAtom } = await import('#layer-c/storage/atoms/atom.js');
+  const { getRepository } = await import('#layer-c/storage/repository/index.js');
+  
+  const repo = getRepository(rootPath);
+  const allAtoms = await queryAtoms(rootPath, {});
+  
+  if (verbose) {
+    console.log(`[ReEnrich] Processing ${allAtoms.length} existing atoms...`);
+  }
+  
+  let updated = 0;
+  for (const atom of allAtoms) {
+    // Re-calcular vectores con el enricher actualizado
+    const enriched = enrichAtom(atom, {});
+    
+    // Actualizar solo si hay cambios significativos
+    const needsUpdate = 
+      enriched.cohesionScore !== atom.cohesionScore ||
+      enriched.hasErrorHandling !== atom.hasErrorHandling ||
+      enriched.changeFrequency !== atom.changeFrequency;
+    
+    if (needsUpdate) {
+      try {
+        await saveAtom(rootPath, atom.filePath, atom.name, enriched);
+        updated++;
+      } catch (e) {
+        // Silently skip errors
+      }
+    }
+  }
+  
+  if (verbose) {
+    console.log(`[ReEnrich] Updated ${updated} atoms with new vectors`);
+  }
+  
+  return { total: allAtoms.length, updated };
+}
+
+export default { enrichAtom, enrichAtoms, reEnrichExistingAtoms };

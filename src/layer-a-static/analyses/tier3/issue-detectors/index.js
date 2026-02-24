@@ -87,11 +87,13 @@ export function detectSemanticIssues(enrichedResults) {
   };
 
   // Contar por severidad
-  Object.values(issues).flat().forEach(issue => {
-    if (issue.severity) {
-      stats.bySeverity[issue.severity]++;
-    }
-  });
+  if (issues && typeof issues === 'object') {
+    Object.values(issues).filter(Array.isArray).flat().forEach(issue => {
+      if (issue && typeof issue === 'object' && issue.severity) {
+        stats.bySeverity[issue.severity]++;
+      }
+    });
+  }
 
   return {
     issues,

@@ -3,7 +3,7 @@
  * Calcula métricas de salud del código: entropía, cohesión, límites
  */
 
-import { getAllAtoms, getAtomsInFile } from '#layer-c/storage/index.js';
+import { getAllAtoms, getAtomsInFile, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 
 const LIMITS = {
   complexity: { max: 15, weight: 0.25 },
@@ -137,6 +137,17 @@ function isAnalysisScript(atom) {
     atom.filePath?.startsWith('scripts/check');
 }
 
+function isTestFile(atom) {
+  const path = atom.filePath || '';
+  return path.includes('/tests/') || 
+    path.includes('/test/') || 
+    path.includes('__tests__/') ||
+    path.includes('.test.') ||
+    path.includes('.spec.') ||
+    path.startsWith('tests/') ||
+    path.startsWith('test/');
+}
+
 function getHealthDistribution(atoms, separateInternalTools = true) {
   const distribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   const unhealthy = [];
@@ -147,6 +158,9 @@ function getHealthDistribution(atoms, separateInternalTools = true) {
     distribution[health.grade]++;
     
     if (health.grade === 'F' || health.grade === 'D') {
+      // Skip test files - they are inherently complex
+      if (isTestFile(atom)) continue;
+      
       const entry = {
         id: atom.id,
         name: atom.name,
@@ -190,6 +204,13 @@ export async function get_health_metrics(args, context) {
       targetAtoms = await getAllAtoms(projectPath);
     }
     
+    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
+    targetAtoms = await enrichAtomsWithRelations(targetAtoms, {
+      withStats: true,
+      withCallers: false,
+      withCallees: false
+    }, projectPath);
+    
     if (!targetAtoms || targetAtoms.length === 0) {
       return {
         summary: { totalAtoms: 0, overallScore: 100, grade: 'A', averageComplexity: '0' },
@@ -215,7 +236,16 @@ export async function get_health_metrics(args, context) {
         totalAtoms,
         overallScore,
         grade: overallScore >= 80 ? 'A' : overallScore >= 60 ? 'B' : overallScore >= 40 ? 'C' : 'D',
-        averageComplexity: avgComplexity.toFixed(1)
+        averageComplexity: avgComplexity.toFixed(1),
+        // ÁLGEBRA DE GRAFOS
+        graph: {
+          hubs: targetAtoms.filter(a => a.graph?.centralityClassification === 'HUB').length,
+          bridges: targetAtoms.filter(a => a.graph?.centralityClassification === 'BRIDGE').length,
+          leaves: targetAtoms.filter(a => a.graph?.centralityClassification === 'LEAF').length,
+          avgCentrality: (targetAtoms.reduce((sum, a) => sum + (a.graph?.centrality || 0), 0) / totalAtoms).toFixed(3),
+          highRisk: targetAtoms.filter(a => a.graph?.riskLevel === 'HIGH').length,
+          avgPropagationScore: (targetAtoms.reduce((sum, a) => sum + (a.graph?.propagationScore || 0), 0) / totalAtoms).toFixed(3)
+        }
       },
       healthDistribution: healthDist.distribution,
       entropy,

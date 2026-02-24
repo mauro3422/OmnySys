@@ -12,6 +12,8 @@ import { createLogger } from '../../../../utils/logger.js';
 import { analyzeForTests, analyzeClass, analyzeFunction } from './analyze-for-tests.js';
 import { generateClassTests } from './generate-class-tests.js';
 import { generateFunctionTests } from './generate-function-tests.js';
+import { generateMirrorTestCode } from './mirror-test-generator.js';
+import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
 
 const logger = createLogger('OmnySys:generate-tests');
 
@@ -23,13 +25,13 @@ const logger = createLogger('OmnySys:generate-tests');
 export async function generate_tests(args, context) {
   const { filePath, functionName, className, options = {} } = args;
   const { projectPath, cache } = context;
-  const { action = "analyze", validateImports = true } = options;
+  const { action = "analyze", validateImports = true, mirror = false } = options;
   
   // Determinar target
   const targetName = functionName || className;
   const targetType = className ? "class" : (functionName ? "function" : "auto");
   
-  logger.info(`[Tool] generate_tests("${filePath}::${targetName}" mode: ${action})`);
+  logger.info(`[Tool] generate_tests("${filePath}::${targetName}" mode: ${action}, mirror: ${mirror})`);
   
   if (!filePath) {
     return {
@@ -39,6 +41,25 @@ export async function generate_tests(args, context) {
   }
   
   try {
+    // MODO MIRROR TEST - Átomo Espejo (sin mocks, código real)
+    if (mirror && functionName) {
+      const atom = await getAtomDetails(projectPath, filePath, functionName, cache);
+      if (!atom) {
+        return { error: 'ATOM_NOT_FOUND', message: `Function ${functionName} not found` };
+      }
+      
+      const mirrorResult = generateMirrorTestCode(atom, options);
+      return {
+        success: true,
+        type: 'MIRROR_TEST',
+        atom: mirrorResult.atom,
+        generatedCode: mirrorResult.code,
+        testCount: mirrorResult.testCount,
+        metadata: mirrorResult.metadata,
+        note: 'MIRROR TEST: Este test usa código REAL del sistema (sin mocks). Si falla, el átomo tiene problemas.'
+      };
+    }
+    
     // MODO ANALISIS (default)
     if (action === "analyze") {
       return await analyzeForTests(filePath, targetName, targetType, projectPath, cache, context, validateImports);

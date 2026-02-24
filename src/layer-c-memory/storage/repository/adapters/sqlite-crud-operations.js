@@ -63,8 +63,63 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   delete(id) {
+    const now = new Date().toISOString();
+    
+    // 1. Obtener estado actual antes de borrar (para historia)
+    const atomBefore = this.statements.getById.get(id);
+    
+    // 2. Registrar evento de borrado en atom_events (historia/evolución)
+    if (atomBefore) {
+      try {
+        this.db.prepare(`
+          INSERT INTO atom_events (atom_id, event_type, before_state, impact_score, timestamp, source)
+          VALUES (?, 'deleted', ?, ?, ?, 'system_cleanup')
+        `).run(id, JSON.stringify(atomBefore), 0.5, now);
+      } catch (e) {
+        this._logger.warn(`[SQLiteAdapter] Failed to log delete event: ${e.message}`);
+      }
+      
+      // 3. Buscar y marcar átomos espejo (tests relacionados)
+      this._markRelatedTestAtoms(id, atomBefore.file_path);
+    }
+    
+    // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
     const result = this.statements.deleteById.run(id);
     return result.changes > 0;
+  }
+
+  /**
+   * Marca átomos de test relacionados como huérfanos cuando se borra el átomo fuente
+   * @private
+   */
+  _markRelatedTestAtoms(sourceId, sourceFilePath) {
+    try {
+      // Buscar átomos de test que mencionen el átomo fuente en su nombre o calls
+      const testAtoms = this.db.prepare(`
+        SELECT id, calls_json FROM atoms 
+        WHERE is_test_callback = 1 
+        AND (id LIKE ? OR calls_json LIKE ?)
+      `).all(`%${sourceFilePath}%`, `%${sourceId}%`);
+      
+      for (const testAtom of testAtoms) {
+        // Marcar como huérfano actualizando derived_json
+        const currentData = this.statements.getById.get(testAtom.id);
+        if (currentData) {
+          let derived = currentData.derived_json ? JSON.parse(currentData.derived_json) : {};
+          derived.orphaned = true;
+          derived.orphanedFrom = sourceId;
+          derived.orphanedAt = new Date().toISOString();
+          
+          this.db.prepare(`
+            UPDATE atoms SET derived_json = ? WHERE id = ?
+          `).run(JSON.stringify(derived), testAtom.id);
+          
+          this._logger.debug(`[SQLiteAdapter] Marked test atom as orphaned: ${testAtom.id}`);
+        }
+      }
+    } catch (e) {
+      this._logger.warn(`[SQLiteAdapter] Failed to mark related tests: ${e.message}`);
+    }
   }
 
   deleteByFile(filePath) {

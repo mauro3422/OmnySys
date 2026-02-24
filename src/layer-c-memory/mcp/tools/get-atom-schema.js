@@ -102,7 +102,8 @@ function fieldEvolution(atoms, field) {
     if (typeof val !== 'number') continue;
 
     const arch = atom.archetype?.type || atom.archetype || 'unknown';
-    const purp = atom.purpose || 'unknown';
+    // purpose puede ser string o objeto { type, reason, confidence }
+    const purp = typeof atom.purpose === 'object' ? atom.purpose?.type : (atom.purpose || 'unknown');
 
     if (!byArchetype[arch]) byArchetype[arch] = [];
     byArchetype[arch].push(val);

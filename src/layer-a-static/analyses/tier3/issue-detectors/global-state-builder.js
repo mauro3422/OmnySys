@@ -27,8 +27,10 @@ export function buildGlobalState(enrichedResults) {
   for (const [filePath, analysis] of Object.entries(enrichedResults.files || {})) {
     const semantic = analysis.semanticAnalysis || {};
     const sharedState = semantic.sharedState || {};
-    const readProps = sharedState.reads || sharedState.readProperties || [];
-    const writeProps = sharedState.writes || sharedState.writeProperties || [];
+    const readProps = Array.isArray(sharedState.reads) ? sharedState.reads : 
+                      Array.isArray(sharedState.readProperties) ? sharedState.readProperties : [];
+    const writeProps = Array.isArray(sharedState.writes) ? sharedState.writes : 
+                      Array.isArray(sharedState.writeProperties) ? sharedState.writeProperties : [];
 
     // Indexar shared state
     readProps.forEach(prop => {
@@ -43,12 +45,15 @@ export function buildGlobalState(enrichedResults) {
 
     // Indexar eventos
     if (semantic.eventPatterns) {
-      (semantic.eventPatterns.eventEmitters || []).forEach(event => {
+      const emitters = Array.isArray(semantic.eventPatterns.eventEmitters) ? semantic.eventPatterns.eventEmitters : [];
+      const listeners = Array.isArray(semantic.eventPatterns.eventListeners) ? semantic.eventPatterns.eventListeners : [];
+      
+      emitters.forEach(event => {
         state.events.emitters[event] = state.events.emitters[event] || [];
         state.events.emitters[event].push(filePath);
       });
 
-      (semantic.eventPatterns.eventListeners || []).forEach(event => {
+      listeners.forEach(event => {
         state.events.listeners[event] = state.events.listeners[event] || [];
         state.events.listeners[event].push(filePath);
       });

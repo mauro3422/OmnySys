@@ -19,7 +19,8 @@ import {
 import { AtomExtractionPhase } from './pipeline/phases/atom-extraction/index.js';
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { enrichAtom } from './pipeline/phases/atom-extraction/metadata/purpose-enricher.js';
+import { enrichAtom as enrichAtomPurpose } from './pipeline/phases/atom-extraction/metadata/purpose-enricher.js';
+import { enrichAtom as enrichAtomVectors } from '#layer-c/storage/enrichers/atom-enricher.js';
 import { enrichWithCulture } from './analysis/file-culture-classifier.js';
 import { resolveClassInstantiationCalledBy } from './pipeline/phases/calledby/class-instantiation-tracker.js';
 import { enrichWithCallerPattern } from './pipeline/phases/atom-extraction/metadata/caller-pattern.js';
@@ -226,9 +227,12 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
       parsedFile.atomCount = context.atomCount || 0;
       totalAtomsExtracted += context.atomCount || 0;
 
-      // 🆕 Enrich atoms with better purpose and archetype detection
+      // 🆕 Enrich atoms with better purpose, archetype, AND vectors
       if (context.atoms && context.atoms.length > 0) {
-        const enrichedAtoms = context.atoms.map(atom => enrichAtom(atom));
+        // Primero purpose/archetype enrichment
+        const purposeEnriched = context.atoms.map(atom => enrichAtomPurpose(atom));
+        // Luego vectores matemáticos (cohesion, ageDays, etc.)
+        const enrichedAtoms = purposeEnriched.map(atom => enrichAtomVectors(atom));
         parsedFile.atoms = enrichedAtoms;
         
         // Acumular para bulk insert en lugar de guardar uno por uno

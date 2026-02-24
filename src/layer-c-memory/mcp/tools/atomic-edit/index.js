@@ -11,7 +11,7 @@ import path from 'path';
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { validateBeforeEdit, validateBeforeWrite } from '../../core/validation-utils.js';
-import { getAllAtoms, loadAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms, loadAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 
 // Módulos internos
 import { reindexFile } from './reindex.js';
@@ -73,9 +73,10 @@ export async function atomic_edit(args, context) {
   }
   
   let previousAtoms = [];
+  let relativePath = filePath;
   try {
     const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(projectPath, filePath);
-    const relativePath = path.relative(projectPath, absolutePath);
+    relativePath = path.relative(projectPath, absolutePath);
     previousAtoms = await loadAtoms(projectPath, relativePath);
   } catch (e) {
     logger.warn(`[PreEdit] Could not load previous atoms: ${e.message}`);
@@ -83,7 +84,7 @@ export async function atomic_edit(args, context) {
   
   try {
     const validation = await validateBeforeEdit({ 
-      filePath, 
+      filePath: relativePath, 
       symbolName: null, 
       projectPath 
     });
@@ -175,7 +176,9 @@ export async function atomic_edit(args, context) {
     }
     
     const allAtoms = await getAllAtoms(projectPath);
-    const impactAnalysis = await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms, allAtoms);
+    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
+    const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, { withStats: true }, projectPath);
+    const impactAnalysis = await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms, enrichedAtoms);
     
     return {
       success: true,

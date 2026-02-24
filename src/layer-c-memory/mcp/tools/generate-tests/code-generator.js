@@ -62,10 +62,125 @@ function groupByType(tests) {
 }
 
 /**
+ * Encuentra el nombre de export correcto para una función
+ * Maneja casos donde el nombre del átomo no coincide con el export
+ */
+function findCorrectExportName(atom) {
+  const atomName = atom.name;
+  
+  const commonSuffixes = ['Optimized', 'Async', 'V2', 'New', 'Internal', 'Helper'];
+  for (const suffix of commonSuffixes) {
+    if (atomName.endsWith(suffix)) {
+      const baseName = atomName.slice(0, -suffix.length);
+      return { primary: baseName, alternatives: [atomName, baseName + 'Async', 'validate' + baseName] };
+    }
+  }
+  
+  if (atomName.startsWith('validate')) {
+    return { primary: atomName, alternatives: [atomName + 'Optimized', atomName.replace('validate', 'validatePost')] };
+  }
+  
+  if (atomName.startsWith('get') || atomName.startsWith('set') || atomName.startsWith('is')) {
+    return { primary: atomName, alternatives: [atomName + 'Sync', atomName + 'Async', atomName] };
+  }
+  
+  return { primary: atomName, alternatives: [atomName] };
+}
+
+/**
+ * Genera el import para la función con validación de exports
+ */
+function generateFunctionImport(atom) {
+  const importPath = resolveImportAlias(atom.filePath);
+  const { primary, alternatives } = findCorrectExportName(atom);
+  
+  return { importPath, exportName: primary, alternatives };
+}
+
+/**
+ * Recopila los imports necesarios para los branch tests
+ */
+function collectBranchImports(tests) {
+  const imports = new Map();
+  
+  for (const test of tests) {
+    if (test.type !== 'branch') continue;
+    
+    const needed = test.neededImports;
+    if (!needed) continue;
+    
+    for (const [source, names] of Object.entries(needed)) {
+      if (!imports.has(source)) {
+        imports.set(source, new Set());
+      }
+      for (const name of names) {
+        imports.get(source).add(name);
+      }
+    }
+  }
+  
+  return imports;
+}
+
+/**
+ * Genera los imports necesarios
+ */
+function generateImports(atom, useRealFactories, needSandbox, branchImports = new Map()) {
+  let code = '';
+  
+  // Import de vitest
+  code += "import { describe, it, expect, vi } from 'vitest';\n";
+  
+  // Sandbox si es necesario
+  if (needSandbox) {
+    code += "import { withSandbox } from '#layer-c/test-utils/sandbox.js';\n";
+  }
+  
+  // Imports de factories (si useRealFactories)
+  if (useRealFactories && atom) {
+    const factoryEntry = resolveFactory(atom.filePath);
+    if (factoryEntry) {
+      const importPath = resolveFactoryImportPath(factoryEntry.factoryPath, outputPath);
+      
+      // Extraer nombres de builders únicos (sin 'default' key)
+      const builderNames = Object.values(factoryEntry.builders || {})
+        .filter(b => b && b.name)
+        .map(b => b.name);
+      const uniqueBuilders = [...new Set(builderNames)];
+      if (uniqueBuilders.length > 0) {
+        code += `import { ${uniqueBuilders.join(', ')} } from '${importPath}';\n`;
+      }
+    }
+  }
+  
+  // Imports de constantes necesarias para branch tests (Priority, ChangeType, etc.)
+  for (const [source, names] of branchImports.entries()) {
+    // Intentar resolver alias primero, sino usar el path tal cual (ya tiene ./ o ../)
+    let resolvedSource = resolveImportAlias(source);
+    if (!resolvedSource || resolvedSource === source) {
+      // Limpiar doble slash o ./. artifacts
+      resolvedSource = source.replace(/\/\.\//g, '/').replace(/^\.\//, './');
+    }
+    code += `import { ${[...names].join(', ')} } from '${resolvedSource}';\n`;
+  }
+
+  // Import de la función — mapear src/ a alias # para compatibilidad con vitest
+  const { importPath, exportName, alternatives } = generateFunctionImport(atom);
+  code += `import { ${exportName} } from '${importPath}';\n`;
+  
+  // Guardar alternativas en el átomo para referencia en generateTestCase
+  atom._exportAlternatives = alternatives;
+  
+  code += `\n`;
+  
+  return code;
+}
+
+/**
  * Genera codigo de test completo
  */
 export function generateTestCode(atom, tests, options = {}) {
-  const { useRealFactories = true } = options;
+  const { useRealFactories = true, outputPath = 'tests/generated' } = options;
   const hasSideEffects = atom.hasSideEffects ||
                          atom.sideEffects?.hasStorageAccess ||
                          atom.sideEffects?.hasNetworkCalls;
@@ -109,66 +224,6 @@ export function generateTestCode(atom, tests, options = {}) {
 }
 
 /**
- * Genera los imports necesarios
- */
-/**
- * Agrupa los neededImports de todos los branch tests en un mapa source→[names]
- */
-function collectBranchImports(tests) {
-  const map = new Map(); // source → Set<name>
-  for (const test of tests) {
-    for (const imp of test.neededImports || []) {
-      if (!imp?.name || !imp?.from) continue;
-      if (!map.has(imp.from)) map.set(imp.from, new Set());
-      map.get(imp.from).add(imp.name);
-    }
-  }
-  return map;
-}
-
-function generateImports(atom, useRealFactories, needSandbox, branchImports = new Map()) {
-  let code = '';
-  
-  // Imports base
-  code += `import { describe, it, expect, vi } from 'vitest';\n`;
-  
-  // Import factory builders si existen para este módulo
-  if (useRealFactories) {
-    const factoryEntry = resolveFactory(atom.filePath);
-    if (factoryEntry?.factoryPath) {
-      const importPath = resolveFactoryImportPath(factoryEntry.factoryPath);
-      // Extraer nombres de builders únicos (sin 'default' key)
-      const builderNames = Object.values(factoryEntry.builders || {})
-        .filter(b => b && b.name)
-        .map(b => b.name);
-      const uniqueBuilders = [...new Set(builderNames)];
-      if (uniqueBuilders.length > 0) {
-        code += `import { ${uniqueBuilders.join(', ')} } from '${importPath}';\n`;
-      }
-    }
-  }
-  
-  // Imports de constantes necesarias para branch tests (Priority, ChangeType, etc.)
-  for (const [source, names] of branchImports.entries()) {
-    // Intentar resolver alias primero, sino usar el path tal cual (ya tiene ./ o ../)
-    let resolvedSource = resolveImportAlias(source);
-    if (!resolvedSource || resolvedSource === source) {
-      // Limpiar doble slash o ./. artifacts
-      resolvedSource = source.replace(/\/\.\//g, '/').replace(/^\.\//, './');
-    }
-    code += `import { ${[...names].join(', ')} } from '${resolvedSource}';\n`;
-  }
-
-  // Import de la función — mapear src/ a alias # para compatibilidad con vitest
-  const importPath = resolveImportAlias(atom.filePath);
-  code += `import { ${atom.name} } from '${importPath}';\n`;
-  
-  code += `\n`;
-  
-  return code;
-}
-
-/**
  * Genera un caso de test individual
  * @param {string} indent - Indentación base (default '  ' para nivel top-level describe)
  */
@@ -177,6 +232,9 @@ export function generateTestCase(atom, test, useSandbox, indent = '  ') {
   const inputs = atom.dataFlow?.inputs || [];
   const isAsync = atom.isAsync;
   const inner = indent + '  ';
+  
+  // Usar el nombre de export correcto
+  const fnName = atom._exportAlternatives?.[0] || atom.name;
 
   const needsAsync = isAsync || useSandbox;
   code += `${indent}it('${test.name}', ${needsAsync ? 'async ' : ''}() => {\n`;
@@ -197,22 +255,22 @@ export function generateTestCase(atom, test, useSandbox, indent = '  ') {
   if (useSandbox) {
     code += `${inner}await withSandbox({}, async (sandbox) => {\n`;
     if (isThrowTest && isAsync) {
-      code += `${inner}  await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
+      code += `${inner}  await expect(${fnName}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
-      code += `${inner}  expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
+      code += `${inner}  expect(() => ${fnName}(${inputCall})).toThrow();\n`;
     } else {
-      code += `${inner}  const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
+      code += `${inner}  const result = ${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
       code += `${inner}  ${test.assertion};\n`;
     }
     code += `${inner}});\n`;
   } else {
     if (isThrowTest && isAsync) {
-      code += `${inner}await expect(${atom.name}(${inputCall})).rejects.toThrow();\n`;
+      code += `${inner}await expect(${fnName}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
-      code += `${inner}expect(() => ${atom.name}(${inputCall})).toThrow();\n`;
+      code += `${inner}expect(() => ${fnName}(${inputCall})).toThrow();\n`;
     } else {
-      code += `${inner}const result = ${isAsync ? 'await ' : ''}${atom.name}(${inputCall});\n`;
-      code += `${inner}${test.assertion};\n`;
+      code += `${inner}const result = ${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
+      code += `${inner}  ${test.assertion};\n`;
     }
   }
 
@@ -228,6 +286,7 @@ export function generateInputCall(inputs, testInputs, atom) {
   if (!inputs || inputs.length === 0) return '';
 
   const factoryEntry = atom ? resolveFactory(atom.filePath) : null;
+  const callGraph = atom?.callGraph || {};
 
   return inputs.map(i => {
     if (testInputs && i.name in testInputs) {
@@ -238,37 +297,66 @@ export function generateInputCall(inputs, testInputs, atom) {
       const builder = resolveBuilderForParam(i.name, factoryEntry);
       if (builder) return builder.call;
     }
-    // Fallback tipado según el tipo inferido del parámetro
-    return inferFallbackValue(i);
+    // Fallback tipado según el tipo inferido del parámetro, incluyendo callGraph
+    return inferFallbackValue(i, callGraph);
   }).join(', ');
 }
 
 /**
- * Infiere un valor de fallback razonable según el tipo y nombre del parámetro
+ * Mapeo declarativo de nombres de parámetros a valores de fallback
  */
-function inferFallbackValue(input) {
+const PARAM_NAME_MAPPINGS = [
+  { pattern: /^(res|response|.*response)$/i, value: 'vi.fn(() => ({ status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() }))' },
+  { pattern: /^(req|request|.*request)$/i, value: '{ body: {}, params: {}, query: {}, headers: {}, method: "GET", path: "/test" }' },
+  { pattern: /^state$/i, value: '{ paused: false, resume: vi.fn(), pause: vi.fn() }' },
+  { pattern: /(next|callback)/i, value: 'vi.fn()' },
+  { pattern: /(path|file)/i, value: '"/test/file.js"' },
+  { pattern: /url/i, value: '"https://example.com"' },
+  { pattern: /id/i, value: '"test-id"' },
+  { pattern: /name/i, value: '"test-name"' },
+  { pattern: /(code|source)/i, value: '"const x = 1;"' },
+  { pattern: /(text|content)/i, value: '"sample text"' },
+  { pattern: /(options|opts|config)/i, value: '{ enabled: true }' },
+  { pattern: /(callback|fn|handler)/i, value: 'vi.fn()' },
+  { pattern: /(arr|list|items)/i, value: '[]' },
+  { pattern: /(num|count|limit)/i, value: '10' },
+  { pattern: /(bool|flag)/i, value: 'true' },
+];
+
+/**
+ * Mapeo por tipo de dato
+ */
+const TYPE_MAPPINGS = {
+  'string': '"sample-string"',
+  'number': '42',
+  'boolean': 'true',
+  'array': '[]',
+  'object': '{}',
+  'function': 'vi.fn()',
+};
+
+/**
+ * Infiere un valor de fallback razonable según el tipo, nombre y callGraph del parámetro
+ */
+function inferFallbackValue(input, callGraph = {}) {
   const n = (input.name || '').toLowerCase();
   const t = (input.type || '').toLowerCase();
-
-  if (n.includes('path') || n.includes('file')) return '"/test/file.js"';
-  if (n.includes('url'))                          return '"https://example.com"';
-  if (n.includes('id'))                           return '"test-id"';
-  if (n.includes('name'))                         return '"test-name"';
-  if (n.includes('code') || n.includes('source')) return '"const x = 1;"';
-  if (n.includes('text') || n.includes('content'))return '"sample text"';
-  if (n.includes('options') || n.includes('opts') || n.includes('config')) return '{}';
-  if (n.includes('callback') || n.includes('fn') || n.includes('handler')) return 'vi.fn()';
-  if (n.includes('arr') || n.includes('list') || n.includes('items'))      return '[]';
-
-  switch (t) {
-    case 'string':   return '"test-value"';
-    case 'number':   return '0';
-    case 'boolean':  return 'true';
-    case 'array':    return '[]';
-    case 'function': return 'vi.fn()';
-    case 'object':   return '{}';
-    default:         return '{}';
+  const calls = callGraph?.callsList || [];
+  
+  const hasHttpCall = calls.some(c => ['status', 'json', 'send', 'redirect'].includes(c.name));
+  
+  if (hasHttpCall && (n === 'res' || n === 'response')) {
+    return 'vi.fn(() => ({ status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() }))';
   }
+  if (hasHttpCall && (n === 'req' || n === 'request')) {
+    return '{ body: {}, params: {}, query: {}, headers: {}, method: "GET", path: "/test" }';
+  }
+  
+  for (const { pattern, value } of PARAM_NAME_MAPPINGS) {
+    if (pattern.test(n)) return value;
+  }
+  
+  return TYPE_MAPPINGS[t] || '{}';
 }
 
 /**

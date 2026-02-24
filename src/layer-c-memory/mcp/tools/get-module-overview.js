@@ -12,6 +12,7 @@
 
 import path from 'path';
 import { getAllAtoms } from '#layer-c/storage/atoms/atom.js';
+import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { analyzeModules } from '#layer-a/module-system/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -50,7 +51,9 @@ export async function get_module_overview(args, context) {
 
   logger.debug('Phase 3: get_module_overview');
 
-  const allAtoms = await getAllAtoms(projectPath);
+  let allAtoms = await getAllAtoms(projectPath);
+  // ÁLGEBRA DE GRAFOS: Enriquecer con centrality
+  allAtoms = await enrichAtomsWithRelations(allAtoms, { withStats: true }, projectPath);
   const molecules = buildMoleculesFromAtoms(allAtoms, projectPath);
 
   let moduleData;

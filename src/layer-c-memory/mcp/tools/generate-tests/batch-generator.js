@@ -151,7 +151,7 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
   }
   
   const tests = await analyzeFunctionForTests(atom, projectPath);
-  const testCode = generateTestCode(atom, tests, { useRealFactories: false });
+  const testCode = generateTestCode(atom, tests, { useRealFactories: true, outputPath });
   const riskScore = calculateRiskScore(atom);
   
   // Generar path del archivo de test
