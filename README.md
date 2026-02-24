@@ -192,8 +192,8 @@ node scripts/detect-broken-imports.js  # Detecta imports rotos
 
 ## Estado del Proyecto
 
-**Versión**: v0.9.57  
-**Estado**: ✅ **Estable — 30 Tools MCP + SQLite Database + Richer Archetypes**
+**Versión**: v0.9.59  
+**Estado**: ✅ **Estable — 30 Tools MCP + SQLite Database + Startup 1.5s + Auto Error Notifications**
 
 | Componente | Estado | Cobertura Tests |
 |------------|--------|----------------|
@@ -205,16 +205,18 @@ node scripts/detect-broken-imports.js  # Detecta imports rotos
 | **SQLite Database** | ✅ **Production** | ~35% |
 | **Tests totales** | ✅ **Pasando** | **~4,500+ tests** |
 
-### Novedades v0.9.57
+### Novedades v0.9.59
 
 | Feature | Descripción |
 |---------|-------------|
-| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
+| **Startup Speed** | 25s → 1.5s (SQLite check optimization) |
+| **Error Notifications** | `_recentErrors` automático en todas las tools |
+| **Health Metrics** | Tests excluded from unhealthy count |
+| **Deleted Files** | Skip shadow creation for already-deleted files |
 | **30 Tools MCP** | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Testing |
+| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
 | **Bulk Operations** | Inserciones masivas en single-transaction (64% más rápido) |
 | **Atomic Editor** | `atomic_edit` y `atomic_write` con validación sintáctica |
-| **Pagination Recursiva** | Middleware de paginación automática para todas las tools |
-| **Modular SQLite** | Adapter dividido en 6 módulos (606→764 LOC) |
 
 ---
 

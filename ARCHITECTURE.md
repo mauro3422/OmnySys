@@ -1,7 +1,7 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.57  
-**Última actualización**: 2026-02-23
+**Versión**: v0.9.59  
+**Última actualización**: 2026-02-24
 
 ---
 

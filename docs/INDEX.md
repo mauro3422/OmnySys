@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.57  
-**Última actualización**: 2026-02-23  
-**Estado**: ✅ **SQLite Database + 30 Tools MCP + Modular Architecture**
+**Versión**: v0.9.59  
+**Última actualización**: 2026-02-24  
+**Estado**: ✅ **SQLite Database + 30 Tools MCP + Startup 1.5s + Auto Error Notifications**
 
 ---
 
