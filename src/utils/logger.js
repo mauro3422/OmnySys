@@ -7,6 +7,22 @@
  * @module utils/logger
  */
 
+let notificationBridge = null;
+const recentLogs = [];
+const MAX_RECENT = 50;
+
+export function setNotificationBridge(bridge) {
+  notificationBridge = bridge;
+}
+
+export function getRecentLogs() {
+  return [...recentLogs];
+}
+
+export function clearRecentLogs() {
+  recentLogs.length = 0;
+}
+
 export class Logger {
   constructor(name, options = {}) {
     this.name = name;
@@ -46,7 +62,14 @@ export class Logger {
   warn(message, ...args) {
     if (this._shouldLog('warn')) {
       const extra = args.length ? ' ' + args.map(a => (a instanceof Error ? a.message : String(a))).join(' ') : '';
-      process.stderr.write(this._format(message, 'warn') + extra + '\n');
+      const fullMessage = this._format(message, 'warn') + extra;
+      process.stderr.write(fullMessage + '\n');
+      recentLogs.push({ level: 'warn', message: fullMessage, time: Date.now() });
+      if (recentLogs.length > MAX_RECENT) recentLogs.shift();
+      // Notify global system
+      if (notificationBridge?.notifyWarning) {
+        notificationBridge.notifyWarning(fullMessage, this.name);
+      }
     }
   }
 
@@ -61,7 +84,14 @@ export class Logger {
       } else if (error != null) {
         errorMsg = ` ${String(error)}`;
       }
-      process.stderr.write(formatted + errorMsg + '\n');
+      const fullMessage = formatted + errorMsg;
+      process.stderr.write(fullMessage + '\n');
+      recentLogs.push({ level: 'error', message: fullMessage, time: Date.now() });
+      if (recentLogs.length > MAX_RECENT) recentLogs.shift();
+      // Notify global system
+      if (notificationBridge?.notifyError) {
+        notificationBridge.notifyError(fullMessage, this.name);
+      }
       if (error instanceof Error && error.stack && process.env.LOG_LEVEL === 'debug') {
         process.stderr.write(error.stack + '\n');
       }

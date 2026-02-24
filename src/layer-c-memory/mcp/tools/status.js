@@ -4,7 +4,7 @@
  */
 
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger, getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -58,4 +58,29 @@ export async function get_server_status(args, context) {
   }
 
   return status;
+}
+
+/**
+ * Tool: get_recent_errors
+ * Returns recent warnings/errors captured by the logger and clears them
+ */
+export async function get_recent_errors(args, context) {
+  logger.info(`[Tool] get_recent_errors()`);
+  
+  const logs = getRecentLogs();
+  clearRecentLogs();
+  
+  const warnings = logs.filter(l => l.level === 'warn');
+  const errors = logs.filter(l => l.level === 'error');
+  
+  return {
+    count: logs.length,
+    warnings: warnings.length,
+    errors: errors.length,
+    logs: logs.map(l => ({
+      level: l.level,
+      message: l.message,
+      time: new Date(l.time).toISOString()
+    }))
+  };
 }

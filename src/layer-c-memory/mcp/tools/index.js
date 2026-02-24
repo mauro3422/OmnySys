@@ -34,7 +34,7 @@ import { analyze_change } from './analyze-change.js';
 import { explain_connection } from './connection.js';
 import { get_risk_assessment } from './risk.js';
 import { search_files } from './search.js';
-import { get_server_status } from './status.js';
+import { get_server_status, get_recent_errors } from './status.js';
 import { get_call_graph } from './get-call-graph.js';
 import { analyze_signature_change } from './analyze-signature-change.js';
 import { explain_value_flow } from './explain-value-flow.js';
@@ -332,6 +332,11 @@ export const toolDefinitions = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
+    name: 'get_recent_errors',
+    description: 'Returns recent warnings/errors captured by the logger and clears them. Use after any operation to check for issues.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
     name: 'restart_server',
     description: 'Restarts the OmnySys server to load updated code. Use clearCache+reanalyze to force a full reindex of all project atoms (needed after parser changes like new fields in calls[].args).',
     inputSchema: {
@@ -578,7 +583,8 @@ export const toolHandlers = {
   get_removed_atoms,
   // Utilidades
   search_files,
-  get_server_status,
+    get_server_status,
+    get_recent_errors,
   restart_server,
   // Editor atómico
   atomic_edit,

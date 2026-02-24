@@ -89,9 +89,30 @@ export class McpSetupStep extends InitializationStep {
 
     const rawResult = await handler(args, context);
 
+    // Get recent errors/warnings AFTER the tool runs (not before)
+    let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [] };
+    try {
+      const { getRecentLogs, clearRecentLogs } = await import('#utils/logger.js');
+      const logs = getRecentLogs();
+      recentErrors = {
+        count: logs.length,
+        warnings: logs.filter(l => l.level === 'warn').length,
+        errors: logs.filter(l => l.level === 'error').length,
+        logs: logs.map(l => ({ level: l.level, message: l.message, time: new Date(l.time).toISOString() }))
+      };
+      clearRecentLogs();
+    } catch (e) {
+      // Ignore - logger may not have these functions yet
+    }
+
+    // Add recent errors to result if there are any (BEFORE pagination)
+    const resultWithErrors = recentErrors.count > 0 
+      ? { _recentErrors: recentErrors, ...rawResult }
+      : rawResult;
+
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.
-    const result = applyPagination(rawResult, args || {});
+    const result = applyPagination(resultWithErrors, args || {});
 
     const elapsed = (performance.now() - startTime).toFixed(2);
     logger.info(`   ✅ Completed in ${elapsed}ms\n`);
