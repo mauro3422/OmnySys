@@ -99,6 +99,22 @@ export async function handleFileModified(filePath, fullPath) {
 export async function handleFileDeleted(filePath) {
   logger.info(`[DELETING] ${filePath}`);
 
+  const fs = await import('fs/promises');
+  const fullPath = this.rootPath ? 
+    (filePath.startsWith('/') || filePath.match(/^[A-Z]:/)) ? filePath : `${this.rootPath}/${filePath}`.replace(/\\/g, '/') : 
+    filePath;
+  
+  const fileExists = await fs.access(fullPath).then(() => true).catch(() => false);
+  
+  if (!fileExists) {
+    logger.debug(`[SKIP] File already deleted on disk: ${filePath}`);
+    await this.removeFromIndex(filePath);
+    await this.removeAtomMetadata(filePath);
+    this.fileHashes.delete(filePath);
+    this.emit('file:deleted', { filePath });
+    return;
+  }
+
   try {
     await this.createShadowsForFile(filePath);
     await this.cleanupRelationships(filePath);
@@ -126,6 +142,12 @@ export async function createShadowsForFile(filePath) {
   
   const atoms = await this.getAtomsForFile(filePath);
   
+  if (!atoms || atoms.length === 0) {
+    logger.debug(`[SHADOW] No atoms found for deleted file: ${filePath}`);
+    return 0;
+  }
+  
+  let created = 0;
   for (const atom of atoms) {
     try {
       atom.filePath = filePath;
@@ -134,12 +156,13 @@ export async function createShadowsForFile(filePath) {
         commits: await this.getRecentCommits()
       });
       logger.debug(`[SHADOW] ${atom.id} -> ${shadow.shadowId}`);
+      created++;
     } catch (error) {
-      logger.warn(`[SHADOW FAIL] ${atom.id}:`, error.message);
+      logger.debug(`[SHADOW SKIP] ${atom.id}: ${error.message}`);
     }
   }
   
-  return atoms.length;
+  return created;
 }
 
 /**
