@@ -14,15 +14,27 @@ const DATA_DIR = '.omnysysdata';
  * @returns {Promise<boolean>} - True if analysis exists
  */
 export async function hasExistingAnalysis(projectPath) {
+  const dbPath = path.join(projectPath, DATA_DIR, 'omnysys.db');
+  
   try {
+    // Check for index.json (legacy)
     const indexPath = path.join(projectPath, DATA_DIR, 'index.json');
-
     try { await fs.unlink(indexPath + '.tmp'); } catch { }
-
     await fs.access(indexPath);
     return true;
   } catch {
-    return false;
+    // Check for SQLite database (newer)
+    try {
+      await fs.access(dbPath);
+      // Verify SQLite has data
+      const SQLite = (await import('better-sqlite3')).default;
+      const db = new SQLite(dbPath, { readonly: true });
+      const count = db.prepare('SELECT COUNT(*) as count FROM atoms').get();
+      db.close();
+      return count?.count > 0;
+    } catch {
+      return false;
+    }
   }
 }
 

@@ -56,7 +56,7 @@ export async function checkAndRunAnalysis(projectPath) {
     const hasValidBaseAnalysis =
       fileCount > 0 &&
       (metadata?.fileIndex || metadata?.files) &&
-      metadata?.system_map_metadata?.enhanced === true;
+      (metadata?.system_map_metadata?.enhanced === true || metadata?.system_map_metadata?.totalFiles > 0);
 
     if (!hasValidBaseAnalysis) {
       logger.info('   🚨 Analysis incomplete, running Layer A...');
@@ -71,39 +71,15 @@ export async function checkAndRunAnalysis(projectPath) {
 
     logger.info('   ✅ Layer A analysis valid');
 
-    logger.info('   🔍 Checking for file changes...');
-    const changes = await detectCacheChanges(projectPath, metadata);
+    // If we have valid SQLite data, ALWAYS load it - skip change detection
+    // Change detection can be run manually or incrementally after load
+    logger.info('   ✅ Loading existing data from SQLite (skip reindex)');
     
-    const hasChanges = changes.newFiles.length > 0 || 
-                       changes.modifiedFiles.length > 0 || 
-                       changes.deletedFiles.length > 0;
-    
-    if (hasChanges) {
-      logger.info(`   🔄 Changes detected:`);
-      if (changes.newFiles.length > 0) {
-        logger.info(`      + ${changes.newFiles.length} new files`);
-      }
-      if (changes.modifiedFiles.length > 0) {
-        logger.info(`      ~ ${changes.modifiedFiles.length} modified files`);
-      }
-      if (changes.deletedFiles.length > 0) {
-        logger.info(`      - ${changes.deletedFiles.length} deleted files`);
-      }
-      logger.info('   🚀 Re-running Layer A analysis...');
-      logger.info('   ⏳ This may take 30-60 seconds...\n');
-      
-      await runFullIndexing(projectPath);
-      
-      logger.info('\n✅ Layer A completed (updated)');
-      logger.info('   🤖 LLM enrichment will continue in background');
-      return { ran: true, filesAnalyzed: changes.unchangedFiles.length + changes.newFiles.length + changes.modifiedFiles.length };
-    }
-
     const pendingLLM = await countPendingLLMAnalysis(projectPath);
     if (pendingLLM > 0) {
       logger.info(`   ⏳ ${pendingLLM} files pending LLM enrichment (background)`);
     } else {
-      logger.info('   ✅ All files processed (no changes detected)');
+      logger.info('   ✅ All files processed');
     }
 
     return { ran: false, filesAnalyzed: fileCount };

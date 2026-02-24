@@ -69,11 +69,24 @@ export function initializeEmptyCache(cache) {
  */
 export async function hasExistingAnalysis(omnySysDataPath) {
   try {
+    // Check for index.json (legacy)
     const indexPath = path.join(omnySysDataPath, 'index.json');
     await fs.access(indexPath);
     return true;
   } catch {
-    return false;
+    // Check for SQLite database (newer)
+    try {
+      const dbPath = path.join(omnySysDataPath, 'omnysys.db');
+      await fs.access(dbPath);
+      // Verify SQLite has data
+      const SQLite = await import('better-sqlite3');
+      const db = new SQLite.default(dbPath, { readonly: true });
+      const count = db.prepare('SELECT COUNT(*) as count FROM atoms').get();
+      db.close();
+      return count?.count > 0;
+    } catch {
+      return false;
+    }
   }
 }
 

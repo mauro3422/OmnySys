@@ -55,17 +55,19 @@ export async function _detectSemanticIssues() {
 
     // Save to SQLite instead of JSON
     const repo = getRepository(this.projectPath);
-    if (repo && repo.db) {
+    if (repo && repo.db && issuesReport.issues) {
       // Clear existing issues
       repo.db.prepare('DELETE FROM semantic_issues').run();
       
-      // Insert new issues
+      // Insert new issues - flatten all issue arrays from the issues object
       const insertStmt = repo.db.prepare(`
         INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       
-      for (const issue of issuesReport.issues || []) {
+      const allIssues = Object.values(issuesReport.issues).flat();
+      
+      for (const issue of allIssues) {
         insertStmt.run(
           issue.file || issue.filePath || 'unknown',
           issue.type || issue.issue_type || 'unknown',

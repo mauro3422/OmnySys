@@ -4,44 +4,21 @@
  * Analiza los gaps de calledBy y el nuevo campo callerPattern.
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { readAllAtoms } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
 
-async function readAllAtoms() {
-  const atomsDir = path.join(ROOT_PATH, '.omnysysdata', 'atoms');
-  const atoms = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            atoms.push(data);
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
+// ============================================================================
+// MAIN
+// ============================================================================
 
 async function main() {
   console.log('\n🔍 Análisis de callerPattern\n');
   console.log('═'.repeat(70));
   
-  const atoms = await readAllAtoms();
+  const atomsArr = await readAllAtoms(ROOT_PATH);
+  const atoms = Array.from(atomsArr.values());
   console.log(`Total atoms: ${atoms.length}`);
   
   const withCalledBy = atoms.filter(a => a.calledBy && a.calledBy.length > 0);

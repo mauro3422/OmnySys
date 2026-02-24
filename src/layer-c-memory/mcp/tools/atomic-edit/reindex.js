@@ -34,6 +34,15 @@ export async function reindexFile(filePath, projectPath) {
     
     await saveAtomsIncremental(projectPath, relativePath, atoms, { source: 'atomic-edit' });
     
+    // Invalidate cache for this file
+    try {
+      const { invalidateCacheInstance } = await import('#core/cache/index.js');
+      await invalidateCacheInstance(projectPath);
+      logger.debug(`[Reindex] Cache invalidated for ${relativePath}`);
+    } catch (e) {
+      logger.warn(`[Reindex] Cache invalidation failed: ${e.message}`);
+    }
+    
     logger.info(`[Reindex] Updated ${atoms.length} atoms for ${relativePath}`);
     
     return { 
