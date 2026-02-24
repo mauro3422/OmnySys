@@ -67,3 +67,7 @@ temp/
 # Local test runs
 test-cases/*-run/
 test-cases/*-run*/
+
+# Vitest test outputs
+.vitest-*.json
+.vitest-focus-*.json
