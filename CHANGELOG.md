@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.58 - Complete SQLite Migration](changelog/v0.9.58-sqlite-migration-complete.md)** - All tools migrated to SQLite, removed JSON dependencies, 5 files refactored (Latest)
+- **[v0.9.59 - Startup Speed + Error Notifications](changelog/v0.9.59-startup-notifications.md)** - 25s→1.5s startup, auto-error notifications, 3 functions refactored (Latest)
+- **[v0.9.58 - Complete SQLite Migration](changelog/v0.9.58-sqlite-migration-complete.md)** - All tools migrated to SQLite, removed JSON dependencies
 - **[v0.9.57 - SQLite Bulk Operations & Architecture Modularization](changelog/v0.9.57-sqlite-modularization.md)** - Split 606-line monolith into 6 modules, 64% performance improvement, single-transaction bulk inserts
 - **[v0.9.56 - Performance Optimization & Architectural Refactoring](changelog/v0.9.56-performance-optimization.md)** - Selective queries (100x faster), atomic-edit modularized (1,616 to 7 files), async stats
 - **[v0.9.55 - Atomic Edit System: Breaking Change Detection & Rollback](changelog/v0.9.55-atomic-edit-system.md)** - Production-ready atomic editor with optimistic concurrency control, automatic rollback, and 20+ validated test cases
@@ -36,7 +37,8 @@ All notable changes to this project are documented in this file and organized by
 
 | Version | Date | Description |
 |---------|------|-------------|
-| **[0.9.58]** | 2026-02-23 | **🗄️ SQLite Migration Complete — All tools use SQLite, 5 files migrated, JSON legacy removed** (Latest) |
+| **[0.9.59]** | 2026-02-24 | **🚀 Startup Speed + Error Notifications + Technical Debt Cleanup — 25s→1.5s startup, auto-error notifications, 3 functions refactored** (Latest) |
+| **[0.9.58]** | 2026-02-23 | **🗄️ SQLite Migration Complete — All tools use SQLite, 5 files migrated, JSON legacy removed** |
 | **[0.9.57]** | 2026-02-23 | **🏗️ SQLite Modularization — Split 606→764 LOC into 6 modules, 64% faster, single-transaction bulk** |
 | **[0.9.56]** | 2026-02-22 | **⚡ Performance Optimization — Selective queries (100x faster), atomic-edit modularized, async stats** |
 | **[0.9.54]** | 2026-02-22 | **🏆 ZERO Technical Debt Achievement — 13 files refactored (100%), 5,235 → 2,212 LOC (-58%), 127 tests passing** |
