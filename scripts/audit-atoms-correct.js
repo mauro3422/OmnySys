@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readAllAtoms, readAllFiles } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -17,65 +18,8 @@ const ROOT_PATH = path.join(__dirname, '..');
 /**
  * Lee todos los atoms del storage
  */
-async function readAllAtoms() {
-  const atomsDir = path.join(ROOT_PATH, '.omnysysdata', 'atoms');
-  const atoms = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            atoms.push({
-              path: fullPath,
-              data
-            });
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
-
-/**
- * Lee todos los files del storage
- */
-async function readAllFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
-  const files = new Map();
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.set(filePath, data);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(filesDir);
-  return files;
+function pct(n) {
+  return stats.total > 0 ? ((n / stats.total) * 100).toFixed(1) : '0.0';
 }
 
 /**
@@ -87,17 +31,17 @@ async function main() {
   
   // Leer atoms
   console.log('\n📁 Leyendo atoms de .omnysysdata/atoms/...');
-  const atoms = await readAllAtoms();
-  console.log(`   ${atoms.length} atoms encontrados`);
+  const atoms = await readAllAtoms(ROOT_PATH);
+  console.log(`   ${atoms.size} atoms encontrados`);
   
   // Leer files
   console.log('📁 Leyendo files de .omnysysdata/files/...');
-  const files = await readAllFiles();
+  const files = await readAllFiles(ROOT_PATH);
   console.log(`   ${files.size} files encontrados`);
   
   // Estadísticas de atoms
   const stats = {
-    total: atoms.length,
+    total: atoms.size,
     withCalledBy: 0,
     withCalls: 0,
     withDataFlow: 0,
@@ -121,8 +65,8 @@ async function main() {
   };
   
   // Analizar cada atom
-  for (const atom of atoms) {
-    const data = atom.data;
+  for (const atom of atoms.values()) {
+    const data = atom;
     
     // Contar tipos
     const type = data.type || data.functionType || 'unknown';

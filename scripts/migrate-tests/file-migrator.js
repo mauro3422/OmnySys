@@ -1,4 +1,4 @@
-/"use strict";
+"use strict";
 /**
  * @fileoverview File Migrator - Migra archivos individuales
  */

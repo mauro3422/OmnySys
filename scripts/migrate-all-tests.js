@@ -1,4 +1,4 @@
-/"use strict";
+"use strict";
 /**
  * @fileoverview Migration Runner - Ejecuta el proceso de migración
  */
