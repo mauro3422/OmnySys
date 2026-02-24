@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { scanJsonFiles } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -18,37 +19,26 @@ const ROOT_PATH = path.join(__dirname, '..');
  * Lee todos los archivos de storage recursivamente
  */
 async function readAllStorageFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
+  const jsonFiles = await scanJsonFiles(ROOT_PATH, '.omnysysdata/files');
   const files = new Map();
   
-  async function scanDir(dir) {
+  for (const fullPath of jsonFiles) {
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.set(filePath, {
-                fullPath,
-                data,
-                size: content.length
-              });
-            }
-          } catch (e) {
-            console.error(`Error leyendo ${fullPath}: ${e.message}`);
-          }
-        }
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const data = JSON.parse(content);
+      const filePath = data.path || data.filePath;
+      if (filePath) {
+        files.set(filePath, {
+          fullPath,
+          data,
+          size: content.length
+        });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(`Error leyendo ${fullPath}: ${e.message}`);
+    }
   }
   
-  await scanDir(filesDir);
   return files;
 }
 

@@ -9,6 +9,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readAllAtoms, readSystemMap } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -16,43 +17,6 @@ const ROOT_PATH = path.join(__dirname, '..');
 // ============================================================================
 // DATA LOADING
 // ============================================================================
-
-async function readAllAtoms() {
-  const atomsDir = path.join(ROOT_PATH, '.omnysysdata', 'atoms');
-  const atoms = new Map();
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            if (data.id) {
-              atoms.set(data.id, data);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
-
-async function readSystemMap() {
-  try {
-    const content = await fs.readFile(path.join(ROOT_PATH, '.omnysysdata', 'system-map.json'), 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
 
 // ============================================================================
 // VALIDATION
@@ -64,8 +28,8 @@ async function validateSystem() {
   
   // 1. Cargar datos
   console.log('\n📁 Cargando datos...');
-  const atoms = await readAllAtoms();
-  const systemMap = await readSystemMap();
+const atoms = await readAllAtoms(ROOT_PATH);
+  const systemMap = await readSystemMap(ROOT_PATH);
   
   console.log(`   ✅ Átomos cargados: ${atoms.size}`);
   console.log(`   ✅ System Map: ${systemMap ? 'Disponible' : 'No disponible'}`);

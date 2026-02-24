@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { scanJsonFiles } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -52,33 +53,20 @@ async function scanAllProjectFiles() {
  * Lee archivos del storage indexado (recursivamente en subdirectorios)
  */
 async function getIndexedFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
+  const jsonFiles = await scanJsonFiles(ROOT_PATH, '.omnysysdata/files');
   const files = [];
   
-  async function scanDir(dir) {
+  for (const fullPath of jsonFiles) {
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          // Recursivamente escanear subdirectorios
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            // Soporta ambos: path y filePath
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.push(filePath);
-            }
-          } catch {}
-        }
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const data = JSON.parse(content);
+      const filePath = data.path || data.filePath;
+      if (filePath) {
+        files.push(filePath);
       }
     } catch {}
   }
   
-  await scanDir(filesDir);
   return files;
 }
 

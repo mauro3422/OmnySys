@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { scanJsonFiles, log } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -24,45 +25,23 @@ const { needsLLMAnalysis, computeMetadataCompleteness } = await import(
 );
 
 /**
- * Lee archivos del storage (recursivamente)
- */
-async function getAllFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
-  const files = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.push(filePath);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(filesDir);
-  return files;
-}
-
-/**
  * Escanea todos los archivos y genera estadísticas
  */
 async function fullScan() {
   console.log('\n🔍 OmnySys Full Data Audit');
   console.log('═'.repeat(70));
   
-  const filePaths = await getAllFiles();
+  const jsonFiles = await scanJsonFiles(ROOT_PATH, '.omnysysdata/files');
+  const filePaths = [];
+  for (const file of jsonFiles) {
+    try {
+      const content = await fs.readFile(file, 'utf-8');
+      const data = JSON.parse(content);
+      const filePath = data.path || data.filePath;
+      if (filePath) filePaths.push(filePath);
+    } catch {}
+  }
+  
   console.log(`\n📁 Archivos en storage: ${filePaths.length}`);
   
   if (filePaths.length === 0) {

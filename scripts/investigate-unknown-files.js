@@ -1,47 +1,16 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readAllFiles } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
-
-/**
- * Reads all files from storage
- */
-async function readAllFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
-  const files = new Map();
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.set(filePath, data);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(filesDir);
-  return files;
-}
 
 async function main() {
   console.log('\n🔍 Investigating Unknown Files');
   console.log('═'.repeat(70));
   
-  const files = await readAllFiles();
+  const files = await readAllFiles(ROOT_PATH);
   
   // Find unknown files
   const unknownFiles = [];

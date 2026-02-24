@@ -21,6 +21,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readAllAtoms, readAllFiles, log, pct } from './utils/script-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_PATH = path.join(__dirname, '..');
@@ -89,63 +90,6 @@ const PURPOSES = {
 // ============================================================================
 // DATA LOADING
 // ============================================================================
-
-async function readAllAtoms() {
-  const atomsDir = path.join(ROOT_PATH, '.omnysysdata', 'atoms');
-  const atoms = new Map();
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            if (data.id) {
-              atoms.set(data.id, data);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(atomsDir);
-  return atoms;
-}
-
-async function readAllFiles() {
-  const filesDir = path.join(ROOT_PATH, '.omnysysdata', 'files');
-  const files = new Map();
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              files.set(filePath, data);
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(filesDir);
-  return files;
-}
 
 // ============================================================================
 // PURPOSE DEDUCTION
@@ -325,8 +269,8 @@ async function main() {
   
   // Load data
   console.log('\n📁 Loading data...');
-  const atoms = await readAllAtoms();
-  const files = await readAllFiles();
+  const atoms = await readAllAtoms(ROOT_PATH);
+  const files = await readAllFiles(ROOT_PATH);
   
   console.log(`   Atoms loaded: ${atoms.size}`);
   console.log(`   Files loaded: ${files.size}`);
