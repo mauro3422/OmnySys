@@ -1,8 +1,8 @@
 # Datos por Layer - Contratos y Capacidades
 
-**Versión**: 1.1.0  
-**Actualizado**: 2026-02-24  
-**Estado**: ✅ Implementado - datos en SQLite  
+**Versión**: v0.9.61  
+**Actualizado**: 2026-02-25  
+**Estado**: ✅ **100% Estático, 0% LLM** - Datos en SQLite
 
 ---
 
@@ -10,44 +10,90 @@
 
 Cada layer extrae y procesa datos específicos. Este documento detalla **qué datos tenemos disponibles** y **qué podemos hacer con ellos**.
 
+**IMPORTANTE (v0.9.61)**: Todos los datos se persisten en **SQLite** (.omnysysdata/omnysys.db), no en JSONs dispersos.
+
 ---
 
 ## Layer A: Static Analysis
 
 ### Extractores Activos (17)
 
-```javascript
-// src/layer-a-static/extractors/metadata/index.js
+**Código REAL**: `src/layer-a-static/indexer.js` + extractores
 
-const extractors = {
-  // CONTRATOS
-  jsdoc: extractJSDocContracts(code),      // @param, @returns, @throws
-  runtime: extractRuntimeContracts(code),   // Runtime type checks
+```javascript
+// Pipeline completo de Layer A
+export async function indexProject(rootPath, options = {}) {
+  // 1. scanProjectFiles()
+  const { relativeFiles, files } = await scanProjectFiles(absoluteRootPath, verbose);
   
-  // PATRONES
-  async: extractAsyncPatterns(code),        // async/await, Promises
-  errors: extractErrorHandling(code),       // try/catch, throws
-  build: extractBuildTimeDependencies(code),// package.json deps
+  // 2. parseFiles()
+  const parsedFiles = await parseFiles(files, verbose);
   
-  // AVANZADOS
-  sideEffects: extractSideEffects(code),    // localStorage, events, globals
-  callGraph: extractCallGraph(code),        // function calls
-  dataFlow: extractDataFlow(code),          // value transformations
-  typeInference: extractTypeInference(code),// inferred types
-  temporal: extractTemporalPatterns(code),  // lifecycle hooks
-  depDepth: extractDependencyDepth(code),   // import depth
-  performance: extractPerformanceHints(code),// perf warnings
-  historical: extractHistoricalMetadata(file),// git history
+  // 3. extractAndSaveAtoms() - AtomExtractionPhase
+  const totalAtomsExtracted = await extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose);
   
-  // NUEVOS
-  dna: extractDNA(code),                    // Structural fingerprint
-  errorFlow: extractErrorFlow(code),        // Error propagation
-  performanceMetrics: extractPerformanceMetrics(code),
-  typeContracts: extractTypeContracts(code)
-};
+  // 4. buildCalledByLinks() - 6 sub-pasos
+  await buildCalledByLinks(parsedFiles, absoluteRootPath, verbose);
+  
+  // 5. resolveImports()
+  const { resolvedImports } = await resolveImports(parsedFiles, absoluteRootPath, verbose);
+  
+  // 6. normalizePaths()
+  const normalizedParsedFiles = normalizeParsedFiles(parsedFiles, absoluteRootPath);
+  
+  // 7. buildSystemGraph()
+  const systemMap = buildSystemGraph(normalizedParsedFiles, normalizedResolvedImports, verbose);
+  
+  // 8. enrichWithCulture() - ZERO LLM
+  enrichWithCulture(systemMap);
+  
+  // 9. generateAnalysisReport() + enhanceSystemMap()
+  const [analysisReport, enhancedSystemMap] = await Promise.all([
+    generateAnalysisReport(systemMap, atomsIndex),
+    generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose, skipLLM)
+  ]);
+  
+  // 10. saveEnhancedSystemMap() - SQLite bulk insert
+  await saveEnhancedSystemMap(enhancedSystemMap, verbose, absoluteRootPath);
+}
 ```
 
-### Output por Archivo
+### 6 Sub-pasos de CalledBy Linkage
+
+**Código REAL**: `src/layer-a-static/indexer.js:277-395`
+
+```javascript
+async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose) {
+  // 1. Build atom index
+  const index = buildAtomIndex(allAtoms);
+  
+  // 2. Function calledBy (linkFunctionCalledBy)
+  const { updatedAtoms } = await linkFunctionCalledBy(allAtoms, absoluteRootPath, index, verbose);
+  
+  // 3. Variable reference calledBy (linkVariableCalledBy)
+  const { updatedAtoms } = await linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  
+  // 4. Mixin/namespace imports (linkMixinNamespaceCalledBy)
+  const { updatedAtoms } = await linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  
+  // 5. Class instantiation (resolveClassInstantiationCalledBy)
+  const { resolved } = await resolveClassInstantiationCalledBy(allAtoms);
+  
+  // 6. Export object references (linkExportObjectReferences)
+  const { updatedAtoms } = await linkExportObjectReferences(allAtoms, parsedFiles, absoluteRootPath, verbose);
+  
+  // 7. Caller Pattern Detection (enrichWithCallerPattern)
+  enrichWithCallerPattern(allAtoms);
+  
+  // 8. BULK SAVE a SQLite
+  const repo = getRepository(absoluteRootPath);
+  repo.saveManyBulk(Array.from(modifiedAtoms), 500);
+}
+```
+
+### Metadata Extraída por Archivo
+
+**Código REAL**: Múltiples extractores en `src/layer-a-static/extractors/`
 
 ```javascript
 {
@@ -99,295 +145,436 @@ const extractors = {
     estimatedComplexity: 'O(n²)'
   },
   
-  // DNA (fingerprint)
+  // DNA (fingerprint estructural)
   dna: {
-    operationSequence: ['receive', 'validate', 'fetch', 'transform', 'return'],
-    pattern: 'read-transform-return',
-    clan: 'data-fetchers'
-  }
-}
-```
-
----
-
-## Layer Graph: Graph Operations
-
-### Datos del Grafo
-
-```javascript
-{
-  // Nodos
-  files: {
-    'src/api.js': {
-      path: 'src/api.js',
-      exports: [...],
-      imports: [...],
-      usedBy: ['src/main.js', 'src/routes.js'],
-      dependsOn: ['src/utils.js', 'src/config.js'],
-      transitiveDepends: ['src/types.js', 'src/constants.js'],
-      transitiveDependents: ['src/app.js', 'src/server.js']
-    }
+    structuralHash: 'abc123...',
+    patternHash: 'def456...',
+    flowType: 'read-transform-persist',
+    operationSequence: ['receive', 'read', 'transform', 'persist', 'return']
   },
   
-  // Aristas
-  dependencies: [
-    { from: 'src/api.js', to: 'src/utils.js', type: 'esm', symbols: ['helper'] }
-  ],
+  // Arquetipo
+  archetype: {
+    type: 'persister',
+    severity: 6,
+    confidence: 0.95
+  },
   
-  // Function Links
-  function_links: [
-    { from: 'src/api.js::fetchUser', to: 'src/utils.js::validate', line: 15 }
-  ],
-  
-  // Métricas
-  metadata: {
-    totalFiles: 45,
-    totalDependencies: 120,
-    cyclesDetected: [['src/a.js', 'src/b.js', 'src/a.js']],
-    totalFunctions: 230,
-    totalFunctionLinks: 450
+  // Propósito
+  purpose: {
+    type: 'API_EXPORT',
+    confidence: 1.0,
+    isDeadCode: false
   }
 }
 ```
 
-### Algoritmos Disponibles
+### Persistencia en SQLite
 
-```javascript
-// Ciclos
-detectCycles(files) → [['a.js', 'b.js', 'a.js']]
-isInCycle(file, cycles) → true/false
-getFilesInCycles(cycles) → Set<string>
+**Schema REAL**: `src/layer-c-memory/storage/database/schema.sql`
 
-// Impacto
-getImpactMap(file, files) → { directDependents, indirectDependents, riskLevel }
-findHighImpactFiles(files, limit) → [{ path, dependentCount }]
+```sql
+-- Tabla atoms con TODOS los campos
+CREATE TABLE atoms (
+    -- Identidad
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    atom_type TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    line_start INTEGER,
+    line_end INTEGER,
+    lines_of_code INTEGER,
+    complexity INTEGER,
+    
+    -- Flags
+    is_exported BOOLEAN,
+    is_async BOOLEAN,
+    is_test_callback BOOLEAN,
+    
+    -- Clasificación
+    archetype_type TEXT,
+    archetype_severity INTEGER,
+    archetype_confidence REAL,
+    purpose_type TEXT,
+    purpose_confidence REAL,
+    is_dead_code BOOLEAN,
+    
+    -- Vectores matemáticos (Semantic Algebra)
+    importance_score REAL,
+    coupling_score REAL,
+    cohesion_score REAL,
+    stability_score REAL,
+    propagation_score REAL,
+    fragility_score REAL,
+    testability_score REAL,
+    
+    -- Grafos
+    in_degree INTEGER,
+    out_degree INTEGER,
+    centrality_score REAL,
+    centrality_classification TEXT,
+    risk_level TEXT,
+    
+    -- Contadores
+    callers_count INTEGER,
+    callees_count INTEGER,
+    dependency_depth INTEGER,
+    external_call_count INTEGER,
+    
+    -- Temporales (SIN GIT - usa extractedAt/updatedAt)
+    change_frequency REAL,
+    age_days INTEGER,
+    generation INTEGER,
+    extracted_at TEXT,
+    updated_at TEXT,
+    
+    -- JSONs con estructuras complejas
+    signature_json TEXT,
+    data_flow_json TEXT,
+    calls_json TEXT,
+    temporal_json TEXT,
+    error_flow_json TEXT,
+    performance_json TEXT,
+    dna_json TEXT,
+    derived_json TEXT,
+    _meta_json TEXT
+);
 
-// Transitivas
-calculateTransitiveDependencies(file, files) → Set<string>
-calculateTransitiveDependents(file, files) → Set<string>
+-- Índices optimizados
+CREATE INDEX idx_atoms_file_path ON atoms(file_path);
+CREATE INDEX idx_atoms_archetype ON atoms(archetype_type);
+CREATE INDEX idx_atoms_purpose ON atoms(purpose_type);
+CREATE INDEX idx_atoms_importance ON atoms(importance_score DESC);
+CREATE INDEX idx_atoms_propagation ON atoms(propagation_score DESC);
 ```
 
 ---
 
-## Layer B: Semantic Analysis
+## Layer B: Metadata Enrichment
 
-### Detección de Arquetipos
+**Código REAL**: `src/layer-c-memory/storage/enrichers/atom-enricher.js`
+
+### Enriquecimiento de Vectores
 
 ```javascript
-{
-  archetypes: [
-    {
-      type: 'god-object',
-      severity: 8,
-      confidence: 0.85,
-      evidence: ['exports > 15', 'dependents > 20']
-    },
-    {
-      type: 'event-hub',
-      severity: 6,
-      confidence: 0.92,
-      evidence: ['5 event emitters', '3 event listeners']
+// enrichAtom(atom, context)
+export function enrichAtom(atom, context = {}) {
+  // Calcular vectores matemáticos
+  const vectors = calculateAtomVectors(atom, context);
+  
+  // Crear átomo enriquecido
+  const enrichedAtom = {
+    ...atom,
+    
+    // Vectores relacionales
+    callersCount: vectors.callersCount,
+    calleesCount: vectors.calleesCount,
+    dependencyDepth: vectors.dependencyDepth,
+    externalCallCount: vectors.externalCallCount,
+    
+    // Vectores semánticos
+    archetypeWeight: vectors.archetypeWeight,
+    cohesionScore: vectors.cohesionScore,
+    couplingScore: vectors.couplingScore,
+    
+    // Vectores temporales (SIN GIT)
+    changeFrequency: vectors.changeFrequency,
+    ageDays: vectors.ageDays,
+    
+    // Vectores para Semantic Algebra
+    importanceScore: vectors.importance,
+    stabilityScore: vectors.stability,
+    propagationScore: vectors.propagation,
+    fragilityScore: vectors.fragility,
+    testabilityScore: vectors.testability,
+    
+    // Derived completo
+    derived: {
+      fragilityScore: vectors.fragility,
+      testabilityScore: vectors.testability,
+      couplingScore: vectors.coupling,
+      changeRisk: vectors.propagation
     }
-  ]
+  };
+  
+  return enrichedAtom;
 }
 ```
 
-### Insights LLM (cuando aplica)
+### Cálculo de Vectores
+
+**Código REAL**: `src/layer-c-memory/storage/repository/utils/vector-calculator.js`
 
 ```javascript
-{
-  llmInsights: {
-    responsibilities: ['data fetching', 'validation', 'error handling'],
-    suggestedSplit: [
-      { functions: ['fetchUser', 'fetchAdmin'], newFile: 'user-fetcher.js' },
-      { functions: ['validateUser', 'validateAdmin'], newFile: 'user-validator.js' }
-    ],
-    riskFactors: ['circular dependency', 'tight coupling'],
-    recommendations: ['Extract validation to separate module']
-  }
-}
-```
-
----
-
-## Layer C: Memory & MCP Tools
-
-### 14 Herramientas Disponibles
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  HERRAMIENTA         │  QUÉ HACE                                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│  get_impact_map      │  Mapa completo de impacto de un archivo          │
-│  analyze_change      │  Impacto de cambiar un símbolo específico        │
-│  explain_connection  │  Por qué dos archivos están conectados           │
-│  get_risk_assessment │  Evaluación de riesgo del proyecto               │
-│  search_files        │  Buscar archivos por patrón                      │
-│  get_server_status   │  Estado del servidor OmnySys                     │
-│  get_call_graph      │  Todos los call sites de un símbolo              │
-│  analyze_signature   │  Predice breaking changes en firma               │
-│  explain_value_flow  │  Flujo de datos: inputs → símbolo → outputs      │
-│  get_function_details│  Info atómica: arquetipo, complejidad, calls    │
-│  get_molecule_summary│  Resumen molecular de un archivo                 │
-│  get_atomic_functions│  Lista funciones por arquetipo                   │
-│  get_tunnel_vision   │  Stats de tunnel vision detectado                │
-│  atomic_edit         │  Edita con validación atómica                    │
-│  atomic_write        │  Escribe archivo nuevo con validación            │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Qué Podemos Hacer con Estos Datos
-
-### 1. Calcular Entropía
-
-```javascript
-function calculateEntropy(file) {
-  const connections = [
-    ...file.dependsOn.map(d => ({ to: d, type: 'import' })),
-    ...file.usedBy.map(u => ({ from: u, type: 'dependent' }))
-  ];
+// calculateAtomVectors(atom, context)
+export function calculateAtomVectors(atom, context = {}) {
+  const { callers = [], callees = [] } = context;
   
-  const healthyConnections = connections.filter(c => c.confidence >= 0.8);
-  const brokenConnections = connections.filter(c => c.confidence < 0.3);
-  
-  const p = healthyConnections.length / connections.length;
-  
-  if (p === 0 || p === 1) return 0;
-  return -p * Math.log2(p) - (1-p) * Math.log2(1-p);
-}
-```
-
-### 2. Detectar Sociedades
-
-```javascript
-function detectSociety(functions, callGraph) {
-  // Encontrar cadenas secuenciales
-  const chains = findSequentialChains(callGraph);
-  
-  // A → B → C = "pipeline"
-  // A → B, A → C = "fan-out"
-  // A → C, B → C = "fan-in"
-  
-  return chains.map(chain => ({
-    type: classifyPattern(chain),
-    members: chain,
-    cohesion: calculateCohesion(chain),
-    stability: calculateStability(chain)
-  }));
-}
-```
-
-### 3. Predecir Cambios
-
-```javascript
-function predictChanges(atom, history) {
-  const similarAtoms = findByDNA(atom.dna);
-  const historicalPatterns = analyzeHistory(similarAtoms);
+  // Calcular vectores temporales (SIN GIT - usa extractedAt/updatedAt)
+  const temporal = calculateTemporalVectors(atom);
   
   return {
-    likely: [
-      { change: 'add_error_handling', probability: 0.75 },
-      { change: 'add_validation', probability: 0.65 },
-      { change: 'add_caching', probability: 0.45 }
-    ]
+    // Vectores estructurales
+    linesOfCode: calculateLinesOfCode(atom),
+    parameterCount: atom.signature?.params?.length || 0,
+    
+    // Vectores relacionales
+    callersCount: callers.length,
+    calleesCount: callees.length,
+    dependencyDepth: calculateDependencyDepth(atom, context),
+    externalCallCount: atom.externalCalls?.length || 0,
+    
+    // Vectores semánticos
+    archetypeWeight: calculateArchetypeWeight(atom),
+    cohesionScore: calculateCohesion(atom),
+    couplingScore: calculateCoupling(atom, context),
+    
+    // Vectores temporales
+    changeFrequency: temporal.changeFrequency,
+    ageDays: temporal.ageDays,
+    
+    // Vectores para Semantic Algebra
+    importance: calculateImportance(atom, context),
+    stability: calculateStability(atom),
+    propagationScore: calculatePropagation(atom, context),
+    fragilityScore: calculateFragility(atom, context),
+    testabilityScore: calculateTestability(atom, context)
   };
 }
 ```
 
-### 4. Auto-Reparar
+### Fórmulas de Vectores
 
 ```javascript
-function autoFix(file, issue) {
-  switch (issue.type) {
-    case 'broken_import':
-      const candidates = searchExports(issue.symbol);
-      return { fix: `Update import to: ${candidates[0]}` };
-      
-    case 'renamed_function':
-      return { fix: `Update calls from ${issue.oldName} to ${issue.newName}` };
-      
-    case 'missing_param':
-      return { fix: `Add default: ${issue.param} = ${issue.defaultValue}` };
-  }
+// Cohesión: inversamente proporcional a complejidad/LOC
+function calculateCohesion(atom) {
+  const loc = calculateLinesOfCode(atom);
+  const complexity = atom.complexity || 1;
+  
+  if (loc === 0) return 1;
+  
+  const ratio = complexity / loc;
+  const cohesion = Math.max(0, Math.min(1, 1 - (ratio * 2)));
+  
+  return Math.round(cohesion * 100) / 100;
+}
+
+// Coupling: proporcional a dependencias externas
+function calculateCoupling(atom, { callers = [], callees = [] }) {
+  const externalCalls = atom.externalCalls?.length || 0;
+  const totalCalls = atom.calls?.length || 0;
+  const totalConnections = callers.length + callees.length + totalCalls;
+  
+  if (totalConnections === 0) return 0;
+  
+  return externalCalls / totalConnections;
+}
+
+// Importancia: PageRank simplificado
+function calculateImportance(atom, { callers = [] }) {
+  if (callers.length === 0) return 0;
+  
+  const callerImportance = callers.reduce((sum, caller) => {
+    const callerOutDegree = caller.calls?.length || 1;
+    return sum + (1 / callerOutDegree);
+  }, 0);
+  
+  return Math.min(1, callerImportance / callers.length);
+}
+
+// Estabilidad: 1 - change_frequency
+function calculateStability(atom) {
+  const changeFrequency = atom.changeFrequency || 0;
+  return 1 - changeFrequency;
 }
 ```
 
 ---
 
-## Flujo de Datos Completo
+## Layer C: Memory & MCP Exposure
 
+### MCP Tools Disponibles (29)
+
+**Código REAL**: `src/layer-c-memory/mcp/tools/index.js`
+
+```javascript
+// Tools ACTIVAS (29)
+export const toolDefinitions = [
+  // Impacto (6)
+  { name: 'get_impact_map', ... },
+  { name: 'analyze_change', ... },
+  { name: 'trace_variable_impact', ... },
+  { name: 'trace_data_journey', ... },
+  { name: 'explain_connection', ... },
+  { name: 'analyze_signature_change', ... },
+  
+  // Código (5)
+  { name: 'get_call_graph', ... },
+  { name: 'explain_value_flow', ... },
+  { name: 'get_function_details', ... },
+  { name: 'get_molecule_summary', ... },
+  { name: 'find_symbol_instances', ... },
+  
+  // Métricas (5)
+  { name: 'get_risk_assessment', ... },
+  { name: 'get_health_metrics', ... },
+  { name: 'detect_patterns', ... },
+  { name: 'get_async_analysis', ... },
+  { name: 'detect_race_conditions', ... },
+  
+  // Sociedad (3)
+  { name: 'get_atom_society', ... },
+  { name: 'get_atom_history', ... },
+  { name: 'get_removed_atoms', ... },
+  
+  // Sistema (4)
+  { name: 'search_files', ... },
+  { name: 'get_server_status', ... },
+  { name: 'restart_server', ... },
+  { name: 'get_atom_schema', ... },
+  
+  // Módulo (1)
+  { name: 'get_module_overview', ... },
+  
+  // Editor (2)
+  { name: 'atomic_edit', ... },
+  { name: 'atomic_write', ... },
+  
+  // Refactoring (2)
+  { name: 'suggest_refactoring', ... },
+  { name: 'validate_imports', ... },
+  
+  // Testing (2)
+  { name: 'generate_tests', ... },
+  { name: 'generate_batch_tests', ... },
+  
+  // Simulación (1)
+  { name: 'simulate_data_journey', ... }
+];
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         FLUJO DE DATOS                                  │
-└─────────────────────────────────────────────────────────────────────────┘
 
-     ARCHIVO FUENTE
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LAYER A: EXTRACCIÓN                                                    │
-│                                                                         │
-│  17 extractores → metadata completa                                     │
-│  • jsdoc, runtime, async, errors                                        │
-│  • sideEffects, callGraph, dataFlow                                     │
-│  • dna, typeContracts, performance                                      │
-│                                                                         │
-│  Output: { metadata, atoms, dna }                                       │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LAYER GRAPH: CONSTRUCCIÓN                                              │
-│                                                                         │
-│  buildSystemMap(parsedFiles, resolvedImports)                           │
-│  • Crear nodos y aristas                                                │
-│  • Detectar ciclos                                                      │
-│  • Calcular transitivas                                                 │
-│  • Calcular pesos                                                       │
-│                                                                         │
-│  Output: { files, dependencies, function_links, metadata }              │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LAYER B: ANÁLISIS SEMÁNTICO                                            │
-│                                                                         │
-│  detectArchetypes(metadata) → archetypes                                │
-│  analyzeWithLLM(if needed) → llmInsights                                │
-│  validateContracts() → validation                                       │
-│                                                                         │
-│  Output: { archetypes, insights, recommendations }                      │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  LAYER C: MEMORIA & EXPOSICIÓN                                          │
-│                                                                         │
-│  Persistir en .omnysysdata/                                             │
-│  Exponer via MCP (14 tools)                                             │
-│  Calcular métricas en vivo                                              │
-│                                                                         │
-│  Output: Herramientas para IA/desarrollador                             │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  NUEVAS CAPACIDADES (propuestas)                                        │
-│                                                                         │
-│  • Calcular entropía por archivo                                        │
-│  • Detectar sociedades de átomos                                        │
-│  • Predecir cambios probables                                           │
-│  • Auto-reparar imports rotos                                           │
-│  • Alertar cuando se exceden límites                                    │
-└─────────────────────────────────────────────────────────────────────────┘
+### Queries a SQLite
+
+**Código REAL**: `src/layer-c-memory/storage/repository/adapters/sqlite-adapter.js`
+
+```javascript
+// Ejemplo: Query de átomos por archivo
+async function queryAtoms(filePath, filters = {}) {
+  const db = getDatabase();
+  
+  let sql = `
+    SELECT * FROM atoms
+    WHERE file_path = ?
+  `;
+  
+  const params = [filePath];
+  
+  // Filtros opcionales
+  if (filters.archetype) {
+    sql += ` AND archetype_type = ?`;
+    params.push(filters.archetype);
+  }
+  
+  if (filters.minComplexity) {
+    sql += ` AND complexity >= ?`;
+    params.push(filters.minComplexity);
+  }
+  
+  if (filters.isExported !== undefined) {
+    sql += ` AND is_exported = ?`;
+    params.push(filters.isExported ? 1 : 0);
+  }
+  
+  // Ordenar por importancia
+  sql += ` ORDER BY importance_score DESC`;
+  
+  return db.prepare(sql).all(...params);
+}
 ```
 
 ---
 
-## Referencias
+## Derivation Engine (Composición Molecular)
 
-- [code-physics.md](./code-physics.md) - Visión de código como física
-- [layer-graph.md](./layer-graph.md) - Sistema de grafos
-- [core.md](./core.md) - Arquitectura general
+**Código REAL**: `src/shared/derivation-engine/composer.js`
+
+```javascript
+// composeMolecularMetadata(moleculeId, atoms)
+export function composeMolecularMetadata(moleculeId, atoms) {
+  const derive = (ruleName) => {
+    const rule = DerivationRules[ruleName];
+    if (!rule) {
+      throw new Error(`Unknown derivation rule: ${ruleName}`);
+    }
+    return rule(atoms);
+  };
+  
+  return {
+    // Identity
+    id: moleculeId,
+    type: 'molecule',
+    atomCount: atoms.length,
+    
+    // Derived archetype
+    archetype: derive('moleculeArchetype'),
+    
+    // Derived complexity metrics
+    totalComplexity: derive('moleculeComplexity'),
+    riskScore: derive('moleculeRisk'),
+    
+    // Derived exports
+    exports: derive('moleculeExports'),
+    exportCount: derive('moleculeExportCount'),
+    
+    // Derived side effects
+    hasSideEffects: derive('moleculeHasSideEffects'),
+    hasNetworkCalls: derive('moleculeHasNetworkCalls'),
+    hasDomManipulation: derive('moleculeHasDomManipulation'),
+    hasStorageAccess: derive('moleculeHasStorageAccess'),
+    
+    // Derived error handling
+    hasErrorHandling: derive('moleculeHasErrorHandling'),
+    
+    // Derived async patterns
+    hasAsyncPatterns: derive('moleculeHasAsyncPatterns'),
+    
+    // Derived call graph
+    externalCallCount: derive('moleculeExternalCallCount'),
+    
+    // Derived temporal
+    hasLifecycleHooks: derive('moleculeHasLifecycleHooks'),
+    hasCleanupPatterns: derive('moleculeHasCleanupPatterns'),
+    
+    // References
+    atoms: atoms.map(a => a.id),
+    
+    // Metadata
+    derivedAt: new Date().toISOString(),
+    derivationSource: 'atomic-composition'
+  };
+}
+```
+
+---
+
+## Métricas Reales (v0.9.61)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Datos Disponibles — v0.9.61                               │
+├─────────────────────────────────────────────────────────────┤
+│  Archivos:       1,860                                     │
+│  Átomos:         13,485                                    │
+│  Relaciones:     ~50,000                                   │
+│  Vectores:       15+ por átomo                             │
+│  Storage:        SQLite (WAL mode)                         │
+│  Índices:        15+ índices optimizados                   │
+│  LLM Usage:      0% - 100% ESTÁTICO                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM** - SQLite + Semantic Algebra  
+**Próximo**: 🚧 Tree-sitter integration (Q2 2026)
