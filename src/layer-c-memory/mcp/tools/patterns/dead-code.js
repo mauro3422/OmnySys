@@ -143,7 +143,7 @@ function shouldSkipAtom(atom) {
   if ((atom.linesOfCode || 0) <= 5) return true;
 
   // 11. DETECTORES/ESTRATEGIAS - funciones que se pasan como referencias
-  // USAR ARCHETYPE DEL MCP: 'detector', 'strategy', 'validator', etc.
+  // USAR ARCHETYPE DEL MCP: 'detector', 'strategy', 'validator', 'handler', 'middleware', 'normalizer', 'transformer', 'parser', 'formatter'
   if (['detector', 'strategy', 'validator', 'handler', 'middleware', 'normalizer', 'transformer', 'parser', 'formatter'].includes(archetype)) {
     return true;
   }
