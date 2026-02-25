@@ -1,7 +1,9 @@
 # Quick Start - OmnySys en 5 Minutos
 
 **Tiempo estimado**: 5 minutos  
-**Prerrequisitos**: Node.js >= 18
+**Prerrequisitos**: Node.js >= 18  
+**Versión**: v0.9.61  
+**Estado**: ✅ **100% Estático, 0% LLM** - SQLite + Dead Code Detection 85% preciso
 
 ---
 
@@ -20,15 +22,14 @@ npm install
 ## 2. Iniciar el Servidor (1 minuto)
 
 ```bash
-# Modo básico (solo análisis estático)
+# Modo básico (solo análisis estático - RECOMENDADO)
 npm start
 
 # O con hot-reload para desarrollo
 OMNYSYS_HOT_RELOAD=true npm start
-
-# O con LLM local (opcional, para análisis semántico profundo)
-npm run start:with-llm
 ```
+
+**NOTA**: El uso de LLM está **DEPRECATED** desde v0.9.61. Todo el análisis es 100% estático.
 
 **Verificar que está corriendo:**
 ```bash
@@ -51,9 +52,19 @@ npm run analyze -- ../mi-proyecto
 ```
 
 **Esto crea `.omnysysdata/` con:**
+- SQLite database (`.omnysysdata/omnysys.db`)
 - Metadatos de cada archivo
 - Grafo de dependencias
-- Átomos y moléculas extraídas
+- 13,485+ átomos extraídos (funciones con 50+ campos de metadata)
+
+**Estructura:**
+```
+.omnysysdata/
+├── omnysys.db           # SQLite database (principal)
+├── atoms/               # Átomos individuales (JSON, backup)
+├── files/               # Metadatos por archivo
+└── system-map.json      # System map completo
+```
 
 ---
 
@@ -69,93 +80,185 @@ curl -X POST http://localhost:9999/tools/get_impact_map \
 
 # Status del servidor
 curl http://localhost:9999/tools/get_server_status
+
+# Dead code detection
+curl -X POST http://localhost:9999/tools/detect_patterns \
+  -H "Content-Type: application/json" \
+  -d '{"patternType": "dead-code"}'
+
+# Health metrics
+curl http://localhost:9999/tools/get_health_metrics
 ```
 
-### Opción B: Integrar con Claude Code
+### Opción B: Integrar con tu IDE
+
+**Para Qwen Code / Claude Code / OpenCode:**
 
 Crear `.mcp.json` en tu proyecto:
 ```json
 {
   "mcpServers": {
     "omnysys": {
-      "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp/index.js"]
+      "type": "http",
+      "url": "http://127.0.0.1:9999/mcp"
     }
   }
 }
 ```
 
-Luego en Claude Code:
+Luego en tu IDE:
 ```
 > Analiza el impacto de cambiar src/app.js
+> ¿Qué funciones llaman a processOrder?
+> Detecta código muerto en este archivo
+```
+
+### Opción C: Usar directamente en código
+
+```javascript
+import { getRepository } from '#layer-c/storage/repository/index.js';
+
+const repo = getRepository();
+
+// Query directa a SQLite
+const atoms = repo.query({ 
+  filePath: 'src/app.js',
+  archetype: 'god-function'
+});
+
+// O usar APIs de alto nivel
+import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
+const analysis = await getFileAnalysis('src/app.js');
 ```
 
 ---
 
 ## 5. Ver Resultados
 
-Los datos se guardan en `.omnysysdata/`:
+### Health Score del Proyecto
 
-```
-.omnysysdata/
-├── index.json              # Índice del proyecto
-├── files/                  # Metadatos por archivo
-├── atoms/                  # Átomos (funciones)
-└── shadows/                # Sombras (historia)
-```
-
-**Inspeccionar:**
 ```bash
-# Ver estructura
-ls .omnysysdata/files/
+curl http://localhost:9999/tools/get_health_metrics
+```
 
-# Ver un archivo
-cat .omnysysdata/files/src/app.js.json | jq '.metadata'
+**Resultado típico (v0.9.61):**
+```json
+{
+  "summary": {
+    "totalAtoms": 13485,
+    "overallScore": 99,
+    "grade": "A"
+  },
+  "healthDistribution": {
+    "A": 13093,  // 97.1%
+    "B": 171,    // 1.3%
+    "C": 81,     // 0.6%
+    "D": 33,     // 0.2%
+    "F": 27      // 0.2%
+  }
+}
+```
+
+### Dead Code Detection
+
+```bash
+curl -X POST http://localhost:9999/tools/detect_patterns \
+  -H "Content-Type: application/json" \
+  -d '{"patternType": "dead-code"}'
+```
+
+**Resultado (v0.9.61):**
+```json
+{
+  "deadCode": {
+    "count": 42,  // 85% menos que antes
+    "top5": [
+      {
+        "name": "extract",
+        "file": "src/extractors/OutputExtractor.js",
+        "linesOfCode": 45
+      }
+      // ... más casos
+    ]
+  }
+}
 ```
 
 ---
 
-## Troubleshooting
+## 6. Siguientes Pasos
 
-### "Cannot find module"
+### Documentación
+
+- [INDEX.md](./INDEX.md) - Índice completo de documentación
+- [tools.md](./tools.md) - Guía de las 29 herramientas MCP
+- [DATA_FLOW.md](../02-architecture/DATA_FLOW.md) - Flujo de datos detallado
+- [code-physics.md](../02-architecture/code-physics.md) - Física del software
+
+### Comandos Útiles
+
 ```bash
-# Reinstalar dependencias
-rm -rf node_modules package-lock.json
-npm install
+# Ver status completo
+npm run status
+
+# Reiniciar servidor (si hay problemas)
+npm run restart
+
+# Limpiar caché y reanalizar
+npm run clean && npm run analyze
+
+# Ver logs
+npm run logs
 ```
 
-### "Port 9999 already in use"
-```bash
-# Matar proceso previo
-npx kill-port 9999
+### Métricas del Sistema (v0.9.61)
 
-# O usar otro puerto
-PORT=9998 npm start
+| Métrica | Valor |
+|---------|-------|
+| **Archivos analizados** | 1,860 |
+| **Átomos extraídos** | 13,485 |
+| **Health Score** | 99/100 (Grade A) |
+| **Test Coverage** | 79% |
+| **God Functions** | 193 |
+| **Dead Code** | 42 (85% mejora) |
+| **Herramientas MCP** | 29 |
+| **LLM Usage** | 0% ✅ |
+
+---
+
+## 7. Troubleshooting
+
+### El servidor no inicia
+
+```bash
+# Verificar puerto en uso
+netstat -ano | findstr :9999
+
+# Matar proceso y reiniciar
+taskkill /PID <PID> /F
+npm start
 ```
 
-### "LLM not available"
+### Los datos no se actualizan
+
 ```bash
-# El sistema funciona sin LLM (solo análisis estático)
-# Para LLM, ver: ai-setup.md
+# Limpiar caché y reanalizar
+npm run clean
+npm run analyze
 ```
 
-### Análisis muy lento
+### Error de SQLite
+
 ```bash
-# Excluir directorios grandes
-echo "node_modules/" > .omnyignore
-echo "dist/" >> .omnyignore
+# Verificar que el archivo existe
+ls .omnysysdata/omnysys.db
+
+# Si no existe, reanalizar
+npm run analyze
 ```
 
 ---
 
-## Siguientes Pasos
-
-| Guía | Descripción |
-|------|-------------|
-| [tools.md](./tools.md) | Aprender las 14 herramientas MCP |
-| [mcp-integration.md](./mcp-integration.md) | Integrar con VS Code, Cline, etc. |
-| [development.md](./development.md) | Setup para desarrollar OmnySys |
-
----
-
-**¡Listo!** Ya tienes OmnySys corriendo y analizando tu código.
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ 100% Estático, 0% LLM  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
