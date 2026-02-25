@@ -6,7 +6,7 @@ Este documento describe la base teórica para un sistema de edición de código 
 
 **Autor**: Mauro (creador de OmnySystem)  
 **Fecha**: Febrero 2026  
-**Estado**: ✅ **IMPLEMENTADO EN PRODUCCIÓN** (v0.9.58+)
+**Estado**: ✅ **IMPLEMENTADO EN PRODUCCIÓN** (v0.9.61+)
 
 > **Nota importante**: Este documento describe la teoría que fundamenta OmnySys. **Las operaciones descritas ya están implementadas** en el sistema SQLite como vectores matemáticos determinísticos. Este no es un roadmap conceptual — es la base técnica del sistema actual.
 
@@ -14,14 +14,16 @@ Este documento describe la base teórica para un sistema de edición de código 
 
 ## 0. Implementación Actual: SQLite + Vectores Determinísticos
 
-> **Estado**: ✅ Producción activa (v0.9.58+)
+> **Estado**: ✅ Producción activa (v0.9.61+)
 
-A partir de v0.9.58, el sistema de álgebra semántica está **100% implementado** usando SQLite como storage determinístico. No hay random — cada query produce el mismo resultado.
+A partir de v0.9.61, el sistema de álgebra semántica está **100% implementado** usando SQLite como storage determinístico. No hay random — cada query produce el mismo resultado.
 
 ### Storage SQLite con Vectores
 
+**Schema REAL** (`src/layer-c-memory/storage/database/schema.sql`):
+
 ```sql
--- Tabla atoms con vectores matemáticos (schema.sql)
+-- Tabla atoms con vectores matemáticos
 atoms (
     -- Vectores estructurales
     importance_score REAL DEFAULT 0,    -- PageRank-like (0-1)
@@ -31,31 +33,485 @@ atoms (
     propagation_score REAL DEFAULT 0,   -- Impacto de cambios (0-1)
     fragility_score REAL DEFAULT 0,     -- Probabilidad de romperse (0-1)
     testability_score REAL DEFAULT 0,   -- Facilidad de testing (0-1)
-    
+
     -- Grafos: vectores de Algebra de Grafos
     in_degree INTEGER DEFAULT 0,       -- Número de callers (entrada)
-    out_degree INTEGER DEFAULT 0,        -- Número de callees (salida)
-    centrality_score REAL DEFAULT 0,    -- centrality = in_degree / (out_degree + 1)
-    centrality_classification TEXT,       -- 'HUB', 'BRIDGE', 'LEAF'
+    out_degree INTEGER DEFAULT 0,      -- Número de callees (salida)
+    centrality_score REAL DEFAULT 0,   -- centrality = in_degree / (out_degree + 1)
+    centrality_classification TEXT,    -- 'HUB', 'BRIDGE', 'LEAF'
+    
+    -- Temporales
+    change_frequency REAL DEFAULT 0,   -- Cambios por día
+    age_days INTEGER DEFAULT 0,        -- Días desde creación
+    generation INTEGER DEFAULT 1       -- Generación del átomo
 )
 ```
 
-### Operaciones Ya Implementadas
+### Cálculo de Vectores (Código REAL)
 
-| Operación | Estado | Implementación |
-|-----------|--------|----------------|
-| PageRank propagation | ✅ | `trace_variable_impact.js` |
-| Importancia de nodos | ✅ | `importance_score` en SQLite |
-| Cohesión/Coupling | ✅ | `cohesion_score`, `coupling_score` |
-| Centralidad | ✅ | `centrality_score`, `centrality_classification` |
-| Impact analysis | ✅ | `get_impact_map()` |
-| Call graph | ✅ | `atom_relations` table |
-| Dead code detection | ✅ | `is_dead_code` flag |
+**Implementación**: `src/layer-c-memory/storage/repository/utils/vector-calculator.js`
 
-### Diferencia: Antes vs Ahora
+```javascript
+// calculateAtomVectors(atom, context)
+export function calculateAtomVectors(atom, context = {}) {
+  const { callers = [], callees = [] } = context;
+  
+  return {
+    // Vectores estructurales
+    linesOfCode: calculateLinesOfCode(atom),
+    parameterCount: atom.signature?.params?.length || 0,
+    
+    // Vectores relacionales
+    callersCount: callers.length,
+    calleesCount: callees.length,
+    dependencyDepth: calculateDependencyDepth(atom, context),
+    externalCallCount: atom.externalCalls?.length || 0,
+    
+    // Vectores semánticos
+    archetypeWeight: calculateArchetypeWeight(atom),
+    cohesionScore: calculateCohesion(atom),
+    couplingScore: calculateCoupling(atom, context),
+    
+    // Vectores temporales (sin git - usa extractedAt/updatedAt)
+    changeFrequency: calculateChangeFrequency(atom),
+    ageDays: calculateAgeDays(atom),
+    
+    // Vectores para Semantic Algebra
+    importance: calculateImportance(atom, context),
+    stability: calculateStability(atom),
+    propagationScore: calculatePropagation(atom, context),
+    fragilityScore: calculateFragility(atom, context),
+    testabilityScore: calculateTestability(atom, context)
+  };
+}
+```
+
+### Enriquecimiento de Átomos
+
+**Implementación**: `src/layer-c-memory/storage/enrichers/atom-enricher.js`
+
+```javascript
+// enrichAtom(atom, context)
+export function enrichAtom(atom, context = {}) {
+  // Calcular vectores matemáticos
+  const vectors = calculateAtomVectors(atom, context);
+  
+  // Crear átomo enriquecido
+  const enrichedAtom = {
+    ...atom,
+    
+    // Vectores relacionales
+    callersCount: vectors.callersCount,
+    calleesCount: vectors.calleesCount,
+    dependencyDepth: vectors.dependencyDepth,
+    externalCallCount: vectors.externalCallCount,
+    
+    // Vectores semánticos
+    archetypeWeight: vectors.archetypeWeight,
+    cohesionScore: vectors.cohesionScore,
+    couplingScore: vectors.couplingScore,
+    
+    // Vectores temporales
+    changeFrequency: vectors.changeFrequency,
+    ageDays: vectors.ageDays,
+    
+    // Vectores para Semantic Algebra
+    importanceScore: vectors.importance,
+    stabilityScore: vectors.stability,
+    propagationScore: vectors.propagation,
+    fragilityScore: vectors.fragility,
+    testabilityScore: vectors.testability,
+    
+    // Derived completo
+    derived: {
+      fragilityScore: vectors.fragility,
+      testabilityScore: vectors.testability,
+      couplingScore: vectors.coupling,
+      changeRisk: vectors.propagation
+    }
+  };
+  
+  return enrichedAtom;
+}
+```
+
+### Derivación Molecular (Composición)
+
+**Implementación**: `src/shared/derivation-engine/composer.js`
+
+```javascript
+// composeMolecularMetadata(moleculeId, atoms)
+export function composeMolecularMetadata(moleculeId, atoms) {
+  return {
+    // Identity
+    id: moleculeId,
+    type: 'molecule',
+    atomCount: atoms.length,
+    
+    // Derived archetype
+    archetype: derive('moleculeArchetype'),
+    
+    // Derived complexity metrics
+    totalComplexity: derive('moleculeComplexity'),
+    riskScore: derive('moleculeRisk'),
+    
+    // Derived exports
+    exports: derive('moleculeExports'),
+    exportCount: derive('moleculeExportCount'),
+    
+    // Derived side effects
+    hasSideEffects: derive('moleculeHasSideEffects'),
+    hasNetworkCalls: derive('moleculeHasNetworkCalls'),
+    hasDomManipulation: derive('moleculeHasDomManipulation'),
+    hasStorageAccess: derive('moleculeHasStorageAccess'),
+    
+    // Derived error handling
+    hasErrorHandling: derive('moleculeHasErrorHandling'),
+    
+    // References
+    atoms: atoms.map(a => a.id)
+  };
+}
+```
+
+---
+
+## 1. Operaciones de Álgebra Semántica
+
+### 1.1 PageRank Propagation (Importancia)
+
+**Implementado**: ✅ `src/layer-c-memory/mcp/tools/trace-variable-impact.js`
+
+**Fórmula**:
+```javascript
+importance(atom) = Σ(importance(caller) / out_degree(caller))
+                   para todo caller que llama a atom
+```
+
+**Código REAL**:
+```javascript
+// calculateImportance(atom, context)
+function calculateImportance(atom, { callers = [] }) {
+  if (callers.length === 0) return 0;
+  
+  // PageRank simplificado: importancia basada en callers
+  const callerImportance = callers.reduce((sum, caller) => {
+    const callerOutDegree = caller.calls?.length || 1;
+    return sum + (1 / callerOutDegree);
+  }, 0);
+  
+  // Normalizar a 0-1
+  return Math.min(1, callerImportance / callers.length);
+}
+```
+
+**Query SQL**:
+```sql
+-- Átomos con mayor importancia
+SELECT name, file_path, importance_score
+FROM atoms
+WHERE importance_score > 0.5
+ORDER BY importance_score DESC
+LIMIT 10;
+```
+
+---
+
+### 1.2 Cohesión / Coupling
+
+**Implementado**: ✅ `vector-calculator.js`
+
+**Fórmulas**:
+```javascript
+// Cohesión: inversamente proporcional a complejidad/LOC
+cohesion(atom) = 1 - (complejidad / LOC) * 2
+
+// Coupling: proporcional a dependencias externas
+coupling(atom) = external_calls / total_connections
+```
+
+**Código REAL**:
+```javascript
+// calculateCohesion(atom)
+function calculateCohesion(atom) {
+  const loc = calculateLinesOfCode(atom);
+  const complexity = atom.complexity || 1;
+  
+  if (loc === 0) return 1;
+  
+  // Cohesión inversamente proporcional a complejidad/loc
+  const ratio = complexity / loc;
+  const cohesion = Math.max(0, Math.min(1, 1 - (ratio * 2)));
+  
+  return Math.round(cohesion * 100) / 100;
+}
+
+// calculateCoupling(atom, context)
+function calculateCoupling(atom, { callers = [], callees = [] }) {
+  const externalCalls = atom.externalCalls?.length || 0;
+  const totalCalls = atom.calls?.length || 0;
+  const totalConnections = callers.length + callees.length + totalCalls;
+  
+  if (totalConnections === 0) return 0;
+  
+  return externalCalls / totalConnections;
+}
+```
+
+---
+
+### 1.3 Estabilidad Temporal
+
+**Implementado**: ✅ `vector-calculator.js` (sin git - usa extractedAt/updatedAt)
+
+**Fórmula**:
+```javascript
+stability(atom) = 1 - change_frequency
+change_frequency = (updated_at - extracted_at) > threshold ? 1 : 0
+age_days = now - extracted_at
+```
+
+**Código REAL**:
+```javascript
+// calculateTemporalVectors(atom) - SIN GIT
+function calculateTemporalVectors(atom) {
+  const now = new Date();
+  const extractedAt = atom.extractedAt || atom._meta?.extractedAt;
+  
+  // Calcular ageDays
+  let ageDays = 0;
+  if (extractedAt) {
+    const extracted = new Date(extractedAt);
+    const diffMs = now - extracted;
+    ageDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+  
+  // Calcular changeFrequency
+  const updatedAt = atom.updatedAt;
+  let changeFrequency = 0;
+  if (extractedAt && updatedAt) {
+    const extracted = new Date(extractedAt);
+    const updated = new Date(updatedAt);
+    // Si updated es significativamente diferente de extracted, hubo cambios
+    if (updated - extracted > 1000) {
+      changeFrequency = 1;
+    }
+  }
+  
+  return { ageDays, changeFrequency };
+}
+
+// calculateStability(atom)
+function calculateStability(atom) {
+  const changeFrequency = atom.changeFrequency || 0;
+  return 1 - changeFrequency;
+}
+```
+
+---
+
+### 1.4 Propagación de Impacto
+
+**Implementado**: ✅ `get_impact_map`, `analyze_change`
+
+**Fórmula**:
+```javascript
+propagation(atom) = Σ(propagation(callee) * weight)
+                    para todo callee que atom llama
+```
+
+**Código REAL**:
+```javascript
+// calculatePropagation(atom, context)
+function calculatePropagation(atom, { callees = [] }) {
+  if (callees.length === 0) return 0;
+  
+  // Propagación basada en impacto de callees
+  const calleePropagation = callees.reduce((sum, callee) => {
+    const calleeProp = callee.propagationScore || 0;
+    return sum + calleeProp;
+  }, 0);
+  
+  return Math.min(1, calleePropagation / callees.length);
+}
+```
+
+---
+
+### 1.5 Fragilidad
+
+**Implementado**: ✅ `vector-calculator.js`
+
+**Fórmula**:
+```javascript
+fragility(atom) = (complejidad * coupling) / (cohesion * stability)
+```
+
+**Código REAL**:
+```javascript
+// calculateFragility(atom, context)
+function calculateFragility(atom, { callers = [] }) {
+  const complexity = atom.complexity || 1;
+  const coupling = calculateCoupling(atom, { callers });
+  const cohesion = calculateCohesion(atom);
+  const stability = calculateStability(atom);
+  
+  // Fragilidad: alta complejidad + alto coupling / alta cohesion + alta stability
+  const numerator = complexity * coupling;
+  const denominator = Math.max(0.1, cohesion * stability);
+  
+  return Math.min(1, numerator / denominator);
+}
+```
+
+---
+
+### 1.6 Testabilidad
+
+**Implementado**: ✅ `vector-calculator.js`
+
+**Fórmula**:
+```javascript
+testability(atom) = (cohesion * stability) / (complejidad * external_calls)
+```
+
+**Código REAL**:
+```javascript
+// calculateTestability(atom, context)
+function calculateTestability(atom, { callers = [] }) {
+  const complexity = atom.complexity || 1;
+  const cohesion = calculateCohesion(atom);
+  const stability = calculateStability(atom);
+  const externalCalls = atom.externalCalls?.length || 1;
+  
+  // Testabilidad: alta cohesion + alta stability / alta complejidad * external calls
+  const numerator = cohesion * stability;
+  const denominator = Math.max(1, complexity * externalCalls);
+  
+  return Math.min(1, numerator / denominator);
+}
+```
+
+---
+
+## 2. Operaciones de Álgebra de Grafos
+
+### 2.1 Centralidad de Nodos
+
+**Implementado**: ✅ Schema SQLite + índices
+
+**Fórmula**:
+```javascript
+centrality(atom) = in_degree / (out_degree + 1)
+classification = 
+  if centrality > 0.3 → 'HUB'
+  else if centrality > 0.1 → 'BRIDGE'
+  else → 'LEAF'
+```
+
+**Código REAL**:
+```javascript
+// En repository-factory.js al guardar
+const inDegree = callers.length;
+const outDegree = atom.calls?.length || 0;
+const centrality = inDegree / (outDegree + 1);
+
+let classification = 'LEAF';
+if (centrality > 0.3) classification = 'HUB';
+else if (centrality > 0.1) classification = 'BRIDGE';
+
+// Guardar en SQLite
+await db.run(`
+  UPDATE atoms 
+  SET centrality_score = ?, centrality_classification = ?
+  WHERE id = ?
+`, [centrality, classification, atom.id]);
+```
+
+**Índices SQL**:
+```sql
+CREATE INDEX idx_atoms_centrality ON atoms(centrality_score DESC);
+CREATE INDEX idx_atoms_classification ON atoms(centrality_classification);
+```
+
+---
+
+### 2.2 Impact Analysis (BFS)
+
+**Implementado**: ✅ `get_impact_map`, `analyze_change`
+
+**Algoritmo**:
+```javascript
+function analyzeImpact(targetAtom) {
+  const directDependents = getCallers(targetAtom);
+  const transitiveDependents = new Set();
+  
+  // BFS
+  const queue = [...directDependents];
+  const visited = new Set(directDependents);
+  
+  while (queue.length > 0) {
+    const atom = queue.shift();
+    transitiveDependents.add(atom);
+    
+    const callers = getCallers(atom);
+    for (const caller of callers) {
+      if (!visited.has(caller)) {
+        visited.add(caller);
+        queue.push(caller);
+      }
+    }
+  }
+  
+  return {
+    directDependents,
+    transitiveDependents: Array.from(transitiveDependents),
+    totalAffected: directDependents.length + transitiveDependents.size,
+    riskLevel: calculateRiskLevel(directDependents.length, transitiveDependents.size)
+  };
+}
+```
+
+---
+
+## 3. Estado Actual (v0.9.61)
+
+### Vectores Implementados
+
+| Vector | Estado | Tabla SQL | Función |
+|--------|--------|-----------|---------|
+| **importance_score** | ✅ | atoms | `calculateImportance()` |
+| **coupling_score** | ✅ | atoms | `calculateCoupling()` |
+| **cohesion_score** | ✅ | atoms | `calculateCohesion()` |
+| **stability_score** | ✅ | atoms | `calculateStability()` |
+| **propagation_score** | ✅ | atoms | `calculatePropagation()` |
+| **fragility_score** | ✅ | atoms | `calculateFragility()` |
+| **testability_score** | ✅ | atoms | `calculateTestability()` |
+| **centrality_score** | ✅ | atoms | Calculado en save |
+| **centrality_classification** | ✅ | atoms | HUB/BRIDGE/LEAF |
+| **in_degree** | ✅ | atoms | callers.length |
+| **out_degree** | ✅ | atoms | calls.length |
+| **change_frequency** | ✅ | atoms | Sin git (extractedAt/updatedAt) |
+| **age_days** | ✅ | atoms | Sin git (extractedAt) |
+
+### MCP Tools que Usan Semantic Algebra
+
+| Tool | Vectores que usa |
+|------|------------------|
+| `get_impact_map` | propagation_score, centrality_score |
+| `analyze_change` | importance_score, fragility_score |
+| `trace_variable_impact` | importance_score (PageRank) |
+| `get_health_metrics` | cohesion_score, coupling_score |
+| `detect_patterns` | Todos los vectores |
+| `get_risk_assessment` | fragility_score, propagation_score |
+
+---
+
+## 4. Diferencia: Antes vs Ahora
+
+### Antes (v0.9.57-)
 
 ```
-ANTES (v0.9.57-):
 ┌─────────────────────────────────────────┐
 │  JSON files scattered (.omnysysdata/)   │
 │  ├── atoms/*.json                      │
@@ -66,26 +522,35 @@ ANTES (v0.9.57-):
 │  - O(n) para búsquedas                 │
 │  - Inconsistencias entre archivos       │
 │  - Sin atomicidad                       │
+│  - Vectores calculados en memoria       │
 └─────────────────────────────────────────┘
+```
 
-AHORA (v0.9.58+):
+### Ahora (v0.9.61+)
+
+```
 ┌─────────────────────────────────────────┐
 │  SQLite + WAL mode (.omnysysdata.db)   │
 │                                         │
 │  ├── 10+ tablas con foreign keys        │
 │  ├── Índices para queries frecuentes   │
 │  ├── Triggers para atomicidad          │
-│  └── Vistas para análisis rápido       │
+│  ├── Vistas para análisis rápido       │
+│  └── Vectores PERSISTIDOS en DB        │
 │                                         │
 │  Ventajas:                             │
 │  - O(1) para búsquedas por índice      │
 │  - Transacciones ACID                  │
-│  - Determinístico: mismo    → mismo resultado query         │
-│                   │
+│  - Determinístico: misma query → mismo resultado │
+│  - Vectores pre-calculados y persistidos │
 └─────────────────────────────────────────┘
 ```
 
-### Query de Ejemplo: Encontrar átomos de alto impacto
+---
+
+## 5. Ejemplos de Queries Reales
+
+### Encontrar átomos de alto impacto
 
 ```sql
 -- Átomos con mayor capacidad de propagación
@@ -96,555 +561,32 @@ ORDER BY propagation_score DESC
 LIMIT 10;
 ```
 
----
+### Encontrar código frágil
 
-## 1. El Problema Fundamental
-
-### 1.1 Edición de código actual (Text-based)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  IA → string oldString → string newString → archivo        │
-│                                                             │
-│  Problema: La IA manipula TEXTO, no ESTRUCTURA            │
-│  - Operaciones no determinísticas                          │
-│  - Propagación manual de cambios                           │
-│  - Alto riesgo de errores en cascada                       │
-└─────────────────────────────────────────────────────────────┘
+```sql
+-- Átomos frágiles (alta complejidad + bajo testing)
+SELECT name, file_path, complexity, fragility_score, testability_score
+FROM atoms
+WHERE fragility_score > 0.7 AND testability_score < 0.3
+ORDER BY fragility_score DESC;
 ```
 
-### 1.2 La visión (Graph-based)
+### Análisis de acoplamiento
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  IA → operación en grafo → propagación matemática → código │
-│                                                             │
-│  Ventajas:                                                  │
-│  - Determinístico: misma operación → mismo resultado       │
-│  - Propagación automática vía álgebra de grafos            │
-│  - Verificable antes de ejecutar                           │
-│  - Rollback matemático                                     │
-└─────────────────────────────────────────────────────────────┘
+```sql
+-- Archivos con mayor acoplamiento externo
+SELECT 
+  file_path,
+  AVG(coupling_score) as avg_coupling,
+  COUNT(*) as atom_count
+FROM atoms
+GROUP BY file_path
+HAVING avg_coupling > 0.5
+ORDER BY avg_coupling DESC;
 ```
 
 ---
 
-## 2. El Grafo de Código
-
-### 2.1 Definición formal
-
-El **Grafo de Código** G = (V, E) donde:
-
-- **V (Vértices)**: Átomos de código
-  - Funciones
-  - Clases
-  - Variables
-  - Módulos
-
-- **E (Aristas)**: Relaciones entre átomos
-  - `calls`: A llama a B
-  - `imports`: A importa a B
-  - `depends`: A depende de B
-  - `emits`: A emite evento E
-  - `handles`: A maneja evento E
-
-### 2.2 Vector de Átomo
-
-Cada átomo tiene una representación vectorial:
-
-```javascript
-AtomVector = {
-  // Propiedades estructurales
-  complexity: number,      // Complejidad ciclomática
-  linesOfCode: number,     // Líneas de código
-  parameterCount: number,  // Cantidad de parámetros
-  
-  // Propiedades relacionales
-  callers: number,         // Cantidad de llamadores
-  callees: number,         // Cantidad de llamados
-  dependencyDepth: number, // Profundidad en el grafo de dependencias
-  
-  // Propiedades semánticas
-  archetypeWeight: number, // Peso del arquetipo (0-1)
-  cohesionScore: number,   // Cohesión interna (0-1)
-  couplingScore: number,   // Acoplamiento externo (0-1)
-  
-  // Propiedades temporales
-  changeFrequency: number, // Frecuencia de cambios en git
-  age: number,             // Antigüedad del átomo
-  lastModified: number     // Timestamp última modificación
-}
-```
-
-### 2.3 Representación compacta
-
-```
-v(atom) = [c, loc, params, callers, callees, depth, arch, coh, coup, freq, age, mod]
-
-Ejemplo:
-v(processFile) = [12, 45, 3, 7, 4, 2, 0.89, 0.75, 0.32, 0.15, 180, 1708543200]
-```
-
----
-
-## 3. Operaciones Algebraicas
-
-### 3.1 Operaciones sobre Vértices
-
-#### Rename Node
-
-```
-rename(nodeId, newName) → Graph'
-
-Efecto en el grafo:
-1. ∀ edge e donde e.from = nodeId: actualizar referencias
-2. ∀ edge e donde e.to = nodeId: actualizar call sites
-3. Propagar a archivos dependientes
-
-Fórmula de impacto:
-impact(rename) = Σ (propagationScore × callerImportance) para cada caller
-```
-
-#### Move Node (mover a otro archivo)
-
-```
-move(nodeId, newFilePath) → Graph'
-
-Efecto en el grafo:
-1. Actualizar node.filePath
-2. ∀ caller c: actualizar import path
-3. Recalcular dependencyDepth para afectados
-
-Fórmula:
-impact(move) = affectedFiles × avgPropagationScore
-```
-
-#### Split Node
-
-```
-split(nodeId, newNodes[]) → Graph'
-
-Efecto en el grafo:
-1. Crear n nodos nuevos con partición de responsabilidades
-2. Redistribuir edges según responsibility match
-3. Actualizar todos los callers
-
-Fórmula de partición:
-responsibility(node, method) = cohesion(method, node.methods) / node.methodCount
-
-La IA decide qué métodos van a cada nodo nuevo.
-```
-
-#### Merge Nodes
-
-```
-merge(nodeIds[], newNodeName) → Graph'
-
-Efecto en el grafo:
-1. Crear nodo combinado
-2. Unificar edges de todos los nodos originales
-3. Deduplicar callers
-4. Eliminar nodos originales
-
-Fórmula de compatibilidad:
-compatibility(A, B) = cosineSimilarity(v(A), v(B)) × sharedCallersRatio
-```
-
-### 3.2 Operaciones sobre Aristas
-
-#### Add Edge (agregar dependencia)
-
-```
-addEdge(fromId, toId, type) → Graph'
-
-Efecto:
-1. Agregar arista al grafo
-2. Agregar import si es cross-file
-3. Agregar call site en código
-
-Fórmula:
-edgeWeight = initialWeight × fromNode.importance × toNode.stability
-```
-
-#### Remove Edge (eliminar dependencia)
-
-```
-removeEdge(fromId, toId) → Graph'
-
-Efecto:
-1. Eliminar arista del grafo
-2. Si no hay otras dependencias: eliminar import
-3. Eliminar call site en código
-
-Validación:
-if (isOnlyDependency(fromId, toId)) {
-  checkDeadCode(toId); // Alertar si el nodo queda sin callers
-}
-```
-
-### 3.3 Operaciones Compuestas
-
-#### Extract Pattern
-
-```
-extractPattern(nodeIds[], patternName) → Graph'
-
-1. Encontrar código común entre nodos
-2. Crear nueva función con el patrón
-3. Reemplazar ocurrencias con llamadas a nueva función
-
-Fórmula de similitud:
-patternSimilarity = Σ cosineSimilarity(v(A), v(B)) / (n × (n-1) / 2)
-```
-
----
-
-## 4. Propagación de Cambios
-
-### 4.1 Modelo de Propagación Ponderada (PageRank-like)
-
-Ya implementado en `trace-variable-impact.js`:
-
-```javascript
-const DECAY = 0.75; // Factor de decaimiento por salto
-
-// Fórmula de propagación
-score(hop_n) = score(hop_n-1) × DECAY × usageBoost
-
-donde:
-- DECAY = 0.75 (cada salto reduce impacto 25%)
-- usageBoost = min(1.0, usageCount / 5)
-```
-
-### 4.2 Interpretación de Scores
-
-| Score | Impacto | Acción recomendada |
-|-------|---------|-------------------|
-| ≥ 0.75 | Alto | Cambio directo garantizado - revisar manualmente |
-| 0.4 - 0.75 | Medio | Impacto probable - validar antes |
-| 0.1 - 0.4 | Bajo | Impacto posible - revisar automáticamente |
-| < 0.1 | Negligible | Ignorar - cambio no propaga |
-
-### 4.3 Visualización del Grafo de Impacto
-
-```
-                    ┌─────────────┐
-                    │ processFile │  (source, score=1.0)
-                    └──────┬──────┘
-                           │
-           ┌───────────────┼───────────────┐
-           │               │               │
-           ▼               ▼               ▼
-    ┌────────────┐  ┌────────────┐  ┌────────────┐
-    │ parseCode  │  │ validate   │  │ transform  │
-    │ score=0.75 │  │ score=0.75 │  │ score=0.60 │
-    └─────┬──────┘  └─────┬──────┘  └────────────┘
-          │               │
-          ▼               ▼
-    ┌────────────┐  ┌────────────┐
-    │ tokenize   │  │ checkTypes │
-    │ score=0.56 │  │ score=0.45 │
-    └────────────┘  └────────────┘
-```
-
----
-
-## 5. Semantic Algebra
-
-### 5.1 El concepto
-
-**Semantic Algebra** = Operaciones algebraicas donde los operandos son conceptos representados como vectores, y las operaciones son transformaciones determinísticas.
-
-```
-Operaciones donde:
-├── Operandos = Conceptos (como vectores)
-├── Operadores = Transformaciones (como vectores)
-├── Resultado = Nuevo concepto (determinístico)
-└── No tokens, no probabilidad, solo MATEMÁTICA
-```
-
-### 5.2 Ejemplo: Extract Function
-
-```
-Estado inicial:
-├── Atom A: complexity=15, loc=100, callers=3
-└── Atom B: complexity=12, loc=85, callers=5
-
-Operación: extractCommon(A, B)
-├── similarity(A, B) = cosineSimilarity(v(A), v(B)) = 0.87
-├── commonCode = intersect(A.body, B.body)
-└── newAtom C = { complexity: 8, loc: 45, callers: 0 }
-
-Estado final:
-├── Atom A': complexity=10, loc=65, callers=3, calls=[C]
-├── Atom B': complexity=8, loc=50, callers=5, calls=[C]
-└── Atom C: complexity=8, loc=45, callers=2
-
-Verificación algebraica:
-v(A) + v(B) = v(A') + v(B') + v(C) - overhead
-```
-
-### 5.3 Operaciones vectoriales básicas
-
-```javascript
-// Diferencia entre átomos (qué cambió)
-function atomDiff(A, B) {
-  return v(A).map((val, i) => val - v(B)[i]);
-  // [complexity_diff, loc_diff, callers_diff, ...]
-}
-
-// Similaridad de código
-function atomSimilarity(A, B) {
-  return cosineSimilarity(v(A), v(B));
-  // 0.0 - 1.0 donde 1.0 = idénticos
-}
-
-// Proyección de refactoring
-function refactorProjection(A, operationVector) {
-  return vectorAdd(v(A), operationVector);
-  // Predice el estado del átomo después de la operación
-}
-```
-
----
-
-## 6. Arquitectura del Sistema
-
-### 6.1 Capas actuales de OmnySystem
-
-```
-Layer A (Static)     → Extraer grafo del código
-Layer B (Semantic)   → Enriquecer con tipos, patrones
-Layer C (Memory)     → Mantener estado del grafo
-```
-
-### 6.2 Capa propuesta: Layer D (Graph Edit)
-
-```
-Layer D (Graph Edit) → Operaciones determinísticas en el grafo
-
-Componentes:
-├── OperationRegistry: Registro de operaciones algebraicas
-├── PropagationEngine: Motor de propagación de cambios
-├── ValidationEngine: Verificación pre-operación
-├── CodeGenerator: Grafo → código (renderizado)
-└── RollbackManager: Undo/Redo de operaciones
-```
-
-### 6.3 Flujo de operación
-
-```
-1. IA especifica operación: rename("processFile", "processAtom")
-                              ↓
-2. GraphEdit valida operación en el grafo
-                              ↓
-3. PropagationEngine calcula impacto
-                              ↓
-4. IA revisa preview (dryRun=true)
-                              ↓
-5. IA confirma (dryRun=false)
-                              ↓
-6. GraphEdit ejecuta operación
-                              ↓
-7. CodeGenerator actualiza archivos afectados
-                              ↓
-8. RollbackManager registra para undo
-```
-
----
-
-## 7. Comparación con Sistemas Existentes
-
-| Sistema | Grafo Persistente | Propagación | Para IAs | Determinístico |
-|---------|-------------------|-------------|----------|----------------|
-| JetBrains IDE | ❌ Temporal | ✅ Local | ❌ | ✅ |
-| TypeScript LSP | ❌ Temporal | ✅ Local | ❌ | ✅ |
-| Sourcegraph | ✅ Persistente | ❌ Read-only | ❌ | N/A |
-| Cursor IDE | ❌ Temporal | ⚠️ Vía IA | ✅ | ❌ |
-| **OmnySystem** | ✅ Persistente | ✅ PageRank | ✅ | ✅ |
-
----
-
-## 8. Roadmap de Implementación
-
-### Fase 1: Fundamentos (actual) ✓
-- [x] Grafo de código con metadata
-- [x] Propagación ponderada
-- [x] atomic_edit básico
-- [x] Editor atómico con validación
-
-### Fase 2: Graph Edit MVP
-- [ ] Unificar atomic_edit + atomic_write
-- [ ] Operación `rename` con propagación automática
-- [ ] Operación `move` con actualización de imports
-- [ ] dryRun mode para preview
-
-### Fase 3: Operaciones Avanzadas
-- [ ] split_node (dividir clase/función)
-- [ ] merge_nodes (combinar átomos)
-- [ ] extract_pattern (detectar y extraer patrones)
-- [ ] Rollback completo de operaciones
-
-### Fase 4: Semantic Algebra
-- [ ] Representación vectorial completa de átomos
-- [ ] Operaciones algebraicas directas
-- [ ] Predicción de resultados antes de ejecutar
-- [ ] Optimización automática de código vía álgebra
-
----
-
-## 9. Fórmulas Matemáticas Clave
-
-### 9.1 Propagación de Impacto
-
-```
-score(hop_n) = score(hop_n-1) × α × boost
-
-donde:
-α = 0.75 (factor de decaimiento)
-boost = min(1.0, usageCount / 5)
-```
-
-### 9.2 Similaridad de Átomos
-
-```
-similarity(A, B) = (v(A) · v(B)) / (||v(A)|| × ||v(B)||)
-
-Cosine similarity entre vectores de átomos
-```
-
-### 9.3 Cohesión de Clase
-
-```
-cohesion(class) = Σ similarity(m_i, m_j) / (n × (n-1) / 2)
-
-para todos los pares de métodos en la clase
-```
-
-### 9.4 Peso de Arista
-
-```
-edgeWeight(e) = fromNode.couplingScore × toNode.stability × callFrequency
-
-Ponderación de la importancia de una dependencia
-```
-
-### 9.5 Complejidad de Propagación
-
-```
-propagationComplexity(op) = Σ (affectedNode.complexity × propagationScore)
-
-Suma ponderada de complejidad afectada por una operación
-```
-
----
-
-## 10. Principios Fundamentales
-
-### 10.1 El código es una proyección del grafo
-
-> **El grafo ES la verdad. El código es solo una representación serializada.**
-
-Esto significa que:
-1. Editar el grafo es la operación "correcta"
-2. El código se regenera desde el grafo
-3. Los tests verifican que la proyección es correcta
-
-### 10.2 Determinismo sobre probabilidad
-
-> **Las operaciones estructurales deben ser determinísticas.**
-
-- Rename siempre produce el mismo resultado
-- Move siempre actualiza los mismos imports
-- La IA decide QUÉ, el sistema decide CÓMO
-
-### 10.3 Validación antes de ejecución
-
-> **Nunca escribir código sin validar antes.**
-
-1. Calcular impacto en el grafo
-2. Mostrar preview de cambios
-3. Confirmar con IA
-4. Ejecutar y actualizar grafo
-
-### 10.4 La IA mantiene control total
-
-> **El sistema es una herramienta, no un autómata.**
-
-El flujo es:
-```
-IA analiza → IA decide → Sistema ejecuta → IA verifica
-```
-
-No:
-```
-Sistema detecta → Sistema decide → Sistema ejecuta ❌
-```
-
----
-
-## 11. Referencias y Antecedentes
-
-### Conceptos relacionados
-
-| Concepto | Campo | Aplicación |
-|----------|-------|------------|
-| AST-based refactoring | PL Theory | JetBrains, Eclipse |
-| Graph databases | Data Modeling | Neo4j, Sourcegraph |
-| PageRank | Graph Theory | Google, OmnySystem propagation |
-| Embeddings | ML | Word2Vec, Transformers |
-| Knowledge Graphs | AI/Semantic | Google Knowledge Graph |
-
-### Inspiraciones
-
-- **Smalltalk Browser** (1980s): Primer sistema de refactoring
-- **Eclipse JDT** (2000s): AST-based refactoring para Java
-- **Sourcegraph**: Code graph a escala
-- **Cursor IDE**: IA + código
-
----
-
-## 12. Conclusión
-
-Este documento establece los fundamentos teóricos para un sistema de edición de código basado en operaciones algebraicas sobre grafos.
-
-### Lo que YA está implementado (v0.9.58+):
-
-| Componente | Estado | Notas |
-|------------|--------|-------|
-| Storage SQLite | ✅ Production | WAL mode, foreign keys, triggers |
-| Vectores de átomos | ✅ Production | 7 scores calculados automáticamente |
-| PageRank propagation | ✅ Production | `trace_variable_impact.js` |
-| Análisis de impacto | ✅ Production | 30 MCP tools |
-| Call graph | ✅ Production | Tabla `atom_relations` |
-| Centralidad | ✅ Production | Hub/bridge/leaf classification |
-
-### Lo que es Roadmap (futuro):
-
-- **Layer D (Graph Edit)**: Operaciones de edición algebraica
-- **Código regeneration**: Regenerar código desde el grafo
-- **Rollback matemático**: Deshacer cambios vía álgebra
-
-### Estado Actual
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.60+                                          │
-│  ════════════════════                                       │
-│                                                             │
-│  Layer A: Análisis estático → Átomos + Vectores           │
-│  Layer B: Análisis semántico → Arquetipos + Propósito      │
-│  Layer C: SQLite + MCP Tools → Query determinístico        │
-│                                                             │
-│  ✅ Storage: SQLite (determinístico)                       │
-│  ✅ Vectores: 7 scores por átomo                          │
-│  ✅ Queries: Mismo input → Mismo output                   │
-│  ⏳ Graph Edit: En desarrollo                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-*Documento creado: Febrero 2026*  
-*Última actualización: Febrero 2026*  
-*Estado*: ✅ **Producción activa - Semantic Algebra implementado**
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Implementado en SQLite**  
+**Próximo**: 🚧 Tree-sitter integration (Q2 2026)
