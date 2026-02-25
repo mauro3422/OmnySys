@@ -1,9 +1,9 @@
 # Layer Graph - Sistema de Grafos
 
-**Versión**: 2.0.0  
-**Estado**: ✅ Activo - SQLite + Semantic Algebra  
+**Versión**: v0.9.61  
+**Estado**: ✅ **100% Estático, 0% LLM** - SQLite + Semantic Algebra  
 **Creado**: 2026-02-18  
-**Última actualización**: 2026-02-24  
+**Última actualización**: 2026-02-25
 
 ---
 
@@ -49,310 +49,348 @@ src/layer-graph/
 
 ### Decisión Arquitectónica
 
-Se decidió crear Layer Graph como **una capa propia** (no en core) porque:
-
-1. **Es el corazón matemático del sistema** - Todo pasa por el grafo
-2. **Tiene vida propia** - Crece con algoritmos, ML, visualización
-3. **API clara** - Un solo punto de entrada para todas las operaciones
-4. **Independencia** - Puede evolucionar sin afectar otras capas
+**Separación de responsabilidades**:
+- **Layer A**: Solo extrae metadata (AST + regex)
+- **Layer Graph**: Construye y consulta grafos
+- **Layer C**: Persiste en SQLite y expone vía MCP
 
 ---
 
-## Arquitectura de Layers Actualizada
+## Arquitectura Actual (v0.9.61)
+
+### Componentes Principales
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         LAYER GRAPH (Nivel 0)                           │
-│    "El cerebro matemático - grafo de conocimiento"                      │
-│                                                                          │
-│    • Algoritmos: BFS, DFS, ciclos, shortest path                        │
-│    • Estructuras: Nodes, Edges, Links                                   │
-│    • Queries: Dependencias, impacto, call sites                         │
-│    • Persistencia: Serialize, deserialize, delta                        │
-│    • PESOS Y VALORES DINÁMICOS (ver más abajo)                          │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    LAYER A: STATIC (Nivel 1)                            │
-│    "Qué puedo saber SIN ejecutar el código"                             │
-│    Usa Graph para: construir, analizar dependencias                     │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    LAYER B: SEMANTIC (Nivel 2)                          │
-│    "Qué SIGNIFICA lo que encontré en A"                                 │
-│    Usa Graph para: enriquecer conexiones semánticas                     │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    LAYER C: MEMORY (Nivel 3)                            │
-│    "Cómo exponer y persistir el conocimiento"                           │
-│    Usa Graph para: servir consultas complejas via MCP                   │
-└─────────────────────────────────────────────────────────────────────────┘
+layer-graph/
+├── core/
+│   ├── types.js           # Tipos de grafos (SSOT)
+│   └── constants.js       # Constantes de grafos
+├── algorithms/
+│   ├── dfs.js             # Depth-first search
+│   ├── cycles.js          # Detección de ciclos
+│   └── impact.js          # Análisis de impacto
+├── builders/
+│   ├── call-graph.js      # Construye call graph
+│   └── dependency-graph.js # Construye dependency graph
+├── query/
+│   ├── callers.js         # Query de callers
+│   └── callees.js         # Query de callees
+├── resolvers/
+│   ├── symbols.js         # Resolución de símbolos
+│   └── imports.js         # Resolución de imports
+├── persistence/
+│   ├── sqlite.js          # Persistencia en SQLite
+│   └── json.js            # Serialización JSON (legacy)
+└── utils/
+    ├── metrics.js         # Métricas de grafos
+    └── validation.js      # Validación de grafos
 ```
+
+### Estado Actual
+
+**IMPORTANTE (v0.9.61)**: Todo el análisis de grafos es **100% ESTÁTICO, 0% LLM**.
 
 ---
 
-## El Grafo como Sistema Matemático Vivo
+## Métricas de Grafos (v0.9.61)
 
-### Concepto: Pesos y Valores Dinámicos
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Graph Metrics — v0.9.61                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Hubs:           9 (funciones muy conectadas)              │
+│  Bridges:        29 (conectan módulos)                     │
+│  Leaves:         13,408 (funciones aisladas)               │
+│  Avg Centrality: 0.165                                     │
+│  High Risk:      2,834 (funciones de alto riesgo)          │
+│  Avg Propagation: 0.334                                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
-El grafo **no es estático**. Cada nodo y conexión tiene **pesos** que cambian:
+### Distribución de Nodos
+
+| Tipo | Cantidad | % |
+|------|----------|---|
+| **Functions** | 13,485 | 100% |
+| **Hubs** | 9 | 0.07% |
+| **Bridges** | 29 | 0.22% |
+| **Leaves** | 13,408 | 99.43% |
+| **High Risk** | 2,834 | 21.02% |
+
+---
+
+## Algoritmos Implementados
+
+### 1. Depth-First Search (DFS)
 
 ```javascript
-// Un nodo (archivo) tiene peso
-node = {
-  path: 'src/utils.js',
+// src/layer-graph/algorithms/dfs.js
+
+function dfs(graph, startNode, visitFn) {
+  const visited = new Set();
+  const stack = [startNode];
   
-  // PESOS DINÁMICOS
-  weight: {
-    base: 1.0,              // Peso base
-    connectionStrength: 0.8, // Fuerza de conexiones
-    impactScore: 0.6,       // Impacto en el sistema
-    volatility: 0.3,        // Cuánto cambia
-    stability: 0.9          // Qué tan estable es
-  },
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (visited.has(node)) continue;
+    
+    visited.add(node);
+    visitFn(node);
+    
+    const neighbors = graph.getNeighbors(node);
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        stack.push(neighbor);
+      }
+    }
+  }
   
-  // Las conexiones también tienen peso
-  edges: [
-    { to: 'src/main.js', strength: 0.9, frequency: 15 },
-    { to: 'src/api.js', strength: 0.7, frequency: 8 }
-  ]
+  return visited;
 }
 ```
 
-### Ecuaciones del Sistema
+**Uso**: Impact analysis, cycle detection, reachability
 
-```
-CUANDO SE AGREGA UNA CONEXIÓN:
-┌─────────────────────────────────────────────────────────┐
-│  node.weight.connectionStrength += Δ                    │
-│  node.weight.impactScore = calculateImpact(node)        │
-│  affectedNodes.forEach(n => n.updateEquations())        │
-└─────────────────────────────────────────────────────────┘
+---
 
-CUANDO SE ELIMINA UNA CONEXIÓN:
-┌─────────────────────────────────────────────────────────┐
-│  node.weight.connectionStrength -= Δ                    │
-│  node.weight.stability -= penalty                       │
-│  propagateChangeToDependents(node)                      │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Ejemplo: Efecto Cascada
+### 2. Cycle Detection
 
 ```javascript
-// Usuario elimina una conexión
-graph.removeEdge('src/utils.js', 'src/api.js');
+// src/layer-graph/algorithms/cycles.js
 
-// El sistema recalcula automáticamente:
-// 1. utils.js pierde fuerza (una conexión menos)
-// 2. api.js pierde peso (una dependencia menos)
-// 3. Todos los que dependen de api.js reciben alerta
-// 4. El sistema detecta posible "dead code"
-
-// Efecto en tiempo real:
-utils.weight.connectionStrength: 0.8 → 0.72  // -10%
-api.weight.impactScore: 0.6 → 0.45          // -25%
-dependents.alertLevel: 'low' → 'medium'     // Sube
+function detectCycles(graph) {
+  const cycles = [];
+  const visited = new Set();
+  const recursionStack = new Set();
+  
+  function dfs(node, path) {
+    if (recursionStack.has(node)) {
+      // Cycle detected
+      const cycleStart = path.indexOf(node);
+      cycles.push(path.slice(cycleStart));
+      return;
+    }
+    
+    if (visited.has(node)) return;
+    
+    visited.add(node);
+    recursionStack.add(node);
+    path.push(node);
+    
+    const neighbors = graph.getNeighbors(node);
+    for (const neighbor of neighbors) {
+      dfs(neighbor, [...path]);
+    }
+    
+    recursionStack.delete(node);
+  }
+  
+  for (const node of graph.getNodes()) {
+    if (!visited.has(node)) {
+      dfs(node, []);
+    }
+  }
+  
+  return cycles;
+}
 ```
 
-### Depurador en Vivo
+**Uso**: Circular dependency detection
 
-Esto permite un **depurador matemático en tiempo real**:
+---
+
+### 3. Impact Analysis
 
 ```javascript
-// Antes de hacer un cambio, el sistema te dice:
-const prediction = graph.predictChange({
-  action: 'remove',
-  from: 'src/utils.js',
-  to: 'src/api.js'
-});
+// src/layer-graph/algorithms/impact.js
 
-// Resultado:
+function analyzeImpact(graph, targetNode) {
+  const directDependents = graph.getCallers(targetNode);
+  const transitiveDependents = new Set();
+  
+  // BFS para encontrar todos los dependientes transitivos
+  const queue = [...directDependents];
+  const visited = new Set(directDependents);
+  
+  while (queue.length > 0) {
+    const node = queue.shift();
+    transitiveDependents.add(node);
+    
+    const callers = graph.getCallers(node);
+    for (const caller of callers) {
+      if (!visited.has(caller)) {
+        visited.add(caller);
+        queue.push(caller);
+      }
+    }
+  }
+  
+  return {
+    directDependents,
+    transitiveDependents: Array.from(transitiveDependents),
+    totalAffected: directDependents.length + transitiveDependents.size,
+    riskLevel: calculateRiskLevel(directDependents.length, transitiveDependents.size)
+  };
+}
+```
+
+**Uso**: `get_impact_map` MCP tool
+
+---
+
+## Persistencia en SQLite (v0.9.61)
+
+### Tablas de Grafos
+
+```sql
+-- Atom relations (grafo de llamadas)
+atom_relations (
+    source_id TEXT,
+    target_id TEXT,
+    relation_type TEXT,
+    weight REAL,
+    context TEXT,
+    PRIMARY KEY (source_id, target_id, relation_type)
+);
+
+-- Índices para queries rápidas
+CREATE INDEX idx_relations_caller ON atom_relations(source_id);
+CREATE INDEX idx_relations_callee ON atom_relations(target_id);
+```
+
+### Queries de Grafos
+
+```javascript
+// src/layer-graph/persistence/sqlite.js
+
+async function getCallers(atomId) {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT source_id, relation_type, context
+    FROM atom_relations
+    WHERE target_id = ?
+  `);
+  
+  return stmt.all(atomId);
+}
+
+async function getCallees(atomId) {
+  const db = getDatabase();
+  const stmt = db.prepare(`
+    SELECT target_id, relation_type, context
+    FROM atom_relations
+    WHERE source_id = ?
+  `);
+  
+  return stmt.all(atomId);
+}
+```
+
+---
+
+## MCP Tools de Grafos
+
+### `get_call_graph`
+
+```bash
+curl -X POST http://localhost:9999/tools/get_call_graph \
+  -H "Content-Type: application/json" \
+  -d '{"filePath": "src/utils.js", "symbolName": "processOrder"}'
+```
+
+**Retorna**:
+```json
 {
-  affectedNodes: ['src/utils.js', 'src/api.js', 'src/main.js'],
-  impactScore: 0.72,
-  riskLevel: 'medium',
-  equationsAffected: 5,
-  recommendedActions: [
-    'Check src/main.js imports',
-    'Verify tests still pass',
-    'Consider refactoring api.js'
-  ]
-}
-```
-
----
-
-## Fórmulas Matemáticas
-
-### 1. Peso de Nodo (Node Weight)
-
-```
-W(node) = α × connectionCount + β × dependentCount + γ × stability
-
-Donde:
-- α, β, γ son coeficientes configurables
-- connectionCount = número de conexiones
-- dependentCount = archivos que dependen de este
-- stability = 1 - (cambiosRecientes / totalCambios)
-```
-
-### 2. Fuerza de Conexión (Edge Strength)
-
-```
-S(edge) = base × frequency × trust × recency
-
-Donde:
-- base = 1.0 para conexiones estáticas
-- frequency = veces que se usa la conexión
-- trust = confianza en la detección (0-1)
-- recency = factor de tiempo (decae con inactividad)
-```
-
-### 3. Impacto de Cambio (Change Impact)
-
-```
-I(change) = Σ(affectedNodes.W × propagationFactor^n)
-
-Donde:
-- n = distancia en el grafo
-- propagationFactor = 0.5 (cada nivel afecta la mitad)
-```
-
-### 4. Alerta de Sistema (System Alert)
-
-```
-Alert(node) = {
-  low:    I(node) < 0.3,
-  medium: 0.3 ≤ I(node) < 0.7,
-  high:   I(node) ≥ 0.7
-}
-```
-
----
-
-## Implementación Futura
-
-### Phase 1: Weighted Graph (v1.1)
-
-```javascript
-// src/layer-graph/core/weighted-node.js
-export class WeightedNode {
-  constructor(path) {
-    this.path = path;
-    this.weights = {
-      connectionStrength: 0,
-      impactScore: 0,
-      stability: 1.0
-    };
-  }
-  
-  addEdge(target, metadata = {}) {
-    this.edges.push({
-      to: target,
-      strength: metadata.strength || 1.0,
-      frequency: metadata.frequency || 1
-    });
-    this.recalculateWeights();
-  }
-  
-  removeEdge(target) {
-    this.edges = this.edges.filter(e => e.to !== target);
-    this.recalculateWeights();
-    this.propagateChange();
-  }
-  
-  recalculateWeights() {
-    this.weights.connectionStrength = this.edges.reduce(
-      (sum, e) => sum + e.strength, 0
-    ) / Math.max(this.edges.length, 1);
-    
-    this.weights.impactScore = this.calculateImpact();
-  }
-  
-  propagateChange() {
-    // Notificar a todos los dependientes
-    for (const dependent of this.usedBy) {
-      dependent.receiveChange(this);
+  "symbol": "processOrder",
+  "graph": {
+    "centrality": 0.25,
+    "centralityClassification": "HUB",
+    "inDegree": 12,
+    "outDegree": 5,
+    "propagationScore": 0.45,
+    "riskScore": 0.6,
+    "riskLevel": "MEDIUM"
+  },
+  "callSites": [
+    {
+      "file": "src/api.js",
+      "function": "handleRequest",
+      "line": 42,
+      "context": "const result = await processOrder(order)"
     }
+  ],
+  "summary": {
+    "totalCallSites": 12,
+    "uniqueFiles": 8,
+    "isWidelyUsed": true
   }
 }
 ```
 
-### Phase 2: Live Debugger (v1.2)
+### `get_impact_map`
 
-```javascript
-// src/layer-graph/query/live-debugger.js
-export class LiveDebugger {
-  constructor(graph) {
-    this.graph = graph;
-    this.subscribers = new Map();
-  }
-  
-  // Suscribirse a cambios
-  subscribe(nodePath, callback) {
-    if (!this.subscribers.has(nodePath)) {
-      this.subscribers.set(nodePath, new Set());
-    }
-    this.subscribers.get(nodePath).add(callback);
-  }
-  
-  // Predecir impacto antes de cambio
-  predict(action) {
-    const simulation = this.graph.clone();
-    simulation.apply(action);
-    return simulation.diff(this.graph);
-  }
-  
-  // Ejecutar con validación
-  async executeWithValidation(action, validationFn) {
-    const prediction = this.predict(action);
-    const isValid = await validationFn(prediction);
-    
-    if (isValid) {
-      this.graph.apply(action);
-      this.notifySubscribers(action);
-    }
-    
-    return { applied: isValid, prediction };
-  }
+```bash
+curl -X POST http://localhost:9999/tools/get_impact_map \
+  -H "Content-Type: application/json" \
+  -d '{"filePath": "src/utils.js"}'
+```
+
+**Retorna**:
+```json
+{
+  "file": "src/utils.js",
+  "directlyAffects": ["src/api.js", "src/controllers.js"],
+  "transitiveAffects": ["src/routes.js", "src/app.js"],
+  "totalAffected": 15,
+  "riskLevel": "medium",
+  "riskScore": 0.5
 }
 ```
 
 ---
 
-## API de Pesos (Propuesta)
+## Métricas de Performance
 
-```javascript
-import { WeightedGraph, LiveDebugger } from '#layer-graph/index.js';
+### Actuales (v0.9.61)
 
-// Crear grafo con pesos
-const graph = new WeightedGraph();
+| Métrica | Valor |
+|---------|-------|
+| **Query de callers** | <10ms |
+| **Query de callees** | <10ms |
+| **Impact analysis** | <50ms |
+| **Cycle detection** | <100ms |
+| **Full graph build** | <1s |
 
-// Agregar conexiones con metadata
-graph.addEdge('utils.js', 'main.js', { strength: 0.9, type: 'import' });
+### Objetivos Q2 2026
 
-// Consultar pesos
-const weight = graph.getNodeWeight('utils.js');
-// { connectionStrength: 0.9, impactScore: 0.72, stability: 0.95 }
-
-// Predecir cambio
-const impact = graph.predictRemove('utils.js', 'main.js');
-// { affectedNodes: 5, riskLevel: 'medium', recommendations: [...] }
-
-// Depurador en vivo
-const debugger = new LiveDebugger(graph);
-debugger.subscribe('utils.js', (change) => {
-  console.log('Change detected:', change);
-});
-```
+- [ ] Query de callers <5ms
+- [ ] Impact analysis <25ms
+- [ ] Full graph build <500ms
 
 ---
 
-## Referencias
+## Próximas Mejoras
 
-- [README.md](../../src/layer-graph/README.md) - Documentación técnica
-- [archetypes.md](./archetypes.md) - Sistema de arquetipos con confianza
-- [core.md](./core.md) - Arquitectura general
+### Q2 2026 - Tree-sitter Integration
+
+**Qué**: Usar Tree-sitter para construir grafos más precisos
+
+**Beneficios**:
+- Mejor resolución de símbolos
+- Tipos más precisos
+- Performance mejorado
+
+### Q3 2026 - Incremental Graph Updates
+
+**Qué**: Actualizar solo partes del grafo que cambiaron
+
+**Beneficios**:
+- Análisis incremental más rápido
+- Menor uso de memoria
+- Mejor experiencia de desarrollo
+
+---
+
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Tree-sitter integration (Q2 2026)

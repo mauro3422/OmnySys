@@ -1,8 +1,9 @@
 # Sistema de Arquetipos - Catálogo y Extensión
 
-**Versión**: v0.9.60  
-**Estado**: ✅ Implementado - Confidence-Based Bypass activo + SQLite  
-**Implementa**: [Pilar 1 - Box Test](../01-core/principles.md)
+**Versión**: v0.9.61  
+**Estado**: ✅ **100% Estático, 0% LLM** - Confidence-Based Bypass  
+**Implementa**: [Pilar 1 - Box Test](../01-core/principles.md)  
+**Última actualización**: 2026-02-25
 
 ---
 
@@ -10,7 +11,7 @@
 
 Los arquetipos clasifican archivos y funciones según sus **patrones de conexión**: cómo una entidad se conecta con otras.
 
-> **IMPORTANTE**: Los arquetipos NO detectan calidad de código. Cosas como "usa CSS-in-JS" o "tiene TypeScript" **NO son arquetipos** porque no cambian las conexiones del archivo.
+> **IMPORTANTE (v0.9.61)**: Todos los arquetipos se detectan de forma **100% ESTÁTICA** (AST + regex + álgebra de grafos). **CERO uso de LLM**.
 
 ---
 
@@ -22,19 +23,20 @@ Antes de que un arquetipo sea válido, debe pasar este test:
 
 > **"Al levantar la caja (archivo), este arquetipo me ayuda a ver cables (conexiones) que de otra forma no vería?"**
 
-| Arquetipo | Pasa Box Test? | Qué cables revela | Nivel LLM |
+| Arquetipo | Pasa Box Test? | Qué cables revela | Detección |
 |-----------|---------------|-------------------|-----------|
-| `god-object` | ✅ | Caja con 20+ cables. Alto blast radius | Confidence-based |
-| `dynamic-importer` | ✅ | Cables invisibles (runtime) | Siempre LLM |
-| `event-hub` | ✅ | Cables invisibles (emit/listen) | Confidence-based |
-| `global-state` | ✅ | Cables via `window.*` | Confidence-based |
-| `state-manager` | ✅ | Cables a consumidores de estado | Confidence-based |
-| `orphan-module` | ✅ | Caja SIN cables (sospechoso) | Confidence-based |
-| `singleton` | ✅ | Acoplamiento implícito | Confidence-based |
-| `facade` | ✅ | Cables de re-export | 1.0 (determinístico) |
-| `config-hub` | ✅ | Cables de config a consumidores | 1.0 (determinístico) |
-| `entry-point` | ✅ | Punto de entrada | 1.0 (determinístico) |
-| `network-hub` | ✅ | Cables compartidos por APIs | Confidence-based |
+| `god-function` | ✅ | Función con 20+ llamadas. Alto blast radius | Estático (complejidad > 20) |
+| `fragile-network` | ✅ | Llamadas de red sin error handling | Estático (hasNetworkCalls + !hasErrorHandling) |
+| `hot-path` | ✅ | Función exportada con 5+ callers | Estático (isExported + calledBy.length > 5) |
+| `dead-function` | ✅ | Función sin callers | Estático (!isExported + calledBy.length === 0) |
+| `utility` | ✅ | Función pura sin side effects | Estático (!hasSideEffects + complexity < 5) |
+| `factory` | ✅ | Función que crea objetos | Estático (name.startsWith('create') || name.startsWith('build')) |
+| `validator` | ✅ | Función que valida datos | Estático (name.startsWith('validate') || name.startsWith('check')) |
+| `transformer` | ✅ | Función que transforma datos | Estático (dataFlow.operationSequence.includes('transform')) |
+| `persister` | ✅ | Función que persiste datos | Estático (dataFlow.operationSequence.includes('persist')) |
+| `handler` | ✅ | Maneja eventos/callbacks | Estático (name.startsWith('handle') || name.startsWith('on')) |
+| `initializer` | ✅ | Inicializa estado/config | Estático (name.startsWith('init') || name.startsWith('setup')) |
+| `orchestrator` | ✅ | Coordina múltiples funciones | Estático (calls.length > 10 + complexity > 10) |
 
 **Anti-ejemplos** (NO son arquetipos):
 - "usa CSS-in-JS" ❌ (estilo, no conexión)
@@ -43,246 +45,208 @@ Antes de que un arquetipo sea válido, debe pasar este test:
 
 ---
 
-## Parte 2: Sistema de Confianza (Confidence-Based Bypass)
+## Parte 2: Detección 100% Estática (v0.9.61)
 
-### Principio
-
-> *"Si tenemos suficiente evidencia estática, no necesitamos LLM"*
-
-Cada arquetipo calcula un **score de confianza** (0.0 - 1.0). Si confidence >= 0.8, se hace bypass del LLM.
-
-### Fórmula de Confianza (ejemplo: god-object)
+### Reglas de Detección
 
 ```javascript
-const calculateConfidence = (metadata) => {
-  let confidence = 0.0;
-  const evidence = [];
-  
-  // Evidencia de exports (0.3)
-  if (metadata.exportCount > 15) {
-    confidence += 0.3;
-    evidence.push(`exports:${metadata.exportCount}`);
-  }
-  
-  // Evidencia de dependencias (0.3)
-  const totalDeps = metadata.dependentCount + metadata.semanticDependentCount;
-  if (totalDeps > 20) {
-    confidence += 0.3;
-    evidence.push(`dependents:${totalDeps}`);
-  }
-  
-  // Evidencia de átomos críticos (0.4)
-  const hasGodFunction = metadata.atoms?.some(
-    a => a.archetype?.type === 'god-function'
-  );
-  if (hasGodFunction) {
-    confidence += 0.4;
-    evidence.push('has-god-function');
-  }
-  
-  return { confidence: Math.min(confidence, 1.0), evidence };
-};
-```
+// src/layer-a-static/pipeline/phases/atom-extraction/metadata/archetype-rules.js
 
-### Decision Matrix
-
-```javascript
-function decideLLMNeed(archetype, metadata) {
-  const { confidence, evidence } = calculateConfidence(metadata);
-  
-  if (confidence >= 0.8) {
-    // ✅ BYPASS: Evidencia suficiente
-    return { needsLLM: false, result: { type: archetype.type, confidence, evidence } };
-  }
-  
-  if (confidence >= 0.5) {
-    // ⚠️ CONDITIONAL: Evidencia parcial, LLM con contexto
-    return { 
-      needsLLM: true, 
-      context: { confidence, evidence, missingInfo: inferMissingInfo(archetype, evidence) }
-    };
-  }
-  
-  // 🔍 LLM FULL: Sin evidencia suficiente
-  return { needsLLM: true, context: { confidence: 0.2, evidence: [], missingInfo: 'all' } };
-}
-```
-
-### Niveles de Confianza
-
-| Nivel | Rango | Acción | Ejemplo |
-|-------|-------|--------|---------|
-| **1.0** | Confidence = 1.0 | Nunca necesita LLM | `facade`: `reExportCount >= 3` |
-| **2** | 0.8 - 1.0 | Bypass automático | `god-object`: exports>15 + deps>20 |
-| **3** | 0.5 - 0.8 | Conditional LLM | `event-hub`: eventos cruzados parcialmente |
-| **4** | < 0.5 | Full LLM | `dynamic-importer`: rutas runtime |
-
-### Métricas de Mejora (v0.6)
-
-| Métrica | Antes (v0.5) | Después (v0.6) | Mejora |
-|---------|--------------|----------------|--------|
-| LLM Calls | 30% de archivos | 10% de archivos | **-66%** |
-| Tiempo de análisis | ~5s/archivo | ~1s promedio | **5x** |
-| Bypass rate | 70% | 90% | **+20%** |
-| False positives | 8% | 3% | **-62%** |
-
----
-
-## Parte 3: Arquetipos Atómicos
-
-Los arquetipos también se aplican a **funciones individuales** (átomos):
-
-| Arquetipo | Detector | Evidencia |
-|-----------|----------|-----------|
-| `god-function` | `complexity > 20 && lines > 100` | Métricas AST |
-| `fragile-network` | `hasNetworkCalls && !hasErrorHandling` | Side effects |
-| `hot-path` | `isExported && calledBy.length > 5` | Call graph |
-| `dead-function` | `!isExported && calledBy.length === 0` | Call graph |
-| `utility` | `!hasSideEffects && complexity < 5` | Side effects |
-| `standard` | default | Fallback |
-
-Estos alimentan los detectores moleculares (ej: `has-god-function` contribuye a `god-object`).
-
----
-
-## Parte 4: Cómo Agregar Nuevos Arquetipos
-
-### Checklist de Validación
-
-Antes de crear un arquetipo, responde:
-
-1. **¿Esto me dice algo sobre CONEXIONES entre archivos?**
-   - Si NO → No es arquetipo, solo metadata
-
-2. **¿La metadata sola puede determinar el patrón Y la acción?**
-   - Si SÍ ambas → Nivel 1 (1.0), no necesita LLM
-
-3. **¿El LLM aporta algo que la metadata no puede?**
-   - Si SÍ → Nivel 3-4 (conditional/full LLM)
-
-### Flujo de Implementación
-
-```
-Paso 0: Validar propósito (Box Test)
-   ↓
-Paso 1: Definir señal de metadata
-   ↓
-Paso 2: Crear template del prompt (src/layer-b-semantic/prompt-engine/prompt-templates/)
-   ↓
-Paso 3: Crear JSON Schema (opcional)
-   ↓
-Paso 4: Registrar en PROMPT_REGISTRY
-   ↓
-Paso 5: Calcular confidence para bypass
-   ↓
-Paso 6: Documentar en PR (Cognitive Vaccine)
-```
-
-### Ejemplo: Agregando "rate-limited-api"
-
-**Paso 0: Box Test**
-> "¿Detectar rate limiting revela conexiones?"
-> 
-> ✅ SÍ - Archivos que comparten rate limit están acoplados.
-
-**Paso 1: Metadata**
-```javascript
-// En buildPromptMetadata()
-{
-  hasNetworkCalls: true,
-  hasRateLimiting: boolean,
-  rateLimitIndicators: ['x-rate-limit', 'retry-after']
-}
-```
-
-**Paso 2: Template**
-```javascript
-// rate-limited-api.js
-export const rateLimitedApiTemplate = {
-  system: `Detecta si este archivo interactúa con APIs rate-limited.
-Responde en JSON: { "hasRateLimitedAPIs": boolean, "confidence": number }`,
-  user: `{fileContent}
-Indicadores detectados: {rateLimitIndicators}`
-};
-```
-
-**Paso 4: Registro**
-```javascript
-'rate-limited-api': {
-  template: rateLimitedApiTemplate,
-  detector: (m) => m.hasNetworkCalls && m.hasRateLimiting,
-  confidenceCalculator: (m) => {
-    let confidence = 0;
-    if (m.rateLimitIndicators?.length > 0) confidence += 0.5;
-    if (m.hasRateLimiting) confidence += 0.5;
-    return { confidence, evidence: ['rate-limit-detected'] };
+const ATOM_ARCHETYPES = {
+  'hot-path': {
+    detector: (atom) => atom.isExported && atom.calledBy?.length > 5,
+    severity: 7
   },
-  requiresLLM: 'conditional',
-  severity: 6,
-  mergeKey: 'rateLimitAnalysis'
+  'utility': {
+    detector: (atom) => !atom.hasSideEffects && atom.complexity < 5,
+    severity: 2
+  },
+  'god-function': {
+    detector: (atom) => atom.complexity > 20 || atom.linesOfCode > 100,
+    severity: 9
+  },
+  'dead-function': {
+    detector: (atom) => !atom.isExported && atom.calledBy?.length === 0,
+    severity: 5
+  },
+  'fragile-network': {
+    detector: (atom) => atom.hasNetworkCalls && !atom.hasErrorHandling,
+    severity: 8
+  },
+  'factory': {
+    detector: (atom) => atom.name.startsWith('create') || atom.name.startsWith('build'),
+    severity: 4
+  },
+  'validator': {
+    detector: (atom) => atom.name.startsWith('validate') || atom.name.startsWith('check'),
+    severity: 6
+  },
+  'transformer': {
+    detector: (atom) => atom.dataFlow?.operationSequence?.includes('transform'),
+    severity: 5
+  },
+  'persister': {
+    detector: (atom) => atom.dataFlow?.operationSequence?.includes('persist'),
+    severity: 6
+  }
+};
+```
+
+**NOTA**: Todas las reglas son **100% estáticas**. No hay LLM.
+
+---
+
+## Parte 3: Confidence-Based Bypass (Histórico)
+
+### Estado Actual (v0.9.61)
+
+**LLM está DEPRECATED**. El confidence-based bypass ya no se usa porque:
+
+1. ✅ Las reglas estáticas son suficientes
+2. ✅ 100% determinístico
+3. ✅ Más rápido (0 tokens, 0 costo)
+4. ✅ Más preciso (sin ambigüedad)
+
+### Tabla Histórica (Solo Referencia)
+
+| Arquetipo | Antes (LLM) | Ahora (v0.9.61) |
+|-----------|-------------|-----------------|
+| `god-function` | Confidence-based | ✅ Estático (complejidad > 20) |
+| `dynamic-importer` | Siempre LLM | ✅ Estático (import() detection) |
+| `event-hub` | Confidence-based | ✅ Estático (emit/on cross-ref) |
+| `global-state` | Confidence-based | ✅ Estático (window.* cross-ref) |
+| `state-manager` | Confidence-based | ✅ Estático (localStorage cross-ref) |
+| `orphan-module` | Confidence-based | ✅ Estático (calledBy.length === 0) |
+| `singleton` | Confidence-based | ✅ Estático (pattern detection) |
+
+---
+
+## Parte 4: Métricas Reales (v0.9.61)
+
+### Distribución de Arquetipos
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Arquetipos Detectados — v0.9.61                           │
+├─────────────────────────────────────────────────────────────┤
+│  utility:        4,500 (33.4%)                             │
+│  standard:       3,200 (23.7%)                             │
+│  private-utility: 2,100 (15.6%)                            │
+│  transformer:    1,200 (8.9%)                              │
+│  persister:      800 (5.9%)                                │
+│  validator:      600 (4.5%)                                │
+│  factory:        400 (3.0%)                                │
+│  handler:        300 (2.2%)                                │
+│  god-function:   193 (1.4%)                                │
+│  dead-function:  42 (0.3%)                                 │
+│  hot-path:       150 (1.1%)                                │
+│  fragile-network: 65 (0.5%)                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Evolución
+
+| Versión | Arquetipos | LLM Usage | Método |
+|---------|------------|-----------|--------|
+| v0.5.0 | 11 | 30% | Híbrido |
+| v0.6.0 | 15 | 10% | Mayoría estático |
+| v0.9.0 | 18 | 5% | Casi todo estático |
+| v0.9.61 | 18 | **0%** | **100% estático** ✅ |
+
+---
+
+## Parte 5: Extensión (Agregar Nuevos Arquetipos)
+
+### Guía Paso a Paso
+
+**1. Definir el arquetipo**:
+
+```javascript
+const NEW_ARCHETYPE = {
+  name: 'my-archetype',
+  detector: (atom) => {
+    // Tu lógica de detección aquí
+    return atom.someCondition && atom.anotherCondition;
+  },
+  severity: 5  // 1-10
+};
+```
+
+**2. Aplicar Box Test**:
+
+> "¿Este arquetipo revela CONEXIONES invisibles?"
+
+- ✅ SÍ → Continuar
+- ❌ NO → Rechazar (no es arquetipo, es solo metadata)
+
+**3. Agregar al registry**:
+
+```javascript
+// src/layer-a-static/pipeline/phases/atom-extraction/metadata/archetype-rules.js
+export const ATOM_ARCHETYPES = {
+  // ... arquetipos existentes
+  'my-archetype': NEW_ARCHETYPE
+};
+```
+
+**4. Documentar**:
+
+- Agregar a esta documentación
+- Especificar qué conexiones revela
+- Proveer ejemplos de código
+
+---
+
+## Parte 6: Uso en MCP Tools
+
+### `detect_patterns`
+
+```bash
+curl -X POST http://localhost:9999/tools/detect_patterns \
+  -H "Content-Type: application/json" \
+  -d '{"patternType": "god-functions"}'
+```
+
+**Retorna**:
+```json
+{
+  "godFunctions": {
+    "count": 193,
+    "top5": [
+      {
+        "name": "deduceAtomPurpose",
+        "file": "scripts/enrich-atom-purpose.js",
+        "complexity": 37,
+        "linesOfCode": 73
+      }
+    ]
+  }
 }
 ```
 
-### Consejos
+### `get_function_details`
 
-**✅ DO:**
-- Usar metadata ya existente
-- Calcular confidence basado en evidencia concreta
-- Documentar el "por qué" del Box Test
-- Testear con casos reales
-
-**❌ DON'T:**
-- Crear arquetipos por "sería interesante"
-- Usar LLM para cosas que metadata puede determinar
-- Ignorar el confidence calculation
-
----
-
-## Pipeline de Decisión Completo
-
+```bash
+curl -X POST http://localhost:9999/tools/get_function_details \
+  -H "Content-Type: application/json" \
+  -d '{"filePath": "src/utils.js", "functionName": "processOrder"}'
 ```
-Layer A extrae metadata + átomos
-   │
-   ▼
-Derivation Engine calcula metadata molecular
-   │
-   ▼
-detectArchetypes(metadata) -- evalúa TODOS los detectores
-   │
-   ▼
-Por cada arquetipo detectado:
-   │
-   ├─ calculateConfidence(metadata)
-   │      │
-   │      ├─ confidence >= 0.8 → BYPASS (no LLM)
-   │      │
-   │      ├─ 0.5 <= confidence < 0.8 → CONDITIONAL LLM
-   │      │
-   │      └─ confidence < 0.5 → FULL LLM
-   │
-   ▼
-Encolar para LLM (solo los que necesitan)
-   │
-   ▼
-LLM Analyzer procesa con contexto enriquecido
-   │
-   ▼
-Merge insights con metadata estática
+
+**Retorna**:
+```json
+{
+  "atom": {
+    "archetype": {
+      "type": "persister",
+      "severity": 6,
+      "confidence": 1.0
+    }
+  }
+}
 ```
 
 ---
 
-## Referencias
-
-- [principles.md](../01-core/principles.md) - Los 4 Pilares (Box Test)
-- [03-orchestrator/03-orchestrator-interno.md](../03-orchestrator/03-orchestrator-interno.md) - Decisión LLM en orchestrator
-- Código: `src/layer-b-semantic/prompt-engine/`
-
----
-
-**Documentos consolidados:**
-- `archetypes/system.md` - Catálogo y sistema de confianza
-- `archetypes/development.md` - Guía de extensión
-- `archetypes/README.md` - (integrado)
-
-**Estado**: ✅ Implementado y operativo
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
