@@ -478,60 +478,68 @@ export async function applyWorkspaceMcpConfig(options = {}) {
 }
 
 export async function applyVsCodeAutostartConfig(options = {}) {
-  const projectPath = path.resolve(options.projectPath || process.cwd());
-  const paths = getVsCodeConfigPaths(projectPath);
-  const daemonTask = buildDaemonTask();
+  try {
+    const projectPath = path.resolve(options.projectPath || process.cwd());
+    const paths = getVsCodeConfigPaths(projectPath);
+    const daemonTask = buildDaemonTask();
 
-  const tasksConfig = await readJsonSafe(paths.tasks, {
-    version: '2.0.0',
-    tasks: []
-  });
+    const tasksConfig = await readJsonSafe(paths.tasks, {
+      version: '2.0.0',
+      tasks: []
+    });
 
-  if (!Array.isArray(tasksConfig.tasks)) {
-    tasksConfig.tasks = [];
-  }
-  if (!tasksConfig.version) {
-    tasksConfig.version = '2.0.0';
-  }
+    if (!Array.isArray(tasksConfig.tasks)) {
+      tasksConfig.tasks = [];
+    }
+    if (!tasksConfig.version) {
+      tasksConfig.version = '2.0.0';
+    }
 
-  const existingTaskIndex = tasksConfig.tasks.findIndex(
-    (task) =>
-      task?.label === VSCODE_DAEMON_TASK_LABEL ||
-      task?.command === VSCODE_DAEMON_TASK_COMMAND
-  );
+    const existingTaskIndex = tasksConfig.tasks.findIndex(
+      (task) =>
+        task?.label === VSCODE_DAEMON_TASK_LABEL ||
+        task?.command === VSCODE_DAEMON_TASK_COMMAND
+    );
 
-  if (existingTaskIndex >= 0) {
-    const existing = tasksConfig.tasks[existingTaskIndex] || {};
-    tasksConfig.tasks[existingTaskIndex] = {
-      ...existing,
-      ...daemonTask,
-      options: {
-        ...(existing.options || {}),
-        ...(daemonTask.options || {})
-      },
-      runOptions: {
-        ...(existing.runOptions || {}),
-        ...(daemonTask.runOptions || {})
-      },
-      presentation: {
-        ...(existing.presentation || {}),
-        ...(daemonTask.presentation || {})
-      }
+    if (existingTaskIndex >= 0) {
+      const existing = tasksConfig.tasks[existingTaskIndex] || {};
+      tasksConfig.tasks[existingTaskIndex] = {
+        ...existing,
+        ...daemonTask,
+        options: {
+          ...(existing.options || {}),
+          ...(daemonTask.options || {})
+        },
+        runOptions: {
+          ...(existing.runOptions || {}),
+          ...(daemonTask.runOptions || {})
+        },
+        presentation: {
+          ...(existing.presentation || {}),
+          ...(daemonTask.presentation || {})
+        }
+      };
+    } else {
+      tasksConfig.tasks.push(daemonTask);
+    }
+
+    await writeJsonNoBom(paths.tasks, tasksConfig);
+
+    const settings = await readJsonSafe(paths.settings, {});
+    settings['task.allowAutomaticTasks'] = 'on';
+    await writeJsonNoBom(paths.settings, settings);
+
+    return {
+      success: true,
+      paths
     };
-  } else {
-    tasksConfig.tasks.push(daemonTask);
+  } catch (error) {
+    console.error('Error applying VS Code autostart config:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
-
-  await writeJsonNoBom(paths.tasks, tasksConfig);
-
-  const settings = await readJsonSafe(paths.settings, {});
-  settings['task.allowAutomaticTasks'] = 'on';
-  await writeJsonNoBom(paths.settings, settings);
-
-  return {
-    success: true,
-    paths
-  };
 }
 
 /**
