@@ -1,9 +1,8 @@
 {
   "mcpServers": {
-    "omnysys": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["src/layer-c-memory/mcp-server.js", "C:/Dev/OmnySystem", "--debug-terminal"]
+    "omnysystem": {
+      "type": "http",
+      "url": "http://127.0.0.1:9999/mcp"
     }
   }
 }

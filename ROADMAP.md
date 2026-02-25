@@ -121,21 +121,40 @@ OMNYSYS (Data Flow):
 
 ---
 
-## 🔧 Estado Actual — Estable (v0.9.36)
+## 🔧 Estado Actual — Estable (v0.9.60)
+
+### Sistema: ✅ Semantic Algebra + SQLite Determinístico
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OMNYSYS v0.9.60 — Semantic Algebra Production            │
+│  ══════════════════════════════════════════════════════    │
+│                                                             │
+│  Storage:     SQLite (WAL mode, ACID)                      │
+│  Vectores:    7 scores por átomo (determinísticos)        │
+│  Queries:     Mismo input → Mismo output (100%)            │
+│  Startup:     ~1.5 segundos                                │
+│  MCP Tools:   28 herramientas                              │
+│                                                             │
+│  Layer A: Análisis estático → Átomos + Vectores           │
+│  Layer B: Análisis semántico → Arquetipos                  │
+│  Layer C: SQLite + MCP Tools → Query determinístico        │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Tests: ✅ Saludable
 ```
-297 archivos de test → 297 pasando
-4,366 tests → 4,366 en verde, 35 skipped
-Tiempo: ~21s
+297+ archivos de test → 4,500+ tests pasando
+0 imports rotos
 ```
 
-### Runtime: ✅ Sin issues críticos
-```
-0 imports rotos (verificado con scripts/detect-broken-imports.js)
-1,177 archivos JavaScript en src/
-Deuda técnica controlada (< 1%)
-```
+### Roadmap v0.9.56-60 Completado
+| Versión | Feature |
+|---------|---------|
+| v0.9.56 | Performance Optimization — Startup 1.5s |
+| v0.9.57 | SQLite Modularization — Adapter splitting |
+| v0.9.58 | **SQLite Migration Complete** — All tools use SQLite |
+| v0.9.59 | Query Optimization — Skip reindex when DB valid |
+| v0.9.60 | **Semantic Algebra** — 7 vectors, deterministic queries |
 
 ### Documentación: ✅ Actualizada (2026-02-19)
 
@@ -212,18 +231,26 @@ Los scripts de validación están listos pero no integrados:
 
 ## 📊 Métricas de Evolución
 
-| Versión | Tests | Cobertura | Módulos | Herramientas |
-|---------|-------|-----------|---------|-------------|
-| v0.5 | ~18 | ~5% | 11 arquetipos | 11 MCP |
-| v0.7 | 350+ | ~15% | modular | 14 MCP |
-| v0.9.7 | 527+ | ~26% | 400+ | 14 MCP |
-| v0.9.13 | 1,222 | ~35% | 500+ | 14 MCP |
-| v0.9.17 | 4,115 | ~40% | 500+ | 14 MCP |
-| **v0.9.36** | **4,366** | **~45%** | **500+** | **14 MCP** |
-| v1.0 (target) | 6,000+ | 70%+ | 500+ | 14+ MCP |
+| Versión | Tests | Cobertura | Módulos | Herramientas | Storage |
+|---------|-------|-----------|---------|-------------|---------|
+| v0.5 | ~18 | ~5% | 11 arquetipos | 11 MCP | JSON |
+| v0.7 | 350+ | ~15% | modular | 14 MCP | JSON |
+| v0.9.7 | 527+ | ~26% | 400+ | 14 MCP | JSON |
+| v0.9.13 | 1,222 | ~35% | 500+ | 14 MCP | JSON |
+| v0.9.17 | 4,115 | ~40% | 500+ | 14 MCP | JSON |
+| v0.9.36 | 4,366 | ~45% | 500+ | 14 MCP | JSON |
+| **v0.9.60** | **4,500+** | **~50%** | **600+** | **28 MCP** | **SQLite** |
+| v1.0 (target) | 6,000+ | 70%+ | 500+ | 30+ MCP | SQLite |
 
 ---
 
 ## 🎓 La Visión en Una Frase
 
 > **"OmnySys es como Google Maps para código. No solo sabe QUÉ calles existen, sabe CÓMO llegar de A a B con todos los riesgos del camino."**
+
+---
+
+## 📚 Documentación
+
+Para una visión completa de la arquitectura del sistema ver:
+- **[docs/02-architecture/SYSTEM_ARCHITECTURE.md](docs/02-architecture/SYSTEM_ARCHITECTURE.md)** - Arquitectura completa con datos reales del sistema

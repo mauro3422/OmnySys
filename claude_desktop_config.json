@@ -1,14 +1,8 @@
 {
   "mcpServers": {
     "omny-system": {
-      "command": "node",
-      "args": [
-        "src/layer-c-memory/mcp-server.js",
-        "C:\\Dev\\OmnySystem"
-      ],
-      "env": {
-        "NODE_ENV": "production"
-      }
+      "type": "http",
+      "url": "http://127.0.0.1:9999/mcp"
     }
   }
 }

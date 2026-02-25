@@ -1,8 +1,8 @@
 # Shadow Registry - Memoria Persistente del Código
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.60  
 **Componente**: Layer A/B/C - Persistencia y evolución  
-**Estado**: Implementado
+**Estado**: ✅ Implementado - Datos en SQLite
 
 ---
 

@@ -1,200 +1,140 @@
 /**
  * @fileoverview script-utils.js
- * 
- * Shared utility functions for analysis scripts
- * 
- * @module scripts/utils/script-utils
+ *
+ * Utilidades compartidas para scripts de análisis/auditoría.
+ * Evita duplicación de funciones comunes.
+ *
+ * @module scripts/utils
  */
 
 import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Scan directory recursively for JSON files
- * @param {string} dir - Directory to scan
- * @param {Map} storage - Map to store results
- * @param {Function} processor - Function to process each file
- */
-async function scanDir(dir, storage, processor) {
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await scanDir(fullPath, storage, processor);
-      } else if (entry.isFile() && entry.name.endsWith('.json')) {
-        try {
-          const content = await fs.readFile(fullPath, 'utf-8');
-          const data = JSON.parse(content);
-          processor(data, storage, fullPath);
-        } catch {}
-      }
-    }
-  } catch {}
-}
-
-/**
- * Read all atoms from .omnysysdata/atoms
- * @param {string} rootPath - Root path of the project
- * @returns {Promise<Map>} Map of atomId -> atomData
+ * Lee todos los átomos desde el directorio .omnysysdata/atoms
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @returns {Promise<Map>} Mapa de átomos
  */
 export async function readAllAtoms(rootPath) {
   const atomsDir = path.join(rootPath, '.omnysysdata', 'atoms');
   const atoms = new Map();
-  
-  await scanDir(atomsDir, atoms, (data, storage) => {
-    if (data.id) {
-      storage.set(data.id, data);
+
+  try {
+    const files = await fs.readdir(atomsDir);
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      const filePath = path.join(atomsDir, file);
+      const content = await fs.readFile(filePath, 'utf-8');
+      const atom = JSON.parse(content);
+
+      if (atom.id) {
+        atoms.set(atom.id, { data: atom, path: filePath });
+      }
     }
-  });
-  
+  } catch (error) {
+    console.error('Error reading atoms:', error.message);
+  }
+
   return atoms;
 }
 
 /**
- * Read all files from .omnysysdata/files
- * @param {string} rootPath - Root path of the project
- * @returns {Promise<Map>} Map of filePath -> fileData
+ * Lee todos los archivos desde el directorio .omnysysdata/files
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @returns {Promise<Map>} Mapa de archivos
  */
 export async function readAllFiles(rootPath) {
   const filesDir = path.join(rootPath, '.omnysysdata', 'files');
   const files = new Map();
-  
-  await scanDir(filesDir, files, (data, storage) => {
-    const filePath = data.path || data.filePath;
-    if (filePath) {
-      storage.set(filePath, data);
+
+  try {
+    const fileItems = await fs.readdir(filesDir);
+    for (const file of fileItems) {
+      if (!file.endsWith('.json')) continue;
+
+      const filePath = path.join(filesDir, file);
+      const content = await fs.readFile(filePath, 'utf-8');
+      const fileData = JSON.parse(content);
+
+      if (fileData.path) {
+        files.set(fileData.path, fileData);
+      }
     }
-  });
-  
+  } catch (error) {
+    console.error('Error reading files:', error.message);
+  }
+
   return files;
 }
 
 /**
- * Scan directory recursively for JSON files and return as array
- * @param {string} rootPath - Root path to scan
- * @param {string} subDir - Subdirectory (e.g., 'atoms', 'files')
- * @returns {Promise<Array>} Array of {path, data} objects
+ * Escanea un directorio recursivamente
+ * @param {string} dir - Directorio a escanear
+ * @param {string} [extension='.js'] - Extensión a buscar
+ * @returns {Promise<string[]>} Lista de archivos
  */
-export async function scanJsonDir(rootPath, subDir = '.omnysysdata') {
-  const baseDir = path.join(rootPath, subDir);
+export async function scanDir(dir, extension = '.js') {
   const results = [];
-  
-  async function scan(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scan(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            results.push({
-              path: fullPath,
-              data: JSON.parse(content)
-            });
-          } catch {}
+
+  try {
+    const items = await fs.readdir(dir);
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = await fs.stat(fullPath);
+
+      if (stat.isDirectory()) {
+        if (item !== 'node_modules' && !item.startsWith('.')) {
+          const subResults = await scanDir(fullPath, extension);
+          results.push(...subResults);
         }
+      } else if (item.endsWith(extension)) {
+        results.push(fullPath);
       }
-    } catch {}
+    }
+  } catch (error) {
+    console.error(`Error scanning ${dir}:`, error.message);
   }
-  
-  await scan(baseDir);
+
   return results;
 }
 
 /**
- * Read system map from .omnysysdata
- * @param {string} rootPath - Root path of the project
- * @returns {Promise<Object>} System map data
+ * Lee un archivo JSON de forma segura
+ * @param {string} filePath - Ruta del archivo
+ * @returns {Promise<Object|null>} Contenido parseado o null
  */
-export async function readSystemMap(rootPath) {
-  const systemMapPath = path.join(rootPath, '.omnysysdata', 'system-map.json');
+export async function readJsonFile(filePath) {
   try {
-    const content = await fs.readFile(systemMapPath, 'utf-8');
+    const content = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(content);
-  } catch {
+  } catch (error) {
+    console.error(`Error reading ${filePath}:`, error.message);
     return null;
   }
 }
 
 /**
- * Scan directory recursively for JSON files and return file paths
- * @param {string} rootPath - Root path to scan
- * @param {string} subDir - Subdirectory (e.g., 'atoms', 'files')
- * @returns {Promise<Array<string>>} Array of file paths
+ * Escribe un archivo JSON de forma segura
+ * @param {string} filePath - Ruta del archivo
+ * @param {Object} data - Datos a escribir
+ * @returns {Promise<boolean>} True si éxito
  */
-export async function scanJsonFiles(rootPath, subDir = '.omnysysdata') {
-  const baseDir = path.join(rootPath, subDir);
-  const results = [];
-  
-  async function scan(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scan(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          results.push(fullPath);
-        }
-      }
-    } catch {}
+export async function writeJsonFile(filePath, data) {
+  try {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return true;
+  } catch (error) {
+    console.error(`Error writing ${filePath}:`, error.message);
+    return false;
   }
-  
-  await scan(baseDir);
-  return results;
 }
 
-/**
- * Read all file paths and their data from .omnysysdata/files
- * @param {string} rootPath - Root path of the project
- * @returns {Promise<Array<{filePath: string, data: Object}>>} Array of file objects
- */
-export async function readAllStorageFiles(rootPath) {
-  const filesDir = path.join(rootPath, '.omnysysdata', 'files');
-  const results = [];
-  
-  async function scanDir(dir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.json')) {
-          try {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const data = JSON.parse(content);
-            const filePath = data.path || data.filePath;
-            if (filePath) {
-              results.push({ filePath, data });
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-  }
-  
-  await scanDir(filesDir);
-  return results;
-}
-
-/**
- * Simple logger for scripts
- * @param {string} message - Message to log
- */
-export function log(message) {
-  console.log(`[script] ${message}`);
-}
-
-/**
- * Calculate percentage
- * @param {number} value - Value
- * @param {number} total - Total
- * @returns {string} Formatted percentage
- */
-export function pct(value, total) {
-  return total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0.0%';
-}
+export default {
+  readAllAtoms,
+  readAllFiles,
+  scanDir,
+  readJsonFile,
+  writeJsonFile
+};

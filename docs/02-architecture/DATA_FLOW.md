@@ -1,7 +1,7 @@
 # Flujo de Datos - OmnySys
 
-**Versión**: v0.9.57
-**Última actualización**: 2026-02-23
+**Versión**: v0.9.60
+**Última actualización**: 2026-02-24
 
 ---
 

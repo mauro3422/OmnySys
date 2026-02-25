@@ -1,7 +1,8 @@
 # Datos por Layer - Contratos y Capacidades
 
-**Versión**: 1.0.0  
-**Actualizado**: 2026-02-18  
+**Versión**: 1.1.0  
+**Actualizado**: 2026-02-24  
+**Estado**: ✅ Implementado - datos en SQLite  
 
 ---
 

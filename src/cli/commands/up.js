@@ -70,33 +70,33 @@ export async function upLogic(options = {}) {
 }
 
 export async function execute() {
-  log('Iniciando OmnySys...', 'loading');
-  
+  log('Starting OmnySys...', 'loading');
+
   const result = await upLogic();
-  
+
   if (!result.success) {
     log(result.error, 'error');
     return;
   }
-  
+
   if (result.services.llm.started) {
     log(`LLM Server ready on port ${result.services.llm.port}`, 'success');
   } else {
     log(`LLM Server already running on port ${result.services.llm.port}`, 'success');
   }
-  
+
   if (result.services.mcp.started) {
     log(`MCP Server ready on port ${result.services.mcp.port}`, 'success');
   } else {
     log(`MCP Server already running on port ${result.services.mcp.port}`, 'success');
   }
-  
-  log('\n🚀 OmnySys está listo!', 'success');
+
+  log('\nOmnySys is ready', 'success');
   log(`   LLM:  http://localhost:${result.services.llm.port}/health`);
   log(`   MCP:  http://localhost:${result.services.mcp.port}/health`);
   log(`   Tools: http://localhost:${result.services.mcp.port}/tools\n`);
-  
+
   if (result.openCodeConfigured) {
-    log('OpenCode configurado automáticamente', 'success');
+    log('Unified MCP client configuration applied', 'success');
   }
 }

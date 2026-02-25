@@ -2,7 +2,12 @@
 
 ## System: OmnySys MCP
 
-This project uses a custom MCP (Model Context Protocol) system with 30 code analysis tools. **You MUST use these tools before any edit**.
+**Versión**: v0.9.60  
+**Estado**: ✅ Semantic Algebra + SQLite Determinístico
+
+This project uses a custom MCP (Model Context Protocol) system with **28 code analysis tools** based on **deterministic graph algebra**. **You MUST use these tools before any edit**.
+
+> **Note**: All queries are **100% deterministic** - same input always produces same output (via SQLite).
 
 ---
 
@@ -222,6 +227,8 @@ getLineContext(filePath, lineNumber, contextLines = 5);
 ## System Metrics
 
 - **Total Tools**: 28
+- **Storage**: SQLite (deterministic)
+- **Queries**: 100% deterministic (same input → same output)
 - **Health Score Target**: >95/100
 - **Max Lines per File**: 250
 - **Max Complexity**: 15

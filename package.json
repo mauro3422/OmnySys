@@ -66,7 +66,9 @@
     "check": "node scripts/validate-syntax.js && node scripts/detect-broken-imports.js",
     "postinstall": "node install.js",
     "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-server.js",
-    "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js"
+    "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js",
+    "mcp:http": "node src/layer-c-memory/mcp-http-server.js",
+    "pack:check": "npm pack --dry-run"
   },
   "keywords": [
     "ai",
@@ -126,5 +128,15 @@
   "bugs": {
     "url": "https://github.com/mauro3422/OmnySys/issues"
   },
-  "homepage": "https://github.com/mauro3422/OmnySys#readme"
+  "homepage": "https://github.com/mauro3422/OmnySys#readme",
+  "files": [
+    "omny.js",
+    "install.js",
+    "src",
+    "README.md",
+    "LICENSE",
+    ".mcp.json",
+    "mcp-servers.json",
+    "mcp-servers.schema.json"
+  ]
 }

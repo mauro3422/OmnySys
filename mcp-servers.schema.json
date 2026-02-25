@@ -1,13 +1,10 @@
 {
   "$schema": "https://modelcontextprotocol.io/schemas/2024-11-05/mcp-servers-config.schema.json",
   "mcpServers": {
-    "omny-system": {
-      "command": "node",
-      "args": [
-        "src/layer-c-memory/mcp-server.js",
-        "."
-      ],
-      "description": "OmnySys - Code understanding and analysis server with impact mapping and semantic connections"
+    "omnysystem": {
+      "type": "http",
+      "url": "http://127.0.0.1:9999/mcp",
+      "description": "OmnySys shared MCP daemon (Streamable HTTP)"
     }
   }
 }

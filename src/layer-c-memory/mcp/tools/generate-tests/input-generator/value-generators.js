@@ -137,6 +137,97 @@ function generateMockByType(type, name) {
 }
 
 /**
+ * Estrategias de generación priorizadas
+ */
+const GENERATION_STRATEGIES = [
+  // Prioridad -1: Inferred types del dataFlow
+  {
+    name: 'inferredType',
+    check: (nameLower, atom) => atom.dataFlow?.analysis?.inferredTypes?.variables?.[nameLower],
+    generate: (nameLower, atom) => {
+      const inferredType = atom.dataFlow.analysis.inferredTypes.variables[nameLower];
+      if (inferredType && inferredType !== 'unknown') {
+        return generateFromInferredType(inferredType, nameLower);
+      }
+      return null;
+    }
+  },
+  // Prioridad 0: Detectar tipo desde callGraph
+  {
+    name: 'callGraph',
+    check: (nameLower, atom) => atom.callGraph?.callsList,
+    generate: (nameLower, atom) => {
+      const detectedType = detectObjectTypeFromCalls(nameLower, atom.callGraph);
+      if (detectedType) {
+        return generateMockByType(detectedType, nameLower);
+      }
+      return null;
+    }
+  },
+  // Prioridad 1: Semantic domain
+  {
+    name: 'semanticDomain',
+    check: (nameLower, atom) => atom.semanticDomain?.primary && atom.semanticDomain.inputPatterns,
+    generate: (nameLower, atom) => generateInputFromSemanticDomain(atom.semanticDomain, nameLower)
+  },
+  // Prioridad 2: Patterns por nombre
+  {
+    name: 'optionsPattern',
+    check: (nameLower) => nameLower.includes('options') || nameLower.includes('config') || nameLower.includes('opts'),
+    generate: (nameLower, atom) => generateOptionsInput(atom)
+  },
+  {
+    name: 'operationPattern',
+    check: (nameLower) => nameLower.includes('operation') || nameLower === 'op',
+    generate: (nameLower, atom) => generateOperationInput(atom)
+  },
+  {
+    name: 'orchestratorPattern',
+    check: (nameLower, atom) => atom.archetype?.type === 'orchestrator' && atom.callGraph?.callsList,
+    generate: (nameLower, atom) => generateOrchestratorInput(nameLower, atom)
+  },
+  // Prioridad 3: Tipos simples por nombre
+  {
+    name: 'callback',
+    check: (nameLower) => nameLower.includes('callback') || nameLower.includes('fn') || nameLower.includes('handler'),
+    generate: () => 'vi.fn()'
+  },
+  {
+    name: 'file',
+    check: (nameLower) => nameLower.includes('file') || nameLower.includes('path'),
+    generate: () => '"/test/file.js"'
+  },
+  {
+    name: 'text',
+    check: (nameLower) => nameLower.includes('text') || nameLower.includes('content') || nameLower.includes('string'),
+    generate: () => '"sample text"'
+  },
+  {
+    name: 'data',
+    check: (nameLower) => nameLower.includes('data') || nameLower.includes('obj'),
+    generate: () => '{ key: "value" }'
+  },
+  {
+    name: 'id',
+    check: (nameLower) => nameLower.includes('id'),
+    generate: () => '"test-id-123"'
+  }
+];
+
+/**
+ * Tipos primitivos por defecto
+ */
+const PRIMITIVE_TYPES = {
+  string: '"sample-string"',
+  number: '42',
+  boolean: 'true',
+  array: '[]',
+  Object: '{}',
+  Promise: 'Promise.resolve({})',
+  Function: 'vi.fn()'
+};
+
+/**
  * Genera valor de muestra basado en tipo, nombre y contexto del átomo
  * @param {string} type - Parameter type
  * @param {string} name - Parameter name
@@ -145,78 +236,17 @@ function generateMockByType(type, name) {
  */
 export function generateSampleValueForType(type, name = '', atom = {}) {
   const nameLower = name.toLowerCase();
-  const archetype = atom.archetype?.type || '';
-  const callGraph = atom.callGraph || {};
-  const semanticDomain = atom.semanticDomain;
-  const dataFlow = atom.dataFlow || {};
-  const inferredTypes = dataFlow?.analysis?.inferredTypes;
-  
-  // PRIORIDAD -1: Usar inferredTypes del dataFlow si está disponible
-  if (inferredTypes?.variables?.[nameLower]) {
-    const inferredType = inferredTypes.variables[nameLower];
-    if (inferredType && inferredType !== 'unknown') {
-      const inferredValue = generateFromInferredType(inferredType, name);
-      if (inferredValue) return inferredValue;
+
+  // Ejecutar estrategias en orden de prioridad
+  for (const strategy of GENERATION_STRATEGIES) {
+    if (strategy.check(nameLower, atom)) {
+      const value = strategy.generate(nameLower, atom);
+      if (value) return value;
     }
   }
-  
-  // PRIORIDAD 0: Usar callGraph para detectar tipos de objetos
-  const detectedType = detectObjectTypeFromCalls(name, callGraph);
-  if (detectedType) {
-    const mock = generateMockByType(detectedType, name);
-    if (mock) return mock;
-  }
-  
-  // PRIORIDAD 1: Usar semanticDomain si está disponible
-  if (semanticDomain?.primary && semanticDomain.inputPatterns) {
-    const semanticValue = generateInputFromSemanticDomain(semanticDomain, name);
-    if (semanticValue) return semanticValue;
-  }
-  
-  // PRIORIDAD 2: Inferencia por nombre del parámetro
-  if (nameLower.includes('options') || nameLower.includes('config') || nameLower.includes('opts')) {
-    return generateOptionsInput(atom);
-  }
 
-  if (nameLower.includes('operation') || nameLower === 'op') {
-    return generateOperationInput(atom);
-  }
-
-  if (archetype === 'orchestrator' && atom.callGraph?.callsList) {
-    return generateOrchestratorInput(name, atom);
-  }
-
-  if (nameLower.includes('callback') || nameLower.includes('fn') || nameLower.includes('handler')) {
-    return 'vi.fn()';
-  }
-
-  if (nameLower.includes('file') || nameLower.includes('path')) {
-    return '"/test/file.js"';
-  }
-
-  if (nameLower.includes('text') || nameLower.includes('content') || nameLower.includes('string')) {
-    return '"sample text"';
-  }
-  
-  if (nameLower.includes('data') || nameLower.includes('obj')) {
-    return '{ key: "value" }';
-  }
-  
-  if (nameLower.includes('id')) {
-    return '"test-id-123"';
-  }
-  
-  // Por tipo
-  switch (type) {
-    case 'string': return '"sample-string"';
-    case 'number': return '42';
-    case 'boolean': return 'true';
-    case 'array': return '[]';
-    case 'Object': return '{}';
-    case 'Promise': return 'Promise.resolve({})';
-    case 'Function': return 'vi.fn()';
-    default: return '{}';
-  }
+  // Fallback a tipos primitivos
+  return PRIMITIVE_TYPES[type] || '{}';
 }
 
 /**

@@ -9,7 +9,7 @@
 
 Las IAs sufren **visión de túnel**: editan un archivo sin saber qué rompen en el resto del sistema.
 
-OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **21 herramientas MCP** que cualquier IA puede usar antes de tocar código.
+OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **28 herramientas MCP** que cualquier IA puede usar antes de tocar código.
 
 ```
 "Voy a modificar orchestrator.js"
@@ -53,7 +53,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 
 ---
 
-## Las 30 Herramientas MCP
+## Las 28 Herramientas MCP
 
 ### Impacto y Análisis de Cambios
 | Herramienta | Qué hace | Cuándo usar |
@@ -192,28 +192,53 @@ node scripts/detect-broken-imports.js  # Detecta imports rotos
 
 ## Estado del Proyecto
 
-**Versión**: v0.9.59  
-**Estado**: ✅ **Estable — 30 Tools MCP + SQLite Database + Startup 1.5s + Auto Error Notifications**
+**Versión**: v0.9.60  
+**Estado**: ✅ **Estable — 28 Tools MCP + SQLite (Determinístico) + Startup 1.5s + Auto Error Notifications**
+
+### Sistema de Semantic Algebra (Implementado)
+
+OmnySys usa **álgebra determinística sobre grafos** para análisis de código:
+
+| Componente | Implementación |
+|------------|----------------|
+| Storage | SQLite con WAL mode (ACID) |
+| Vectores | 7 scores por átomo (importance, cohesion, coupling, etc.) |
+| Propagation | PageRank-like determinístico |
+| Queries | Mismo input → Mismo output (100% determinístico) |
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ÁTOMO → VECTOR → PROPAGACIÓN → IMPACT ANALYSIS           │
+│                                                             │
+│  importance_score  ← PageRank-like (0-1)                   │
+│  cohesion_score   ← Conexiones internas (0-1)              │
+│  coupling_score   ← Acoplamiento externo (0-1)             │
+│  propagation_score ← Impacto de cambios (0-1)             │
+│  centrality_score ← Hub/Bridge/Leaf classification        │
+└─────────────────────────────────────────────────────────────┘
+```
 
 | Componente | Estado | Cobertura Tests |
 |------------|--------|----------------|
 | Layer A — Análisis Estático | ✅ Funcional | ~40% |
 | Layer B — Análisis Semántico | ✅ Funcional | ~60% |
-| Layer C — MCP Server | ✅ **30 Tools** | ~30% |
-| Layer Graph — Grafo | ✅ **Mejorado** | ~50% |
+| Layer C — MCP Server | ✅ **28 Tools** | ~30% |
+| Layer Graph — Grafo | ✅ **SQLite + Vectores** | ~50% |
 | Core — Infraestructura | ✅ Funcional | ~40% |
-| **SQLite Database** | ✅ **Production** | ~35% |
+| **SQLite Database** | ✅ **Production - Determinístico** | ~35% |
+| **Semantic Algebra** | ✅ **Implementado (v0.9.58+)** | — |
 | **Tests totales** | ✅ **Pasando** | **~4,500+ tests** |
 
-### Novedades v0.9.59
+### Novedades v0.9.60
 
 | Feature | Descripción |
 |---------|-------------|
+| **Semantic Algebra** | 7 vectores por átomo (importance, cohesion, coupling, stability, propagation, fragility, testability) |
+| **Deterministic Queries** | Mismo input → Mismo output (100% determinístico) |
 | **Startup Speed** | 25s → 1.5s (SQLite check optimization) |
 | **Error Notifications** | `_recentErrors` automático en todas las tools |
 | **Health Metrics** | Tests excluded from unhealthy count |
 | **Deleted Files** | Skip shadow creation for already-deleted files |
-| **30 Tools MCP** | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Testing |
 | **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
 | **Bulk Operations** | Inserciones masivas en single-transaction (64% más rápido) |
 | **Atomic Editor** | `atomic_edit` y `atomic_write` con validación sintáctica |

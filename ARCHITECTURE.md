@@ -1,6 +1,6 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.59  
+**Versión**: v0.9.60  
 **Última actualización**: 2026-02-24
 
 ---
@@ -407,15 +407,25 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 
 ---
 
-## Estado de Salud (v0.9.57)
+## Estado de Salud (v0.9.60)
+
+### Sistema de Semantic Algebra ✅ IMPLEMENTADO
+
+| Métrica | Valor |
+|---------|-------|
+| Storage | **SQLite (WAL mode)** |
+| Vectores por átomo | **7 scores** (importance, cohesion, coupling, stability, propagation, fragility, testability) |
+| Graph Algebra | **Centrality, in_degree, out_degree** |
+| Queries | **100% determinístico** |
+| Startup | ~1.5 segundos |
 
 ### Métricas del Sistema
 
 | Métrica | Valor |
 |---------|-------|
 | Archivos analizados | 1,800+ |
-| Átomos extraídos | 12,000+ |
-| Herramientas MCP | 30 |
+| Átomos extraídos | 13,000+ |
+| Herramientas MCP | 28 |
 | Coverage calledBy | 44.7% |
 | Culture coverage | 99.5% |
 | Health Score | 99/100 |
@@ -431,14 +441,15 @@ Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia obs
 | Tiempo de suite | ~25 segundos |
 | Imports rotos (src/) | 0 ✅ |
 
-### Novedades v0.9.57
+### Novedades v0.9.60
 
 | Feature | Descripción |
 |---------|-------------|
-| SQLite Database | Base de datos con WAL mode, mejor performance |
-| 30 MCP Tools | 8 categorías completas |
+| **Semantic Algebra** | 7 vectores determinísticos por átomo: importance, cohesion, coupling, stability, propagation, fragility, testability |
+| **Deterministic Queries** | Mismo input → Mismo output (100% determinístico vía SQLite) |
+| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
+| 28 MCP Tools | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Testing |
 | Bulk Operations | Inserciones masivas single-transaction |
-| Modular SQLite | Adapter dividido en 6 módulos |
 
 ### Issues Conocidos Pendientes
 

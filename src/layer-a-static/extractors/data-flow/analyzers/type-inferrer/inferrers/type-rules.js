@@ -59,6 +59,46 @@ export function initializeTypeRules() {
 }
 
 /**
+ * Tablas de búsqueda para inferencia de tipos
+ */
+const TYPE_RULES = {
+  function: [
+    'callback', 'cb', 'handler', 'onclick', 'listener', 'next'
+  ],
+  object: [
+    'data', 'payload', 'options', 'opts', 'config', 'settings', 'meta', 'context', 'state', 'manager'
+  ],
+  array: [
+    'items', 'list', 'arr', 'results', 'rows'
+  ],
+  string: [
+    'id', 'key', 'token', 'name', 'title', 'text', 'msg', 'message', 'url', 'uri', 'path', 'file', 'code', 'source'
+  ],
+  number: [
+    'count', 'num', 'amount', 'total', 'limit', 'page', 'size', 'price', 'cost', 'rate', 'index', 'idx'
+  ],
+  boolean: [
+    'is', 'has', 'can', 'should', 'enabled', 'active', 'visible', 'flag', 'debug'
+  ],
+  Error: ['error', 'err'],
+  Promise: ['promise'],
+  httpRequest: ['req', 'request'],
+  httpResponse: ['res', 'response']
+};
+
+/**
+ * Verifica si un nombre coincide con alguna palabra clave
+ * @param {string} name - Nombre a verificar
+ * @param {string[]} keywords - Palabras clave
+ * @returns {boolean} True si coincide
+ */
+function matchesKeyword(name, keywords) {
+  return keywords.some(keyword => 
+    name === keyword || name.includes(keyword) || (keyword === 'async' && name.endsWith('async'))
+  );
+}
+
+/**
  * Infiere tipo desde nombre de parámetro
  * @param {string} name - Nombre del parámetro
  * @returns {string} Tipo inferido
@@ -66,46 +106,11 @@ export function initializeTypeRules() {
 export function inferTypeFromParamName(name) {
   const n = (name || '').toLowerCase();
   
-  // HTTP/Express
-  if (n === 'req' || n === 'request') return 'httpRequest';
-  if (n === 'res' || n === 'response') return 'httpResponse';
-  if (n === 'next') return 'function';
-  
-  // Callbacks/Handlers
-  if (n.includes('callback') || n.includes('cb')) return 'function';
-  if (n.includes('handler') || n.includes('handler')) return 'function';
-  if (n.includes('onclick') || n.includes('listener')) return 'function';
-  
-  // Data types
-  if (n.includes('data') || n.includes('payload')) return 'object';
-  if (n.includes('items') || n.includes('list') || n.includes('arr')) return 'array';
-  if (n.includes('results') || n.includes('rows')) return 'array';
-  
-  // Primitivos
-  if (n.includes('id') || n.includes('key') || n.includes('token')) return 'string';
-  if (n.includes('name') || n.includes('title') || n.includes('text') || n.includes('msg') || n.includes('message')) return 'string';
-  if (n.includes('url') || n.includes('uri') || n.includes('path') || n.includes('file')) return 'string';
-  if (n.includes('code') || n.includes('source')) return 'string';
-  
-  if (n.includes('count') || n.includes('num') || n.includes('amount') || n.includes('total') || n.includes('limit') || n.includes('page') || n.includes('size')) return 'number';
-  if (n.includes('price') || n.includes('cost') || n.includes('rate')) return 'number';
-  if (n.includes('index') || n.includes('idx')) return 'number';
-  
-  if (n.includes('is') || n.includes('has') || n.includes('can') || n.includes('should') || n.includes('enabled') || n.includes('active') || n.includes('visible')) return 'boolean';
-  if (n.includes('flag') || n.includes('debug')) return 'boolean';
-  
-  // Config/Options
-  if (n.includes('options') || n.includes('opts') || n.includes('config') || n.includes('settings')) return 'object';
-  if (n.includes('meta') || n.includes('context')) return 'object';
-  
-  // State
-  if (n.includes('state') || n.includes('manager')) return 'object';
-  
-  // Error
-  if (n.includes('error') || n.includes('err')) return 'Error';
-  
-  // Promise/Async
-  if (n.includes('promise') || n.endsWith('async')) return 'Promise';
+  for (const [type, keywords] of Object.entries(TYPE_RULES)) {
+    if (matchesKeyword(n, keywords)) {
+      return type;
+    }
+  }
   
   return 'unknown';
 }

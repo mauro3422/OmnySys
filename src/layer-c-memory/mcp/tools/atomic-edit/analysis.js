@@ -10,6 +10,133 @@ import { findAtomsByName } from './search.js';
 const logger = createLogger('OmnySys:atomic:analysis');
 
 /**
+ * Detecta átomos renombrados
+ */
+function detectRenamedAtoms(removedAtoms, newAtoms) {
+  const renamePairs = [];
+  for (const removed of removedAtoms) {
+    const renamed = newAtoms.find(n => {
+      if (!removed.file || !n.file) return false;
+      const removedFile = path.basename(removed.file);
+      const newFile = path.basename(n.file);
+      return n.line === removed.line &&
+             removedFile === newFile &&
+             n.name !== removed.name;
+    });
+    if (renamed) {
+      renamePairs.push({ old: removed, new: renamed });
+    }
+  }
+  return renamePairs;
+}
+
+/**
+ * Analiza impacto de renombrado
+ */
+function analyzeRenameImpact(pair, allAtoms) {
+  const previousAtom = pair.old;
+  const currentAtom = pair.new;
+  const impact = {
+    name: currentAtom.name,
+    changes: [`Renamed: ${previousAtom.name} -> ${currentAtom.name}`],
+    dependents: [],
+    score: 10,
+    breakingChanges: [{
+      type: 'rename',
+      oldName: previousAtom.name,
+      newName: currentAtom.name,
+      file: currentAtom.file
+    }],
+    affectedFiles: new Set()
+  };
+
+  const dependents = allAtoms.filter(atom =>
+    atom.id !== currentAtom.id &&
+    atom.file !== currentAtom.file &&
+    atom.calls?.some(call =>
+      call.callee === previousAtom.name ||
+      call.callee?.endsWith(`::${previousAtom.name}`)
+    )
+  );
+
+  for (const dep of dependents) {
+    impact.dependents.push({
+      type: 'call',
+      file: dep.file,
+      function: dep.name,
+      severity: 'breaking'
+    });
+    impact.affectedFiles.add(dep.file);
+    impact.score += 5;
+  }
+
+  return impact;
+}
+
+/**
+ * Analiza impacto de cambios de signature
+ */
+function analyzeSignatureImpact(currentAtom, previousAtom, allAtoms) {
+  const impact = {
+    name: currentAtom.name,
+    changes: [],
+    dependents: [],
+    score: 0,
+    breakingChanges: [],
+    affectedFiles: new Set()
+  };
+
+  const prevParams = previousAtom.signature?.params || [];
+  const currParams = currentAtom.signature?.params || [];
+
+  if (prevParams.length !== currParams.length) {
+    impact.changes.push(`Parameters changed: ${prevParams.length} -> ${currParams.length}`);
+    impact.score += 8;
+
+    const callers = allAtoms.filter(atom =>
+      atom.calls?.some(call =>
+        call.callee === currentAtom.name ||
+        call.callee?.endsWith(`::${currentAtom.name}`)
+      )
+    );
+
+    const requiredParams = currParams.filter(p => !p.optional).length;
+
+    for (const caller of callers) {
+      const call = caller.calls?.find(c =>
+        c.callee === currentAtom.name ||
+        c.callee?.endsWith(`::${currentAtom.name}`)
+      );
+
+      if (call && call.argumentCount < requiredParams) {
+        impact.dependents.push({
+          type: 'incompatible-call',
+          file: caller.file,
+          function: caller.name,
+          line: call.line,
+          severity: 'breaking'
+        });
+        impact.affectedFiles.add(caller.file);
+        impact.score += 5;
+      }
+    }
+  }
+
+  return impact;
+}
+
+/**
+ * Determina nivel de impacto basado en score
+ */
+function determineImpactLevel(score) {
+  if (score >= 20) return 'critical';
+  if (score >= 15) return 'high';
+  if (score >= 10) return 'medium';
+  if (score > 0) return 'low';
+  return 'none';
+}
+
+/**
  * Análisis completo de impacto - muestra TODO lo que depende del cambio
  */
 export async function analyzeFullImpact(filePath, projectPath, previousAtoms, currentAtoms, allAtoms) {
@@ -22,128 +149,52 @@ export async function analyzeFullImpact(filePath, projectPath, previousAtoms, cu
     warnings: [],
     dependencyTree: []
   };
-  
+
   const currentIds = new Set(currentAtoms.map(a => a.id));
   const previousIds = new Set(previousAtoms.map(a => a.id));
-  
+
   const removedAtoms = previousAtoms.filter(a => !currentIds.has(a.id));
   const newAtoms = currentAtoms.filter(a => !previousIds.has(a.id));
-  
-  const renamePairs = [];
-  for (const removed of removedAtoms) {
-    const renamed = newAtoms.find(n => {
-      if (!removed.file || !n.file) return false;
-      const removedFile = path.basename(removed.file);
-      const newFile = path.basename(n.file);
-      
-      return n.line === removed.line && 
-             removedFile === newFile &&
-             n.name !== removed.name;
-    });
-    if (renamed) {
-      renamePairs.push({ old: removed, new: renamed });
-    }
-  }
-  
+
+  // Analizar renombrados
+  const renamePairs = detectRenamedAtoms(removedAtoms, newAtoms);
   for (const pair of renamePairs) {
-    const previousAtom = pair.old;
-    const currentAtom = pair.new;
-    
-    const atomImpact = {
-      name: currentAtom.name,
-      changes: [`Renamed: ${previousAtom.name} -> ${currentAtom.name}`],
-      dependents: []
-    };
-    
-    impact.score += 10;
-    impact.breakingChanges.push({
-      type: 'rename',
-      oldName: previousAtom.name,
-      newName: currentAtom.name,
-      file: currentAtom.file
-    });
-    
-    const dependents = allAtoms.filter(atom =>
-      atom.id !== currentAtom.id &&
-      atom.file !== currentAtom.file &&
-      atom.calls?.some(call =>
-        call.callee === previousAtom.name ||
-        call.callee?.endsWith(`::${previousAtom.name}`)
-      )
-    );
-    
-    for (const dep of dependents) {
-      atomImpact.dependents.push({
-        type: 'call',
-        file: dep.file,
-        function: dep.name,
-        severity: 'breaking'
-      });
-      impact.affectedFiles.add(dep.file);
-      impact.score += 5;
+    const atomImpact = analyzeRenameImpact(pair, allAtoms);
+    impact.score += atomImpact.score;
+    impact.breakingChanges.push(...atomImpact.breakingChanges);
+    for (const file of atomImpact.affectedFiles) {
+      impact.affectedFiles.add(file);
     }
-    
     if (atomImpact.dependents.length > 0) {
-      impact.dependencyTree.push(atomImpact);
+      impact.dependencyTree.push({
+        name: atomImpact.name,
+        changes: atomImpact.changes,
+        dependents: atomImpact.dependents
+      });
     }
   }
-  
+
+  // Analizar modificados
   const modifiedAtoms = currentAtoms.filter(a => previousIds.has(a.id));
-  
   for (const currentAtom of modifiedAtoms) {
     const previousAtom = previousAtoms.find(a => a.id === currentAtom.id);
     if (!previousAtom) continue;
-    
-    const atomImpact = {
-      name: currentAtom.name,
-      changes: [],
-      dependents: []
-    };
-    
-    const prevParams = previousAtom.signature?.params || [];
-    const currParams = currentAtom.signature?.params || [];
-    
-    if (prevParams.length !== currParams.length) {
-      atomImpact.changes.push(`Parameters changed: ${prevParams.length} -> ${currParams.length}`);
-      impact.score += 8;
-      
-      const callers = allAtoms.filter(atom =>
-        atom.calls?.some(call =>
-          call.callee === currentAtom.name ||
-          call.callee?.endsWith(`::${currentAtom.name}`)
-        )
-      );
-      
-      for (const caller of callers) {
-        const call = caller.calls?.find(c =>
-          c.callee === currentAtom.name ||
-          c.callee?.endsWith(`::${currentAtom.name}`)
-        );
-        
-        if (call && call.argumentCount < currParams.filter(p => !p.optional).length) {
-          atomImpact.dependents.push({
-            type: 'incompatible-call',
-            file: caller.file,
-            function: caller.name,
-            line: call.line,
-            severity: 'breaking'
-          });
-          impact.affectedFiles.add(caller.file);
-          impact.score += 5;
-        }
-      }
+
+    const atomImpact = analyzeSignatureImpact(currentAtom, previousAtom, allAtoms);
+    impact.score += atomImpact.score;
+    for (const file of atomImpact.affectedFiles) {
+      impact.affectedFiles.add(file);
     }
-    
     if (atomImpact.changes.length > 0 || atomImpact.dependents.length > 0) {
-      impact.dependencyTree.push(atomImpact);
+      impact.dependencyTree.push({
+        name: atomImpact.name,
+        changes: atomImpact.changes,
+        dependents: atomImpact.dependents
+      });
     }
   }
-  
-  if (impact.score >= 20) impact.level = 'critical';
-  else if (impact.score >= 15) impact.level = 'high';
-  else if (impact.score >= 10) impact.level = 'medium';
-  else if (impact.score > 0) impact.level = 'low';
-  
+
+  impact.level = determineImpactLevel(impact.score);
   return impact;
 }
 

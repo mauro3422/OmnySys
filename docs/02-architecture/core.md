@@ -1,19 +1,28 @@
 ﻿# Arquitectura Unificada - OmnySys (Layer A + Orchestrator)
 
-**Ultima actualizacion: 2026-02-14 (v0.9.4))
+**Última actualización: 2026-02-24 (v0.9.60)**
 
-Documento canonico. Define la vision y el contrato del sistema. Si el codigo difiere, este documento marca el destino.
+> **⚠️ Este documento contiene información histórica. Para la documentación más actualizada ver:**
+> - [ARCHITECTURE.md](../../ARCHITECTURE.md) - Arquitectura técnica completa
+> - [DATA_FLOW.md](./DATA_FLOW.md) - Flujo de datos detallado
+> - [semantic-algebra-paper.md](./semantic-algebra-paper.md) - Sistema de álgebra determinística
 
-## Vision
-Resolver la "vision de tunel" cuando una IA edita codigo modular. El sistema construye un mapa de dependencias y conexiones semanticas y lo expone via MCP para que la IA edite con contexto real.
+---
+
+## Visión
+
+Resolver la "vision de túnel" cuando una IA edita código modular. El sistema construye un mapa de dependencias y conexiones semánticas y lo expone vía MCP para que la IA edite con contexto real.
 
 Principios:
-- Local primero. Todo corre offline.
-- Layer A solo estatico. Orchestrator solo LLM.
-- `.omnysysdata/` es la fuente de verdad.
-- Iteraciones controladas hasta convergencia.
+- **Local primero**. Todo corre offline.
+- **Layer A solo estático**. Análisis 100% determinístico.
+- **SQLite es la fuente de verdad** (`.omnysysdata/omnysys.db`).
+- **Zero LLM para extracción** - LLM solo para casos ambiguos (~10%).
+
+---
 
 ## Diagrama (alto nivel)
+
 ```text
 Project Source
    |
@@ -21,21 +30,17 @@ Project Source
 Layer A (Static Analysis)
    |
    +-- Conexiones directas (imports/exports) --> confidence 1.0
-   +-- Conexiones semanticas (localStorage, events, globals) --> confidence 1.0
+   +-- Conexiones semánticas (localStorage, events, globals) --> confidence 1.0
    |
    v
-.omnysysdata/ (index, files, connections, risks)
+SQLite Database (.omnysysdata/omnysys.db)
+   |
+   +-- atoms: 13,000+ átomos con vectores
+   +-- atom_relations: grafo de dependencias
+   +-- system_files: System Map
    |
    v
-Orchestrator (decide que necesita LLM)
-   |
-   +-- Solo archivos con arquetipos detectados (~20% del proyecto)
-   |
-   v
-llmInsights + semantic-issues.json
-   |
-   v
-MCP Server (tools)
+MCP Server (28 tools)
 ```
 
 ---
@@ -44,9 +49,13 @@ MCP Server (tools)
 
 Responsabilidad:
 - Scanner, parser, resolver, grafo.
-- Extractores estaticos y metadatos.
+- Extractores estáticos y metadatos.
 - **Cross-reference entre archivos** para conexiones con confidence 1.0.
 - Detectores y risk scoring.
+
+> **Nota**: A partir de v0.9.58, todos los datos se persisten en SQLite. El archivo `.omnysysdata/omnysys.db` es la fuente de verdad, no los JSONs.
+
+> **Para una visión completa de la arquitectura, ver**: [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)
 
 ### Extraccion de Metadata por Archivo
 

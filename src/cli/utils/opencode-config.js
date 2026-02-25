@@ -1,44 +1,34 @@
 /**
- * @fileoverview OpenCode Configuration
- * 
+ * @fileoverview MCP Client Configuration
+ *
+ * Legacy wrapper retained for compatibility with older CLI code/tests.
+ *
  * @module cli/utils/opencode-config
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import { PORTS } from './port-checker.js';
-
-const OPENCODE_DIR = path.join(os.homedir(), '.config', 'opencode');
-const OPENCODE_CONFIG = path.join(OPENCODE_DIR, 'opencode.json');
+import {
+  standardizeMcpInstallation,
+  getClientConfigPath,
+  getUnifiedConfigPath
+} from './mcp-client-standardizer.js';
 
 /**
- * Setup OpenCode configuration
+ * Setup MCP configuration for all supported clients + workspace defaults.
+ * @returns {Promise<object>} Standardization result
+ */
+export async function setupMcpClients(options = {}) {
+  return standardizeMcpInstallation(options);
+}
+
+/**
+ * Legacy name kept for backward compatibility.
  * @returns {Promise<boolean>} Success
  */
-export async function setupOpenCode() {
+export async function setupOpenCode(options = {}) {
   try {
-    await fs.mkdir(OPENCODE_DIR, { recursive: true });
-    
-    let config = {};
-    try {
-      const content = await fs.readFile(OPENCODE_CONFIG, 'utf-8');
-      config = JSON.parse(content);
-    } catch {
-      // No existing config
-    }
-    
-    if (!config.mcpServers) config.mcpServers = {};
-    
-    config.mcpServers.omnysys = {
-      type: 'http',
-      url: `http://localhost:${PORTS.mcp}`,
-      description: 'OmnySys HTTP MCP Server'
-    };
-    
-    await fs.writeFile(OPENCODE_CONFIG, JSON.stringify(config, null, 2));
-    return true;
-  } catch (e) {
+    const result = await setupMcpClients(options);
+    return result.success;
+  } catch {
     return false;
   }
 }
@@ -48,5 +38,21 @@ export async function setupOpenCode() {
  * @returns {string} Config path
  */
 export function getOpenCodeConfigPath() {
-  return OPENCODE_CONFIG;
+  return getClientConfigPath('opencode');
+}
+
+/**
+ * Get Codex config path
+ * @returns {string} Config path
+ */
+export function getCodexConfigPath() {
+  return getClientConfigPath('codex');
+}
+
+/**
+ * Get unified local config file path.
+ * @returns {string} Config path
+ */
+export function getUnifiedMcpConfigPath(projectPath = process.cwd()) {
+  return getUnifiedConfigPath(projectPath);
 }

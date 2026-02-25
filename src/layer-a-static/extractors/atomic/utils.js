@@ -187,17 +187,34 @@ export function calculateComplexity(path) {
  */
 export function isExported(path) {
   if (!path) return false;
-  
+
+  // Caso 1: Export directo de función
+  // export function foo() {}
   if (path.parent?.type === 'ExportNamedDeclaration' ||
       path.parent?.type === 'ExportDefaultDeclaration') {
     return true;
   }
-  
+
+  // Caso 2: Arrow function o variable exportada
+  // export const foo = () => {}
+  // export const foo = function() {}
   if (path.parent?.type === 'VariableDeclaration' &&
       path.parentPath?.parent?.type === 'ExportNamedDeclaration') {
     return true;
   }
-  
+
+  // Caso 3: Verificar si el abuelo es ExportNamedDeclaration (para arrow functions)
+  // const foo = () => {}  ← path es VariableDeclarator
+  // ExportNamedDeclaration { VariableDeclaration { VariableDeclarator } }
+  if (path.parentPath?.parentPath?.type === 'ExportNamedDeclaration') {
+    return true;
+  }
+
+  // Caso 4: Verificar si el tatarabuelo es ExportNamedDeclaration (caso anidado)
+  if (path.parentPath?.parentPath?.parentPath?.type === 'ExportNamedDeclaration') {
+    return true;
+  }
+
   return false;
 }
 

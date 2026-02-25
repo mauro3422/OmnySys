@@ -21,14 +21,14 @@ export async function setupLogic(options = {}) {
           configPath: getOpenCodeConfigPath()
         }
       };
-    } else {
-      return {
-        success: false,
-        exitCode: 1,
-        configured: false,
-        error: 'Could not configure OpenCode automatically'
-      };
     }
+
+    return {
+      success: false,
+      exitCode: 1,
+      configured: false,
+      error: 'Could not configure OpenCode automatically'
+    };
   } catch (error) {
     return {
       success: false,
@@ -39,16 +39,17 @@ export async function setupLogic(options = {}) {
 }
 
 export async function execute() {
-  log('Configurando OmnySys...', 'loading');
+  log('Configuring OmnySys...', 'loading');
   const result = await setupLogic();
-  
+
   if (result.success) {
-    log('\n✅ Configuración completa', 'success');
-    log('   OpenCode: Configurado');
+    log('\nConfiguration complete', 'success');
+    log('   MCP clients: configured');
     log(`   LLM Port: ${result.config.llmPort}`);
     log(`   MCP Port: ${result.config.mcpPort}`);
-    log(`   Config: ${result.config.configPath}`);
-  } else {
-    log('No se pudo configurar OpenCode automáticamente', 'warning');
+    log(`   OpenCode config: ${result.config.configPath}`);
+    return;
   }
+
+  log('Could not configure MCP clients automatically', 'warning');
 }

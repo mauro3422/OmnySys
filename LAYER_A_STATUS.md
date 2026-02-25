@@ -1,17 +1,22 @@
 # Layer A - Estado Actual y Flujo de Trabajo
 
-**Última actualización:** 2026-02-19  
-**Estado:** ✅ **SISTEMA ESTABLE - 4,366 tests pasando**
+**Última actualización:** 2026-02-24  
+**Estado:** ✅ **SISTEMA ESTABLE - 4,500+ tests pasando + SQLite**
 
 ---
 
-## ✅ Estado Actual
+## ✅ Estado Actual (v0.9.60)
+
+### Sistema
+- **Storage**: SQLite (WAL mode) - Determinístico
+- **Semantic Algebra**: 7 vectores por átomo
+- **Startup**: ~1.5 segundos
 
 ### Tests
-- **Total del proyecto:** 297 archivos, 4,366 tests pasando, 35 skipped
+- **Total del proyecto:** 4,500+ tests pasando
 - **Layer A específicos:** ~2,000+ tests (Parser, Scanner, Graph, Analyses, Extractors)
 - **Integración:** 27 tests import-health + 17 tests smoke ✅
-- **Coverage estimado:** ~45% global, Layer A ~50%+
+- **Coverage estimado:** ~50% global, Layer A ~50%+
 - **Fallos:** 0
 
 ### Fases de Testing Enterprise

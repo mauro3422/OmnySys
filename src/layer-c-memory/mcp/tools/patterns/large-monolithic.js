@@ -138,64 +138,71 @@ export function findLargeMonolithic(atoms) {
 }
 
 /**
+ * Mapeo de palabras clave a operaciones por nombre de función
+ */
+const NAME_TO_OPERATION = [
+  { keywords: ['save', 'write', 'persist'], operation: 'save/persist' },
+  { keywords: ['load', 'read', 'get', 'fetch'], operation: 'read/load' },
+  { keywords: ['parse', 'extract'], operation: 'parse/extract' },
+  { keywords: ['transform', 'convert', 'map'], operation: 'transform/convert' },
+  { keywords: ['validate', 'check'], operation: 'validate/check' },
+  { keywords: ['delete', 'remove'], operation: 'delete/remove' },
+  { keywords: ['create', 'new', 'build'], operation: 'create/build' },
+  { keywords: ['update', 'modify'], operation: 'update/modify' },
+  { keywords: ['search', 'find', 'query'], operation: 'search/query' }
+];
+
+/**
+ * Mapeo de palabras clave a operaciones por llamadas
+ */
+const CALL_TO_OPERATION = [
+  { keywords: ['sql', 'insert', 'update', 'delete'], operation: 'db-operation' },
+  { keywords: ['http', 'fetch', 'request'], operation: 'http-request' },
+  { keywords: ['json', 'parse'], operation: 'json-parse' },
+  { keywords: ['file', 'fs', 'readfile', 'writefile'], operation: 'file-io' }
+];
+
+/**
+ * Verifica si un nombre contiene alguna palabra clave
+ * @param {string} name - Nombre a verificar
+ * @param {string[]} keywords - Palabras clave
+ * @returns {boolean} True si coincide
+ */
+function containsKeyword(name, keywords) {
+  return keywords.some(keyword => name.includes(keyword));
+}
+
+/**
  * Infiere operaciones técnicas de los nombres de funciones
  * @param {string} name - Nombre de la función
  * @param {Array} calls - Funciones que llama
  * @returns {Array} Operaciones inferidas
  */
 function inferOperations(name, calls) {
-  const ops = [];
+  const ops = new Set();
   const lowerName = (name || '').toLowerCase();
-  
-  // Por nombre de función
-  if (lowerName.includes('save') || lowerName.includes('write') || lowerName.includes('persist')) {
-    ops.push('save/persist');
+
+  // Inferir por nombre de función
+  for (const { keywords, operation } of NAME_TO_OPERATION) {
+    if (containsKeyword(lowerName, keywords)) {
+      ops.add(operation);
+    }
   }
-  if (lowerName.includes('load') || lowerName.includes('read') || lowerName.includes('get') || lowerName.includes('fetch')) {
-    ops.push('read/load');
-  }
-  if (lowerName.includes('parse') || lowerName.includes('extract')) {
-    ops.push('parse/extract');
-  }
-  if (lowerName.includes('transform') || lowerName.includes('convert') || lowerName.includes('map')) {
-    ops.push('transform/convert');
-  }
-  if (lowerName.includes('validate') || lowerName.includes('check')) {
-    ops.push('validate/check');
-  }
-  if (lowerName.includes('delete') || lowerName.includes('remove')) {
-    ops.push('delete/remove');
-  }
-  if (lowerName.includes('create') || lowerName.includes('new') || lowerName.includes('build')) {
-    ops.push('create/build');
-  }
-  if (lowerName.includes('update') || lowerName.includes('modify')) {
-    ops.push('update/modify');
-  }
-  if (lowerName.includes('search') || lowerName.includes('find') || lowerName.includes('query')) {
-    ops.push('search/query');
-  }
-  
-  // Por llamadas a funciones (operaciones comunes)
+
+  // Inferir por llamadas a funciones
   if (Array.isArray(calls)) {
     for (const call of calls) {
       const lowerCall = (call || '').toString().toLowerCase();
-      if (lowerCall.includes('sql') || lowerCall.includes('insert') || lowerCall.includes('update') || lowerCall.includes('delete')) {
-        ops.push('db-operation');
-      }
-      if (lowerCall.includes('http') || lowerCall.includes('fetch') || lowerCall.includes('request')) {
-        ops.push('http-request');
-      }
-      if (lowerCall.includes('json') || lowerCall.includes('parse')) {
-        ops.push('json-parse');
-      }
-      if (lowerCall.includes('file') || lowerCall.includes('fs') || lowerCall.includes('readfile') || lowerCall.includes('writefile')) {
-        ops.push('file-io');
+      for (const { keywords, operation } of CALL_TO_OPERATION) {
+        if (containsKeyword(lowerCall, keywords)) {
+          ops.add(operation);
+          break;
+        }
       }
     }
   }
-  
-  return [...new Set(ops)];
+
+  return [...ops];
 }
 
 /**

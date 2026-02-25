@@ -1,5 +1,6 @@
 # OmnySys — Hallazgos del Análisis del Sistema
-> Generado: 2026-02-20 | Estado del análisis: 1746 archivos, 5908 átomos
+
+> Generado: 2026-02-24 | Estado del análisis: v0.9.60 | **Sistema: SQLite Determinístico**
 
 ---
 
@@ -7,15 +8,11 @@
 
 | Métrica | Valor | Estado |
 |---------|-------|--------|
-| Archivos indexados | 1746 / 1746 | ✅ 100% cobertura |
-| Átomos extraídos | 5908 | ✅ |
-| DataFlow coverage | 100% | ✅ |
-| Archetype/DNA/TypeContracts | 88% | ✅ |
-| calledBy poblado | 38.5% | ⚠️ Gap estructural |
-| Culture classification | 86% | ✅ |
-| Semantic connections | 6% | ⚠️ Bajo |
-
-**Health Score global (audit-relationships):** 0/100 (métrica defectuosa — ver §4)
+| Archivos indexados | 1,800+ | ✅ 100% |
+| Átomos extraídos | 13,000+ | ✅ |
+| Storage | **SQLite** | ✅ Determinístico |
+| Semantic Algebra | 7 vectores/átomo | ✅ |
+| Health Score | 99/100 | ✅ |
 
 ---
 

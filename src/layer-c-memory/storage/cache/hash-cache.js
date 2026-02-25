@@ -13,6 +13,34 @@ import { createLogger } from '../../utils/logger.js';
 const logger = createLogger('OmnySys:HashCache');
 
 /**
+ * Normaliza rutas a formato canonico para el hash cache.
+ * - Siempre con slash (/)
+ * - Preferentemente relativa al proyecto
+ */
+export function normalizeHashCachePath(filePath, projectPath) {
+  if (typeof filePath !== 'string' || filePath.length === 0) return '';
+
+  const normalizedProject = String(projectPath || '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+
+  let normalizedPath = filePath
+    .replace(/\\/g, '/')
+    .replace(/^[.]\//, '')
+    .replace(/\/{2,}/g, '/');
+
+  if (normalizedProject && normalizedPath.toLowerCase().startsWith(`${normalizedProject.toLowerCase()}/`)) {
+    normalizedPath = normalizedPath.slice(normalizedProject.length + 1);
+  }
+
+  return normalizedPath.replace(/^[.]\//, '');
+}
+
+function isAbsoluteLikePath(filePath) {
+  return /^[a-zA-Z]:\//.test(filePath) || filePath.startsWith('/');
+}
+
+/**
  * Calcula el hash SHA-256 del contenido de un archivo
  */
 export async function calculateFileHash(filePath) {
@@ -102,17 +130,82 @@ export function saveHashes(projectPath, fileHashes) {
 }
 
 /**
+ * Elimina hashes de archivos del cache
+ */
+export function deleteHashes(projectPath, filePaths) {
+  try {
+    if (!Array.isArray(filePaths) || filePaths.length === 0) return;
+
+    const repo = getRepository(projectPath);
+    const db = repo.db;
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS file_hashes (
+        file_path TEXT PRIMARY KEY,
+        content_hash TEXT NOT NULL,
+        last_updated INTEGER NOT NULL
+      )
+    `);
+
+    const remove = db.prepare('DELETE FROM file_hashes WHERE file_path = ?');
+    const transaction = db.transaction((paths) => {
+      for (const filePath of paths) {
+        remove.run(filePath);
+      }
+    });
+
+    transaction(filePaths);
+    logger.debug(`[HashCache] Removed ${filePaths.length} stale hashes`);
+  } catch (error) {
+    logger.warn(`[HashCache] Failed to delete hashes: ${error.message}`);
+  }
+}
+
+/**
  * Detecta cambios reales comparando hashes
  */
 export async function detectRealChanges(projectPath, currentFiles, verbose = false) {
   const timer = verbose ? Date.now() : 0;
   
-  const storedHashes = getStoredHashes(projectPath);
+  const storedHashesRaw = getStoredHashes(projectPath);
+  const storedHashes = {};
+  const staleStoredKeys = [];
+
+  for (const [storedPath, hash] of Object.entries(storedHashesRaw)) {
+    const normalizedStoredPath = normalizeHashCachePath(storedPath, projectPath);
+    if (!normalizedStoredPath) {
+      staleStoredKeys.push(storedPath);
+      continue;
+    }
+
+    // Entradas absolutas heredadas (o fuera del proyecto) se consideran stale.
+    if (isAbsoluteLikePath(normalizedStoredPath)) {
+      staleStoredKeys.push(storedPath);
+      continue;
+    }
+
+    if (normalizedStoredPath !== storedPath) {
+      // Migrar claves viejas (absolutas, con backslash, etc.) a formato canonico.
+      staleStoredKeys.push(storedPath);
+    }
+
+    if (!storedHashes[normalizedStoredPath]) {
+      storedHashes[normalizedStoredPath] = hash;
+    }
+  }
+
+  const normalizedCurrentFiles = currentFiles
+    .map((filePath) => normalizeHashCachePath(filePath, projectPath))
+    .filter(Boolean);
+
+  const currentFileSet = new Set(normalizedCurrentFiles);
+  const deletedFiles = Object.keys(storedHashes).filter((filePath) => !currentFileSet.has(filePath));
+
   const changes = {
     newFiles: [],
     modifiedFiles: [],
     unchangedFiles: [],
-    deletedFiles: Object.keys(storedHashes).filter(f => !currentFiles.includes(f))
+    deletedFiles
   };
   
   const newHashes = {};
@@ -126,22 +219,35 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
       batch.map(async (filePath) => {
         const currentHash = await calculateFileHash(filePath);
         if (!currentHash) return;
-        
-        newHashes[filePath] = currentHash;
-        
-        if (!storedHashes[filePath]) {
-          changes.newFiles.push(filePath);
-        } else if (storedHashes[filePath] !== currentHash) {
-          changes.modifiedFiles.push(filePath);
+
+        const normalizedPath = normalizeHashCachePath(filePath, projectPath);
+        if (!normalizedPath) return;
+
+        newHashes[normalizedPath] = currentHash;
+
+        if (!storedHashes[normalizedPath]) {
+          changes.newFiles.push(normalizedPath);
+        } else if (storedHashes[normalizedPath] !== currentHash) {
+          changes.modifiedFiles.push(normalizedPath);
         } else {
-          changes.unchangedFiles.push(filePath);
+          changes.unchangedFiles.push(normalizedPath);
         }
       })
     );
   }
-  
+
   // Guardar nuevos hashes
   saveHashes(projectPath, newHashes);
+
+  // Limpiar entradas obsoletas del cache para evitar reindexaciones repetidas.
+  const staleKeysToDelete = [
+    ...staleStoredKeys,
+    ...deletedFiles
+  ];
+
+  if (staleKeysToDelete.length > 0) {
+    deleteHashes(projectPath, [...new Set(staleKeysToDelete)]);
+  }
   
   if (verbose) {
     const duration = Date.now() - timer;

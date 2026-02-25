@@ -6,7 +6,95 @@ Este documento describe la base teórica para un sistema de edición de código 
 
 **Autor**: Mauro (creador de OmnySystem)  
 **Fecha**: Febrero 2026  
-**Estado**: Documento conceptual - Roadmap futuro
+**Estado**: ✅ **IMPLEMENTADO EN PRODUCCIÓN** (v0.9.58+)
+
+> **Nota importante**: Este documento describe la teoría que fundamenta OmnySys. **Las operaciones descritas ya están implementadas** en el sistema SQLite como vectores matemáticos determinísticos. Este no es un roadmap conceptual — es la base técnica del sistema actual.
+
+---
+
+## 0. Implementación Actual: SQLite + Vectores Determinísticos
+
+> **Estado**: ✅ Producción activa (v0.9.58+)
+
+A partir de v0.9.58, el sistema de álgebra semántica está **100% implementado** usando SQLite como storage determinístico. No hay random — cada query produce el mismo resultado.
+
+### Storage SQLite con Vectores
+
+```sql
+-- Tabla atoms con vectores matemáticos (schema.sql)
+atoms (
+    -- Vectores estructurales
+    importance_score REAL DEFAULT 0,    -- PageRank-like (0-1)
+    coupling_score REAL DEFAULT 0,      -- Acoplamiento externo (0-1)
+    cohesion_score REAL DEFAULT 0,      -- Cohesión interna (0-1)
+    stability_score REAL DEFAULT 1,     -- 1 - change_frequency (0-1)
+    propagation_score REAL DEFAULT 0,   -- Impacto de cambios (0-1)
+    fragility_score REAL DEFAULT 0,     -- Probabilidad de romperse (0-1)
+    testability_score REAL DEFAULT 0,   -- Facilidad de testing (0-1)
+    
+    -- Grafos: vectores de Algebra de Grafos
+    in_degree INTEGER DEFAULT 0,       -- Número de callers (entrada)
+    out_degree INTEGER DEFAULT 0,        -- Número de callees (salida)
+    centrality_score REAL DEFAULT 0,    -- centrality = in_degree / (out_degree + 1)
+    centrality_classification TEXT,       -- 'HUB', 'BRIDGE', 'LEAF'
+)
+```
+
+### Operaciones Ya Implementadas
+
+| Operación | Estado | Implementación |
+|-----------|--------|----------------|
+| PageRank propagation | ✅ | `trace_variable_impact.js` |
+| Importancia de nodos | ✅ | `importance_score` en SQLite |
+| Cohesión/Coupling | ✅ | `cohesion_score`, `coupling_score` |
+| Centralidad | ✅ | `centrality_score`, `centrality_classification` |
+| Impact analysis | ✅ | `get_impact_map()` |
+| Call graph | ✅ | `atom_relations` table |
+| Dead code detection | ✅ | `is_dead_code` flag |
+
+### Diferencia: Antes vs Ahora
+
+```
+ANTES (v0.9.57-):
+┌─────────────────────────────────────────┐
+│  JSON files scattered (.omnysysdata/)   │
+│  ├── atoms/*.json                      │
+│  ├── files/*.json                      │
+│  └── system-map-enhanced.json           │
+│                                         │
+│  Problema:                             │
+│  - O(n) para búsquedas                 │
+│  - Inconsistencias entre archivos       │
+│  - Sin atomicidad                       │
+└─────────────────────────────────────────┘
+
+AHORA (v0.9.58+):
+┌─────────────────────────────────────────┐
+│  SQLite + WAL mode (.omnysysdata.db)   │
+│                                         │
+│  ├── 10+ tablas con foreign keys        │
+│  ├── Índices para queries frecuentes   │
+│  ├── Triggers para atomicidad          │
+│  └── Vistas para análisis rápido       │
+│                                         │
+│  Ventajas:                             │
+│  - O(1) para búsquedas por índice      │
+│  - Transacciones ACID                  │
+│  - Determinístico: mismo    → mismo resultado query         │
+│                   │
+└─────────────────────────────────────────┘
+```
+
+### Query de Ejemplo: Encontrar átomos de alto impacto
+
+```sql
+-- Átomos con mayor capacidad de propagación
+SELECT name, file_path, importance_score, propagation_score
+FROM atoms
+WHERE importance_score > 0.5
+ORDER BY propagation_score DESC
+LIMIT 10;
+```
 
 ---
 
@@ -518,21 +606,45 @@ Sistema detecta → Sistema decide → Sistema ejecuta ❌
 
 ## 12. Conclusión
 
-Este documento establece los fundamentos teóricos para un sistema de edición de código basado en operaciones algebraicas sobre grafos. El objetivo es hacer que la edición de código sea:
+Este documento establece los fundamentos teóricos para un sistema de edición de código basado en operaciones algebraicas sobre grafos.
 
-1. **Determinística**: Misma operación, mismo resultado
-2. **Propagable**: Cambios fluyen automáticamente
-3. **Verificable**: Validar antes de ejecutar
-4. **Reversible**: Undo matemático
+### Lo que YA está implementado (v0.9.58+):
 
-La implementación completa requeriría:
-- Capa D (Graph Edit) en OmnySystem
-- Motor de operaciones algebraicas
-- Generador de código desde grafo
-- Sistema de validación y rollback
+| Componente | Estado | Notas |
+|------------|--------|-------|
+| Storage SQLite | ✅ Production | WAL mode, foreign keys, triggers |
+| Vectores de átomos | ✅ Production | 7 scores calculados automáticamente |
+| PageRank propagation | ✅ Production | `trace_variable_impact.js` |
+| Análisis de impacto | ✅ Production | 30 MCP tools |
+| Call graph | ✅ Production | Tabla `atom_relations` |
+| Centralidad | ✅ Production | Hub/bridge/leaf classification |
+
+### Lo que es Roadmap (futuro):
+
+- **Layer D (Graph Edit)**: Operaciones de edición algebraica
+- **Código regeneration**: Regenerar código desde el grafo
+- **Rollback matemático**: Deshacer cambios vía álgebra
+
+### Estado Actual
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OMNYSYS v0.9.60+                                          │
+│  ════════════════════                                       │
+│                                                             │
+│  Layer A: Análisis estático → Átomos + Vectores           │
+│  Layer B: Análisis semántico → Arquetipos + Propósito      │
+│  Layer C: SQLite + MCP Tools → Query determinístico        │
+│                                                             │
+│  ✅ Storage: SQLite (determinístico)                       │
+│  ✅ Vectores: 7 scores por átomo                          │
+│  ✅ Queries: Mismo input → Mismo output                   │
+│  ⏳ Graph Edit: En desarrollo                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 *Documento creado: Febrero 2026*  
 *Última actualización: Febrero 2026*  
-*Estado: Conceptual - Roadmap futuro*
+*Estado*: ✅ **Producción activa - Semantic Algebra implementado**

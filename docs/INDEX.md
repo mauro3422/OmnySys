@@ -1,8 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.59  
+**Versión**: v0.9.60  
 **Última actualización**: 2026-02-24  
-**Estado**: ✅ **SQLite Database + 30 Tools MCP + Startup 1.5s + Auto Error Notifications**
+**Estado**: ✅ **SQLite (Determinístico) + Semantic Algebra + 28 Tools MCP + Startup 1.5s + Auto Error Notifications**
 
 ---
 
@@ -50,6 +50,7 @@ docs/
 | [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) |
 | [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
 | [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ Flujo de Datos**: Layer A → SQLite → MCP Tools |
+| [SYSTEM_ARCHITECTURE.md](02-architecture/SYSTEM_ARCHITECTURE.md) | **⭐ NUEVO - Arquitectura completa con datos reales** |
 | [code-physics.md](02-architecture/code-physics.md) | **⭐ Código como Física**: Entropía, auto-reparación, sociedades de átomos |
 | [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
 | [file-cultures.md](02-architecture/file-cultures.md) | **⭐ Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |

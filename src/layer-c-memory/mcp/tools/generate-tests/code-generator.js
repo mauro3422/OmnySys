@@ -125,23 +125,23 @@ function collectBranchImports(tests) {
 /**
  * Genera los imports necesarios
  */
-function generateImports(atom, useRealFactories, needSandbox, branchImports = new Map()) {
+function generateImports(atom, useRealFactories, needSandbox, branchImports = new Map(), outputPath = 'tests/generated') {
   let code = '';
-  
+
   // Import de vitest
   code += "import { describe, it, expect, vi } from 'vitest';\n";
-  
+
   // Sandbox si es necesario
   if (needSandbox) {
     code += "import { withSandbox } from '#layer-c/test-utils/sandbox.js';\n";
   }
-  
+
   // Imports de factories (si useRealFactories)
   if (useRealFactories && atom) {
     const factoryEntry = resolveFactory(atom.filePath);
     if (factoryEntry) {
       const importPath = resolveFactoryImportPath(factoryEntry.factoryPath, outputPath);
-      
+
       // Extraer nombres de builders únicos (sin 'default' key)
       const builderNames = Object.values(factoryEntry.builders || {})
         .filter(b => b && b.name)
@@ -152,7 +152,7 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
       }
     }
   }
-  
+
   // Imports de constantes necesarias para branch tests (Priority, ChangeType, etc.)
   for (const [source, names] of branchImports.entries()) {
     // Intentar resolver alias primero, sino usar el path tal cual (ya tiene ./ o ../)
@@ -167,12 +167,12 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
   // Import de la función — mapear src/ a alias # para compatibilidad con vitest
   const { importPath, exportName, alternatives } = generateFunctionImport(atom);
   code += `import { ${exportName} } from '${importPath}';\n`;
-  
+
   // Guardar alternativas en el átomo para referencia en generateTestCase
   atom._exportAlternatives = alternatives;
-  
+
   code += `\n`;
-  
+
   return code;
 }
 
@@ -195,7 +195,7 @@ export function generateTestCode(atom, tests, options = {}) {
   let code = '';
 
   // Imports
-  code += generateImports(atom, useRealFactories, needSandbox, branchImports);
+  code += generateImports(atom, useRealFactories, needSandbox, branchImports, outputPath);
 
   // Describe principal
   code += `describe('${atom.name}', () => {\n`;

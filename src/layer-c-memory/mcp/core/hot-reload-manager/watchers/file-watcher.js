@@ -81,7 +81,7 @@ export class FileWatcher {
    * Handles file change events with debouncing
    * @private
    * @param {string} eventType - Type of change
-   * @param {string} filename - Changed file path
+   * @param {string} filename - Changed file path (relative to src/)
    */
   _handleChange(eventType, filename) {
     if (!filename || !filename.endsWith('.js')) {
@@ -91,7 +91,9 @@ export class FileWatcher {
     this._clearDebounce();
 
     this._debounceTimeout = setTimeout(() => {
-      this.onChange(eventType, filename);
+      // Prepend 'src/' to the filename since fs.watch returns paths relative to the watched directory
+      const fullPath = path.join('src', filename);
+      this.onChange(eventType, fullPath);
     }, this.debounceMs);
 
     if (this._debounceTimeout.unref) {

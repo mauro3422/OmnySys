@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "omnysystem": {
+      "command": "node",
+      "args": ["src/layer-c-memory/mcp-server.js"],
+      "cwd": "C:\\Dev\\OmnySystem"
+    }
+  },
+  "$version": 3
+}

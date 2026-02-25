@@ -1,8 +1,9 @@
 # Layer Graph - Sistema de Grafos
 
-**Versión**: 1.0.0  
-**Estado**: Activo  
+**Versión**: 2.0.0  
+**Estado**: ✅ Activo - SQLite + Semantic Algebra  
 **Creado**: 2026-02-18  
+**Última actualización**: 2026-02-24  
 
 ---
 

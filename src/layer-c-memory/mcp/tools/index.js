@@ -69,7 +69,12 @@ export const toolDefinitions = [
     description: 'Returns a complete impact map for a file',
     inputSchema: {
       type: 'object',
-      properties: { filePath: { type: 'string' }, ...PAGINATION_SCHEMA },
+      properties: {
+        filePath: { type: 'string' },
+        autoAnalyzeMissing: { type: 'boolean', default: false, description: 'If true, enqueue on-demand analysis when file is not indexed' },
+        autoAnalyzeTimeoutMs: { type: 'number', default: 60000, description: 'Timeout for on-demand analysis when autoAnalyzeMissing=true' },
+        ...PAGINATION_SCHEMA
+      },
       required: ['filePath']
     }
   },
@@ -147,7 +152,9 @@ export const toolDefinitions = [
       type: 'object',
       properties: {
         filePath: { type: 'string' },
-        symbolName: { type: 'string' }
+        symbolName: { type: 'string' },
+        autoAnalyzeMissing: { type: 'boolean', default: false, description: 'If true, enqueue on-demand analysis when file is not indexed' },
+        autoAnalyzeTimeoutMs: { type: 'number', default: 60000, description: 'Timeout for on-demand analysis when autoAnalyzeMissing=true' }
       },
       required: ['filePath', 'symbolName']
     }

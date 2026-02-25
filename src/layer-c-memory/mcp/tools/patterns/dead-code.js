@@ -1,16 +1,19 @@
 /**
  * @fileoverview dead-code.js
  * Detecta código potencialmente muerto (no usado)
- * 
+ *
  * MEJORADO con Álgebra de Grafos:
  * - graph.centrality: si es muy bajo, más probable dead code
  * - graph.propagationScore: si es 0, no afecta a nadie
  * - graph.riskLevel: si es LOW, más seguro considerarlo dead
  * - Detección de auto-ejecución y ejecución directa
+ *
+ * FIX: Falsos positivos - constructores, métodos de clase, archivos eliminados
  */
 
 import { isTestCallback, isAnalysisScript, isDynamicallyUsed } from '../../core/analysis-checker/utils/script-classifier.js';
 import { getAtomsInFile } from '#layer-c/storage/index.js';
+import { existsSync } from 'fs';
 
 // Mantener funciones locales para backward compatibility
 const localIsTestCallback = isTestCallback;
@@ -92,30 +95,154 @@ async function isDirectlyExecutable(filePath) {
 function shouldSkipAtom(atom) {
   const atomType = atom.type || atom.functionType;
   const name = atom.name || '';
-  
+  const filePath = atom.filePath || '';
+  const archetype = atom.archetype?.type;
+  const purpose = atom.purpose;
+
+  // 1. Tests y scripts de análisis
   if (localIsTestCallback(atom)) return true;
   if (localIsAnalysisScript(atom)) return true;
+
+  // 2. Purpose explícito - USAR EL CAMPO DEL MCP SCHEMA
+  if (purpose && ['ENTRY_POINT', 'TEST_HELPER', 'WORKER_ENTRY', 'API_EXPORT'].includes(purpose)) return true;
+  if (['CLI_ENTRY', 'TEST_CALLBACK', 'SCRIPT_MAIN', 'PRIVATE_HELPER'].includes(purpose)) return true;
   
-  const purpose = atom.purpose;
-  if (purpose?.isDeadCode === false) return true;
-  if (purpose && ['ENTRY_POINT', 'TEST_HELPER', 'WORKER_ENTRY'].includes(purpose.type)) return true;
-  if (atom.isExported) return true;
+  // Purpose con flag isDeadCode explícito
+  if (atom.purpose?.isDeadCode === false) return true;
+
+  // 3. Exportados o llamados directamente - USAR CAMPOS DEL MCP SCHEMA
+  // NOTA: Arrow functions y métodos pueden no tener isExported=true por limitaciones del extractor
+  if (atom.isExported === true) return true;
   if (atom.calledBy?.length > 0) return true;
-  if (['CLI_ENTRY', 'TEST_CALLBACK', 'SCRIPT_MAIN', 'PRIVATE_HELPER'].includes(atom.purpose)) return true;
+
+  // 4. Dinámicamente usados (CLI, etc.)
   if (localIsDynamicallyUsed(atom)) return true;
-  if (atom.name?.startsWith('on') || atom.name?.startsWith('handle')) return true;
-  if (atom.filePath?.includes('coverage/')) return true;
-  
-  if (atomType === 'variable' || 
-      atomType === 'constant' || 
+
+  // 5. Event handlers (on*, handle*)
+  if (name?.startsWith('on') || name?.startsWith('handle')) return true;
+
+  // 6. Archivos de coverage
+  if (filePath?.includes('coverage/')) return true;
+
+  // 7. Constantes y variables (pueden usarse dinámicamente)
+  if (atomType === 'variable' ||
+      atomType === 'constant' ||
       name === name.toUpperCase() ||
       name.startsWith('_') && !name.includes('(') ||
       name.match(/^[A-Z_][A-Z0-9_]*$/)) {
     return true;
   }
-  
+
+  // 8. CONSTRUCTORES - siempre skip, se llaman con 'new'
+  if (name === 'constructor' || atomType === 'class-method') return true;
+
+  // 9. Métodos de clase - pueden llamarse dinámicamente
+  if (atom.className || archetype === 'class-method') return true;
+
+  // 10. Funciones muy cortas (helpers triviales)
   if ((atom.linesOfCode || 0) <= 5) return true;
+
+  // 11. DETECTORES/ESTRATEGIAS - funciones que se pasan como referencias
+  // USAR ARCHETYPE DEL MCP: 'detector', 'strategy', 'validator', etc.
+  if (['detector', 'strategy', 'validator', 'handler', 'middleware', 'normalizer', 'transformer', 'parser', 'formatter'].includes(archetype)) {
+    return true;
+  }
   
+  // Patrones de archivos que contienen callbacks/estrategias
+  const detectorPatterns = [
+    /[/\\]detectors[/\\]/i,
+    /[/\\]strategies[/\\]/i,
+    /[/\\]handlers[/\\]/i,
+    /[/\\]middlewares[/\\]/i,
+    /[/\\]validators[/\\]/i,
+    /[/\\]normalizers[/\\]/i,
+    /[/\\]transformers[/\\]/i,
+    /[/\\]parsers[/\\]/i,
+    /[/\\]formatters[/\\]/i,
+    /[/\\]queries[/\\]/i  // NUEVO: funciones query que se pasan como referencias
+  ];
+  
+  if (detectorPatterns.some(pattern => pattern.test(filePath))) {
+    // Si está en un archivo de detectores/queries y es exportado o tiene nombre de detector/query
+    if (atom.isExported || 
+        name?.startsWith('detect') || 
+        name?.startsWith('validate') || 
+        name?.startsWith('normalize') ||
+        name?.startsWith('get') ||
+        name?.startsWith('select') ||
+        name?.startsWith('filter') ||
+        name?.startsWith('list') ||
+        name?.startsWith('find')) {
+      return true;
+    }
+  }
+
+  // 12. Builder pattern methods (fluent interface) - USAR ARCHETYPE O NOMBRE
+  if (archetype === 'builder' || (name?.startsWith('with') && atom.className)) {
+    return true;
+  }
+
+  // 13. Factory functions - USAR ARCHETYPE DEL MCP
+  if (archetype === 'factory') {
+    return true;
+  }
+
+  // 14. Utility functions con muchos callers (aunque calledBy esté vacío por limitaciones del extractor)
+  if (archetype === 'utility' && atom.complexity > 1) {
+    return true;
+  }
+
+  // 15. ARROW FUNCTIONS en archivos de registry/index que se re-exportan
+  // Estas son tipicamente funciones que se exportan desde el index del módulo
+  if (atomType === 'arrow' && 
+      purpose === 'API_EXPORT' && 
+      filePath.includes('/index.js') === false && // No es el index mismo
+      (filePath.includes('/registry/') || filePath.includes('/detectors/') || filePath.includes('/queries/'))) {
+    return true;
+  }
+
+  // 16. FUNCIONES DETECTORAS - aunque el purpose sea DEAD_CODE por error del extractor
+  // Si están en /detectors/ y empiezan con 'detect', son callbacks que se pasan como referencia
+  if (filePath.includes('/detectors/') && name?.startsWith('detect')) {
+    return true;
+  }
+
+  // 17. FUNCIONES QUERY - aunque el purpose sea DEAD_CODE por error del extractor
+  // Si están en /queries/ y empiezan con 'get', 'select', 'filter', son utilidades
+  if (filePath.includes('/queries/') && 
+      (name?.startsWith('get') || name?.startsWith('select') || name?.startsWith('filter') || name?.startsWith('list'))) {
+    return true;
+  }
+
+  // 18. MÉTODOS DE CLASES DE FASES/ESTRATEGIAS/STEPS - se llaman dinámicamente
+  // Patrones: Phase.execute(), Strategy.reload(), Step.execute(), Extractor.extract()
+  const classMethodPatterns = [
+    { classPattern: /Phase$/, methodNames: ['execute', 'run', 'process'] },
+    { classPattern: /Strategy$/, methodNames: ['execute', 'reload', 'validate', 'run'] },
+    { classPattern: /Step$/, methodNames: ['execute', 'run', 'init'] },
+    { classPattern: /Extractor$/, methodNames: ['extract', 'parse', 'analyze'] },
+    { classPattern: /Builder$/, methodNames: ['build', 'create', 'with'] },
+    { classPattern: /Manager$/, methodNames: ['load', 'save', 'get', 'set'] },
+    { classPattern: /Handler$/, methodNames: ['handle', 'process', 'execute'] },
+    { classPattern: /Validator$/, methodNames: ['validate', 'check'] },
+    { classPattern: /Runner$/, methodNames: ['run', 'execute'] },
+    { classPattern: /Processor$/, methodNames: ['process', 'transform'] }
+  ];
+
+  // Verificar si es método de una clase que sigue estos patrones
+  if (atom.className) {
+    for (const { classPattern, methodNames } of classMethodPatterns) {
+      if (classPattern.test(atom.className) && methodNames.includes(name)) {
+        return true;
+      }
+    }
+  }
+
+  // También verificar por archetype class-method
+  if (archetype === 'class-method' && name !== 'constructor') {
+    return true;
+  }
+
   return false;
 }
 
@@ -190,57 +317,111 @@ function calculateDeadCodeScore(atom) {
 
 /**
  * Encuentra código potencialmente muerto
- * VERSIÓN MEJORADA con Álgebra de Grafos
+ * VERSIÓN MEJORADA con Álgebra de Grafos + FIX falsos positivos
  * @param {Array} atoms - Lista de átomos
  * @param {string} projectPath - Ruta del proyecto (para verificar auto-ejecución)
  * @returns {Array} Código potencialmente muerto
  */
 export async function findDeadCode(atoms, projectPath = null) {
   const dead = [];
-  
+
   const executableCache = new Map();
   const fileUsageCache = new Map();
-  
+  const fileExistenceCache = new Map();
+
   const atomsByFile = new Map();
   for (const atom of atoms) {
+    if (!atom.filePath) continue;
     if (!atomsByFile.has(atom.filePath)) {
       atomsByFile.set(atom.filePath, []);
     }
     atomsByFile.get(atom.filePath).push(atom);
   }
-  
+
+  /**
+   * Verifica si un archivo tiene átomos usados
+   * MEJORADO: Detecta constructores y métodos de clase
+   */
   function isFileUsed(filePath) {
     if (fileUsageCache.has(filePath)) return fileUsageCache.get(filePath);
-    
+
     const fileAtoms = atomsByFile.get(filePath) || [];
-    const hasUsedAtom = fileAtoms.some(a => 
-      (a.calledBy && a.calledBy.length > 0) || 
-      a.isExported === true
-    );
-    fileUsageCache.set(filePath, hasUsedAtom);
-    return hasUsedAtom;
+    
+    for (const atom of fileAtoms) {
+      // Called directly
+      if (atom.calledBy && atom.calledBy.length > 0) {
+        fileUsageCache.set(filePath, true);
+        return true;
+      }
+      
+      // Exported (puede usarse externamente)
+      if (atom.isExported === true) {
+        fileUsageCache.set(filePath, true);
+        return true;
+      }
+      
+      // Constructor - la clase se usa aunque el constructor no tenga calledBy
+      if (atom.name === 'constructor' && atom.isExported) {
+        fileUsageCache.set(filePath, true);
+        return true;
+      }
+      
+      // Class methods - pueden usarse dinámicamente
+      if (atom.className && fileAtoms.some(a => a.name === 'constructor' && a.isExported)) {
+        fileUsageCache.set(filePath, true);
+        return true;
+      }
+    }
+    
+    fileUsageCache.set(filePath, false);
+    return false;
   }
-  
+
+  /**
+   * Verifica si el archivo existe físicamente
+   */
+  function fileExists(filePath) {
+    if (fileExistenceCache.has(filePath)) {
+      return fileExistenceCache.get(filePath);
+    }
+    
+    const fullPath = projectPath 
+      ? `${projectPath}/${filePath}`.replace(/\\/g, '/')
+      : filePath;
+    
+    const exists = existsSync(fullPath);
+    fileExistenceCache.set(filePath, exists);
+    return exists;
+  }
+
   for (const atom of atoms) {
+    // Skip por clasificación
     if (shouldSkipAtom(atom)) continue;
-    
+
+    // FIX: Archivos que no existen más
+    if (atom.filePath && !fileExists(atom.filePath)) {
+      continue;
+    }
+
+    // Skip si el archivo tiene átomos usados
     if (atom.filePath && isFileUsed(atom.filePath)) continue;
-    
+
+    // Verificar auto-ejecución para scripts
     if (projectPath && atom.filePath) {
       const fullPath = `${projectPath}/${atom.filePath}`.replace(/\\/g, '/');
-      
+
       if (!executableCache.has(atom.filePath)) {
         const isAutoExec = await hasAutoExecution(fullPath);
         const isDirectExec = await isDirectlyExecutable(fullPath);
         executableCache.set(atom.filePath, { isAutoExec, isDirectExec });
       }
-      
+
       const { isAutoExec, isDirectExec } = executableCache.get(atom.filePath);
       if (isAutoExec || isDirectExec) continue;
     }
-    
+
     const deadCodeAnalysis = calculateDeadCodeScore(atom);
-    
+
     if (deadCodeAnalysis.score >= 10) {
       dead.push({
         id: atom.id,
@@ -257,6 +438,6 @@ export async function findDeadCode(atoms, projectPath = null) {
       });
     }
   }
-  
+
   return dead.sort((a, b) => (b.deadCodeScore || 0) - (a.deadCodeScore || 0));
 }
