@@ -225,82 +225,102 @@ async function applyClineConfig(filePath, url, clientName) {
 }
 
 async function applyClaudeConfig(url, projectPath) {
-  const targetPath = CONFIG_PATHS.claude;
-  const config = await readJsonSafe(targetPath, {});
+  try {
+    const targetPath = CONFIG_PATHS.claude;
+    const config = await readJsonSafe(targetPath, {});
 
-  const globalServers = ensureMcpServersContainer(config);
-  const existingGlobal = getPrimaryWithLegacyFallback(globalServers);
-  globalServers[SERVER_KEY] = {
-    ...(existingGlobal || {}),
-    type: 'http',
-    url,
-    disabled: false
-  };
-  clearLegacyAliases(globalServers);
+    const globalServers = ensureMcpServersContainer(config);
+    const existingGlobal = getPrimaryWithLegacyFallback(globalServers);
+    globalServers[SERVER_KEY] = {
+      ...(existingGlobal || {}),
+      type: 'http',
+      url,
+      disabled: false
+    };
+    clearLegacyAliases(globalServers);
 
-  if (!config.projects || typeof config.projects !== 'object') {
-    config.projects = {};
+    if (!config.projects || typeof config.projects !== 'object') {
+      config.projects = {};
+    }
+
+    const normalizedProjectPath = normalizeSlashes(projectPath);
+    if (!config.projects[normalizedProjectPath] || typeof config.projects[normalizedProjectPath] !== 'object') {
+      config.projects[normalizedProjectPath] = {};
+    }
+
+    const projectServers = ensureMcpServersContainer(config.projects[normalizedProjectPath]);
+    const existingProject = getPrimaryWithLegacyFallback(projectServers);
+    projectServers[SERVER_KEY] = {
+      ...(existingProject || {}),
+      type: 'http',
+      url,
+      disabled: false
+    };
+    clearLegacyAliases(projectServers);
+
+    await writeJsonNoBom(targetPath, config);
+
+    return {
+      client: 'claude',
+      path: targetPath,
+      applied: true
+    };
+  } catch (error) {
+    console.error('Error applying Claude config:', error);
+    return {
+      client: 'claude',
+      path: CONFIG_PATHS.claude,
+      applied: false,
+      error: error.message
+    };
   }
-
-  const normalizedProjectPath = normalizeSlashes(projectPath);
-  if (!config.projects[normalizedProjectPath] || typeof config.projects[normalizedProjectPath] !== 'object') {
-    config.projects[normalizedProjectPath] = {};
-  }
-
-  const projectServers = ensureMcpServersContainer(config.projects[normalizedProjectPath]);
-  const existingProject = getPrimaryWithLegacyFallback(projectServers);
-  projectServers[SERVER_KEY] = {
-    ...(existingProject || {}),
-    type: 'http',
-    url,
-    disabled: false
-  };
-  clearLegacyAliases(projectServers);
-
-  await writeJsonNoBom(targetPath, config);
-
-  return {
-    client: 'claude',
-    path: targetPath,
-    applied: true
-  };
 }
 
 async function applyOpenCodeConfig(url) {
-  const targetPath = CONFIG_PATHS.opencode;
-  const config = await readJsonSafe(targetPath, {});
+  try {
+    const targetPath = CONFIG_PATHS.opencode;
+    const config = await readJsonSafe(targetPath, {});
 
-  if (!config.mcp || typeof config.mcp !== 'object') {
-    config.mcp = {};
-  }
-
-  const existing = getPrimaryWithLegacyFallback(config.mcp);
-  config.mcp[SERVER_KEY] = {
-    type: 'remote',
-    url,
-    enabled: existing?.enabled !== false,
-    timeout: typeof existing?.timeout === 'number' ? existing.timeout : 30000
-  };
-  clearLegacyAliases(config.mcp);
-
-  // Keep OpenCode config clean and avoid conflicting legacy blocks.
-  if (config.mcpServers && typeof config.mcpServers === 'object') {
-    delete config.mcpServers[SERVER_KEY];
-    for (const legacyKey of LEGACY_SERVER_KEYS) {
-      delete config.mcpServers[legacyKey];
+    if (!config.mcp || typeof config.mcp !== 'object') {
+      config.mcp = {};
     }
-    if (Object.keys(config.mcpServers).length === 0) {
-      delete config.mcpServers;
+
+    const existing = getPrimaryWithLegacyFallback(config.mcp);
+    config.mcp[SERVER_KEY] = {
+      type: 'remote',
+      url,
+      enabled: existing?.enabled !== false,
+      timeout: typeof existing?.timeout === 'number' ? existing.timeout : 30000
+    };
+    clearLegacyAliases(config.mcp);
+
+    // Keep OpenCode config clean and avoid conflicting legacy blocks.
+    if (config.mcpServers && typeof config.mcpServers === 'object') {
+      delete config.mcpServers[SERVER_KEY];
+      for (const legacyKey of LEGACY_SERVER_KEYS) {
+        delete config.mcpServers[legacyKey];
+      }
+      if (Object.keys(config.mcpServers).length === 0) {
+        delete config.mcpServers;
+      }
     }
+
+    await writeJsonNoBom(targetPath, config);
+
+    return {
+      client: 'opencode',
+      path: targetPath,
+      applied: true
+    };
+  } catch (error) {
+    console.error('Error applying OpenCode config:', error);
+    return {
+      client: 'opencode',
+      path: CONFIG_PATHS.opencode,
+      applied: false,
+      error: error.message
+    };
   }
-
-  await writeJsonNoBom(targetPath, config);
-
-  return {
-    client: 'opencode',
-    path: targetPath,
-    applied: true
-  };
 }
 
 async function applyQwenConfig(url, projectPath) {
