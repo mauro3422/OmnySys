@@ -1,10 +1,10 @@
-# Física del Software + Omnisciencia
+# Filosofía de OmnySys - Física del Software + Omnisciencia
 
-**Documento**: philosophy.md  
-**Versión**: v0.9.60  
-**Estado**: ✅ Implementado - Semantic Algebra en Producción  
-**Metáfora**: De cajas con cables a átomos con electrones orbitando  
-**Sistema**: 13,294 átomos, 1,847 archivos, SQLite determinístico
+**Versión**: v0.9.61  
+**Estado**: ✅ **100% Estático, 0% LLM** - Semantic Algebra en Producción  
+**Creado**: 2026-02-18  
+**Última actualización**: 2026-02-25  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
 
 ---
 
@@ -16,31 +16,29 @@ OmnySys no es solo un "analizador de código". Es un **sistema de física del so
 
 **Meta final**: Implementar **Omnisciencia** = conciencia completa del código a través de **Intuición Artificial** — la capacidad de predecir consecuencias y reconocer patrones sin razonamiento explícito.
 
+**IMPORTANTE**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
+
 ---
 
 ## 📊 Estado Actual del Sistema (Medido con MCP)
 
-### Métricas Reales del Sistema
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.60 — Estado del Sistema                     │
+│  OMNYSYS v0.9.61 — Estado del Sistema                     │
 ├─────────────────────────────────────────────────────────────┤
-│  Átomos:         13,294 funciones analizadas              │
-│  Archivos:       1,847                                    │
-│  Storage:        SQLite (WAL mode)                         │
+│  Átomos:         13,485 funciones analizadas              │
+│  Archivos:       1,860                                    │
 │  Health Score:   99/100 (Grade A)                        │
 │  Test Coverage:  79%                                      │
-│  Startup:        ~1.5 segundos                            │
+│  God Functions:  193 (complejidad > 15)                  │
+│  Dead Code:      42 casos (85% menos falsos positivos)   │
+│  Duplicados:     118 exactos, 694 contextuales           │
+│  Debt Arch:      15 archivos críticos                    │
+│  Storage:        SQLite (WAL mode)                        │
+│  MCP Tools:      29 herramientas                          │
+│  LLM Usage:      0% - 100% ESTÁTICO                      │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-### Sociedad de Átomos (Datos Reales)
-- **Hubs** (funciones muy conectadas): 24
-- **Bridges** (conectan módulos): 28
-- **Leaves** (funciones aisladas): 13,256
-- **Chains** (cadenas de llamadas): 15
-- **Clusters** (grupos conectados): 10
-- **Dead code**: 246 funciones
 
 ---
 
@@ -57,12 +55,14 @@ OmnySys no es solo un "analizador de código". Es un **sistema de física del so
    └── cable → 📦 src/utils.js
 ```
 
-**Qué revela**: 
+**Qué revela**:
 - Qué archivos se conectan entre sí
 - Dónde están los "god-objects" (cajas con 20+ cables)
 - Qué archivos son "orphans" (cajas sin cables = código muerto)
 
 **Limitación**: Solo vemos el EXTERIOR de las cajas.
+
+**Método**: AST + regex para imports/exports + cross-reference de metadata semántica.
 
 ---
 
@@ -87,6 +87,8 @@ OmnySys no es solo un "analizador de código". Es un **sistema de física del so
 - La metadata del archivo se DERIVA de sus funciones
 - Si cambia una función, se recalcula todo el archivo
 - Zero duplicación de datos
+
+**Método**: AST parsing + call graph intra-archivo + derivation engine.
 
 ---
 
@@ -115,10 +117,31 @@ OmnySys no es solo un "analizador de código". Es un **sistema de física del so
 **Principio clave**: **Fractal A→B→C**
 ```
 Átomo:   Params → Transform → Return
-Molécula: Inputs → Chains    → Outputs  
+Molécula: Inputs → Chains    → Outputs
 Módulo:  Imports → Internal  → Exports
 Sistema: Entry   → Business  → Side Effects
 ```
+
+**Método**: AST visitor pattern + data flow analysis + graph walking.
+
+---
+
+### v0.9.61 - Dead Code Detection 85% Preciso
+
+**Mejora**: Eliminación masiva de falsos positivos en detección de código muerto.
+
+**Patrones detectados**:
+- ✅ Constructores de clase (se llaman con `new`)
+- ✅ Métodos de clase (se llaman dinámicamente)
+- ✅ Phase/Strategy/Step patterns (`*Phase.execute()`)
+- ✅ Detector/Query functions (`detect*`, `get*`)
+- ✅ Builder pattern methods (`with*`)
+- ✅ Archivos eliminados (verificación con `fileExists()`)
+
+**Resultados**:
+- **Antes**: 273 casos (muchos falsos positivos)
+- **Ahora**: 42 casos (85% menos)
+- **Método**: 100% estático (AST + pattern matching + file system checks)
 
 ---
 
@@ -143,7 +166,9 @@ Sistema: Entry   → Business  → Side Effects
 
 > **Nota importante**: Las constantes y configuraciones NO son átomos. Son **partículas sueltas** (electrones sin átomo). Los archivos que solo contienen estas partículas se clasifican como "Leyes Físicas" - ver [file-cultures.md](../02-architecture/file-cultures.md).
 
-### Jerarquía de Derivación
+---
+
+## Jerarquía de Derivación
 
 ```
                     SISTEMA (Universo)
@@ -225,14 +250,14 @@ ANTES (Tunnel Vision):
 └─────────────────────────────────────┘
 ```
 
-### La Solución: Omnisciencia con Intuición Artificial
+### La Solución: Omnisciencia con MCP Tools
 
 ```
 DESPUÉS (Omnisciencia):
 ┌─────────────────────────────────────┐
 │  User edits: src/auth/login.js       │
 │                                      │
-│  AI sees:                            │
+│  AI sees via MCP:                    │
 │  ├─ Direct dependencies: 12 files   │
 │  ├─ Indirect dependencies: 45 files │
 │  ├─ Call graph: 23 call sites       │
@@ -243,20 +268,20 @@ DESPUÉS (Omnisciencia):
 │  ├─ Risk: CRITICAL - Production API  │
 │  └─ Breaking changes: 3 endpoints    │
 │                                      │
-│  INSTINCTIVE REACTION (<10ms):       │
+│  INSTANT REACTION (<10ms):           │
 │  "This pattern caused issues before" │
 └─────────────────────────────────────┘
 ```
 
 ---
 
-## 🧠 Intuición Artificial
+## 🧠 Intuición Artificial (100% Estática)
 
 ### Qué es la Intuición Artificial
 
-> "The capacity of an artificial system to function similarly to human consciousness, specifically in the capacity known as intuition — knowledge based on pattern recognition without explicit reasoning." - Wikipedia
+> "The capacity of a system to function similarly to human intuition — knowledge based on pattern recognition without explicit reasoning."
 
-### Cómo lo Implementa OmnySys
+### Cómo lo Implementa OmnySys (SIN LLM)
 
 ```
 ┌─────────────────────────────────────────┐
@@ -276,9 +301,11 @@ DESPUÉS (Omnisciencia):
 │  Prefrontal Cortex (Reasoning)          │
 │  ↓ Layer C: Memory & prediction         │
 │     Conscious analysis when needed      │
-│     (LLM for complex cases only)        │
+│     (graph walking, impact analysis)    │
 │                                         │
 └─────────────────────────────────────────┘
+
+NOTA: NINGUNA capa usa LLM. Todo es AST + regex + álgebra de grafos.
 ```
 
 ### Las 3 Tools de Omnisciencia
@@ -303,15 +330,18 @@ DESPUÉS (Omnisciencia):
 │  "¿Qué rompo si cambio mi firma?"       │
 │  → Breaking changes, risk, recommendations│
 └─────────────────────────────────────────┘
+
+Todas estas herramientas son 100% determinísticas.
+Misma entrada → misma salida.
 ```
 
 ---
 
 ## ⚡ Zero LLM: El Determinismo Absoluto
 
-### La Promesa
+### La Promesa Cumplida
 
-OmnySys busca **97-99% de cobertura** con **0% de LLM** para la extracción.
+OmnySys busca **100% de cobertura** con **0% de LLM** para la extracción.
 
 | Capa | Técnica | LLM? |
 |------|---------|------|
@@ -319,54 +349,74 @@ OmnySys busca **97-99% de cobertura** con **0% de LLM** para la extracción.
 | **Molecular** (v0.6) | AST + call graph | ❌ No |
 | **Data Flow** (v0.7) | AST + visitor pattern | ❌ No |
 | **Simulación** (v0.7+) | Graph walking | ❌ No |
-| **Arquetipos** | Rule-based detection | ❌ No (confidence ≥ 0.8) |
+| **Arquetipos** | Rule-based detection | ❌ No |
+| **Dead Code** | Pattern matching + file checks | ❌ No |
+| **File Cultures** | Path + archetype detection | ❌ No |
 
-### Cuándo SÍ Usamos LLM
+**Estado actual**: 0% LLM. Todo el análisis es estático y determinístico.
 
-Solo cuando `confidence < 0.8`:
+### Por qué NO Usamos LLM
+
+1. **No determinístico**: Misma entrada → diferente salida
+2. **Lento**: 2-3 segundos por consulta
+3. **Caro**: Tokens = dinero
+4. **Impredecible**: Puede inventar conexiones
+5. **Innecesario**: AST + regex es suficiente
+
+### Cuándo (NO) Usar LLM
 
 ```javascript
-// Caso 1: Evidencia suficiente → BYPASS
-if (confidence >= 0.8) {
-  return { needsLLM: false };  // Ahorramos 2-3 segundos
+// ANTES (v0.5-v0.8):
+if (confidence < 0.8) {
+  return { needsLLM: true };  // ❌ NO USAR MÁS
 }
 
-// Caso 2: Evidencia parcial → LLM con contexto
-if (confidence >= 0.5) {
+// AHORA (v0.9.61+):
+if (confidence < 0.8) {
   return { 
-    needsLLM: true,
-    context: "Ya detecté: hasNetworkCalls, hasEventEmitters. Verificar: ¿coordina múltiples APIs?"
-  };
+    needsMoreStaticAnalysis: true,
+    suggestion: 'Add more extractors or improve patterns'
+  };  // ✅ MEJORAR ANÁLISIS ESTÁTICO
 }
-
-// Caso 3: Sin evidencia → Full LLM
-return { 
-  needsLLM: true,
-  context: "Análisis completo necesario"
-};
 ```
-
-**Estimación**: Solo ~2-5% de funciones necesitan LLM.
 
 ---
 
-## 🔮 Más Allá del v0.7: Roadmap
+## 🔮 Más Allá del v0.9.61: Roadmap
 
-El fractal puede seguir profundizando:
+### v0.10 - Tree-sitter Migration (Q2 2026)
 
-### v0.8 - Intra-Atómico: Dentro de la Transformación
+**Concepto**: Reemplazar Babel con Tree-sitter para mejor performance y precisión.
+
+**Beneficios**:
+- ✅ Parsing incremental (más rápido)
+- ✅ Mejor manejo de errores de sintaxis
+- ✅ Soporte nativo para más lenguajes (Rust, Go, Python)
+- ✅ AST más rico y preciso
+- ✅ Mejor detección de `isExported` para arrow functions
+
+**Para qué sirve**:
+- Detectar exports que Babel no ve
+- Análisis de tipos TypeScript más preciso
+- Performance mejorado en proyectos grandes (>10k archivos)
+
+**Impacto en MCP Tools**: Las herramientas MCP seguirán funcionando igual, pero con mayor precisión en la detección de patrones y menos falsos positivos.
+
+---
+
+### v0.11 - Intra-Atómico: Dentro de la Transformación
 
 **Concepto**: Dentro de cada transformación, ver los **sub-átomos**:
 
 ```javascript
-// Transformación actual (v0.7)
+// Transformación actual (v0.9.61)
 {
   from: "total",
   to: "finalTotal",
   operation: "arithmetic"
 }
 
-// Intra-atómico (v0.8) - MÁS GRANULAR
+// Intra-atómico (v0.11) - MÁS GRANULAR
 {
   from: "total",
   to: "finalTotal",
@@ -379,14 +429,14 @@ El fractal puede seguir profundizando:
 }
 ```
 
-**Para qué sirve**: 
+**Para qué sirve**:
 - Detectar precision loss en cálculos financieros
 - Optimizar transformaciones innecesarias
 - Validar invariantes matemáticos
 
 ---
 
-### v0.9 - Estado Cuántico: Múltiples Universos
+### v0.12 - Estado Cuántico: Múltiples Universos
 
 **Concepto**: Simular **todos los paths posibles** (if/else, try/catch):
 
@@ -411,7 +461,7 @@ Universe C: order.total=5000 → saveOrder → success
 
 ---
 
-### v0.10 - Campo Unificado: Entrelazamiento
+### v0.13 - Campo Unificado: Entrelazamiento
 
 **Concepto**: Detectar **entrelazamiento cuántico** entre archivos lejanos:
 
@@ -419,7 +469,7 @@ Universe C: order.total=5000 → saveOrder → success
 // Archivo A (frontend)
 const user = await fetchUser(id);
 
-// Archivo B (backend) 
+// Archivo B (backend)
 app.get('/api/user/:id', handler);
 
 // Entrelazamiento detectado:
@@ -446,7 +496,7 @@ app.get('/api/user/:id', handler);
 
 - **Todo es fractal**: El mismo patrón A→B→C se repite en cada nivel
 - **Todo se deriva**: El sistema no duplica datos. Si cambia un electrón, se recalcula todo hacia arriba
-- **Zero LLM**: 97% del análisis es determinístico (AST + reglas). Solo el 3% necesita IA
+- **Zero LLM**: 100% del análisis es determinístico (AST + reglas). CERO uso de IA.
 - **Intuición Artificial**: Pattern recognition sin razonamiento explícito
 
 ---
@@ -455,19 +505,21 @@ app.get('/api/user/:id', handler);
 
 ### Fundamentos
 - [principles.md](./principles.md) - Los 4 Pilares técnicos
-- [Arquitectura de 3 Capas](../architecture/ARCHITECTURE_LAYER_A_B.md) - Implementación
+- [Arquitectura de 3 Capas](../02-architecture/core.md) - Implementación
 
 ### Sistemas Específicos
-- [Data Flow Fractal](../architecture/DATA_FLOW.md) - Extracción de flujo de datos
-- [Sistema de Arquetipos](../architecture/ARCHETYPE_SYSTEM.md) - Catálogo completo
-- [Shadow Registry](../architecture/SHADOW_REGISTRY.md) - Preservación de ADN
+- [Data Flow Fractal](../02-architecture/DATA_FLOW.md) - Extracción de flujo de datos
+- [Sistema de Arquetipos](../02-architecture/archetypes.md) - Catálogo completo
+- [Shadow Registry](../02-architecture/shadow-registry.md) - Preservación de ADN
 
 ### Ideas Futuras
+- [Tree-sitter Migration](../05-roadmap/tree-sitter-migration.md) - Próximo gran cambio
 - [Transformation Contracts](../ideas/TRANSFORMATION_CONTRACTS.md)
 - [Virtual Flow Simulation](../ideas/VIRTUAL_FLOW_SIMULATION.md)
 - [Universal Pattern Engine](../ideas/UNIVERSAL_PATTERN_ENGINE.md)
 
 ---
 
-**OmnySys v0.7.1** - Modelando el software como un sistema físico observable.  
-**Implementando Intuición Artificial para ingeniería de software.**
+**OmnySys v0.9.61** - Modelando el software como un sistema físico observable.  
+**Implementando Intuición Artificial 100% estática para ingeniería de software.**  
+**0% LLM, 100% AST + regex + álgebra de grafos.**

@@ -1,210 +1,358 @@
 # Flujo de Datos - OmnySys
 
-**Versión**: v0.9.60
-**Última actualización**: 2026-02-24
+**Versión**: v0.9.61  
+**Última actualización**: 2026-02-25  
+**Estado**: ✅ SQLite + Bulk Operations + CalledBy Linkage + File Cultures
 
 ---
 
-## Visión General
+## Visión General del Sistema Real
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           FLUJO DE DATOS COMPLETO                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   [Código Fuente]                                                           │
+│   [Código Fuente]                                                            │
 │        │                                                                     │
 │        ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  LAYER A: Análisis Estático (100% determinístico, sin LLM)          │   │
+│   │  INDEXER.JS - Orquestador Principal                                 │   │
 │   │  ───────────────────────────────────────────────────────────────    │   │
-│   │  Scanner → Parser → AtomExtractionPhase → CrossFileLinker           │   │
-│   │                              │                                        │   │
-│   │                              ▼                                        │   │
-│   │                    ┌─────────────────┐                               │   │
-│   │                    │    ÁTOMO        │                               │   │
-│   │                    │ ─────────────── │                               │   │
-│   │                    │ • complexity    │                               │   │
-│   │                    │ • dataFlow      │                               │   │
-│   │                    │ • dna           │                               │   │
-│   │                    │ • archetype     │                               │   │
-│   │                    │ • purpose       │                               │   │
-│   │                    │ • calledBy      │                               │   │
-│   │                    │ • calls         │                               │   │
-│   │                    │ • typeContracts │                               │   │
-│   │                    │ • performance   │                               │   │
-│   │                    │ • temporal      │                               │   │
-│   │                    │ • errorFlow     │                               │   │
-│   │                    └─────────────────┘                               │   │
+│   │  1. Cache init + loadProjectInfo (paralelo)                         │   │
+│   │  2. scanProjectFiles                                                  │   │
+│   │  3. parseFiles                                                        │   │
+│   │  4. extractAndSaveAtoms (AtomExtractionPhase)                        │   │
+│   │  5. buildCalledByLinks (cross-file linkage)                          │   │
+│   │  6. resolveImports + ensureDataDir (paralelo)                        │   │
+│   │  7. normalizePaths                                                    │   │
+│   │  8. buildSystemGraph                                                  │   │
+│   │  9. enrichWithCulture (ZERO LLM)                                      │   │
+│   │  10. generateAnalysisReport + enhanceSystemMap (paralelo)            │   │
+│   │  11. saveEnhancedSystemMap (SQLite bulk)                             │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │        │                                                                     │
 │        ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │  STORAGE: SQLite Database (.omnysysdata/omnysys.db)                 │   │
 │   │  ───────────────────────────────────────────────────────────────    │   │
-│   │  atoms             → Tabla de átomos (funciones, variables)        │   │
-│   │  atom_relations    → Grafo de dependencias entre átomos            │   │
-│   │  files             → Metadatos por archivo                          │   │
-│   │  system_files      → Extensión para System Map                      │   │
-│   │  file_dependencies → Dependencias entre archivos                    │   │
-│   │  semantic_connections → Conexiones semánticas                       │   │
-│   │  risk_assessments  → Evaluación de riesgo por archivo              │   │
-│   │  atom_events       → Event sourcing para audit trail               │   │
+│   │  TABLAS PRINCIPALES:                                                 │   │
+│   │  • atoms → 13,485 funciones con 50+ campos de metadata              │   │
+│   │  • atom_relations → Grafo de llamadas entre átomos                  │   │
+│   │  • files → Metadatos por archivo                                    │   │
+│   │  • system_files → System Map extendido                              │   │
+│   │  • file_dependencies → Dependencias entre archivos                  │   │
+│   │  • semantic_connections → Conexiones semánticas (localStorage, etc) │   │
+│   │  • risk_assessments → Evaluación de riesgo por archivo              │   │
+│   │  • modules → Agrupación lógica                                      │   │
+│   │                                                                      │   │
+│   │  CONFIGURACIÓN OPTIMIZADA:                                           │   │
+│   │  • journal_mode = WAL (Write-Ahead Logging)                         │   │
+│   │  • cache_size = 64MB                                                 │   │
+│   │  • page_size = 4096 bytes                                            │   │
+│   │  • busy_timeout = 5000ms                                             │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │        │                                                                     │
 │        ▼                                                                     │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │  LAYER C: Memory / MCP Server                                        │   │
+│   │  LAYER C: Memory / MCP Server (28-30 tools)                         │   │
 │   │  ───────────────────────────────────────────────────────────────    │   │
-│   │  Query APIs → Derivation Engine → 30 MCP Tools                      │   │
-│   │       │              │                   │                           │   │
-│   │       ▼              ▼                   ▼                           │   │
-│   │   file-api.js   composeMolecular    impact-map.js                   │   │
-│   │   project-api.js  Metadata()        get-call-graph.js               │   │
-│   │   risk-api.js                        get-molecule-summary.js         │   │
-│   │                                      analyze-change.js               │   │
-│   │                                      ... (30 tools)                  │   │
+│   │  Query APIs → Derivation Engine → MCP Tools                         │   │
+│   │                                                                      │   │
+│   │  CATEGORÍAS DE HERRAMIENTAS:                                        │   │
+│   │  • Impacto: get_impact_map, analyze_change, trace_variable_impact   │   │
+│   │  • Código: get_call_graph, get_function_details, get_molecule_summary│  │
+│   │  • Métricas: get_risk_assessment, get_health_metrics, detect_patterns│  │
+│   │  • Sociedad: get_atom_society, get_atom_history, get_removed_atoms  │   │
+│   │  • Sistema: search_files, get_server_status, restart_server         │   │
+│   │  • Editor: atomic_edit, atomic_write                                │   │
+│   │  • Refactoring: suggest_refactoring, validate_imports               │   │
+│   │  • Testing: generate_tests, generate_batch_tests                    │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │        │                                                                     │
 │        ▼                                                                     │
-│   [Claude / OpenCode - IA]                                                   │
+│   [Claude / OpenCode / Qwen - IAs]                                          │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Fase 1: Extracción de Átomos (Layer A)
+## Pipeline Detallado de Indexer.js
 
-### Ubicación
-`src/layer-a-static/pipeline/phases/atom-extraction/`
+### **Paso 1: Inicialización Paralela** (1.5s startup)
 
-### Proceso
-
-```
-Archivo.js
-    │
-    ▼
-┌───────────────────────────────────────────────────────────────┐
-│  AtomExtractionPhase.execute()                                 │
-├───────────────────────────────────────────────────────────────┤
-│                                                                │
-│  1. extractAtoms(fileInfo, code, fileMetadata, filePath)      │
-│     ├─ atom-extractor.js → Extrae funciones                   │
-│     ├─ variable-extractor.js → Extrae constants/variables     │
-│     └─ metadata/*.js → Enriquece cada átomo                   │
-│         ├─ archetype.js → Detecta tipo (hot-path, utility...) │
-│         ├─ purpose.js → Detecta propósito (API, DEAD...)      │
-│         ├─ data-flow-extractor.js → Análisis de flujo         │
-│         └─ dna-extractor.js → Hash estructural                │
-│                                                                │
-│  2. buildCallGraph(atoms)                                      │
-│     └─ call-graph.js → Relaciones intra-archivo               │
-│                                                                │
-│  3. recalculateArchetypes(atoms)                               │
-│     └─ archetype.js → Recalcula con calledBy info             │
-│                                                                │
-└───────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Cross-file Linkage (indexer.js:134-250)                       │
-├───────────────────────────────────────────────────────────────┤
-│                                                                │
-│  1. Recolectar TODOS los átomos del proyecto                  │
-│  2. Construir índices:                                         │
-│     • atomBySimpleName: "info" → [atom1, atom2, ...]          │
-│     • atomByQualifiedName: "Logger.info" → atom               │
-│     • atomByFilePath: "file.js::func" → atom                  │
-│  3. Para cada llamada en cada átomo:                          │
-│     • Buscar átomo target                                      │
-│     • Agregar callerId a target.calledBy                       │
-│  4. Persistir átomos actualizados                             │
-│                                                                │
-│  5. Class Instantiation Tracker                                │
-│     └─ Resuelve new Clase().metodo() → calledBy               │
-│                                                                │
-│  6. Variable Reference Linker (v0.9.18)                       │
-│     └─ Detecta referencias a variables/constants exportadas   │
-│     └─ Usa imports para saber qué buscar                      │
-│     └─ +384 calledBy links agregados                           │
-│                                                                │
-└───────────────────────────────────────────────────────────────┘
+```javascript
+// src/layer-a-static/indexer.js:78-82
+const [cacheManager] = await Promise.all([
+  getCacheManager(absoluteRootPath),
+  loadProjectInfo(absoluteRootPath, verbose)
+]);
 ```
 
-### Metadata Extraída por Átomo
-
-| Campo | Descripción | Coverage |
-|-------|-------------|----------|
-| `id` | Identificador único `file::name` | 100% |
-| `complexity` | Complejidad ciclomática | 100% |
-| `dataFlow` | Grafo de flujo de datos | 100% |
-| `dna` | Hash estructural + fingerprint | 99.7% |
-| `archetype` | Tipo: hot-path, utility, god-function... | 99.7% |
-| `purpose` | API_EXPORT, INTERNAL_HELPER, DEAD_CODE... | 100% |
-| `calledBy` | Array de IDs que llaman a este átomo | 44.7% |
-| `calls` | Array de llamadas que hace | 66.3% |
-| `typeContracts` | Tipos inferidos de params/returns | 99.7% |
-| `performance` | bigO, nestedLoops, heavyCalls | 99.7% |
-| `temporal` | asyncPatterns, timers, events | ~100% |
-| `errorFlow` | catches, throws, propagation | ~100% |
+**Qué hace**:
+- Inicializa cache singleton (evita re-análisis de archivos no cambiados)
+- Carga info del proyecto (package.json, tsconfig, etc.)
+- **Tiempo**: ~200-300ms
 
 ---
 
-## Fase 2: Storage (SQLite)
-
-### Ubicación
-`.omnysysdata/omnysys.db`
-
-### Base de Datos SQLite
-
-OmnySys usa **SQLite** con configuración optimizada para performance:
+### **Paso 2: Escaneo de Archivos**
 
 ```javascript
-// Configuración SQLite (connection.js)
-journal_mode = WAL          // Write-Ahead Logging
-cache_size = 64000          // 64MB cache
-synchronous = NORMAL        // Balance safety/performance
-temp_store = MEMORY         // Temp tables en RAM
-page_size = 4096            // Páginas de 4KB
-foreign_keys = ON           // Integridad referencial
-busy_timeout = 5000         // 5s timeout
+// src/layer-a-static/indexer.js:85
+const { relativeFiles, files } = await scanProjectFiles(absoluteRootPath, verbose);
 ```
 
-### Tablas Principales
+**Qué hace**:
+- Escanea directorio recursivamente
+- Filtra por extensiones (.js, .ts, .jsx, .tsx, .mjs, .cjs)
+- Excluye node_modules, .git, dist, build
+- **Output**: Array de archivos con paths relativos y absolutos
 
-```
-omnysys.db
-├── atoms               # Átomos (funciones, variables)
-│   ├── id              # Identificador único
-│   ├── name            # Nombre del átomo
-│   ├── file_path       # Archivo fuente
-│   ├── type            # function | arrow | variable | constant
-│   ├── complexity      # Complejidad ciclomática
-│   ├── archetype       # Clasificación semántica
-│   ├── purpose         # API_EXPORT, INTERNAL_HELPER, etc.
-│   ├── data_flow       # JSON: flujo de datos
-│   ├── dna             # JSON: hash estructural
-│   ├── calls           # JSON: llamadas que hace
-│   ├── called_by       # JSON: callers
-│   └── ...             # 50+ campos de metadata
-│
-├── atom_relations      # Grafo de dependencias
-│   ├── caller_id       # Átomo que llama
-│   ├── callee_id       # Átomo llamado
-│   ├── call_type       # direct | dynamic | bridge
-│   └── context         # JSON: contexto de la llamada
-│
-├── files               # Metadatos por archivo
-├── system_files        # Extensión para System Map
-├── file_dependencies   # Dependencias entre archivos
-├── semantic_connections # Conexiones semánticas
-├── risk_assessments    # Evaluación de riesgo
-├── atom_events         # Event sourcing
-└── modules             # Agrupación lógica
+---
+
+### **Paso 3: Parseo con Babel**
+
+```javascript
+// src/layer-a-static/indexer.js:91
+const parsedFiles = await parseFiles(files, verbose);
 ```
 
-### Índices para Queries Rápidas
+**Qué extrae**:
+```javascript
+{
+  imports: [],      // ESM, CommonJS, dynamic imports
+  exports: [],      // Named, default, re-exports
+  definitions: [],  // Funciones y clases
+  calls: [],        // Llamadas a funciones
+  functions: [],    // Info detallada (id, name, params, isExported)
+  source: string    // Código fuente (se libera después para ahorrar memoria)
+}
+```
+
+**Configuración Babel**:
+- @babel/parser con plugins para TypeScript, JSX, decorators
+- Tokens: false (ahorra memoria)
+- Comments: true (para JSDoc extraction)
+
+---
+
+### **Paso 4: Extracción de Átomos (AtomExtractionPhase)**
+
+```javascript
+// src/layer-a-static/indexer.js:103-107
+const totalAtomsExtracted = await extractAndSaveAtoms(
+  parsedFiles, absoluteRootPath, verbose
+);
+```
+
+**Sub-pasos**:
+
+1. **AtomExtractionPhase.execute()** por archivo:
+   ```javascript
+   // src/layer-a-static/pipeline/phases/atom-extraction/AtomExtractionPhase.js
+   async execute(context) {
+     const atoms = extractAtoms(context.fileInfo, context.code);
+     buildCallGraph(atoms);  // Intra-file calls
+     recalculateArchetypes(atoms);
+     recalculatePurposes(atoms);
+     context.atoms = atoms;
+   }
+   ```
+
+2. **Enrichment en cascada**:
+   ```javascript
+   // Primero: purpose + archetype
+   const purposeEnriched = atoms.map(atom => enrichAtomPurpose(atom));
+   
+   // Luego: vectores matemáticos
+   const enrichedAtoms = purposeEnriched.map(atom => enrichAtomVectors(atom));
+   ```
+
+3. **Bulk Insert a SQLite**:
+   ```javascript
+   // src/layer-a-static/indexer.js:256-260
+   const repo = getRepository(absoluteRootPath);
+   repo.saveManyBulk(allExtractedAtoms, 500);  // Batch de 500
+   ```
+
+**Metadata extraída por átomo**:
+| Campo | Descripción | Coverage |
+|-------|-------------|----------|
+| `id` | `file::functionName` | 100% |
+| `complexity` | Complejidad ciclomática | 100% |
+| `dataFlow` | Grafo de flujo de datos | 100% |
+| `dna` | Hash estructural + fingerprint | 99.7% |
+| `archetype` | hot-path, utility, god-function... | 99.7% |
+| `purpose` | API_EXPORT, INTERNAL_HELPER, DEAD_CODE... | 100% |
+| `calledBy` | IDs que llaman a este átomo | 44.7% |
+| `calls` | Llamadas que hace | 66.3% |
+| `typeContracts` | Tipos inferidos | 99.7% |
+| `performance` | bigO, nestedLoops, heavyCalls | 99.7% |
+| `temporal` | asyncPatterns, timers, events | ~100% |
+| `errorFlow` | catches, throws, propagation | ~100% |
+| `callerPattern` | Patrón de callers detectado | 100% |
+| `cohesionScore` | Cohesión interna | 100% |
+| `ageDays` | Antigüedad del archivo | 100% |
+
+---
+
+### **Paso 5: Cross-File CalledBy Linkage**
+
+```javascript
+// src/layer-a-static/indexer.js:113
+await buildCalledByLinks(parsedFiles, absoluteRootPath, verbose);
+```
+
+**6 Sub-pasos de linkage**:
+
+1. **Function calledBy** (`linkFunctionCalledBy`):
+   ```javascript
+   // Busca llamadas cross-file por nombre
+   // Ej: fileA.js::import { foo } → fileB.js::export function foo
+   ```
+
+2. **Variable reference calledBy** (`linkVariableCalledBy`):
+   ```javascript
+   // Detecta referencias a variables/constants exportadas
+   // Usa imports para saber qué buscar
+   // +384 calledBy links agregados (v0.9.18)
+   ```
+
+3. **Mixin/namespace imports** (`linkMixinNamespaceCalledBy`):
+   ```javascript
+   // Resuelve import * as Utils y Utils.func()
+   // También this.* en contextos de clase
+   ```
+
+4. **Class instantiation** (`resolveClassInstantiationCalledBy`):
+   ```javascript
+   // Detecta new ClassName() y rastrea métodos
+   // Ej: const obj = new Foo(); obj.bar() → Foo.bar.calledBy++
+   ```
+
+5. **Export object references** (`linkExportObjectReferences`):
+   ```javascript
+   // export const handlers = { func1, func2 }
+   // handlers.func1 → calledBy linkage
+   ```
+
+6. **Caller Pattern Detection** (`enrichWithCallerPattern`):
+   ```javascript
+   // Detecta patrones como:
+   // - direct-caller: llamado directamente
+   // - event-caller: llamado vía evento
+   // - lifecycle-caller: llamado en lifecycle hook
+   ```
+
+**Bulk Update final**:
+```javascript
+// src/layer-a-static/indexer.js:388-395
+const repo = getRepository(absoluteRootPath);
+repo.saveManyBulk(Array.from(modifiedAtoms), 500);
+```
+
+---
+
+### **Paso 6: File Culture Classification** (ZERO LLM)
+
+```javascript
+// src/layer-a-static/indexer.js:149-153
+enrichWithCulture(systemMap);
+```
+
+**Culturas detectadas**:
+
+| Cultura | Descripción | Detector |
+|---------|-------------|----------|
+| **🏛️ Laws** | Configuración, constantes, tipos | `file.includes('/config/') || atom.name === 'CONSTANT'` |
+| **👮 Gatekeepers** | Validadores, auth, middlewares | `archetype === 'validator' || file.includes('/middleware/')` |
+| **👨‍💼 Citizens** | Componentes UI, lógica de negocio | `archetype === 'standard' && hasSideEffects` |
+| **🔍 Auditors** | Tests, análisis, reporting | `file.includes('/test/') || archetype === 'analyzer'` |
+| **🚪 EntryPoints** | CLI, routes, main files | `archetype === 'entry-point' || file.includes('/cli/')` |
+| **📜 Scripts** | Scripts de build, migración | `file.startsWith('scripts/')` |
+
+**Estadísticas típicas**:
+```javascript
+{
+  citizen: 800,      // 43%
+  auditor: 400,      // 22%
+  gatekeeper: 200,   // 11%
+  laws: 150,         // 8%
+  entrypoint: 50,    // 3%
+  script: 100,       // 5%
+  unknown: 150       // 8%
+}
+```
+
+---
+
+### **Paso 7: Análisis de Calidad + Enhanced System Map** (Paralelo)
+
+```javascript
+// src/layer-a-static/indexer.js:163-168
+const [analysisReport, enhancedSystemMap] = await Promise.all([
+  generateAnalysisReport(systemMap, atomsIndex),
+  generateEnhancedSystemMap(absoluteRootPath, parsedFiles, systemMap, verbose, skipLLM)
+]);
+```
+
+**Analysis Report**:
+- God functions detectadas
+- Dead code
+- Duplicados
+- Circular dependencies
+- Risk hotspots
+
+**Enhanced System Map**:
+- Conexiones semánticas (localStorage, events, globals)
+- Risk assessment por archivo
+- LLM insights (si skipLLM=false)
+
+---
+
+### **Paso 8: Guardado a SQLite**
+
+```javascript
+// src/layer-a-static/indexer.js:171
+await saveEnhancedSystemMap(enhancedSystemMap, verbose, absoluteRootPath);
+```
+
+**Qué guarda**:
+1. **atoms** → Todos los átomos enriquecidos
+2. **atom_relations** → Todas las llamadas entre átomos
+3. **files** → Metadatos por archivo
+4. **system_files** → System Map extendido
+5. **file_dependencies** → Dependencias entre archivos
+6. **semantic_connections** → Conexiones semánticas
+7. **risk_assessments** → Evaluación de riesgo
+8. **modules** → Agrupación lógica
+
+**Performance**:
+- Bulk insert de ~13,000 átomos: ~2-3 segundos
+- Relaciones: ~500ms
+- Total save: ~4-5 segundos
+
+---
+
+## SQLite: Configuración y Optimización
+
+### **Configuración** (connection.js)
+
+```javascript
+{
+  journal_mode: 'WAL',        // Write-Ahead Logging
+  cache_size: 64000,          // 64MB cache
+  synchronous: 'NORMAL',      // Balance safety/performance
+  temp_store: 'MEMORY',       // Temp tables en RAM
+  page_size: 4096,            // Páginas de 4KB
+  foreign_keys: 'ON',         // Integridad referencial
+  busy_timeout: 5000          // 5s timeout
+}
+```
+
+### **Índices para Queries Rápidas**
 
 ```sql
 CREATE INDEX idx_atoms_importance ON atoms(importance_score DESC);
@@ -215,31 +363,7 @@ CREATE INDEX idx_relations_caller ON atom_relations(caller_id);
 CREATE INDEX idx_relations_callee ON atom_relations(callee_id);
 ```
 
-### APIs de Storage
-
-```javascript
-// src/layer-c-memory/storage/repository/repository-factory.js
-
-import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
-
-// Obtener repositorio (SQLite por defecto)
-const repo = getRepository();
-
-// Operaciones CRUD
-const atom = repo.getById('src/file.js::functionName');
-repo.save(atom);
-repo.delete(atom.id);
-
-// Queries
-const atoms = repo.query({ filePath: 'src/file.js' });
-const callers = repo.getCallers('src/file.js::functionName');
-
-// Bulk operations
-repo.saveMany(atoms);
-repo.saveRelationsBulk(relations);
-```
-
-### Feature Flags
+### **Feature Flags**
 
 ```bash
 # Usar SQLite (default)
@@ -254,82 +378,7 @@ OMNY_DUAL_WRITE=true
 
 ---
 
-## Fase 3: Query APIs (Layer C)
-
-### Ubicación
-`src/layer-c-memory/query/`
-
-### APIs Disponibles
-
-```
-query/
-├── apis/
-│   ├── file-api.js      → getFileAnalysis, getFileDependents
-│   ├── project-api.js   → getProjectMetadata
-│   ├── risk-api.js      → getRiskAssessment
-│   └── connections-api.js → getAllConnections
-│
-├── queries/
-│   └── file-query/
-│       ├── core/        → getFileAnalysis
-│       ├── dependencies/ → getFileDependents, getFileDependencies
-│       ├── enriched/    → getFileAnalysisWithAtoms
-│       └── atoms/       → getAtomDetails, findAtomsByArchetype
-│
-└── readers/
-    └── json-reader.js   → readJSON, readMultipleJSON
-```
-
-### Derivation Engine
-
-```javascript
-// src/shared/derivation-engine/composer.js
-
-function composeMolecularMetadata(filePath, atoms) {
-  return {
-    id: filePath,
-    type: 'molecule',
-    
-    // Composición desde átomos
-    atomCount: atoms.length,
-    totalComplexity: sum(atoms.map(a => a.complexity)),
-    riskScore: calculateRisk(atoms),
-    
-    // Archetype derivado
-    archetype: deriveArchetype(atoms),
-    
-    // Agregaciones
-    exports: flatten(atoms.map(a => a.isExported ? a.name : [])),
-    hasSideEffects: any(atoms.map(a => a.hasSideEffects)),
-    hasNetworkCalls: any(atoms.map(a => a.hasNetworkCalls)),
-    
-    // IDs de átomos
-    atoms: atoms.map(a => a.id)
-  };
-}
-```
-
----
-
-## Fase 4: MCP Tools
-
-### Ubicación
-`src/layer-c-memory/mcp/tools/`
-
-### Herramientas (30)
-
-| Categoría | Herramientas |
-|-----------|--------------|
-| **Impacto** | `get_impact_map`, `analyze_change`, `trace_variable_impact`, `trace_data_journey`, `explain_connection`, `analyze_signature_change` |
-| **Código** | `get_call_graph`, `explain_value_flow`, `get_function_details`, `get_molecule_summary`, `find_symbol_instances` |
-| **Métricas** | `get_risk_assessment`, `get_health_metrics`, `detect_patterns`, `get_async_analysis`, `detect_race_conditions` |
-| **Sociedad** | `get_atom_society`, `get_atom_history`, `get_removed_atoms` |
-| **Sistema** | `search_files`, `get_server_status`, `restart_server`, `get_atom_schema` |
-| **Editor** | `atomic_edit`, `atomic_write` |
-| **Refactoring** | `suggest_refactoring`, `validate_imports` |
-| **Testing** | `generate_tests`, `generate_batch_tests` |
-
-### Flujo de una Query Típica
+## MCP Tools: Flujo de una Query Típica
 
 ```
 Usuario: "¿Qué pasa si cambio get_impact_map?"
@@ -353,8 +402,8 @@ Usuario: "¿Qué pasa si cambio get_impact_map?"
 │  4. Retornar:                                                  │
 │     {                                                          │
 │       symbol: "get_impact_map",                               │
-│       directDependents: [...],                                │
-│       transitiveDependents: [...],                            │
+│       directDependents: [...],                               │
+│       transitiveDependents: [...],                           │
 │       totalAffected: N,                                        │
 │       riskLevel: "medium"                                     │
 │     }                                                          │
@@ -364,81 +413,76 @@ Usuario: "¿Qué pasa si cambio get_impact_map?"
 
 ---
 
-## Sociedad de Átomos
+## Métricas Reales del Sistema (v0.9.61)
 
-### Concepto
+| Métrica | Valor |
+|---------|-------|
+| **Archivos analizados** | 1,860 |
+| **Átomos extraídos** | 13,485 |
+| **Herramientas MCP** | 28-30 |
+| **Coverage calledBy** | 44.7% |
+| **Culture coverage** | 99.5% |
+| **Health Score** | 99/100 (Grade A) |
+| **Test Coverage** | 79% |
+| **God Functions** | 193 (complejidad > 15) |
+| **Dead Code** | 42 casos (85% menos falsos positivos) |
+| **Duplicados** | 118 exactos, 694 contextuales |
+| **Deuda Arquitectónica** | 15 archivos críticos |
+| **Base de datos** | SQLite (WAL mode) |
+| **Tablas** | 10 |
+| **Índices** | 6+ |
 
-Los átomos no existen aislados. Forman **sociedades** conectadas por:
-- `calls` / `calledBy` - Relaciones de llamada
-- `purpose` - API_EXPORT conecta con INTERNAL_HELPER
-- `archetype` - hot-paths forman pipelines
-- `dna.structuralHash` - Código similar
+---
 
-### Propósitos Detectados
+## Optimizaciones de Memoria
 
-```javascript
-const ATOM_PURPOSES = {
-  API_EXPORT:       '📤 Exportado - API pública',
-  EVENT_HANDLER:    '⚡ Maneja eventos/lifecycle',
-  TEST_HELPER:      '🧪 Función en test',
-  TIMER_ASYNC:      '⏱️ Timer o async pattern',
-  NETWORK_HANDLER:  '🌐 Hace llamadas de red',
-  INTERNAL_HELPER:  '🔧 Helper interno',
-  CONFIG_SETUP:     '⚙️ Configuración',
-  SCRIPT_MAIN:      '🚀 Entry point de script',
-  CLASS_METHOD:     '📦 Método de clase',
-  DEAD_CODE:        '💀 Sin evidencia de uso'
-};
-```
-
-### Cadena de Propósitos
-
-```
-API_EXPORT → INTERNAL_HELPER → INTERNAL_HELPER → EVENT_HANDLER
-     │              │                 │                │
-     ▼              ▼                 ▼                ▼
-[handleRequest] → [validateInput] → [processData] → [logEvent]
-```
-
-### Detección de Sociedades (Propuesto)
+### **Memory Cleanup** (v0.9.61)
 
 ```javascript
-function detectSociety(atoms) {
-  // 1. Cadenas: A → B → C → D
-  const chains = [];
-  for (const atom of atoms.filter(a => a.purpose === 'API_EXPORT')) {
-    chains.push(traceChain(atom));
+// src/layer-a-static/indexer.js:118-125
+for (const parsedFile of Object.values(parsedFiles)) {
+  if (parsedFile.source) {
+    freedMemory += parsedFile.source.length;
+    parsedFile.source = null;  // Liberar fuente después de extraer átomos
   }
-  
-  // 2. Clusters: Funciones mutuamente conectadas
-  const clusters = findClusters(atoms, minConnections = 3);
-  
-  // 3. Hubs: Funciones con > 10 callers
-  const hubs = atoms.filter(a => a.calledBy?.length > 10);
-  
-  return { chains, clusters, hubs };
 }
+// ~50-100MB liberados
+```
+
+### **Bulk Operations**
+
+```javascript
+// En lugar de guardar átomo por átomo:
+await saveAtom(atom);  // ❌ Lento, 13,000 queries
+
+// Se acumulan y guardan en bulk:
+repo.saveManyBulk(allExtractedAtoms, 500);  // ✅ Rápido, 27 batches
 ```
 
 ---
 
-## Métricas del Sistema
+## Próximas Mejías
 
-| Métrica | Valor |
-|---------|-------|
-| Archivos analizados | 1,800+ |
-| Átomos extraídos | 12,000+ |
-| Herramientas MCP | 30 |
-| Coverage calledBy | 44.7% |
-| Culture coverage | 99.5% |
-| Health Score | 99/100 |
-| Base de datos | SQLite (WAL mode) |
-| Tablas | 10 |
+### **Migración a Tree-sitter** (Q2 2026)
+
+**Por qué**:
+- Mejor detección de `isExported` para arrow functions
+- Análisis de tipos TypeScript más preciso
+- Performance mejorado en proyectos grandes
+
+**Beneficios**:
+- Parsing incremental (más rápido)
+- Mejor manejo de errores de sintaxis
+- Soporte nativo para más lenguajes
+- AST más rico y preciso
+
+**Impacto en MCP Tools**: Las herramientas MCP seguirán funcionando igual, pero con mayor precisión en la detección de patrones y menos falsos positivos.
 
 ---
 
 ## Referencias
 
-- [ARCHITECTURE.md](../../ARCHITECTURE.md) - Arquitectura general
-- [code-physics.md](../02-architecture/code-physics.md) - Concepto de sociedad
+- [INDEX.md](./INDEX.md) - Índice de documentación
+- [core.md](./core.md) - Arquitectura unificada
+- [code-physics.md](./code-physics.md) - Física del software
 - [ISSUES_AND_IMPROVEMENTS.md](./ISSUES_AND_IMPROVEMENTS.md) - Issues conocidos

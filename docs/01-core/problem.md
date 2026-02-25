@@ -1,8 +1,10 @@
 # El Problema: Visión de Túnel en IAs
 
 **Fecha**: 2026-02-12  
-**Estado**: Análisis completo  
-**Próximo**: [La Solución (OmnySys)](./philosophy.md)
+**Actualizado**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **Dead Code Detection 85% más preciso + MCP Tools + 0% LLM**  
+**Próximo**: [La Solución (OmnySys)](./philosophy.md)  
+**Futuro**: 🚧 Migración a Tree-sitter (Q2 2026)
 
 ---
 
@@ -11,6 +13,10 @@
 Las IAs que trabajan con código sufren de un problema fundamental: **visión de túnel**. Cuando se enfocan en editar un archivo o función, pierden el contexto del sistema completo, causando bugs colaterales que pueden tomar días en debuggear.
 
 > *"La IA solo ve el archivo que está editando, no los 15 archivos que dependen de él."*
+
+**Solución de OmnySys**: Construir un **mapa de dependencias y conexiones semánticas** 100% estático (AST + regex + álgebra de grafos) y exponerlo vía MCP para que la IA edite con contexto real.
+
+**IMPORTANTE**: OmnySys **NO USA LLM** para el análisis. Todo es determinístico: misma entrada → misma salida.
 
 ---
 
@@ -60,6 +66,8 @@ Las IAs tienen ventanas de contexto limitadas:
 **Problema**: No pueden mantener 50+ archivos en memoria simultáneamente.
 
 **Consecuencia**: Deben elegir qué leer, y eligen basado en lo que "parece" más relevante, ignorando conexiones no obvias.
+
+**Solución de OmnySys**: Pre-construir el contexto completo del proyecto y exponerlo vía MCP tools.
 
 ---
 
@@ -115,6 +123,8 @@ export const ENABLE_ADVANCED_CULLING = true;
 if (ENABLE_ADVANCED_CULLING) { /* usa camera.zoom */ }
 ```
 
+**Solución de OmnySys**: Extractores estáticos (regex) detectan estas conexiones y las exponen con confidence 1.0.
+
 ---
 
 ### 3. El Dilema de Modularidad
@@ -129,6 +139,8 @@ if (ENABLE_ADVANCED_CULLING) { /* usa camera.zoom */ }
 
 **Resultado**: Proyectos bloqueados que no pueden crecer.
 
+**Solución de OmnySys**: Modelo molecular - archivos (moléculas) compuestos de funciones (átomos) con conexiones explícitas.
+
 ---
 
 ## El "Árbol Genealógico" de un Archivo
@@ -141,11 +153,11 @@ interface FileContext {
   path: string;
   exports: Export[];
   imports: Import[];
-  
+
   // Dependencias directas
   dependsOn: string[];  // Archivos que importa
   usedBy: string[];     // Archivos que lo importan
-  
+
   // Conexiones semánticas (INVISIBLES a simple vista)
   localStorage: { key: string, operation: 'read'|'write' }[];
   events: { name: string, role: 'emitter'|'listener' }[];
@@ -153,17 +165,20 @@ interface FileContext {
   workers: { workerPath: string, messages: string[] }[];
   webSockets: { url: string }[];
   apiCalls: { endpoint: string, method: string }[];
-  
+
   // Impacto
   riskScore: number;
   isHotspot: boolean;   // Usado por muchos archivos
   isOrphan: boolean;    // No usado por nadie
-  
+
   // Contexto
   functions: Function[];
   complexity: number;
+  culture: 'laws' | 'gatekeeper' | 'citizen' | 'auditor' | 'entrypoint' | 'script';
 }
 ```
+
+**OmnySys extrae TODO esto automáticamente** con AST + regex, sin LLM.
 
 ---
 
@@ -171,27 +186,29 @@ interface FileContext {
 
 ### ✅ Ya Detectados por OmnySys
 
-| Caso | Ejemplo | Detector |
-|------|---------|----------|
-| **Imports/Exports** | Renombrar exportación rompe importadores | AST + Grafo |
-| **localStorage** | `setItem('token')` ↔ `getItem('auth_token')` | Regex |
-| **Eventos** | `emit('userLogin')` vs `on('userLoggedIn')` | Regex |
-| **Variables Globales** | `window.eventBus` usado en 5 archivos | Tracking |
-| **Web Workers** | Mensajes entre main y worker | postMessage |
-| **WebSocket** | Múltiples archivos conectan al mismo WS | URL tracking |
-| **API Endpoints** | `fetch('/api/users')` en 3 archivos | URL detection |
-| **Dead Code** | Función nunca llamada | Usage analysis |
-| **BroadcastChannel** | Canal `'app_sync'` compartido | Constructor tracking |
+| Caso | Ejemplo | Detector | Confidence |
+|------|---------|----------|------------|
+| **Imports/Exports** | Renombrar exportación rompe importadores | AST + grafo | 1.0 |
+| **localStorage** | `setItem('token')` ↔ `getItem('auth_token')` | Regex cross-ref | 1.0 |
+| **Eventos** | `emit('userLogin')` vs `on('userLoggedIn')` | Regex cross-ref | 1.0 |
+| **Variables Globales** | `window.eventBus` usado en 5 archivos | Tracking | 1.0 |
+| **Web Workers** | Mensajes entre main y worker | postMessage tracking | 1.0 |
+| **WebSocket** | Múltiples archivos conectan al mismo WS | URL tracking | 1.0 |
+| **API Endpoints** | `fetch('/api/users')` en 3 archivos | URL detection | 1.0 |
+| **Dead Code** | Función nunca llamada | Usage analysis | 0.85-1.0 |
+| **BroadcastChannel** | Canal `'app_sync'` compartido | Constructor tracking | 1.0 |
+| **Class Methods** | `new Foo().bar()` llamado dinámicamente | Class instantiation tracker | 0.8-1.0 |
+| **Builder Pattern** | `builder.withX().withY().build()` | Method chaining detection | 0.8-1.0 |
 
 ### 🚧 Pendientes de Alta Prioridad
 
-| Caso | Impacto | Prioridad |
-|------|---------|-----------|
-| **CSS-in-JS** | Theme, styled-components | P0 |
-| **TypeScript Types** | Interfaces, type safety | P0 |
-| **Redux/Context** | Selectores, estado global | P0 |
-| **GraphQL** | Fragments, queries | P1 |
-| **Middleware** | Cadena de procesamiento | P2 |
+| Caso | Impacto | Prioridad | Estado |
+|------|---------|-----------|--------|
+| **CSS-in-JS** | Theme, styled-components | P0 | 🔴 Pendiente |
+| **TypeScript Types** | Interfaces, type safety | P0 | 🔴 Pendiente |
+| **Redux/Context** | Selectores, estado global | P0 | 🟡 Parcial |
+| **GraphQL** | Fragments, queries | P1 | 🔴 Pendiente |
+| **Middleware** | Cadena de procesamiento | P2 | 🟡 Parcial |
 
 ---
 
@@ -214,15 +231,25 @@ interface FileContext {
 - Sin memoria persistente
 - No detectan conexiones semánticas
 
+### ❌ LLM para Análisis
+- **No determinístico**: misma entrada → diferente salida
+- **Lento**: 2-3 segundos por consulta
+- **Caro**: tokens = dinero
+- **Impredecible**: puede inventar conexiones
+- **Innecesario**: AST + regex es suficiente
+
+**OmnySys NO USA LLM** para el análisis. Todo es estático y determinístico.
+
 ---
 
 ## Requisitos para una Solución Real
 
 ### Must-Have
-1. **Velocidad**: Respuesta instantánea
+1. **Velocidad**: Respuesta instantánea (<100ms)
 2. **Precisión**: Conexiones directas + semánticas
 3. **Automatización**: Sin intervención manual
 4. **Integración**: Dentro del workflow de la IA
+5. **Determinismo**: Misma entrada → misma salida
 
 ### Nice-to-Have
 1. Visualización del grafo
@@ -232,19 +259,21 @@ interface FileContext {
 
 ---
 
-## La Solución: Memoria Externa
+## La Solución: Memoria Externa Persistente
 
 OmnySys actúa como **memoria externa persistente** que:
 
-1. **Pre-construye** el contexto completo del proyecto
-2. **Detecta** conexiones estáticas + semánticas
-3. **Inyecta** el contexto relevante cuando la IA va a editar
-4. **Aprende** del historial de cambios
+1. **Pre-construye** el contexto completo del proyecto (100% estático)
+2. **Detecta** conexiones estáticas + semánticas (AST + regex)
+3. **Inyecta** el contexto relevante cuando la IA va a editar (MCP tools)
+4. **Aprende** del historial de cambios (SQLite + event sourcing)
 
 **Arquitectura**:
-- **Layer A**: Análisis estático veloz (determinístico)
-- **Layer B**: IA local encuentra conexiones semánticas
-- **Layer C**: Memoria persistente + exposición MCP
+- **Layer A**: Análisis estático veloz (determinístico, SIN LLM)
+- **Layer B**: Detección semántica (regex + pattern matching, SIN LLM)
+- **Layer C**: Memoria persistente + exposición MCP (SQLite + 29 tools)
+
+**Estado actual**: v0.9.61 - 100% estático, 0% LLM.
 
 ---
 
@@ -258,6 +287,13 @@ OmnySys actúa como **memoria externa persistente** que:
 - Archivos que IA considera vs necesita considerar
 - Proyectos que pueden seguir creciendo
 
+**Resultados actuales (v0.9.61)**:
+- ✅ Dead code detection 85% más preciso (273 → 42 casos)
+- ✅ 13,485 funciones analizadas con 50+ campos de metadata
+- ✅ 29 MCP tools disponibles para IAs
+- ✅ Health score: 99/100 (Grade A)
+- ✅ 0% LLM - 100% determinístico
+
 ---
 
 ## Conclusión
@@ -268,6 +304,8 @@ El problema de visión de túnel no es un "bug" de los modelos, es una **limitac
 
 **OmnySys es esa memoria externa.**
 
+**IMPORTANTE**: OmnySys **NO USA LLM** para el análisis. Todo es estático, determinístico y predecible.
+
 ---
 
 ## Siguiente Paso
@@ -275,3 +313,11 @@ El problema de visión de túnel no es un "bug" de los modelos, es una **limitac
 👉 [La Filosofía de OmnySys](./philosophy.md) - Cómo modelamos el software como sistema físico
 
 👉 [Los 4 Pilares](./principles.md) - Principios fundamentales del diseño
+
+👉 [DATA_FLOW.md](../02-architecture/DATA_FLOW.md) - Flujo de datos detallado
+
+---
+
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ 100% Estático, 0% LLM  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)

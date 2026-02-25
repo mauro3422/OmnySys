@@ -1,8 +1,9 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.60  
-**Última actualización**: 2026-02-24  
-**Estado**: ✅ **SQLite (Determinístico) + Semantic Algebra + 28 Tools MCP + Startup 1.5s + Auto Error Notifications**
+**Versión**: v0.9.61  
+**Última actualización**: 2026-02-25  
+**Estado**: ✅ **Dead Code Detection 85% preciso + 3 archivos refactorizados + MCP Tools**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
 
 ---
 
@@ -16,7 +17,7 @@ docs/
 ├── 04-guides/         🛠️ Guías prácticas
 ├── 04-maintenance/    🔧 Issues y mejoras
 ├── 05-roadmap/        🔮 Roadmap e investigación
-├── 06-reference/      📚 Referencia técnica (esencial)
+├── 06-reference/      📚 Referencia técnica
 └── archive/           🗄️ Archivo histórico
 ```
 
@@ -32,38 +33,59 @@ docs/
 | **01-core/** | [principles.md](01-core/principles.md) | **⭐ Los 4 Pilares** del diseño |
 | **01-core/** | [philosophy.md](01-core/philosophy.md) | **⭐ Física del Software** + Omnisciencia |
 
-### Para Instalar y Usar
+### Para Usar MCP Tools
 
 | Ruta | Documento | Descripción |
 |------|-----------|-------------|
-| **(raíz)** | [INSTALL.md](../INSTALL.md) | Guía de instalación completa |
-| **(raíz)** | [GETTING_STARTED.md](../GETTING_STARTED.md) | Primeros pasos |
-| **04-guides/** | [quickstart.md](04-guides/quickstart.md) | Empezar en 5 minutos |
-| **04-guides/** | [tools.md](04-guides/tools.md) | **30 herramientas MCP** |
+| **(raíz)** | [AGENTS.md](../AGENTS.md) | **⭐ Guía rápida de herramientas MCP** |
+| **04-guides/** | [tools.md](04-guides/tools.md) | **30 herramientas MCP** disponibles |
+| **06-reference/mcp/** | [mcp-tools-detailed.md](06-reference/mcp/mcp-tools-detailed.md) | Referencia detallada |
+
+---
+
+## 📊 Estado Actual del Sistema (Medido con MCP)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OMNYSYS v0.9.61 — Estado del Sistema                     │
+├─────────────────────────────────────────────────────────────┤
+│  Átomos:         13,485 funciones analizadas              │
+│  Archivos:       1,860                                    │
+│  Health Score:   99/100 (Grade A)                        │
+│  Test Coverage:  79%                                      │
+│  God Functions:  193 (complejidad > 15)                  │
+│  Dead Code:      42 casos (85% menos falsos positivos)   │
+│  Duplicados:     118 exactos, 694 contextuales           │
+│  Debt Arch:      15 archivos críticos                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 🏗️ Arquitectura (02-architecture/)
 
+### Documentos Principales
+
+| Documento | Descripción | Estado |
+|-----------|-------------|--------|
+| [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) | ✅ Actualizado |
+| [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ Flujo de Datos**: Layer A → SQLite → MCP Tools | ✅ Actualizado |
+| [SYSTEM_ARCHITECTURE.md](02-architecture/SYSTEM_ARCHITECTURE.md) | **⭐ Arquitectura completa con datos reales** | ✅ Nuevo |
+| [code-physics.md](02-architecture/code-physics.md) | **⭐ Código como Física**: Entropía, auto-reparación | ✅ Actualizado |
+| [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ Datos por Layer**: Qué extrae cada layer | ✅ Actualizado |
+| [file-cultures.md](02-architecture/file-cultures.md) | **⭐ Culturas de Archivos**: Clasificación estática | ✅ Actualizado |
+| [archetypes.md](02-architecture/archetypes.md) | Catálogo de arquetipos + sistema de confianza | ✅ Actualizado |
+
+### Data Flow (docs/02-architecture/data-flow/)
+
 | Documento | Descripción |
 |-----------|-------------|
-| [core.md](02-architecture/core.md) | Arquitectura unificada (Layer A + Orchestrator) |
-| [layer-graph.md](02-architecture/layer-graph.md) | **⭐ NUEVO - Layer Graph**: Sistema de grafos con pesos dinámicos |
-| [DATA_FLOW.md](02-architecture/DATA_FLOW.md) | **⭐ Flujo de Datos**: Layer A → SQLite → MCP Tools |
-| [SYSTEM_ARCHITECTURE.md](02-architecture/SYSTEM_ARCHITECTURE.md) | **⭐ NUEVO - Arquitectura completa con datos reales** |
-| [code-physics.md](02-architecture/code-physics.md) | **⭐ Código como Física**: Entropía, auto-reparación, sociedades de átomos |
-| [data-by-layer.md](02-architecture/data-by-layer.md) | **⭐ Datos por Layer**: Qué extrae cada layer y qué podemos hacer |
-| [file-cultures.md](02-architecture/file-cultures.md) | **⭐ Culturas de Archivos**: Clasificación estática (Aduanero, Leyes, Auditor, Script, Ciudadano) |
-| [context-selection.md](02-architecture/context-selection.md) | Algoritmos de selección de contexto |
-| **data-flow/** | |
-| ├─ [README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |
-| ├─ [concepts.md](02-architecture/data-flow/concepts.md) | Conceptos clave (Cables, Fractal, Zero LLM) |
-| ├─ [atom-extraction.md](02-architecture/data-flow/atom-extraction.md) | Extracción atómica implementada (v2) |
-| └─ [roadmap.md](02-architecture/data-flow/roadmap.md) | Fases 2-5 planificadas |
-| [shadow-registry.md](02-architecture/shadow-registry.md) | ADN + ciclo de vida de código |
-| [archetypes.md](02-architecture/archetypes.md) | Catálogo de arquetipos + sistema de confianza |
+| [README.md](02-architecture/data-flow/README.md) | Índice de Data Flow |
+| [concepts.md](02-architecture/data-flow/concepts.md) | Conceptos clave (Cables, Fractal, Zero LLM) |
+| [atom-extraction.md](02-architecture/data-flow/atom-extraction.md) | Extracción atómica implementada (v2) |
+| [roadmap.md](02-architecture/data-flow/roadmap.md) | Fases 2-5 planificadas |
 
-### 🗄️ Storage (docs/architecture/)
+### Storage
 
 | Documento | Descripción |
 |-----------|-------------|
@@ -117,7 +139,14 @@ docs/
 | [development.md](04-guides/development.md) | Desarrollo y debugging |
 | [ai-setup.md](04-guides/ai-setup.md) | Configurar modelos de IA |
 | [reuse.md](04-guides/reuse.md) | Reusar componentes |
-| [tools.md](04-guides/tools.md) | Referencia de 14 herramientas |
+
+---
+
+## 🔧 Mantenimiento (04-maintenance/)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [ISSUES_AND_IMPROVEMENTS.md](04-maintenance/ISSUES_AND_IMPROVEMENTS.md) | **⭐ Issues conocidos y mejoras propuestas** |
 
 ---
 
@@ -130,9 +159,6 @@ docs/
 | [future-ideas.md](05-roadmap/future-ideas.md) | Ideas futuras y roadmap técnico |
 | [next-steps-detailed.md](05-roadmap/next-steps-detailed.md) | Próximos pasos específicos |
 | [hardware-vision.md](05-roadmap/hardware-vision.md) | OmnySys para hardware |
-| **historical/** | |
-| └─ [gemini-validation-2026-02-08.md](05-roadmap/historical/gemini-validation-2026-02-08.md) | Validación inicial por Gemini |
-| └─ [gemini-initial-feedback-2026-02-08.md](05-roadmap/historical/gemini-initial-feedback-2026-02-08.md) | Primera conversación sobre OmnySys |
 
 ---
 
@@ -140,30 +166,11 @@ docs/
 
 | Documento | Descripción |
 |-----------|-------------|
-| [development/technical-status.md](06-reference/development/technical-status.md) | Estado técnico actual v0.9.4 |
+| [development/technical-status.md](06-reference/development/technical-status.md) | Estado técnico actual |
 | [development/testing-guide.md](06-reference/development/testing-guide.md) | Guía de testing |
-| [development/modular-architecture-guide.md](06-reference/development/modular-architecture-guide.md) | **⭐ Nueva - Guía de arquitectura modular** |
+| [development/modular-architecture-guide.md](06-reference/development/modular-architecture-guide.md) | Guía de arquitectura modular |
 | [mcp/mcp-tools-detailed.md](06-reference/mcp/mcp-tools-detailed.md) | Documentación detallada de tools |
 | [decisions/ADR-001-type-based-prompt-selection.md](06-reference/decisions/ADR-001-type-based-prompt-selection.md) | Decisiones arquitectónicas |
-
----
-
-## 🔧 Mantenimiento (04-maintenance/)
-
-| Documento | Descripción |
-|-----------|-------------|
-| [ISSUES_AND_IMPROVEMENTS.md](04-maintenance/ISSUES_AND_IMPROVEMENTS.md) | **⭐ NUEVO - Issues conocidos y mejoras propuestas** |
-
----
-
-## 📋 Documentos Clave en Raíz
-
-| Documento | Descripción |
-|-----------|-------------|
-| [README.md](../README.md) | Overview del proyecto |
-| [ROADMAP.md](../ROADMAP.md) | Roadmap técnico detallado |
-| [CHANGELOG.md](../CHANGELOG.md) | Historial de cambios |
-| [OMNISCIENCIA.md](../OMNISCIENCIA.md) | Visión de omnisciencia |
 
 ---
 
@@ -178,16 +185,20 @@ Documentos consolidados, auditorías pasadas y material histórico:
 | `shadow-registry-original/` | Documentos originales del shadow registry |
 | `archetypes-original/` | Documentos originales de arquetipos |
 | `06-reference-archived/` | Reportes de análisis, guías técnicas específicas |
-| `consolidated/` | (existente) Documentos ya consolidados |
-| `design/` | (existente) Diseños de fases futuras |
+| `design/` | Diseños de fases futuras |
 
 ---
 
-## 📊 Estadísticas
+## 📈 Métricas de Calidad
 
-- **Documentos activos**: ~45
-- **Documentos archivados**: ~60
-- **Ratio**: 1:1.3 (saludable - más activo que archivado)
+| Métrica | Objetivo | Actual | Estado |
+|---------|----------|--------|--------|
+| **Health Score** | >95/100 | 99/100 | ✅ Excelente |
+| **Test Coverage** | >80% | 79% | 🟡 Casi |
+| **God Functions** | <100 | 193 | 🔴 En progreso |
+| **Dead Code** | 0 | 42 | 🟡 En progreso |
+| **Duplicados** | <50 | 118 exactos | 🔴 En progreso |
+| **Deuda Arquitectónica** | 0 | 15 archivos | 🔴 En progreso |
 
 ---
 
@@ -197,3 +208,30 @@ Documentos consolidados, auditorías pasadas y material histórico:
 2. **Desarrollador**: Ver [04-guides/quickstart.md](04-guides/quickstart.md)
 3. **Investigador**: Explorar [05-roadmap/vision-future.md](05-roadmap/vision-future.md)
 4. **Debugger**: Ver [03-orchestrator/04-troubleshooting.md](03-orchestrator/04-troubleshooting.md)
+
+---
+
+## 🚧 Migración a Tree-sitter (Próximamente)
+
+**Estado**: Planificado para Q2 2026
+
+**Por qué**: El parser actual (Babel) tiene limitaciones en:
+- Detección precisa de `isExported` para arrow functions
+- Análisis de tipos TypeScript
+- Performance en proyectos grandes
+
+**Beneficios de Tree-sitter**:
+- ✅ Parsing incremental (más rápido)
+- ✅ Mejor manejo de errores de sintaxis
+- ✅ Soporte nativo para más lenguajes
+- ✅ AST más rico y preciso
+
+**Impacto en MCP Tools**: Las herramientas MCP seguirán funcionando igual, pero con mayor precisión en la detección de patrones y menos falsos positivos.
+
+---
+
+## 📊 Estadísticas
+
+- **Documentos activos**: ~45
+- **Documentos archivados**: ~60
+- **Ratio**: 1:1.3 (saludable - más activo que archivado)

@@ -1,12 +1,16 @@
 # Los 4 Pilares de OmnySys
 
 **Documento**: principles.md  
-**Versión**: v0.9.4  
-**Estado**: Fundamentos activos - Toda contribución debe seguir estos pilares
+**Versión**: v0.9.61  
+**Estado**: ✅ Fundamentos activos - **100% Estático, 0% LLM**  
+**Última actualización**: 2026-02-25  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
 
 ---
 
-## 🎯 Resumen de los 4 Pilares
+## 🎯 Resumen Ejecutivo
+
+OmnySys se basa en **4 pilares fundamentales** que guían cada decisión de diseño:
 
 ```
 Pilar 1: Box Test
@@ -26,23 +30,25 @@ Pilar 4: Fractal Architecture
     "Apply pillars 1-3 recursively at all scales"
 ```
 
+**IMPORTANTE**: Todos los pilares se implementan con **análisis estático** (AST + regex + álgebra de grafos). **CERO uso de LLM**.
+
 ---
 
 ## Pilar 1: The Box Test (Archetype Validation)
 
 ### Principio
-> *"An archetype must reveal invisible CONNECTIONS between files"*
+> *"Un arquetipo debe revelar CONEXIONES invisibles entre archivos"*
 
 ### El Test
 
 Antes de agregar cualquier arquetipo, pregúntate:
 
-> **"Does this tell me something about how this file CONNECTS with other files?"**
+> **"¿Esto me dice algo sobre cómo este archivo se CONECTA con otros archivos?"**
 
-- ✅ **YES** → Valid archetype candidate
-- ❌ **NO** → Informative metadata, NOT an archetype
+- ✅ **SÍ** → Candidato válido a arquetipo
+- ❌ **NO** → Metadata informativa, NO un arquetipo
 
-### Ejemplos
+### Ejemplos Reales (v0.9.61)
 
 **✅ Arquetipos Válidos (Pasan Box Test)**:
 
@@ -84,45 +90,45 @@ complexity > 100
 | LLM desperdicia tokens en "este archivo usa TypeScript" | Cada uno revela ACOPLAMIENTO arquitectónico REAL |
 | Usuario abrumado con patrones irrelevantes | Usuario ve SOLO patrones que importan para refactoring |
 
+**NOTA**: No usamos LLM. Los arquetipos se detectan con reglas estáticas (AST + regex).
+
 ---
 
 ## Pilar 2: Metadata Insights Verification
 
 ### Principio
-> *"Every new metadata extractor must be verified against existing metadata to discover emergent patterns"*
+> *"Cada nuevo extractor de metadata debe ser verificado contra metadata existente para descubrir patrones emergentes"*
 
 ### El Proceso de Verificación
 
-**Al agregar un nuevo extractor** (ej: `foo-extractor.js`):
+**Al agregar un nuevo extractor** (ej: `temporal-patterns.js`):
 
 **1. Documentar nuevos campos**:
 ```javascript
-// foo-extractor.js produce:
-- hasFoo: boolean
-- fooItems: array
-- fooComplexity: number
+// temporal-patterns.js produce:
+- hasLifecycleHooks: boolean
+- hasCleanupPatterns: boolean
+- temporalComplexity: number
 ```
 
 **2. Cross-referenciar con TODA la metadata existente**:
 ```javascript
 // Matrix check:
-hasFoo + hasNetworkCalls → ?
-hasFoo + hasLifecycleHooks → ?
-hasFoo + definesGlobalState → ?
-hasFoo + gitHotspotScore → ?
+hasLifecycleHooks + hasNetworkCalls → ?
+hasLifecycleHooks + hasEventListeners → ?
+hasLifecycleHooks + definesGlobalState → ?
 // ... para TODOS los 57+ campos de metadata
 ```
 
 **3. Identificar patrones emergentes**:
 ```javascript
 // Ejemplo de descubrimiento:
-hasFoo + hasNetworkCalls + eventEmitters
-= "foo-network-coordinator" pattern!
+hasLifecycleHooks + hasEventListeners + !hasCleanupPatterns
+= "memory-leak-risk" pattern!
 
 // Por qué importa:
-// Archivos haciendo network calls con foo + emitiendo eventos
-// están coordinando operaciones async entre componentes
-// → Alto riesgo de race conditions
+// Event listeners sin cleanup en lifecycle hooks
+// → Alto riesgo de memory leaks
 ```
 
 **4. Validar con Box Test**:
@@ -161,31 +167,16 @@ hasLifecycleHooks + hasNetworkCalls + hasEventEmitters
 
 **Sin verificación**: Perderíamos estos 3 patrones, solo descubiertos por LLM (caro) o peor, nunca (bugs en producción).
 
-**Con verificación**: Patrones encontrados inmediatamente, agregados al registry (detección gratis), uso de LLM reducido 15-20%.
-
-### La Insight Matrix
-
-Mantener una matriz de combinaciones de metadata:
-
-```
-                | hasNetwork | hasEvents | definesState | hasLifecycle | gitHotspot
-----------------|------------|-----------|--------------|--------------|------------
-hasSideEffects  | network-hub| event-hub | state-mgr    | lifecycle-io | hotspot-io
-hasComplexity   | api-heavy  | event-ord | complex-state| lifecycle-cmplx | critical-bottleneck
-hasErrorHandling| resilient  | event-err | state-err    | lifecycle-err| battle-tested
-hasCleanup      | -          | safe-evt  | safe-state   | safe-lifecycle| -
-```
-
-Cada celda es un **patrón potencial** para investigar.
+**Con verificación**: Patrones encontrados inmediatamente, agregados al registry (detección gratis), 0% uso de LLM.
 
 ---
 
 ## Pilar 3: Atomic Composition (Molecular Architecture)
 
 ### Principio
-> *"Files (molecules) have NO metadata of their own - they are COMPOSED from the metadata of their functions (atoms)"*
+> *"Los archivos (moléculas) NO tienen metadata propia - se COMPONE de la metadata de sus funciones (átomos)"*
 
-### El Modelo Molecular (v0.6+)
+### El Modelo Molecular (v0.9.61)
 
 ```javascript
 // SSOT: Single Source of Truth at Function Level
@@ -195,7 +186,7 @@ Cada celda es un **patrón potencial** para investigar.
       "id": "src/api.js::fetchUser",
       "type": "atom",
       "parentMolecule": "src/api.js",
-      
+
       // Atomic metadata (SSOT)
       "line": 15,
       "complexity": 35,
@@ -204,7 +195,7 @@ Cada celda es un **patrón potencial** para investigar.
       "hasErrorHandling": false,
       "calls": ["validateToken"],
       "calledBy": ["UserCard.jsx::loadUser", "ProfilePage.jsx::init"],
-      
+
       // Atomic archetype (detected statically)
       "archetype": {
         "type": "fragile-network",
@@ -213,13 +204,13 @@ Cada celda es un **patrón potencial** para investigar.
       }
     }
   },
-  
+
   "molecules": {
     "src/api.js": {
       "id": "src/api.js",
       "type": "molecule",
       "atoms": ["src/api.js::fetchUser", "src/api.js::validateToken"],
-      
+
       // DERIVED (not stored - calculated from atoms):
       // "hasNetworkCalls": OR(atoms.hasNetworkCalls)
       // "totalComplexity": SUM(atoms.complexity)
@@ -240,8 +231,8 @@ export const DerivationRules = {
   // Regla 1: Arquetipo molecular inferido de átomos
   moleculeArchetype: (atoms) => {
     const atomArchetypes = atoms.map(a => a.archetype?.type);
-    
-    if (atomArchetypes.includes('fragile-network') && 
+
+    if (atomArchetypes.includes('fragile-network') &&
         atoms.filter(a => a.hasNetworkCalls).length >= 2) {
       return { type: 'network-hub', severity: 8 };
     }
@@ -250,12 +241,12 @@ export const DerivationRules = {
     }
     // ... más reglas
   },
-  
+
   // Regla 2: Complejidad molecular = suma de átomos
   moleculeComplexity: (atoms) => {
     return atoms.reduce((sum, atom) => sum + (atom.complexity || 0), 0);
   },
-  
+
   // Regla 3: Riesgo molecular = máximo riesgo atómico
   moleculeRisk: (atoms) => {
     return Math.max(...atoms.map(a => a.archetype?.severity || 0));
@@ -274,138 +265,84 @@ export const DerivationRules = {
 
 ### Arquetipos Atómicos (detectados 100% estáticamente)
 
-- `god-function`: complexity > 20 && lines > 100
+- `god-function`: complexity > 20 && linesOfCode > 100
 - `fragile-network`: fetch/axios sin try/catch
 - `hot-path`: exported && calledBy.length > 5
 - `dead-function`: !exported && calledBy.length === 0
 - `utility`: !hasSideEffects && complexity < 5
+
+**Todos detectados con AST + regex, SIN LLM.**
 
 ---
 
 ## Pilar 4: Fractal Architecture (Recursive A→B→C)
 
 ### Principio
-> *"The A→B→C pattern repeats at every scale of the system"*
+> *"El patrón A→B→C se repite en cada escala del sistema"*
 
 ### El Patrón Recursivo
 
 La misma arquitectura de tres capas aplica a funciones, archivos, módulos y sistemas:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    SCALE 1: FUNCTIONS (Atoms)                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Layer A (Static): Parse functions, extract calls, calculate complexity │
-│       ↓                                                                 │
-│  Layer B (Detection): Atomic archetypes (god-function, dead-code)       │
-│       ↓                                                                 │
-│  Layer C (Decision): Need LLM? Only if metadata insufficient            │
-│           → 98% bypass, 2% LLM                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    SCALE 1: FUNCTIONS (Atoms)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Parse functions, extract calls, complexity   │
+│       ↓                                                         │
+│  Layer B (Detection): Atomic archetypes (100% estático)         │
+│       ↓                                                         │
+│  Layer C (Decision): Need more analysis? Add extractors         │
+│           → 100% bypass, 0% LLM                                 │
+└─────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼ DERIVES
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    SCALE 2: FILES (Molecules)                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Layer A (Static): Compose atoms → exports, imports, connections        │
-│       ↓                                                                 │
-│  Layer B (Detection): Molecular archetypes (network-hub, god-object)    │
-│       ↓                                                                 │
-│  Layer C (Decision): Need LLM? Only if metadata insufficient            │
-│           → 90% bypass, 10% LLM                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    SCALE 2: FILES (Molecules)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Compose atoms → exports, imports, conns      │
+│       ↓                                                         │
+│  Layer B (Detection): Molecular archetypes (100% estático)      │
+│       ↓                                                         │
+│  Layer C (Decision): Need more analysis? Add extractors         │
+│           → 100% bypass, 0% LLM                                 │
+└─────────────────────────────────────────────────────────────────┘
                                     │
-                                    ▼ DERIVES  
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    SCALE 3: MODULES/CLUSTERS                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Layer A (Static): Graph of files → clusters, cycles, APIs              │
-│       ↓                                                                 │
-│  Layer B (Detection): Architecture patterns (monolith, microservices)   │
-│       ↓                                                                 │
-│  Layer C (Decision): Need LLM? Only if patterns ambiguous               │
-│           → 95% bypass, 5% LLM                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+                                    ▼ DERIVES
+┌─────────────────────────────────────────────────────────────────┐
+│                    SCALE 3: MODULES/CLUSTERS                    │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer A (Static): Graph of files → clusters, cycles, APIs      │
+│       ↓                                                         │
+│  Layer B (Detection): Architecture patterns (100% estático)     │
+│       ↓                                                         │
+│  Layer C (Decision): Need more analysis? Add extractors         │
+│           → 100% bypass, 0% LLM                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Confidence-Based Bypass en Cada Nivel
-
-Cada nivel implementa la misma lógica de decisión:
+### Decision Function (100% Estática)
 
 ```javascript
 // Universal decision function (works at any scale)
 function shouldUseLLM(entity, metadata, confidenceThreshold = 0.8) {
-  // Layer A: ¿Tenemos suficiente metadata?
-  if (!metadata || metadata.quality < confidenceThreshold) {
-    return { needsLLM: true, reason: 'insufficient_metadata' };
-  }
+  // NOTA: Esta función es HISTÓRICA.
+  // En v0.9.61+, NUNCA usamos LLM.
+  // Si hay incertidumbre, agregamos más extractores estáticos.
   
-  // Layer B: ¿Podemos determinar el patrón con confianza?
-  const { confidence, evidence } = calculateConfidence(metadata);
-  
-  if (confidence >= confidenceThreshold) {
-    return { 
-      needsLLM: false, 
-      reason: 'sufficient_evidence',
-      confidence,
-      evidence
-    };
-  }
-  
-  // Layer C: Necesitamos análisis más profundo
-  return { 
-    needsLLM: true, 
-    reason: 'low_confidence',
-    confidence,
-    evidence
+  return {
+    needsLLM: false,
+    reason: 'LLM deprecated since v0.9.61',
+    suggestion: 'Add more static extractors or improve patterns'
   };
 }
-```
-
-### Ejemplo: Cálculo de Confianza
-
-```javascript
-// Para arquetipo god-object a nivel archivo
-const calculateConfidence = (metadata) => {
-  let confidence = 0;
-  const evidence = [];
-  
-  // Evidencia de exports
-  if (metadata.exportCount > 15) {
-    confidence += 0.3;
-    evidence.push(`exports:${metadata.exportCount}`);
-  }
-  
-  // Evidencia de dependencias
-  const totalDeps = (metadata.dependentCount || 0) + 
-                    (metadata.semanticDependentCount || 0);
-  if (totalDeps > 20) {
-    confidence += 0.3;
-    evidence.push(`dependents:${totalDeps}`);
-  }
-  
-  // Evidencia de composición atómica
-  const hasGodFunction = metadata.atoms?.some(
-    a => a.archetype?.type === 'god-function'
-  );
-  if (hasGodFunction) {
-    confidence += 0.4;
-    evidence.push('has-god-function');
-  }
-  
-  return { confidence, evidence };
-};
-
-// Decisión:
-// confidence >= 0.8 → Bypass LLM (estamos seguros es god-object)
-// confidence < 0.8 → Usar LLM (necesitamos verificar)
 ```
 
 ### Beneficios del Diseño Fractal
 
 | Aspecto | Antes (Single Scale) | Después (Fractal) |
 |---------|---------------------|---------------------|
-| LLM Usage | 30% de archivos | 10% de archivos |
+| LLM Usage | 30% de archivos | 0% - DEPRECATED |
 | Precisión | File-level | Function-level |
 | Cache Invalidation | Archivo completo | Función individual |
 | Pattern Detection | 11 arquetipos | 11 + 7 atómicos = 18 |
@@ -437,11 +374,13 @@ Pilar 4: Fractal Architecture
 
 ### Evolución por Versión
 
-| Versión | Pilares | Innovación Clave | LLM Bypass |
-|---------|---------|------------------|------------|
-| v0.5.0 | 1-2 | Box Test + Metadata Insights | 70% |
-| v0.5.4 | 1-2 | 8 nuevos extractores, 57 campos metadata | 85% |
-| v0.6.0 | 1-4 | Molecular architecture + Fractal A→B→C | 90% |
+| Versión | Pilares | Innovación Clave | LLM Usage |
+|---------|---------|------------------|-----------|
+| v0.5.0 | 1-2 | Box Test + Metadata Insights | 30% |
+| v0.5.4 | 1-2 | 8 nuevos extractores, 57 campos metadata | 15% |
+| v0.6.0 | 1-4 | Molecular architecture + Fractal A→B→C | 10% |
+| v0.9.0 | 1-4 | SQLite migration + bulk operations | 5% |
+| v0.9.61 | 1-4 | **Dead Code Detection 85% preciso** | **0%** ✅ |
 
 ---
 
@@ -451,13 +390,15 @@ Pilar 4: Fractal Architecture
 
 **SIEMPRE seguir este checklist**:
 
-1. ✅ Implementar lógica del extractor
+1. ✅ Implementar lógica del extractor (AST + regex)
 2. ✅ Correr Metadata Insights Verification (cross-reference TODOS los campos existentes)
-3. ✅ Documentar patrones descubiertos en `METADATA-INSIGHTS-GUIDE.md`
+3. ✅ Documentar patrones descubiertos
 4. ✅ Para cada patrón, aplicar Box Test
-5. ✅ Agregar arquetipos válidos a `PROMPT_REGISTRY.js`
-6. ✅ Actualizar `constants.js` con nuevos campos opcionales
-7. ✅ Actualizar `prompt-builder.js` para exponer campos al LLM
+5. ✅ Agregar arquetipos válidos al registry
+6. ✅ Actualizar constantes con nuevos campos opcionales
+7. ✅ Actualizar derivation engine para exponer campos
+
+**NOTA**: NO usar LLM. Si hay incertidumbre, mejorar los extractores estáticos.
 
 ### Para Agregar Nuevos Arquetipos
 
@@ -468,7 +409,7 @@ Pilar 4: Fractal Architecture
 detector: (metadata) => metadata.imports.includes('lodash')
 
 // Box Test Question:
-"Does knowing a file uses lodash tell me how it CONNECTS to other files?"
+"¿Saber que un archivo usa lodash me dice cómo se CONECTA con otros archivos?"
 
 // Respuesta: NO
 - Lodash es detalle de implementación interno
@@ -482,13 +423,13 @@ detector: (metadata) =>
   metadata.externalCallCount > 5
 
 // Box Test Question:
-"Does knowing a file coordinates lodash chains with network calls tell me about connections?"
+"¿Saber que un archivo coordina lodash chains con network calls me dice sobre conexiones?"
 
 // Respuesta: MAYBE
 - Si múltiples archivos usan lodash chains sobre datos compartidos → YES
 - Si solo un archivo usando lodash internamente → NO
-- Need semantic analysis to determine
-- → Hacer requiresLLM: 'conditional'
+- Need more static analysis to determine
+- → Agregar más extractores estáticos, NO LLM
 ```
 
 ### Para Code Reviews
@@ -498,9 +439,10 @@ detector: (metadata) =>
 - [ ] Si se agrega extractor: ¿Corrieron Metadata Insights Verification?
 - [ ] Si se agrega arquetipo: ¿Aplicaron Box Test? (debe estar en commit message)
 - [ ] Si se modifica detector: ¿Chequearon impacto en patrones derivados?
-- [ ] ¿Nuevos campos de metadata documentados en `constants.js`?
-- [ ] ¿Nuevos patrones documentados en `METADATA-INSIGHTS-GUIDE.md`?
+- [ ] ¿Nuevos campos de metadata documentados?
+- [ ] ¿Nuevos patrones documentados?
 - [ ] ¿El cambio sigue el patrón Fractal A→B→C?
+- [ ] **¿Hay algún uso de LLM?** (debe ser ❌ NO)
 
 ---
 
@@ -510,14 +452,14 @@ detector: (metadata) =>
 
 **Buenos indicadores**:
 - Count de arquetipos estable o creciendo lentamente (~1-2 por quarter)
-- Uso de LLM decreciendo a medida que mejora metadata
+- Uso de LLM: **0%** (DEPRECATED desde v0.9.61)
 - Catálogo de patrones creciendo más rápido que count de arquetipos
 - Tasa de falsos positivos < 5%
 - Confidence scores > 0.8 para 90% de detecciones
 
 **Malos indicadores**:
 - Explosión de arquetipos (>30 arquetipos)
-- Muchos arquetipos con requiresLLM: true (deberían ser conditional)
+- Muchos arquetipos con `requiresLLM: true` (DEBE SER 0)
 - Campos de metadata no siendo cross-referenciados
 - Catálogo de patrones estancado
 - Confidence scores bajos (<0.5) comunes
@@ -526,13 +468,14 @@ detector: (metadata) =>
 
 ## 🔗 Documentación Relacionada
 
-- [philosophy.md](./philosophy.md) - Visión física y AGI
-- [Arquitectura de 3 Capas](../architecture/ARCHITECTURE_LAYER_A_B.md) - Implementación
-- [Sistema de Arquetipos](../architecture/ARCHETYPE_SYSTEM.md) - Catálogo completo
-- [Guía de Desarrollo de Arquetipos](../architecture/ARCHETYPE_DEVELOPMENT_GUIDE.md) - Paso a paso
+- [philosophy.md](./philosophy.md) - Visión física y AGI (100% estático)
+- [Arquitectura de 3 Capas](../02-architecture/core.md) - Implementación (SIN LLM)
+- [Sistema de Arquetipos](../02-architecture/archetypes.md) - Catálogo completo (DETECTADO ESTÁTICAMENTE)
+- [Guía de Desarrollo de Arquetipos](../06-reference/development/modular-architecture-guide.md) - Paso a paso (SIN LLM)
 
 ---
 
-**Última actualización**: 2026-02-12  
+**Última actualización**: 2026-02-25 (v0.9.61)  
 **Maintainer**: OmnySys Team  
-**Status**: Active - Foundation of all development
+**Status**: Active - **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
