@@ -6,7 +6,7 @@
  * 
  * Usage: node scripts/enrich-atom-purpose.js
  * 
- * After running, every atom will have:
+ * After running, every atom will tener:
  * - purpose: The deduced purpose (API_EXPORT, TEST_HELPER, CLASS_METHOD, etc.)
  * - purposeReason: Why this purpose was deduced
  * - purposeConfidence: How confident the deduction is (0.0-1.0)
