@@ -2,131 +2,106 @@
  * @fileoverview State Parser - Parsea acceso a estado global
  */
 
-import _traverse from '@babel/traverse';
-import { parse } from '@babel/parser';
 import { createLogger } from '../../../../../utils/logger.js';
 import { isPartOfAssignmentLeft } from '../utils/index.js';
+import { startLine, text } from '../../../../utils/ts-ast-utils.js';
+import { getTree } from '../../../../parser/index.js';
 
 const logger = createLogger('OmnySys:shared:state:parser');
 
+const FUNCTION_NODE_TYPES = [
+  'function_declaration',
+  'function_expression',
+  'arrow_function',
+  'method_definition',
+  'generator_function_declaration',
+  'generator_function',
+];
+
 /**
- * Parsea código y extrae accesos a estado global
+ * Parsea código y extrae accesos a estado global usando Tree-sitter
  * @param {string} code - Código fuente
  * @param {string} filePath - Ruta del archivo
- * @returns {Object} - Accesos globales encontrados
+ * @returns {Promise<Object>} - Accesos globales encontrados
  */
-export function parseGlobalState(code, filePath = '') {
+export async function detectGlobalState(code, filePath = '') {
   const globalAccess = [];
   const readProperties = new Set();
   const writeProperties = new Set();
   const propertyAccessMap = new Map();
 
   try {
-    const isTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
-    const plugins = [
-      'jsx',
-      'objectRestSpread',
-      'decorators',
-      'classProperties',
-      'exportExtensions',
-      'asyncGenerators',
-      ['pipelineOperator', { proposal: 'minimal' }],
-      'nullishCoalescingOperator',
-      'optionalChaining',
-      'partialApplication'
-    ];
-
-    if (isTypeScript) {
-      plugins.push(['typescript', { isTSX: filePath.endsWith('.tsx') }]);
-    }
-
-    const ast = parse(code, {
-      sourceType: 'module',
-      allowImportExportEverywhere: true,
-      allowReturnOutsideFunction: true,
-      plugins
-    });
+    const tree = await getTree(filePath, code);
+    if (!tree) return { globalAccess: [], readProperties: [], writeProperties: [], propertyAccessMap: {} };
 
     let currentFunction = 'module-level';
 
-    const traverseFn = _traverse.default ?? _traverse;
-    traverseFn(ast, {
-      FunctionDeclaration(nodePath) {
-        currentFunction = nodePath.node.id?.name || 'anonymous-function';
-      },
-      ArrowFunctionExpression(nodePath) {
-        currentFunction = nodePath.node.id?.name || 'anonymous-arrow';
-      },
-      FunctionExpression(nodePath) {
-        currentFunction = nodePath.node.id?.name || 'anonymous-expression';
-      },
+    function walk(node) {
+      // Track function context
+      let isFunction = FUNCTION_NODE_TYPES.includes(node.type);
+      let oldContext = currentFunction;
 
-      MemberExpression(nodePath) {
-        const node = nodePath.node;
-        const parent = nodePath.parent;
-        const grandparent = nodePath.parent?.parent;
+      if (isFunction) {
+        const nameNode = node.childForFieldName('name');
+        currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
+      }
 
-        // Verificar si es window.X o global.X
-        if (
-          (node.object.name === 'window' || node.object.name === 'global' || node.object.name === 'globalThis') &&
-          node.property.name
-        ) {
-          const objectName = node.object.name;
-          const propName = node.property.name;
-          const fullRef = `${objectName}.${propName}`;
+      if (node.type === 'member_expression') {
+        const objectNode = node.childForFieldName('object');
+        const propertyNode = node.childForFieldName('property');
 
-          // SKIP: Si es parte de una llamada a método
-          if (parent.type === 'MemberExpression' && grandparent?.type === 'CallExpression' && grandparent.callee === parent) {
-            return;
-          }
+        if (objectNode && propertyNode) {
+          const objName = text(objectNode, code);
+          const propName = text(propertyNode, code);
 
-          // Determinar si es READ o WRITE
-          let accessType = 'read';
+          if (objName === 'window' || objName === 'global' || objName === 'globalThis') {
+            const fullRef = `${objName}.${propName}`;
 
-          // Verificar si es asignación
-          if (isPartOfAssignmentLeft(nodePath)) {
-            accessType = 'write';
-          }
+            // Determinar si es READ o WRITE
+            let accessType = isPartOfAssignmentLeft(node) ? 'write' : 'read';
 
-          // Si es argumento de una llamada a función (read)
-          if (parent.type === 'CallExpression' && parent.arguments.includes(node)) {
-            accessType = 'read';
-          }
+            const location = {
+              filePath,
+              line: startLine(node),
+              column: node.startPosition.column,
+              functionContext: currentFunction,
+              type: accessType,
+              objectName: objName,
+              propName,
+              fullReference: fullRef,
+              confidence: 1.0
+            };
 
-          // Si es el objeto de una llamada a método directa (read)
-          if (parent.type === 'CallExpression' && parent.callee === node) {
-            accessType = 'read';
-          }
+            globalAccess.push(location);
 
-          const location = {
-            filePath,
-            line: node.loc?.start?.line || 0,
-            column: node.loc?.start?.column || 0,
-            functionContext: currentFunction,
-            type: accessType,
-            objectName,
-            propName,
-            fullReference: fullRef,
-            confidence: 1.0
-          };
+            // Mapear propiedad
+            if (!propertyAccessMap.has(propName)) {
+              propertyAccessMap.set(propName, { reads: [], writes: [] });
+            }
 
-          globalAccess.push(location);
-
-          // Mapear propiedad
-          if (!propertyAccessMap.has(propName)) {
-            propertyAccessMap.set(propName, { reads: [], writes: [] });
-          }
-
-          if (accessType === 'read') {
-            readProperties.add(propName);
-            propertyAccessMap.get(propName).reads.push(location);
-          } else {
-            writeProperties.add(propName);
-            propertyAccessMap.get(propName).writes.push(location);
+            if (accessType === 'read') {
+              readProperties.add(propName);
+              propertyAccessMap.get(propName).reads.push(location);
+            } else {
+              writeProperties.add(propName);
+              propertyAccessMap.get(propName).writes.push(location);
+            }
           }
         }
       }
-    });
+
+      // Recorrer hijos
+      for (const child of node.namedChildren) {
+        walk(child);
+      }
+
+      // Restore context
+      if (isFunction) {
+        currentFunction = oldContext;
+      }
+    }
+
+    walk(tree.rootNode);
   } catch (error) {
     logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
   }
@@ -138,3 +113,8 @@ export function parseGlobalState(code, filePath = '') {
     propertyAccessMap: Object.fromEntries(propertyAccessMap)
   };
 }
+
+// Aliases para compatibilidad
+export const parseGlobalState = detectGlobalState;
+
+export default { detectGlobalState, parseGlobalState };

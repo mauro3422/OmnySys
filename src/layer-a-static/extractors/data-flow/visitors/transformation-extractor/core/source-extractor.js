@@ -7,67 +7,55 @@
  * @version 1.0.0
  */
 
-import { getMemberPath, getIdentifierName } from '../utils/ast-helpers.js';
+import { getMemberPath, startLine, text } from '../../../utils/ts-ast-utils.js';
 
-// Tipos de nodos literales (no son fuentes variables)
 const LITERAL_TYPES = [
-  'StringLiteral', 
-  'NumericLiteral', 
-  'BooleanLiteral', 
-  'NullLiteral',
-  'BigIntLiteral'
+  'string',
+  'number',
+  'false',
+  'true',
+  'null',
+  'undefined',
+  'regex'
 ];
 
 // Propiedades a ignorar durante recursión
 const IGNORED_KEYS = ['loc', 'type', 'range', 'start', 'end'];
 
-/**
- * Extrae todas las fuentes (variables) de un nodo
- * @param {Object} node - Nodo AST
- * @returns {Array<string>} - Lista de nombres de fuentes
- */
-export function extractSources(node) {
+export function extractSources(node, code) {
+  if (!node) return [];
   const sources = [];
   const visited = new Set();
 
   const collect = (n) => {
-    if (!n || visited.has(n)) return;
-    visited.add(n);
+    if (!n || visited.has(n.id)) return;
+    visited.add(n.id);
 
     // Identificador
-    if (n.type === 'Identifier') {
-      sources.push(n.name);
+    if (n.type === 'identifier') {
+      sources.push(text(n, code));
       return;
     }
 
     // This
-    if (n.type === 'ThisExpression') {
+    if (n.type === 'this') {
       sources.push('this');
       return;
     }
 
     // Member expression: obj.prop
-    if (n.type === 'MemberExpression') {
-      const path = getMemberPath(n);
+    if (n.type === 'member_expression') {
+      const path = getMemberPath(n, code);
       if (path) sources.push(path);
       return;
     }
 
     // Literal (no es fuente variable)
-    if (LITERAL_TYPES.includes(n.type)) {
-      return;
-    }
+    if (LITERAL_TYPES.includes(n.type)) return;
 
-    // Recursión en otros nodos
-    for (const key in n) {
-      if (IGNORED_KEYS.includes(key)) continue;
-      
-      const val = n[key];
-      if (Array.isArray(val)) {
-        val.forEach(collect);
-      } else if (val && typeof val === 'object' && val.type) {
-        collect(val);
-      }
+    // Recursión en hijos nombrados
+    for (const child of n.namedChildren) {
+      collect(child);
     }
   };
 
@@ -80,51 +68,58 @@ export function extractSources(node) {
  * @param {Object} node - Nodo AST
  * @returns {Array<Object>} - Fuentes con metadata
  */
-export function extractSourcesWithContext(node) {
+export function extractSourcesWithContext(node, code) {
+  if (!node) return [];
   const sources = [];
   const seen = new Set();
 
   const collect = (n, context = {}) => {
     if (!n) return;
 
-    if (n.type === 'Identifier') {
-      if (!seen.has(n.name)) {
-        seen.add(n.name);
+    if (n.type === 'identifier') {
+      const name = text(n, code);
+      if (!seen.has(name)) {
+        seen.add(name);
         sources.push({
-          name: n.name,
+          name,
           type: 'identifier',
-          line: n.loc?.start?.line,
+          line: startLine(n),
           context
         });
       }
       return;
     }
 
-    if (n.type === 'ThisExpression') {
+    if (n.type === 'this') {
       if (!seen.has('this')) {
         seen.add('this');
         sources.push({
           name: 'this',
           type: 'this',
-          line: n.loc?.start?.line,
+          line: startLine(n),
           context
         });
       }
       return;
     }
 
-    if (n.type === 'MemberExpression') {
-      const path = getMemberPath(n);
+    if (n.type === 'member_expression') {
+      const path = getMemberPath(n, code);
       if (path && !seen.has(path)) {
         seen.add(path);
         sources.push({
           name: path,
           type: 'member',
-          line: n.loc?.start?.line,
+          line: startLine(n),
           context
         });
       }
       return;
+    }
+
+    // Recursión
+    for (const child of n.namedChildren) {
+      collect(child, context);
     }
   };
 
@@ -138,8 +133,8 @@ export function extractSourcesWithContext(node) {
  * @param {string} sourceName - Nombre de la fuente
  * @returns {boolean} - True si contiene la fuente
  */
-export function containsSource(node, sourceName) {
-  const sources = extractSources(node);
+export function containsSource(node, sourceName, code) {
+  const sources = extractSources(node, code);
   return sources.includes(sourceName);
 }
 

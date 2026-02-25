@@ -6,7 +6,7 @@ import { resolveImport, getResolutionConfig } from '../resolver.js';
 import { detectAllSemanticConnections } from '../extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../extractors/communication/index.js';
 import { extractAllMetadata } from '../extractors/metadata/index.js';
-import { extractAtoms } from '../extractors/atomic/index.js';
+import { extractAtoms } from './phases/atom-extraction/extraction/atom-extractor.js';
 import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -45,7 +45,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     if (verbose) logger.info(`  ✓ Metadata: ${metadata.jsdoc?.all?.length || 0} JSDoc, ${metadata.async?.all?.length || 0} async\n`);
 
     if (verbose) logger.info('🔬 Extracting atoms...');
-    const atoms = extractAtoms(parsedFile.source || '', singleFile);
+    const atoms = await extractAtoms(parsedFile, parsedFile.source || '', metadata, singleFile);
     if (verbose) logger.info(`  ✓ Extracted ${atoms.length} atoms: ${atoms.map(a => a.type).join(', ')}\n`);
 
     if (verbose) logger.info('💾 Saving individual atoms...');
@@ -70,14 +70,14 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
 
 async function loadExistingMap(absoluteRootPath, incremental, verbose) {
   if (incremental) return null;
-  
+
   try {
     const repo = getRepository(absoluteRootPath);
     const allAtoms = repo.query({ limit: 10000 });
-    
+
     if (allAtoms && allAtoms.length > 0) {
       if (verbose) logger.info('  ✓ Loaded existing project context from SQLite\n');
-      return { 
+      return {
         files: {},
         atoms: allAtoms,
         metadata: { lastUpdated: new Date().toISOString() }
@@ -86,7 +86,7 @@ async function loadExistingMap(absoluteRootPath, incremental, verbose) {
   } catch {
     // SQLite no inicializado
   }
-  
+
   if (verbose) logger.info('  ℹ️  No existing analysis found, starting fresh\n');
   return null;
 }
@@ -138,15 +138,15 @@ async function detectConnections(parsedFile, targetFilePath, resolvedImports, ab
 async function saveAtoms(absoluteRootPath, singleFile, atoms) {
   try {
     const repo = getRepository(absoluteRootPath);
-    
+
     const atomsWithId = atoms.map(atom => ({
       ...atom,
       id: atom.id || `${singleFile}::${atom.name}`,
       file_path: singleFile
     }));
-    
+
     repo.saveMany(atomsWithId);
-    
+
     logger.info(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
   } catch (error) {
     logger.warn(`⚠️ Error saving atoms for ${singleFile}: ${error.message}`);
@@ -229,10 +229,10 @@ function buildFileAnalysis(singleFile, parsedFile, resolvedImports, staticConnec
 async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, existingMap, incremental, verbose) {
   try {
     const repo = getRepository(absoluteRootPath);
-    
+
     if (repo.db) {
       const now = new Date().toISOString();
-      
+
       repo.db.prepare(`
         INSERT OR REPLACE INTO files (path, imports_json, exports_json, module_name, atom_count, last_analyzed)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -244,13 +244,13 @@ async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, existi
         fileAnalysis.totalAtoms || 0,
         now
       );
-      
+
       if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);
     }
   } catch (error) {
     logger.warn(`⚠️ Error saving file result to SQLite: ${error.message}`);
   }
-  
+
   return singleFile;
 }
 

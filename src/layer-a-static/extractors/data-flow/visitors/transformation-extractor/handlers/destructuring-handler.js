@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { getMemberPath } from '../utils/ast-helpers.js';
+import { getMemberPath, startLine, text } from '../../../utils/ts-ast-utils.js';
 
 /**
  * Maneja destructuring de objeto: const { x, y } = obj
@@ -16,30 +16,44 @@ import { getMemberPath } from '../utils/ast-helpers.js';
  * @param {Function} addTransformation - Callback para agregar transformación
  * @param {Function} trackVariable - Callback para trackear variable
  */
-export function handleObjectDestructuring(pattern, init, addTransformation, trackVariable) {
-  const sourcePath = getMemberPath(init) || 'unknown';
+export function handleObjectDestructuring(pattern, init, addTransformation, trackVariable, code) {
+  const sourcePath = (typeof init === 'string' ? init : getMemberPath(init, code)) || 'unknown';
 
-  for (const prop of pattern.properties) {
-    if (prop.type !== 'ObjectProperty') continue;
+  for (const prop of pattern.namedChildren) {
+    if (prop.type === 'pair') {
+      const keyNode = prop.childForFieldName('key');
+      const valueNode = prop.childForFieldName('value');
+      const key = text(keyNode, code);
 
-    const key = prop.key.name || prop.key.value;
-    let localName = key;
+      let localName = key;
+      if (valueNode.type === 'identifier') {
+        localName = text(valueNode, code);
+      } else if (valueNode.type === 'assignment_pattern') {
+        localName = text(valueNode.childForFieldName('left'), code);
+      } else if (valueNode.type === 'object_pattern' || valueNode.type === 'array_pattern') {
+        handleNestedDestructuring(valueNode, init, `${sourcePath}.${key}`, addTransformation, trackVariable, code);
+        continue;
+      }
 
-    if (prop.value.type === 'Identifier') {
-      localName = prop.value.name;
-    } else if (prop.value.type === 'AssignmentPattern') {
-      localName = prop.value.left.name;
+      addTransformation({
+        to: localName,
+        from: `${sourcePath}.${key}`,
+        operation: 'property_access',
+        via: 'destructuring',
+        line: startLine(prop)
+      });
+      trackVariable(localName);
+    } else if (prop.type === 'shorthand_property_identifier') {
+      const name = text(prop, code);
+      addTransformation({
+        to: name,
+        from: `${sourcePath}.${name}`,
+        operation: 'property_access',
+        via: 'destructuring',
+        line: startLine(prop)
+      });
+      trackVariable(name);
     }
-
-    addTransformation({
-      to: localName,
-      from: `${sourcePath}.${key}`,
-      operation: 'property_access',
-      via: 'destructuring',
-      line: prop.loc?.start?.line
-    });
-
-    trackVariable(localName);
   }
 }
 
@@ -50,29 +64,33 @@ export function handleObjectDestructuring(pattern, init, addTransformation, trac
  * @param {Function} addTransformation - Callback para agregar transformación
  * @param {Function} trackVariable - Callback para trackear variable
  */
-export function handleArrayDestructuring(pattern, init, addTransformation, trackVariable) {
-  const sourcePath = getMemberPath(init) || 'unknown';
+export function handleArrayDestructuring(pattern, init, addTransformation, trackVariable, code) {
+  const sourcePath = (typeof init === 'string' ? init : getMemberPath(init, code)) || 'unknown';
+  const elements = pattern.namedChildren;
 
-  for (let i = 0; i < pattern.elements.length; i++) {
-    const element = pattern.elements[i];
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i];
     if (!element) continue;
 
     let localName = null;
-    if (element.type === 'Identifier') {
-      localName = element.name;
-    } else if (element.type === 'AssignmentPattern') {
-      localName = element.left.name;
-    } else if (element.type === 'RestElement') {
-      localName = element.argument.name;
+    if (element.type === 'identifier') {
+      localName = text(element, code);
+    } else if (element.type === 'assignment_pattern') {
+      localName = text(element.childForFieldName('left'), code);
+    } else if (element.type === 'rest_element') {
+      localName = text(element.namedChildren.find(c => c.type === 'identifier'), code);
+    } else if (element.type === 'object_pattern' || element.type === 'array_pattern') {
+      handleNestedDestructuring(element, init, `${sourcePath}[${i}]`, addTransformation, trackVariable, code);
+      continue;
     }
 
     if (localName) {
       addTransformation({
         to: localName,
         from: `${sourcePath}[${i}]`,
-        operation: element.type === 'RestElement' ? 'rest_destructure' : 'array_index_access',
+        operation: element.type === 'rest_element' ? 'rest_destructure' : 'array_index_access',
         via: 'destructuring',
-        line: element.loc?.start?.line
+        line: startLine(element)
       });
 
       trackVariable(localName);
@@ -88,47 +106,13 @@ export function handleArrayDestructuring(pattern, init, addTransformation, track
  * @param {Function} addTransformation - Callback
  * @param {Function} trackVariable - Callback
  */
-export function handleNestedDestructuring(pattern, init, parentPath, addTransformation, trackVariable) {
-  const currentPath = parentPath || getMemberPath(init) || 'unknown';
+export function handleNestedDestructuring(pattern, init, parentPath, addTransformation, trackVariable, code) {
+  const currentPath = parentPath || (typeof init === 'string' ? init : getMemberPath(init, code)) || 'unknown';
 
-  if (pattern.type === 'ObjectPattern') {
-    for (const prop of pattern.properties) {
-      const key = prop.key.name || prop.key.value;
-      const newPath = `${currentPath}.${key}`;
-
-      if (prop.value.type === 'Identifier') {
-        addTransformation({
-          to: prop.value.name,
-          from: newPath,
-          operation: 'property_access',
-          via: 'nested_destructuring',
-          line: prop.loc?.start?.line
-        });
-        trackVariable(prop.value.name);
-      } else if (prop.value.type === 'ObjectPattern' || prop.value.type === 'ArrayPattern') {
-        handleNestedDestructuring(prop.value, init, newPath, addTransformation, trackVariable);
-      }
-    }
-  } else if (pattern.type === 'ArrayPattern') {
-    for (let i = 0; i < pattern.elements.length; i++) {
-      const element = pattern.elements[i];
-      if (!element) continue;
-
-      const newPath = `${currentPath}[${i}]`;
-
-      if (element.type === 'Identifier') {
-        addTransformation({
-          to: element.name,
-          from: newPath,
-          operation: 'array_index_access',
-          via: 'nested_destructuring',
-          line: element.loc?.start?.line
-        });
-        trackVariable(element.name);
-      } else if (element.type === 'ObjectPattern' || element.type === 'ArrayPattern') {
-        handleNestedDestructuring(element, init, newPath, addTransformation, trackVariable);
-      }
-    }
+  if (pattern.type === 'object_pattern') {
+    handleObjectDestructuring(pattern, currentPath, addTransformation, trackVariable, code);
+  } else if (pattern.type === 'array_pattern') {
+    handleArrayDestructuring(pattern, currentPath, addTransformation, trackVariable, code);
   }
 }
 
@@ -139,19 +123,10 @@ export function handleNestedDestructuring(pattern, init, parentPath, addTransfor
  * @param {Function} addTransformation - Callback
  * @param {Function} trackVariable - Callback
  */
-export function handleDestructuring(pattern, init, addTransformation, trackVariable) {
-  if (pattern.type === 'ObjectPattern') {
-    // Verificar si hay nested patterns
-    const hasNested = pattern.properties.some(p => 
-      p.value?.type === 'ObjectPattern' || p.value?.type === 'ArrayPattern'
-    );
-
-    if (hasNested) {
-      handleNestedDestructuring(pattern, init, null, addTransformation, trackVariable);
-    } else {
-      handleObjectDestructuring(pattern, init, addTransformation, trackVariable);
-    }
-  } else if (pattern.type === 'ArrayPattern') {
-    handleArrayDestructuring(pattern, init, addTransformation, trackVariable);
+export function handleDestructuring(pattern, init, addTransformation, trackVariable, code) {
+  if (pattern.type === 'object_pattern') {
+    handleObjectDestructuring(pattern, init, addTransformation, trackVariable, code);
+  } else if (pattern.type === 'array_pattern') {
+    handleArrayDestructuring(pattern, init, addTransformation, trackVariable, code);
   }
 }

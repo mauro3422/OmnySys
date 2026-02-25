@@ -7,38 +7,48 @@
  * @version 1.0.0
  */
 
+// Tree-sitter helpers
+function text(node, code) {
+  return code.slice(node.startIndex, node.endIndex);
+}
+
 import { extractDefaultValue } from './default-value-extractor.js';
 
 /**
  * Extrae información de todos los parámetros
- * @param {Object[]} params - Array de nodos de parámetros
+ * @param {Object} paramsNode - Nodo de parámetros (Tree-sitter)
+ * @param {string} code - Código fuente
  * @returns {Array} Información de parámetros
  */
-export function extractParameters(params) {
+export function extractParameters(paramsNode, code) {
   const inputs = [];
-  
+  if (!paramsNode) return inputs;
+
+  const params = paramsNode.namedChildren || [];
+
   for (let i = 0; i < params.length; i++) {
     const param = params[i];
-    const input = parseParameter(param, i);
+    const input = parseParameter(param, i, code);
     if (input) {
       inputs.push(input);
     }
   }
-  
+
   return inputs;
 }
 
 /**
  * Parsea un parámetro individual
- * @param {Object} param - Nodo de parámetro
+ * @param {Object} param - Nodo de parámetro (Tree-sitter)
  * @param {number} index - Posición del parámetro
+ * @param {string} code - Código fuente
  * @returns {Object|null}
  */
-export function parseParameter(param, index) {
+export function parseParameter(param, index, code) {
   // Parámetro simple: function(name)
-  if (param.type === 'Identifier') {
+  if (param.type === 'identifier') {
     return {
-      name: param.name,
+      name: text(param, code),
       position: index,
       type: 'simple',
       hasDefault: false
@@ -46,33 +56,36 @@ export function parseParameter(param, index) {
   }
 
   // Parámetro con default: function(name = 'default')
-  if (param.type === 'AssignmentPattern') {
-    const left = param.left;
-    if (left.type === 'Identifier') {
+  if (param.type === 'assignment_pattern') {
+    const left = param.childForFieldName('left');
+    const right = param.childForFieldName('right');
+
+    if (left.type === 'identifier') {
       return {
-        name: left.name,
+        name: text(left, code),
         position: index,
         type: 'simple',
         hasDefault: true,
-        defaultValue: extractDefaultValue(param.right)
+        defaultValue: text(right, code) // Simplificado por ahora
       };
     }
-    if (left.type === 'ObjectPattern' || left.type === 'ArrayPattern') {
-      return parseDestructuring(left, index, param.right);
+    if (left.type === 'object_pattern' || left.type === 'array_pattern') {
+      return parseDestructuring(left, index, code, right);
     }
   }
 
   // Destructuring: function({ name, email })
-  if (param.type === 'ObjectPattern' || param.type === 'ArrayPattern') {
-    return parseDestructuring(param, index);
+  if (param.type === 'object_pattern' || param.type === 'array_pattern') {
+    return parseDestructuring(param, index, code);
   }
 
   // Rest parameter: function(...args)
-  if (param.type === 'RestElement') {
-    const argument = param.argument;
-    if (argument.type === 'Identifier') {
+  if (param.type === 'rest_parameter') {
+    // Tree-sitter rest_parameter suele ser (... identifier)
+    const identifier = param.namedChildren.find(c => c.type === 'identifier');
+    if (identifier) {
       return {
-        name: argument.name,
+        name: text(identifier, code),
         position: index,
         type: 'rest',
         hasDefault: false,
@@ -86,30 +99,44 @@ export function parseParameter(param, index) {
 
 /**
  * Parsea destructuring patterns
- * @param {Object} pattern - Nodo de pattern
+ * @param {Object} pattern - Nodo de pattern (Tree-sitter)
  * @param {number} index - Posición del parámetro
- * @param {Object} [defaultValue] - Valor default
+ * @param {string} code - Código fuente
+ * @param {Object} [defaultValue] - Nodo de valor default
  * @returns {Object|null}
  */
-export function parseDestructuring(pattern, index, defaultValue = null) {
+export function parseDestructuring(pattern, index, code, defaultValue = null) {
   const properties = [];
 
-  if (pattern.type === 'ObjectPattern') {
-    for (const prop of pattern.properties) {
-      if (prop.type === 'ObjectProperty') {
-        const key = prop.key.name || prop.key.value;
-        let valueName = key;
+  if (pattern.type === 'object_pattern') {
+    // Tree-sitter object_pattern children: pair, shorthand_property_identifier_pattern, etc.
+    for (const child of pattern.namedChildren) {
+      if (child.type === 'pair') {
+        const key = child.childForFieldName('key');
+        const value = child.childForFieldName('value');
+        if (key && value) {
+          const keyName = text(key, code);
+          let localName = keyName;
 
-        if (prop.value.type === 'Identifier') {
-          valueName = prop.value.name;
-        } else if (prop.value.type === 'AssignmentPattern') {
-          valueName = prop.value.left.name;
+          if (value.type === 'identifier') {
+            localName = text(value, code);
+          } else if (value.type === 'assignment_pattern') {
+            const left = value.childForFieldName('left');
+            if (left) localName = text(left, code);
+          }
+
+          properties.push({
+            original: keyName,
+            local: localName,
+            hasDefault: value.type === 'assignment_pattern'
+          });
         }
-
+      } else if (child.type === 'shorthand_property_identifier_pattern') {
+        const name = text(child, code);
         properties.push({
-          original: key,
-          local: valueName,
-          hasDefault: prop.value.type === 'AssignmentPattern'
+          original: name,
+          local: name,
+          hasDefault: false
         });
       }
     }
@@ -119,26 +146,30 @@ export function parseDestructuring(pattern, index, defaultValue = null) {
       position: index,
       type: 'destructured-object',
       hasDefault: defaultValue !== null,
-      defaultValue: defaultValue ? extractDefaultValue(defaultValue) : null,
+      defaultValue: defaultValue ? text(defaultValue, code) : null,
       properties
     };
   }
 
-  if (pattern.type === 'ArrayPattern') {
-    for (let i = 0; i < pattern.elements.length; i++) {
-      const element = pattern.elements[i];
-      if (element?.type === 'Identifier') {
+  if (pattern.type === 'array_pattern') {
+    const elements = pattern.namedChildren;
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      if (element.type === 'identifier') {
         properties.push({
           index: i,
-          local: element.name,
+          local: text(element, code),
           hasDefault: false
         });
-      } else if (element?.type === 'AssignmentPattern') {
-        properties.push({
-          index: i,
-          local: element.left.name,
-          hasDefault: true
-        });
+      } else if (element.type === 'assignment_pattern') {
+        const left = element.childForFieldName('left');
+        if (left) {
+          properties.push({
+            index: i,
+            local: text(left, code),
+            hasDefault: true
+          });
+        }
       }
     }
 

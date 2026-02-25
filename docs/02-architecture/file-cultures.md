@@ -1,9 +1,9 @@
 # Culturas de Archivos - Clasificación Estática
 
-**Versión**: 1.1.0  
+**Versión**: v0.9.61  
 **Creado**: 2026-02-19  
-**Última actualización**: 2026-02-24  
-**Estado**: ✅ Implementado en SQLite
+**Última actualización**: 2026-02-25  
+**Estado**: ✅ **100% Estático, 0% LLM** - Implementado en SQLite
 
 ---
 
@@ -13,9 +13,278 @@
 
 Siguiendo la analogía de la física del software:
 - **Átomos** = Funciones (la unidad básica de ejecución)
-- **Electrones/Protones** = Variables, parámetros, líneas de código (partículas subatómicas dentro de cada átomo)
+- **Electrones/Protones** = Variables, parámetros, líneas de código (partículas subatómicas)
 - **Moléculas** = Archivos (cajas que contienen átomos)
 - **Culturas** = Roles sociales de los archivos en el ecosistema
+
+---
+
+## Implementación REAL
+
+**Código**: `src/layer-a-static/analysis/file-culture-classifier.js`
+
+```javascript
+// classifyFileCulture(fileNode)
+export function classifyFileCulture(fileNode) {
+  const filePath = fileNode.filePath || fileNode.path || '';
+  const functions = fileNode.functions || fileNode.atoms || fileNode.definitions || [];
+  const classes = fileNode.classes || [];
+  const exports = fileNode.exports || [];
+  const objectExports = fileNode.objectExports || [];
+  const constantExports = fileNode.constantExports || [];
+  
+  const atomCount = functions.length;
+  const hasParticles = objectExports.length > 0 || constantExports.length > 0;
+  const exportCount = exports.length;
+  
+  // 1. THE ENTRY POINT (CLI/Server/Main)
+  if (isEntryPoint(filePath)) {
+    return {
+      culture: 'entrypoint',
+      role: 'System entry point (CLI, server, main)',
+      atoms: atomCount,
+      symbol: '🚀'
+    };
+  }
+  
+  // 2. THE AUDITOR (Tests)
+  if (isTestFile(filePath)) {
+    return {
+      culture: 'auditor',
+      role: 'Observes and validates production atoms',
+      atoms: atomCount,
+      symbol: '🔍'
+    };
+  }
+  
+  // 3. THE GATEKEEPER (Barrel Files)
+  if (atomCount === 0 && exportCount > 0 && filePath.endsWith('index.js')) {
+    return {
+      culture: 'gatekeeper',
+      role: 'Organizes module exports',
+      exportsCount: exportCount,
+      symbol: '🏛️'
+    };
+  }
+  
+  // 4. THE LAWS (Config/Constants)
+  if (atomCount === 0 && classes.length === 0 && (hasParticles || exportCount > 0)) {
+    return {
+      culture: 'laws',
+      role: 'Defines constants/templates that condition the system',
+      particles: [...objectExports, ...constantExports],
+      exports: exportCount,
+      symbol: '⚖️'
+    };
+  }
+  
+  // 5. THE SCRIPT (Automation)
+  if (isScriptFile(filePath) && atomCount > 0) {
+    return {
+      culture: 'script',
+      role: 'Automates maintenance tasks',
+      atoms: atomCount,
+      symbol: '🛠️'
+    };
+  }
+  
+  // 6. THE CITIZEN (Worker/Logic)
+  if (atomCount > 0) {
+    return {
+      culture: 'citizen',
+      role: 'Productive business logic',
+      atoms: atomCount,
+      symbol: '👷'
+    };
+  }
+  
+  // Unknown
+  return {
+    culture: 'unknown',
+    role: 'Unclassified',
+    symbol: '❓'
+  };
+}
+```
+
+---
+
+## Las 7 Culturas
+
+### 1. 🚀 Entrypoint (System Entry)
+
+**Definición**: Archivos de entrada del sistema (CLI, server, main).
+
+**Reglas de Detección**:
+```javascript
+function isEntryPoint(filePath) {
+  // Root level entry points
+  const rootEntryPoints = [
+    'main.js', 'main.mjs', 'index.js', 'server.js', 'app.js',
+    'omny.js', 'omnysystem.js', 'cli.js'
+  ];
+  
+  // Check if it's a root level file
+  const fileName = filePath.split('/').pop();
+  const isRootFile = !filePath.includes('/') || 
+                     filePath.indexOf('/') === filePath.lastIndexOf('/');
+  
+  if (isRootFile && rootEntryPoints.includes(fileName)) {
+    return true;
+  }
+  
+  // Common entry point patterns
+  if (/^src\/(cli|server|app|main|index)\.js$/.test(filePath)) {
+    return true;
+  }
+  
+  // bin/ directory files
+  if (/^bin\//.test(filePath)) {
+    return true;
+  }
+  
+  return false;
+}
+```
+
+**Ejemplos**:
+- `main.js`
+- `server.js`
+- `src/cli/index.js`
+- `bin/setup.js`
+
+---
+
+### 2. 🔍 Auditor (Tests)
+
+**Definición**: Archivos de test que observan y validan código de producción.
+
+**Reglas de Detección**:
+```javascript
+function isTestFile(filePath) {
+  return /\.(test|spec)\.js$/.test(filePath) ||
+         /^tests?\//.test(filePath) ||
+         /\/tests?\//.test(filePath) ||
+         /__tests__/.test(filePath);
+}
+```
+
+**Ejemplos**:
+- `src/utils.test.js`
+- `tests/unit/layer-c/mcp/tools.test.js`
+- `test-cases/scenario-1-simple-import/test.js`
+
+---
+
+### 3. 🏛️ Gatekeeper (Barrel Files)
+
+**Definición**: Archivos que solo re-exportan otros módulos. No contienen átomos (funciones), solo organizan el tráfico.
+
+**Reglas de Detección**:
+```javascript
+// Gatekeeper si:
+// - atoms = 0 (sin funciones)
+// - exports > 0 (tiene exports)
+// - filename = index.js
+if (atomCount === 0 && exportCount > 0 && filePath.endsWith('index.js')) {
+  return { culture: 'gatekeeper', ... };
+}
+```
+
+**Ejemplos**:
+- `src/utils/index.js`
+- `src/layer-a-static/extractors/metadata/index.js`
+
+---
+
+### 4. ⚖️ Laws (Config/Constants)
+
+**Definición**: Archivos que definen constantes, configuraciones, templates, schemas, definiciones de tipos. Exportan partículas sueltas (constantes) SIN funciones.
+
+**Reglas de Detección**:
+```javascript
+// Laws si:
+// - atoms = 0 (sin funciones)
+// - classes = 0 (sin clases)
+// - hasParticles > 0 (tiene constantes exportadas)
+if (atomCount === 0 && classes.length === 0 && 
+    (hasParticles || exportCount > 0)) {
+  return { culture: 'laws', ... };
+}
+```
+
+**Ejemplos**:
+- `src/config/constants.js`
+- `src/shared/types.js`
+- `src/core/constants.js`
+
+---
+
+### 5. 🛠️ Script (Automation)
+
+**Definición**: Scripts de automatización para tareas de mantenimiento.
+
+**Reglas de Detección**:
+```javascript
+function isScriptFile(filePath) {
+  return /^scripts?\//.test(filePath);
+}
+
+// Script si:
+// - filePath starts with scripts/
+// - atoms > 0 (tiene funciones)
+if (isScriptFile(filePath) && atomCount > 0) {
+  return { culture: 'script', ... };
+}
+```
+
+**Ejemplos**:
+- `scripts/analyze-dead-code-atoms.js`
+- `scripts/enrich-atom-purpose.js`
+- `scripts/validate-graph-system.js`
+
+---
+
+### 6. 👷 Citizen (Worker/Logic)
+
+**Definición**: Archivos de lógica de negocio que hacen el trabajo real. Contienen átomos (funciones) productivas.
+
+**Reglas de Detección**:
+```javascript
+// Citizen si:
+// - atoms > 0 (tiene funciones)
+// - NO matchea otros patrones
+if (atomCount > 0) {
+  return { culture: 'citizen', ... };
+}
+```
+
+**Ejemplos**:
+- `src/core/orchestrator.js`
+- `src/layer-a-static/pipeline/indexer.js`
+- `src/services/llm-service/index.js`
+
+---
+
+### 7. ❓ Unknown
+
+**Definición**: Archivos sin clasificar (vacíos, assets, estilos, etc.).
+
+**Reglas de Detección**:
+```javascript
+// Unknown si:
+// - No matchea ningún otro patrón
+return {
+  culture: 'unknown',
+  role: 'Unclassified',
+  note: 'File without atoms or significant particles'
+};
+```
+
+**Ejemplos**:
+- `.eslintrc.js`
+- `package.json`
+- `README.md`
 
 ---
 
@@ -46,387 +315,135 @@ Siguiendo la analogía de la física del software:
 
 ---
 
-## The 5 File Cultures
+## Enriquecimiento del System Map
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        CODE SOCIETY                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  🏛️ THE GATEKEEPER (Facade/Gateway/Barrel)                            │
-│     → Organizes exports, contains no atoms (functions)                 │
-│     → Rule: atoms=0 ∧ exports>0 ∧ filename=index.js                    │
-│                                                                         │
-│  ⚖️ THE LAWS (Config/Constants)                                       │
-│     → Defines particles (constants) that condition the system          │
-│     → Rule: atoms=0 ∧ (objectExports>0 ∨ constantExports>0)            │
-│     → NO atoms, only loose particles                                   │
-│                                                                         │
-│  🔍 THE AUDITOR (Observer/Test)                                        │
-│     → Observes and validates atoms from other files                    │
-│     → Rule: filepath.match(/\.test\.|\.spec\.|tests?\//)               │
-│     → Has atoms that DON'T go to production                            │
-│                                                                         │
-│  🛠️ THE SCRIPT (Automation/Utility)                                   │
-│     → Automates tasks, runs processes                                  │
-│     → Rule: filepath.startsWith(scripts/) ∧ atoms>0                    │
-│     → Automation atoms                                                 │
-│                                                                         │
-│  👷 THE CITIZEN (Worker/Logic)                                         │
-│     → Handles real business logic                                      │
-│     → Rule: atoms>0 ∧ doesn't match any of the above                   │
-│     → Productive system atoms                                          │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+**Código REAL**: `enrichWithCulture(systemMap)`
+
+```javascript
+export function enrichWithCulture(systemMap) {
+  if (!systemMap?.files) return systemMap;
+  
+  const { cultures, stats } = classifyAllFiles(systemMap);
+  
+  // Agregar cultura a cada archivo
+  for (const [filePath, classification] of Object.entries(cultures)) {
+    if (systemMap.files[filePath]) {
+      systemMap.files[filePath].culture = classification.culture;
+      systemMap.files[filePath].cultureRole = classification.role;
+    }
+  }
+  
+  // Agregar stats a metadata
+  if (!systemMap.metadata) systemMap.metadata = {};
+  systemMap.metadata.cultureStats = stats;
+  
+  return systemMap;
+}
 ```
 
 ---
 
-## Detalle de Cada Cultura
+## Estadísticas Típicas (v0.9.61)
 
-### 🏛️ EL ADUANERO (Barrel File)
-
-**Definición**: Archivos que solo re-exportan otros módulos. Son la "aduana" del sistema. No contienen átomos (funciones), solo organizan el tráfico.
-
-**Reglas de Detección**:
-```javascript
-{
-  atoms: 0,           // Sin funciones
-  classes: 0,         // Sin clases
-  exports: { $gt: 0 }, // Tiene exports
-  filename: 'index.js',
-  hasReExports: true
-}
 ```
-
-**Ejemplos en OmnySys**:
+┌─────────────────────────────────────────────────────────────┐
+│  Culture Stats — v0.9.61                                   │
+├─────────────────────────────────────────────────────────────┤
+│  citizen:        800 (43%)  - Lógica de negocio            │
+│  auditor:        400 (22%)  - Tests                        │
+│  gatekeeper:     200 (11%)  - Barrel files                 │
+│  laws:           150 (8%)   - Config/Constants             │
+│  script:         100 (5%)   - Scripts                      │
+│  entrypoint:      50 (3%)   - Entry points                │
+│  unknown:        150 (8%)   - Sin clasificar              │
+└─────────────────────────────────────────────────────────────┘
 ```
-src/layer-a-static/index.js         → Exporta todo el layer A
-src/layer-c-memory/mcp/tools/index.js → Exporta todas las tools
-src/core/cache/index.js             → Exporta cache y helpers
-```
-
-**Valor para el LLM**:
-- NO necesita leerlos para entender lógica (no tienen átomos)
-- SÍ necesita conocerlos para resolver imports
-- Son "hubs" de conectividad
-
-**Métricas en OmnySys**: ~216 archivos (~12%)
 
 ---
 
-### ⚖️ LAS LEYES FÍSICAS (Config/Constants)
+## Constantes Exportadas
 
-**Definición**: Archivos que definen constantes, configuraciones, o diccionarios. **NO tienen átomos** (funciones), solo **partículas sueltas** (constantes exportadas). Son las "leyes" que condicionan el comportamiento del sistema.
-
-**Reglas de Detección**:
 ```javascript
-{
-  atoms: 0,           // Sin funciones = sin átomos
-  classes: 0,
-  objectExports: { $gt: 0 },  // Tiene partículas (constantes)
-  // O también:
-  constantExports: { $gt: 0 }
-}
-```
+// CULTURES constants
+export const CULTURES = {
+  ENTRYPOINT: 'entrypoint',
+  GATEKEEPER: 'gatekeeper',
+  LAWS: 'laws',
+  AUDITOR: 'auditor',
+  SCRIPT: 'script',
+  CITIZEN: 'citizen',
+  UNKNOWN: 'unknown'
+};
 
-**Ejemplos en OmnySys**:
-```
-src/config/limits.js    → { BATCH_SIZE: 20, MAX_FILES: 1000 }
-src/config/paths.js     → { DATA_DIR: '.omnysysdata' }
-```
-
-**Partículas que contiene**:
-```javascript
-{
-  objectExports: [
-    { name: 'BATCH_SIZE', value: 20, type: 'number' },
-    { name: 'MAX_FILES', value: 1000, type: 'number' },
-    { name: 'TIMEOUTS', value: {...}, type: 'object' }
-  ]
-}
-```
-
-**Valor para el LLM**:
-- CRÍTICO: El LLM NO debe inventar configuraciones que ya existen
-- Ejemplo: Si existe `BATCH_SIZE: 20`, el LLM debe usarlo, no crear `batchSize: 50`
-- Conexión: Via imports → qué átomos usan estas partículas
-
-**Métricas en OmnySys**: ~50 archivos de config/constants
-
----
-
-### 🔍 EL AUDITOR (Test)
-
-**Definición**: Archivos que contienen átomos (funciones) de testing. Sus átomos observan y validan otros átomos del sistema.
-
-**Reglas de Detección**:
-```javascript
-{
-  filepath: {
-    $or: [
-      { $regex: /\.test\.js$/ },
-      { $regex: /\.spec\.js$/ },
-      { $regex: /^tests?\// },
-      { $regex: /\/tests?\// }
-    ]
+// CULTURE_DESCRIPTIONS
+export const CULTURE_DESCRIPTIONS = {
+  entrypoint: {
+    name: 'EntryPoint',
+    description: 'System entry points (CLI, server, main files)',
+    pattern: 'root level: main.js, cli.js, server.js, app.js'
   },
-  atoms: { $gt: 0 }  // Tiene funciones de test
-}
+  gatekeeper: {
+    name: 'Gatekeeper',
+    description: 'Barrel files that organize exports without containing logic',
+    pattern: 'atoms=0 AND exports>0 AND filename=index.js'
+  },
+  laws: {
+    name: 'Laws',
+    description: 'Config/constant files that define system constraints',
+    pattern: 'atoms=0 AND (objectExports>0 OR constantExports>0)'
+  },
+  auditor: {
+    name: 'Auditor',
+    description: 'Test files that validate production code',
+    pattern: 'filepath matches /.test.|.spec.|tests?//'
+  },
+  script: {
+    name: 'Script',
+    description: 'Automation scripts for maintenance tasks',
+    pattern: 'filepath starts with scripts/ AND atoms>0'
+  },
+  citizen: {
+    name: 'Citizen',
+    description: 'Business logic files that do the real work',
+    pattern: 'atoms>0 AND not matching other patterns'
+  },
+  unknown: {
+    name: 'Unknown',
+    description: 'Unclassified files (empty, assets, etc.)',
+    pattern: 'no atoms or particles'
+  }
+};
 ```
-
-**Ejemplos en OmnySys**:
-```
-tests/unit/layer-a-static/parser.test.js
-tests/integration/smoke.test.js
-src/layer-a-static/__tests__/extractor.test.js
-```
-
-**Conexiones importantes**:
-- Via imports → qué átomos (funciones) está auditando
-- Los tests VALIDAN átomos ciudadanos
-
-**Valor para el LLM**:
-- Entender QUÉ se está testeando = entender contratos
-- Si un test llama a `validateUser()`, sabemos que esa función existe y su contrato
-- Los tests documentan comportamiento esperado
-
-**Métricas en OmnySys**: ~293 archivos de test
 
 ---
 
-### 🛠️ EL SCRIPT (Automation)
+## Uso en Layer A
 
-**Definición**: Archivos que contienen átomos de automatización. No son parte del runtime del sistema, pero lo mantienen.
-
-**Reglas de Detección**:
-```javascript
-{
-  filepath: { $regex: /^scripts?\// },
-  atoms: { $gt: 0 }  // Tiene funciones de automation
-}
-```
-
-**Ejemplos en OmnySys**:
-```
-scripts/audit-atoms-correct.js   → Función main() de auditoría
-scripts/detect-broken-imports.js → Función detect() 
-scripts/migrate-all-tests.js     → Función migrate()
-```
-
-**Conexiones importantes**:
-- Via imports → pueden usar átomos del sistema (ciudadanos)
-- Operan sobre el proyecto, no son parte del producto
-
-**Valor para el LLM**:
-- Entender tareas de mantenimiento disponibles
-- Saber qué automatizaciones existen
-- NO ejecutar en producción sin cuidado
-
-**Métricas en OmnySys**: ~20 archivos de scripts
-
----
-
-### 👷 EL CIUDADANO (Worker/Logic)
-
-**Definición**: Archivos que contienen átomos productivos. Son la "clase media" del sistema que hace el trabajo real.
-
-**Reglas de Detección**:
-```javascript
-{
-  atoms: { $gt: 0 },  // Tiene funciones
-  // NO cumple ninguna de las anteriores
-  NOT: { auditor: true, aduanero: true, leyes: true, script: true }
-}
-```
-
-**Ejemplos en OmnySys**:
-```
-src/layer-a-static/parser/index.js   → parseFile(), parseProject()
-src/core/cache/singleton.js          → getCache(), initCache()
-src/layer-c-memory/mcp/tools/status.js → execute(), formatResponse()
-```
-
-**Sub-clasificación por Átomos**:
-Los ciudadanos pueden contener diferentes TIPOS de átomos:
-
-| Tipo de Átomo | Característica | Ejemplo |
-|---------------|----------------|---------|
-| **Handler** | Recibe request, retorna response | `handleGetStatus()` |
-| **Processor** | Transforma datos | `parseFile()` |
-| **Validator** | Verifica condiciones | `validateConfig()` |
-| **Coordinator** | Orquesta otros átomos | `runAnalysis()` |
-| **Utility** | Función helper genérica | `formatPath()` |
-
-**Métricas en OmnySys**: ~1,100 archivos ciudadanos
-
----
-
-## Implementación del Clasificador
-
-### Código
+**Pipeline REAL**: `src/layer-a-static/indexer.js`
 
 ```javascript
-// src/layer-a-static/analysis/file-culture-classifier.js
+// Paso 8: Clasificar culturas (ZERO LLM)
+const timerCulture = startTimer('10. Classify cultures');
+if (verbose) logger.info('🏷️  Classifying file cultures...');
 
-/**
- * Clasifica un archivo en una "cultura" basándose en reglas estáticas
- * @param {Object} fileNode - Nodo del archivo con metadata
- * @returns {Object} - Cultura y metadatos de clasificación
- */
-export function classifyFileCulture(fileNode) {
-  const { 
-    filePath, 
-    functions = [], 
-    classes = [],
-    exports = [],
-    objectExports = [],
-    constantExports = []
-  } = fileNode;
-  
-  const atomCount = functions.length;
-  const hasParticles = objectExports.length > 0 || constantExports.length > 0;
-  
-  // EL AUDITOR (Tests)
-  if (isTestFile(filePath)) {
-    return {
-      culture: 'auditor',
-      role: 'Observa y valida átomos de producción',
-      atoms: atomCount,
-      audits: getAuditedFiles(fileNode)  // Via imports
-    };
-  }
-  
-  // EL ADUANERO (Barrel Files)
-  if (atomCount === 0 && exports.length > 0 && filePath.endsWith('index.js')) {
-    return {
-      culture: 'aduanero',
-      role: 'Organiza exports del módulo',
-      exportsCount: exports.length,
-      reExports: getReExportedFiles(fileNode)
-    };
-  }
-  
-  // LAS LEYES FÍSICAS (Config/Constants)
-  if (atomCount === 0 && hasParticles) {
-    return {
-      culture: 'leyes',
-      role: 'Define constantes que condicionan el sistema',
-      particles: [...objectExports, ...constantExports],
-      usedBy: getConstantConsumers(fileNode)  // Quién importa estas constantes
-    };
-  }
-  
-  // EL SCRIPT (Automation)
-  if (filePath.startsWith('scripts/') && atomCount > 0) {
-    return {
-      culture: 'script',
-      role: 'Automatiza tareas de mantenimiento',
-      atoms: atomCount,
-      mainFunction: findMainFunction(functions)
-    };
-  }
-  
-  // EL CIUDADANO (Worker/Logic)
-  if (atomCount > 0) {
-    return {
-      culture: 'ciudadano',
-      role: 'Lógica de negocio productiva',
-      atoms: atomCount,
-      atomTypes: classifyAtomTypes(functions)
-    };
-  }
-  
-  // Sin clasificar (ej: archivos vacíos, assets)
-  return {
-    culture: 'desconocido',
-    role: 'Sin clasificar',
-    note: 'Archivo sin átomos ni partículas significativas'
-  };
+enrichWithCulture(systemMap);
+
+if (verbose) {
+  const stats = systemMap.metadata?.cultureStats || {};
+  logger.info(`  ✓ Citizens: ${stats.citizen || 0}`);
+  logger.info(`  ✓ Auditors: ${stats.auditor || 0}`);
+  logger.info(`  ✓ Gatekeepers: ${stats.gatekeeper || 0}`);
+  logger.info(`  ✓ Laws: ${stats.laws || 0}`);
+  logger.info(`  ✓ Scripts: ${stats.script || 0}`);
+  logger.info(`  ✓ Entrypoints: ${stats.entrypoint || 0}`);
+  logger.info(`  ✓ Unknown: ${stats.unknown || 0}`);
 }
 
-function isTestFile(filePath) {
-  return /\.(test|spec)\.js$/.test(filePath) || 
-         /^tests?\//.test(filePath) ||
-         /\/tests?\//.test(filePath);
-}
+timerCulture.end(verbose);
 ```
 
 ---
 
-## Flujo de Clasificación
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    PIPELINE DE CLASIFICACIÓN                            │
-└─────────────────────────────────────────────────────────────────────────┘
-
-     ARCHIVO (Molécula)
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ¿Tiene ÁTOMOS (funciones)?                                             │
-│                                                                         │
-│  ├── NO → ¿Es index.js con exports? → ADUANERO                         │
-│  │        ¿Tiene objectExports/constantExports? → LEYES FÍSICAS        │
-│  │        Ninguno → DESCONOCIDO                                         │
-│  │                                                                      │
-│  └── SÍ → ¿Está en tests/? → AUDITOR                                   │
-│           ¿Está en scripts/? → SCRIPT                                   │
-│           Ninguno → CIUDADANO                                           │
-└─────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  OUTPUT: { culture, role, atoms, connections }                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Métricas Esperadas en OmnySys
-
-| Cultura | Cantidad | Porcentaje | Átomos |
-|---------|----------|------------|--------|
-| Ciudadano | ~1,100 | 64% | ~5,000 |
-| Auditor | ~293 | 17% | ~1,500 |
-| Aduanero | ~216 | 12% | 0 |
-| Leyes | ~50 | 3% | 0 |
-| Script | ~20 | 1% | ~100 |
-| Desconocido | ~46 | 3% | 0 |
-
----
-
-## Valor para el LLM
-
-### Sin Clasificación (Antes)
-```
-LLM: "Veo un archivo config/limits.js..."
-LLM: "¿Qué hago con esto? ¿Tiene funciones?"
-LLM: "No sé si es importante..."
-```
-
-### Con Clasificación (Después)
-```
-LLM: "Veo config/limits.js → Cultura: LEYES FÍSICAS"
-LLM: "Contiene: BATCH_SIZE=20, MAX_FILES=1000"
-LLM: "Usado por: parser.js, indexer.js"
-LLM: "Acción: Usar estas constantes, NO inventar nuevas"
-```
-
----
-
-## Próximos Pasos
-
-1. **Implementar clasificador** en pipeline de Layer A
-2. **Agregar campo `culture`** a cada fileNode
-3. **Crear linkage** Config→Usage (qué átomos usan cada constante)
-4. **Exponer via MCP** para consultas del LLM
-
----
-
-## Referencias
-
-- [philosophy.md](../01-core/philosophy.md) - Física del Software
-- [code-physics.md](./code-physics.md) - Sociedades de Átomos
-- [data-by-layer.md](./data-by-layer.md) - Datos disponibles por layer
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM** - Implementado en `file-culture-classifier.js`  
+**Próximo**: 🚧 Tree-sitter integration (Q2 2026)

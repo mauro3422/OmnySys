@@ -1,200 +1,156 @@
 /**
- * @fileoverview index.js
- * 
- * Parser modular - Parsea archivos y extrae información del AST
- * 
- * Responsabilidad:
- * - Generar AST con @babel/parser
- * - Extraer imports (qué y de dónde)
- * - Extraer exports (qué exporta)
- * - Extraer definiciones (funciones, clases)
- * - Extraer llamadas a funciones
- * 
- * @module parser
+ * @fileoverview parser-v2/index.js
+ *
+ * Parser basado en Tree-sitter — drop-in replacement de parser/index.js.
+ * Misma interfaz pública: parseFile(filePath, code) → FileInfo
+ *
+ * Ventajas sobre Babel:
+ *  - scope-aware call tracking (resuelve closure/callback gap)
+ *  - soporte multi-lenguaje vía grammars WASM
+ *  - sin compilación nativa (usa web-tree-sitter WASM)
+ *
+ * @module parser-v2
  */
 
-import fs from 'fs/promises';
+// web-tree-sitter usa named exports en ESM — no tiene default export
+// Se resuelve dinámicamente en ensureInitialized()
+let Parser;
+let Language;
+
 import path from 'path';
-import { parse } from '@babel/parser';
-import _traverse from '@babel/traverse';
-const traverse = _traverse.default || _traverse;
-
-import { getParserOptions } from './config.js';
-import { extractESMImport, extractCommonJSRequire, extractDynamicImport } from './extractors/imports.js';
-import { extractNamedExports, extractDefaultExport } from './extractors/exports.js';
-import { extractFunctionDefinition, extractArrowFunction, extractFunctionExpression, extractClassDefinition, extractVariableExports, extractTestCallback } from './extractors/definitions.js';
-import { extractTSInterface, extractTSTypeAlias, extractTSEnum, extractTSTypeReference } from './extractors/typescript.js';
-import { extractCallExpression, extractIdentifierRef } from './extractors/calls.js';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { getWasmPath, WASM_DIR, isSupportedFile } from './grammars/index.js';
+import { extractFileInfo } from './extractor.js';
 import { createLogger } from '../../utils/logger.js';
-import { getFileId } from './helpers.js';
 
-const logger = createLogger('OmnySys:index');
+const logger = createLogger('OmnySys:parser-v2');
 
+// ─── Inicialización lazy ───────────────────────────────────────────────────
 
+let _initialized = false;
+let _initPromise = null;
 
-// ============================================
-// API Pública
-// ============================================
-
-export { getParserOptions } from './config.js';
-export { getFileId, isNodeExported, isExportedFunction, findCallsInFunction } from './helpers.js';
+/** Cache de lenguajes ya cargados: wasmPath → Language */
+const _languageCache = new Map();
 
 /**
- * Parsea un archivo y extrae información
+ * Inicializa el motor WASM de Tree-sitter (solo una vez)
+ */
+async function ensureInitialized() {
+    if (_initialized) return;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
+        // Importar dinámicamente — web-tree-sitter usa named exports en ESM
+        const wts = await import('web-tree-sitter');
+        Parser = wts.Parser;
+        Language = wts.Language;  // Language es named export separado
+
+        // fileURLToPath convierte URL → path absoluto Windows (C:\...\web-tree-sitter.wasm)
+        const runtimeWasmPath = fileURLToPath(
+            new URL('../../../node_modules/web-tree-sitter/web-tree-sitter.wasm', import.meta.url)
+        );
+
+        await Parser.init({
+            locateFile(filename) {
+                // web-tree-sitter internamente busca 'tree-sitter.wasm'
+                // pero el archivo real se llama 'web-tree-sitter.wasm'
+                if (filename.includes('tree-sitter.wasm')) {
+                    return runtimeWasmPath;
+                }
+                return filename;
+            }
+        });
+        _initialized = true;
+        logger.debug('✅ Tree-sitter WASM initialized');
+    })();
+
+    return _initPromise;
+}
+
+/**
+ * Carga (y cachea) el Language para un archivo dado
+ * @param {string} filePath
+ * @returns {Promise<import('web-tree-sitter').Language|null>}
+ */
+async function loadLanguage(filePath) {
+    const wasmPath = getWasmPath(filePath);
+    if (!wasmPath) return null;
+
+    if (_languageCache.has(wasmPath)) return _languageCache.get(wasmPath);
+
+    const lang = await Language.load(wasmPath);
+    _languageCache.set(wasmPath, lang);
+    return lang;
+}
+
+// ─── API pública ─────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene el árbol Tree-sitter para el código dado
+ * @param {string} filePath - Ruta del archivo para determinar el lenguaje
+ * @param {string} code - Código fuente
+ * @returns {Promise<import('web-tree-sitter').Tree|null>}
+ */
+export async function getTree(filePath, code) {
+    try {
+        await ensureInitialized();
+        const language = await loadLanguage(filePath);
+        if (!language) return null;
+
+        const parser = new Parser();
+        parser.setLanguage(language);
+        return parser.parse(code);
+    } catch (error) {
+        logger.error(`Failed to get tree for ${filePath}: ${error.message}`);
+        return null;
+    }
+}
+
+/**
+ * Parsea un archivo con Tree-sitter y extrae su FileInfo.
+ * Drop-in replacement de parseFile() en parser/index.js.
  *
  * @param {string} filePath - Ruta absoluta del archivo
  * @param {string} code - Contenido del archivo
- * @returns {object} - FileInfo con imports, exports, definitions
+ * @returns {Promise<object>} FileInfo
  */
-export function parseFile(filePath, code) {
-  const fileInfo = {
-    filePath,
-    fileName: path.basename(filePath),
-    ext: path.extname(filePath),
-    imports: [],
-    exports: [],
-    definitions: [],
-    calls: [],
-    functions: [],
-    identifierRefs: [],
-    // TIER 3: Deep static analysis
-    typeDefinitions: [],
-    enumDefinitions: [],
-    constantExports: [],
-    objectExports: [],
-    typeUsages: []
-  };
+export async function parseFile(filePath, code) {
+    if (!isSupportedFile(filePath)) {
+        // Fallback: retornar estructura vacía para archivos no soportados
+        return {
+            filePath,
+            fileName: path.basename(filePath),
+            ext: path.extname(filePath),
+            imports: [], exports: [], definitions: [],
+            calls: [], functions: [], identifierRefs: [],
+            typeDefinitions: [], enumDefinitions: [],
+            constantExports: [], objectExports: [], typeUsages: [],
+            _unsupported: true,
+        };
+    }
 
-  // Track current class for method extraction
-  let currentClass = null;
+    try {
+        const tree = await getTree(filePath, code);
+        if (!tree) throw new Error(`Could not generate tree for: ${filePath}`);
 
-  try {
-    const ast = parse(code, getParserOptions(filePath));
+        return extractFileInfo(tree, code, filePath);
 
-    traverse(ast, {
-      // Import ESM
-      ImportDeclaration(nodePath) {
-        fileInfo.imports.push(extractESMImport(nodePath));
-      },
-
-      // Exports nombrados
-      ExportNamedDeclaration(nodePath) {
-        fileInfo.exports.push(...extractNamedExports(nodePath));
-        
-        // Si tiene declaración de variables, extraer constantes y objetos
-        const node = nodePath.node;
-        if (node.declaration?.type === 'VariableDeclaration') {
-          // Pasar el path correcto para que extractVariableExports pueda navegar
-          extractVariableExports(nodePath.get('declaration'), fileInfo);
-        }
-      },
-
-      // Default export
-      ExportDefaultDeclaration(nodePath) {
-        fileInfo.exports.push(extractDefaultExport(nodePath));
-      },
-
-      // Funciones declaradas
-      FunctionDeclaration(nodePath) {
-        if (nodePath.node.id) {
-          extractFunctionDefinition(nodePath, filePath, fileInfo, 'declaration');
-        }
-      },
-
-      // Clases
-      ClassDeclaration: {
-        enter(nodePath) {
-          const node = nodePath.node;
-          if (node.id) {
-            currentClass = node.id.name;
-            extractClassDefinition(nodePath, fileInfo);
-          }
-        },
-        exit() {
-          currentClass = null;
-        }
-      },
-
-      // Métodos de clase
-      ClassMethod(nodePath) {
-        const node = nodePath.node;
-        if (node.key) {
-          extractFunctionDefinition(nodePath, filePath, fileInfo, 'method', currentClass);
-        }
-      },
-
-      // Arrow functions en variables
-      VariableDeclarator(nodePath) {
-        const node = nodePath.node;
-        if (node.init?.type === 'ArrowFunctionExpression' && node.id?.type === 'Identifier') {
-          extractArrowFunction(nodePath, filePath, fileInfo);
-        }
-        // Function expressions
-        else if (node.init?.type === 'FunctionExpression' && node.id?.type === 'Identifier') {
-          extractFunctionExpression(nodePath, filePath, fileInfo);
-        }
-      },
-
-      // Callbacks de test: describe('...', () => {}), it('...', () => {}), etc.
-      // Solo se extrae metadata (sin node: node) para evitar explosión de memoria.
-      ArrowFunctionExpression(nodePath) {
-        extractTestCallback(nodePath, filePath, fileInfo);
-      },
-      FunctionExpression(nodePath) {
-        extractTestCallback(nodePath, filePath, fileInfo);
-      },
-
-      // TypeScript
-      TSInterfaceDeclaration(nodePath) {
-        extractTSInterface(nodePath, fileInfo);
-      },
-
-      TSTypeAliasDeclaration(nodePath) {
-        extractTSTypeAlias(nodePath, fileInfo);
-      },
-
-      TSEnumDeclaration(nodePath) {
-        extractTSEnum(nodePath, fileInfo);
-      },
-
-      TSTypeReference(nodePath) {
-        extractTSTypeReference(nodePath, fileInfo);
-      },
-
-      // Llamadas y requires
-      CallExpression(nodePath) {
-        const node = nodePath.node;
-        
-        // Dynamic import
-        const dynamicImport = extractDynamicImport(node);
-        if (dynamicImport) {
-          fileInfo.imports.push(dynamicImport);
-          return;
-        }
-        
-        // CommonJS require
-        const commonjs = extractCommonJSRequire(node);
-        if (commonjs) {
-          fileInfo.imports.push(commonjs);
-          return;
-        }
-        
-        // Llamadas a funciones
-        extractCallExpression(node, fileInfo);
-      },
-
-      // Identificadores
-      Identifier(nodePath) {
-        extractIdentifierRef(nodePath, fileInfo);
-      }
-    });
-
-  } catch (error) {
-    fileInfo.parseError = error.message;
-    logger.warn(`⚠️  Parse error in ${filePath}: ${error.message}`);
-  }
-
-  return fileInfo;
+    } catch (error) {
+        logger.error(`❌ parser-v2 failed for ${path.basename(filePath)}: ${error.message}`);
+        // Devolver estructura vacía en vez de romper el pipeline
+        return {
+            filePath,
+            fileName: path.basename(filePath),
+            ext: path.extname(filePath),
+            imports: [], exports: [], definitions: [],
+            calls: [], functions: [], identifierRefs: [],
+            typeDefinitions: [], enumDefinitions: [],
+            constantExports: [], objectExports: [], typeUsages: [],
+            _error: error.message,
+        };
+    }
 }
 
 /**
@@ -204,25 +160,23 @@ export function parseFile(filePath, code) {
  * @returns {Promise<object>} - FileInfo
  */
 export async function parseFileFromDisk(filePath) {
-  try {
-    const raw = await fs.readFile(filePath, 'utf-8');
-    const code = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip UTF-8 BOM
-    const fileInfo = parseFile(filePath, code);
-    fileInfo.source = code; // Store raw source so downstream can use it for extractFunctionCode
-    return fileInfo;
-  } catch (error) {
-    logger.error(`Error reading file ${filePath}:`, error);
-    return {
-      filePath,
-      fileName: path.basename(filePath),
-      ext: path.extname(filePath),
-      imports: [],
-      exports: [],
-      definitions: [],
-      calls: [],
-      readError: error.message
-    };
-  }
+    try {
+        const raw = await fs.readFile(filePath, 'utf-8');
+        const code = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip UTF-8 BOM
+        const fileInfo = await parseFile(filePath, code);
+        fileInfo.source = code; // Guardar source para extractores downstream
+        return fileInfo;
+    } catch (error) {
+        logger.error(`Error reading file ${filePath}:`, error);
+        return {
+            filePath,
+            fileName: path.basename(filePath),
+            ext: path.extname(filePath),
+            imports: [], exports: [], definitions: [],
+            calls: [], functions: [],
+            readError: error.message
+        };
+    }
 }
 
 /**
@@ -232,6 +186,37 @@ export async function parseFileFromDisk(filePath) {
  * @returns {Promise<object[]>} - Array de FileInfo
  */
 export async function parseFiles(filePaths) {
-  const promises = filePaths.map(filePath => parseFileFromDisk(filePath));
-  return Promise.all(promises);
+    const promises = filePaths.map(filePath => parseFileFromDisk(filePath));
+    return Promise.all(promises);
 }
+
+/**
+ * Versión síncrona disponible para compatibilidad.
+ * Lanza error si el parser aún no fue inicializado.
+ * Se recomienda usar parseFile() async siempre.
+ *
+ * @param {string} filePath
+ * @param {string} code
+ * @returns {object} FileInfo (puede estar incompleto si no inicializado)
+ */
+export function parseFileSync(filePath, code) {
+    if (!_initialized) {
+        throw new Error('parser-v2 not initialized. Call parseFile() (async) first.');
+    }
+    // Para uso síncrono, si ya está inicializado podemos parsear directamente
+    // porque el parsing en sí (después de cargar el wasm) es síncrono
+    // IMPORTANTE: extractFileInfo es síncrona, pero cargar lenguajes no.
+    // Este método solo funcionará si el lenguaje del archivo ya está en cache.
+    const wasmPath = getWasmPath(filePath);
+    const language = _languageCache.get(wasmPath);
+    if (!language) {
+        throw new Error(`Language for ${filePath} not in cache. Use async parseFile() first.`);
+    }
+
+    const parser = new Parser();
+    parser.setLanguage(language);
+    const tree = parser.parse(code);
+    return extractFileInfo(tree, code, filePath);
+}
+
+export { isSupportedFile };

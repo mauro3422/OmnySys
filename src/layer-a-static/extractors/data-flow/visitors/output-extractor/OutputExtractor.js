@@ -8,7 +8,7 @@
  */
 
 import { createLogger } from '#utils/logger.js';
-import { findFunctionNode } from './helpers/ast-helpers.js';
+import { findFunctionNode, startLine } from '../../utils/ts-ast-utils.js';
 import { extractReturn, extractImplicitReturn, createUndefinedReturn } from './extractors/return-extractor.js';
 import { extractThrow } from './extractors/throw-extractor.js';
 import { extractSideEffect } from './extractors/side-effect-extractor.js';
@@ -38,12 +38,12 @@ export class OutputExtractor {
       const functionNode = findFunctionNode(functionAst);
       if (!functionNode) return [];
 
-      const body = functionNode.body;
+      const body = functionNode.childForFieldName('body');
       if (!body) return [];
 
-      // Arrow function con expresión directa
-      if (body.type !== 'BlockStatement') {
-        this.outputs.push(extractImplicitReturn(body));
+      // Arrow function con expresión directa (en Tree-sitter no es un bloque)
+      if (body.type !== 'statement_block') {
+        this.outputs.push(extractImplicitReturn(body, this.code));
         this.hasReturn = true;
         return this.outputs;
       }
@@ -52,23 +52,24 @@ export class OutputExtractor {
       const state = {
         outputs: this.outputs,
         hasReturn: false,
-        hasSideEffect: false
+        hasSideEffect: false,
+        code: this.code
       };
 
       const handlers = {
-        onReturn: (stmt) => extractReturn(stmt),
-        onThrow: (stmt) => extractThrow(stmt),
-        onSideEffect: (expr) => extractSideEffect(expr)
+        onReturn: (stmt) => extractReturn(stmt, this.code),
+        onThrow: (stmt) => extractThrow(stmt, this.code),
+        onSideEffect: (expr) => extractSideEffect(expr, this.code)
       };
 
-      processStatements(body.body || [], handlers, state);
+      processStatements(body.namedChildren || [], handlers, state);
 
       this.hasReturn = state.hasReturn;
       this.hasSideEffect = state.hasSideEffect;
 
       // Si no hay return explícito, es undefined
       if (!this.hasReturn) {
-        this.outputs.push(createUndefinedReturn(functionNode.loc?.end?.line));
+        this.outputs.push(createUndefinedReturn(startLine(functionNode)));
       }
 
       return this.outputs;

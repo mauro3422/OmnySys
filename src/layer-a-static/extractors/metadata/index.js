@@ -50,13 +50,13 @@
 // ============================================
 // Registry - Single source of truth
 // ============================================
-export { 
-  EXTRACTOR_REGISTRY, 
-  getFileLevelExtractors, 
+export {
+  EXTRACTOR_REGISTRY,
+  getFileLevelExtractors,
   getAtomLevelExtractors,
   getExtractor,
   getAvailableFields,
-  getFieldToolCoverage 
+  getFieldToolCoverage
 } from './registry.js';
 
 // ============================================
@@ -76,7 +76,6 @@ export { extractBuildTimeDependencies } from './build-time-deps.js';
 
 // Advanced metadata extractors
 export { extractSideEffects } from './side-effects.js';
-export { extractCallGraph } from './call-graph.js';
 export { extractDataFlow } from './data-flow.js';
 export { extractTypeInference } from './type-inference.js';
 export { extractTemporalPatterns } from './temporal-patterns.js';
@@ -101,7 +100,6 @@ import { extractAsyncPatterns } from './async-patterns.js';
 import { extractErrorHandling } from './error-handling.js';
 import { extractBuildTimeDependencies } from './build-time-deps.js';
 import { extractSideEffects } from './side-effects.js';
-import { extractCallGraph } from './call-graph.js';
 import { extractDataFlow } from './data-flow.js';
 import { extractTypeInference } from './type-inference.js';
 import { extractTemporalPatterns } from './temporal-patterns.js';
@@ -137,35 +135,34 @@ export function extractAllMetadata(filePath, code) {
   // Ejecutar todos los extractores
   const metadata = {
     filePath,
-    
+
     // Contract metadata
     jsdoc: extractJSDocContracts(code),
     runtime: extractRuntimeContracts(code),
-    
+
     // Pattern metadata
     async: extractAsyncPatterns(code),
     errors: extractErrorHandling(code),
-    
+
     // Build metadata
     build: extractBuildTimeDependencies(code),
-    
+
     // Advanced metadata
     sideEffects: extractSideEffects(code),
-    callGraph: extractCallGraph(code),
     dataFlow: extractDataFlow(code),
     typeInference: extractTypeInference(code),
     temporal: extractTemporalPatterns(code),
     depDepth: extractDependencyDepth(code),
     performance: extractPerformanceHints(code),
     historical: extractHistoricalMetadata(filePath),
-    
+
     // 🆕 NUEVO: Extractores adicionales para maximizar metadata
     dna: extractDNA(code),
     errorFlow: extractErrorFlow(code),
     performanceMetrics: extractPerformanceMetrics(code),
     typeContracts: extractTypeContracts(code),
     semanticDomain: extractSemanticDomain(code, '', filePath),
-    
+
     // Extraction metadata - usar el registry para contar
     timestamp: new Date().toISOString(),
     extractorsVersion: '2.1.0',
@@ -186,13 +183,13 @@ export function extractAllMetadata(filePath, code) {
  */
 export function extractAtomMetadata(filePath, functionName, functionCode) {
   const metadata = {};
-  
+
   const code = typeof functionCode === 'string' ? functionCode : '';
   const name = typeof functionName === 'string' ? functionName : '';
   const path = typeof filePath === 'string' ? filePath : '';
 
   metadata.semanticDomain = extractSemanticDomain(code, name, path);
-  
+
   return metadata;
 }
 
@@ -212,7 +209,6 @@ export function extractMetadataByCategory(code, categories) {
     errors: extractErrorHandling,
     build: extractBuildTimeDependencies,
     sideEffects: extractSideEffects,
-    callGraph: extractCallGraph,
     dataFlow: extractDataFlow,
     typeInference: extractTypeInference,
     temporal: extractTemporalPatterns,
@@ -221,7 +217,7 @@ export function extractMetadataByCategory(code, categories) {
   };
 
   const result = {};
-  
+
   for (const category of categories) {
     if (extractors[category]) {
       result[category] = extractors[category](code);

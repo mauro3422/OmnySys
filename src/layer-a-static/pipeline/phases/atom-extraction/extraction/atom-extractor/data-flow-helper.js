@@ -16,14 +16,15 @@ import { logger } from '#utils/logger.js';
 export async function extractDataFlowSafe(functionInfo, functionCode, filePath) {
   try {
     const input = functionInfo.node || functionCode;
+
     if (input) {
       return await extractDataFlowV2(
         input,
-        { functionName: functionInfo.name, inferTypes: true }
+        { functionName: functionInfo.name, filePath, inferTypes: true }
       );
     }
   } catch (error) {
-    logger.warn(`Data flow extraction failed for ${functionInfo.name}: ${error.message}`);
+    logger.warn(`Data flow extraction failed for ${functionInfo.name} in ${filePath}: ${error.message}`);
   }
   return null;
 }

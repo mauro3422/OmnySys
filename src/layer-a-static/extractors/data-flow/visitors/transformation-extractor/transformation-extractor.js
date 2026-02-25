@@ -9,7 +9,7 @@
  */
 
 import { createLogger } from '#utils/logger.js';
-import { findFunctionNode, getFunctionBody, isImplicitReturn } from './utils/ast-helpers.js';
+import { text, startLine, findFunctionNode } from '../../utils/ts-ast-utils.js';
 import { classifyOperation } from './core/operation-classifier.js';
 import { extractSources } from './core/source-extractor.js';
 import { processStatement, createProcessingContext } from './processors/statement-processor.js';
@@ -35,14 +35,14 @@ export class TransformationExtractor {
     this.inputs = inputs || [];
     this.transformations = [];
     this.inputNames = new Set(this.inputs.map(i => i.name));
-    
+
     // Trackear nombres locales de destructured inputs
     this.inputs.forEach(i => {
       if (i.properties) {
         i.properties.forEach(p => this.inputNames.add(p.local));
       }
     });
-    
+
     this.definedVariables = new Set();
   }
 
@@ -59,22 +59,23 @@ export class TransformationExtractor {
         return [];
       }
 
-      const body = getFunctionBody(functionNode);
+      const body = functionNode.childForFieldName('body');
       if (!body) {
         logger.debug('Function has no body');
         return [];
       }
 
-      // Arrow function con expresión implícita: x => x + 1
-      if (isImplicitReturn(functionNode)) {
+      // Arrow function con expresión implícita: x => x + 1 (en Tree-sitter no es un bloque)
+      if (body.type !== 'statement_block') {
         processImplicitReturn(body, {
-          addTransformation: this.addTransformation.bind(this)
+          addTransformation: this.addTransformation.bind(this),
+          code: this.code
         });
         return this.transformations;
       }
 
       // Procesar cada statement del cuerpo
-      const statements = body.body || [];
+      const statements = body.namedChildren || [];
       for (const stmt of statements) {
         this.processStatement(stmt);
       }
@@ -176,8 +177,8 @@ export class TransformationExtractor {
    * @private
    */
   extractTransformation(targetVar, sourceNode, meta = {}) {
-    const sources = extractSources(sourceNode);
-    const operation = classifyOperation(sourceNode);
+    const sources = extractSources(sourceNode, this.code);
+    const operation = classifyOperation(sourceNode, this.code);
 
     this.addTransformation({
       to: targetVar,
@@ -185,7 +186,7 @@ export class TransformationExtractor {
       operation: operation.type,
       operationDetails: operation.details,
       via: operation.via,
-      line: meta.line || sourceNode.loc?.start?.line,
+      line: meta.line || startLine(sourceNode),
       ...meta
     });
 

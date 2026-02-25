@@ -44,7 +44,7 @@ function log(msg) {
 }
 
 // Redirect proxy's own stderr to log file
-process.stderr.write = function(chunk, encoding, callback) {
+process.stderr.write = function (chunk, encoding, callback) {
   fs.appendFileSync(logFile, chunk);
   if (typeof encoding === 'function') encoding();
   else if (callback) callback();
@@ -71,7 +71,7 @@ function spawnWorker() {
   const execArgv = process.execArgv.filter(a =>
     a.startsWith('--max-old-space-size') || a.startsWith('--inspect')
   );
-  
+
   // Si no hay flag de memoria, agregar 8GB default
   if (!hasMemoryFlag) {
     execArgv.push('--max-old-space-size=8192');
@@ -112,8 +112,8 @@ function spawnWorker() {
   // Listen for restart signal from worker (sent by restart-server.js tool)
   child.on('message', (msg) => {
     if (msg?.type === 'restart') {
-      log(`Restart requested (clearCache=${msg.clearCache})`);
-      scheduleRestart();
+      log(`Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
+      scheduleRestart(msg.clearCache, msg.reanalyze);
     }
   });
 
@@ -130,7 +130,7 @@ function spawnWorker() {
   });
 }
 
-function scheduleRestart() {
+function scheduleRestart(clearCache = false, reanalyze = false) {
   if (isRestarting) return;
   isRestarting = true;
 
@@ -142,6 +142,34 @@ function scheduleRestart() {
     }
 
     setTimeout(() => {
+      // 🚀 CRITICAL: Si se pide re-análisis, borrar DB ahora que el worker está muerto y no hay locks
+      if (reanalyze) {
+        log('🗑️  Reanalyze requested: cleaning up .omnysysdata...');
+        const dataDir = path.join(projectPath, '.omnysysdata');
+        const toDelete = ['files', 'atoms', 'molecules'];
+        const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
+
+        try {
+          // Borrar carpetas
+          for (const dir of toDelete) {
+            const fullPath = path.join(dataDir, dir);
+            if (fs.existsSync(fullPath)) {
+              fs.rmSync(fullPath, { recursive: true, force: true });
+            }
+          }
+          // Borrar archivos de DB
+          for (const file of dbFiles) {
+            const fullPath = path.join(dataDir, file);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+          }
+          log('✅ Deletion complete: project will be fully re-indexed on spawn.');
+        } catch (err) {
+          log(`⚠️  Failed to clean up dataDir: ${err.message}`);
+        }
+      }
+
       isRestarting = false;
       // Truncate log so the debug terminal starts clean on each restart
       fs.writeFileSync(logFile, '');

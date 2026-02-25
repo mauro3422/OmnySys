@@ -15,7 +15,8 @@
  * @version 0.9.4 - Consolidado con data-flow-v2
  */
 
-import { parse } from '@babel/parser';
+import path from 'path';
+import { parseFile, parseFileSync, isSupportedFile } from '../../parser/index.js';
 import { createLogger } from '#utils/logger.js';
 import { InputExtractor } from './visitors/input-extractor/index.js';
 import { TransformationExtractor } from './visitors/transformation-extractor/index.js';
@@ -30,29 +31,7 @@ import { PatternIndexManager } from './utils/managers/index.js';
 const logger = createLogger('OmnySys:data-flow');
 
 // Configuration
-const PARSER_OPTIONS = {
-  sourceType: 'module',
-  allowImportExportEverywhere: true,
-  allowReturnOutsideFunction: true,
-  // Allow shebang (#!/usr/bin/env node) at the start of files
-  allowHashBang: true,
-  plugins: [
-    'jsx',
-    'typescript',
-    'decorators-legacy',
-    'classProperties',
-    'asyncGenerators',
-    'dynamicImport',
-    'optionalChaining',
-    'nullishCoalescing',
-    'topLevelAwait'
-    // NOTE: pipelineOperator removed - conflicts with shebangs and private fields (#)
-    // The hack proposal's topicToken '#' collides with:
-    // - Shebangs: #!/usr/bin/env node
-    // - Private fields: #field
-    // Since data-flow extracts from ALL files, it must be generic
-  ]
-};
+// Tree-sitter doesn't need these manual PARSER_OPTIONS anymore as it uses WASM grammars
 
 /**
  * Extracts data flow from a function
@@ -60,27 +39,42 @@ const PARSER_OPTIONS = {
  * @param {Object} options - Extraction options
  * @returns {Object} Data flow analysis result
  */
-export function extractDataFlow(codeOrNode, options = {}) {
+export async function extractDataFlow(codeOrNode, options = {}) {
   logger.debug('Extracting data flow...');
 
   try {
-    // Accept either a source code string or an already-parsed AST node
-    const code = typeof codeOrNode === 'string' ? codeOrNode : '';
-    const ast = typeof codeOrNode === 'string'
-      ? parse(codeOrNode, PARSER_OPTIONS)
-      : codeOrNode;
+    // Accept either a source code string or an already-parsed Tree-sitter node
+    let code = typeof codeOrNode === 'string' ? codeOrNode : '';
+    let node = typeof codeOrNode !== 'string' ? codeOrNode : null;
+
+    const filePath = options.filePath || 'snippet.js';
+
+    if (!node && code) {
+      // Si recibimos solo código, necesitamos parsearlo.
+      // Usamos parseFileSync si es seguro, o asumimos que ya está inicializado.
+      try {
+        const fileInfo = await parseFile(filePath, code);
+        // Deberíamos buscar el nodo de la función en el fileInfo si es posible, 
+        // pero por ahora tomaremos el root node si es un snippet.
+        // TODO: Mejorar la resolución del nodo específico vs root node
+        node = fileInfo._tree?.rootNode || null;
+      } catch (parseErr) {
+        logger.warn(`Failed to parse snippet for data flow: ${parseErr.message}`);
+        return { error: parseErr.message };
+      }
+    }
 
     const functionName = options.functionName || '<anonymous>';
 
     // Extract components in order — each step feeds the next
     const inputExtractor = new InputExtractor(code, functionName);
-    const inputs = inputExtractor.extract(ast);
+    const inputs = inputExtractor.extract(node);
 
     const transformationExtractor = new TransformationExtractor(code, inputs);
-    const transformations = transformationExtractor.extract(ast);
+    const transformations = transformationExtractor.extract(node);
 
     const outputExtractor = new OutputExtractor(code, transformations);
-    const outputs = outputExtractor.extract(ast);
+    const outputs = outputExtractor.extract(node);
 
     // Build the transformation graph from extracted inputs/transformations/outputs
     const graphBuilder = new GraphBuilder();
@@ -151,7 +145,9 @@ export function extractDataFlow(codeOrNode, options = {}) {
       }
     };
   } catch (error) {
-    logger.warn('Data flow extraction failed:', error.message);
+    const functionName = options.functionName || '<anonymous>';
+    const filePath = options.filePath || 'unknown';
+    logger.warn(`Data flow extraction failed for ${functionName} in ${filePath}:`, error.message);
     return { error: error.message };
   }
 }

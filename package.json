@@ -68,6 +68,7 @@
     "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-server.js",
     "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js",
     "mcp:http": "node src/layer-c-memory/mcp-http-server.js",
+    "mcp:bridge": "node src/layer-c-memory/mcp-stdio-bridge.js",
     "pack:check": "npm pack --dry-run"
   },
   "keywords": [
@@ -102,19 +103,19 @@
     "#validation/*": "./src/validation/*"
   },
   "dependencies": {
-    "@babel/parser": "^7.23.0",
-    "@babel/traverse": "^7.23.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "chokidar": "^3.5.3",
     "commander": "^11.1.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "fast-glob": "^3.3.2",
+    "web-tree-sitter": "^0.26.5",
     "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "glob": "^13.0.6",
     "vitest": "^4.0.18"
   },
   "optionalDependencies": {
@@ -137,6 +138,8 @@
     "LICENSE",
     ".mcp.json",
     "mcp-servers.json",
-    "mcp-servers.schema.json"
+    "mcp-servers.schema.json",
+    "mcp-http-server.js",
+    "mcp-stdio-bridge.js"
   ]
 }

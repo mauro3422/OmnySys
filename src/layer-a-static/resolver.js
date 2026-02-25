@@ -12,7 +12,8 @@
 
 import path from 'path';
 import { readAliasConfig } from './resolver/resolver-aliases.js';
-import { fileExists, findFileWithExtension, normalizeToProjectRelative, SUPPORTED_EXTENSIONS } from './resolver/resolver-fs.js';
+import { fileExists, findFileWithExtension, normalizeToProjectRelative } from './resolver/resolver-fs.js';
+import resolverFs from './resolver/resolver-fs.js';
 
 /**
  * Resuelve un import a ruta relativa al proyecto
@@ -105,7 +106,7 @@ export async function getResolutionConfig(projectRoot) {
   return {
     projectRoot,
     aliases,
-    supportedExtensions: SUPPORTED_EXTENSIONS
+    supportedExtensions: resolverFs.SUPPORTED_EXTENSIONS
   };
 }
 

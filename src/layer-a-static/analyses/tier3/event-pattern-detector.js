@@ -9,59 +9,24 @@
  * @status STUB - returns safe empty defaults
  */
 
+import { createLogger } from '../../../utils/logger.js';
+import { detectEventPatterns as modularDetectEventPatterns } from './event-detector/detector.js';
+
+const logger = createLogger('OmnySys:event:detector');
+
 /**
- * Detecta patrones de eventos en código fuente.
+ * Detecta patrones de eventos en código fuente usando el detector modular basado en Tree-sitter
  * @param {string} code - Código fuente a analizar
  * @param {string} filePath - Path del archivo (para contexto)
- * @returns {{ eventListeners: Array, eventEmitters: Array }}
+ * @returns {Promise<{ eventListeners: Array, eventEmitters: Array }>}
  */
-export function detectEventPatterns(code, filePath) {
-  if (!code || typeof code !== 'string') {
+export async function detectEventPatterns(code, filePath) {
+  try {
+    return await modularDetectEventPatterns(code, filePath);
+  } catch (error) {
+    logger.warn(`⚠️ Error detecting events in ${filePath}:`, error.message);
     return { eventListeners: [], eventEmitters: [] };
   }
-
-  const eventListeners = [];
-  const eventEmitters = [];
-
-  // addEventListener / on() patterns
-  const listenerPatterns = [
-    /\.addEventListener\s*\(\s*['"`]([^'"`]+)['"`]/g,
-    /\.on\s*\(\s*['"`]([^'"`]+)['"`]/g,
-    /EventEmitter.*?\.on\s*\(\s*['"`]([^'"`]+)['"`]/g
-  ];
-
-  for (const pattern of listenerPatterns) {
-    let match;
-    while ((match = pattern.exec(code)) !== null) {
-      eventListeners.push({
-        event: match[1],
-        line: code.slice(0, match.index).split('\n').length,
-        file: filePath,
-        raw: match[0]
-      });
-    }
-  }
-
-  // emit() / dispatchEvent() patterns
-  const emitterPatterns = [
-    /\.emit\s*\(\s*['"`]([^'"`]+)['"`]/g,
-    /\.dispatchEvent\s*\(\s*new\s+\w+\s*\(\s*['"`]([^'"`]+)['"`]/g,
-    /\.trigger\s*\(\s*['"`]([^'"`]+)['"`]/g
-  ];
-
-  for (const pattern of emitterPatterns) {
-    let match;
-    while ((match = pattern.exec(code)) !== null) {
-      eventEmitters.push({
-        event: match[1],
-        line: code.slice(0, match.index).split('\n').length,
-        file: filePath,
-        raw: match[0]
-      });
-    }
-  }
-
-  return { eventListeners, eventEmitters };
 }
 
 /**

@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { getIdentifierName, getMemberPath } from '../utils/ast-helpers.js';
+import { getIdentifierName, startLine, text } from '../../../utils/ts-ast-utils.js';
 
 // Métodos mutables comunes de arrays
 export const MUTATING_METHODS = [
@@ -44,25 +44,31 @@ export function isMutatingMethod(methodName, objectType = 'array') {
  * @param {Function} addTransformation - Callback para agregar transformación
  * @returns {boolean} - True si fue manejada como mutación
  */
-export function handleMutatingCall(callExpr, addTransformation) {
-  const callee = callExpr.callee;
-  
-  if (callee.type !== 'MemberExpression') {
+export function handleMutatingCall(callExpr, addTransformation, code) {
+  const callee = callExpr.childForFieldName('function');
+  const argumentsNode = callExpr.childForFieldName('arguments');
+
+  if (!callee || callee.type !== 'member_expression') {
     return false;
   }
 
-  const objectName = getIdentifierName(callee.object);
-  const methodName = callee.property.name || callee.property.value;
+  const objectNode = callee.childForFieldName('object');
+  const propertyNode = callee.childForFieldName('property');
 
-  if (!isMutatingMethod(methodName)) {
+  const objectName = getIdentifierName(objectNode, code);
+  const methodName = propertyNode ? text(propertyNode, code) : null;
+
+  if (!methodName || !isMutatingMethod(methodName)) {
     return false;
   }
 
   // Extraer fuentes de los argumentos
   const sources = [];
-  for (const arg of callExpr.arguments) {
-    const name = getIdentifierName(arg);
-    if (name) sources.push(name);
+  if (argumentsNode) {
+    for (const arg of argumentsNode.namedChildren) {
+      const name = getIdentifierName(arg, code);
+      if (name) sources.push(name);
+    }
   }
 
   addTransformation({
@@ -70,11 +76,11 @@ export function handleMutatingCall(callExpr, addTransformation) {
     from: sources.length > 0 ? sources : objectName,
     operation: 'mutation',
     via: methodName,
-    line: callExpr.loc?.start?.line,
+    line: startLine(callExpr),
     type: 'mutation',
-    details: { 
+    details: {
       method: methodName,
-      argumentCount: callExpr.arguments.length
+      argumentCount: argumentsNode ? argumentsNode.namedChildCount : 0
     }
   });
 

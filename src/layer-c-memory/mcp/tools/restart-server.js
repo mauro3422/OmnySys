@@ -38,15 +38,19 @@ export async function restart_server(args, context) {
           // Incluye atoms/ y molecules/ para que el nuevo parser regenere todo
           const toDelete = ['files', 'atoms', 'molecules'];
           for (const dir of toDelete) {
-            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => {});
+            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
           }
-          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => {});
-          logger.info('✅ Análisis anterior eliminado (atoms + molecules + files + index)');
+          // También borrar la base de datos SQLite y sus archivos temporales para integridad total
+          const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
+          for (const file of dbFiles) {
+            await fs.unlink(path.join(dataDir, file)).catch(() => { });
+          }
+          logger.info('✅ Análisis anterior eliminado (DB + atoms + molecules + files + index)');
         }
       }
 
       // Señalar al proxy — el proxy espera 300ms y luego mata+respawnea
-      process.send({ type: 'restart', clearCache });
+      process.send({ type: 'restart', clearCache, reanalyze });
 
       return {
         success: true,
@@ -84,9 +88,9 @@ export async function restart_server(args, context) {
         try {
           const toDelete = ['files', 'atoms', 'molecules'];
           for (const dir of toDelete) {
-            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => {});
+            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
           }
-          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => {});
+          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => { });
 
           logger.info('✅ Análisis anterior eliminado (atoms + molecules + files + index)');
           result.analysisCleared = true;

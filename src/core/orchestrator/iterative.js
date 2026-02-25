@@ -2,26 +2,26 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:iterative');
 
-
-﻿/**
- * Start iterative analysis when main queue is empty
- * Files with high-confidence suggestions get re-analyzed
+/**
+ * Start iterative analysis when main queue is empty.
+ * Only relevant when LLM is active — if no files have llmInsights the loop exits immediately.
+ * Files with high-confidence suggestions get re-analyzed to refine connections.
  */
 export async function _startIterativeAnalysis() {
   if (this.iteration >= this.maxIterations) {
-    logger.info(`\nâœ… Iterative analysis complete after ${this.iteration} iterations`);
+    logger.debug(`Iterative analysis complete after ${this.iteration} iterations`);
     await this._finalizeAnalysis();
     return;
   }
 
   this.iteration++;
-  logger.info(`\nðŸ”„ Starting iteration ${this.iteration}/${this.maxIterations}...`);
+  logger.debug(`Starting iteration ${this.iteration}/${this.maxIterations}...`);
 
   try {
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     const filesNeedingRefinement = [];
 
-    // Check all analyzed files for high-confidence suggestions
+    // Check all analyzed files for high-confidence LLM suggestions
     for (const filePath of this.indexedFiles) {
       const analysis = await getFileAnalysis(this.projectPath, filePath);
       // LLM desactivado — iterative analysis no aplica sin llmInsights
@@ -45,12 +45,14 @@ export async function _startIterativeAnalysis() {
     }
 
     if (filesNeedingRefinement.length === 0) {
-      logger.info('  âœ“ No files need refinement - consolidation complete');
+      // No LLM insights — skip remaining iterations entirely
+      logger.debug('No files need refinement (LLM inactive or no suggestions). Finalizing.');
+      this.iteration = this.maxIterations; // prevent further iterations
       await this._finalizeAnalysis();
       return;
     }
 
-    logger.info(`  ðŸ“Š ${filesNeedingRefinement.length} files need refinement`);
+    logger.info(`📊 ${filesNeedingRefinement.length} files need LLM refinement`);
 
     // Add to iterative queue and process
     this.isIterating = true;
@@ -62,7 +64,7 @@ export async function _startIterativeAnalysis() {
 
     this._processNext();
   } catch (error) {
-    logger.error('  âŒ Error in iterative analysis:', error.message);
+    logger.error('❌ Error in iterative analysis:', error.message);
     this.isIterating = false;
   }
 }

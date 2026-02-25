@@ -6,34 +6,45 @@
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
-import { extractAtoms } from '#layer-a/extractors/atomic/index.js';
+import { parseFileFromDisk } from '#layer-a/parser/index.js';
+import { extractAllMetadata } from '#layer-a/extractors/metadata/index.js';
+import { extractAtoms } from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
 
 const logger = createLogger('OmnySys:atomic:reindex');
 
 /**
  * Re-indexa un archivo después de editar (incremental)
- * Usa el extractor atómico completo para obtener toda la metadata
+ * Usa el pipeline Tree-sitter completo para integridad total
  */
 export async function reindexFile(filePath, projectPath) {
   try {
-    const absolutePath = path.isAbsolute(filePath) 
-      ? filePath 
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
       : path.join(projectPath, filePath);
-    
-    const fs = await import('fs/promises');
-    const code = await fs.readFile(absolutePath, 'utf-8');
-    
-    const atoms = extractAtoms(code, absolutePath);
-    
+
+    const relativePath = path.relative(projectPath, absolutePath);
+
+    // 1. Parsear el archivo con Tree-sitter
+    const parsedFile = await parseFileFromDisk(absolutePath);
+    if (!parsedFile) throw new Error(`Could not parse file: ${relativePath}`);
+
+    const code = parsedFile.source || '';
+
+    // 2. Extraer metadata (JSDoc, async, etc.) para el extractor de átomos
+    const metadata = extractAllMetadata(absolutePath, code);
+
+    // 3. Extraer átomos usando el resultado del parser y metadata
+    // Nota: El extractor de átomos ahora requiere (fileInfo, code, fileMetadata, filePath)
+    const atoms = await extractAtoms(parsedFile, code, metadata, relativePath);
+
     if (!atoms || atoms.length === 0) {
-      logger.warn(`[Reindex] No atoms found in ${absolutePath}`);
+      logger.warn(`[Reindex] No atoms found in ${relativePath}`);
       return { success: true, atoms: [], exports: [] };
     }
-    
-    const relativePath = path.relative(projectPath, absolutePath);
-    
+
+    // 4. Guardar de forma incremental en SQLite
     await saveAtomsIncremental(projectPath, relativePath, atoms, { source: 'atomic-edit' });
-    
+
     // Invalidate cache for this file
     try {
       const { invalidateCacheInstance } = await import('#core/cache/index.js');
@@ -42,13 +53,13 @@ export async function reindexFile(filePath, projectPath) {
     } catch (e) {
       logger.warn(`[Reindex] Cache invalidation failed: ${e.message}`);
     }
-    
+
     logger.info(`[Reindex] Updated ${atoms.length} atoms for ${relativePath}`);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       atoms,
-      exports: [],
+      exports: parsedFile.exports || [],
       relativePath
     };
   } catch (error) {

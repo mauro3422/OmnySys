@@ -15,7 +15,11 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { PORTS } from './port-checker.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export const repoRoot = path.resolve(__dirname, '../../..');
 
 const SERVER_KEY = 'omnysystem';
 const LEGACY_SERVER_KEYS = ['omnysys', 'omny-system'];
@@ -63,7 +67,9 @@ const CONFIG_PATHS = {
     : '',
   claude: path.join(os.homedir(), '.claude.json'),
   opencode: path.join(os.homedir(), '.config', 'opencode', 'opencode.json'),
-  qwen: path.join(os.homedir(), '.qwen', 'settings.json')
+  qwen: path.join(os.homedir(), '.qwen', 'settings.json'),
+  antigravity: path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_config.json'),
+  geminiCli: path.join(os.homedir(), '.gemini', 'settings.json')
 };
 
 function getMcpUrl() {
@@ -338,6 +344,56 @@ async function applyQwenConfig(url, projectPath) {
   };
 }
 
+async function applyAntigravityConfig(projectPath) {
+  const targetPath = CONFIG_PATHS.antigravity;
+  // Bridge path is relative to where the package is installed
+  const bridgePath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js');
+  const config = await readJsonSafe(targetPath, { mcpServers: {} });
+
+  const mcpServers = ensureMcpServersContainer(config);
+  clearLegacyAliases(mcpServers);
+  mcpServers[SERVER_KEY] = {
+    command: 'node',
+    args: [normalizeSlashes(bridgePath)]
+  };
+
+  await writeJsonNoBom(targetPath, config);
+
+  return {
+    client: 'antigravity',
+    path: targetPath,
+    applied: true
+  };
+}
+
+async function applyGeminiCliConfig(url) {
+  const targetPath = CONFIG_PATHS.geminiCli;
+  const config = await readJsonSafe(targetPath, {});
+
+  const mcpServers = ensureMcpServersContainer(config);
+  const existing = getPrimaryWithLegacyFallback(mcpServers);
+  mcpServers[SERVER_KEY] = {
+    ...(existing || {}),
+    httpUrl: url
+  };
+  clearLegacyAliases(mcpServers);
+
+  // Ensure omnysys is in the allowed list
+  if (!config.mcp || typeof config.mcp !== 'object') config.mcp = {};
+  if (!Array.isArray(config.mcp.allowed)) config.mcp.allowed = [];
+  if (!config.mcp.allowed.includes(SERVER_KEY)) {
+    config.mcp.allowed.push(SERVER_KEY);
+  }
+
+  await writeJsonNoBom(targetPath, config);
+
+  return {
+    client: 'geminiCli',
+    path: targetPath,
+    applied: true
+  };
+}
+
 function buildWorkspaceMcpPayload(url, includeDescription = false) {
   const server = {
     type: 'http',
@@ -371,7 +427,9 @@ async function writeUnifiedConfig(projectPath, url) {
       clineCursor: CONFIG_PATHS.clineCursor,
       claude: CONFIG_PATHS.claude,
       opencode: CONFIG_PATHS.opencode,
-      qwen: CONFIG_PATHS.qwen
+      qwen: CONFIG_PATHS.qwen,
+      antigravity: CONFIG_PATHS.antigravity,
+      geminiCli: CONFIG_PATHS.geminiCli
     },
     workspace: getWorkspaceConfigPaths(projectPath),
     vscode: getVsCodeConfigPaths(projectPath)
@@ -506,6 +564,8 @@ export async function applyUnifiedMcpConfig(options = {}) {
   await apply('claude', () => applyClaudeConfig(mcpUrl, projectPath));
   await apply('opencode', () => applyOpenCodeConfig(mcpUrl));
   await apply('qwen', () => applyQwenConfig(mcpUrl, projectPath));
+  await apply('antigravity', () => applyAntigravityConfig(projectPath));
+  await apply('geminiCli', () => applyGeminiCliConfig(mcpUrl));
 
   const unifiedConfigPath = await writeUnifiedConfig(projectPath, mcpUrl);
   const success = results.every((item) => item.applied);

@@ -1,0 +1,62 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Dev/OmnySystem[39m
+
+ [31mÔØ»[39m tests/contracts/layer-a-extractor.contract.test.js [2m([22m[2m52 tests[22m[2m | [22m[31m37 failed[39m[2m)[22m[32m 93[2mms[22m[39m
+[31m           [31m├ù[31m MUST return all required fields[39m[32m 7[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST return arrays for collection fields[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return strings for text fields[39m[32m 4[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract imports[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract exports[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract functions[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract classes[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST NOT throw on empty input[32m 1[2mms[22m[39m
+           [32mÔ£ô[39m MUST NOT throw on invalid syntax[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return parseError on invalid syntax[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST return all required fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST return arrays for collection fields[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return strings for text fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract imports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract exports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract functions[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract classes[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST NOT throw on empty input[32m 0[2mms[22m[39m
+           [32mÔ£ô[39m MUST NOT throw on invalid syntax[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return parseError on invalid syntax[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST return all required fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST return arrays for collection fields[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return strings for text fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract imports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract exports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract functions[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract classes[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST NOT throw on empty input[32m 0[2mms[22m[39m
+           [32mÔ£ô[39m MUST NOT throw on invalid syntax[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return parseError on invalid syntax[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST return all required fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST return arrays for collection fields[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return strings for text fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract imports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract exports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract functions[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract classes[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract type definitions[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST NOT throw on empty input[32m 0[2mms[22m[39m
+           [32mÔ£ô[39m MUST NOT throw on invalid syntax[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return parseError on invalid syntax[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST return all required fields[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST return arrays for collection fields[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return strings for text fields[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract imports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract exports[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract functions[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract classes[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+[31m           [31m├ù[31m MUST extract type definitions[39m[32m 0[2mms[22m[39m[33m (retry x1)[39m
+           [32mÔ£ô[39m MUST NOT throw on empty input[32m 0[2mms[22m[39m
+           [32mÔ£ô[39m MUST NOT throw on invalid syntax[32m 0[2mms[22m[39m
+[31m           [31m├ù[31m MUST return parseError on invalid syntax[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m37 failed[39m[22m[2m | [22m[1m[32m15 passed[39m[22m[90m (52)[39m
+[2m   Start at [22m 14:12:38
+[2m   Duration [22m 347ms[2m (transform 70ms, setup 0ms, import 42ms, tests 93ms, environment 0ms)[22m
+

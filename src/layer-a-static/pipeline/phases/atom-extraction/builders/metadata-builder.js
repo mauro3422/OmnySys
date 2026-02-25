@@ -12,11 +12,11 @@ function buildSideEffectFields(se, dataFlowV2) {
   const dfOutputs = dataFlowV2?.outputs || dataFlowV2?.real?.outputs || [];
   return {
     hasSideEffects: se.all.length > 0 || dfOutputs.some(o => o.type === 'side_effect' || o.isSideEffect === true),
-    hasNetworkCalls:    se.networkCalls.length > 0,
+    hasNetworkCalls: se.networkCalls.length > 0,
     hasDomManipulation: se.domManipulations.length > 0,
-    hasStorageAccess:   se.storageAccess.length > 0,
-    hasLogging:         se.consoleUsage.length > 0,
-    networkEndpoints:   se.networkCalls.map(c => c.url || c.endpoint).filter(Boolean)
+    hasStorageAccess: se.storageAccess.length > 0,
+    hasLogging: se.consoleUsage.length > 0,
+    networkEndpoints: se.networkCalls.map(c => c.url || c.endpoint).filter(Boolean)
   };
 }
 
@@ -28,45 +28,45 @@ function buildCallFields(functionInfo, cg) {
   ].filter((call, i, self) => i === self.findIndex(c => c.name === call.name && c.line === call.line));
 
   return {
-    internalCalls:    cg.internalCalls || [],
-    externalCalls:    cg.externalCalls || [],
-    externalCallCount:(cg.externalCalls || []).length,
+    internalCalls: cg.internalCalls || [],
+    externalCalls: cg.externalCalls || [],
+    externalCallCount: (cg.externalCalls || []).length,
     calls: unified
   };
 }
 
 function buildDataFlowFields(dataFlowV2) {
   return {
-    dataFlow:         dataFlowV2?.real || dataFlowV2 || null,
+    dataFlow: dataFlowV2?.real || dataFlowV2 || null,
     dataFlowAnalysis: dataFlowV2?.analysis || null,
-    hasDataFlow:      dataFlowV2 !== null &&
-                      (dataFlowV2.inputs?.length > 0 || dataFlowV2.real?.inputs?.length > 0)
+    hasDataFlow: dataFlowV2 !== null &&
+      (dataFlowV2.inputs?.length > 0 || dataFlowV2.real?.inputs?.length > 0)
   };
 }
 
 function buildImports(imports) {
   return imports.map(imp => ({
-    source:     imp.source || imp.module,
-    type:       imp.type,
+    source: imp.source || imp.module,
+    type: imp.type,
     specifiers: imp.names || imp.specifiers || [],
-    line:       imp.line
+    line: imp.line
   }));
 }
 
 function buildMeta(dataFlowV2) {
   return {
     dataFlowVersion: '1.0.0-fractal',
-    extractionTime:  new Date().toISOString(),
-    confidence:      dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
+    extractionTime: new Date().toISOString(),
+    confidence: dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
   };
 }
 
 function buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo) {
   return {
-    fragilityScore:   computeFragilityScore(complexity, cg, errorFlow, ph),
+    fragilityScore: computeFragilityScore(complexity, cg, errorFlow, ph),
     testabilityScore: computeTestabilityScore(complexity, se, ph, functionInfo),
-    couplingScore:    (cg.externalCalls?.length || 0) + (cg.internalCalls?.length || 0),
-    changeRisk:       computeBaseChangeRisk(complexity, functionInfo.isExported)
+    couplingScore: (cg.externalCalls?.length || 0) + (cg.internalCalls?.length || 0),
+    changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
   };
 }
 
@@ -96,28 +96,28 @@ export function buildAtomMetadata({
   imports = []
 }) {
   // Normalize extractor results — guard against null/undefined when an extractor fails gracefully
-  const se  = sideEffects    || { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] };
-  const cg  = callGraph      || { internalCalls: [], externalCalls: [] };
-  const tmp = temporal       || { lifecycleHooks: [], cleanupPatterns: [] };
-  const ph  = performanceHints || { nestedLoops: [], blockingOperations: [] };
+  const se = sideEffects || { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] };
+  const cg = callGraph || { internalCalls: [], externalCalls: [] };
+  const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
+  const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
 
   return {
     // Identity
-    id:          `${filePath}::${functionInfo.fullName || functionInfo.name}`,
-    name:        functionInfo.name,
-    type:        'atom',
+    id: `${filePath}::${functionInfo.fullName || functionInfo.name}`,
+    name: functionInfo.name,
+    type: 'atom',
     filePath,
-    line:        functionInfo.line,
-    endLine:     functionInfo.endLine,
+    line: functionInfo.line,
+    endLine: functionInfo.endLine,
     linesOfCode,
 
     // Export & class
-    isExported:       functionInfo.isExported,
-    className:        functionInfo.className || null,
-    functionType:     functionInfo.type || 'declaration',
+    isExported: functionInfo.isExported,
+    className: functionInfo.className || null,
+    functionType: functionInfo.type || 'declaration',
 
     // Test callback identity
-    isTestCallback:   functionInfo.isTestCallback || false,
+    isTestCallback: functionInfo.isTestCallback || false,
     testCallbackType: functionInfo.testCallbackType || null,
 
     // Complexity
@@ -130,13 +130,13 @@ export function buildAtomMetadata({
     ...buildCallFields(functionInfo, cg),
 
     // Code patterns - Error handling detection
-    hasErrorHandling: (functionCode || '').includes('try') || 
-                      (functionCode || '').includes('catch'),
-    isAsync:          functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
+    hasErrorHandling: (functionCode || '').includes('try') ||
+      (functionCode || '').includes('catch'),
+    isAsync: functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
     // Temporal
-    hasLifecycleHooks:  tmp.lifecycleHooks.length > 0,
-    lifecycleHooks:     tmp.lifecycleHooks,
+    hasLifecycleHooks: tmp.lifecycleHooks.length > 0,
+    lifecycleHooks: tmp.lifecycleHooks,
     hasCleanupPatterns: tmp.cleanupPatterns.length > 0,
     temporal: { patterns: temporalPatterns, executionOrder: temporalPatterns?.executionOrder || null },
 
@@ -147,7 +147,7 @@ export function buildAtomMetadata({
     // Performance
     hasNestedLoops: ph.nestedLoops.length > 0,
     hasBlockingOps: ph.blockingOperations.length > 0,
-    performance:    performanceMetrics,
+    performance: performanceMetrics,
 
     // Data flow
     ...buildDataFlowFields(dataFlowV2),
@@ -159,7 +159,7 @@ export function buildAtomMetadata({
     semanticDomain: semanticDomain || null,
 
     // DNA & Lineage (set later)
-    dna:     null,
+    dna: null,
     lineage: null,
 
     // Imports
@@ -167,7 +167,10 @@ export function buildAtomMetadata({
 
     // Metadata
     extractedAt: new Date().toISOString(),
-    _meta: buildMeta(dataFlowV2)
+    _meta: {
+      ...buildMeta(dataFlowV2),
+      identifierRefs: functionInfo.identifierRefs || []
+    }
   };
 }
 

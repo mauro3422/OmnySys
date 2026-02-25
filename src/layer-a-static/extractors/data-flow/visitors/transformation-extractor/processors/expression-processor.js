@@ -9,6 +9,7 @@
 
 import { handleMutatingCall } from '../handlers/mutation-handler.js';
 import { processAssignment, processUpdateExpression } from './variable-processor.js';
+import { startLine } from '../../../utils/ts-ast-utils.js';
 
 /**
  * Procesa expression statements
@@ -16,25 +17,27 @@ import { processAssignment, processUpdateExpression } from './variable-processor
  * @param {Object} callbacks - Callbacks
  */
 export function processExpressionStatement(stmt, callbacks) {
-  const expr = stmt.expression;
+  // En Tree-sitter el nodo expression_statement tiene un hijo nombrado que es la expresión
+  const expr = stmt.namedChildren[0];
+  if (!expr) return;
 
   // Assignment: x = y
-  if (expr.type === 'AssignmentExpression') {
+  if (expr.type === 'assignment_expression') {
     processAssignment(expr, callbacks);
     return;
   }
 
   // Update expression: x++, x--
-  if (expr.type === 'UpdateExpression') {
+  if (expr.type === 'update_expression') {
     processUpdateExpression(expr, callbacks);
     return;
   }
 
   // Método que muta: arr.push(x)
-  if (expr.type === 'CallExpression') {
-    const handled = handleMutatingCall(expr, callbacks.addTransformation);
+  if (expr.type === 'call_expression') {
+    const handled = handleMutatingCall(expr, callbacks.addTransformation, callbacks.code);
     if (handled) return;
-    
+
     // Si no es mutación, podría ser una llamada pura
     // que produce efectos secundarios
     processPureCall(expr, callbacks);
@@ -61,9 +64,9 @@ import { classifyOperation } from '../core/operation-classifier.js';
  * @param {Object} callbacks - Callbacks
  */
 export function processImplicitReturn(expr, callbacks) {
-
-  const sources = extractSources(expr);
-  const operation = classifyOperation(expr);
+  const code = callbacks.code || '';
+  const sources = extractSources(expr, code);
+  const operation = classifyOperation(expr, code);
 
   callbacks.addTransformation({
     to: '<return>',
@@ -71,6 +74,6 @@ export function processImplicitReturn(expr, callbacks) {
     operation: operation.type,
     via: operation.via,
     type: 'implicit_return',
-    line: expr.loc?.start?.line
+    line: startLine(expr)
   });
 }

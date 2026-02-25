@@ -10,7 +10,7 @@ import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { resolveImport, getResolutionConfig } from '../../layer-a-static/resolver.js';
 // saveFileAnalysis ya no se exporta de storage/index.js - los datos van directo a SQLite
 // Esta función queda como stub para compatibilidad
-const persistFileAnalysis = async () => {};
+const persistFileAnalysis = async () => { };
 import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
 import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
 import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
@@ -128,24 +128,24 @@ async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
     const fileDir = path.dirname(filePath);
     const fileName = path.basename(filePath, path.extname(filePath));
     const targetDir = path.join(atomsDir, fileDir, fileName);
-    
+
     // Verificar si el directorio existe
     try {
       await fs.access(targetDir);
     } catch {
       return; // Directorio no existe, nada que limpiar
     }
-    
+
     // Leer todos los archivos JSON en el directorio
     const files = await fs.readdir(targetDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     let cleanedCount = 0;
-    
+
     for (const jsonFile of jsonFiles) {
       // Extraer el nombre del átomo del nombre del archivo (quitar .json)
       const atomName = jsonFile.slice(0, -5);
-      
+
       // Si el átomo no está en la lista de válidos, eliminar el archivo
       if (!validAtomNames.has(atomName)) {
         const fileToDelete = path.join(targetDir, jsonFile);
@@ -153,7 +153,7 @@ async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
         cleanedCount++;
       }
     }
-    
+
     if (cleanedCount > 0) {
       console.log(`🧹 Eliminados ${cleanedCount} átomos obsoletos de ${filePath}`);
     }
@@ -166,16 +166,16 @@ async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
   try {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(rootPath);
-    
+
     if (!repo?.db) return;
-    
+
     // Obtener todos los átomos del archivo
     const existingAtoms = repo.db.prepare(
       'SELECT id, name, purpose FROM atoms WHERE file_path = ?'
     ).all(filePath);
-    
+
     let markedCount = 0;
-    
+
     for (const atom of existingAtoms) {
       // Solo marcar como removed si no está ya marcado y no está en la lista válida
       if (atom.purpose !== 'REMOVED' && !validAtomNames.has(atom.name)) {
@@ -190,7 +190,7 @@ async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomNames) {
         markedCount++;
       }
     }
-    
+
     if (markedCount > 0) {
       console.log(`🧹 Marcados como REMOVED: ${markedCount} átomos de ${filePath}`);
     }
@@ -277,20 +277,20 @@ export async function analyzeFile(filePath, fullPath) {
   const now = Date.now();
   const atomsToSave = [];
   const atomsToSkip = [];
-  
+
   for (const atom of moleculeAtoms) {
     const prevAtom = previousAtoms.find(p => p.name === atom.name);
-    if (prevAtom && 
-        prevAtom._meta?.source === 'atomic-edit' && 
-        prevAtom._meta?.lastModified && 
-        (now - prevAtom._meta.lastModified) < RECENT_EDIT_THRESHOLD) {
+    if (prevAtom &&
+      prevAtom._meta?.source === 'atomic-edit' &&
+      prevAtom._meta?.lastModified &&
+      (now - prevAtom._meta.lastModified) < RECENT_EDIT_THRESHOLD) {
       atomsToSkip.push(atom.name);
       logger.debug(`[PROTECTED] Skipping ${atom.name} - recently edited by atomic-edit (${now - prevAtom._meta.lastModified}ms ago)`);
     } else {
       atomsToSave.push(atom);
     }
   }
-  
+
   if (atomsToSkip.length > 0) {
     logger.info(`[FILE_WATCHER] Protected ${atomsToSkip.length} atoms from atomic-edit: ${atomsToSkip.join(', ')}`);
   }
@@ -300,7 +300,7 @@ export async function analyzeFile(filePath, fullPath) {
   logger.debug(`🔄 About to save ${atomsToSave.length} atoms incrementally for ${filePath}`);
   const saveResults = await saveAtomsIncremental(this.rootPath, filePath, atomsToSave, { source: 'file-watcher' });
   logger.debug(`✅ Incremental save result: ${JSON.stringify(saveResults)}`);
-  
+
   if (saveResults.updated > 0) {
     logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated, ${saveResults.totalFieldsChanged} fields)`);
   } else {
@@ -309,7 +309,7 @@ export async function analyzeFile(filePath, fullPath) {
 
   // 🧹 LIMPIEZA: Eliminar archivos JSON de átomos que ya no existen en el código
   await cleanupOrphanedAtomFiles(this.rootPath, filePath, newAtomNames);
-  
+
   // 🆕 Invalidación selectiva de caché para átomos modificados
   for (const atom of moleculeAtoms) {
     const atomId = `${filePath}::${atom.name}`;
@@ -317,7 +317,7 @@ export async function analyzeFile(filePath, fullPath) {
     const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
     const vm = new AtomVersionManager(this.rootPath);
     const changes = await vm.detectChanges(atomId, atom);
-    
+
     if (changes.hasChanges && !changes.isNew) {
       await invalidateAtomCaches(atomId, changes.fields);
     }
@@ -392,12 +392,12 @@ function _markAtomAsRemoved(atom) {
 export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
   // 1. Analizar archivo
   const analysis = await analyzeFile.call(this, filePath, fullPath);
-  
+
   // 2. Guardar análisis
   await saveFileAnalysis.call(this, filePath, analysis);
-  
+
   // 3. Actualizar índice
   await updateFileIndex.call(this, filePath, analysis);
-  
+
   return analysis;
 }

@@ -17,21 +17,21 @@ export function processStatement(stmt, handlers) {
   if (!stmt) return false;
 
   const processors = {
-    'VariableDeclaration': handlers.variable,
-    'ExpressionStatement': handlers.expression,
-    'IfStatement': handlers.ifStatement,
-    'TryStatement': handlers.tryStatement,
-    'ForStatement': handlers.loop,
-    'ForOfStatement': handlers.loop,
-    'ForInStatement': handlers.loop,
-    'WhileStatement': handlers.loop,
-    'DoWhileStatement': handlers.loop,
-    'BlockStatement': handlers.block,
-    'SwitchStatement': handlers.switch
+    'lexical_declaration': handlers.variable,
+    'variable_declaration': handlers.variable,
+    'expression_statement': handlers.expression,
+    'if_statement': handlers.ifStatement,
+    'try_statement': handlers.tryStatement,
+    'for_statement': handlers.loop,
+    'for_in_statement': handlers.loop,
+    'while_statement': handlers.loop,
+    'do_statement': handlers.loop,
+    'statement_block': handlers.block,
+    'switch_statement': handlers.switch
   };
 
   const processor = processors[stmt.type];
-  
+
   if (processor) {
     processor(stmt);
     return true;
@@ -46,14 +46,16 @@ export function processStatement(stmt, handlers) {
  * @param {Object} context - Contexto de procesamiento
  */
 export function processIfStatement(stmt, context) {
-  // Procesar consecuente
-  if (stmt.consequent) {
-    processStatement(stmt.consequent, context.handlers);
+  // Procesar consecuente (en Tree-sitter: field 'consequent')
+  const consequent = stmt.childForFieldName('consequent');
+  if (consequent) {
+    processStatement(consequent, context.handlers);
   }
-  
-  // Procesar alternativo si existe
-  if (stmt.alternate) {
-    processStatement(stmt.alternate, context.handlers);
+
+  // Procesar alternativo (en Tree-sitter: field 'alternate')
+  const alternate = stmt.childForFieldName('alternate');
+  if (alternate) {
+    processStatement(alternate, context.handlers);
   }
 }
 
@@ -63,19 +65,23 @@ export function processIfStatement(stmt, context) {
  * @param {Object} context - Contexto de procesamiento
  */
 export function processTryStatement(stmt, context) {
-  // Procesar bloque try
-  if (stmt.block) {
-    processStatement(stmt.block, context.handlers);
+  // Procesar bloque try (field 'body')
+  const body = stmt.childForFieldName('body');
+  if (body) {
+    processStatement(body, context.handlers);
   }
-  
-  // Procesar handler catch
-  if (stmt.handler?.body) {
-    processStatement(stmt.handler.body, context.handlers);
+
+  // Procesar handler catch (field 'handler')
+  const handler = stmt.childForFieldName('handler');
+  const handlerBody = handler?.childForFieldName('body');
+  if (handlerBody) {
+    processStatement(handlerBody, context.handlers);
   }
-  
-  // Procesar finally
-  if (stmt.finalizer) {
-    processStatement(stmt.finalizer, context.handlers);
+
+  // Procesar finally (field 'finalizer')
+  const finalizer = stmt.childForFieldName('finalizer');
+  if (finalizer) {
+    processStatement(finalizer, context.handlers);
   }
 }
 
@@ -97,7 +103,7 @@ export function processLoop(loop, context) {
  * @param {Object} context - Contexto de procesamiento
  */
 export function processBlock(block, context) {
-  const statements = block.body || [];
+  const statements = block.namedChildren || [];
   for (const subStmt of statements) {
     processStatement(subStmt, context.handlers);
   }
@@ -109,9 +115,18 @@ export function processBlock(block, context) {
  * @param {Object} context - Contexto de procesamiento
  */
 export function processSwitchStatement(stmt, context) {
-  for (const case_ of stmt.cases || []) {
-    for (const consequent of case_.consequent) {
-      processStatement(consequent, context.handlers);
+  // Tree-sitter switch_statement has switch_body with switch_case / switch_default
+  const body = stmt.childForFieldName('body');
+  if (!body) return;
+
+  for (const child of body.namedChildren) {
+    if (child.type === 'switch_case' || child.type === 'switch_default') {
+      // Los statements están en los hijos nombrados después del label
+      for (const caseChild of child.namedChildren) {
+        if (caseChild.type !== 'identifier' && caseChild.type !== 'default') {
+          processStatement(caseChild, context.handlers);
+        }
+      }
     }
   }
 }
@@ -124,13 +139,13 @@ export function processSwitchStatement(stmt, context) {
 export function createProcessingContext(handlers) {
   return {
     handlers: {
-      variable: handlers.variable || (() => {}),
-      expression: handlers.expression || (() => {}),
-      ifStatement: handlers.ifStatement || (() => {}),
-      tryStatement: handlers.tryStatement || (() => {}),
-      loop: handlers.loop || (() => {}),
-      block: handlers.block || (() => {}),
-      switch: handlers.switch || (() => {})
+      variable: handlers.variable || (() => { }),
+      expression: handlers.expression || (() => { }),
+      ifStatement: handlers.ifStatement || (() => { }),
+      tryStatement: handlers.tryStatement || (() => { }),
+      loop: handlers.loop || (() => { }),
+      block: handlers.block || (() => { }),
+      switch: handlers.switch || (() => { })
     }
   };
 }

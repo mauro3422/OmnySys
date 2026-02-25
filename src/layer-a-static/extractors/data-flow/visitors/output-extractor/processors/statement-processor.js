@@ -27,54 +27,55 @@ export function processStatements(statements, handlers, state) {
  */
 export function processStatement(stmt, handlers, state) {
   if (!stmt) return;
-  
+
   switch (stmt.type) {
-    case 'ReturnStatement':
+    case 'return_statement':
       if (handlers.onReturn) {
         const output = handlers.onReturn(stmt);
         if (output) state.outputs.push(output);
       }
       state.hasReturn = true;
       break;
-      
-    case 'ThrowStatement':
+
+    case 'throw_statement':
       if (handlers.onThrow) {
         const output = handlers.onThrow(stmt);
         if (output) state.outputs.push(output);
       }
       break;
-      
-    case 'ExpressionStatement':
+
+    case 'expression_statement':
       if (handlers.onSideEffect) {
-        const output = handlers.onSideEffect(stmt.expression);
+        const expression = stmt.namedChildren[0];
+        const output = handlers.onSideEffect(expression);
         if (output) {
           state.outputs.push(output);
           state.hasSideEffect = true;
         }
       }
       break;
-      
-    case 'IfStatement':
+
+    case 'if_statement':
       processIfStatement(stmt, handlers, state);
       break;
-      
-    case 'TryStatement':
+
+    case 'try_statement':
       processTryStatement(stmt, handlers, state);
       break;
-      
-    case 'SwitchStatement':
+
+    case 'switch_statement':
       processSwitchStatement(stmt, handlers, state);
       break;
-      
-    case 'BlockStatement':
-      processStatements(stmt.body, handlers, state);
+
+    case 'statement_block':
+      processStatements(stmt.namedChildren, handlers, state);
       break;
-      
-    case 'ForStatement':
-    case 'ForOfStatement':
-    case 'ForInStatement':
-    case 'WhileStatement':
-    case 'DoWhileStatement':
+
+    case 'for_statement':
+    case 'for_in_statement':
+    case 'for_of_statement':
+    case 'while_statement':
+    case 'do_statement':
       processLoop(stmt, handlers, state);
       break;
   }
@@ -87,9 +88,12 @@ export function processStatement(stmt, handlers, state) {
  * @param {Object} state - Estado
  */
 function processIfStatement(stmt, handlers, state) {
-  processStatement(stmt.consequent, handlers, state);
-  if (stmt.alternate) {
-    processStatement(stmt.alternate, handlers, state);
+  const consequent = stmt.childForFieldName('consequent');
+  const alternate = stmt.childForFieldName('alternate');
+
+  processStatement(consequent, handlers, state);
+  if (alternate) {
+    processStatement(alternate, handlers, state);
   }
 }
 
@@ -100,12 +104,17 @@ function processIfStatement(stmt, handlers, state) {
  * @param {Object} state - Estado
  */
 function processTryStatement(stmt, handlers, state) {
-  processStatement(stmt.block, handlers, state);
-  if (stmt.handler) {
-    processStatement(stmt.handler.body, handlers, state);
+  const body = stmt.childForFieldName('body');
+  const handler = stmt.childForFieldName('handler');
+  const finalizer = stmt.childForFieldName('finalizer');
+
+  processStatement(body, handlers, state);
+  if (handler) {
+    const handlerBody = handler.childForFieldName('body');
+    processStatement(handlerBody, handlers, state);
   }
-  if (stmt.finalizer) {
-    processStatement(stmt.finalizer, handlers, state);
+  if (finalizer) {
+    processStatement(finalizer, handlers, state);
   }
 }
 
@@ -116,9 +125,9 @@ function processTryStatement(stmt, handlers, state) {
  * @param {Object} state - Estado
  */
 function processSwitchStatement(stmt, handlers, state) {
-  for (const case_ of stmt.cases) {
-    for (const stmt_ of case_.consequent) {
-      processStatement(stmt_, handlers, state);
+  for (const child of stmt.namedChildren) {
+    if (child.type === 'switch_case' || child.type === 'switch_default') {
+      processStatements(child.namedChildren, handlers, state);
     }
   }
 }
@@ -130,7 +139,8 @@ function processSwitchStatement(stmt, handlers, state) {
  * @param {Object} state - Estado
  */
 function processLoop(loop, handlers, state) {
-  processStatement(loop.body, handlers, state);
+  const body = loop.childForFieldName('body');
+  processStatement(body, handlers, state);
 }
 
 export default { processStatements, processStatement };

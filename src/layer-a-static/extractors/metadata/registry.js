@@ -86,15 +86,6 @@ export const EXTRACTOR_REGISTRY = [
     getArgs: ({ functionCode }) => [functionCode]
   },
   {
-    name: 'callGraph',
-    file: './call-graph.js',
-    function: 'extractCallGraph',
-    description: 'Call graph',
-    usedByTools: ['get_call_graph', 'explain_value_flow', 'get_function_details'],
-    level: 'atom',
-    getArgs: ({ functionCode }) => [functionCode]
-  },
-  {
     name: 'temporal',
     file: './temporal-patterns.js',
     function: 'extractTemporalPatterns',
@@ -181,27 +172,27 @@ export function getAvailableFields() {
     level: e.level,
     source: 'extractor'
   }));
-  
+
   const baseFields = BASE_ATOM_FIELDS.map(f => ({
     ...f,
     level: 'base',
     source: 'base'
   }));
-  
+
   return [...baseFields, ...extractorFields];
 }
 
 export function getFieldToolCoverage() {
   const coverage = {};
-  
+
   for (const field of BASE_ATOM_FIELDS) {
     coverage[field.name] = field.usedByTools;
   }
-  
+
   for (const extractor of EXTRACTOR_REGISTRY) {
     coverage[extractor.name] = extractor.usedByTools;
   }
-  
+
   return coverage;
 }
 

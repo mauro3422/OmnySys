@@ -76,6 +76,8 @@ async function main() {
   log('info', `VS Code task: ${result.vscode.paths.tasks}`);
   log('info', `VS Code settings: ${result.vscode.paths.settings}`);
   log('info', `Qwen global config: ${result.clientResults.find(r => r.client === 'qwen')?.projectConfigPath || '(not applied)'}`);
+  log('info', `Antigravity config: ${result.clientResults.find(r => r.client === 'antigravity')?.path || '(not applied)'}`);
+  log('info', `Gemini CLI config: ${result.clientResults.find(r => r.client === 'geminiCli')?.path || '(not applied)'}`);
 
   console.log('');
   log('info', 'Next steps:');

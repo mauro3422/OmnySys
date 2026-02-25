@@ -18,16 +18,16 @@ const logger = createLogger('OmnySys:enhance:file-analyzer');
  * @param {Object} fileInfo - Información del archivo
  * @returns {Object} Análisis del archivo
  */
-export function analyzeFile(filePath, code, fileInfo) {
+export async function analyzeFile(filePath, code, fileInfo) {
   try {
     // Detectar shared state
-    const sharedState = detectSharedState(code, filePath);
+    const sharedState = await detectSharedState(code, filePath);
 
     // Detectar event patterns
-    const eventPatterns = detectEventPatterns(code, filePath);
+    const eventPatterns = await detectEventPatterns(code, filePath);
 
     // Detectar side effects
-    const sideEffects = detectSideEffects(code, filePath);
+    const sideEffects = await detectSideEffects(code, filePath);
 
     return {
       ...fileInfo,
@@ -65,7 +65,7 @@ export async function analyzeAllFiles(parsedFiles, absoluteRootPath) {
       fileSourceCode[projectRelative] = code;
 
       // Analizar archivo
-      const analysis = analyzeFile(projectRelative, code, fileInfo);
+      const analysis = await analyzeFile(projectRelative, code, fileInfo);
       enhancedFiles[projectRelative] = analysis;
       allSideEffects[projectRelative] = analysis.sideEffects;
     } catch (error) {

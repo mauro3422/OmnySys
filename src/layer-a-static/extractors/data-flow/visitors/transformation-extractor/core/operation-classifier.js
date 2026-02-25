@@ -8,7 +8,12 @@
  * @version 1.0.0
  */
 
-import { getCalleeName, getMemberPath } from '../utils/ast-helpers.js';
+import { getMemberPath, text } from '../../../utils/ts-ast-utils.js';
+
+function getCalleeName(node, code) {
+  if (!node) return '<anonymous>';
+  return getMemberPath(node, code) || text(node, code) || '<anonymous>';
+}
 
 // Tipos de operaciones soportados
 export const OPERATION_TYPES = {
@@ -29,11 +34,12 @@ export const OPERATION_TYPES = {
 };
 
 /**
- * Clasifica el tipo de operación de un nodo AST
- * @param {Object} node - Nodo AST
+ * Clasifica el tipo de operación de un nodo AST (Tree-sitter)
+ * @param {Object} node - Nodo Tree-sitter
+ * @param {string} code - Código fuente
  * @returns {Object} - Clasificación de la operación
  */
-export function classifyOperation(node) {
+export function classifyOperation(node, code) {
   if (!node) {
     return { type: OPERATION_TYPES.ASSIGNMENT, via: null, details: {} };
   }
@@ -54,7 +60,7 @@ export function classifyOperation(node) {
   ];
 
   for (const classifier of classifiers) {
-    const result = classifier(node);
+    const result = classifier(node, code);
     if (result) return result;
   }
 
@@ -70,10 +76,11 @@ export function classifyOperation(node) {
  * Clasifica expresiones await
  * @private
  */
-function classifyAwait(node) {
-  if (node.type !== 'AwaitExpression') return null;
-  
-  const inner = classifyOperation(node.argument);
+function classifyAwait(node, code) {
+  if (node.type !== 'await_expression') return null;
+
+  const argument = node.namedChildren[0];
+  const inner = classifyOperation(argument, code);
   return {
     ...inner,
     type: `await_${inner.type}`,
@@ -85,14 +92,17 @@ function classifyAwait(node) {
  * Clasifica llamadas a función
  * @private
  */
-function classifyCall(node) {
-  if (node.type !== 'CallExpression') return null;
-  
-  const calleeName = getCalleeName(node.callee);
+function classifyCall(node, code) {
+  if (node.type !== 'call_expression') return null;
+
+  const calleeNode = node.childForFieldName('function');
+  const argumentsNode = node.childForFieldName('arguments');
+
+  const calleeName = getCalleeName(calleeNode, code);
   return {
     type: OPERATION_TYPES.FUNCTION_CALL,
     via: calleeName,
-    details: { argumentCount: node.arguments.length }
+    details: { argumentCount: argumentsNode ? argumentsNode.namedChildCount : 0 }
   };
 }
 
@@ -100,15 +110,18 @@ function classifyCall(node) {
  * Clasifica operaciones binarias/lógicas
  * @private
  */
-function classifyBinary(node) {
-  if (node.type !== 'BinaryExpression' && node.type !== 'LogicalExpression') {
+function classifyBinary(node, code) {
+  if (node.type !== 'binary_expression' && node.type !== 'logical_expression') {
     return null;
   }
-  
+
+  // En Tree-sitter el operador es un hijo con tipo de operador
+  const operator = node.children.find(c => !c.isNamed() && !['(', ')'].includes(c.type))?.type || 'unknown';
+
   return {
     type: OPERATION_TYPES.BINARY_OPERATION,
-    via: node.operator,
-    details: { operator: node.operator }
+    via: operator,
+    details: { operator }
   };
 }
 
@@ -116,13 +129,15 @@ function classifyBinary(node) {
  * Clasifica operaciones unarias
  * @private
  */
-function classifyUnary(node) {
-  if (node.type !== 'UnaryExpression') return null;
-  
+function classifyUnary(node, code) {
+  if (node.type !== 'unary_expression') return null;
+
+  const operator = node.children.find(c => !c.isNamed())?.type || 'unknown';
+
   return {
     type: OPERATION_TYPES.UNARY_OPERATION,
-    via: node.operator,
-    details: { operator: node.operator, prefix: node.prefix }
+    via: operator,
+    details: { operator }
   };
 }
 
@@ -130,13 +145,15 @@ function classifyUnary(node) {
  * Clasifica operaciones de update (++, --)
  * @private
  */
-function classifyUpdate(node) {
-  if (node.type !== 'UpdateExpression') return null;
-  
+function classifyUpdate(node, code) {
+  if (node.type !== 'update_expression') return null;
+
+  const operator = node.children.find(c => c.type === '++' || c.type === '--')?.type || 'update';
+
   return {
     type: OPERATION_TYPES.UPDATE,
-    via: node.operator,
-    details: { operator: node.operator, prefix: node.prefix }
+    via: operator,
+    details: { operator }
   };
 }
 
@@ -144,10 +161,10 @@ function classifyUpdate(node) {
  * Clasifica acceso a propiedades
  * @private
  */
-function classifyMember(node) {
-  if (node.type !== 'MemberExpression') return null;
-  
-  const path = getMemberPath(node);
+function classifyMember(node, code) {
+  if (node.type !== 'member_expression') return null;
+
+  const path = getMemberPath(node, code);
   return {
     type: OPERATION_TYPES.PROPERTY_ACCESS,
     via: 'property_access',
@@ -159,9 +176,9 @@ function classifyMember(node) {
  * Clasifica expresiones condicionales (ternarias)
  * @private
  */
-function classifyConditional(node) {
-  if (node.type !== 'ConditionalExpression') return null;
-  
+function classifyConditional(node, code) {
+  if (node.type !== 'ternary_expression') return null;
+
   return {
     type: OPERATION_TYPES.CONDITIONAL,
     via: 'ternary',
@@ -173,13 +190,13 @@ function classifyConditional(node) {
  * Clasifica arrays literales
  * @private
  */
-function classifyArray(node) {
-  if (node.type !== 'ArrayExpression') return null;
-  
+function classifyArray(node, code) {
+  if (node.type !== 'array') return null;
+
   return {
     type: OPERATION_TYPES.ARRAY_LITERAL,
     via: 'array_constructor',
-    details: { elementCount: node.elements.length }
+    details: { elementCount: node.namedChildCount }
   };
 }
 
@@ -187,13 +204,13 @@ function classifyArray(node) {
  * Clasifica objetos literales
  * @private
  */
-function classifyObject(node) {
-  if (node.type !== 'ObjectExpression') return null;
-  
+function classifyObject(node, code) {
+  if (node.type !== 'object') return null;
+
   return {
     type: OPERATION_TYPES.OBJECT_LITERAL,
     via: 'object_constructor',
-    details: { propertyCount: node.properties.length }
+    details: { propertyCount: node.namedChildCount }
   };
 }
 
@@ -201,9 +218,9 @@ function classifyObject(node) {
  * Clasifica spread elements
  * @private
  */
-function classifySpread(node) {
-  if (node.type !== 'SpreadElement') return null;
-  
+function classifySpread(node, code) {
+  if (node.type !== 'spread_element') return null;
+
   return {
     type: OPERATION_TYPES.SPREAD,
     via: 'spread_operator',
@@ -215,13 +232,14 @@ function classifySpread(node) {
  * Clasifica template literals
  * @private
  */
-function classifyTemplate(node) {
-  if (node.type !== 'TemplateLiteral') return null;
-  
+function classifyTemplate(node, code) {
+  if (node.type !== 'template_string') return null;
+
+  const hasExpressions = node.namedChildren.some(c => c.type === 'template_substitution');
   return {
     type: OPERATION_TYPES.TEMPLATE_LITERAL,
     via: 'template',
-    details: { hasExpressions: node.expressions.length > 0 }
+    details: { hasExpressions }
   };
 }
 
@@ -229,10 +247,11 @@ function classifyTemplate(node) {
  * Clasifica expresiones new
  * @private
  */
-function classifyNew(node) {
-  if (node.type !== 'NewExpression') return null;
-  
-  const calleeName = getCalleeName(node.callee);
+function classifyNew(node, code) {
+  if (node.type !== 'new_expression') return null;
+
+  const constructorNode = node.childForFieldName('constructor');
+  const calleeName = getCalleeName(constructorNode, code);
   return {
     type: OPERATION_TYPES.INSTANTIATION,
     via: calleeName,

@@ -60,8 +60,9 @@ export class InputExtractor {
 
   extractParametersSafe(functionNode) {
     try {
-      const params = Array.isArray(functionNode.params) ? functionNode.params : [];
-      return extractParameters(params);
+      // En Tree-sitter buscamos el nodo de parámetros
+      const paramsNode = functionNode.childForFieldName('parameters') || functionNode.childForFieldName('parameter');
+      return extractParameters(paramsNode, this.code);
     } catch (e) {
       logger.warn(`[DIAG] extractParameters failed for ${this.functionName}: ${e.message}`);
       return [];
@@ -70,7 +71,7 @@ export class InputExtractor {
 
   findUsagesSafe(functionNode, inputs) {
     try {
-      return findUsages(functionNode, inputs);
+      return findUsages(functionNode, inputs, this.code);
     } catch (e) {
       logger.warn(`[DIAG] findUsages failed for ${this.functionName}: ${e.message}`);
       // Retornar mapa vacío para que al menos tengamos los inputs

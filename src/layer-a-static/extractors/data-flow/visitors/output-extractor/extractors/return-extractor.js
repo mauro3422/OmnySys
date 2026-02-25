@@ -9,56 +9,51 @@
 
 import { extractSources } from './source-extractor.js';
 import { inferShape, extractProperties } from './shape-inferer.js';
-import { nodeToString } from '../helpers/ast-helpers.js';
+import { startLine, text } from '../../../utils/ts-ast-utils.js';
 
-/**
- * Extrae información de un return statement
- * @param {Object} returnStmt - Nodo ReturnStatement
- * @returns {Object}
- */
-export function extractReturn(returnStmt) {
-  const arg = returnStmt.argument;
-  
+function nodeToString(node, code) {
+  if (!node) return 'undefined';
+  return text(node, code);
+}
+
+export function extractReturn(returnStmt, code) {
+  const arg = returnStmt.childForFieldName('argument');
+
   // return; (undefined implícito)
   if (!arg) {
     return {
       type: 'return',
       value: 'undefined',
       shape: 'undefined',
-      line: returnStmt.loc?.start?.line
+      line: startLine(returnStmt)
     };
   }
 
-  const sources = extractSources(arg);
-  const shape = inferShape(arg);
+  const sources = extractSources(arg, code);
+  const shape = inferShape(arg, code);
 
   return {
     type: 'return',
-    value: nodeToString(arg),
+    value: nodeToString(arg, code),
     shape: shape,
     sources: sources,
-    properties: extractProperties(arg),
-    line: returnStmt.loc?.start?.line
+    properties: extractProperties(arg, code),
+    line: startLine(returnStmt)
   };
 }
 
-/**
- * Extrae return implícito de arrow function
- * @param {Object} expr - Nodo de expresión
- * @returns {Object}
- */
-export function extractImplicitReturn(expr) {
-  const sources = extractSources(expr);
-  const shape = inferShape(expr);
+export function extractImplicitReturn(expr, code) {
+  const sources = extractSources(expr, code);
+  const shape = inferShape(expr, code);
 
   return {
     type: 'return',
-    value: nodeToString(expr),
+    value: nodeToString(expr, code),
     shape: shape,
     sources: sources,
-    properties: extractProperties(expr),
+    properties: extractProperties(expr, code),
     implicit: true,
-    line: expr.loc?.start?.line
+    line: startLine(expr)
   };
 }
 

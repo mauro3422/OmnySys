@@ -75,7 +75,7 @@ export async function indexProject(rootPath, options = {}) {
 
   try {
     const totalTimer = startTimer('TOTAL Layer A');
-    
+
     // Paso 1+2: Inicializar cache y cargar info del proyecto EN PARALELO
     const timerCache = startTimer('1. Cache init');
     const [cacheManager] = await Promise.all([
@@ -89,9 +89,31 @@ export async function indexProject(rootPath, options = {}) {
     const { relativeFiles, files } = await scanProjectFiles(absoluteRootPath, verbose);
     timerScan.end(verbose);
 
-    // Limpiar archivos borrados del cache
-    const timerCleanup = startTimer('3. Cache cleanup');
+    // Limpiar archivos borrados del cache Y de la base de datos
+    const timerCleanup = startTimer('3. Cache & DB cleanup');
     await cacheManager.cleanupDeletedFiles(relativeFiles);
+
+    // Sincronizar también la DB (purga de huérfanos que el caché podría no conocer)
+    try {
+      const repo = getRepository(absoluteRootPath);
+      const dbFilesRaw = repo.db.prepare('SELECT DISTINCT file_path FROM atoms').all();
+      const dbFiles = dbFilesRaw.map(f => f.file_path);
+      const existingSet = new Set(relativeFiles);
+
+      let orbitalPurged = 0;
+      for (const dbFile of dbFiles) {
+        if (!existingSet.has(dbFile)) {
+          orbitalPurged += repo.deleteByFile(dbFile);
+        }
+      }
+
+      if (verbose && orbitalPurged > 0) {
+        logger.info(`  🗑️  Purged ${orbitalPurged} orphaned atoms from database (no longer on disk)`);
+      }
+    } catch (err) {
+      logger.warn(`  ⚠️ Database cleanup failed: ${err.message}`);
+    }
+
     timerCleanup.end(verbose);
 
     // Paso 3: Parsear archivos
@@ -206,10 +228,10 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
   // Process all files in parallel (Promise.allSettled doesn't abort on individual failures)
   const entries = Object.entries(parsedFiles);
   const batchTimer = new BatchTimer('Atom extraction', entries.length);
-  
+
   // Acumular todos los átomos para bulk insert al final
   const allExtractedAtoms = [];
-  
+
   await Promise.allSettled(entries.map(async ([absoluteFilePath, parsedFile]) => {
     let relativeFilePath;
     try {
@@ -234,11 +256,11 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
         // Luego vectores matemáticos (cohesion, ageDays, etc.)
         const enrichedAtoms = purposeEnriched.map(atom => enrichAtomVectors(atom));
         parsedFile.atoms = enrichedAtoms;
-        
+
         // Acumular para bulk insert en lugar de guardar uno por uno
         allExtractedAtoms.push(...enrichedAtoms.filter(atom => atom.name));
       }
-      
+
       batchTimer.onItemProcessed(1);
     } catch (error) {
       logger.warn(`  ⚠️ Failed to extract atoms from ${relativeFilePath}: ${error.message}`);
@@ -246,12 +268,12 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
       parsedFile.atomCount = 0;
     }
   }));
-  
+
   // 🚀 BULK INSERT: Guardar todos los átomos de una vez
   if (allExtractedAtoms.length > 0) {
     const timerBulkSave = startTimer('Bulk save atoms');
     const repo = getRepository(absoluteRootPath);
-    
+
     if (repo.saveManyBulk) {
       repo.saveManyBulk(allExtractedAtoms, 500);
       if (verbose) {
@@ -263,7 +285,7 @@ async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
         allExtractedAtoms.map(atom => saveAtom(absoluteRootPath, atom.filePath || '', atom.name, atom))
       );
     }
-    
+
     timerBulkSave.end(verbose);
   }
 
@@ -421,7 +443,7 @@ async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
   }
 
   const timerRelations = startTimer('Bulk save relations');
-  
+
   if (relationsToSave.length > 0) {
     if (repo.saveRelationsBulk) {
       repo.saveRelationsBulk(relationsToSave, 500);
@@ -441,7 +463,7 @@ async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
       }
     }
   }
-  
+
   timerRelations.end(verbose);
 
   if (verbose) {
@@ -485,6 +507,7 @@ if (isMainModule) {
       verbose: true
     });
   } catch (error) {
+    logger.error('Indexer failed with critical error:', error);
     process.exit(1);
   }
 }
