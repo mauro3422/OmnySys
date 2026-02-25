@@ -3,13 +3,19 @@
 > **Previene la visión de túnel al editar código.**  
 > Analiza el impacto completo antes de cualquier cambio y lo expone a tu IA vía MCP.
 
+**Versión**: v0.9.61  
+**Estado**: ✅ **100% Estático, 0% LLM** - Dead Code Detection 85% preciso  
+**Última actualización**: 2026-02-25
+
 ---
 
 ## ¿Qué es OmnySys?
 
 Las IAs sufren **visión de túnel**: editan un archivo sin saber qué rompen en el resto del sistema.
 
-OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **28 herramientas MCP** que cualquier IA puede usar antes de tocar código.
+OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **29 herramientas MCP** que cualquier IA puede usar antes de tocar código.
+
+**IMPORTANTE (v0.9.61)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
 
 ```
 "Voy a modificar orchestrator.js"
@@ -31,31 +37,37 @@ IA edita considerando TODO el impacto.
 ```bash
 git clone https://github.com/mauro3422/OmnySys.git
 cd OmnySys && npm install
-npm run mcp /ruta/a/tu/proyecto
+npm start
 ```
 
-### Integración con Claude Desktop
+### Integración con tu IDE
 
+**Para Qwen Code / Claude Code / OpenCode:**
+
+Crear `.mcp.json` en tu proyecto:
 ```json
 {
   "mcpServers": {
     "omnysys": {
-      "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js", "/ruta/a/tu/proyecto"]
+      "type": "http",
+      "url": "http://127.0.0.1:9999/mcp"
     }
   }
 }
 ```
 
-### Integración con OpenCode
-
-Ver `opencode.json` en la raíz — ya está configurado para uso local.
+Luego en tu IDE:
+```
+> Analiza el impacto de cambiar src/app.js
+> ¿Qué funciones llaman a processOrder?
+> Detecta código muerto en este archivo
+```
 
 ---
 
-## Las 28 Herramientas MCP
+## Las 29 Herramientas MCP
 
-### Impacto y Análisis de Cambios
+### Impacto y Análisis de Cambios (6 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
 | `get_impact_map(file)` | Archivos afectados por un cambio | Antes de editar cualquier archivo |
@@ -65,7 +77,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `explain_connection(a, b)` | Por qué dos archivos están conectados | Entendiendo arquitectura |
 | `analyze_signature_change(...)` | Breaking changes de firma | Cambiando APIs |
 
-### Análisis de Código
+### Análisis de Código (5 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
 | `get_call_graph(file, symbol)` | Quién llama a esta función | Refactorizando código |
@@ -74,7 +86,7 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `get_molecule_summary(file)` | Resumen de archivo con insights | Vista completa de archivo |
 | `find_symbol_instances(symbol)` | Encuentra todas las instancias de un símbolo | Debugging |
 
-### Métricas y Salud
+### Métricas y Salud (5 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
 | `get_risk_assessment()` | Riesgos de todo el proyecto | Priorizando trabajo |
@@ -83,14 +95,14 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `get_async_analysis()` | Análisis async con recommendations | Optimizando performance |
 | `detect_race_conditions()` | Detecta race conditions en async | Seguridad concurrente |
 
-### Sociedad de Átomos
+### Sociedad de Átomos (3 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
 | `get_atom_society()` | Chains, clusters, hubs, orphans | Entendiendo estructura |
 | `get_atom_history(file, fn)` | Historial Git de función | Debugging cambios |
 | `get_removed_atoms()` | Átomos eliminados del código | Prevención de duplicados |
 
-### Búsqueda y Sistema
+### Búsqueda y Sistema (4 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
 | `search_files(pattern)` | Buscar archivos por patrón | Navegando codebase |
@@ -98,176 +110,163 @@ Ver `opencode.json` en la raíz — ya está configurado para uso local.
 | `restart_server()` | Reinicia servidor y recarga datos | Después de cambios en código |
 | `get_atom_schema(type)` | Schema de metadatos de átomos | Debugging |
 
-### Editor Atómico
+### Editor Atómico (2 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
-| `atomic_edit(file, old, new)` | Edición con validación sintáctica | Editar código seguro |
-| `atomic_write(file, content)` | Escritura con indexación automática | Crear archivos nuevos |
+| `atomic_edit(file, old, new)` | Edita con validación atómica | Editando código |
+| `atomic_write(file, content)` | Escribe archivo con validación | Creando archivos |
 
-### Refactoring y Validación
+### Refactoring y Validación (2 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
-| `suggest_refactoring(file)` | Sugiere mejoras específicas de código | Antes de refactorizar |
-| `validate_imports(file)` | Detecta imports rotos/no usados | Limpiar código |
+| `suggest_refactoring(file)` | Sugiere mejoras de código | Refactorizando |
+| `validate_imports(file)` | Valida imports del archivo | Prevención de errores |
 
-### Testing
+### Testing (2 tools)
 | Herramienta | Qué hace | Cuándo usar |
 |-------------|----------|-------------|
-| `generate_tests(file, fn)` | Genera tests para una función | Aumentar cobertura |
-| `generate_batch_tests()` | Genera tests en batch | Cobertura masiva |
+| `generate_tests(file, fn)` | Genera tests para función | Mejorando coverage |
+| `generate_batch_tests(...)` | Genera tests en batch | Testing masivo |
+
+**Ver documentación completa**: [docs/04-guides/tools.md](docs/04-guides/tools.md)
+
+---
+
+## Estado del Sistema (v0.9.61)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OMNYSYS v0.9.61 — Estado del Sistema                     │
+├─────────────────────────────────────────────────────────────┤
+│  Átomos:         13,485 funciones analizadas              │
+│  Archivos:       1,860                                    │
+│  Health Score:   99/100 (Grade A)                        │
+│  Test Coverage:  79%                                      │
+│  God Functions:  193 (complejidad > 15)                  │
+│  Dead Code:      42 casos (85% menos falsos positivos)   │
+│  Duplicados:     118 exactos, 694 contextuales           │
+│  Debt Arch:      15 archivos críticos                    │
+│  Storage:        SQLite (WAL mode)                        │
+│  MCP Tools:      29 herramientas                          │
+│  LLM Usage:      0% - 100% ESTÁTICO                      │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Arquitectura
 
-OmnySys tiene **5 capas** que trabajan juntas:
+### Capas del Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  Tu IA (Claude / OpenCode)                  │
-└────────────────────────┬────────────────────────────────────┘
-                         │ MCP Protocol (stdio)
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Layer C — Memory / MCP Server                  │
-│   14 herramientas MCP  │  Cache  │  WebSocket  │  Watcher  │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-        ┌────────────────┼─────────────────┐
-        ▼                ▼                 ▼
-┌──────────────┐  ┌─────────────┐  ┌──────────────┐
-│  Layer A     │  │  Layer B    │  │  Layer Graph │
-│  (Static)    │  │  (Semantic) │  │  (Graph)     │
-│              │  │             │  │              │
-│ AST Parser   │  │ Archetypes  │  │ SystemMap    │
-│ Extractors   │  │ LLM (opt.)  │  │ ImpactMap    │
-│ Analyses     │  │ Validators  │  │ CallGraph    │
-│ Race Detect  │  │ Metadata    │  │ Cycles       │
-└──────────────┘  └─────────────┘  └──────────────┘
-        │                                  │
-        └──────────────┬───────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       Core                                  │
-│   Cache  │  Orchestrator  │  Worker  │  ErrorGuardian       │
-│   FileWatcher  │  BatchProcessor  │  UnifiedServer          │
-└─────────────────────────────────────────────────────────────┘
+src/
+├── layer-a-static/     # Análisis estático puro (AST + regex)
+├── layer-b-semantic/   # Metadata enrichment (100% estático)
+├── layer-graph/        # Sistema de grafos de dependencias
+├── layer-c-memory/     # MCP Server, SQLite, exposición
+├── core/               # Core: FileWatcher, Orchestrator
+└── cli/                # CLI de administración
 ```
 
-### Responsabilidades por Capa
-
-| Capa | Responsabilidad | Sin LLM |
-|------|----------------|---------|
-| **Layer A** | Análisis estático: AST, imports, exports, funciones, race conditions | ✅ Siempre |
-| **Layer B** | Análisis semántico: arquetipos, validación, enriquecimiento | ✅ 90% casos |
-| **Layer Graph** | Grafo de dependencias: SystemMap, ImpactMap, ciclos, transitivas | ✅ Siempre |
-| **Layer C** | Servidor MCP, caché, WebSocket, exposición de herramientas | ✅ Siempre |
-| **Core** | Infraestructura: caché RAM, orquestador, workers, error guardian | ✅ Siempre |
+**Ver arquitectura completa**: [docs/02-architecture/core.md](docs/02-architecture/core.md)
 
 ---
 
-## Comandos
+## Comandos Útiles
 
 ```bash
-# Iniciar MCP server (uso principal)
-npm run mcp /ruta/al/proyecto
+# Iniciar servidor
+npm start
 
-# CLI de administración
-npm start          # Inicia servicios
-npm stop           # Detiene todo
-npm status         # Estado de servicios
+# Analizar proyecto
+npm run analyze
 
-# Tests
-npm test                          # Todos los tests (283 archivos, ~4000 tests)
-npm run test:layer-a:core         # Solo Layer A
-npm run test:layer-b              # Solo Layer B
-npm run test:layer-c              # Solo Layer C
+# Ver status
+npm run status
 
-# Diagnóstico
-npm run validate                  # Valida sintaxis de todos los archivos
-node scripts/detect-broken-imports.js  # Detecta imports rotos
+# Reiniciar servidor
+npm run restart
+
+# Limpiar y reanalizar
+npm run clean && npm run analyze
+
+# Ejecutar tests
+npm test
+
+# Ver coverage
+npm run coverage
 ```
-
----
-
-## Estado del Proyecto
-
-**Versión**: v0.9.60  
-**Estado**: ✅ **Estable — 28 Tools MCP + SQLite (Determinístico) + Startup 1.5s + Auto Error Notifications**
-
-### Sistema de Semantic Algebra (Implementado)
-
-OmnySys usa **álgebra determinística sobre grafos** para análisis de código:
-
-| Componente | Implementación |
-|------------|----------------|
-| Storage | SQLite con WAL mode (ACID) |
-| Vectores | 7 scores por átomo (importance, cohesion, coupling, etc.) |
-| Propagation | PageRank-like determinístico |
-| Queries | Mismo input → Mismo output (100% determinístico) |
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ÁTOMO → VECTOR → PROPAGACIÓN → IMPACT ANALYSIS           │
-│                                                             │
-│  importance_score  ← PageRank-like (0-1)                   │
-│  cohesion_score   ← Conexiones internas (0-1)              │
-│  coupling_score   ← Acoplamiento externo (0-1)             │
-│  propagation_score ← Impacto de cambios (0-1)             │
-│  centrality_score ← Hub/Bridge/Leaf classification        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-| Componente | Estado | Cobertura Tests |
-|------------|--------|----------------|
-| Layer A — Análisis Estático | ✅ Funcional | ~40% |
-| Layer B — Análisis Semántico | ✅ Funcional | ~60% |
-| Layer C — MCP Server | ✅ **28 Tools** | ~30% |
-| Layer Graph — Grafo | ✅ **SQLite + Vectores** | ~50% |
-| Core — Infraestructura | ✅ Funcional | ~40% |
-| **SQLite Database** | ✅ **Production - Determinístico** | ~35% |
-| **Semantic Algebra** | ✅ **Implementado (v0.9.58+)** | — |
-| **Tests totales** | ✅ **Pasando** | **~4,500+ tests** |
-
-### Novedades v0.9.60
-
-| Feature | Descripción |
-|---------|-------------|
-| **Semantic Algebra** | 7 vectores por átomo (importance, cohesion, coupling, stability, propagation, fragility, testability) |
-| **Deterministic Queries** | Mismo input → Mismo output (100% determinístico) |
-| **Startup Speed** | 25s → 1.5s (SQLite check optimization) |
-| **Error Notifications** | `_recentErrors` automático en todas las tools |
-| **Health Metrics** | Tests excluded from unhealthy count |
-| **Deleted Files** | Skip shadow creation for already-deleted files |
-| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
-| **Bulk Operations** | Inserciones masivas en single-transaction (64% más rápido) |
-| **Atomic Editor** | `atomic_edit` y `atomic_write` con validación sintáctica |
 
 ---
 
 ## Documentación
 
-```
-docs/
-├── 01-core/              🎯 Principios fundamentales
-├── 02-architecture/      🏗️ Sistemas técnicos
-├── 03-orchestrator/      ⚙️ Flujo de datos
-└── 04-guides/            🛠️ Guías prácticas
-```
+### Guías Principales
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Mapa técnico de todas las capas
-- **[ROADMAP.md](ROADMAP.md)** — Estado actual y próximos pasos
-- **[PLAN_ESTABILIZACION.md](PLAN_ESTABILIZACION.md)** — Plan activo de estabilización
-- **[LAYER_A_STATUS.md](LAYER_A_STATUS.md)** — Estado detallado de Layer A y sus tests
-- **[CHANGELOG.md](CHANGELOG.md)** — Historial de versiones
-- **[docs/INDEX.md](docs/INDEX.md)** — Índice completo de documentación
+- **[Quick Start](docs/04-guides/quickstart.md)** - Empezar en 5 minutos
+- **[MCP Tools](docs/04-guides/tools.md)** - Guía de las 29 herramientas
+- **[INDEX](docs/INDEX.md)** - Índice completo de documentación
+
+### Fundamentos
+
+- **[Problem](docs/01-core/problem.md)** - Visión de túnel en IAs
+- **[Principles](docs/01-core/principles.md)** - Los 4 Pilares
+- **[Philosophy](docs/01-core/philosophy.md)** - Física del software
+
+### Arquitectura
+
+- **[Core](docs/02-architecture/core.md)** - Arquitectura unificada
+- **[Data Flow](docs/02-architecture/DATA_FLOW.md)** - Flujo de datos detallado
+- **[Code Physics](docs/02-architecture/code-physics.md)** - Vectores matemáticos
+
+### Referencia
+
+- **[System Status](docs/06-reference/SYSTEM_STATUS.md)** - Estado actual
+- **[Cleanup Plan](docs/06-reference/CLEANUP_PLAN.md)** - Refactorizaciones
+- **[Issues](docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md)** - Issues conocidos
+
+---
+
+## Roadmap
+
+### Q2 2026 - Tree-sitter Migration
+
+- Reemplazar Babel con Tree-sitter
+- Mejor detección de `isExported` para arrow functions
+- Análisis de tipos TypeScript más preciso
+- Performance mejorado en proyectos grandes
+- Soporte para más lenguajes (Rust, Go, Python)
+
+### Q3 2026 - Intra-Atómico
+
+- Dentro de cada transformación, ver los **sub-átomos**
+- Detectar precision loss en cálculos financieros
+- Optimizar transformaciones innecesarias
+
+### Q4 2026 - Estado Cuántico
+
+- Simular **todos los paths posibles** (if/else, try/catch)
+- Generar test cases automáticamente
+- Detectar paths no cubiertos por tests
+
+---
+
+## Contribuir
+
+1. Fork del repositorio
+2. Crear branch para feature (`git checkout -b feature/amazing-feature`)
+3. Commit de cambios (`git commit -m 'Add amazing feature'`)
+4. Push a la branch (`git push origin feature/amazing-feature`)
+5. Abrir Pull Request
 
 ---
 
 ## Licencia
 
-MIT — Ver [LICENSE](LICENSE)
+MIT License - ver [LICENSE](LICENSE) para detalles.
 
 ---
 
-*OmnySys — Del código al conocimiento. Una herramienta a la vez, previene la visión de túnel.*
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)

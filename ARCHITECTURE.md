@@ -1,7 +1,8 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.60  
-**Última actualización**: 2026-02-24
+**Versión**: v0.9.61  
+**Última actualización**: 2026-02-25  
+**Estado**: ✅ **100% Estático, 0% LLM** - SQLite + Dead Code Detection 85% preciso
 
 ---
 
@@ -11,33 +12,31 @@ OmnySys está organizado en **5 capas** con responsabilidades claras y separadas
 
 ```
 src/
-├── layer-a-static/     # Capa A: Análisis estático puro (AST)
-├── layer-b-semantic/   # Capa B: Análisis semántico + arquetipos
+├── layer-a-static/     # Capa A: Análisis estático puro (AST + regex)
+├── layer-b-semantic/   # Capa B: Metadata enrichment (100% estático)
 ├── layer-graph/        # Capa Graph: Sistema de grafos de dependencias
-├── layer-c-memory/     # Capa C: MCP Server, caché persistente, exposición
-├── core/               # Core: Infraestructura compartida
-├── ai/                 # Scripts de IA y GPU
+├── layer-c-memory/     # Capa C: MCP Server, SQLite, exposición
+├── core/               # Core: FileWatcher, Orchestrator
 ├── cli/                # CLI de administración
-├── config/             # Configuración centralizada
-├── services/           # Servicios (LLMService, etc.)
-├── shared/             # Utilidades compartidas entre capas
-├── utils/              # Logger y utilidades base
-└── validation/         # Sistema de validación global
+├── shared/             # Utilidades compartidas
+└── utils/              # Logger y utilidades base
 ```
+
+**IMPORTANTE (v0.9.61)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
 
 ---
 
 ## Capa A — Análisis Estático (`src/layer-a-static/`)
 
 **Propósito**: Extraer información estructural del código sin ejecutarlo.  
-**Sin LLM**: Siempre. 100% determinístico vía AST.
+**LLM**: NUNCA. 100% determinístico vía AST + regex.
 
 ```
 layer-a-static/
 ├── scanner.js              # Encuentra archivos del proyecto
 ├── parser/                 # Extrae AST, imports, exports, funciones
 ├── extractors/             # Extrae metadatos específicos
-│   ├── metadata/           # Side effects, call graph, data flow, etc.
+│   ├── metadata/           # Side effects, call graph, data flow
 │   ├── communication/      # WebWorkers, WebSocket, PostMessage
 │   ├── state-management/   # Redux, Context, Zustand
 │   ├── comprehensive-extractor/  # Extractor completo multi-tipo
@@ -50,44 +49,51 @@ layer-a-static/
 ├── race-detector/          # Detección de race conditions
 ├── pipeline/               # Orquestación del análisis completo
 ├── module-system/          # Resolución de módulos ESM/CJS
-└── resolver.js             # Resuelve imports entre archivos
+├── resolver.js             # Resuelve imports entre archivos
+└── indexer.js              # Orquestador principal de Layer A
 ```
 
 ### Flujo de Layer A
 
 ```
-Scanner → Parser → Extractors → Analyses → Pipeline → Output
-                                                         │
-                                              .omnysysdata/files/
+indexer.js
+    │
+    ├─→ scanProjectFiles()
+    ├─→ parseFiles()
+    ├─→ extractAndSaveAtoms()     # AtomExtractionPhase
+    ├─→ buildCalledByLinks()      # 6 sub-pasos de linkage
+    ├─→ resolveImports()
+    ├─→ normalizePaths()
+    ├─→ buildSystemGraph()
+    ├─→ enrichWithCulture()       # ZERO LLM
+    ├─→ generateAnalysisReport()
+    └─→ saveEnhancedSystemMap()   # SQLite bulk insert
 ```
+
+**Performance**: 13,485 átomos en ~30-60 segundos (startup inicial)
 
 ---
 
-## Capa B — Análisis Semántico (`src/layer-b-semantic/`)
+## Capa B — Metadata Enrichment (`src/layer-b-semantic/`)
 
-**Propósito**: Enriquecer con significado: arquetipos, validación, análisis LLM selectivo.  
-**LLM**: Solo cuando confidence < 0.8 (~10% de los archivos).
+**Propósito**: Enriquecer metadata con arquetipos, propósitos, vectores matemáticos.  
+**LLM**: NUNCA (deprecated desde v0.9.61). Todo estático.
 
 ```
 layer-b-semantic/
-├── llm-analyzer/           # Análisis con LLM (selectivo)
-│   ├── analysis-decider.js # Decide si usar LLM o bypass
-│   └── ...
-├── prompt-engine/          # Generación de prompts por arquetipo
-│   └── prompt-templates/   # 15+ arquetipos (god-object, network-hub, etc.)
+├── prompt-engine/          # (Histórico, ya no usa LLM)
+│   └── prompt-registry/    # Detectores estáticos de arquetipos
 ├── metadata-contract/      # Contrato de metadata (SSOT de campos)
 │   └── constants.js        # 57+ campos definidos
-├── schema-validator/       # Validación de esquema de metadata
 ├── validators/             # Validadores de integridad
-│   └── extractors/         # Extractores simplificados para validación
 └── project-analyzer/       # Análisis de proyecto completo
 ```
 
-### Arquetipos detectados (15+)
+### Arquetipos detectados (100% estático)
 
-`god-object`, `network-hub`, `fragile-network`, `hot-path`, `dead-function`,
-`private-utility`, `utility`, `standard`, `api-event-bridge`, `storage-sync-manager`,
-`critical-bottleneck`, `circular-dependency`, `validator`, `transformer`, `your-analysis-type`
+`god-function`, `fragile-network`, `hot-path`, `dead-function`, `utility`, `factory`, `validator`, `transformer`, `persister`, `handler`, `initializer`, `orchestrator`
+
+**Todos detectados con reglas estáticas**, SIN LLM.
 
 ---
 
@@ -98,365 +104,220 @@ layer-b-semantic/
 
 ```
 layer-graph/
-├── index.js            # API pública unificada (54 exports)
-├── core/
-│   └── types.js        # SSOT: SystemMap, FileNode, Dependency, etc.
-├── builders/           # Construcción del grafo
-│   ├── system-map.js   # Build principal del SystemMap
-│   ├── export-index.js # Índice de exports + re-exports
-│   ├── function-links.js  # Enlaces entre funciones
-│   └── call-graph.js   # Call graph extractor
-├── algorithms/         # Algoritmos de análisis
-│   ├── cycle-detector.js    # Detección de ciclos (DFS)
-│   ├── impact-analyzer.js   # Análisis de impacto + RISK_LEVELS
-│   └── transitive-deps.js   # Dependencias y dependientes transitivos
-├── query/              # Consultas async al grafo
-│   ├── dependency-query.js  # getDependencyGraph, getTransitiveDependents
-│   ├── impact-query.js      # queryImpact
-│   └── call-graph-analyzer.js  # findCallSites
-├── resolvers/
-│   └── function-resolver.js  # Resolución de funciones entre archivos
-├── persistence/
-│   └── index.js        # serialize, deserialize, delta
-└── utils/
-    ├── path-utils.js   # Normalización de paths
-    └── counters.js     # Métricas del grafo
+├── core/                   # Lógica central de grafos
+├── builders/               # Constructores de grafos
+├── queries/                # Queries de grafos
+├── metrics/                # Métricas de grafos (centralidad, etc.)
+└── utils/                  # Utilidades de grafos
 ```
 
-### Tipos principales
-
-| Tipo | Descripción |
-|------|-------------|
-| `SystemMap` | El grafo completo del proyecto |
-| `FileNode` | Nodo de archivo con imports, exports, usedBy, dependsOn |
-| `Dependency` | Arista entre dos archivos |
-| `FunctionLink` | Enlace entre dos funciones |
-| `ImpactInfo` | Resultado de análisis de impacto |
-
-### Uso
+### Métricas de Grafo
 
 ```javascript
-import { buildSystemMap, getImpactMap, detectCycles, RISK_LEVELS } from '#layer-graph/index.js';
-
-const systemMap = buildSystemMap(parsedFiles, resolvedImports);
-const impact = getImpactMap('src/core/orchestrator.js', systemMap.files);
-const cycles = detectCycles(systemMap.files);
+{
+  hubs: 9,                      // Funciones muy conectadas
+  bridges: 29,                  // Conectan módulos
+  leaves: 13408,                // Funciones aisladas
+  avgCentrality: 0.165,         // Centralidad promedio
+  highRisk: 2834,               // Funciones de alto riesgo
+  avgPropagationScore: 0.334    // Propagación promedio
+}
 ```
 
 ---
 
-## Capa C — Memory / MCP Server (`src/layer-c-memory/`)
+## Capa C — Memoria y Exposición (`src/layer-c-memory/`)
 
-**Propósito**: Exponer las 14 herramientas MCP, persistir datos, gestionar caché de disco.
+**Propósito**: Persistir metadata en SQLite y exponer vía MCP tools.
 
 ```
 layer-c-memory/
-├── mcp-server.js           # Entry point: inicia el servidor MCP
-├── mcp/
-│   ├── core/
-│   │   ├── server-class.js         # OmnySysMCPServer (clase principal)
-│   │   ├── hot-reload-manager/     # Auto-recarga de módulos en dev
-│   │   └── initialization/         # Pipeline de inicialización (7 pasos)
-│   │       └── steps/
-│   │           ├── instance-detection-step.js
-│   │           ├── layer-a-analysis-step.js
-│   │           ├── cache-init-step.js
-│   │           ├── llm-setup-step.js
-│   │           ├── orchestrator-init-step.js
-│   │           ├── mcp-setup-step.js
-│   │           └── ready-step.js
-│   └── tools/                      # Implementación de las 14 herramientas
-│       ├── impact-map.js
-│       ├── get-call-graph.js
-│       ├── get-function-details.js
-│       ├── get-molecule-summary.js
-│       ├── risk.js
-│       ├── search.js
-│       ├── status.js
-│       └── ...
-├── storage/                # Persistencia en .omnysysdata/
-│   ├── index.js
-│   ├── atoms/              # Funciones individuales
-│   ├── files/              # Análisis por archivo
-│   ├── molecules/          # Cadenas moleculares
-│   └── setup/              # Inicialización del storage
-├── shadow-registry/        # Sistema de linaje de archivos
-├── verification/           # Validación de integridad
-└── query/                  # Queries de datos persistidos
+├── storage/                # Persistencia en SQLite
+│   ├── repository/         # Repositorio con bulk operations
+│   ├── cache/              # Caché singleton
+│   └── enrichers/          # Enriquecimiento de átomos (vectores)
+├── mcp/                    # MCP Server
+│   ├── tools/              # 29 herramientas MCP
+│   ├── core/               # Core del MCP (hot-reload, etc.)
+│   └── handlers/           # Handlers de herramientas
+└── shadow-registry/        # (Histórico) ADN de código
 ```
 
-### Pipeline de Inicialización (7 pasos)
+### SQLite Storage
 
+**Configuración**:
+```javascript
+{
+  journal_mode: 'WAL',        // Write-Ahead Logging
+  cache_size: 64000,          // 64MB cache
+  synchronous: 'NORMAL',      // Balance safety/performance
+  temp_store: 'MEMORY',       // Temp tables en RAM
+  page_size: 4096,            // Páginas de 4KB
+  foreign_keys: 'ON',         // Integridad referencial
+  busy_timeout: 5000          // 5s timeout
+}
 ```
-1. InstanceDetectionStep   → ¿Ya hay una instancia corriendo?
-2. LayerAAnalysisStep      → Análisis estático inicial (crea .omnysysdata/)
-3. CacheInitStep           → Carga datos en caché RAM
-4. LLMSetupStep            → Inicia LLM en background (non-blocking)
-5. OrchestratorInitStep    → Conecta FileWatcher + Queue + Workers
-6. McpSetupStep            → Registra las 14 herramientas MCP
-7. ReadyStep               → Servidor listo para conexiones
-```
+
+**Tablas principales**:
+- `atoms` → 13,485 funciones con 50+ campos
+- `atom_relations` → Grafo de llamadas entre átomos
+- `files` → Metadatos por archivo
+- `system_files` → System Map extendido
+- `semantic_connections` → Conexiones semánticas
+
+**Performance**: 13,000 átomos en ~3 segundos (bulk insert)
 
 ---
 
-## Core — Infraestructura (`src/core/`)
+## Core — FileWatcher y Orchestrator (`src/core/`)
 
-**Propósito**: Componentes compartidos de infraestructura que usan todas las capas.
+**Propósito**: Detectar cambios en archivos y orquestar el análisis.
 
 ```
 core/
-├── cache/                  # Cache Manager (RAM + disco)
-│   ├── manager/            # CRUD de entradas de caché
-│   └── invalidator/        # Invalidación atómica
-├── orchestrator/           # Cola de análisis + workers
-├── file-watcher/           # Detecta cambios en archivos
-├── batch-processor/        # Procesamiento en lotes de cambios
-├── websocket/              # Comunicación WebSocket
-├── unified-server/         # Servidor HTTP unificado
-├── error-guardian/         # Manejo centralizado de errores
-├── atomic-editor/          # Editor atómico (operaciones seguras)
-├── tunnel-vision-detector/ # Detector de visión de túnel
-├── tunnel-vision-logger/   # Logger de eventos de túnel
-└── worker/                 # Workers de análisis
+├── file-watcher/           # Detección de cambios
+│   ├── index.js            # Watcher principal
+│   ├── lifecycle/          # Lifecycle de cambios
+│   └── helpers.js          # Helpers
+├── orchestrator/           # Orquestador del análisis
+│   ├── change-processor.js # Procesa cambios
+│   └── batch-processor.js  # Procesamiento por lotes
+└── cache/                  # Caché singleton
 ```
 
-### Nota sobre dependencias de Core
+### Flujo de FileWatcher
 
-`src/core/index.js` re-exporta desde Layer Graph y Layer C (storage).
-Esto establece que **Core es el punto de acceso unificado** para la infraestructura:
+```
+Cambio detectado
+    │
+    ├─→ processPendingChanges()
+    ├─→ _processWithBatchProcessor()
+    ├─→ processBatch()
+    ├─→ analyzeSingleFile()
+    └─→ saveFileResult() → SQLite
+```
 
-```javascript
-// core/index.js re-exporta:
-export * from '#layer-graph/index.js';    // grafo
-export * from '#layer-c/storage/index.js'; // storage
+**Performance**: <1 segundo por archivo (análisis incremental)
+
+---
+
+## CLI — Administración (`src/cli/`)
+
+**Propósito**: CLI de administración del sistema.
+
+```
+cli/
+├── index.js                # Entry point principal
+├── commands/               # Comandos CLI
+│   ├── analyze.js          # Analizar proyecto
+│   ├── status.js           # Ver status
+│   └── restart.js          # Reiniciar servidor
+├── handlers/               # Handlers de comandos
+└── utils/                  # Utilidades CLI
+```
+
+### Comandos Disponibles
+
+```bash
+# Analizar proyecto
+npm run analyze
+
+# Ver status
+npm run status
+
+# Reiniciar servidor
+npm run restart
+
+# Limpiar y reanalizar
+npm run clean && npm run analyze
 ```
 
 ---
 
-## Flujo Completo de Datos
+## Flujo de Datos Completo
 
 ```
-[Archivo .js en tu proyecto]
-        │
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  LAYER A: Análisis Estático (100% determinístico, sin LLM)      │
-│  ───────────────────────────────────────────────────────────    │
-│  Scanner → Parser → AtomExtractionPhase → CrossFileLinker       │
-│                              │                                   │
-│                              ▼                                   │
-│                    ┌─────────────────┐                          │
-│                    │    ÁTOMO        │                          │
-│                    │ ─────────────── │                          │
-│                    │ • complexity    │   100% coverage          │
-│                    │ • dataFlow      │   100% coverage          │
-│                    │ • dna           │   99.7% coverage         │
-│                    │ • archetype     │   99.7% coverage         │
-│                    │ • purpose       │   100% coverage          │
-│                    │ • calledBy      │   41.5% coverage         │
-│                    │ • calls         │   66.3% coverage         │
-│                    │ • typeContracts │   99.7% coverage         │
-│                    │ • performance   │   99.7% coverage         │
-│                    │ • temporal      │   ~100% coverage         │
-│                    │ • errorFlow     │   ~100% coverage         │
-│                    └─────────────────┘                          │
-└─────────────────────────────────────────────────────────────────┘
-        │
-        ▼
-Layer Graph: buildSystemMap() → SystemMap
-        │
-        ▼
-Layer A: Analyses (tier1, tier2, tier3)
-        │
-        ▼
-Layer B: Archetypes + Validators (LLM bypass en 90%+ casos)
-        │
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  STORAGE: SQLite Database (.omnysysdata/omnysys.db)            │
-│  ───────────────────────────────────────────────────────────    │
-│  atoms             → Tabla de átomos (funciones, variables)    │
-│  atom_relations    → Grafo de dependencias entre átomos        │
-│  files             → Metadatos por archivo                      │
-│  system_files      → Extensión para System Map                  │
-│  file_dependencies → Dependencias entre archivos                │
-│  semantic_connections → Conexiones semánticas                   │
-│  risk_assessments  → Evaluación de riesgo por archivo          │
-│  atom_events       → Event sourcing para audit trail           │
-│                                                                   │
-│  Configuración SQLite:                                          │
-│  • journal_mode = WAL (Write-Ahead Logging)                     │
-│  • cache_size = 64MB                                            │
-│  • synchronous = NORMAL                                         │
-│  • foreign_keys = ON                                            │
-└─────────────────────────────────────────────────────────────────┘
-        │
-        ▼
-Core Cache: RAM cache para acceso rápido
-        │
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  LAYER C: MCP Server (30 herramientas)                         │
-│  ───────────────────────────────────────────────────────────    │
-│  Query APIs → Derivation Engine → MCP Tools                    │
-│       │              │                │                         │
-│       ▼              ▼                ▼                         │
-│   file-api.js   composeMolecular  impact-map.js                │
-│   project-api.js  Metadata()      get-call-graph.js            │
-│   risk-api.js                    get-molecule-summary.js       │
-│                                  analyze-change.js             │
-│                                  ... (30 tools)                │
-└─────────────────────────────────────────────────────────────────┘
-        │
-        ▼
-[Claude / OpenCode - IA]
+┌─────────────────────────────────────────────────────────────┐
+│                         FLUJO DE DATOS                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [Código Fuente]                                            │
+│       │                                                      │
+│       ▼                                                      │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  LAYER A: Static Analysis (100% determinístico)      │   │
+│  │  • Scanner → Parser → Extractors → Analyses          │   │
+│  │  • 17 extractores de metadata                        │   │
+│  │  • Cross-file calledBy linkage (6 sub-pasos)         │   │
+│  └──────────────────────────────────────────────────────┘   │
+│       │                                                      │
+│       ▼                                                      │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  LAYER C: SQLite Database                            │   │
+│  │  • atoms: 13,485 funciones con 50+ campos            │   │
+│  │  • atom_relations: grafo de dependencias             │   │
+│  │  • files: metadatos por archivo                      │   │
+│  │  • semantic_connections: conexiones semánticas       │   │
+│  └──────────────────────────────────────────────────────┘   │
+│       │                                                      │
+│       ▼                                                      │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  MCP TOOLS (29 herramientas)                         │   │
+│  │  • Impacto: get_impact_map, analyze_change, ...      │   │
+│  │  • Código: get_call_graph, get_function_details, ... │   │
+│  │  • Métricas: get_health_metrics, detect_patterns, .. │   │
+│  │  • Testing: generate_tests, generate_batch_tests, .. │   │
+│  └──────────────────────────────────────────────────────┘   │
+│       │                                                      │
+│       ▼                                                      │
+│  [Claude / OpenCode / Qwen - IAs]                           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-Ver **[docs/02-architecture/DATA_FLOW.md](docs/02-architecture/DATA_FLOW.md)** para detalles completos.
 
 ---
 
-## Sociedad de Átomos
-
-Los átomos (funciones) no existen aislados. Forman **sociedades** conectadas por:
-
-### Propósitos Detectados
-
-```javascript
-const ATOM_PURPOSES = {
-  API_EXPORT:       '📤 Exportado - API pública',
-  EVENT_HANDLER:    '⚡ Maneja eventos/lifecycle',
-  TEST_HELPER:      '🧪 Función en test',
-  TIMER_ASYNC:      '⏱️ Timer o async pattern',
-  NETWORK_HANDLER:  '🌐 Hace llamadas de red',
-  INTERNAL_HELPER:  '🔧 Helper interno',
-  CONFIG_SETUP:     '⚙️ Configuración',
-  SCRIPT_MAIN:      '🚀 Entry point de script',
-  CLASS_METHOD:     '📦 Método de clase',
-  DEAD_CODE:        '💀 Sin evidencia de uso'
-};
-```
-
-### Cadena de Propósitos
-
-```
-API_EXPORT → INTERNAL_HELPER → INTERNAL_HELPER → EVENT_HANDLER
-     │              │                 │                │
-     ▼              ▼                 ▼                ▼
-[handleRequest] → [validateInput] → [processData] → [logEvent]
-```
-
-### Detección de Sociedades (Roadmap)
-
-- **Cadenas**: A → B → C → D (pipelines)
-- **Clusters**: Funciones mutuamente conectadas
-- **Hubs**: Funciones con > 10 callers
-
-Ver **[docs/02-architecture/code-physics.md](docs/02-architecture/code-physics.md)** para el concepto completo.
-
----
-
-## Alias de Imports (`package.json#imports`)
-
-Todos los módulos usan aliases para imports limpios:
-
-| Alias | Resuelve a |
-|-------|-----------|
-| `#core/*` | `src/core/*` |
-| `#layer-a/*` | `src/layer-a-static/*` |
-| `#layer-b/*` | `src/layer-b-semantic/*` |
-| `#layer-c/*` | `src/layer-c-memory/*` |
-| `#layer-graph/*` | `src/layer-graph/*` |
-| `#ai/*` | `src/ai/*` |
-| `#cli/*` | `src/cli/*` |
-| `#config/*` | `src/config/*` |
-| `#services/*` | `src/services/*` |
-| `#shared/*` | `src/shared/*` |
-| `#utils/*` | `src/utils/*` |
-| `#validation/*` | `src/validation/*` |
-
----
-
-## Decisiones de Diseño Clave
-
-### 1. Zero LLM para extracción
-Toda la extracción es determinística (AST + regex). LLM solo para:
-- Confidence < 0.8 (~10% de archivos)
-- Casos semánticamente ambiguos
-
-**Resultado**: 90%+ de archivos analizados sin LLM, startup en ~2s.
-
-### 2. SSOT — Single Source of Truth
-Los **átomos** (funciones) son la fuente de verdad.  
-Las **moléculas** (archivos) derivan sus propiedades de los átomos.  
-Si cambia un átomo → se invalida la molécula → se invalida el grafo.
-
-### 3. Fractal A→B→C
-El mismo patrón `inputs → transform → output` se repite en todas las escalas:
-```
-Función:  params → lógica → return
-Archivo:  imports → proceso → exports
-Módulo:   datos externos → pipeline → resultado
-Sistema:  proyecto → análisis → SystemMap
-```
-
-### 4. Confidence-Based LLM Bypass
-Cada arquetipo calcula un score de confianza (0.0–1.0) basado en evidencia observable:
-- Si `confidence >= 0.8` → **bypass LLM** (rápido, determinístico)
-- Si `confidence < 0.8` → **invoke LLM** (semántica adicional)
-
----
-
-## Estado de Salud (v0.9.60)
-
-### Sistema de Semantic Algebra ✅ IMPLEMENTADO
+## Métricas del Sistema (v0.9.61)
 
 | Métrica | Valor |
 |---------|-------|
-| Storage | **SQLite (WAL mode)** |
-| Vectores por átomo | **7 scores** (importance, cohesion, coupling, stability, propagation, fragility, testability) |
-| Graph Algebra | **Centrality, in_degree, out_degree** |
-| Queries | **100% determinístico** |
-| Startup | ~1.5 segundos |
+| **Archivos analizados** | 1,860 |
+| **Átomos extraídos** | 13,485 |
+| **Health Score** | 99/100 (Grade A) |
+| **Test Coverage** | 79% |
+| **God Functions** | 193 |
+| **Dead Code** | 42 (85% mejora) |
+| **Duplicados** | 118 exactos |
+| **Herramientas MCP** | 29 |
+| **LLM Usage** | 0% ✅ |
 
-### Métricas del Sistema
+---
 
-| Métrica | Valor |
-|---------|-------|
-| Archivos analizados | 1,800+ |
-| Átomos extraídos | 13,000+ |
-| Herramientas MCP | 28 |
-| Coverage calledBy | 44.7% |
-| Culture coverage | 99.5% |
-| Health Score | 99/100 |
-| Base de datos | SQLite (WAL mode) |
+## Próximas Mejoras
 
-### Tests
+### Q2 2026 - Tree-sitter Migration
 
-| Métrica | Valor |
-|---------|-------|
-| Archivos de test | 300+ ✅ |
-| Tests pasando | 4,500+ |
-| Tests skipped | 35 |
-| Tiempo de suite | ~25 segundos |
-| Imports rotos (src/) | 0 ✅ |
+- Reemplazar Babel con Tree-sitter
+- Mejor detección de `isExported` para arrow functions
+- Análisis de tipos TypeScript más preciso
+- Performance mejorado en proyectos grandes
 
-### Novedades v0.9.60
+### Q3 2026 - Intra-Atómico
 
-| Feature | Descripción |
-|---------|-------------|
-| **Semantic Algebra** | 7 vectores determinísticos por átomo: importance, cohesion, coupling, stability, propagation, fragility, testability |
-| **Deterministic Queries** | Mismo input → Mismo output (100% determinístico vía SQLite) |
-| **SQLite Database** | Base de datos SQLite con WAL mode, mejor performance |
-| 28 MCP Tools | 8 categorías: Impacto, Código, Métricas, Sociedad, Búsqueda, Sistema, Editor, Testing |
-| Bulk Operations | Inserciones masivas single-transaction |
+- Dentro de cada transformación, ver los **sub-átomos**
+- Detectar precision loss en cálculos financieros
 
-### Issues Conocidos Pendientes
+### Q4 2026 - Estado Cuántico
 
-| Issue | Impacto | Prioridad |
-|-------|---------|-----------|
-| Archivos JSON legacy aún referenciados | Datos duplicados | 🟡 Media |
-| 59 dependencias inconsistentes (usedBy ↔ dependsOn) | Datos levemente desactualizados | 🟡 Media |
-| Layer C coverage ~35% | Riesgo de regresiones | 🟡 Media |
+- Simular **todos los paths posibles** (if/else, try/catch)
+- Generar test cases automáticamente
 
-Ver **[docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md](docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md)** para issues completos y mejoras propuestas.
+---
+
+**Ver documentación completa**: [docs/INDEX.md](docs/INDEX.md)
+
+---
+
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
