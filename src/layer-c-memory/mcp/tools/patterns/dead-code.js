@@ -247,6 +247,122 @@ function shouldSkipAtom(atom) {
 }
 
 /**
+ * Verifica si un átomo es un constructor de clase
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es constructor
+ */
+function isConstructor(atom) {
+  return atom.name === 'constructor' || atom.functionType === 'class-method';
+}
+
+/**
+ * Verifica si un átomo es un método de clase
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es método de clase
+ */
+function isClassMethod(atom) {
+  return atom.className || atom.archetype?.type === 'class-method';
+}
+
+/**
+ * Verifica si un átomo es una función de callback/evento
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es callback/evento
+ */
+function isCallbackOrEvent(atom) {
+  const name = atom.name || '';
+  return name?.startsWith('on') || name?.startsWith('handle');
+}
+
+/**
+ * Verifica si un átomo es una constante o variable
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es constante o variable
+ */
+function isConstantOrVariable(atom) {
+  const atomType = atom.type || atom.functionType;
+  const name = atom.name || '';
+  return atomType === 'variable' ||
+         atomType === 'constant' ||
+         name === name.toUpperCase() ||
+         name.startsWith('_') && !name.includes('(') ||
+         name.match(/^[A-Z_][A-Z0-9_]*$/);
+}
+
+/**
+ * Verifica si un átomo es una función de utilidad/detector
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es utilidad/detector
+ */
+function isUtilityOrDetector(atom) {
+  const archetype = atom.archetype?.type;
+  const name = atom.name || '';
+  const filePath = atom.filePath || '';
+  
+  // Archetypes conocidos
+  if (['detector', 'strategy', 'validator', 'handler', 'middleware', 'normalizer', 'transformer', 'parser', 'formatter'].includes(archetype)) {
+    return true;
+  }
+  
+  // Patrones de nombres en archivos específicos
+  const detectorPatterns = [
+    /[/\\]detectors[/\\]/i,
+    /[/\\]strategies[/\\]/i,
+    /[/\\]handlers[/\\]/i,
+    /[/\\]middlewares[/\\]/i,
+    /[/\\]validators[/\\]/i,
+    /[/\\]normalizers[/\\]/i,
+    /[/\\]transformers[/\\]/i,
+    /[/\\]parsers[/\\]/i,
+    /[/\\]formatters[/\\]/i,
+    /[/\\]queries[/\\]/i
+  ];
+  
+  if (detectorPatterns.some(pattern => pattern.test(filePath))) {
+    return atom.isExported || 
+           name?.startsWith('detect') || 
+           name?.startsWith('validate') || 
+           name?.startsWith('normalize') ||
+           name?.startsWith('get') ||
+           name?.startsWith('select') ||
+           name?.startsWith('filter') ||
+           name?.startsWith('list') ||
+           name?.startsWith('find');
+  }
+  
+  return false;
+}
+
+/**
+ * Verifica si un átomo es una función de builder pattern
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es builder
+ */
+function isBuilderFunction(atom) {
+  const archetype = atom.archetype?.type;
+  const name = atom.name || '';
+  return archetype === 'builder' || (name?.startsWith('with') && atom.className);
+}
+
+/**
+ * Verifica si un átomo es una factory function
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es factory
+ */
+function isFactoryFunction(atom) {
+  return atom.archetype?.type === 'factory';
+}
+
+/**
+ * Verifica si un átomo es una función muy corta (helper trivial)
+ * @param {Object} atom - Átomo a evaluar
+ * @returns {boolean} true si es función corta
+ */
+function isShortFunction(atom) {
+  return (atom.linesOfCode || 0) <= 5;
+}
+
+/**
  * Calcula score de "dead code confidence" usando métricas del grafo
  * @param {Object} atom - Átomo a evaluar
  * @returns {Object} { score, reasons }
