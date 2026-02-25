@@ -1,148 +1,271 @@
-# Orchestrator & Data Flow Architecture
+# Orchestrator - OmnySys
 
-**Versión**: v0.7.1  
-**Última actualización**: 2026-02-12  
-**Estado**: Documentación consolidada post-fixes  
-
----
-
-## 🎯 Propósito de esta Documentación
-
-Esta carpeta contiene el **único punto de verdad** para entender:
-1. Cómo fluyen los datos en OmnySys
-2. Cómo funciona el orchestrator
-3. Cómo interactúan los sistemas de caché
-4. Cómo diagnosticar y arreglar problemas comunes
-
-**Si hay un problema con el flujo de datos, empezar aquí.**
+**Versión**: v0.9.61  
+**Última actualización**: 2026-02-25  
+**Estado**: ✅ **100% Estático, 0% LLM**
 
 ---
 
-## 📚 Documentos Disponibles
+## Visión General
 
-### 🔰 Para Entender el Sistema
+El orchestrator de OmnySys coordina el análisis estático del código, detectando cambios, procesando archivos y manteniendo la base de datos SQLite actualizada.
 
-| Documento | Descripción | Cuándo leer |
-|-----------|-------------|-------------|
-| [01-FLujo-VIDA-ARCHIVO.md](./01-FLUSO-VIDA-ARCHIVO.md) | **Flujo completo**: Desde que tocas un archivo hasta que está disponible para las tools | Para entender el pipeline end-to-end |
-| [02-SISTEMA-CACHE.md](./02-SISTEMA-CACHE.md) | **Los 4 cachés**: Qué hace cada uno, por qué existen, problemas conocidos | Cuando hay problemas de "datos viejos" o desincronización |
-| [03-ORCHESTRATOR-INTERNO.md](./03-ORCHESTRATOR-INTERNO.md) | **Cómo funciona el orchestrator**: Colas, workers, decisión LLM | Para entender por qué algunos archivos van a LLM y otros no |
-
-### 🔧 Para Diagnosticar Problemas
-
-| Documento | Descripción | Cuándo leer |
-|-----------|-------------|-------------|
-| [04-TROUBLESHOOTING.md](./04-TROUBLESHOOTING.md) | **Problemas comunes y soluciones**: Cache desync, procesos zombie, etc. | Cuando algo no funciona |
-| [05-CAMBIOS-RECENTES.md](./05-CAMBIOS-RECENTES.md) | **Historial de fixes**: Qué se arregló y cuándo | Para entender el estado actual del código |
+**IMPORTANTE (v0.9.61)**: El orchestrator es **100% ESTÁTICO, 0% LLM**. No usa inteligencia artificial para decisiones, solo reglas determinísticas basadas en AST + regex + álgebra de grafos.
 
 ---
 
-## 🗺️ Mapa del Sistema (Resumen Visual)
+## Arquitectura del Orchestrator
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         FLUJO DE DATOS OMNYSYS                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   USUARIO TOCA ARCHIVO
-           │
-           ▼
-   ┌───────────────┐
-   │ File Watcher  │ ←── Detecta cambio
-   └───────┬───────┘
-           │
-           ▼
-   ┌───────────────┐     ┌─────────────────┐
-   │ Cache         │────→│ Invalida cache  │ ←── Borra datos viejos
-   │ Invalidator   │     │ del archivo     │
-   └───────┬───────┘     └─────────────────┘
-           │
-           ▼
-   ┌───────────────┐
-   │ Layer A       │ ←── Análisis estático (regex, AST)
-   │ (indexer.js)  │     • Exports, imports, funciones
-   └───────┬───────┘     • Data flow, side effects
-           │             • Guarda en .omnysysdata/
-           ▼
-   ┌───────────────┐
-   │ Orchestrator  │ ←── Decide: ¿Necesita LLM?
-   │ Decision      │     • 90% de archivos: BYPASS
-   └───────┬───────┘     • 10% complejos: COLA LLM
-           │
-           ▼
-   ┌───────────────┐     ┌─────────────────┐
-   │ Analysis      │←────│ LLM Analyzer    │ ←── Solo para complejos
-   │ Worker        │     │ (Layer B)       │     • God objects
-   │ (cola)        │     │                 │     • Orphan modules
-   └───────┬───────┘     └─────────────────┘     • Estado global
-           │
-           ▼
-   ┌───────────────┐
-   │ Storage       │ ←── Guarda en disco
-   │ Manager       │     • .omnysysdata/files/
-   └───────┬───────┘     • .omnysysdata/atoms/
-           │             • index.json
-           ▼
-   ┌───────────────┐     ┌─────────────────┐
-   │ Unified       │←────│ Cache           │ ←── INVALIDACIÓN
-   │ Cache         │     │ Invalidator     │     (Fix reciente)
-   │ Manager       │     │ (después de     │
-   └───────────────┘     │ guardar)        │
-                         └─────────────────┘
-
-   MCP TOOLS consultan ←── getFileAnalysis()
-   ↓                        (lee de disco o cache)
-   RESPUESTA A CLAUDE/OPENCODE
+┌─────────────────────────────────────────────────────────────┐
+│  FILE WATCHER (src/core/file-watcher/)                     │
+│  ─────────────────────────────────                          │
+│  • Detecta cambios en archivos                              │
+│  • Debounce para evitar múltiples triggers                  │
+│  • Clasifica cambios (created, modified, deleted)           │
+└──────────────┬──────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  CHANGE PROCESSOR (src/core/)                               │
+│  ─────────────────────────────────                          │
+│  • processPendingChanges                                    │
+│  • _processWithBatchProcessor                               │
+│  • processBatch                                             │
+└──────────────┬──────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER A: Single File Analysis                              │
+│  ─────────────────────────────────                          │
+│  • analyzeSingleFile                                        │
+│  • loadExistingMap                                          │
+│  • resolveFileImports                                       │
+│  • detectConnections                                        │
+│  • saveAtoms → saveFileResult                               │
+└──────────────┬──────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  SQLITE STORAGE (src/layer-c-memory/storage/)               │
+│  ─────────────────────────────────                          │
+│  • saveSystemMap                                            │
+│  • checkpoint (WAL mode)                                    │
+│  • Bulk operations                                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚨 Reglas de Oro (TL;DR)
+## Flujo de Vida de un Archivo
 
-1. **Layer A siempre primero**: Sin análisis estático, no hay decisión LLM
-2. **LLM es lazy**: Solo se inicia si hay archivos con `confidence < 0.8`
-3. **Cache se invalida después de guardar**: Worker → Guarda → Invalida cache
-4. **SSOT en disco**: `.omnysysdata/` es la única verdad, cache es optimización
-5. **Orchestrator limpia en shutdown**: Si no, quedan zombies (fix reciente)
+### 1. Detección de Cambio
 
----
+```javascript
+// src/core/file-watcher/index.js
+watch(srcPath, { recursive: true }, (eventType, filename) => {
+  handleChange(eventType, filename);
+});
+```
 
-## 🎯 Problemas Conocidos (Ya Arreglados)
-
-| Problema | Estado | Fix en | Documentado en |
-|----------|--------|--------|----------------|
-| Cache desincronizado | ✅ Arreglado | `analysis-worker.js` | [05-CAMBIOS-RECENTES.md](./05-CAMBIOS-RECENTES.md) |
-| Orchestrator zombie | ✅ Arreglado | `server-class.js` | [05-CAMBIOS-RECENTES.md](./05-CAMBIOS-RECENTES.md) |
-| Hot-reload timeouts | ✅ Arreglado | `hot-reload-manager.js` | [05-CAMBIOS-RECENTES.md](./05-CAMBIOS-RECENTES.md) |
-| 4 cachés duplicados | ⏳ Pendiente | - | [02-SISTEMA-CACHE.md](./02-SISTEMA-CACHE.md) |
-| LLM temprano en pipeline | ⏳ Pendiente | - | [01-FLUSO-VIDA-ARCHIVO.md](./01-FLUSO-VIDA-ARCHIVO.md) |
+**Tipos de cambios**:
+- `created`: Archivo nuevo
+- `modified`: Archivo modificado
+- `deleted`: Archivo eliminado
 
 ---
 
-## 📖 Documentación Relacionada
+### 2. Procesamiento del Cambio
 
-### Arquitectura General
-| Documento | Descripción | Relación con Orchestrator |
-|-----------|-------------|---------------------------|
-| [DATA_FLOW.md](../DATA_FLOW.md) | Sistema Data Flow Fractal | Contexto del sistema de flujo de datos |
-| [ARCHITECTURE_LAYER_A_B.md](../ARCHITECTURE_LAYER_A_B.md) | Capas A (Static) y B (LLM) | Cómo funcionan las capas que el orchestrator coordina |
-| [HYBRID_ANALYSIS_PIPELINE.md](../HYBRID_ANALYSIS_PIPELINE.md) | Pipeline de 6 fases (static → AI) | Estrategia 80/20 que usa el orchestrator |
-| [ARCHETYPE_SYSTEM.md](../ARCHETYPE_SYSTEM.md) | Sistema de arquetipos | Cómo se decide si un archivo necesita LLM (confidence-based) |
-| [SHADOW_REGISTRY.md](../SHADOW_REGISTRY.md) | Sistema de linaje | Metadata evolutiva que el orchestrator mantiene |
-| [CORE_PRINCIPLES.md](../CORE_PRINCIPLES.md) | Los 4 pilares | Principios que guían el diseño |
+```javascript
+// src/core/file-watcher/lifecycle/change-processing.js
+async function processPendingChanges(changes) {
+  await _processWithBatchProcessor(changes);
+}
 
-### Guías de Uso
-| Documento | Descripción |
-|-----------|-------------|
-| [TOOLS_GUIDE.md](../../guides/TOOLS_GUIDE.md) | Cómo usar las 14 herramientas MCP |
-| [HOT_RELOAD_USAGE.md](../../HOT_RELOAD_USAGE.md) | Sistema de hot-reload para desarrollo |
+async function processBatch(batch) {
+  for (const change of batch) {
+    await processChange(change);
+  }
+}
+```
 
-### Historial de Problemas
-| Documento | Descripción | Estado |
-|-----------|-------------|--------|
-| [MCP_PROBLEMS_ANALYSIS.md](../../MCP_PROBLEMS_ANALYSIS.md) | Análisis completo de problemas | ⚠️ Histórico - ver [05-CAMBIOS-RECIENTES.md](./05-CAMBIOS-RECIENTES.md) para fixes aplicados |
-| [ANALISIS_CACHE_COMPLETO.md](../../ANALISIS_CACHE_COMPLETO.md) | Análisis detallado de los 4 cachés | ℹ️ Referencia técnica |
+**Batch processing**:
+- Agrupa cambios para eficiencia
+- Procesa en lotes de ~50 archivos
+- Evita sobrecarga del sistema
 
 ---
 
-**Nota para mantenedores**: Si modificas el flujo de datos, actualizar estos documentos. El próximo desarrollador (o yo mismo en 3 meses) te lo agradecerá.
+### 3. Análisis de Archivo Único
+
+```javascript
+// src/layer-a-static/pipeline/single-file.js
+async function analyzeSingleFile(absoluteRootPath, relativeFilePath, options) {
+  // 1. Cargar mapa existente
+  const existingMap = await loadExistingMap(absoluteRootPath, relativeFilePath);
+  
+  // 2. Resolver imports
+  const resolvedImports = await resolveFileImports(absoluteRootPath, relativeFilePath, existingMap);
+  
+  // 3. Detectar conexiones semánticas
+  const connections = await detectConnections(absoluteRootPath, relativeFilePath, resolvedImports);
+  
+  // 4. Extraer átomos
+  const atoms = await extractAtoms(absoluteRootPath, relativeFilePath);
+  
+  // 5. Guardar resultados
+  await saveFileResult(absoluteRootPath, relativeFilePath, { atoms, connections });
+  
+  return { atoms, connections };
+}
+```
+
+---
+
+### 4. Persistencia en SQLite
+
+```javascript
+// src/layer-c-memory/storage/repository/adapters/sqlite-adapter-core.js
+async function saveSystemMap(systemMap) {
+  const repo = getRepository();
+  
+  // Bulk insert de átomos
+  repo.saveManyBulk(systemMap.atoms, 500);
+  
+  // Bulk insert de relaciones
+  repo.saveRelationsBulk(systemMap.relations, 500);
+  
+  // Checkpoint WAL
+  db.pragma('wal_checkpoint(PASSIVE)');
+}
+```
+
+**Performance**:
+- 13,000 átomos en ~3 segundos
+- 500 átomos por batch
+- WAL mode para mejor concurrencia
+
+---
+
+## Componentes del Orchestrator
+
+### 01-flujo-vida-archivo.md
+
+Describe el flujo completo desde que se detecta un cambio hasta que se persiste en SQLite.
+
+**Ver**: [01-flujo-vida-archivo.md](./01-flujo-vida-archivo.md)
+
+---
+
+### 02-sistema-cache.md
+
+Describe el sistema de caché que evita re-analizar archivos no cambiados.
+
+**Ver**: [02-sistema-cache.md](./02-sistema-cache.md)
+
+---
+
+### 03-orchestrator-interno.md
+
+Describe las decisiones internas del orchestrator (prioridades, gates, etc.).
+
+**Ver**: [03-orchestrator-interno.md](./03-orchestrator-interno.md)
+
+---
+
+### 04-troubleshooting.md
+
+Problemas comunes y soluciones.
+
+**Ver**: [04-troubleshooting.md](./04-troubleshooting.md)
+
+---
+
+## Métricas del Orchestrator (v0.9.61)
+
+| Métrica | Valor |
+|---------|-------|
+| **Startup** | ~1.5 segundos |
+| **Análisis inicial** | ~30-60 segundos (13,485 átomos) |
+| **Cambio incremental** | <1 segundo por archivo |
+| **Persistencia** | ~3 segundos (bulk insert) |
+| **Memory cleanup** | ~50-100MB liberados |
+
+---
+
+## Comandos Útiles
+
+```bash
+# Iniciar orchestrator
+npm start
+
+# Con hot-reload
+OMNYSYS_HOT_RELOAD=true npm start
+
+# Ver status
+npm run status
+
+# Reiniciar
+npm run restart
+
+# Limpiar y reanalizar
+npm run clean && npm run analyze
+```
+
+---
+
+## Troubleshooting Rápido
+
+### El orchestrator no inicia
+
+```bash
+# Verificar puerto en uso
+netstat -ano | findstr :9999
+
+# Matar proceso y reiniciar
+taskkill /PID <PID> /F
+npm start
+```
+
+### Los cambios no se detectan
+
+```bash
+# Limpiar caché
+npm run clean
+
+# Reanalizar todo
+npm run analyze
+```
+
+### Error de SQLite
+
+```bash
+# Verificar archivo
+ls .omnysysdata/omnysys.db
+
+# Si no existe, reanalizar
+npm run analyze
+```
+
+---
+
+## Próximas Mejoras
+
+### Q2 2026 - Tree-sitter Migration
+
+- Reemplazar Babel con Tree-sitter
+- Mejor performance en detección de cambios
+- Soporte para más lenguajes
+
+### Q3 2026 - Intra-File Caching
+
+- Caché a nivel de función, no solo archivo
+- Invalidación más granular
+- Mejor performance en cambios pequeños
+
+---
+
+**Última actualización**: 2026-02-25 (v0.9.61)  
+**Estado**: ✅ **100% Estático, 0% LLM**  
+**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
