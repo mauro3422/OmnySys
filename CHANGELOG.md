@@ -40,6 +40,7 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
+| **[0.9.67]** | 2026-02-26 | **🧠 Atomic Intelligence Hub & High-Risk Refactoring — ✅ Refactored vector-calculator.js (SOLID split). Fixed Layer C visibility & path normalization.** |
 | **[0.9.66]** | 2026-02-26 | **⚡ God Function Refactoring & Atomic DX — ✅ Refactored cleanLLMResponse, findLargeMonolithic, and atomic_write. New Impact Map integration.** |
 | **[0.9.65]** | 2026-02-26 | **🛡️ Database Schema Integrity & Stability — ✅ Fixed SQLite Schema constraints, ZERO initialization crashes, Error Guardian Graceful Fallbacks** (Latest) |
 | **[0.9.64]** | 2026-02-26 | **🧠 Test Auto-Healing & Daemon Stability — ✅ 269 tests autonomously written, DB orchestrator SRP split, Tree-Sitter MCP compliance** |
@@ -91,27 +92,28 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.66 (2026-02-26)
+## 🚀 Latest Release: v0.9.67 (2026-02-26)
 
-**God Function Refactoring & Atomic DX Excellence**: Batch 2 de reducción de deuda técnica arquitectónica, refactorizando 3 de las 10 funciones con mayor complejidad ciclomática del sistema. Integración profunda de "Impact Mapping" en las herramientas de edición atómica para una IA más autónoma y segura.
+**BRAIN & Atomic Intelligence Excellence**: Intervención profunda en el corazón analítico de OmnySys. Refactorización completa de `vector-calculator.js` (God Function de larga data) mediante una desintegración modular SOLID. Mejoras críticas en la infraestructura de la Capa C para garantizar visibilidad atómica en tiempo real y eliminar lag de indexación.
 
 ### Key Achievements
 
-1. **God Function Decoupling**:
-   - `cleanLLMResponse`: Complejidad 31 → 10. Lógica extraída a `stripMarkdown`, `stripComments`, `fixTrailingCommas` y `findJsonBoundaries`.
-   - `findLargeMonolithic`: Complejidad 33 → 12. Modularizado en un nuevo paquete `monolithic/` con submódulos para métricas, análisis SOLID y evaluación de rasgos.
-   - `atomic_write`: Complejidad 30 → 13. Orquestador central separado en `write-orchestrator.js`.
+1. **God Function Deconstruction**:
+   - `vector-calculator.js`: Complejidad ciclomática Drásticamente reducida. Transformado en un **Facade** que orquesta 5 calculadores especializados (`temporal`, `structural`, `semantic`, `compatibility`, `impact`).
+   - Mejora de Salud: Elevado a **Grado A** (100 score).
 
-2. **Atomic DX Improvements**:
-   - **Impact Map Integration**: `atomic_write` ahora genera y devuelve el mapa de impacto transaccional, permitiendo a los agentes ver qué archivos se ven afectados por un nuevo átomo.
-   - **Zero-Failure Directory Creation**: Implementado `mkdir -p` automático antes de escribir, eliminando errores de path inexistente.
-   - **Soft Export Validation**: Los conflictos de exportación ahora son "soft warnings" por defecto, permitiendo refactorizaciones de símbolos duplicados con menos fricción.
-   - **Circular Dependency Guard**: Verificación proactiva de ciclos de importación en el momento de la escritura.
+2. **Atomic Engine Robustness**:
+   - **Real-Time Visibility**: Refactorizado `single-file.js` y `SQLiteAdapter` para unificar los datos de la tabla `files` con la realidad indexada en `atoms`, eliminando la "ceguera" ante cambios recientes.
+   - **Exact Path Normalization**: Parcheado `normalizeFilePath` para manejar discrepancias de Windows (`\`) vs SQLite (`/`) y prefijos redundantes (`./`).
+   - **Dedicated Metadata API**: Implementado `repo.getFile` para una recuperación de metadatos más confiable que el buscador genérico de átomos.
 
-3. **Sustainability**:
-   - Introducido el patrón de "Orquestador Modular" para herramientas MCP complejas, evitando que las herramientas se conviertan ellas mismas en God Functions.
+3. **Infrastructural Integrity**:
+   - Corregido bug en `SQLiteAdapter` que causaba colisiones entre consultas de átomos y archivos.
+   - Forzado el checkpoint de WAL para asegurar persistencia inmediata en cirugías complejas.
 
 ---
+
+## 📚 Previous Release: v0.9.66 (2026-02-26)
 
 ## 📚 Previous Release: v0.9.65 (2026-02-26)
 

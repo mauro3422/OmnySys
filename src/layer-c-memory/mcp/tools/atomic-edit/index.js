@@ -19,6 +19,8 @@ import { extractImportsFromCode, extractExportsFromCode, checkExportConflictsInG
 import { validateImportsInEdit, validatePostEditOptimized } from './validators.js';
 import { analyzeFullImpact, analyzeNamespaceRisk } from './analysis.js';
 import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
+import { analyzeBlastRadius } from './graph-alerts.js';
+import { AnalysisEngine } from '../core/shared/analysis-engine.js';
 import {
   normalizeAtomicPath,
   performPreWriteValidation,
@@ -63,13 +65,19 @@ async function performPreEditValidation(filePath, oldString, newString, symbolNa
     return { error: 'VALIDATION_FAILED', message: 'Pre-edit validation failed', errors: validation.errors };
   }
 
-  // 2. Validación de importaciones rotas
+  // 2. Blast Radius & SOLID Detection (Unificado en Fase 9)
+  const blastRadius = await analyzeBlastRadius(filePath, projectPath, symbolName);
+  const atoms = (await loadAtoms(projectPath, filePath)) || [];
+  const healthAudit = await AnalysisEngine.auditHealth(filePath, projectPath, atoms);
+  const solidViolations = healthAudit.violations;
+
+  // 3. Validación de importaciones rotas
   const brokenImports = await validateImportsInEdit(filePath, newString, projectPath);
   if (brokenImports.length > 0) {
     return { error: 'BROKEN_IMPORTS', message: `Found ${brokenImports.length} broken imports`, brokenImports };
   }
 
-  // 3. Conflictos de exports
+  // 4. Conflictos de exports
   const exportConflicts = await checkEditExportConflicts(oldString, newString, filePath, projectPath);
   if (exportConflicts.globalConflicts.some(c => c.isCritical)) {
     return {
@@ -79,7 +87,7 @@ async function performPreEditValidation(filePath, oldString, newString, symbolNa
     };
   }
 
-  return { valid: true, exportConflicts };
+  return { valid: true, exportConflicts, blastRadius, solidViolations };
 }
 
 /**
@@ -163,7 +171,9 @@ export async function atomic_edit(args, context) {
         changes: tree.changes,
         dependentsCount: tree.dependents.length
       })),
-      warnings: preValidation.exportConflicts.warnings.length > 0 ? preValidation.exportConflicts.warnings : undefined
+      warnings: preValidation.exportConflicts.warnings.length > 0 ? preValidation.exportConflicts.warnings : undefined,
+      blastRadius: preValidation.blastRadius,
+      solidViolations: Object.values(preValidation.solidViolations).some(v => v !== null) ? preValidation.solidViolations : undefined
     };
 
   } catch (error) {

@@ -15,15 +15,15 @@ import { atomToRow, rowToAtom } from './helpers/converters.js';
  * Diseñado para ser extendido por SQLiteAdapter
  */
 export class SQLiteCrudOperations extends SQLiteAdapterCore {
-  
+
   getById(id) {
     const row = this.statements.getById.get(id);
     if (!row) return null;
-    
+
     const atom = rowToAtom(row);
     atom.calls = this.getCallees(id);
     atom.calledBy = this.getCallers(id);
-    
+
     return atom;
   }
 
@@ -35,6 +35,11 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   getByFile(filePath) {
     const rows = this.statements.getByFile.all(filePath);
     return rows.map(rowToAtom);
+  }
+
+  getFile(filePath) {
+    const row = this.statements.query.get(filePath);
+    return row || null;
   }
 
   save(atom) {
@@ -94,14 +99,14 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
     // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
     const result = this.statements.deleteById.run(id);
-    
+
     // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
     try {
       this.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
     } catch (e) {
       // Ignorar errores de checkpoint - los datos están guardados igual
     }
-    
+
     return result.changes > 0;
   }
 
@@ -117,7 +122,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
         WHERE is_test_callback = 1 
         AND (id LIKE ? OR calls_json LIKE ?)
       `).all(`%${sourceFilePath}%`, `%${sourceId}%`);
-      
+
       for (const testAtom of testAtoms) {
         // Marcar como huérfano actualizando derived_json
         const currentData = this.statements.getById.get(testAtom.id);
@@ -126,11 +131,11 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
           derived.orphaned = true;
           derived.orphanedFrom = sourceId;
           derived.orphanedAt = new Date().toISOString();
-          
+
           this.db.prepare(`
             UPDATE atoms SET derived_json = ? WHERE id = ?
           `).run(JSON.stringify(derived), testAtom.id);
-          
+
           this._logger.debug(`[SQLiteAdapter] Marked test atom as orphaned: ${testAtom.id}`);
         }
       }

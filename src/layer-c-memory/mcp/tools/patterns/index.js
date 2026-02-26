@@ -22,6 +22,7 @@ import { findArchitecturalDebt } from './architectural-debt.js';
 import { findLargeMonolithic } from './large-monolithic.js';
 import { findShadowing } from './shadowing.js';
 import { findInvariantViolations } from './invariants.js';
+import { suggestSolidSplit } from './monolithic/suggest-split.js';
 
 /**
  * Detecta patrones de código
@@ -199,6 +200,10 @@ export async function detect_patterns(args, context) {
 
     if (patternType === 'invariants') {
       result.invariants = findInvariantViolations(atoms);
+    }
+
+    if (patternType === 'suggest-split') {
+      result.splitProposal = await suggestSolidSplit(args.filePath, projectPath);
     }
 
     return result;

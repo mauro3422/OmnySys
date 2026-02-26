@@ -50,7 +50,7 @@ export class SQLiteAdapterCore extends AtomRepository {
       insertAtom: this.db.prepare(this._buildInsertSQL()),
       deleteById: this.db.prepare('DELETE FROM atoms WHERE id = ?'),
       deleteByFile: this.db.prepare('DELETE FROM atoms WHERE file_path = ?'),
-      query: this.db.prepare('SELECT * FROM atoms WHERE file_path = ?'),
+      query: this.db.prepare('SELECT * FROM files WHERE path = ?'),
       getAll: this.db.prepare('SELECT * FROM atoms LIMIT ? OFFSET ?'),
       getCallers: this.db.prepare(`
         SELECT a.id, a.name, a.file_path, r.weight, r.line_number

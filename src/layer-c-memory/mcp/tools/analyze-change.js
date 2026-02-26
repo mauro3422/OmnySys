@@ -9,87 +9,11 @@
 
 import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import { get_impact_map } from './impact-map.js';
-import { getAtomsInFile, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
+import { getAllAtoms } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
+import { AnalysisEngine } from '../core/shared/analysis-engine.js';
 
 const logger = createLogger('OmnySys:analyze:change');
-
-async function calculateSymbolCentrality(atomId, projectPath) {
-  try {
-    const parts = atomId.split('::');
-    const filePath = parts[0];
-    const functionName = parts[1];
-
-    const atoms = await getAtomsInFile(projectPath, filePath);
-    const atom = atoms.find((a) => a.name === functionName);
-    if (!atom) return null;
-
-    const enriched = await enrichAtomsWithRelations(
-      [atom],
-      {
-        scope: 'ids',
-        ids: [atom.id],
-        withCallers: true,
-        withCallees: true
-      },
-      projectPath
-    );
-
-    const atomRel = enriched[0] || {};
-    const inDegree = atomRel.callers?.length || 0;
-    const outDegree = atomRel.callees?.length || 0;
-    const centrality = inDegree / (outDegree + 1);
-
-    return {
-      centrality: centrality.toFixed(3),
-      classification: centrality > 10 ? 'HUB' : centrality > 2 ? 'BRIDGE' : 'LEAF',
-      inDegree,
-      outDegree
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function predictSymbolBreakingChanges(atomId, projectPath) {
-  try {
-    const parts = atomId.split('::');
-    const filePath = parts[0];
-    const functionName = parts[1];
-
-    const atoms = await getAtomsInFile(projectPath, filePath);
-    const atom = atoms.find((a) => a.name === functionName);
-    if (!atom) return null;
-
-    const enriched = await enrichAtomsWithRelations(
-      [atom],
-      {
-        scope: 'ids',
-        ids: [atom.id],
-        withCallers: true
-      },
-      projectPath
-    );
-
-    const atomRel = enriched[0] || {};
-    const dependents = atomRel.callers || [];
-
-    const risk = dependents.length > 10 ? 'HIGH' : dependents.length > 5 ? 'MEDIUM' : 'LOW';
-
-    return {
-      dependentCount: dependents.length,
-      riskLevel: risk,
-      recommendation:
-        risk === 'HIGH'
-          ? 'CRITICAL: Many dependents will break'
-          : risk === 'MEDIUM'
-            ? 'WARNING: Some dependents may break'
-            : 'SAFE: Few dependents, low impact'
-    };
-  } catch {
-    return null;
-  }
-}
 
 export async function analyze_change(args, context) {
   const {
@@ -137,28 +61,14 @@ export async function analyze_change(args, context) {
     context
   );
 
-  const atomId = `${filePath}::${symbolName}`;
-  const centrality = await calculateSymbolCentrality(atomId, projectPath);
-  const breakingChanges = await predictSymbolBreakingChanges(atomId, projectPath);
-
-  let combinedRisk = 'low';
-  const riskFactors = [];
-
-  if (centrality) {
-    riskFactors.push(`centrality: ${centrality.classification}`);
-    if (centrality.classification === 'HUB') combinedRisk = 'critical';
-    else if (centrality.classification === 'BRIDGE') combinedRisk = 'high';
-  }
-
-  if (breakingChanges) {
-    riskFactors.push(`dependents: ${breakingChanges.dependentCount}`);
-    if (breakingChanges.riskLevel === 'HIGH') combinedRisk = 'critical';
-    else if (breakingChanges.riskLevel === 'MEDIUM' && combinedRisk !== 'critical') combinedRisk = 'high';
-  }
-
-  if ((impactMap.directlyAffects?.length || 0) > 10) {
-    combinedRisk = combinedRisk === 'low' ? 'medium' : combinedRisk;
-  }
+  // --- UNIFICACIÓN CON ANALYSIS ENGINE ---
+  const allAtoms = await getAllAtoms(projectPath);
+  const blastRadius = await AnalysisEngine.analyzeBlastRadius(
+    symbolName,
+    filePath,
+    projectPath,
+    allAtoms
+  );
 
   return {
     symbol: symbolName,
@@ -166,20 +76,13 @@ export async function analyze_change(args, context) {
     symbolType: symbol.kind,
     directDependents: impactMap.directlyAffects || [],
     transitiveDependents: impactMap.transitiveAffects || [],
-    totalAffected: (impactMap.directlyAffects?.length || 0) + (impactMap.transitiveAffects?.length || 0),
+    totalAffected: blastRadius.directDependents + (impactMap.transitiveAffects?.length || 0),
     network: {
-      centrality,
-      breakingChanges
+      centrality: blastRadius.score,
+      classification: blastRadius.classification
     },
-    riskLevel: combinedRisk,
-    riskFactors,
-    recommendation:
-      combinedRisk === 'critical'
-        ? 'CRITICAL: This is a HUB in the graph. Changes can break many dependents.'
-        : combinedRisk === 'high'
-          ? 'HIGH RISK: Many dependents will be affected.'
-          : (impactMap.directlyAffects?.length || 0) > 10
-            ? 'MEDIUM RISK: Many direct dependents.'
-            : 'SAFE: Limited scope.'
+    riskLevel: blastRadius.level,
+    recommendation: blastRadius.recommendation
   };
 }
+
