@@ -59,7 +59,8 @@ async function main() {
         const terminalCmd = fs.existsSync('/usr/bin/gnome-terminal') ? 'gnome-terminal' : 'xterm';
         logsTerminal = spawn(terminalCmd, ['--', 'tail', '-f', path.join(projectRoot, 'logs/mcp-server.log')], {
           detached: true,
-          stdio: 'ignore'
+          stdio: 'ignore',
+          windowsHide: true
         });
       }
 

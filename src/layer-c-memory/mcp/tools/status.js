@@ -12,7 +12,7 @@ const logger = createLogger('OmnySys:status');
 
 export async function get_server_status(args, context) {
   const { orchestrator, cache, projectPath, server } = context;
-  
+
   logger.info(`[Tool] get_server_status()`);
 
   // Siempre disponible: información básica del sistema
@@ -20,6 +20,7 @@ export async function get_server_status(args, context) {
     initialized: server?.initialized || false,
     initializing: !!server && !server.initialized,
     project: projectPath,
+    hotReloadTest: "v1-success",
     timestamp: new Date().toISOString()
   };
 
@@ -66,13 +67,13 @@ export async function get_server_status(args, context) {
  */
 export async function get_recent_errors(args, context) {
   logger.info(`[Tool] get_recent_errors()`);
-  
+
   const logs = getRecentLogs();
   clearRecentLogs();
-  
+
   const warnings = logs.filter(l => l.level === 'warn');
   const errors = logs.filter(l => l.level === 'error');
-  
+
   return {
     count: logs.length,
     warnings: warnings.length,
