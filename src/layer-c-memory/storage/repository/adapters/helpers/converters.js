@@ -86,7 +86,13 @@ export function atomToRow(atom) {
     dna_json: safeJson(atom.dna),
     derived_json: safeJson(atom.derived),
     _meta_json: safeJson(atom._meta || atom.meta),
-    
+
+    // Tree-sitter metadata (v0.9.62)
+    shared_state_json: safeJson(atom.sharedStateAccess || []),
+    event_emitters_json: safeJson(atom.eventEmitters || []),
+    event_listeners_json: safeJson(atom.eventListeners || []),
+    scope_type: safeString(atom.scopeType),
+
     // Relations and type
     called_by_json: safeJson(atom.calledBy || []),
     function_type: safeString(atom.functionType || atom.type || 'declaration')
@@ -153,7 +159,13 @@ export function rowToAtom(row) {
     performance: safeParseJson(row.performance_json),
     dna: safeParseJson(row.dna_json),
     derived: safeParseJson(row.derived_json),
-    
+
+    // Tree-sitter metadata (v0.9.62)
+    sharedStateAccess: safeParseJson(row.shared_state_json, []),
+    eventEmitters: safeParseJson(row.event_emitters_json, []),
+    eventListeners: safeParseJson(row.event_listeners_json, []),
+    scopeType: row.scope_type,
+
     // Metadata
     extractedAt: row.extracted_at,
     updatedAt: row.updated_at,

@@ -28,12 +28,38 @@ export class GlobalVariableTracker extends BaseTracker {
 
   /**
    * Track global access in a single atom
+   * Uses Tree-sitter metadata for accurate detection
    * @private
    */
   trackAtom(atom, molecule, module) {
-    // Check dataFlow side effects for global access
+    // PRIORITY 1: Use Tree-sitter sharedStateAccess (más preciso)
+    if (atom.sharedStateAccess && atom.sharedStateAccess.length > 0) {
+      for (const access of atom.sharedStateAccess) {
+        // Tree-sitter ya determinó el scope
+        const stateType = access.scopeType || 'global';
+        
+        // Solo registrar si es realmente global
+        if (stateType === 'global' || access.objectName) {
+          this.registerAccess(
+            stateType,
+            access.fullReference || access.variable || 'unknown',
+            atom,
+            module,
+            {
+              type: access.type,
+              line: access.line,
+              source: 'tree-sitter'
+            },
+            molecule.filePath
+          );
+        }
+      }
+      return; // No procesar sideEffects si hay datos Tree-sitter
+    }
+
+    // FALLBACK: Usar dataFlow sideEffects (menos preciso, legacy)
     const sideEffects = atom.dataFlow?.sideEffects || [];
-    
+
     for (const effect of sideEffects) {
       if (this.isGlobalAccess(effect)) {
         this.registerAccess(
@@ -46,7 +72,7 @@ export class GlobalVariableTracker extends BaseTracker {
         );
       }
     }
-    
+
     // Also check code directly for simple global writes
     if (atom.code) {
       const globalWrites = this.findGlobalWrites(atom.code);

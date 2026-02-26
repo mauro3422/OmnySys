@@ -2,6 +2,9 @@
  * @fileoverview module-state-tracker.js
  *
  * Tracks modifications to module-level state
+ * 
+ * UPDATED: Now uses Tree-sitter metadata from atom.sharedStateAccess
+ * for accurate scope detection (local vs module vs global)
  *
  * @module race-detector/trackers/module-state-tracker
  */
@@ -20,7 +23,7 @@ export class ModuleStateTracker extends BaseTracker {
   trackMolecule(molecule, module) {
     if (!molecule) return;
     const atoms = molecule.atoms || [];
-    
+
     for (const atom of atoms) {
       this.trackAtom(atom, molecule, module);
     }
@@ -28,15 +31,41 @@ export class ModuleStateTracker extends BaseTracker {
 
   /**
    * Track module state in a single atom
+   * Uses Tree-sitter metadata for accurate scope detection
    * @private
    */
   trackAtom(atom, molecule, module) {
+    // PRIORITY 1: Use Tree-sitter metadata if available (most accurate)
+    if (atom.sharedStateAccess && atom.sharedStateAccess.length > 0) {
+      for (const access of atom.sharedStateAccess) {
+        // Tree-sitter already determined the scope
+        const stateType = access.scopeType || this.determineStateTypeFromAccess(access, atom);
+        
+        this.registerAccess(
+          stateType,
+          access.fullReference || access.variable || 'unknown',
+          atom,
+          module,
+          {
+            type: access.type === 'write' ? 'write' : 'read',
+            line: access.line,
+            source: 'tree-sitter'
+          },
+          molecule.filePath
+        );
+      }
+      return; // Don't process sideEffects if we have Tree-sitter data
+    }
+
+    // FALLBACK: Use sideEffects from dataFlow (less accurate)
     const sideEffects = atom.dataFlow?.sideEffects || [];
-    
+
     for (const effect of sideEffects) {
       if (this.isModuleStateWrite(effect)) {
+        const stateType = this.determineStateType(effect, atom);
+        
         this.registerAccess(
-          'module',
+          stateType,
           effect.target || effect.variable || 'unknown',
           atom,
           module,
@@ -45,6 +74,25 @@ export class ModuleStateTracker extends BaseTracker {
         );
       }
     }
+  }
+
+  /**
+   * Determine state type from Tree-sitter access
+   * @private
+   */
+  determineStateTypeFromAccess(access, atom) {
+    // Tree-sitter provides functionContext
+    if (access.functionContext === 'module-level') {
+      return 'module';
+    }
+    
+    // Check if it's a global (window.*, global.*, globalThis.*)
+    if (access.objectName && ['window', 'global', 'globalThis'].includes(access.objectName)) {
+      return 'global';
+    }
+    
+    // For other cases, check if variable is local
+    return this.determineStateType({ target: access.fullReference }, atom);
   }
 
   /**

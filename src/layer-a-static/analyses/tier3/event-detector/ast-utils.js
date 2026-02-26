@@ -6,7 +6,7 @@
  * @module analyses/tier3/event-detector/ast-utils
  */
 
-import { text } from '../../../utils/ts-ast-utils.js';
+import { text } from '../../../extractors/data-flow/utils/ts-ast-utils.js';
 
 /**
  * Extrae el nombre del evento de un argumento Tree-sitter

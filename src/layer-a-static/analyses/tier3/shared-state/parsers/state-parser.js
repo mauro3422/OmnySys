@@ -4,7 +4,7 @@
 
 import { createLogger } from '../../../../../utils/logger.js';
 import { isPartOfAssignmentLeft } from '../utils/index.js';
-import { startLine, text } from '../../../../utils/ts-ast-utils.js';
+import { startLine, text } from '../../../../extractors/data-flow/utils/ts-ast-utils.js';
 import { getTree } from '../../../../parser/index.js';
 
 const logger = createLogger('OmnySys:shared:state:parser');

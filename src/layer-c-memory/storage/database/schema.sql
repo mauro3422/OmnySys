@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS atoms (
     is_async BOOLEAN DEFAULT 0,
     is_test_callback BOOLEAN DEFAULT 0,
     test_callback_type TEXT,               -- 'describe', 'it', 'test', etc.
+    has_error_handling BOOLEAN DEFAULT 0,  -- Tiene manejo de errores (try/catch, .catch, etc.)
+    has_network_calls BOOLEAN DEFAULT 0,   -- Tiene llamadas a red (fetch, http, etc.)
     
     -- Clasificacion
     archetype_type TEXT,
@@ -72,7 +74,13 @@ CREATE TABLE IF NOT EXISTS atoms (
     performance_json TEXT,                 -- Complexity, expensive ops, resources
     dna_json TEXT,                         -- Hashes, fingerprints
     derived_json TEXT,                     -- Scores calculados adicionales
-    
+
+    -- Tree-sitter metadata (v0.9.62)
+    shared_state_json TEXT,                -- sharedStateAccess[]: global/window/globalThis access
+    event_emitters_json TEXT,              -- eventEmitters[]: emit/dispatch calls
+    event_listeners_json TEXT,             -- eventListeners[]: addEventListener, on*
+    scope_type TEXT,                       -- 'local' | 'module' | 'global' | 'closure'
+
     -- Metadata
     _meta_json TEXT                        -- CreatedAt, version, source
 );

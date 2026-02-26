@@ -127,11 +127,11 @@ export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
     try {
       const repo = getRepository(rootPath);
       const atoms = repo.getAll(); // Sync
-      
+
       if (!includeRemoved) {
         return atoms.filter(a => a.lineage?.status !== 'removed');
       }
-      
+
       return atoms;
     } catch (error) {
       logger.error(`[getAllAtoms] SQLite error: ${error.message}`);
@@ -139,7 +139,7 @@ export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
     }
   }
 
-  // Legacy JSON
+  // Legacy JSON (no se usa con SQLite por defecto)
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const atoms = [];
 
@@ -176,14 +176,14 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
   if (USE_SQLITE) {
     try {
       const repo = getRepository(rootPath);
-      const atoms = repo.query({ 
-        isDeadCode: true 
+      const atoms = repo.query({
+        isDeadCode: true
       });
-      
+
       if (filePath) {
         return atoms.filter(a => a.filePath?.includes(filePath));
       }
-      
+
       return atoms;
     } catch (error) {
       logger.error(`[getRemovedAtoms] SQLite error: ${error.message}`);
@@ -191,7 +191,7 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
     }
   }
 
-  // Legacy JSON
+  // Legacy JSON (no se usa con SQLite por defecto)
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const atoms = [];
 
@@ -238,29 +238,29 @@ export async function queryAtoms(rootPath, filter = {}, limit = null) {
     }
   }
 
-  // Legacy JSON
+  // Legacy JSON (no se usa con SQLite por defecto)
   const atomsDir = path.join(rootPath, DATA_DIR, 'atoms');
   const results = [];
   const maxResults = limit === null ? Infinity : limit;
-  
+
   async function scanAndFilter(dir) {
     if (results.length >= maxResults) return;
-    
+
     try {
       const entries = await gracefulReaddir(dir, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if (results.length >= maxResults) break;
-        
+
         const fullPath = path.join(dir, entry.name);
-        
+
         if (entry.isDirectory()) {
           await scanAndFilter(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.json')) {
           try {
             const content = await gracefulReadFile(fullPath);
             const atom = JSON.parse(content);
-            
+
             // Aplicar filtros
             if (matchesFilter(atom, filter)) {
               results.push(atom);
@@ -272,7 +272,7 @@ export async function queryAtoms(rootPath, filter = {}, limit = null) {
     } catch {
     }
   }
-  
+
   await scanAndFilter(atomsDir);
   return results;
 }

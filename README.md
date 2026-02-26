@@ -1,10 +1,10 @@
 # OmnySys — Motor de Contexto de Código
 
-> **Previene la visión de túnel al editar código.**  
+> **Previene la visión de túnel al editar código.**
 > Analiza el impacto completo antes de cualquier cambio y lo expone a tu IA vía MCP.
 
-**Versión**: v0.9.61  
-**Estado**: ✅ **100% Estático, 0% LLM** - Dead Code Detection 85% preciso  
+**Versión**: v0.9.62
+**Estado**: ✅ **100% Estático, 0% LLM** - Tree-sitter + Schema Unificado + SQLite
 **Última actualización**: 2026-02-25
 
 ---
@@ -13,9 +13,16 @@
 
 Las IAs sufren **visión de túnel**: editan un archivo sin saber qué rompen en el resto del sistema.
 
-OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **29 herramientas MCP** que cualquier IA puede usar antes de tocar código.
+OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **30 herramientas MCP** que cualquier IA puede usar antes de tocar código.
 
-**IMPORTANTE (v0.9.61)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
+**IMPORTANTE (v0.9.62)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. Usamos **Tree-sitter** para AST de alta precisión + regex + álgebra de grafos.
+
+### Novedades v0.9.62
+
+- ✅ **Tree-sitter integrado al schema MCP**: 4 campos nuevos (sharedStateAccess, eventEmitters, eventListeners, scopeType)
+- ✅ **Race-detector estandarizado**: Usa Tree-sitter como única fuente de verdad (SSOT)
+- ✅ **SQLite WAL con checkpoint automático**: Datos visibles inmediatamente después de escrituras
+- ✅ **Eliminada duplicación**: Trackers de race-detector consumen del schema, no replican lógica
 
 ```
 "Voy a modificar orchestrator.js"

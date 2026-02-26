@@ -1,8 +1,8 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.61  
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ **100% Estático, 0% LLM** - SQLite + Dead Code Detection 85% preciso
+**Versión**: v0.9.62
+**Última actualización**: 2026-02-25
+**Estado**: ✅ **100% Estático, 0% LLM** - Tree-sitter + SQLite + Schema Unificado
 
 ---
 
@@ -12,7 +12,7 @@ OmnySys está organizado en **5 capas** con responsabilidades claras y separadas
 
 ```
 src/
-├── layer-a-static/     # Capa A: Análisis estático puro (AST + regex)
+├── layer-a-static/     # Capa A: Análisis estático puro (AST + Tree-sitter)
 ├── layer-b-semantic/   # Capa B: Metadata enrichment (100% estático)
 ├── layer-graph/        # Capa Graph: Sistema de grafos de dependencias
 ├── layer-c-memory/     # Capa C: MCP Server, SQLite, exposición
@@ -22,14 +22,16 @@ src/
 └── utils/              # Logger y utilidades base
 ```
 
-**IMPORTANTE (v0.9.61)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
+**IMPORTANTE (v0.9.62)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. Usamos **Tree-sitter** para AST de alta precisión + regex + álgebra de grafos.
 
 ---
 
 ## Capa A — Análisis Estático (`src/layer-a-static/`)
 
-**Propósito**: Extraer información estructural del código sin ejecutarlo.  
-**LLM**: NUNCA. 100% determinístico vía AST + regex.
+**Propósito**: Extraer información estructural del código sin ejecutarlo.
+**LLM**: NUNCA. 100% determinístico vía Tree-sitter + AST + regex.
+
+### Arquitectura de Layer A (v0.9.62)
 
 ```
 layer-a-static/
@@ -37,23 +39,39 @@ layer-a-static/
 ├── parser/                 # Extrae AST, imports, exports, funciones
 ├── extractors/             # Extrae metadatos específicos
 │   ├── metadata/           # Side effects, call graph, data flow
+│   │   ├── tree-sitter-integration.js  # ← NUEVO: Puente Tree-sitter → Schema
+│   │   ├── side-effects.js
+│   │   ├── call-graph.js
+│   │   ├── data-flow.js
+│   │   └── registry.js     # Registro centralizado de extractores
 │   ├── communication/      # WebWorkers, WebSocket, PostMessage
 │   ├── state-management/   # Redux, Context, Zustand
-│   ├── comprehensive-extractor/  # Extractor completo multi-tipo
 │   └── data-flow/          # Seguimiento de flujo de datos
 ├── analyses/               # Análisis sobre el grafo
 │   ├── tier1/              # Hotspots, unused exports, cycles
 │   ├── tier2/              # Análisis de calidad media
-│   └── tier3/              # Detectores avanzados (race, side effects)
+│   └── tier3/              # Detectores avanzados (Tree-sitter based)
+│       ├── shared-state/   # ← Shared state detection con Tree-sitter
+│       ├── event-detector/ # ← Event patterns con Tree-sitter
+│       └── side-effects-detector.js
 ├── pattern-detection/      # Detección de patrones de código
-├── race-detector/          # Detección de race conditions
+├── race-detector/          # ← AHORA usa datos de Tree-sitter
+│   └── trackers/
+│       └── module-state-tracker.js  # ← Usa atom.sharedStateAccess
 ├── pipeline/               # Orquestación del análisis completo
+│   ├── phases/
+│   │   └── atom-extraction/
+│   │       └── builders/
+│   │           └── metadata-builder.js  # ← Agrega campos Tree-sitter
+│   └── enhance/
+│       └── analyzers/
+│           └── file-analyzer.js  # ← Analiza con Tree-sitter
 ├── module-system/          # Resolución de módulos ESM/CJS
 ├── resolver.js             # Resuelve imports entre archivos
 └── indexer.js              # Orquestador principal de Layer A
 ```
 
-### Flujo de Layer A
+### Flujo de Layer A (v0.9.62)
 
 ```
 indexer.js
@@ -61,6 +79,7 @@ indexer.js
     ├─→ scanProjectFiles()
     ├─→ parseFiles()
     ├─→ extractAndSaveAtoms()     # AtomExtractionPhase
+    │   └─→ extractTreeSitterMetadata()  # ← NUEVO: Tree-sitter → Schema
     ├─→ buildCalledByLinks()      # 6 sub-pasos de linkage
     ├─→ resolveImports()
     ├─→ normalizePaths()
@@ -71,6 +90,47 @@ indexer.js
 ```
 
 **Performance**: 13,485 átomos en ~30-60 segundos (startup inicial)
+
+### Schema de Átomos (v0.9.62)
+
+**Campos nuevos agregados desde Tree-sitter**:
+
+```javascript
+{
+  // ... campos existentes (57+)
+  
+  // NUEVOS: Tree-sitter metadata
+  sharedStateAccess: [    // ← Accesos a estado global (window.*, global.*)
+    {
+      fullReference: 'window.currentUser',
+      type: 'read' | 'write',
+      line: 42,
+      functionContext: 'authenticateUser',
+      scopeType: 'global' | 'module' | 'local' | 'closure',
+      objectName: 'window',
+      propName: 'currentUser',
+      confidence: 1.0
+    }
+  ],
+  eventEmitters: [        // ← Emisores de eventos
+    {
+      eventName: 'user:login',
+      type: 'emit' | 'dispatch',
+      line: 55
+    }
+  ],
+  eventListeners: [       // ← Listeners de eventos
+    {
+      eventName: 'click',
+      type: 'addEventListener',
+      line: 10
+    }
+  ],
+  scopeType: 'local' | 'module' | 'global' | 'closure'  // ← Scope real
+}
+```
+
+**Total campos**: 41 base + 4 nuevos de Tree-sitter = **45 campos**
 
 ---
 
@@ -201,6 +261,121 @@ Cambio detectado
 
 ---
 
+## Race Detector — Estandarizado con Tree-sitter (v0.9.62)
+
+**Propósito**: Detectar race conditions usando metadata de Tree-sitter en lugar de trackers duplicados.
+
+### Arquitectura del Race Detector (v0.9.62)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Tree-sitter (Layer A)                     │
+│  - Parsea código con AST real                               │
+│  - Detecta shared state (window.*, global.*)                │
+│  - Detecta eventos (emitters, listeners)                    │
+│  - Scope real (module-level, function context)              │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│            tree-sitter-integration.js (PUENTE)              │
+│  - Filtra por átomo (línea start-end)                       │
+│  - Determina scopeType (local/module/global/closure)        │
+│  - Cachea por archivo (performance)                         │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│              Schema MCP (45 campos)                         │
+│  - sharedStateAccess[]                                      │
+│  - eventEmitters[]                                          │
+│  - eventListeners[]                                         │
+│  - scopeType                                                │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│              Race-detector (CONSUME DEL SCHEMA)             │
+│  - module-state-tracker usa atom.sharedStateAccess          │
+│  - Elimina duplicación de lógica                            │
+│  - Precisión garantizada por Tree-sitter                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Beneficios de la Estandarización
+
+1. **SSOT (Single Source of Truth)**: Tree-sitter es la única fuente de verdad para shared state y eventos
+2. **Sin duplicación**: Race-detector consume del schema, no replica lógica
+3. **Precisión**: Tree-sitter tiene scope real, no heurísticas
+4. **Performance**: Cache por archivo, análisis una sola vez
+5. **Extensibilidad**: Nuevos campos se agregan al schema, no a múltiples trackers
+
+### Campos del Schema para Race Detection
+
+```javascript
+// Atom metadata (v0.9.62)
+{
+  // Shared state access (Tree-sitter)
+  sharedStateAccess: [
+    {
+      fullReference: 'window.currentUser',
+      type: 'write',  // 'read' o 'write'
+      line: 42,
+      functionContext: 'authenticateUser',
+      scopeType: 'global',  // 'local' | 'module' | 'global' | 'closure'
+      objectName: 'window',
+      propName: 'currentUser',
+      confidence: 1.0
+    }
+  ],
+  
+  // Eventos
+  eventEmitters: [
+    { eventName: 'user:login', type: 'emit', line: 55 }
+  ],
+  eventListeners: [
+    { eventName: 'click', type: 'addEventListener', line: 10 }
+  ],
+  
+  // Scope determinado por Tree-sitter
+  scopeType: 'module'
+}
+```
+
+### Module-State-Tracker (v0.9.62)
+
+**ANTES** (con lógica duplicada):
+```javascript
+// ❌ Detectaba por su cuenta con regex
+trackAtom(atom) {
+  const sideEffects = atom.dataFlow?.sideEffects || [];
+  for (const effect of sideEffects) {
+    if (this.isModuleStateWrite(effect)) {
+      const stateType = this.determineStateType(effect, atom);  // Lógica duplicada
+      this.registerAccess(stateType, ...);
+    }
+  }
+}
+```
+
+**AHORA** (usa Tree-sitter):
+```javascript
+// ✅ Usa datos de Tree-sitter
+trackAtom(atom) {
+  // PRIORITY 1: Tree-sitter metadata (más preciso)
+  if (atom.sharedStateAccess?.length > 0) {
+    for (const access of atom.sharedStateAccess) {
+      const stateType = access.scopeType;  // Tree-sitter ya lo determinó
+      this.registerAccess(stateType, access.fullReference, ...);
+    }
+    return;
+  }
+  
+  // FALLBACK: sideEffects (menos preciso)
+  const sideEffects = atom.dataFlow?.sideEffects || [];
+  // ... fallback logic
+}
+```
+
+---
+
 ## CLI — Administración (`src/cli/`)
 
 **Propósito**: CLI de administración del sistema.
@@ -234,70 +409,91 @@ npm run clean && npm run analyze
 
 ---
 
-## Flujo de Datos Completo
+## Flujo de Datos Completo (v0.9.62)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         FLUJO DE DATOS                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  [Código Fuente]                                            │
-│       │                                                      │
-│       ▼                                                      │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  LAYER A: Static Analysis (100% determinístico)      │   │
-│  │  • Scanner → Parser → Extractors → Analyses          │   │
-│  │  • 17 extractores de metadata                        │   │
-│  │  • Cross-file calledBy linkage (6 sub-pasos)         │   │
-│  └──────────────────────────────────────────────────────┘   │
-│       │                                                      │
-│       ▼                                                      │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  LAYER C: SQLite Database                            │   │
-│  │  • atoms: 13,485 funciones con 50+ campos            │   │
-│  │  • atom_relations: grafo de dependencias             │   │
-│  │  • files: metadatos por archivo                      │   │
-│  │  • semantic_connections: conexiones semánticas       │   │
-│  └──────────────────────────────────────────────────────┘   │
-│       │                                                      │
-│       ▼                                                      │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  MCP TOOLS (29 herramientas)                         │   │
-│  │  • Impacto: get_impact_map, analyze_change, ...      │   │
-│  │  • Código: get_call_graph, get_function_details, ... │   │
-│  │  • Métricas: get_health_metrics, detect_patterns, .. │   │
-│  │  • Testing: generate_tests, generate_batch_tests, .. │   │
-│  └──────────────────────────────────────────────────────┘   │
-│       │                                                      │
-│       ▼                                                      │
-│  [Claude / OpenCode / Qwen - IAs]                           │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         FLUJO DE DATOS (v0.9.62)                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  [Código Fuente]                                                         │
+│       │                                                                  │
+│       ▼                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  LAYER A: Static Analysis (Tree-sitter + AST)                    │   │
+│  │  • Scanner → Parser → Extractors → Analyses                      │   │
+│  │  • Tree-sitter: AST de alta precisión                            │   │
+│  │  • extractTreeSitterMetadata(): sharedStateAccess, events, ...   │   │
+│  │  • 18 extractores de metadata (incluye tree-sitter-integration)  │   │
+│  │  • Cross-file calledBy linkage (6 sub-pasos)                     │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│       │                                                                  │
+│       ▼                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  Schema MCP (45 campos)                                          │   │
+│  │  • 41 campos base + 4 campos Tree-sitter                         │   │
+│  │  • sharedStateAccess[], eventEmitters[], eventListeners[]        │   │
+│  │  • scopeType: 'local' | 'module' | 'global' | 'closure'          │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│       │                                                                  │
+│       ▼                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  LAYER C: SQLite Database                                        │   │
+│  │  • atoms: 13,485 funciones con 57+ campos                        │   │
+│  │  • atom_relations: grafo de dependencias                         │   │
+│  │  • files: metadatos por archivo                                  │   │
+│  │  • semantic_connections: conexiones semánticas                   │   │
+│  │  • WAL mode + checkpoint automático                              │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│       │                                                                  │
+│       ▼                                                                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │  MCP TOOLS (30 herramientas)                                     │   │
+│  │  • Impacto: get_impact_map, analyze_change, ...                  │   │
+│  │  • Código: get_call_graph, get_function_details, ...             │   │
+│  │  • Métricas: get_health_metrics, detect_patterns, ...            │   │
+│  │  • Testing: generate_tests, generate_batch_tests, ...            │   │
+│  │  • Race Detection: detect_race_conditions (usa Tree-sitter)      │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│       │                                                                  │
+│       ▼                                                                  │
+│  [Claude / OpenCode / Qwen - IAs]                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Métricas del Sistema (v0.9.61)
+## Métricas del Sistema (v0.9.62)
 
-| Métrica | Valor |
-|---------|-------|
-| **Archivos analizados** | 1,860 |
-| **Átomos extraídos** | 13,485 |
-| **Health Score** | 99/100 (Grade A) |
-| **Test Coverage** | 79% |
-| **God Functions** | 193 |
-| **Dead Code** | 42 (85% mejora) |
-| **Duplicados** | 118 exactos |
-| **Herramientas MCP** | 29 |
-| **LLM Usage** | 0% ✅ |
+| Métrica | Valor | Notas |
+|---------|-------|-------|
+| **Archivos analizados** | 1,657 | |
+| **Átomos extraídos** | 7,792 | |
+| **Health Score** | 100/100 (Grade A) | |
+| **Campos del Schema** | 45 | 41 base + 4 Tree-sitter |
+| **Herramientas MCP** | 30 | |
+| **LLM Usage** | 0% ✅ | 100% estático |
+| **Tree-sitter** | ✅ Integrado | sharedStateAccess, events |
+| **Race Detector** | ✅ Estandarizado | Usa Tree-sitter |
+| **SQLite WAL** | ✅ Con checkpoint | Datos visibles inmediatamente |
 
 ---
 
 ## Próximas Mejoras
 
-### Q2 2026 - Tree-sitter Migration
+### Q2 2026 - Consolidación Tree-sitter
 
-- Reemplazar Babel con Tree-sitter
+- ✅ Tree-sitter integrado al schema MCP
+- ✅ Race-detector usa Tree-sitter como SSOT
+- ⏳ Eliminar extractores duplicados (regex vs Tree-sitter)
+- ⏳ Migrar todos los trackers a Tree-sitter
+
+### Q3 2026 - Performance
+
+- Optimizar cache de Tree-sitter por archivo
+- Parallelizar análisis de archivos independientes
+- Reducir startup time de 60s a 30s
 - Mejor detección de `isExported` para arrow functions
 - Análisis de tipos TypeScript más preciso
 - Performance mejorado en proyectos grandes

@@ -39,7 +39,7 @@ export async function get_function_details(args, context) {
       withCallers: true,
       withCallees: false
     }, projectPath);
-    
+
     const atomWithGraph = enrichedAtoms[0] || atom;
 
     const result = {
@@ -112,6 +112,12 @@ export async function get_function_details(args, context) {
         couplingScore: atom.derived.couplingScore,       // n: conexiones totales
         changeRisk: atom.derived.changeRisk              // 0-1: impacto de un cambio
       } : null,
+
+      // Tree-sitter high-precision metadata (v0.9.62)
+      sharedStateAccess: atom.sharedStateAccess || [],
+      eventEmitters: atom.eventEmitters || [],
+      eventListeners: atom.eventListeners || [],
+      scopeType: atom.scopeType || null,
 
       // Dominio semántico detectado
       semanticDomain: atom.semanticDomain || null,

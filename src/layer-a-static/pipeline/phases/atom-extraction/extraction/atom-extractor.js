@@ -26,27 +26,27 @@ import { extractDataFlowSafe } from './atom-extractor/data-flow-helper.js';
  */
 export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
   const atoms = [];
-  
+
   const fileImports = fileInfo.imports || [];
-  
+
   const functionAtoms = await Promise.all(
     (fileInfo.functions || []).map(async (functionInfo) => {
       const functionCode = extractFunctionCode(code, functionInfo);
-      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports);
+      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports, code);
     })
   );
   atoms.push(...functionAtoms);
-  
+
   const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
     return buildVariableAtom(constInfo, filePath, 'constant', fileImports);
   });
   atoms.push(...constantAtoms);
-  
+
   const objectAtoms = (fileInfo.objectExports || []).map(objInfo => {
     return buildVariableAtom(objInfo, filePath, 'config', fileImports);
   });
   atoms.push(...objectAtoms);
-  
+
   return atoms;
 }
 
@@ -59,8 +59,14 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
  * @param {Array} imports - File-level imports
  * @returns {Promise<Object>} - Atom metadata
  */
-export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = []) {
-  const extractorResults = await runAtomExtractors({ functionCode, functionInfo, fileMetadata, filePath });
+export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = [], fullFileCode = null) {
+  const extractorResults = await runAtomExtractors({
+    functionCode,
+    functionInfo,
+    fileMetadata,
+    filePath,
+    fullFileCode: fullFileCode || functionCode // Fallback to function code if full code not provided
+  });
 
   const dataFlowV2 = await extractDataFlowSafe(functionInfo, functionCode, filePath);
 

@@ -44,6 +44,13 @@ const SAFE_RESOURCES = new Set([
  * Infer read vs write from atom metadata
  */
 function inferAccessType(atom, resourceKey) {
+  // 1. Prioridad: metadata de Tree-sitter (exacta)
+  if (atom.sharedStateAccess) {
+    const access = atom.sharedStateAccess.find(a => a.variable === resourceKey || `global:${a.variable}` === resourceKey);
+    if (access) return access.type; // 'read' | 'write'
+  }
+
+  // 2. Fallback: Heurística por nombre de función
   const nameLow = atom.name?.toLowerCase() || '';
   const isWriter =
     atom.hasSideEffects ||
@@ -61,12 +68,27 @@ function inferAccessType(atom, resourceKey) {
 function extractResourceKeys(atom) {
   const keys = new Set();
 
-  // Network endpoints
+  // 1. Tree-sitter: Global State (window, global, globalThis)
+  for (const access of atom.sharedStateAccess || []) {
+    // Ignorar si el scope es local o módulo (no hay race condition externa)
+    if (access.scope === 'local' || access.scope === 'module') continue;
+    keys.add(`global:${access.variable}`);
+  }
+
+  // 2. Tree-sitter: Events (AST-based emitters/listeners)
+  for (const emitter of atom.eventEmitters || []) {
+    keys.add(`event:${emitter.name}`);
+  }
+  for (const listener of atom.eventListeners || []) {
+    keys.add(`event:${listener.name}`);
+  }
+
+  // 3. Legacy Heuristics - Network endpoints
   for (const ep of atom.networkEndpoints || []) {
     if (ep) keys.add(`network:${ep}`);
   }
 
-  // External calls (DB patterns, queue patterns, etc.)
+  // 4. Legacy Heuristics - External calls (DB, Queue, etc.)
   for (const call of atom.externalCalls || []) {
     const name = call.name || call.callee || '';
     if (/db|database|mongo|redis|postgres|mysql|sqlite|dynamo|firestore/i.test(name)) {
@@ -80,14 +102,14 @@ function extractResourceKeys(atom) {
     }
   }
 
-  // Storage access pattern
+  // 5. Legacy Heuristics - Storage access
   if (atom.hasStorageAccess) keys.add('storage:local');
 
-  // Calls array - look for known shared-state patterns
+  // 6. Legacy Heuristics - Internal Calls matching setter patterns
   for (const call of atom.calls || []) {
     const n = (call.name || '').toLowerCase();
     if (/\.(save|update|insert|delete|remove|write|push|set)$/.test(n) ||
-        n.endsWith('save') || n.endsWith('write') || n.endsWith('set')) {
+      n.endsWith('save') || n.endsWith('write') || n.endsWith('set')) {
       keys.add(`call:${call.name}`);
     }
   }
@@ -119,7 +141,7 @@ function detectRacesFromAtoms(asyncAtoms) {
       logger.debug(`Skipping safe resource: ${resource}`);
       continue;
     }
-    
+
     if (atoms.length < 2) continue;
 
     const accesses = atoms.map(a => ({

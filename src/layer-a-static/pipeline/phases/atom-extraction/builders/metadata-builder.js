@@ -6,6 +6,8 @@
  * @module pipeline/phases/atom-extraction/builders/metadata-builder
  */
 
+import { determineScopeType } from '../../../../extractors/metadata/tree-sitter-integration.js';
+
 // ── Section builders ──────────────────────────────────────────────────────────
 
 function buildSideEffectFields(se, dataFlowV2) {
@@ -93,7 +95,8 @@ export function buildAtomMetadata({
   semanticDomain,
   dataFlowV2,
   functionCode,
-  imports = []
+  imports = [],
+  treeSitter = null // NEW: Tree-sitter metadata
 }) {
   // Normalize extractor results — guard against null/undefined when an extractor fails gracefully
   const se = sideEffects || { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] };
@@ -157,6 +160,14 @@ export function buildAtomMetadata({
 
     // Semantic
     semanticDomain: semanticDomain || null,
+
+    // Tree-sitter metadata (shared state, events, scope)
+    sharedStateAccess: treeSitter?.sharedStateAccess || [],
+    eventEmitters: treeSitter?.eventEmitters || [],
+    eventListeners: treeSitter?.eventListeners || [],
+    scopeType: treeSitter?.sharedStateAccess?.length > 0 
+      ? determineScopeType(treeSitter.sharedStateAccess[0])
+      : null,
 
     // DNA & Lineage (set later)
     dna: null,

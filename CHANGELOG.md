@@ -37,10 +37,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| Version | Date | Description |
-|---------|------|-------------|
-| **[0.9.61]** | 2026-02-25 | **🎯 Dead Code Detection + Architectural Debt — 85% false positive reduction, 3 files refactored** (Latest) |
-| **[0.9.60]** | 2026-02-24 | **🧮 Semantic Algebra Production — ✅ 7 vectors per atom, deterministic queries, SQLite-only storage** |
+| **[0.9.62]** | 2026-02-25 | **🌳 Tree-sitter Migration — ✅ Precise scope/state detection, fixed legacy crashes, enhanced metadata** (Latest) |
+| **[0.9.61]** | 2026-02-25 | **🎯 Dead Code Detection + Architectural Debt — 85% false positive reduction, 3 files refactored** |
 | **[0.9.59]** | 2026-02-24 | **🚀 Startup Speed + Error Notifications — 25s→1.5s startup, auto-error notifications** |
 | **[0.9.58]** | 2026-02-23 | **🗄️ SQLite Migration Complete — All tools use SQLite, 5 files migrated, JSON legacy removed** |
 | **[0.9.56]** | 2026-02-22 | **⚡ Performance Optimization — Selective queries (100x faster), atomic-edit modularized, async stats** |

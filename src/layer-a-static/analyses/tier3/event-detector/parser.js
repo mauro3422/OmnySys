@@ -7,7 +7,7 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
-import { getTree, isSupportedFile } from '../../../../parser/index.js';
+import { getTree, isSupportedFile } from '../../../parser/index.js';
 
 const logger = createLogger('OmnySys:event-parser-v2');
 

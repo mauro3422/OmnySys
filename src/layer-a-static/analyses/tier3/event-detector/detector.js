@@ -9,7 +9,7 @@
 import { parseCodeToAST } from './parser.js';
 import { EVENT_PATTERNS } from './constants.js';
 import { extractEventName, getConfidence, getObjectName, getMethodName, isMethodCall } from './ast-utils.js';
-import { startLine, text } from '../../../utils/ts-ast-utils.js';
+import { startLine, text } from '../../../extractors/data-flow/utils/ts-ast-utils.js';
 
 const FUNCTION_NODE_TYPES = [
   'function_declaration',

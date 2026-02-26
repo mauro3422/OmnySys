@@ -20,6 +20,8 @@ import { findCircularDependencies } from './circular-deps.js';
 import { findTestCoverageGaps } from './test-coverage.js';
 import { findArchitecturalDebt } from './architectural-debt.js';
 import { findLargeMonolithic } from './large-monolithic.js';
+import { findShadowing } from './shadowing.js';
+import { findInvariantViolations } from './invariants.js';
 
 /**
  * Detecta patrones de código
@@ -32,17 +34,17 @@ import { findLargeMonolithic } from './large-monolithic.js';
 export async function detect_patterns(args, context) {
   const { patternType = 'all', minOccurrences = 2 } = args;
   const { projectPath } = context;
-  
+
   try {
     let atoms = await getAllAtoms(projectPath);
-    
+
     // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
     atoms = await enrichAtomsWithRelations(atoms, {
       withStats: true,
       withCallers: false,
       withCallees: false
     }, projectPath);
-    
+
     const result = {
       summary: {
         totalAtoms: atoms.length,
@@ -60,7 +62,7 @@ export async function detect_patterns(args, context) {
         analyzedAt: new Date().toISOString()
       }
     };
-    
+
     if (patternType === 'all') {
       // Overview mode: top 5 per category + counts
       const dups = findDuplicates(atoms, minOccurrences);
@@ -74,42 +76,42 @@ export async function detect_patterns(args, context) {
 
       result.overview = {
         note: 'Use patternType: "duplicates" | "god-functions" | "fragile-network" | "complexity" | "archetype" | "circular" | "test-coverage" | "architectural-debt" | "large-monolithic" | "unused-exports" for full details',
-        duplicates: { 
-          exact: dups.summary.exactDuplicatesFound, 
+        duplicates: {
+          exact: dups.summary.exactDuplicatesFound,
           contextual: dups.summary.contextualDuplicatesFound,
           structuralPatterns: dups.summary.structuralPatternsFound,
           atomsExcluded: dups.summary.atomsExcluded,
           potentialSavingsLOC: dups.summary.potentialSavingsLOC,
           avgDuplicabilityScore: dups.summary.avgDuplicabilityScore,
-          top3: dups.exactDuplicates.slice(0, 3).map(d => ({ 
-            hash: d.hash, 
-            count: d.count, 
+          top3: dups.exactDuplicates.slice(0, 3).map(d => ({
+            hash: d.hash,
+            count: d.count,
             hashType: d.hashType,
             avgDuplicabilityScore: d.avgDuplicabilityScore,
-            example: d.atoms[0] 
-          })) 
+            example: d.atoms[0]
+          }))
         },
-        godFunctions: { 
-          count: godFns.length, 
-          top5: godFns.slice(0, 5).map(g => ({ name: g.name, file: g.file, complexity: g.complexity, linesOfCode: g.linesOfCode })) 
+        godFunctions: {
+          count: godFns.length,
+          top5: godFns.slice(0, 5).map(g => ({ name: g.name, file: g.file, complexity: g.complexity, linesOfCode: g.linesOfCode }))
         },
-        fragileNetwork: { 
-          fragile: fragile.fragile.length, 
-          wellHandled: fragile.wellHandled.length, 
-          top5: fragile.fragile.slice(0, 5).map(f => ({ name: f.name, file: f.file, risk: f.risk, issue: f.issue })) 
+        fragileNetwork: {
+          fragile: fragile.fragile.length,
+          wellHandled: fragile.wellHandled.length,
+          top5: fragile.fragile.slice(0, 5).map(f => ({ name: f.name, file: f.file, risk: f.risk, issue: f.issue }))
         },
-        deadCode: { 
-          count: dead.length, 
-          top5: dead.slice(0, 5).map(d => ({ name: d.name, file: d.file, linesOfCode: d.linesOfCode })) 
+        deadCode: {
+          count: dead.length,
+          top5: dead.slice(0, 5).map(d => ({ name: d.name, file: d.file, linesOfCode: d.linesOfCode }))
         },
-        unusualPatterns: { 
-          unusedExports: unusual.unusedExports.length, 
-          top5: unusual.unusedExports.slice(0, 5) 
+        unusualPatterns: {
+          unusedExports: unusual.unusedExports.length,
+          top5: unusual.unusedExports.slice(0, 5)
         },
         complexityHotspots: findComplexityHotspots(atoms).slice(0, 5).map(h => ({ file: h.file, totalComplexity: h.totalComplexity, atomCount: h.atomCount })),
-        circularDependencies: { 
-          count: cycles.length, 
-          top3: cycles.slice(0, 3).map(c => ({ files: c.files.slice(0, 3), length: c.length, severity: c.severity })) 
+        circularDependencies: {
+          count: cycles.length,
+          top3: cycles.slice(0, 3).map(c => ({ files: c.files.slice(0, 3), length: c.length, severity: c.severity }))
         },
         testCoverage: {
           stats: testCoverage.stats,
@@ -120,23 +122,28 @@ export async function detect_patterns(args, context) {
         architecturalDebt: {
           count: archDebt.length,
           critical: archDebt.filter(d => d.severity === 'critical').length,
-          top3: archDebt.slice(0, 3).map(d => ({ 
-            file: d.file, 
-            lines: d.lines, 
+          top3: archDebt.slice(0, 3).map(d => ({
+            file: d.file,
+            lines: d.lines,
             violations: d.violations,
-            debtScore: d.debtScore 
+            debtScore: d.debtScore
           }))
         },
         largeMonolithic: {
           count: findLargeMonolithic(atoms).length,
-          note: 'Files >250 lines with SINGLE dominant purpose but multiple technical operations',
           top3: findLargeMonolithic(atoms).slice(0, 3).map(d => ({
             file: d.file,
             lines: d.lines,
-            dominantPurpose: d.dominantPurpose || d.dominantArchetype,
-            operationCount: d.operationCount,
-            solidViolations: Object.entries(d.solidViolations).filter(([k,v]) => v).map(([k]) => k)
+            dominantPurpose: d.dominantPurpose || d.dominantArchetype
           }))
+        },
+        shadowing: {
+          count: (await findShadowing(atoms)).length,
+          note: 'Variables locales que ocultan variables de módulo o global'
+        },
+        invariants: {
+          count: findInvariantViolations(atoms).length,
+          note: 'Violaciones de flujo de datos sensibles (Secret Leakage, etc.)'
         }
       };
     }
@@ -184,6 +191,14 @@ export async function detect_patterns(args, context) {
       result.unusedExports = unusual.unusedExports;
       result.summary.unusedExportsCount = unusual.unusedExports.length;
       result.summary.unusedExportsExplanation = 'Functions/const that are exported but never called from other code. These are dead code candidates - consider removing or verifying they are actually used.';
+    }
+
+    if (patternType === 'shadowing') {
+      result.shadowing = await findShadowing(atoms);
+    }
+
+    if (patternType === 'invariants') {
+      result.invariants = findInvariantViolations(atoms);
     }
 
     return result;

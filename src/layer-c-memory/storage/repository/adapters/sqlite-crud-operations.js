@@ -40,7 +40,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   save(atom) {
     const row = atomToRow(atom);
     const now = new Date().toISOString();
-    
+
     const values = [
       row.id, row.name, row.atom_type, row.file_path,
       row.line_start, row.line_end, row.lines_of_code, row.complexity, row.parameter_count,
@@ -55,19 +55,28 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
       row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
       row.called_by_json, row.function_type
     ];
-    
+
     this.statements.insertAtom.run(values);
     this._logger.debug(`[SQLiteAdapter] Saved atom: ${atom.id}`);
-    
+
+    // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
+    // Esto previene el bug donde los datos no se ven después de escrituras individuales
+    try {
+      this.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+    } catch (e) {
+      // Ignorar errores de checkpoint - los datos están guardados igual
+      this._logger.debug(`[SQLiteAdapter] Checkpoint error (non-critical): ${e.message}`);
+    }
+
     return atom;
   }
 
   delete(id) {
     const now = new Date().toISOString();
-    
+
     // 1. Obtener estado actual antes de borrar (para historia)
     const atomBefore = this.statements.getById.get(id);
-    
+
     // 2. Registrar evento de borrado en atom_events (historia/evolución)
     if (atomBefore) {
       try {
@@ -78,13 +87,21 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
       } catch (e) {
         this._logger.warn(`[SQLiteAdapter] Failed to log delete event: ${e.message}`);
       }
-      
+
       // 3. Buscar y marcar átomos espejo (tests relacionados)
       this._markRelatedTestAtoms(id, atomBefore.file_path);
     }
-    
+
     // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
     const result = this.statements.deleteById.run(id);
+    
+    // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
+    try {
+      this.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+    } catch (e) {
+      // Ignorar errores de checkpoint - los datos están guardados igual
+    }
+    
     return result.changes > 0;
   }
 

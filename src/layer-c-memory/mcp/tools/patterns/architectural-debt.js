@@ -18,9 +18,9 @@ function analyzeSOLID(atoms, fileData) {
     DIP: null,
     ISP: null
   };
-  
+
   const { operations, totalAtoms } = fileData;
-  
+
   // SRP: Múltiples responsabilidades
   if (fileData.responsibilities.size > 3) {
     violations.SRP = {
@@ -29,7 +29,7 @@ function analyzeSOLID(atoms, fileData) {
       recommendation: 'Separar en módulos por responsabilidad'
     };
   }
-  
+
   // OCP: Muchas funciones exportadas = difícil de extender
   const exportedCount = atoms.filter(a => a.isExported).length;
   if (exportedCount > 8) {
@@ -38,7 +38,7 @@ function analyzeSOLID(atoms, fileData) {
       recommendation: 'Considerar extensiones en lugar de modificaciones'
     };
   }
-  
+
   // DIP: Dependencias concretas
   const hasExternalDeps = atoms.some(a => a.calls?.length > 5);
   if (hasExternalDeps) {
@@ -47,7 +47,7 @@ function analyzeSOLID(atoms, fileData) {
       recommendation: 'Invertir dependencias usando abstracciones'
     };
   }
-  
+
   return violations;
 }
 
@@ -59,13 +59,13 @@ function analyzeSOLID(atoms, fileData) {
  */
 export function findArchitecturalDebt(atoms) {
   const debtFiles = [];
-  
+
   // Agrupar átomos por archivo
   const byFile = new Map();
   for (const atom of atoms) {
     if (!atom.filePath) continue;
     if (isAnalysisScript(atom)) continue; // Ignorar scripts de análisis
-    
+
     if (!byFile.has(atom.filePath)) {
       byFile.set(atom.filePath, {
         atoms: [],
@@ -73,20 +73,21 @@ export function findArchitecturalDebt(atoms) {
         responsibilities: new Set(),
         hasDuplicates: false,
         maxComplexity: 0,
-        operations: new Set()
+        operations: new Set(),
+        globalWrites: new Set() // Tree-sitter high-precision state density
       });
     }
-    
+
     const fileData = byFile.get(atom.filePath);
     fileData.atoms.push(atom);
     fileData.totalLines = Math.max(fileData.totalLines, atom.endLine || atom.line || 0);
     fileData.maxComplexity = Math.max(fileData.maxComplexity, atom.complexity || 0);
-    
+
     // Detectar responsabilidades por flowType
     if (atom.dna?.flowType) {
       fileData.responsibilities.add(atom.dna.flowType);
     }
-    
+
     // Detectar por propósito/archetype
     if (atom.purpose) {
       fileData.responsibilities.add(atom.purpose);
@@ -94,15 +95,17 @@ export function findArchitecturalDebt(atoms) {
     if (atom.archetype?.type) {
       fileData.responsibilities.add(atom.archetype.type);
     }
-    
-    // Operaciones técnicas
-    if (atom.dna?.operations) {
-      for (const op of atom.dna.operations) {
-        fileData.operations.add(op);
+
+    // State Density: Agrupar escrituras a estado global (v0.9.62)
+    if (atom.sharedStateAccess) {
+      for (const access of atom.sharedStateAccess) {
+        if (access.type === 'write' && (access.scope === 'global' || access.scope === 'module')) {
+          fileData.globalWrites.add(access.variable);
+        }
       }
     }
   }
-  
+
   // Detectar duplicados por archivo
   const duplicates = findDuplicates(atoms, 2);
   const filesWithDuplicates = new Set();
@@ -111,35 +114,38 @@ export function findArchitecturalDebt(atoms) {
       if (atom.file) filesWithDuplicates.add(atom.file);
     });
   });
-  
+
   // Evaluar cada archivo
   for (const [filePath, fileData] of byFile) {
     const lines = fileData.totalLines;
     const responsibilities = fileData.responsibilities.size;
     const hasDuplicates = filesWithDuplicates.has(filePath);
     const maxComplexity = fileData.maxComplexity;
-    
+
     // Criterios de deuda arquitectónica
     const hasTooManyLines = lines > 250;
     const hasTooManyResponsibilities = responsibilities > 3;
     const hasHighComplexity = maxComplexity > 30;
-    
-    // Se activa si cumple: líneas grandes AND (responsabilidades múltiples OR duplicados OR complejidad alta)
-    if (hasTooManyLines && (hasTooManyResponsibilities || hasDuplicates || hasHighComplexity)) {
+    const hasHighStateDensity = fileData.globalWrites.size > 5;
+
+    // Se activa si cumple: líneas grandes AND (responsabilidades múltiples OR duplicados OR complejidad alta OR densidad de estado)
+    if (hasTooManyLines && (hasTooManyResponsibilities || hasDuplicates || hasHighComplexity || hasHighStateDensity)) {
       const violations = [];
       if (hasTooManyLines) violations.push(`Archivo muy grande (${lines} líneas)`);
       if (hasTooManyResponsibilities) violations.push(`${responsibilities} responsabilidades distintas`);
       if (hasDuplicates) violations.push('Contiene código duplicado');
       if (hasHighComplexity) violations.push(`Complejidad máxima ${maxComplexity}`);
-      
+      if (hasHighStateDensity) violations.push(`Densidad de estado alta (${fileData.globalWrites.size} mutaciones globales)`);
+
       // Calcular score de deuda
       const debtScore = (
         (lines > 250 ? 20 : 0) +
         (responsibilities > 3 ? responsibilities * 10 : 0) +
         (hasDuplicates ? 15 : 0) +
-        (maxComplexity > 30 ? (maxComplexity - 30) * 2 : 0)
+        (maxComplexity > 30 ? (maxComplexity - 30) * 2 : 0) +
+        (hasHighStateDensity ? fileData.globalWrites.size * 5 : 0)
       );
-      
+
       debtFiles.push({
         file: filePath,
         lines,
@@ -168,6 +174,6 @@ export function findArchitecturalDebt(atoms) {
       });
     }
   }
-  
+
   return debtFiles.sort((a, b) => b.debtScore - a.debtScore).slice(0, 15);
 }

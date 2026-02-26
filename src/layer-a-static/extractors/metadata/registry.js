@@ -67,7 +67,7 @@ export const EXTRACTOR_REGISTRY = [
   { name: 'async', file: './async-patterns.js', function: 'extractAsyncPatterns', description: 'Async patterns', usedByTools: ['get_async_analysis', 'get_function_details'], level: 'file' },
   { name: 'errors', file: './error-handling.js', function: 'extractErrorHandling', description: 'Error handling', usedByTools: ['get_function_details'], level: 'file' },
   { name: 'build', file: './build-time-deps.js', function: 'extractBuildTimeDependencies', description: 'Build deps', usedByTools: ['detect_patterns'], level: 'file' },
-  { name: 'dataFlow', file: './data-flow.js', function: 'extractDataFlow', description: 'Data flow', usedByTools: ['explain_value_flow', 'get_function_details', 'generate_tests'], level: 'file' },
+  { name: 'dataFlow', file: '../data-flow/index.js', function: 'extractDataFlow', description: 'Data flow V2 (Tree-sitter)', usedByTools: ['explain_value_flow', 'get_function_details', 'generate_tests'], level: 'file' },
   { name: 'typeInference', file: './type-inference.js', function: 'extractTypeInference', description: 'Type inference', usedByTools: ['get_function_details'], level: 'file' },
   { name: 'depDepth', file: './dependency-depth.js', function: 'extractDependencyDepth', description: 'Dependency depth', usedByTools: ['get_health_metrics'], level: 'file' },
   { name: 'historical', file: './historical-metadata.js', function: 'extractHistoricalMetadata', description: 'Historical metadata', usedByTools: ['get_atom_history'], level: 'file', requiresPath: true },
@@ -133,15 +133,6 @@ export const EXTRACTOR_REGISTRY = [
     getArgs: ({ functionCode, results }) => [functionCode, results.typeContracts]
   },
   {
-    name: 'temporalPatterns',
-    file: './temporal-connections/index.js',
-    function: 'extractTemporalPatterns',
-    description: 'Temporal connections',
-    usedByTools: ['get_function_details', 'get_async_analysis'],
-    level: 'atom',
-    getArgs: ({ functionCode, functionInfo }) => [functionCode, functionInfo]
-  },
-  {
     name: 'semanticDomain',
     file: './semantic-domain.js',
     function: 'extractSemanticDomain',
@@ -149,6 +140,16 @@ export const EXTRACTOR_REGISTRY = [
     usedByTools: ['get_function_details', 'generate_tests'],
     level: 'atom',
     getArgs: ({ functionCode, functionInfo, filePath }) => [functionCode, functionInfo.name, filePath]
+  },
+  // Tree-sitter integration - Metadata de alta precisión (scope real, shared state, events)
+  {
+    name: 'treeSitter',
+    file: './tree-sitter-integration.js',
+    function: 'extractTreeSitterMetadata',
+    description: 'Tree-sitter metadata (shared state, events, scope)',
+    usedByTools: ['detect_race_conditions', 'get_function_details', 'detect_patterns'],
+    level: 'atom',
+    getArgs: ({ functionCode, functionInfo, filePath }) => [functionCode, functionInfo, filePath, functionCode]
   },
 ];
 

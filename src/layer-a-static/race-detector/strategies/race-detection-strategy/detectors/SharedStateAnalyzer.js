@@ -25,15 +25,27 @@ export class SharedStateAnalyzer {
       globalState: [],
       moduleState: [],
       closureState: [],
+      localState: [], // Variables locales (NO son race conditions reales)
       highContention: []
     };
 
     for (const [stateKey, accesses] of sharedState) {
       const stateType = this.getStateType(stateKey);
+      
+      // FILTRO CRÍTICO: Ignorar variables locales - NO son estado compartido
+      if (!this.isSharedState(stateType)) {
+        results.localState.push({
+          stateKey,
+          stateType,
+          accesses: accesses.length,
+          note: 'Variable local - no es race condition real'
+        });
+        continue; // Saltar al siguiente - NO analizar como race condition
+      }
+      
       const analysis = this.analyzeAccessPattern(stateKey, accesses);
-      
       results[`${stateType}State`].push(analysis);
-      
+
       if (analysis.contentionScore > 0.7) {
         results.highContention.push(analysis);
       }
@@ -44,7 +56,7 @@ export class SharedStateAnalyzer {
 
   /**
    * Determine state type from key
-   * @param {string} stateKey - State key
+   * @param {string} stateKey - State key (format: "type:name")
    * @returns {string} - State type
    */
   getStateType(stateKey) {
@@ -54,9 +66,23 @@ export class SharedStateAnalyzer {
       'module': 'module',
       'closure': 'closure',
       'external': 'external',
-      'singleton': 'singleton'
+      'singleton': 'singleton',
+      // Variables locales NO son estado compartido - filtrarlas
+      'local': 'local',
+      'function': 'local'
     };
     return typeMap[prefix] || 'unknown';
+  }
+
+  /**
+   * Check if state type is shared (not local)
+   * @param {string} stateType - State type
+   * @returns {boolean} - True if shared
+   */
+  isSharedState(stateType) {
+    // Solo estos tipos son estado compartido real
+    const sharedTypes = ['global', 'module', 'closure', 'external', 'singleton'];
+    return sharedTypes.includes(stateType);
   }
 
   /**

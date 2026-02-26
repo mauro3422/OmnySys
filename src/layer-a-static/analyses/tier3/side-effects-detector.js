@@ -1,5 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
-import { startLine, text } from '../../utils/ts-ast-utils.js';
+import { startLine, text } from '../../extractors/data-flow/utils/ts-ast-utils.js';
 import { getTree } from '../../parser/index.js';
 import { isPartOfAssignmentLeft } from './shared-state/utils/assignment-checker.js';
 

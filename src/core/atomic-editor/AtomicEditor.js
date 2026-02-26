@@ -83,7 +83,11 @@ export class AtomicEditor extends EventEmitter {
   async edit(filePath, oldString, newString, options = {}) {
     logger.info(`📝 Atomic Edit: ${filePath}`);
 
-    const operation = new ModifyOperation(filePath, { oldString, newString }, {
+    const operation = new ModifyOperation(filePath, {
+      oldString,
+      newString,
+      ...options
+    }, {
       projectPath: this.projectPath,
       orchestrator: this.orchestrator,
       emit: this.emit.bind(this),
@@ -133,7 +137,7 @@ export class AtomicEditor extends EventEmitter {
 
     // Acquire lock to prevent race condition
     await fileLock.acquire(filePath);
-    
+
     try {
       // Validate write
       const validation = await validateWrite(filePath, content, {
@@ -176,7 +180,7 @@ export class AtomicEditor extends EventEmitter {
 
   async undo() {
     const entry = this.history.getCurrentForUndo();
-    
+
     if (!entry) {
       return { success: false, error: 'Nothing to undo' };
     }
@@ -186,9 +190,9 @@ export class AtomicEditor extends EventEmitter {
     }
 
     logger.info(`↩️  Undoing ${entry.operation.type}...`);
-    
+
     const result = await entry.operation.undo(entry.undoData);
-    
+
     if (result.success) {
       this.history.moveBackward();
       this.emit('operation:undone', {
@@ -203,15 +207,15 @@ export class AtomicEditor extends EventEmitter {
 
   async redo() {
     const entry = this.history.getCurrentForRedo();
-    
+
     if (!entry) {
       return { success: false, error: 'Nothing to redo' };
     }
 
     logger.info(`↪️  Redoing ${entry.operation.type}...`);
-    
+
     const result = await entry.operation.execute();
-    
+
     if (result.success) {
       this.history.moveForward();
       this.emit('operation:redone', {
@@ -264,11 +268,12 @@ export class AtomicEditor extends EventEmitter {
     const path = await import('path');
     const absolutePath = path.join(this.projectPath, operation.filePath);
     const content = await fs.readFile(absolutePath, 'utf-8');
-    
+
     if (operation.type === 'modify') {
-      return content.replace(operation.options.oldString, operation.options.newString);
+      const { newContent } = await operation._calculateModification(content);
+      return newContent;
     }
-    
+
     return content;
   }
 }

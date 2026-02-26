@@ -1,17 +1,15 @@
 /**
  * @fileoverview index.js
- * 
+ *
  * Facade del módulo de extractores estáticos
- * Extrae conexiones semánticas usando regex/pattern matching (sin LLM)
  * 
- * ESTRATEGIA: Extraer primero con regex, luego el LLM valida/confirma
- * Esto es más confiable que depender 100% del LLM para descubrir
- * 
+ * ACTUALIZADO (v0.9.62): Ahora usa Tree-sitter para todos los extractores
+ * Los extractores legacy fueron eliminados en favor de Tree-sitter
+ *
  * @module extractors/static
  */
 
 import { extractLocalStorageKeys, extractStorageReads, extractStorageWrites } from './storage-extractor.js';
-import { extractEventNames, extractEventListeners, extractEventEmitters } from './events-extractor.js';
 import { extractGlobalAccess, extractGlobalReads, extractGlobalWrites } from './globals-extractor.js';
 import { detectLocalStorageConnections, sharesStorageKeys, getSharedStorageKeys } from './storage-connections.js';
 import { detectEventConnections, sharesEvents, getEventFlow } from './events-connections.js';
@@ -22,18 +20,18 @@ import { extractRoutes, normalizeRoute, isValidRoute } from './route-extractor.j
 import { detectRouteConnections, sharesRoutes, getSharedRoutes } from './route-connections.js';
 import { ConnectionType } from './constants.js';
 
+// Tree-sitter extractors (v0.9.62) - REEMPLAZAN a events-extractor.js
+import { detectEventPatterns } from '../../analyses/tier3/event-detector/detector.js';
+
 // Re-exportar utilidades
 export { getLineNumber, isNativeWindowProp } from './utils.js';
 export { ConnectionType } from './constants.js';
 
-// Re-exportar extractores individuales
+// Re-exportar extractores individuales (los de eventos ahora son wrappers de Tree-sitter)
 export {
   extractLocalStorageKeys,
   extractStorageReads,
   extractStorageWrites,
-  extractEventNames,
-  extractEventListeners,
-  extractEventEmitters,
   extractGlobalAccess,
   extractGlobalReads,
   extractGlobalWrites,
@@ -41,6 +39,26 @@ export {
   normalizeRoute,
   isValidRoute
 };
+
+// Event extractors wrappers (usan Tree-sitter internamente)
+export function extractEventNames(code, filePath = 'snippet.js') {
+  const result = detectEventPatterns(code, filePath);
+  return {
+    listeners: result.listeners || [],
+    emitters: result.emitters || [],
+    all: [...(result.listeners || []), ...(result.emitters || [])]
+  };
+}
+
+export function extractEventListeners(code, filePath = 'snippet.js') {
+  const result = detectEventPatterns(code, filePath);
+  return result.listeners || [];
+}
+
+export function extractEventEmitters(code, filePath = 'snippet.js') {
+  const result = detectEventPatterns(code, filePath);
+  return result.emitters || [];
+}
 
 // Re-exportar detectores de conexiones
 export {

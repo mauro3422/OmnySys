@@ -39,15 +39,28 @@ function classifyAtomRisk(atom) {
   if (atom.hasNestedLoops) {
     risks.push({ type: 'nested-loops', severity: 'medium', detail: 'Contains nested loops — O(n²) or worse' });
   }
-  if (atom.hasSideEffects && !atom.hasErrorHandling) {
-    risks.push({ type: 'unguarded-side-effect', severity: 'medium', detail: 'Side effect without guard' });
+
+  // 🚀 Tree-sitter Precision: Side Effects sin guardas (v0.9.62)
+  const hasAstSideEffects = atom.sharedStateAccess?.some(a => a.type === 'write' && (a.scope === 'global' || a.scope === 'module' || a.scope === 'closure'));
+  if ((atom.hasSideEffects || hasAstSideEffects) && !atom.hasErrorHandling) {
+    risks.push({
+      type: 'unguarded-side-effect',
+      severity: 'medium',
+      detail: `Side effect (${hasAstSideEffects ? 'AST-verified' : 'heuristic'}) without guard (try/catch)`
+    });
   }
 
   // Security: data reaching a sink without apparent validation upstream
-  const isSink = atom.hasNetworkCalls || atom.hasStorageAccess ||
-    /^(save|insert|exec|query|send|email|render)/.test((atom.name || '').toLowerCase());
-  if (isSink) {
-    risks.push({ type: 'data-sink', severity: 'info', detail: 'Data reaches external sink here' });
+  // 🚀 Tree-sitter Precision: Sink detection via global write access
+  const isAstSink = atom.sharedStateAccess?.some(a => a.type === 'write' && (a.scope === 'global' || a.scope === 'module'));
+  const isHeuristicSink = /^(save|insert|exec|query|send|email|render)/.test((atom.name || '').toLowerCase());
+
+  if (atom.hasNetworkCalls || atom.hasStorageAccess || isAstSink || isHeuristicSink) {
+    risks.push({
+      type: 'data-sink',
+      severity: 'info',
+      detail: `Data reaches external sink (${isAstSink ? 'AST' : 'heuristic'}) here`
+    });
   }
 
   return risks;
@@ -62,7 +75,29 @@ function aggregateSideEffects(atom) {
   if (atom.hasStorageAccess) effects.push({ type: 'storage' });
   if (atom.hasDomManipulation) effects.push({ type: 'dom' });
   if (atom.hasLogging) effects.push({ type: 'logging' });
-  if (atom.hasSideEffects && !atom.hasNetworkCalls && !atom.hasStorageAccess) {
+
+  // 🚀 Tree-sitter Precision: Global State mutation (v0.9.62)
+  if (atom.sharedStateAccess) {
+    const writes = atom.sharedStateAccess.filter(a => a.type === 'write' && (a.scope === 'global' || a.scope === 'module' || a.scope === 'closure'));
+    if (writes.length > 0) {
+      effects.push({
+        type: 'state-mutation',
+        variables: writes.map(w => `${w.scope}:${w.variable}`),
+        loc: writes.map(w => w.loc)
+      });
+    }
+  }
+
+  // 🚀 Tree-sitter Precision: Event Emitters (v0.9.62)
+  if (atom.eventEmitters && atom.eventEmitters.length > 0) {
+    effects.push({
+      type: 'event-emission',
+      events: atom.eventEmitters.map(e => e.name),
+      loc: atom.eventEmitters.map(e => e.loc)
+    });
+  }
+
+  if (atom.hasSideEffects && effects.length === 0) {
     effects.push({ type: 'other-side-effect' });
   }
   return effects;
@@ -142,14 +177,14 @@ export async function simulate_data_journey(args, context) {
 
   // 🚀 OPTIMIZADO: Cargar átomos del archivo específico
   let atoms = await getAtomsInFile(projectPath, filePath);
-  
+
   if (!atoms || atoms.length === 0) {
     return {
       error: `No atoms found in file: ${filePath}`,
       hint: 'Use get_molecule_summary to list atoms in this file.'
     };
   }
-  
+
   // ENRIQUECIMIENTO: Cargar TODAS las relaciones (internas + externas)
   let enrichedAtoms = await enrichAtomsWithRelations(atoms, {
     scope: 'ids',
@@ -158,7 +193,7 @@ export async function simulate_data_journey(args, context) {
     withCallers: true,
     withCallees: true
   }, projectPath);
-  
+
   // 🚀 CARGAR ÁTOMOS EXTERNOS RELACIONADOS (callers/callees de otros archivos)
   const externalIds = new Set();
   for (const atom of enrichedAtoms) {
@@ -173,7 +208,7 @@ export async function simulate_data_journey(args, context) {
       }
     }
   }
-  
+
   // Si hay átomos externos, enriquecer el grafo cargándolos también
   if (externalIds.size > 0) {
     const { queryAtoms } = await import('#layer-c/storage/index.js');
@@ -195,8 +230,8 @@ export async function simulate_data_journey(args, context) {
   const entryAtom = enrichedAtoms.find(a =>
     a.name === symbolName &&
     (a.filePath === filePath ||
-     a.filePath?.endsWith(normalizedFile) ||
-     a.filePath?.includes(filePath.split('/').pop() || ''))
+      a.filePath?.endsWith(normalizedFile) ||
+      a.filePath?.includes(filePath.split('/').pop() || ''))
   );
 
   if (!entryAtom) {

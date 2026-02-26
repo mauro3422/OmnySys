@@ -76,7 +76,7 @@ export { extractBuildTimeDependencies } from './build-time-deps.js';
 
 // Advanced metadata extractors
 export { extractSideEffects } from './side-effects.js';
-export { extractDataFlow } from './data-flow.js';
+export { extractDataFlow } from '../data-flow/index.js';
 export { extractTypeInference } from './type-inference.js';
 export { extractTemporalPatterns } from './temporal-patterns.js';
 export { extractDependencyDepth } from './dependency-depth.js';
@@ -100,7 +100,7 @@ import { extractAsyncPatterns } from './async-patterns.js';
 import { extractErrorHandling } from './error-handling.js';
 import { extractBuildTimeDependencies } from './build-time-deps.js';
 import { extractSideEffects } from './side-effects.js';
-import { extractDataFlow } from './data-flow.js';
+import { extractDataFlow } from '../data-flow/index.js';
 import { extractTypeInference } from './type-inference.js';
 import { extractTemporalPatterns } from './temporal-patterns.js';
 import { extractDependencyDepth } from './dependency-depth.js';
