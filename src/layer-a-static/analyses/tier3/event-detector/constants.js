@@ -37,32 +37,6 @@ export const Severity = {
   CRITICAL: 'critical'
 };
 
-/**
- * Plugins de Babel parser por defecto
- * @constant {Array}
- */
-export const DEFAULT_BABEL_PLUGINS = [
-  'jsx',
-  'objectRestSpread',
-  'decorators',
-  'classProperties',
-  'exportExtensions',
-  'asyncGenerators',
-  // NOTE: pipelineOperator removed - conflicts with shebangs and private fields
-  'nullishCoalescingOperator',
-  'optionalChaining',
-  'partialApplication'
-];
-
-/**
- * Opciones de parser por defecto
- * @constant {Object}
- */
-export const DEFAULT_PARSER_OPTIONS = {
-  sourceType: 'module',
-  allowImportExportEverywhere: true,
-  allowReturnOutsideFunction: true
-};
 
 /**
  * Patrones de nombres de archivos que indican propietario de bus

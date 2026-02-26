@@ -8,6 +8,8 @@
 
 import { generateTypedInputs } from './input-generator.js';
 import { resolveFactory, resolveBuilderForParam, resolveFactoryImportPath } from './factory-catalog.js';
+import { getAtomSemantics } from './atom-semantic-analyzer/index.js';
+
 
 // Máximo de tests por archivo — evita describe blocks gigantes
 const MAX_TESTS_PER_FILE = 12;
@@ -20,12 +22,12 @@ const MAX_TESTS_PER_FILE = 12;
 const LOW_VALUE_TYPES = new Set(['integration', 'branch-coverage', 'other']);
 
 function selectTests(tests) {
-  const happy      = tests.filter(t => t.type === 'happy-path');
-  const throws     = tests.filter(t => t.type === 'error-throw');
-  const branches   = tests.filter(t => t.type === 'branch' && t.priority === 'high');
-  const edges      = tests.filter(t => t.type === 'edge-case' && t.priority !== 'low');
+  const happy = tests.filter(t => t.type === 'happy-path');
+  const throws = tests.filter(t => t.type === 'error-throw');
+  const branches = tests.filter(t => t.type === 'branch' && t.priority === 'high');
+  const edges = tests.filter(t => t.type === 'edge-case' && t.priority !== 'low');
   // Resto: solo incluir si no son low-value y quedan slots
-  const rest       = tests.filter(t =>
+  const rest = tests.filter(t =>
     !happy.includes(t) && !throws.includes(t) &&
     !branches.includes(t) && !edges.includes(t) &&
     !LOW_VALUE_TYPES.has(t.type)
@@ -51,10 +53,10 @@ function groupByType(tests) {
   for (const t of tests) {
     const label =
       t.type === 'happy-path' ? 'happy path' :
-      t.type === 'branch'     ? 'branches'   :
-      t.type === 'edge-case'  ? 'edge cases' :
-      t.type === 'error-throw'? 'error handling' :
-      'other';
+        t.type === 'branch' ? 'branches' :
+          t.type === 'edge-case' ? 'edge cases' :
+            t.type === 'error-throw' ? 'error handling' :
+              'other';
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label).push(t);
   }
@@ -67,7 +69,7 @@ function groupByType(tests) {
  */
 function findCorrectExportName(atom) {
   const atomName = atom.name;
-  
+
   const commonSuffixes = ['Optimized', 'Async', 'V2', 'New', 'Internal', 'Helper'];
   for (const suffix of commonSuffixes) {
     if (atomName.endsWith(suffix)) {
@@ -75,25 +77,25 @@ function findCorrectExportName(atom) {
       return { primary: baseName, alternatives: [atomName, baseName + 'Async', 'validate' + baseName] };
     }
   }
-  
+
   if (atomName.startsWith('validate')) {
     return { primary: atomName, alternatives: [atomName + 'Optimized', atomName.replace('validate', 'validatePost')] };
   }
-  
+
   if (atomName.startsWith('get') || atomName.startsWith('set') || atomName.startsWith('is')) {
     return { primary: atomName, alternatives: [atomName + 'Sync', atomName + 'Async', atomName] };
   }
-  
+
   return { primary: atomName, alternatives: [atomName] };
 }
 
 /**
  * Genera el import para la función con validación de exports
  */
-function generateFunctionImport(atom) {
-  const importPath = resolveImportAlias(atom.filePath);
+function generateFunctionImport(atom, outputPath) {
+  const importPath = resolveImportAlias(atom.filePath, outputPath);
   const { primary, alternatives } = findCorrectExportName(atom);
-  
+
   return { importPath, exportName: primary, alternatives };
 }
 
@@ -102,13 +104,13 @@ function generateFunctionImport(atom) {
  */
 function collectBranchImports(tests) {
   const imports = new Map();
-  
+
   for (const test of tests) {
     if (test.type !== 'branch') continue;
-    
+
     const needed = test.neededImports;
     if (!needed) continue;
-    
+
     for (const [source, names] of Object.entries(needed)) {
       if (!imports.has(source)) {
         imports.set(source, new Set());
@@ -118,7 +120,7 @@ function collectBranchImports(tests) {
       }
     }
   }
-  
+
   return imports;
 }
 
@@ -156,7 +158,7 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
   // Imports de constantes necesarias para branch tests (Priority, ChangeType, etc.)
   for (const [source, names] of branchImports.entries()) {
     // Intentar resolver alias primero, sino usar el path tal cual (ya tiene ./ o ../)
-    let resolvedSource = resolveImportAlias(source);
+    let resolvedSource = resolveImportAlias(source, outputPath);
     if (!resolvedSource || resolvedSource === source) {
       // Limpiar doble slash o ./. artifacts
       resolvedSource = source.replace(/\/\.\//g, '/').replace(/^\.\//, './');
@@ -164,8 +166,30 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
     code += `import { ${[...names].join(', ')} } from '${resolvedSource}';\n`;
   }
 
+  // Imports generales del átomo (provenientes del archivo original)
+  // Esto resuelve constantes como Priority, ChangeType, etc.
+  if (atom.imports && atom.imports.length > 0) {
+    code += `// Source imports\n`;
+    for (const imp of atom.imports) {
+      // Evitar duplicar vitest o el sandbox si ya están
+      if (imp.source.includes('vitest') || imp.source.includes('sandbox.js')) continue;
+
+      // Evitar importar el propio archivo probado (se importa abajo con alias)
+      if (imp.source.includes(path.basename(atom.filePath).replace('.js', ''))) continue;
+
+      let resolvedSource = resolveImportAlias(imp.source, outputPath);
+
+      if (imp.specifiers && imp.specifiers.length > 0) {
+        const specs = imp.specifiers.map(s => s.name === s.local ? s.name : `${s.name} as ${s.local}`).join(', ');
+        code += `import { ${specs} } from '${resolvedSource}';\n`;
+      } else {
+        code += `import '${resolvedSource}';\n`;
+      }
+    }
+  }
+
   // Import de la función — mapear src/ a alias # para compatibilidad con vitest
-  const { importPath, exportName, alternatives } = generateFunctionImport(atom);
+  const { importPath, exportName, alternatives } = generateFunctionImport(atom, outputPath);
   code += `import { ${exportName} } from '${importPath}';\n`;
 
   // Guardar alternativas en el átomo para referencia en generateTestCase
@@ -182,8 +206,8 @@ function generateImports(atom, useRealFactories, needSandbox, branchImports = ne
 export function generateTestCode(atom, tests, options = {}) {
   const { useRealFactories = true, outputPath = 'tests/generated' } = options;
   const hasSideEffects = atom.hasSideEffects ||
-                         atom.sideEffects?.hasStorageAccess ||
-                         atom.sideEffects?.hasNetworkCalls;
+    atom.sideEffects?.hasStorageAccess ||
+    atom.sideEffects?.hasNetworkCalls;
   const needSandbox = hasSideEffects || tests.some(t => t.needsSandbox);
 
   // Seleccionar los tests más valiosos respetando el cap
@@ -232,7 +256,12 @@ export function generateTestCase(atom, test, useSandbox, indent = '  ') {
   const inputs = atom.dataFlow?.inputs || [];
   const isAsync = atom.isAsync;
   const inner = indent + '  ';
-  
+
+  // ── Semantic enrichment ────────────────────────────────────────────────────
+  const semantics = getAtomSemantics(atom);
+  const isVoid = !semantics.hasReturnValue;
+  const isVoidMutation = semantics.isVoidSideEffect && semantics.mutatedParams.length > 0;
+
   // Usar el nombre de export correcto
   const fnName = atom._exportAlternatives?.[0] || atom.name;
 
@@ -246,18 +275,35 @@ export function generateTestCase(atom, test, useSandbox, indent = '  ') {
     }
   }
 
-  // Generar llamada con inputs — pasar atom para usar factory builders si aplica
+  // Generar llamada con inputs
   const inputCall = generateInputCall(inputs, test.inputs, atom);
 
   // Determinar si es un test de throw
   const isThrowTest = test.type === 'error-throw' || test.assertion?.includes('toThrow');
 
+  // ── VOID MUTATION: generate spy-based test body ────────────────────────────
+  if (isVoidMutation && !isThrowTest) {
+    const mutatedParam = semantics.mutatedParams[0];
+    const paramHint = semantics.paramHints.find(p => p.name === mutatedParam);
+    const spyMethod = paramHint?.methods?.[0] || 'push';
+    code += `${inner}const ${mutatedParam} = { ${spyMethod}: vi.fn() };\n`;
+    code += `${inner}${isAsync ? 'await ' : ''}${fnName}(${mutatedParam});\n`;
+    code += `${inner}expect(${mutatedParam}.${spyMethod}).toHaveBeenCalled();\n`;
+    code += `${indent}});\n\n`;
+    return code;
+  }
+
+  // ── STANDARD test body ─────────────────────────────────────────────────────
   if (useSandbox) {
     code += `${inner}await withSandbox({}, async (sandbox) => {\n`;
     if (isThrowTest && isAsync) {
       code += `${inner}  await expect(${fnName}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
       code += `${inner}  expect(() => ${fnName}(${inputCall})).toThrow();\n`;
+    } else if (isVoid) {
+      // Void function: no result capture
+      code += `${inner}  ${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
+      code += `${inner}  ${test.assertion || 'expect(true).toBe(true)'};\n`;
     } else {
       code += `${inner}  const result = ${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
       code += `${inner}  ${test.assertion};\n`;
@@ -268,6 +314,10 @@ export function generateTestCase(atom, test, useSandbox, indent = '  ') {
       code += `${inner}await expect(${fnName}(${inputCall})).rejects.toThrow();\n`;
     } else if (isThrowTest) {
       code += `${inner}expect(() => ${fnName}(${inputCall})).toThrow();\n`;
+    } else if (isVoid) {
+      // Void function: no result capture
+      code += `${inner}${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
+      code += `${inner}  ${test.assertion || 'expect(true).toBe(true)'};\n`;
     } else {
       code += `${inner}const result = ${isAsync ? 'await ' : ''}${fnName}(${inputCall});\n`;
       code += `${inner}  ${test.assertion};\n`;
@@ -288,18 +338,52 @@ export function generateInputCall(inputs, testInputs, atom) {
   const factoryEntry = atom ? resolveFactory(atom.filePath) : null;
   const callGraph = atom?.callGraph || {};
 
+  // Use param hints from semantic analyzer when available
+  const semantics = atom ? getAtomSemantics(atom) : null;
+  const paramHints = semantics?.paramHints || [];
+
   return inputs.map(i => {
     if (testInputs && i.name in testInputs) {
       return testInputs[i.name];
     }
-    // Intentar builder del catálogo de factories
+    // Factory builder from catalog
     if (factoryEntry) {
       const builder = resolveBuilderForParam(i.name, factoryEntry);
       if (builder) return builder.call;
     }
-    // Fallback tipado según el tipo inferido del parámetro, incluyendo callGraph
+    // Use semantic param hint if available
+    const hint = paramHints.find(p => p.name === i.name);
+    if (hint) {
+      return inferFallbackFromHint(hint, callGraph);
+    }
+    // Legacy typed fallback
     return inferFallbackValue(i, callGraph);
   }).join(', ');
+}
+
+/**
+ * Infiere un valor de fallback usando el ParamHint del semantic analyzer
+ */
+function inferFallbackFromHint(hint, callGraph = {}) {
+  const { name, type, methods, isMutated } = hint;
+
+  // AST node: build a Tree-sitter-like fake object with needed properties
+  if (type === 'ast-node') {
+    const nodeProps = methods.filter(m => !['parent', 'child'].includes(m)).slice(0, 3);
+    const propStr = nodeProps.length > 0
+      ? nodeProps.map(m => `${m}: 'test-${m}'`).join(', ')
+      : 'type: "identifier", id: 1, startIndex: 0, endIndex: 5';
+    return `{ type: 'identifier', id: 1, startIndex: 0, endIndex: 5, parent: null, ${propStr} }`;
+  }
+
+  // Mutated objects: create spy-equipped objects
+  if (isMutated && methods.length > 0) {
+    const spies = methods.slice(0, 3).map(m => `${m}: vi.fn()`).join(', ');
+    return `{ ${spies} }`;
+  }
+
+  // Delegate to name and type mappings
+  return inferFallbackValue({ name, type }, callGraph);
 }
 
 /**
@@ -342,36 +426,48 @@ function inferFallbackValue(input, callGraph = {}) {
   const n = (input.name || '').toLowerCase();
   const t = (input.type || '').toLowerCase();
   const calls = callGraph?.callsList || [];
-  
+
   const hasHttpCall = calls.some(c => ['status', 'json', 'send', 'redirect'].includes(c.name));
-  
+
   if (hasHttpCall && (n === 'res' || n === 'response')) {
     return 'vi.fn(() => ({ status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), send: vi.fn().mockReturnThis() }))';
   }
   if (hasHttpCall && (n === 'req' || n === 'request')) {
     return '{ body: {}, params: {}, query: {}, headers: {}, method: "GET", path: "/test" }';
   }
-  
+
   for (const { pattern, value } of PARAM_NAME_MAPPINGS) {
     if (pattern.test(n)) return value;
   }
-  
+
   return TYPE_MAPPINGS[t] || '{}';
 }
 
 /**
  * Mapea rutas src/ a los alias # definidos en package.json#imports
+ * @param {string} filePath  — ruta de src (ej: 'src/audit/checks/field-checker.js')
+ * @param {string} [outputPath] — directorio de salida del test (ej: 'tests/generated/audit/checks')
+ *                               Si se provee, calcula el path relativo correcto.
  */
-function resolveImportAlias(filePath) {
+function resolveImportAlias(filePath, outputPath) {
   const p = filePath.replace(/\\/g, '/');
-  if (p.startsWith('src/ai/'))             return p.replace('src/ai/', '#ai/');
-  if (p.startsWith('src/core/'))           return p.replace('src/core/', '#core/');
+  if (p.startsWith('src/ai/')) return p.replace('src/ai/', '#ai/');
+  if (p.startsWith('src/core/')) return p.replace('src/core/', '#core/');
   if (p.startsWith('src/layer-a-static/')) return p.replace('src/layer-a-static/', '#layer-a/');
   if (p.startsWith('src/layer-b-semantic/')) return p.replace('src/layer-b-semantic/', '#layer-b/');
   if (p.startsWith('src/layer-c-memory/')) return p.replace('src/layer-c-memory/', '#layer-c/');
-  if (p.startsWith('src/layer-graph/'))    return p.replace('src/layer-graph/', '#layer-graph/');
-  if (p.startsWith('src/config/'))         return p.replace('src/config/', '#config/');
-  // No alias disponible — usar path relativo desde raíz del proyecto (compatible con vitest rootDir)
+  if (p.startsWith('src/layer-graph/')) return p.replace('src/layer-graph/', '#layer-graph/');
+  if (p.startsWith('src/config/')) return p.replace('src/config/', '#config/');
+
+  // No alias — compute correct relative path based on the test file depth
+  // outputPath is like 'tests/generated/audit/checks' → depth = 4 → need '../../../../'
+  if (outputPath) {
+    const depth = outputPath.replace(/\\/g, '/').split('/').filter(Boolean).length;
+    const prefix = '../'.repeat(depth);
+    return `${prefix}${p}`;
+  }
+
+  // Legacy fallback (tests/generated = depth 2)
   return `../../${p}`;
 }
 

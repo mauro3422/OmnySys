@@ -37,52 +37,55 @@ export class SyntaxValidator {
    */
   async validate(filePath, content) {
     try {
-      const { execSync } = await import('child_process');
+      const { spawnSync } = await import('child_process');
       const tmpFile = path.join(this.projectPath, '.tmp-validation.js');
-      
+
       // PASO 1: Normalizar contenido para soporte Unicode completo
       // Agregar BOM UTF-8 para forzar codificación correcta en Windows
       const BOM = '\uFEFF';
       const normalizedContent = BOM + this._normalizeUnicode(content);
-      
+
       // PASO 2: Write to temporary file with explicit UTF-8 encoding
       await fs.writeFile(tmpFile, normalizedContent, { encoding: 'utf8' });
-      
+
       try {
         // PASO 3: Validate with node --check
-        // Usar chcp 65001 para forzar UTF-8 en Windows
-        const isWindows = process.platform === 'win32';
-        const checkCommand = isWindows 
-          ? `chcp 65001 >nul && node --check "${tmpFile}"`
-          : `node --check "${tmpFile}"`;
-        
-        execSync(checkCommand, { 
+        // Use spawnSync with direct node path (NO shell string) so Windows
+        // does NOT open a cmd.exe intermediary window in VSCode terminal.
+        const result = spawnSync(process.execPath, ['--check', tmpFile], {
           encoding: 'utf-8',
           timeout: 5000,
-          windowsHide: true
+          windowsHide: true,   // hide the Node.js console window
+          env: { ...process.env, CHCP: '65001' }  // UTF-8 without chcp cmd
         });
-        
+
         // Clean up temp file
-        await fs.unlink(tmpFile).catch(() => {});
-        
+        await fs.unlink(tmpFile).catch(() => { });
+
+        if (result.status !== 0) {
+          const stderr = result.stderr || result.error?.message || '';
+          const errorMatch = stderr.match(/(\d+):(\d+)\s*-\s*(.+)/);
+          return {
+            valid: false,
+            error: stderr.split('\n')[0] || 'Syntax error',
+            line: errorMatch ? parseInt(errorMatch[1]) : null,
+            column: errorMatch ? parseInt(errorMatch[2]) : null,
+            details: stderr
+          };
+        }
+
         return { valid: true };
-        
+
       } catch (error) {
         // Clean up temp file
-        await fs.unlink(tmpFile).catch(() => {});
-        
-        // Parse syntax error
-        const errorMatch = error.stderr?.match(/(\d+):(\d+)\s*-\s*(.+)/);
-        
+        await fs.unlink(tmpFile).catch(() => { });
+
         return {
           valid: false,
-          error: error.stderr?.split('\n')[0] || error.message,
-          line: errorMatch ? parseInt(errorMatch[1]) : null,
-          column: errorMatch ? parseInt(errorMatch[2]) : null,
-          details: error.stderr
+          error: `Validation error: ${error.message}`
         };
       }
-      
+
     } catch (error) {
       return {
         valid: false,
@@ -101,7 +104,7 @@ export class SyntaxValidator {
     if (process.platform !== 'win32') {
       return content; // En Unix/Mac no hay problema
     }
-    
+
     // Para Windows, aseguramos que el contenido sea string válido UTF-16
     // que se convertirá correctamente a UTF-8
     try {

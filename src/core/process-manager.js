@@ -42,7 +42,7 @@ export async function isPortInUse(port) {
  */
 export async function findProcessByPort(port) {
   try {
-    const { stdout } = await execAsync(`netstat -ano | findstr ":${port}" | findstr "LISTENING"`);
+    const { stdout } = await execAsync(`netstat -ano | findstr ":${port}" | findstr "LISTENING"`, { windowsHide: true });
     const lines = stdout.trim().split('\n');
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
@@ -61,7 +61,7 @@ export async function findProcessByPort(port) {
  */
 export async function killProcess(pid) {
   try {
-    await execAsync(`taskkill /F /PID ${pid}`);
+    await execAsync(`taskkill /F /PID ${pid}`, { windowsHide: true });
     return true;
   } catch {
     return false;
@@ -120,7 +120,7 @@ export async function cleanupProcesses() {
 
   // Kill any orphaned node processes with "OmnySys" in command line
   try {
-    const { stdout } = await execAsync('wmic process where "name=\'node.exe\'" get commandline,processid /format:csv');
+    const { stdout } = await execAsync('wmic process where "name=\'node.exe\'" get commandline,processid /format:csv', { windowsHide: true });
     const lines = stdout.split('\n').filter(l => l.includes('OmnySys') && !l.includes('wmic'));
     for (const line of lines) {
       const parts = line.split(',');
@@ -142,14 +142,14 @@ export async function cleanupProcesses() {
  */
 export async function startLLMServer(scriptPath) {
   const running = await isPortInUse(8000);
-  
+
   if (running) {
     logger.info('✅ LLM Server already running on port 8000');
     return { started: false, wasRunning: true };
   }
 
   logger.info('🚀 Starting LLM Server...');
-  
+
   const process = spawn('cmd.exe', ['/c', 'start', '/min', scriptPath], {
     detached: true,
     stdio: 'ignore',
@@ -161,7 +161,7 @@ export async function startLLMServer(scriptPath) {
   // Esperar a que esté listo
   let attempts = 0;
   const maxAttempts = 30;
-  
+
   while (attempts < maxAttempts) {
     await new Promise(r => setTimeout(r, 1000));
     const ready = await isPortInUse(8000);
@@ -183,13 +183,13 @@ export async function startLLMServer(scriptPath) {
  */
 export async function printServiceStatus() {
   const services = await checkServices();
-  
+
   logger.info('\n📊 Service Status:');
   logger.info(`  LLM Server (port 8000):    ${services.llm ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info(`  Orchestrator (port 9999):  ${services.orchestrator ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info(`  WebSocket (port 9997):     ${services.websocket ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info('');
-  
+
   return services;
 }
 

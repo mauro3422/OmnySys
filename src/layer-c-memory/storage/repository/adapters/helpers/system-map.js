@@ -14,44 +14,44 @@ import { safeNumber, safeString, safeJson, safeParseJson } from './converters.js
  */
 export function saveSystemMap(db, connectionManager, systemMap, logger) {
   const now = new Date().toISOString();
-  
+
   // Recolectar TODOS los paths referenciados (para FK constraints)
   const allFilePaths = collectAllFilePaths(systemMap);
-  
+
   connectionManager.transaction(() => {
     // 1. Primero asegurar que TODOS los archivos existan en tabla 'files'
     // (incluyendo los referenciados en dependencias, conexiones, etc.)
     ensureFilesExist(db, allFilePaths, now);
-    
+
     // 2. Guardar archivos del system map
     if (systemMap.files) {
       saveSystemFiles(db, systemMap.files, now);
     }
-    
+
     // 3. Guardar dependencias
     if (systemMap.dependencies) {
       saveFileDependencies(db, systemMap.dependencies, now);
     }
-    
+
     // 4. Guardar conexiones semanticas
     if (systemMap.connections) {
       saveSemanticConnections(db, systemMap.connections, now);
     }
-    
+
     // 5. Guardar risk assessments
     if (systemMap.riskAssessment) {
       saveRiskAssessments(db, systemMap.riskAssessment, now);
     }
-    
+
     // 6. Guardar semantic issues
     if (systemMap.semanticIssues) {
       saveSemanticIssues(db, systemMap.semanticIssues, now);
     }
-    
+
     // 7. Actualizar metadata
     updateSystemMetadata(db, systemMap.metadata, now);
   });
-  
+
   logger.info(`[SQLiteAdapter] System map saved: ${Object.keys(systemMap.files || {}).length} files, ${(systemMap.dependencies || []).length} deps, ${allFilePaths.size} total paths`);
 }
 
@@ -61,12 +61,12 @@ export function saveSystemMap(db, connectionManager, systemMap, logger) {
  */
 function collectAllFilePaths(systemMap) {
   const paths = new Set();
-  
+
   // Archivos principales
   if (systemMap.files) {
     Object.keys(systemMap.files).forEach(p => paths.add(p));
   }
-  
+
   // Dependencias (from/to)
   if (systemMap.dependencies) {
     for (const dep of systemMap.dependencies) {
@@ -74,7 +74,7 @@ function collectAllFilePaths(systemMap) {
       if (dep.to) paths.add(dep.to);
     }
   }
-  
+
   // Conexiones semanticas (source/target o from/to)
   if (systemMap.connections) {
     const connTypes = ['sharedState', 'eventListeners', 'envVars', 'routes', 'colocation'];
@@ -88,17 +88,17 @@ function collectAllFilePaths(systemMap) {
       }
     }
   }
-  
+
   // Risk assessments (keys son paths)
   if (systemMap.riskAssessment) {
     Object.keys(systemMap.riskAssessment).forEach(p => paths.add(p));
   }
-  
+
   // Semantic issues (keys son paths)
   if (systemMap.semanticIssues) {
     Object.keys(systemMap.semanticIssues).forEach(p => paths.add(p));
   }
-  
+
   return paths;
 }
 
@@ -136,7 +136,7 @@ function ensureFilesExist(db, filePaths, now) {
     INSERT OR IGNORE INTO files (path, last_analyzed, atom_count, total_complexity, total_lines, imports_json, exports_json)
     VALUES (?, ?, 0, 0, 0, '[]', '[]')
   `);
-  
+
   for (const filePath of filePaths) {
     stmt.run(filePath, now);
   }
@@ -152,8 +152,17 @@ function saveSystemFiles(db, files, now) {
       transitive_depends_json, transitive_dependents_json, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
+  const updateFilesStmt = db.prepare(`
+    UPDATE files 
+    SET imports_json = ?, exports_json = ?, last_analyzed = ?
+    WHERE path = ?
+  `);
+
   for (const [path, fileData] of Object.entries(files)) {
+    const importsJson = safeJson(fileData.imports);
+    const exportsJson = safeJson(fileData.exports);
+
     stmt.run(
       path,
       fileData.displayPath || path,
@@ -162,8 +171,8 @@ function saveSystemFiles(db, files, now) {
       safeNumber(fileData.riskScore, 0),
       safeJson(fileData.semanticAnalysis),
       safeJson(fileData.semanticConnections),
-      safeJson(fileData.exports),
-      safeJson(fileData.imports),
+      exportsJson,
+      importsJson,
       safeJson(fileData.definitions),
       safeJson(fileData.usedBy),
       safeJson(fileData.calls),
@@ -173,18 +182,20 @@ function saveSystemFiles(db, files, now) {
       safeJson(fileData.transitiveDependents),
       now
     );
+
+    updateFilesStmt.run(importsJson, exportsJson, now, path);
   }
 }
 
 function saveFileDependencies(db, dependencies, now) {
   db.prepare('DELETE FROM file_dependencies').run();
-  
+
   const stmt = db.prepare(`
     INSERT INTO file_dependencies 
     (source_path, target_path, dependency_type, symbols_json, reason, is_dynamic, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
   for (const dep of dependencies) {
     stmt.run(
       dep.from,
@@ -200,28 +211,28 @@ function saveFileDependencies(db, dependencies, now) {
 
 function saveSemanticConnections(db, connections, now) {
   db.prepare('DELETE FROM semantic_connections').run();
-  
+
   const stmt = db.prepare(`
     INSERT INTO semantic_connections
     (connection_type, source_path, target_path, connection_key, context_json, weight, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
   // Mapeo de tipos de conexión del builder a tipos de DB
   const connectionTypeMap = {
     'sharedState': 'sharedState',
-    'eventListeners': 'eventListeners', 
+    'eventListeners': 'eventListeners',
     'localStorage': 'sharedState',  // localStorage es un tipo de shared state
     'advanced': 'eventListeners',   // conexiones avanzadas van como eventos
     'cssInJS': 'colocation',
     'typescript': 'colocation',
     'reduxContext': 'sharedState'
   };
-  
+
   for (const [builderType, dbType] of Object.entries(connectionTypeMap)) {
     const conns = connections[builderType];
     if (!conns || !Array.isArray(conns)) continue;
-    
+
     for (const conn of conns) {
       // Las conexiones usan sourceFile/targetFile o source/target o from/to
       let sourcePath = conn.sourceFile || conn.source || conn.from;
@@ -229,9 +240,9 @@ function saveSemanticConnections(db, connections, now) {
       let key = conn.key || conn.name || conn.variable || conn.event || conn.type || null;
       let context = conn;
       let weight = safeNumber(conn.weight || conn.strength, 1.0);
-      
+
       if (!sourcePath || !targetPath) continue;
-      
+
       stmt.run(dbType, sourcePath, targetPath, key, safeJson(context), weight, now);
     }
   }
@@ -239,22 +250,22 @@ function saveSemanticConnections(db, connections, now) {
 
 function saveRiskAssessments(db, riskAssessment, now) {
   db.prepare('DELETE FROM risk_assessments').run();
-  
+
   const stmt = db.prepare(`
     INSERT INTO risk_assessments
     (file_path, risk_score, risk_level, factors_json, shared_state_count, 
      external_deps_count, complexity_score, propagation_score, assessed_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
   // El riskAssessment tiene estructura { scores: {...}, report: {...} }
   const scores = riskAssessment.scores || riskAssessment;
-  
+
   for (const [filePath, risk] of Object.entries(scores)) {
     // Ignorar keys que no son file paths (como 'report', 'metadata', etc.)
     if (typeof risk !== 'object' || risk === null) continue;
     if (filePath === 'report' || filePath === 'metadata' || filePath === 'summary') continue;
-    
+
     stmt.run(
       filePath,
       safeNumber(risk.score, 0),
@@ -271,16 +282,16 @@ function saveRiskAssessments(db, riskAssessment, now) {
 
 function saveSemanticIssues(db, semanticIssues, now) {
   db.prepare('DELETE FROM semantic_issues').run();
-  
+
   const stmt = db.prepare(`
     INSERT INTO semantic_issues
     (file_path, issue_type, severity, message, line_number, context_json, detected_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  
+
   for (const [filePath, issues] of Object.entries(semanticIssues)) {
     if (!Array.isArray(issues)) continue;
-    
+
     for (const issue of issues) {
       stmt.run(
         filePath,
@@ -300,7 +311,7 @@ function updateSystemMetadata(db, metadata, now) {
     INSERT OR REPLACE INTO system_metadata (key, value, updated_at)
     VALUES (?, ?, ?)
   `);
-  
+
   if (metadata) {
     stmt.run('system_map_metadata', safeJson(metadata), now);
   }
@@ -310,7 +321,7 @@ function updateSystemMetadata(db, metadata, now) {
 function loadSystemFiles(db) {
   const rows = db.prepare('SELECT * FROM system_files').all();
   const files = {};
-  
+
   for (const row of rows) {
     files[row.path] = {
       path: row.path,
@@ -331,7 +342,7 @@ function loadSystemFiles(db) {
       transitiveDependents: safeParseJson(row.transitive_dependents_json)
     };
   }
-  
+
   return files;
 }
 
@@ -357,7 +368,7 @@ function loadSemanticConnections(db) {
     colocation: [],
     total: 0
   };
-  
+
   for (const row of rows) {
     if (connections[row.connection_type]) {
       connections[row.connection_type].push({
@@ -369,7 +380,7 @@ function loadSemanticConnections(db) {
       });
     }
   }
-  
+
   connections.total = rows.length;
   return connections;
 }
@@ -377,7 +388,7 @@ function loadSemanticConnections(db) {
 function loadRiskAssessments(db) {
   const rows = db.prepare('SELECT * FROM risk_assessments').all();
   const assessments = {};
-  
+
   for (const row of rows) {
     assessments[row.file_path] = {
       score: row.risk_score,
@@ -389,14 +400,14 @@ function loadRiskAssessments(db) {
       propagationScore: row.propagation_score
     };
   }
-  
+
   return assessments;
 }
 
 function loadSemanticIssues(db) {
   const rows = db.prepare('SELECT * FROM semantic_issues').all();
   const issues = {};
-  
+
   for (const row of rows) {
     if (!issues[row.file_path]) {
       issues[row.file_path] = [];
@@ -409,14 +420,14 @@ function loadSemanticIssues(db) {
       context: safeParseJson(row.context_json)
     });
   }
-  
+
   return issues;
 }
 
 function loadSystemMetadata(db) {
   const rows = db.prepare('SELECT * FROM system_metadata').all();
   const metadata = {};
-  
+
   for (const row of rows) {
     if (row.key === 'system_map_metadata') {
       Object.assign(metadata, safeParseJson(row.value));
@@ -424,6 +435,6 @@ function loadSystemMetadata(db) {
       metadata[row.key] = row.value;
     }
   }
-  
+
   return metadata;
 }

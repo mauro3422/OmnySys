@@ -4,6 +4,7 @@
  * MCP Tool: generate_tests
  * Analiza funciones/clases y sugiere tests. 
  * Modo analisis por defecto. Usar action: "generate" para ver codigo.
+ * @version hot-reload-test-2026-02-26
  * 
  * @module mcp/tools/generate-tests
  */
@@ -23,23 +24,23 @@ const logger = createLogger('OmnySys:generate-tests');
  * Modo analisis por defecto. Usar action: "generate" para ver codigo.
  */
 export async function generate_tests(args, context) {
-  const { filePath, functionName, className, options = {} } = args;
+  const { filePath, functionName, className, action = "analyze", options = {} } = args;
   const { projectPath, cache } = context;
-  const { action = "analyze", validateImports = true, mirror = false } = options;
-  
+  const { validateImports = true, mirror = false } = options;
+
   // Determinar target
   const targetName = functionName || className;
   const targetType = className ? "class" : (functionName ? "function" : "auto");
-  
+
   logger.info(`[Tool] generate_tests("${filePath}::${targetName}" mode: ${action}, mirror: ${mirror})`);
-  
+
   if (!filePath) {
     return {
       error: 'Missing required parameter: filePath',
       example: 'generate_tests({ filePath: "src/utils/math.js", functionName: "add" })'
     };
   }
-  
+
   try {
     // MODO MIRROR TEST - Átomo Espejo (sin mocks, código real)
     if (mirror && functionName) {
@@ -47,7 +48,7 @@ export async function generate_tests(args, context) {
       if (!atom) {
         return { error: 'ATOM_NOT_FOUND', message: `Function ${functionName} not found` };
       }
-      
+
       const mirrorResult = generateMirrorTestCode(atom, options);
       return {
         success: true,
@@ -59,12 +60,12 @@ export async function generate_tests(args, context) {
         note: 'MIRROR TEST: Este test usa código REAL del sistema (sin mocks). Si falla, el átomo tiene problemas.'
       };
     }
-    
+
     // MODO ANALISIS (default)
     if (action === "analyze") {
       return await analyzeForTests(filePath, targetName, targetType, projectPath, cache, context, validateImports);
     }
-    
+
     // MODO GENERACION
     if (action === "generate") {
       if (className) {
@@ -78,12 +79,12 @@ export async function generate_tests(args, context) {
         };
       }
     }
-    
+
     return {
       error: `Unknown action: ${action}`,
       validActions: ["analyze", "generate"]
     };
-    
+
   } catch (error) {
     logger.error(`[Tool] generate_tests failed: ${error.message}`);
     return {

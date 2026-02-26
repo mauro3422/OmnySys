@@ -62,7 +62,7 @@ async function aiStartLogic(mode, options = {}) {
       } else {
         const gpuScript = path.join(scriptPath, 'brain_gpu.bat');
         if (await exists(gpuScript)) {
-          spawn('cmd.exe', ['/c', 'start', gpuScript], { detached: true });
+          spawn('cmd.exe', ['/c', 'start', gpuScript], { detached: true, stdio: 'ignore', windowsHide: true });
           messages.push('GPU server started on port 8000');
           servers.gpu = { status: 'started', port: 8000 };
         } else {
@@ -75,7 +75,7 @@ async function aiStartLogic(mode, options = {}) {
     if (mode === 'cpu' || mode === 'both') {
       const cpuScript = path.join(scriptPath, 'start_brain_cpu.bat');
       if (await exists(cpuScript)) {
-        spawn('cmd.exe', ['/c', 'start', cpuScript], { detached: true });
+        spawn('cmd.exe', ['/c', 'start', cpuScript], { detached: true, stdio: 'ignore', windowsHide: true });
         messages.push('CPU server started on port 8002');
         servers.cpu = { status: 'started', port: 8002 };
       } else {
@@ -102,7 +102,7 @@ async function aiStartLogic(mode, options = {}) {
 
 async function aiStopLogic(options = {}) {
   try {
-    await execAsync('taskkill /F /IM llama-server.exe 2>nul');
+    await execAsync('taskkill /F /IM llama-server.exe 2>nul', { windowsHide: true });
     return {
       success: true,
       exitCode: 0,
@@ -124,7 +124,7 @@ async function aiStatusLogic(options = {}) {
     const config = await loadAIConfig();
     const service = await LLMService.getInstance();
     await service.checkHealth();
-    
+
     const health = await service.client?.healthCheck() || { gpu: false, cpu: false };
     const metrics = service.getMetrics();
 
@@ -146,7 +146,7 @@ async function aiStatusLogic(options = {}) {
         availability: metrics.availability,
         requestsTotal: metrics.requestsTotal,
         latencyMsAvg: metrics.latencyMsAvg,
-        successRate: metrics.requestsTotal > 0 
+        successRate: metrics.requestsTotal > 0
           ? Math.round((metrics.requestsSuccessful / metrics.requestsTotal) * 100)
           : 0
       }

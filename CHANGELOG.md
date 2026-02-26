@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.61 - Dead Code Detection + Architectural Debt Reduction](changelog/v0.9.61-dead-code-detection.md)** - **✅ 85% dead code false positive reduction, 3 production files refactored** (Latest)
+- **[v0.9.64 - Test Generator Auto-Healing & Memory SRP](changelog/v0.9.64-test-generator-autohealing.md)** - **✅ 269 autonomous tests generated via Tree-Sitter compatibility layers** (Latest)
+- **[v0.9.62 - Tree-sitter Migration](changelog/v0.9.62-tree-sitter-migration.md)** - Precise scope/state detection, fixed legacy crashes
+- **[v0.9.61 - Dead Code Detection + Architectural Debt Reduction](changelog/v0.9.61-dead-code-detection.md)** - **✅ 85% dead code false positive reduction, 3 production files refactored**
 - **[v0.9.60 - Semantic Algebra Production](changelog/v0.9.60-sqlite-exclusive-race-fixes.md)** - **✅ Semantic Algebra + Deterministic Queries** - 7 vectors per atom, SQLite-only storage
 - **[v0.9.59 - Startup Speed + Error Notifications](changelog/v0.9.59-query-optimization.md)** - 25s→1.5s startup, auto-error notifications
 - **[v0.9.58 - Complete SQLite Migration](changelog/v0.9.58-sqlite-migration-complete.md)** - All tools migrated to SQLite, removed JSON dependencies
@@ -37,7 +39,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.62]** | 2026-02-25 | **🌳 Tree-sitter Migration — ✅ Precise scope/state detection, fixed legacy crashes, enhanced metadata** (Latest) |
+| **[0.9.64]** | 2026-02-26 | **🧠 Test Auto-Healing & Daemon Stability — ✅ 269 tests autonomously written, DB orchestrator SRP split, Tree-Sitter MCP compliance** (Latest) |
+| **[0.9.62]** | 2026-02-25 | **🌳 Tree-sitter Migration — ✅ Precise scope/state detection, fixed legacy crashes, enhanced metadata** |
 | **[0.9.61]** | 2026-02-25 | **🎯 Dead Code Detection + Architectural Debt — 85% false positive reduction, 3 files refactored** |
 | **[0.9.59]** | 2026-02-24 | **🚀 Startup Speed + Error Notifications — 25s→1.5s startup, auto-error notifications** |
 | **[0.9.58]** | 2026-02-23 | **🗄️ SQLite Migration Complete — All tools use SQLite, 5 files migrated, JSON legacy removed** |

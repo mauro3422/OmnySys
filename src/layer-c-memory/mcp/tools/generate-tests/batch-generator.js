@@ -21,26 +21,26 @@ const logger = createLogger('OmnySys:batch-test-generator');
  * Genera tests para múltiples funciones sin cobertura
  */
 export async function generate_batch_tests(args, context) {
-  const { 
-    limit = 10, 
-    minComplexity = 5, 
+  const {
+    limit = 10,
+    minComplexity = 5,
     sortBy = 'risk',
     dryRun = true,
     outputPath = 'tests/generated'
   } = args;
   const { projectPath, cache } = context;
-  
+
   logger.info(`[Tool] generate_batch_tests(limit: ${limit}, minComplexity: ${minComplexity})`);
-  
+
   try {
     // Obtener gaps de cobertura usando detect_patterns
     const patternsResult = await detect_patterns(
       { patternType: 'test-coverage', limit: 100 },
       context
     );
-    
+
     const gaps = patternsResult?.testCoverage?.gaps || [];
-    
+
     if (gaps.length === 0) {
       return {
         success: true,
@@ -49,7 +49,7 @@ export async function generate_batch_tests(args, context) {
         summary: 'No coverage gaps found'
       };
     }
-    
+
     // Enriquecer gaps con fragilityScore del átomo (para mejor ordering)
     // Lo hacemos en un mini-pass antes de ordenar
     const enrichedGaps = await Promise.all(
@@ -63,13 +63,13 @@ export async function generate_batch_tests(args, context) {
 
     // Filtrar por complejidad mínima
     const filteredGaps = enrichedGaps.filter(g => (g.complexity || 0) >= minComplexity);
-    
+
     // Ordenar
     const sortedGaps = sortGaps(filteredGaps, sortBy);
-    
+
     // Limitar
     const selectedGaps = sortedGaps.slice(0, limit);
-    
+
     // Generar tests para cada gap
     const results = [];
     for (const gap of selectedGaps) {
@@ -85,7 +85,7 @@ export async function generate_batch_tests(args, context) {
         });
       }
     }
-    
+
     // Estadísticas
     const stats = {
       totalGaps: gaps.length,
@@ -95,14 +95,14 @@ export async function generate_batch_tests(args, context) {
       failed: results.filter(r => !r.success).length,
       dryRun
     };
-    
+
     return {
       success: true,
       stats,
       results,
       summary: generateBatchSummary(results)
     };
-    
+
   } catch (error) {
     logger.error(`[Tool] generate_batch_tests failed: ${error.message}`);
     return {
@@ -140,7 +140,7 @@ function sortGaps(gaps, sortBy) {
  */
 async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
   const atom = await getAtomDetails(projectPath, gap.file, gap.name, cache);
-  
+
   if (!atom) {
     return {
       success: false,
@@ -149,14 +149,16 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
       error: 'Atom not found'
     };
   }
-  
+
   const tests = await analyzeFunctionForTests(atom, projectPath);
-  const testCode = generateTestCode(atom, tests, { useRealFactories: true, outputPath });
-  const riskScore = calculateRiskScore(atom);
-  
-  // Generar path del archivo de test
+  // Pass the test file's directory (not base outputPath) so resolveImportAlias can
+  // compute the correct number of '../' needed for non-aliased paths.
   const testFilePath = generateTestFilePath(gap.file, gap.name, outputPath);
-  
+  const testFileDir = path.dirname(testFilePath);
+  const testCode = generateTestCode(atom, tests, { useRealFactories: true, outputPath: testFileDir });
+  const riskScore = calculateRiskScore(atom);
+
+
   const result = {
     success: true,
     function: {
@@ -201,7 +203,7 @@ function generateTestFilePath(sourceFile, functionName, outputPath) {
   const relativePath = sourceFile
     .replace(/^src\//, '')
     .replace(/\.(js|ts)$/, '.test.js');
-  
+
   return `${outputPath}/${relativePath}`;
 }
 
@@ -210,11 +212,11 @@ function generateTestFilePath(sourceFile, functionName, outputPath) {
  */
 function generateBatchSummary(results) {
   const successful = results.filter(r => r.success);
-  
+
   if (successful.length === 0) {
     return 'No tests generated';
   }
-  
+
   const totalTests = successful.reduce((sum, r) => sum + r.test.testCount, 0);
   const avgComplexity = Math.round(
     successful.reduce((sum, r) => sum + r.function.complexity, 0) / successful.length
@@ -222,13 +224,13 @@ function generateBatchSummary(results) {
   const avgRiskScore = Math.round(
     successful.reduce((sum, r) => sum + r.function.riskScore, 0) / successful.length * 10
   ) / 10;
-  
+
   const archetypes = {};
   successful.forEach(r => {
     const a = r.function.archetype || 'unknown';
     archetypes[a] = (archetypes[a] || 0) + 1;
   });
-  
+
   return {
     totalTestsGenerated: totalTests,
     averageComplexity: avgComplexity,

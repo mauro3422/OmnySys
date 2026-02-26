@@ -14,11 +14,11 @@ export class AnalysisQueue {
       medium: [],
       low: []
     };
-    
+
     // Tracking de archivos encolados (evitar duplicados)
     this.enqueuedFiles = new Set();
   }
-  
+
   /**
    * Agrega un archivo a la cola con prioridad
    * @param {string} filePath - Ruta del archivo
@@ -28,23 +28,23 @@ export class AnalysisQueue {
   enqueue(filePath, priority = 'low') {
     // Normalizar prioridad
     const validPriority = this.normalizePriority(priority);
-    
+
     // Verificar si ya está encolado
     if (this.enqueuedFiles.has(filePath)) {
       // Si la nueva prioridad es mayor, mover a cola superior
       this.reprioritize(filePath, validPriority);
       return this.getPosition(filePath);
     }
-    
+
     // Agregar a la cola correspondiente
     this.queues[validPriority].push({
       filePath,
       priority: validPriority,
       enqueuedAt: Date.now()
     });
-    
+
     this.enqueuedFiles.add(filePath);
-    
+
     return this.getPosition(filePath);
   }
 
@@ -58,28 +58,28 @@ export class AnalysisQueue {
     if (!job || !job.filePath) {
       throw new Error('Job must have a filePath property');
     }
-    
+
     // Normalizar prioridad
     const validPriority = this.normalizePriority(priority);
-    
+
     // Verificar si ya está encolado
     if (this.enqueuedFiles.has(job.filePath)) {
       this.reprioritize(job.filePath, validPriority);
       return this.getPosition(job.filePath);
     }
-    
+
     // Agregar a la cola correspondiente con toda la metadata
     this.queues[validPriority].push({
       ...job,
       priority: validPriority,
       enqueuedAt: Date.now()
     });
-    
+
     this.enqueuedFiles.add(job.filePath);
-    
+
     return this.getPosition(job.filePath);
   }
-  
+
   /**
    * Obtiene el siguiente trabajo de mayor prioridad
    * @returns {object|null} - Trabajo o null si vacío
@@ -93,10 +93,10 @@ export class AnalysisQueue {
         return job;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Ver el siguiente trabajo sin sacarlo
    * @returns {object|null}
@@ -109,13 +109,13 @@ export class AnalysisQueue {
     }
     return null;
   }
-  
+
   /**
    * Obtener posición de un archivo en la cola
    */
   getPosition(filePath) {
     let position = 0;
-    
+
     // Contar trabajos de mayor prioridad primero
     for (const priority of ['critical', 'high', 'medium', 'low']) {
       const index = this.queues[priority].findIndex(j => j.filePath === filePath);
@@ -124,10 +124,20 @@ export class AnalysisQueue {
       }
       position += this.queues[priority].length;
     }
-    
+
     return -1; // No encontrado
   }
-  
+
+  /**
+   * Alias for getPosition — used by analyzeAndWait() in queueing.js
+   * Returns the position of a file in the queue, or -1 if not found.
+   * @param {string} filePath
+   * @returns {number}
+   */
+  findPosition(filePath) {
+    return this.getPosition(filePath);
+  }
+
   /**
    * Cambiar prioridad de un archivo ya encolado
    */
@@ -145,7 +155,7 @@ export class AnalysisQueue {
       }
     }
   }
-  
+
   /**
    * Obtener todas las colas
    */
@@ -157,21 +167,21 @@ export class AnalysisQueue {
       low: [...this.queues.low]
     };
   }
-  
+
   /**
    * Total de trabajos en cola
    */
   size() {
     return this.enqueuedFiles.size;
   }
-  
+
   /**
    * Verificar si un archivo está en cola
    */
   has(filePath) {
     return this.enqueuedFiles.has(filePath);
   }
-  
+
   /**
    * Limpiar todas las colas
    */
@@ -182,7 +192,7 @@ export class AnalysisQueue {
     this.queues.low = [];
     this.enqueuedFiles.clear();
   }
-  
+
   /**
    * Normalizar nombre de prioridad
    */

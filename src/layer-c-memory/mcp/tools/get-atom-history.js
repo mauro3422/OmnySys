@@ -14,10 +14,10 @@ const execAsync = promisify(exec);
 export async function get_atom_history(args, context) {
   const { filePath, functionName, maxCommits = 10, includeDiff = false } = args;
   const { projectPath } = context;
-  
+
   try {
     const atom = await getAtomDetails(projectPath, filePath, functionName);
-    
+
     if (!atom) {
       return {
         error: `Function '${functionName}' not found in ${filePath}`,
@@ -26,7 +26,7 @@ export async function get_atom_history(args, context) {
     }
 
     const fullPath = join(projectPath, filePath);
-    
+
     const isGitRepo = await checkGitRepo(projectPath);
     if (!isGitRepo) {
       return {
@@ -43,7 +43,7 @@ export async function get_atom_history(args, context) {
 
     const logResult = await execAsync(
       `git log --follow --format="%H|%an|%ae|%ad|%s" --date=short -n ${maxCommits} -- "${filePath}"`,
-      { cwd: projectPath, maxBuffer: 1024 * 1024 }
+      { cwd: projectPath, maxBuffer: 1024 * 1024, windowsHide: true }
     );
 
     const commits = parseGitLog(logResult.stdout);
@@ -77,7 +77,7 @@ export async function get_atom_history(args, context) {
     };
 
     const authors = new Set();
-    
+
     for (const commit of commits) {
       const commitInfo = {
         hash: commit.hash,
@@ -92,7 +92,7 @@ export async function get_atom_history(args, context) {
         try {
           const diffResult = await execAsync(
             `git show --stat --format="" ${commit.hash} -- "${filePath}"`,
-            { cwd: projectPath, maxBuffer: 1024 * 1024 }
+            { cwd: projectPath, maxBuffer: 1024 * 1024, windowsHide: true }
           );
           commitInfo.stats = parseDiffStats(diffResult.stdout);
         } catch {
@@ -122,7 +122,7 @@ export async function get_atom_history(args, context) {
 
 async function checkGitRepo(projectPath) {
   try {
-    await execAsync('git rev-parse --git-dir', { cwd: projectPath });
+    await execAsync('git rev-parse --git-dir', { cwd: projectPath, windowsHide: true });
     return true;
   } catch {
     return false;
@@ -131,10 +131,10 @@ async function checkGitRepo(projectPath) {
 
 function parseGitLog(output) {
   if (!output.trim()) return [];
-  
+
   const lines = output.trim().split('\n');
   const commits = [];
-  
+
   for (const line of lines) {
     const parts = line.split('|');
     if (parts.length >= 5) {
@@ -147,18 +147,18 @@ function parseGitLog(output) {
       });
     }
   }
-  
+
   return commits;
 }
 
 function parseDiffStats(output) {
   if (!output.trim()) return null;
-  
+
   const lines = output.trim().split('\n');
   const lastLine = lines[lines.length - 1];
-  
+
   const match = lastLine.match(/(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(\-\))?/);
-  
+
   if (match) {
     return {
       filesChanged: parseInt(match[1]) || 0,
@@ -166,7 +166,7 @@ function parseDiffStats(output) {
       deletions: parseInt(match[3]) || 0
     };
   }
-  
+
   return null;
 }
 
@@ -174,11 +174,11 @@ async function getRecentChanges(projectPath, filePath, startLine, endLine) {
   try {
     const result = await execAsync(
       `git log --oneline -n 5 --format="%h|%ad|%s" --date=short -L ${startLine},${endLine}:"${filePath}"`,
-      { cwd: projectPath, maxBuffer: 1024 * 1024 }
+      { cwd: projectPath, maxBuffer: 1024 * 1024, windowsHide: true }
     );
-    
+
     if (!result.stdout.trim()) return [];
-    
+
     return result.stdout.trim().split('\n')
       .filter(line => /^[0-9a-f]{4,}\|/.test(line))  // only lines matching "hash|date|message"
       .map(line => {
@@ -198,9 +198,9 @@ async function getBlameInfo(projectPath, filePath, startLine, endLine) {
   try {
     const result = await execAsync(
       `git blame -L ${startLine},${endLine} --line-porcelain "${filePath}"`,
-      { cwd: projectPath, maxBuffer: 1024 * 1024 }
+      { cwd: projectPath, maxBuffer: 1024 * 1024, windowsHide: true }
     );
-    
+
     const blameLines = result.stdout.split('\n');
     const blameInfo = {
       lines: [],
@@ -211,9 +211,9 @@ async function getBlameInfo(projectPath, filePath, startLine, endLine) {
         newestLine: null
       }
     };
-    
+
     let currentBlock = {};
-    
+
     for (const line of blameLines) {
       if (line.startsWith('author ')) {
         currentBlock.author = line.substring(7);
@@ -231,7 +231,7 @@ async function getBlameInfo(projectPath, filePath, startLine, endLine) {
             summary: currentBlock.summary
           });
           blameInfo.summary.authors.add(currentBlock.author);
-          
+
           if (!blameInfo.summary.oldestLine || currentBlock.timestamp < blameInfo.summary.oldestLine.timestamp) {
             blameInfo.summary.oldestLine = currentBlock;
           }
@@ -242,10 +242,10 @@ async function getBlameInfo(projectPath, filePath, startLine, endLine) {
         currentBlock = {};
       }
     }
-    
+
     blameInfo.summary.totalLines = blameInfo.lines.length;
     blameInfo.summary.authors = Array.from(blameInfo.summary.authors);
-    
+
     return blameInfo;
   } catch {
     return null;

@@ -197,14 +197,14 @@ export class OmnySysMCPServer extends EventEmitter {
         const { exec } = await import('child_process');
         const util = await import('util');
         const execPromise = util.promisify(exec);
-        
+
         // Kill llama-server processes
         if (process.platform === 'win32') {
-          await execPromise('taskkill /F /IM llama-server.exe 2>nul').catch(() => {});
-          await execPromise('taskkill /F /IM brain_gpu.bat 2>nul').catch(() => {});
+          await execPromise('taskkill /F /IM llama-server.exe 2>nul', { windowsHide: true }).catch(() => { });
+          await execPromise('taskkill /F /IM brain_gpu.bat 2>nul', { windowsHide: true }).catch(() => { });
         } else {
-          await execPromise('pkill -f llama-server 2>/dev/null').catch(() => {});
-          await execPromise('pkill -f brain_gpu 2>/dev/null').catch(() => {});
+          await execPromise('pkill -f llama-server 2>/dev/null').catch(() => { });
+          await execPromise('pkill -f brain_gpu 2>/dev/null').catch(() => { });
         }
         logger.info('  ✅ LLM servers stopped');
       } catch (err) {

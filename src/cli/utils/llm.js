@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 
 export async function isBrainServerStarting() {
   try {
-    const { stdout } = await execAsync('wmic process where "name=\'cmd.exe\'" get commandline /format:csv 2>nul');
+    const { stdout } = await execAsync('wmic process where "name=\'cmd.exe\'" get commandline /format:csv 2>nul', { windowsHide: true });
     const gpuBatches = stdout.toLowerCase().split('\n').filter(line =>
       (line.includes('brain_gpu') || line.includes('start_brain_gpu')) && !line.includes('wmic')
     );
@@ -20,7 +20,7 @@ export async function isBrainServerStarting() {
 
 export async function isPortInUse(port) {
   try {
-    const { stdout } = await execAsync(`netstat -an | findstr ":${port} " | findstr "LISTENING"`);
+    const { stdout } = await execAsync(`netstat -an | findstr ":${port} " | findstr "LISTENING"`, { windowsHide: true });
     return stdout.includes(port.toString());
   } catch {
     return false;

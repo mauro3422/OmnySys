@@ -6,6 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { loadAtoms } from '#layer-c/storage/index.js';
+import { getFileAnalysis } from '../core/single-file.js';
 
 const DATA_DIR = '.omnysysdata';
 
@@ -38,6 +39,29 @@ export async function getAtomDetails(rootPath, filePath, functionName, cache = n
 
   const atoms = await loadAtoms(rootPath, filePath);
   const atom = atoms.find(a => a.name === functionName) || null;
+
+  if (atom) {
+    // BACKWARD COMPATIBILITY: Migración Tree-Sitter
+    // Tree-Sitter extrae params como string[], pero varios test-generators antiguos
+    // esperan que existan en atom.dataFlow.inputs como objetos con type.
+    if (!atom.dataFlow) atom.dataFlow = {};
+    if (!atom.dataFlow.inputs || atom.dataFlow.inputs.length === 0) {
+      if (atom.params && atom.params.length > 0) {
+        atom.dataFlow.inputs = atom.params.map(p => ({ name: p, type: 'unknown' }));
+      }
+    }
+
+    // BACKWARD COMPATIBILITY: Attach file-level imports to the atom
+    // This allows test generators to resolve vi.mock() accurately using atom.imports
+    if (!atom.imports) {
+      try {
+        const fileData = await getFileAnalysis(rootPath, filePath);
+        atom.imports = fileData?.imports || [];
+      } catch (err) {
+        atom.imports = [];
+      }
+    }
+  }
 
   if (atom && cache) {
     cache.setAtom(atomId, atom);

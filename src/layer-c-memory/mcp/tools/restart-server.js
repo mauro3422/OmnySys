@@ -164,6 +164,20 @@ export async function restart_server(args, context) {
         logger.info('✅ Servidor reiniciado exitosamente');
         result.success = true;
         result.componentsRestarted = ['LLM', 'LayerA', 'Orchestrator', 'Cache'];
+
+        // Refresh the live tool registry so code changes in tool files
+        // (e.g. code-generator.js, batch-generator.js) are picked up
+        // without needing a true process restart.
+        try {
+          const { refreshToolRegistry } = await import('../mcp-http-server.js');
+          await refreshToolRegistry();
+          logger.info('🔄 Tool registry refreshed after component restart');
+          result.toolRegistryRefreshed = true;
+        } catch (refreshErr) {
+          // Non-fatal: not running via mcp-http-server (e.g. stdio mode)
+          logger.debug('Tool registry refresh skipped:', refreshErr.message);
+          result.toolRegistryRefreshed = false;
+        }
       } else {
         throw new Error(`Inicialización falló en: ${initResult.failedAt || initResult.haltedAt}`);
       }

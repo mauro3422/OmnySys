@@ -24,11 +24,51 @@ import {
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { toolDefinitions, toolHandlers } from './mcp/tools/index.js';
+import { pathToFileURL } from 'url';
 import { applyPagination } from './mcp/core/pagination.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:http');
+
+// ── Mutable tool registry ────────────────────────────────────────────────────
+// Tools are loaded dynamically so that hot-reload and component restart
+// can refresh handlers without killing the process.
+const TOOLS_INDEX_PATH = new URL('./mcp/tools/index.js', import.meta.url).pathname
+  .replace(/^\/([A-Za-z]:)/, '$1'); // strip leading / on Windows paths
+
+function toFileUrl(p) {
+  return pathToFileURL(p).href;
+}
+
+const toolRegistry = { definitions: [], handlers: {} };
+
+/**
+ * Returns the live toolHandlers map. Always use this instead of the
+ * static import so hot-reloads are reflected immediately.
+ */
+export function getLiveHandlers() { return toolRegistry.handlers; }
+export function getLiveDefinitions() { return toolRegistry.definitions; }
+
+/**
+ * Re-imports tools/index.js with a cache-busting query param,
+ * then updates the mutable registry in-place.
+ * @returns {Promise<void>}
+ */
+export async function refreshToolRegistry() {
+  try {
+    const url = `${toFileUrl(TOOLS_INDEX_PATH)}?bust=${Date.now()}`;
+    const mod = await import(url);
+    toolRegistry.definitions = mod.toolDefinitions || [];
+    toolRegistry.handlers = mod.toolHandlers || {};
+    logger.info(`🔄 Tool registry refreshed (${toolRegistry.definitions.length} tools)`);
+  } catch (err) {
+    logger.error(`❌ Failed to refresh tool registry: ${err.message}`);
+  }
+}
+
+// Initial load (after logger is ready)
+await refreshToolRegistry();
+
 
 const arg1 = process.argv[2];
 const arg2 = process.argv[3];
@@ -53,7 +93,7 @@ function buildServerForSession() {
   );
 
   sessionServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: toolDefinitions
+    tools: getLiveDefinitions()
   }));
 
   // Codex/Cline may probe these even if OmnySys does not expose resources.
@@ -90,7 +130,7 @@ async function handleToolCall(request) {
   }
 
   const { name, arguments: args } = request.params;
-  const handler = toolHandlers[name];
+  const handler = getLiveHandlers()[name];
 
   if (!handler) {
     throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -220,9 +260,10 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/tools', (req, res) => {
+  const defs = getLiveDefinitions();
   res.json({
-    count: toolDefinitions.length,
-    tools: toolDefinitions.map(t => ({ name: t.name, description: t.description }))
+    count: defs.length,
+    tools: defs.map(t => ({ name: t.name, description: t.description }))
   });
 });
 
@@ -255,7 +296,7 @@ async function shutdown() {
     sessions.delete(sid);
   }
 
-  await core.shutdown().catch(() => {});
+  await core.shutdown().catch(() => { });
 
   await new Promise((resolve) => {
     httpServer.close(() => resolve());

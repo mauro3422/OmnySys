@@ -33,7 +33,7 @@ import { getAllAtoms } from '#layer-c/storage/index.js';
  * @param {string} filePath - Ruta del archivo
  * @returns {Promise<ValidationResult>}
  */
-export async function validateFileExists(filePath) {
+export async function validateFileExists(filePath, projectPath = null) {
   const result = {
     valid: true,
     warnings: [],
@@ -42,7 +42,8 @@ export async function validateFileExists(filePath) {
   };
 
   try {
-    const absolutePath = path.resolve(filePath);
+    const absolutePath = path.isAbsolute(filePath) ? filePath :
+      (projectPath ? path.join(projectPath, filePath) : path.resolve(filePath));
     await fs.access(absolutePath);
     result.context.absolutePath = absolutePath;
     result.context.exists = true;
@@ -50,7 +51,7 @@ export async function validateFileExists(filePath) {
     result.valid = false;
     result.errors.push(`❌ File does not exist: ${filePath}`);
     result.context.exists = false;
-    
+
     // Sugerir archivos similares
     const suggestions = await findSimilarFiles(filePath);
     if (suggestions.length > 0) {
@@ -71,7 +72,7 @@ async function findSimilarFiles(filePath) {
     const dir = path.dirname(filePath);
     const basename = path.basename(filePath, path.extname(filePath));
     const files = await fs.readdir(dir, { withFileTypes: true });
-    
+
     return files
       .filter(f => f.isFile() && f.name.includes(basename.substring(0, 5)))
       .map(f => path.join(dir, f.name))
@@ -106,15 +107,15 @@ export async function validateNoDuplicates(filePath, symbolName, projectPath) {
   try {
     // Buscar en el grafo usando storage directamente (sin import dinámico)
     const atoms = await getAllAtoms(projectPath);
-    
+
     // Filtrar átomos con el mismo nombre
     const instances = atoms.filter(atom => atom.name === symbolName);
-    
+
     if (instances.length > 1) {
       const sameFileInstances = instances.filter(
         i => i.filePath === filePath || i.filePath.includes(path.basename(filePath))
       );
-      
+
       if (sameFileInstances.length > 1) {
         result.valid = false;
         result.errors.push(
@@ -194,10 +195,10 @@ export async function getLineContext(filePath, lineNumber, contextLines = 5) {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     const lines = content.split('\n');
-    
+
     const start = Math.max(0, lineNumber - contextLines - 1);
     const end = Math.min(lines.length, lineNumber + contextLines);
-    
+
     const contextLines2 = [];
     for (let i = start; i < end; i++) {
       contextLines2.push({
@@ -206,7 +207,7 @@ export async function getLineContext(filePath, lineNumber, contextLines = 5) {
         isTarget: i === lineNumber - 1
       });
     }
-    
+
     return {
       totalLines: lines.length,
       targetLine: lineNumber,
@@ -246,14 +247,14 @@ export async function validateImpact(filePath, symbolName, projectPath) {
   try {
     // Usar el grafo directamente (sin import dinámico)
     const atoms = await getAllAtoms(projectPath);
-    
+
     // Encontrar átomos del archivo objetivo
     const fileAtoms = atoms.filter(a => a.filePath === filePath);
-    
+
     // Calcular impacto basado en calledBy (quién llama a estos átomos)
     const affectedFiles = new Set();
     let totalCallers = 0;
-    
+
     for (const atom of fileAtoms) {
       if (atom.calledBy && atom.calledBy.length > 0) {
         totalCallers += atom.calledBy.length;
@@ -266,20 +267,20 @@ export async function validateImpact(filePath, symbolName, projectPath) {
         }
       }
     }
-    
+
     if (affectedFiles.size > 0) {
       result.warnings.push(
         `⚠️ This change will affect ${affectedFiles.size} files directly (${totalCallers} total call sites)`
       );
       result.context.affectedFiles = Array.from(affectedFiles).slice(0, 5);
     }
-    
+
     if (affectedFiles.size > 10) {
       result.warnings.push(
         `🚨 HIGH IMPACT: ${affectedFiles.size} total files affected. Consider careful review.`
       );
     }
-    
+
     // Calcular riesgo basado en fragilityScore
     const highFragilityAtoms = fileAtoms.filter(a => a.derived?.fragilityScore > 0.5);
     if (highFragilityAtoms.length > 0) {
@@ -287,7 +288,7 @@ export async function validateImpact(filePath, symbolName, projectPath) {
         `⚠️ ${highFragilityAtoms.length} fragile atoms in this file (fragility > 0.5)`
       );
     }
-    
+
   } catch (error) {
     // Si no podemos obtener impacto, continuar con advertencia
     result.warnings.push(`⚠️ Could not analyze impact: ${error.message}`);
@@ -308,7 +309,7 @@ export async function validateImpact(filePath, symbolName, projectPath) {
  */
 export async function validateBeforeEdit({ filePath, symbolName = null, lineNumber = null, projectPath = null }) {
   console.log(`🔍 Validating edit operation: ${filePath}${symbolName ? `::${symbolName}` : ''}`);
-  
+
   const combined = {
     valid: true,
     warnings: [],
@@ -321,13 +322,13 @@ export async function validateBeforeEdit({ filePath, symbolName = null, lineNumb
   };
 
   // 1. Validar existencia
-  const existsValidation = await validateFileExists(filePath);
+  const existsValidation = await validateFileExists(filePath, projectPath);
   combined.valid = combined.valid && existsValidation.valid;
   combined.warnings.push(...existsValidation.warnings);
   combined.errors.push(...existsValidation.errors);
   combined.context.fileExists = existsValidation.context.exists;
   combined.context.validationsPerformed.push('fileExists');
-  
+
   if (!combined.valid) {
     console.log(`❌ Validation FAILED: ${combined.errors.join(', ')}`);
     return combined;
@@ -387,7 +388,7 @@ export async function validateBeforeEdit({ filePath, symbolName = null, lineNumb
  */
 export async function validateBeforeWrite({ filePath }) {
   console.log(`🔍 Validating write operation: ${filePath}`);
-  
+
   const result = {
     valid: true,
     warnings: [],
@@ -426,7 +427,7 @@ export async function validateBeforeWrite({ filePath }) {
   result.context.validationsPerformed.push('parentDir');
 
   console.log(`✅ Validation complete: ${result.context.validationsPerformed.join(' → ')}`);
-  
+
   return result;
 }
 

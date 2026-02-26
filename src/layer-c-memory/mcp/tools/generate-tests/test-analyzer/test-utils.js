@@ -3,6 +3,8 @@
  * @module mcp/tools/generate-tests/test-analyzer/test-utils
  */
 
+import { getAtomSemantics, buildAssertionFromSemantics } from '../atom-semantic-analyzer/index.js';
+
 /**
  * Reglas de aserción por tipo de retorno
  */
@@ -52,8 +54,60 @@ export function generateSetup(atom) {
   const calls = atom.callGraph?.callsList || [];
   const internalCalls = calls.filter(c => c.type === 'internal' || c.type === 'external');
 
-  if (internalCalls.length > 0 && atom.archetype?.type === 'orchestrator') {
-    setup.push(`// Mock internal calls: ${internalCalls.map(c => c.name).slice(0, 5).join(', ')}`);
+  if (internalCalls.length > 0) {
+    const atomImports = atom.imports || [];
+    const mockedPaths = new Set();
+
+    for (const call of internalCalls) {
+      // Ignorar llamadas nativas comunes que no requieren mocks de archivo
+      if (['console', 'Math', 'JSON', 'Object', 'Array', 'String', 'Promise', 'logger'].some(p => call.name.startsWith(p))) {
+        continue;
+      }
+
+      let isMocked = false;
+      const baseName = call.name.split('.')[0];
+
+      // Buscar si la funcion llamada viene de un import
+      for (const imp of atomImports) {
+        const hasSpecifier = imp.specifiers?.some(s => s.name === baseName || s.local === baseName);
+
+        // Si hay una coincidencia de specifier O el source path sugiere fuertemente que contiene la dependencia
+        if (hasSpecifier || (imp.source && imp.source.includes(baseName.toLowerCase()))) {
+          if (!mockedPaths.has(imp.source)) {
+            // Limpiar artifacts de resolucion si existen
+            let mockPath = imp.source.replace(/\/\.\//g, '/').replace(/^\.\//, './');
+
+            // Convertir src/ a #/ (alias map de vitest/package.json) si se requiere
+            if (mockPath.startsWith('src/')) {
+              const domain = mockPath.split('/')[1];
+              if (['ai', 'core', 'config'].includes(domain) || mockPath.includes('layer-')) {
+                mockPath = mockPath.replace('src/layer-c-memory/', '#layer-c/')
+                  .replace('src/layer-a-static/', '#layer-a/')
+                  .replace('src/layer-b-semantic/', '#layer-b/')
+                  .replace(/^src\/([^\/]+)\//, '#$1/');
+              } else {
+                mockPath = `../../${mockPath}`;
+              }
+            }
+
+            setup.push(`vi.mock('${mockPath}'); // Auto-mocked dependency for ${call.name}`);
+            mockedPaths.add(imp.source);
+          }
+          isMocked = true;
+          break;
+        }
+      }
+
+      // Fallback si no encontramos el import exacto pero es external y de negocio
+      if (!isMocked && call.type === 'external' && !call.name.includes('.') && call.name.length > 3) {
+        setup.push(`// TODO: vi.mock('.../${call.name}.js'); // Unresolved dependency`);
+      }
+    }
+
+    // Si no logramos mockear nada pero había llamadas, dejamos el comentario legacy para orchestrators
+    if (setup.length === 0 && atom.archetype?.type === 'orchestrator') {
+      setup.push(`// Mock internal calls: ${internalCalls.map(c => c.name).slice(0, 5).join(', ')}`);
+    }
   }
 
   return setup;
@@ -67,19 +121,38 @@ export function generateSetup(atom) {
  * @param {Object} atom - Atom metadata
  * @returns {string} - Assertion code
  */
-export function generateAssertion(outputs, functionName, typeContracts, atom) {
+export function generateAssertion(outputs, functionName, typeContracts, atom, testType = 'happy') {
+  // ── PRIORIDAD 0: Semantic analyzer (new standardized layer) ──────────────
+  if (atom) {
+    const semantics = getAtomSemantics(atom);
+
+    // Void function: always use side-effect assertion, never `result`.toBeDefined()
+    if (!semantics.hasReturnValue) {
+      if (semantics.mutatedParams.length > 0) {
+        // Return a special marker that code-generator.js will expand into spy assertions
+        return `/* VOID_MUTATION:${semantics.mutatedParams.join(',')} */`;
+      }
+      return `expect(() => { ${atom.name}; }).not.toThrow()`;
+    }
+
+    // Has real return literals → use them
+    const assertion = buildAssertionFromSemantics(semantics, atom, testType);
+    // Only use the semantic assertion if it's more specific than the generic fallback
+    if (assertion && !assertion.includes('toBeDefined()') && !assertion.includes('VOID_MUTATION')) {
+      return assertion;
+    }
+  }
+
+  // ── Legacy chain (unchanged, for backward compat) ────────────────────────
   const returns = typeContracts?.returns;
   const dnaFlow = atom?.dna?.flowType || '';
   const dnaOps = atom?.dna?.operationSequence || [];
   const outputsList = atom?.dataFlow?.outputs || [];
   const name = (functionName || '').toLowerCase();
 
-  // PRIORIDAD 1: Usar los outputs del dataFlow
   if (outputsList.length > 0) {
     const boolOutputs = outputsList.filter(o => o.value === 'true' || o.value === 'false');
-    if (boolOutputs.length > 0) {
-      return TYPE_CONTRACT_ASSERTIONS.boolean;
-    }
+    if (boolOutputs.length > 0) return TYPE_CONTRACT_ASSERTIONS.boolean;
 
     const returnOutputs = outputsList.filter(o => o.type === 'return' && o.value);
     if (returnOutputs.length > 0) {
@@ -88,28 +161,21 @@ export function generateAssertion(outputs, functionName, typeContracts, atom) {
     }
   }
 
-  // PRIORIDAD 2: typeContracts
   if (returns?.type && TYPE_CONTRACT_ASSERTIONS[returns.type]) {
     const assertionFn = TYPE_CONTRACT_ASSERTIONS[returns.type];
     return typeof assertionFn === 'function' ? assertionFn(outputs) : assertionFn;
   }
 
-  // PRIORIDAD 3: Inferir por nombre de función
   for (const { pattern, assertion } of NAME_PATTERN_ASSERTIONS) {
-    if (pattern.test(name)) {
-      return assertion;
-    }
+    if (pattern.test(name)) return assertion;
   }
 
-  // PRIORIDAD 4: DNA flow
   if (dnaOps.length > 0 && !dnaOps.includes('return') && !dnaOps.includes('property_access')) {
     return 'expect(() => result).not.toThrow()';
   }
 
   for (const { pattern, assertion } of DNA_FLOW_ASSERTIONS) {
-    if (dnaFlow.includes(pattern)) {
-      return assertion;
-    }
+    if (dnaFlow.includes(pattern)) return assertion;
   }
 
   const hasReturn = outputs?.some(o => o.type === 'return');
@@ -138,9 +204,9 @@ export function generateEdgeCaseAssertion(paramName, atom) {
       : `expect(() => ${atom.name}(null)).toThrow()`;
   }
   const name = (atom?.name || '').toLowerCase();
-  if (/^(is|has|can)/.test(name))             return 'expect(result).toBe(false)';
-  if (/^(validate|check)/.test(name))         return 'expect(result).toBeDefined()';
-  if (/^(get|find|fetch|select)/.test(name))  return 'expect(result).toBeNull()';
+  if (/^(is|has|can)/.test(name)) return 'expect(result).toBe(false)';
+  if (/^(validate|check)/.test(name)) return 'expect(result).toBeDefined()';
+  if (/^(get|find|fetch|select)/.test(name)) return 'expect(result).toBeNull()';
   return 'expect(result).toBeDefined()';
 }
 
@@ -150,7 +216,7 @@ export function generateEdgeCaseAssertion(paramName, atom) {
  * @returns {boolean} - True if atom has side effects
  */
 export function hasSideEffects(atom) {
-  return atom.hasSideEffects || 
-         atom.sideEffects?.hasStorageAccess || 
-         atom.sideEffects?.hasNetworkCalls;
+  return atom.hasSideEffects ||
+    atom.sideEffects?.hasStorageAccess ||
+    atom.sideEffects?.hasNetworkCalls;
 }

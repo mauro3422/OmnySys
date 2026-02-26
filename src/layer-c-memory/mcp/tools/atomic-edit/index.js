@@ -24,24 +24,24 @@ import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
 const logger = createLogger('OmnySys:atomic:edit:tool');
 
 /**
- * Valida sintaxis del código usando Babel
+ * Valida sintaxis del código usando Tree-Sitter
  */
-async function validateSyntax(code) {
+async function validateSyntax(code, filePath = 'temp.js') {
   try {
-    const { parse } = await import('@babel/parser');
-    parse(code, {
-      sourceType: 'module',
-      allowImportExportEverywhere: true,
-      allowReturnOutsideFunction: true,
-      plugins: ['jsx', 'typescript', 'decorators-legacy', 'classProperties']
-    });
+    const { getTree } = await import('#layer-a/parser/index.js');
+    const tree = await getTree(filePath, code);
+
+    if (tree && tree.rootNode && tree.rootNode.hasError) {
+      return {
+        valid: false,
+        error: 'Sintaxis inválida (Tree-sitter reportó nodos ERROR)'
+      };
+    }
     return { valid: true };
   } catch (error) {
     return {
       valid: false,
-      error: error.message,
-      line: error.loc?.line,
-      column: error.loc?.column
+      error: error.message
     };
   }
 }
@@ -221,7 +221,7 @@ export async function atomic_write(args, context) {
       };
     }
 
-    const syntaxCheck = await validateSyntax(content);
+    const syntaxCheck = await validateSyntax(content, filePath);
     if (!syntaxCheck.valid) {
       return {
         error: 'SYNTAX_ERROR',
