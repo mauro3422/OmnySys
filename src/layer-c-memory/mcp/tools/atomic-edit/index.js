@@ -47,193 +47,138 @@ async function validateSyntax(code) {
 }
 
 /**
+ * Valida los argumentos de entrada para atomic_edit
+ */
+function validateEditArgs(args, projectPath) {
+  const { filePath, oldString, newString, symbolName } = args;
+
+  if (!projectPath) {
+    return { error: 'MISSING_PROJECT_PATH', message: 'projectPath not provided in context' };
+  }
+
+  if (!filePath || (!oldString && !symbolName) || newString === undefined) {
+    return {
+      error: 'INVALID_PARAMS',
+      message: 'Missing required: filePath, newString, and (oldString OR symbolName)'
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Realiza todas las validaciones previas al edit (importaciones, exportaciones, etc.)
+ */
+async function performPreEditValidation(filePath, oldString, newString, symbolName, projectPath) {
+  // 1. Validación base de estado
+  const validation = await validateBeforeEdit({ filePath, symbolName: symbolName || null, projectPath });
+  if (!validation.valid) {
+    return { error: 'VALIDATION_FAILED', message: 'Pre-edit validation failed', errors: validation.errors };
+  }
+
+  // 2. Validación de importaciones rotas
+  const brokenImports = await validateImportsInEdit(filePath, newString, projectPath);
+  if (brokenImports.length > 0) {
+    return { error: 'BROKEN_IMPORTS', message: `Found ${brokenImports.length} broken imports`, brokenImports };
+  }
+
+  // 3. Conflictos de exports
+  const exportConflicts = await checkEditExportConflicts(oldString, newString, filePath, projectPath);
+  if (exportConflicts.globalConflicts.some(c => c.isCritical)) {
+    return {
+      error: 'EXPORT_DUPLICATE_CONFLICT',
+      message: 'Critical export conflict detected',
+      conflicts: exportConflicts.globalConflicts.filter(c => c.isCritical)
+    };
+  }
+
+  return { valid: true, exportConflicts };
+}
+
+/**
  * Tool: atomic_edit
  * Edita un archivo con validación atómica completa
+ * REFACTORIZADO: Grado A de mantenibilidad
  */
 export async function atomic_edit(args, context) {
   const { filePath, oldString, newString, symbolName } = args;
   const { orchestrator, projectPath } = context;
 
-  if (!projectPath) {
-    return {
-      error: 'MISSING_PROJECT_PATH',
-      message: 'projectPath not provided in context',
-      file: filePath,
-      severity: 'critical'
-    };
-  }
+  // 1. Validación de entrada
+  const argError = validateEditArgs(args, projectPath);
+  if (argError) return { ...argError, file: filePath, severity: 'critical' };
 
   logger.info(`[Tool] atomic_edit("${filePath}", symbol: ${symbolName || 'none'})`);
 
-  if (!filePath || (!oldString && !symbolName) || newString === undefined) {
-    return {
-      error: 'Missing required parameters: filePath, newString, and (oldString OR symbolName)',
-      example: 'atomic_edit({ filePath: "src/utils/helper.js", symbolName: "myFunc", newString: "function myFunc() { ... }" })'
-    };
-  }
-
   let previousAtoms = [];
-  let relativePath = filePath;
   try {
     const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(projectPath, filePath);
-    relativePath = path.relative(projectPath, absolutePath);
+    const relativePath = path.relative(projectPath, absolutePath);
     previousAtoms = await loadAtoms(projectPath, relativePath);
   } catch (e) {
     logger.warn(`[PreEdit] Could not load previous atoms: ${e.message}`);
   }
 
   try {
-    const validation = await validateBeforeEdit({
-      filePath: relativePath,
-      symbolName: symbolName || null,
-      projectPath
-    });
+    // 2. Validaciones pre-vuelo
+    const preValidation = await performPreEditValidation(filePath, oldString, newString, symbolName, projectPath);
+    if (preValidation.error) return { ...preValidation, file: filePath, severity: 'critical', canProceed: false };
 
-    if (!validation.valid) {
-      return {
-        error: 'VALIDATION_FAILED',
-        message: 'Pre-edit validation failed',
-        file: filePath,
-        errors: validation.errors,
-        warnings: validation.warnings,
-        context: validation.context,
-        severity: 'critical',
-        canProceed: false
-      };
-    }
-
-    const brokenImports = await validateImportsInEdit(filePath, newString, projectPath);
-    if (brokenImports.length > 0) {
-      return {
-        error: 'BROKEN_IMPORTS',
-        message: `Found ${brokenImports.length} broken imports in the edit`,
-        file: filePath,
-        brokenImports,
-        severity: 'critical',
-        canProceed: false
-      };
-    }
-
-    const exportConflicts = await checkEditExportConflicts(oldString, newString, filePath, projectPath);
-
-    if (exportConflicts.globalConflicts.length > 0) {
-      const criticalConflicts = exportConflicts.globalConflicts.filter(c => c.isCritical);
-
-      if (criticalConflicts.length > 0) {
-        return {
-          error: 'EXPORT_DUPLICATE_CONFLICT',
-          message: `Edit would create ${criticalConflicts.length} critical export conflict(s)`,
-          file: filePath,
-          conflicts: criticalConflicts,
-          newExports: exportConflicts.newExports,
-          renamedExports: exportConflicts.renamedExports,
-          warnings: exportConflicts.warnings,
-          severity: 'critical',
-          canProceed: false,
-          suggestion: 'Rename the export or remove the duplicate first'
-        };
-      }
-
-      logger.warn(`[atomic_edit] ${exportConflicts.globalConflicts.length} non-critical export conflicts`);
-    }
-
+    // 3. Ejecución del Edit
     const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
     const editResult = await atomicEditor.edit(filePath, oldString, newString, { symbolName });
+    if (!editResult.success) throw new Error(editResult.error || 'Edit operation failed');
 
-    if (!editResult.success) {
-      throw new Error(editResult.error || 'Edit operation failed');
-    }
-
+    // 4. Re-indexado y Post-Validación
     const reindexResult = await reindexFile(filePath, projectPath);
     if (!reindexResult.success) {
-      logger.error(`[Reindex] Failed, rolling back...`);
       await atomicEditor.undo(filePath, editResult.undoData);
+      return { error: 'REINDEX_FAILED', message: reindexResult.error, file: filePath, rolledBack: true };
+    }
+
+    const postValidation = await validatePostEditOptimized(filePath, projectPath, previousAtoms, reindexResult.atoms);
+    if (!postValidation.valid) {
+      await atomicEditor.undo(filePath, editResult.undoData);
+      await reindexFile(filePath, projectPath);
       return {
-        error: 'REINDEX_FAILED',
-        message: `Failed to reindex: ${reindexResult.error}`,
+        error: 'POST_EDIT_VALIDATION_FAILED',
+        message: 'Edit broke dependencies, rolled back',
         file: filePath,
+        errors: postValidation.errors,
         rolledBack: true
       };
     }
 
-    const postValidation = await validatePostEditOptimized(filePath, projectPath, previousAtoms, reindexResult.atoms);
-
-    if (!postValidation.valid) {
-      logger.error(`[PostEdit] Failed, rolling back...`);
-      await atomicEditor.undo(filePath, editResult.undoData);
-      await reindexFile(filePath, projectPath);
-
-      return {
-        error: 'POST_EDIT_VALIDATION_FAILED',
-        message: 'Edit broke dependencies, automatically rolled back',
-        file: filePath,
-        errors: postValidation.errors,
-        brokenCallers: postValidation.brokenCallers,
-        affectedFiles: postValidation.affectedFiles,
-        rolledBack: true,
-        severity: 'critical'
-      };
-    }
-
+    // 5. Análisis de Impacto y Respuesta
     const allAtoms = await getAllAtoms(projectPath);
-    // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
     const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, { withStats: true }, projectPath);
-    const impactAnalysis = await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms, enrichedAtoms);
+    const impact = await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms, enrichedAtoms);
 
     return {
       success: true,
       file: filePath,
-      message: `✅ Atomic edit successful (validated pre and post)`,
-      debug: postValidation.debugInfo,
+      message: `✅ Atomic edit successful`,
       impact: {
-        level: impactAnalysis.level,
-        score: impactAnalysis.score,
-        affectedFiles: impactAnalysis.affectedFiles.size,
-        affectedFileList: Array.from(impactAnalysis.affectedFiles).slice(0, 10),
-        reindexedAtoms: reindexResult.atoms?.length || 0,
-        severity: impactAnalysis.level === 'critical' ? 'critical' :
-          impactAnalysis.level === 'high' ? 'high' :
-            impactAnalysis.level === 'medium' ? 'medium' : 'low'
+        level: impact.level,
+        score: impact.score,
+        affectedFiles: impact.affectedFiles.size,
+        reindexedAtoms: reindexResult.atoms?.length || 0
       },
-      changes: impactAnalysis.dependencyTree.map(tree => ({
+      changes: impact.dependencyTree.map(tree => ({
         function: tree.name,
         changes: tree.changes,
-        dependentsCount: tree.dependents.length,
-        dependents: tree.dependents.slice(0, 5)
+        dependentsCount: tree.dependents.length
       })),
-      validation: {
-        preEdit: true,
-        postEdit: true,
-        rolledBack: false,
-        impactAnalyzed: true,
-        exportConflicts: {
-          checked: true,
-          newExports: exportConflicts.newExports.length,
-          renamedExports: exportConflicts.renamedExports.length,
-          globalConflicts: exportConflicts.globalConflicts.length,
-          hasCriticalConflicts: exportConflicts.globalConflicts.some(c => c.isCritical)
-        }
-      },
-      warnings: exportConflicts.warnings.length > 0 ? exportConflicts.warnings : undefined
+      warnings: preValidation.exportConflicts.warnings.length > 0 ? preValidation.exportConflicts.warnings : undefined
     };
 
   } catch (error) {
     logger.error(`[Tool] atomic_edit failed: ${error.message}`);
-
-    if (error.message.includes('Syntax error') || error.message.includes('SyntaxError')) {
-      return {
-        error: 'SYNTAX_ERROR',
-        message: error.message,
-        file: filePath,
-        severity: 'critical',
-        canProceed: false
-      };
-    }
-
     return {
-      error: error.message,
+      error: error.message.includes('Syntax') ? 'SYNTAX_ERROR' : 'EXECUTION_ERROR',
+      message: error.message,
       file: filePath,
-      suggestion: 'Check file permissions and try again'
+      severity: 'critical'
     };
   }
 }
