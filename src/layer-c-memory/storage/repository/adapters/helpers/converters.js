@@ -15,7 +15,7 @@
  */
 export function atomToRow(atom) {
   const now = new Date().toISOString();
-  
+
   // Calcular lines_of_code de forma segura
   const lineStart = safeNumber(atom.line || atom.lineStart, 1);
   const lineEnd = safeNumber(atom.endLine || atom.lineEnd || atom.line, lineStart);
@@ -23,21 +23,21 @@ export function atomToRow(atom) {
     atom.linesOfCode || (lineEnd - lineStart + 1),
     1
   );
-  
+
   return {
     // Identidad - strings obligatorios
     id: safeString(atom.id, 'unknown::unknown'),
     name: safeString(atom.name, 'unknown'),
     atom_type: safeString(atom.type || atom.atomType, 'function'),
     file_path: safeString(atom.file || atom.filePath, 'unknown'),
-    
+
     // Vectores estructurales - integers
     line_start: lineStart,
     line_end: lineEnd,
     lines_of_code: linesOfCode,
     complexity: safeNumber(atom.complexity, 1),
     parameter_count: safeNumber(atom.signature?.params?.length, 0),
-    
+
     // Flags - integers (0/1)
     is_exported: safeBoolInt(atom.exported || atom.isExported),
     is_async: safeBoolInt(atom.isAsync || atom.async),
@@ -45,7 +45,7 @@ export function atomToRow(atom) {
     test_callback_type: safeString(atom.testCallbackType),
     has_error_handling: safeBoolInt(atom.hasErrorHandling),
     has_network_calls: safeBoolInt(atom.hasNetworkCalls),
-    
+
     // Clasificacion - purpose puede ser string o objeto { type, reason, confidence }
     archetype_type: safeString(atom.archetype?.type || atom.archetype),
     archetype_severity: safeNumber(atom.archetype?.severity),
@@ -53,7 +53,7 @@ export function atomToRow(atom) {
     purpose_type: safePurpose(atom.purpose),
     purpose_confidence: safeNumber(atom.purposeConfidence || atom.purpose?.confidence),
     is_dead_code: safeBoolInt(atom.isDeadCode || atom.purpose?.isDeadCode),
-    
+
     // Vectores matematicos - REAL numbers
     importance_score: safeNumber(atom.importanceScore || atom.derived?.fragilityScore, 0),
     coupling_score: safeNumber(atom.couplingScore || atom.derived?.couplingScore, 0),
@@ -62,20 +62,20 @@ export function atomToRow(atom) {
     propagation_score: safeNumber(atom.propagationScore || atom.derived?.changeRisk, 0),
     fragility_score: safeNumber(atom.derived?.fragilityScore, 0),
     testability_score: safeNumber(atom.derived?.testabilityScore, 0),
-    
+
     // Contadores - integers
     callers_count: safeNumber(atom.calledBy?.length, 0),
     callees_count: safeNumber(atom.calls?.length, 0),
     dependency_depth: safeNumber(atom.dependencyDepth, 0),
     external_call_count: safeNumber(atom.externalCallCount, 0),
-    
+
     // Temporales
     extracted_at: safeString(atom.extractedAt || atom.analyzedAt, now),
     updated_at: safeString(atom.updatedAt, now),
     change_frequency: safeNumber(atom.changeFrequency, 0),
     age_days: safeNumber(atom.ageDays, 0),
     generation: safeNumber(atom.generation, 1),
-    
+
     // JSON fields - siempre strings
     signature_json: safeJson(atom.signature),
     data_flow_json: safeJson(atom.dataFlow),
@@ -84,7 +84,10 @@ export function atomToRow(atom) {
     error_flow_json: safeJson(atom.errorFlow),
     performance_json: safeJson(atom.performance),
     dna_json: safeJson(atom.dna),
-    derived_json: safeJson(atom.derived),
+    derived_json: safeJson({
+      ...(atom.derived || {}),
+      semantic: atom.semantic || {}
+    }),
     _meta_json: safeJson(atom._meta || atom.meta),
 
     // Tree-sitter metadata (v0.9.62)
@@ -108,7 +111,7 @@ export function rowToAtom(row) {
     name: row.name,
     type: row.atom_type,
     filePath: row.file_path,
-    
+
     line: row.line_start,
     lineStart: row.line_start,
     endLine: row.line_end,
@@ -116,14 +119,14 @@ export function rowToAtom(row) {
     linesOfCode: row.lines_of_code,
     complexity: row.complexity,
     parameterCount: row.parameter_count,
-    
+
     isExported: Boolean(row.is_exported),
     isAsync: Boolean(row.is_async),
     isTestCallback: Boolean(row.is_test_callback),
     testCallbackType: row.test_callback_type,
     hasErrorHandling: Boolean(row.has_error_handling),
     hasNetworkCalls: Boolean(row.has_network_calls),
-    
+
     archetype: row.archetype_type ? {
       type: row.archetype_type,
       severity: row.archetype_severity,
@@ -132,7 +135,7 @@ export function rowToAtom(row) {
     purpose: row.purpose_type,
     purposeConfidence: row.purpose_confidence,
     isDeadCode: Boolean(row.is_dead_code),
-    
+
     // Vectores matematicos
     importanceScore: row.importance_score,
     couplingScore: row.coupling_score,
@@ -141,16 +144,16 @@ export function rowToAtom(row) {
     propagationScore: row.propagation_score,
     fragilityScore: row.fragility_score,
     testabilityScore: row.testability_score,
-    
+
     // Contadores
     calls: safeParseJson(row.calls_json, []) || [],
     calledBy: safeParseJson(row.called_by_json, []) || [],
     dependencyDepth: row.dependency_depth,
     externalCallCount: row.external_call_count,
-    
+
     // Legacy compatibility - función declarada vs arrow vs método
     functionType: row.function_type || 'declaration',
-    
+
     // JSON parseados
     signature: safeParseJson(row.signature_json),
     dataFlow: safeParseJson(row.data_flow_json),
@@ -159,6 +162,7 @@ export function rowToAtom(row) {
     performance: safeParseJson(row.performance_json),
     dna: safeParseJson(row.dna_json),
     derived: safeParseJson(row.derived_json),
+    semantic: safeParseJson(row.derived_json)?.semantic || {},
 
     // Tree-sitter metadata (v0.9.62)
     sharedStateAccess: safeParseJson(row.shared_state_json, []),

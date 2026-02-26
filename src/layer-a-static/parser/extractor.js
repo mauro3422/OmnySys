@@ -12,7 +12,7 @@ import path from 'path';
 import { extractImports } from './extractors/imports.js';
 import { extractExports } from './extractors/exports.js';
 import { extractTypeScriptMetadata } from './extractors/typescript.js';
-import { extractFunctions } from './extractors/functions.js';
+import { extractFunctions } from './extractors/functions/index.js';
 import { extractClasses } from './extractors/classes.js';
 import { extractIdentifierRefs } from './extractors/identifiers.js';
 import { walk, text, FUNCTION_NODE_TYPES } from './extractors/utils.js';

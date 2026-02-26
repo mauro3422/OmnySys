@@ -26,23 +26,23 @@ export function extractImportsFromCode(code) {
  */
 export function extractExportsFromCode(code) {
   const exports = [];
-  
+
   const exportFunctionRegex = /export\s+(?:async\s+)?function\s+(\w+)/g;
   let match;
   while ((match = exportFunctionRegex.exec(code)) !== null) {
     exports.push({ type: 'function', name: match[1] });
   }
-  
+
   const exportConstRegex = /export\s+const\s+(\w+)/g;
   while ((match = exportConstRegex.exec(code)) !== null) {
     exports.push({ type: 'const', name: match[1] });
   }
-  
+
   const exportClassRegex = /export\s+(?:default\s+)?class\s+(\w+)/g;
   while ((match = exportClassRegex.exec(code)) !== null) {
     exports.push({ type: 'class', name: match[1] });
   }
-  
+
   const exportNamedRegex = /export\s*{\s*([^}]+)\s*}/g;
   while ((match = exportNamedRegex.exec(code)) !== null) {
     const names = match[1].split(',').map(n => n.trim().split(/\s+as\s+/)[0].trim());
@@ -50,24 +50,26 @@ export function extractExportsFromCode(code) {
       if (name) exports.push({ type: 'named', name });
     }
   }
-  
+
   return exports;
 }
 
 /**
  * Verifica si los exports del nuevo código colisionan con existentes
  */
-export async function checkExportConflictsInGraph(exports, projectPath) {
+export async function checkExportConflictsInGraph(exports, projectPath, excludePath = null) {
   const conflicts = [];
-  
+
   try {
     const allAtoms = await getAllAtoms(projectPath);
-    
+
     for (const exportItem of exports) {
-      const existing = allAtoms.filter(atom => 
-        atom.name === exportItem.name && atom.isExported
+      const existing = allAtoms.filter(atom =>
+        atom.name === exportItem.name &&
+        atom.isExported &&
+        (!excludePath || !excludePath.includes(atom.filePath))
       );
-      
+
       if (existing.length > 0) {
         conflicts.push({
           name: exportItem.name,
@@ -84,7 +86,7 @@ export async function checkExportConflictsInGraph(exports, projectPath) {
   } catch (error) {
     logger.warn(`[CheckExports] Error checking conflicts: ${error.message}`);
   }
-  
+
   return conflicts;
 }
 
@@ -98,20 +100,20 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
     globalConflicts: [],
     warnings: []
   };
-  
+
   try {
     const oldExports = extractExportsFromCode(oldString);
     const newExports = extractExportsFromCode(newString);
-    
-    const addedExports = newExports.filter(ne => 
+
+    const addedExports = newExports.filter(ne =>
       !oldExports.some(oe => oe.name === ne.name)
     );
-    
+
     if (oldExports.length > 0 && newExports.length > 0) {
-      const removedFromOld = oldExports.filter(oe => 
+      const removedFromOld = oldExports.filter(oe =>
         !newExports.some(ne => ne.name === oe.name)
       );
-      
+
       if (removedFromOld.length === 1 && addedExports.length === 1) {
         conflicts.renamedExports.push({
           from: removedFromOld[0].name,
@@ -120,22 +122,22 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
         });
       }
     }
-    
+
     conflicts.newExports = addedExports;
-    
+
     const allAtoms = await getAllAtoms(projectPath);
     const exportsToCheck = [...addedExports, ...conflicts.renamedExports.map(r => ({ name: r.to, type: r.type }))];
-    
+
     for (const exportItem of exportsToCheck) {
-      const existing = allAtoms.filter(atom => 
-        atom.name === exportItem.name && 
+      const existing = allAtoms.filter(atom =>
+        atom.name === exportItem.name &&
         atom.isExported &&
         !filePath.includes(atom.filePath)
       );
-      
+
       if (existing.length > 0) {
         const critical = existing.filter(e => (e.calledBy?.length || 0) > 0);
-        
+
         conflicts.globalConflicts.push({
           name: exportItem.name,
           type: exportItem.type,
@@ -148,7 +150,7 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
           })),
           isCritical: critical.length > 0
         });
-        
+
         if (critical.length > 0) {
           conflicts.warnings.push(`❌ CRITICAL: "${exportItem.name}" already exists and is used by ${critical[0].calledBy?.length || 0} callers`);
         } else {
@@ -156,10 +158,10 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
         }
       }
     }
-    
+
   } catch (error) {
     logger.warn(`[CheckEditConflicts] Error: ${error.message}`);
   }
-  
+
   return conflicts;
 }

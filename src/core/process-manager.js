@@ -150,7 +150,7 @@ export async function startLLMServer(scriptPath) {
 
   logger.info('🚀 Starting LLM Server...');
 
-  const process = spawn('cmd.exe', ['/c', 'start', '/min', scriptPath], {
+  const process = spawn('cmd.exe', ['/c', 'start', '/b', scriptPath], {
     detached: true,
     stdio: 'ignore',
     windowsHide: true

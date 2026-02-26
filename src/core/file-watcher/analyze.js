@@ -32,6 +32,8 @@ import {
 export { _detectChangeType, _calculateContentHash };
 
 
+import { handleRemovedAtoms, filterProtectedAtoms } from './analyze-logic.js';
+
 /**
  * Analiza un archivo individual
  */
@@ -49,62 +51,28 @@ export async function analyzeFile(filePath, fullPath) {
   const molecularStructure = extractMolecularStructure(filePath, parsed.source || '', parsed, metadata);
   const moleculeAtoms = molecularStructure?.atoms ?? [];
 
-  // Detectar funciones removidas
-  // FIX: includeRemoved=true para detectar átomos que ya estaban marcados como removed
+  // 1. Manejar átomos removidos
   const previousAtoms = await loadAtoms(this.rootPath, filePath, { includeRemoved: true });
-  const newAtomNames = new Set(moleculeAtoms.filter(a => a.name).map(a => a.name));
-  for (const prev of previousAtoms) {
-    if (prev.name && !newAtomNames.has(prev.name) && prev.lineage?.status !== 'removed') {
-      await saveAtom(this.rootPath, filePath, prev.name, _markAtomAsRemoved(prev));
-    }
-  }
+  const newAtomNames = await handleRemovedAtoms(this.rootPath, filePath, moleculeAtoms, previousAtoms, _markAtomAsRemoved, saveAtom);
 
-  // 🛡️ PROTECCIÓN: Ignorar átomos recientemente editados por atomic-edit
-  const RECENT_EDIT_THRESHOLD = 2000; // 2 segundos
-  const now = Date.now();
-  const atomsToSave = [];
-  const atomsToSkip = [];
+  // 2. Filtrar protegidos (Atomic Edit Protection)
+  const { atomsToSave } = filterProtectedAtoms(moleculeAtoms, previousAtoms);
 
-  for (const atom of moleculeAtoms) {
-    const prevAtom = previousAtoms.find(p => p.name === atom.name);
-    if (prevAtom &&
-      prevAtom._meta?.source === 'atomic-edit' &&
-      prevAtom._meta?.lastModified &&
-      (now - prevAtom._meta.lastModified) < RECENT_EDIT_THRESHOLD) {
-      atomsToSkip.push(atom.name);
-      logger.debug(`[PROTECTED] Skipping ${atom.name} - recently edited by atomic-edit (${now - prevAtom._meta.lastModified}ms ago)`);
-    } else {
-      atomsToSave.push(atom);
-    }
-  }
-
-  if (atomsToSkip.length > 0) {
-    logger.info(`[FILE_WATCHER] Protected ${atomsToSkip.length} atoms from atomic-edit: ${atomsToSkip.join(', ')}`);
-  }
-
-  // 🆕 Sistema de guardado incremental
-  // Guardar solo los campos que realmente cambiaron
-  logger.debug(`🔄 About to save ${atomsToSave.length} atoms incrementally for ${filePath}`);
+  // 3. Guardado incremental
   const saveResults = await saveAtomsIncremental(this.rootPath, filePath, atomsToSave, { source: 'file-watcher' });
-  logger.debug(`✅ Incremental save result: ${JSON.stringify(saveResults)}`);
-
   if (saveResults.updated > 0) {
-    logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated, ${saveResults.totalFieldsChanged} fields)`);
-  } else {
-    logger.debug(`ℹ️ No atoms updated for ${filePath} (created: ${saveResults.created}, unchanged: ${saveResults.unchanged})`);
+    logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated)`);
   }
 
-  // 🧹 LIMPIEZA: Eliminar archivos JSON de átomos que ya no existen en el código
+  // 4. Limpieza de huérfanos e invalidación selectiva
   await cleanupOrphanedAtomFiles(this.rootPath, filePath, newAtomNames);
 
-  // 🆕 Invalidación selectiva de caché para átomos modificados
+  const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
+  const vm = new AtomVersionManager(this.rootPath);
+
   for (const atom of moleculeAtoms) {
     const atomId = `${filePath}::${atom.name}`;
-    // Detectar campos cambiados usando el version manager
-    const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
-    const vm = new AtomVersionManager(this.rootPath);
     const changes = await vm.detectChanges(atomId, atom);
-
     if (changes.hasChanges && !changes.isNew) {
       await invalidateAtomCaches(atomId, changes.fields);
     }

@@ -16,6 +16,8 @@ import { buildVariableAtom } from './atom-extractor/variable-atom-builder.js';
 import { runAtomExtractors } from './atom-extractor/extractor-runner.js';
 import { extractDataFlowSafe } from './atom-extractor/data-flow-helper.js';
 
+import { semanticAnalyzer } from '#core/analysis/semantic-analyzer/index.js';
+
 /**
  * Extract metadata for all atoms from file info
  * @param {Object} fileInfo - Parsed file info with functions
@@ -83,6 +85,9 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     imports,
     ...extractorResults
   });
+
+  // NEW: Integrated Core Semantic Analysis (Tier 1.5)
+  atomMetadata.semantic = await semanticAnalyzer.analyzeAtom(atomMetadata, functionCode);
 
   enrichWithDNA(atomMetadata, functionInfo.name);
 

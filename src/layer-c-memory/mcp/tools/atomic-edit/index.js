@@ -234,7 +234,7 @@ export async function atomic_write(args, context) {
     }
 
     const exports = extractExportsFromCode(content);
-    const exportConflicts = await checkExportConflictsInGraph(exports, projectPath);
+    const exportConflicts = await checkExportConflictsInGraph(exports, projectPath, filePath);
 
     if (exportConflicts.length > 0) {
       const criticalConflicts = exportConflicts.filter(c =>

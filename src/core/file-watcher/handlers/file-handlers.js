@@ -16,13 +16,13 @@ const logger = createLogger('OmnySys:file-watcher:handlers');
  */
 export async function handleFileCreated(filePath, fullPath) {
   logger.info(`[CREATED] ${filePath}`);
-  
+
   // Analizar y agregar al indice
   await this.analyzeAndIndex(filePath, fullPath);
-  
+
   // Enriquecer atomos con ancestry
   await this.enrichAtomsWithAncestry(filePath);
-  
+
   this.emit('file:created', { filePath });
 }
 
@@ -33,13 +33,13 @@ export async function enrichAtomsWithAncestry(filePath) {
   const { getShadowRegistry } = await import('../../../layer-c-memory/shadow-registry/index.js');
   const registry = getShadowRegistry(this.dataPath);
   await registry.initialize();
-  
+
   const atoms = await this.getAtomsForFile(filePath);
-  
+
   for (const atom of atoms) {
     try {
       const enriched = await registry.enrichWithAncestry(atom);
-      
+
       if (enriched.ancestry?.replaced) {
         logger.info(`[ANCESTRY] ${atom.id} enriched from ${enriched.ancestry.replaced}`);
         await this.saveAtom(enriched, filePath);
@@ -74,7 +74,7 @@ export async function handleFileModified(filePath, fullPath) {
   }
 
   logger.info(`[MODIFIED] ${filePath}`);
-  
+
   // Invalidar cache si existe cacheInvalidator
   if (this.cacheInvalidator) {
     try {
@@ -88,7 +88,7 @@ export async function handleFileModified(filePath, fullPath) {
       logger.error(`❌ Error during cache invalidation: ${filePath}`, error.message);
     }
   }
-  
+
   await this.analyzeAndIndex(filePath, fullPath, true);
   this.emit('file:modified', { filePath });
 }
@@ -100,12 +100,12 @@ export async function handleFileDeleted(filePath) {
   logger.info(`[DELETING] ${filePath}`);
 
   const fs = await import('fs/promises');
-  const fullPath = this.rootPath ? 
-    (filePath.startsWith('/') || filePath.match(/^[A-Z]:/)) ? filePath : `${this.rootPath}/${filePath}`.replace(/\\/g, '/') : 
+  const fullPath = this.rootPath ?
+    (filePath.startsWith('/') || filePath.match(/^[A-Z]:/)) ? filePath : `${this.rootPath}/${filePath}`.replace(/\\/g, '/') :
     filePath;
-  
+
   const fileExists = await fs.access(fullPath).then(() => true).catch(() => false);
-  
+
   if (!fileExists) {
     logger.debug(`[SKIP] File already deleted on disk: ${filePath}`);
     await this.removeFromIndex(filePath);
@@ -139,14 +139,14 @@ export async function createShadowsForFile(filePath) {
   const { getShadowRegistry } = await import('../../../layer-c-memory/shadow-registry/index.js');
   const registry = getShadowRegistry(this.dataPath);
   await registry.initialize();
-  
+
   const atoms = await this.getAtomsForFile(filePath);
-  
+
   if (!atoms || atoms.length === 0) {
     logger.debug(`[SHADOW] No atoms found for deleted file: ${filePath}`);
     return 0;
   }
-  
+
   let created = 0;
   for (const atom of atoms) {
     try {
@@ -161,7 +161,7 @@ export async function createShadowsForFile(filePath) {
       logger.debug(`[SHADOW SKIP] ${atom.id}: ${error.message}`);
     }
   }
-  
+
   return created;
 }
 
@@ -185,14 +185,14 @@ export async function getRecentCommits() {
   const { execFile } = await import('child_process');
   const { promisify } = await import('util');
   const path = await import('path');
-  
+
   const execFileAsync = promisify(execFile);
   const cwd = this.dataPath ? path.dirname(this.dataPath) : process.cwd();
-  
+
   try {
     const { stdout } = await execFileAsync(
       'git', ['log', '--oneline', '-n', '10'],
-      { cwd, timeout: 3000 }
+      { cwd, timeout: 3000, windowsHide: true }
     );
     return stdout.trim().split('\n').filter(Boolean).map(line => {
       const spaceIdx = line.indexOf(' ');

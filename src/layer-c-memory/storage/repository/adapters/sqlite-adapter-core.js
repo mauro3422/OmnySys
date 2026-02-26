@@ -11,7 +11,7 @@ import { AtomRepository } from '../atom-repository.js';
 import { connectionManager } from '../../database/connection.js';
 import { createLogger } from '#utils/logger.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
-import { saveSystemMap, loadSystemMap } from './helpers/system-map.js';
+import { persistSystemMapToDb, retrieveSystemMapFromDb } from './helpers/system-map.js';
 
 const logger = createLogger('OmnySys:Storage:SQLiteAdapter');
 
@@ -30,12 +30,12 @@ export class SQLiteAdapterCore extends AtomRepository {
 
   initialize(projectPath) {
     this._logger.info('[SQLiteAdapter] Initializing...');
-    
+
     connectionManager.initialize(projectPath);
     this.db = connectionManager.getDatabase();
     this._prepareStatements();
     this.initialized = true;
-    
+
     this._logger.info('[SQLiteAdapter] Initialized successfully');
   }
 
@@ -104,11 +104,11 @@ export class SQLiteAdapterCore extends AtomRepository {
 
   // System Map
   saveSystemMap(systemMap) {
-    saveSystemMap(this.db, connectionManager, systemMap, this._logger);
+    persistSystemMapToDb(this.db, connectionManager, systemMap, this._logger);
   }
 
   loadSystemMap() {
-    return loadSystemMap(this.db);
+    return retrieveSystemMapFromDb(this.db);
   }
 }
 

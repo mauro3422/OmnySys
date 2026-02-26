@@ -58,7 +58,7 @@ export async function ensureLLMAvailable(aiConfig, options = {}) {
         const llmProcess = spawn('cmd.exe', ['/c', llmServerPath], {
           detached: true,
           stdio: 'ignore',
-          windowsHide: false
+          windowsHide: true
         });
         llmProcess.unref();
         started = true;

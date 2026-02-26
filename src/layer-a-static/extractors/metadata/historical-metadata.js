@@ -31,7 +31,7 @@ export function extractHistoricalMetadata(filePath) {
 
   try {
     // Check if git is available
-    execSync('git --version', { stdio: 'ignore' });
+    execSync('git --version', { stdio: 'ignore', windowsHide: true });
   } catch {
     // Git not available
     return defaultResult;
@@ -41,7 +41,7 @@ export function extractHistoricalMetadata(filePath) {
     // Get commit count for file
     const commitCountStr = execSync(
       `git log --oneline -- "${filePath}" | wc -l`,
-      { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+      { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
     ).trim();
     const commitCount = parseInt(commitCountStr, 10) || 0;
 
@@ -50,7 +50,7 @@ export function extractHistoricalMetadata(filePath) {
     try {
       const lastModifiedStr = execSync(
         `git log -1 --format=%aI -- "${filePath}"`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
       ).trim();
       lastModified = lastModifiedStr || null;
     } catch {
@@ -62,7 +62,7 @@ export function extractHistoricalMetadata(filePath) {
     try {
       const firstCommitStr = execSync(
         `git log --reverse --format=%aI -- "${filePath}" | head -1`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
       ).trim();
 
       if (firstCommitStr) {
@@ -79,7 +79,7 @@ export function extractHistoricalMetadata(filePath) {
     try {
       const contributorsStr = execSync(
         `git log --format=%an -- "${filePath}" | sort -u`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
       ).trim();
       contributors = contributorsStr ? contributorsStr.split('\n').filter(Boolean) : [];
     } catch {
@@ -91,7 +91,7 @@ export function extractHistoricalMetadata(filePath) {
     try {
       const recentStr = execSync(
         `git log --since="30 days ago" --oneline -- "${filePath}" | wc -l`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
       ).trim();
       recentChanges = parseInt(recentStr, 10) || 0;
     } catch {
@@ -103,7 +103,7 @@ export function extractHistoricalMetadata(filePath) {
     try {
       const bugFixStr = execSync(
         `git log --grep="fix" -i --oneline -- "${filePath}" | wc -l`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
       ).trim();
       bugFixCommits = parseInt(bugFixStr, 10) || 0;
     } catch {
