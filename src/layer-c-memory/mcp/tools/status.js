@@ -74,10 +74,22 @@ export async function get_recent_errors(args, context) {
   const warnings = logs.filter(l => l.level === 'warn');
   const errors = logs.filter(l => l.level === 'error');
 
+  // Categorización inteligente de incidentes
+  const incidents = {
+    atomic: errors.filter(l => l.message.includes('atomic') || l.message.includes('AutoFix')).length,
+    transaction: errors.filter(l => l.message.includes('transaction')).length,
+    database: errors.filter(l => l.message.includes('SQLite') || l.message.includes('database')).length,
+    others: 0
+  };
+  incidents.others = errors.length - (incidents.atomic + incidents.transaction + incidents.database);
+
   return {
-    count: logs.length,
-    warnings: warnings.length,
-    errors: errors.length,
+    summary: {
+      total: logs.length,
+      warnings: warnings.length,
+      errors: errors.length,
+      incidents
+    },
     logs: logs.map(l => ({
       level: l.level,
       message: l.message,

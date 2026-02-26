@@ -25,7 +25,7 @@ export {
 } from './validators/index.js';
 
 // === History ===
-export { HistoryManager } from './history/index.js';
+export { HistoryManager, TransactionManager } from './history/index.js';
 
 // === Execution ===
 export {

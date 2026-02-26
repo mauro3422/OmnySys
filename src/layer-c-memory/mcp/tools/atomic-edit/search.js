@@ -18,12 +18,12 @@ const logger = createLogger('OmnySys:atomic:search');
  */
 export async function findAtomsByName(atomName, projectPath, options = {}) {
   const atoms = [];
-  
+
   try {
     const repo = getRepository(projectPath);
-    
+
     const results = repo.findByName(atomName);
-    
+
     for (const atom of results.slice(0, 20)) {
       atoms.push({
         id: atom.id,
@@ -36,11 +36,11 @@ export async function findAtomsByName(atomName, projectPath, options = {}) {
         purpose: atom.purpose
       });
     }
-    
+
   } catch (error) {
     logger.warn(`[FindAtomsByName] Error buscando ${atomName}: ${error.message}`);
   }
-  
+
   return atoms;
 }
 
@@ -53,41 +53,47 @@ export async function findAtomsByName(atomName, projectPath, options = {}) {
  */
 export async function findCallersEfficient(functionName, projectPath, excludeFile = null) {
   const callers = [];
-  
+
   try {
     const repo = getRepository(projectPath);
-    
+
     const atomIdPattern = `::${functionName}`;
-    
+
     const allAtoms = repo.query({ limit: 1000 });
-    
+
     for (const atom of allAtoms) {
       if (excludeFile && atom.file_path?.includes(excludeFile)) continue;
-      
+
       const calls = atom.calls;
       if (!calls || !Array.isArray(calls)) continue;
-      
-      const matchingCall = calls.find(c => 
-        c.callee === functionName || 
+
+      const matchingCall = calls.find(c =>
+        c.callee === functionName ||
         c.callee?.endsWith(atomIdPattern) ||
-        c.target === functionName
+        c.target === functionName ||
+        c.name === functionName
       );
-      
+
       if (matchingCall) {
+        const argumentCount = matchingCall.argumentCount !== undefined ? matchingCall.argumentCount :
+          (matchingCall.args ? matchingCall.args.length :
+            (matchingCall.arguments ? matchingCall.arguments.length : 0));
+
         callers.push({
           name: atom.name,
-          filePath: atom.file_path,
+          filePath: atom.filePath,
           line: atom.line,
-          argumentCount: matchingCall.argumentCount || matchingCall.args?.length
+          code: matchingCall.code || JSON.stringify(matchingCall),
+          argumentCount: argumentCount
         });
-        
+
         if (callers.length >= 20) break;
       }
     }
-    
+
   } catch (error) {
     logger.warn(`[FindCallers] Error buscando callers de ${functionName}: ${error.message}`);
   }
-  
+
   return callers.slice(0, 20);
 }

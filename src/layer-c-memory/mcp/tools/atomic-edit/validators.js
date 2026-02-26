@@ -16,7 +16,7 @@ const logger = createLogger('OmnySys:atomic:validators');
 export async function validateImportsInEdit(filePath, newString, projectPath) {
   const imports = extractImportsFromCode(newString);
   const brokenImports = [];
-  
+
   for (const importPath of imports) {
     if (importPath.startsWith('.') || importPath.startsWith('#')) {
       const check = await checkImportExists(importPath, filePath, projectPath);
@@ -29,7 +29,7 @@ export async function validateImportsInEdit(filePath, newString, projectPath) {
       }
     }
   }
-  
+
   return brokenImports;
 }
 
@@ -50,53 +50,65 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
       atoms: []
     }
   };
-  
+
   try {
     const modifiedAtoms = currentAtoms.filter(current => {
       const previous = previousAtoms.find(p => p.name === current.name);
       if (!previous) return false;
-      
+
       const currentRequired = (current.signature?.params || []).filter(p => !p.optional).length;
       const previousRequired = (previous.signature?.params || []).filter(p => !p.optional).length;
-      
+
       return currentRequired !== previousRequired;
     });
-    
+
     if (modifiedAtoms.length === 0) {
       logger.info('[PostEditOptimized] No signature changes detected');
       return result;
     }
-    
+
     logger.info(`[PostEditOptimized] Checking ${modifiedAtoms.length} modified functions`);
-    
+
     for (const atom of modifiedAtoms) {
       const requiredParams = (atom.signature?.params || []).filter(p => !p.optional).length;
-      
+      const signatureDesc = atom.signature?.params?.map(p => p.name + (p.optional ? '?' : '')).join(', ') || '';
+
       const callers = await findCallersEfficient(atom.name, projectPath, filePath);
-      
+
       logger.info(`[PostEditOptimized] ${atom.name}: ${callers.length} callers found`);
-      
+
       for (const caller of callers) {
+        console.log(`[Validator] Caller ${caller.name} (${caller.filePath}): args=${caller.argumentCount}, required=${requiredParams}`);
         if (caller.argumentCount !== undefined && caller.argumentCount < requiredParams) {
+          console.log(`[Validator] !!! Broken call detected in ${caller.filePath}:${caller.line}`);
           result.valid = false;
-          result.brokenCallers.push({
-            caller: caller.name,
+
+          const proposal = {
             file: caller.filePath,
+            symbol: caller.name,
             line: caller.line,
-            reason: `Passes ${caller.argumentCount} args but ${atom.name} requires ${requiredParams}`,
+            reason: `Missing arguments for ${atom.name}(${signatureDesc})`,
+            oldCode: caller.code,
+            // Sugerencia dinámica basada en la diferencia de argumentos
+            newCode: caller.code // El agente o usuario puede usar esto como base para el fix
+          };
+
+          result.brokenCallers.push({
+            ...proposal,
             severity: 'critical'
           });
         }
       }
     }
-    
+
     result.affectedFiles = new Set(result.brokenCallers.map(c => c.file)).size;
-    
+    // Si hay fallos, el LLM recibirá los brokenCallers con su contexto
+
   } catch (error) {
     logger.error(`[PostEditOptimized] Error: ${error.message}`);
     result.errors.push(`Validation error: ${error.message}`);
   }
-  
+
   return result;
 }
 

@@ -17,6 +17,7 @@ export async function analyzeBlastRadius(filePath, projectPath, symbolName = nul
       return {
         level: blastResults.level,
         score: blastResults.score,
+        classification: blastResults.classification,
         maxCallers: blastResults.directDependents,
         affectedFilesCount: blastResults.affectedFiles,
         warning: blastResults.recommendation
@@ -36,6 +37,7 @@ export async function analyzeBlastRadius(filePath, projectPath, symbolName = nul
     return {
       level: highestBlast.level,
       score: highestBlast.score,
+      classification: highestBlast.classification,
       maxCallers: highestBlast.directDependents,
       affectedFilesCount: highestBlast.affectedFiles,
       warning: highestBlast.recommendation

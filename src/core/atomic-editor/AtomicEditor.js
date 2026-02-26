@@ -14,7 +14,7 @@ import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger.js';
 import { SyntaxValidator, SafetyValidator } from './validators/index.js';
 import { ModifyOperation, InsertOperation, DeleteOperation } from './operations/index.js';
-import { HistoryManager } from './history/history-manager.js';
+import { HistoryManager, TransactionManager } from './history/index.js';
 import { executeOperation, validateWrite } from './execution/operation-executor.js';
 import { updateAtom, emitModificationSuccess, emitAtomCreated } from './utils/atom-updater.js';
 
@@ -72,8 +72,29 @@ export class AtomicEditor extends EventEmitter {
     this.syntaxValidator = new SyntaxValidator(projectPath);
     this.safetyValidator = new SafetyValidator(projectPath, options.safety);
 
-    // Initialize history manager
+    // Initialize history and transactions
     this.history = new HistoryManager(options.maxHistorySize || 50);
+    this.transactions = new TransactionManager(this);
+  }
+
+  // ==========================================
+  // Public API: Transitions & Transactions
+  // ==========================================
+
+  async beginTransaction(name) {
+    return this.transactions.beginTransaction(name);
+  }
+
+  async commitTransaction() {
+    return this.transactions.commitTransaction();
+  }
+
+  async rollbackTransaction() {
+    return this.transactions.rollbackTransaction();
+  }
+
+  async runInTransaction(name, task) {
+    return this.transactions.runInTransaction(name, task);
   }
 
   // ==========================================
@@ -251,9 +272,10 @@ export class AtomicEditor extends EventEmitter {
       skipSafety: options.skipSafety
     });
 
-    // Add to history
+    // Add to history and transaction
     if (this.options.enableUndo && result.undoData) {
       this.history.add(operation, result.undoData);
+      this.transactions.addStep(operation.filePath, result.undoData);
     }
 
     // Post-execution updates

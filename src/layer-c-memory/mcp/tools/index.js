@@ -57,8 +57,11 @@ import { get_module_overview } from './get-module-overview.js';
 import { detect_race_conditions } from './detect-race-conditions.js';
 import { simulate_data_journey } from './simulate-data-journey.js';
 import { find_symbol_instances } from './find-symbol-instances.js';
-import { 
-  generate_tests, 
+import { move_file } from './move-file.js';
+import { fix_imports } from './fix-imports.js';
+import { execute_solid_split } from './execute-solid-split.js';
+import {
+  generate_tests,
   generate_batch_tests
 } from './generate-tests/index.js';
 
@@ -113,6 +116,44 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Path to the entry function file' },
         symbolName: { type: 'string', description: 'Name of the entry function to simulate from' },
         maxDepth: { type: 'number', description: 'Maximum hops to walk (default: 6)', default: 6 }
+      },
+      required: ['filePath', 'symbolName']
+    }
+  },
+  // ── REFACTORING & MOVE (Fase 11) ──────────────────────────────────────────
+  {
+    name: 'move_file',
+    description: 'Mueve un archivo físicamente y actualiza todas sus referencias (imports) en el resto del proyecto de forma atómica y segura.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        oldPath: { type: 'string', description: 'Ruta actual del archivo (relativa al proyecto)' },
+        newPath: { type: 'string', description: 'Nueva ruta del archivo (relativa al proyecto)' }
+      },
+      required: ['oldPath', 'newPath']
+    }
+  },
+  {
+    name: 'fix_imports',
+    description: 'Resuelve automáticamente los imports rotos en un archivo buscando los símbolos en el grafo global del proyecto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path del archivo a reparar' },
+        execute: { type: 'boolean', description: 'Si es true, aplica los cambios atómicamente. Si es false (default), solo devuelve las sugerencias de reparación.', default: false }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'execute_solid_split',
+    description: 'Analiza una función compleja y genera una propuesta de división SOLID. Permite previsualizar los cambios antes de aplicarlos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path del archivo contenedor' },
+        symbolName: { type: 'string', description: 'Nombre de la función a dividir' },
+        execute: { type: 'boolean', description: 'Si es true, aplica los cambios atómicamente. Si es false (default), solo devuelve la propuesta.', default: false }
       },
       required: ['filePath', 'symbolName']
     }
@@ -269,8 +310,8 @@ export const toolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        patternType: { 
-          type: 'string', 
+        patternType: {
+          type: 'string',
           enum: ['all', 'duplicates', 'complexity', 'archetype', 'god-functions', 'fragile-network', 'circular', 'test-coverage', 'architectural-debt'],
           description: 'Type of pattern to detect. architectural-debt: finds files >250 lines with multiple responsibilities, duplicates, or high complexity',
           default: 'all'
@@ -363,7 +404,8 @@ export const toolDefinitions = [
       properties: {
         filePath: { type: 'string', description: 'Path to the file to edit' },
         oldString: { type: 'string', description: 'Text to be replaced' },
-        newString: { type: 'string', description: 'New text to insert' }
+        newString: { type: 'string', description: 'New text to insert' },
+        autoFix: { type: 'boolean', description: 'Si es true, intenta arreglar automáticamente las firmas de las funciones que dependen de este átomo tras la edición.', default: false }
       },
       required: ['filePath', 'oldString', 'newString']
     }
@@ -390,7 +432,8 @@ export const toolDefinitions = [
       type: 'object',
       properties: {
         filePath: { type: 'string', description: 'Path to the new file' },
-        content: { type: 'string', description: 'Full content of the file' }
+        content: { type: 'string', description: 'Full content of the file' },
+        autoFix: { type: 'boolean', description: 'Si es true, intenta resolver conflictos de exportación automáticamente si el archivo tiene duplicados.', default: false }
       },
       required: ['filePath', 'content']
     }
@@ -456,19 +499,19 @@ export const toolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        symbolName: { 
-          type: 'string', 
-          description: 'Name of the function or variable to find (e.g., "detectAtomPurpose"). Not required if autoDetect=true.' 
+        symbolName: {
+          type: 'string',
+          description: 'Name of the function or variable to find (e.g., "detectAtomPurpose"). Not required if autoDetect=true.'
         },
-        autoDetect: { 
-          type: 'boolean', 
-          default: false, 
-          description: 'Auto-detect all duplicate functions in the project. When true, symbolName is optional and the tool scans all atoms for duplicates automatically.' 
+        autoDetect: {
+          type: 'boolean',
+          default: false,
+          description: 'Auto-detect all duplicate functions in the project. When true, symbolName is optional and the tool scans all atoms for duplicates automatically.'
         },
-        includeSimilar: { 
-          type: 'boolean', 
-          default: false, 
-          description: 'Also include functions with similar names' 
+        includeSimilar: {
+          type: 'boolean',
+          default: false,
+          description: 'Also include functions with similar names'
         }
       }
     }
@@ -480,13 +523,13 @@ export const toolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { 
-          type: 'string', 
-          description: 'Path to the file to analyze (e.g., "src/utils/math.js" or "tests/factories/builders.js")' 
+        filePath: {
+          type: 'string',
+          description: 'Path to the file to analyze (e.g., "src/utils/math.js" or "tests/factories/builders.js")'
         },
-        functionName: { 
-          type: 'string', 
-          description: 'Name of the function to analyze (optional - if not provided, analyzes entire file)' 
+        functionName: {
+          type: 'string',
+          description: 'Name of the function to analyze (optional - if not provided, analyzes entire file)'
         },
         className: {
           type: 'string',
@@ -590,8 +633,8 @@ export const toolHandlers = {
   get_removed_atoms,
   // Utilidades
   search_files,
-    get_server_status,
-    get_recent_errors,
+  get_server_status,
+  get_recent_errors,
   restart_server,
   // Editor atómico
   atomic_edit,
@@ -612,5 +655,10 @@ export const toolHandlers = {
   // Concurrencia
   detect_race_conditions,
   // Simulación
-  simulate_data_journey
+  simulate_data_journey,
+  // Movimiento & Corregir imports (Fase 11)
+  move_file,
+  fix_imports,
+  // Normalizador SOLID (Fase 12)
+  execute_solid_split
 };

@@ -14,6 +14,9 @@
  * NO puede haber: undefined, NaN, Infinity, objects, arrays, functions
  */
 export function atomToRow(atom) {
+  if (atom.name === 'testFunction') {
+    console.log(`[atomToRow] Debugging ${atom.id}: signature=${JSON.stringify(atom.signature)}`);
+  }
   const now = new Date().toISOString();
 
   // Calcular lines_of_code de forma segura

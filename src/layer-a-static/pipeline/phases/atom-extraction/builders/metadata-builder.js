@@ -126,6 +126,12 @@ export function buildAtomMetadata({
     // Complexity
     complexity,
 
+    // Signature (Fase 10 integration)
+    signature: {
+      params: functionInfo.params || [],
+      returnType: functionInfo.returnType || 'any'
+    },
+
     // Side effects
     ...buildSideEffectFields(se, dataFlowV2),
 
@@ -165,7 +171,7 @@ export function buildAtomMetadata({
     sharedStateAccess: treeSitter?.sharedStateAccess || [],
     eventEmitters: treeSitter?.eventEmitters || [],
     eventListeners: treeSitter?.eventListeners || [],
-    scopeType: treeSitter?.sharedStateAccess?.length > 0 
+    scopeType: treeSitter?.sharedStateAccess?.length > 0
       ? determineScopeType(treeSitter.sharedStateAccess[0])
       : null,
 
