@@ -4,7 +4,7 @@
     "name": "omnysystem",
     "transport": "streamableHttp",
     "url": "http://127.0.0.1:9999/mcp",
-    "health": "http://127.0.0.1:9998/health"
+    "health": "http://127.0.0.1:9999/health"
   },
   "targets": {
     "codex": "C:\\Users\\mauro\\.codex\\config.toml",

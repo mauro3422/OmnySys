@@ -16,16 +16,16 @@ import { safeJson, safeParseJson } from './converters.js';
  */
 export async function persistSystemMapToDb(db, connectionManager, systemMap, logger) {
   const now = Date.now();
-  
+
   try {
     db.transaction(() => {
       if (systemMap.files) saveSystemFiles(db, systemMap.files, now);
       if (systemMap.dependencies) saveFileDependencies(db, systemMap.dependencies, now);
-      
-      const connections = systemMap.semanticConnections || [];
-      const issues = systemMap.semanticIssues || [];
+
+      const connections = Array.isArray(systemMap.semanticConnections) ? systemMap.semanticConnections : [];
+      const issues = Array.isArray(systemMap.semanticIssues) ? systemMap.semanticIssues : [];
       saveSemanticData(db, connections, issues, now);
-      
+
       if (systemMap.riskAssessment) saveRiskAssessments(db, systemMap.riskAssessment, now);
       if (systemMap.metadata) updateSystemMetadata(db, systemMap.metadata, now);
     })();

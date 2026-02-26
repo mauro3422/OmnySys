@@ -9,25 +9,8 @@ export async function upLogic(options = {}) {
   const { silent = false } = options;
 
   try {
-    let llmRunning = await checkLLM();
+    let llmRunning = false;
     let llmStarted = false;
-
-    if (!llmRunning) {
-      llmStarted = true;
-      llmRunning = await startLLM();
-    }
-
-    if (!llmRunning) {
-      return {
-        success: false,
-        exitCode: 1,
-        error: 'LLM Server failed to start',
-        services: {
-          llm: { running: false, started: llmStarted },
-          mcp: { running: false, started: false }
-        }
-      };
-    }
 
     let mcpRunning = await checkMCP();
     let mcpStarted = false;
@@ -79,11 +62,7 @@ export async function execute() {
     return;
   }
 
-  if (result.services.llm.started) {
-    log(`LLM Server ready on port ${result.services.llm.port}`, 'success');
-  } else {
-    log(`LLM Server already running on port ${result.services.llm.port}`, 'success');
-  }
+  // LLM Server check removed since it is deprecated
 
   if (result.services.mcp.started) {
     log(`MCP Server ready on port ${result.services.mcp.port}`, 'success');
@@ -92,7 +71,6 @@ export async function execute() {
   }
 
   log('\nOmnySys is ready', 'success');
-  log(`   LLM:  http://localhost:${result.services.llm.port}/health`);
   log(`   MCP:  http://localhost:${result.services.mcp.port}/health`);
   log(`   Tools: http://localhost:${result.services.mcp.port}/tools\n`);
 

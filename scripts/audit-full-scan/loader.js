@@ -3,7 +3,7 @@
  * Disk and storage loading for audit-full-scan
  */
 import fs from 'fs/promises';
-import { scanJsonFiles } from '../utils/script-utils.js';
+import { scanJsonFiles } from '../utils/script-utils-v2.js';
 
 export async function loadStorageFilePaths(rootPath) {
   const jsonFiles = await scanJsonFiles(rootPath, '.omnysysdata/files');
@@ -14,7 +14,7 @@ export async function loadStorageFilePaths(rootPath) {
       const data = JSON.parse(content);
       const filePath = data.path || data.filePath;
       if (filePath) filePaths.push(filePath);
-    } catch {}
+    } catch { }
   }
   return filePaths;
 }

@@ -10,6 +10,7 @@ export async function saveFileDependencies(db, dependencies, now) {
   `);
 
   for (const [source, targets] of Object.entries(dependencies)) {
+    if (!targets || typeof targets[Symbol.iterator] !== 'function') continue;
     for (const target of targets) {
       stmt.run(source, target, now);
     }

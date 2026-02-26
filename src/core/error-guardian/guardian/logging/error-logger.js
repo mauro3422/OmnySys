@@ -42,7 +42,7 @@ export function createErrorLogger(projectPath, errorLog, stats) {
  * Save errors to file
  */
 async function saveToFile(projectPath, stats, errorLog) {
-  const logPath = path.join(projectPath, 'logs', 'error-guardian.json');
+  const logPath = path.join(projectPath || process.cwd(), 'logs', 'error-guardian.json');
   try {
     await fs.mkdir(path.dirname(logPath), { recursive: true });
     await fs.writeFile(logPath, JSON.stringify({

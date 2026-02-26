@@ -35,16 +35,16 @@ export class IncrementalAnalyzer {
    */
   async processChange(filePath, changeType) {
     const startTime = performance.now();
-    
+
     try {
       // 1. Invalidar cache del archivo
       await this.invalidateFileCache(filePath);
-      
+
       // 2. Invalidar dependencias
       const affectedFiles = await this.invalidateDependencies(filePath);
-      
+
       let result;
-      
+
       switch (changeType) {
         case 'created':
           result = await this._handleCreated(filePath);
@@ -58,9 +58,9 @@ export class IncrementalAnalyzer {
         default:
           throw new Error(`Tipo de cambio desconocido: ${changeType}`);
       }
-      
+
       const duration = (performance.now() - startTime).toFixed(2);
-      
+
       return {
         success: true,
         filePath,
@@ -69,7 +69,7 @@ export class IncrementalAnalyzer {
         duration: parseFloat(duration),
         ...result
       };
-      
+
     } catch (error) {
       logger.error(`❌ Error en análisis incremental de ${filePath}:`, error.message);
       return {
@@ -89,19 +89,19 @@ export class IncrementalAnalyzer {
       logger.warn('⚠️ No hay cache manager disponible');
       return;
     }
-    
+
     try {
       // Invalidar entradas específicas del archivo
       this.cache.invalidate(`analysis:${filePath}`);
       this.cache.invalidate(`atom:${filePath}`);
       this.cache.invalidate(`derived:${filePath}`);
       this.cache.invalidate(`impact:${filePath}`);
-      
+
       // Agregar a lista de invalidaciones pendientes
       this.pendingInvalidations.add(filePath);
-      
+
       logger.debug(`🗑️ Cache invalidado: ${filePath}`);
-      
+
     } catch (error) {
       logger.warn(`⚠️ Error invalidando cache de ${filePath}:`, error.message);
     }
@@ -112,37 +112,37 @@ export class IncrementalAnalyzer {
    */
   async invalidateDependencies(filePath) {
     if (!this.cache) return [];
-    
+
     const affectedFiles = [];
-    
+
     try {
       // Obtener dependencias del archivo desde el índice
       const index = this.cache.index || {};
       const dependencyGraph = index.dependencyGraph || {};
-      
+
       // Archivos que dependen de este archivo
       const dependents = dependencyGraph[filePath] || [];
-      
+
       for (const dependent of dependents) {
         // Invalidar cache del dependiente
         this.cache.invalidate(`analysis:${dependent}`);
         this.cache.invalidate(`derived:${dependent}`);
         this.cache.invalidate(`impact:${dependent}`);
-        
+
         affectedFiles.push(dependent);
-        
+
         // Marcar para re-análisis posterior
         this.pendingInvalidations.add(dependent);
       }
-      
+
       if (affectedFiles.length > 0) {
         logger.debug(`🔗 ${affectedFiles.length} dependencias invalidadas para ${filePath}`);
       }
-      
+
     } catch (error) {
       logger.warn(`⚠️ Error invalidando dependencias de ${filePath}:`, error.message);
     }
-    
+
     return affectedFiles;
   }
 
@@ -152,7 +152,7 @@ export class IncrementalAnalyzer {
   async _handleCreated(filePath) {
     // El archivo es nuevo, necesita análisis completo
     logger.debug(`📄 Nuevo archivo detectado: ${filePath}`);
-    
+
     return {
       action: 'full-analysis',
       isNew: true
@@ -165,7 +165,7 @@ export class IncrementalAnalyzer {
   async _handleModified(filePath) {
     // Verificar si el contenido realmente cambió
     const contentChanged = await this._checkContentChanged(filePath);
-    
+
     if (!contentChanged) {
       logger.debug(`⏭️ Sin cambios reales: ${filePath}`);
       return {
@@ -173,15 +173,17 @@ export class IncrementalAnalyzer {
         reason: 'no-content-change'
       };
     }
-    
+
     logger.debug(`✏️ Archivo modificado: ${filePath}`);
-    
+
     // 🆕 Realizar análisis del archivo
     try {
       const { analyzeAndIndex } = await import('../analyze.js');
       const fullPath = path.join(this.projectPath, filePath);
-      const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
-      
+      // Ensure the context has rootPath which analyzeAndIndex requires
+      const bindCtx = { ...this, rootPath: this.projectPath };
+      const analysis = await analyzeAndIndex.call(bindCtx, filePath, fullPath, true);
+
       return {
         action: 'analyzed',
         contentChanged: true,
@@ -203,22 +205,22 @@ export class IncrementalAnalyzer {
   async _handleDeleted(filePath) {
     // Limpiar todas las referencias al archivo
     logger.debug(`🗑️ Archivo eliminado: ${filePath}`);
-    
+
     try {
       // Eliminar del índice si existe
       if (this.cache?.index?.entries) {
         delete this.cache.index.entries[filePath];
       }
-      
+
       // Eliminar del grafo de dependencias
       if (this.cache?.index?.dependencyGraph) {
         delete this.cache.index.dependencyGraph[filePath];
       }
-      
+
     } catch (error) {
       logger.warn(`⚠️ Error limpiando referencias de ${filePath}:`, error.message);
     }
-    
+
     return {
       action: 'deleted',
       cleaned: true
@@ -244,27 +246,27 @@ export class IncrementalAnalyzer {
   async processBatch(changes) {
     const results = [];
     const startTime = performance.now();
-    
+
     // Agrupar por tipo para procesar en orden correcto
     const byType = this._groupByType(changes);
-    
+
     // Procesar en orden: deleted -> created -> modified
     const order = ['deleted', 'created', 'modified'];
-    
+
     for (const type of order) {
       const files = byType[type] || [];
-      
+
       for (const change of files) {
         const result = await this.processChange(change.filePath, type);
         results.push(result);
       }
     }
-    
+
     const duration = (performance.now() - startTime).toFixed(2);
-    
+
     // Limpiar lista de invalidaciones
     this.pendingInvalidations.clear();
-    
+
     return {
       processed: results.length,
       successful: results.filter(r => r.success).length,
@@ -279,7 +281,7 @@ export class IncrementalAnalyzer {
    */
   _groupByType(changes) {
     const groups = {};
-    
+
     for (const change of changes) {
       const type = change.type || 'modified';
       if (!groups[type]) {
@@ -287,7 +289,7 @@ export class IncrementalAnalyzer {
       }
       groups[type].push(change);
     }
-    
+
     return groups;
   }
 
