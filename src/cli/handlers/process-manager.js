@@ -22,10 +22,11 @@ const PROCESSES = {
 export async function startLLM() {
   PROCESSES.llm = spawn('node', ['src/ai/scripts/brain_gpu.js'], {
     detached: true,
-    stdio: 'ignore'
+    stdio: 'ignore',
+    windowsHide: true
   });
   PROCESSES.llm.unref();
-  
+
   // Wait for startup
   for (let i = 0; i < 10; i++) {
     await new Promise(r => setTimeout(r, 1000));
@@ -43,10 +44,11 @@ export async function startMCP() {
   const mcpHttpServerPath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-http-server.js');
   PROCESSES.mcp = spawn('node', [mcpHttpServerPath, process.cwd(), String(PORTS.mcp)], {
     detached: true,
-    stdio: 'ignore'
+    stdio: 'ignore',
+    windowsHide: true
   });
   PROCESSES.mcp.unref();
-  
+
   // Wait for startup
   for (let i = 0; i < 10; i++) {
     await new Promise(r => setTimeout(r, 1000));
@@ -68,12 +70,12 @@ export function stopAll() {
     PROCESSES.mcp.kill();
     PROCESSES.mcp = null;
   }
-  
+
   // Kill orphan processes
   const platform = os.platform();
   if (platform === 'win32') {
-    exec('powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq \'node.exe\' -and $_.CommandLine -match \'mcp-http-server\\.js|brain_gpu\\.js\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"', () => {});
+    exec('powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq \'node.exe\' -and $_.CommandLine -match \'mcp-http-server\\.js|brain_gpu\\.js\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"', { windowsHide: true }, () => { });
   } else {
-    exec('pkill -f "mcp-http-server.js" 2>/dev/null; pkill -f "brain_gpu.js" 2>/dev/null', () => {});
+    exec('pkill -f "mcp-http-server.js" 2>/dev/null; pkill -f "brain_gpu.js" 2>/dev/null', { windowsHide: true }, () => { });
   }
 }

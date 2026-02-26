@@ -216,14 +216,14 @@ if (debugTerminal) {
   const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
   if (fs.existsSync(batPath)) {
     log(`📺 Opening debug terminal via ${batPath}`);
-    const t = spawn('cmd.exe', ['/c', 'start', batPath], { detached: true, stdio: 'ignore' });
+    const t = spawn('cmd.exe', ['/c', 'start', batPath], { detached: true, stdio: 'ignore', windowsHide: true });
     t.unref();
     log('📺 Debug terminal spawned (mcp-logs.bat)');
   } else {
     // Fallback: PowerShell con tail del log file
     log(`📺 Opening debug terminal via PowerShell (${logFile})`);
     const t = spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command',
-      `Get-Content -Path '${logFile}' -Wait -Tail 50`], { detached: true, stdio: 'ignore' });
+      `Get-Content -Path '${logFile}' -Wait -Tail 50`], { detached: true, stdio: 'ignore', windowsHide: true });
     t.on('error', (err) => {
       log(`❌ Failed to spawn debug terminal: ${err.message}`);
     });

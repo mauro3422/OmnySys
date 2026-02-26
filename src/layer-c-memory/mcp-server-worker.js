@@ -47,7 +47,8 @@ async function main() {
       if (platform === 'win32') {
         logsTerminal = spawn('cmd.exe', ['/c', 'start', batPath], {
           detached: true,
-          stdio: 'ignore'
+          stdio: 'ignore',
+          windowsHide: true
         });
       } else if (platform === 'darwin') {
         logsTerminal = spawn('osascript', ['-e', `tell application "Terminal" to do script "cd '${projectRoot}' && tail -f logs/mcp-server.log"`], {
@@ -88,8 +89,8 @@ async function main() {
 
   process.on('uncaughtException', async (error) => {
     const isEpipe = error.code === 'EPIPE' ||
-                    (error.message && error.message.includes('EPIPE')) ||
-                    (error.message && error.message.includes('broken pipe'));
+      (error.message && error.message.includes('EPIPE')) ||
+      (error.message && error.message.includes('broken pipe'));
 
     if (isEpipe) {
       logger.debug('⚠️  EPIPE ignored (client disconnected)');
