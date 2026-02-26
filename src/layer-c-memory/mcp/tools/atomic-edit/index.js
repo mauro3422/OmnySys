@@ -20,7 +20,7 @@ import { validateImportsInEdit, validatePostEditOptimized } from './validators.j
 import { analyzeFullImpact, analyzeNamespaceRisk } from './analysis.js';
 import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
 import { analyzeBlastRadius } from './graph-alerts.js';
-import { AnalysisEngine } from '../core/shared/analysis-engine.js';
+import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
 import {
   normalizeAtomicPath,
   performPreWriteValidation,

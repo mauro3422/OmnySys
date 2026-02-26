@@ -1,6 +1,6 @@
 import { getAllAtoms } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
-import { AnalysisEngine } from '../core/shared/analysis-engine.js';
+import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
 
 const logger = createLogger('OmnySys:atomic:graph-alerts');
 
