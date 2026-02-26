@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.64 - Test Generator Auto-Healing & Memory SRP](changelog/v0.9.64-test-generator-autohealing.md)** - **✅ 269 autonomous tests generated via Tree-Sitter compatibility layers** (Latest)
+- **[v0.9.65 - Database Schema Integrity & Stability](changelog/v0.9.65-schema-integrity.md)** - **✅ SQLite Schema mismatch fixed, zero initialization crashes, graceful recovery fallbacks** (Latest)
+- **[v0.9.64 - Test Generator Auto-Healing & Memory SRP](changelog/v0.9.64-test-generator-autohealing.md)** - **✅ 269 autonomous tests generated via Tree-Sitter compatibility layers**
 - **[v0.9.62 - Tree-sitter Migration](changelog/v0.9.62-tree-sitter-migration.md)** - Precise scope/state detection, fixed legacy crashes
 - **[v0.9.61 - Dead Code Detection + Architectural Debt Reduction](changelog/v0.9.61-dead-code-detection.md)** - **✅ 85% dead code false positive reduction, 3 production files refactored**
 - **[v0.9.60 - Semantic Algebra Production](changelog/v0.9.60-sqlite-exclusive-race-fixes.md)** - **✅ Semantic Algebra + Deterministic Queries** - 7 vectors per atom, SQLite-only storage
@@ -39,7 +40,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.64]** | 2026-02-26 | **🧠 Test Auto-Healing & Daemon Stability — ✅ 269 tests autonomously written, DB orchestrator SRP split, Tree-Sitter MCP compliance** (Latest) |
+| **[0.9.65]** | 2026-02-26 | **🛡️ Database Schema Integrity & Stability — ✅ Fixed SQLite Schema constraints, ZERO initialization crashes, Error Guardian Graceful Fallbacks** (Latest) |
+| **[0.9.64]** | 2026-02-26 | **🧠 Test Auto-Healing & Daemon Stability — ✅ 269 tests autonomously written, DB orchestrator SRP split, Tree-Sitter MCP compliance** |
 | **[0.9.62]** | 2026-02-25 | **🌳 Tree-sitter Migration — ✅ Precise scope/state detection, fixed legacy crashes, enhanced metadata** |
 | **[0.9.61]** | 2026-02-25 | **🎯 Dead Code Detection + Architectural Debt — 85% false positive reduction, 3 files refactored** |
 | **[0.9.59]** | 2026-02-24 | **🚀 Startup Speed + Error Notifications — 25s→1.5s startup, auto-error notifications** |
@@ -88,7 +90,23 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.55 (2026-02-22)
+## 🚀 Latest Release: v0.9.65 (2026-02-26)
+
+**Database Schema Integrity & Stability**: Reparación completa de incompatibilidades de mapping entre los modelos JSON legacy y el esquema estricto relacional de SQLite introducido en migraciones previas. Eliminación de todos los crashes de inicialización (unhandledRejection) permitiendo al File Watcher y el analizador en caliente reiniciar y persistir el System Map de forma continua.
+
+### Key Achievements
+
+1. **Error Guardian Fallbacks**: El manejador de crashes (Error Logger y Recovery Handler) ya no colapsa a causa de _undefined paths_ en flujos asíncronos complejos, usando `process.cwd()` inteligentemente.
+2. **Strict SQLite Schema Enforcement**:
+   - `file-handler.js` sincronizado a columnas exactas sin violar campos.
+   - `semantic-handler.js` ahora es completamente robusto ante _issues is not iterable_ con parseo estricto Array/Fallback.
+   - `risk-handler.js` cumple el `FOREIGN KEY` insertando referencias virtuales seguras antes que data foránea.
+   - `dependency-handler.js` a prueba de fallos si _targets_ es null o corrupto.
+3. **Hot-Reload Unlocked**: Al eliminar las fallas de la fase de Persistencia, el `IncrementalAnalyzer` y el Watcher en caliente pueden ahora monitorear en tiempo real y re-analizar el código de forma confiable.
+
+---
+
+## 📚 Previous Release: v0.9.55 (2026-02-22)
 
 **Production-Ready Atomic Editor with Breaking Change Detection**: Sistema completo de edición atómica con detección automática de breaking changes, rollback automático y control de concurrencia optimista. **20+ casos de uso probados**, 100% de precisión en detección de breaking changes, zero falsos positivos.
 
