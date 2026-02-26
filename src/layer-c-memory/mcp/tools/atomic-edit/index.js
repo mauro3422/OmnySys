@@ -13,38 +13,25 @@ import { createLogger } from '../../../utils/logger.js';
 import { validateBeforeEdit, validateBeforeWrite } from '../../core/validation-utils.js';
 import { getAllAtoms, loadAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 
-// Módulos internos
 import { reindexFile } from './reindex.js';
 import { findAtomsByName, findCallersEfficient } from './search.js';
 import { extractImportsFromCode, extractExportsFromCode, checkExportConflictsInGraph, checkEditExportConflicts } from './exports.js';
 import { validateImportsInEdit, validatePostEditOptimized } from './validators.js';
 import { analyzeFullImpact, analyzeNamespaceRisk } from './analysis.js';
 import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
+import {
+  normalizeAtomicPath,
+  performPreWriteValidation,
+  analyzeExports,
+  computeWriteImpact
+} from './write-orchestrator.js';
 
 const logger = createLogger('OmnySys:atomic:edit:tool');
 
 /**
  * Valida sintaxis del código usando Tree-Sitter
  */
-async function validateSyntax(code, filePath = 'temp.js') {
-  try {
-    const { getTree } = await import('#layer-a/parser/index.js');
-    const tree = await getTree(filePath, code);
 
-    if (tree && tree.rootNode && tree.rootNode.hasError) {
-      return {
-        valid: false,
-        error: 'Sintaxis inválida (Tree-sitter reportó nodos ERROR)'
-      };
-    }
-    return { valid: true };
-  } catch (error) {
-    return {
-      valid: false,
-      error: error.message
-    };
-  }
-}
 
 /**
  * Valida los argumentos de entrada para atomic_edit
@@ -101,8 +88,13 @@ async function performPreEditValidation(filePath, oldString, newString, symbolNa
  * REFACTORIZADO: Grado A de mantenibilidad
  */
 export async function atomic_edit(args, context) {
-  const { filePath, oldString, newString, symbolName } = args;
+  let { filePath, oldString, newString, symbolName } = args;
   const { orchestrator, projectPath } = context;
+
+  // Normalize path to relative explicitly to fix DX absolute path friction
+  if (path.isAbsolute(filePath)) {
+    filePath = path.relative(projectPath, filePath).replace(/\\/g, '/');
+  }
 
   // 1. Validación de entrada
   const argError = validateEditArgs(args, projectPath);
@@ -145,6 +137,8 @@ export async function atomic_edit(args, context) {
         message: 'Edit broke dependencies, rolled back',
         file: filePath,
         errors: postValidation.errors,
+        brokenCallers: postValidation.brokenCallers,
+        suggestion: `You broke ${postValidation.affectedFiles} file(s) that depend on the modified function signature. See 'brokenCallers' for details.`,
         rolledBack: true
       };
     }
@@ -188,163 +182,101 @@ export async function atomic_edit(args, context) {
  * Escribe un archivo nuevo con validación atómica mejorada
  */
 export async function atomic_write(args, context) {
-  const { filePath, content } = args;
+  let { filePath, content } = args;
   const { orchestrator, projectPath } = context;
 
+  filePath = normalizeAtomicPath(filePath, projectPath);
   logger.info(`[Tool] atomic_write("${filePath}")`);
 
   if (!filePath || !content) {
-    return {
-      error: 'Missing required parameters: filePath, content'
-    };
+    return { error: 'Missing required parameters: filePath, content' };
   }
 
   try {
-    const validation = await validateBeforeWrite({ filePath });
-    if (!validation.valid) {
-      return {
-        error: 'VALIDATION_FAILED',
-        message: 'Pre-write validation failed',
-        file: filePath,
-        errors: validation.errors,
-        warnings: validation.warnings
-      };
+    // 1. Cargar estado previo
+    let previousAtoms = [];
+    try {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(projectPath, filePath);
+      previousAtoms = await loadAtoms(projectPath, path.relative(projectPath, absolutePath));
+    } catch (e) { }
+
+    // 2. Validaciones pre-vuelo críticas
+    const preRes = await performPreWriteValidation(filePath, content, projectPath);
+    if (!preRes.valid) {
+      const errorPayload = { file: filePath, canProceed: false };
+      if (preRes.error === 'VALIDATION_FAILED') return { ...errorPayload, error: 'VALIDATION_FAILED', message: 'Pre-analysis check failed', errors: preRes.validation.errors };
+      if (preRes.error === 'BROKEN_IMPORTS') return { ...errorPayload, error: 'BROKEN_IMPORTS', message: 'Broken imports in new content', brokenImports: preRes.brokenImports };
+      if (preRes.error === 'SYNTAX_ERROR') return { ...errorPayload, error: 'SYNTAX_ERROR', message: preRes.syntaxCheck.error };
     }
 
-    const brokenImports = await validateImportsInEdit(filePath, content, projectPath);
-    if (brokenImports.length > 0) {
+    // 3. Análisis de Exportaciones y Riesgos
+    const analysis = await analyzeExports(content, filePath, projectPath);
+    if (analysis.critical.length > 0) {
       return {
-        error: 'BROKEN_IMPORTS',
-        message: `Found ${brokenImports.length} broken imports in the new file`,
+        error: 'EXPORT_CONFLICT',
+        message: `Found ${analysis.critical.length} extremely critical export conflicts.`,
+        suggestion: `Conflict resolving options: 1) Run 'find_symbol_instances' 2) Use 'atomic_edit' if override is intended.`,
         file: filePath,
-        brokenImports
-      };
-    }
-
-    const syntaxCheck = await validateSyntax(content, filePath);
-    if (!syntaxCheck.valid) {
-      return {
-        error: 'SYNTAX_ERROR',
-        message: `Syntax error in new file: ${syntaxCheck.error}`,
-        file: filePath,
-        line: syntaxCheck.line,
-        column: syntaxCheck.column,
+        conflicts: analysis.critical,
+        severity: 'critical',
         canProceed: false
       };
     }
 
-    const exports = extractExportsFromCode(content);
-    const exportConflicts = await checkExportConflictsInGraph(exports, projectPath, filePath);
-
-    if (exportConflicts.length > 0) {
-      const criticalConflicts = exportConflicts.filter(c =>
-        c.existingLocations.some(loc => loc.calledBy > 0)
-      );
-
-      if (criticalConflicts.length > 0) {
-        return {
-          error: 'EXPORT_CONFLICT',
-          message: `Found ${criticalConflicts.length} critical export conflicts`,
-          file: filePath,
-          conflicts: criticalConflicts,
-          severity: 'critical',
-          canProceed: false
-        };
-      }
-
-      logger.warn(`[atomic_write] ${exportConflicts.length} non-critical export conflicts`);
-    }
-
-    const namespaceRisk = await analyzeNamespaceRisk(content, projectPath);
-
-    if (namespaceRisk.level === 'high') {
+    if (analysis.namespaceRisk.level === 'high') {
       return {
         error: 'HIGH_NAMESPACE_RISK',
-        message: `High namespace risk detected: ${namespaceRisk.warnings.length} warnings`,
+        message: 'High namespace risk detected',
         file: filePath,
-        risk: namespaceRisk,
-        severity: 'high',
-        canProceed: false,
-        suggestion: 'Consider renaming exports to avoid confusion'
+        risk: analysis.namespaceRisk,
+        canProceed: false
       };
     }
 
-    const refactoringSuggestions = await generateRefactoringSuggestionsOptimized(
-      exports,
-      filePath,
-      projectPath
-    );
-
+    // 4. Persistencia
     const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
-    await atomicEditor.write(filePath, content);
+    const fs = await import('fs');
+    const dirPath = path.dirname(preRes.absoluteFilePath);
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 
+    await atomicEditor.write(filePath, content);
     const reindexResult = await reindexFile(filePath, projectPath);
+
+    // 5. Verificación de Ciclos y Calidad
+    const { validateImportsEngine } = await import('../../layer-a-static/analyses/tier3/detectors/import-detector.js');
+    const circularCheck = await validateImportsEngine(projectPath, { checkBroken: false, checkUnused: false, checkCircular: true, filePath: preRes.absoluteFilePath });
+
+    // 6. Análisis de Impacto y Respuesta
+    const impact = await computeWriteImpact(filePath, projectPath, previousAtoms, reindexResult);
 
     const response = {
       success: true,
       file: filePath,
       message: `✅ Atomic write successful`,
-      reindexed: reindexResult.success,
-      atomsCount: reindexResult.atoms?.length || 0,
+      impact: impact ? {
+        level: impact.level,
+        score: impact.score,
+        affectedFiles: impact.affectedFiles?.size || 0,
+        changes: impact.dependencyTree?.map(tree => ({ function: tree.name, changes: tree.changes, dependentsCount: tree.dependents?.length || 0 })) || []
+      } : undefined,
       validation: {
         syntax: true,
         imports: true,
-        exports: {
-          count: exports.length,
-          conflicts: exportConflicts.length,
-          hasCriticalConflicts: exportConflicts.some(c =>
-            c.existingLocations.some(loc => loc.calledBy > 0)
-          )
-        },
-        namespaceRisk: {
-          level: namespaceRisk.level,
-          score: namespaceRisk.score,
-          warningCount: namespaceRisk.warnings.length
-        }
-      }
+        exports: { count: analysis.exports.length, conflicts: analysis.conflicts.length },
+        circular: circularCheck.summary?.totalCircular || 0
+      },
+      refactoring: analysis.refactoring.duplicates.length > 0 ? analysis.refactoring : undefined
     };
 
-    if (exportConflicts.length > 0 || namespaceRisk.warnings.length > 0) {
-      response.warnings = [];
-
-      if (exportConflicts.length > 0) {
-        response.warnings.push(`⚠️ ${exportConflicts.length} export name(s) already exist in other files`);
-      }
-
-      if (namespaceRisk.warnings.length > 0) {
-        response.warnings.push(...namespaceRisk.warnings.map(w => w.message));
-      }
-    }
-
-    if (refactoringSuggestions.duplicates.length > 0) {
-      response.refactoring = {
-        canConsolidate: refactoringSuggestions.canConsolidate,
-        totalSavings: refactoringSuggestions.totalSavings,
-        duplicates: refactoringSuggestions.duplicates.map(d => ({
-          name: d.name,
-          occurrences: d.occurrenceCount,
-          potentialSavings: `${d.potentialSavings} LOC`,
-          bestCandidate: d.bestConsolidationCandidate,
-          riskLevel: d.riskLevel
-        })),
-        recommendedActions: refactoringSuggestions.recommendedActions,
-        codeExamples: refactoringSuggestions.codeExamples
-      };
-
-      if (!response.warnings) response.warnings = [];
-      response.warnings.push(
-        `💡 ${refactoringSuggestions.duplicates.length} function(s) can be consolidated from ${refactoringSuggestions.totalSavings.files} files (save ~${refactoringSuggestions.totalSavings.lines} LOC)`,
-        `📋 Check response.refactoring for detailed suggestions`
-      );
+    if (analysis.conflicts.length > 0 || analysis.namespaceRisk.warnings.length > 0) {
+      response.warnings = [...(analysis.conflicts.length > 0 ? [`⚠️ ${analysis.conflicts.length} export name(s) already exist`] : []), ...analysis.namespaceRisk.warnings.map(w => w.message)];
     }
 
     return response;
 
   } catch (error) {
-    return {
-      error: error.message,
-      file: filePath
-    };
+    logger.error(`[Tool] atomic_write failed: ${error.message}`);
+    return { error: error.message, file: filePath };
   }
 }
 

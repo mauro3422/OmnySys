@@ -18,11 +18,15 @@ export const PORTS = {
  */
 export async function checkPort(port) {
   return new Promise((resolve) => {
-    const req = http.get(`http://localhost:${port}/health`, { timeout: 1000 }, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => { req.destroy(); resolve(false); });
+    try {
+      const req = http.get(`http://localhost:${port}/health`, { timeout: 1000 }, (res) => {
+        resolve(res.statusCode === 200);
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    } catch (error) {
+      resolve(false);
+    }
   });
 }
 

@@ -41,66 +41,57 @@ export function normalizeQuotes(text) {
   const stringPattern = /"(?:[^"\\]|\\.)*"/g;
   const strings = [];
   let match;
-  
+
   while ((match = stringPattern.exec(text)) !== null) {
     strings.push({ text: match[0], index: match.index });
   }
 
   let result = '';
   let lastIndex = 0;
-  
+
   for (const str of strings) {
     const before = text.slice(lastIndex, str.index);
     result += before.replace(/'/g, '"');
     result += str.text;
     lastIndex = str.index + str.text.length;
   }
-  
+
   result += text.slice(lastIndex).replace(/'/g, '"');
   return result;
 }
 
-/**
- * Extrae JSON valido del texto
- * Encuentra el primer { o [ y el ultimo } o ] balanceado
- */
-export function extractJSON(text) {
-  let cleaned = text.trim();
-  
-  // Encontrar inicio del JSON
-  const jsonStart = cleaned.indexOf('{');
-  const jsonArrayStart = cleaned.indexOf('[');
-  
+function findJsonStartIndex(text) {
+  const jsonStart = text.indexOf('{');
+  const jsonArrayStart = text.indexOf('[');
+
   if (jsonStart !== -1 || jsonArrayStart !== -1) {
-    const startIndex = jsonStart !== -1 && jsonArrayStart !== -1
+    return jsonStart !== -1 && jsonArrayStart !== -1
       ? Math.min(jsonStart, jsonArrayStart)
       : Math.max(jsonStart, jsonArrayStart);
-    
-    if (startIndex > 0) {
-      cleaned = cleaned.substring(startIndex);
-    }
   }
-  
-  // Encontrar fin del JSON balanceado
+  return -1;
+}
+
+function findBalancedEndIndex(text) {
   let braceCount = 0;
   let bracketCount = 0;
   let inString = false;
   let escapeNext = false;
   let lastValidIndex = -1;
-  
-  for (let i = 0; i < cleaned.length; i++) {
-    const char = cleaned[i];
-    
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
     if (escapeNext) {
       escapeNext = false;
       continue;
     }
-    
+
     if (char === '\\') {
       escapeNext = true;
       continue;
     }
-    
+
     if (char === '"' && !inString) {
       inString = true;
     } else if (char === '"' && inString) {
@@ -111,18 +102,16 @@ export function extractJSON(text) {
       else if (char === '[') bracketCount++;
       else if (char === ']') bracketCount--;
     }
-    
+
     if (!inString && braceCount === 0 && bracketCount === 0 && (char === '}' || char === ']')) {
       lastValidIndex = i;
     }
   }
-  
-  if (lastValidIndex !== -1 && lastValidIndex < cleaned.length - 1) {
-    cleaned = cleaned.substring(0, lastValidIndex + 1);
-  }
-  
-  // Verificar que empieza con { o [
-  cleaned = cleaned.trim();
+  return lastValidIndex;
+}
+
+function ensureValidStart(text) {
+  let cleaned = text.trim();
   if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
     const firstBrace = cleaned.indexOf('{');
     const firstBracket = cleaned.indexOf('[');
@@ -131,11 +120,30 @@ export function extractJSON(text) {
       firstBracket !== -1 ? firstBracket : Infinity
     );
     if (firstValid !== Infinity) {
-      cleaned = cleaned.substring(firstValid);
+      return cleaned.substring(firstValid);
     }
   }
-  
   return cleaned;
+}
+
+/**
+ * Extrae JSON valido del texto
+ * Encuentra el primer { o [ y el ultimo } o ] balanceado
+ */
+export function extractJSON(text) {
+  let cleaned = text.trim();
+
+  const startIndex = findJsonStartIndex(cleaned);
+  if (startIndex > 0) {
+    cleaned = cleaned.substring(startIndex);
+  }
+
+  const lastValidIndex = findBalancedEndIndex(cleaned);
+  if (lastValidIndex !== -1 && lastValidIndex < cleaned.length - 1) {
+    cleaned = cleaned.substring(0, lastValidIndex + 1);
+  }
+
+  return ensureValidStart(cleaned);
 }
 
 /**

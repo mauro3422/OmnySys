@@ -40,6 +40,7 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
+| **[0.9.66]** | 2026-02-26 | **⚡ God Function Refactoring & Atomic DX — ✅ Refactored cleanLLMResponse, findLargeMonolithic, and atomic_write. New Impact Map integration.** |
 | **[0.9.65]** | 2026-02-26 | **🛡️ Database Schema Integrity & Stability — ✅ Fixed SQLite Schema constraints, ZERO initialization crashes, Error Guardian Graceful Fallbacks** (Latest) |
 | **[0.9.64]** | 2026-02-26 | **🧠 Test Auto-Healing & Daemon Stability — ✅ 269 tests autonomously written, DB orchestrator SRP split, Tree-Sitter MCP compliance** |
 | **[0.9.62]** | 2026-02-25 | **🌳 Tree-sitter Migration — ✅ Precise scope/state detection, fixed legacy crashes, enhanced metadata** |
@@ -90,7 +91,29 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.65 (2026-02-26)
+## 🚀 Latest Release: v0.9.66 (2026-02-26)
+
+**God Function Refactoring & Atomic DX Excellence**: Batch 2 de reducción de deuda técnica arquitectónica, refactorizando 3 de las 10 funciones con mayor complejidad ciclomática del sistema. Integración profunda de "Impact Mapping" en las herramientas de edición atómica para una IA más autónoma y segura.
+
+### Key Achievements
+
+1. **God Function Decoupling**:
+   - `cleanLLMResponse`: Complejidad 31 → 10. Lógica extraída a `stripMarkdown`, `stripComments`, `fixTrailingCommas` y `findJsonBoundaries`.
+   - `findLargeMonolithic`: Complejidad 33 → 12. Modularizado en un nuevo paquete `monolithic/` con submódulos para métricas, análisis SOLID y evaluación de rasgos.
+   - `atomic_write`: Complejidad 30 → 13. Orquestador central separado en `write-orchestrator.js`.
+
+2. **Atomic DX Improvements**:
+   - **Impact Map Integration**: `atomic_write` ahora genera y devuelve el mapa de impacto transaccional, permitiendo a los agentes ver qué archivos se ven afectados por un nuevo átomo.
+   - **Zero-Failure Directory Creation**: Implementado `mkdir -p` automático antes de escribir, eliminando errores de path inexistente.
+   - **Soft Export Validation**: Los conflictos de exportación ahora son "soft warnings" por defecto, permitiendo refactorizaciones de símbolos duplicados con menos fricción.
+   - **Circular Dependency Guard**: Verificación proactiva de ciclos de importación en el momento de la escritura.
+
+3. **Sustainability**:
+   - Introducido el patrón de "Orquestador Modular" para herramientas MCP complejas, evitando que las herramientas se conviertan ellas mismas en God Functions.
+
+---
+
+## 📚 Previous Release: v0.9.65 (2026-02-26)
 
 **Database Schema Integrity & Stability**: Reparación completa de incompatibilidades de mapping entre los modelos JSON legacy y el esquema estricto relacional de SQLite introducido en migraciones previas. Eliminación de todos los crashes de inicialización (unhandledRejection) permitiendo al File Watcher y el analizador en caliente reiniciar y persistir el System Map de forma continua.
 

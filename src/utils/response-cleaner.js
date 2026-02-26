@@ -13,45 +13,64 @@ const logger = createLogger('OmnySys:response:cleaner');
  * @param {string} response - Respuesta cruda del LLM
  * @returns {string} - JSON limpio
  */
-export function cleanLLMResponse(response, maxLength = 10000) {
-  if (!response || typeof response !== 'string') {
-    return response;
-  }
-
-  let cleaned = response;
-
-  // 1. Eliminar bloques de código markdown (```json ... ```)
+/**
+ * Elimina bloques de código markdown (```json ... ```)
+ * @param {string} text 
+ * @returns {string}
+ */
+function stripMarkdown(text) {
+  let cleaned = text;
   cleaned = cleaned.replace(/```json\s*/g, '');
   cleaned = cleaned.replace(/```\s*$/g, '');
   cleaned = cleaned.replace(/```/g, '');
+  return cleaned;
+}
 
-  // 2. Eliminar comentarios de una línea
+/**
+ * Elimina comentarios de una línea y multilínea
+ * @param {string} text 
+ * @returns {string}
+ */
+function stripComments(text) {
+  let cleaned = text;
+  // Eliminar comentarios de una línea
   cleaned = cleaned.replace(/\/\/.*$/gm, '');
-
-  // 3. Eliminar comentarios multilínea
+  // Eliminar comentarios multilínea
   cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+  return cleaned;
+}
 
-  // 4. Eliminar trailing commas (comas al final de objetos/arrays)
-  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+/**
+ * Elimina trailing commas (comas al final de objetos/arrays)
+ * @param {string} text 
+ * @returns {string}
+ */
+function fixTrailingCommas(text) {
+  return text.replace(/,\s*([}\]])/g, '$1');
+}
 
-  // 5. Eliminar espacios en blanco al inicio y final
-  cleaned = cleaned.trim();
-
-  // 6. Si la respuesta empieza con texto antes del JSON, intentar encontrar el inicio del JSON
+/**
+ * Encuentra y extrae la parte balanceada que parece ser JSON ({...} o [...])
+ * @param {string} text 
+ * @returns {string}
+ */
+function findJsonBoundaries(text) {
+  let cleaned = text.trim();
+  
+  // Encontrar el primer posible inicio
   const jsonStart = cleaned.indexOf('{');
   const jsonArrayStart = cleaned.indexOf('[');
   
-  if (jsonStart !== -1 || jsonArrayStart !== -1) {
-    const startIndex = jsonStart !== -1 && jsonArrayStart !== -1 
-      ? Math.min(jsonStart, jsonArrayStart)
-      : Math.max(jsonStart, jsonArrayStart);
-    
-    if (startIndex > 0) {
-      cleaned = cleaned.substring(startIndex);
-    }
+  if (jsonStart === -1 && jsonArrayStart === -1) return cleaned;
+
+  const startIndex = jsonStart !== -1 && jsonArrayStart !== -1 
+    ? Math.min(jsonStart, jsonArrayStart)
+    : Math.max(jsonStart, jsonArrayStart);
+  
+  if (startIndex > 0) {
+    cleaned = cleaned.substring(startIndex);
   }
 
-  // 7. Si hay texto después del JSON válido, eliminarlo
   // Encontrar el último } o ] balanceado
   let braceCount = 0;
   let bracketCount = 0;
@@ -92,6 +111,26 @@ export function cleanLLMResponse(response, maxLength = 10000) {
   if (lastValidIndex !== -1 && lastValidIndex < cleaned.length - 1) {
     cleaned = cleaned.substring(0, lastValidIndex + 1);
   }
+
+  return cleaned;
+}
+
+/**
+ * Limpia una respuesta de LLM para extraer JSON válido
+ * @param {string} response - Respuesta cruda del LLM
+ * @returns {string} - JSON limpio
+ */
+export function cleanLLMResponse(response, maxLength = 10000) {
+  if (!response || typeof response !== 'string') {
+    return response;
+  }
+
+  let cleaned = response;
+
+  cleaned = stripMarkdown(cleaned);
+  cleaned = stripComments(cleaned);
+  cleaned = fixTrailingCommas(cleaned);
+  cleaned = findJsonBoundaries(cleaned);
 
   return cleaned.trim();
 }

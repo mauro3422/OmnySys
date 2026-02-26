@@ -74,24 +74,28 @@ export class InstanceDetectionStep extends InitializationStep {
      */
     async _detectExistingInstance() {
         return new Promise((resolve) => {
-            const req = http.get(
-                `http://localhost:${HEALTH_PORT}/health`,
-                { timeout: 2000 },
-                (res) => {
-                    let data = '';
-                    res.on('data', chunk => data += chunk);
-                    res.on('end', () => {
-                        try {
-                            const json = JSON.parse(data);
-                            resolve(json.service === 'omnysys-mcp');
-                        } catch {
-                            resolve(false);
-                        }
-                    });
-                }
-            );
-            req.on('error', () => resolve(false));
-            req.on('timeout', () => { req.destroy(); resolve(false); });
+            try {
+                const req = http.get(
+                    `http://localhost:${HEALTH_PORT}/health`,
+                    { timeout: 2000 },
+                    (res) => {
+                        let data = '';
+                        res.on('data', chunk => data += chunk);
+                        res.on('end', () => {
+                            try {
+                                const json = JSON.parse(data);
+                                resolve(json.service === 'omnysys-mcp');
+                            } catch {
+                                resolve(false);
+                            }
+                        });
+                    }
+                );
+                req.on('error', () => resolve(false));
+                req.on('timeout', () => { req.destroy(); resolve(false); });
+            } catch (error) {
+                resolve(false);
+            }
         });
     }
 
