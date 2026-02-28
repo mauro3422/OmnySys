@@ -6,7 +6,7 @@ export function classifyBinary(node, code) {
         return null;
     }
 
-    const operator = node.children.find(c => !c.isNamed() && !['(', ')'].includes(c.type))?.type || 'unknown';
+    const operator = node.children.find(c => !c.isNamed && !['(', ')'].includes(c.type))?.type || 'unknown';
 
     return {
         type: OPERATION_TYPES.BINARY_OPERATION,
@@ -18,7 +18,7 @@ export function classifyBinary(node, code) {
 export function classifyUnary(node, code) {
     if (node.type !== 'unary_expression') return null;
 
-    const operator = node.children.find(c => !c.isNamed())?.type || 'unknown';
+    const operator = node.children.find(c => !c.isNamed)?.type || 'unknown';
 
     return {
         type: OPERATION_TYPES.UNARY_OPERATION,

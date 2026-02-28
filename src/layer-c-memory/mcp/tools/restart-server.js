@@ -62,6 +62,66 @@ export async function restart_server(args, context) {
         message: 'Proxy received restart signal. New Node.js process will start in ~1s with fresh ESM cache. Claude Code connection stays alive.'
       };
     }
+    // ── TRUE RESTART via HTTP Daemon ──────────────────────────────────────
+    const isHttpDaemon = process.argv.some(arg => arg.includes('mcp-http-server'));
+
+    if (isHttpDaemon) {
+      logger.info('📡 HTTP Daemon detectado. Iniciando True Process Restart vía omny up...');
+
+      // Limpiar caché en disco si se pidió
+      if (clearCache && cache) {
+        logger.info('🧹 Limpiando caché antes de reiniciar...');
+        await cache.clear();
+        if (reanalyze) {
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          const dataDir = path.join(server.projectPath, '.omnysysdata');
+          const toDelete = ['files', 'atoms', 'molecules'];
+          for (const dir of toDelete) {
+            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
+          }
+          const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
+          for (const file of dbFiles) {
+            await fs.unlink(path.join(dataDir, file)).catch(() => { });
+          }
+          logger.info('✅ Análisis anterior eliminado (DB + atoms + molecules + files + index)');
+        }
+      }
+
+      // Spawneamos 'omny up' de forma detachada.
+      // 'omny up' se encargará de matar este proceso y levantar uno nuevo.
+      setTimeout(async () => {
+        const { spawn } = await import('child_process');
+        const path = await import('path');
+        // Repo root es donde está omny.js (asumiendo que projectPath lo es, lo resolvemos mejor)
+        const __filename = (await import('url')).fileURLToPath(import.meta.url);
+        const repoRoot = path.resolve(path.dirname(__filename), '../../../../..');
+
+        logger.info(`🚀 Lanzando [node omny.js up] de forma detached en ${repoRoot}...`);
+        const child = spawn('node', ['omny.js', 'up'], {
+          detached: true,
+          stdio: 'ignore', // ignoramoss outputs para que no se tranque
+          cwd: repoRoot,
+          windowsHide: true
+        });
+        child.unref();
+
+        // Opcionalmente podemos suicidarnos aquí, pero up.js (process-manager.js) ya mata todo usando pkill o wmic.
+        // Esperamos un momento y si no nos han matado, nos suicidamos.
+        setTimeout(() => process.exit(0), 1500);
+      }, 500);
+
+      return {
+        success: true,
+        restarting: true,
+        restartType: 'true_process_restart_http',
+        clearCache,
+        reanalyze,
+        timestamp: new Date().toISOString(),
+        message: 'HTTP Daemon true restart initiated (omny up). The bridge will reconnect.'
+      };
+    }
+
     // ── FALLBACK: component-only restart (standalone mode, no proxy) ─────
 
     const result = {

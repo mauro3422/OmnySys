@@ -11,6 +11,7 @@
 
 import path from 'path';
 import { randomUUID } from 'crypto';
+import express from 'express';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -265,6 +266,22 @@ app.get('/tools', (req, res) => {
     count: defs.length,
     tools: defs.map(t => ({ name: t.name, description: t.description }))
   });
+});
+
+app.post('/restart', express.json(), async (req, res) => {
+  try {
+    const { restart_server } = await import('./mcp/tools/restart-server.js');
+    const params = req.body || {};
+    const result = await restart_server(params, {
+      server: core,
+      cache: core.cache,
+      orchestrator: core.orchestrator
+    });
+    res.json(result);
+  } catch (err) {
+    logger.error(`Error in /restart endpoint: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const httpServer = app.listen(port, host, () => {

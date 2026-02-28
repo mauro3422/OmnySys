@@ -17,8 +17,7 @@
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { get_server_status } from '#layer-c/mcp/tools/status.js';
-import { search_files } from '#layer-c/mcp/tools/search.js';
-import { get_impact_map } from '#layer-c/mcp/tools/impact-map.js';
+
 import { restart_server } from '#layer-c/mcp/tools/restart-server.js';
 
 // ─── Mocks de las APIs de Layer C ─────────────────────────────────────────────
@@ -131,7 +130,8 @@ describe('Tool: get_server_status', () => {
 
   test('status.metadata incluye totalFiles cuando metadata existe', async () => {
     getProjectMetadata.mockResolvedValue({
-      metadata: { totalFiles: 150, totalFunctions: 800, analyzedAt: '2026-02-18' }
+      stats: { totalFiles: 150, totalAtoms: 800 },
+      system_map_metadata: { analyzedAt: '2026-02-18' }
     });
     const context = makeContext();
     const result = await get_server_status({}, context);
@@ -149,161 +149,4 @@ describe('Tool: get_server_status', () => {
   });
 });
 
-// ─── search_files ─────────────────────────────────────────────────────────────
 
-describe('Tool: search_files', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  test('retorna { found: 0, files: [] } cuando getProjectMetadata lanza', async () => {
-    getProjectMetadata.mockRejectedValue(new Error('No data'));
-    const context = makeContext();
-    const result = await search_files({ pattern: 'cache' }, context);
-
-    expect(result.found).toBe(0);
-    expect(result.files).toEqual([]);
-    expect(result.error).toBeDefined();
-  });
-
-  test('retorna archivos que coinciden con el patrón', async () => {
-    getProjectMetadata.mockResolvedValue({
-      fileIndex: {
-        'src/core/cache/index.js': {},
-        'src/core/cache/singleton.js': {},
-        'src/services/llm-service.js': {},
-        'src/layer-a-static/indexer.js': {}
-      }
-    });
-    const context = makeContext();
-    const result = await search_files({ pattern: 'cache' }, context);
-
-    expect(result.found).toBe(2);
-    expect(result.files).toContain('src/core/cache/index.js');
-    expect(result.files).toContain('src/core/cache/singleton.js');
-    expect(result.files).not.toContain('src/services/llm-service.js');
-  });
-
-  test('la búsqueda es case-insensitive', async () => {
-    getProjectMetadata.mockResolvedValue({
-      fileIndex: {
-        'src/core/Cache/index.js': {},
-        'src/OTHER/CACHE.js': {}
-      }
-    });
-    const context = makeContext();
-    const result = await search_files({ pattern: 'cache' }, context);
-
-    expect(result.found).toBe(2);
-  });
-
-  test('limita resultados a 20 archivos máximo', async () => {
-    const manyFiles = {};
-    for (let i = 0; i < 30; i++) {
-      manyFiles[`src/utils/helper-${i}.js`] = {};
-    }
-    getProjectMetadata.mockResolvedValue({ fileIndex: manyFiles });
-    const context = makeContext();
-
-    const result = await search_files({ pattern: 'helper' }, context);
-    expect(result.found).toBe(30);
-    expect(result.files.length).toBeLessThanOrEqual(20);
-  });
-
-  test('retorna el patrón buscado en la respuesta', async () => {
-    getProjectMetadata.mockResolvedValue({ fileIndex: {} });
-    const context = makeContext();
-    const result = await search_files({ pattern: 'orchestrator' }, context);
-
-    expect(result.pattern).toBe('orchestrator');
-  });
-
-  test('retorna totalIndexed con el número total de archivos en el índice', async () => {
-    getProjectMetadata.mockResolvedValue({
-      fileIndex: {
-        'src/a.js': {},
-        'src/b.js': {},
-        'src/c.js': {}
-      }
-    });
-    const context = makeContext();
-    const result = await search_files({ pattern: 'none-will-match-xyz' }, context);
-
-    expect(result.totalIndexed).toBe(3);
-    expect(result.found).toBe(0);
-  });
-});
-
-// ─── get_impact_map ───────────────────────────────────────────────────────────
-
-describe('Tool: get_impact_map', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    getProjectMetadata.mockResolvedValue({ fileIndex: {} });
-    getFileDependents.mockResolvedValue([]);
-  });
-
-  test('retorna { status: "not_ready" } cuando archivo no está en índice y servidor no está inicializado', async () => {
-    getFileAnalysis.mockResolvedValue(null);
-    const context = makeContext({
-      server: { initialized: false }
-    });
-
-    const result = await get_impact_map({ filePath: 'src/missing.js' }, context);
-
-    expect(result.status).toBe('not_ready');
-    expect(result.message).toContain('not found in index');
-  });
-
-  test('retorna datos de impacto cuando el archivo está en el índice', async () => {
-    getFileAnalysis.mockResolvedValue({
-      exports: [{ name: 'myFn' }],
-      riskScore: { severity: 'medium' },
-      subsystem: 'core',
-      semanticConnections: []
-    });
-    getFileDependents.mockResolvedValue(['src/consumer-a.js', 'src/consumer-b.js']);
-
-    const context = makeContext({ server: { initialized: true } });
-    const result = await get_impact_map({ filePath: 'src/my-module.js' }, context);
-
-    expect(result.file).toBe('src/my-module.js');
-    expect(result.directlyAffects).toEqual(['src/consumer-a.js', 'src/consumer-b.js']);
-    expect(result.riskLevel).toBe('medium');
-    expect(result.subsystem).toBe('core');
-    expect(result.exports).toContain('myFn');
-  });
-
-  test('totalAffected es la suma de direct + transitive', async () => {
-    getFileAnalysis.mockResolvedValue({
-      exports: [],
-      riskScore: { severity: 'low' },
-      subsystem: 'unknown',
-      semanticConnections: []
-    });
-    getFileDependents
-      .mockResolvedValueOnce(['dep-a.js', 'dep-b.js'])  // Primera llamada (el archivo principal)
-      .mockResolvedValue([]);                             // Llamadas siguientes (transitivas)
-
-    const context = makeContext({ server: { initialized: true } });
-    const result = await get_impact_map({ filePath: 'src/module.js' }, context);
-
-    expect(result.totalAffected).toBe(result.directlyAffects.length + result.transitiveAffects.length);
-  });
-
-  test('exports vacíos si el archivo no tiene exports', async () => {
-    getFileAnalysis.mockResolvedValue({
-      exports: null,
-      riskScore: null,
-      subsystem: null,
-      semanticConnections: []
-    });
-    getFileDependents.mockResolvedValue([]);
-
-    const context = makeContext({ server: { initialized: true } });
-    const result = await get_impact_map({ filePath: 'src/module.js' }, context);
-
-    expect(result.exports).toEqual([]);
-    expect(result.riskLevel).toBe('low'); // default
-  });
-});

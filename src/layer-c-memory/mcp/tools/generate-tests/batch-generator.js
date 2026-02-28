@@ -10,7 +10,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
-import { detect_patterns } from '../detect-patterns.js';
+import { getAllAtoms } from '#layer-c/storage/index.js';
 import { analyzeFunctionForTests } from './test-analyzer.js';
 import { generateTestCode } from './code-generator.js';
 import { calculateRiskScore } from './recommendations.js';
@@ -33,13 +33,22 @@ export async function generate_batch_tests(args, context) {
   logger.info(`[Tool] generate_batch_tests(limit: ${limit}, minComplexity: ${minComplexity})`);
 
   try {
-    // Obtener gaps de cobertura usando detect_patterns
-    const patternsResult = await detect_patterns(
-      { patternType: 'test-coverage', limit: 100 },
-      context
-    );
+    // Obtener gaps de cobertura consultando átomos directamente de SQLite
+    const allAtoms = await getAllAtoms(projectPath);
 
-    const gaps = patternsResult?.testCoverage?.gaps || [];
+    // Filtrar átomos candidatos a testeo que tengan un testabilityScore bajo o nulo
+    const gaps = allAtoms
+      .filter(a => a.type === 'function' || a.type === 'class')
+      .map(a => ({
+        name: a.name,
+        file: a.file || a.filePath,
+        complexity: a.complexity || 0,
+        riskScore: a.derived?.riskScore || 0,
+        fragilityScore: a.derived?.fragilityScore || 0,
+        testabilityScore: a.derived?.testabilityScore || 0
+      }))
+      // testabilityScore bajo indica falta de tests
+      .filter(a => a.testabilityScore < 50);
 
     if (gaps.length === 0) {
       return {

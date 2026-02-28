@@ -2,7 +2,7 @@ import path from 'path';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import { loadAIConfig } from '../../ai/llm-client.js';
-import { LLMService } from '../../services/llm-service/index.js';
+// [DEPRECATED] import { LLMService } from '../../services/llm-service/index.js';
 import { exists, repoRoot } from '../utils/paths.js';
 import { isBrainServerStarting, isPortInUse } from '../utils/llm.js';
 import { showHelp } from '../help.js';
@@ -118,46 +118,11 @@ async function aiStopLogic(options = {}) {
 }
 
 async function aiStatusLogic(options = {}) {
-  const { silent = false } = options;
-
-  try {
-    const config = await loadAIConfig();
-    const service = await LLMService.getInstance();
-    await service.checkHealth();
-
-    const health = await service.client?.healthCheck() || { gpu: false, cpu: false };
-    const metrics = service.getMetrics();
-
-    return {
-      success: true,
-      exitCode: 0,
-      health: {
-        gpu: health.gpu,
-        cpu: health.cpu,
-        cpuEnabled: config.performance.enableCPUFallback
-      },
-      config: {
-        llmEnabled: config.llm.enabled,
-        mode: config.llm.mode,
-        configPath: path.resolve('src/ai/ai-config.json')
-      },
-      metrics: {
-        circuitBreakerState: metrics.circuitBreakerState,
-        availability: metrics.availability,
-        requestsTotal: metrics.requestsTotal,
-        latencyMsAvg: metrics.latencyMsAvg,
-        successRate: metrics.requestsTotal > 0
-          ? Math.round((metrics.requestsSuccessful / metrics.requestsTotal) * 100)
-          : 0
-      }
-    };
-  } catch (error) {
-    return {
-      success: false,
-      exitCode: 1,
-      error: error.message
-    };
-  }
+  return {
+    success: false,
+    exitCode: 1,
+    error: "[DEPRECATED] AI status commands are no longer supported. LLM features run through MCP."
+  };
 }
 
 export async function ai(subcommand, mode = 'gpu') {

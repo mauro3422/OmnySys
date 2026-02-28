@@ -5,13 +5,13 @@ export function classifyBinary(node, code) {
   if (node.type !== 'binary_expression' && node.type !== 'logical_expression') {
     return null;
   }
-  const operator = node.children.find(c => !c.isNamed() && !['(', ')'].includes(c.type))?.type || 'unknown';
+  const operator = node.children.find(c => !c.isNamed && !['(', ')'].includes(c.type))?.type || 'unknown';
   return { type: OPERATION_TYPES.BINARY_OPERATION, via: operator, details: { operator } };
 }
 
 export function classifyUnary(node, code) {
   if (node.type !== 'unary_expression') return null;
-  const operator = node.children.find(c => !c.isNamed())?.type || 'unknown';
+  const operator = node.children.find(c => !c.isNamed)?.type || 'unknown';
   return { type: OPERATION_TYPES.UNARY_OPERATION, via: operator, details: { operator } };
 }
 

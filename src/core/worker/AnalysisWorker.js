@@ -7,7 +7,6 @@
  */
 
 import { createLogger } from '../../shared/logger-system.js';
-import { LLMService } from '../../services/llm-service/index.js';
 import { WorkerState } from './WorkerState.js';
 import { JobAnalyzer } from '../jobs/JobAnalyzer.js';
 
@@ -23,13 +22,13 @@ export class AnalysisWorker {
       callbacks = options;
       options = {};
     }
-    
+
     this.rootPath = rootPath;
     this.callbacks = callbacks;
     this.options = options;
     this.state = new WorkerState();
     this.analyzedFiles = new Set();
-    
+
     this._llmService = options.llmService || null;
     this._llmServiceReady = false;
   }
@@ -54,18 +53,7 @@ export class AnalysisWorker {
    * @private
    */
   async _getLLMService() {
-    if (this._llmService && this._llmServiceReady) {
-      return this._llmService;
-    }
-    
-    if (!this._llmService) {
-      this._llmService = await LLMService.getInstance();
-    }
-    
-    const available = await this._llmService.waitForAvailable(5000);
-    this._llmServiceReady = available;
-    
-    return available ? this._llmService : null;
+    return null;
   }
 
   /**
@@ -73,16 +61,6 @@ export class AnalysisWorker {
    */
   async initialize() {
     logger.info('Initializing AnalysisWorker...');
-    
-    if (!this._llmService) {
-      try {
-        this._llmService = await LLMService.getInstance();
-        logger.info('✅ LLMService obtained');
-      } catch (err) {
-        logger.warn('⚠️  Could not pre-initialize LLMService:', err.message);
-      }
-    }
-    
     this.state.setInitialized(true);
     logger.info('AnalysisWorker ready');
   }
@@ -143,10 +121,10 @@ export class AnalysisWorker {
     }
 
     this.state.startJob();
-    
+
     const analyzer = new JobAnalyzer(this.rootPath, this.callbacks, this);
     const result = await analyzer.analyze(job, jobId);
-    
+
     this.state.endJob();
     return result;
   }
@@ -158,17 +136,17 @@ export class AnalysisWorker {
   async _analyzeWithLLM(llmService, files) {
     const { LLMAnalyzer } = await import('../../layer-b-semantic/llm-analyzer/index.js');
     const { loadAIConfig } = await import('../../ai/llm-client.js');
-    
+
     const aiConfig = await loadAIConfig();
     const analyzer = new LLMAnalyzer(aiConfig, this.rootPath);
-    
+
     if (llmService.client) {
       analyzer.client = llmService.client;
       analyzer.initialized = true;
     } else {
       await analyzer.initialize();
     }
-    
+
     return analyzer.analyzeMultiple(files);
   }
 }

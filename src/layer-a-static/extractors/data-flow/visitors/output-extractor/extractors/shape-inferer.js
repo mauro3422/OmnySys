@@ -86,7 +86,7 @@ function inferBinaryShape(node, code) {
   const comparisonOps = ['===', '!==', '==', '!=', '<', '>', '<=', '>='];
   const logicalOps = ['&&', '||'];
 
-  const operator = node.children.find(c => !c.isNamed() && !['(', ')'].includes(c.type))?.type || 'unknown';
+  const operator = node.children.find(c => !c.isNamed && !['(', ')'].includes(c.type))?.type || 'unknown';
 
   if (arithmeticOps.includes(operator)) {
     return operator === '+' ? 'string|number' : 'number';

@@ -24,7 +24,7 @@ import { toolDefinitions } from '#layer-c/mcp/tools/index.js';
 // ⚠️ Se usa función regular (no arrow function) porque se llama con `new Server()`
 // Arrow functions no pueden usarse como constructores con `new`
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
-  Server: vi.fn().mockImplementation(function() {
+  Server: vi.fn().mockImplementation(function () {
     this.setRequestHandler = vi.fn();
     this.onerror = null;
   })
@@ -133,7 +133,7 @@ describe('McpSetupStep', () => {
     expect(server.server).toBe(existingMcpServer);
   });
 
-  test('execute() con server existente no sobreescribe setRequestHandler', async () => {
+  test('execute() con server existente re-registra los handlers', async () => {
     const existingServer = {
       setRequestHandler: vi.fn(),
       onerror: null
@@ -142,8 +142,8 @@ describe('McpSetupStep', () => {
     const server = makeServer({ server: existingServer });
     await step.execute(server);
 
-    // El existing server NO debe haber llamado setRequestHandler de nuevo
-    expect(existingServer.setRequestHandler).not.toHaveBeenCalled();
+    // El existing server SÍ debe haber llamado setRequestHandler de nuevo (hot-reload override)
+    expect(existingServer.setRequestHandler).toHaveBeenCalled();
   });
 
   // ── shouldExecute() ─────────────────────────────────────────────────────────

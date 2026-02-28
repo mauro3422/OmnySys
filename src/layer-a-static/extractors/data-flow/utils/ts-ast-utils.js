@@ -12,7 +12,7 @@
  */
 export function text(node, code) {
     if (!node) return '';
-    return code.slice(node.startIndex, node.endIndex);
+    return code ? code.slice(node.startIndex, node.endIndex) : (node.text || '');
 }
 
 /**

@@ -3,12 +3,36 @@
  */
 
 import path from 'path';
+import fs from 'fs/promises';
 import { createLogger } from '../../../../utils/logger.js';
-import { checkImportExists } from '../validate-imports.js';
 import { extractImportsFromCode } from './exports.js';
 import { findCallersEfficient } from './search.js';
 
 const logger = createLogger('OmnySys:atomic:validators');
+
+/**
+ * Helper local para verificar existencia de archivos físicos durante edición
+ */
+async function checkImportExists(importPath, sourceFile, projectPath) {
+  try {
+    if (importPath.startsWith('#') || !importPath.startsWith('.')) {
+      return { exists: true, attemptedPaths: [] };
+    }
+
+    const target = path.resolve(path.dirname(sourceFile), importPath);
+    const attempts = [target, target + '.js', target + '.ts', path.join(target, 'index.js')];
+
+    for (const attempt of attempts) {
+      try {
+        await fs.access(attempt);
+        return { exists: true, attemptedPaths: attempts };
+      } catch { }
+    }
+    return { exists: false, attemptedPaths: attempts };
+  } catch (e) {
+    return { exists: false, attemptedPaths: [importPath] };
+  }
+}
 
 /**
  * Valida que todos los imports en el nuevo código existan
@@ -75,7 +99,25 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
 
       const callers = await findCallersEfficient(atom.name, projectPath, filePath);
 
-      logger.info(`[PostEditOptimized] ${atom.name}: ${callers.length} callers found`);
+      // Buscar también llamadas internas dentro del mismo archivo (usando el código nuevo)
+      for (const currentAtom of currentAtoms) {
+        const calls = currentAtom.calls || [];
+        for (const call of calls) {
+          if (call.callee === atom.name || call.target === atom.name || call.name === atom.name) {
+            const argumentCount = call.argumentCount !== undefined ? call.argumentCount :
+              (call.args ? call.args.length : (call.arguments ? call.arguments.length : 0));
+            callers.push({
+              name: currentAtom.name,
+              filePath: filePath,
+              line: call.line || currentAtom.line,
+              code: call.code || JSON.stringify(call),
+              argumentCount: argumentCount
+            });
+          }
+        }
+      }
+
+      logger.info(`[PostEditOptimized] ${atom.name}: ${callers.length} callers found (including internal)`);
 
       for (const caller of callers) {
         console.log(`[Validator] Caller ${caller.name} (${caller.filePath}): args=${caller.argumentCount}, required=${requiredParams}`);

@@ -15,6 +15,30 @@ export async function upLogic(options = {}) {
     let mcpRunning = await checkMCP();
     let mcpStarted = false;
 
+    if (mcpRunning) {
+      const isClean = process.argv.includes('--clean');
+      log('\n♻️  The MCP HTTP Daemon is ALREADY RUNNING.', 'info');
+      log(`📡 Sending graceful restart signal to Daemon instead of killing it (clearCache=${isClean})...`, 'info');
+
+      try {
+        const response = await fetch(`http://127.0.0.1:${PORTS.mcp}/restart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clearCache: isClean, reanalyze: isClean })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          log(`✅ Daemon graceful restart triggered: ${data.message || 'OK'}`, 'success');
+          mcpStarted = true;
+        } else {
+          log(`⚠️ Daemon rejected internal restart (Status ${response.status})`, 'warn');
+        }
+      } catch (err) {
+        log(`❌ Failed to send restart signal: ${err.message}`, 'error');
+      }
+    }
+
     if (!mcpRunning) {
       mcpStarted = true;
       mcpRunning = await startMCP();

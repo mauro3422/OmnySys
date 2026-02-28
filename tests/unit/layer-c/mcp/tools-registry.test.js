@@ -26,8 +26,8 @@ describe('MCP Tools Registry — toolDefinitions', () => {
     expect(toolDefinitions.length).toBeGreaterThan(0);
   });
 
-  test('existen al menos 16 tools registradas (inventario completo)', () => {
-    // Inventario conocido: 16 tools en v0.9.17
+  test('existen al menos 16 tools registradas (inventario unificado)', () => {
+    // Inventario unificado Fase 17: ~16 tools
     expect(toolDefinitions.length).toBeGreaterThanOrEqual(16);
   });
 
@@ -129,22 +129,22 @@ describe('MCP Tools Registry — toolHandlers', () => {
   // ── Herramientas conocidas del inventario ──────────────────────────────────
 
   test.each([
-    'get_impact_map',
-    'analyze_change',
-    'explain_connection',
-    'get_risk_assessment',
-    'search_files',
-    'get_server_status',
-    'get_call_graph',
-    'analyze_signature_change',
-    'explain_value_flow',
-    'get_function_details',
-    'get_molecule_summary',
-    'get_atomic_functions',
-    'restart_server',
-    'get_tunnel_vision_stats',
-    'atomic_edit',
-    'atomic_write'
+    'mcp_omnysystem_query_graph',
+    'mcp_omnysystem_traverse_graph',
+    'mcp_omnysystem_aggregate_metrics',
+    'mcp_omnysystem_execute_solid_split',
+    'mcp_omnysystem_suggest_refactoring',
+    'mcp_omnysystem_move_file',
+    'mcp_omnysystem_fix_imports',
+    'mcp_omnysystem_validate_imports',
+    'mcp_omnysystem_generate_tests',
+    'mcp_omnysystem_generate_batch_tests',
+    'mcp_omnysystem_get_recent_errors',
+    'mcp_omnysystem_get_server_status',
+    'mcp_omnysystem_restart_server',
+    'mcp_omnysystem_atomic_edit',
+    'mcp_omnysystem_atomic_write',
+    'mcp_omnysystem_get_atom_schema'
   ])('la tool conocida "%s" está registrada', (toolName) => {
     const def = toolDefinitions.find(t => t.name === toolName);
     expect(def, `Tool "${toolName}" no está en toolDefinitions`).toBeDefined();

@@ -101,7 +101,9 @@ export async function getTree(filePath, code) {
 
         const parser = new Parser();
         parser.setLanguage(language);
-        return parser.parse(code);
+        const tree = parser.parse(code);
+        parser.delete(); // 🧹 FREE WASM MEMORY
+        return tree;
     } catch (error) {
         logger.error(`Failed to get tree for ${filePath}: ${error.message}`);
         return null;
@@ -135,7 +137,9 @@ export async function parseFile(filePath, code) {
         const tree = await getTree(filePath, code);
         if (!tree) throw new Error(`Could not generate tree for: ${filePath}`);
 
-        return extractFileInfo(tree, code, filePath);
+        const result = extractFileInfo(tree, code, filePath);
+        tree.delete(); // 🧹 FREE WASM MEMORY
+        return result;
 
     } catch (error) {
         logger.error(`❌ parser-v2 failed for ${path.basename(filePath)}: ${error.message}`);
@@ -216,7 +220,12 @@ export function parseFileSync(filePath, code) {
     const parser = new Parser();
     parser.setLanguage(language);
     const tree = parser.parse(code);
-    return extractFileInfo(tree, code, filePath);
+    const result = extractFileInfo(tree, code, filePath);
+
+    tree.delete(); // 🧹 FREE WASM MEMORY
+    parser.delete(); // 🧹 FREE WASM MEMORY
+
+    return result;
 }
 
 export { isSupportedFile };

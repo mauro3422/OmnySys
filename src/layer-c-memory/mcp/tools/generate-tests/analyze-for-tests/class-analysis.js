@@ -7,7 +7,7 @@
  */
 
 import { createLogger } from '../../../../../utils/logger.js';
-import { get_impact_map } from '../../impact-map.js';
+import { getFileDependents } from '../../../../query/apis/file-api.js';
 import { extractClassMethods, isBuilderPattern, analyzeClassForTests } from '../class-analyzer.js';
 import { analyzeExistingTests, findTestFile } from '../test-analyzer-existing.js';
 import { validate_imports } from '../../validate-imports.js';
@@ -18,21 +18,20 @@ const logger = createLogger('OmnySys:analyze-for-tests:class');
  * Analiza una clase especifica
  */
 export async function analyzeClass(filePath, className, sourceCode, projectPath, context, validateImports) {
-  // Obtener impact map para validar métodos reales
-  let impactMap = null;
+  // Obtener file dependents map para validar métodos reales y grado de uso
+  let fileDependents = [];
   try {
-    impactMap = await get_impact_map({ filePath }, context);
+    fileDependents = await getFileDependents(projectPath, filePath);
   } catch (e) {
-    logger.warn(`Could not get impact map for ${filePath}: ${e.message}`);
+    logger.warn(`Could not get dependents map for ${filePath}: ${e.message}`);
   }
-  
+
   const { methods, staticMethods } = extractClassMethods(sourceCode, className);
-  
-  // Filtrar métodos válidos usando impact map
-  const validMethods = impactMap 
-    ? methods.filter(m => impactMap.definitions?.some(d => d.name === `${className}.${m.name}`))
-    : methods;
-  
+
+  // Como impactMap analizaba definiciones dentro del archivo y usos, podemos basarnos en
+  // si un método es público / documentado, o simplemente incluir todos mientras ajustamos AST.
+  const validMethods = methods;
+
   const classInfo = {
     name: className,
     file: filePath,
@@ -40,9 +39,9 @@ export async function analyzeClass(filePath, className, sourceCode, projectPath,
     staticMethods,
     isBuilder: isBuilderPattern({ methods: validMethods })
   };
-  
+
   const suggestedTests = await analyzeClassForTests(classInfo, projectPath);
-  
+
   // Calcular estimaciones realistas
   const constructorTests = 1;
   const builderMethodTests = Math.min(validMethods.filter(m => m.name.startsWith('with')).length, 10);
@@ -50,23 +49,23 @@ export async function analyzeClass(filePath, className, sourceCode, projectPath,
   const staticTests = Math.min(staticMethods.length, 5);
   const chainingTests = builderMethodTests > 0 ? 1 : 0;
   const immutabilityTests = buildTests > 0 ? 2 : 0;
-  
+
   const estimatedTotal = constructorTests + builderMethodTests + buildTests + staticTests + chainingTests + immutabilityTests;
-  
+
   // Buscar y analizar tests existentes
   const testFilePath = findTestFile(filePath);
   let existingTestsAnalysis = null;
   try {
     existingTestsAnalysis = await analyzeExistingTests(
-      filePath, 
-      testFilePath, 
-      projectPath, 
+      filePath,
+      testFilePath,
+      projectPath,
       suggestedTests
     );
   } catch (e) {
     logger.warn(`Could not analyze existing tests: ${e.message}`);
   }
-  
+
   let importValidation = null;
   if (validateImports) {
     importValidation = await validate_imports(
@@ -74,7 +73,7 @@ export async function analyzeClass(filePath, className, sourceCode, projectPath,
       context
     );
   }
-  
+
   const result = {
     success: true,
     file: filePath,
@@ -108,11 +107,11 @@ export async function analyzeClass(filePath, className, sourceCode, projectPath,
       toGenerateCode: `generate_tests({ filePath: "${filePath}", className: "${className}", options: { action: "generate" } })`,
       toSeeAllTests: `generate_tests({ filePath: "${filePath}", className: "${className}", options: { action: "generate" } }) // Returns ${estimatedTotal} tests`
     },
-    warnings: importValidation?.files?.length > 0 
-      ? ['Source file has import issues'] 
+    warnings: importValidation?.files?.length > 0
+      ? ['Source file has import issues']
       : []
   };
-  
+
   // Agregar análisis de tests existentes si está disponible
   if (existingTestsAnalysis?.success) {
     result.existingTests = {
@@ -121,12 +120,12 @@ export async function analyzeClass(filePath, className, sourceCode, projectPath,
       recommendations: existingTestsAnalysis.recommendations,
       recommendedAction: existingTestsAnalysis.action
     };
-    
+
     // Agregar warning si hay acción recomendada importante
     if (existingTestsAnalysis.action === 'REGENERATE') {
       result.warnings.unshift(`⚠️ RECOMMENDED: ${existingTestsAnalysis.recommendations[0].reason}. ${existingTestsAnalysis.recommendations[0].details}`);
     }
   }
-  
+
   return result;
 }

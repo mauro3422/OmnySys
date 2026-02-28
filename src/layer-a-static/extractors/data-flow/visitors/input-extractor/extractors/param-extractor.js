@@ -9,7 +9,8 @@
 
 // Tree-sitter helpers
 function text(node, code) {
-  return code.slice(node.startIndex, node.endIndex);
+  if (!node) return '';
+  return code ? code.slice(node.startIndex, node.endIndex) : (node.text || '');
 }
 
 import { extractDefaultValue } from './default-value-extractor.js';

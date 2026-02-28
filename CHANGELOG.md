@@ -40,6 +40,7 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
+| **[0.9.68]** | 2026-02-28 | **🛠️ MCP Tools Unification & Daemon Stability — ✅ 16 Consolidated Tools, WASM Memory Leaks Fixed, Graceful Restart API** (Latest) |
 | **[0.9.67]** | 2026-02-26 | **🧠 Atomic Intelligence Hub & High-Risk Refactoring — ✅ Refactored vector-calculator.js (SOLID split). Fixed Layer C visibility & path normalization.** |
 | **[0.9.66]** | 2026-02-26 | **⚡ God Function Refactoring & Atomic DX — ✅ Refactored cleanLLMResponse, findLargeMonolithic, and atomic_write. New Impact Map integration.** |
 | **[0.9.65]** | 2026-02-26 | **🛡️ Database Schema Integrity & Stability — ✅ Fixed SQLite Schema constraints, ZERO initialization crashes, Error Guardian Graceful Fallbacks** (Latest) |
@@ -92,7 +93,37 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.67 (2026-02-26)
+## 🚀 Latest Release: v0.9.68 (2026-02-28)
+
+**MCP Tools Unification & Daemon Stability**: Auditoría absoluta y consolidación de las APIs MCP. El registro pasó de >30 herramientas dispersas a 16 super-herramientas agnósticas unificadas con arquitecturas enrutadas. Erradicación de pérdidas de conexión entre interfaces por finalizaciones abruptas del servidor.
+
+### Key Achievements
+
+1. **Arquitectura OOP para MCP Tools (Phase 15 & 17)**:
+   - **Base Clases Analíticas**: Creada `BaseMCPTool` para estandarizar el registro y metadata de las herramientas.
+   - **Consultas de Grafo Pasivas**: Implementada clase abstracta `GraphQueryTool`. Más de 30 consultas legacy disgregadas fueron refactorizadas y enrutadas a través de esta clase.
+   - **Motor de Mutaciones Inyectado (AtomicMutationTool)**: Migrada toda la lógica imperativa destartalada de edición atómica hacia la clase abstracta transaccional `AtomicMutationTool`. 
+   - **Estabilización Transaccional (`TransactionManager`)**: Corregido un "Bug durmiente" donde las mutaciones (`atomic_write`, `atomic_edit`, `move_file`) fallaban porque llamaban estáticamente a métodos estáticos inexistentes, instanciado de manera segura con `AtomicEditor`.
+
+2. **Unificación y Limpieza Extrema del Payload**:
+   - El registro total de MCP tools pasó de +30 herramientas a un modelo de cohesión de **16 herramientas unificadas** (Routers: `query_graph`, `traverse_graph`, `aggregate_metrics`).
+   - Sistema de rutas agnóstico y normalizado de Windows Absolute paths a esquemas POSIX (`src/utils/...`), previniendo errores de `ENOENT` (`C:\Dev\OmnySystem\C:\Dev\...`).
+
+3. **Daemon Stability & Graceful Restart (omny up)**:
+   - Integrado Express JSON Parser `express.json()` en el `mcp-http-server.js`.
+   - Creado Endpoint HTTP Interno `POST /restart`. 
+   - Al detectar el daemon MCP, `omny up` ahora despacha una señal de hot-restart al daemon principal sin matarlo, impidiendo cuelgues de VS Code.
+
+4. **Zero Memory Leaks del WASM Parser**:
+   - Resuelto Leak en analizadores Tree-Sitter con entorno WASM GC-locked. Insertado desensamblador manual `tree.delete()` después de cada uso del AST.
+
+5. **Estabilización en DataFlow Extractors**:
+   - Solventado _Uncaught Promise Exception_ (`c.isNamed is not a function`).
+   - Prevención de `Cannot read properties of undefined (reading 'slice')` mediante _Optional Chaining_ en Extractor ASTs.
+
+---
+
+## 📚 Previous Release: v0.9.67 (2026-02-26)
 
 **BRAIN & Atomic Intelligence Excellence**: Intervención profunda en el corazón analítico de OmnySys. Refactorización completa de `vector-calculator.js` (God Function de larga data) mediante una desintegración modular SOLID. Mejoras críticas en la infraestructura de la Capa C para garantizar visibilidad atómica en tiempo real y eliminar lag de indexación.
 

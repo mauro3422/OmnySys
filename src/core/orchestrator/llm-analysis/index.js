@@ -1,9 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
-import { createLogger } from '../../../utils/logger.js';
-import { LLMService } from '../../../services/llm-service/index.js';
-import { calculateContentHash } from './hash-utils.js';
+import { createLogger } from '../../shared/logger-system.js';
+import { LLMAnalyzer } from '../../layer-b-semantic/llm-analyzer/index.js';
 import { processFileBatch } from './file-processor.js';
 import { initializeQueue, enqueueFiles, startQueueProcessing, handleNoFilesNeedLLM } from './queue-manager.js';
 
@@ -34,12 +33,12 @@ export async function analyzeComplexFilesWithLLM(context) {
     // Verificar disponibilidad de LLM
     const llmService = await LLMService.getInstance();
     const llmReady = await llmService.waitForAvailable(20000);
-    
+
     if (!llmReady) {
       logger.info('   ⚠️  LLM not available, skipping LLM analysis');
       return;
     }
-    
+
     logger.info('   ✅ LLM server is available (via LLMService)');
 
     // Inicializar LLM Analyzer
@@ -77,12 +76,12 @@ export async function analyzeComplexFilesWithLLM(context) {
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE);
-      
+
       const result = await processFileBatch(
-        batch, 
-        context, 
-        deps, 
-        llmAnalyzer, 
+        batch,
+        context,
+        deps,
+        llmAnalyzer,
         aiConfig
       );
 
@@ -109,12 +108,12 @@ export async function analyzeComplexFilesWithLLM(context) {
     // Limpiar memoria
     const fileCount = allFilesNeedingLLM.length;
     allFilesNeedingLLM.length = 0;
-    
+
     logger.info('   🚀 Starting processing...');
 
     // Iniciar procesamiento
     startQueueProcessing(context, context.maxConcurrentAnalyses);
-    
+
   } catch (error) {
     logger.error('   ❌ Error in LLM analysis phase:', error.message);
   }

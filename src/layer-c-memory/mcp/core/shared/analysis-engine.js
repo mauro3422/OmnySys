@@ -12,7 +12,6 @@
 
 import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { getFileDependents } from '#layer-c/query/apis/file-api.js';
-import { analyzeSOLIDViolations } from '../../tools/patterns/monolithic/solid.js';
 
 /**
  * Constantes de Clasificación
@@ -108,11 +107,9 @@ export class AnalysisEngine {
      * Realiza una auditoría completa de salud de un archivo/átomo
      */
     static async auditHealth(filePath, projectPath, atomsInFile) {
-        const solid = await analyzeSOLIDViolations(atomsInFile);
-
         const issues = [];
-        if (solid.srp?.violation) issues.push({ type: 'SOLID_SRP', severity: 'high', message: solid.srp.message });
-        if (solid.ocp?.violation) issues.push({ type: 'SOLID_OCP', severity: 'medium', message: solid.ocp.message });
+        // Se removió el chequeo estricto de SOLID al vuelo para optimizar.
+        // El riskAnalyzer general de Layer A reporta estas métricas estáticas.
 
         // Consolidar métricas de riesgo
         const avgComplexity = atomsInFile.reduce((sum, a) => sum + (a.complexity || 0), 0) / (atomsInFile.length || 1);

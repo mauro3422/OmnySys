@@ -92,7 +92,7 @@ export function extractSemanticFromFile(filePath, code) {
   return {
     filePath,
     localStorage: extractLocalStorageKeys(code),
-    events: extractEventNames(code),
+    events: extractEventNames(code, filePath),
     globals: extractGlobalAccess(code),
     routes: extractRoutes(filePath, code),
     envVars: extractEnvVars(code)

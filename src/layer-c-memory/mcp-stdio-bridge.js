@@ -65,11 +65,67 @@ async function main() {
     // Transport facing the IDE (Antigravity) — reads stdin, writes stdout
     const stdioTransport = new StdioServerTransport();
 
-    // Transport facing the daemon — Streamable HTTP client
-    const httpTransport = new StreamableHTTPClientTransport(DAEMON_URL);
+    let httpTransport;
+    let isReconnecting = false;
+
+    async function connectToDaemon() {
+        httpTransport = new StreamableHTTPClientTransport(DAEMON_URL);
+
+        // Wire messages: daemon → IDE
+        httpTransport.onmessage = async (message) => {
+            try {
+                await stdioTransport.send(message);
+            } catch (err) {
+                log(`Error forwarding daemon→IDE: ${err.message}`);
+            }
+        };
+
+        httpTransport.onerror = (err) => log(`http error: ${err.message}`);
+
+        httpTransport.onclose = async () => {
+            log('Daemon disconnected.');
+            if (isReconnecting) return;
+            isReconnecting = true;
+
+            log('Daemon disconnected — attempting recovery for 15 seconds...');
+
+            let recovered = false;
+            for (let i = 0; i < 15; i++) {
+                recovered = await checkDaemon();
+                if (recovered) break;
+                log(`Waiting for daemon to restart (${i + 1}/15)...`);
+                await new Promise((r) => setTimeout(r, 1000));
+            }
+
+            if (!recovered) {
+                log('Daemon recovery failed. Shutting down bridge.');
+                stdioTransport.close().catch(() => { });
+                process.exit(1);
+            }
+
+            log('Daemon recovered. Reconnecting HTTP transport...');
+            try {
+                await connectToDaemon();
+                log('Bridge reconnected successfully.');
+            } catch (e) {
+                log(`Reconnection failed: ${e.message}`);
+                process.exit(1);
+            }
+            isReconnecting = false;
+        };
+
+        await httpTransport.start();
+    }
+
+    // Inicializar conexión HTTPS
+    await connectToDaemon();
 
     // Wire messages: IDE → daemon
     stdioTransport.onmessage = async (message) => {
+        if (isReconnecting) {
+            log('IDE requested operation while daemon is restarting. Dropping message.');
+            return;
+        }
         try {
             await httpTransport.send(message);
         } catch (err) {
@@ -77,34 +133,17 @@ async function main() {
         }
     };
 
-    // Wire messages: daemon → IDE
-    httpTransport.onmessage = async (message) => {
-        try {
-            await stdioTransport.send(message);
-        } catch (err) {
-            log(`Error forwarding daemon→IDE: ${err.message}`);
-        }
-    };
-
-    // Error handlers
     stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
-    httpTransport.onerror = (err) => log(`http error: ${err.message}`);
 
     // Close handlers
     stdioTransport.onclose = () => {
         log('IDE disconnected — shutting down bridge.');
-        httpTransport.close().catch(() => { });
+        if (httpTransport && !isReconnecting) {
+            httpTransport.close().catch(() => { });
+        }
         process.exit(0);
     };
 
-    httpTransport.onclose = () => {
-        log('Daemon disconnected — shutting down bridge.');
-        stdioTransport.close().catch(() => { });
-        process.exit(1);
-    };
-
-    // Start both transports
-    await httpTransport.start();
     await stdioTransport.start();
 
     log('Bridge active.');

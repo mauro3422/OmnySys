@@ -47,7 +47,7 @@ function traverseNode(node, usages, inputs, code, depth = 0) {
 
   // Identifier - posible uso
   if (nodeType === 'identifier') {
-    const name = code.slice(node.startIndex, node.endIndex);
+    const name = code ? code.slice(node.startIndex, node.endIndex) : (node.text || '');
 
     // Evitar registrar la definición del parámetro como uso
     const parent = node.parent;
@@ -67,7 +67,7 @@ function traverseNode(node, usages, inputs, code, depth = 0) {
     const propertyNode = node.childForFieldName('property');
 
     const objectName = getIdentifierName(objectNode, code);
-    const propertyName = propertyNode ? code.slice(propertyNode.startIndex, propertyNode.endIndex) : null;
+    const propertyName = propertyNode ? (code ? code.slice(propertyNode.startIndex, propertyNode.endIndex) : (propertyNode.text || '')) : null;
 
     if (objectName) {
       recordUsage(objectName, {
@@ -100,7 +100,7 @@ function traverseNode(node, usages, inputs, code, depth = 0) {
 
         if (arg.type === 'spread_element') {
           const spreadId = arg.namedChildren.find(c => c.type === 'identifier');
-          const spreadName = spreadId ? code.slice(spreadId.startIndex, spreadId.endIndex) : null;
+          const spreadName = spreadId ? (code ? code.slice(spreadId.startIndex, spreadId.endIndex) : (spreadId.text || '')) : null;
           if (spreadName) {
             recordUsage(spreadName, {
               type: 'spread',

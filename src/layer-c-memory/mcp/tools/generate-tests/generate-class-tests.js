@@ -7,7 +7,7 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
-import { get_impact_map } from '../impact-map.js';
+import { getFileDependents } from '../../../query/apis/file-api.js';
 import { extractClassMethods, isBuilderPattern } from './class-analyzer.js';
 import { generateSmartClassTests } from './smart-test-generator.js';
 import fs from 'fs/promises';
@@ -20,20 +20,20 @@ const logger = createLogger('OmnySys:generate-class-tests');
  */
 export async function generateClassTests(filePath, className, options, projectPath, context) {
   logger.info(`[GenerateClassTests] Generating tests for ${className}`);
-  
+
   const fullPath = projectPath ? path.join(projectPath, filePath) : filePath;
   const sourceCode = await fs.readFile(fullPath, 'utf-8');
-  
-  // Obtener impact map para validar métodos reales
-  let impactMap = null;
+
+  // Obtener file dependents map para referenciar en smart tests
+  let fileDependents = [];
   try {
-    impactMap = await get_impact_map({ filePath }, context);
+    fileDependents = await getFileDependents(projectPath, filePath);
   } catch (e) {
-    logger.warn(`Could not get impact map for ${filePath}: ${e.message}`);
+    logger.warn(`Could not get dependents for ${filePath}: ${e.message}`);
   }
-  
+
   const { methods, staticMethods } = extractClassMethods(sourceCode, className);
-  
+
   const classInfo = {
     name: className,
     file: filePath,
@@ -41,10 +41,10 @@ export async function generateClassTests(filePath, className, options, projectPa
     staticMethods,
     isBuilder: isBuilderPattern({ methods })
   };
-  
+
   // Usar generador inteligente
-  const result = await generateSmartClassTests(classInfo, filePath, projectPath, impactMap, options);
-  
+  const result = await generateSmartClassTests(classInfo, filePath, projectPath, { dependents: fileDependents }, options);
+
   return {
     success: true,
     file: filePath,

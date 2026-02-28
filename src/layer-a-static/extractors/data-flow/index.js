@@ -16,7 +16,7 @@
  */
 
 import path from 'path';
-import { parseFile, parseFileSync, isSupportedFile } from '../../parser/index.js';
+import { parseFile, getTree, parseFileSync, isSupportedFile } from '../../parser/index.js';
 import { createLogger } from '#utils/logger.js';
 import { InputExtractor } from './visitors/input-extractor/index.js';
 import { TransformationExtractor } from './visitors/transformation-extractor/index.js';
@@ -42,6 +42,9 @@ const logger = createLogger('OmnySys:data-flow');
 export async function extractDataFlow(codeOrNode, options = {}) {
   logger.debug('Extracting data flow...');
 
+  let localTree = null;
+  let shouldDeleteTree = false;
+
   try {
     // Accept either a source code string or an already-parsed Tree-sitter node
     let code = typeof codeOrNode === 'string' ? codeOrNode : '';
@@ -50,14 +53,10 @@ export async function extractDataFlow(codeOrNode, options = {}) {
     const filePath = options.filePath || 'snippet.js';
 
     if (!node && code) {
-      // Si recibimos solo código, necesitamos parsearlo.
-      // Usamos parseFileSync si es seguro, o asumimos que ya está inicializado.
       try {
-        const fileInfo = await parseFile(filePath, code);
-        // Deberíamos buscar el nodo de la función en el fileInfo si es posible, 
-        // pero por ahora tomaremos el root node si es un snippet.
-        // TODO: Mejorar la resolución del nodo específico vs root node
-        node = fileInfo._tree?.rootNode || null;
+        localTree = await getTree(filePath, code);
+        node = localTree?.rootNode || null;
+        shouldDeleteTree = !!localTree;
       } catch (parseErr) {
         logger.warn(`Failed to parse snippet for data flow: ${parseErr.message}`);
         return { error: parseErr.message };
@@ -129,6 +128,10 @@ export async function extractDataFlow(codeOrNode, options = {}) {
       ? new TypeInferrer(graph).infer()
       : {};
 
+    if (shouldDeleteTree && localTree) {
+      localTree.delete(); // 🧹 FREE WASM MEMORY
+    }
+
     return {
       graph,
       inputs,
@@ -145,6 +148,9 @@ export async function extractDataFlow(codeOrNode, options = {}) {
       }
     };
   } catch (error) {
+    if (shouldDeleteTree && localTree) {
+      localTree.delete(); // 🧹 FREE WASM MEMORY
+    }
     const functionName = options.functionName || '<anonymous>';
     const filePath = options.filePath || 'unknown';
     logger.warn(`Data flow extraction failed for ${functionName} in ${filePath}:`, error.message);
