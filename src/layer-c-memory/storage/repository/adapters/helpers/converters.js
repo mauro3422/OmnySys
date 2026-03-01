@@ -69,6 +69,14 @@ export function atomToRow(atom) {
     dependency_depth: safeNumber(atom.dependencyDepth, 0),
     external_call_count: safeNumber(atom.externalCallCount, 0),
 
+    // Graph Algebra columns
+    in_degree: safeNumber(atom.inDegree || atom.calledBy?.length, 0),
+    out_degree: safeNumber(atom.outDegree || atom.calls?.length, 0),
+    centrality_score: safeNumber(atom.centralityScore, 0),
+    centrality_classification: safeString(atom.centralityClassification),
+    risk_level: safeString(atom.riskLevel),
+    risk_prediction: safeString(atom.riskPrediction),
+
     // Temporales
     extracted_at: safeString(atom.extractedAt || atom.analyzedAt, now),
     updated_at: safeString(atom.updatedAt, now),
@@ -150,6 +158,14 @@ export function rowToAtom(row) {
     calledBy: safeParseJson(row.called_by_json, []) || [],
     dependencyDepth: row.dependency_depth,
     externalCallCount: row.external_call_count,
+
+    // Graph Algebra columns
+    inDegree: row.in_degree,
+    outDegree: row.out_degree,
+    centralityScore: row.centrality_score,
+    centralityClassification: row.centrality_classification,
+    riskLevel: row.risk_level,
+    riskPrediction: row.risk_prediction,
 
     // Legacy compatibility - función declarada vs arrow vs método
     functionType: row.function_type || 'declaration',

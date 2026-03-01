@@ -25,7 +25,7 @@ export class ValidateImportsTool extends GraphQueryTool {
 
         // Fast minimal check based on SQLite Graph data (since the actual paths are stored)
         for (const imp of imports) {
-            if (checkBroken && !imp.resolved) {
+            if (checkBroken && !imp.resolved && imp.type === 'local') {
                 broken.push(imp);
             }
             if (checkUnused && imp.unused === true) {

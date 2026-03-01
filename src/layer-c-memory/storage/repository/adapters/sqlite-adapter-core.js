@@ -89,6 +89,7 @@ export class SQLiteAdapterCore extends AtomRepository {
       'importance_score', 'coupling_score', 'cohesion_score', 'stability_score',
       'propagation_score', 'fragility_score', 'testability_score',
       'callers_count', 'callees_count', 'dependency_depth', 'external_call_count',
+      'in_degree', 'out_degree', 'centrality_score', 'centrality_classification', 'risk_level', 'risk_prediction',
       'extracted_at', 'updated_at', 'change_frequency', 'age_days', 'generation',
       'signature_json', 'data_flow_json', 'calls_json', 'temporal_json',
       'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',

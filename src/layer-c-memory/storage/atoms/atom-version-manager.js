@@ -63,7 +63,7 @@ export class AtomVersionManager {
 
   async _ensureDb() {
     if (this.db) return;
-    const { connectionManager } = await import('../../database/connection.js');
+    const { connectionManager } = await import('../database/connection.js');
     this.db = connectionManager.getDatabase();
   }
 

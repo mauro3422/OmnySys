@@ -1,0 +1,1 @@
+export const verifyFixV2 = () => "success_v2";

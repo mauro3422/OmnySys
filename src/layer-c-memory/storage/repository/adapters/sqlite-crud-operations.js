@@ -63,13 +63,16 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
       row.importance_score, row.coupling_score, row.cohesion_score, row.stability_score,
       row.propagation_score, row.fragility_score, row.testability_score,
       row.callers_count, row.callees_count, row.dependency_depth, row.external_call_count,
+      row.in_degree, row.out_degree, row.centrality_score, row.centrality_classification, row.risk_level, row.risk_prediction,
       row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
       row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
       row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
-      row.called_by_json, row.function_type
+      row.shared_state_json, row.event_emitters_json, row.event_listeners_json, row.scope_type,
+      row.called_by_json, row.function_type,
+      row.has_error_handling, row.has_network_calls
     ];
 
-    this.statements.insertAtom.run(values);
+    this.statements.insertAtom.run(...values);
     this._logger.debug(`[SQLiteAdapter] Saved atom: ${atom.id}`);
 
     // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
