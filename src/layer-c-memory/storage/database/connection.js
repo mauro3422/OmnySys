@@ -37,30 +37,30 @@ class ConnectionManager {
     }
 
     this.dbPath = resolve(projectPath, '.omnysysdata', 'omnysys.db');
-    
+
     // Crear directorio si no existe
     const dataDir = resolve(projectPath, '.omnysysdata');
     if (!existsSync(dataDir)) {
       logger.info(`[Connection] Creating data directory: ${dataDir}`);
       mkdirSync(dataDir, { recursive: true });
     }
-    
+
     logger.info(`[Connection] Initializing SQLite at: ${this.dbPath}`);
 
     try {
       // Abrir conexion con better-sqlite3 (sincronico)
       this.db = new Database(this.dbPath);
-      
+
       // Aplicar configuraciones
       this.applyConfig();
-      
+
       // Ejecutar schema
       this.initializeSchema();
-      
+
       this.initialized = true;
-      
+
       logger.info('[Connection] SQLite initialized successfully');
-      
+
       return this.db;
     } catch (error) {
       logger.error(`[Connection] Failed to initialize SQLite: ${error.message}`);
@@ -74,25 +74,25 @@ class ConnectionManager {
   applyConfig() {
     // WAL mode para mejor performance concurrente
     this.db.pragma('journal_mode = WAL');
-    
+
     // Cache size: 64MB
     this.db.pragma('cache_size = 64000');
-    
+
     // Synchronous: NORMAL (balance)
     this.db.pragma('synchronous = NORMAL');
-    
+
     // Temp store: MEMORY
     this.db.pragma('temp_store = MEMORY');
-    
+
     // Page size: 4096
     this.db.pragma('page_size = 4096');
-    
+
     // Foreign keys: ON
     this.db.pragma('foreign_keys = ON');
-    
+
     // Busy timeout: 5000ms
     this.db.pragma('busy_timeout = 5000');
-    
+
     logger.debug('[Connection] SQLite config applied');
   }
 
@@ -106,14 +106,14 @@ class ConnectionManager {
       const __dirname = dirname(__filename);
       const schemaPath = resolve(__dirname, 'schema.sql');
       const schema = readFileSync(schemaPath, 'utf8');
-      
+
       this.db.exec(schema);
-      
+
       // Migración: agregar columnas faltantes a tabla 'files' si no existen
       // SQLite no soporta ADD COLUMN IF NOT EXISTS en versiones antiguas
       const tableInfo = this.db.prepare('PRAGMA table_info(files)').all();
       const existingColumns = tableInfo.map(col => col.name);
-      
+
       if (!existingColumns.includes('module_name')) {
         this.db.exec('ALTER TABLE files ADD COLUMN module_name TEXT');
       }
@@ -123,18 +123,18 @@ class ConnectionManager {
       if (!existingColumns.includes('exports_json')) {
         this.db.exec("ALTER TABLE files ADD COLUMN exports_json TEXT DEFAULT '[]'");
       }
-      
+
       // Migración: agregar columnas faltantes a tabla 'atoms'
       const atomsInfo = this.db.prepare('PRAGMA table_info(atoms)').all();
       const atomColumns = atomsInfo.map(col => col.name);
-      
+
       if (!atomColumns.includes('called_by_json')) {
         this.db.exec("ALTER TABLE atoms ADD COLUMN called_by_json TEXT DEFAULT '[]'");
       }
       if (!atomColumns.includes('function_type')) {
         this.db.exec("ALTER TABLE atoms ADD COLUMN function_type TEXT DEFAULT 'declaration'");
       }
-      
+
       // Migración v2.2: columnas de Algebra de Grafos
       if (!atomColumns.includes('in_degree')) {
         this.db.exec("ALTER TABLE atoms ADD COLUMN in_degree INTEGER DEFAULT 0");
@@ -154,7 +154,7 @@ class ConnectionManager {
       if (!atomColumns.includes('risk_prediction')) {
         this.db.exec("ALTER TABLE atoms ADD COLUMN risk_prediction TEXT");
       }
-      
+
       // Migración v2.1: agregar tabla cache si no existe
       const cacheTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='cache_entries'").get();
       if (!cacheTableInfo) {
@@ -170,7 +170,25 @@ class ConnectionManager {
         `);
         logger.info('[Connection] Created cache_entries table');
       }
-      
+
+      // Migración v2.3: agregar tabla atom_versions si no existe
+      const versionTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='atom_versions'").get();
+      if (!versionTableInfo) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS atom_versions (
+            atom_id TEXT PRIMARY KEY,
+            hash TEXT NOT NULL,
+            field_hashes_json TEXT NOT NULL,
+            last_modified INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            atom_name TEXT NOT NULL,
+            FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE
+          );
+          CREATE INDEX IF NOT EXISTS idx_atom_versions_file ON atom_versions(file_path);
+        `);
+        logger.info('[Connection] Created atom_versions table');
+      }
+
       logger.debug('[Connection] Schema initialized');
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
@@ -253,7 +271,7 @@ class ConnectionManager {
    */
   checkpoint() {
     if (!this.db) return;
-    
+
     try {
       this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
       logger.debug('[Connection] WAL checkpoint executed');

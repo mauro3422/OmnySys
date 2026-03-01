@@ -174,6 +174,7 @@ export async function saveAtomIncremental(rootPath, filePath, functionName, atom
 }
 
 export async function saveAtomsIncremental(rootPath, filePath, atoms, options = {}) {
+  const normalizedPath = filePath.replace(/\\/g, '/');
   const startTime = Date.now();
   const results = {
     created: 0,
@@ -183,43 +184,71 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
     totalFieldsChanged: 0
   };
 
-  const queue = getWriteQueue();
-  const versionManager = new AtomVersionManager(rootPath);
+  try {
+    const { getRepository } = await import('../repository/index.js');
+    const repo = getRepository(rootPath);
+    const versionManager = new AtomVersionManager(rootPath);
 
-  const tasks = atoms
-    .filter(atom => {
-      if (!atom.name) console.log(`[DEBUG-SAVE] Atom missing name:`, atom.type);
-      return atom.name;
-    })
-    .map(atom => async () => {
-      console.log(`[DEBUG-SAVE] Processing atom: ${atom.name} (${atom.type})`);
-      const result = await saveAtomIncremental(rootPath, filePath, atom.name, atom, options);
+    const atomsToSave = [];
 
-      switch (result.action) {
-        case 'created': results.created++; break;
-        case 'updated':
-          results.updated++;
-          results.totalFieldsChanged += result.fieldsChanged || 0;
-          break;
-        case 'unchanged': results.unchanged++; break;
-        default: results.errors++;
+    for (const atom of atoms) {
+      if (!atom.name) continue;
+
+      const atomId = `${normalizedPath}::${atom.name}`;
+
+      // Aseguramos que el objeto atom tenga los campos correctos para el repo
+      atom.id = atomId;
+      atom.file_path = normalizedPath;
+      atom.filePath = normalizedPath;
+
+      const changeDetection = await versionManager.detectChanges(atomId, atom);
+
+      if (!changeDetection.hasChanges && !options.forceFull) {
+        results.unchanged++;
+        continue;
       }
 
-      return result;
-    });
+      // Metadata update for record keeping
+      const finalAtom = {
+        ...atom,
+        _meta: {
+          ...(atom._meta || {}),
+          rootPath,
+          lastModified: Date.now(),
+          version: (atom._meta?.version || 0) + 1,
+          incrementalUpdate: true,
+          source: options.source || 'unknown'
+        }
+      };
 
-  if (tasks.length > 0) {
-    await queue.addAll(tasks, { id: `batch-${filePath}` });
+      atomsToSave.push(finalAtom);
+
+      if (changeDetection.isNew) results.created++;
+      else {
+        results.updated++;
+        results.totalFieldsChanged += changeDetection.fields.length;
+      }
+
+      // Update version tracking in DB
+      await versionManager.trackAtomVersion(atomId, finalAtom);
+    }
+
+    if (atomsToSave.length > 0) {
+      // Use the unified repository save (will handle atoms, files, and relations)
+      await repo.saveMany(atomsToSave);
+    }
+
+    return {
+      success: true,
+      ...results,
+      duration: Date.now() - startTime,
+      atomsProcessed: atoms.length
+    };
+
+  } catch (error) {
+    logger.error(`Failed incremental save for ${normalizedPath}:`, error);
+    return { success: false, error: error.message };
   }
-
-  await versionManager.flush();
-
-  return {
-    ...results,
-    duration: Date.now() - startTime,
-    atomsProcessed: atoms.length,
-    queueStatus: queue.status
-  };
 }
 
 export function getSaverStats() {

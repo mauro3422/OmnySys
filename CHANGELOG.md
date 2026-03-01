@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.65 - Database Schema Integrity & Stability](changelog/v0.9.65-schema-integrity.md)** - **✅ SQLite Schema mismatch fixed, zero initialization crashes, graceful recovery fallbacks** (Latest)
+- **[v0.9.70 - SQLite Persistence Unification](changelog/v0.9.70-persistence-unification.md)** - **✅ JSON Legacy removed, Transactional Versioning, Path Normalization** (Latest)
+- **[v0.9.69 - Import Resolution & Parser Stability](changelog/v0.9.69-import-stability.md)** - **✅ Fixed Constant/Class extraction, fix-imports resolution**
 - **[v0.9.64 - Test Generator Auto-Healing & Memory SRP](changelog/v0.9.64-test-generator-autohealing.md)** - **✅ 269 autonomous tests generated via Tree-Sitter compatibility layers**
 - **[v0.9.62 - Tree-sitter Migration](changelog/v0.9.62-tree-sitter-migration.md)** - Precise scope/state detection, fixed legacy crashes
 - **[v0.9.61 - Dead Code Detection + Architectural Debt Reduction](changelog/v0.9.61-dead-code-detection.md)** - **✅ 85% dead code false positive reduction, 3 production files refactored**
@@ -40,7 +41,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.69]** | 2026-03-01 | **🔍 Import Resolution & Parser Stability — ✅ Fixed Constant/Class extraction, reindex.js persistence, and fix-imports symbol resolution** (Latest) |
+| **[0.9.70]** | 2026-03-01 | **🛡️ SQLite Persistence Unification — ✅ JSON Legacy removed, Unified transactions, Database-backed versioning** (Latest) |
+| **[0.9.69]** | 2026-03-01 | **🔍 Import Resolution & Parser Stability — ✅ Fixed Constant/Class extraction, reindex.js persistence, and fix-imports symbol resolution** |
 | **[0.9.68]** | 2026-02-28 | **🛠️ MCP Tools Unification & Daemon Stability — ✅ 16 Consolidated Tools, WASM Memory Leaks Fixed, Graceful Restart API** |
 | **[0.9.67]** | 2026-02-26 | **🧠 Atomic Intelligence Hub & High-Risk Refactoring — ✅ Refactored vector-calculator.js (SOLID split). Fixed Layer C visibility & path normalization.** |
 | **[0.9.66]** | 2026-02-26 | **⚡ God Function Refactoring & Atomic DX — ✅ Refactored cleanLLMResponse, findLargeMonolithic, and atomic_write. New Impact Map integration.** |
@@ -94,9 +96,24 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.69 (2026-03-01)
+## 🚀 Latest Release: v0.9.70 (2026-03-01)
 
-**Import Resolution & Parser Stability**: Corrección integral de la cadena de indexación y reparación de imports. Se resolvió la regresión en el parser que impedía detectar constantes y clases, se estabilizó el proceso de reindexado atómico y se mejoró la inteligencia de resolución de símbolos en las herramientas MCP.
+**SQLite Persistence Unification**: Unificación completa de la persistencia en SQLite, eliminando la dependencia de archivos JSON para átomos y versiones. Se implementó una arquitectura de transacciones unificada para garantizar integridad total.
+
+### Key Achievements
+
+1. **Transactional Integrity**:
+   - **Unified saveMany**: Guardado atómico de archivos, átomos y relaciones en una sola transacción.
+   - **DB Versioning**: Migración de `atom-versions.json` a la tabla SQLite `atom_versions`.
+   - **Immediate Sync**: Eliminación del lag de indexación tras ediciones atómicas.
+
+2. **Standardization**:
+   - **Path Normalization**: Rutas uniformes (`/`) en toda la base de datos.
+   - **ESM Readiness**: Refactorización de gestores para compatibilidad total con módulos modernos.
+
+---
+
+## v0.9.69 (2026-03-01)
 
 ### Key Achievements
 

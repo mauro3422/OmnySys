@@ -156,6 +156,20 @@ CREATE INDEX IF NOT EXISTS idx_events_atom ON atom_events(atom_id);
 CREATE INDEX IF NOT EXISTS idx_events_type ON atom_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON atom_events(timestamp);
 
+-- Control de versiones de atomos (reemplaza atom-versions.json)
+CREATE TABLE IF NOT EXISTS atom_versions (
+    atom_id TEXT PRIMARY KEY,
+    hash TEXT NOT NULL,                    -- Hash completo del atomo
+    field_hashes_json TEXT NOT NULL,       -- JSON con hashes por campo
+    last_modified INTEGER NOT NULL,        -- Timestamp unix
+    file_path TEXT NOT NULL,
+    atom_name TEXT NOT NULL,
+    
+    FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_atom_versions_file ON atom_versions(file_path);
+
 -- Tabla de modulos (agrupacion logica)
 CREATE TABLE IF NOT EXISTS modules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

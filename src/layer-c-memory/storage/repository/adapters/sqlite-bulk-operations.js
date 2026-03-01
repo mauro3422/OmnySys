@@ -20,7 +20,7 @@ import { atomToRow } from './helpers/converters.js';
  * para evitar degradación de performance (de 2s a 26s).
  */
 export class SQLiteBulkOperations extends SQLiteRelationOperations {
-  
+
   /**
    * Guarda múltiples átomos + relaciones en una sola transacción
    * 
@@ -34,25 +34,47 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
    * @returns {Array} - Átomos guardados
    */
   saveMany(atoms) {
-    // Fase 1: Guardar todos los atomos primero
-    this.saveManyBulk(atoms);
-    
-    // Fase 2: Guardar todas las relaciones despues de que todos los atomos existen
-    const relationsToSave = [];
-    for (const atom of atoms) {
-      if (atom.calls?.length > 0) {
-        for (const call of atom.calls) {
-          relationsToSave.push({ atomId: atom.id, call });
+    if (!atoms || atoms.length === 0) return atoms;
+
+    const firstAtom = atoms[0];
+    const filePath = firstAtom.file_path || firstAtom.file || 'unknown';
+    const projectPath = firstAtom._meta?.rootPath || '';
+
+    // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
+    connectionManager.transaction(() => {
+      // Fase 1: Guardar todos los atomos
+      this.saveManyBulk(atoms);
+
+      // Fase 2: Guardar todas las relaciones
+      const relationsToSave = [];
+      for (const atom of atoms) {
+        if (atom.calls?.length > 0) {
+          for (const call of atom.calls) {
+            relationsToSave.push({ atomId: atom.id, call });
+          }
         }
       }
-    }
-    
-    if (relationsToSave.length > 0) {
-      this.saveRelationsBulk(relationsToSave);
-    }
-    
-    this._logger.info(`[SQLiteAdapter] Saved ${atoms.length} atoms`);
-    
+
+      if (relationsToSave.length > 0) {
+        this.saveRelationsBulk(relationsToSave);
+      }
+
+      // Fase 3: Actualizar tabla 'files' para que fix_imports lo vea inmediatamente
+      // Calculamos total_lines de los átomos (o del primer átomo si es el archivo completo)
+      const now = new Date().toISOString();
+      const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
+
+      this.db.prepare(`
+        INSERT INTO files (path, last_analyzed, total_lines)
+        VALUES (?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET 
+          last_analyzed = excluded.last_analyzed,
+          total_lines = MAX(total_lines, excluded.total_lines)
+      `).run(filePath, now, totalLines);
+    });
+
+    this._logger.info(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath}`);
+
     return atoms;
   }
 
@@ -66,11 +88,11 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
    */
   saveManyBulk(atoms, batchSize = 500) {
     if (!atoms || atoms.length === 0) return;
-    
+
     const now = new Date().toISOString();
     const totalBatches = Math.ceil(atoms.length / batchSize);
     let totalSaved = 0;
-    
+
     // Columnas para INSERT
     const columns = [
       'id', 'name', 'atom_type', 'file_path',
@@ -84,24 +106,25 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       'extracted_at', 'updated_at', 'change_frequency', 'age_days', 'generation',
       'signature_json', 'data_flow_json', 'calls_json', 'temporal_json',
       'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',
+      'shared_state_json', 'event_emitters_json', 'event_listeners_json', 'scope_type',
       'called_by_json', 'function_type',
       'has_error_handling', 'has_network_calls'
     ];
-    
+
     const columnStr = columns.join(', ');
-    
+
     // UNA SOLA TRANSACCIÓN para todo el bulk insert
     connectionManager.transaction(() => {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
         const batch = atoms.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
-        
+
         // Construir VALUES clause con múltiples rows
-        const placeholders = batch.map(() => 
+        const placeholders = batch.map(() =>
           `(${columns.map(() => '?').join(', ')})`
         ).join(', ');
-        
+
         const sql = `INSERT OR REPLACE INTO atoms (${columnStr}) VALUES ${placeholders}`;
-        
+
         // Flatten all values
         const flatValues = batch.flatMap(atom => {
           const row = atomToRow(atom);
@@ -117,18 +140,19 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
             row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
             row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
             row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
+            row.shared_state_json, row.event_emitters_json, row.event_listeners_json, row.scope_type,
             row.called_by_json, row.function_type,
             row.has_error_handling, row.has_network_calls
           ];
         });
-        
+
         this.db.prepare(sql).run(...flatValues);
         totalSaved += batch.length;
-        
+
         this._logger.debug(`[SQLiteAdapter] Bulk insert batch ${batchNum + 1}/${totalBatches}: ${batch.length} atoms`);
       }
     });
-    
+
     this._logger.info(`[SQLiteAdapter] Bulk saved ${totalSaved} atoms in ${totalBatches} batches`);
   }
 
@@ -142,20 +166,20 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
    */
   saveRelationsBulk(relations, batchSize = 500) {
     if (!relations || relations.length === 0) return;
-    
+
     const now = new Date().toISOString();
     const totalBatches = Math.ceil(relations.length / batchSize);
     let totalSaved = 0;
-    
+
     // Preparar statement para verificar existencia del target
     const checkStmt = this.db.prepare('SELECT 1 FROM atoms WHERE id = ?');
-    
+
     // UNA SOLA TRANSACCIÓN para todas las relaciones
     connectionManager.transaction(() => {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
         const batch = relations.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
         const validRelations = [];
-        
+
         // Filtrar relaciones válidas (target existe)
         for (const { atomId, call } of batch) {
           let calleeName;
@@ -166,31 +190,31 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
           } else {
             calleeName = 'unknown';
           }
-          
+
           const filePath = atomId.split('::')[0];
           const targetId = `${filePath}::${calleeName}`;
-          
+
           // Solo incluir si el target existe
           const targetExists = checkStmt.get(targetId);
           if (!targetExists) continue;
-          
+
           const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
           const lineNumber = typeof call?.line === 'number' ? call.line : null;
-          
+
           let contextJson = '{}';
           try {
             contextJson = JSON.stringify(call && typeof call === 'object' ? call : {});
           } catch (e) {
             contextJson = '{}';
           }
-          
+
           validRelations.push({
             atomId, targetId, weight, lineNumber, contextJson, now
           });
         }
-        
+
         if (validRelations.length === 0) continue;
-        
+
         // Construir multi-row INSERT
         const placeholders = validRelations.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
         const sql = `
@@ -198,18 +222,18 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
           (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
           VALUES ${placeholders}
         `;
-        
+
         const flatValues = validRelations.flatMap(r => [
           r.atomId, r.targetId, 'calls', r.weight, r.lineNumber, r.contextJson, r.now
         ]);
-        
+
         this.db.prepare(sql).run(...flatValues);
         totalSaved += validRelations.length;
-        
+
         this._logger.debug(`[SQLiteAdapter] Bulk relations batch ${batchNum + 1}/${totalBatches}: ${validRelations.length} relations`);
       }
     });
-    
+
     this._logger.info(`[SQLiteAdapter] Bulk saved ${totalSaved} relations in ${totalBatches} batches`);
   }
 }

@@ -9,6 +9,7 @@
 import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger.js';
 import { DEFAULT_CONFIG, InvalidationEvents } from './constants.js';
+export { InvalidationEvents };
 import { RamStorageOperations, DiskStorageOperations, IndexOperations } from './storage-operations.js';
 import { AtomicTransaction, OperationFactory } from './atomic-operation.js';
 import { createInvalidationOrchestrator } from './operations/invalidation-orchestrator.js';

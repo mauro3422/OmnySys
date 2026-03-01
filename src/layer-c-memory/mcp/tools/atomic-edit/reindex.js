@@ -23,7 +23,7 @@ export async function reindexFile(filePath, projectPath) {
       ? filePath
       : path.join(projectPath, filePath);
 
-    const relativePath = path.relative(projectPath, absolutePath);
+    const relativePath = path.relative(projectPath, absolutePath).replace(/\\/g, '/');
 
     // 1. Parsear el archivo con Tree-sitter
     const parsedFile = await parseFileFromDisk(absolutePath);
@@ -43,22 +43,8 @@ export async function reindexFile(filePath, projectPath) {
     }
 
     // 4. Guardar de forma incremental en SQLite
+    // Ahora repo.saveMany (vía incremental-atom-saver) actualiza la tabla 'files' automáticamente en la misma transacción
     await saveAtomsIncremental(projectPath, relativePath, atoms, { source: 'atomic-edit' });
-
-    // FIX: El incremental saver NO actualiza la tabla 'files'. Lo hacemos manualmente para que fix_imports lo vea.
-    try {
-      const { getRepository } = await import('../../../storage/repository/index.js');
-      const repo = getRepository(projectPath);
-      if (repo.db) {
-        repo.db.prepare(`
-          INSERT INTO files (path, last_analyzed, total_lines)
-          VALUES (?, ?, ?)
-          ON CONFLICT(path) DO UPDATE SET last_analyzed = excluded.last_analyzed, total_lines = excluded.total_lines
-        `).run(relativePath, new Date().toISOString(), code.split('\n').length);
-      }
-    } catch (e) {
-      console.warn(`[DEBUG-REINDEX] Manual 'files' update error: ${e.message}`);
-    }
 
     // Invalidate cache for this file
     try {
