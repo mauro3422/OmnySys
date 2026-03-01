@@ -7,12 +7,23 @@
  * - MCP endpoint:    POST/GET/DELETE /mcp (and alias /)
  * - Health endpoint: GET /health
  * - Legacy tools:    GET /tools
- */
+ *//* =========================================================================
+* 🚨 CRITICAL AI AGENT WARNING 🚨
+* DO NOT ATTEMPT TO RUN `npm run mcp` OR `omny up` USING TERMINAL COMMANDS 
+* (run_command) IN THE BACKGROUND.
+*
+* This server is managed exclusively by the VSCode MCP client / IDE plugin.
+* If an agent spawns this via a detached process or terminal, it will hijack
+* port 9999 and the IDE will lose the socket connection permanently (EOF).
+* 
+* 💡 CORRECT WAY TO RESTART: Use the `mcp_omnysystem_restart_server` MCP tool. 
+* This safely refreshes the internal components and RAM without killing the 
+* underlying process or dropping the IDE sockets.
+* ========================================================================= */
 
 import path from 'path';
 import { randomUUID } from 'crypto';
 import express from 'express';
-import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
@@ -81,7 +92,7 @@ const projectPath = path.resolve(arg1IsPort ? process.cwd() : (arg1 || process.c
 const port = Number(process.env.OMNYSYS_MCP_PORT || (arg1IsPort ? arg1 : arg2) || 9999);
 const host = process.env.OMNYSYS_MCP_HOST || '127.0.0.1';
 
-const app = createMcpExpressApp({ host });
+const app = express();
 const sessions = new Map();
 
 const core = new OmnySysMCPServer(projectPath);
@@ -245,8 +256,18 @@ async function handleMcpRequest(req, res) {
   }
 }
 
-app.all('/mcp', handleMcpRequest);
-app.all('/', handleMcpRequest);
+// Middleware condicional para parsear el body solo si NO hay una sesión activa.
+// Esto permite que el handshake inicial (que no trae ID) funcione,
+// pero no interfiere con el stream de datos crudo de una sesión ya establecida.
+const conditionalJson = (req, res, next) => {
+  if (req.headers['mcp-session-id']) {
+    return next();
+  }
+  express.json()(req, res, next);
+};
+
+app.all('/mcp', conditionalJson, handleMcpRequest);
+app.all('/', conditionalJson, handleMcpRequest);
 
 app.get('/health', (req, res) => {
   res.json({
@@ -267,7 +288,7 @@ app.get('/tools', (req, res) => {
     tools: defs.map(t => ({ name: t.name, description: t.description }))
   });
 });
-
+// We mount json manually inside the route to not interfere with MCP streams which need raw req object
 app.post('/restart', express.json(), async (req, res) => {
   try {
     const { restart_server } = await import('./mcp/tools/restart-server.js');

@@ -39,6 +39,7 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
   );
   atoms.push(...functionAtoms);
 
+
   const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
     return buildVariableAtom(constInfo, filePath, 'constant', fileImports);
   });

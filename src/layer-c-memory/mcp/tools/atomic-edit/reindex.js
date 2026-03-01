@@ -8,7 +8,8 @@ import { createLogger } from '../../../../utils/logger.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { parseFileFromDisk } from '#layer-a/parser/index.js';
 import { extractAllMetadata } from '#layer-a/extractors/metadata/index.js';
-import { extractAtoms } from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
+import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
+const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
 const logger = createLogger('OmnySys:atomic:reindex');
 
@@ -38,12 +39,26 @@ export async function reindexFile(filePath, projectPath) {
     const atoms = await extractAtoms(parsedFile, code, metadata, relativePath);
 
     if (!atoms || atoms.length === 0) {
-      logger.warn(`[Reindex] No atoms found in ${relativePath}`);
-      return { success: true, atoms: [], exports: [] };
+      // No retornamos early aquí para permitir que saveAtomsIncremental maneje la limpieza si es necesario
     }
 
     // 4. Guardar de forma incremental en SQLite
     await saveAtomsIncremental(projectPath, relativePath, atoms, { source: 'atomic-edit' });
+
+    // FIX: El incremental saver NO actualiza la tabla 'files'. Lo hacemos manualmente para que fix_imports lo vea.
+    try {
+      const { getRepository } = await import('../../../storage/repository/index.js');
+      const repo = getRepository(projectPath);
+      if (repo.db) {
+        repo.db.prepare(`
+          INSERT INTO files (path, last_analyzed, total_lines)
+          VALUES (?, ?, ?)
+          ON CONFLICT(path) DO UPDATE SET last_analyzed = excluded.last_analyzed, total_lines = excluded.total_lines
+        `).run(relativePath, new Date().toISOString(), code.split('\n').length);
+      }
+    } catch (e) {
+      console.warn(`[DEBUG-REINDEX] Manual 'files' update error: ${e.message}`);
+    }
 
     // Invalidate cache for this file
     try {

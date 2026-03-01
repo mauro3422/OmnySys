@@ -61,7 +61,7 @@ export async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomName
 
         // Obtener todos los átomos del archivo
         const existingAtoms = repo.db.prepare(
-            'SELECT id, name, purpose FROM atoms WHERE file_path = ?'
+            'SELECT id, name, purpose_type as purpose FROM atoms WHERE file_path = ?'
         ).all(filePath);
 
         let markedCount = 0;
@@ -71,10 +71,9 @@ export async function cleanupOrphanedAtomFiles(rootPath, filePath, validAtomName
             if (atom.purpose !== 'REMOVED' && !validAtomNames.has(atom.name)) {
                 repo.db.prepare(`
           UPDATE atoms 
-          SET purpose = 'REMOVED', 
+          SET purpose_type = 'REMOVED', 
               is_dead_code = 1,
-              caller_pattern = 'removed',
-              lineage = json_set(COALESCE(lineage, '{}'), '$.status', 'removed', '$.removedAt', datetime('now'))
+              derived_json = json_set(COALESCE(derived_json, '{}'), '$.status', 'removed', '$.removedAt', datetime('now'))
           WHERE id = ?
         `).run(atom.id);
                 markedCount++;

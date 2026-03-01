@@ -38,21 +38,22 @@ export class AtomicMutationTool extends BaseMCPTool {
             }
 
             // 2. Validación Post-Edición
+            let validationResult = null;
             if (customValidator) {
-                const validation = await customValidator(mutationResult);
+                validationResult = await customValidator(mutationResult);
 
-                if (!validation.valid) {
+                if (!validationResult.valid) {
                     await atomicEditor.rollbackTransaction();
 
-                    if (autoFix && validation.brokenCallers?.length > 0) {
+                    if (autoFix && validationResult.brokenCallers?.length > 0) {
                         this.logger.warn(`[Transaction] Validation failed but autoFix is ON. Proposing Cascade fix...`);
                         return this.formatError('POST_VALIDATION_WITH_AUTOFIX',
                             'Validation failed, cascade action needed',
-                            { brokenCallers: validation.brokenCallers }
+                            { brokenCallers: validationResult.brokenCallers }
                         );
                     }
 
-                    return this.formatError('POST_VALIDATION_FAILED', 'Broken graph after mutation', { validation });
+                    return this.formatError('POST_VALIDATION_FAILED', 'Broken graph after mutation', { validation: validationResult });
                 }
             }
 
@@ -60,7 +61,8 @@ export class AtomicMutationTool extends BaseMCPTool {
             await atomicEditor.commitTransaction();
             this.logger.info(`[Transaction] Committed successfully`);
 
-            return this.formatSuccess(mutationResult, `Operation applied atomically`);
+            const finalResult = validationResult ? { ...mutationResult, ...validationResult } : mutationResult;
+            return this.formatSuccess(finalResult, `Operation applied atomically`);
 
         } catch (error) {
             await atomicEditor.rollbackTransaction();

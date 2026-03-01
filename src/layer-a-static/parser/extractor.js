@@ -15,6 +15,7 @@ import { extractTypeScriptMetadata } from './extractors/typescript.js';
 import { extractFunctions } from './extractors/functions/index.js';
 import { extractClasses } from './extractors/classes.js';
 import { extractIdentifierRefs } from './extractors/identifiers.js';
+import { extractVariables } from './extractors/variables.js';
 import { walk, text, FUNCTION_NODE_TYPES } from './extractors/utils.js';
 
 /**
@@ -66,7 +67,12 @@ export function extractFileInfo(tree, code, filePath) {
     // 6. Identifiers
     extractIdentifierRefs(root, code, fileInfo);
 
-    // 7. Top-level calls (fuera de funciones)
+    // 7. Constants and Variables (ESM + Global)
+    const { constantExports, objectExports } = extractVariables(root, code, exportedNames);
+    fileInfo.constantExports = constantExports;
+    fileInfo.objectExports = objectExports;
+
+    // 8. Top-level calls (fuera de funciones)
     const topLevelCalls = [];
     const seen = new Set();
     walk(root, ['call_expression'], (callNode) => {

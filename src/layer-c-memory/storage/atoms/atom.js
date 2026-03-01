@@ -67,17 +67,17 @@ export async function saveAtom(rootPath, filePath, functionName, atomData) {
  */
 export async function loadAtoms(rootPath, filePath, options = {}) {
   const { includeRemoved = false } = options;
-  
+
   if (USE_SQLITE) {
     try {
       const repo = getRepository(rootPath);
       const normalizedPath = normalizeFilePath(rootPath, filePath);
       let atoms = repo.getByFile(normalizedPath); // Sync
-      
+
       if (!includeRemoved) {
         atoms = atoms.filter(a => a.lineage?.status !== 'removed');
       }
-      
+
       return atoms;
     } catch (error) {
       logger.error(`[loadAtoms] SQLite error: ${error.message}`);
@@ -319,7 +319,7 @@ function normalizeFilePath(rootPath, filePath) {
   if (path.isAbsolute(filePath) && normalizedFilePath.startsWith(normalizedRootPath)) {
     normalizedPath = path.relative(rootPath, filePath);
   }
-  
+
   return normalizedPath;
 }
 
@@ -332,7 +332,7 @@ function matchesFilter(atom, filter) {
   if (filter.minComplexity && atom.complexity < filter.minComplexity) return false;
   if (filter.maxComplexity && atom.complexity > filter.maxComplexity) return false;
   if (filter.filePath && !(atom.file || atom.filePath)?.includes(filter.filePath)) return false;
-  
+
   return true;
 }
 

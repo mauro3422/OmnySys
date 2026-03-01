@@ -78,4 +78,5 @@ export const FUNCTION_NODE_TYPES = [
     'method_definition',
     'generator_function_declaration',
     'generator_function',
+    'class_declaration',
 ];

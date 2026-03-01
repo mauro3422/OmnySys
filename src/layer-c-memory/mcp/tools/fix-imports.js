@@ -32,7 +32,7 @@ export async function fix_imports(args, context) {
             checkFileExistence: true
         }, context);
 
-        if (!validation.files || validation.files.length === 0) {
+        if (!validation.brokenPaths || validation.brokenPaths.length === 0) {
             return { success: true, message: 'No broken imports detected in this file.' };
         }
 
@@ -43,27 +43,59 @@ export async function fix_imports(args, context) {
             unresolved: []
         };
 
-        const fileIssues = validation.files[0];
         const content = await fs.readFile(filePath, 'utf-8');
 
         // 2. Intentar resolver cada import roto
-        for (const broken of (fileIssues.nonExistent || fileIssues.broken || [])) {
-            const importStr = broken.import;
-
+        for (const importStr of validation.brokenPaths) {
             // Extraer el nombre base para buscar en el índice de átomos
-            const baseName = importStr.split('/').pop().replace(/\.[jt]sx?$/, '');
+            // Ej: "./test-folder/retest-dummy.js" -> "retest-dummy"
+            const parts = importStr.split('/');
+            const lastPart = parts[parts.length - 1];
+            const baseName = lastPart.replace(/\.[jt]sx?$/, '');
 
             // Buscar por nombre de archivo o átomo coincidente
             logger.info(`[FixImports] Searching for resolution for: ${importStr}`);
-            const potentialMatches = repo.query({ limit: 10 });
 
-            // Filtramos manualmente por path para encontrar el archivo real
-            const bestMatch = potentialMatches.find(a =>
-                a.file_path && a.file_path.includes(baseName)
-            );
+            let bestMatchPath = null;
+            if (repo.db) {
+                // Buscamos directamente en la DB cualquier archivo que coincida con el nombre
+                const db = repo.db;
+                const symbolName = baseName; // Use baseName as the symbol to search for
 
-            if (bestMatch && bestMatch.file_path !== filePath) {
-                const newImportPath = calculateRelativeImport(filePath, bestMatch.file_path, projectPath);
+                // 1. Intentar buscar como Átomo (función/variable exportada)
+                let row = db.prepare(`
+                    SELECT file_path as path
+                    FROM atoms
+                    WHERE name = ? OR name LIKE ?
+                    LIMIT 1
+                `).get(symbolName, `%${symbolName}%`);
+
+                if (row) {
+                    bestMatchPath = row.path;
+                } else {
+                    // 2. Si no es un Átomo, buscar si es el nombre de un ARCHIVO (para imports directos de constantes/config)
+                    // Quitamos la extensión si el usuario la puso, o buscamos por el nombre base
+                    const fileBaseName = symbolName.split('/').pop().replace(/\.[^/.]+$/, "");
+                    row = db.prepare(`
+                        SELECT path
+                        FROM files
+                        WHERE path LIKE ?
+                        LIMIT 1
+                    `).get(`%/${fileBaseName}.%`);
+
+                    if (row) {
+                        bestMatchPath = row.path;
+                    }
+                }
+            } else {
+                // Fallback (Memory) - Lento pero a prueba de fallos
+                const potentialMatches = repo.query({});
+                const match = potentialMatches.find(a => a.file_path && a.file_path.includes(baseName));
+                if (match) bestMatchPath = match.file_path;
+            }
+
+            if (bestMatchPath && bestMatchPath !== filePath) {
+                const newImportPath = calculateRelativeImport(filePath, bestMatchPath, projectPath);
 
                 // 3. Aplicar reparación vía atomic_edit
                 const oldLine = content.split('\n').find(l => l.includes(`'${importStr}'`) || l.includes(`"${importStr}"`));

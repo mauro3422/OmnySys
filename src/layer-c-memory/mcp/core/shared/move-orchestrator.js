@@ -22,6 +22,17 @@ export class MoveOrchestrator {
     static async moveFile(oldPath, newPath, projectPath, context = {}) {
         logger.info(`[MoveOrchestrator] Starting move: ${oldPath} -> ${newPath}`);
 
+        // Sincronización: Esperar a que el indexador en background termine de procesar archivos recientes
+        const { orchestrator } = context;
+        if (orchestrator) {
+            logger.info(`[MoveOrchestrator] Sycnhronizing with background indexer...`);
+            let attempts = 0;
+            while (attempts < 50 && (orchestrator.queue?.size() > 0 || orchestrator.activeJobs > 0)) {
+                await new Promise(r => setTimeout(r, 200));
+                attempts++;
+            }
+        }
+
         // 1. Obtener dependientes ANTES del movimiento (basado en el índice actual)
         const dependents = await getFileDependents(projectPath, oldPath);
         logger.info(`[MoveOrchestrator] Found ${dependents.length} dependent files to update`);

@@ -40,7 +40,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.68]** | 2026-02-28 | **🛠️ MCP Tools Unification & Daemon Stability — ✅ 16 Consolidated Tools, WASM Memory Leaks Fixed, Graceful Restart API** (Latest) |
+| **[0.9.69]** | 2026-03-01 | **🔍 Import Resolution & Parser Stability — ✅ Fixed Constant/Class extraction, reindex.js persistence, and fix-imports symbol resolution** (Latest) |
+| **[0.9.68]** | 2026-02-28 | **🛠️ MCP Tools Unification & Daemon Stability — ✅ 16 Consolidated Tools, WASM Memory Leaks Fixed, Graceful Restart API** |
 | **[0.9.67]** | 2026-02-26 | **🧠 Atomic Intelligence Hub & High-Risk Refactoring — ✅ Refactored vector-calculator.js (SOLID split). Fixed Layer C visibility & path normalization.** |
 | **[0.9.66]** | 2026-02-26 | **⚡ God Function Refactoring & Atomic DX — ✅ Refactored cleanLLMResponse, findLargeMonolithic, and atomic_write. New Impact Map integration.** |
 | **[0.9.65]** | 2026-02-26 | **🛡️ Database Schema Integrity & Stability — ✅ Fixed SQLite Schema constraints, ZERO initialization crashes, Error Guardian Graceful Fallbacks** (Latest) |
@@ -93,7 +94,33 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.68 (2026-02-28)
+## 🚀 Latest Release: v0.9.69 (2026-03-01)
+
+**Import Resolution & Parser Stability**: Corrección integral de la cadena de indexación y reparación de imports. Se resolvió la regresión en el parser que impedía detectar constantes y clases, se estabilizó el proceso de reindexado atómico y se mejoró la inteligencia de resolución de símbolos en las herramientas MCP.
+
+### Key Achievements
+
+1. **Parser (parser-v2) Functional Integrity**:
+   - **Constant Extraction**: Re-habilitada la extracción de `export const` y `export let` mediante `variables.js`.
+   - **Class Detection**: Actualizado `type-detector.js` para reconocer `class_declaration` como un átomo válido.
+   - **Extractor Flow**: Sincronizado `extractor.js` para procesar constantes y clases en cada paso del análisis.
+
+2. **Atomic Indexing (reindex.js) Stability**:
+   - **Internal Fix**: Corregido import roto de `extractAtoms` que causaba fallos silenciosos en el flujo de edición atómica.
+   - **Persistence Polish**: Añadida actualización manual de la tabla `files` durante el reindexado para garantizar que los nuevos archivos sean visibles inmediatamente para las herramientas MCP.
+   - **Zero Early-Exit**: Eliminado el retorno prematuro en archivos sin funciones, permitiendo la indexación de archivos de configuración y constantes.
+
+3. **Intelligent Symbol Resolution (fix_imports)**:
+   - **Dual-Search Logic**: Implementada búsqueda híbrida (Átomos → Archivos) para resolver imports rotos incluso cuando el símbolo no es una función.
+   - **Path Accuracy**: Corregida la extracción de nombres base en rutas de importación complejas.
+
+4. **Maintenance & Cleanup**:
+   - Eliminados múltiples logs de debug en el core de persistencia y extractores.
+   - Sincronización de variables de entorno para asegurar el uso consistente de SQLite en todas las herramientas.
+
+---
+
+## 🚀 Previous Release: v0.9.68 (2026-02-28)
 
 **MCP Tools Unification & Daemon Stability**: Auditoría absoluta y consolidación de las APIs MCP. El registro pasó de >30 herramientas dispersas a 16 super-herramientas agnósticas unificadas con arquitecturas enrutadas. Erradicación de pérdidas de conexión entre interfaces por finalizaciones abruptas del servidor.
 

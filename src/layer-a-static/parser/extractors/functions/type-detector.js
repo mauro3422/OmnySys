@@ -5,16 +5,19 @@
 import { text } from '../utils.js';
 
 export function detectTypeAndName(node, code) {
-  let functionName = 'anonymous';
   let functionType = node.type.includes('arrow') ? 'arrow'
     : node.type.includes('method') ? 'method'
-      : node.type.includes('generator') ? 'function'
-        : 'function';
+      : node.type.includes('class') ? 'class'
+        : node.type.includes('generator') ? 'function'
+          : 'function';
+  let functionName = 'anonymous';
   let className = null;
-
   const parent = node.parent;
 
-  if (node.type === 'function_declaration' || node.type === 'generator_function_declaration') {
+  if (node.type === 'class_declaration' || node.type === 'class') {
+    const nameNode = node.childForFieldName('name');
+    if (nameNode) functionName = text(nameNode, code);
+  } else if (node.type === 'function_declaration' || node.type === 'generator_function_declaration') {
     const nameNode = node.childForFieldName('name');
     if (nameNode) functionName = text(nameNode, code);
   } else if (node.type === 'method_definition') {

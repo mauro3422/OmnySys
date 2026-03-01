@@ -26,6 +26,7 @@ const RELOADABLE_PATTERNS = [
 const CRITICAL_MODULES = [
   'server-class.js',
   'mcp-server.js',
+  'mcp-http-server.js',
   'orchestrator/index.js'
 ];
 
@@ -85,8 +86,8 @@ export class ModuleClassifier {
    */
   _isPipelineModule(filename) {
     return filename.includes('/analyses/') ||
-           filename.includes('/analyzer.js') ||
-           filename.includes('/indexer.js');
+      filename.includes('/analyzer.js') ||
+      filename.includes('/indexer.js');
   }
 
   /**
