@@ -37,8 +37,8 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     if (!atoms || atoms.length === 0) return atoms;
 
     const firstAtom = atoms[0];
-    const filePath = firstAtom.file_path || firstAtom.file || 'unknown';
-    const projectPath = firstAtom._meta?.rootPath || '';
+    const rawFilePath = firstAtom.file_path || firstAtom.file || 'unknown';
+    const filePath = this._normalize(rawFilePath);
 
     // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
     connectionManager.transaction(() => {
@@ -60,7 +60,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       }
 
       // Fase 3: Actualizar tabla 'files' para que fix_imports lo vea inmediatamente
-      // Calculamos total_lines de los átomos (o del primer átomo si es el archivo completo)
       const now = new Date().toISOString();
       const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
 
@@ -80,11 +79,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
   /**
    * Guarda múltiples átomos usando multi-row INSERT para máxima performance
-   * 
-   * OPTIMIZACIÓN: Una sola transacción para todos los batches
-   * 
-   * @param {Array} atoms - Array de átomos a guardar
-   * @param {number} batchSize - Tamaño del batch (default: 500)
    */
   saveManyBulk(atoms, batchSize = 500) {
     if (!atoms || atoms.length === 0) return;
@@ -93,7 +87,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     const totalBatches = Math.ceil(atoms.length / batchSize);
     let totalSaved = 0;
 
-    // Columnas para INSERT
     const columns = [
       'id', 'name', 'atom_type', 'file_path',
       'line_start', 'line_end', 'lines_of_code', 'complexity', 'parameter_count',
@@ -113,20 +106,22 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
     const columnStr = columns.join(', ');
 
-    // UNA SOLA TRANSACCIÓN para todo el bulk insert
     connectionManager.transaction(() => {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
         const batch = atoms.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
 
-        // Construir VALUES clause con múltiples rows
         const placeholders = batch.map(() =>
           `(${columns.map(() => '?').join(', ')})`
         ).join(', ');
 
         const sql = `INSERT OR REPLACE INTO atoms (${columnStr}) VALUES ${placeholders}`;
 
-        // Flatten all values
         const flatValues = batch.flatMap(atom => {
+          // Asegurar normalización antes de convertir a row
+          atom.filePath = this._normalize(atom.file || atom.filePath);
+          atom.file = atom.filePath;
+          atom.id = `${atom.filePath}::${atom.name}`;
+
           const row = atomToRow(atom);
           return [
             row.id, row.name, row.atom_type, row.file_path,
@@ -148,22 +143,12 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
         this.db.prepare(sql).run(...flatValues);
         totalSaved += batch.length;
-
-        this._logger.debug(`[SQLiteAdapter] Bulk insert batch ${batchNum + 1}/${totalBatches}: ${batch.length} atoms`);
       }
     });
 
     this._logger.info(`[SQLiteAdapter] Bulk saved ${totalSaved} atoms in ${totalBatches} batches`);
   }
 
-  /**
-   * Guarda relaciones en bulk usando multi-row INSERT
-   * 
-   * IMPORTANTE: Los targets DEBEN existir previamente (por FK constraints)
-   * 
-   * @param {Array} relations - Array de {atomId, call}
-   * @param {number} batchSize - Tamaño del batch (default: 500)
-   */
   saveRelationsBulk(relations, batchSize = 500) {
     if (!relations || relations.length === 0) return;
 
@@ -171,17 +156,16 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     const totalBatches = Math.ceil(relations.length / batchSize);
     let totalSaved = 0;
 
-    // Preparar statement para verificar existencia del target
     const checkStmt = this.db.prepare('SELECT 1 FROM atoms WHERE id = ?');
 
-    // UNA SOLA TRANSACCIÓN para todas las relaciones
     connectionManager.transaction(() => {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
         const batch = relations.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
         const validRelations = [];
 
-        // Filtrar relaciones válidas (target existe)
         for (const { atomId, call } of batch) {
+          const normalizedSourceId = this._normalizeId(atomId);
+
           let calleeName;
           if (typeof call === 'string') {
             calleeName = call;
@@ -191,10 +175,16 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
             calleeName = 'unknown';
           }
 
-          const filePath = atomId.split('::')[0];
-          const targetId = `${filePath}::${calleeName}`;
+          // Si el calleeName parece un ID completo, lo normalizamos como ID
+          // Si no, asumimos que es un nombre en el mismo archivo
+          let targetId;
+          if (calleeName.includes('::')) {
+            targetId = this._normalizeId(calleeName);
+          } else {
+            const filePath = normalizedSourceId.split('::')[0];
+            targetId = `${filePath}::${calleeName}`;
+          }
 
-          // Solo incluir si el target existe
           const targetExists = checkStmt.get(targetId);
           if (!targetExists) continue;
 
@@ -209,13 +199,12 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
           }
 
           validRelations.push({
-            atomId, targetId, weight, lineNumber, contextJson, now
+            atomId: normalizedSourceId, targetId, weight, lineNumber, contextJson, now
           });
         }
 
         if (validRelations.length === 0) continue;
 
-        // Construir multi-row INSERT
         const placeholders = validRelations.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
         const sql = `
           INSERT OR IGNORE INTO atom_relations 
@@ -229,8 +218,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
         this.db.prepare(sql).run(...flatValues);
         totalSaved += validRelations.length;
-
-        this._logger.debug(`[SQLiteAdapter] Bulk relations batch ${batchNum + 1}/${totalBatches}: ${validRelations.length} relations`);
       }
     });
 

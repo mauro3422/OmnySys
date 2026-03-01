@@ -17,23 +17,26 @@ import { atomToRow, rowToAtom } from './helpers/converters.js';
 export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
   getById(id) {
-    const row = this.statements.getById.get(id);
+    const normalizedId = this._normalizeId(id);
+    const row = this.statements.getById.get(normalizedId);
     if (!row) return null;
 
     const atom = rowToAtom(row);
-    atom.calls = this.getCallees(id);
-    atom.calledBy = this.getCallers(id);
+    atom.calls = this.getCallees(normalizedId);
+    atom.calledBy = this.getCallers(normalizedId);
 
     return atom;
   }
 
   getByFileAndName(filePath, name) {
-    const id = `${filePath}::${name}`;
+    const normalizedPath = this._normalize(filePath);
+    const id = `${normalizedPath}::${name}`;
     return this.getById(id);
   }
 
   getByFile(filePath) {
-    const rows = this.statements.getByFile.all(filePath);
+    const normalizedPath = this._normalize(filePath);
+    const rows = this.statements.getByFile.all(normalizedPath);
     return rows.map(rowToAtom);
   }
 
@@ -43,6 +46,11 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   save(atom) {
+    // Normalizar datos del atomo antes de guardar
+    atom.filePath = this._normalize(atom.file || atom.filePath);
+    atom.file = atom.filePath;
+    atom.id = `${atom.filePath}::${atom.name}`;
+
     const row = atomToRow(atom);
     const now = new Date().toISOString();
 
@@ -77,10 +85,11 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   delete(id) {
+    const normalizedId = this._normalizeId(id);
     const now = new Date().toISOString();
 
     // 1. Obtener estado actual antes de borrar (para historia)
-    const atomBefore = this.statements.getById.get(id);
+    const atomBefore = this.statements.getById.get(normalizedId);
 
     // 2. Registrar evento de borrado en atom_events (historia/evolución)
     if (atomBefore) {
@@ -98,7 +107,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
     }
 
     // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
-    const result = this.statements.deleteById.run(id);
+    const result = this.statements.deleteById.run(normalizedId);
 
     // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
     try {
@@ -145,12 +154,24 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   deleteByFile(filePath) {
-    const result = this.statements.deleteByFile.run(filePath);
+    const normalizedPath = this._normalize(filePath);
+    const result = this.statements.deleteByFile.run(normalizedPath);
     return result.changes;
   }
 
   exists(id) {
-    const row = this.statements.exists.get(id);
+    const normalizedId = this._normalizeId(id);
+    const row = this.statements.exists.get(normalizedId);
     return !!row;
+  }
+
+  /**
+   * Helper para normalizar un ID (que es path::name)
+   * @protected
+   */
+  _normalizeId(id) {
+    if (!id || !id.includes('::')) return id;
+    const [pathPart, namePart] = id.split('::');
+    return `${this._normalize(pathPart)}::${namePart}`;
   }
 }

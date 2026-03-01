@@ -12,6 +12,7 @@ import { connectionManager } from '../../database/connection.js';
 import { createLogger } from '#utils/logger.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
 import { persistSystemMapToDb, retrieveSystemMapFromDb } from './helpers/system-map.js';
+import { normalizePath } from '#shared/utils/path-utils.js';
 
 const logger = createLogger('OmnySys:Storage:SQLiteAdapter');
 
@@ -25,18 +26,28 @@ export class SQLiteAdapterCore extends AtomRepository {
     this.db = null;
     this.initialized = false;
     this.statements = {};
+    this.projectPath = null;
     this._logger = logger;
   }
 
   initialize(projectPath) {
     this._logger.info('[SQLiteAdapter] Initializing...');
 
+    this.projectPath = projectPath;
     connectionManager.initialize(projectPath);
     this.db = connectionManager.getDatabase();
     this._prepareStatements();
     this.initialized = true;
 
     this._logger.info('[SQLiteAdapter] Initialized successfully');
+  }
+
+  /**
+   * Normaliza una ruta para la base de datos
+   * @protected
+   */
+  _normalize(filePath) {
+    return normalizePath(filePath, this.projectPath);
   }
 
   /**

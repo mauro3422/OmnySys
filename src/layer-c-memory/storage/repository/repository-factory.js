@@ -2,99 +2,55 @@
  * @fileoverview repository-factory.js
  * 
  * Factory para crear instancias de repositorios.
- * Permite cambiar entre SQLite y JSON via feature flag.
  * 
  * @module storage/repository/repository-factory
  */
 
 import { SQLiteAdapter } from './adapters/sqlite-adapter.js';
-import { JsonAdapter } from './adapters/json-adapter.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:Storage:RepositoryFactory');
 
 /**
- * Lee la configuracion de storage del environment o config
- * Default: SQLite (compilado y listo)
- */
-function getStorageConfig() {
-  // Default: SQLite (compilado). Para usar JSON: OMNY_SQLITE=false
-  const useSQLite = process.env.OMNY_SQLITE !== 'false';
-  
-  const dualWrite = process.env.OMNY_DUAL_WRITE === 'true';
-  
-  return {
-    useSQLite,
-    dualWrite,
-    adapter: useSQLite ? 'sqlite' : 'json'
-  };
-}
-
-/**
- * Factory para crear repositorios
+ * Factory para crear instancias de repositorios
+ * 
+ * Diseñado para desacoplar el uso del repositorio de su implementación concreta.
+ * CENTRALIZACIÓN: Fuerza el uso de SQLite para estandarización.
  */
 export class RepositoryFactory {
   static instance = null;
-  
+
   /**
-   * Crea o retorna una instancia singleton del repositorio
-   * @param {string} projectPath - Ruta del proyecto
-   * @returns {AtomRepository} Instancia del repositorio
-   */
-  static getInstance(projectPath) {
-    if (RepositoryFactory.instance) {
-      return RepositoryFactory.instance;
-    }
-    
-    const config = getStorageConfig();
-    
-    logger.info(`[RepositoryFactory] Creating ${config.adapter} repository`);
-    
-    let adapter;
-    
-    if (config.useSQLite) {
-      adapter = new SQLiteAdapter();
-    } else {
-      adapter = new JsonAdapter();
-    }
-    
-    adapter.initialize(projectPath);
-    
-    RepositoryFactory.instance = adapter;
-    
-    logger.info(`[RepositoryFactory] Repository created: ${config.adapter}`);
-    
-    return adapter;
-  }
-  
-  /**
-   * Fuerza la creacion de un nuevo repositorio (para testing)
-   * @param {string} projectPath - Ruta del proyecto  
-   * @param {string} type - 'sqlite' o 'json'
+   * Obtiene la instancia singleton del repositorio
+   * @param {string} projectPath - Ruta del proyecto para inicializar el DB
    * @returns {AtomRepository}
    */
-  static create(projectPath, type = 'auto') {
-    // Resetear instancia
-    RepositoryFactory.instance = null;
-    
-    if (type === 'auto') {
-      return RepositoryFactory.getInstance(projectPath);
+  static getInstance(projectPath = process.cwd()) {
+    if (!this.instance) {
+      this.instance = this.create('sqlite', projectPath);
     }
-    
-    let adapter;
-    
-    if (type === 'sqlite') {
-      adapter = new SQLiteAdapter();
-    } else {
-      adapter = new JsonAdapter();
+    return this.instance;
+  }
+
+  /**
+   * Crea una instancia de repositorio segun el tipo
+   * @param {string} type - 'sqlite' (único soportado)
+   * @param {string} projectPath - Ruta del base
+   * @returns {AtomRepository}
+   */
+  static create(type = 'sqlite', projectPath = process.cwd()) {
+    // Solo soportamos SQLite
+    if (type !== 'sqlite') {
+      logger.warn(`[RepositoryFactory] Type '${type}' is no longer supported. Forcing 'sqlite'.`);
     }
-    
+
+    const adapter = new SQLiteAdapter();
     adapter.initialize(projectPath);
-    RepositoryFactory.instance = adapter;
-    
+
+    logger.info(`[RepositoryFactory] Created SQLite repository at: ${projectPath}`);
     return adapter;
   }
-  
+
   /**
    * Obtiene la instancia actual sin inicializar
    * @returns {AtomRepository|null}
@@ -102,14 +58,14 @@ export class RepositoryFactory {
   static getCurrent() {
     return RepositoryFactory.instance;
   }
-  
+
   /**
    * Resetea la instancia singleton
    */
   static reset() {
     RepositoryFactory.instance = null;
   }
-  
+
   /**
    * Cierra el repositorio actual
    */

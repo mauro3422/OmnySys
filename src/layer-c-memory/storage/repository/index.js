@@ -12,13 +12,12 @@ export { AtomRepository } from './atom-repository.js';
 
 // Adaptadores
 export { SQLiteAdapter } from './adapters/sqlite-adapter.js';
-export { JsonAdapter } from './adapters/json-adapter.js';
 
 // Factory
 export { RepositoryFactory, getRepository } from './repository-factory.js';
 
 // Utilidades
-export { 
+export {
   calculateAtomVectors,
   calculateImportance,
   calculateCoupling,
