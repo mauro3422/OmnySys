@@ -102,7 +102,7 @@ export async function detectEventPatterns(code, filePath = '') {
   }
 
   walk(tree.rootNode);
-  tree.delete(); // 🧹 FREE WASM MEMORY
+  // node-tree-sitter no requiere tree.delete(), GC se encarga
 
   return { eventListeners, eventEmitters };
 }

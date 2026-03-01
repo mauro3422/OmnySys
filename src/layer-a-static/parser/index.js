@@ -6,83 +6,60 @@
  *
  * Ventajas sobre Babel:
  *  - scope-aware call tracking (resuelve closure/callback gap)
- *  - soporte multi-lenguaje vía grammars WASM
- *  - sin compilación nativa (usa web-tree-sitter WASM)
+ *  - soporte multi-lenguaje vía grammars nativos
+ *  - sin WASM (usa node-tree-sitter nativo)
  *
  * @module parser-v2
  */
 
-// web-tree-sitter usa named exports en ESM — no tiene default export
-// Se resuelve dinámicamente en ensureInitialized()
-let Parser;
-let Language;
+// node-tree-sitter usa exports nativos
+import Parser from 'tree-sitter';
+import JavaScript from 'tree-sitter-javascript';
+import TypeScript from 'tree-sitter-typescript';
 
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { getWasmPath, WASM_DIR, isSupportedFile } from './grammars/index.js';
 import { extractFileInfo } from './extractor.js';
 import { createLogger } from '../../utils/logger.js';
+import { parseWithPool } from './parser-pool.js';
 
 const logger = createLogger('OmnySys:parser-v2');
 
 // ─── Inicialización lazy ───────────────────────────────────────────────────
 
 let _initialized = false;
-let _initPromise = null;
 
-/** Cache de lenguajes ya cargados: wasmPath → Language */
+/** Cache de lenguajes ya cargados */
 const _languageCache = new Map();
 
 /**
- * Inicializa el motor WASM de Tree-sitter (solo una vez)
+ * Inicializa el parser de Tree-sitter (solo una vez)
  */
-async function ensureInitialized() {
+function ensureInitialized() {
     if (_initialized) return;
-    if (_initPromise) return _initPromise;
-
-    _initPromise = (async () => {
-        // Importar dinámicamente — web-tree-sitter usa named exports en ESM
-        const wts = await import('web-tree-sitter');
-        Parser = wts.Parser;
-        Language = wts.Language;  // Language es named export separado
-
-        // fileURLToPath convierte URL → path absoluto Windows (C:\...\web-tree-sitter.wasm)
-        const runtimeWasmPath = fileURLToPath(
-            new URL('../../../node_modules/web-tree-sitter/web-tree-sitter.wasm', import.meta.url)
-        );
-
-        await Parser.init({
-            locateFile(filename) {
-                // web-tree-sitter internamente busca 'tree-sitter.wasm'
-                // pero el archivo real se llama 'web-tree-sitter.wasm'
-                if (filename.includes('tree-sitter.wasm')) {
-                    return runtimeWasmPath;
-                }
-                return filename;
-            }
-        });
-        _initialized = true;
-        logger.debug('✅ Tree-sitter WASM initialized');
-    })();
-
-    return _initPromise;
+    _initialized = true;
+    logger.debug('✅ Tree-sitter native initialized');
 }
 
 /**
- * Carga (y cachea) el Language para un archivo dado
+ * Obtiene el lenguaje para un archivo dado
  * @param {string} filePath
- * @returns {Promise<import('web-tree-sitter').Language|null>}
+ * @returns {Object} Language
  */
-async function loadLanguage(filePath) {
-    const wasmPath = getWasmPath(filePath);
-    if (!wasmPath) return null;
+function getLanguage(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    
+    if (_languageCache.has(ext)) return _languageCache.get(ext);
 
-    if (_languageCache.has(wasmPath)) return _languageCache.get(wasmPath);
-
-    const lang = await Language.load(wasmPath);
-    _languageCache.set(wasmPath, lang);
-    return lang;
+    let language;
+    if (ext === '.ts' || ext === '.tsx') {
+        language = TypeScript[ext === '.tsx' ? 'tsx' : 'typescript'];
+    } else {
+        language = JavaScript.javascript;
+    }
+    
+    _languageCache.set(ext, language);
+    return language;
 }
 
 // ─── API pública ─────────────────────────────────────────────────────────────
@@ -91,18 +68,16 @@ async function loadLanguage(filePath) {
  * Obtiene el árbol Tree-sitter para el código dado
  * @param {string} filePath - Ruta del archivo para determinar el lenguaje
  * @param {string} code - Código fuente
- * @returns {Promise<import('web-tree-sitter').Tree|null>}
+ * @returns {Promise<import('tree-sitter').Tree|null>}
  */
 export async function getTree(filePath, code) {
     try {
-        await ensureInitialized();
-        const language = await loadLanguage(filePath);
+        ensureInitialized();
+        const language = getLanguage(filePath);
         if (!language) return null;
 
-        const parser = new Parser();
-        parser.setLanguage(language);
-        const tree = parser.parse(code);
-        parser.delete(); // 🧹 FREE WASM MEMORY
+        // ✅ USAR POOL: Reutiliza parsers en vez de crear/destruir
+        const tree = await parseWithPool(language, code, filePath);
         return tree;
     } catch (error) {
         logger.error(`Failed to get tree for ${filePath}: ${error.message}`);
@@ -119,12 +94,15 @@ export async function getTree(filePath, code) {
  * @returns {Promise<object>} FileInfo
  */
 export async function parseFile(filePath, code) {
-    if (!isSupportedFile(filePath)) {
+    const ext = path.extname(filePath).toLowerCase();
+    const supportedExts = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'];
+    
+    if (!supportedExts.includes(ext)) {
         // Fallback: retornar estructura vacía para archivos no soportados
         return {
             filePath,
             fileName: path.basename(filePath),
-            ext: path.extname(filePath),
+            ext: ext,
             imports: [], exports: [], definitions: [],
             calls: [], functions: [], identifierRefs: [],
             typeDefinitions: [], enumDefinitions: [],
@@ -138,7 +116,7 @@ export async function parseFile(filePath, code) {
         if (!tree) throw new Error(`Could not generate tree for: ${filePath}`);
 
         const result = extractFileInfo(tree, code, filePath);
-        tree.delete(); // 🧹 FREE WASM MEMORY
+        tree.delete(); // 🧹 FREE MEMORY
         return result;
 
     } catch (error) {
@@ -147,7 +125,7 @@ export async function parseFile(filePath, code) {
         return {
             filePath,
             fileName: path.basename(filePath),
-            ext: path.extname(filePath),
+            ext: ext,
             imports: [], exports: [], definitions: [],
             calls: [], functions: [], identifierRefs: [],
             typeDefinitions: [], enumDefinitions: [],
@@ -222,10 +200,7 @@ export function parseFileSync(filePath, code) {
     const tree = parser.parse(code);
     const result = extractFileInfo(tree, code, filePath);
 
-    tree.delete(); // 🧹 FREE WASM MEMORY
-    parser.delete(); // 🧹 FREE WASM MEMORY
+    tree.delete(); // 🧹 FREE MEMORY
 
     return result;
 }
-
-export { isSupportedFile };

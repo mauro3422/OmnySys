@@ -16,7 +16,7 @@
  */
 
 import path from 'path';
-import { parseFile, getTree, parseFileSync, isSupportedFile } from '../../parser/index.js';
+import { parseFile, getTree } from '../../parser/index.js';
 import { createLogger } from '#utils/logger.js';
 import { InputExtractor } from './visitors/input-extractor/index.js';
 import { TransformationExtractor } from './visitors/transformation-extractor/index.js';

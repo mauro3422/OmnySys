@@ -1,16 +1,18 @@
 /**
  * @fileoverview parser.js
- * 
- * Configuración y creación del parser Babel
- * 
+ *
+ * Configuración y creación del parser
+ *
  * @module analyses/tier3/event-detector/parser
  */
 
 import { createLogger } from '../../../../utils/logger.js';
-import { getTree, isSupportedFile } from '../../../parser/index.js';
+import { getTree } from '../../../parser/index.js';
+import path from 'path';
 
 const logger = createLogger('OmnySys:event-parser-v2');
 
+const SUPPORTED_EXTS = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'];
 
 /**
  * Parsea código fuente a AST usando Tree-sitter
@@ -33,5 +35,6 @@ export async function parseCodeToAST(code, filePath) {
  * @returns {boolean}
  */
 export function isParseableFile(filePath) {
-  return isSupportedFile(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  return SUPPORTED_EXTS.includes(ext);
 }
