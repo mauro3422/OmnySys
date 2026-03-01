@@ -12,65 +12,45 @@ Esta es la capa que las IAs interactúan directamente.
 
 ```
 ┌─────────────────────────────────────┐
-│      MCP Server (query-server.js)  │  ← IA consulta aquí
-│  Expone: get_impact_map, etc.      │
+│      MCP Server (mcp-server.js)     │  ← IA consulta aquí
+│  Expone: query_graph, aggregate_etc │
 └─────────────────────────────────────┘
                  ⬇️
 ┌─────────────────────────────────────┐
-│    Query Interface (query-api.js)  │
-│  Lógica de negocio de consultas    │
+│    Repository Pattern (SQLite)      │
+│  CRUD, Bulk, Query, Metrics         │
 └─────────────────────────────────────┘
                  ⬇️
 ┌─────────────────────────────────────┐
-│    Storage Engine (storage.js)     │
-│  JSON o SQLite                      │
+│    SQLite Database (omnysys.db)     │
+│  Mandatory Persistent Storage       │
 └─────────────────────────────────────┘
                  ⬆️
 ┌─────────────────────────────────────┐
-│    File Watcher (watcher.js)       │
-│  Auto-actualiza cuando cambia código│
+│    Pipeline Persistence (Layer A)   │
+│  Atomic saving via SQLiteAdapter    │
 └─────────────────────────────────────┘
 ```
 
 ---
 
-## Componentes a Implementar
+## Componentes de Almacenamiento
 
-### 1. `storage.js`
-**Propósito**: Persistir y cargar el grafo enriquecido
+### 1. SQLite Mandatory Storage
+**Propósito**: Fuente única de verdad para el conocimiento del sistema.
 
-**Funcionalidad**:
-- Guardar `enhanced-system-map.json` en disco
-- Cargarlo en memoria al iniciar
-- Opcionalmente: Migrar a SQLite para queries rápidas
+**Arquitectura**:
+- **SQLite Engine**: `better-sqlite3` para máxima performance.
+- **Repository Adapter**: Abstracción total de la base de datos permitiendo operaciones complejas (relaciones, versiones).
+- **Transactional Integrity**: Todas las actualizaciones de archivos y sus átomos ocurren en una única transacción atómica.
 
-**API**:
-```javascript
-class Storage {
-  async load(filePath);        // Cargar grafo de disco
-  async save(graph, filePath); // Guardar grafo a disco
-  async query(queryFn);        // Ejecutar query en memoria
-}
-```
+**Estructura de Datos Única**:
+- `atoms`: Almacena metadatos de funciones, clases y constantes.
+- `files`: Metadatos de archivos y estados de análisis.
+- `atom_versions`: Trackeo de cambios atómicos (eliminando archivos `.json` externos).
+- `relations`: Grafo de llamadas y dependencias semánticas.
 
-**Opción A: JSON (MVP)**
-```javascript
-// Ventaja: Simple, legible
-// Desventaja: Todo en memoria, lento para proyectos grandes
-const graph = JSON.parse(fs.readFileSync('enhanced-system-map.json'));
-```
-
-**Opción B: SQLite (Escalable)**
-```javascript
-// Ventaja: Queries rápidas con índices, escalable
-// Desventaja: Más complejo
-
-CREATE TABLE files (...);
-CREATE TABLE dependencies (...);
-CREATE INDEX idx_from ON dependencies(from_file);
-```
-
-**Decisión**: Empezar con JSON, migrar a SQLite si es necesario
+**Decisión (v0.9.70)**: La persistencia en archivos JSON ha sido DEPRECADA y ELIMINADA para garantizar integridad y performance en proyectos grandes.
 
 ---
 

@@ -1,19 +1,20 @@
 # Layer Graph
 
-**Versión**: 1.0.0  
+**Versión**: 1.1.0 (SQLite Mandatory)  
 **Estado**: Activo  
-**Responsabilidad**: Sistema de grafos de dependencias y conexiones del sistema
+**Responsabilidad**: Motor conceptual del grafo de dependencias y análisis de impacto transaccional.
 
 ---
 
 ## Qué es Layer Graph
 
-Layer Graph es la **capa dedicada al sistema de grafos** de OmnySys. Maneja toda la lógica de:
+Layer Graph es la **capa de inteligencia relacional** de OmnySys. A partir de v0.9.70, ha dejado de ser un generador de archivos JSON para convertirse en un **motor de consultas sobre SQLite**.
 
-- **Construcción**: Build del grafo de dependencias desde archivos parseados
-- **Análisis**: Algoritmos para detectar ciclos, calcular impacto, transitivas
-- **Consulta**: Queries para obtener información del grafo
-- **Persistencia**: Serialización y versionado del grafo
+### Capacidades:
+- **Construcción Virtual**: Proyecta el grafo en memoria desde las tablas `atoms` y `relations` para análisis rápido.
+- **Análisis de Impacto**: Algoritmos de propagación de cambios (DFS/BFS) sobre la base de datos.
+- **Detección de Ciclos**: Identificación de dependencias circulares mediante análisis transaccional.
+- **Resolución de Símbolos**: Linkeo global de llamadas a través de todo el proyecto.
 
 ---
 

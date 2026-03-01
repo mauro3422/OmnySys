@@ -51,13 +51,13 @@ export { extractCallGraph } from './builders/call-graph.js';
 // ============================================
 
 export { detectCycles, isInCycle, getFilesInCycles } from './algorithms/cycle-detector.js';
-export { 
+export {
   calculateTransitiveDependencies,
   calculateTransitiveDependents,
   calculateAllTransitiveDependencies,
   calculateAllTransitiveDependents
 } from './algorithms/transitive-deps.js';
-export { 
+export {
   getImpactMap,
   getMultipleImpactMaps,
   calculateRiskLevel,
@@ -79,16 +79,16 @@ export { findCallSites } from './query/call-graph-analyzer.js';
 // RESOLVERS: Resolución de símbolos
 // ============================================
 
-export { 
+export {
   findFunctionInResolution,
-  resolveAllFunctionCalls 
+  resolveAllFunctionCalls
 } from './resolvers/function-resolver.js';
 
 // ============================================
 // UTILS: Utilidades del grafo
 // ============================================
 
-export { 
+export {
   normalizePath,
   getDisplayPath,
   resolveImportPath,
@@ -98,7 +98,7 @@ export {
   isRelativePath
 } from './utils/path-utils.js';
 
-export { 
+export {
   countTotalFunctions,
   countTotalItems,
   countUnresolvedImports,
@@ -106,15 +106,19 @@ export {
   countDependencies
 } from './utils/counters.js';
 
+// Note: JSON-based graph persistence has been deprecated in favor of SQLite.
+// Exporting empty or local persistence placeholders for compatibility if needed,
+// but all core data now goes through SQLiteAdapter.
+
 // ============================================
-// PERSISTENCE: Persistencia del grafo
+// PERSISTENCE: Persistencia del grafo (Legacy support)
 // ============================================
 
-export { 
+export {
   serializeGraph,
   deserializeGraph,
   getGraphDelta,
-  applyGraphDelta 
+  applyGraphDelta
 } from './persistence/index.js';
 
 // ============================================

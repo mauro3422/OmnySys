@@ -1,9 +1,9 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.61  
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ **Dead Code Detection 85% preciso + 3 archivos refactorizados + MCP Tools**  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Versión**: v0.9.71  
+**Última actualización**: 2026-02-28  
+**Estado**: ✅ **SQLite Unificado + Tree-sitter High-Precision Extraction**  
+**Próximo**: 🚧 Análisis de Flujo de Datos Fractal + Layer B Optimization
 
 ---
 
@@ -211,22 +211,16 @@ Documentos consolidados, auditorías pasadas y material histórico:
 
 ---
 
-## 🚧 Migración a Tree-sitter (Próximamente)
+## ✅ Migración a Tree-sitter (Completado)
 
-**Estado**: Planificado para Q2 2026
+**Estado**: Implementado y Mandatorio (v0.9.70+)
 
-**Por qué**: El parser actual (Babel) tiene limitaciones en:
-- Detección precisa de `isExported` para arrow functions
-- Análisis de tipos TypeScript
-- Performance en proyectos grandes
+**Por qué**: Superamos las limitaciones de Babel en:
+- ✅ Detección precisa de `isExported` y ámbito de variables.
+- ✅ Análisis de Shared State y Event Patterns con alta precisión.
+- ✅ Performance optimizada mediante cacheo AST.
 
-**Beneficios de Tree-sitter**:
-- ✅ Parsing incremental (más rápido)
-- ✅ Mejor manejo de errores de sintaxis
-- ✅ Soporte nativo para más lenguajes
-- ✅ AST más rico y preciso
-
-**Impacto en MCP Tools**: Las herramientas MCP seguirán funcionando igual, pero con mayor precisión en la detección de patrones y menos falsos positivos.
+**Impacto**: Las herramientas MCP (`detect_race_conditions`, `explain_value_flow`) ahora operan sobre datos de alta fidelidad extraídos directamente mediante el `treeSitter` extractor.
 
 ---
 

@@ -1,19 +1,13 @@
 /**
- * @fileoverview Persistence - Persistencia del grafo
+ * Persistence Index - Layer Graph
  * 
- * @module layer-graph/persistence
- * @version 1.0.0
- * @status placeholder
- * 
- * Funcionalidades planeadas:
- * - serializeGraph: Convertir grafo a JSON
- * - deserializeGraph: Restaurar grafo desde JSON
- * - getGraphDelta: Calcular diferencias entre versiones
- * - applyGraphDelta: Aplicar cambios incrementales
+ * Note: Core persistence is now handled by Layer C (SQLite).
+ * This module provides utilities and placeholders for graph serialization
+ * and delta calculation, but the primary storage source is the SQLite DB.
  */
 
 /**
- * Serializa el grafo a formato JSON
+ * Serializa el grafo a formato JSON (Legacy/Debug)
  * @param {Object} systemMap - El grafo del sistema
  * @returns {string} JSON stringificado
  */
@@ -23,7 +17,7 @@ export function serializeGraph(systemMap) {
 }
 
 /**
- * Deserializa un grafo desde JSON
+ * Deserializa un grafo desde JSON (Legacy/Debug)
  * @param {string} jsonStr - JSON del grafo
  * @returns {Object} SystemMap restaurado
  */
@@ -32,16 +26,12 @@ export function deserializeGraph(jsonStr) {
   try {
     return JSON.parse(jsonStr);
   } catch (error) {
-    // Non-fatal: callers handle null as "no graph available"
     return null;
   }
 }
 
 /**
  * Calcula el delta (diferencia) entre dos versiones del grafo
- * @param {Object} oldGraph - Grafo anterior
- * @param {Object} newGraph - Grafo nuevo
- * @returns {Object} Delta con cambios
  */
 export function getGraphDelta(oldGraph, newGraph) {
   const delta = {
@@ -56,15 +46,11 @@ export function getGraphDelta(oldGraph, newGraph) {
   const newFiles = new Set(Object.keys(newGraph.files || {}));
 
   for (const file of newFiles) {
-    if (!oldFiles.has(file)) {
-      delta.added.files.push(file);
-    }
+    if (!oldFiles.has(file)) delta.added.files.push(file);
   }
 
   for (const file of oldFiles) {
-    if (!newFiles.has(file)) {
-      delta.removed.files.push(file);
-    }
+    if (!newFiles.has(file)) delta.removed.files.push(file);
   }
 
   return delta;
@@ -72,24 +58,12 @@ export function getGraphDelta(oldGraph, newGraph) {
 
 /**
  * Aplica un delta a un grafo existente
- * @param {Object} graph - Grafo base
- * @param {Object} delta - Delta de cambios
- * @returns {Object} Grafo modificado
  */
 export function applyGraphDelta(graph, delta) {
   if (!graph || !delta) return graph;
-
   const result = JSON.parse(JSON.stringify(graph));
-
   for (const file of delta.removed.files) {
     delete result.files[file];
   }
-
-  for (const file of delta.added.files) {
-    if (delta.added.fileData && delta.added.fileData[file]) {
-      result.files[file] = delta.added.fileData[file];
-    }
-  }
-
   return result;
 }

@@ -10,50 +10,43 @@ Esta capa es el fundamento del sistema: cuanto más complete el análisis estát
 
 ```
 Layer A/
-├── scanner.js              # Escanear filesystem
-├── parser.js               # Parsear AST con Babel
-├── graph-builder.js        # Construir grafo de dependencias
-├── resolver.js             # Resolver imports a paths absolutos
-├── indexer.js              # Orquestador principal
-├── analyses/               # Análisis estáticos (Tier 1-3)
-│   ├── tier1/             # Análisis básico (orphan, circular)
-│   ├── tier2/             # Análisis intermedio (unused imports)
-│   └── tier3/             # Análisis profundo (shared state, events)
-└── extractors/            # 🆕 EXTRACTORES ESTÁTICOS
-    ├── static-extractors.js      # localStorage, eventos
-    ├── advanced-extractors.js    # Web Workers, WebSocket
-    ├── metadata-extractors.js    # JSDoc, async patterns
-    ├── css-in-js-extractor.js    # styled-components
-    ├── typescript-extractor.js   # interfaces, types
-    ├── redux-context-extractor.js # Redux, Context API
-    ├── function-analyzer.js      # Análisis por función
-    └── pattern-matchers.js       # Detectores heurísticos
+├── indexer.js              # Orquestador (PipelineRunner)
+├── scanner.js              # Escaneo de filesystem (Tier 0)
+├── parser.js               # Parser multi-engine (Babel + Tree-sitter)
+├── resolver.js             # Resolución de paths y alias
+├── pipeline/               # 🚀 Pipeline de 10 Fases
+│   ├── phases/             # Scan, Parse, Extract, Link, Resolve, Graph, Persist
+│   └── runner.js           # Orquestador secuencial de fases
+└── extractors/             # 🌳 EXTRACTORES MODULARES
+    ├── metadata/           # Registry centralizado y extractores atómicos
+    │   ├── registry.js     # Single source of truth para extractors
+    │   ├── tree-sitter-integration.js # Puente con Tree-sitter
+    │   └── ...             # Async, Error, Side Effects, etc.
+    ├── data-flow/          # Análisis de flujo de datos (v2)
+    └── file-culture/       # Clasificación heurística de archivos
 ```
 
 ## Flujo de Datos
 
 ```
-Scanner → Parser → Graph Builder → Extractores → Tier Analyses
-                                          ↓
-                                    Metadatos completos
-                                          ↓
-                                    Layer B (orquestación LLM)
+Scanner → Parser → PipelineRunner (10 Fases) → Extractors (Modular) 
+                                           ↓
+                                     SQLite Database (Atoms + Metadata)
+                                           ↓
+                                     Layer C (MCP Server)
 ```
 
-## Extractores (Nuevo)
+## Extractores Modulares (v0.9.70)
 
-Los extractores en `extractors/` realizan análisis estático profundo usando regex y AST:
+El sistema utiliza un **Registry de Extractores** administrado en `extractors/metadata/registry.js`. Esto permite agregar nuevas capacidades de análisis sin tocar el core del indexador.
 
-- **static-extractors.js**: Detecta localStorage, sessionStorage, eventos (emit/on)
-- **advanced-extractors.js**: Web Workers, BroadcastChannel, WebSocket, SharedWorker
-- **metadata-extractors.js**: JSDoc/TSDoc, async/await patterns, error handling, build-time deps
-- **css-in-js-extractor.js**: styled-components, emotion, theme objects
-- **typescript-extractor.js**: interfaces, types, generics, herencia
-- **redux-context-extractor.js**: selectors, actions, reducers, context providers
-- **function-analyzer.js**: Análisis granular por función (imports usados, globals, calls)
-- **pattern-matchers.js**: Detectores heurísticos para eventos y storage
+### Categorías Clave:
+- **Tree-sitter (High-Precision)**: Extrae Shared State, Event Emitters/Listeners y Scope dinámico.
+- **Contract Analysis**: JSDoc, Type Contracts y Runtime Contracts.
+- **Pattern Matchers**: Async/Await, Error Handling, Side Effects y Temporal Patterns.
+- **Structural Analysis**: Build-time dependencies y Data Flow (Fractal).
 
-**Importante**: Todos estos extractores fueron movidos desde `layer-b-semantic/` porque son **análisis estático puro**, no usan LLM.
+**Importante**: La transición a Tree-sitter permite un análisis mucho más profundo de la "física" del código, detectando accesos indirectos a estado global que antes eran invisibles.
 
 ## Output
 

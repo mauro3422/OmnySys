@@ -254,6 +254,59 @@ function inferConnections(patterns) {
 
 ---
 
+## Responsabilidad
+
+Detectar conexiones semánticas profundas y razonar sobre el comportamiento del código usando modelos de lenguaje (LLM) e inferencia avanzada.
+
+**Evolución (v0.9.70)**: Los patrones básicos de estado compartido y eventos (anteriormente detectados aquí vía regex) han sido migrados a la **Layer A (Static)** mediante el extractor mandatorio de **Tree-sitter**, garantizando precisión determinista.
+
+La Layer B ahora se enfoca en:
+1. **Orquestación LLM**: Decidir cuándo un archivo requiere análisis por inteligencia artificial.
+2. **Inferencia de Relaciones**: Conectar átomos basados en dominios semánticos y propósitos.
+3. **Análisis de Intención**: Entender el "por qué" detrás de las conexiones técnicas.
+
+---
+
+## Tipos de Conexiones Semánticas
+
+### 1. Inferencia de Relaciones (v2)
+**Patrón**: Átomos que operan sobre el mismo dominio semántico aunque no compartan variables técnicas.
+
+**Detección**:
+- Análisis de `semanticDomain` extraído en Layer A.
+- Uso de LLM para mapear intenciones compartidas.
+
+### 2. Razonamiento sobre Effectos Secundarios
+**Patrón**: Entender el impacto real de un `sharedStateAccess` detectado estáticamente.
+
+**Análisis**:
+- El LLM evalúa si un acceso a estado global es una lectura segura o una mutación crítica con riesgo de race condition.
+
+---
+
+## Componentes
+
+### 1. `llm-analyzer.js`
+**Propósito**: Interfaz con el servidor de IA local (LFM/Qwen).
+
+### 2. `semantic-enricher.js`
+**Propósito**: Orquestar el enriquecimiento de los átomos guardados en SQLite con insights semánticos.
+
+### 3. `atom-decider`
+**Propósito**: Motor de reglas para filtrar qué átomos necesitan pasar por el LLM (ahorro de tokens y tiempo).
+
+---
+
+## Flujo de Trabajo Moderno
+
+```
+SQLite (Static Atoms) → Semantic Decider → LLM Inference → SQLite (Semantic Update)
+```
+
+**Beneficio**: No regeneramos el grafo; lo "enriquecemos" aumentando la metadata de los átomos ya persistidos por la Layer A.
+
+---
+
 ### Fase 2: LLM Local (Opcional)
 **Objetivo**: Añadir inteligencia para casos complejos
 
