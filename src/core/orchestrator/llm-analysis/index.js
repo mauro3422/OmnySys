@@ -1,8 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { safeReadJson } from '#utils/json-safe.js';
-import { createLogger } from '../../shared/logger-system.js';
-import { LLMAnalyzer } from '../../layer-b-semantic/llm-analyzer/index.js';
+import { createLogger } from '../../../shared/logger-system.js';
 import { processFileBatch } from './file-processor.js';
 import { initializeQueue, enqueueFiles, startQueueProcessing, handleNoFilesNeedLLM } from './queue-manager.js';
 

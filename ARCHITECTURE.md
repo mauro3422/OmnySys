@@ -1,8 +1,27 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.62
-**Última actualización**: 2026-02-25
+**Versión**: v0.9.65
+**Última actualización**: 2026-02-28
 **Estado**: ✅ **100% Estático, 0% LLM** - Tree-sitter + SQLite + Schema Unificado
+
+---
+
+## Novedades v0.9.65
+
+### Schema Registry (SSOT)
+
+- ✅ **Unificación de schema**: `schema-registry.js` es la única fuente de verdad
+- ✅ **Auto-migración**: Detecta y agrega columnas faltantes automáticamente
+- ✅ **Drift detection**: Advierte inconsistencias entre DB y registry
+- ✅ **Nuevas tools MCP**: `get_schema_status`, `export_schema`
+
+### ESM Cache Clearing
+
+- ✅ **Documentado**: Clarificado que proxy mode es requerido para limpiar cache ESM
+- ✅ **Restart mejorado**: `restart_server` ahora avisa si está en modo standalone
+- ✅ **Proxy stable**: `mcp-server.js` + `mcp-server-worker.js` para reinicios verdaderos
+
+**Ver documentación completa**: [docs/architecture/SCHEMA_REGISTRY.md](docs/architecture/SCHEMA_REGISTRY.md)
 
 ---
 

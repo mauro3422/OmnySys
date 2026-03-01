@@ -72,22 +72,22 @@ async function analyzeFileWithTreeSitter(code, filePath) {
   if (fileAnalysisCache.has(filePath)) {
     return fileAnalysisCache.get(filePath);
   }
-  
+
   try {
     const [sharedState, events] = await Promise.all([
       detectGlobalState(code, filePath),
       detectEventPatterns(code, filePath)
     ]);
-    
+
     const result = {
       sharedState,
       events: {
-        emitters: events.emitters || [],
-        listeners: events.listeners || []
+        emitters: events.eventEmitters || [],
+        listeners: events.eventListeners || []
       },
       sideEffects: [] // TODO: integrar side-effects-detector
     };
-    
+
     fileAnalysisCache.set(filePath, result);
     return result;
   } catch (error) {

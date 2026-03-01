@@ -32,6 +32,7 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
             const context = {
                 filePath: relativeFilePath,
                 code: parsedFile.source || '',
+                fullFileCode: parsedFile.source || '',  // FIX: Pass full file code for treeSitter extractor
                 fileInfo: parsedFile,
                 fileMetadata: parsedFile.metadata || {}
             };

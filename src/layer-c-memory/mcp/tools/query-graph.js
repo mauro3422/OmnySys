@@ -1,11 +1,11 @@
-import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
+import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
 
 import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getAtomDetails } from '../../query/queries/file-query/atoms/atom-query.js';
 
 /**
  * mcp_omnysystem_query_graph
- * 
+ *
  * Replaces:
  * - find_symbol_instances
  * - explain_value_flow
@@ -14,7 +14,7 @@ import { getAtomDetails } from '../../query/queries/file-query/atoms/atom-query.
  * - search_files
  * - get_removed_atoms
  */
-export class QueryGraphTool extends GraphQueryTool {
+export class QueryGraphTool extends SemanticQueryTool {
     constructor() {
         super('query:graph');
     }
@@ -34,7 +34,7 @@ export class QueryGraphTool extends GraphQueryTool {
             });
         }
 
-        this.logger.debug(`Executing query:graph -> ${queryType}`, { symbolName, filePath });
+        this.logger.debug(`Executing query:graph -> ${queryType}`, { symbolName, filePath, options });
 
         const innerArgs = { filePath, functionName: symbolName, ...options };
 
@@ -49,16 +49,38 @@ export class QueryGraphTool extends GraphQueryTool {
                     }
 
                     const atoms = this.repo.query({ name: symbolName });
-                    return this.formatSuccess({
-                        symbol: symbolName,
-                        totalInstances: atoms.length,
-                        instances: atoms.map(a => ({
+                    
+                    // Procesar resultados
+                    let instances = atoms.map(a => {
+                        const base = {
                             file: a.filePath,
                             type: a.type,
                             id: a.id,
                             params: a.params || [],
                             exports: a.exports || false
-                        }))
+                        };
+                        
+                        // Agregar datos semánticos si se solicitan
+                        if (options.includeSemantic) {
+                            base.semantic = {
+                                sharedStateAccess: JSON.parse(a.shared_state_json || '[]'),
+                                eventEmitters: JSON.parse(a.event_emitters_json || '[]'),
+                                eventListeners: JSON.parse(a.event_listeners_json || '[]'),
+                                isAsync: a.is_async,
+                                scopeType: a.scope_type,
+                                hasNetworkCalls: a.has_network_calls,
+                                hasErrorHandling: a.has_error_handling
+                            };
+                        }
+                        
+                        return base;
+                    });
+
+                    return this.formatSuccess({
+                        symbol: symbolName,
+                        totalInstances: instances.length,
+                        instances,
+                        semanticIncluded: !!options.includeSemantic
                     });
                 }
 
@@ -70,10 +92,24 @@ export class QueryGraphTool extends GraphQueryTool {
                     const atom = this.getExactAtom(symbolName, filePath);
                     if (!atom) return this.formatError('NOT_FOUND', `Symbol ${symbolName} not found in ${filePath}`);
 
+                    // Agregar datos semánticos si se solicitan
+                    if (options.includeSemantic) {
+                        atom.semantic = {
+                            sharedStateAccess: JSON.parse(atom.shared_state_json || '[]'),
+                            eventEmitters: JSON.parse(atom.event_emitters_json || '[]'),
+                            eventListeners: JSON.parse(atom.event_listeners_json || '[]'),
+                            isAsync: atom.is_async,
+                            scopeType: atom.scope_type,
+                            hasNetworkCalls: atom.has_network_calls,
+                            hasErrorHandling: atom.has_error_handling
+                        };
+                    }
+
                     return this.formatSuccess({
                         file: filePath,
                         symbol: symbolName,
-                        details: atom
+                        details: atom,
+                        semanticIncluded: !!options.includeSemantic
                     });
                 }
 

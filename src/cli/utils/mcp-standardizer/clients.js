@@ -137,26 +137,56 @@ export async function applyQwenConfig(url, projectPath) {
     const targetPath = CONFIG_PATHS.qwen;
     const config = await readJsonSafe(targetPath, {});
 
-    const globalServers = ensureMcpServersContainer(config);
-    const existingGlobal = getPrimaryWithLegacyFallback(globalServers);
+    // Ruta al STDIO bridge (tiene auto-start incorporado)
+    const bridgePath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js');
 
+    // Configurar MCP global (nivel usuario) - USANDO STDIO BRIDGE con auto-start
+    const globalServers = ensureMcpServersContainer(config);
+
+    // Usar STDIO bridge en lugar de httpUrl directo para permitir auto-start
     globalServers[SERVER_KEY] = {
-        ...(existingGlobal || {}),
-        httpUrl: url,
-        timeout: typeof existingGlobal?.timeout === 'number' ? existingGlobal.timeout : 30000
+        command: 'node',
+        args: [normalizeSlashes(bridgePath)],
+        env: {
+            OMNYSYS_DAEMON_URL: url,
+            OMNYSYS_AUTO_START: '1'  // Habilitar auto-start del daemon
+        }
     };
     clearLegacyAliases(globalServers);
 
+    // Asegurar que el contenedor mcp exista para configuración global
+    if (!config.mcp || typeof config.mcp !== 'object') {
+        config.mcp = {};
+    }
+    if (!Array.isArray(config.mcp.allowed)) {
+        config.mcp.allowed = [];
+    }
+    // Agregar omnysystem a la lista de servidores permitidos
+    if (!config.mcp.allowed.includes(SERVER_KEY)) {
+        config.mcp.allowed.push(SERVER_KEY);
+    }
+
+    await writeJsonNoBom(targetPath, config);
+
+    // Configurar MCP a nivel de proyecto (para referencia) - también con STDIO bridge
     const projectQwenDir = path.join(projectPath, '.qwen');
     const projectConfigPath = path.join(projectQwenDir, 'settings.json');
 
     const projectConfig = {
         mcpServers: {
             [SERVER_KEY]: {
-                httpUrl: url,
-                timeout: 30000
+                command: 'node',
+                args: [normalizeSlashes(bridgePath)],
+                env: {
+                    OMNYSYS_DAEMON_URL: url,
+                    OMNYSYS_AUTO_START: '1'
+                }
             }
-        }
+        },
+        mcp: {
+            allowed: [SERVER_KEY]
+        },
+        $version: 3
     };
 
     await fs.mkdir(projectQwenDir, { recursive: true });

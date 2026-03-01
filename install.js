@@ -61,6 +61,21 @@ async function main() {
 
   printClientResults(result.clientResults);
 
+  // Print terminal auto-start results
+  if (result.terminal && result.terminal.results) {
+    console.log('');
+    log('info', 'Terminal auto-start configuration:');
+    for (const r of result.terminal.results) {
+      if (r.applied) {
+        log('ok', `${r.shell}: ${r.profile}`);
+      } else if (r.alreadyConfigured) {
+        log('info', `${r.shell}: already configured`);
+      } else {
+        log('warn', `${r.shell}: ${r.error || 'not applied'}`);
+      }
+    }
+  }
+
   if (!result.success) {
     log('err', 'MCP standardization finished with errors.');
     process.exit(1);
@@ -84,6 +99,7 @@ async function main() {
   console.log('  1) Open VS Code in this workspace (daemon task auto-runs).');
   console.log('  2) Or start manually: node src/layer-c-memory/mcp-http-server.js');
   console.log('  3) Re-apply standard anytime: npm run setup');
+  console.log('  4) Terminal auto-start will run when you open a new terminal');
 }
 
 main().catch((error) => {

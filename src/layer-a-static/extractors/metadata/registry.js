@@ -149,7 +149,7 @@ export const EXTRACTOR_REGISTRY = [
     description: 'Tree-sitter metadata (shared state, events, scope)',
     usedByTools: ['detect_race_conditions', 'get_function_details', 'detect_patterns'],
     level: 'atom',
-    getArgs: ({ functionCode, functionInfo, filePath }) => [functionCode, functionInfo, filePath, functionCode]
+    getArgs: ({ functionCode, functionInfo, filePath, fullFileCode }) => [functionCode, functionInfo, filePath, fullFileCode || functionCode]
   },
 ];
 

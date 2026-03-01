@@ -9,8 +9,10 @@ export async function parseFiles(files, verbose = true) {
   if (verbose) logger.info('📝 Parsing files...');
   const parsedFiles = {};
 
-  // PROCESAMIENTO EN PARALELO POR BATCHES
-  const BATCH_SIZE = 20; // Procesar 20 archivos en paralelo
+  // ✅ BATCHES DE 20 con POOL REUTILIZABLE
+  // Los 20 parsers del pool se reutilizan en cada batch
+  // Memoria: ~60MB fijos (parsers) + ~40MB temporales (árboles) = 100MB pico
+  const BATCH_SIZE = 20;
   const batchTimer = new BatchTimer('File parsing', files.length);
 
   for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -24,7 +26,7 @@ export async function parseFiles(files, verbose = true) {
 
     const timerBatch = startTimer(`Batch ${batchNum}/${totalBatches}`);
 
-    // Procesar batch en paralelo
+    // ✅ Los parsers YA ESTÁN CREADOS (pool), solo se reutilizan
     const results = await Promise.all(
       batch.map(async (file) => {
         const parsed = await parseFileFromDisk(file);

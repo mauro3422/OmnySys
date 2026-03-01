@@ -39,15 +39,15 @@ import { validate_imports } from './validate-imports.js';
 import { generate_tests, generate_batch_tests } from './generate-tests/index.js';
 
 // Admin & Debug Tools
-import { get_atom_schema } from './get-atom-schema.js';
 import { get_server_status, get_recent_errors } from './status.js';
 import { restart_server } from './restart-server.js';
+import { get_schema } from './get-schema.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
   {
     name: 'mcp_omnysystem_query_graph',
-    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, explain_value_flow, get_function_details, get_atom_history, etc). queryType options: [instances, details, history, value_flow, search, removed].',
+    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, explain_value_flow, get_function_details, get_atom_history, etc). queryType options: [instances, details, history, value_flow, search, removed]. OPTIONS: includeSemantic=true agrega sharedState, events, async info.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -55,14 +55,14 @@ export const toolDefinitions = [
         symbolName: { type: 'string', description: 'Nombre del símbolo/función a buscar (o patrón regex para search)' },
         filePath: { type: 'string', description: 'Ruta del archivo (obligatoria para details, history, value_flow)' },
         autoDetect: { type: 'boolean', description: 'Para instances: detecta todos los duplicados del proyecto automáticamente' },
-        options: { type: 'object', description: 'Opciones extra como maxDepth, includeSimilar, includeCode, etc.' }
+        options: { type: 'object', description: 'Opciones extra como maxDepth, includeSimilar, includeCode, includeSemantic, etc.' }
       },
       required: ['queryType']
     }
   },
   {
     name: 'mcp_omnysystem_traverse_graph',
-    description: 'Enrutador unificado para navegar el grafo de dependencias (BFS/DFS). Reemplaza herramientas antiguas (get_impact_map, get_call_graph, analyze_change, simulate_data_journey, trace_variable, explain_connection). traverseType options: [impact_map, call_graph, analyze_change, simulate_data_journey, trace_variable, trace_data_flow, explain_connection, signature_change].',
+    description: 'Enrutador unificado para navegar el grafo de dependencias (BFS/DFS). Reemplaza herramientas antiguas (get_impact_map, get_call_graph, analyze_change, simulate_data_journey, trace_variable, explain_connection). traverseType options: [impact_map, call_graph, analyze_change, simulate_data_journey, trace_variable, trace_data_flow, explain_connection, signature_change]. OPTIONS: includeSemantic=true agrega sharedState, events, async info a los nodos.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -70,20 +70,20 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Punto de origen: Ruta del archivo' },
         symbolName: { type: 'string', description: 'Punto de origen: Nombre del símbolo/función/variable' },
         variableName: { type: 'string', description: 'Variable para trace, o fileB para explain_connection' },
-        options: { type: 'object', description: 'Opciones extra como maxDepth, newSignature, etc.' }
+        options: { type: 'object', description: 'Opciones extra como maxDepth, newSignature, includeSemantic, etc.' }
       },
       required: ['traverseType', 'filePath']
     }
   },
   {
     name: 'mcp_omnysystem_aggregate_metrics',
-    description: 'Enrutador unificado para extraer métricas agrupadas y detectar patrones en lote. Reemplaza herramientas (get_health_metrics, get_module_overview, get_molecule_summary, detect_patterns, detect_race_conditions, risk). aggregationType options: [health, modules, molecule, patterns, race_conditions, async_analysis, risk, society].',
+    description: 'Enrutador unificado para extraer métricas agrupadas y detectar patrones en lote. Reemplaza herramientas (get_health_metrics, get_module_overview, get_molecule_summary, detect_patterns, detect_race_conditions, risk). aggregationType options: [health, modules, molecule, patterns, race_conditions, async_analysis, risk, society]. OPTIONS: offset, limit para paginación; patternType, minSeverity, scopeType para filtrado.',
     inputSchema: {
       type: 'object',
       properties: {
         aggregationType: { type: 'string', description: 'Tipo de métrica a agregar' },
         filePath: { type: 'string', description: 'Ruta opcional para filtrar métricas en un solo archivo/módulo' },
-        options: { type: 'object', description: 'Opciones extra como patternType, minSeverity, etc.' }
+        options: { type: 'object', description: 'Opciones extra como patternType, minSeverity, scopeType, offset, limit, etc.' }
       },
       required: ['aggregationType']
     }
@@ -213,14 +213,37 @@ export const toolDefinitions = [
 
   // ── ADMIN & DEBUG ────────────────────────────────────────────────────────
   {
-    name: 'mcp_omnysystem_get_atom_schema',
-    description: 'Inspects the live atom index and returns a dynamic schema of available metadata fields for a given atom type.',
+    name: 'mcp_omnysystem_get_schema',
+    description: 'Herramienta unificada para consultar schemas. type: "atoms" (schema de átomos con estadísticas), "database" (estado del schema SQLite con drift detection), "registry" (definición registrada de tablas).',
     inputSchema: {
       type: 'object',
       properties: {
-        atomType: { type: 'string' },
-        sampleSize: { type: 'number', default: 3 }
-      }
+        type: { 
+          type: 'string', 
+          enum: ['atoms', 'database', 'registry'],
+          default: 'atoms',
+          description: 'Tipo de schema a consultar'
+        },
+        atomType: { 
+          type: 'string', 
+          description: 'Filtrar por tipo de átomo (solo type="atoms"): function, arrow, method, variable, testCallback, etc.'
+        },
+        sampleSize: { 
+          type: 'number', 
+          default: 3,
+          description: 'Cantidad de átomos de muestra (solo type="atoms")'
+        },
+        focusField: { 
+          type: 'string', 
+          description: 'Campo para análisis de evolución (solo type="atoms")'
+        },
+        includeSQL: { 
+          type: 'boolean', 
+          default: false,
+          description: 'Incluir SQL exportado (solo type="database")'
+        }
+      },
+      required: []
     }
   },
   {
@@ -264,7 +287,7 @@ export const toolHandlers = {
   mcp_omnysystem_generate_batch_tests: generate_batch_tests,
 
   // Admin & Debug
-  mcp_omnysystem_get_atom_schema: get_atom_schema,
+  mcp_omnysystem_get_schema: get_schema,
   mcp_omnysystem_get_server_status: get_server_status,
   mcp_omnysystem_get_recent_errors: get_recent_errors,
   mcp_omnysystem_restart_server: restart_server

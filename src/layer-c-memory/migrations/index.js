@@ -1,91 +1,59 @@
 /**
  * @fileoverview Database migrations
- * 
- * Se ejecuta automáticamente al inicio para asegurar que la DB
- * tenga los campos y datos correctos.
- * 
+ *
+ * Sistema de migraciones basado en schema-registry.js
+ *
+ * IMPORTANTE: Este archivo ahora es solo para migraciones de DATOS,
+ * no para migraciones de SCHEMA. El schema se gestiona automáticamente
+ * desde schema-registry.js
+ *
  * @module layer-c-memory/migrations
  */
 
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { getTableColumns, hasColumn } from '../storage/database/schema-registry.js';
 
 const DB_PATH = '.omnysysdata/omnysys.db';
 
-const MIGRATIONS = [
+/**
+ * Migraciones de DATOS (no de schema)
+ * 
+ * Cada migración tiene:
+ * - name: identificador único
+ * - check: función que retorna true si ya está migrado
+ * - run: función que ejecuta la migración
+ * - type: 'data' | 'fix' (no 'schema' porque eso es automático)
+ */
+const DATA_MIGRATIONS = [
   {
-    name: 'add_error_handling_columns',
+    name: 'fix_purpose_object_bug',
+    type: 'fix',
+    description: 'Corregir purpose_type = [object Object]',
     check: () => {
-      const db = new Database(DB_PATH, { readonly: true });
-      const cols = db.prepare('PRAGMA table_info(atoms)').all();
-      db.close();
-      return cols.some(c => c.name === 'has_error_handling');
+      try {
+        const db = new Database(DB_PATH, { readonly: true });
+        const count = db.prepare("SELECT COUNT(*) as c FROM atoms WHERE purpose_type = '[object Object]'").get();
+        db.close();
+        return count.c === 0;
+      } catch {
+        return true; // Si no existe la DB, no hace falta migrar
+      }
     },
     run: () => {
       const db = new Database(DB_PATH);
       try {
-        db.exec('ALTER TABLE atoms ADD COLUMN has_error_handling INTEGER DEFAULT 0');
-        db.exec('ALTER TABLE atoms ADD COLUMN has_network_calls INTEGER DEFAULT 0');
-        console.log('✅ Migration: added error_handling columns');
-      } catch (e) {
-        // Columnas ya existen
+        db.prepare("UPDATE atoms SET purpose_type = 'UNKNOWN' WHERE purpose_type = '[object Object]'").run();
+        const count = db.prepare("SELECT changes() as c").get();
+        console.log(`✅ Migration: fixed ${count.c} purpose_object bugs`);
+      } finally {
+        db.close();
       }
-      db.close();
-    }
-  },
-  {
-    name: 'fix_purpose_object_bug',
-    check: () => {
-      const db = new Database(DB_PATH, { readonly: true });
-      const count = db.prepare("SELECT COUNT(*) as c FROM atoms WHERE purpose_type = '[object Object]'").get();
-      db.close();
-      return count.c === 0;
-    },
-    run: () => {
-      const db = new Database(DB_PATH);
-      db.prepare("UPDATE atoms SET purpose_type = 'UNKNOWN' WHERE purpose_type = '[object Object]'").run();
-      const count = db.prepare("SELECT changes() as c").get();
-      console.log(`✅ Migration: fixed ${count.c} purpose_object bugs`);
-      db.close();
-    }
-  },
-  {
-    name: 'recalculate_error_handling',
-    check: () => {
-      const db = new Database(DB_PATH, { readonly: true });
-      const withError = db.prepare('SELECT COUNT(*) as c FROM atoms WHERE has_error_handling = 1').get();
-      db.close();
-      return withError.c > 100; // Si ya hay >100 con error handling, está migrado
-    },
-    run: () => {
-      const db = new Database(DB_PATH);
-      const atoms = db.prepare('SELECT id, file_path, line_start, line_end FROM atoms WHERE file_path IS NOT NULL').all();
-      
-      const patterns = [/try\s*\{/, /catch\s*\(/, /\.catch\s*\(/, /if\s*\(.*\)\s*throw/, /Promise\.catch/];
-      const update = db.prepare('UPDATE atoms SET has_error_handling = 1 WHERE id = ?');
-      
-      let updated = 0;
-      for (const atom of atoms) {
-        try {
-          if (!atom.file_path || !fs.existsSync(atom.file_path)) continue;
-          const content = fs.readFileSync(atom.file_path, 'utf-8');
-          const lines = content.split('\n');
-          const start = Math.max(0, (atom.line_start || 1) - 1);
-          const end = Math.min(lines.length, atom.line_end || start + 50);
-          const code = lines.slice(start, end).join('\n');
-          
-          if (patterns.some(p => p.test(code))) {
-            update.run(atom.id);
-            updated++;
-          }
-        } catch (e) {}
-      }
-      
-      console.log(`✅ Migration: recalculated error_handling for ${updated} atoms`);
-      db.close();
     }
   }
+  // Agregar más migraciones de DATOS aquí (no de schema)
+  // El schema se gestiona automáticamente desde schema-registry.js
 ];
 
 /**
@@ -94,10 +62,17 @@ const MIGRATIONS = [
 export async function runMigrations() {
   console.log('\n🔄 Checking database migrations...\n');
   
-  for (const migration of MIGRATIONS) {
+  // Verificar que la DB exista
+  if (!fs.existsSync(DB_PATH)) {
+    console.log('  ℹ️  Database does not exist yet. Skipping migrations.');
+    return;
+  }
+
+  for (const migration of DATA_MIGRATIONS) {
     try {
       if (!migration.check()) {
-        console.log(`  📦 Running migration: ${migration.name}`);
+        console.log(`  📦 Running ${migration.type} migration: ${migration.name}`);
+        console.log(`     Description: ${migration.description}`);
         migration.run();
       } else {
         console.log(`  ✅ ${migration.name}: up to date`);
@@ -106,8 +81,41 @@ export async function runMigrations() {
       console.log(`  ⚠️  ${migration.name}: ${e.message}`);
     }
   }
-  
+
   console.log('\n✅ Migrations complete\n');
 }
 
-export default { runMigrations };
+/**
+ * Obtiene el reporte de estado del schema
+ * Útil para debugging y auditoría
+ */
+export function getSchemaStatus() {
+  try {
+    if (!fs.existsSync(DB_PATH)) {
+      return { status: 'missing', message: 'Database does not exist' };
+    }
+    
+    const db = new Database(DB_PATH, { readonly: true });
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    db.close();
+    
+    const status = {
+      status: 'ok',
+      tables: tables.map(t => t.name),
+      timestamp: new Date().toISOString()
+    };
+    
+    return status;
+  } catch (error) {
+    return {
+      status: 'error',
+      error: error.message
+    };
+  }
+}
+
+export default { 
+  runMigrations,
+  getSchemaStatus,
+  DATA_MIGRATIONS
+};

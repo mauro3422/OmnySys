@@ -1,8 +1,20 @@
 {
   "mcpServers": {
     "omnysystem": {
-      "httpUrl": "http://127.0.0.1:9999/mcp",
-      "timeout": 30000
+      "command": "node",
+      "args": [
+        "C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js"
+      ],
+      "env": {
+        "OMNYSYS_DAEMON_URL": "http://127.0.0.1:9999/mcp",
+        "OMNYSYS_AUTO_START": "1"
+      }
     }
-  }
+  },
+  "mcp": {
+    "allowed": [
+      "omnysystem"
+    ]
+  },
+  "$version": 3
 }

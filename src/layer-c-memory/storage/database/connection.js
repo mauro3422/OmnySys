@@ -1,9 +1,9 @@
 /**
  * @fileoverview connection.js
- * 
+ *
  * SQLite Connection Manager para OmnySystem v2.0
  * Usa better-sqlite3 para mejor performance sincronico.
- * 
+ *
  * @module storage/database/connection
  */
 
@@ -12,6 +12,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createLogger } from '#utils/logger.js';
 import { readFileSync, mkdirSync, existsSync } from 'fs';
+import { getRegisteredTables, getTableDefinition, detectMissingColumns, generateAddColumnSQL, generateCreateTableSQL, generateCreateIndexesSQL } from './schema-registry.js';
 
 const logger = createLogger('OmnySys:Storage:Connection');
 
@@ -98,101 +99,101 @@ class ConnectionManager {
 
   /**
    * Inicializa el schema de la base de datos
+   * 
+   * Usa schema-registry.js como SINGLE SOURCE OF TRUTH
+   * Detecta y migra automáticamente columnas faltantes
    */
   initializeSchema() {
     try {
-      // Leer y ejecutar schema.sql (sync)
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
+      
+      // ── STEP 1: Leer schema.sql base (para tablas básicas) ───────────────
       const schemaPath = resolve(__dirname, 'schema.sql');
-      const schema = readFileSync(schemaPath, 'utf8');
-
-      this.db.exec(schema);
-
-      // Migración: agregar columnas faltantes a tabla 'files' si no existen
-      // SQLite no soporta ADD COLUMN IF NOT EXISTS en versiones antiguas
-      const tableInfo = this.db.prepare('PRAGMA table_info(files)').all();
-      const existingColumns = tableInfo.map(col => col.name);
-
-      if (!existingColumns.includes('module_name')) {
-        this.db.exec('ALTER TABLE files ADD COLUMN module_name TEXT');
+      if (existsSync(schemaPath)) {
+        const schema = readFileSync(schemaPath, 'utf8');
+        this.db.exec(schema);
+        logger.debug('[Connection] Base schema.sql executed');
       }
-      if (!existingColumns.includes('imports_json')) {
-        this.db.exec("ALTER TABLE files ADD COLUMN imports_json TEXT DEFAULT '[]'");
+      
+      // ── STEP 2: Usar schema-registry como SSOT ───────────────────────────
+      // Crear tablas registradas que puedan faltar en schema.sql
+      const registeredTables = getRegisteredTables();
+      
+      for (const tableName of registeredTables) {
+        // Verificar si la tabla existe
+        const tableExists = this.db.prepare(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
+        ).get(tableName);
+        
+        if (!tableExists) {
+          // Crear tabla desde registry
+          const createSQL = generateCreateTableSQL(tableName);
+          this.db.exec(createSQL);
+          logger.info(`[Connection] Created table '${tableName}' from registry`);
+        }
+        
+        // Crear índices
+        const indexes = generateCreateIndexesSQL(tableName);
+        for (const indexSQL of indexes) {
+          this.db.exec(indexSQL);
+        }
+        
+        // ── STEP 3: Detectar y agregar columnas faltantes ─────────────────
+        const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
+        const missingColumns = detectMissingColumns(tableName, existingColumns);
+        
+        if (missingColumns.length > 0) {
+          logger.info(`[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`);
+          
+          for (const column of missingColumns) {
+            try {
+              const addColumnSQL = generateAddColumnSQL(tableName, column.name);
+              this.db.exec(addColumnSQL);
+            } catch (err) {
+              // Ignorar si la columna ya existe (race condition)
+              if (!err.message.includes('duplicate column')) {
+                logger.warn(`[Connection] Failed to add column ${column.name} to ${tableName}: ${err.message}`);
+              }
+            }
+          }
+        }
       }
-      if (!existingColumns.includes('exports_json')) {
-        this.db.exec("ALTER TABLE files ADD COLUMN exports_json TEXT DEFAULT '[]'");
-      }
-
-      // Migración: agregar columnas faltantes a tabla 'atoms'
-      const atomsInfo = this.db.prepare('PRAGMA table_info(atoms)').all();
-      const atomColumns = atomsInfo.map(col => col.name);
-
-      if (!atomColumns.includes('called_by_json')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN called_by_json TEXT DEFAULT '[]'");
-      }
-      if (!atomColumns.includes('function_type')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN function_type TEXT DEFAULT 'declaration'");
-      }
-
-      // Migración v2.2: columnas de Algebra de Grafos
-      if (!atomColumns.includes('in_degree')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN in_degree INTEGER DEFAULT 0");
-      }
-      if (!atomColumns.includes('out_degree')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN out_degree INTEGER DEFAULT 0");
-      }
-      if (!atomColumns.includes('centrality_score')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN centrality_score REAL DEFAULT 0");
-      }
-      if (!atomColumns.includes('centrality_classification')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN centrality_classification TEXT");
-      }
-      if (!atomColumns.includes('risk_level')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN risk_level TEXT");
-      }
-      if (!atomColumns.includes('risk_prediction')) {
-        this.db.exec("ALTER TABLE atoms ADD COLUMN risk_prediction TEXT");
-      }
-
-      // Migración v2.1: agregar tabla cache si no existe
-      const cacheTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='cache_entries'").get();
-      if (!cacheTableInfo) {
-        this.db.exec(`
-          CREATE TABLE IF NOT EXISTS cache_entries (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            expiry INTEGER,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-          );
-          CREATE INDEX IF NOT EXISTS idx_cache_expiry ON cache_entries(expiry);
-        `);
-        logger.info('[Connection] Created cache_entries table');
-      }
-
-      // Migración v2.3: agregar tabla atom_versions si no existe
-      const versionTableInfo = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='atom_versions'").get();
-      if (!versionTableInfo) {
-        this.db.exec(`
-          CREATE TABLE IF NOT EXISTS atom_versions (
-            atom_id TEXT PRIMARY KEY,
-            hash TEXT NOT NULL,
-            field_hashes_json TEXT NOT NULL,
-            last_modified INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            atom_name TEXT NOT NULL,
-            FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE
-          );
-          CREATE INDEX IF NOT EXISTS idx_atom_versions_file ON atom_versions(file_path);
-        `);
-        logger.info('[Connection] Created atom_versions table');
-      }
-
-      logger.debug('[Connection] Schema initialized');
+      
+      // ── STEP 4: Reporte de drift detection ──────────────────────────────
+      this._checkSchemaDrift();
+      
+      logger.debug('[Connection] Schema initialization complete (registry-based)');
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
       throw error;
+    }
+  }
+  
+  /**
+   * Detecta drift entre schema.sql y schema-registry
+   * Advierte si hay columnas en schema.sql que no están en el registry
+   */
+  _checkSchemaDrift() {
+    const registeredTables = getRegisteredTables();
+    
+    for (const tableName of registeredTables) {
+      const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
+      const registeredColumns = getTableDefinition(tableName).columns;
+      
+      const existingNames = new Set(existingColumns.map(c => c.name));
+      const registeredNames = new Set(registeredColumns.map(c => c.name));
+      
+      // Columnas que existen pero no están en el registry (drift)
+      const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
+      
+      if (driftColumns.length > 0) {
+        logger.warn(
+          `[Connection] ⚠️  SCHEMA DRIFT detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
+          `   These columns exist in DB but not in schema-registry.js\n` +
+          `   → Consider adding them to registry or removing from DB`
+        );
+      }
     }
   }
 

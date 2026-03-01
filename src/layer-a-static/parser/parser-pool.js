@@ -1,21 +1,19 @@
 /**
  * @fileoverview parser-pool.js
- *
- * Pool de parsers Tree-sitter nativos para reutilización.
  * 
- * node-tree-sitter es mucho más estable que web-tree-sitter,
- * pero igual conviene reutilizar parsers para evitar overhead.
- *
+ * Pool de parsers web-tree-sitter para reutilización.
+ * web-tree-sitter 0.25.10
+ * 
  * @module parser-v2/parser-pool
  */
 
+import * as Parser from 'web-tree-sitter';
 import { createLogger } from '../../utils/logger.js';
-import Parser from 'tree-sitter';
 
 const logger = createLogger('OmnySys:parser-pool');
 
 /**
- * Pool simple de parsers nativos
+ * Pool simple de parsers web-tree-sitter
  */
 class ParserPool {
   constructor(size = 10) {
@@ -53,7 +51,6 @@ class ParserPool {
       await this.initialize();
     }
 
-    // Si no hay disponibles, esperar
     while (this.available.length === 0) {
       await new Promise(resolve => setTimeout(resolve, 10));
     }
@@ -123,9 +120,9 @@ export function getParserPool(size = null) {
 
 /**
  * Parsea código usando el pool de parsers
- * @param {Object} language - Lenguaje cargado (tree-sitter-javascript, etc.)
+ * @param {Object} language - Lenguaje cargado (web-tree-sitter Language)
  * @param {string} code - Código a parsear
- * @returns {Promise<import('tree-sitter').Tree>}
+ * @returns {Promise<import('web-tree-sitter').Tree>}
  */
 export async function parseWithPool(language, code) {
   const pool = getParserPool(10);

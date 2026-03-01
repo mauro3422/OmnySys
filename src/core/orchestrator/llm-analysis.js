@@ -1,39 +1,26 @@
 /**
  * @fileoverview LLM Analysis Module
- * 
+ *
  * Analiza archivos complejos con LLM basado en metadatos de Layer A.
- * 
- * ⚠️ DEPRECATED: This file is kept for backward compatibility.
- * Please import directly from the llm-analysis/ directory:
- *   import { analyzeComplexFilesWithLLM } from './llm-analysis/index.js';
- * 
+ *
  * @module core/orchestrator/llm-analysis
- * @deprecated Use llm-analysis/ directory modules instead
  */
 
-import { 
-  analyzeComplexFilesWithLLM as analyzeWithLLMImpl,
-  calculateContentHash,
-  shouldUseLLM,
-  _calculateLLMPriority
-} from './llm-analysis/index.js';
+// Importar funciones individuales para evitar cargar dependencias pesadas en tests
+import { calculateContentHash } from './llm-analysis/hash-utils.js';
+import { shouldUseLLM } from './llm-analysis/llm-decision.js';
+import { calculateLLMPriority as _calculateLLMPriority } from './llm-analysis/file-processor.js';
 
-// Función wrapper para mantener compatibilidad con el contexto `this`
-export async function _analyzeComplexFilesWithLLM() {
-  const context = {
-    projectPath: this.projectPath,
-    OmnySysDataPath: this.OmnySysDataPath,
-    indexedFiles: this.indexedFiles,
-    maxConcurrentAnalyses: this.maxConcurrentAnalyses,
-    queue: this.queue,
-    emit: this.emit.bind(this),
-    _processNext: this._processNext.bind(this)
-  };
-  
-  return analyzeWithLLMImpl(context);
+// Re-exportar para tests que usan named imports
+export { calculateContentHash } from './llm-analysis/hash-utils.js';
+export { shouldUseLLM } from './llm-analysis/llm-decision.js';
+export { calculateLLMPriority as _calculateLLMPriority } from './llm-analysis/file-processor.js';
+
+// Importación lazy para la función principal (solo cuando se usa realmente)
+export async function _analyzeComplexFilesWithLLM(context) {
+  const { analyzeComplexFilesWithLLM } = await import('./llm-analysis/index.js');
+  return analyzeComplexFilesWithLLM(context);
 }
-
-export { calculateContentHash, shouldUseLLM, _calculateLLMPriority };
 
 export default {
   _analyzeComplexFilesWithLLM,

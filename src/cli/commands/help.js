@@ -14,17 +14,19 @@ export async function helpLogic(options = {}) {
 Uso: omnysys <comando>
 
 Comandos:
-  up, start     Inicia LLM + MCP + configura OpenCode
-  down, stop    Detiene todos los servicios
-  status        Muestra estado de los servicios
-  tools         Lista herramientas disponibles
-  call <tool>   Ejecuta una herramienta
-  setup         Configura OpenCode y verifica instalación
-  help          Muestra esta ayuda
+  up, start          Inicia LLM + MCP + configura OpenCode
+  down, stop         Detiene todos los servicios
+  status             Muestra estado de los servicios
+  tools              Lista herramientas disponibles
+  call <tool>        Ejecuta una herramienta
+  setup              Configura OpenCode y verifica instalación
+  setup-terminal     Configura auto-start del daemon MCP en terminales
+  help               Muestra esta ayuda
 
 Ejemplos:
   omnysys up                              # Inicia todo
   omnysys status                          # Ver estado
+  omnysys setup-terminal                  # Configurar auto-start terminal
   omnysys call get_impact_map '{"filePath":"src/core.js"}'
   omnysys tools                           # Ver herramientas
 `

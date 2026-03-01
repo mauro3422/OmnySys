@@ -80,6 +80,16 @@ export async function restart_server(args, context) {
     // (Removed TRUE RESTART via HTTP Daemon. HTTP Daemon will now use component-only restart)
 
     // ── FALLBACK: component-only restart (standalone mode, no proxy) ─────
+    // NOTA: En modo standalone (sin proxy), NO se puede limpiar el cache ESM de Node.js.
+    // Los módulos ESM una vez importados son inmutables. El único fix real es reiniciar
+    // el proceso completo, lo cual requiere el proxy (mcp-server.js).
+    //
+    // ESM CACHE-BUSTING WORKAROUND:
+    // Para módulos críticos (tools), usamos import() dinámico con query param
+    // para forzar recarga. Esto NO es perfecto pero ayuda en algunos casos.
+
+    logger.info('⚠️  Running in standalone mode (no proxy). True ESM cache clear requires proxy.');
+    logger.info('   Recommendation: Run via "npm run mcp" for full restart capability.');
 
     const result = {
       restarting: true,
@@ -87,7 +97,9 @@ export async function restart_server(args, context) {
       clearCache: clearCache,
       reanalyze: reanalyze,
       timestamp: new Date().toISOString(),
-      message: 'Server restart initiated (component-only — run via npm run mcp for true restart).'
+      message: 'Server restart initiated (component-only — ESM cache NOT cleared in standalone mode).',
+      esmCacheCleared: false,
+      recommendation: 'Use proxy mode (npm run mcp) for full ESM cache clearing'
     };
 
     // Paso 1: Limpiar caché si se solicita

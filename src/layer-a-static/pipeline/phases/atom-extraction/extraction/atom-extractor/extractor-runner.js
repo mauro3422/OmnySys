@@ -22,9 +22,19 @@ export async function runAtomExtractors(ctx) {
     try {
       const fn = await loadExtractor(entry);
       const args = entry.getArgs(ctx);
-      results[entry.name] = fn(...args);
+      const result = fn(...args);
+      results[entry.name] = result;
+      
+      // Log treeSitter results for debugging
+      if (entry.name === 'treeSitter' && ctx.filePath) {
+        console.log(`[treeSitter] ${ctx.filePath}:`, {
+          hasSharedState: result?.sharedStateAccess?.length > 0,
+          hasEmitters: result?.eventEmitters?.length > 0,
+          hasListeners: result?.eventListeners?.length > 0
+        });
+      }
     } catch (err) {
-      logger.warn(`Extractor "${entry.name}" failed: ${err.message}`);
+      console.warn(`Extractor "${entry.name}" failed for ${ctx.filePath || 'unknown'}: ${err.message}`);
       results[entry.name] = null;
     }
   }

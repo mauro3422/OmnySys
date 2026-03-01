@@ -1,8 +1,8 @@
 # Changelog - v0.9.71
 
-## 🚀 Breaking Change: Migración a node-tree-sitter
+## 🚀 Breaking Change: Migración a node-tree-sitter (EN PROGRESO)
 
-### Problema
+### Problema Original
 El sistema dejó de funcionar con `web-tree-sitter@0.26.5` debido a **ABI incompatibility**:
 - `web-tree-sitter@0.26.5` usa ABI 0.26.x
 - Los grammars WASM fueron compilados con `tree-sitter-cli@0.20.x` (ABI 0.20.x)
@@ -10,8 +10,8 @@ El sistema dejó de funcionar con `web-tree-sitter@0.26.5` debido a **ABI incomp
 
 **Referencia**: [GitHub Issue #5171](https://github.com/tree-sitter/tree-sitter/issues/5171)
 
-### Solución
-Migración completa a `node-tree-sitter` (nativo, no WASM):
+### Solución Aplicada
+Migración a `node-tree-sitter` (nativo, no WASM):
 
 ```json
 {
@@ -23,29 +23,33 @@ Migración completa a `node-tree-sitter` (nativo, no WASM):
 }
 ```
 
-### Mejoras
-| Métrica | Antes (web-tree-sitter) | Después (node-tree-sitter) | Mejora |
-|---------|------------------------|---------------------------|--------|
-| Archivos parseados | ~200/2060 (10%) | 2060/2060 (100%) | +900% |
-| Velocidad | ~500 files/sec | 9688 files/sec | +19x |
-| Tiempo total | ~5s | 213ms | 23x más rápido |
-| Errores WASM | ~1860 | 0 | 100% fix |
-| Memoria | ~300MB | ~11MB | 27x menos |
+### Estado Actual (EN PROGRESO)
+
+#### ✅ Lo que Funciona
+| Métrica | web-tree-sitter | node-tree-sitter | Mejora |
+|---------|-----------------|------------------|--------|
+| **Archivos parseados** | ~200/2060 (10%) | 2060/2060 (100%) | ✅ +900% |
+| **Velocidad** | ~500 files/sec | 1144 files/sec | ✅ +2.3x |
+| **Tiempo total** | ~5s | 1.8s | ✅ 2.8x más rápido |
+| **Errores WASM** | ~1860 | 0 | ✅ 100% fix |
+| **Memoria** | ~300MB | ~19MB | ✅ 16x menos |
+
+#### ❌ Lo que Falta Fixear
+- **Grammars no se importan correctamente**: ESM exporta `default.language` vs CommonJS exporta `{ language }`
+- **Extractores de metadata fallan**: `detectEventPatterns` y `detectGlobalState` no pueden usar el AST
+- **Datos semánticos en 0**: shared_state_json y event_emitters_json vacíos
 
 ### Archivos Modificados
 
 #### Parser
-- `src/layer-a-static/parser/index.js` - Migrado de WASM a nativo
+- `src/layer-a-static/parser/index.js` - Migrado de WASM a nativo (CON BUGS)
 - `src/layer-a-static/parser/parser-pool.js` - Simplificado (sin lógica WASM)
-
-#### Extractores
 - `src/layer-a-static/extractors/data-flow/index.js` - Removed unused imports
-- `src/layer-a-static/analyses/tier3/event-detector/parser.js` - Removed unused imports
-- `src/layer-a-static/analyses/tier3/event-detector/detector.js` - Removed tree.delete()
+- `src/layer-a-static/analyses/tier3/event-detector/parser.js` - Uses getTree()
+- `src/layer-a-static/analyses/tier3/event-detector/detector.js` - CRASH en tree.rootNode
 
-#### Package
-- `package.json` - Agregados tree-sitter nativos
-- `package-lock.json` - Updated dependencies
+#### Pipeline
+- `src/layer-a-static/pipeline/extract.js` - Added fullFileCode al contexto
 
 ### API Changes
 
@@ -54,35 +58,28 @@ Migración completa a `node-tree-sitter` (nativo, no WASM):
 import { Parser } from 'web-tree-sitter';
 await Parser.init({ locateFile... });
 const lang = await Language.load('grammar.wasm');
-parser.setLanguage(lang);
-const tree = parser.parse(code);
-tree.delete(); // Manual memory management
 ```
 
 **Después (node-tree-sitter)**:
 ```javascript
 import Parser from 'tree-sitter';
 import JavaScript from 'tree-sitter-javascript';
-parser.setLanguage(JavaScript);
-const tree = parser.parse(code);
-// GC se encarga automáticamente
+// BUG: JavaScript.language es undefined en ESM
+parser.setLanguage(JavaScript.language); // ❌
 ```
 
-### Notas de Migración
+**Workaround necesario**:
+```javascript
+const JS = await import('tree-sitter-javascript');
+const language = JS.default?.language || JS.language || JS;
+```
 
-1. **No más WASM**: Eliminada dependencia de WebAssembly
-2. **No más grammar files**: Los grammars vienen en los paquetes npm
-3. **GC automático**: No más `tree.delete()` manual
-4. **Más rápido**: Código nativo C++ vs WASM
+### Próximos Pasos
 
-### ¿Por qué dejó de funcionar?
-
-El sistema funcionaba antes porque:
-1. Los grammars WASM fueron compilados con una versión vieja de tree-sitter-cli
-2. Al actualizar `web-tree-sitter` a 0.26.5, el ABI cambió
-3. Los grammars WASM existentes son incompatibles
-
-**Lección**: Con WASM, hay que recompilar grammars cada vez que se actualiza tree-sitter. Con node-tree-sitter, los grammars vienen pre-compilados.
+1. **Fixear importación de grammars**: Manejar ESM vs CommonJS correctamente
+2. **Verificar detectores**: `detectGlobalState` y `detectEventPatterns`
+3. **Testear extractores**: Confirmar que treeSitter metadata se extrae
+4. **Validar DB**: shared_state_json y event_emitters_json poblados
 
 ---
 
@@ -93,11 +90,12 @@ El sistema funcionaba antes porque:
 - `tree-sitter-javascript@^0.25.0`
 - `tree-sitter-typescript@^0.23.2`
 
-### Removed
-- `web-tree-sitter@^0.26.5` (implícitamente, ya no se usa)
+### Deprecated (pero no removido)
+- `web-tree-sitter@^0.26.5` - Todavía en package.json por compatibilidad
 
 ---
 
 **Fecha**: 2026-03-01
 **Autor**: Mauro
 **Issue**: Parser WASM incompatibility
+**Estado**: EN PROGRESO - 80% completo

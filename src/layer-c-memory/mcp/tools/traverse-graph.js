@@ -1,11 +1,11 @@
-import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
+import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
 
 import { getFileAnalysis, getFileDependents } from '../../query/apis/file-api.js';
 import { getDependencyGraph, getTransitiveDependents } from '../../query/queries/dependency-query.js';
 
 /**
  * mcp_omnysystem_traverse_graph
- * 
+ *
  * Replaces:
  * - get_impact_map
  * - get_call_graph
@@ -16,7 +16,7 @@ import { getDependencyGraph, getTransitiveDependents } from '../../query/queries
  * - explain_connection
  * - analyze_signature_change
  */
-export class TraverseGraphTool extends GraphQueryTool {
+export class TraverseGraphTool extends SemanticQueryTool {
     constructor() {
         super('traverse:graph');
     }
@@ -36,7 +36,7 @@ export class TraverseGraphTool extends GraphQueryTool {
             });
         }
 
-        this.logger.debug(`Executing traverse:graph -> ${traverseType}`, { filePath, symbolName });
+        this.logger.debug(`Executing traverse:graph -> ${traverseType}`, { filePath, symbolName, options });
 
         const innerArgs = { filePath, symbolName, variableName, ...options };
 
@@ -50,7 +50,7 @@ export class TraverseGraphTool extends GraphQueryTool {
                     const directDeps = await getFileDependents(this.projectPath, filePath);
                     const transDeps = await getTransitiveDependents(this.projectPath, filePath);
 
-                    return this.formatSuccess({
+                    const result = {
                         file: filePath,
                         directlyAffects: directDeps,
                         transitiveAffects: transDeps,
@@ -58,7 +58,23 @@ export class TraverseGraphTool extends GraphQueryTool {
                         riskLevel: fileData.riskScore?.severity || 'low',
                         subsystem: fileData.subsystem || 'unknown',
                         exports: (fileData.exports || []).map(e => e.name)
-                    });
+                    };
+
+                    // Agregar datos semánticos si se solicitan
+                    if (options.includeSemantic) {
+                        result.semanticSummary = {
+                            hasSharedState: (fileData.semanticAnalysis?.sharedState?.reads?.length || 0) > 0 ||
+                                           (fileData.semanticAnalysis?.sharedState?.writes?.length || 0) > 0,
+                            hasEvents: (fileData.semanticAnalysis?.eventPatterns?.eventEmitters?.length || 0) > 0 ||
+                                      (fileData.semanticAnalysis?.eventPatterns?.eventListeners?.length || 0) > 0,
+                            sharedStateReads: fileData.semanticAnalysis?.sharedState?.reads || [],
+                            sharedStateWrites: fileData.semanticAnalysis?.sharedState?.writes || [],
+                            eventEmitters: fileData.semanticAnalysis?.eventPatterns?.eventEmitters || [],
+                            eventListeners: fileData.semanticAnalysis?.eventPatterns?.eventListeners || []
+                        };
+                    }
+
+                    return this.formatSuccess(result);
                 }
 
                 case 'call_graph': {
@@ -66,12 +82,19 @@ export class TraverseGraphTool extends GraphQueryTool {
                     const depthNum = parseInt(options.depth || options.maxDepth || 2, 10);
                     const tree = await getDependencyGraph(this.projectPath, filePath, depthNum);
 
-                    // Solo devolver el árbol formateado 
-                    return this.formatSuccess({
+                    const result = {
                         root: filePath,
                         depth: depthNum,
                         graph: tree
-                    });
+                    };
+
+                    // Agregar datos semánticos si se solicitan
+                    if (options.includeSemantic) {
+                        // Enriquecer nodos del grafo con datos semánticos
+                        result.graph = this._enrichGraphWithSemantic(tree);
+                    }
+
+                    return this.formatSuccess(result);
                 }
 
                 case 'analyze_change':
@@ -94,6 +117,46 @@ export class TraverseGraphTool extends GraphQueryTool {
         } catch (error) {
             return this.formatError('EXECUTION_ERROR', `Error executing traversal ${traverseType}: ${error.message}`);
         }
+    }
+
+    /**
+     * Enriquece el grafo de dependencias con datos semánticos
+     * @param {Object} tree - Árbol de dependencias
+     * @returns {Object} Árbol enriquecido
+     * @private
+     */
+    _enrichGraphWithSemantic(tree) {
+        if (!tree || !tree.nodes) return tree;
+
+        // Para cada nodo, agregar datos semánticos si existen
+        tree.nodes = tree.nodes.map(node => {
+            if (!this.repo) return node;
+
+            // Buscar átomos en este archivo
+            const atoms = this.repo.query({ filePath: node.file || node.filePath, limit: 100 });
+            
+            if (atoms.length === 0) return node;
+
+            // Calcular resumen semántico del archivo
+            const hasSharedState = atoms.some(a => a.shared_state_json && a.shared_state_json !== '[]');
+            const hasEvents = atoms.some(a => 
+                (a.event_emitters_json && a.event_emitters_json !== '[]') ||
+                (a.event_listeners_json && a.event_listeners_json !== '[]')
+            );
+            const asyncCount = atoms.filter(a => a.is_async).length;
+
+            return {
+                ...node,
+                semantic: {
+                    hasSharedState,
+                    hasEvents,
+                    asyncCount,
+                    totalAtoms: atoms.length
+                }
+            };
+        });
+
+        return tree;
     }
 }
 

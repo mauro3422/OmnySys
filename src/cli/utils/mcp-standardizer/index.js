@@ -3,6 +3,7 @@ import { getMcpUrl } from './utils.js';
 import { CONFIG_PATHS } from './constants.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath, getClientConfigPath } from './paths.js';
 import { applyWorkspaceMcpConfig, applyVsCodeAutostartConfig, writeUnifiedConfig } from './workspace.js';
+import { applyTerminalAutoStartConfig } from './terminal-autostart.js';
 import {
     applyCodexConfig,
     applyClineConfig,
@@ -65,15 +66,17 @@ export async function standardizeMcpInstallation(options = {}) {
         mcpUrl: clients.mcpUrl
     });
     const vscode = await applyVsCodeAutostartConfig({ projectPath });
+    const terminal = await applyTerminalAutoStartConfig({ projectPath });
 
     return {
-        success: clients.success && workspace.success && vscode.success,
+        success: clients.success && workspace.success && vscode.success && terminal.success,
         projectPath,
         mcpUrl: clients.mcpUrl,
         unifiedConfigPath: clients.unifiedConfigPath,
         clientResults: clients.results,
         workspace,
-        vscode
+        vscode,
+        terminal
     };
 }
 

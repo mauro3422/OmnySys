@@ -4,6 +4,7 @@ import * as status from './status.js';
 import * as tools from './tools.js';
 import * as call from './call.js';
 import * as setup from './setup.js';
+import * as setupTerminal from './setup-terminal.js';
 import * as help from './help.js';
 
 export const commands = {
@@ -13,6 +14,7 @@ export const commands = {
   tools,
   call,
   setup,
+  setupTerminal,
   help
 };
 
