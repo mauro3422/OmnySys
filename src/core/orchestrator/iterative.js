@@ -48,6 +48,13 @@ export async function _startIterativeAnalysis() {
       // No LLM insights — skip remaining iterations entirely
       logger.debug('No files need refinement (LLM inactive or no suggestions). Finalizing.');
       this.iteration = this.maxIterations; // prevent further iterations
+
+      // Phase 2 safety: Don't finalize if background indexing is still running
+      if (this.totalFilesToAnalyze > 0 && this.processedFiles.size < this.totalFilesToAnalyze) {
+        logger.debug(`Background Phase 2 still running (${this.processedFiles.size}/${this.totalFilesToAnalyze}). Skipping early finalization.`);
+        return;
+      }
+
       await this._finalizeAnalysis();
       return;
     }

@@ -27,11 +27,7 @@ export async function initialize() {
   );
 
   // Initialize worker
-  this.worker = new AnalysisWorker(this.projectPath, {
-    onProgress: (job, progress) => this._onJobProgress(job, progress),
-    onComplete: (job, result) => this._onJobComplete(job, result),
-    onError: (job, error) => this._onJobError(job, error)
-  });
+  this.worker = new AnalysisWorker(this.projectPath, {});
   await this.worker.initialize();
   logger.info('  ✅ Worker initialized');
 
