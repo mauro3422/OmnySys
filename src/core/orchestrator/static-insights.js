@@ -199,8 +199,8 @@ export async function _startPhase2BackgroundIndexer() {
       for (const row of rows) {
         const filePath = pathModule.default.join(this.projectPath, row.file_path);
 
-        // Ensure we don't queue the same file twice if it's already pending
-        if (this.queue.findPosition(filePath) === -1) {
+        // Ensure we don't queue the same file twice if it's already pending OR already processed in this run
+        if (this.queue.findPosition(filePath) === -1 && !this.processedFiles.has(filePath)) {
           logger.debug(`[Background Phase 2] Queuing deep scan for: ${row.file_path}`);
           this.queue.enqueue(filePath, 'low');
         }

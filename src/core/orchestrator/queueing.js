@@ -133,8 +133,9 @@ export function _onJobComplete(job, result) {
 
     if (isInitialMilestone || isStepMilestone || processed === total) {
       const progressBarWidth = 20;
-      const progress = Math.min(progressBarWidth, Math.floor((processed / total) * progressBarWidth));
-      const bar = '='.repeat(progress) + '>'.repeat(progress < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progress - 1));
+      // Ensure at least 1 bar segment if we have started, for visibility
+      const progressSegments = Math.min(progressBarWidth, Math.max(processed > 0 ? 1 : 0, Math.floor((processed / total) * progressBarWidth)));
+      const bar = '='.repeat(progressSegments) + '>'.repeat(progressSegments < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progressSegments - 1));
 
       logger.info(`📊 Phase 2: [${bar}] ${percentage}% (${processed}/${total} files)`);
 
@@ -168,6 +169,9 @@ export function _onJobComplete(job, result) {
   } else if (this.queue.size() > 0) {
     // Queue has jobs but all slots are full - will be called when a job completes
     logger.debug(`Waiting for slot - Queue: ${this.queue.size()}, Active: ${this.activeJobs}/${maxConcurrent}`);
+  } else if (this.totalFilesToAnalyze > 0 && this.processedFiles.size < this.totalFilesToAnalyze) {
+    // Phase 2 or indexed scan still in progress - do NOT finalize just because queue is empty
+    logger.debug(`Queue empty but waiting for more files: ${this.processedFiles.size}/${this.totalFilesToAnalyze}`);
   } else {
     // No hay más jobs ni iteraciones, finalizar
     this._finalizeAnalysis();

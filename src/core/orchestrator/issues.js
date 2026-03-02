@@ -13,7 +13,6 @@ export async function _finalizeAnalysis() {
 
   this.analysisCompleteEmitted = true;
 
-  logger.info('\n🔍 Detecting semantic issues...');
   const issuesReport = await this._detectSemanticIssues();
 
   logger.info('\n✅ Analysis complete!');
@@ -58,15 +57,15 @@ export async function _detectSemanticIssues() {
     if (repo && repo.db && issuesReport.issues) {
       // Clear existing issues
       repo.db.prepare('DELETE FROM semantic_issues').run();
-      
+
       // Insert new issues - flatten all issue arrays from the issues object
       const insertStmt = repo.db.prepare(`
         INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       const allIssues = Object.values(issuesReport.issues).flat();
-      
+
       for (const issue of allIssues) {
         insertStmt.run(
           issue.file || issue.filePath || 'unknown',
@@ -78,7 +77,7 @@ export async function _detectSemanticIssues() {
           new Date().toISOString()
         );
       }
-      
+
       logger.info(`  ✅ Saved ${issuesReport.stats?.totalIssues || 0} issues to SQLite`);
     }
 
