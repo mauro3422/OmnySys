@@ -38,7 +38,7 @@ export function formatAsPretty(timestamp, levelName, namespace, message, meta) {
   const color = COLORS[levelName] || '';
   const reset = COLORS.RESET;
   const shortNamespace = namespace.replace('OmnySys:', '');
-  let output = `${timestamp} ${color}[${levelName}]${reset} [${shortNamespace}] ${message}`;
+  let output = `${color}[${levelName}]${reset} [${shortNamespace}] ${message}`;
 
   if (meta && Object.keys(meta).length > 0) {
     const metaStr = Object.entries(meta)

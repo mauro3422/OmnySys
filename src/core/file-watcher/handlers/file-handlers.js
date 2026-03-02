@@ -15,7 +15,7 @@ const logger = createLogger('OmnySys:file-watcher:handlers');
  * Maneja creacion de archivo
  */
 export async function handleFileCreated(filePath, fullPath) {
-  logger.info(`[CREATED] ${filePath}`);
+  logger.debug(`[CREATED] ${filePath}`);
 
   // Analizar y agregar al indice
   await this.analyzeAndIndex(filePath, fullPath);
@@ -73,14 +73,14 @@ export async function handleFileModified(filePath, fullPath) {
     this.fileHashes.set(filePath, newHash);
   }
 
-  logger.info(`[MODIFIED] ${filePath}`);
+  logger.debug(`[MODIFIED] ${filePath}`);
 
   // Invalidar cache si existe cacheInvalidator
   if (this.cacheInvalidator) {
     try {
       const result = await this.cacheInvalidator.invalidateSync(filePath);
       if (result.success) {
-        logger.info(`✅ Cache invalidated (${result.duration}ms): ${filePath}`);
+        logger.debug(`✅ Cache invalidated (${result.duration}ms): ${filePath}`);
       } else {
         logger.warn(`⚠️ Cache invalidation failed: ${filePath}`, result.error);
       }
@@ -97,7 +97,7 @@ export async function handleFileModified(filePath, fullPath) {
  * Maneja borrado de archivo
  */
 export async function handleFileDeleted(filePath) {
-  logger.info(`[DELETING] ${filePath}`);
+  logger.debug(`[DELETING] ${filePath}`);
 
   const fs = await import('fs/promises');
   const fullPath = this.rootPath ?
@@ -125,7 +125,7 @@ export async function handleFileDeleted(filePath) {
     await this.notifyDependents(filePath, 'file_deleted');
 
     this.emit('file:deleted', { filePath });
-    logger.info(`[DELETED] ${filePath} - shadows preserved`);
+    logger.debug(`[DELETED] ${filePath} - shadows preserved`);
   } catch (error) {
     logger.error(`[DELETE ERROR] ${filePath}:`, error);
     throw error;

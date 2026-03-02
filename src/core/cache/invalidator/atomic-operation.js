@@ -8,10 +8,10 @@
  */
 
 import { createLogger } from '../../utils/logger.js';
-import { 
-  InvalidationStatus, 
+import {
+  InvalidationStatus,
   CacheOperationType,
-  InvalidationEvents 
+  InvalidationEvents
 } from './constants.js';
 
 const logger = createLogger('OmnySys:cache:atomic');
@@ -56,8 +56,8 @@ export class CacheOperation {
    * Ejecuta rollback de la operación
    */
   async undo() {
-    if (this.status !== InvalidationStatus.FAILED && 
-        this.status !== InvalidationStatus.SUCCESS) {
+    if (this.status !== InvalidationStatus.FAILED &&
+      this.status !== InvalidationStatus.SUCCESS) {
       return { success: true, message: 'Nothing to rollback' };
     }
 
@@ -124,8 +124,8 @@ export class AtomicTransaction {
   async execute() {
     this.startTime = Date.now();
     this.status = InvalidationStatus.IN_PROGRESS;
-    
-    logger.info(`🚀 Starting atomic transaction for ${this.filePath}`);
+
+    logger.debug(`🚀 Starting atomic transaction for ${this.filePath}`);
 
     const completedOperations = [];
 
@@ -133,26 +133,26 @@ export class AtomicTransaction {
       // Ejecutar operaciones en orden
       for (let i = 0; i < this.operations.length; i++) {
         const operation = this.operations[i];
-        
+
         logger.debug(`  [${i + 1}/${this.operations.length}] ${operation.description}`);
-        
+
         const result = await operation.run();
-        
+
         if (!result.success) {
           throw new Error(
             `Operation ${operation.type} failed: ${result.error.message}`
           );
         }
-        
+
         completedOperations.push(operation);
       }
 
       // Todas las operaciones exitosas
       this.status = InvalidationStatus.SUCCESS;
       this.endTime = Date.now();
-      
-      logger.info(`✅ Atomic transaction completed in ${this.getDuration()}ms`);
-      
+
+      logger.debug(`✅ Atomic transaction completed in ${this.getDuration()}ms`);
+
       return {
         success: true,
         filePath: this.filePath,
@@ -164,9 +164,9 @@ export class AtomicTransaction {
       // Algunas operaciones fallaron, hacer rollback
       this.status = InvalidationStatus.FAILED;
       logger.error(`❌ Transaction failed: ${error.message}`);
-      
+
       await this.rollback(completedOperations);
-      
+
       throw error;
     }
   }
@@ -181,11 +181,11 @@ export class AtomicTransaction {
     // Rollback en orden inverso
     for (let i = completedOperations.length - 1; i >= 0; i--) {
       const operation = completedOperations[i];
-      
+
       logger.debug(`  Rolling back: ${operation.description}`);
-      
+
       const result = await operation.undo();
-      
+
       if (!result.success) {
         logger.error(`    ⚠️  Rollback failed for ${operation.type}:`, result.error?.message);
         // Continuar con el resto del rollback aunque uno falle

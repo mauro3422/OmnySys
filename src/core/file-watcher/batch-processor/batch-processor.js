@@ -97,7 +97,7 @@ export class SmartBatchProcessor {
    */
   async processBatch(processFn) {
     if (this.state === BatchState.PROCESSING) {
-      logger.warn('⚠️ BatchProcessor is already processing');
+      logger.debug('⚠️ BatchProcessor is already processing');
       return { processed: 0, skipped: 0 };
     }
 

@@ -31,7 +31,7 @@ export class SQLiteAdapterCore extends AtomRepository {
   }
 
   initialize(projectPath) {
-    this._logger.info('[SQLiteAdapter] Initializing...');
+    this._logger.debug('[SQLiteAdapter] Initializing...');
 
     this.projectPath = projectPath;
     connectionManager.initialize(projectPath);
@@ -39,7 +39,7 @@ export class SQLiteAdapterCore extends AtomRepository {
     this._prepareStatements();
     this.initialized = true;
 
-    this._logger.info('[SQLiteAdapter] Initialized successfully');
+    this._logger.debug('[SQLiteAdapter] Initialized successfully');
   }
 
   /**

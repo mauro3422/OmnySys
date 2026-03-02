@@ -56,7 +56,7 @@ export function extractDataFlow(codeOrNode, options = {}) {
     if (!node && code) {
       // En el pipeline de workers, siempre se pasa functionInfo.node (ya parseado)
       // y este branch no se ejecuta. Para callers legacy sin nodo, retornamos vacío.
-      logger.warn(`extractDataFlow called without a pre-parsed node for ${options.filePath || 'unknown'} - data flow will be empty. Use extractDataFlow(functionInfo.node, ...) instead.`);
+      logger.debug(`extractDataFlow called without a pre-parsed node for ${options.filePath || 'unknown'} - data flow will be empty. Use extractDataFlow(functionInfo.node, ...) instead.`);
       return { inputs: [], outputs: [], transformations: [], graph: null, analysis: { invariants: [], inferredTypes: {} } };
     }
 

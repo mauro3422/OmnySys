@@ -52,7 +52,7 @@ export class JobAnalyzer {
       this.callbacks.onProgress?.(job, 100);
       this.worker.analyzedFiles.add(job.filePath);
 
-      logger.info(`✅ Analysis complete for ${path.basename(job.filePath)}`);
+      logger.debug(`✅ Analysis complete for ${path.basename(job.filePath)}`);
       this.callbacks.onComplete?.(job, result);
 
       return result;
@@ -72,10 +72,10 @@ export class JobAnalyzer {
    * Run Layer A static analysis
    */
   async runLayerAAnalysis(job) {
-    logger.info(`📊 Re-analyzing with Layer A: ${path.basename(job.filePath)}`);
     try {
       const { analyzeSingleFile } = await import('../../layer-a-static/pipeline/single-file.js');
-      const layerAResult = await analyzeSingleFile(this.rootPath, job.filePath, {
+      const relativePath = path.isAbsolute(job.filePath) ? path.relative(this.rootPath, job.filePath) : job.filePath;
+      const layerAResult = await analyzeSingleFile(this.rootPath, relativePath, {
         verbose: false,
         incremental: false // Phase 2 lazy indexing requires deep re-extraction regardless of hash match
       }, 'deep');
@@ -86,7 +86,6 @@ export class JobAnalyzer {
         reanalyzedAt: new Date().toISOString()
       };
 
-      logger.info(`   ✅ Layer A analysis complete`);
     } catch (layerAError) {
       logger.warn(`   ⚠️  Layer A analysis failed: ${layerAError.message}`);
     }
@@ -96,9 +95,9 @@ export class JobAnalyzer {
    * Run static analysis only
    */
   async runStaticAnalysis(job) {
-    logger.info(`📊 Using static analysis for ${path.basename(job.filePath)}`);
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
-    return await getFileAnalysis(this.rootPath, job.filePath);
+    const relativePath = path.isAbsolute(job.filePath) ? path.relative(this.rootPath, job.filePath) : job.filePath;
+    return await getFileAnalysis(this.rootPath, relativePath);
   }
 
   /**

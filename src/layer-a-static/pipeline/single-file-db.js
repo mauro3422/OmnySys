@@ -44,7 +44,7 @@ export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
 
         repo.saveMany(atomsWithId);
 
-        logger.info(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
+        logger.debug(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
     } catch (error) {
         logger.warn(`⚠️ Error saving atoms for ${singleFile}: ${error.message}`);
     }

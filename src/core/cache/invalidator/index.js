@@ -67,13 +67,13 @@ export class CacheInvalidator extends EventEmitter {
    */
   async invalidateSync(filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
-    logger.info(`🗑️  Invalidating cache for: ${normalizedPath}`);
+    logger.debug(`🗑️  Invalidating cache for: ${normalizedPath}`);
 
     const transaction = this.orchestrator.createTransaction(normalizedPath);
     const result = await this.orchestrator.execute(transaction, normalizedPath);
 
     if (result.success) {
-      logger.info(`✅ Cache invalidated in ${result.duration}ms: ${normalizedPath}`);
+      logger.debug(`✅ Cache invalidated in ${result.duration}ms: ${normalizedPath}`);
     } else {
       logger.error(`❌ Cache invalidation failed: ${normalizedPath}`, result.error);
     }
@@ -106,7 +106,7 @@ export class CacheInvalidator extends EventEmitter {
    * @returns {Promise<Object>} Results
    */
   async invalidateMultiple(filePaths) {
-    logger.info(`🗑️  Invalidating ${filePaths.length} files...`);
+    logger.debug(`🗑️  Invalidating ${filePaths.length} files...`);
 
     const results = [];
     let successCount = 0;
@@ -120,7 +120,7 @@ export class CacheInvalidator extends EventEmitter {
       else failCount++;
     }
 
-    logger.info(`✅ Completed: ${successCount} success, ${failCount} failed`);
+    logger.debug(`✅ Completed: ${successCount} success, ${failCount} failed`);
 
     return {
       total: filePaths.length,

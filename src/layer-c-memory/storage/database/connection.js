@@ -42,11 +42,10 @@ class ConnectionManager {
     // Crear directorio si no existe
     const dataDir = resolve(projectPath, '.omnysysdata');
     if (!existsSync(dataDir)) {
-      logger.info(`[Connection] Creating data directory: ${dataDir}`);
+      logger.debug(`[Connection] Creating data directory: ${dataDir}`);
       mkdirSync(dataDir, { recursive: true });
     }
-
-    logger.info(`[Connection] Initializing SQLite at: ${this.dbPath}`);
+    logger.debug(`[Connection] Initializing SQLite at: ${this.dbPath}`);
 
     try {
       // Abrir conexion con better-sqlite3 (sincronico)
@@ -107,7 +106,7 @@ class ConnectionManager {
     try {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
-      
+
       // ── STEP 1: Leer schema.sql base (para tablas básicas) ───────────────
       const schemaPath = resolve(__dirname, 'schema.sql');
       if (existsSync(schemaPath)) {
@@ -115,37 +114,37 @@ class ConnectionManager {
         this.db.exec(schema);
         logger.debug('[Connection] Base schema.sql executed');
       }
-      
+
       // ── STEP 2: Usar schema-registry como SSOT ───────────────────────────
       // Crear tablas registradas que puedan faltar en schema.sql
       const registeredTables = getRegisteredTables();
-      
+
       for (const tableName of registeredTables) {
         // Verificar si la tabla existe
         const tableExists = this.db.prepare(
           `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
         ).get(tableName);
-        
+
         if (!tableExists) {
           // Crear tabla desde registry
           const createSQL = generateCreateTableSQL(tableName);
           this.db.exec(createSQL);
           logger.info(`[Connection] Created table '${tableName}' from registry`);
         }
-        
+
         // Crear índices
         const indexes = generateCreateIndexesSQL(tableName);
         for (const indexSQL of indexes) {
           this.db.exec(indexSQL);
         }
-        
+
         // ── STEP 3: Detectar y agregar columnas faltantes ─────────────────
         const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
         const missingColumns = detectMissingColumns(tableName, existingColumns);
-        
+
         if (missingColumns.length > 0) {
           logger.info(`[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`);
-          
+
           for (const column of missingColumns) {
             try {
               const addColumnSQL = generateAddColumnSQL(tableName, column.name);
@@ -159,34 +158,34 @@ class ConnectionManager {
           }
         }
       }
-      
+
       // ── STEP 4: Reporte de drift detection ──────────────────────────────
       this._checkSchemaDrift();
-      
+
       logger.debug('[Connection] Schema initialization complete (registry-based)');
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
       throw error;
     }
   }
-  
+
   /**
    * Detecta drift entre schema.sql y schema-registry
    * Advierte si hay columnas en schema.sql que no están en el registry
    */
   _checkSchemaDrift() {
     const registeredTables = getRegisteredTables();
-    
+
     for (const tableName of registeredTables) {
       const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
       const registeredColumns = getTableDefinition(tableName).columns;
-      
+
       const existingNames = new Set(existingColumns.map(c => c.name));
       const registeredNames = new Set(registeredColumns.map(c => c.name));
-      
+
       // Columnas que existen pero no están en el registry (drift)
       const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
-      
+
       if (driftColumns.length > 0) {
         logger.warn(
           `[Connection] ⚠️  SCHEMA DRIFT detected in table '${tableName}': ${driftColumns.join(', ')}\n` +

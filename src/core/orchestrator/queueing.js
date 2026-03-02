@@ -77,7 +77,7 @@ export async function _processNext() {
   this.activeJobs += 1;
   const jobSlot = this.activeJobs;
 
-  logger.info(`[Job ${jobSlot}/${maxConcurrent}] Starting: ${nextJob.filePath} (Queue: ${this.queue.size()})`);
+  logger.debug(`[Job ${jobSlot}/${maxConcurrent}] Starting: ${nextJob.filePath} (Queue: ${this.queue.size()})`);
 
   // Verify worker exists before calling
   if (!this.worker) {
@@ -92,7 +92,7 @@ export async function _processNext() {
     return;
   }
 
-  logger.info(`[Job ${jobSlot}] Calling worker.analyze()...`);
+  logger.debug(`[Job ${jobSlot}] Calling worker.analyze()...`);
 
   // Execute job without await to allow parallel processing
   this.worker.analyze(nextJob).then((result) => {
@@ -121,7 +121,7 @@ export function _onJobComplete(job, result) {
 
   this.emit('job:complete', job, result);
 
-  logger.info(`   âœ… Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze}) - Slots: ${this.activeJobs}/${this.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT}`);
+  logger.debug(`   âœ… Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze}) - Slots: ${this.activeJobs}/${this.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT}`);
 
   // Check if all files have been processed
   if (this.processedFiles.size >= this.totalFilesToAnalyze && this.totalFilesToAnalyze > 0) {

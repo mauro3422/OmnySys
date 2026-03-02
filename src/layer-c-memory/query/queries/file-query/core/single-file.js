@@ -69,7 +69,7 @@ export async function getFileAnalysis(rootPath, filePath) {
         // --- DINAMISMO ATÓMICO (Phase 9.1) ---
         // Derivamos exportaciones e imports básicos de los átomos si la tabla 'files' está desfasada
         const dbExports = JSON.parse(row.exports_json || '[]');
-        const atomExports = atoms.filter(a => a.isExported).map(a => ({ name: a.name, kind: a.atom_type || a.type }));
+        const atomExports = atoms.filter(a => a && a.isExported).map(a => ({ name: a.name, kind: a.atom_type || a.type }));
 
         // Combinamos: Si atoms tiene exportaciones pero la tabla files no, usamos atoms (Real-Time)
         const exports = atomExports.length > 0 ? atomExports : dbExports;
@@ -85,7 +85,7 @@ export async function getFileAnalysis(rootPath, filePath) {
           moduleName: row.module_name || null,
           imports: JSON.parse(row.imports_json || '[]'),
           exports: exports,
-          atoms: atoms.map(atom => ({
+          atoms: atoms.filter(a => !!a).map(atom => ({
             id: atom.id,
             name: atom.name,
             type: atom.atom_type || atom.type,
@@ -101,7 +101,7 @@ export async function getFileAnalysis(rootPath, filePath) {
             purpose: atom.purpose_type || atom.purpose
           })),
           // Campos legacy para compatibilidad
-          definitions: (atoms || []).map(a => ({
+          definitions: (atoms || []).filter(a => !!a).map(a => ({
             name: a.name,
             type: a.atom_type || a.type,
             line: a.lineStart
