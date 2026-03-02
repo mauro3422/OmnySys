@@ -157,7 +157,7 @@ export function _startPhase2BackgroundIndexer() {
 
   this._phase2Interval = setInterval(async () => {
     // Only queue new background files if the worker queue is basically empty
-    if (this.queue.size() > 5 || !this.isRunning) return;
+    if (this.queue.size() > 20 || !this.isRunning) return;
 
     try {
       const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -165,12 +165,12 @@ export function _startPhase2BackgroundIndexer() {
 
       if (!repo || !repo.db) return;
 
-      // Find up to 5 files that have incomplete Phase 2 atoms
+      // Find up to 20 files that have incomplete Phase 2 atoms
       const rows = repo.db.prepare(`
         SELECT DISTINCT file_path 
         FROM atoms 
         WHERE is_phase2_complete = 0 
-        LIMIT 5
+        LIMIT 20
       `).all();
 
       if (rows.length === 0) {
@@ -198,5 +198,5 @@ export function _startPhase2BackgroundIndexer() {
         logger.warn(`⚠️ Background Phase 2 indexer error: ${e.message}`);
       }
     }
-  }, 10000); // Check every 10 seconds
+  }, 5000); // Check every 5 seconds
 }
