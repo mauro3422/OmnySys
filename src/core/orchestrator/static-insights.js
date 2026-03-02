@@ -196,6 +196,8 @@ export async function _startPhase2BackgroundIndexer() {
 
       const pathModule = await import('path');
 
+      logger.debug(`[Background Phase 2] Burst starting: Found ${rows.length} files to index`);
+
       for (const row of rows) {
         const filePath = pathModule.default.join(this.projectPath, row.file_path);
 

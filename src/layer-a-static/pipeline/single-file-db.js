@@ -42,6 +42,13 @@ export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
             file_path: singleFile
         }));
 
+        // CRITICAL FOR PHASE 2: Clear old atoms to avoid "ghost atoms" with is_phase2_complete = 0
+        // that block the background indexer from progressing.
+        const isDeepScan = atoms.some(a => a.isPhase2Complete);
+        if (isDeepScan) {
+            repo.deleteByFile(singleFile);
+        }
+
         repo.saveMany(atomsWithId);
 
         logger.debug(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
