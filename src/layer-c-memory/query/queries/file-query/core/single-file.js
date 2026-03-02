@@ -69,7 +69,7 @@ export async function getFileAnalysis(rootPath, filePath) {
         // --- DINAMISMO ATÓMICO (Phase 9.1) ---
         // Derivamos exportaciones e imports básicos de los átomos si la tabla 'files' está desfasada
         const dbExports = JSON.parse(row.exports_json || '[]');
-        const atomExports = atoms.filter(a => a && a.isExported).map(a => ({ name: a.name, kind: a.atom_type || a.type }));
+        const atomExports = atoms.filter(a => a && a.isExported).map(a => ({ name: a ? a.name : 'unknown', kind: a ? (a.atom_type || a.type) : 'unknown' }));
 
         // Combinamos: Si atoms tiene exportaciones pero la tabla files no, usamos atoms (Real-Time)
         const exports = atomExports.length > 0 ? atomExports : dbExports;
@@ -87,24 +87,24 @@ export async function getFileAnalysis(rootPath, filePath) {
           exports: exports,
           atoms: atoms.filter(a => !!a).map(atom => ({
             id: atom.id,
-            name: atom.name,
-            type: atom.atom_type || atom.type,
-            line: atom.lineStart,
-            endLine: atom.lineEnd,
-            linesOfCode: atom.linesOfCode,
-            complexity: atom.complexity,
-            isExported: atom.isExported,
-            isAsync: atom.isAsync,
-            calls: typeof atom.calls_json === 'string' ? JSON.parse(atom.calls_json) : (atom.calls || []),
-            calledBy: typeof atom.called_by_json === 'string' ? JSON.parse(atom.called_by_json) : (atom.calledBy || []),
-            archetype: atom.archetype_type || atom.archetype,
-            purpose: atom.purpose_type || atom.purpose
+            name: atom.name || 'unknown',
+            type: atom.atom_type || atom.type || 'unknown',
+            line: atom.lineStart || 0,
+            endLine: atom.lineEnd || 0,
+            linesOfCode: atom.linesOfCode || 0,
+            complexity: atom.complexity || 0,
+            isExported: !!atom.isExported,
+            isAsync: !!atom.isAsync,
+            calls: typeof atom.calls_json === 'string' ? JSON.parse(atom.calls_json) : (Array.isArray(atom.calls) ? atom.calls : []),
+            calledBy: typeof atom.called_by_json === 'string' ? JSON.parse(atom.called_by_json) : (Array.isArray(atom.calledBy) ? atom.calledBy : []),
+            archetype: atom.archetype_type || atom.archetype || 'unknown',
+            purpose: atom.purpose_type || atom.purpose || 'unknown'
           })),
           // Campos legacy para compatibilidad
           definitions: (atoms || []).filter(a => !!a).map(a => ({
-            name: a.name,
-            type: a.atom_type || a.type,
-            line: a.lineStart
+            name: a.name || 'unknown',
+            type: a.atom_type || a.type || 'unknown',
+            line: a.lineStart || 0
           })),
           usedBy: [],
           importedBy: []

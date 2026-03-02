@@ -47,7 +47,7 @@ export class RepositoryFactory {
     const adapter = new SQLiteAdapter();
     adapter.initialize(projectPath);
 
-    logger.info(`[RepositoryFactory] Created SQLite repository at: ${projectPath}`);
+    logger.debug(`[RepositoryFactory] Created SQLite repository at: ${projectPath}`);
     return adapter;
   }
 

@@ -121,8 +121,25 @@ export function _onJobComplete(job, result) {
 
   this.emit('job:complete', job, result);
 
-  if (this.processedFiles.size % 50 === 0 && this.processedFiles.size > 0 && this.totalFilesToAnalyze > 50) {
-    logger.debug(`   📊 Processed ${this.processedFiles.size}/${this.totalFilesToAnalyze} background files...`);
+  if (this.totalFilesToAnalyze > 0) {
+    const processed = this.processedFiles.size;
+    const total = this.totalFilesToAnalyze;
+    const percentage = Math.floor((processed / total) * 100);
+
+    // Emitir progreso visual cada 50 archivos o en hitos iniciales (1, 10)
+    // También cada vez que llegamos al final de un múltiplo de 50
+    const isInitialMilestone = processed === 1 || processed === 10;
+    const isStepMilestone = processed % 50 === 0;
+
+    if (isInitialMilestone || isStepMilestone) {
+      const progressBarWidth = 20;
+      const progress = Math.floor((processed / total) * progressBarWidth);
+      const bar = '='.repeat(progress) + '>'.repeat(progress < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progress - 1));
+
+      logger.info(`📊 Phase 2: [${bar}] ${percentage}% (${processed}/${total} files)`);
+    } else {
+      logger.debug(`   ✅ Completed: ${job.filePath} (${processed}/${total})`);
+    }
   }
 
   // Check if all files have been processed
