@@ -181,12 +181,12 @@ export async function _startPhase2BackgroundIndexer() {
 
       if (!repo || !repo.db) return;
 
-      // Find up to 20 files that have incomplete Phase 2 atoms
+      // Find up to 100 files that have incomplete Phase 2 atoms
       const rows = repo.db.prepare(`
         SELECT DISTINCT file_path 
         FROM atoms 
         WHERE is_phase2_complete = 0 
-        LIMIT 20
+        LIMIT 100
       `).all();
 
       if (rows.length === 0) {
@@ -196,25 +196,27 @@ export async function _startPhase2BackgroundIndexer() {
 
       const pathModule = await import('path');
 
-      logger.debug(`[Background Phase 2] Burst starting: Found ${rows.length} files to index`);
-
+      let enqueuedCount = 0;
       for (const row of rows) {
         const filePath = pathModule.default.join(this.projectPath, row.file_path);
 
         // Ensure we don't queue the same file twice if it's already pending OR already processed in this run
         if (this.queue.findPosition(filePath) === -1 && !this.processedFiles.has(filePath)) {
-          logger.debug(`[Background Phase 2] Queuing deep scan for: ${row.file_path}`);
           this.queue.enqueue(filePath, 'low');
+          enqueuedCount++;
         }
       }
 
-      // Trigger processing
-      this._processNext();
+      if (enqueuedCount > 0) {
+        logger.debug(`[Background Phase 2] Enqueued ${enqueuedCount} files for deep scan`);
+        // Trigger processing
+        this._processNext();
+      }
 
     } catch (e) {
       if (!e.message.includes('not initialized')) {
         logger.warn(`⚠️ Background Phase 2 indexer error: ${e.message}`);
       }
     }
-  }, 5000); // Check every 5 seconds
+  }, 1000); // Check every 1 second for aggressive queue refilling
 }
