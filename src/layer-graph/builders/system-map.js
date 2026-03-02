@@ -7,25 +7,25 @@
  * @module graph/builders/system-map
  */
 
-import { 
-  createEmptySystemMap, 
-  createFileNode, 
-  createDependency 
+import {
+  createEmptySystemMap,
+  createFileNode,
+  createDependency
 } from '../core/types.js';
-import { 
-  normalizePath, 
-  getDisplayPath, 
-  uniquePaths 
+import {
+  normalizePath,
+  getDisplayPath,
+  uniquePaths
 } from '../utils/path-utils.js';
-import { 
-  countTotalFunctions, 
-  countTotalItems, 
-  countUnresolvedImports 
+import {
+  countTotalFunctions,
+  countTotalItems,
+  countUnresolvedImports
 } from '../utils/counters.js';
 import { detectCycles } from '../algorithms/cycle-detector.js';
-import { 
-  calculateTransitiveDependencies, 
-  calculateTransitiveDependents 
+import {
+  calculateTransitiveDependencies,
+  calculateTransitiveDependents
 } from '../algorithms/transitive-deps.js';
 import { buildExportIndex } from './export-index.js';
 import { buildFunctionLinks } from './function-links.js';
@@ -114,6 +114,7 @@ function computeMetrics(allFilePaths, systemMap) {
   systemMap.metadata.totalDependencies = systemMap.dependencies.length;
   systemMap.metadata.totalFunctions = countTotalFunctions(systemMap.functions);
   systemMap.metadata.totalFunctionLinks = systemMap.function_links.length;
+  systemMap.metadata.totalAtoms = Object.values(systemMap.functions || {}).flat().length;
   systemMap.metadata.totalUnresolved = countUnresolvedImports(systemMap.unresolvedImports);
   systemMap.metadata.totalReexports = systemMap.reexportChains.length;
   systemMap.metadata.totalTypes = countTotalItems(systemMap.typeDefinitions);

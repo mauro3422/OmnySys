@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs/promises';
 
 /**
  * Construye índice: resolvedAbsPath → Map(fnName → atom)
@@ -27,4 +28,16 @@ export function addCalledBy(targetAtom, callerAtomId) {
     if (targetAtom.calledBy.includes(callerAtomId)) return false;
     targetAtom.calledBy.push(callerAtomId);
     return true;
+}
+/**
+ * Obtiene el código fuente de un archivo, ya sea del objeto parsedFile o del disco.
+ */
+export async function getSourceCode(absPath, parsedFile) {
+    if (parsedFile && parsedFile.source) return parsedFile.source;
+    try {
+        const raw = await fs.readFile(absPath, 'utf-8');
+        return raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
+    } catch (err) {
+        return '';
+    }
 }

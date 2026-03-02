@@ -1,7 +1,7 @@
 /**
  * @fileoverview extractor.js
  *
- * Extrae FileInfo desde el árbol Tree-sitter utilizando módulos especializados.
+ * Extrae FileInfo desde el árbol Tree-sitter utilizando módulos nativos.
  * Produce exactamente el mismo shape que de costumbre: 
  *   { imports, exports, definitions, calls, functions, identifierRefs, ... }
  *
@@ -21,7 +21,7 @@ import { walk, text, FUNCTION_NODE_TYPES } from './extractors/utils.js';
 /**
  * Extrae FileInfo desde el árbol Tree-sitter.
  * 
- * @param {import('web-tree-sitter').SyntaxNode} tree - Root del árbol
+ * @param {import('tree-sitter').SyntaxNode} root - Nodo raíz
  * @param {string} code - Código fuente
  * @param {string} filePath - Ruta absoluta del archivo
  * @returns {object} FileInfo

@@ -42,6 +42,7 @@ import { generate_tests, generate_batch_tests } from './generate-tests/index.js'
 import { get_server_status, get_recent_errors } from './status.js';
 import { restart_server } from './restart-server.js';
 import { get_schema } from './get-schema.js';
+import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
@@ -218,27 +219,27 @@ export const toolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
-        type: { 
-          type: 'string', 
+        type: {
+          type: 'string',
           enum: ['atoms', 'database', 'registry'],
           default: 'atoms',
           description: 'Tipo de schema a consultar'
         },
-        atomType: { 
-          type: 'string', 
+        atomType: {
+          type: 'string',
           description: 'Filtrar por tipo de átomo (solo type="atoms"): function, arrow, method, variable, testCallback, etc.'
         },
-        sampleSize: { 
-          type: 'number', 
+        sampleSize: {
+          type: 'number',
           default: 3,
           description: 'Cantidad de átomos de muestra (solo type="atoms")'
         },
-        focusField: { 
-          type: 'string', 
+        focusField: {
+          type: 'string',
           description: 'Campo para análisis de evolución (solo type="atoms")'
         },
-        includeSQL: { 
-          type: 'boolean', 
+        includeSQL: {
+          type: 'boolean',
           default: false,
           description: 'Incluir SQL exportado (solo type="database")'
         }
@@ -266,6 +267,18 @@ export const toolDefinitions = [
         reanalyze: { type: 'boolean', default: false }
       }
     }
+  },
+  {
+    name: 'mcp_omnysystem_detect_performance_hotspots',
+    description: 'Detects performance bottlenecks (O(n^2), blocking I/O, heavy iteration) based on static analysis metadata.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', default: 20, description: 'Maximum findings to return' },
+        minRisk: { type: 'number', default: 10, description: 'Minimum risk score (0-100) to report' },
+        filePath: { type: 'string', description: 'Optional: Filter by specific file path' }
+      }
+    }
   }
 ];
 
@@ -290,5 +303,6 @@ export const toolHandlers = {
   mcp_omnysystem_get_schema: get_schema,
   mcp_omnysystem_get_server_status: get_server_status,
   mcp_omnysystem_get_recent_errors: get_recent_errors,
-  mcp_omnysystem_restart_server: restart_server
+  mcp_omnysystem_restart_server: restart_server,
+  mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots
 };

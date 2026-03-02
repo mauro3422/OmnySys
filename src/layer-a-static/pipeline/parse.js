@@ -9,10 +9,9 @@ export async function parseFiles(files, verbose = true) {
   if (verbose) logger.info('📝 Parsing files...');
   const parsedFiles = {};
 
-  // ✅ BATCHES DE 20 con POOL REUTILIZABLE
-  // Los 20 parsers del pool se reutilizan en cada batch
-  // Memoria: ~60MB fijos (parsers) + ~40MB temporales (árboles) = 100MB pico
-  const BATCH_SIZE = 20;
+  // ✅ BATCH_SIZE de 50: Procesamos archivos en grupos grandes.
+  // 💡 Con node-tree-sitter nativo y 16GB RAM, podemos ser más agresivos.
+  const BATCH_SIZE = 50;
   const batchTimer = new BatchTimer('File parsing', files.length);
 
   for (let i = 0; i < files.length; i += BATCH_SIZE) {

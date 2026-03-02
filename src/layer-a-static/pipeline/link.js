@@ -18,7 +18,11 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     const timerTotal = startTimer('6a. Build atom index');
     const allAtoms = [];
     for (const parsedFile of Object.values(parsedFiles)) {
-        if (parsedFile.atoms) allAtoms.push(...parsedFile.atoms);
+        if (parsedFile.atoms) {
+            for (let j = 0; j < parsedFile.atoms.length; j++) {
+                allAtoms.push(parsedFile.atoms[j]);
+            }
+        }
     }
 
     const index = buildAtomIndex(allAtoms);

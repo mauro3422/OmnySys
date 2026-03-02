@@ -44,18 +44,16 @@ export async function initialize() {
 
     // Verificar si existe análisis
     const hasAnalysis = await cacheManager.hasExistingAnalysis(this.OmnySysDataPath);
-    
+
     if (!hasAnalysis) {
-      logger.info('  ⚠️  No analysis data found');
-      logger.info('  🔄 Queuing initial analysis in background...\n');
-      
-      analysisManager.queueInitialAnalysis(
-        this.projectPath,
-        () => this.reloadMetadata()
-      );
-      
+      logger.info('  ⚠️  No analysis data found (or already running via MCP index-runner)');
+      // FIX: Removed the automatic background trigger here because the MCP daemon's 
+      // index-runner.js already handles full synchronous execution. Launching a background
+      // queue simultaneously duplicates the AST extraction process, doubling the atoms 
+      // (18k vs 9k) and causing 80-second delays due to lock contention.
+
       cacheManager.initializeEmptyCache(this.cache);
-      logger.info('  ⏳ Server ready, analysis running in background\n');
+      logger.info('  ⏳ Server initialized with empty cache, waiting for primary analysis to complete (or already ready)\n');
     } else {
       this.metadata = await cacheManager.loadExistingData({
         cache: this.cache,
@@ -92,7 +90,7 @@ export async function initialize() {
     this.fileWatcher.removeAllListeners('file:created');
     this.fileWatcher.removeAllListeners('file:modified');
     this.fileWatcher.removeAllListeners('file:deleted');
-    
+
     this.fileWatcher.on('file:created', (event) => {
       this.batchProcessor?.addChange(event.filePath, 'created');
     });

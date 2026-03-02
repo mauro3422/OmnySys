@@ -25,8 +25,24 @@ export function endLine(node) {
 }
 
 export function walk(node, types, cb) {
-    if (types.includes(node.type)) cb(node);
-    for (const child of node.children) walk(child, types, cb);
+    if (!node) return;
+    const cursor = node.walk();
+
+    function traverse() {
+        if (types.includes(cursor.nodeType)) {
+            cb(cursor.currentNode);
+        }
+
+        if (cursor.gotoFirstChild()) {
+            do {
+                traverse();
+            } while (cursor.gotoNextSibling());
+            cursor.gotoParent();
+        }
+    }
+
+    traverse();
+    if (typeof cursor.delete === 'function') cursor.delete();
 }
 
 export function findCallsInScope(fnNode, code) {

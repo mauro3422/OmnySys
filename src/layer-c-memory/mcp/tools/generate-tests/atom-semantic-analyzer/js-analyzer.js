@@ -17,6 +17,9 @@
 
 // ── Void return detection ─────────────────────────────────────────────────────
 
+// Precompiled regex for performance
+const REGEX_VOID_METHODS = /^(set|init|register|add|push|emit|dispatch|mount|bind|attach|handle|load|save|delete|remove|reset|clear|update|notify)/;
+
 /**
  * Detects whether a JS function is void (no return value).
  * Priority chain:
@@ -43,7 +46,7 @@ export function detectVoidReturn(atom) {
 
     // Name patterns for structural setters and initializers that never return
     const name = atom.name || '';
-    if (/^(set|init|register|add|push|emit|dispatch|mount|bind|attach|handle|load|save|delete|remove|reset|clear|update|notify)/.test(name)) {
+    if (REGEX_VOID_METHODS.test(name)) {
         // Only void if also no outputs
         if (outputs.length === 0) return true;
     }
@@ -57,6 +60,11 @@ export function detectVoidReturn(atom) {
 }
 
 // ── Return literal extraction ────────────────────────────────────────────────
+
+// Precompiled regex for performance
+const REGEX_QUOTED_STR = /^['"]/;
+const REGEX_ENUM_CAPS = /^[A-Z_]{2,}$/;
+const REGEX_NUMBER = /^-?\d+(\.\d+)?$/;
 
 /**
  * Extracts string/boolean/number literals present in return statements.
@@ -76,13 +84,13 @@ export function extractReturnLiterals(atom) {
         // Keep: 'true', 'false', string literals, known enum-like strings
         if (v === 'true' || v === 'false' || v === 'null') {
             literals.push(v);
-        } else if (/^['"]/.test(v)) {
+        } else if (REGEX_QUOTED_STR.test(v)) {
             // Quoted string literal
             literals.push(v.replace(/['"]/g, ''));
-        } else if (/^[A-Z_]{2,}$/.test(v)) {
+        } else if (REGEX_ENUM_CAPS.test(v)) {
             // ALL_CAPS enum constant (e.g. 'HEALTHY', 'CRITICAL', 'WARN')
             literals.push(v);
-        } else if (/^-?\d+(\.\d+)?$/.test(v)) {
+        } else if (REGEX_NUMBER.test(v)) {
             literals.push(v);
         }
     }
@@ -203,6 +211,13 @@ function getInputNames(atom) {
     return new Set(names);
 }
 
+const REGEX_TYPE_STRING = /^(path|file|dir|url)/;
+const REGEX_TYPE_NUMBER = /^(count|num|size|len|idx|index)/;
+const REGEX_TYPE_BOOLEAN = /^(is|has|can|flag|enabled)/;
+const REGEX_TYPE_ARRAY = /(list|arr|items|nodes)$/;
+const REGEX_TYPE_OBJECT = /(map|graph|table|index|cache|registry)$/;
+const REGEX_TYPE_FUNCTION = /(fn|func|callback|handler|cb)$/;
+
 function inferTypeFromMethods(paramName, methods) {
     const n = paramName.toLowerCase();
 
@@ -212,12 +227,12 @@ function inferTypeFromMethods(paramName, methods) {
     if (methods.some(m => ['startsWith', 'endsWith', 'includes', 'trim', 'split'].includes(m))) return 'string';
 
     // Name-based fallbacks
-    if (/^(path|file|dir|url)/.test(n)) return 'string';
-    if (/^(count|num|size|len|idx|index)/.test(n)) return 'number';
-    if (/^(is|has|can|flag|enabled)/.test(n)) return 'boolean';
-    if (/(list|arr|items|nodes)$/.test(n)) return 'array';
-    if (/(map|graph|table|index|cache|registry)$/.test(n)) return 'object';
-    if (/(fn|func|callback|handler|cb)$/.test(n)) return 'function';
+    if (REGEX_TYPE_STRING.test(n)) return 'string';
+    if (REGEX_TYPE_NUMBER.test(n)) return 'number';
+    if (REGEX_TYPE_BOOLEAN.test(n)) return 'boolean';
+    if (REGEX_TYPE_ARRAY.test(n)) return 'array';
+    if (REGEX_TYPE_OBJECT.test(n)) return 'object';
+    if (REGEX_TYPE_FUNCTION.test(n)) return 'function';
 
     return 'object';
 }

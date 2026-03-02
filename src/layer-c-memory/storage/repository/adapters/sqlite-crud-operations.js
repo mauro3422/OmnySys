@@ -41,8 +41,23 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   getFile(filePath) {
-    const row = this.statements.query.get(filePath);
+    const normalizedPath = this._normalize(filePath);
+    const row = this.statements.query.get(normalizedPath);
     return row || null;
+  }
+
+  /**
+   * Carga TODOS los hashes de archivos en un Map (1 query batch).
+   * Reemplaza el patrón N+1 de getFile() en el worker de análisis.
+   * @returns {Map<string, string>} Map<relativePath, hash>
+   */
+  getAllFileHashes() {
+    const rows = this.db.prepare('SELECT path, hash FROM files WHERE hash IS NOT NULL').all();
+    const map = new Map();
+    for (const row of rows) {
+      map.set(row.path, row.hash);
+    }
+    return map;
   }
 
   save(atom) {
@@ -74,16 +89,8 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
     this.statements.insertAtom.run(...values);
     this._logger.debug(`[SQLiteAdapter] Saved atom: ${atom.id}`);
-
-    // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
-    // Esto previene el bug donde los datos no se ven después de escrituras individuales
-    try {
-      this.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
-    } catch (e) {
-      // Ignorar errores de checkpoint - los datos están guardados igual
-      this._logger.debug(`[SQLiteAdapter] Checkpoint error (non-critical): ${e.message}`);
-    }
-
+    // WAL checkpoint es manejado automáticamente por SQLite al superar el umbral.
+    // No forzamos checkpoint manual para evitar bloqueos innecesarios en escrituras.
     return atom;
   }
 
@@ -111,14 +118,6 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
     // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
     const result = this.statements.deleteById.run(normalizedId);
-
-    // FIX: Forzar checkpoint WAL para que los datos sean visibles inmediatamente
-    try {
-      this.db.exec('PRAGMA wal_checkpoint(PASSIVE)');
-    } catch (e) {
-      // Ignorar errores de checkpoint - los datos están guardados igual
-    }
-
     return result.changes > 0;
   }
 

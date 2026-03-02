@@ -69,7 +69,7 @@
     "postinstall": "node install.js",
     "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-server.js",
     "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js",
-    "mcp:http": "node src/layer-c-memory/mcp-http-server.js",
+    "mcp:http": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-server.js",
     "mcp:bridge": "node src/layer-c-memory/mcp-stdio-bridge.js",
     "pack:check": "npm pack --dry-run"
   },
@@ -111,7 +111,9 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "fast-glob": "^3.3.2",
-    "web-tree-sitter": "^0.25.10",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-javascript": "^0.23.1",
+    "tree-sitter-typescript": "^0.23.2",
     "ws": "^8.19.0"
   },
   "devDependencies": {

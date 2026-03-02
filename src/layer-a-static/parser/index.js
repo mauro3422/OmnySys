@@ -1,22 +1,22 @@
 /**
  * @fileoverview parser-v2/index.js
  *
- * Parser basado en web-tree-sitter 0.25.10
- * Usa grammars WASM pre-compilados
+ * Parser basado en tree-sitter (nativo)
+ * Usa grammars nativos instalados vía npm
  *
  * @module parser-v2
  */
 
-import * as Parser from 'web-tree-sitter';
+import Parser from 'tree-sitter';
+import JavaScript from 'tree-sitter-javascript';
+import TypeScript from 'tree-sitter-typescript';
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
 import { extractFileInfo } from './extractor.js';
+import { getParserPool } from './parser-pool.js';
 import { createLogger } from '../../utils/logger.js';
-import { parseWithPool } from './parser-pool.js';
 
 const logger = createLogger('OmnySys:parser-v2');
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── Inicialización lazy ───────────────────────────────────────────────────
 
@@ -24,31 +24,25 @@ let _initialized = false;
 let _grammars = null;
 
 /**
- * Inicializa web-tree-sitter y carga grammars WASM
+ * Inicializa los lenguajes nativos
  */
 async function ensureInitialized() {
-  if (_initialized) return _grammars;
-  
-  logger.debug('📚 Initializing web-tree-sitter 0.25.10...');
-  
-  // Inicializar Parser con el WASM runtime
-  await Parser.init();
-  
-  // Cargar grammars WASM desde el directorio local
-  const wasmDir = path.join(__dirname, 'grammars', 'wasm');
-  
-  _grammars = {
-    '.js': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-javascript.wasm')),
-    '.jsx': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-javascript.wasm')),
-    '.mjs': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-javascript.wasm')),
-    '.cjs': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-javascript.wasm')),
-    '.ts': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-typescript.wasm')),
-    '.tsx': await Parser.Language.load(path.join(wasmDir, 'tree-sitter-typescript.wasm'))
-  };
-  
-  logger.debug('✅ Grammars loaded successfully');
-  _initialized = true;
-  return _grammars;
+    if (_initialized) return _grammars;
+
+    logger.debug('📚 Initializing node-tree-sitter...');
+
+    _grammars = {
+        '.js': JavaScript,
+        '.jsx': JavaScript,
+        '.mjs': JavaScript,
+        '.cjs': JavaScript,
+        '.ts': TypeScript.typescript, // Nota: tree-sitter-typescript exporta { typescript, tsx }
+        '.tsx': TypeScript.tsx
+    };
+
+    logger.debug('✅ Native grammars ready');
+    _initialized = true;
+    return _grammars;
 }
 
 /**
@@ -57,9 +51,9 @@ async function ensureInitialized() {
  * @returns {Promise<Object|null>} Language
  */
 async function getLanguage(filePath) {
-  const grammars = await ensureInitialized();
-  const ext = path.extname(filePath).toLowerCase();
-  return grammars[ext] || null;
+    const grammars = await ensureInitialized();
+    const ext = path.extname(filePath).toLowerCase();
+    return grammars[ext] || null;
 }
 
 // ─── API pública ─────────────────────────────────────────────────────────────
@@ -68,19 +62,30 @@ async function getLanguage(filePath) {
  * Obtiene el árbol Tree-sitter para el código dado
  * @param {string} filePath - Ruta del archivo para determinar el lenguaje
  * @param {string} code - Código fuente
- * @returns {Promise<import('web-tree-sitter').Tree|null>}
+ * @returns {Promise<Object|null>}
+ */
+/**
+ * Obtiene el árbol Tree-sitter para el código dado, reutilizando un parser del pool.
+ * @param {string} filePath
+ * @param {string} code - Código fuente
+ * @returns {Promise<Object|null>}
  */
 export async function getTree(filePath, code) {
     try {
-        const language = await getLanguage(filePath);
+        const grammars = await ensureInitialized();
+        const ext = path.extname(filePath).toLowerCase();
+        const language = grammars[ext];
         if (!language) {
-          logger.error(`❌ No grammar for ${filePath}`);
-          return null;
+            logger.error(`❌ No grammar for ${filePath}`);
+            return null;
         }
 
-        // ✅ USAR POOL: Reutiliza parsers en vez de crear/destruir
-        const tree = await parseWithPool(language, code);
-        return tree;
+        // Reusar parser del pool (evita new Parser() por cada archivo)
+        const pool = getParserPool(20);
+        return pool.withParser((parser) => {
+            parser.setLanguage(language);
+            return parser.parse(code);
+        });
     } catch (error) {
         logger.error(`Failed to get tree for ${filePath}: ${error.message}`);
         return null;
@@ -96,7 +101,7 @@ export async function getTree(filePath, code) {
 export async function parseFile(filePath, code) {
     const ext = path.extname(filePath).toLowerCase();
     const supportedExts = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'];
-    
+
     if (!supportedExts.includes(ext)) {
         return {
             filePath,
@@ -115,7 +120,7 @@ export async function parseFile(filePath, code) {
         if (!tree) throw new Error(`Could not generate tree for: ${filePath}`);
 
         const result = extractFileInfo(tree, code, filePath);
-        tree.delete(); // 🧹 FREE MEMORY
+        // En node-tree-sitter no existe .delete(), el GC se encarga
         return result;
 
     } catch (error) {
@@ -138,9 +143,15 @@ export async function parseFile(filePath, code) {
  * @param {string} filePath - Ruta absoluta del archivo
  * @returns {Promise<object>} - FileInfo
  */
-export async function parseFileFromDisk(filePath) {
+/**
+ * Lee un archivo y lo parsea. Si se provee content, no hace I/O.
+ * @param {string} filePath - Ruta absoluta del archivo
+ * @param {string} [content] - Contenido ya leído (opcional, evita doble I/O)
+ * @returns {Promise<object>} - FileInfo
+ */
+export async function parseFileFromDisk(filePath, content = null) {
     try {
-        const raw = await fs.readFile(filePath, 'utf-8');
+        const raw = content ?? await fs.readFile(filePath, 'utf-8');
         const code = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
         const fileInfo = await parseFile(filePath, code);
         fileInfo.source = code;

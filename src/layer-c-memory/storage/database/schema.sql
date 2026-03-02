@@ -3,7 +3,7 @@
 
 -- Habilitar WAL mode para mejor performance concurrente
 PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+-- PRAGMA foreign_keys = ON; (Removido para analisis incremental)
 
 -- Tabla principal: Atomos con vectores matematicos
 CREATE TABLE IF NOT EXISTS atoms (
@@ -114,8 +114,7 @@ CREATE TABLE IF NOT EXISTS atom_relations (
     context_json TEXT,                     -- Metadata adicional
     created_at TEXT NOT NULL,
     
-    FOREIGN KEY (source_id) REFERENCES atoms(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_id) REFERENCES atoms(id) ON DELETE CASCADE,
+    -- FOREIGN KEYs removidos para permitir discovery cross-file incremental
     UNIQUE(source_id, target_id, relation_type, line_number)
 );
 
@@ -147,9 +146,7 @@ CREATE TABLE IF NOT EXISTS atom_events (
     after_state TEXT,                      -- JSON completo despues
     impact_score REAL,                     -- Impacto calculado del cambio
     timestamp TEXT NOT NULL,
-    source TEXT DEFAULT 'extractor',       -- 'extractor', 'semantic', 'user', 'migration'
-    
-    FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE
+    source TEXT DEFAULT 'extractor'       -- 'extractor', 'semantic', 'user', 'migration'
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_atom ON atom_events(atom_id);
@@ -161,11 +158,8 @@ CREATE TABLE IF NOT EXISTS atom_versions (
     atom_id TEXT PRIMARY KEY,
     hash TEXT NOT NULL,                    -- Hash completo del atomo
     field_hashes_json TEXT NOT NULL,       -- JSON con hashes por campo
-    last_modified INTEGER NOT NULL,        -- Timestamp unix
     file_path TEXT NOT NULL,
-    atom_name TEXT NOT NULL,
-    
-    FOREIGN KEY (atom_id) REFERENCES atoms(id) ON DELETE CASCADE
+    atom_name TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_atom_versions_file ON atom_versions(file_path);
@@ -228,33 +222,43 @@ BEGIN
     UPDATE atoms SET updated_at = datetime('now') WHERE id = NEW.id;
 END;
 
--- Trigger para mantener contadores de archivos
+-- Trigger para mantener contadores de archivos (usa UPSERT para preservar columnas como hash)
 CREATE TRIGGER IF NOT EXISTS update_file_counts_after_insert
 AFTER INSERT ON atoms
 BEGIN
-    INSERT OR REPLACE INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
+    INSERT INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
     SELECT 
         NEW.file_path,
         datetime('now'),
         COUNT(*),
-        SUM(complexity),
-        SUM(lines_of_code)
+        SUM(COALESCE(complexity, 0)),
+        SUM(COALESCE(lines_of_code, 0))
     FROM atoms 
-    WHERE file_path = NEW.file_path;
+    WHERE file_path = NEW.file_path
+    ON CONFLICT(path) DO UPDATE SET
+        last_analyzed = excluded.last_analyzed,
+        atom_count = excluded.atom_count,
+        total_complexity = excluded.total_complexity,
+        total_lines = excluded.total_lines;
 END;
 
 CREATE TRIGGER IF NOT EXISTS update_file_counts_after_delete
 AFTER DELETE ON atoms
 BEGIN
-    INSERT OR REPLACE INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
+    INSERT INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
     SELECT 
         OLD.file_path,
         datetime('now'),
         COUNT(*),
-        SUM(complexity),
-        SUM(lines_of_code)
+        SUM(COALESCE(complexity, 0)),
+        SUM(COALESCE(lines_of_code, 0))
     FROM atoms 
-    WHERE file_path = OLD.file_path;
+    WHERE file_path = OLD.file_path
+    ON CONFLICT(path) DO UPDATE SET
+        last_analyzed = excluded.last_analyzed,
+        atom_count = excluded.atom_count,
+        total_complexity = excluded.total_complexity,
+        total_lines = excluded.total_lines;
 END;
 
 -- =====================================================
@@ -297,9 +301,6 @@ CREATE TABLE IF NOT EXISTS file_dependencies (
     reason TEXT,                           -- Razon de la dependencia
     is_dynamic BOOLEAN DEFAULT 0,          -- Import dinamico?
     created_at TEXT NOT NULL,
-    
-    FOREIGN KEY (source_path) REFERENCES files(path) ON DELETE CASCADE,
-    FOREIGN KEY (target_path) REFERENCES files(path) ON DELETE CASCADE,
     UNIQUE(source_path, target_path, dependency_type)
 );
 
@@ -316,10 +317,7 @@ CREATE TABLE IF NOT EXISTS semantic_connections (
     connection_key TEXT,                   -- Nombre de la variable/evento/env
     context_json TEXT,                     -- Metadata adicional
     weight REAL DEFAULT 1.0,               -- Peso de la conexion
-    created_at TEXT NOT NULL,
-    
-    FOREIGN KEY (source_path) REFERENCES files(path) ON DELETE CASCADE,
-    FOREIGN KEY (target_path) REFERENCES files(path) ON DELETE CASCADE
+    created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_semantic_conn_type ON semantic_connections(connection_type);
@@ -339,8 +337,6 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
     complexity_score REAL DEFAULT 0,       -- Score de complejidad
     propagation_score REAL DEFAULT 0,      -- Score de propagacion
     assessed_at TEXT NOT NULL,
-    
-    FOREIGN KEY (file_path) REFERENCES files(path) ON DELETE CASCADE,
     UNIQUE(file_path)
 );
 
@@ -356,9 +352,7 @@ CREATE TABLE IF NOT EXISTS semantic_issues (
     message TEXT NOT NULL,                 -- Descripcion del problema
     line_number INTEGER,                   -- Linea donde ocurre (si aplica)
     context_json TEXT,                     -- Contexto adicional
-    detected_at TEXT NOT NULL,
-    
-    FOREIGN KEY (file_path) REFERENCES files(path) ON DELETE CASCADE
+    detected_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_semantic_issues_file ON semantic_issues(file_path);

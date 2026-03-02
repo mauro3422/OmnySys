@@ -71,7 +71,7 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     fullFileCode: fullFileCode || functionCode // Fallback to function code if full code not provided
   });
 
-  const dataFlowV2 = await extractDataFlowSafe(functionInfo, functionCode, filePath);
+  const dataFlowV2 = extractDataFlowSafe(functionInfo, functionCode, filePath);  // sync
 
   const complexity = calculateComplexity(functionCode);
   const linesOfCode = functionCode.split('\n').length;
@@ -84,11 +84,13 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     dataFlowV2,
     functionCode,
     imports,
+    performanceHints: extractorResults.performanceHints,
+    performanceMetrics: extractorResults.performanceMetrics,
     ...extractorResults
   });
 
-  // NEW: Integrated Core Semantic Analysis (Tier 1.5)
-  atomMetadata.semantic = await semanticAnalyzer.analyzeAtom(atomMetadata, functionCode);
+  // Integrated Core Semantic Analysis (sync — JsAnalyzer has no async operations)
+  atomMetadata.semantic = semanticAnalyzer.analyzeAtom(atomMetadata, functionCode);
 
   enrichWithDNA(atomMetadata, functionInfo.name);
 

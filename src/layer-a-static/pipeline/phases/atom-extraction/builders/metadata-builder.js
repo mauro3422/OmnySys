@@ -156,7 +156,10 @@ export function buildAtomMetadata({
     // Performance
     hasNestedLoops: ph.nestedLoops.length > 0,
     hasBlockingOps: ph.blockingOperations.length > 0,
-    performance: performanceMetrics,
+    performance: {
+      ...ph,
+      ...performanceMetrics
+    },
 
     // Data flow
     ...buildDataFlowFields(dataFlowV2),

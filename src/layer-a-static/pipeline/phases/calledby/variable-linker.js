@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import { getSourceCode } from './calledby-linker-utils.js';
 
 /**
  * Links calledBy for exported variable/constant atoms.
@@ -38,7 +39,7 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
   let variableLinks = 0;
 
   for (const [absPath, parsedFile] of Object.entries(parsedFiles)) {
-    const source = parsedFile.source;
+    const source = await getSourceCode(absPath, parsedFile);
     if (!source) continue;
 
     const filePath = path.relative(absoluteRootPath, absPath).replace(/\\/g, '/');
@@ -58,7 +59,9 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
         const targetAtom = varAtoms.find(a => a.filePath !== filePath);
         if (!targetAtom) continue;
 
-        const found = findReferenceInLines(lines, importedName);
+        const regexCache = {};
+
+        const found = findReferenceInLines(lines, importedName, regexCache);
         if (found) {
           if (!targetAtom.calledBy) targetAtom.calledBy = [];
           if (!targetAtom.calledBy.includes(filePath)) {
@@ -71,7 +74,7 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
   }
 
   // Retornar átomos modificados para bulk save (sin guardar individualmente)
-  const updatedAtoms = variableLinks > 0 
+  const updatedAtoms = variableLinks > 0
     ? allAtoms.filter(a => a.calledBy && a.calledBy.length > 0 && a.filePath && a.name)
     : [];
 
@@ -84,12 +87,19 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
  * Returns true if `name` appears as a reference (not import/export/declaration) in lines.
  * @param {string[]} lines
  * @param {string} name
+ * @param {Object} regexCache - Cache for compiled regexes
  * @returns {boolean}
  */
-function findReferenceInLines(lines, name) {
-  const ref = new RegExp(`\\b${name}\\b`);
-  const isCall = new RegExp(`${name}\\s*\\(`);
-  const isDecl = new RegExp(`(function|const|let|var|class)\\s+${name}\\b`);
+function findReferenceInLines(lines, name, regexCache) {
+  if (!regexCache[name]) {
+    regexCache[name] = {
+      ref: new RegExp(`\\b${name}\\b`),
+      isCall: new RegExp(`${name}\\s*\\(`),
+      isDecl: new RegExp(`(function|const|let|var|class)\\s+${name}\\b`)
+    };
+  }
+
+  const { ref, isCall, isDecl } = regexCache[name];
 
   for (const line of lines) {
     if (line.includes('import ') || line.includes('export ') || line.includes('require(')) continue;

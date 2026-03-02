@@ -4,13 +4,13 @@
 
 export class BaseSemanticProvider {
   /**
-   * Analyzes an atom's code semantically.
+   * Analyzes an atom's code semantically (sync).
    * @param {Object} atom - Atom metadata.
    * @param {string} code - Function source code.
    * @param {Object} options - Options.
-   * @returns {Promise<Object>}
+   * @returns {Object}
    */
-  async analyze(atom, code, options) {
+  analyze(atom, code, options) {
     throw new Error('Not implemented');
   }
 

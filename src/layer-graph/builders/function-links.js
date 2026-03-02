@@ -17,27 +17,27 @@ import { resolveAllFunctionCalls } from '../resolvers/function-resolver.js';
  */
 function calculateEdgeWeight(call, targetAtom) {
   let weight = 0.5; // Base weight
-  
+
   // +0.2 si es API_EXPORT (public API)
   if (targetAtom?.purpose === 'API_EXPORT') {
     weight += 0.2;
   }
-  
+
   // +0.15 si tiene callers (es un hub)
   if (targetAtom?.calledBy?.length > 5) {
     weight += 0.15;
   }
-  
+
   // +0.1 si es async (más importante para entender flujo)
   if (targetAtom?.isAsync) {
     weight += 0.1;
   }
-  
+
   // -0.2 si es TEST_HELPER (menos importante para producción)
   if (targetAtom?.purpose === 'TEST_HELPER') {
     weight -= 0.2;
   }
-  
+
   // Normalizar entre 0.1 y 1.0
   return Math.max(0.1, Math.min(1.0, weight));
 }
@@ -75,13 +75,14 @@ function determineCallType(call, targetAtom) {
 export function buildFunctionLinks(parsedFiles, resolvedImports, atomsMap = null) {
   const functions = {};
   const function_links = [];
-  
+
   if (!parsedFiles) return { functions, function_links };
 
   for (const [filePath, fileInfo] of Object.entries(parsedFiles)) {
-    // Guardar funciones del archivo
-    if (fileInfo.functions && Array.isArray(fileInfo.functions)) {
-      functions[filePath] = fileInfo.functions;
+    // Guardar funciones del archivo (compatibilidad legacy y atoms)
+    const fileFunctions = fileInfo.functions || fileInfo.atoms;
+    if (fileFunctions && Array.isArray(fileFunctions)) {
+      functions[filePath] = fileFunctions;
 
       // Resolver y crear enlaces
       const resolvedCalls = resolveAllFunctionCalls(
@@ -94,12 +95,12 @@ export function buildFunctionLinks(parsedFiles, resolvedImports, atomsMap = null
       for (const call of resolvedCalls) {
         // v0.9.36: Buscar átomo destino para obtener purpose y metadata
         const targetAtom = atomsMap ? atomsMap.get(call.to) : null;
-        
+
         // Calcular peso y tipo de llamada
         const weight = calculateEdgeWeight(call, targetAtom);
         const callType = determineCallType(call, targetAtom);
         const purpose = targetAtom?.purpose || null;
-        
+
         function_links.push(
           createFunctionLink(call.from, call.to, {
             line: call.line,
@@ -128,8 +129,8 @@ export function buildFunctionLinks(parsedFiles, resolvedImports, atomsMap = null
 export function filterLinksByPurpose(function_links, includePurposes) {
   if (!function_links || !Array.isArray(function_links)) return [];
   if (!includePurposes || includePurposes.length === 0) return function_links;
-  
-  return function_links.filter(link => 
+
+  return function_links.filter(link =>
     link.purpose && includePurposes.includes(link.purpose)
   );
 }
@@ -147,7 +148,7 @@ export function buildPurposeSubgraph(function_links, functions, atomsMap, purpos
   const nodes = [];
   const edges = [];
   const nodeIds = new Set();
-  
+
   // Encontrar átomos del purpose
   if (atomsMap) {
     for (const [atomId, atom] of atomsMap) {
@@ -164,14 +165,14 @@ export function buildPurposeSubgraph(function_links, functions, atomsMap, purpos
       }
     }
   }
-  
+
   // Filtrar edges que conectan nodos del purpose
   for (const link of function_links) {
     if (link.purpose === purpose || nodeIds.has(link.to)) {
       edges.push(link);
     }
   }
-  
+
   return { nodes, edges };
 }
 
@@ -209,13 +210,13 @@ export function getIncomingLinks(funcId, function_links) {
  */
 export function findReachableFunctions(funcId, function_links, visited = new Set()) {
   if (visited.has(funcId)) return visited;
-  
+
   visited.add(funcId);
-  
+
   const outgoing = getOutgoingLinks(funcId, function_links);
   for (const link of outgoing) {
     findReachableFunctions(link.to, function_links, visited);
   }
-  
+
   return visited;
 }

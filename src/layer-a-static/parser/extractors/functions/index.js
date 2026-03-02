@@ -9,7 +9,7 @@ import { trackReferences } from './reference-tracker.js';
 
 /**
  * Extrae funciones de un árbol tree-sitter.
- * @param {import('web-tree-sitter').SyntaxNode} root 
+ * @param {import('tree-sitter').SyntaxNode} root 
  * @param {string} code 
  * @param {string} filePath 
  * @param {Set<string>} exportedNames 
@@ -44,7 +44,7 @@ export function extractFunctions(root, code, filePath, exportedNames) {
             isGenerator,
             calls,
             identifierRefs,
-            node: null,
+            node: node, // ✅ Keep native node for unified extraction pass
         };
 
         functions.push(fnInfo);

@@ -13,14 +13,14 @@ import { logger } from '#utils/logger.js';
  * @param {string} filePath - File path
  * @returns {Promise<Object|null>} - Data flow analysis or null on failure
  */
-export async function extractDataFlowSafe(functionInfo, functionCode, filePath) {
+export function extractDataFlowSafe(functionInfo, functionCode, filePath) {
   try {
     const input = functionInfo.node || functionCode;
 
     if (input) {
-      return await extractDataFlowV2(
+      return extractDataFlowV2(
         input,
-        { functionName: functionInfo.name, filePath, inferTypes: true }
+        { functionName: functionInfo.name, filePath, code: functionCode, inferTypes: true }
       );
     }
   } catch (error) {

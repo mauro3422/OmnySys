@@ -31,15 +31,16 @@ import { PatternIndexManager } from './utils/managers/index.js';
 const logger = createLogger('OmnySys:data-flow');
 
 // Configuration
-// Tree-sitter doesn't need these manual PARSER_OPTIONS anymore as it uses WASM grammars
+// ✅ node-tree-sitter nativo no requiere PARSER_OPTIONS manuales
+
 
 /**
- * Extracts data flow from a function
- * @param {string|Object} codeOrNode - Function source code string OR Babel AST node
+ * Extracts data flow from a function (synchronous when node is provided).
+ * @param {string|Object} codeOrNode - Function source code string OR Tree-sitter node
  * @param {Object} options - Extraction options
  * @returns {Object} Data flow analysis result
  */
-export async function extractDataFlow(codeOrNode, options = {}) {
+export function extractDataFlow(codeOrNode, options = {}) {
   logger.debug('Extracting data flow...');
 
   let localTree = null;
@@ -47,20 +48,16 @@ export async function extractDataFlow(codeOrNode, options = {}) {
 
   try {
     // Accept either a source code string or an already-parsed Tree-sitter node
-    let code = typeof codeOrNode === 'string' ? codeOrNode : '';
+    let code = typeof codeOrNode === 'string' ? codeOrNode : (options.code || '');
     let node = typeof codeOrNode !== 'string' ? codeOrNode : null;
 
     const filePath = options.filePath || 'snippet.js';
 
     if (!node && code) {
-      try {
-        localTree = await getTree(filePath, code);
-        node = localTree?.rootNode || null;
-        shouldDeleteTree = !!localTree;
-      } catch (parseErr) {
-        logger.warn(`Failed to parse snippet for data flow: ${parseErr.message}`);
-        return { error: parseErr.message };
-      }
+      // En el pipeline de workers, siempre se pasa functionInfo.node (ya parseado)
+      // y este branch no se ejecuta. Para callers legacy sin nodo, retornamos vacío.
+      logger.warn(`extractDataFlow called without a pre-parsed node for ${options.filePath || 'unknown'} - data flow will be empty. Use extractDataFlow(functionInfo.node, ...) instead.`);
+      return { inputs: [], outputs: [], transformations: [], graph: null, analysis: { invariants: [], inferredTypes: {} } };
     }
 
     const functionName = options.functionName || '<anonymous>';
@@ -128,9 +125,8 @@ export async function extractDataFlow(codeOrNode, options = {}) {
       ? new TypeInferrer(graph).infer()
       : {};
 
-    if (shouldDeleteTree && localTree) {
-      localTree.delete(); // 🧹 FREE WASM MEMORY
-    }
+    // En node-tree-sitter no existe .delete(), el GC se encarga
+
 
     return {
       graph,
@@ -148,9 +144,8 @@ export async function extractDataFlow(codeOrNode, options = {}) {
       }
     };
   } catch (error) {
-    if (shouldDeleteTree && localTree) {
-      localTree.delete(); // 🧹 FREE WASM MEMORY
-    }
+    // El GC se encarga del árbol
+
     const functionName = options.functionName || '<anonymous>';
     const filePath = options.filePath || 'unknown';
     logger.warn(`Data flow extraction failed for ${functionName} in ${filePath}:`, error.message);

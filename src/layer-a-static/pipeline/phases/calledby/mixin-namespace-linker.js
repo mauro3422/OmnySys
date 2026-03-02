@@ -48,7 +48,7 @@ import { buildFileAtomIndex, addCalledBy } from './calledby-linker-utils.js';
  */
 export async function linkMixinNamespaceCalledBy(allAtoms, parsedFiles, absoluteRootPath, verbose) {
   const fileNamespaceMap = buildNamespaceMap(parsedFiles, absoluteRootPath);
-  const mixinMap = detectMixins(parsedFiles, fileNamespaceMap);
+  const mixinMap = await detectMixins(parsedFiles, fileNamespaceMap);
   const fileAtomIndex = buildFileAtomIndex(allAtoms, absoluteRootPath);
 
   let namespaceLinks = 0;

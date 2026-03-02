@@ -38,8 +38,10 @@ export function findFunctionInResolution(
     const resolvedFile = normalizePath(importInfo.resolved);
     const targetFileInfo = parsedFiles[resolvedFile];
 
-    if (targetFileInfo && targetFileInfo.functions) {
-      const foundFunc = targetFileInfo.functions.find(f => f.name === functionName);
+    if (!targetFileInfo) continue;  // Guard: external module or not yet indexed
+    const targetAtoms = targetFileInfo.functions || targetFileInfo.atoms;
+    if (targetAtoms) {
+      const foundFunc = targetAtoms.find(f => f.name === functionName);
       if (foundFunc) {
         return {
           id: foundFunc.id,
@@ -50,8 +52,9 @@ export function findFunctionInResolution(
   }
 
   // 2. Buscar en funciones locales (misma archivo)
-  if (fileInfo != null && fileInfo.functions) {
-    const localFunc = fileInfo.functions.find(f => f.name === functionName);
+  const localAtoms = fileInfo != null ? (fileInfo.functions || fileInfo.atoms) : null;
+  if (localAtoms) {
+    const localFunc = localAtoms.find(f => f.name === functionName);
     if (localFunc) {
       return {
         id: localFunc.id,
@@ -74,12 +77,17 @@ export function findFunctionInResolution(
  */
 export function resolveAllFunctionCalls(fileInfo, resolvedImports, parsedFiles, currentFile) {
   const resolvedCalls = [];
-  
-  if (fileInfo == null || !fileInfo.functions || !Array.isArray(fileInfo.functions)) {
+
+  if (fileInfo == null) {
     return resolvedCalls;
   }
 
-  for (const func of fileInfo.functions) {
+  const fileAtoms = fileInfo.functions || fileInfo.atoms;
+  if (!fileAtoms || !Array.isArray(fileAtoms)) {
+    return resolvedCalls;
+  }
+
+  for (const func of fileAtoms) {
     if (!func.calls || !Array.isArray(func.calls)) continue;
 
     for (const call of func.calls) {

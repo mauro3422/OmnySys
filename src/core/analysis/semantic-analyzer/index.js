@@ -27,13 +27,14 @@ class SemanticAnalyzerRegistry {
   }
 
   /**
-   * Analyzes an atom semantically.
+   * Analyzes an atom semantically (sync).
+   * JsAnalyzer is fully synchronous — no need for async/await.
    * @param {Object} atom - The atom to analyze.
    * @param {string} code - The source code of the atom.
    * @param {Object} options - Analysis options.
-   * @returns {Promise<Object>} Semantic metadata.
+   * @returns {Object} Semantic metadata.
    */
-  async analyzeAtom(atom, code, options = {}) {
+  analyzeAtom(atom, code, options = {}) {
     const provider = this.getProvider(atom.filePath);
     if (!provider) {
       return {
@@ -42,7 +43,7 @@ class SemanticAnalyzerRegistry {
     }
 
     try {
-      const results = await provider.analyze(atom, code, options);
+      const results = provider.analyze(atom, code, options);
       return { semantic: results };
     } catch (error) {
       return {

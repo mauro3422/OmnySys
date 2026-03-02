@@ -11,16 +11,17 @@ export class JSSemanticProvider extends BaseSemanticProvider {
     // JsAnalyzer is a singleton object, no need for 'new'
   }
 
-  async analyze(atom, code, options) {
+  analyze(atom, code, options) {
     // Map individual detectors from the legacy JS analyzer
+    const mutatedParams = JsAnalyzer.detectMutatedParams(atom); // cache to avoid double-call
     const results = {
       hasReturnValue: !JsAnalyzer.detectVoidReturn(atom),
       returnLiterals: JsAnalyzer.extractReturnLiterals(atom),
-      mutatesParams: JsAnalyzer.detectMutatedParams(atom),
+      mutatesParams: mutatedParams,
       usesThisContext: JsAnalyzer.detectThisContext(atom),
       paramHints: JsAnalyzer.inferParamHints(atom),
       // Heuristic for purity: no side effects, no mutations, has return
-      isPure: !atom.hasSideEffects && !JsAnalyzer.detectMutatedParams(atom).length && !JsAnalyzer.detectThisContext(atom)
+      isPure: !atom.hasSideEffects && !mutatedParams.length && !JsAnalyzer.detectThisContext(atom)
     };
 
     return this.standardize(results);

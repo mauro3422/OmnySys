@@ -1,22 +1,20 @@
 /**
  * @fileoverview parser-pool.js
  * 
- * Pool de parsers web-tree-sitter para reutilización.
- * web-tree-sitter 0.25.10
+ * Pool de parsers nativos. 
+ * Con node-tree-sitter no es estrictamente necesario un pool complejo,
+ * pero mantenemos la abstracción para no romper el resto del pipeline.
  * 
  * @module parser-v2/parser-pool
  */
 
-import * as Parser from 'web-tree-sitter';
+import Parser from 'tree-sitter';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:parser-pool');
 
-/**
- * Pool simple de parsers web-tree-sitter
- */
 class ParserPool {
-  constructor(size = 10) {
+  constructor(size = 5) {
     this.size = size;
     this.parsers = [];
     this.available = [];
@@ -24,62 +22,30 @@ class ParserPool {
     this.initialized = false;
   }
 
-  /**
-   * Inicializa el pool con N parsers
-   */
   async initialize() {
     if (this.initialized) return;
-
-    logger.info(`🔧 Initializing parser pool with ${this.size} parsers...`);
-
     for (let i = 0; i < this.size; i++) {
-      const parser = new Parser();
-      this.parsers.push(parser);
+      this.parsers.push(new Parser());
       this.available.push(i);
     }
-
     this.initialized = true;
-    logger.info(`✅ Parser pool ready (${this.size} parsers)`);
   }
 
-  /**
-   * Adquiere un parser disponible
-   * @returns {Promise<{parser: Object, index: number}>}
-   */
   async acquire() {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-
+    if (!this.initialized) await this.initialize();
     while (this.available.length === 0) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 5));
     }
-
     const index = this.available.pop();
     this.inUse.add(index);
-
     return { parser: this.parsers[index], index };
   }
 
-  /**
-   * Libera un parser para reuso
-   * @param {number} index - Índice del parser
-   */
   release(index) {
-    if (!this.inUse.has(index)) {
-      return;
-    }
-
     this.inUse.delete(index);
     this.available.push(index);
   }
 
-  /**
-   * Ejecuta una función con un parser del pool
-   * @template T
-   * @param {Function} fn - Función que recibe (parser, index)
-   * @returns {Promise<T>}
-   */
   async withParser(fn) {
     const { parser, index } = await this.acquire();
     try {
@@ -89,13 +55,7 @@ class ParserPool {
     }
   }
 
-  /**
-   * Limpia el pool
-   */
   destroy() {
-    for (const parser of this.parsers) {
-      parser.delete();
-    }
     this.parsers = [];
     this.available = [];
     this.inUse.clear();
@@ -103,30 +63,17 @@ class ParserPool {
   }
 }
 
-// Singleton global
 let _globalPool = null;
 
-/**
- * Obtiene o crea el pool global de parsers
- * @param {number|null} size - Tamaño del pool
- * @returns {ParserPool}
- */
 export function getParserPool(size = null) {
   if (!_globalPool) {
-    _globalPool = new ParserPool(size || 10);
+    _globalPool = new ParserPool(size || 20);
   }
   return _globalPool;
 }
 
-/**
- * Parsea código usando el pool de parsers
- * @param {Object} language - Lenguaje cargado (web-tree-sitter Language)
- * @param {string} code - Código a parsear
- * @returns {Promise<import('web-tree-sitter').Tree>}
- */
 export async function parseWithPool(language, code) {
-  const pool = getParserPool(10);
-
+  const pool = getParserPool();
   return pool.withParser(async (parser) => {
     parser.setLanguage(language);
     return parser.parse(code);

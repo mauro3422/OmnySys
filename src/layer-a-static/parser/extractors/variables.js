@@ -3,7 +3,7 @@ import { walk, text, startLine } from './utils.js';
 /**
  * Extrae constantes y variables globales (incluyendo exports)
  * 
- * @param {import('web-tree-sitter').SyntaxNode} root - Nodo raíz
+ * @param {import('tree-sitter').SyntaxNode} root - Nodo raíz
  * @param {string} code - Código fuente
  * @param {Set<string>} exportedNames - Nombres de símbolos exportados
  * @returns {Object} { constantExports, objectExports }

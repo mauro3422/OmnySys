@@ -189,6 +189,7 @@ export function extractAtomMetadata(filePath, functionName, functionCode) {
   const path = typeof filePath === 'string' ? filePath : '';
 
   metadata.semanticDomain = extractSemanticDomain(code, name, path);
+  metadata.performance = extractPerformanceHints(code);
 
   return metadata;
 }

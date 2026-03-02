@@ -114,7 +114,7 @@ export function atomToRow(atom) {
  * Convierte una fila de SQLite a estructura de atomo
  */
 export function rowToAtom(row) {
-  return {
+  const enriched = {
     id: row.id,
     name: row.name,
     type: row.atom_type,
@@ -227,6 +227,9 @@ export function safeBoolInt(val) {
 
 // Helper para serializar a JSON de forma segura
 export function safeJson(val) {
+  if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('[') || val === 'null')) {
+    return val;
+  }
   try {
     return JSON.stringify(val !== undefined ? val : null);
   } catch (e) {

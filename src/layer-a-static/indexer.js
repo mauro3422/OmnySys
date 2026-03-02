@@ -66,13 +66,11 @@ export async function indexProject(rootPath, options = {}) {
       }
       if (ctx.verbose && orbitalPurged > 0) logger.info(`  🗑️ Purged ${orbitalPurged} orphaned atoms`);
     })
-    .addPhase('4. Parse Files', async (ctx) => {
-      const parsedFiles = await parseFiles(ctx.files, ctx.verbose);
-      return { parsedFiles };
-    })
-    .addPhase('5. Extract Atoms', async (ctx) => {
-      const totalAtomsExtracted = await extractAndSaveAtoms(ctx.parsedFiles, ctx.absoluteRootPath, ctx.verbose);
-      return { totalAtomsExtracted };
+    .addPhase('4. Unified Analysis', async (ctx) => {
+      const { totalAtomsExtracted, parsedFiles } = await import('./pipeline/unified-analysis.js')
+        .then(m => m.analyzeProjectFilesUnified(ctx.files, ctx.absoluteRootPath, ctx.verbose));
+
+      return { parsedFiles, totalAtomsExtracted };
     })
     .addPhase('6. Build Links', async (ctx) => {
       await buildCalledByLinks(ctx.parsedFiles, ctx.absoluteRootPath, ctx.verbose);
@@ -103,7 +101,13 @@ export async function indexProject(rootPath, options = {}) {
     })
     .addPhase('10. Persist', async (ctx) => {
       await saveEnhancedSystemMap(ctx.enhancedSystemMap, ctx.verbose, ctx.absoluteRootPath);
-      ctx.enhancedSystemMap.metadata.totalAtoms = ctx.totalAtomsExtracted;
+      // Propagate totals from systemMap to enhancedSystemMap for summary
+      if (ctx.systemMap?.metadata) {
+        ctx.enhancedSystemMap.metadata.totalAtoms = ctx.systemMap.metadata.totalAtoms;
+        ctx.enhancedSystemMap.metadata.totalFunctions = ctx.systemMap.metadata.totalFunctions;
+        ctx.enhancedSystemMap.metadata.totalFunctionLinks = ctx.systemMap.metadata.totalFunctionLinks;
+      }
+
       if (ctx.verbose) {
         printSummary({
           systemMap: ctx.systemMap,

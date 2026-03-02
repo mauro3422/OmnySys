@@ -16,10 +16,41 @@
 * If an agent spawns this via a detached process or terminal, it will hijack
 * port 9999 and the IDE will lose the socket connection permanently (EOF).
 * 
+* 
 * 💡 CORRECT WAY TO RESTART: Use the `mcp_omnysystem_restart_server` MCP tool. 
 * This safely refreshes the internal components and RAM without killing the 
 * underlying process or dropping the IDE sockets.
 * ========================================================================= */
+
+import v8 from 'v8';
+import { spawn } from 'child_process';
+
+// ------------------------------------------------------------------------------------------------
+// AUTO-MEMORY PROVISIONING: Detect if V8 Heap is too small for heavy AST parsing
+// ------------------------------------------------------------------------------------------------
+const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
+const hasMaxOldSpace = process.env.NODE_OPTIONS && process.env.NODE_OPTIONS.includes('max-old-space-size');
+
+if (!hasMaxOldSpace && heapLimitMB < 7000) {
+  console.log(`\n[OmnySys:Boot] Detección de límite de RAM estricto (Current Heap: ${Math.round(heapLimitMB)} MB).`);
+  console.log(`[OmnySys:Boot] Auto-configurando entorno a 8GB RAM para Turbo Parser...`);
+
+  const env = { ...process.env };
+  env.NODE_OPTIONS = (env.NODE_OPTIONS || '') + ' --max-old-space-size=8192';
+
+  const child = spawn(process.execPath, process.argv.slice(1), {
+    stdio: 'inherit',
+    env
+  });
+
+  child.on('close', (code) => {
+    process.exit(code || 0);
+  });
+
+  // Detener la ejecución en el hilo principal (padre limitante)
+  await new Promise(() => { }); // Espera infinita sin bloquear CPU mientras el worker hace el trabajo
+}
+// ------------------------------------------------------------------------------------------------
 
 import path from 'path';
 import { randomUUID } from 'crypto';

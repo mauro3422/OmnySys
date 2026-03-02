@@ -6,22 +6,17 @@
 
 ---
 
-## Novedades v0.9.65
+## Novedades v0.9.73 (Performance & Lazy Indexing Blueprint)
 
-### Schema Registry (SSOT)
+### Eliminación del Contention Overhead
+- ✅ **Worker Threads Seguros**: Migración a procesamiento secuencial interno en workers (eliminando `Promise.all` CPU-bound).
+- ✅ **Extractor Sync Path**: Eliminación de cientos de miles de microtasks `async/await` promoviendo `getExtractorSync()` y `extractDataFlow` síncronos.
+- ✅ **Warmup Pre-arranque**: Caché de módulos pre-calentados al instanciar Workers para eliminar I/O asíncrono en caliente.
 
-- ✅ **Unificación de schema**: `schema-registry.js` es la única fuente de verdad
-- ✅ **Auto-migración**: Detecta y agrega columnas faltantes automáticamente
-- ✅ **Drift detection**: Advierte inconsistencias entre DB y registry
-- ✅ **Nuevas tools MCP**: `get_schema_status`, `export_schema`
-
-### ESM Cache Clearing
-
-- ✅ **Documentado**: Clarificado que proxy mode es requerido para limpiar cache ESM
-- ✅ **Restart mejorado**: `restart_server` ahora avisa si está en modo standalone
-- ✅ **Proxy stable**: `mcp-server.js` + `mcp-server-worker.js` para reinicios verdaderos
-
-**Ver documentación completa**: [docs/architecture/SCHEMA_REGISTRY.md](docs/architecture/SCHEMA_REGISTRY.md)
+### Nuevo Paradigma: Lazy Indexing (Diseño)
+El sistema migrará de una arquitectura "Big Bang" (100% de extracción cognitiva antes del arranque) a una arquitectura escalonada inspirada en LSPs (Language Server Protocols):
+- **Phase 1 (Structural Fast Scan)**: Tree-sitter + Nombres/Firmas + SQLite. TTI (Time-to-Interactive) en <5s.
+- **Phase 2 (Deep Semantic Scan)**: Extractores NLP y Semántica matemática procesados en Background o *On-Demand* cuando el usuario invoca una tool MCP específica.
 
 ---
 
@@ -90,27 +85,27 @@ layer-a-static/
 └── indexer.js              # Orquestador principal de Layer A
 ```
 
-### Flujo de Layer A (v0.9.62)
+### Flujo de Layer A (Futuro v1.0.0 - Lazy Indexing)
 
 ```
 indexer.js
     │
-    ├─→ scanProjectFiles()
-    ├─→ parseFiles()
-    ├─→ extractAndSaveAtoms()     # AtomExtractionPhase
-    │   └─→ extractTreeSitterMetadata()  # ← NUEVO: Tree-sitter → Schema
-    ├─→ buildCalledByLinks()      # 6 sub-pasos de linkage
-    ├─→ resolveImports()
-    ├─→ normalizePaths()
-    ├─→ buildSystemGraph()
-    ├─→ enrichWithCulture()       # ZERO LLM
-    ├─→ generateAnalysisReport()
-    └─→ saveEnhancedSystemMap()   # SQLite bulk insert
+    ├─→ [PHASE 1: FAST BOOT < 5s]
+    │   ├─→ scanProjectFiles()
+    │   ├─→ parseFiles() (Tree-sitter)
+    │   ├─→ Structural Atom Extraction (Nombres, Líneas, Firmas, Imports)
+    │   └─→ saveSystemMap() → MCP Tools DISPONIBLES
+    │
+    ├─→ [PHASE 2: DEEP SEMANTICS - Background/Lazy]
+    │   ├─→ extractDataFlow() & extractSemanticDomain()
+    │   ├─→ buildCalledByLinks() (Cross-file linkage)
+    │   ├─→ enrichWithCulture()
+    │   └─→ saveEnhancedSystemMap() (Actualizaciones incrementales)
 ```
 
-**Performance**: 13,485 átomos en ~30-60 segundos (startup inicial)
+**Performance Objetivo**: 18,500 átomos en <5 segundos (TTI Phase 1).
 
-### Schema de Átomos (v0.9.62)
+### Schema de Átomos (Status: Híbrido Actual)
 
 **Campos nuevos agregados desde Tree-sitter**:
 
@@ -508,16 +503,14 @@ npm run clean && npm run analyze
 - ⏳ Eliminar extractores duplicados (regex vs Tree-sitter)
 - ⏳ Migrar todos los trackers a Tree-sitter
 
-### Q3 2026 - Performance
+### Q3 2026 - Boot Ultrarrápido (Lazy Indexing)
 
-- Optimizar cache de Tree-sitter por archivo
-- Parallelizar análisis de archivos independientes
-- Reducir startup time de 60s a 30s
-- Mejor detección de `isExported` para arrow functions
-- Análisis de tipos TypeScript más preciso
-- Performance mejorado en proyectos grandes
+- ✅ Eliminar overhead de microtask asincrónicas en workers
+- ⏳ Mover Extractores Semánticos a Phase 2 (Background Queue)
+- ⏳ Reducir startup time de 60s a < 5s (Structural only)
+- ⏳ Analysis "On-Demand" (cuando una tool MCP solicita un archivo específico)
 
-### Q3 2026 - Intra-Atómico
+### Q4 2026 - Intra-Atómico
 
 - Dentro de cada transformación, ver los **sub-átomos**
 - Detectar precision loss en cálculos financieros

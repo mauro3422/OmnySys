@@ -35,65 +35,74 @@ export async function detectEventPatterns(code, filePath = '') {
 
   let currentFunction = 'module-level';
 
-  function walk(node) {
-    // Rastrear contexto de función
-    let isFunction = FUNCTION_NODE_TYPES.includes(node.type);
+  const cursor = tree.rootNode.walk();
+
+  function traverse() {
+    const nodeType = cursor.nodeType;
+    let isFunction = FUNCTION_NODE_TYPES.includes(nodeType);
     let oldContext = currentFunction;
 
-    if (isFunction) {
-      const nameNode = node.childForFieldName('name');
-      currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
-    }
+    if (isFunction || nodeType === 'call_expression') {
+      const node = cursor.currentNode;
 
-    // Detectar llamadas a métodos de eventos
-    if (isMethodCall(node)) {
-      const functionNode = node.childForFieldName('function');
-      const methodName = getMethodName(functionNode, code);
-      const objectName = getObjectName(functionNode, code);
+      if (isFunction) {
+        const nameNode = node.childForFieldName('name');
+        currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
+      }
 
-      const argsNode = node.childForFieldName('arguments');
-      const namedArgs = argsNode ? argsNode.namedChildren : [];
-      const firstArg = namedArgs[0];
+      // Detectar llamadas a métodos de eventos
+      if (isMethodCall(node)) {
+        const functionNode = node.childForFieldName('function');
+        const methodName = getMethodName(functionNode, code);
+        const objectName = getObjectName(functionNode, code);
 
-      if (firstArg) {
-        const eventName = extractEventName(firstArg, code);
+        const argsNode = node.childForFieldName('arguments');
+        const namedArgs = argsNode ? argsNode.namedChildren : [];
+        const firstArg = namedArgs[0];
 
-        if (eventName) {
-          // Buscar listeners
-          if (EVENT_PATTERNS.listeners.includes(methodName)) {
-            eventListeners.push({
-              filePath,
-              line: startLine(node),
-              column: node.startPosition.column,
-              functionContext: currentFunction,
-              eventName,
-              pattern: methodName,
-              objectName,
-              confidence: getConfidence(firstArg),
-              handlerLine: startLine(node)
-            });
-          }
+        if (firstArg) {
+          const eventName = extractEventName(firstArg, code);
 
-          // Buscar emitters
-          if (EVENT_PATTERNS.emitters.includes(methodName)) {
-            eventEmitters.push({
-              filePath,
-              line: startLine(node),
-              column: node.startPosition.column,
-              functionContext: currentFunction,
-              eventName,
-              pattern: methodName,
-              objectName,
-              confidence: getConfidence(firstArg),
-              dataLine: startLine(node)
-            });
+          if (eventName) {
+            // Buscar listeners
+            if (EVENT_PATTERNS.listeners.includes(methodName)) {
+              eventListeners.push({
+                filePath,
+                line: startLine(node),
+                column: node.startPosition.column,
+                functionContext: currentFunction,
+                eventName,
+                pattern: methodName,
+                objectName,
+                confidence: getConfidence(firstArg),
+                handlerLine: startLine(node)
+              });
+            }
+
+            // Buscar emitters
+            if (EVENT_PATTERNS.emitters.includes(methodName)) {
+              eventEmitters.push({
+                filePath,
+                line: startLine(node),
+                column: node.startPosition.column,
+                functionContext: currentFunction,
+                eventName,
+                pattern: methodName,
+                objectName,
+                confidence: getConfidence(firstArg),
+                dataLine: startLine(node)
+              });
+            }
           }
         }
       }
     }
 
-    for (const child of node.namedChildren) {
-      walk(child);
+    if (cursor.gotoFirstChild()) {
+      do {
+        traverse();
+      } while (cursor.gotoNextSibling());
+      cursor.gotoParent();
     }
 
     if (isFunction) {
@@ -101,7 +110,8 @@ export async function detectEventPatterns(code, filePath = '') {
     }
   }
 
-  walk(tree.rootNode);
+  traverse();
+  if (typeof cursor.delete === 'function') cursor.delete();
   // node-tree-sitter no requiere tree.delete(), GC se encarga
 
   return { eventListeners, eventEmitters };

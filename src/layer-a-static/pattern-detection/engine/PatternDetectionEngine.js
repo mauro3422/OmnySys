@@ -27,7 +27,7 @@ export class PatternDetectionEngine {
     this.registry = new PatternDetectorRegistry();
     this.aggregator = new QualityScoreAggregator(this.configManager.getConfig());
     this.results = new Map();
-    
+
     this.registerDefaultDetectors();
   }
 
@@ -39,7 +39,8 @@ export class PatternDetectionEngine {
       { id: 'deepChains', loader: () => import('../detectors/deep-chains-detector.js'), priority: 100 },
       { id: 'sharedObjects', loader: () => import('../detectors/shared-objects-detector/index.js'), priority: 90 },
       { id: 'coupling', loader: () => import('../detectors/coupling-detector.js'), priority: 80 },
-      { id: 'hotspots', loader: () => import('../detectors/hotspots-detector.js'), priority: 70 }
+      { id: 'hotspots', loader: () => import('../detectors/hotspots-detector.js'), priority: 70 },
+      { id: 'performance-patterns', loader: () => import('../detectors/performance-patterns-detector.js'), priority: 60 }
     ];
 
     detectors.forEach(detector => this.registry.register(detector));
@@ -56,12 +57,12 @@ export class PatternDetectionEngine {
     this.configManager.detectProjectType(systemMap);
 
     const detectors = this.registry.getAll();
-    const detectionPromises = detectors.map(detector => 
+    const detectionPromises = detectors.map(detector =>
       this.runDetector(detector, systemMap)
     );
 
     const results = await Promise.allSettled(detectionPromises);
-    
+
     const patternResults = [];
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -96,12 +97,12 @@ export class PatternDetectionEngine {
     try {
       const module = await detector.loader();
       const DetectorClass = module.default || module[Object.keys(module)[0]];
-      
+
       const instance = new DetectorClass({
         config: this.configManager.getThresholds(detector.id),
         globalConfig: this.configManager.getConfig()
       });
-      
+
       return await instance.detect(systemMap);
     } catch (error) {
       logger.error(`Detector ${detector.id} error:`, error.message);

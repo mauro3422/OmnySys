@@ -2,7 +2,7 @@
  * @fileoverview Logic for detecting function types and full names.
  */
 
-import { text } from '../utils.js';
+import { text, startLine } from '../utils.js';
 
 export function detectTypeAndName(node, code) {
   let functionType = node.type.includes('arrow') ? 'arrow'
@@ -41,5 +41,11 @@ export function detectTypeAndName(node, code) {
 
   const fullName = className ? `${className}.${functionName}` : functionName;
 
-  return { functionName, functionType, className, fullName };
+  // FIX: Prevent all anonymous/inline functions from sharing the exact same ID
+  // which causes SQLite ON CONFLICT to silently overwrite 9,500 valid AST nodes into a single row.
+  const isAnonymous = functionName === 'anonymous' || fullName === 'anonymous';
+  const finalName = isAnonymous ? `anonymous_${startLine(node)}` : functionName;
+  const finalFullName = isAnonymous ? `anonymous_${startLine(node)}` : fullName;
+
+  return { functionName: finalName, functionType, className, fullName: finalFullName };
 }

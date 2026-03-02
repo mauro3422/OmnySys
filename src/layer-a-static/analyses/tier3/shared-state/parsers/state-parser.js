@@ -36,72 +36,76 @@ export async function detectGlobalState(code, filePath = '') {
 
     let currentFunction = 'module-level';
 
-    function walk(node) {
-      // Track function context
-      let isFunction = FUNCTION_NODE_TYPES.includes(node.type);
+    const cursor = tree.rootNode.walk();
+
+    function traverse() {
+      const nodeType = cursor.nodeType;
+      let isFunction = FUNCTION_NODE_TYPES.includes(nodeType);
       let oldContext = currentFunction;
 
-      if (isFunction) {
-        const nameNode = node.childForFieldName('name');
-        currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
-      }
+      if (isFunction || nodeType === 'member_expression') {
+        const node = cursor.currentNode;
 
-      if (node.type === 'member_expression') {
-        const objectNode = node.childForFieldName('object');
-        const propertyNode = node.childForFieldName('property');
+        if (isFunction) {
+          const nameNode = node.childForFieldName('name');
+          currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
+        }
 
-        if (objectNode && propertyNode) {
-          const objName = text(objectNode, code);
-          const propName = text(propertyNode, code);
+        if (nodeType === 'member_expression') {
+          const objectNode = node.childForFieldName('object');
+          const propertyNode = node.childForFieldName('property');
 
-          if (objName === 'window' || objName === 'global' || objName === 'globalThis') {
-            const fullRef = `${objName}.${propName}`;
+          if (objectNode && propertyNode) {
+            const objName = text(objectNode, code);
+            const propName = text(propertyNode, code);
 
-            // Determinar si es READ o WRITE
-            let accessType = isPartOfAssignmentLeft(node) ? 'write' : 'read';
+            if (objName === 'window' || objName === 'global' || objName === 'globalThis') {
+              const fullRef = `${objName}.${propName}`;
+              let accessType = isPartOfAssignmentLeft(node) ? 'write' : 'read';
 
-            const location = {
-              filePath,
-              line: startLine(node),
-              column: node.startPosition.column,
-              functionContext: currentFunction,
-              type: accessType,
-              objectName: objName,
-              propName,
-              fullReference: fullRef,
-              confidence: 1.0
-            };
+              const location = {
+                filePath,
+                line: startLine(node),
+                column: node.startPosition.column,
+                functionContext: currentFunction,
+                type: accessType,
+                objectName: objName,
+                propName,
+                fullReference: fullRef,
+                confidence: 1.0
+              };
+              globalAccess.push(location);
 
-            globalAccess.push(location);
+              if (!propertyAccessMap.has(propName)) {
+                propertyAccessMap.set(propName, { reads: [], writes: [] });
+              }
 
-            // Mapear propiedad
-            if (!propertyAccessMap.has(propName)) {
-              propertyAccessMap.set(propName, { reads: [], writes: [] });
-            }
-
-            if (accessType === 'read') {
-              readProperties.add(propName);
-              propertyAccessMap.get(propName).reads.push(location);
-            } else {
-              writeProperties.add(propName);
-              propertyAccessMap.get(propName).writes.push(location);
+              if (accessType === 'read') {
+                readProperties.add(propName);
+                propertyAccessMap.get(propName).reads.push(location);
+              } else {
+                writeProperties.add(propName);
+                propertyAccessMap.get(propName).writes.push(location);
+              }
             }
           }
         }
       }
 
-      // Recorrer hijos
-      for (const child of node.namedChildren) {
-        walk(child);
+      if (cursor.gotoFirstChild()) {
+        do {
+          traverse();
+        } while (cursor.gotoNextSibling());
+        cursor.gotoParent();
       }
 
-      // Restore context
       if (isFunction) {
         currentFunction = oldContext;
       }
     }
 
-    walk(tree.rootNode);
+    traverse();
+    if (typeof cursor.delete === 'function') cursor.delete();
   } catch (error) {
     logger.warn(`⚠️  Error parsing ${filePath}:`, error.message);
   }

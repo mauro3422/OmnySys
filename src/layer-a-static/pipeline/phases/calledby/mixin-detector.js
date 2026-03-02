@@ -16,14 +16,16 @@
  * @param {Map} fileNamespaceMap — resultado de buildNamespaceMap
  * @returns {Map<string, Set<string>>}
  */
-export function detectMixins(parsedFiles, fileNamespaceMap) {
+export async function detectMixins(parsedFiles, fileNamespaceMap) {
     const mixinMap = new Map(); // memberAbsPath → Set(otherMemberAbsPaths)
+    const { getSourceCode } = await import('./calledby-linker-utils.js');
 
     for (const [absPath, parsedFile] of Object.entries(parsedFiles)) {
         const nsMap = fileNamespaceMap.get(absPath);
         if (!nsMap || nsMap.size === 0) continue;
 
-        const source = parsedFile.source || '';
+        const source = await getSourceCode(absPath, parsedFile);
+        if (!source) continue;
         const mixed = new Set();
 
         // Detectar TODOS los aliases presentes en un Object.assign:

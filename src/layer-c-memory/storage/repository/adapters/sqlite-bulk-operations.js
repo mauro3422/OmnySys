@@ -33,11 +33,11 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
    * @param {Array} atoms - Array de átomos a guardar
    * @returns {Array} - Átomos guardados
    */
-  saveMany(atoms) {
+  saveMany(atoms, fileHash = null) {
     if (!atoms || atoms.length === 0) return atoms;
 
     const firstAtom = atoms[0];
-    const rawFilePath = firstAtom.file_path || firstAtom.file || 'unknown';
+    const rawFilePath = firstAtom.file_path || firstAtom.file || firstAtom.filePath || 'unknown';
     const filePath = this._normalize(rawFilePath);
 
     // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
@@ -63,16 +63,22 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       const now = new Date().toISOString();
       const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
 
-      this.db.prepare(`
-        INSERT INTO files (path, last_analyzed, total_lines)
-        VALUES (?, ?, ?)
-        ON CONFLICT(path) DO UPDATE SET 
-          last_analyzed = excluded.last_analyzed,
-          total_lines = MAX(total_lines, excluded.total_lines)
-      `).run(filePath, now, totalLines);
+      const sql = fileHash
+        ? `INSERT INTO files (path, last_analyzed, total_lines, hash) VALUES (?, ?, ?, ?)
+           ON CONFLICT(path) DO UPDATE SET 
+             last_analyzed = excluded.last_analyzed,
+             total_lines = MAX(total_lines, excluded.total_lines),
+             hash = excluded.hash`
+        : `INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
+           ON CONFLICT(path) DO UPDATE SET 
+             last_analyzed = excluded.last_analyzed,
+             total_lines = MAX(total_lines, excluded.total_lines)`;
+
+      const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
+      this.db.prepare(sql).run(...params);
     });
 
-    this._logger.info(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath}`);
+    this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
 
     return atoms;
   }
@@ -106,49 +112,46 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     ];
 
     const columnStr = columns.join(', ');
+    const placeholders = columns.map(() => '?').join(', ');
+    const sql = `INSERT OR REPLACE INTO atoms (${columnStr}) VALUES (${placeholders})`;
+    const stmt = this.db.prepare(sql);
 
     connectionManager.transaction(() => {
-      for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
-        const batch = atoms.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
+      for (const atom of atoms) {
+        // Asegurar normalización antes de convertir a row
+        atom.filePath = this._normalize(atom.file || atom.filePath);
+        atom.file = atom.filePath;
 
-        const placeholders = batch.map(() =>
-          `(${columns.map(() => '?').join(', ')})`
-        ).join(', ');
-
-        const sql = `INSERT OR REPLACE INTO atoms (${columnStr}) VALUES ${placeholders}`;
-
-        const flatValues = batch.flatMap(atom => {
-          // Asegurar normalización antes de convertir a row
-          atom.filePath = this._normalize(atom.file || atom.filePath);
-          atom.file = atom.filePath;
+        // Mantener el ID consistente (si no tiene lNo, detectTypeAndName ya se encargó del resto)
+        if (!atom.id || !atom.id.includes('::')) {
           atom.id = `${atom.filePath}::${atom.name}`;
+        }
 
-          const row = atomToRow(atom);
-          return [
-            row.id, row.name, row.atom_type, row.file_path,
-            row.line_start, row.line_end, row.lines_of_code, row.complexity, row.parameter_count,
-            row.is_exported, row.is_async, row.is_test_callback, row.test_callback_type,
-            row.archetype_type, row.archetype_severity, row.archetype_confidence,
-            row.purpose_type, row.purpose_confidence, row.is_dead_code,
-            row.importance_score, row.coupling_score, row.cohesion_score, row.stability_score,
-            row.propagation_score, row.fragility_score, row.testability_score,
-            row.callers_count, row.callees_count, row.dependency_depth, row.external_call_count,
-            row.in_degree, row.out_degree, row.centrality_score, row.centrality_classification, row.risk_level, row.risk_prediction,
-            row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
-            row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
-            row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
-            row.shared_state_json, row.event_emitters_json, row.event_listeners_json, row.scope_type,
-            row.called_by_json, row.function_type,
-            row.has_error_handling, row.has_network_calls
-          ];
-        });
+        const row = atomToRow(atom);
+        const values = [
+          row.id, row.name, row.atom_type, row.file_path,
+          row.line_start, row.line_end, row.lines_of_code, row.complexity, row.parameter_count,
+          row.is_exported, row.is_async, row.is_test_callback, row.test_callback_type,
+          row.archetype_type, row.archetype_severity, row.archetype_confidence,
+          row.purpose_type, row.purpose_confidence, row.is_dead_code,
+          row.importance_score, row.coupling_score, row.cohesion_score, row.stability_score,
+          row.propagation_score, row.fragility_score, row.testability_score,
+          row.callers_count, row.callees_count, row.dependency_depth, row.external_call_count,
+          row.in_degree, row.out_degree, row.centrality_score, row.centrality_classification, row.risk_level, row.risk_prediction,
+          row.extracted_at, now, row.change_frequency, row.age_days, row.generation,
+          row.signature_json, row.data_flow_json, row.calls_json, row.temporal_json,
+          row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
+          row.shared_state_json, row.event_emitters_json, row.event_listeners_json, row.scope_type,
+          row.called_by_json, row.function_type,
+          row.has_error_handling, row.has_network_calls
+        ];
 
-        this.db.prepare(sql).run(...flatValues);
-        totalSaved += batch.length;
+        stmt.run(...values);
+        totalSaved++;
       }
     });
 
-    this._logger.info(`[SQLiteAdapter] Bulk saved ${totalSaved} atoms in ${totalBatches} batches`);
+    this._logger.debug(`[SQLiteAdapter] Bulk saved ${totalSaved} atoms using single transaction`);
   }
 
   saveRelationsBulk(relations, batchSize = 500) {
@@ -157,8 +160,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     const now = new Date().toISOString();
     const totalBatches = Math.ceil(relations.length / batchSize);
     let totalSaved = 0;
-
-    const checkStmt = this.db.prepare('SELECT 1 FROM atoms WHERE id = ?');
 
     connectionManager.transaction(() => {
       for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
@@ -177,8 +178,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
             calleeName = 'unknown';
           }
 
-          // Si el calleeName parece un ID completo, lo normalizamos como ID
-          // Si no, asumimos que es un nombre en el mismo archivo
           let targetId;
           if (calleeName.includes('::')) {
             targetId = this._normalizeId(calleeName);
@@ -186,9 +185,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
             const filePath = normalizedSourceId.split('::')[0];
             targetId = `${filePath}::${calleeName}`;
           }
-
-          const targetExists = checkStmt.get(targetId);
-          if (!targetExists) continue;
 
           const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
           const lineNumber = typeof call?.line === 'number' ? call.line : null;
@@ -223,6 +219,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       }
     });
 
-    this._logger.info(`[SQLiteAdapter] Bulk saved ${totalSaved} relations in ${totalBatches} batches`);
+    this._logger.debug(`[SQLiteAdapter] Bulk saved ${totalSaved} relations in ${totalBatches} batches (without per-row check)`);
   }
 }
