@@ -131,12 +131,16 @@ export function _onJobComplete(job, result) {
     const isInitialMilestone = processed === 1 || processed === 10;
     const isStepMilestone = processed % 50 === 0;
 
-    if (isInitialMilestone || isStepMilestone) {
+    if (isInitialMilestone || isStepMilestone || processed === total) {
       const progressBarWidth = 20;
-      const progress = Math.floor((processed / total) * progressBarWidth);
+      const progress = Math.min(progressBarWidth, Math.floor((processed / total) * progressBarWidth));
       const bar = '='.repeat(progress) + '>'.repeat(progress < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progress - 1));
 
       logger.info(`📊 Phase 2: [${bar}] ${percentage}% (${processed}/${total} files)`);
+
+      if (processed === total && total > 0) {
+        logger.info('✅ Phase 2 Background Analysis Complete!');
+      }
     } else {
       logger.debug(`   ✅ Completed: ${job.filePath} (${processed}/${total})`);
     }

@@ -150,10 +150,26 @@ export async function _deriveStaticInsights() {
  * Background loop that continuously processes Phase 1 (Structural) files
  * into Phase 2 (Deep) files without blocking the main event loop.
  */
-export function _startPhase2BackgroundIndexer() {
+export async function _startPhase2BackgroundIndexer() {
   if (this._phase2Interval) return;
 
   logger.info('🔄 Starting Background Phase 2 Indexer (Deep Metadata)...');
+
+  // Initialize total count if possible
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(this.projectPath);
+    if (repo && repo.db) {
+      const countResult = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
+      this.totalFilesToAnalyze = countResult?.count || 0;
+      this.processedFiles = new Set(); // Reset for Phase 2 tracking
+      if (this.totalFilesToAnalyze > 0) {
+        logger.info(`📊 Phase 2: Pending analysis for ${this.totalFilesToAnalyze} files`);
+      }
+    }
+  } catch (e) {
+    logger.debug('Could not initialize Phase 2 total count yet');
+  }
 
   this._phase2Interval = setInterval(async () => {
     // Only queue new background files if the worker queue is basically empty
