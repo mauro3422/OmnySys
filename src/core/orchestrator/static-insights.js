@@ -30,16 +30,16 @@ const logger = createLogger('OmnySys:static:insights');
  * Mapeo de purpose de átomo a responsabilidad legible.
  */
 const PURPOSE_TO_RESPONSIBILITY = {
-  API_EXPORT:       'api',
-  EVENT_HANDLER:    'event-handling',
-  TEST_HELPER:      'testing',
-  TIMER_ASYNC:      'async-orchestration',
-  NETWORK_HANDLER:  'network',
-  INTERNAL_HELPER:  'internal-logic',
-  CONFIG_SETUP:     'configuration',
-  SCRIPT_MAIN:      'entry-point',
-  CLASS_METHOD:     'class-api',
-  DEAD_CODE:        'unused',
+  API_EXPORT: 'api',
+  EVENT_HANDLER: 'event-handling',
+  TEST_HELPER: 'testing',
+  TIMER_ASYNC: 'async-orchestration',
+  NETWORK_HANDLER: 'network',
+  INTERNAL_HELPER: 'internal-logic',
+  CONFIG_SETUP: 'configuration',
+  SCRIPT_MAIN: 'entry-point',
+  CLASS_METHOD: 'class-api',
+  DEAD_CODE: 'unused',
 };
 
 /**
@@ -138,7 +138,65 @@ export async function _deriveStaticInsights() {
       issues: { stats: { totalIssues: 0 } }
     });
 
+    // Initiate background Phase 2 deep scanning
+    this._startPhase2BackgroundIndexer();
+
   } catch (error) {
     logger.error('  ❌ Static insights init failed:', error.message);
   }
+}
+
+/**
+ * Background loop that continuously processes Phase 1 (Structural) files
+ * into Phase 2 (Deep) files without blocking the main event loop.
+ */
+export function _startPhase2BackgroundIndexer() {
+  if (this._phase2Interval) return;
+
+  logger.info('🔄 Starting Background Phase 2 Indexer (Deep Metadata)...');
+
+  this._phase2Interval = setInterval(async () => {
+    // Only queue new background files if the worker queue is basically empty
+    if (this.queue.size() > 5 || !this.isRunning) return;
+
+    try {
+      const { getRepository } = await import('#layer-c/storage/repository/index.js');
+      const repo = getRepository(this.projectPath);
+
+      if (!repo || !repo.db) return;
+
+      // Find up to 5 files that have incomplete Phase 2 atoms
+      const rows = repo.db.prepare(`
+        SELECT DISTINCT file_path 
+        FROM atoms 
+        WHERE is_phase2_complete = 0 
+        LIMIT 5
+      `).all();
+
+      if (rows.length === 0) {
+        // Everything is deeply scanned!
+        return;
+      }
+
+      const pathModule = await import('path');
+
+      for (const row of rows) {
+        const filePath = pathModule.default.join(this.projectPath, row.file_path);
+
+        // Ensure we don't queue the same file twice if it's already pending
+        if (this.queue.findPosition(filePath) === -1) {
+          logger.debug(`[Background Phase 2] Queuing deep scan for: ${row.file_path}`);
+          this.queue.enqueue(filePath, 'low');
+        }
+      }
+
+      // Trigger processing
+      this._processNext();
+
+    } catch (e) {
+      if (!e.message.includes('not initialized')) {
+        logger.warn(`⚠️ Background Phase 2 indexer error: ${e.message}`);
+      }
+    }
+  }, 10000); // Check every 10 seconds
 }
