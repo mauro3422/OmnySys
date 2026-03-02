@@ -87,13 +87,14 @@ async function runWorker() {
             // 2. PARSE (Tree-sitter reutiliza un parser del pool de 20)
             const parsedFile = await parseFileFromDisk(absoluteFilePath, content);
 
-            // 3. EXTRACT
+            // 3. EXTRACT (Phase 1 Lazy Indexing: Fast Structural Scan)
             const context = {
                 filePath: relativeFilePath,
                 code: content,
                 fullFileCode: content,
                 fileInfo: parsedFile,
-                fileMetadata: parsedFile.metadata || {}
+                fileMetadata: parsedFile.metadata || {},
+                extractionDepth: 'structural'
             };
 
             await atomPhase.execute(context);

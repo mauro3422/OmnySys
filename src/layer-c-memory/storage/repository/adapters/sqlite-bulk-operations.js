@@ -108,7 +108,7 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',
       'shared_state_json', 'event_emitters_json', 'event_listeners_json', 'scope_type',
       'called_by_json', 'function_type',
-      'has_error_handling', 'has_network_calls'
+      'has_error_handling', 'has_network_calls', 'is_phase2_complete'
     ];
 
     const columnStr = columns.join(', ');
@@ -143,7 +143,7 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
           row.error_flow_json, row.performance_json, row.dna_json, row.derived_json, row._meta_json,
           row.shared_state_json, row.event_emitters_json, row.event_listeners_json, row.scope_type,
           row.called_by_json, row.function_type,
-          row.has_error_handling, row.has_network_calls
+          row.has_error_handling, row.has_network_calls, row.is_phase2_complete
         ];
 
         stmt.run(...values);

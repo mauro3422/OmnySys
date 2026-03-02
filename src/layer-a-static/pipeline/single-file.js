@@ -16,7 +16,7 @@ import { PipelineRunner } from './runner.js';
 /**
  * Análisis rápido de un solo archivo
  */
-export async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}) {
+export async function analyzeSingleFile(absoluteRootPath, singleFile, options = {}, extractionDepth = 'structural') {
   const { verbose = true, incremental = false } = options;
   const targetFilePath = path.join(absoluteRootPath, singleFile);
 
@@ -50,7 +50,10 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
       ctx.metadata = extractAllMetadata(ctx.targetFilePath, ctx.parsedFile.source || '');
     })
     .addPhase('Atom Extraction', async (ctx) => {
-      ctx.atoms = await extractAtoms(ctx.parsedFile, ctx.parsedFile.source || '', ctx.metadata, ctx.singleFile);
+      ctx.atoms = await extractAtoms(ctx.parsedFile, ctx.parsedFile.source || '', ctx.metadata, ctx.singleFile, extractionDepth);
+      if (ctx.atoms.length > 0) {
+        console.log(`[DEBUG] single-file.js extractAtoms output: name=${ctx.atoms[0].name}, depthArg=${extractionDepth}, isPhase2Complete=${ctx.atoms[0].isPhase2Complete}`);
+      }
     })
     .addPhase('Persistence', async (ctx) => {
       await saveAtoms(ctx.absoluteRootPath, ctx.singleFile, ctx.atoms);

@@ -24,9 +24,10 @@ import { semanticAnalyzer } from '#core/analysis/semantic-analyzer/index.js';
  * @param {string} code - Source code
  * @param {Object} fileMetadata - File-level metadata
  * @param {string} filePath - File path
+ * @param {string} extractionDepth - Depth of extraction: 'structural' or 'deep'
  * @returns {Promise<Array>} - Array of atom metadata
  */
-export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
+export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extractionDepth = 'deep') {
   const atoms = [];
 
   const fileImports = fileInfo.imports || [];
@@ -34,19 +35,19 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
   const functionAtoms = await Promise.all(
     (fileInfo.functions || []).map(async (functionInfo) => {
       const functionCode = extractFunctionCode(code, functionInfo);
-      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports, code);
+      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports, code, extractionDepth);
     })
   );
   atoms.push(...functionAtoms);
 
 
   const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
-    return buildVariableAtom(constInfo, filePath, 'constant', fileImports);
+    return buildVariableAtom(constInfo, filePath, 'constant', fileImports, extractionDepth);
   });
   atoms.push(...constantAtoms);
 
   const objectAtoms = (fileInfo.objectExports || []).map(objInfo => {
-    return buildVariableAtom(objInfo, filePath, 'config', fileImports);
+    return buildVariableAtom(objInfo, filePath, 'config', fileImports, extractionDepth);
   });
   atoms.push(...objectAtoms);
 
@@ -59,11 +60,17 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath) {
  * @param {string} functionCode - Extracted function source code
  * @param {Object} fileMetadata - File-level metadata
  * @param {string} filePath - File path
+ * @param {string} filePath - File path
  * @param {Array} imports - File-level imports
+ * @param {string} fullFileCode - Full file source code
+ * @param {string} extractionDepth - 'structural' or 'deep'
  * @returns {Promise<Object>} - Atom metadata
  */
-export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = [], fullFileCode = null) {
-  const extractorResults = await runAtomExtractors({
+export async function extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, imports = [], fullFileCode = null, extractionDepth = 'deep') {
+  const isStructural = extractionDepth === 'structural';
+
+  // Phase 1: Skip deep extractors if structural scan
+  const extractorResults = isStructural ? {} : await runAtomExtractors({
     functionCode,
     functionInfo,
     fileMetadata,
@@ -71,7 +78,8 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     fullFileCode: fullFileCode || functionCode // Fallback to function code if full code not provided
   });
 
-  const dataFlowV2 = extractDataFlowSafe(functionInfo, functionCode, filePath);  // sync
+  // Phase 1: Data flow is a heavy AST walk, skip if structural
+  const dataFlowV2 = isStructural ? null : extractDataFlowSafe(functionInfo, functionCode, filePath);
 
   const complexity = calculateComplexity(functionCode);
   const linesOfCode = functionCode.split('\n').length;
@@ -89,8 +97,15 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     ...extractorResults
   });
 
-  // Integrated Core Semantic Analysis (sync — JsAnalyzer has no async operations)
-  atomMetadata.semantic = semanticAnalyzer.analyzeAtom(atomMetadata, functionCode);
+  // Flag phase 2 tracking
+  atomMetadata.isPhase2Complete = !isStructural;
+
+  if (!isStructural) {
+    // Phase 2: Integrated Core Semantic Analysis
+    atomMetadata.semantic = semanticAnalyzer.analyzeAtom(atomMetadata, functionCode);
+  } else {
+    atomMetadata.semantic = {};
+  }
 
   enrichWithDNA(atomMetadata, functionInfo.name);
 

@@ -29,15 +29,16 @@ export class AtomExtractionPhase extends ExtractionPhase {
    * @param {string} context.code - Source code
    * @param {Object} context.fileInfo - Parsed file info with functions
    * @param {Object} context.fileMetadata - File-level metadata
+   * @param {string} context.extractionDepth - Optional depth: 'structural' or 'deep' (default)
    * @returns {Promise<Object>} - Context with extracted atoms
    */
   async execute(context) {
-    const { filePath, code, fileInfo, fileMetadata } = context;
+    const { filePath, code, fileInfo, fileMetadata, extractionDepth = 'deep' } = context;
 
-    logger.debug(`Phase 1: Extracting atoms from ${filePath}`);
+    logger.debug(`Phase 1: Extracting atoms from ${filePath} (Depth: ${extractionDepth})`);
 
     // Extract atoms (functions)
-    const atoms = await extractAtoms(fileInfo, code, fileMetadata, filePath);
+    const atoms = await extractAtoms(fileInfo, code, fileMetadata, filePath, extractionDepth);
 
     // Build call graph relationships
     buildCallGraph(atoms);

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS atoms (
     purpose_type TEXT,
     purpose_confidence REAL,
     is_dead_code BOOLEAN DEFAULT 0,
+    is_phase2_complete BOOLEAN DEFAULT 0,
     
     -- Vectores matematicos (para Semantic Algebra)
     importance_score REAL DEFAULT 0,       -- PageRank-like (0-1)

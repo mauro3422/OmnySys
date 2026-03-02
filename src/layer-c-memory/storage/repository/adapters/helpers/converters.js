@@ -53,6 +53,7 @@ export function atomToRow(atom) {
     purpose_type: safePurpose(atom.purpose),
     purpose_confidence: safeNumber(atom.purposeConfidence || atom.purpose?.confidence),
     is_dead_code: safeBoolInt(atom.isDeadCode || atom.purpose?.isDeadCode),
+    is_phase2_complete: safeBoolInt(atom.isPhase2Complete),
 
     // Vectores matematicos - REAL numbers
     importance_score: safeNumber(atom.importanceScore || atom.derived?.fragilityScore, 0),
@@ -143,6 +144,7 @@ export function rowToAtom(row) {
     purpose: row.purpose_type,
     purposeConfidence: row.purpose_confidence,
     isDeadCode: Boolean(row.is_dead_code),
+    isPhase2Complete: Boolean(row.is_phase2_complete),
 
     // Vectores matematicos
     importanceScore: row.importance_score,

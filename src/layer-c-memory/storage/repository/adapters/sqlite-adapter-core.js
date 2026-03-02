@@ -95,7 +95,7 @@ export class SQLiteAdapterCore extends AtomRepository {
       'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',
       'shared_state_json', 'event_emitters_json', 'event_listeners_json', 'scope_type',
       'called_by_json', 'function_type',
-      'has_error_handling', 'has_network_calls'
+      'has_error_handling', 'has_network_calls', 'is_phase2_complete'
     ];
     const placeholders = columns.map(() => '?').join(', ');
     return `INSERT OR REPLACE INTO atoms (${columns.join(', ')}) VALUES (${placeholders})`;

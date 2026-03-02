@@ -60,6 +60,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'purpose_type', type: 'TEXT', nullable: true, description: 'Propósito del átomo' },
       { name: 'purpose_confidence', type: 'REAL', nullable: true, description: 'Confianza del propósito' },
       { name: 'is_dead_code', type: 'BOOLEAN', default: 0, description: 'Es código muerto' },
+      { name: 'is_phase2_complete', type: 'BOOLEAN', default: 0, description: 'Si completó el análisis semántico profundo (Lazy Indexing)', addedIn: 'v0.9.73' },
 
       // Vectores matemáticos (Semantic Algebra)
       { name: 'importance_score', type: 'REAL', default: 0, description: 'Score de importancia (0-1)' },
@@ -126,7 +127,8 @@ export const TABLE_DEFINITIONS = {
       { name: 'idx_atoms_complexity', columns: ['complexity DESC'] },
       { name: 'idx_atoms_coupling', columns: ['coupling_score DESC'] },
       { name: 'idx_atoms_file_archetype', columns: ['file_path', 'archetype_type'] },
-      { name: 'idx_atoms_exported_complexity', columns: ['is_exported', 'complexity DESC'] }
+      { name: 'idx_atoms_exported_complexity', columns: ['is_exported', 'complexity DESC'] },
+      { name: 'idx_atoms_phase2', columns: ['is_phase2_complete'] }
     ]
   },
 

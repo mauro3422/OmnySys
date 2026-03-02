@@ -49,7 +49,7 @@ export class QueryGraphTool extends SemanticQueryTool {
                     }
 
                     const atoms = this.repo.query({ name: symbolName });
-                    
+
                     // Procesar resultados
                     let instances = atoms.map(a => {
                         const base = {
@@ -59,7 +59,7 @@ export class QueryGraphTool extends SemanticQueryTool {
                             params: a.params || [],
                             exports: a.exports || false
                         };
-                        
+
                         // Agregar datos semánticos si se solicitan
                         if (options.includeSemantic) {
                             base.semantic = {
@@ -72,7 +72,7 @@ export class QueryGraphTool extends SemanticQueryTool {
                                 hasErrorHandling: a.has_error_handling
                             };
                         }
-                        
+
                         return base;
                     });
 
@@ -89,8 +89,28 @@ export class QueryGraphTool extends SemanticQueryTool {
                         return this.formatError('MISSING_PARAMS', 'filePath and symbolName are required for details query');
                     }
 
-                    const atom = this.getExactAtom(symbolName, filePath);
+                    let atom = this.getExactAtom(symbolName, filePath);
                     if (!atom) return this.formatError('NOT_FOUND', `Symbol ${symbolName} not found in ${filePath}`);
+
+                    // Phase 2: On-Demand Lazy Indexing
+                    if (!atom.isPhase2Complete) {
+                        this.logger.info(`[Lazy Indexing] Triggering Phase 2 On-Demand for atom: ${symbolName} in ${filePath}`);
+                        try {
+                            // Import and run single-file analyzer with structural = false
+                            const { analyzeSingleFile } = await import('../../../layer-a-static/pipeline/single-file.js');
+                            const absoluteRootPath = this.context?.projectPath || process.cwd();
+
+                            await analyzeSingleFile(absoluteRootPath, filePath, {
+                                verbose: false,
+                                incremental: false // force re-evaluation of this file for deep semantics
+                            }, 'deep'); // specify deep extraction
+
+                            // Reload atom after Phase 2 completes
+                            atom = this.getExactAtom(symbolName, filePath);
+                        } catch (err) {
+                            this.logger.error(`[Lazy Indexing] Phase 2 failed for ${symbolName}: ${err.message}`);
+                        }
+                    }
 
                     // Agregar datos semánticos si se solicitan
                     if (options.includeSemantic) {

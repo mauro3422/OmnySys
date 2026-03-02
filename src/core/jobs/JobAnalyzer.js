@@ -33,7 +33,7 @@ export class JobAnalyzer {
 
       // Step 1: Re-analyze with Layer A
       await this.runLayerAAnalysis(job);
-      
+
       this.callbacks.onProgress?.(job, 50);
 
       let result;
@@ -51,10 +51,10 @@ export class JobAnalyzer {
 
       this.callbacks.onProgress?.(job, 100);
       this.worker.analyzedFiles.add(job.filePath);
-      
+
       logger.info(`✅ Analysis complete for ${path.basename(job.filePath)}`);
       this.callbacks.onComplete?.(job, result);
-      
+
       return result;
 
     } catch (error) {
@@ -77,8 +77,8 @@ export class JobAnalyzer {
       const { analyzeSingleFile } = await import('../../layer-a-static/pipeline/single-file.js');
       const layerAResult = await analyzeSingleFile(this.rootPath, job.filePath, {
         verbose: false,
-        incremental: true
-      });
+        incremental: false // Phase 2 lazy indexing requires deep re-extraction regardless of hash match
+      }, 'deep');
 
       job.fileAnalysis = {
         ...job.fileAnalysis,
@@ -106,10 +106,10 @@ export class JobAnalyzer {
    */
   async runLLMAnalysis(job, signal, jobId) {
     logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
-    
+
     const llmService = await this.worker._getLLMService();
     logger.debug(`[Worker:${jobId}] LLM service = ${!!llmService}`);
-    
+
     if (!llmService) {
       logger.warn(`   ⚠️  LLM not available, using static analysis only`);
       return await this.runStaticAnalysis(job);

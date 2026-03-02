@@ -11,10 +11,11 @@
  * @param {Array} imports - File-level imports
  * @returns {Object} - Atom metadata
  */
-export function buildVariableAtom(varInfo, filePath, varType = 'constant', imports = []) {
+export function buildVariableAtom(varInfo, filePath, varType = 'constant', imports = [], extractionDepth = 'deep') {
   const name = varInfo.name;
   const line = varInfo.line || 0;
-  
+  const isStructural = extractionDepth === 'structural';
+
   return {
     id: `${filePath}::${name}`,
     name,
@@ -23,14 +24,15 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
     line,
     endLine: line,
     linesOfCode: 1,
-    
+    isPhase2Complete: !isStructural,
+
     kind: 'const',
     valueType: varType === 'config' ? 'object' : (varInfo.valueType || 'unknown'),
     valueProperties: varInfo.properties || varInfo.propertyDetails || [],
     isSignificant: varType === 'config',
-    
+
     isExported: true,
-    
+
     complexity: 1,
     hasSideEffects: false,
     hasNetworkCalls: false,
@@ -38,19 +40,19 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
     hasStorageAccess: false,
     hasLogging: false,
     networkEndpoints: [],
-    
+
     calls: [],
     internalCalls: [],
     externalCalls: [],
     externalCallCount: 0,
-    
+
     className: null,
     functionType: 'variable',
     isAsync: false,
     hasErrorHandling: false,
     hasNestedLoops: false,
     hasBlockingOps: false,
-    
+
     hasLifecycleHooks: false,
     lifecycleHooks: [],
     hasCleanupPatterns: false,
@@ -58,7 +60,7 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
       patterns: { timers: [], asyncPatterns: null, events: [], lifecycleHooks: [], executionOrder: { mustRunBefore: [], mustRunAfter: [], canRunInParallel: [] } },
       executionOrder: null
     },
-    
+
     typeContracts: {
       params: [],
       returns: null,
@@ -67,9 +69,9 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
       signature: `const ${name}: ${varType}`,
       confidence: 0.8
     },
-    
+
     errorFlow: { throws: [], catches: [], tryBlocks: [], unhandledCalls: [], propagation: 'none' },
-    
+
     performance: {
       complexity: { cyclomatic: 1, cognitive: 0, bigO: 'O(1)' },
       expensiveOps: { nestedLoops: 0, recursion: false, blockingOps: [], heavyCalls: [] },
@@ -77,7 +79,7 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
       estimates: { executionTime: 'instant', blocking: false, async: false, expensiveWithCache: false },
       impactScore: 0
     },
-    
+
     dataFlow: {
       graph: { nodes: [], edges: [], meta: { totalNodes: 0, totalEdges: 0 } },
       inputs: [],
@@ -88,7 +90,7 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
     },
     hasDataFlow: true,
     dataFlowAnalysis: { invariants: [], inferredTypes: {} },
-    
+
     dna: {
       structuralHash: `var-${name}-${line}`,
       patternHash: varType,
@@ -103,27 +105,27 @@ export function buildVariableAtom(varInfo, filePath, varType = 'constant', impor
       version: '1.0',
       id: `var-${name}`
     },
-    
+
     lineage: null,
     extractedAt: new Date().toISOString(),
-    
+
     _meta: {
       dataFlowVersion: '1.0.0-fractal',
       extractionTime: new Date().toISOString(),
       confidence: 0.7
     },
-    
+
     archetype: {
       type: varType === 'config' ? 'config' : 'constant',
       severity: varInfo.riskLevel === 'high' ? 3 : (varInfo.riskLevel === 'medium' ? 2 : 1),
       confidence: 1
     },
-    
+
     purpose: 'API_EXPORT',
     purposeReason: 'Exported variable/constant (public API)',
     purposeConfidence: 1.0,
     isDeadCode: false,
-    
+
     calledBy: [],
 
     imports: imports.map(imp => ({
