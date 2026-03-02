@@ -126,10 +126,10 @@ export function _onJobComplete(job, result) {
     const total = this.totalFilesToAnalyze;
     const percentage = Math.floor((processed / total) * 100);
 
-    // Emitir progreso visual cada 50 archivos o en hitos iniciales (1, 10)
-    // También cada vez que llegamos al final de un múltiplo de 50
+    // Emitir progreso visual cada 20 archivos o en hitos iniciales (1, 10)
+    // También cada vez que llegamos al final de un múltiplo de 20
     const isInitialMilestone = processed === 1 || processed === 10;
-    const isStepMilestone = processed % 50 === 0;
+    const isStepMilestone = processed % 20 === 0;
 
     if (isInitialMilestone || isStepMilestone || processed === total) {
       const progressBarWidth = 20;
