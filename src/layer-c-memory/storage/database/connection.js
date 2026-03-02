@@ -59,7 +59,7 @@ class ConnectionManager {
 
       this.initialized = true;
 
-      logger.info('[Connection] SQLite initialized successfully');
+      logger.debug('[Connection] SQLite initialized successfully');
 
       return this.db;
     } catch (error) {

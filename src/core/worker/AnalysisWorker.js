@@ -113,7 +113,6 @@ export class AnalysisWorker {
    */
   async analyze(job) {
     const jobId = Math.random().toString(36).substring(2, 8);
-    logger.debug(`[Worker:${jobId}] ✅ START analyze() for ${job.filePath}`);
 
     if (this.state.isPaused) {
       logger.debug(`[Worker:${jobId}] Worker is PAUSED`);

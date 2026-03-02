@@ -77,7 +77,7 @@ export async function _processNext() {
   this.activeJobs += 1;
   const jobSlot = this.activeJobs;
 
-  logger.debug(`[Job ${jobSlot}/${maxConcurrent}] Starting: ${nextJob.filePath} (Queue: ${this.queue.size()})`);
+  // Eliminado log individual de job Starting para evitar ruido
 
   // Verify worker exists before calling
   if (!this.worker) {
@@ -92,7 +92,7 @@ export async function _processNext() {
     return;
   }
 
-  logger.debug(`[Job ${jobSlot}] Calling worker.analyze()...`);
+  // Ejecutar el job sin llamar al logger individual
 
   // Execute job without await to allow parallel processing
   this.worker.analyze(nextJob).then((result) => {
@@ -121,7 +121,9 @@ export function _onJobComplete(job, result) {
 
   this.emit('job:complete', job, result);
 
-  logger.debug(`   âœ… Completed: ${job.filePath} (${this.processedFiles.size}/${this.totalFilesToAnalyze}) - Slots: ${this.activeJobs}/${this.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT}`);
+  if (this.processedFiles.size % 50 === 0 && this.processedFiles.size > 0 && this.totalFilesToAnalyze > 50) {
+    logger.debug(`   📊 Processed ${this.processedFiles.size}/${this.totalFilesToAnalyze} background files...`);
+  }
 
   // Check if all files have been processed
   if (this.processedFiles.size >= this.totalFilesToAnalyze && this.totalFilesToAnalyze > 0) {

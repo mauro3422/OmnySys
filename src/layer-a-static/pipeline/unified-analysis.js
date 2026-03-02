@@ -117,7 +117,7 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
                         msg.hashes.forEach(([key, val]) => hashMap.set(key, val));
                         try {
                             writeFileHashesBatch(hashMap);
-                            logger.info(`  🔑 Worker ${i + 1} wrote ${msg.hashes.length} file hashes`);
+                            logger.debug(`  🔑 Worker ${i + 1} wrote ${msg.hashes.length} file hashes`);
                         } catch (hashErr) {
                             logger.warn(`  ⚠️ Hash write failed for Worker ${i + 1}: ${hashErr.message}`);
                         }

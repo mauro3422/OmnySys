@@ -52,7 +52,6 @@ export class JobAnalyzer {
       this.callbacks.onProgress?.(job, 100);
       this.worker.analyzedFiles.add(job.filePath);
 
-      logger.debug(`✅ Analysis complete for ${path.basename(job.filePath)}`);
       this.callbacks.onComplete?.(job, result);
 
       return result;
