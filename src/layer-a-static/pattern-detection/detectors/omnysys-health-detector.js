@@ -26,6 +26,8 @@ const STORAGE_PATHS = [
     'src/core/file-watcher/',        // File watcher necesita leer/actualizar DB
     'src/layer-a-static/pipeline/',  // Pipeline de analisis — acceso legitimo durante index
     'src/layer-a-static/indexer',   // Indexer principal
+    'src/layer-c-memory/verification/', // Integity checkers need db read access
+    'src/layer-c-memory/shadow-registry/', // Background persistence needs write access
     'scripts/',
     'migrations/',
     'tests/',
