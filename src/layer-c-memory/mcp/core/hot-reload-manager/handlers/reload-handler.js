@@ -60,7 +60,7 @@ export class ReloadHandler {
     const startTime = Date.now();
 
     try {
-      logger.info(`Hot-reloading: ${filename}`);
+      logger.info(`File change detected: ${filename}`);
 
       // 1. Preserve state
       this.stateHandler.preserve();
@@ -72,14 +72,14 @@ export class ReloadHandler {
       this.stateHandler.restore();
 
       const duration = Date.now() - startTime;
-      logger.info(`Hot-reload complete: ${filename} (${duration}ms)`);
+      logger.info(`File change processed: ${filename} (${duration}ms)`);
 
       this._emitSuccess(filename, moduleInfo, duration);
 
       return { success: true, duration };
 
     } catch (error) {
-      logger.error(`Hot-reload failed: ${filename}`, error);
+      logger.error(`File change handling failed: ${filename}`, error);
       this._handleError(filename, error);
       return { success: false, error: error.message };
 
@@ -113,9 +113,9 @@ export class ReloadHandler {
    * @param {Error} error - Error that occurred
    */
   _handleError(filename, error) {
-    this.server.emit('hot-reload:error', { 
-      file: filename, 
-      error: error.message 
+    this.server.emit('hot-reload:error', {
+      file: filename,
+      error: error.message
     });
 
     // Try to restore state even on failure
