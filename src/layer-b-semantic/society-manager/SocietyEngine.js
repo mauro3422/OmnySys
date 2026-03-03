@@ -55,9 +55,16 @@ export class SocietyEngine {
         const dominantPurpose = cluster.metadata?.dominantPurpose || cluster.metadata?.purpose || 'UNKNOWN';
         const name = cluster.metadata?.name || `${type}:${dominantPurpose}`;
 
-        // Cálculo de entropía simple: (1 - cohesión)
+        // Obtener átomos del mapa para calcular promedios
+        const clusterAtoms = cluster.atoms.map(id => atomsMap.get(id)).filter(Boolean);
+
+        const avgImportance = clusterAtoms.reduce((sum, a) => sum + (a.importanceScore || 0), 0) / (clusterAtoms.length || 1);
+        const avgCentrality = clusterAtoms.reduce((sum, a) => sum + (a.centralityScore || 0), 0) / (clusterAtoms.length || 1);
+
+        // Cálculo de entropía: (1 - cohesión) * (1 + avgImportance)
+        // Sociedades importantes y descoordinadas tienen mayor entropía sistémica
         const cohesion = cluster.cohesion || 0;
-        const entropy = Math.max(0, 1 - cohesion);
+        const entropy = Math.max(0, (1 - cohesion) * (1 + avgImportance));
 
         return {
             id: cluster.id,
@@ -68,7 +75,9 @@ export class SocietyEngine {
             moleculeCount: cluster.metadata?.fileCount || (cluster.file ? 1 : 0),
             metadata: {
                 ...cluster.metadata,
-                atomCount: cluster.atoms.length,
+                atomCount: clusterAtoms.length,
+                avgImportance,
+                avgCentrality,
                 archetype: cluster.metadata?.archetype
             },
             updatedAt: new Date().toISOString()

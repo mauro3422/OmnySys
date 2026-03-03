@@ -23,6 +23,7 @@
 import path from 'path';
 import { createLogger } from '../../utils/logger.js';
 import { safeReadJson } from '#utils/json-safe.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
 const logger = createLogger('OmnySys:static:insights');
 
@@ -184,7 +185,8 @@ export async function _prioritizeFileForPhase2(relativeFilePath) {
     const { analyzeProjectFilesUnified } = await import('#layer-a/pipeline/unified-analysis.js');
 
     // Clear stale atoms, then deep-scan this specific file
-    repo.db.prepare('DELETE FROM atoms WHERE file_path = ?').run(relativeFilePath);
+    const hr = new BaseSqlRepository(repo.db, 'StaticInsights:OnDemand');
+    hr.delete('atoms', 'file_path', relativeFilePath);
 
     const absolutePath = path.join(this.projectPath, relativeFilePath);
     await analyzeProjectFilesUnified([absolutePath], this.projectPath, false, 'deep');
@@ -270,9 +272,9 @@ export async function _startPhase2BackgroundIndexer() {
 
         // 1. Clear atoms first (avoid ghost atoms)
         // Optimizacion: usamos una transaccion para borrar mas rapido y seguro
-        const deleteStmt = repo.db.prepare('DELETE FROM atoms WHERE file_path = ?');
-        const runDeleteBatch = repo.db.transaction((paths) => {
-          for (const p of paths) deleteStmt.run(p);
+        const hr = new BaseSqlRepository(repo.db, 'StaticInsights:Batch');
+        const runDeleteBatch = hr.transaction((paths) => {
+          for (const p of paths) hr.delete('atoms', 'file_path', p);
         });
         runDeleteBatch(filesToProcess);
 

@@ -1,9 +1,8 @@
-/**
- * @fileoverview dependency-handler.js
- * Persistence handlers for file dependencies
- */
+import { BaseSqlRepository } from '../../../../repository/core/BaseSqlRepository.js';
+
 export async function saveFileDependencies(db, dependencies, now) {
-  db.prepare('DELETE FROM file_dependencies').run();
+  const hr = new BaseSqlRepository(db, 'DependencyHandler');
+  hr.clearTable('file_dependencies');
   const stmt = db.prepare(`
     INSERT INTO file_dependencies (source_path, target_path, created_at)
     VALUES (?, ?, ?)

@@ -8,9 +8,24 @@
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { getRepository } from '../repository/index.js';
+import { BaseSqlRepository } from '../repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:HashCache');
+
+let _hashRepo = null;
+
+function getHashRepo(projectPath) {
+  if (_hashRepo && _hashRepo.db) return _hashRepo;
+  const repo = getRepository(projectPath);
+  _hashRepo = new BaseSqlRepository(repo.db, 'HashCache');
+  _hashRepo.ensureTable('file_hashes', `
+    file_path TEXT PRIMARY KEY,
+    content_hash TEXT NOT NULL,
+    last_updated INTEGER NOT NULL
+  `);
+  return _hashRepo;
+}
 
 /**
  * Normaliza rutas a formato canonico para el hash cache.
@@ -65,25 +80,14 @@ export function calculateContentHash(content) {
  */
 export function getStoredHashes(projectPath) {
   try {
-    const repo = getRepository(projectPath);
-    const db = repo.db;
-    
-    // Crear tabla si no existe
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS file_hashes (
-        file_path TEXT PRIMARY KEY,
-        content_hash TEXT NOT NULL,
-        last_updated INTEGER NOT NULL
-      )
-    `);
-    
-    const rows = db.prepare('SELECT file_path, content_hash FROM file_hashes').all();
+    const hr = getHashRepo(projectPath);
+    const rows = hr.db.prepare('SELECT file_path, content_hash FROM file_hashes').all();
     const hashes = {};
-    
+
     for (const row of rows) {
       hashes[row.file_path] = row.content_hash;
     }
-    
+
     return hashes;
   } catch (error) {
     logger.warn(`[HashCache] Failed to get stored hashes: ${error.message}`);
@@ -96,33 +100,24 @@ export function getStoredHashes(projectPath) {
  */
 export function saveHashes(projectPath, fileHashes) {
   try {
-    const repo = getRepository(projectPath);
-    const db = repo.db;
-    
-    // Crear tabla si no existe
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS file_hashes (
-        file_path TEXT PRIMARY KEY,
-        content_hash TEXT NOT NULL,
-        last_updated INTEGER NOT NULL
-      )
-    `);
-    
+    const hr = getHashRepo(projectPath);
+    const db = hr.db;
+
     const now = Date.now();
     const insert = db.prepare(`
       INSERT OR REPLACE INTO file_hashes (file_path, content_hash, last_updated)
       VALUES (?, ?, ?)
     `);
-    
+
     // Bulk insert en transacción
     const transaction = db.transaction((hashes) => {
       for (const [filePath, hash] of hashes) {
         insert.run(filePath, hash, now);
       }
     });
-    
+
     transaction(Object.entries(fileHashes));
-    
+
     logger.debug(`[HashCache] Saved ${Object.keys(fileHashes).length} hashes`);
   } catch (error) {
     logger.warn(`[HashCache] Failed to save hashes: ${error.message}`);
@@ -136,21 +131,12 @@ export function deleteHashes(projectPath, filePaths) {
   try {
     if (!Array.isArray(filePaths) || filePaths.length === 0) return;
 
-    const repo = getRepository(projectPath);
-    const db = repo.db;
+    const hr = getHashRepo(projectPath);
+    const db = hr.db;
 
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS file_hashes (
-        file_path TEXT PRIMARY KEY,
-        content_hash TEXT NOT NULL,
-        last_updated INTEGER NOT NULL
-      )
-    `);
-
-    const remove = db.prepare('DELETE FROM file_hashes WHERE file_path = ?');
-    const transaction = db.transaction((paths) => {
+    const transaction = hr.transaction((paths) => {
       for (const filePath of paths) {
-        remove.run(filePath);
+        hr.delete('file_hashes', 'file_path', filePath);
       }
     });
 
@@ -166,7 +152,7 @@ export function deleteHashes(projectPath, filePaths) {
  */
 export async function detectRealChanges(projectPath, currentFiles, verbose = false) {
   const timer = verbose ? Date.now() : 0;
-  
+
   const storedHashesRaw = getStoredHashes(projectPath);
   const storedHashes = {};
   const staleStoredKeys = [];
@@ -207,14 +193,14 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
     unchangedFiles: [],
     deletedFiles
   };
-  
+
   const newHashes = {};
-  
+
   // Calcular hashes de archivos actuales
   const BATCH_SIZE = 50;
   for (let i = 0; i < currentFiles.length; i += BATCH_SIZE) {
     const batch = currentFiles.slice(i, i + BATCH_SIZE);
-    
+
     await Promise.all(
       batch.map(async (filePath) => {
         const currentHash = await calculateFileHash(filePath);
@@ -248,11 +234,11 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
   if (staleKeysToDelete.length > 0) {
     deleteHashes(projectPath, [...new Set(staleKeysToDelete)]);
   }
-  
+
   if (verbose) {
     const duration = Date.now() - timer;
     logger.info(`[HashCache] Change detection: ${changes.newFiles.length} new, ${changes.modifiedFiles.length} modified, ${changes.unchangedFiles.length} unchanged, ${changes.deletedFiles.length} deleted (${duration}ms)`);
   }
-  
+
   return changes;
 }

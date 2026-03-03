@@ -10,8 +10,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
 const logger = createLogger('OmnySys:shadow-registry:storage');
+let _shadowRepo = null;
 
 /**
  * Gestiona el almacenamiento de sombras en SQLite + filesystem
@@ -24,18 +26,19 @@ export class ShadowStorage {
   }
 
   /**
-   * Obtiene conexión a SQLite
+   * Obtiene el repositorio de sombras (Singleton-like)
    */
-  async _getDb() {
-    if (this.db) return this.db;
-    
+  async _getRepo() {
+    if (_shadowRepo && _shadowRepo.db) return _shadowRepo;
+
     try {
       const { getRepository } = await import('#layer-c/storage/repository/index.js');
       const repo = getRepository(this.rootPath);
-      this.db = repo?.db;
-      return this.db;
+      if (!repo?.db) return null;
+      _shadowRepo = new BaseSqlRepository(repo.db, 'ShadowRegistry');
+      return _shadowRepo;
     } catch (error) {
-      logger.warn('SQLite not available for shadows:', error.message);
+      logger.warn('Repository not available for shadows:', error.message);
       return null;
     }
   }
@@ -45,8 +48,9 @@ export class ShadowStorage {
    * @param {Object} shadow 
    */
   async save(shadow) {
-    const db = await this._getDb();
-    
+    const hr = await this._getRepo();
+    const db = hr?.db;
+
     if (db) {
       try {
         db.prepare(`
@@ -82,7 +86,8 @@ export class ShadowStorage {
    */
   async load(shadowId) {
     // Primero intentar SQLite
-    const db = await this._getDb();
+    const hr = await this._getRepo();
+    const db = hr?.db;
     if (db) {
       try {
         const row = db.prepare(`
@@ -90,7 +95,7 @@ export class ShadowStorage {
           WHERE atom_id = ? AND event_type = 'deleted'
           ORDER BY timestamp DESC LIMIT 1
         `).get(shadowId);
-        
+
         if (row?.after_state) {
           return JSON.parse(row.after_state);
         }
@@ -98,7 +103,7 @@ export class ShadowStorage {
         logger.debug('Shadow not in SQLite, trying filesystem');
       }
     }
-    
+
     // Fallback a filesystem
     try {
       const filePath = path.join(this.shadowsPath, `${shadowId}.json`);
@@ -116,14 +121,15 @@ export class ShadowStorage {
    * @returns {Promise<boolean>}
    */
   async exists(shadowId) {
-    const db = await this._getDb();
+    const hr = await this._getRepo();
+    const db = hr?.db;
     if (db) {
       try {
         const row = db.prepare('SELECT 1 FROM atom_events WHERE atom_id = ?').get(shadowId);
         if (row) return true;
-      } catch {}
+      } catch { }
     }
-    
+
     try {
       const filePath = path.join(this.shadowsPath, `${shadowId}.json`);
       await fs.access(filePath);
@@ -138,15 +144,15 @@ export class ShadowStorage {
    * @param {string} shadowId 
    */
   async delete(shadowId) {
-    const db = await this._getDb();
-    if (db) {
+    const hr = await this._getRepo();
+    if (hr) {
       try {
-        db.prepare('DELETE FROM atom_events WHERE atom_id = ?').run(shadowId);
+        hr.delete('atom_events', 'atom_id', shadowId);
       } catch (error) {
         logger.warn('Failed to delete shadow from SQLite:', error.message);
       }
     }
-    
+
     try {
       const filePath = path.join(this.shadowsPath, `${shadowId}.json`);
       await fs.unlink(filePath);

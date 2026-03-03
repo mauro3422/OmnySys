@@ -8,18 +8,22 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
-/**
- * Obtiene la conexión a la base de datos
- * @returns {object|null}
- */
-function getDb() {
-  try {
-    const repo = getRepository(this?.projectPath);
-    return repo?.db || null;
-  } catch {
-    return null;
-  }
+let _ramRepo = null;
+
+function getRamRepo(projectPath) {
+  if (_ramRepo && _ramRepo.db) return _ramRepo;
+  const repo = getRepository(projectPath);
+  _ramRepo = new BaseSqlRepository(repo.db, 'RamCache');
+  _ramRepo.ensureTable('cache_entries', `
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    expiry INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  `);
+  return _ramRepo;
 }
 
 /**
@@ -28,7 +32,8 @@ function getDb() {
  * @returns {any} - Valor cacheado o null
  */
 export function get(key) {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
+  const db = hr?.db;
 
   if (db) {
     // SQLite backend
@@ -66,7 +71,8 @@ export function get(key) {
  * @param {number} ttlMinutes - TTL en minutos (default: 5)
  */
 export function set(key, data, ttlMinutes) {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
+  const db = hr?.db;
   const ttl = ttlMinutes ?? this.defaultTtlMinutes;
   const now = Date.now();
   const expiry = ttl > 0 ? now + (ttl * 60 * 1000) : null;
@@ -112,17 +118,18 @@ export function set(key, data, ttlMinutes) {
  * @returns {boolean} - true si se eliminó
  */
 export function invalidate(key) {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
+  const db = hr?.db;
 
   if (db) {
     try {
       if (key.includes('*') || key.includes('?')) {
         const pattern = key.replace(/\*/g, '%').replace(/\?/g, '_');
-        const result = db.prepare('DELETE FROM cache_entries WHERE key LIKE ?').run(pattern);
+        const result = hr.deleteByPattern('cache_entries', 'key', pattern);
         return result.changes > 0;
       }
 
-      const result = db.prepare('DELETE FROM cache_entries WHERE key = ?').run(key);
+      const result = hr.delete('cache_entries', 'key', key);
       return result.changes > 0;
     } catch (err) {
       console.warn('[ram-cache] SQLite invalidate error:', err.message);
@@ -152,11 +159,11 @@ export function invalidate(key) {
  * Limpia todo el caché
  */
 export function clear() {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
 
-  if (db) {
+  if (hr) {
     try {
-      db.prepare('DELETE FROM cache_entries').run();
+      hr.clearTable('cache_entries');
     } catch (err) {
       console.warn('[ram-cache] SQLite clear error:', err.message);
     }
@@ -171,7 +178,8 @@ export function clear() {
  * Obtiene estadísticas del caché
  */
 export function getRamStats() {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
+  const db = hr?.db;
 
   if (db) {
     try {
@@ -233,7 +241,8 @@ export function ramCacheSet(key, data, ttlMinutes) {
  * Limpia entradas expiradas (mantenimiento)
  */
 export function cleanupExpired() {
-  const db = getDb.call(this);
+  const hr = getRamRepo(this?.projectPath);
+  const db = hr?.db;
 
   if (db) {
     try {

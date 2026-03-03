@@ -111,9 +111,7 @@ export class SemanticQueryTool extends GraphQueryTool {
             throw new Error('Repository not initialized');
         }
 
-        let whereClause = 'WHERE ';
         const conditions = [];
-
         if (type === 'emitters' || type === 'all') {
             conditions.push('(event_emitters_json IS NOT NULL AND event_emitters_json != \'[]\')');
         }
@@ -121,7 +119,7 @@ export class SemanticQueryTool extends GraphQueryTool {
             conditions.push('(event_listeners_json IS NOT NULL AND event_listeners_json != \'[]\')');
         }
 
-        whereClause += conditions.join(' OR ');
+        const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' OR ')}` : '';
 
         const dataQuery = this.repo.db.prepare(`
             SELECT 
@@ -131,7 +129,7 @@ export class SemanticQueryTool extends GraphQueryTool {
                 is_async, scope_type,
                 complexity, importance_score, risk_level
             FROM atoms
-            ${whereClause}
+            ${whereSql}
             ORDER BY importance_score DESC
             LIMIT ? OFFSET ?
         `);
@@ -410,6 +408,56 @@ export class SemanticQueryTool extends GraphQueryTool {
             },
             source: 'sqlite',
             timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Obtiene duplicados potenciales basados en DNA
+     * @param {Object} options - Opciones de consulta
+     */
+    async getDuplicates(options = {}) {
+        const { limit = 20, offset = 0, minSimilarity = 0.9 } = options;
+
+        // Esta query busca colisiones de structural_hash (ADN exacto)
+        // En el futuro se puede usar similitud borrosa
+        const dataQuery = this.repo.db.prepare(`
+            WITH DuplicateGroups AS (
+                SELECT dna_json, COUNT(*) as group_size
+                FROM atoms
+                WHERE dna_json IS NOT NULL AND dna_json != ''
+                GROUP BY dna_json
+                HAVING COUNT(*) > 1
+            )
+            SELECT 
+                a.id, a.name, a.file_path, a.line_start, a.dna_json,
+                dg.group_size
+            FROM atoms a
+            JOIN DuplicateGroups dg ON a.dna_json = dg.dna_json
+            ORDER BY dg.group_size DESC, a.name ASC
+            LIMIT ? OFFSET ?
+        `);
+
+        const rows = dataQuery.all(limit, offset);
+        const groups = {};
+
+        rows.forEach(row => {
+            if (!groups[row.dna_json]) {
+                groups[row.dna_json] = {
+                    dna: JSON.parse(row.dna_json),
+                    instances: []
+                };
+            }
+            groups[row.dna_json].instances.push({
+                id: row.id,
+                name: row.name,
+                file: row.file_path,
+                line: row.line_start
+            });
+        });
+
+        return {
+            total: Object.keys(groups).length,
+            duplicates: Object.values(groups)
         };
     }
 }

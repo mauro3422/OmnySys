@@ -3,13 +3,15 @@
  * Persistence handlers for semantic data
  */
 import { safeJson, safeParseJson } from '../../converters.js';
+import { BaseSqlRepository } from '../../../../repository/core/BaseSqlRepository.js';
 
 export async function saveSemanticData(db, connections, issues, now) {
   connections = connections || [];
   issues = issues || [];
 
   // Connections
-  db.prepare('DELETE FROM semantic_connections').run();
+  const hr = new BaseSqlRepository(db, 'SemanticHandler');
+  hr.clearTable('semantic_connections');
   const connStmt = db.prepare(`
     INSERT INTO semantic_connections (source_path, target_path, connection_type, connection_key, weight, context_json, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -27,7 +29,7 @@ export async function saveSemanticData(db, connections, issues, now) {
   }
 
   // Issues
-  db.prepare('DELETE FROM semantic_issues').run();
+  hr.clearTable('semantic_issues');
   const issueStmt = db.prepare(`
     INSERT INTO semantic_issues (file_path, issue_type, severity, message, context_json, detected_at)
     VALUES (?, ?, ?, ?, ?, ?)

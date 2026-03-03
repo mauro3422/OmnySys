@@ -3,6 +3,8 @@ import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
 import { getProjectStats, getProjectMetadata } from '../../query/apis/project-api.js';
 import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getRiskAssessment } from '../../query/queries/risk-query.js';
+import { SoftwarePhysicsEngine } from '../../../layer-b-semantic/physics-engine/SoftwarePhysicsEngine.js';
+import { DnaAnalyzer } from '../../../layer-b-semantic/dna-analyzer/DnaAnalyzer.js';
 
 /**
  * mcp_omnysystem_aggregate_metrics
@@ -44,7 +46,23 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                     return this.formatSuccess({
                         project: this.projectPath,
                         globalHealth: stats.health,
-                        quality: stats.quality
+                        quality: stats.quality,
+                        physics: {
+                            averageGravity: 0, // TODO: Calcular promedio
+                            averageReactivity: 0
+                        }
+                    });
+                }
+
+                case 'duplicates': {
+                    const result = await this.getDuplicates({
+                        offset: options.offset || 0,
+                        limit: options.limit || 20
+                    });
+
+                    return this.formatSuccess({
+                        aggregationType: 'duplicates',
+                        ...result
                     });
                 }
 
@@ -167,7 +185,7 @@ export class AggregateMetricsTool extends SemanticQueryTool {
 
                 default:
                     return this.formatError('INVALID_PARAM', `Unknown aggregationType: ${aggregationType}`, {
-                        allowedValues: ['health', 'modules', 'molecule', 'patterns', 'race_conditions', 'async_analysis', 'risk', 'society']
+                        allowedValues: ['health', 'modules', 'molecule', 'patterns', 'race_conditions', 'async_analysis', 'risk', 'society', 'duplicates']
                     });
             }
         } catch (error) {
