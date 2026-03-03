@@ -62,30 +62,16 @@ export async function fix_imports(args, context) {
                 const db = repo.db;
                 const symbolName = baseName; // Use baseName as the symbol to search for
 
-                // 1. Intentar buscar como Átomo (función/variable exportada)
-                let row = db.prepare(`
-                    SELECT file_path as path
-                    FROM atoms
-                    WHERE name = ? OR name LIKE ?
+                const fileBaseName = symbolName.split('/').pop().replace(/\\.[^/.]+$/, "");
+                const row = db.prepare(`
+                    SELECT file_path as path FROM atoms WHERE name = ? OR name LIKE ?
+                    UNION ALL
+                    SELECT path FROM files WHERE path LIKE ?
                     LIMIT 1
-                `).get(symbolName, `%${symbolName}%`);
+                `).get(symbolName, `%${symbolName}%`, `%/${fileBaseName}.%`);
 
                 if (row) {
                     bestMatchPath = row.path;
-                } else {
-                    // 2. Si no es un Átomo, buscar si es el nombre de un ARCHIVO (para imports directos de constantes/config)
-                    // Quitamos la extensión si el usuario la puso, o buscamos por el nombre base
-                    const fileBaseName = symbolName.split('/').pop().replace(/\.[^/.]+$/, "");
-                    row = db.prepare(`
-                        SELECT path
-                        FROM files
-                        WHERE path LIKE ?
-                        LIMIT 1
-                    `).get(`%/${fileBaseName}.%`);
-
-                    if (row) {
-                        bestMatchPath = row.path;
-                    }
                 }
             } else {
                 // Fallback (Memory) - Lento pero a prueba de fallos

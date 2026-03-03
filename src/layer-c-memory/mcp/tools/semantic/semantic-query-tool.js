@@ -51,17 +51,9 @@ export class SemanticQueryTool extends GraphQueryTool {
             params.push(scopeType);
         }
 
-        // Query principal con paginación
-        const countQuery = this.repo.db.prepare(`
-            SELECT COUNT(*) as total
-            FROM atoms
-            ${whereClause}
-        `);
-        
-        const count = countQuery.get(...params);
-        
         const dataQuery = this.repo.db.prepare(`
             SELECT 
+                COUNT(*) OVER() as total_count,
                 id, name, file_path, line_start, line_end,
                 is_async, scope_type, shared_state_json,
                 complexity, importance_score, risk_level,
@@ -73,6 +65,8 @@ export class SemanticQueryTool extends GraphQueryTool {
         `);
 
         const atoms = dataQuery.all(...params, limit, offset);
+
+        const total = atoms.length > 0 ? atoms[0].total_count : 0;
 
         // Procesar resultados
         const races = atoms.map(atom => ({
@@ -92,10 +86,10 @@ export class SemanticQueryTool extends GraphQueryTool {
         }));
 
         return {
-            total: count.total,
+            total,
             offset,
             limit,
-            hasMore: offset + limit < count.total,
+            hasMore: offset + limit < total,
             races
         };
     }
@@ -129,16 +123,9 @@ export class SemanticQueryTool extends GraphQueryTool {
 
         whereClause += conditions.join(' OR ');
 
-        const countQuery = this.repo.db.prepare(`
-            SELECT COUNT(*) as total
-            FROM atoms
-            ${whereClause}
-        `);
-        
-        const count = countQuery.get();
-        
         const dataQuery = this.repo.db.prepare(`
             SELECT 
+                COUNT(*) OVER() as total_count,
                 id, name, file_path, line_start, line_end,
                 event_emitters_json, event_listeners_json,
                 is_async, scope_type,
@@ -150,6 +137,8 @@ export class SemanticQueryTool extends GraphQueryTool {
         `);
 
         const atoms = dataQuery.all(limit, offset);
+
+        const total = atoms.length > 0 ? atoms[0].total_count : 0;
 
         // Procesar resultados
         const patterns = atoms.map(atom => ({
@@ -169,10 +158,10 @@ export class SemanticQueryTool extends GraphQueryTool {
         }));
 
         return {
-            total: count.total,
+            total,
             offset,
             limit,
-            hasMore: offset + limit < count.total,
+            hasMore: offset + limit < total,
             patterns
         };
     }
@@ -195,25 +184,18 @@ export class SemanticQueryTool extends GraphQueryTool {
         }
 
         let whereClause = 'WHERE is_async = 1';
-        
+
         if (withNetworkCalls) {
             whereClause += ' AND has_network_calls = 1';
         }
-        
+
         if (withErrorHandling) {
             whereClause += ' AND has_error_handling = 1';
         }
 
-        const countQuery = this.repo.db.prepare(`
-            SELECT COUNT(*) as total
-            FROM atoms
-            ${whereClause}
-        `);
-        
-        const count = countQuery.get();
-        
         const dataQuery = this.repo.db.prepare(`
             SELECT 
+                COUNT(*) OVER() as total_count,
                 id, name, file_path, line_start, line_end,
                 is_async, has_network_calls, has_error_handling,
                 external_call_count, complexity, importance_score,
@@ -225,6 +207,8 @@ export class SemanticQueryTool extends GraphQueryTool {
         `);
 
         const atoms = dataQuery.all(limit, offset);
+
+        const total = atoms.length > 0 ? atoms[0].total_count : 0;
 
         // Procesar resultados
         const asyncAtoms = atoms.map(atom => ({
@@ -243,10 +227,10 @@ export class SemanticQueryTool extends GraphQueryTool {
         }));
 
         return {
-            total: count.total,
+            total,
             offset,
             limit,
-            hasMore: offset + limit < count.total,
+            hasMore: offset + limit < total,
             asyncAtoms
         };
     }
@@ -281,16 +265,9 @@ export class SemanticQueryTool extends GraphQueryTool {
             params.push(filePath, filePath);
         }
 
-        const countQuery = this.repo.db.prepare(`
-            SELECT COUNT(*) as total
-            FROM semantic_connections
-            ${whereClause}
-        `);
-        
-        const count = countQuery.get(...params);
-        
         const dataQuery = this.repo.db.prepare(`
             SELECT 
+                COUNT(*) OVER() as total_count,
                 id, connection_type, source_path, target_path,
                 connection_key, context_json, weight, created_at
             FROM semantic_connections
@@ -300,6 +277,8 @@ export class SemanticQueryTool extends GraphQueryTool {
         `);
 
         const connections = dataQuery.all(...params, limit, offset);
+
+        const total = connections.length > 0 ? connections[0].total_count : 0;
 
         // Procesar resultados
         const society = connections.map(conn => ({
@@ -314,10 +293,10 @@ export class SemanticQueryTool extends GraphQueryTool {
         }));
 
         return {
-            total: count.total,
+            total,
             offset,
             limit,
-            hasMore: offset + limit < count.total,
+            hasMore: offset + limit < total,
             connections: society
         };
     }

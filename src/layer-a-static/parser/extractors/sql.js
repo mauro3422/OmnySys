@@ -232,13 +232,14 @@ export async function extractSqlQueries(jsTree, code, fileInfo) {
 
                     if (node.type === 'column_name' || node.type === 'field') {
                         const colTxt = sqlItem.sql.slice(node.startIndex, node.endIndex).toLowerCase().trim();
-                        if (colTxt && colTxt.length > 1 && !colTxt.includes('.')) {
+                        if (colTxt && colTxt.length > 1 && !colTxt.includes('.') && colTxt !== '_tbl_') {
                             columns.add(colTxt);
                         }
                     }
 
                     if (node.type === 'identifier') {
                         const txt = sqlItem.sql.slice(node.startIndex, node.endIndex).toLowerCase();
+                        if (txt === '_tbl_') return;
                         if (txt.length > 2 && !['select', 'from', 'where', 'limit', 'join', 'insert', 'into', 'values', 'update', 'set', 'delete'].includes(txt)) {
                             const pType = node.parent?.type;
                             // Dereckstride grammar often uses 'object_reference' or 'relation' for tables

@@ -34,40 +34,13 @@ const STORAGE_PATHS = [
     'tmp-debug',
 ];
 
-// Columnas conocidas del schema de OmnySys (sincronizado con schema registry)
-// Si una query referencia algo fuera de esto, es drift
-const KNOWN_ATOMS_COLUMNS = new Set([
-    'id', 'name', 'atom_type', 'file_path',
-    'line_start', 'line_end', 'lines_of_code', 'complexity', 'parameter_count',
-    'is_exported', 'is_async', 'is_test_callback', 'test_callback_type',
-    'has_error_handling', 'has_network_calls',
-    'archetype_type', 'archetype_severity', 'archetype_confidence',
-    'purpose_type', 'purpose_confidence', 'is_dead_code', 'is_phase2_complete',
-    'importance_score', 'coupling_score', 'cohesion_score', 'stability_score',
-    'propagation_score', 'fragility_score', 'testability_score',
-    'callers_count', 'callees_count', 'dependency_depth', 'external_call_count',
-    'in_degree', 'out_degree', 'centrality_score', 'centrality_classification',
-    'risk_level', 'risk_prediction',
-    'extracted_at', 'updated_at', 'change_frequency', 'age_days', 'generation',
-    'signature_json', 'data_flow_json', 'calls_json', 'temporal_json',
-    'error_flow_json', 'performance_json', 'dna_json', 'derived_json', '_meta_json',
-    'shared_state_json', 'event_emitters_json', 'event_listeners_json', 'scope_type',
-    'called_by_json', 'function_type'
-]);
+import { TABLE_DEFINITIONS } from '../../../layer-c-memory/storage/database/schema-registry.js';
 
-// Columnas conocidas de otras tablas del sistema
-const KNOWN_COLUMNS_BY_TABLE = {
-    'atoms': KNOWN_ATOMS_COLUMNS,
-    'files': new Set(['id', 'path', 'hash', 'size', 'last_modified', 'language', 'atom_count', 'is_indexed', 'indexed_at']),
-    'atom_relations': new Set(['id', 'source_id', 'target_id', 'relation_type', 'weight', 'line_number', 'created_at', 'metadata_json']),
-    'atom_versions': new Set(['id', 'atom_id', 'version', 'snapshot_json', 'change_type', 'created_at']),
-    'atom_events': new Set(['id', 'atom_id', 'event_type', 'payload_json', 'source', 'severity', 'created_at', 'resolved', 'resolved_at']),
-    'semantic_connections': new Set(['id', 'connection_type', 'source_path', 'target_path', 'connection_key', 'context_json', 'weight', 'created_at']),
-    'cache_entries': new Set(['key', 'value_json', 'ttl', 'created_at', 'updated_at']),
-    'system_files': new Set(['path', 'hash', 'size', 'last_modified', 'atom_count', 'function_count', 'import_count',
-        'export_count', 'class_count', 'has_tests', 'complexity_avg', 'language', 'last_analyzed', 'analysis_version',
-        'is_entry_point', 'is_config']),
-};
+// Build KNOWN_COLUMNS_BY_TABLE dynamically from the Single Source of Truth
+const KNOWN_COLUMNS_BY_TABLE = {};
+for (const [tableName, definition] of Object.entries(TABLE_DEFINITIONS)) {
+    KNOWN_COLUMNS_BY_TABLE[tableName] = new Set(definition.columns.map(col => col.name));
+}
 
 export class OmnysysHealthDetector {
     constructor({ config = {}, globalConfig = {} } = {}) {
