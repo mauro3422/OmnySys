@@ -17,7 +17,7 @@ const Sql = SqlModule; // The entire module object contains name, language (poin
 
 const logger = createLogger('OmnySys:extractor:sql');
 
-const DB_METHODS = ['prepare', 'exec', 'run', 'all', 'get', 'query'];
+const DB_METHODS = ['prepare', 'exec', 'query'];
 
 // Patrones que indican que una variable viene de input del usuario (riesgo de inyeccion)
 const USER_INPUT_PATTERNS = [
