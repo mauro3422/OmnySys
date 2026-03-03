@@ -7,7 +7,7 @@ export {
   ASTBuilder,
   ImportBuilder,
   ExportBuilder
-} from './parser-test/builders.js';
+} from './parser-test/builders/index.js';
 
 export { ParserScenarioFactory } from './parser-test/scenarios.js';
 export { ParserValidator } from './parser-test/validators.js';

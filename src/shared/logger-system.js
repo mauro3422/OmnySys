@@ -6,6 +6,7 @@
  */
 
 import { LogLevel } from './logger-config.js';
+export { LogLevel };
 import { getNamespaceConfig } from './logger-config.js';
 import { formatMessage } from './logger-formatters.js';
 

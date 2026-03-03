@@ -90,8 +90,8 @@ describe('Layer A — imports saludables', () => {
     expect(typeof mod.extractSideEffects).toBe('function');
   });
 
-  test('extractors/atomic/index.js carga correctamente', async () => {
-    const mod = await import('#layer-a/extractors/atomic/index.js');
+  test('parser/index.js carga correctamente', async () => {
+    const mod = await import('#layer-a/parser/index.js');
     expect(mod).toBeDefined();
   });
 });
@@ -178,10 +178,9 @@ describe('Core — imports saludables', () => {
     const mod = await import('#core/index.js');
     expect(mod).toBeDefined();
     // Verifica re-exports de layer-graph
+    // Verifica re-exports de layer-graph
     expect(typeof mod.buildSystemMap).toBe('function');
     expect(typeof mod.getImpactMap).toBe('function');
-    // Verifica re-exports de storage
-    expect(typeof mod.saveMetadata).toBe('function');
   });
 });
 

@@ -1,0 +1,48 @@
+{
+  "TopMonoliths": [
+    {
+      "file_path": "tests/unit/layer-a-analysis/pipeline/molecular-chains/molecular-chains-test.factory.js",
+      "function_count": 84,
+      "total_loc": 1932,
+      "total_complexity": 352,
+      "max_complexity": 44
+    },
+    {
+      "file_path": "tests/factories/graph-test/builders.js",
+      "function_count": 59,
+      "total_loc": 1102,
+      "total_complexity": 155,
+      "max_complexity": 21
+    },
+    {
+      "file_path": "tests/factories/parser-test/builders.js",
+      "function_count": 43,
+      "total_loc": 605,
+      "total_complexity": 145,
+      "max_complexity": 45
+    }
+  ],
+  "GodObjects": [
+    {
+      "file_path": "src/layer-a-static/parser/extractors/functions/type-detector.js",
+      "name": "detectTypeAndName",
+      "archetype_type": "god-function",
+      "complexity": 51,
+      "lines_of_code": 86
+    },
+    {
+      "file_path": "src/layer-a-static/parser/extractors/sql.js",
+      "name": "extractSqlQueries",
+      "archetype_type": "god-function",
+      "complexity": 50,
+      "lines_of_code": 142
+    },
+    {
+      "file_path": "tests/factories/parser-test/builders.js",
+      "name": "CodeSampleBuilder",
+      "archetype_type": "god-function",
+      "complexity": 45,
+      "lines_of_code": 184
+    }
+  ]
+}

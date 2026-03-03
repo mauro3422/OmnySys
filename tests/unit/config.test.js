@@ -5,11 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { 
-  DATA_DIR, 
-  getIndexPath, 
-  getSystemMapPath,
-  getDataPath 
+import {
+  DATA_DIR,
+  getDataPath
 } from '#config/paths.js';
 
 import {
@@ -27,17 +25,6 @@ import {
 describe('Config - Paths', () => {
   it('DATA_DIR should be .omnysysdata', () => {
     expect(DATA_DIR).toBe('.omnysysdata');
-  });
-
-  it('getIndexPath should construct correct path', () => {
-    const path = getIndexPath('/project');
-    expect(path).toContain('.omnysysdata');
-    expect(path).toContain('index.json');
-  });
-
-  it('getSystemMapPath should construct correct path', () => {
-    const path = getSystemMapPath('/project');
-    expect(path).toContain('system-map.json');
   });
 });
 

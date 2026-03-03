@@ -11,9 +11,14 @@ import { loadAtoms, getAllAtoms, enrichAtomsWithRelations } from '#layer-c/stora
 import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
 import { validateBeforeEdit } from '../../core/validation-utils.js';
 import { validateImportsInEdit, validatePostEditOptimized } from './validators.js';
+import {
+    DATA_DIR,
+    getDataPath
+} from '#config/paths.js';
 import { checkEditExportConflicts } from './exports.js';
 import { analyzeFullImpact } from './analysis.js';
 import { analyzeBlastRadius } from './graph-alerts.js';
+import { normalizeAtomicPath } from './write-orchestrator.js';
 
 export class AtomicEditorTool extends AtomicMutationTool {
     constructor() {
@@ -28,7 +33,7 @@ export class AtomicEditorTool extends AtomicMutationTool {
         }
 
         if (!filePath || (!oldString && !symbolName) || newString === undefined) {
-            return this.formatError('INVALID_PARAMS', 'Missing required: filePath, newString, and (oldString OR symbolName)');
+            return this.formatError('INVALID_PARAMS', 'Missing required parameters: filePath, newString, and (oldString OR symbolName)');
         }
 
         return null;
@@ -65,15 +70,15 @@ export class AtomicEditorTool extends AtomicMutationTool {
     }
 
     async performAction(args) {
+        const argError = this.validateEditArgs(args);
+        if (argError) return { ...argError, file: args.filePath, severity: 'critical' };
+
         let { filePath, oldString, newString, symbolName, autoFix = false } = args;
         const { orchestrator } = this.context;
 
         if (path.isAbsolute(filePath)) {
-            filePath = path.relative(this.projectPath, filePath).replace(/\\/g, '/');
+            filePath = normalizeAtomicPath(filePath, this.projectPath);
         }
-
-        const argError = this.validateEditArgs(args);
-        if (argError) return { ...argError, file: filePath, severity: 'critical' };
 
         // Estado previo
         let previousAtoms = [];

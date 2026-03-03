@@ -92,8 +92,8 @@ describe('atomic_edit', () => {
     it('validates and edits successfully', async () => {
       const result = await atomic_edit({
         filePath: 'src/utils.js',
-        oldString: 'const x = 1;',
-        newString: 'const x = 2;'
+        oldString: 'export const x = 1;',
+        newString: 'export const x = 2;'
       }, mockContext);
 
       require('fs').writeFileSync('result-debug.json', JSON.stringify(result, null, 2));
@@ -103,8 +103,8 @@ describe('atomic_edit', () => {
     it('writes new content to file', async () => {
       await atomic_edit({
         filePath: 'src/utils.js',
-        oldString: 'const x = 1;',
-        newString: 'const x = 42;'
+        oldString: 'export const x = 1;',
+        newString: 'export const x = 42;'
       }, mockContext);
 
       const content = await fs.readFile(path.join(tempDir, 'src/utils.js'), 'utf-8');
@@ -231,7 +231,8 @@ describe('atomic_write', () => {
         content: 'code'
       }, mockContext);
 
-      expect(result.error).toContain('Missing required parameters');
+      expect(result.error).toBe('INVALID_PARAMS');
+      expect(result.message).toContain('Missing required parameters');
     });
 
     it('returns error for missing content', async () => {
@@ -239,7 +240,8 @@ describe('atomic_write', () => {
         filePath: 'src/new.js'
       }, mockContext);
 
-      expect(result.error).toContain('Missing required parameters');
+      expect(result.error).toBe('INVALID_PARAMS');
+      expect(result.message).toContain('Missing required parameters');
     });
   });
 

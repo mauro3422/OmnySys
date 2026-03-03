@@ -7,19 +7,23 @@
  */
 
 export const TOOL_NAMES = [
-  'get_impact_map',
-  'analyze_change',
-  'explain_connection',
-  'get_risk_assessment',
-  'search_files',
-  'get_server_status',
-  'get_call_graph',
-  'analyze_signature_change',
-  'explain_value_flow',
-  'get_function_details',
-  'restart_server',
-  'atomic_edit',
-  'atomic_write'
+  'mcp_omnysystem_query_graph',
+  'mcp_omnysystem_traverse_graph',
+  'mcp_omnysystem_aggregate_metrics',
+  'mcp_omnysystem_atomic_edit',
+  'mcp_omnysystem_atomic_write',
+  'mcp_omnysystem_move_file',
+  'mcp_omnysystem_fix_imports',
+  'mcp_omnysystem_execute_solid_split',
+  'mcp_omnysystem_suggest_refactoring',
+  'mcp_omnysystem_validate_imports',
+  'mcp_omnysystem_generate_tests',
+  'mcp_omnysystem_generate_batch_tests',
+  'mcp_omnysystem_get_schema',
+  'mcp_omnysystem_get_server_status',
+  'mcp_omnysystem_get_recent_errors',
+  'mcp_omnysystem_restart_server',
+  'mcp_omnysystem_detect_performance_hotspots'
 ];
 
 export const REQUIRED_TOOL_DEFINITION_FIELDS = ['name', 'description', 'inputSchema'];

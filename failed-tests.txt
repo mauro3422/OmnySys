@@ -1,0 +1,296 @@
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should create simple project
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should create project with imports
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should create complex project
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should auto-cleanup project
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should handle errors and still cleanup
+   AssertionError: expected 'expected false to be true // Object.iÔÇª' to be 'Test error' // Object.is equality
+
+C:/Dev/OmnySystem/tests/examples/real-factory-example.test.js -> should allow custom files
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/functional/storage-manager.functional.test.js -> all expected functions are exported
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/functional/storage-manager.functional.test.js -> saveMetadata is exported
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/functional/storage-manager.functional.test.js -> saveFileAnalysis is exported
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/functional/storage-manager.functional.test.js -> saveConnections is exported
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/functional/storage-manager.functional.test.js -> saveRiskAssessment is exported
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/integration/full-stack.integration.test.js -> should save and load analysis from storage
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/integration/full-stack.integration.test.js -> should query analysis results
+   AssertionError: expected 0 to be greater than 0
+
+C:/Dev/OmnySystem/tests/integration/full-stack.integration.test.js -> should run complete pipeline on realistic project
+   Error: ENOENT: no such file or directory, open 'C:\Dev\OmnySystem\.test-fullstack\.omnysysdata\files\index.js.json'
+
+C:/Dev/OmnySystem/tests/integration/import-health.test.js -> extractors/atomic/index.js carga correctamente
+   Error: Cannot find module '#layer-a/extractors/atomic/index.js' imported from 'C:/Dev/OmnySystem/tests/integration/import-health.test.js'
+
+C:/Dev/OmnySystem/tests/integration/import-health.test.js -> core/index.js carga correctamente con re-exports
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/config.test.js -> getIndexPath should construct correct path
+   TypeError: (0 , __vite_ssr_import_1__.getIndexPath) is not a function
+
+C:/Dev/OmnySystem/tests/unit/config.test.js -> getSystemMapPath should construct correct path
+   TypeError: (0 , __vite_ssr_import_1__.getSystemMapPath) is not a function
+
+C:/Dev/OmnySystem/tests/e2e/scenarios/cli-analyze.scenario.test.js -> should detect all imports and exports
+   Error: ENOENT: no such file or directory, open 'C:\Dev\OmnySystem\.test-e2e-analyze\imports\.omnysysdata\files\main.js.json'
+
+C:/Dev/OmnySystem/tests/e2e/scenarios/cli-analyze.scenario.test.js -> should detect localStorage usage
+   Error: ENOENT: no such file or directory, open 'C:\Dev\OmnySystem\.test-e2e-analyze\storage\.omnysysdata\files\app.js.json'
+
+C:/Dev/OmnySystem/tests/e2e/scenarios/full-workflow.scenario.test.js -> should create complete analysis artifacts
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/e2e/scenarios/full-workflow.scenario.test.js -> should analyze interconnected modules
+   Error: ENOENT: no such file or directory, open 'C:\Dev\OmnySystem\.test-e2e-workflow\interconnected\.omnysysdata\files\index.js.json'
+
+C:/Dev/OmnySystem/tests/e2e/scenarios/full-workflow.scenario.test.js -> should handle syntax errors gracefully
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/integration/layer-a/extended-workflows.integration.test.js -> saves various analysis results
+   TypeError: (0 , __vite_ssr_import_8__.saveMetadata) is not a function
+
+C:/Dev/OmnySystem/tests/integration/layer-a/extended-workflows.integration.test.js -> queries project stats after analysis
+   TypeError: (0 , __vite_ssr_import_8__.saveMetadata) is not a function
+
+C:/Dev/OmnySystem/tests/integration/layer-a/layer-a-workflows.integration.test.js -> saves analysis results successfully
+   TypeError: (0 , __vite_ssr_import_7__.saveMetadata) is not a function
+
+C:/Dev/OmnySystem/tests/integration/layer-a/layer-a-workflows.integration.test.js -> end-to-end workflow: scan ÔåÆ analyze ÔåÆ save
+   TypeError: (0 , __vite_ssr_import_7__.saveMetadata) is not a function
+
+C:/Dev/OmnySystem/tests/unit/services/index.test.js -> should export LLMService
+   AssertionError: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/services/index.test.js -> should have default export
+   AssertionError: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> has correct log level values
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> isEnabled returns true for levels >= current level
+   TypeError: Cannot read properties of undefined (reading 'INFO')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> calls console.info for debug level
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> calls console.info for info level
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> includes metadata in output
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> does not output when level is below threshold
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs error with console.error
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs fatal with console.error
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> exception method logs error details
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs warning with console.warn
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> returns done function for manual timing
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> times synchronous function
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> times async function
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> propagates errors from timed function
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs with correlation ID
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> includes trace metadata
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> setGlobalLevel changes default level
+   TypeError: Cannot read properties of undefined (reading 'ERROR')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> includes timestamp in output
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> includes namespace in output
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> includes level indicator
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs complex operation flow
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> logs with nested metadata
+   TypeError: Cannot read properties of undefined (reading 'DEBUG')
+
+C:/Dev/OmnySystem/tests/unit/shared/logger-system.test.js -> suppresses all output at SILENT level
+   TypeError: Cannot read properties of undefined (reading 'SILENT')
+
+C:/Dev/OmnySystem/tests/unit/core/atomic-editor/operations.test.js -> requires oldString
+   AssertionError: expected 'Either oldString or symbolName is reqÔÇª' to contain 'oldString is required'
+
+C:/Dev/OmnySystem/tests/unit/core/atomic-editor/operations.test.js -> handles file read errors
+   AssertionError: expected 'Validation failed: ENOENT: no such fiÔÇª' to contain 'Cannot read file'
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/ai.test.js -> returns status with health info
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/ai.test.js -> handles status check failure
+   AssertionError: expected '[DEPRECATED] AI status commands are nÔÇª' to be 'Config not found' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> returns error when no analysis data exists
+   AssertionError: expected 'Error loading from SQLite: Cannot reaÔÇª' to be 'No analysis data found' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> returns error when file not found in system map
+   AssertionError: expected 'Error loading from SQLite: Cannot reaÔÇª' to contain 'File not found in analysis'
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> returns file data when file exists in system map
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> includes semantic connections in output
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> includes side effects in output
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.real.test.js -> handles path normalization
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.test.js -> returns file data when file exists in system map
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.test.js -> includes semantic connections in output
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.test.js -> includes side effects in output
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/check.test.js -> handles path normalization
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/index.test.js -> has correct number of commands
+   AssertionError: expected [ 'up', 'down', 'status', ÔÇª(5) ] to have a length of 7 but got 8
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/up.test.js -> starts LLM when not running
+   AssertionError: expected false to be true // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/up.test.js -> returns error when LLM fails to start
+   AssertionError: expected true to be false // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/cli/commands/up.test.js -> handles exceptions
+   AssertionError: expected true to be false // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-a-analysis/storage/storage-group.test.js -> exports all storage functions
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-a-analysis/storage/storage-group.test.js -> has file operations
+   AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse an empty file
+   AssertionError: expected undefined to be '/test/empty.js' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse ESM imports
+   AssertionError: Target cannot be null or undefined.
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse CommonJS requires
+   TypeError: Cannot read properties of undefined (reading 'filter')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse named exports
+   TypeError: Cannot read properties of undefined (reading 'length')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse default export
+   TypeError: Cannot read properties of undefined (reading 'find')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse function declarations
+   TypeError: Cannot read properties of undefined (reading 'length')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse arrow functions
+   TypeError: Cannot read properties of undefined (reading 'filter')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse class declarations
+   TypeError: Cannot read properties of undefined (reading 'filter')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should extract function calls
+   TypeError: Cannot read properties of undefined (reading 'length')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should handle parse errors gracefully
+   AssertionError: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse TypeScript interfaces
+   TypeError: Cannot read properties of undefined (reading 'length')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should parse TypeScript type aliases
+   TypeError: Cannot read properties of undefined (reading 'length')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-core/parser/parser.test.js -> should detect dynamic imports
+   TypeError: Cannot read properties of undefined (reading 'filter')
+
+C:/Dev/OmnySystem/tests/unit/layer-a-static/extractors/data-flow-parser-plugins.test.js -> retorna error para c├│digo con pipeline operator
+   AssertionError: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/layer-a-static/extractors/data-flow-parser-plugins.test.js -> retorna { error } en lugar de lanzar cuando el c├│digo es inv├ílido
+   AssertionError: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/layer-a-static/extractors/data-flow-parser-plugins.test.js -> resultado tiene las propiedades esperadas
+   AssertionError: expected { inputs: [], outputs: [], ÔÇª(3) } to have property "_meta"
+
+C:/Dev/OmnySystem/tests/unit/layer-a-static/extractors/data-flow-parser-plugins.test.js -> _meta tiene extractedAt y version
+   TypeError: Cannot convert undefined or null to object
+
+C:/Dev/OmnySystem/tests/unit/layer-a-static/preprocessor/preprocessor.test.js -> validateTransformations() detecta problemas
+   TypeError: engine.validateTransformations is not a function
+
+C:/Dev/OmnySystem/tests/unit/layer-c/mcp/tools-registry.test.js -> la tool conocida "mcp_omnysystem_get_atom_schema" est├í registrada
+   AssertionError: Tool "mcp_omnysystem_get_atom_schema" no est├í en toolDefinitions: expected undefined to be defined
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/atomic-edit.test.js -> returns error for missing filePath
+   AssertionError: expected 'INTERNAL_RUNTIME_ERROR' to be 'INVALID_PARAMS' // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/atomic-edit.test.js -> returns error for missing filePath
+   AssertionError: expected 'INTERNAL_RUNTIME_ERROR' to contain 'Missing required parameters'
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/atomic-edit.test.js -> returns error for missing content
+   AssertionError: expected 'MISSING_PARAMS' to contain 'Missing required parameters'
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/validation-utils-comprehensive.test.js -> debe retornar error estructurado sin romper el proceso
+   AssertionError: expected undefined to be false // Object.is equality
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/validation-utils-comprehensive.test.js -> debe completarse en menos de 1 segundo
+   AssertionError: expected 1816 to be less than 1000
+
+C:/Dev/OmnySystem/tests/unit/layer-c-memory/mcp/validation-utils-comprehensive.test.js -> debe ser eficiente incluso con m├║ltiples validaciones
+   AssertionError: expected 3161 to be less than 500
+
+C:/Dev/OmnySystem/tests/unit/layer-b-semantic/validators/lineage-validator/checks/coherence-checks.test.js -> should detect missing read operation for read flowType
+   AssertionError: expected [ Array(1) ] to include 'FlowType says "read" but no read operÔÇª'
+
+C:/Dev/OmnySystem/tests/unit/layer-b-semantic/validators/lineage-validator/checks/coherence-checks.test.js -> should detect missing side effect for persist flowType
+   AssertionError: expected [ Array(1) ] to include 'FlowType says "persist" but no side eÔÇª'

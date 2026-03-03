@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Atomic edit successful",
+  "file": "src/utils.js",
+  "impact": {
+    "level": "none",
+    "score": 0,
+    "affectedFiles": 0,
+    "reindexedAtoms": 2
+  },
+  "changes": [],
+  "blastRadius": {
+    "level": "low",
+    "score": 0,
+    "reason": "No atoms found"
+  }
+}

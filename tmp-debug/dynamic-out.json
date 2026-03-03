@@ -1,0 +1,27 @@
+[
+  {
+    "file": "src/layer-c-memory/mcp/tools/get-schema.js",
+    "parent": "map_callback",
+    "raw": "PRAGMA table_info(_tbl_)"
+  },
+  {
+    "file": "src/layer-c-memory/storage/repository/adapters/sqlite-query-operations.js",
+    "parent": "updateVectors",
+    "raw": "UPDATE atoms SET _tbl_, updated_at = ? WHERE id = ?"
+  },
+  {
+    "file": "src/layer-c-memory/storage/database/connection.js",
+    "parent": "initializeSchema",
+    "raw": "PRAGMA table_info(_tbl_)"
+  },
+  {
+    "file": "src/layer-c-memory/storage/database/connection.js",
+    "parent": "_checkSchemaDrift",
+    "raw": "PRAGMA table_info(_tbl_)"
+  },
+  {
+    "file": "src/layer-c-memory/storage/enrichment/index.js",
+    "parent": "persistGraphMetrics",
+    "raw": "SELECT id FROM atoms WHERE id IN (_tbl_)"
+  }
+]

@@ -5,10 +5,6 @@ const STORAGE_MAIN_EXPORTS = [
   'createDataDirectory',
   'getDataDirectory',
   'hasExistingAnalysis',
-  'saveMetadata',
-  'saveFileAnalysis',
-  'saveConnections',
-  'saveRiskAssessment',
   'savePartitionedSystemMap',
   'saveMolecule',
   'loadMolecule',
@@ -21,10 +17,6 @@ const STORAGE_UTILS_EXPORTS = ['calculateFileHash'];
 const STORAGE_SETUP_EXPORTS = ['createDataDirectory', 'getDataDirectory', 'hasExistingAnalysis'];
 
 const STORAGE_FILES_EXPORTS = [
-  'saveMetadata',
-  'saveFileAnalysis',
-  'saveConnections',
-  'saveRiskAssessment',
   'savePartitionedSystemMap'
 ];
 
@@ -183,22 +175,22 @@ describe('Layer C Storage Module Contract', () => {
   describe('Module Import Compatibility', () => {
     it('all storage modules MUST use ESM imports', async () => {
       const imports = [];
-      
+
       try {
         imports.push(await import('#layer-c/storage/index.js'));
-      } catch (e) {}
-      
+      } catch (e) { }
+
       try {
         imports.push(await import('#layer-c/storage/utils/index.js'));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         imports.push(await import('#layer-c/storage/setup/index.js'));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         imports.push(await import('#layer-c/storage/files/index.js'));
-      } catch (e) {}
+      } catch (e) { }
 
       imports.forEach(mod => {
         if (mod) {
@@ -210,7 +202,7 @@ describe('Layer C Storage Module Contract', () => {
     it('imports MUST be consistent across multiple calls', async () => {
       const mod1 = await import('#layer-c/storage/index.js');
       const mod2 = await import('#layer-c/storage/index.js');
-      
+
       expect(mod1).toBe(mod2);
     });
   });
@@ -228,7 +220,7 @@ describe('Layer C Storage Module Contract', () => {
 
     it('files submodule MUST be importable', async () => {
       const files = await import('#layer-c/storage/files/index.js');
-      expect(files.saveMetadata).toBeDefined();
+      expect(files.savePartitionedSystemMap).toBeDefined();
     });
 
     it('molecules submodule MUST be importable', async () => {
@@ -250,9 +242,8 @@ describe('Layer C Storage Module Contract', () => {
       } catch (e) {
         coreStorage = null;
       }
-      
+
       if (!coreStorage) return;
-      expect(coreStorage.saveMetadata).toBeDefined();
       expect(coreStorage.getDataDirectory).toBeDefined();
     });
   });

@@ -23,14 +23,14 @@ export class AtomicWriterTool extends AtomicMutationTool {
     }
 
     async performAction(args) {
-        let { filePath, content, autoFix = false } = args;
+        const { filePath, content, autoFix = false } = args;
         const { orchestrator, projectPath } = this.context;
 
-        filePath = normalizeAtomicPath(filePath, projectPath);
-
         if (!filePath || !content) {
-            return this.formatError('MISSING_PARAMS', 'filePath and content are required');
+            return this.formatError('INVALID_PARAMS', 'Missing required parameters: filePath and content');
         }
+
+        filePath = normalizeAtomicPath(filePath, projectPath);
 
         // Estado previo
         let previousAtoms = [];

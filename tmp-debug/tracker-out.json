@@ -1,0 +1,160 @@
+[
+  {
+    "filePath": "src/layer-c-memory/mcp/core/analysis-checker/file-scanner.js",
+    "parentFunction": "hasExistingAnalysis",
+    "selects": [
+      "SELECT COUNT(*) as count FROM atoms",
+      "SELECT COUNT(*) as count FROM atoms"
+    ],
+    "tables": [
+      "count",
+      "atoms"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/query/queries/project-query.js",
+    "parentFunction": "getProjectMetadata",
+    "selects": [
+      "SELECT key, value FROM system_metadata",
+      "SELECT DISTINCT file_path FROM atoms",
+      "SELECT COUNT(*) as count FROM atoms"
+    ],
+    "tables": [
+      "system_metadata",
+      "atoms",
+      "count"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/query/queries/risk-query.js",
+    "parentFunction": "getRiskAssessment",
+    "selects": [
+      "SELECT file_path, risk_score, risk_level, factors_json, \n           shared_state_count, external_deps_count, complexity_score, \n           propagation_score, assessed_at\n    FROM risk_assessments \n   ",
+      "SELECT COUNT(*) as atoms, COUNT(DISTINCT file_path) as files FROM atoms"
+    ],
+    "tables": [
+      "risk_assessments",
+      "count",
+      "atoms"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/migrations/index.js",
+    "parentFunction": "count",
+    "selects": [
+      "SELECT COUNT(*) as c FROM atoms WHERE purpose_type = '[object Object]'",
+      "SELECT changes() as c"
+    ],
+    "tables": [
+      "count",
+      "atoms",
+      "changes"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/query/export.js",
+    "parentFunction": "exportFullSystemMapToFile",
+    "selects": [
+      "SELECT * FROM atoms LIMIT 10000",
+      "SELECT * FROM system_files",
+      "SELECT * FROM semantic_connections",
+      "SELECT * FROM risk_assessments",
+      "SELECT * FROM file_dependencies"
+    ],
+    "tables": [
+      "atoms",
+      "system_files",
+      "semantic_connections",
+      "risk_assessments",
+      "file_dependencies"
+    ]
+  },
+  {
+    "filePath": "src/core/orchestrator/static-insights.js",
+    "parentFunction": "setInterval_callback",
+    "selects": [
+      "SELECT DISTINCT file_path \r\n        FROM atoms \r\n        WHERE is_phase2_complete = 0 \r\n        LIMIT 200",
+      "SELECT COUNT(*) as count FROM atoms WHERE is_phase2_complete = 0"
+    ],
+    "tables": [
+      "atoms",
+      "count"
+    ]
+  },
+  {
+    "filePath": "src/core/cache/manager/storage.js",
+    "parentFunction": "initialize",
+    "selects": [
+      "SELECT COUNT(*) as count FROM atoms",
+      "SELECT COUNT(DISTINCT file_path) as count FROM atoms"
+    ],
+    "tables": [
+      "count",
+      "atoms"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/verification/validators/integrity/validators/cache-validator.js",
+    "parentFunction": "validateCache",
+    "selects": [
+      "SELECT COUNT(*) as count FROM atoms",
+      "SELECT name FROM sqlite_master WHERE type='table'"
+    ],
+    "tables": [
+      "count",
+      "atoms",
+      "sqlite_master"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/storage/atoms/atom-version-manager.js",
+    "parentFunction": "getStats",
+    "selects": [
+      "SELECT \n        COUNT(*) as totalTracked,\n        MAX(last_modified) as newestVersion,\n        MIN(last_modified) as oldestVersion\n      FROM atom_versions",
+      "SELECT \n        (SELECT COUNT(*) FROM atoms) as atoms,\n        (SELECT COUNT(*) FROM atom_relations) as relations,\n        (SELECT COUNT(*) FROM files) as files,\n        (SELECT COUNT(*) FROM atom_eve"
+    ],
+    "tables": [
+      "count",
+      "max",
+      "min",
+      "atom_versions",
+      "atoms",
+      "atom_relations",
+      "files",
+      "atom_events"
+    ]
+  },
+  {
+    "filePath": "src/layer-c-memory/storage/repository/adapters/sqlite-adapter-core.js",
+    "parentFunction": "_prepareStatements",
+    "selects": [
+      "SELECT * FROM atoms WHERE id = ?",
+      "SELECT * FROM atoms WHERE file_path = ?",
+      "SELECT * FROM files WHERE path = ?",
+      "SELECT * FROM atoms LIMIT ? OFFSET ?",
+      "SELECT a.id, a.name, a.file_path, r.weight, r.line_number\r\n        FROM atom_relations r\r\n        JOIN atoms a ON r.source_id = a.id\r\n        WHERE r.target_id = ? AND r.relation_type = 'calls'",
+      "SELECT a.id, a.name, a.file_path, r.weight, r.line_number\r\n        FROM atom_relations r\r\n        JOIN atoms a ON r.target_id = a.id\r\n        WHERE r.source_id = ? AND r.relation_type = 'calls'",
+      "SELECT 1 FROM atoms WHERE id = ?"
+    ],
+    "tables": [
+      "atoms",
+      "files",
+      "atom_relations"
+    ]
+  },
+  {
+    "filePath": "check-sql-live.mjs",
+    "parentFunction": "run",
+    "selects": [
+      "SELECT COUNT(*) as c FROM atoms WHERE atom_type = 'sql_query'",
+      "SELECT _meta_json FROM atoms WHERE atom_type='sql_query'",
+      "SELECT COUNT(*) as c FROM atom_relations WHERE relation_type='executes_sql'",
+      "SELECT * FROM atoms"
+    ],
+    "tables": [
+      "count",
+      "atoms",
+      "atom_relations"
+    ]
+  }
+]

@@ -11,8 +11,7 @@ import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getAtomDetails } from '#layer-c/query/queries/file-query/index.js';
 import { getAllAtoms } from '#layer-c/storage/index.js';
-import { analyzeFunctionForTests } from './test-analyzer.js';
-import { generateTestCode } from './code-generator.js';
+import { generateMirrorTestCode } from './mirror-test-generator.js';
 import { calculateRiskScore } from './recommendations.js';
 
 const logger = createLogger('OmnySys:batch-test-generator');
@@ -159,12 +158,20 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
     };
   }
 
-  const tests = await analyzeFunctionForTests(atom, projectPath);
-  // Pass the test file's directory (not base outputPath) so resolveImportAlias can
-  // compute the correct number of '../' needed for non-aliased paths.
   const testFilePath = generateTestFilePath(gap.file, gap.name, outputPath);
   const testFileDir = path.dirname(testFilePath);
-  const testCode = generateTestCode(atom, tests, { useRealFactories: true, outputPath: testFileDir });
+
+  const mirrorResult = generateMirrorTestCode(atom, { useRealFactories: true, outputPath: testFileDir });
+  if (mirrorResult.error) {
+    return {
+      success: false,
+      function: gap.name,
+      file: gap.file,
+      error: mirrorResult.error
+    };
+  }
+  const testCode = mirrorResult.code;
+  const testsLength = mirrorResult.testCount;
   const riskScore = calculateRiskScore(atom);
 
 
@@ -182,8 +189,8 @@ async function generateTestForGap(gap, projectPath, cache, outputPath, dryRun) {
     test: {
       filePath: testFilePath,
       code: testCode,
-      testCount: tests.length,
-      types: [...new Set(tests.map(t => t.type))]
+      testCount: testsLength,
+      types: ['MIRROR']
     },
     dryRun
   };

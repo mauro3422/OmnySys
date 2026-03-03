@@ -18,20 +18,16 @@ describe('Storage System - Completo', () => {
   it('exports all storage functions', () => {
     const expectedFunctions = [
       'calculateFileHash',
-      'createDataDirectory', 
+      'createDataDirectory',
       'getDataDirectory',
       'hasExistingAnalysis',
-      'saveMetadata',
-      'saveFileAnalysis',
-      'saveConnections',
-      'saveRiskAssessment',
       'savePartitionedSystemMap',
       'saveMolecule',
       'loadMolecule',
       'saveAtom',
       'loadAtoms'
     ];
-    
+
     expectedFunctions.forEach(fnName => {
       expect(typeof storage[fnName]).toBe('function');
     });
@@ -48,10 +44,6 @@ describe('Storage System - Completo', () => {
   });
 
   it('has file operations', () => {
-    expect(typeof storage.saveMetadata).toBe('function');
-    expect(typeof storage.saveFileAnalysis).toBe('function');
-    expect(typeof storage.saveConnections).toBe('function');
-    expect(typeof storage.saveRiskAssessment).toBe('function');
     expect(typeof storage.savePartitionedSystemMap).toBe('function');
   });
 

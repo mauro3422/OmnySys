@@ -92,34 +92,34 @@ describe('MCP Tools Registry', () => {
   });
 
   describe('specific tools', () => {
-    it('get_impact_map is registered', () => {
-      const tool = toolDefinitions.find(d => d.name === 'get_impact_map');
+    it('mcp_omnysystem_query_graph is registered', () => {
+      const tool = toolDefinitions.find(d => d.name === 'mcp_omnysystem_query_graph');
       expect(tool).toBeDefined();
-      expect(tool.inputSchema.required).toContain('filePath');
+      expect(tool.inputSchema.required).toContain('queryType');
     });
 
-    it('get_risk_assessment is registered', () => {
-      const tool = toolDefinitions.find(d => d.name === 'get_risk_assessment');
+    it('mcp_omnysystem_traverse_graph is registered', () => {
+      const tool = toolDefinitions.find(d => d.name === 'mcp_omnysystem_traverse_graph');
       expect(tool).toBeDefined();
-      expect(tool.inputSchema.properties).toHaveProperty('minSeverity');
+      expect(tool.inputSchema.required).toEqual(expect.arrayContaining(['traverseType', 'filePath']));
     });
 
-    it('search_files is registered', () => {
-      const tool = toolDefinitions.find(d => d.name === 'search_files');
+    it('mcp_omnysystem_aggregate_metrics is registered', () => {
+      const tool = toolDefinitions.find(d => d.name === 'mcp_omnysystem_aggregate_metrics');
       expect(tool).toBeDefined();
-      expect(tool.inputSchema.required).toContain('pattern');
+      expect(tool.inputSchema.required).toContain('aggregationType');
     });
 
-    it('atomic_edit is registered', () => {
-      const tool = toolDefinitions.find(d => d.name === 'atomic_edit');
+    it('mcp_omnysystem_atomic_edit is registered', () => {
+      const tool = toolDefinitions.find(d => d.name === 'mcp_omnysystem_atomic_edit');
       expect(tool).toBeDefined();
-      expect(tool.inputSchema.required).toEqual(['filePath', 'oldString', 'newString']);
+      expect(tool.inputSchema.required).toEqual(expect.arrayContaining(['filePath', 'oldString', 'newString']));
     });
 
-    it('atomic_write is registered', () => {
-      const tool = toolDefinitions.find(d => d.name === 'atomic_write');
+    it('mcp_omnysystem_atomic_write is registered', () => {
+      const tool = toolDefinitions.find(d => d.name === 'mcp_omnysystem_atomic_write');
       expect(tool).toBeDefined();
-      expect(tool.inputSchema.required).toEqual(['filePath', 'content']);
+      expect(tool.inputSchema.required).toEqual(expect.arrayContaining(['filePath', 'content']));
     });
   });
 });

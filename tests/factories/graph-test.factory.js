@@ -7,7 +7,7 @@ export {
   NodeBuilder,
   EdgeBuilder,
   SystemMapBuilder
-} from './graph-test/builders.js';
+} from './graph-test/builders/index.js';
 
 export { GraphScenarios } from './graph-test/scenarios.js';
 export { GraphTestFactory } from './graph-test/factory.js';

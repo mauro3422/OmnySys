@@ -1,7 +1,7 @@
-import { checkLLM, checkMCP, PORTS } from '../utils/port-checker.js';
+import { checkMCP, PORTS } from '../utils/port-checker.js';
 import { setupOpenCode } from '../utils/opencode-config.js';
 import { log } from '../utils/logger.js';
-import { startLLM, startMCP } from '../handlers/process-manager.js';
+import { startMCP } from '../handlers/process-manager.js';
 
 export const aliases = ['start', 'up'];
 
@@ -9,9 +9,6 @@ export async function upLogic(options = {}) {
   const { silent = false } = options;
 
   try {
-    let llmRunning = false;
-    let llmStarted = false;
-
     let mcpRunning = await checkMCP();
     let mcpStarted = false;
 
@@ -50,7 +47,6 @@ export async function upLogic(options = {}) {
         exitCode: 1,
         error: 'MCP Server failed to start',
         services: {
-          llm: { running: true, started: llmStarted, port: PORTS.llm },
           mcp: { running: false, started: mcpStarted }
         }
       };
@@ -62,7 +58,6 @@ export async function upLogic(options = {}) {
       success: true,
       exitCode: 0,
       services: {
-        llm: { running: true, started: llmStarted, port: PORTS.llm },
         mcp: { running: true, started: mcpStarted, port: PORTS.mcp }
       },
       openCodeConfigured: configured
