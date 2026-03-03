@@ -141,6 +141,19 @@ export async function _deriveStaticInsights() {
     // Initiate background Phase 2 deep scanning
     this._startPhase2BackgroundIndexer();
 
+    // 🏘️ ANALYZE SOCIETIES (PUEBLOS)
+    // Se ejecuta asíncronamente para no bloquear el boot, 
+    // pero ya empieza a poblar la tabla de sociedades.
+    (async () => {
+      try {
+        const { analyzeSocieties } = await import('#layer-b/society-manager/index.js');
+        await analyzeSocieties(this.projectPath);
+        logger.info('  🏘️  Society analysis (Pueblos) initial pass complete');
+      } catch (e) {
+        logger.debug('  ⚠️  Initial society analysis failed:', e.message);
+      }
+    })();
+
   } catch (error) {
     logger.error('  ❌ Static insights init failed:', error.message);
   }

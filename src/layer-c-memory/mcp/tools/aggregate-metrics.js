@@ -146,20 +146,21 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                 }
 
                 case 'society': {
-                    // Consulta SQLite: conexiones semánticas entre archivos
-                    const result = await this.getAtomSociety({
+                    // Consulta SQLite: Sociedades formales (Pueblos de Átomos)
+                    const result = await this.getSocieties({
                         offset: options.offset || 0,
                         limit: options.limit || 20,
-                        connectionType: options.connectionType || 'all', // 'shared_state', 'event', 'all'
-                        filePath: options.filePath
+                        type: options.societyType // 'functional', 'structural', 'cultural'
                     });
 
                     return this.formatSuccess({
-                        aggregationType: 'society',
+                        aggregationType: 'societies',
                         ...result,
                         summary: {
-                            totalConnections: result.total,
-                            byType: this._groupByType(result.connections)
+                            totalSocieties: result.total,
+                            functional: result.societies.filter(s => s.type === 'functional').length,
+                            structural: result.societies.filter(s => s.type === 'structural').length,
+                            avgCohesion: result.societies.reduce((sum, s) => sum + s.cohesion, 0) / (result.societies.length || 1)
                         }
                     });
                 }

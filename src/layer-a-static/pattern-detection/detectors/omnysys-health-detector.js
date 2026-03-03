@@ -115,7 +115,6 @@ export class OmnysysHealthDetector {
             }
 
             // 3. Schema Column Drift — usa columns_referenced del AST (tree-sitter-sql)
-            // Mucho mas preciso que regex: tree-sitter extrae column_name/field nodes directamente
             for (const atom of sqlAtoms) {
                 const referencedCols = atom._meta?.columns_referenced || [];
                 if (referencedCols.length === 0) continue;
@@ -126,7 +125,10 @@ export class OmnysysHealthDetector {
                     if (!knownCols) continue; // tabla desconocida = no la medimos
 
                     for (const col of referencedCols) {
-                        if (!knownCols.has(col) && col !== '*' && col.length > 1) {
+                        // Skip special cases efficiently
+                        if (col === '*' || col.length <= 1) continue;
+
+                        if (!knownCols.has(col)) {
                             findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
                                 `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
                                 { column: col, table }

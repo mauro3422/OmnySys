@@ -236,9 +236,10 @@ export class SemanticQueryTool extends GraphQueryTool {
     }
 
     /**
-     * Obtiene conexiones semánticas (society)
+     * Obtiene conexiones semánticas (la visión de cables crudos)
      * @param {Object} options - Opciones de consulta
      * @returns {Object} Resultado paginado
+     * @deprecated Use getSocieties para una visión formal de Pueblos
      */
     async getAtomSociety(options = {}) {
         const {
@@ -298,6 +299,64 @@ export class SemanticQueryTool extends GraphQueryTool {
             limit,
             hasMore: offset + limit < total,
             connections: society
+        };
+    }
+
+    /**
+     * Obtiene Sociedades (Pueblos) formales
+     * @param {Object} options - Opciones de consulta
+     */
+    async getSocieties(options = {}) {
+        const {
+            offset = 0,
+            limit = 20,
+            type // 'functional', 'structural', 'cultural'
+        } = options;
+
+        if (!this.repo) {
+            throw new Error('Repository not initialized');
+        }
+
+        let whereClause = 'WHERE 1=1';
+        const params = [];
+
+        if (type) {
+            whereClause += ' AND type = ?';
+            params.push(type);
+        }
+
+        const dataQuery = this.repo.db.prepare(`
+            SELECT 
+                COUNT(*) OVER() as total_count,
+                id, name, type, cohesion_score, entropy_score, molecule_count,
+                metadata_json, created_at, updated_at
+            FROM societies
+            ${whereClause}
+            ORDER BY cohesion_score DESC
+            LIMIT ? OFFSET ?
+        `);
+
+        const rows = dataQuery.all(...params, limit, offset);
+        const total = rows.length > 0 ? rows[0].total_count : 0;
+
+        const societies = rows.map(r => ({
+            id: r.id,
+            name: r.name,
+            type: r.type,
+            cohesion: r.cohesion_score,
+            entropy: r.entropy_score,
+            moleculeCount: r.molecule_count,
+            metadata: JSON.parse(r.metadata_json || '{}'),
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+        }));
+
+        return {
+            total,
+            offset,
+            limit,
+            hasMore: offset + limit < total,
+            societies
         };
     }
 

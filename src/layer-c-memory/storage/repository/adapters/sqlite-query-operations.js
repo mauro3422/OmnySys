@@ -72,14 +72,15 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
       params.push(`%${filter.name}%`);
     }
 
-    const sortField = options.sortBy || 'id';
-    const sortOrder = options.sortOrder || 'ASC';
+    const sortField = this._validateSortField(options.sortBy || 'id');
+    const sortOrder = (options.sortOrder || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     sql += ` ORDER BY ${sortField} ${sortOrder}`;
 
     // 0 = sin límite (cargar todos), default 50000 para evitar overflow
-    const limit = options.limit === 0 ? Infinity : (options.limit || 50000);
+    const limit = options.limit === 0 ? -1 : (options.limit || 50000);
     const offset = options.offset || 0;
-    sql += ` LIMIT ${limit} OFFSET ${offset}`;
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params);
@@ -89,7 +90,7 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
 
   getAll(options = {}) {
     // 0 = sin límite (cargar todos), default 50000 para evitar overflow
-    const limit = options.limit === 0 ? Infinity : (options.limit || 50000);
+    const limit = options.limit === 0 ? -1 : (options.limit || 50000);
     const offset = options.offset || 0;
 
     const rows = this.statements.getAll.all(limit, offset);
@@ -140,9 +141,10 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
   }
 
   updateVectors(id, vectors) {
-    const fields = Object.keys(vectors);
-    const values = Object.values(vectors);
+    const fields = Object.keys(vectors).filter(f => this._isValidVectorField(f));
+    if (fields.length === 0) return;
 
+    const values = fields.map(f => vectors[f]);
     const setClause = fields.map(f => `${f} = ?`).join(', ');
 
     const stmt = this.db.prepare(
@@ -150,5 +152,32 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
     );
 
     stmt.run(...values, new Date().toISOString(), id);
+  }
+
+  /**
+   * Valida campo de ordenamiento contra whitelist
+   * @private
+   */
+  _validateSortField(field) {
+    const whitelist = [
+      'id', 'name', 'file_path', 'atom_type', 'complexity',
+      'lines_of_code', 'importance_score', 'stability_score',
+      'created_at', 'updated_at'
+    ];
+    return whitelist.includes(field) ? field : 'id';
+  }
+
+  /**
+   * Valida campo de vector contra whitelist
+   * @private
+   */
+  _isValidVectorField(field) {
+    const whitelist = [
+      'complexity', 'lines_of_code', 'importance_score', 'stability_score',
+      'propagation_score', 'fragility_score', 'testability_score',
+      'cohesion_score', 'coupling_score', 'archetype_weight',
+      'change_frequency', 'age_days', 'callers_count', 'callees_count'
+    ];
+    return whitelist.includes(field);
   }
 }

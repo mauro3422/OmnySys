@@ -27,51 +27,77 @@ export class SqlPatternsDetector {
             const sqlAtoms = allAtoms.filter(a => a.type === 'sql_query');
             if (sqlAtoms.length === 0) continue;
 
-            const jsAtomsByName = new Map(allAtoms
-                .filter(a => a.type !== 'sql_query')
-                .map(a => [a.name, a]));
+            const jsAtomsByName = new Map();
+            const jsAtomsById = new Map();
+            for (const atom of allAtoms) {
+                if (atom.type !== 'sql_query') {
+                    jsAtomsByName.set(atom.name, atom);
+                    jsAtomsById.set(atom.id, atom);
+                }
+            }
 
-            // 1: SELECT * usage
+            const mutationsByParent = new Map();
+            const parentHasTransaction = new Set();
+
+            // Single pass for most checks and data gathering
             for (const atom of sqlAtoms) {
                 const raw = (atom._meta?.raw_sql || '').toUpperCase();
+                const sqlPurpose = atom._meta?.sql_purpose;
+                const sqlOp = atom._meta?.sql_operation;
+                const parentName = atom._meta?.parent_atom_name;
+                const parentId = atom._meta?.parent_atom_id || parentName;
+
+                // 1: SELECT * check
                 if (raw.includes('SELECT *') || raw.includes('SELECT  *')) {
                     findings.push(this._finding('sql-select-star', 'medium', filePath, atom,
                         `SELECT * detected — fetches all columns, prevents index-only scans`,
-                        { sql_purpose: atom._meta?.sql_purpose, parent: atom._meta?.parent_atom_name }
+                        { sql_purpose: sqlPurpose, parent: parentName }
                     ));
                 }
-            }
 
-            // 2: BULK_MUTATION (UPDATE/DELETE without WHERE)
-            for (const atom of sqlAtoms) {
-                if (atom._meta?.sql_purpose === 'BULK_MUTATION') {
+                // 2: BULK_MUTATION check
+                if (sqlPurpose === 'BULK_MUTATION') {
                     findings.push(this._finding('sql-bulk-mutation', 'high', filePath, atom,
-                        `${atom._meta.sql_operation} without WHERE clause — modifies ALL rows in table`,
+                        `${sqlOp} without WHERE clause — modifies ALL rows in table`,
                         { tables: atom._meta?.tables_referenced }
                     ));
                 }
-            }
 
-            // 3: Multiple mutations in same parent without TRANSACTION
-            const mutationsByParent = {};
-            for (const atom of sqlAtoms) {
-                const pid = atom._meta?.parent_atom_id || atom._meta?.parent_atom_name;
-                if (!pid) continue;
-                const op = atom._meta?.sql_operation;
-                if (op === 'INSERT' || op === 'UPDATE' || op === 'DELETE') {
-                    if (!mutationsByParent[pid]) mutationsByParent[pid] = [];
-                    mutationsByParent[pid].push(atom);
+                // Data gathering for Transaction check (3)
+                if (sqlOp === 'INSERT' || sqlOp === 'UPDATE' || sqlOp === 'DELETE') {
+                    if (parentId) {
+                        if (!mutationsByParent.has(parentId)) mutationsByParent.set(parentId, []);
+                        mutationsByParent.get(parentId).push(atom);
+                    }
+                }
+                if (sqlPurpose === 'TRANSACTION_CONTROL') {
+                    if (parentId) parentHasTransaction.add(parentId);
+                }
+
+                // 4: N+1 risk check
+                if (parentName) {
+                    const parent = jsAtomsByName.get(parentName);
+                    if (parent && (parent.complexity || 1) >= this.config.n1ComplexityThreshold) {
+                        if (sqlOp === 'SELECT' || sqlOp === 'INSERT') {
+                            findings.push(this._finding('sql-n1-risk', 'high', filePath, atom,
+                                `SQL ${sqlOp} inside high-complexity '${parentName}' (complexity:${parent.complexity}) — likely N+1 pattern`,
+                                { parent_complexity: parent.complexity, sql_purpose: sqlPurpose }
+                            ));
+                        }
+                    }
+
+                    // 5: Dead SQL check
+                    if (parent?.callerPattern?.id === 'truly_dead' || parent?.isDeadCode) {
+                        findings.push(this._finding('sql-dead-query', 'medium', filePath, atom,
+                            `SQL query in dead function '${parentName}' — never executed but still in codebase`,
+                            { sql_purpose: sqlPurpose, tables: atom._meta?.tables_referenced }
+                        ));
+                    }
                 }
             }
-            // Check if there's a TRANSACTION atom in same parent
-            const transactionAtoms = sqlAtoms.filter(a => a._meta?.sql_purpose === 'TRANSACTION_CONTROL');
-            const parentHasTransaction = new Set(transactionAtoms.map(a => a._meta?.parent_atom_id));
 
-            // Build ID map once for O(1) lookups
-            const jsAtomsById = new Map();
-            for (const atom of jsAtomsByName.values()) jsAtomsById.set(atom.id, atom);
-
-            for (const [parentId, mutations] of Object.entries(mutationsByParent)) {
+            // 3: Transaction check evaluation
+            for (const [parentId, mutations] of mutationsByParent.entries()) {
                 if (mutations.length >= this.config.multiMutationThreshold && !parentHasTransaction.has(parentId)) {
                     const parentAtom = jsAtomsById.get(parentId) || jsAtomsByName.get(parentId);
                     findings.push(this._finding('sql-missing-transaction', 'high', filePath, mutations[0],
@@ -81,36 +107,7 @@ export class SqlPatternsDetector {
                 }
             }
 
-            // 4: N+1 risk — SQL atom inside high-complexity parent
-            for (const atom of sqlAtoms) {
-                const parentName = atom._meta?.parent_atom_name;
-                if (!parentName) continue;
-                const parent = jsAtomsByName.get(parentName);
-                if (parent && (parent.complexity || 1) >= this.config.n1ComplexityThreshold) {
-                    const op = atom._meta?.sql_operation;
-                    if (op === 'SELECT' || op === 'INSERT') {
-                        findings.push(this._finding('sql-n1-risk', 'high', filePath, atom,
-                            `SQL ${op} inside high-complexity '${parentName}' (complexity:${parent.complexity}) — likely N+1 pattern`,
-                            { parent_complexity: parent.complexity, sql_purpose: atom._meta?.sql_purpose }
-                        ));
-                    }
-                }
-            }
-
-            // 5: Dead SQL — SQL in truly_dead parent
-            for (const atom of sqlAtoms) {
-                const parentName = atom._meta?.parent_atom_name;
-                if (!parentName) continue;
-                const parent = jsAtomsByName.get(parentName);
-                if (parent?.callerPattern?.id === 'truly_dead' || parent?.isDeadCode) {
-                    findings.push(this._finding('sql-dead-query', 'medium', filePath, atom,
-                        `SQL query in dead function '${parentName}' — never executed but still in codebase`,
-                        { sql_purpose: atom._meta?.sql_purpose, tables: atom._meta?.tables_referenced }
-                    ));
-                }
-            }
-
-            // 6: Query density
+            // 6: Query density check
             if (sqlAtoms.length >= this.config.queryDensityThreshold) {
                 const purposes = [...new Set(sqlAtoms.map(a => a._meta?.sql_purpose).filter(Boolean))];
                 findings.push({

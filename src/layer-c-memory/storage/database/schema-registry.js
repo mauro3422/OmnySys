@@ -264,6 +264,25 @@ export const TABLE_DEFINITIONS = {
       { name: 'idx_events_type', columns: ['event_type'] },
       { name: 'idx_events_timestamp', columns: ['timestamp'] }
     ]
+  },
+
+  societies: {
+    description: 'Agrupaciones semánticas de moléculas (Pueblos de Átomos)',
+    columns: [
+      { name: 'id', type: 'TEXT', pk: true, nullable: false, description: 'ID de la sociedad (ej: module-path or semantic-id)' },
+      { name: 'name', type: 'TEXT', nullable: false, description: 'Nombre legible del pueblo' },
+      { name: 'type', type: 'TEXT', nullable: false, description: 'Tipo: cultural, functional, semantic' },
+      { name: 'cohesion_score', type: 'REAL', default: 0, description: 'Cohesión interna (0-1)' },
+      { name: 'entropy_score', type: 'REAL', default: 1, description: 'Entropía (desorden) (0-1)' },
+      { name: 'molecule_count', type: 'INTEGER', default: 0, description: 'Cantidad de archivos en la sociedad' },
+      { name: 'metadata_json', type: 'TEXT', nullable: true, description: 'Metadatos adicionales: roles, vecindarios, tags' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de fundación' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, description: 'Última actualización' }
+    ],
+    indexes: [
+      { name: 'idx_societies_type', columns: ['type'] },
+      { name: 'idx_societies_cohesion', columns: ['cohesion_score DESC'] }
+    ]
   }
 };
 
