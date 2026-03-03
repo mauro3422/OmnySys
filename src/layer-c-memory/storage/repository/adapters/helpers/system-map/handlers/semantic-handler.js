@@ -11,11 +11,19 @@ export async function saveSemanticData(db, connections, issues, now) {
   // Connections
   db.prepare('DELETE FROM semantic_connections').run();
   const connStmt = db.prepare(`
-    INSERT INTO semantic_connections (source_path, target_path, connection_type, context_json, created_at)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO semantic_connections (source_path, target_path, connection_type, connection_key, weight, context_json, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   for (const conn of connections) {
-    connStmt.run(conn.from, conn.to, conn.type || 'unknown', safeJson(conn.metadata), now);
+    connStmt.run(
+      conn.from,
+      conn.to,
+      conn.type || 'unknown',
+      conn.key || conn.connectionKey || null,
+      typeof conn.weight === 'number' ? conn.weight : 1.0,
+      safeJson(conn.metadata),
+      now
+    );
   }
 
   // Issues

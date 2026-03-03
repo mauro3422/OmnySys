@@ -40,7 +40,9 @@ export class PatternDetectionEngine {
       { id: 'sharedObjects', loader: () => import('../detectors/shared-objects-detector/index.js'), priority: 90 },
       { id: 'coupling', loader: () => import('../detectors/coupling-detector.js'), priority: 80 },
       { id: 'hotspots', loader: () => import('../detectors/hotspots-detector.js'), priority: 70 },
-      { id: 'performance-patterns', loader: () => import('../detectors/performance-patterns-detector.js'), priority: 60 }
+      { id: 'performance-patterns', loader: () => import('../detectors/performance-patterns-detector.js'), priority: 60 },
+      { id: 'sql-patterns', loader: () => import('../detectors/sql-patterns-detector.js'), priority: 55 },
+      { id: 'omnysys-health', loader: () => import('../detectors/omnysys-health-detector.js'), priority: 50 }
     ];
 
     detectors.forEach(detector => this.registry.register(detector));

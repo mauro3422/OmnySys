@@ -51,6 +51,32 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
   });
   atoms.push(...objectAtoms);
 
+  // Propagate SQL queries extracted by the tree-sitter-sql injection pass
+  // Also resolve parent JS atom by line-range containment (in memory, no DB needed)
+  const sqlAtoms = (fileInfo.definitions || []).filter(def => def.type === 'sql_query');
+  for (const sqlAtom of sqlAtoms) {
+    const sqlLine = sqlAtom.lineStart || (sqlAtom._meta && sqlAtom._meta.line_start) || 0;
+    if (sqlLine > 0) {
+      // Find the smallest enclosing function atom
+      let bestParent = null;
+      let bestSize = Infinity;
+      for (const candidate of atoms) {
+        if (candidate.type === 'sql_query') continue;
+        const cStart = candidate.line || candidate.lineStart || 0;
+        const cEnd = candidate.endLine || candidate.lineEnd || 0;
+        if (cStart <= sqlLine && cEnd >= sqlLine) {
+          const size = cEnd - cStart;
+          if (size < bestSize) { bestSize = size; bestParent = candidate; }
+        }
+      }
+      if (bestParent && sqlAtom._meta) {
+        sqlAtom._meta.parent_atom_id = bestParent.id || null;
+        sqlAtom._meta.parent_atom_name = bestParent.name || null;
+      }
+    }
+  }
+  atoms.push(...sqlAtoms);
+
   return atoms;
 }
 

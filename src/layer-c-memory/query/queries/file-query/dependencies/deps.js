@@ -13,6 +13,24 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
  * @returns {Promise<string[]>}
  */
 export async function getFileDependencies(rootPath, filePath) {
+  try {
+    const repo = getRepository(rootPath);
+    if (repo && repo.db) {
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      const deps = repo.db.prepare(`
+        SELECT DISTINCT target_path FROM file_dependencies
+        WHERE source_path = ?
+      `).all(normalizedPath);
+
+      if (deps && deps.length > 0) {
+        return deps.map(d => d.target_path);
+      }
+    }
+  } catch (err) {
+    console.error(`[getFileDependencies] SQLite error: ${err.message}`);
+  }
+
+  // Fallback (atoms imports list without resolution)
   const analysis = await getFileAnalysis(rootPath, filePath);
   return analysis?.imports?.map(imp => imp.source) || [];
 }
@@ -34,7 +52,7 @@ export async function getFileDependents(rootPath, filePath) {
         SELECT DISTINCT source_path FROM file_dependencies 
         WHERE target_path = ? OR target_path LIKE ?
       `).all(normalizedPath, normalizedPath.replace(/\.js$/, '') + '%');
-      
+
       if (deps && deps.length > 0) {
         return deps.map(d => d.source_path);
       }
@@ -42,7 +60,7 @@ export async function getFileDependents(rootPath, filePath) {
   } catch (err) {
     console.error(`[getFileDependents] SQLite error: ${err.message}`);
   }
-  
+
   // Fallback: analysis.usedBy (puede estar vacío si no se populó)
   const analysis = await getFileAnalysis(rootPath, filePath);
   return analysis?.usedBy || [];

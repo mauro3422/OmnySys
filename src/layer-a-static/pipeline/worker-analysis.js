@@ -84,6 +84,7 @@ async function runWorker() {
                     liteResults[absoluteFilePath] = {
                         atoms: liteAtoms,
                         atomCount: liteAtoms.length,
+                        imports: [], // cached — imports not needed for unchanged files
                         skipped: true
                     };
                     return { skipped: true };
@@ -131,12 +132,14 @@ async function runWorker() {
                 liteResults[absoluteFilePath] = {
                     atoms: liteAtoms,
                     atomCount: liteAtoms.length,
+                    imports: parsedFile.imports || [], // FIX: forward imports to master for graph resolution
                     skipped: false
                 };
             } else {
                 liteResults[absoluteFilePath] = {
                     atoms: [],
                     atomCount: 0,
+                    imports: parsedFile.imports || [], // FIX: forward imports even for empty-atom files
                     skipped: false
                 };
             }

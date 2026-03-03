@@ -213,6 +213,9 @@ export async function _startPhase2BackgroundIndexer() {
     // Only queue new background files if the worker queue is basically empty and we aren't already bursting
     if (this.queue.size() > 20 || !this.isRunning || this._isPhase2Bursting) return;
 
+    // Init in-memory blacklist to prevent re-queuing same files indefinitely
+    if (!this._phase2ProcessedPaths) this._phase2ProcessedPaths = new Set();
+
     this._isPhase2Bursting = true;
     try {
       const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -225,7 +228,7 @@ export async function _startPhase2BackgroundIndexer() {
         SELECT DISTINCT file_path 
         FROM atoms 
         WHERE is_phase2_complete = 0 
-        LIMIT 100
+        LIMIT 200
       `).all();
 
       if (rows.length === 0) {
@@ -239,7 +242,14 @@ export async function _startPhase2BackgroundIndexer() {
         return;
       }
 
-      const filesToProcess = rows.map(r => r.file_path);
+      // Filter out files already dispatched this session to prevent infinite loop
+      const filesToProcess = rows
+        .map(r => r.file_path)
+        .filter(fp => !this._phase2ProcessedPaths.has(fp));
+
+      // Mark them all as dispatched immediately (before any async op)
+      for (const fp of filesToProcess) this._phase2ProcessedPaths.add(fp);
+
       const enqueuedCount = filesToProcess.length;
 
       if (enqueuedCount > 0) {

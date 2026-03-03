@@ -26,6 +26,7 @@ export function buildCallGraph(atoms) {
 
   // First pass: classify calls
   atoms.forEach(atom => {
+    if (!atom.calls || !Array.isArray(atom.calls)) atom.calls = [];
     atom.calls.forEach(call => {
       call.type = definedFunctions.has(call.name) ? 'internal' : 'external';
     });

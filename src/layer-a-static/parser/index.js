@@ -10,9 +10,11 @@
 import Parser from 'tree-sitter';
 import JavaScript from 'tree-sitter-javascript';
 import TypeScript from 'tree-sitter-typescript';
+import Sql from '@derekstride/tree-sitter-sql';
 import path from 'path';
 import fs from 'fs/promises';
 import { extractFileInfo } from './extractor.js';
+import { extractSqlQueries } from './extractors/sql.js';
 import { getParserPool } from './parser-pool.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -37,7 +39,8 @@ async function ensureInitialized() {
         '.mjs': JavaScript,
         '.cjs': JavaScript,
         '.ts': TypeScript.typescript, // Nota: tree-sitter-typescript exporta { typescript, tsx }
-        '.tsx': TypeScript.tsx
+        '.tsx': TypeScript.tsx,
+        '.sql': Sql
     };
 
     logger.debug('✅ Native grammars ready');
@@ -120,6 +123,10 @@ export async function parseFile(filePath, code) {
         if (!tree) throw new Error(`Could not generate tree for: ${filePath}`);
 
         const result = extractFileInfo(tree, code, filePath);
+
+        // Execute the asynchronous SQL sub-parser pass
+        await extractSqlQueries(tree, code, result);
+
         // En node-tree-sitter no existe .delete(), el GC se encarga
         return result;
 

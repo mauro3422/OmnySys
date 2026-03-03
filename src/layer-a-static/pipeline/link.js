@@ -181,6 +181,36 @@ export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
 
     timerRelations.end(verbose);
 
+    // 🔗 EXECUTES_SQL RELATIONS: Link parent JS atoms → SQL query atoms
+    try {
+        const db = repo.db || repo.getDatabase?.();
+        if (db) {
+            const insertRelation = db.prepare(`
+                INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, created_at)
+                VALUES (?, ?, 'executes_sql', 1.0, ?, datetime('now'))
+            `);
+            const insertBatch = db.transaction((rels) => {
+                for (const r of rels) insertRelation.run(r.sourceId, r.targetId, r.line);
+            });
+
+            const sqlRelations = [];
+            for (const atom of allAtoms) {
+                if (atom.type !== 'sql_query') continue;
+                const meta = atom._meta || {};
+                if (meta.parent_atom_id) {
+                    sqlRelations.push({ sourceId: meta.parent_atom_id, targetId: atom.id, line: atom.lineStart || 0 });
+                }
+            }
+
+            if (sqlRelations.length > 0) {
+                insertBatch(sqlRelations);
+                if (verbose) logger.info(`  ✓ ${sqlRelations.length} executes_sql relations saved`);
+            }
+        }
+    } catch (sqlRelErr) {
+        logger.warn(`  ⚠️ executes_sql relation save failed: ${sqlRelErr.message}`);
+    }
+
     if (verbose) {
         logger.info(`  ✓ Saved ${relationsToSave.length} atom relations\n`);
     }

@@ -18,14 +18,14 @@
  */
 export function loadGrammar(grammarModule, grammarName = null) {
   if (!grammarModule) return null;
-  
+
   let lang = null;
-  
+
   // Caso 1: El módulo ES directamente el language (tree-sitter-javascript 0.19.x)
   if (grammarModule.nodeTypeInfo && !grammarModule.default && !grammarModule.language) {
     return grammarModule;
   }
-  
+
   // Caso 2: ESM con default export (tree-sitter-javascript 0.23.x+)
   if (grammarModule.default) {
     if (grammarName && grammarModule.default[grammarName]) {
@@ -39,17 +39,17 @@ export function loadGrammar(grammarModule, grammarName = null) {
       lang = grammarModule.default;
     }
   }
-  
+
   // Caso 3: CommonJS con language export directo
   if (!lang && grammarName && grammarModule[grammarName]) {
     lang = grammarModule[grammarName];
   }
-  
+
   // Caso 4: CommonJS con language export directo (JavaScript)
   if (!lang && grammarModule.language) {
     lang = grammarModule.language;
   }
-  
+
   return lang;
 }
 
@@ -58,22 +58,25 @@ export function loadGrammar(grammarModule, grammarName = null) {
  * @returns {Promise<Object>} Mapa de extensión → language
  */
 export async function loadAllGrammars() {
-  const [js, ts] = await Promise.all([
+  const [js, ts, sql] = await Promise.all([
     import('tree-sitter-javascript'),
-    import('tree-sitter-typescript')
+    import('tree-sitter-typescript'),
+    import('@derekstride/tree-sitter-sql')
   ]);
-  
+
   const jsLang = loadGrammar(js);
   const tsLang = loadGrammar(ts, 'typescript');
   const tsxLang = loadGrammar(ts, 'tsx');
-  
+  const sqlLang = loadGrammar(sql);
+
   return {
     '.js': jsLang,
     '.jsx': jsLang,
     '.mjs': jsLang,
     '.cjs': jsLang,
     '.ts': tsLang,
-    '.tsx': tsxLang
+    '.tsx': tsxLang,
+    '.sql': sqlLang
   };
 }
 

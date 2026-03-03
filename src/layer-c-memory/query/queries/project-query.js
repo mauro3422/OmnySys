@@ -19,18 +19,18 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
  */
 export async function getProjectMetadata(rootPath) {
   const repo = getRepository(rootPath);
-  
+
   if (!repo || !repo.db) {
     throw new Error('SQLite not available. Run analysis first.');
   }
-  
+
   // Get metadata from SQLite
   const metadataRows = repo.db.prepare('SELECT key, value FROM system_metadata').all();
-  
+
   if (!metadataRows || metadataRows.length === 0) {
     throw new Error('No metadata found. Run analysis first.');
   }
-  
+
   const metadata = {};
   for (const row of metadataRows) {
     try {
@@ -39,34 +39,38 @@ export async function getProjectMetadata(rootPath) {
       metadata[row.key] = row.value;
     }
   }
-  
-  // Get files count from atoms table (source of truth)
-  const atomsCount = repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get();
-  const filesCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms').get();
-  
-  // Get stats from system_map_metadata if available
+
+  // Get files + counts from atoms table in ONE query (was 3 separate queries before)
+  const files = repo.db.prepare('SELECT DISTINCT file_path FROM atoms').all();
+  const totalAtoms = repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get()?.count || 0;
+
   const systemMapMeta = metadata.system_map_metadata || {};
   metadata.stats = {
-    totalAtoms: atomsCount?.count || systemMapMeta.totalFunctions || 0,
-    totalFiles: filesCount?.count || systemMapMeta.totalFiles || 0
+    totalAtoms: totalAtoms || systemMapMeta.totalFunctions || 0,
+    totalFiles: files.length || systemMapMeta.totalFiles || 0
   };
-  
-  // Use system_map_metadata totals as fallback
-  if (!metadata.totalFiles && systemMapMeta.totalFiles) {
-    metadata.totalFiles = systemMapMeta.totalFiles;
-  }
-  if (!metadata.totalFunctions && systemMapMeta.totalFunctions) {
-    metadata.totalFunctions = systemMapMeta.totalFunctions;
-  }
-  
-  // Get files list from atoms table
-  const files = repo.db.prepare('SELECT DISTINCT file_path FROM atoms LIMIT 1000').all();
+
   metadata.files = files.map(f => f.file_path);
   metadata.fileIndex = {};
   for (const f of files) {
     metadata.fileIndex[f.file_path] = { path: f.file_path };
   }
-  
+
+  // Derive modules by grouping files under their top-level directory
+  // (fixes aggregate_metrics 'modules' returning [])
+  const moduleMap = {};
+  for (const f of files) {
+    const parts = f.file_path.split('/');
+    const moduleName = parts.length > 1 ? parts[0] : '_root';
+    if (!moduleMap[moduleName]) {
+      moduleMap[moduleName] = { name: moduleName, files: [], fileCount: 0 };
+    }
+    moduleMap[moduleName].files.push(f.file_path);
+    moduleMap[moduleName].fileCount++;
+  }
+  metadata.modules = Object.values(moduleMap);
+  metadata.totalFiles = files.length;
+
   return metadata;
 }
 

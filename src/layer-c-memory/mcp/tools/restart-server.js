@@ -146,6 +146,19 @@ export async function restart_server(args, context) {
     // Paso 3: Reiniciar el pipeline de inicialización
     logger.info('🚀 Reiniciando pipeline de inicialización...');
 
+    // Cerrar el health beacon existente antes de reiniciar
+    // (para que InstanceDetectionStep no colisione con el puerto 9998)
+    if (server._healthBeacon) {
+      try {
+        await new Promise(resolve => server._healthBeacon.close(resolve));
+        server._healthBeacon = null;
+        logger.info('🔌 Health beacon cerrado correctamente antes del restart');
+      } catch (beaconErr) {
+        logger.warn('⚠️  No se pudo cerrar el health beacon:', beaconErr.message);
+        server._healthBeacon = null;
+      }
+    }
+
     // Resetear estado
     server.initialized = false;
     server.orchestrator = null;
