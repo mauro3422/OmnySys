@@ -38,7 +38,7 @@ export async function loadAtoms(rootPath, filePath, options = {}) {
     let atoms = repo.getByFile(normalizedPath);
 
     if (!includeRemoved) {
-      atoms = atoms.filter(a => a.lineage?.status !== 'removed' && !a.is_dead_code);
+      atoms = atoms.filter(a => a && a.lineage?.status !== 'removed' && !a.is_dead_code);
     }
 
     return atoms;
@@ -59,7 +59,8 @@ export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
     const atoms = repo.getAll();
 
     if (!includeRemoved) {
-      return atoms.filter(a => a.lineage?.status !== 'removed' && !a.is_dead_code);
+      // rowToAtom maps is_dead_code → isDeadCode (camelCase)
+      return atoms.filter(a => a && a.lineage?.status !== 'removed' && !a.isDeadCode);
     }
 
     return atoms;

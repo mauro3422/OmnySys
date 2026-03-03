@@ -33,8 +33,8 @@ function calculateHash(content) {
 /**
  * High-performance incremental analysis.
  */
-export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbose) {
-    if (verbose) logger.info('\n🚀 Starting Unified Analysis [TRUE TURBO MODE]...');
+export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbose, extractionDepth = 'structural', logPrefix = 'Unified Analysis') {
+    if (verbose) logger.info(`\n🚀 Starting ${logPrefix} [TRUE TURBO MODE]...`);
 
     const atomPhase = new AtomExtractionPhase();
     const repo = getRepository(absoluteRootPath);
@@ -44,7 +44,7 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
     // Turbo Mode Settings
     const CONCURRENCY = 60;
     const totalFiles = files.length;
-    const batchTimer = new BatchTimer('Unified Analysis', totalFiles);
+    const batchTimer = new BatchTimer(logPrefix, totalFiles, verbose);
     const parsedFiles = {};
 
     // Prepared statement for hash upserts — created ONCE, reused per batch
@@ -92,7 +92,8 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
             const worker = new Worker(workerScriptPath, {
                 workerData: {
                     files: chunk,
-                    absoluteRootPath
+                    absoluteRootPath,
+                    extractionDepth
                 }
             });
 

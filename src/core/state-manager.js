@@ -21,7 +21,7 @@ export class StateManager {
     this.writeDebounceMs = 100; // Evitar escrituras muy frecuentes
     this.writeLock = Promise.resolve(); // Lock para escrituras secuenciales
   }
-  
+
   /**
    * Escribe estado al archivo (ATÓMICO)
    * 
@@ -32,32 +32,32 @@ export class StateManager {
    */
   async write(state) {
     const now = Date.now();
-    
+
     // Debounce básico
     if (now - this.lastWrite < this.writeDebounceMs) {
       await new Promise(resolve => setTimeout(resolve, this.writeDebounceMs));
     }
-    
+
     // FIX: Usar lock para prevenir race conditions
     return this.writeLock = this.writeLock.then(async () => {
       try {
         // Asegurar que el directorio existe
         const dir = path.dirname(this.filePath);
         await fs.mkdir(dir, { recursive: true });
-        
+
         // FIX: Escritura atómica
         const tempPath = `${this.filePath}.tmp.${Date.now()}.${process.pid}`;
-        
+
         // 1. Escribir a archivo temporal
         await fs.writeFile(
           tempPath,
           JSON.stringify(state, null, 2),
           'utf-8'
         );
-        
+
         // 2. Renombrar atómicamente (operación atómica en filesystem)
         await fs.rename(tempPath, this.filePath);
-        
+
         this.lastWrite = Date.now();
       } catch (error) {
         logger.error('Error writing state:', error);
@@ -75,7 +75,7 @@ export class StateManager {
       }
     });
   }
-  
+
   /**
    * Lee estado del archivo
    */
@@ -88,7 +88,7 @@ export class StateManager {
       return this.getDefaultState();
     }
   }
-  
+
   /**
    * Estado por defecto
    */
@@ -117,20 +117,19 @@ export class StateManager {
       },
       health: {
         status: 'unknown',
-        llmConnection: 'unknown',
         memoryUsage: 0,
         lastError: null
       }
     };
   }
-  
+
   /**
    * Watch cambios en el archivo (para otros procesos)
    */
   async watch(callback) {
     try {
       const watcher = fs.watch(this.filePath);
-      
+
       for await (const event of watcher) {
         if (event.eventType === 'change') {
           const state = await this.read();

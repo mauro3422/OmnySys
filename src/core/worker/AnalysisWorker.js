@@ -28,32 +28,6 @@ export class AnalysisWorker {
     this.options = options;
     this.state = new WorkerState();
     this.analyzedFiles = new Set();
-
-    this._llmService = options.llmService || null;
-    this._llmServiceReady = false;
-  }
-
-  /**
-   * @deprecated Use llmService instead of llmAnalyzer
-   */
-  get llmAnalyzer() {
-    logger.debug('⚠️  [DEPRECATED] Accessing llmAnalyzer, use llmService instead');
-    return this._llmService;
-  }
-
-  /**
-   * @deprecated Service is injected in constructor
-   */
-  set llmAnalyzer(analyzer) {
-    logger.debug('⚠️  [DEPRECATED] Setting llmAnalyzer is deprecated');
-  }
-
-  /**
-   * Get LLM service (lazy initialization)
-   * @private
-   */
-  async _getLLMService() {
-    return null;
   }
 
   /**
@@ -124,29 +98,6 @@ export class AnalysisWorker {
     const analyzer = new JobAnalyzer(this.rootPath, this.callbacks, this);
     const result = await analyzer.analyze(job, jobId);
 
-    this.state.endJob();
-    return result;
-  }
-
-  /**
-   * Analyze files using LLM
-   * @private
-   */
-  async _analyzeWithLLM(llmService, files) {
-    const { LLMAnalyzer } = await import('../../layer-b-semantic/llm-analyzer/index.js');
-    const { loadAIConfig } = await import('../../ai/llm-client.js');
-
-    const aiConfig = await loadAIConfig();
-    const analyzer = new LLMAnalyzer(aiConfig, this.rootPath);
-
-    if (llmService.client) {
-      analyzer.client = llmService.client;
-      analyzer.initialized = true;
-    } else {
-      await analyzer.initialize();
-    }
-
-    return analyzer.analyzeMultiple(files);
   }
 }
 

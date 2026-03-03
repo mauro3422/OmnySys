@@ -72,17 +72,15 @@ export async function killProcess(pid) {
  * Verifica estado de los servicios
  */
 export async function checkServices() {
-  const [llmPort, orchestratorPort, wsPort] = await Promise.all([
-    isPortInUse(8000),   // LLM Server
+  const [orchestratorPort, wsPort] = await Promise.all([
     isPortInUse(9999),   // Orchestrator
     isPortInUse(9997)    // WebSocket
   ]);
 
   return {
-    llm: llmPort,
     orchestrator: orchestratorPort,
     websocket: wsPort,
-    anyRunning: llmPort || orchestratorPort || wsPort
+    anyRunning: orchestratorPort || wsPort
   };
 }
 
@@ -93,14 +91,6 @@ export async function cleanupProcesses() {
   logger.info('🧹 Cleaning up OmnySys processes...\n');
 
   const services = await checkServices();
-
-  if (services.llm) {
-    const pid = await findProcessByPort(8000);
-    if (pid) {
-      logger.info(`  Stopping LLM server (PID: ${pid})...`);
-      await killProcess(pid);
-    }
-  }
 
   if (services.orchestrator) {
     const pid = await findProcessByPort(9999);
@@ -138,54 +128,12 @@ export async function cleanupProcesses() {
 }
 
 /**
- * Inicia el servidor LLM si no está corriendo
- */
-export async function startLLMServer(scriptPath) {
-  const running = await isPortInUse(8000);
-
-  if (running) {
-    logger.info('✅ LLM Server already running on port 8000');
-    return { started: false, wasRunning: true };
-  }
-
-  logger.info('🚀 Starting LLM Server...');
-
-  const process = spawn('cmd.exe', ['/c', 'start', '/b', scriptPath], {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true
-  });
-
-  process.unref();
-
-  // Esperar a que esté listo
-  let attempts = 0;
-  const maxAttempts = 30;
-
-  while (attempts < maxAttempts) {
-    await new Promise(r => setTimeout(r, 1000));
-    const ready = await isPortInUse(8000);
-    if (ready) {
-      logger.info('✅ LLM Server ready\n');
-      return { started: true, wasRunning: false };
-    }
-    attempts++;
-    if (attempts % 5 === 0) {
-      logger.info(`  ⏳ Waiting for LLM server... (${attempts}/${maxAttempts})`);
-    }
-  }
-
-  throw new Error('LLM Server failed to start within 30 seconds');
-}
-
-/**
  * Muestra estado de todos los servicios
  */
 export async function printServiceStatus() {
   const services = await checkServices();
 
   logger.info('\n📊 Service Status:');
-  logger.info(`  LLM Server (port 8000):    ${services.llm ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info(`  Orchestrator (port 9999):  ${services.orchestrator ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info(`  WebSocket (port 9997):     ${services.websocket ? '🟢 Running' : '🔴 Stopped'}`);
   logger.info('');
@@ -199,6 +147,5 @@ export default {
   killProcess,
   checkServices,
   cleanupProcesses,
-  startLLMServer,
   printServiceStatus
 };

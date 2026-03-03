@@ -47,12 +47,12 @@ class PerformanceTracker {
   end(verbose = true) {
     const elapsed = this.elapsed();
     const mem = this.memoryDelta();
-    
+
     if (verbose) {
       const memStr = mem.heapUsed !== 0 ? ` [mem: ${mem.heapUsed > 0 ? '+' : ''}${mem.heapUsed}MB]` : '';
       logger.info(`  ⏱️  ${this.label}: ${elapsed.toFixed(2)}ms${memStr}`);
     }
-    
+
     return { elapsed, memory: mem };
   }
 
@@ -111,40 +111,42 @@ export function timedExecutionSync(label, fn, verbose = true) {
  * Batch timer - para procesar muchos items
  */
 export class BatchTimer {
-  constructor(label, totalItems) {
+  constructor(label, totalItems, verbose = true) {
     this.label = label;
     this.totalItems = totalItems;
     this.startTime = process.hrtime.bigint();
     this.itemsProcessed = 0;
     this.lastLogTime = this.startTime;
+    this.verbose = verbose;
   }
 
   onItemProcessed(count = 1) {
     this.itemsProcessed += count;
-    
+
     // Loguear progreso cada 100 items o cada 5 segundos
     const now = process.hrtime.bigint();
     const timeSinceLastLog = Number(now - this.lastLogTime) / 1_000_000;
-    
-    if (this.itemsProcessed % 100 === 0 || timeSinceLastLog > 5000) {
+
+    if (this.verbose && (this.itemsProcessed % 100 === 0 || timeSinceLastLog > 5000)) {
       const elapsed = Number(now - this.startTime) / 1_000_000;
       const rate = this.itemsProcessed / (elapsed / 1000);
       const percent = ((this.itemsProcessed / this.totalItems) * 100).toFixed(1);
-      const eta = ((this.totalItems - this.itemsProcessed) / rate * 1000).toFixed(0);
-      
+      const eta = rate > 0 ? ((this.totalItems - this.itemsProcessed) / rate * 1000).toFixed(0) : '0';
+
       logger.info(`  ⏱️  ${this.label}: ${percent}% (${this.itemsProcessed}/${this.totalItems}) - ${rate.toFixed(1)} items/s - ETA: ${eta}ms`);
       this.lastLogTime = now;
     }
   }
 
-  end(verbose = true) {
+  end(overrideVerbose) {
     const elapsed = Number(process.hrtime.bigint() - this.startTime) / 1_000_000;
     const rate = this.itemsProcessed / (elapsed / 1000);
-    
-    if (verbose) {
+
+    const shouldLog = overrideVerbose !== undefined ? overrideVerbose : this.verbose;
+    if (shouldLog) {
       logger.info(`  ⏱️  ${this.label} COMPLETE: ${elapsed.toFixed(2)}ms total - ${this.itemsProcessed} items @ ${rate.toFixed(1)}/s`);
     }
-    
+
     return { elapsed, items: this.itemsProcessed, rate };
   }
 }

@@ -36,14 +36,7 @@ export class JobAnalyzer {
 
       this.callbacks.onProgress?.(job, 50);
 
-      let result;
-
-      // Step 2: LLM analysis if needed
-      if (job.needsLLM) {
-        result = await this.runLLMAnalysis(job, signal, jobId);
-      } else {
-        result = await this.runStaticAnalysis(job);
-      }
+      const result = await this.runStaticAnalysis(job);
 
       if (signal?.aborted) {
         throw new Error('Analysis aborted');
@@ -97,92 +90,6 @@ export class JobAnalyzer {
     const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
     const relativePath = path.isAbsolute(job.filePath) ? path.relative(this.rootPath, job.filePath) : job.filePath;
     return await getFileAnalysis(this.rootPath, relativePath);
-  }
-
-  /**
-   * Run LLM analysis
-   */
-  async runLLMAnalysis(job, signal, jobId) {
-    logger.info(`🤖 Using LLM analysis for ${path.basename(job.filePath)}`);
-
-    const llmService = await this.worker._getLLMService();
-    logger.debug(`[Worker:${jobId}] LLM service = ${!!llmService}`);
-
-    if (!llmService) {
-      logger.warn(`   ⚠️  LLM not available, using static analysis only`);
-      return await this.runStaticAnalysis(job);
-    }
-
-    const { buildPromptMetadata } = await import('../../layer-b-semantic/metadata-contract/index.js');
-    const { saveFileAnalysis } = await import('#layer-c/storage/index.js');
-    const { getFileAnalysis } = await import('../../layer-c-memory/query/apis/file-api.js');
-
-    // Load fileAnalysis from disk if not in job (avoids keeping all 200+ analyses in RAM)
-    if (!job.fileAnalysis) {
-      job.fileAnalysis = await getFileAnalysis(this.rootPath, job.filePath);
-    }
-
-    const promptMetadata = buildPromptMetadata(job.filePath, job.fileAnalysis);
-    const code = await this.getFileCode(job);
-
-    const llmResults = await this.worker._analyzeWithLLM(llmService, [{
-      filePath: job.filePath,
-      code,
-      staticAnalysis: job.fileAnalysis?.semanticAnalysis,
-      metadata: promptMetadata,
-      analysisType: job.archetypes?.[0] || 'default'
-    }]);
-
-    if (signal?.aborted) {
-      throw new Error('Analysis aborted');
-    }
-
-    const llmResult = llmResults[0] || this.createEmptyResult(job);
-
-    const mergedResult = {
-      ...job.fileAnalysis,
-      llmInsights: {
-        ...llmResult,
-        analyzedAt: new Date().toISOString()
-      },
-      analysisComplete: true
-    };
-
-    await saveFileAnalysis(this.rootPath, job.filePath, mergedResult);
-
-    // Release large objects from job to allow GC
-    job.fileAnalysis = null;
-
-    return mergedResult;
-  }
-
-  /**
-   * Get file code content
-   */
-  async getFileCode(job) {
-    if (job.fileAnalysis?.content) {
-      return job.fileAnalysis.content;
-    }
-    try {
-      const absolutePath = path.join(this.rootPath, job.filePath);
-      return await fs.readFile(absolutePath, 'utf-8');
-    } catch (readError) {
-      logger.warn(`   ⚠️  Could not read file: ${readError.message}`);
-      return '';
-    }
-  }
-
-  /**
-   * Create empty result for failed LLM
-   */
-  createEmptyResult(job) {
-    return {
-      confidence: 0.0,
-      reasoning: 'LLM returned no usable data',
-      analysisType: job.archetypes?.[0] || 'default',
-      suggestedConnections: [],
-      hiddenConnections: []
-    };
   }
 }
 

@@ -38,12 +38,12 @@ export const serverState = {
  */
 export async function initializeState(rootPath, updateCallback) {
   serverState.rootPath = rootPath;
-  
+
   // Initialize StateManager
   serverState.stateManager = new FileStateManager(
     path.join(rootPath, '.omnysysdata', 'orchestrator-state.json')
   );
-  
+
   // Initialize worker
   serverState.worker = new AnalysisWorker(rootPath, {
     onProgress: (job, progress) => {
@@ -62,7 +62,7 @@ export async function initializeState(rootPath, updateCallback) {
       processNext(updateCallback);
     }
   });
-  
+
   await serverState.worker.initialize();
   updateCallback();
 }
@@ -75,15 +75,15 @@ export async function processNext(updateCallback) {
   if (!serverState.isRunning || serverState.currentJob) {
     return;
   }
-  
+
   const nextJob = serverState.queue.dequeue();
   if (!nextJob) {
     return;
   }
-  
+
   serverState.currentJob = { ...nextJob, progress: 0, stage: 'starting' };
   updateCallback();
-  
+
   serverState.worker.analyze(nextJob);
 }
 
@@ -94,16 +94,14 @@ export async function processNext(updateCallback) {
 export async function getHealthStatus() {
   const health = {
     status: 'healthy',
-    llmConnection: 'ok',
     memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
     lastError: null
   };
-  
+
   if (serverState.worker && !serverState.worker.isHealthy()) {
     health.status = 'degraded';
-    health.llmConnection = 'disconnected';
   }
-  
+
   return health;
 }
 
@@ -135,7 +133,7 @@ export async function restart(updateCallback) {
   serverState.queue.clear();
   serverState.currentJob = null;
   serverState.isRunning = true;
-  
+
   await serverState.worker.initialize();
   updateCallback();
   processNext(updateCallback);

@@ -198,14 +198,20 @@ export async function restart_server(args, context) {
         // (e.g. code-generator.js, batch-generator.js) are picked up
         // without needing a true process restart.
         try {
-          const { refreshToolRegistry } = await import('../mcp-http-server.js');
-          await refreshToolRegistry();
-          logger.info('🔄 Tool registry refreshed after component restart');
-          result.toolRegistryRefreshed = true;
+          const { pathToFileURL } = await import('url');
+          const path = await import('path');
+          const serverPath = path.default.resolve(process.cwd(), 'src/layer-c-memory/mcp-http-server.js');
+          const bustUrl = `${pathToFileURL(serverPath).href}?bust=${Date.now()}`;
+          const mod = await import(bustUrl);
+          if (typeof mod.refreshToolRegistry === 'function') {
+            await mod.refreshToolRegistry();
+            logger.info('🔄 Tool registry refreshed after component restart');
+            result.toolRegistryRefreshed = true;
+          }
         } catch (refreshErr) {
-          // Non-fatal: not running via mcp-http-server (e.g. stdio mode)
-          logger.debug('Tool registry refresh skipped:', refreshErr.message);
+          logger.warn('⚠️  Tool registry refresh failed:', refreshErr.message);
           result.toolRegistryRefreshed = false;
+          result.toolRegistryError = refreshErr.message;
         }
       } else {
         throw new Error(`Inicialización falló en: ${initResult.failedAt || initResult.haltedAt}`);

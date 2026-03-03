@@ -12,27 +12,32 @@ import { generateBlockName } from './naming-helpers.js';
  */
 export function identifyLogicalBlocks(atom) {
   const blocks = [];
-  
-  if (atom.dataFlow?.transformations) {
+
+  if (atom.dataFlow?.transformations?.length > 0) {
     const transformations = atom.dataFlow.transformations;
-    
+
     let currentBlock = null;
     for (const t of transformations) {
-      if (!currentBlock || t.line - currentBlock.endLine > 5) {
+      const lineNum = t.line || 0;
+      const operationType = t.type || t.kind || t.to || 'unknown';
+
+      if (!currentBlock || lineNum - currentBlock.endLine > 5) {
         if (currentBlock) blocks.push(currentBlock);
         currentBlock = {
-          lineRange: [t.line, t.line],
-          operations: [t.operation],
+          lineRange: [lineNum, lineNum],
+          endLine: lineNum,
+          operations: [operationType],
           suggestedName: generateBlockName(t)
         };
       } else {
-        currentBlock.endLine = t.line;
-        currentBlock.operations.push(t.operation);
+        currentBlock.endLine = lineNum;
+        currentBlock.lineRange[1] = lineNum;
+        currentBlock.operations.push(operationType);
       }
     }
     if (currentBlock) blocks.push(currentBlock);
   }
-  
+
   return blocks;
 }
 
@@ -44,61 +49,52 @@ export function identifyLogicalBlocks(atom) {
  */
 export function analyzeExtractFunction(atoms, filePath) {
   const suggestions = [];
-  
+
   for (const atom of atoms) {
-    // Funciones muy largas (>80 LOC)
-    if (atom.linesOfCode > 80) {
-      const blocks = identifyLogicalBlocks(atom);
-      if (blocks.length >= 2) {
-        suggestions.push({
-          type: 'extract_function',
-          severity: 'medium',
-          target: atom.id,
-          name: atom.name,
-          file: atom.filePath,
-          line: atom.line,
-          currentLOC: atom.linesOfCode,
-          suggestion: `Extract ${blocks.length} logical blocks into separate functions`,
-          blocks: blocks.map(b => ({
-            name: b.suggestedName,
-            lines: b.lineRange,
-            reason: b.reason
-          })),
-          benefit: `Reduce complexity from ${atom.complexity} to ~${Math.ceil(atom.complexity / blocks.length)} per function`
-        });
-      }
+    // Funciones muy largas (> 80 LOC) con complejidad alta — candidatas para extracción
+    if (atom.linesOfCode > 80 && atom.complexity > 5) {
+      suggestions.push({
+        type: 'extract_function',
+        severity: atom.linesOfCode > 150 ? 'high' : 'medium',
+        target: atom.id,
+        name: atom.name,
+        file: atom.filePath,
+        line: atom.line,
+        currentLOC: atom.linesOfCode,
+        suggestion: `Function has ${atom.linesOfCode} LOC and complexity ${atom.complexity} — extract into smaller functions`,
+        reason: `Large functions are harder to test and understand. Consider splitting into ${Math.ceil(atom.linesOfCode / 40)} smaller functions.`,
+        benefit: `Reduce complexity from ${atom.complexity} to ~${Math.ceil(atom.complexity / 3)} per function`
+      });
     }
-    
-    // Código duplicado dentro de la misma función
-    if (atom.dna?.operationSequence) {
-      const duplicates = findInternalDuplicates(atom.dna.operationSequence);
-      if (duplicates.length > 0) {
-        suggestions.push({
-          type: 'extract_helper',
-          severity: 'low',
-          target: atom.id,
-          name: atom.name,
-          file: atom.filePath,
-          line: atom.line,
-          suggestion: `Extract repeated operations into helper function`,
-          duplicates: duplicates,
-          benefit: 'DRY - Eliminate internal duplication'
-        });
-      }
+
+    // Complejidad ciclomática muy alta (> 15) sin ser especialmente larga
+    if (atom.complexity > 15 && atom.linesOfCode <= 80) {
+      suggestions.push({
+        type: 'reduce_complexity',
+        severity: atom.complexity > 25 ? 'high' : 'medium',
+        target: atom.id,
+        name: atom.name,
+        file: atom.filePath,
+        line: atom.line,
+        currentComplexity: atom.complexity,
+        suggestion: `High cyclomatic complexity (${atom.complexity}) — simplify conditions`,
+        reason: `Functions with complexity > 15 have elevated defect probability and are hard to test.`,
+        benefit: 'Reduce branches to simplify logic flow'
+      });
     }
   }
-  
+
   return suggestions;
 }
 
 function findInternalDuplicates(operations) {
   const seen = new Map();
   const duplicates = [];
-  
+
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i];
     const key = JSON.stringify(op);
-    
+
     if (seen.has(key)) {
       duplicates.push({
         operation: op,
@@ -110,6 +106,6 @@ function findInternalDuplicates(operations) {
       seen.set(key, i);
     }
   }
-  
+
   return duplicates;
 }

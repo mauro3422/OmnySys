@@ -16,7 +16,10 @@ const RELOADABLE_PATTERNS = [
   { pattern: /extractors[\\/].*\.js$/, type: 'extractor', priority: 2 },
   { pattern: /handlers[\\/].*\.js$/, type: 'handler', priority: 2 },
   { pattern: /queries[\\/].*\.js$/, type: 'query', priority: 3 },
-  { pattern: /lifecycle\.js$/, type: 'lifecycle', priority: 1 }
+  { pattern: /lifecycle\.js$/, type: 'lifecycle', priority: 1 },
+  // Storage atoms layer — changes to atom.js, converters.js etc. affect all tools
+  { pattern: /storage[\\/]atoms[\\/].*\.js$/, type: 'tool', priority: 1 },
+  { pattern: /storage[\\/]repository[\\/].*\.js$/, type: 'tool', priority: 1 },
 ];
 
 /**

@@ -22,23 +22,12 @@ const logger = createLogger('OmnySys:analysis:manager');
  */
 export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
   const { indexProject } = await import('#layer-a/indexer.js');
-  
-  // Verificar LLM health
-  let llmAvailable = false;
-  try {
-    const { LLMClient } = await import('#ai/llm-client.js');
-    const client = new LLMClient({ llm: { enabled: true } });
-    const health = await client.healthCheck();
-    llmAvailable = health.gpu || health.cpu;
-  } catch {
-    llmAvailable = false;
-  }
-  
+
   // Ejecutar análisis en background
   indexProject(projectPath, {
     outputPath: 'system-map.json',
     verbose: true,
-    skipLLM: !llmAvailable
+    skipLLM: true
   }).then(() => {
     logger.info('\n📊 Background analysis completed');
     if (reloadMetadataFn) {
@@ -56,28 +45,28 @@ export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
  */
 export async function reloadMetadata(context) {
   const { cache, projectPath, wsManager } = context;
-  
+
   try {
     const { getProjectMetadata } = await import('#layer-c/query/apis/project-api.js');
     const { getAllConnections } = await import('#layer-c/query/apis/connections-api.js');
     const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
-    
+
     const metadata = await getProjectMetadata(projectPath);
     cache.set('metadata', metadata);
-    
+
     const connections = await getAllConnections(projectPath);
     cache.set('connections', connections);
-    
+
     const assessment = await getRiskAssessment(projectPath);
     cache.set('assessment', assessment);
-    
+
     // Notificar a clientes WebSocket
     wsManager?.broadcast({
       type: 'analysis:completed',
       filesAnalyzed: metadata?.stats?.totalFiles || 0,
       timestamp: Date.now()
     });
-    
+
     logger.info(`📊 Data refreshed: ${metadata?.stats?.totalFiles || 0} files`);
   } catch (error) {
     logger.error('Failed to reload metadata:', error.message);

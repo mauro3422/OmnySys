@@ -28,7 +28,7 @@ function calculateHash(content) {
 }
 
 async function runWorker() {
-    const { files, absoluteRootPath } = workerData;
+    const { files, absoluteRootPath, extractionDepth = 'structural' } = workerData;
     const atomPhase = new AtomExtractionPhase();
     // Re-initialize sqlite connection strictly inside this thread
     const repo = getRepository(absoluteRootPath);
@@ -59,6 +59,10 @@ async function runWorker() {
      */
     async function processFile(absoluteFilePath) {
         try {
+            // Guard: skip directories (fixes EISDIR: illegal operation on a directory)
+            const stat = await fs.stat(absoluteFilePath).catch(() => null);
+            if (!stat || stat.isDirectory()) return { skipped: true };
+
             const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
 
             // 1. INCREMENTAL CHECK (Hash) — O(1) lookup en Map, sin DB
@@ -67,7 +71,9 @@ async function runWorker() {
             fileHashesToSave.set(relativeFilePath, currentHash);
 
             const existingHash = knownHashes.get(relativeFilePath);
-            if (existingHash && existingHash === currentHash) {
+            // FIX: If this is a 'deep' extraction phase, WE MUST NOT SKIP IT
+            // even if the hash is the same, because Phase 1 only did structural.
+            if (existingHash && existingHash === currentHash && extractionDepth !== 'deep') {
                 // SKIP ANALYSIS - Load atoms from DB
                 const dbAtoms = repo.getByFile(relativeFilePath);
                 if (dbAtoms && dbAtoms.length > 0) {
@@ -94,7 +100,7 @@ async function runWorker() {
                 fullFileCode: content,
                 fileInfo: parsedFile,
                 fileMetadata: parsedFile.metadata || {},
-                extractionDepth: 'structural'
+                extractionDepth: extractionDepth
             };
 
             await atomPhase.execute(context);

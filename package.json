@@ -1,6 +1,6 @@
 {
   "name": "omnysys",
-  "version": "0.9.64",
+  "version": "0.9.75",
   "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
   "main": "omny.js",
   "bin": {
@@ -71,7 +71,8 @@
     "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js",
     "mcp:http": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-server.js",
     "mcp:bridge": "node src/layer-c-memory/mcp-stdio-bridge.js",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "mcp:http:proxy": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-proxy.js"
   },
   "keywords": [
     "ai",

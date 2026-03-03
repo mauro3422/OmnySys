@@ -15,11 +15,11 @@ import { fileURLToPath } from 'url';
 import { createLogger } from '../../utils/logger.js';
 
 import { createApp, startServer } from './server/express-server.js';
-import { 
-  initializeState, 
-  processNext, 
+import {
+  initializeState,
+  processNext,
   serverState,
-  getStateData 
+  getStateData
 } from './server/state.js';
 
 import {
@@ -49,21 +49,21 @@ export class OrchestratorServer {
    */
   async start() {
     logger.info(`🚀 Initializing Orchestrator Server on port ${this.port}...\n`);
-    
+
     // Initialize state
     await initializeState(this.rootPath, () => this.updateState());
-    
+
     // Create Express app
     this.app = createApp();
     this.setupRoutes();
-    
+
     // Start server
     this.server = await startServer(this.app, this.port);
-    
+
     logger.info(`✅ Orchestrator Server ready on port ${this.port}\n`);
     this.updateState();
     processNext(() => this.updateState());
-    
+
     return this;
   }
 
@@ -72,25 +72,25 @@ export class OrchestratorServer {
    */
   setupRoutes() {
     // POST /command - Queue or prioritize
-    this.app.post('/command', (req, res) => 
-      handleCommand(req, res, serverState, 
+    this.app.post('/command', (req, res) =>
+      handleCommand(req, res, serverState,
         () => processNext(() => this.updateState()),
         () => this.updateState()
       )
     );
-    
+
     // GET /status - Get status
     this.app.get('/status', handleStatus);
-    
+
     // GET /health - Health check
     this.app.get('/health', handleHealth);
-    
+
     // GET /queue - View queue
     this.app.get('/queue', handleQueue);
-    
+
     // POST /restart - Restart
     this.app.post('/restart', (req, res) =>
-      handleRestart(req, res, 
+      handleRestart(req, res,
         () => this.updateState(),
         () => processNext(() => this.updateState())
       )
@@ -112,16 +112,14 @@ export class OrchestratorServer {
   async getHealthStatus() {
     const health = {
       status: 'healthy',
-      llmConnection: 'ok',
       memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
       lastError: null
     };
-    
+
     if (serverState.worker && !serverState.worker.isHealthy()) {
       health.status = 'degraded';
-      health.llmConnection = 'disconnected';
     }
-    
+
     return health;
   }
 

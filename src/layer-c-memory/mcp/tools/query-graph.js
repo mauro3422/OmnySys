@@ -50,14 +50,15 @@ export class QueryGraphTool extends SemanticQueryTool {
 
                     const atoms = this.repo.query({ name: symbolName });
 
-                    // Procesar resultados
-                    let instances = atoms.map(a => {
+                    // Procesar resultados (guard for undefined entries + normalize snake_case)
+                    let instances = atoms.filter(Boolean).map(a => {
+                        const file = a.file_path || a.filePath || a.file;
                         const base = {
-                            file: a.filePath,
-                            type: a.type,
+                            file,
+                            type: a.atom_type || a.type,
                             id: a.id,
                             params: a.params || [],
-                            exports: a.exports || false
+                            exports: !!(a.is_exported || a.exports || false)
                         };
 
                         // Agregar datos semánticos si se solicitan

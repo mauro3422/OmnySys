@@ -147,6 +147,41 @@ export async function _deriveStaticInsights() {
 }
 
 /**
+ * On-demand prioritization: immediately deep-scan a file if Phase 2 is incomplete.
+ * Called by MCP query tools before returning results, so they always have full data.
+ * @param {string} relativeFilePath - File path relative to project root
+ */
+export async function _prioritizeFileForPhase2(relativeFilePath) {
+  if (!relativeFilePath) return;
+
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(this.projectPath);
+    if (!repo || !repo.db) return;
+
+    // Check if this specific file still needs Phase 2
+    const pending = repo.db.prepare(
+      `SELECT COUNT(*) as count FROM atoms WHERE file_path = ? AND is_phase2_complete = 0`
+    ).get(relativeFilePath);
+
+    if (!pending || pending.count === 0) return; // Already done
+
+    logger.debug(`⚡ On-demand Phase 2 for: ${relativeFilePath}`);
+
+    const { analyzeProjectFilesUnified } = await import('#layer-a/pipeline/unified-analysis.js');
+
+    // Clear stale atoms, then deep-scan this specific file
+    repo.db.prepare('DELETE FROM atoms WHERE file_path = ?').run(relativeFilePath);
+
+    const absolutePath = path.join(this.projectPath, relativeFilePath);
+    await analyzeProjectFilesUnified([absolutePath], this.projectPath, false, 'deep');
+
+  } catch (e) {
+    logger.debug(`[On-demand Phase 2] Error for ${relativeFilePath}: ${e.message}`);
+  }
+}
+
+/**
  * Background loop that continuously processes Phase 1 (Structural) files
  * into Phase 2 (Deep) files without blocking the main event loop.
  */
@@ -161,10 +196,13 @@ export async function _startPhase2BackgroundIndexer() {
     const repo = getRepository(this.projectPath);
     if (repo && repo.db) {
       const countResult = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
-      this.totalFilesToAnalyze = countResult?.count || 0;
+      this.totalPhase2Files = countResult?.count || 0;
       this.processedFiles = new Set(); // Reset for Phase 2 tracking
-      if (this.totalFilesToAnalyze > 0) {
-        logger.info(`📊 Phase 2: Pending analysis for ${this.totalFilesToAnalyze} files`);
+
+      if (this.totalPhase2Files > 0) {
+        logger.info(`📊 Phase 2: Pending analysis for ${this.totalPhase2Files} files`);
+        const { BatchTimer } = await import('#utils/performance-tracker.js');
+        this._phase2GlobalTimer = new BatchTimer('Phase 2 Deep Scan', this.totalPhase2Files, true);
       }
     }
   } catch (e) {
@@ -172,9 +210,10 @@ export async function _startPhase2BackgroundIndexer() {
   }
 
   this._phase2Interval = setInterval(async () => {
-    // Only queue new background files if the worker queue is basically empty
-    if (this.queue.size() > 20 || !this.isRunning) return;
+    // Only queue new background files if the worker queue is basically empty and we aren't already bursting
+    if (this.queue.size() > 20 || !this.isRunning || this._isPhase2Bursting) return;
 
+    this._isPhase2Bursting = true;
     try {
       const { getRepository } = await import('#layer-c/storage/repository/index.js');
       const repo = getRepository(this.projectPath);
@@ -191,32 +230,61 @@ export async function _startPhase2BackgroundIndexer() {
 
       if (rows.length === 0) {
         // Everything is deeply scanned!
+        if (this._phase2GlobalTimer) {
+          this._phase2GlobalTimer.end(true);
+          this._phase2GlobalTimer = null;
+        }
+        clearInterval(this._phase2Interval);
+        this._phase2Interval = null;
         return;
       }
 
-      const pathModule = await import('path');
-
-      let enqueuedCount = 0;
-      for (const row of rows) {
-        const filePath = pathModule.default.join(this.projectPath, row.file_path);
-
-        // Ensure we don't queue the same file twice if it's already pending OR already processed in this run
-        if (this.queue.findPosition(filePath) === -1 && !this.processedFiles.has(filePath)) {
-          this.queue.enqueue(filePath, 'low');
-          enqueuedCount++;
-        }
-      }
+      const filesToProcess = rows.map(r => r.file_path);
+      const enqueuedCount = filesToProcess.length;
 
       if (enqueuedCount > 0) {
-        logger.debug(`[Background Phase 2] Enqueued ${enqueuedCount} files for deep scan`);
-        // Trigger processing
-        this._processNext();
+        const { analyzeProjectFilesUnified } = await import('#layer-a/pipeline/unified-analysis.js');
+
+        // 1. Clear atoms first (avoid ghost atoms)
+        // Optimizacion: usamos una transaccion para borrar mas rapido y seguro
+        const deleteStmt = repo.db.prepare('DELETE FROM atoms WHERE file_path = ?');
+        const runDeleteBatch = repo.db.transaction((paths) => {
+          for (const p of paths) deleteStmt.run(p);
+        });
+        runDeleteBatch(filesToProcess);
+
+        // 2. Run Parallel Multi-Threaded Analysis (SILENCED)
+        // Note: we use absolute paths for the pipeline
+        const absoluteFiles = filesToProcess.map(f => path.join(this.projectPath, f));
+
+        try {
+          await analyzeProjectFilesUnified(absoluteFiles, this.projectPath, false, 'deep');
+        } catch (pipelineErr) {
+          logger.error(`❌ Phase 2 unified analysis failed: ${pipelineErr.message}`);
+        }
+
+        // 3. Update stats manually since we bypassed the Orchestrator queue
+        for (const relPath of filesToProcess) {
+          const absPath = path.join(this.projectPath, relPath);
+          this.indexedFiles.add(absPath);
+          this.processedFiles.add(absPath);
+        }
+
+        if (this._phase2GlobalTimer) {
+          this._phase2GlobalTimer.onItemProcessed(enqueuedCount);
+        }
+
+        // Emit progress bar update
+        this.emit('job:complete', { filePath: filesToProcess[0] }, {});
       }
 
     } catch (e) {
       if (!e.message.includes('not initialized')) {
         logger.warn(`⚠️ Background Phase 2 indexer error: ${e.message}`);
       }
+    } finally {
+      this._isPhase2Bursting = false;
     }
   }, 1000); // Check every 1 second for aggressive queue refilling
 }
+
