@@ -29,7 +29,7 @@ function getDb() {
  */
 export function get(key) {
   const db = getDb.call(this);
-  
+
   if (db) {
     // SQLite backend
     try {
@@ -37,7 +37,7 @@ export function get(key) {
       const row = db.prepare(
         'SELECT value FROM cache_entries WHERE key = ? AND (expiry IS NULL OR expiry > ?)'
       ).get(key, now);
-      
+
       if (row) {
         return JSON.parse(row.value);
       }
@@ -46,7 +46,7 @@ export function get(key) {
     }
     return null;
   }
-  
+
   // Fallback: Memory Map (para casos donde SQLite no está disponible)
   const item = this.ramCache?.get(key);
   if (!item) return null;
@@ -83,7 +83,7 @@ export function set(key, data, ttlMinutes) {
       console.warn('[ram-cache] SQLite set error:', err.message);
     }
   }
-  
+
   // Fallback: Memory Map
   if (!this.ramCache) {
     this.ramCache = new Map();
@@ -121,7 +121,7 @@ export function invalidate(key) {
         const result = db.prepare('DELETE FROM cache_entries WHERE key LIKE ?').run(pattern);
         return result.changes > 0;
       }
-      
+
       const result = db.prepare('DELETE FROM cache_entries WHERE key = ?').run(key);
       return result.changes > 0;
     } catch (err) {
@@ -153,7 +153,7 @@ export function invalidate(key) {
  */
 export function clear() {
   const db = getDb.call(this);
-  
+
   if (db) {
     try {
       db.prepare('DELETE FROM cache_entries').run();
@@ -172,16 +172,23 @@ export function clear() {
  */
 export function getRamStats() {
   const db = getDb.call(this);
-  
+
   if (db) {
     try {
-      const total = db.prepare('SELECT COUNT(*) as count FROM cache_entries').get();
-      const expired = db.prepare('SELECT COUNT(*) as count FROM cache_entries WHERE expiry < ?').get(Date.now());
-      const size = total?.count || 0;
-      
+      const now = Date.now();
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN expiry < ? THEN 1 ELSE 0 END) as expired
+        FROM cache_entries
+      `).get(now);
+
+      const size = stats?.total || 0;
+      const expired = stats?.expired || 0;
+
       return {
         size,
-        expired: expired?.count || 0,
+        expired,
         maxEntries: this.maxRamEntries,
         backend: 'sqlite',
         memoryUsage: 'N/A (SQLite)'
@@ -227,7 +234,7 @@ export function ramCacheSet(key, data, ttlMinutes) {
  */
 export function cleanupExpired() {
   const db = getDb.call(this);
-  
+
   if (db) {
     try {
       const result = db.prepare('DELETE FROM cache_entries WHERE expiry IS NOT NULL AND expiry < ?').run(Date.now());

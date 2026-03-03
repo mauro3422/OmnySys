@@ -17,18 +17,20 @@ export function extractImports(root, code) {
                     const id = child.children.find(c => c.type === 'identifier');
                     if (id) specifiers.push({ name: text(child, code), type: 'namespace', local: text(id, code) });
                 } else if (child.type === 'named_imports') {
-                    walk(child, ['import_specifier'], (spec) => {
-                        const alias = spec.childForFieldName('alias') || spec.childForFieldName('name');
-                        const imported = spec.childForFieldName('name');
-                        if (alias) {
-                            specifiers.push({
-                                name: text(alias, code),
-                                type: 'named',
-                                local: text(alias, code),
-                                imported: imported ? text(imported, code) : text(alias, code)
-                            });
+                    for (const spec of child.children) {
+                        if (spec.type === 'import_specifier') {
+                            const alias = spec.childForFieldName('alias') || spec.childForFieldName('name');
+                            const imported = spec.childForFieldName('name');
+                            if (alias) {
+                                specifiers.push({
+                                    name: text(alias, code),
+                                    type: 'named',
+                                    local: text(alias, code),
+                                    imported: imported ? text(imported, code) : text(alias, code)
+                                });
+                            }
                         }
-                    });
+                    }
                 }
             }
             imports.push({ type: 'esm', source, specifiers, line: startLine(node) });

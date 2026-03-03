@@ -66,9 +66,14 @@ export class SqlPatternsDetector {
             // Check if there's a TRANSACTION atom in same parent
             const transactionAtoms = sqlAtoms.filter(a => a._meta?.sql_purpose === 'TRANSACTION_CONTROL');
             const parentHasTransaction = new Set(transactionAtoms.map(a => a._meta?.parent_atom_id));
+
+            // Build ID map once for O(1) lookups
+            const jsAtomsById = new Map();
+            for (const atom of jsAtomsByName.values()) jsAtomsById.set(atom.id, atom);
+
             for (const [parentId, mutations] of Object.entries(mutationsByParent)) {
                 if (mutations.length >= this.config.multiMutationThreshold && !parentHasTransaction.has(parentId)) {
-                    const parentAtom = [...jsAtomsByName.values()].find(a => a.id === parentId || a.name === parentId);
+                    const parentAtom = jsAtomsById.get(parentId) || jsAtomsByName.get(parentId);
                     findings.push(this._finding('sql-missing-transaction', 'high', filePath, mutations[0],
                         `${mutations.length} mutations in '${parentAtom?.name || parentId}' without transaction — data integrity risk on crash`,
                         { mutation_count: mutations.length, operations: mutations.map(a => a._meta?.sql_operation) }

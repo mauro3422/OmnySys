@@ -33,8 +33,7 @@ export async function getRiskAssessment(rootPath) {
 
   if (!riskRows || riskRows.length === 0) {
     // Fallback: derive basic risk summary from atoms table
-    const atomsCount = repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get();
-    const filesCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms').get();
+    const stats = repo.db.prepare('SELECT COUNT(*) as atoms, COUNT(DISTINCT file_path) as files FROM atoms').get();
     return {
       report: {
         summary: {
@@ -42,8 +41,8 @@ export async function getRiskAssessment(rootPath) {
           highCount: 0,
           mediumCount: 0,
           lowCount: 0,
-          totalFiles: filesCount?.count || 0,
-          totalAtoms: atomsCount?.count || 0,
+          totalFiles: stats?.files || 0,
+          totalAtoms: stats?.atoms || 0,
           note: 'Risk assessment not yet computed. Run full analysis to populate risk_assessments table.'
         },
         criticalRiskFiles: [],

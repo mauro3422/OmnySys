@@ -1,0 +1,110 @@
+[
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/mcp/tools/fix-imports.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'fix_imports' on tables [atoms, files] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/migrations/index.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'count' on tables [count, atoms, changes] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/query/export.js",
+    "line": 0,
+    "message": "5 separate SELECTs in 'exportFullSystemMapToFile' on tables [atoms, system_files, semantic_connections, risk_assessments, file_dependencies] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/query/queries/project-query.js",
+    "line": 0,
+    "message": "3 separate SELECTs in 'getProjectMetadata' on tables [system_metadata, atoms, count] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/query/queries/risk-query.js",
+    "line": 0,
+    "message": "3 separate SELECTs in 'getRiskAssessment' on tables [risk_assessments, count, atoms] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/verification/validators/integrity/validators/cache-validator.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'validateCache' on tables [count, atoms, sqlite_master] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/core/cache/manager/ram-cache.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'getRamStats' on tables [count, cache_entries] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/core/cache/manager/storage.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'initialize' on tables [count, atoms] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/storage/database/connection.js",
+    "line": 0,
+    "message": "4 separate SELECTs in 'getStats' on tables [count, atoms, atom_relations, files, atom_events] — consider JOIN"
+  },
+  {
+    "type": "sql-schema-drift",
+    "file": "src/layer-c-memory/storage/enrichment/index.js",
+    "line": 0,
+    "message": "Column '_tbl_' referenced by SQL but not in schema for table 'atoms' — runtime error risk"
+  },
+  {
+    "type": "sql-schema-drift",
+    "file": "src/layer-c-memory/storage/repository/adapters/sqlite-query-operations.js",
+    "line": 0,
+    "message": "Column '_tbl_' referenced by SQL but not in schema for table 'atoms' — runtime error risk"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/mcp/tools/semantic/semantic-query-tool.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'getRaceConditions' on tables [count, atoms, _tbl_] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/mcp/tools/semantic/semantic-query-tool.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'getEventPatterns' on tables [count, atoms, _tbl_] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/mcp/tools/semantic/semantic-query-tool.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'getAsyncAnalysis' on tables [count, atoms, _tbl_] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/mcp/tools/semantic/semantic-query-tool.js",
+    "line": 0,
+    "message": "2 separate SELECTs in 'getAtomSociety' on tables [count, semantic_connections, _tbl_] — consider JOIN"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "check-sql-live.mjs",
+    "line": 0,
+    "message": "3 separate SELECTs in 'run' on tables [count, atoms, atom_relations] — consider JOIN"
+  },
+  {
+    "type": "sql-schema-drift",
+    "file": "scripts/check-sql-live.mjs",
+    "line": 0,
+    "message": "Column 'type' referenced by SQL but not in schema for table 'atoms' — runtime error risk"
+  },
+  {
+    "type": "sql-join-candidate",
+    "file": "src/layer-c-memory/storage/repository/adapters/sqlite-adapter-core.js",
+    "line": 0,
+    "message": "7 separate SELECTs in '_prepareStatements' on tables [atoms, files, atom_relations] — consider JOIN"
+  }
+]

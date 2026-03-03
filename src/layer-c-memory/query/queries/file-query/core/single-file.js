@@ -66,10 +66,45 @@ export async function getFileAnalysis(rootPath, filePath) {
           ? await repo.getByFile(normalizedPath)
           : [];
 
-        // --- DINAMISMO ATÓMICO (Phase 9.1) ---
-        // Derivamos exportaciones e imports básicos de los átomos si la tabla 'files' está desfasada
+        // --- DINAMISMO ATÓMICO (Phase 9.1) & O(n) Optimizations ---
         const dbExports = JSON.parse(row.exports_json || '[]');
-        const atomExports = atoms.filter(a => a && a.isExported).map(a => ({ name: a ? a.name : 'unknown', kind: a ? (a.atom_type || a.type) : 'unknown' }));
+
+        const mappedAtoms = [];
+        const mappedDefinitions = [];
+        const atomExports = [];
+
+        for (const atom of atoms) {
+          if (!atom) continue;
+
+          const atomType = atom.atom_type || atom.type || 'unknown';
+          const atomName = atom.name || 'unknown';
+
+          if (atom.isExported) {
+            atomExports.push({ name: atomName, kind: atomType });
+          }
+
+          mappedAtoms.push({
+            id: atom.id,
+            name: atomName,
+            type: atomType,
+            line: atom.lineStart || 0,
+            endLine: atom.lineEnd || 0,
+            linesOfCode: atom.linesOfCode || 0,
+            complexity: atom.complexity || 0,
+            isExported: !!atom.isExported,
+            isAsync: !!atom.isAsync,
+            calls: typeof atom.calls_json === 'string' ? JSON.parse(atom.calls_json) : (Array.isArray(atom.calls) ? atom.calls : []),
+            calledBy: typeof atom.called_by_json === 'string' ? JSON.parse(atom.called_by_json) : (Array.isArray(atom.calledBy) ? atom.calledBy : []),
+            archetype: atom.archetype_type || atom.archetype || 'unknown',
+            purpose: atom.purpose_type || atom.purpose || 'unknown'
+          });
+
+          mappedDefinitions.push({
+            name: atomName,
+            type: atomType,
+            line: atom.lineStart || 0
+          });
+        }
 
         // Combinamos: Si atoms tiene exportaciones pero la tabla files no, usamos atoms (Real-Time)
         const exports = atomExports.length > 0 ? atomExports : dbExports;
@@ -85,27 +120,9 @@ export async function getFileAnalysis(rootPath, filePath) {
           moduleName: row.module_name || null,
           imports: JSON.parse(row.imports_json || '[]'),
           exports: exports,
-          atoms: atoms.filter(a => !!a).map(atom => ({
-            id: atom.id,
-            name: atom.name || 'unknown',
-            type: atom.atom_type || atom.type || 'unknown',
-            line: atom.lineStart || 0,
-            endLine: atom.lineEnd || 0,
-            linesOfCode: atom.linesOfCode || 0,
-            complexity: atom.complexity || 0,
-            isExported: !!atom.isExported,
-            isAsync: !!atom.isAsync,
-            calls: typeof atom.calls_json === 'string' ? JSON.parse(atom.calls_json) : (Array.isArray(atom.calls) ? atom.calls : []),
-            calledBy: typeof atom.called_by_json === 'string' ? JSON.parse(atom.called_by_json) : (Array.isArray(atom.calledBy) ? atom.calledBy : []),
-            archetype: atom.archetype_type || atom.archetype || 'unknown',
-            purpose: atom.purpose_type || atom.purpose || 'unknown'
-          })),
+          atoms: mappedAtoms,
           // Campos legacy para compatibilidad
-          definitions: (atoms || []).filter(a => !!a).map(a => ({
-            name: a.name || 'unknown',
-            type: a.atom_type || a.type || 'unknown',
-            line: a.lineStart || 0
-          })),
+          definitions: mappedDefinitions,
           usedBy: [],
           importedBy: []
         };

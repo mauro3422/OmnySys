@@ -250,18 +250,20 @@ class ConnectionManager {
       return null;
     }
 
-    const stats = {
-      atoms: this.db.prepare('SELECT COUNT(*) as count FROM atoms').get(),
-      relations: this.db.prepare('SELECT COUNT(*) as count FROM atom_relations').get(),
-      files: this.db.prepare('SELECT COUNT(*) as count FROM files').get(),
-      events: this.db.prepare('SELECT COUNT(*) as count FROM atom_events').get()
-    };
+    // Combine 4 SELECT COUNT(*) into a single query to reduce DB roundtrips
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM atoms) as atoms,
+        (SELECT COUNT(*) FROM atom_relations) as relations,
+        (SELECT COUNT(*) FROM files) as files,
+        (SELECT COUNT(*) FROM atom_events) as events
+    `).get();
 
     return {
-      atoms: stats.atoms.count,
-      relations: stats.relations.count,
-      files: stats.files.count,
-      events: stats.events.count
+      atoms: stats.atoms,
+      relations: stats.relations,
+      files: stats.files,
+      events: stats.events
     };
   }
 

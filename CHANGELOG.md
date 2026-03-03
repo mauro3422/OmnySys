@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.80 - SQL Optimization & Schema Drift Extinction](changelog/v0.9.80-sql-optimization.md)** - **✅ Schema Drift False Positives eradicated, Window Functions optimization** (Latest)
+- **[v0.9.81 - Algorithmic O(n²) Eradication](changelog/v0.9.81-algorithmic-eradication.md)** - **✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** (Latest)
+- **[v0.9.80 - SQL Optimization & Schema Drift Extinction](changelog/v0.9.80-sql-optimization.md)** - **✅ Schema Drift False Positives eradicated, Window Functions optimization**
 - **[v0.9.70 - SQLite Persistence Unification](changelog/v0.9.70-persistence-unification.md)** - **✅ JSON Legacy removed, Transactional Versioning, Path Normalization**
 - **[v0.9.69 - Import Resolution & Parser Stability](changelog/v0.9.69-import-stability.md)** - **✅ Fixed Constant/Class extraction, fix-imports resolution**
 - **[v0.9.64 - Test Generator Auto-Healing & Memory SRP](changelog/v0.9.64-test-generator-autohealing.md)** - **✅ 269 autonomous tests generated via Tree-Sitter compatibility layers**
@@ -42,7 +43,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.80]** | 2026-03-03 | **🚀 SQL Optimization & Schema Drift Extinction — ✅ Window functions refactoring for N+1 queries, SQLite JSON metadata parsing fixed** (Latest) |
+| **[0.9.81]** | 2026-03-03 | **🚀 Algorithmic O(n²) Eradication — ✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** (Latest) |
+| **[0.9.80]** | 2026-03-03 | **🚀 SQL Optimization & Schema Drift Extinction — ✅ Window functions refactoring for N+1 queries, SQLite JSON metadata parsing fixed** |
 | **[0.9.70]** | 2026-03-01 | **🛡️ SQLite Persistence Unification — ✅ JSON Legacy removed, Unified transactions, Database-backed versioning** |
 | **[0.9.69]** | 2026-03-01 | **🔍 Import Resolution & Parser Stability — ✅ Fixed Constant/Class extraction, reindex.js persistence, and fix-imports symbol resolution** |
 | **[0.9.68]** | 2026-02-28 | **🛠️ MCP Tools Unification & Daemon Stability — ✅ 16 Consolidated Tools, WASM Memory Leaks Fixed, Graceful Restart API** |

@@ -59,7 +59,13 @@ export class OmnysysHealthDetector {
             const sqlAtoms = allAtoms.filter(a => a.type === 'sql_query');
             if (sqlAtoms.length === 0) continue;
 
-            const isStorageLayer = STORAGE_PATHS.some(p => filePath.includes(p));
+            if (!this._storageCache) this._storageCache = new Map();
+            let isStorageLayer = this._storageCache.get(filePath);
+            if (isStorageLayer === undefined) {
+                isStorageLayer = STORAGE_PATHS.some(p => filePath.includes(p));
+                this._storageCache.set(filePath, isStorageLayer);
+            }
+
             const jsAtomsByName = new Map(allAtoms.filter(a => a.type !== 'sql_query').map(a => [a.name, a]));
 
             // 1. Repository Bypass — SQL directo fuera de la capa de storage
