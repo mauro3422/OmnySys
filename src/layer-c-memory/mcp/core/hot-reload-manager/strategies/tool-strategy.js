@@ -1,10 +1,20 @@
 /**
  * @fileoverview Tool Reload Strategy
  *
- * Handles hot-reload of MCP tools.
- * Uses ESM dynamic imports with cache busting.
- * After reloading the changed leaf file, also refreshes the full
- * tools/index.js chain via the mcp-http-server's mutable tool registry.
+ * When a tool file changes, this strategy logs a notice and does nothing else.
+ *
+ * WHY NO MODULE RELOAD:
+ * Node.js ESM caches all imports permanently within a process. There is no
+ * reliable way to reload a module mid-process without process restart.
+ * `import(url + '?bust=...')` creates a new module instance, but parent
+ * modules (tools/index.js, mcp-http-server.js) still hold references to
+ * the old exported functions — so the "reload" is invisible.
+ *
+ * HOW TO APPLY CODE CHANGES:
+ *   Restart the VS Code task "OmnySys MCP Daemon" (~8 seconds).
+ *
+ * FUTURE: A plugin system for user-defined tools (outside the main module graph)
+ * could support true hot-loading via isolated dynamic imports.
  *
  * @module hot-reload-manager/strategies/tool-strategy
  */
@@ -12,43 +22,20 @@
 import { BaseStrategy } from './base-strategy.js';
 
 /**
- * Strategy for reloading tools
+ * Strategy for tool file changes
  *
  * @class ToolStrategy
  * @extends BaseStrategy
  */
 export class ToolStrategy extends BaseStrategy {
   /**
-   * Reloads a tool module
+   * Handles a tool file change — logs a notice, no module reload.
    *
-   * @param {string} filename - Tool file to reload
+   * @param {string} filename - Changed tool file
    * @returns {Promise<void>}
    */
   async reload(filename) {
-    const toolPath = this._resolvePath(filename);
-    const uniqueImport = this._generateUniqueImport(toolPath, 'hot-reload');
-
-    try {
-      // Step 1: Import the changed leaf file with cache busting
-      await import(uniqueImport);
-      this._log('Tool leaf-file reloaded', filename);
-
-      // Step 2: Refresh the live tool registry so the full import chain
-      // (changed file → parent tool → tools/index.js) is hot-swapped.
-      // We dynamically import refreshToolRegistry to avoid a circular
-      // static dependency between mcp-http-server and strategy files.
-      try {
-        const { refreshToolRegistry } = await import('../../../../../../mcp-http-server.js');
-        await refreshToolRegistry();
-      } catch (refreshErr) {
-        // Non-fatal: the http-server module may not be the current runtime
-        // (e.g. during unit tests or when using the stdio bridge).
-        this._log('Tool registry refresh skipped (not running via http-server)', refreshErr.message);
-      }
-
-    } catch (error) {
-      throw new Error(`Failed to reload tool ${filename}: ${error.message}`);
-    }
+    this._log('Tool changed — restart task to apply (8s)', filename);
   }
 }
 

@@ -1,11 +1,22 @@
 /**
- * @fileoverview Hot Reload Manager - Modular Architecture
- * 
- * Hot-Reload system for OmnySys MCP Server.
- * Allows the server to update automatically when its code changes.
- * 
+ * @fileoverview File Change Watcher Manager
+ *
+ * Detects changes to source files and notifies the orchestrator to re-index
+ * affected atoms in SQLite.
+ *
+ * ⚠️ IMPORTANT — What this does NOT do:
+ * This system does NOT attempt to hot-reload Node.js ESM modules at runtime.
+ * Node.js ESM modules are permanently cached within a running process.
+ * Reloading source code requires restarting the VS Code task (~8 seconds).
+ *
+ * When a tool/pipeline file changes, the watcher logs a notice:
+ *   "Tool changed — restart task to apply (8s)"
+ *
+ * FUTURE: User-defined plugin tools (outside the main module graph)
+ * could be hot-loaded via isolated dynamic imports.
+ *
  * @module hot-reload-manager
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import { createLogger } from '../../../utils/logger.js';
