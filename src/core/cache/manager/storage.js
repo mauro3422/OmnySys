@@ -11,20 +11,24 @@ const logger = createLogger('OmnySys:storage');
 export async function initialize() {
   try {
     const repo = getRepository(this.projectPath);
-    
+
     if (!repo || !repo.db) {
       logger.warn('SQLite not available, cache will be empty');
       this.loaded = true;
       return;
     }
-    
+
     // Cargar índices desde SQLite
-    const atomsCount = repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get();
-    const filesCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms').get();
-    
-    this.index.metadata.totalFiles = atomsCount?.count || 0;
-    this.index.metadata.totalDependencies = filesCount?.count || 0;
-    
+    const stats = repo.db.prepare(`
+        SELECT 
+            COUNT(*) as atomsCount, 
+            COUNT(DISTINCT file_path) as filesCount 
+        FROM atoms
+    `).get();
+
+    this.index.metadata.totalFiles = stats?.atomsCount || 0;
+    this.index.metadata.totalDependencies = stats?.filesCount || 0;
+
     this.loaded = true;
     logger.info(`📦 UnifiedCache: ${this.index.metadata.totalFiles} átomos indexados (from SQLite)`);
   } catch (error) {

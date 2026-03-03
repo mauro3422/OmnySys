@@ -99,6 +99,11 @@ export class OmnysysHealthDetector {
                 // Verificar que son tablas distintas (seria JOIN candidate)
                 const allTables = selects.flatMap(s => s._meta?.tables_referenced || []);
                 const uniqueTables = new Set(allTables);
+
+                // FILTER FALSE POSITIVES (different domains that shouldn't be JOINed)
+                const ignoredTables = ['count', 'system_files', 'semantic_connections', 'risk_assessments', 'file_dependencies', 'sqlite_master', 'system_metadata', 'changes', 'max', 'min'];
+                for (const ignored of ignoredTables) uniqueTables.delete(ignored);
+
                 if (uniqueTables.size >= 2) {
                     findings.push({
                         type: 'sql-join-candidate', severity: 'medium', filePath,

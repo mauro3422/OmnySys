@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.81 - Algorithmic O(n²) Eradication](changelog/v0.9.81-algorithmic-eradication.md)** - **✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** (Latest)
+- **[v0.9.82 - SQL Health Eradication](changelog/v0.9.82-health-eradication.md)** - **✅ Eliminación de N+1 queries y purificado de las 37 deudas técnicas SQL** (Latest)
+- **[v0.9.81 - Algorithmic O(n²) Eradication](changelog/v0.9.81-algorithmic-eradication.md)** - **✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying**
 - **[v0.9.80 - SQL Optimization & Schema Drift Extinction](changelog/v0.9.80-sql-optimization.md)** - **✅ Schema Drift False Positives eradicated, Window Functions optimization**
 - **[v0.9.70 - SQLite Persistence Unification](changelog/v0.9.70-persistence-unification.md)** - **✅ JSON Legacy removed, Transactional Versioning, Path Normalization**
 - **[v0.9.69 - Import Resolution & Parser Stability](changelog/v0.9.69-import-stability.md)** - **✅ Fixed Constant/Class extraction, fix-imports resolution**
