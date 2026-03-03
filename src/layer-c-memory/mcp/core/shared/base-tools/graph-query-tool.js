@@ -19,6 +19,7 @@ export class GraphQueryTool extends BaseMCPTool {
     async execute(args, context) {
         try {
             this.repo = getRepository(context.projectPath);
+            this.projectPath = context.projectPath; // Needed for Phase 2 on-demand
         } catch (e) {
             // Usamos el logger de la clase base
             this.logger.error(`[GraphQueryTool] Failed to load repository: ${e.message}`);

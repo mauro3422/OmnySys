@@ -95,21 +95,22 @@ export class QueryGraphTool extends SemanticQueryTool {
 
                     // Phase 2: On-Demand Lazy Indexing
                     if (!atom.isPhase2Complete) {
-                        this.logger.info(`[Lazy Indexing] Triggering Phase 2 On-Demand for atom: ${symbolName} in ${filePath}`);
+                        this.logger.info(`[Phase2:OnDemand] Triggering for: ${symbolName} in ${filePath}`);
                         try {
-                            // Import and run single-file analyzer with structural = false
                             const { analyzeSingleFile } = await import('../../../layer-a-static/pipeline/single-file.js');
-                            const absoluteRootPath = this.context?.projectPath || process.cwd();
+                            const rootPath = this.projectPath || process.cwd();
 
-                            await analyzeSingleFile(absoluteRootPath, filePath, {
-                                verbose: false,
-                                incremental: false // force re-evaluation of this file for deep semantics
-                            }, 'deep'); // specify deep extraction
+                            // Fire-and-wait with 5s timeout so we don't block indefinitely
+                            await Promise.race([
+                                analyzeSingleFile(rootPath, filePath, { verbose: false, incremental: false }),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+                            ]);
 
                             // Reload atom after Phase 2 completes
-                            atom = this.getExactAtom(symbolName, filePath);
+                            atom = this.getExactAtom(symbolName, filePath) || atom;
+                            this.logger.info(`[Phase2:OnDemand] Complete for: ${symbolName}`);
                         } catch (err) {
-                            this.logger.error(`[Lazy Indexing] Phase 2 failed for ${symbolName}: ${err.message}`);
+                            this.logger.warn(`[Phase2:OnDemand] Skipped (${err.message}) — returning Phase 1 data`);
                         }
                     }
 
