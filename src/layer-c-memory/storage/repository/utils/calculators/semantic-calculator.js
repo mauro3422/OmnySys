@@ -6,6 +6,25 @@
 import { calculateCoupling, calculateCohesion } from './structural-calculator.js';
 
 /**
+ * Calcula centralidad (0-1) basada en el grado de entrada/salida y dependencias
+ */
+export function calculateCentrality(atom, context = {}) {
+    const callers = context.callers || atom.calledBy || [];
+    const callees = context.callees || atom.calls || [];
+
+    const inDegree = callers.length;
+    const outDegree = callees.length;
+
+    const normIn = Math.min(inDegree / 10, 1);
+    const normOut = Math.min(outDegree / 10, 1);
+
+    // La centralidad valora más ser utilizado (hub) que utilizar
+    const centrality = (normIn * 0.7) + (normOut * 0.3);
+
+    return Math.round(centrality * 100) / 100;
+}
+
+/**
  * Calcula importancia del atomo (PageRank-like) (0-1)
  */
 export function calculateImportance(atom, context = {}) {

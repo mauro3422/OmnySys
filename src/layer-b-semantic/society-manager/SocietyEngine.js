@@ -23,8 +23,8 @@ export class SocietyEngine {
     async buildSocieties() {
         logger.info('[SocietyEngine] Building societies...');
 
-        // 1. Cargar datos base (Átomos)
-        const atomsList = await this.repo.getAll({ limit: 0 });
+        // Load ALL atoms — NOTE: limit:0 means LIMIT 0 in SQLite = 0 rows, so pass {} for no limit
+        const atomsList = await this.repo.getAll({});
         const atomsMap = new Map(atomsList.map(a => [a.id, a]));
 
         // 2. Generar Clusters Funcionales (basados en propósito/arquetipo)
@@ -58,13 +58,13 @@ export class SocietyEngine {
         // Obtener átomos del mapa para calcular promedios
         const clusterAtoms = cluster.atoms.map(id => atomsMap.get(id)).filter(Boolean);
 
-        const avgImportance = clusterAtoms.reduce((sum, a) => sum + (a.importanceScore || 0), 0) / (clusterAtoms.length || 1);
-        const avgCentrality = clusterAtoms.reduce((sum, a) => sum + (a.centralityScore || 0), 0) / (clusterAtoms.length || 1);
+        const avgImportance = Number((clusterAtoms.reduce((sum, a) => sum + (a.importanceScore || 0), 0) / (clusterAtoms.length || 1)).toFixed(3));
+        const avgCentrality = Number((clusterAtoms.reduce((sum, a) => sum + (a.centralityScore || 0), 0) / (clusterAtoms.length || 1)).toFixed(3));
 
         // Cálculo de entropía: (1 - cohesión) * (1 + avgImportance)
         // Sociedades importantes y descoordinadas tienen mayor entropía sistémica
-        const cohesion = cluster.cohesion || 0;
-        const entropy = Math.max(0, (1 - cohesion) * (1 + avgImportance));
+        const cohesion = Number((cluster.cohesion || 0).toFixed(3));
+        const entropy = Number((Math.max(0, (1 - cohesion) * (1 + avgImportance))).toFixed(3));
 
         return {
             id: cluster.id,

@@ -10,7 +10,8 @@ import {
   calculatePropagation,
   calculateFragility,
   calculateTestability,
-  calculateArchetypeWeight
+  calculateArchetypeWeight,
+  calculateCentrality
 } from './calculators/semantic-calculator.js';
 import { calculateCompatibility } from './calculators/compatibility-calculator.js';
 import { calculateRenameImpact, calculateMoveImpact } from './calculators/impact-calculator.js';
@@ -70,7 +71,8 @@ export function calculateAtomVectors(atom, context = {}) {
     stability: calculateStability(atom, gitHistory),
     propagationScore: calculatePropagation(atom, context),
     fragilityScore: calculateFragility(atom, context),
-    testabilityScore: calculateTestability(atom, context)
+    testabilityScore: calculateTestability(atom, context),
+    centralityScore: calculateCentrality(atom, context)
   };
 }
 
@@ -83,6 +85,7 @@ export {
   calculateImportance,
   calculateStability,
   calculatePropagation,
+  calculateCentrality,
   calculateCompatibility,
   calculateRenameImpact,
   calculateMoveImpact

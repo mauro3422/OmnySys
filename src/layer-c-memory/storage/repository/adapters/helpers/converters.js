@@ -196,6 +196,8 @@ export function rowToAtom(row) {
     generation: row.generation,
     _meta: safeParseJson(row._meta_json)
   };
+
+  return enriched;
 }
 
 // Helper para asegurar valores numericos seguros
