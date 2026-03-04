@@ -250,14 +250,26 @@ async function handleMcpRequest(req, res) {
       sessionServer = buildServerForSession();
       await sessionServer.connect(transport);
     } else if (sessionId && !sessions.has(sessionId)) {
-      res.status(404).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32001,
-          message: 'Session not found'
-        },
-        id: null
-      });
+      // ── POST-RESTART RECOVERY ──────────────────────────────────────────────
+      // El worker se reinició y perdió el sessions Map. El cliente (Antigravity)
+      // sigue mandando calls con el sessionId viejo.
+      // En vez del 404 silencioso (que el cliente cancela sin reintentar),
+      // respondemos con SESSION_EXPIRED + headers de hint para diagnóstico.
+      // El cliente debe hacer un nuevo POST /mcp sin mcp-session-id para re-initialize.
+      logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found (server restarted?). Client must re-initialize.`);
+
+      res.status(404)
+        .set('Mcp-Session-Expired', 'true')
+        .set('Mcp-Restart-Hint', 'Send POST /mcp without mcp-session-id to re-initialize')
+        .json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32001,
+            message: 'SESSION_EXPIRED: Server restarted. Re-initialize by sending a new POST /mcp without mcp-session-id header.',
+            data: { reason: 'server_restarted', hint: 're-initialize' }
+          },
+          id: req.body?.id ?? null
+        });
       return;
     } else {
       res.status(400).json({
