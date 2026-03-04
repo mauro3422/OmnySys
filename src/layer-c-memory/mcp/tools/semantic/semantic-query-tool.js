@@ -13,7 +13,8 @@ import {
     queryEventPatterns,
     queryAsyncAtoms,
     querySocieties,
-    queryDuplicates
+    queryDuplicates,
+    queryDnaCoverage
 } from './semantic-queries.js';
 
 /**
@@ -136,24 +137,66 @@ export class SemanticQueryTool extends GraphQueryTool {
     }
 
     /**
-     * Obtiene duplicados potenciales basados en DNA
+     * Obtiene duplicados potenciales basados en DNA.
+     * Incluye stats globales de cobertura, metadata de urgencia y ranking.
+     * Reemplaza la necesidad de scripts externos para auditar duplicados.
      */
     async getDuplicates(options = {}) {
         if (!this.repo) throw new Error('Repository not initialized');
 
-        const rows = queryDuplicates(this.repo.db, options);
-        const groups = {};
+        const { rows, stats } = queryDuplicates(this.repo.db, options);
+        const coverage = queryDnaCoverage(this.repo.db);
 
+        const groups = {};
         rows.forEach(row => {
             if (!groups[row.dna_json]) {
-                groups[row.dna_json] = { dna: JSON.parse(row.dna_json), instances: [] };
+                groups[row.dna_json] = {
+                    dna: null,           // omitir el JSON crudo del output (es muy largo)
+                    groupSize: row.group_size,
+                    instances: [],
+                    // Urgency: cuánto importa arreglar este duplicado
+                    urgencyScore: Math.round(
+                        row.group_size *
+                        (row.importance_score || 0.1) *
+                        (1 + (row.change_frequency || 0))
+                    )
+                };
             }
             groups[row.dna_json].instances.push({
-                id: row.id, name: row.name, file: row.file_path, line: row.line_start
+                id: row.id,
+                name: row.name,
+                file: row.file_path,
+                line: row.line_start,
+                linesOfCode: row.lines_of_code,
+                atomType: row.atom_type,
+                archetype: row.archetype_type,
+                purpose: row.purpose_type,
+                changeFrequency: row.change_frequency,
+                importanceScore: row.importance_score,
+                callerCount: row.caller_count || 0
             });
         });
 
-        return { total: Object.keys(groups).length, duplicates: Object.values(groups) };
+        const duplicates = Object.values(groups)
+            .sort((a, b) => b.urgencyScore - a.urgencyScore);
+
+        return {
+            // Stats globales — lo que antes requería scripts externos
+            coverage: {
+                totalAtoms: coverage.totalAtoms,
+                withDna: coverage.withDna,
+                coveragePct: coverage.coveragePct,
+                srcOnlyAtoms: coverage.srcOnlyAtoms,
+                srcWithDna: coverage.srcWithDna
+            },
+            summary: {
+                duplicateGroups: stats.groups || 0,
+                totalDuplicateInstances: stats.total_instances || 0,
+                status: (stats.groups || 0) === 0 ? '✅ No logic duplicates found' : `⚠️ ${stats.groups} duplicate group(s) detected`
+            },
+            total: duplicates.length,
+            duplicates
+        };
     }
 
     /**

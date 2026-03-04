@@ -115,24 +115,96 @@ export function querySocieties(db, { offset = 0, limit = 20, type }) {
 }
 
 /**
- * Construye y ejecuta query de duplicados por DNA hash
+ * Obtiene estadísticas globales de cobertura DNA del proyecto.
+ * Permite saber cuán confiable es la detección de duplicados.
+ * @param {Object} db - Instancia SQLite
+ * @returns {{ totalAtoms, withDna, coveragePct, srcOnlyAtoms, srcWithDna }}
+ */
+export function queryDnaCoverage(db) {
+    const row = db.prepare(`
+        SELECT
+            COUNT(*) totalAtoms,
+            COUNT(CASE WHEN dna_json IS NOT NULL AND dna_json != '' THEN 1 END) withDna,
+            COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
+            COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND dna_json IS NOT NULL AND dna_json != '' THEN 1 END) srcWithDna
+        FROM atoms
+        WHERE is_removed IS NULL OR is_removed = 0
+    `).get();
+
+    return {
+        ...row,
+        coveragePct: row.totalAtoms > 0 ? Math.round((row.withDna / row.totalAtoms) * 100) : 0
+    };
+}
+
+/**
+ * Construye y ejecuta query de duplicados por DNA hash.
+ * Incluye metadata de urgencia (changeFrequency, calledBy count, archetype)
+ * para rankear los grupos de mayor a menor deuda técnica real.
  * @param {Object} db - Instancia SQLite
  * @param {Object} options
- * @returns {{ rows: Array }}
+ * @returns {{ rows: Array, stats: Object }}
  */
-export function queryDuplicates(db, { offset = 0, limit = 20 }) {
-    return db.prepare(`
+export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3 } = {}) {
+    const testFilter = excludeTests
+        ? `AND a.file_path NOT LIKE '%.test.js'
+           AND a.file_path NOT LIKE '%.spec.js'
+           AND a.file_path NOT LIKE '%/test/%'
+           AND a.file_path NOT LIKE '%/tests/%'`
+        : '';
+
+    const rows = db.prepare(`
         WITH DuplicateGroups AS (
             SELECT dna_json, COUNT(*) as group_size
             FROM atoms
             WHERE dna_json IS NOT NULL AND dna_json != ''
+              ${excludeTests ? `AND file_path NOT LIKE '%.test.js'
+              AND file_path NOT LIKE '%.spec.js'
+              AND file_path NOT LIKE '%/test/%'
+              AND file_path NOT LIKE '%/tests/%'` : ''}
+              AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
+              AND (is_removed IS NULL OR is_removed = 0)
+              AND (is_dead_code IS NULL OR is_dead_code = 0)
             GROUP BY dna_json
             HAVING COUNT(*) > 1
         )
-        SELECT a.id, a.name, a.file_path, a.line_start, a.dna_json, dg.group_size
+        SELECT
+            a.id, a.name, a.file_path, a.line_start, a.dna_json,
+            a.lines_of_code, a.atom_type,
+            a.archetype_type, a.purpose_type,
+            a.change_frequency, a.importance_score,
+            a.complexity,
+            dg.group_size,
+            (SELECT COUNT(*) FROM atoms ca
+             WHERE ca.calls_json LIKE '%' || a.name || '%'
+               AND ca.file_path != a.file_path) AS caller_count
         FROM atoms a
         JOIN DuplicateGroups dg ON a.dna_json = dg.dna_json
-        ORDER BY dg.group_size DESC, a.name ASC
+        ${testFilter}
+        ORDER BY
+            (dg.group_size * COALESCE(a.importance_score, 0) * (1 + COALESCE(a.change_frequency, 0))) DESC,
+            dg.group_size DESC,
+            a.name ASC
         LIMIT ? OFFSET ?
     `).all(limit, offset);
+
+    // Stats globales del query
+    const stats = db.prepare(`
+        SELECT COUNT(DISTINCT dna_json) groups, COUNT(*) total_instances
+        FROM atoms
+        WHERE dna_json IN (
+            SELECT dna_json FROM atoms
+            WHERE dna_json IS NOT NULL AND dna_json != ''
+              ${excludeTests ? `AND file_path NOT LIKE '%.test.js'
+              AND file_path NOT LIKE '%.spec.js'
+              AND file_path NOT LIKE '%/test/%'
+              AND file_path NOT LIKE '%/tests/%'` : ''}
+              AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
+              AND (is_removed IS NULL OR is_removed = 0)
+              AND (is_dead_code IS NULL OR is_dead_code = 0)
+            GROUP BY dna_json HAVING COUNT(*) > 1
+        )
+    `).get();
+
+    return { rows, stats: stats || { groups: 0, total_instances: 0 } };
 }
