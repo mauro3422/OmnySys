@@ -10,13 +10,17 @@
  */
 export function analyzeErrorHandling(atoms) {
   const suggestions = [];
-  
+
   for (const atom of atoms) {
+    // Skip test files — tests intentionally omit error handling
+    const fp = atom.filePath || atom.file || '';
+    if (fp.match(/\.(test|spec)\.[jt]sx?$/) || fp.includes('/test/') || fp.includes('/tests/') || fp.includes('/__tests__/') || fp.includes('/factories/')) continue;
+
     // Funciones async sin try/catch
     if (atom.isAsync && !atom.hasErrorHandling) {
       const hasNetwork = atom.hasNetworkCalls;
       const hasFileOps = atom.calls?.some(c => c.name?.includes('readFile') || c.name?.includes('writeFile'));
-      
+
       if (hasNetwork || hasFileOps) {
         suggestions.push({
           type: 'add_error_handling',
@@ -31,7 +35,7 @@ export function analyzeErrorHandling(atoms) {
         });
       }
     }
-    
+
     // Funciones que retornan promesas sin await
     if (atom.calls?.some(c => c.type === 'promise' || c.name?.includes('Promise'))) {
       if (!atom.isAsync && !atom.calls.some(c => c.name === 'then' || c.name === 'catch')) {
@@ -48,6 +52,6 @@ export function analyzeErrorHandling(atoms) {
       }
     }
   }
-  
+
   return suggestions;
 }

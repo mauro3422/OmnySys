@@ -1,53 +1,15 @@
 import { createLogger } from '../../../utils/logger.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 
 const logger = createLogger('file-watcher');
 
 async function persistWatcherRuntimeError(projectPath, filePath, error, context = {}) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
-
-    const detectedAt = new Date().toISOString();
-    const message = `[watcher] Runtime error while processing change: ${error?.message || String(error)}`;
-    const contextJson = JSON.stringify({
-      source: 'file_watcher',
-      ...context
-    });
-
-    repo.db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
-    `).run(filePath, 'watcher_runtime_error');
-
-    repo.db.prepare(`
-      INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(filePath, 'watcher_runtime_error', 'high', message, null, contextJson, detectedAt);
-
-    return true;
-  } catch (persistError) {
-    logger.debug(`[WATCHER RUNTIME ISSUE SKIP] ${filePath}: ${persistError.message}`);
-    return false;
-  }
+  const message = `Runtime error while processing change: ${error?.message || String(error)}`;
+  return persistWatcherIssue(projectPath, filePath, 'watcher_runtime_error', 'high', message, context);
 }
 
 async function clearWatcherRuntimeError(projectPath, filePath) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
-
-    repo.db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
-    `).run(filePath, 'watcher_runtime_error');
-
-    return true;
-  } catch (clearError) {
-    logger.debug(`[WATCHER RUNTIME CLEAR SKIP] ${filePath}: ${clearError.message}`);
-    return false;
-  }
+  return clearWatcherIssue(projectPath, filePath, 'watcher_runtime_error');
 }
 
 /**
@@ -58,13 +20,13 @@ export async function processPendingChanges() {
   if (!this.isRunning) {
     return;
   }
-  
+
   // Si tenemos SmartBatchProcessor activo, usarlo
   if (this.batchProcessor && this.options.useSmartBatch) {
     await this._processWithBatchProcessor();
     return;
   }
-  
+
   // Fallback al comportamiento original
   if (this.pendingChanges.size === 0) {
     return;

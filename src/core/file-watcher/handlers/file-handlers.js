@@ -8,34 +8,13 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
 
-// Nombres de funciones muy comunes en cualquier proyecto JS.
-// Si solo hay coincidencia de nombre (sin DNA similar), no se reporta como duplicado real.
-const COMMON_NAME_WHITELIST = new Set([
-  'processChange', 'handleChange', 'handleError', 'handleEvent',
-  'initialize', 'init', 'setup', 'teardown', 'cleanup', 'destroy',
-  'execute', 'run', 'start', 'stop', 'restart',
-  'validate', 'parse', 'serialize', 'deserialize',
-  'create', 'build', 'get', 'set', 'update', 'delete', 'remove',
-  'load', 'save', 'read', 'write', 'fetch', 'send',
-  'connect', 'disconnect', 'subscribe', 'unsubscribe',
-  'emit', 'broadcast', 'notify', 'dispatch',
-  'format', 'transform', 'map', 'filter', 'reduce',
-  'log', 'warn', 'error', 'debug', 'info',
-  'getStats', 'getStatus', 'getConfig', 'getOptions',
-  'reset', 'clear', 'flush', 'drain',
-  'onError', 'onChange', 'onComplete', 'onSuccess', 'onFailure'
-]);
-
 function isLowSignalAtomName(name) {
   return LOW_SIGNAL_NAME_REGEX.test(name);
-}
-
-function isCommonName(name) {
-  return COMMON_NAME_WHITELIST.has(name);
 }
 
 function safeArray(value) {
@@ -69,53 +48,7 @@ function impactLevelFromScore(score) {
   return 'none';
 }
 
-async function persistWatcherIssue(projectPath, filePath, issueType, severity, message, context = {}) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
 
-    const detectedAt = new Date().toISOString();
-    const dbMessage = `[watcher] ${message}`;
-    const contextJson = JSON.stringify({
-      source: 'file_watcher',
-      ...context
-    });
-
-    repo.db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
-    `).run(filePath, issueType);
-
-    repo.db.prepare(`
-      INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(filePath, issueType, severity, dbMessage, null, contextJson, detectedAt);
-
-    return true;
-  } catch (error) {
-    logger.debug(`[WATCHER ISSUE PERSIST SKIP] ${filePath}:${issueType} -> ${error.message}`);
-    return false;
-  }
-}
-
-async function clearWatcherIssue(projectPath, filePath, issueType) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
-
-    repo.db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
-    `).run(filePath, issueType);
-
-    return true;
-  } catch (error) {
-    logger.debug(`[WATCHER ISSUE CLEAR SKIP] ${filePath}:${issueType} -> ${error.message}`);
-    return false;
-  }
-}
 
 /**
  * Maneja creacion de archivo
