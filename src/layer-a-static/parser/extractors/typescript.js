@@ -44,7 +44,7 @@ export function extractTypeScriptMetadata(root, code, fileInfo) {
             }
         } else if (node.type === 'type_identifier') {
             const name = text(node, code);
-            if (!fileInfo.typeUsages.some(u => u.name === name && u.line === startLine(node))) {
+            if (!fileInfo.typeUsages.some(u => u?.name === name && u.line === startLine(node))) {
                 fileInfo.typeUsages.push({ name, line: startLine(node) });
             }
         }

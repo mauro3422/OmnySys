@@ -56,7 +56,7 @@ export function extractFileInfo(tree, code, filePath) {
     extractTypeScriptMetadata(root, code, fileInfo);
 
     // 4. Functions + definitions (con scope-aware call tracking)
-    const exportedNames = new Set(fileInfo.exports.map(e => e.name));
+    const exportedNames = new Set((fileInfo.exports || []).filter(e => e?.name).map(e => e.name));
     const { functions, definitions } = extractFunctions(root, code, filePath, exportedNames);
     fileInfo.functions = functions;
     fileInfo.definitions = definitions;
