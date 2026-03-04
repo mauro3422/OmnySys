@@ -34,7 +34,7 @@ export function collectSemanticIssues(enhanced, semanticResults) {
 
     if (connCount >= 8) {
       issues.push({
-        file: filePath,
+        filePath: filePath,
         type: 'high-semantic-coupling',
         severity: 'high',
         message: `File has ${connCount} semantic connections`,
@@ -42,7 +42,7 @@ export function collectSemanticIssues(enhanced, semanticResults) {
       });
     } else if (connCount >= 4) {
       issues.push({
-        file: filePath,
+        filePath: filePath,
         type: 'medium-semantic-coupling',
         severity: 'medium',
         message: `File has ${connCount} semantic connections`,
@@ -52,7 +52,7 @@ export function collectSemanticIssues(enhanced, semanticResults) {
 
     if (riskScore >= 8) {
       issues.push({
-        file: filePath,
+        filePath: filePath,
         type: 'critical-risk',
         severity: 'high',
         message: `Critical risk score: ${riskScore}/10`,
@@ -61,10 +61,10 @@ export function collectSemanticIssues(enhanced, semanticResults) {
     }
   }
 
-  // Global state shared between many files
   const globalConnections = semanticResults.globalConnections || [];
   if (globalConnections.length >= 5) {
     issues.push({
+      filePath: 'GLOBAL',
       type: 'excessive-global-state',
       severity: 'medium',
       message: `${globalConnections.length} global state connections detected`,
@@ -94,24 +94,24 @@ export function collectSemanticIssues(enhanced, semanticResults) {
  */
 export function detectHighCoupling(files, threshold = 8) {
   const issues = [];
-  
+
   for (const [filePath, fileData] of Object.entries(files || {})) {
     const connCount = fileData.semanticConnections?.length || 0;
-    
+
     if (connCount >= threshold) {
       issues.push({
-        file: filePath,
+        filePath: filePath,
         type: 'high-semantic-coupling',
         severity: connCount >= threshold * 2 ? 'high' : 'medium',
         message: `File has ${connCount} semantic connections (potential god object)`,
-        details: { 
+        details: {
           connectionCount: connCount,
-          threshold 
+          threshold
         }
       });
     }
   }
-  
+
   return issues;
 }
 
@@ -123,24 +123,24 @@ export function detectHighCoupling(files, threshold = 8) {
  */
 export function detectCriticalRisk(files, threshold = 8) {
   const issues = [];
-  
+
   for (const [filePath, fileData] of Object.entries(files || {})) {
     const riskScore = fileData.riskScore?.total || 0;
-    
+
     if (riskScore >= threshold) {
       issues.push({
-        file: filePath,
+        filePath: filePath,
         type: 'critical-risk',
         severity: riskScore >= 9 ? 'critical' : 'high',
         message: `Critical risk score: ${riskScore}/10`,
-        details: { 
-          riskScore, 
+        details: {
+          riskScore,
           threshold,
-          breakdown: fileData.riskScore?.breakdown 
+          breakdown: fileData.riskScore?.breakdown
         }
       });
     }
   }
-  
+
   return issues;
 }
