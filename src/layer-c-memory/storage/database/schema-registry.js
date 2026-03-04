@@ -60,6 +60,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'purpose_type', type: 'TEXT', nullable: true, description: 'Propósito del átomo' },
       { name: 'purpose_confidence', type: 'REAL', nullable: true, description: 'Confianza del propósito' },
       { name: 'is_dead_code', type: 'BOOLEAN', default: 0, description: 'Es código muerto' },
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el átomo fue removido', addedIn: 'v0.9.84' },
       { name: 'is_phase2_complete', type: 'BOOLEAN', default: 0, description: 'Si completó el análisis semántico profundo (Lazy Indexing)', addedIn: 'v0.9.73' },
 
       // Vectores matemáticos (Semantic Algebra)

@@ -20,7 +20,7 @@ import http from 'http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
-const DAEMON_SCRIPT = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-http-server.js');
+const DAEMON_SCRIPT = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-http-proxy.js');
 const PORT = 9999;
 const HOST = '127.0.0.1';
 
@@ -62,7 +62,7 @@ async function checkDaemon() {
 function startDaemon() {
     return new Promise((resolve, reject) => {
         log('Starting OmnySys MCP daemon...', 'info');
-        
+
         const daemonProcess = spawn('node', [DAEMON_SCRIPT], {
             detached: true,
             stdio: 'ignore',
@@ -79,7 +79,7 @@ function startDaemon() {
         const checkInterval = setInterval(async () => {
             attempts++;
             const ready = await checkDaemon();
-            
+
             if (ready) {
                 clearInterval(checkInterval);
                 log('MCP daemon started successfully', 'success');
@@ -99,7 +99,7 @@ function startDaemon() {
 async function main() {
     try {
         const isRunning = await checkDaemon();
-        
+
         if (isRunning) {
             log('MCP daemon is already running', 'success');
             return { started: false, alreadyRunning: true };

@@ -97,7 +97,7 @@ async function main() {
   console.log('');
   log('info', 'Next steps:');
   console.log('  1) Open VS Code in this workspace (daemon task auto-runs).');
-  console.log('  2) Or start manually: node src/layer-c-memory/mcp-http-server.js');
+  console.log('  2) Or start manually: node src/layer-c-memory/mcp-http-proxy.js');
   console.log('  3) Re-apply standard anytime: npm run setup');
   console.log('  4) Terminal auto-start will run when you open a new terminal');
 }

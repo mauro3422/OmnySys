@@ -15,27 +15,45 @@
 const MCP_URL = 'http://127.0.0.1:9999/mcp';
 
 async function callTool(toolName, args) {
-    const body = {
-        jsonrpc: '2.0',
-        id: Math.random(),
-        method: 'tools/call',
-        params: {
-            name: toolName,
-            arguments: args
+    try {
+        const body = {
+            jsonrpc: '2.0',
+            id: Math.random(),
+            method: 'tools/call',
+            params: {
+                name: toolName,
+                arguments: args
+            }
+        };
+
+        const res = await fetch(MCP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(5000) // 5s timeout
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
         }
-    };
 
-    const res = await fetch(MCP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
+        const data = await res.json();
 
-    const data = await res.json();
-    if (data.result?.content?.[0]?.text) {
-        return JSON.parse(data.result.content[0].text);
+        if (data.error) {
+            return { error: data.error };
+        }
+
+        if (data.result?.content?.[0]?.text) {
+            try {
+                return JSON.parse(data.result.content[0].text);
+            } catch (e) {
+                return { error: 'Failed to parse tool response', raw: data.result.content[0].text };
+            }
+        }
+        return data;
+    } catch (error) {
+        return { error: error.message || 'Unknown network error' };
     }
-    return data;
 }
 
 async function runVerification() {
@@ -49,7 +67,7 @@ async function runVerification() {
     // ─── Test 1: aggregate_metrics modules ─────────────────────────────────────
     console.log('📦 Test 1: aggregate_metrics (modules)...');
     try {
-        const result = await callTool('mcp_omnysystem_aggregate_metrics', {
+        const result = await callTool('mcp_omnysystem_mcp_omnysystem_aggregate_metrics', {
             aggregationType: 'modules'
         });
 
@@ -70,7 +88,7 @@ async function runVerification() {
     // ─── Test 2: aggregate_metrics risk ────────────────────────────────────────
     console.log('\n🎯 Test 2: aggregate_metrics (risk)...');
     try {
-        const result = await callTool('mcp_omnysystem_aggregate_metrics', {
+        const result = await callTool('mcp_omnysystem_mcp_omnysystem_aggregate_metrics', {
             aggregationType: 'risk'
         });
 
@@ -96,7 +114,7 @@ async function runVerification() {
     // ─── Test 3: traverse_graph edges ──────────────────────────────────────────
     console.log('\n🔗 Test 3: traverse_graph call_graph (requires restart to take effect)...');
     try {
-        const result = await callTool('mcp_omnysystem_traverse_graph', {
+        const result = await callTool('mcp_omnysystem_mcp_omnysystem_traverse_graph', {
             traverseType: 'call_graph',
             filePath: 'src/layer-a-static/pipeline/resolve.js'
         });

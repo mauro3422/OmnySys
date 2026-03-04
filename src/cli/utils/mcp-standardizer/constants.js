@@ -24,7 +24,7 @@ export const VSCODE_FILES = {
 };
 
 export const VSCODE_DAEMON_TASK_LABEL = 'OmnySys MCP Daemon';
-export const VSCODE_DAEMON_TASK_COMMAND = 'node src/layer-c-memory/mcp-http-server.js';
+export const VSCODE_DAEMON_TASK_COMMAND = 'node src/layer-c-memory/mcp-http-proxy.js';
 
 export const CONFIG_PATHS = {
     codex: path.join(os.homedir(), '.codex', 'config.toml'),

@@ -164,7 +164,11 @@ export async function parseFileFromDisk(filePath, content = null) {
         fileInfo.source = code;
         return fileInfo;
     } catch (error) {
-        logger.error(`Error reading file ${filePath}:`, error);
+        if (error.code === 'ENOENT') {
+            logger.debug(`File disappeared (ENOENT), bypassing parsing: ${filePath}`);
+        } else {
+            logger.error(`Error reading file ${filePath}:`, error.message || error);
+        }
         return {
             filePath,
             fileName: path.basename(filePath),

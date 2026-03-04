@@ -23,7 +23,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
     }
 
     async performAction(args) {
-        const { filePath, content, autoFix = false } = args;
+        let { filePath, content, autoFix = false } = args;
         const { orchestrator, projectPath } = this.context;
 
         if (!filePath || !content) {

@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelog/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data** (Latest)
+- **[v0.9.84 - Sprint Q/A: Deuda Técnica Completa](changelog/v0.9.84-qa-technical-debt-complete.md)** - **✅ Refactor final de Type Detector y Semantic Queries. Sistema validado en Grado A (95/100).** (Latest)
+- **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelog/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data**
 - **[v0.9.82 - SQL Health Eradication](changelog/v0.9.82-health-eradication.md)** - **✅ Eliminación de N+1 queries y purificado de las 37 deudas técnicas SQL**
 - **[v0.9.81 - Algorithmic O(n²) Eradication](changelog/v0.9.81-algorithmic-eradication.md)** - **✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying**
 - **[v0.9.80 - SQL Optimization & Schema Drift Extinction](changelog/v0.9.80-sql-optimization.md)** - **✅ Schema Drift False Positives eradicated, Window Functions optimization**
@@ -45,7 +46,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.83]** | 2026-03-04 | **🛡️ Daemon Stability & Semantic Pipeline Fix — ✅ 7 bugs fixed: restart_server fast path (<1s), 264 semantic connections persisted, NOT NULL transaction cascade fixed** (Latest) |
+| **[0.9.84]** | 2026-03-04 | **🛡️ Version 0.9.84: Sprint Q/A & Technical Debt Complete — ✅ Refactored detectTypeAndName (C=51→12) & SemanticQueryTool (C=41→15). 0 High Risk Files.** (Latest) |
+| **[0.9.83]** | 2026-03-04 | **🛡️ Daemon Stability & Semantic Pipeline Fix — ✅ 7 bugs fixed: restart_server fast path (<1s), 264 semantic connections persisted, NOT NULL transaction cascade fixed** |
 | **[0.9.81]** | 2026-03-03 | **🚀 Algorithmic O(n²) Eradication — ✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** |
 | **[0.9.80]** | 2026-03-03 | **🚀 SQL Optimization & Schema Drift Extinction — ✅ Window functions refactoring for N+1 queries, SQLite JSON metadata parsing fixed** |
 | **[0.9.70]** | 2026-03-01 | **🛡️ SQLite Persistence Unification — ✅ JSON Legacy removed, Unified transactions, Database-backed versioning** |
@@ -103,7 +105,23 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.70 (2026-03-01)
+## 🚀 Latest Release: v0.9.84 (2026-03-04)
+
+**Sprint Q/A: Deuda Técnica Completa**: Culminación exitosa del sprint masivo de limpieza de deuda técnica. Resolución de God Functions finales y verificación de infraestructura mediante MCP garantizando un estado "Grade A" del sistema.
+
+### Key Achievements
+
+1. **Resolución Ciclomática**:
+   - **Type Detector**: `detectTypeAndName` simplificado de C=51 a ~C=12 dividiendo heurísticas de AST en helpers estáticos.
+   - **Semantic Queries**: Extracción limpia de 5 queries SQL crudas de `SemanticQueryTool` (C=41 a ~C=15).
+
+2. **Diagnóstico Valorado**:
+   - Verificado comportamiento correcto de la capa "Red" (falso positivo como deficiencia curado a comportamiento deseado).
+   - Componentes críticos validados sin *race conditions* activas y analizador de dependencias a salvo.
+
+---
+
+## v0.9.70 (2026-03-01)
 
 **SQLite Persistence Unification**: Unificación completa de la persistencia en SQLite, eliminando la dependencia de archivos JSON para átomos y versiones. Se implementó una arquitectura de transacciones unificada para garantizar integridad total.
 
