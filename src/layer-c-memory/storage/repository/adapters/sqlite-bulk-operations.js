@@ -151,8 +151,8 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       });
       logPostTransaction(atoms);
     } catch (postErr) {
-      // Non-critical — don't fail the save if event/version logging fails
-      this._logger.debug(`[SQLiteAdapter] Post-transaction logging skipped: ${postErr.message}`);
+      console.error("FATAL ERROR IN POST TRANSACTION:", postErr);
+      this._logger.error(`[SQLiteAdapter] Post-transaction logging skipped: ${postErr.message}`);
     }
 
     this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);

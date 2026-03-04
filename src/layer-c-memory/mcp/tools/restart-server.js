@@ -56,28 +56,25 @@ export async function restart_server(args, context) {
       };
     }
 
-    // ── TRUE RESTART via proxy ────────────────────────────────────────────
-    // Si corremos bajo mcp-server.js (proxy), process.send() está disponible.
-    // El proxy mata este proceso y spawna uno nuevo → ESM cache limpio.
-    // La conexión stdio de Claude Code NO se interrumpe.
-    if (typeof process.send === 'function') {
+    // ── PROXY MODE INTERCEPT / IPC RESTART ───────────────────────────────
+    // If we are running under an IPC process (e.g. mcp-http-proxy or mcp-stdio-bridge)
+    // we let the parent proxy handle the entire ESM cache flush by killing and respawning us.
+    if (process.env.OMNYSYS_PROXY_MODE === '1' || typeof process.send === 'function') {
       logger.info('📡 Enviando señal de restart al proxy (true Node.js restart)...');
 
       // Limpiar caché en disco si se pidió, antes de morir
       if (clearCache && cache) {
-        logger.info('🧹 Limpiando caché antes de reiniciar...');
+        logger.info('🧹 Limpiando caché local antes de reiniciar...');
         await cache.clear();
         if (reanalyze) {
           const fs = await import('fs/promises');
           const path = await import('path');
           const dataDir = path.join(server.projectPath, '.omnysysdata');
-          // Borrar toda la estructura de análisis para forzar reindex completo
-          // Incluye atoms/ y molecules/ para que el nuevo parser regenere todo
+
           const toDelete = ['files', 'atoms', 'molecules'];
           for (const dir of toDelete) {
             await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
           }
-          // También borrar la base de datos SQLite y sus archivos temporales para integridad total
           const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
           for (const file of dbFiles) {
             await fs.unlink(path.join(dataDir, file)).catch(() => { });
@@ -87,7 +84,9 @@ export async function restart_server(args, context) {
       }
 
       // Señalar al proxy — el proxy espera 300ms y luego mata+respawnea
-      process.send({ type: 'restart', clearCache, reanalyze });
+      if (process.send) {
+        process.send({ type: 'restart', clearCache, reanalyze, clearCacheOnly, reindexOnly });
+      }
 
       return {
         success: true,
@@ -96,10 +95,10 @@ export async function restart_server(args, context) {
         clearCache,
         reanalyze,
         timestamp: new Date().toISOString(),
-        message: 'Proxy received restart signal. New Node.js process will start in ~1s with fresh ESM cache. Claude Code connection stays alive.'
+        message: 'Proxy received restart signal. New Node.js process will start in ~2s with fresh ESM cache. Connection stays alive.',
+        esmCacheCleared: true
       };
     }
-    // (Removed TRUE RESTART via HTTP Daemon. HTTP Daemon will now use component-only restart)
 
     // ── FALLBACK: component-only restart (standalone mode, no proxy) ─────
     // NOTA: En modo standalone (sin proxy), NO se puede limpiar el cache ESM de Node.js.

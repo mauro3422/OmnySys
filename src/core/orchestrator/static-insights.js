@@ -323,6 +323,11 @@ export async function _startPhase2BackgroundIndexer() {
         }
 
         if (this._phase2GlobalTimer) {
+          // FIX: dynamically update total bounds if new files were added by Phase 1
+          const remainingQuery = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
+          if (remainingQuery) {
+            this._phase2GlobalTimer.totalItems = this._phase2GlobalTimer.itemsProcessed + remainingQuery.count;
+          }
           this._phase2GlobalTimer.onItemProcessed(enqueuedCount);
         }
 

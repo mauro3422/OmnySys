@@ -20,6 +20,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
+import { getGitStats } from '../../utils/git-analyzer.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
 
@@ -35,6 +36,9 @@ function calculateHash(content) {
  */
 export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbose, extractionDepth = 'structural', logPrefix = 'Unified Analysis') {
     if (verbose) logger.info(`\n🚀 Starting ${logPrefix} [TRUE TURBO MODE]...`);
+
+    // Pre-load Git metrics for all files in memory (master thread)
+    const gitStats = await getGitStats(absoluteRootPath);
 
     const atomPhase = new AtomExtractionPhase();
     const repo = getRepository(absoluteRootPath);
@@ -93,7 +97,8 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
                 workerData: {
                     files: chunk,
                     absoluteRootPath,
-                    extractionDepth
+                    extractionDepth,
+                    gitStats
                 }
             });
 

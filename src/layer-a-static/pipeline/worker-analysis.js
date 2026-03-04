@@ -28,7 +28,7 @@ function calculateHash(content) {
 }
 
 async function runWorker() {
-    const { files, absoluteRootPath, extractionDepth = 'structural' } = workerData;
+    const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const atomPhase = new AtomExtractionPhase();
     // Re-initialize sqlite connection strictly inside this thread
     const repo = getRepository(absoluteRootPath);
@@ -109,10 +109,14 @@ async function runWorker() {
 
             if (extractedAtoms.length > 0) {
                 // ENRICH & PRUNE
+                const fileGitStats = gitStats[relativeFilePath] || { ageDays: 0, changeFrequency: 0 };
+
                 const liteAtoms = extractedAtoms.map(atom => {
                     const enriched = enrichAtomVectors(enrichAtomPurpose(atom));
                     enriched.filePath = relativeFilePath;
                     enriched.file = relativeFilePath;
+                    enriched.ageDays = fileGitStats.ageDays;
+                    enriched.changeFrequency = fileGitStats.changeFrequency;
 
                     // Acumular en el Gran Buffer (guardado al final en 1 transacción)
                     globalWorkerBuffer.push({ ...enriched });

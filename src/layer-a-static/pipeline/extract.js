@@ -6,6 +6,7 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import { enrichAtom as enrichAtomPurpose } from './phases/atom-extraction/metadata/purpose-enricher.js';
 import { enrichAtom as enrichAtomVectors } from '#layer-c/storage/enrichers/atom-enricher.js';
 import { createLogger } from '../../utils/logger.js';
+import { getGitStats } from '../../utils/git-analyzer.js';
 
 const logger = createLogger('OmnySys:extract');
 
@@ -15,6 +16,10 @@ const logger = createLogger('OmnySys:extract');
  */
 export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
     if (verbose) logger.info('\n⚛️  Extracting rich atomic metadata...');
+
+    // Pre-load Git metrics for all files in memory before batch extraction
+    const gitStats = await getGitStats(absoluteRootPath);
+
     const atomPhase = new AtomExtractionPhase();
     let totalAtomsExtracted = 0;
 
@@ -54,11 +59,19 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
 
                 if (context.atoms && context.atoms.length > 0) {
                     const purposeEnriched = context.atoms.map(atom => enrichAtomPurpose(atom));
-                    const enrichedAtoms = purposeEnriched.map(atom => enrichAtomVectors(atom));
+                    const fileGitStats = gitStats[relativeFilePath] || { ageDays: 0, changeFrequency: 0 };
+
+                    const enrichedAtoms = purposeEnriched.map(atom => {
+                        const enriched = enrichAtomVectors(atom);
+                        enriched.ageDays = fileGitStats.ageDays;
+                        enriched.changeFrequency = fileGitStats.changeFrequency;
+                        return enriched;
+                    });
 
                     // 🚀 ULTRA-LITE ATOMS: Prune EVERYTHING not needed for Graph/Links
                     const liteAtoms = enrichedAtoms.map(atom => {
                         const lite = { ...atom };
+
                         // Remove heavy fields (saved to DB but not needed for Graph/Links)
                         delete lite.dna;
                         delete lite.dataFlow;

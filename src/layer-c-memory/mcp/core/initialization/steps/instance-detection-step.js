@@ -102,11 +102,14 @@ export class InstanceDetectionStep extends InitializationStep {
     /**
      * Start the health beacon HTTP server
      * @param {Object} server - OmnySysMCPServer instance
+     * @param {number} retries - Current retry count
      * @returns {Promise<boolean>}
      */
-    async _startHealthBeacon(server) {
+    async _startHealthBeacon(server, retries = 0) {
+        const maxRetries = process.env.OMNYSYS_PROXY_MODE === '1' ? 3 : 0;
+
         return new Promise((resolve) => {
-            server._healthBeacon = http.createServer((req, res) => {
+            const beacon = http.createServer((req, res) => {
                 if (req.url === '/health' && req.method === 'GET') {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
@@ -121,17 +124,23 @@ export class InstanceDetectionStep extends InitializationStep {
                 }
             });
 
-            server._healthBeacon.on('error', (err) => {
+            beacon.on('error', (err) => {
                 if (err.code === 'EADDRINUSE') {
-                    logger.warn(`Port ${HEALTH_PORT} already in use`);
-                    resolve(false);
+                    if (retries < maxRetries) {
+                        logger.warn(`Port ${HEALTH_PORT} in use. Retrying in 1s (${retries + 1}/${maxRetries})...`);
+                        setTimeout(() => resolve(this._startHealthBeacon(server, retries + 1)), 1000);
+                    } else {
+                        logger.warn(`Port ${HEALTH_PORT} already in use after ${retries} retries`);
+                        resolve(false);
+                    }
                 } else {
                     logger.error('Health beacon error:', err.message);
                     resolve(false);
                 }
             });
 
-            server._healthBeacon.listen(HEALTH_PORT, () => {
+            beacon.listen(HEALTH_PORT, () => {
+                server._healthBeacon = beacon;
                 logger.info(`  Health beacon listening on http://localhost:${HEALTH_PORT}/health`);
                 resolve(true);
             });

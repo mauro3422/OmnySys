@@ -109,8 +109,8 @@ function spawnWorker() {
         if (restartScheduled) {
             restartScheduled = false;
             log('🚀 Respawning worker with fresh ESM cache...');
-            // Small delay to allow OS to release port 9999
-            setTimeout(spawnWorker, 500);
+            // Small delay to allow OS to release port 9999 (Windows needs ~1s)
+            setTimeout(spawnWorker, 1500);
         } else if (code !== 0) {
             log(`⚠️  Worker crashed (code=${code}). Respawning in 2s...`);
             setTimeout(spawnWorker, 2000);

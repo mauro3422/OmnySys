@@ -344,6 +344,13 @@ const httpServer = app.listen(port, host, () => {
 httpServer.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
     logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
+    // If we are under proxy management, returning 0 causes the proxy to think
+    // this was a clean exit and it commits suicide. We must return 1 so the proxy
+    // interprets it as a crash and waits to respawn again until the OS frees the port!
+    if (process.env.OMNYSYS_PROXY_MODE === '1') {
+      logger.error('Proxy Mode active. Port still locked by OS. Exiting with code 1 to force proxy retry loop.');
+      process.exit(1);
+    }
     process.exit(0);
   }
   logger.error(`HTTP daemon startup failed: ${error.message}`);
