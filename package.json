@@ -69,10 +69,10 @@
     "postinstall": "node install.js",
     "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-server.js",
     "mcp:debug": "node --max-old-space-size=4096 --inspect src/layer-c-memory/mcp-server.js",
-    "mcp:http": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-server.js",
+    "mcp:http": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-proxy.js",
     "mcp:bridge": "node src/layer-c-memory/mcp-stdio-bridge.js",
     "pack:check": "npm pack --dry-run",
-    "mcp:http:proxy": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-proxy.js"
+    "mcp:proxy": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-proxy.js"
   },
   "keywords": [
     "ai",
