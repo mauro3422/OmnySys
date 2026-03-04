@@ -22,17 +22,41 @@ export async function saveRiskAssessments(db, riskAssessment, now) {
     VALUES (?, ?, 0)
   `);
 
-  for (const [category, data] of Object.entries(riskAssessment)) {
-    const items = Array.isArray(data) ? data : [data];
-    for (const item of items) {
-      // Only persist items that have a real file path — skip metadata blobs
-      // (e.g. 'scores', 'report' category entries that are summary objects, not file risks)
-      const filePath = item.file_path || item.file || item.path;
-      if (!filePath || typeof filePath !== 'string' || filePath.startsWith('_category_')) continue;
+  // Recursively extract file-level risks from deep report structures
+  const extractedRisks = [];
 
-      insertFile.run(filePath, isoNow);
-      insertRisk.run(filePath, item.severity || item.risk_level || category || 'low', safeJson(item.factors || item), now);
+  function scanForRisks(obj, parentCategory = 'low') {
+    if (!obj || typeof obj !== 'object') return;
+
+    // Si el objeto actual tiene filePath/file_path, considerarlo un file-risk
+    const filePath = obj.file_path || obj.file || obj.path || obj.filePath;
+    if (filePath && typeof filePath === 'string' && !filePath.startsWith('_category_')) {
+      extractedRisks.push({
+        file_path: filePath,
+        risk_level: obj.severity || obj.risk_level || parentCategory,
+        factors: obj.factors || obj
+      });
+      return;
     }
+
+    // Continuar explorando
+    for (const [key, val] of Object.entries(obj)) {
+      if (!val || typeof val !== 'object') continue;
+
+      const newCategory = (key === 'critical' || key === 'high' || key === 'medium' || key === 'low') ? key : parentCategory;
+      if (Array.isArray(val)) {
+        val.forEach(item => scanForRisks(item, newCategory));
+      } else {
+        scanForRisks(val, newCategory);
+      }
+    }
+  }
+
+  scanForRisks(riskAssessment);
+
+  for (const item of extractedRisks) {
+    insertFile.run(item.file_path, isoNow);
+    insertRisk.run(item.file_path, item.risk_level, safeJson(item.factors), now);
   }
 }
 
