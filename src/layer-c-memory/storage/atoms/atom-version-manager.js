@@ -10,7 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { BaseSqlRepository } from '../repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
 const DATA_DIR = '.omnysysdata';
 const VERSIONS_FILE = 'atom-versions.json';

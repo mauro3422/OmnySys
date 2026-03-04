@@ -8,7 +8,7 @@
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { getRepository } from '../repository/index.js';
-import { BaseSqlRepository } from '../repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:HashCache');

@@ -1,4 +1,4 @@
-import { BaseSqlRepository } from '../../../../repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
 export async function saveFileDependencies(db, dependencies, now) {
   const hr = new BaseSqlRepository(db, 'DependencyHandler');

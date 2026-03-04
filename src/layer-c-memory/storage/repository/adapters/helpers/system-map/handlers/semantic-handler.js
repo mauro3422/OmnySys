@@ -3,7 +3,7 @@
  * Persistence handlers for semantic data
  */
 import { safeJson, safeParseJson } from '../../converters.js';
-import { BaseSqlRepository } from '../../../../repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 
 export async function saveSemanticData(db, connections, issues, now) {
   connections = connections || [];
