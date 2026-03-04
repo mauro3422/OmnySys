@@ -59,7 +59,11 @@ const websocketTests = {
     // Test 4: Cliente se conecta
     'should accept client connections': async () => {
       const wsManager = new WebSocketManager({ port: 9995 });
-      await wsManager.start();
+      try {
+        await wsManager.start();
+      } catch (err) {
+        throw new Error(`Failed to start WS server on port 9995: ${err.message}`);
+      }
 
       const client = new WebSocket('ws://localhost:9995');
 
@@ -78,7 +82,11 @@ const websocketTests = {
     // Test 5: Cliente recibe mensaje de bienvenida
     'should send welcome message on connection': async () => {
       const wsManager = new WebSocketManager({ port: 9994 });
-      await wsManager.start();
+      try {
+        await wsManager.start();
+      } catch (err) {
+        throw new Error(`Failed to start WS server on port 9994: ${err.message}`);
+      }
 
       const client = new WebSocket('ws://localhost:9994');
 
@@ -101,7 +109,11 @@ const websocketTests = {
     // Test 6: Cliente envía ping
     'should respond to ping with pong': async () => {
       const wsManager = new WebSocketManager({ port: 9993 });
-      await wsManager.start();
+      try {
+        await wsManager.start();
+      } catch (err) {
+        throw new Error(`Failed to start WS server on port 9993: ${err.message}`);
+      }
 
       const client = new WebSocket('ws://localhost:9993');
 

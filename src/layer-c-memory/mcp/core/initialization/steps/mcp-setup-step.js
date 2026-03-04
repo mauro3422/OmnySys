@@ -55,8 +55,56 @@ export class McpSetupStep extends InitializationStep {
     server.server.onerror = (error) => logger.info('[MCP Error]', error);
 
     logger.info(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
+
+    // Auto-sync: keep .claude/settings.local.json in sync with registered tools
+    this.syncClaudePermissions(server.projectPath).catch(err =>
+      logger.warn(`[McpSetup] settings.local.json sync skipped: ${err.message}`)
+    );
+
     return true;
   }
+
+  /**
+   * Keeps .claude/settings.local.json in sync with currently registered MCP tools.
+   * Removes stale mcp__omnysys__ entries and adds entries for all active tools.
+   * Runs after every server start — safe to call multiple times (idempotent).
+   */
+  async syncClaudePermissions(projectPath) {
+    const { readFile, writeFile } = await import('fs/promises');
+    const { join } = await import('path');
+
+    const settingsPath = join(projectPath, '.claude', 'settings.local.json');
+    let settings;
+
+    try {
+      const raw = await readFile(settingsPath, 'utf-8');
+      settings = JSON.parse(raw);
+    } catch {
+      // File doesn't exist or is malformed — skip silently
+      return;
+    }
+
+    if (!settings.permissions?.allow || !Array.isArray(settings.permissions.allow)) return;
+
+    // Current active tool names from registry (e.g. "mcp_omnysystem_query_graph")
+    const currentToolNames = toolDefinitions.map(t => t.name);
+
+    // Remove ALL existing mcp__ tool permission entries (any server name, any tool)
+    const nonMcpEntries = settings.permissions.allow.filter(
+      entry => typeof entry !== 'string' || !entry.startsWith('mcp__')
+    );
+
+    // Add refreshed entries for all currently registered tools
+    // Format: mcp__[serverName]__[toolName] (Claude Code permission convention)
+    const serverName = 'omnysys';
+    const newMcpEntries = currentToolNames.map(name => `mcp__${serverName}__${name}`);
+
+    settings.permissions.allow = [...nonMcpEntries, ...newMcpEntries];
+
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    logger.info(`  🔄 settings.local.json synced (${newMcpEntries.length} MCP tools registered)`);
+  }
+
 
   async handleToolCall(request, server) {
     // Si el servidor todavía está inicializando (Layer A, cache, etc.), avisar y esperar.
@@ -106,7 +154,7 @@ export class McpSetupStep extends InitializationStep {
     }
 
     // Add recent errors to result if there are any (BEFORE pagination)
-    const resultWithErrors = recentErrors.count > 0 
+    const resultWithErrors = recentErrors.count > 0
       ? { _recentErrors: recentErrors, ...rawResult }
       : rawResult;
 

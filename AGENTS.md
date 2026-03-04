@@ -1,108 +1,175 @@
-# OmnySystem - MCP Tool Usage Guide
+# OmnySys — Agent Protocol Guide
 
-## Quick Start
+> **Última actualización:** Marzo 2026 | Fuente de verdad: `src/layer-c-memory/mcp/tools/index.js`  
+> ⚠️ Cada tool fue verificada **leyendo su implementación** antes de documentarla.
 
-**Golden Rule**: Always validate BEFORE editing.
+---
 
-```javascript
-// 1. Check impact
-get_impact_map({ filePath: "path/to/file.js" })
+## REGLA DE ORO
 
-// 2. Validate imports
-validate_imports({ filePath: "path/to/file.js", checkFileExistence: true })
-
-// 3. Edit with validation
-atomic_edit({ filePath, oldString, newString })
+```
+ANTES de crear → query_graph(instances) — ¿ya existe?
+ANTES de editar → traverse_graph(impact_map) — ¿qué se rompe?
+SIEMPRE después de editar → get_recent_errors() — ¿el watcher captó algo?
 ```
 
 ---
 
-## Essential Tools
+## Catálogo de Herramientas (verificado desde el código)
 
-### Before Editing
+### 🔎 `query_graph` — Consultas sobre un símbolo
 
-| Tool | When | Example |
-|------|------|---------|
-| `get_impact_map` | Always first | `{ filePath: "src/file.js" }` |
-| `validate_imports` | Before save | `{ filePath: "src/file.js", checkFileExistence: true }` |
-| `analyze_change` | Changing symbols | `{ filePath, symbolName }` |
+| `queryType`  | Estado    | Cuándo usarlo                               |
+|--------------|-----------|---------------------------------------------|
+| `instances`  | ✅ ACTIVO | ¿Ya existe esta función en el proyecto?     |
+| `details`    | ✅ ACTIVO | CC, riesgos, ADN, Phase 2 on-demand        |
+| `history`    | ❌ DEPRECATED | Devuelve error                         |
+| `value_flow` | ❌ DEPRECATED | Devuelve error                         |
+| `search`     | ❌ DEPRECATED | Devuelve error                         |
+| `removed`    | ❌ DEPRECATED | Devuelve error                         |
 
-### Understanding Code
-
-| Tool | When | Example |
-|------|------|---------|
-| `get_function_details` | Understand function | `{ filePath, functionName }` |
-| `get_call_graph` | See dependencies | `{ filePath, symbolName }` |
-| `detect_patterns` | Find issues | `{ patternType: "god-functions" }` |
-
-### Safe Operations
-
-| Tool | Use Instead Of | Why |
-|------|----------------|-----|
-| `atomic_edit` | `edit` | Auto-validates imports, paths, duplicates |
-| `atomic_write` | `write_file` | Auto-validates before creating |
+**Parámetros:** `queryType` (req), `symbolName`, `filePath`, `options`  
+`details` requiere `filePath` + `symbolName`. `options.includeSemantic=true` agrega sharedState, events.
 
 ---
 
-## Common Patterns
+### 🌐 `traverse_graph` — Navegación del grafo
 
-### Refactor Large File
-```javascript
-detect_patterns({ patternType: "architectural-debt" })
-get_molecule_summary({ filePath })
-get_impact_map({ filePath })
-// Then use atomic_edit
-```
+| `traverseType`          | Estado        | Cuándo usarlo                        |
+|-------------------------|---------------|--------------------------------------|
+| `impact_map`            | ✅ ACTIVO     | **Siempre antes de editar un archivo** |
+| `call_graph`            | ✅ ACTIVO     | Ver árbol de dependencias (BFS/DFS)  |
+| `analyze_change`        | ❌ DEPRECATED | Devuelve error                       |
+| `simulate_data_journey` | ❌ DEPRECATED | Devuelve error                       |
+| `trace_variable`        | ❌ DEPRECATED | Devuelve error                       |
+| `trace_data_flow`       | ❌ DEPRECATED | Devuelve error                       |
+| `explain_connection`    | ❌ DEPRECATED | Devuelve error                       |
+| `signature_change`      | ❌ DEPRECATED | Devuelve error                       |
 
-### Add New Feature
-```javascript
-search_files({ pattern: "**/*feature*.js" })
-atomic_write({ filePath, content }) // Auto-validates
-```
-
-### Fix Bug
-```javascript
-find_symbol_instances({ symbolName: "buggyFunc" })
-get_function_details({ filePath, functionName })
-get_call_graph({ filePath, symbolName })
-atomic_edit({ filePath, oldString, newString })
-```
+**Parámetros:** `traverseType` (req), `filePath` (req), `symbolName`, `variableName`, `options`  
+`options.includeSemantic=true` enriquece los nodos del grafo con datos semánticos.
 
 ---
 
-## Anti-Patterns
+### 📊 `aggregate_metrics` — Métricas agrupadas
 
-❌ **DON'T**:
-- Edit without `get_impact_map` first
-- Use plain `edit` - always use `atomic_edit`
-- Change signatures without `analyze_signature_change`
-- Create files without validating imports
+| `aggregationType`  | Estado    | Qué retorna                                      |
+|--------------------|-----------|--------------------------------------------------|
+| `health`           | ✅ ACTIVO | Fragilidad promedio, acoplamiento, cohesión       |
+| `risk`             | ✅ ACTIVO | Archivos Critical/High/Medium/Low                |
+| `modules`          | ✅ ACTIVO | Inventario de módulos                            |
+| `molecule`         | ✅ ACTIVO | Átomos de un archivo + riesgo (requiere filePath)|
+| `patterns`         | ✅ ACTIVO | Patrones de eventos y conexiones semánticas       |
+| `race_conditions`  | ✅ ACTIVO | Race conditions async                            |
+| `async_analysis`   | ✅ ACTIVO | Funciones async: red, error handling, CC         |
+| `risk`             | ✅ ACTIVO | Ranking de riesgo por archivo                   |
+| `society`          | ✅ ACTIVO | Clústeres funcionales cohesivos                 |
+| `duplicates`       | ✅ ACTIVO | **Clones estructurales por ADN** en el proyecto  |
+| `pipeline_health`  | ✅ ACTIVO | Estado del pipeline de analysis interno          |
 
-✅ **DO**:
-- Always validate before editing
-- Use `atomic_edit` / `atomic_write` for safety
-- Check `get_recent_errors()` after changes
-
----
-
-## System Info
-
-- **Storage**: SQLite (deterministic queries)
-- **Max file lines**: 250
-- **Max complexity**: 15
-- **Test coverage target**: >80%
+**Parámetros:** `aggregationType` (req), `filePath`, `options` (limit, offset, minSeverity, etc.)
 
 ---
 
-## Troubleshooting
+### ✍️ Edición segura
 
-```javascript
-// Check server status
-get_server_status()
+| Tool                     | Parámetros req           | Qué hace                                        |
+|--------------------------|--------------------------|--------------------------------------------------|
+| `atomic_edit`            | `filePath, oldString, newString` | Edición con validación de sintaxis + vibraciones |
+| `atomic_write`           | `filePath, content`      | Crea archivo con validación antes de escribir    |
+| `move_file`              | `oldPath, newPath`       | Mueve archivo actualizando todos sus imports     |
+| `fix_imports`            | `filePath`               | Repara imports rotos (execute: false = preview)  |
 
-// Restart if issues
-restart_server({ clearCache: true, reanalyze: false })
+---
 
-// View errors
+### 🔬 Análisis y mejoras
+
+| Tool                          | Parámetros principales             | Qué hace                                      |
+|-------------------------------|-------------------------------------|-----------------------------------------------|
+| `suggest_refactoring`         | `filePath?`, `severity`, `limit`   | Sugerencias priorizadas por grafo (CC, loops, cohesión) |
+| `detect_performance_hotspots` | `filePath?`, `minRisk`, `limit`    | Detecta O(n^2), I/O bloqueante, memory risks  |
+| `execute_solid_split`         | `filePath`, `symbolName`, `execute`| Divide god-function (execute: false = preview) |
+| `generate_tests`              | `filePath`, `functionName?`, `action` | Analiza (`analyze`) o genera (`generate`) tests |
+| `generate_batch_tests`        | `limit`, `minComplexity`, `sortBy`, `dryRun` | Tests en lote para funciones sin cobertura |
+| `validate_imports`            | `filePath?`, `checkBroken`, `checkCircular` | Verifica imports rotos/circulares/no-usados |
+| `get_schema`                  | `type` (atoms/database/registry)   | Schema de átomos o estado del SQLite          |
+
+---
+
+### 🛠️ Admin y debug
+
+| Tool                | Cuándo usar                                              |
+|---------------------|----------------------------------------------------------|
+| `get_server_status` | Verificar salud del servidor antes de trabajar          |
+| `get_recent_errors` | **SIEMPRE después de editar.** Warnings del watcher automáticos en `_recentErrors` |
+| `restart_server`    | `clearCacheOnly: true` (rápido) / `clearCache+reanalyze: true` (full wipe) |
+
+> 💡 **Nota sobre `_recentErrors`:** El servidor inyecta automáticamente los warnings/errors del logger en el response de **CUALQUIER tool** bajo la clave `_recentErrors`. No hace falta llamar `get_recent_errors()` explícitamente si ya planeabas llamar otra tool — los errores aparecerán ahí igualmente.
+
+---
+
+## Flujos Obligatorios
+
+### 🆕 Crear código nuevo — Protocolo Anti Visión de Túnel
+
+```js
+// 1. ¿Ya existe? (incluye dead code con isDeadCode: true)
+query_graph({ queryType: "instances", symbolName: "miNuevaFuncion" })
+
+// 2. ¿Hay clones de ADN en el proyecto?
+aggregate_metrics({ aggregationType: "duplicates" })
+
+// 3. Crear con validación
+atomic_write({ filePath, content })
+
+// 4. Alertas post-creación (o revisar _recentErrors del paso anterior)
 get_recent_errors()
 ```
+
+### ✏️ Editar código existente
+
+```js
+traverse_graph({ traverseType: "impact_map", filePath: "src/file.js" })
+validate_imports({ filePath: "src/file.js", checkBroken: true })
+atomic_edit({ filePath, oldString, newString })
+// _recentErrors vendrá incluido en la respuesta de atomic_edit si hay algo
+```
+
+### 🐛 Debuggear un bug
+
+```js
+query_graph({ queryType: "instances", symbolName: "buggyFunc" })
+query_graph({ queryType: "details", filePath, symbolName: "buggyFunc" })
+traverse_graph({ traverseType: "call_graph", filePath, options: { depth: 2 } })
+atomic_edit({ filePath, oldString: buggyCode, newString: fixedCode })
+```
+
+### ♻️ Refactorizar complejidad alta
+
+```js
+suggest_refactoring({ severity: "high" })
+detect_performance_hotspots({ minRisk: 30 })
+execute_solid_split({ filePath, symbolName: "godFunction", execute: false }) // preview
+execute_solid_split({ filePath, symbolName: "godFunction", execute: true })  // aplicar
+```
+
+---
+
+## ❌ Anti-Patrones
+
+- Usar `traverse_graph` con `traverseType` deprecated → devuelve error, pierde tiempo
+- Crear código sin `query_graph(instances)` primero → riesgo de duplicar dead code
+- Editar sin `traverse_graph(impact_map)` → cambios silenciosos que rompen dependencias
+- Omitir verificar `_recentErrors` → se pierden warnings del file watcher
+
+---
+
+## Convenciones del Proyecto
+
+| Parámetro             | Límite                      |
+|-----------------------|-----------------------------|
+| Max CC por función    | ≤ 15 (óptimo ≤ 10)        |
+| Max líneas por función| ≤ 250                       |
+| Cobertura de tests    | > 80%                       |
+| Bulk save SQLite      | Máx 50 átomos por batch     |
+| Lenguajes soportados  | JS/TS (Python en roadmap)   |

@@ -36,7 +36,26 @@ export async function _deriveStaticInsights() {
   try {
     const indexPath = path.join(this.OmnySysDataPath, 'index.json');
     const index = await safeReadJson(indexPath, { fileIndex: {} });
-    const totalFiles = Object.keys(index?.fileIndex || {}).length;
+    let totalFiles = Object.keys(index?.fileIndex || {}).length;
+
+    // SQLite-first projects can have empty/legacy index.json.
+    // Fallback to cached metadata and then live DB count for an accurate startup stat.
+    if (totalFiles === 0) {
+      const metadata = this.cache?.get?.('metadata');
+      totalFiles = metadata?.stats?.totalFiles || metadata?.totalFiles || 0;
+    }
+
+    if (totalFiles === 0) {
+      try {
+        const { getRepository } = await import('#layer-c/storage/repository/index.js');
+        const repo = getRepository(this.projectPath);
+        if (repo?.db) {
+          totalFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0;
+        }
+      } catch {
+        // Best effort fallback only.
+      }
+    }
 
     logger.info(`  ✅ ${totalFiles} files ready — insights derived on-demand`);
 
@@ -52,27 +71,45 @@ export async function _deriveStaticInsights() {
     this._startPhase2BackgroundIndexer();
 
     // 🏘️ ANALYZE SOCIETIES (PUEBLOS)
-    (async () => {
-      try {
-        const { analyzeSocieties } = await import('#layer-b/society-manager/index.js');
-        await analyzeSocieties(this.projectPath);
-        logger.info('  🏘️  Society analysis (Pueblos) initial pass complete');
-      } catch (e) {
-        logger.debug('  ⚠️  Initial society analysis failed:', e.message);
-      }
-    })();
+    // Guard against duplicate startup runs in the same orchestrator lifecycle.
+    if (!this._societyInitialPassTask) {
+      this._societyInitialPassTask = (async () => {
+        try {
+          const { analyzeSocieties } = await import('#layer-b/society-manager/index.js');
+          await analyzeSocieties(this.projectPath);
+          logger.info('  🏘️  Society analysis (Pueblos) initial pass complete');
+          return true;
+        } catch (e) {
+          logger.debug('  ⚠️  Initial society analysis failed:', e.message);
+          return false;
+        }
+      })();
+
+      this._societyInitialPassTask.then((ok) => {
+        if (!ok) this._societyInitialPassTask = null;
+      });
+    }
 
     // 📊 PERSIST GRAPH METRICS
-    (async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
-        await persistGraphMetrics(this.projectPath);
-        logger.info('  📊 Graph metrics persisted (centrality, propagation, risk_level)');
-      } catch (e) {
-        logger.debug('  ⚠️  Graph metrics persistence failed:', e.message);
-      }
-    })();
+    // Guard against duplicate scheduling/runs in the same orchestrator lifecycle.
+    if (!this._graphMetricsPersistTask) {
+      this._graphMetricsPersistTask = (async () => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
+          await persistGraphMetrics(this.projectPath);
+          logger.info('  📊 Graph metrics persisted (centrality, propagation, risk_level)');
+          return true;
+        } catch (e) {
+          logger.debug('  ⚠️  Graph metrics persistence failed:', e.message);
+          return false;
+        }
+      })();
+
+      this._graphMetricsPersistTask.then((ok) => {
+        if (!ok) this._graphMetricsPersistTask = null;
+      });
+    }
 
   } catch (error) {
     logger.error('  ❌ Static insights init failed:', error.message);

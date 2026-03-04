@@ -48,7 +48,7 @@ export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
   {
     name: 'mcp_omnysystem_query_graph',
-    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, explain_value_flow, get_function_details, get_atom_history, etc). queryType options: [instances, details, history, value_flow, search, removed]. OPTIONS: includeSemantic=true agrega sharedState, events, async info.',
+    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, get_function_details). queryType options ACTIVOS: [instances, details]. DEPRECATED (retornan error): [history, value_flow, search, removed]. OPTIONS: includeSemantic=true agrega sharedState, events, async info.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -63,7 +63,7 @@ export const toolDefinitions = [
   },
   {
     name: 'mcp_omnysystem_traverse_graph',
-    description: 'Enrutador unificado para navegar el grafo de dependencias (BFS/DFS). Reemplaza herramientas antiguas (get_impact_map, get_call_graph, analyze_change, simulate_data_journey, trace_variable, explain_connection). traverseType options: [impact_map, call_graph, analyze_change, simulate_data_journey, trace_variable, trace_data_flow, explain_connection, signature_change]. OPTIONS: includeSemantic=true agrega sharedState, events, async info a los nodos.',
+    description: 'Enrutador unificado para navegar el grafo de dependencias (BFS/DFS). Reemplaza herramientas antiguas (get_impact_map, get_call_graph). traverseType options ACTIVOS: [impact_map, call_graph]. DEPRECATED (retornan error): [analyze_change, simulate_data_journey, trace_variable, trace_data_flow, explain_connection, signature_change]. OPTIONS: includeSemantic=true agrega sharedState, events, async info a los nodos.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -78,7 +78,7 @@ export const toolDefinitions = [
   },
   {
     name: 'mcp_omnysystem_aggregate_metrics',
-    description: 'Enrutador unificado para extraer métricas agrupadas y detectar patrones en lote. Reemplaza herramientas (get_health_metrics, get_module_overview, get_molecule_summary, detect_patterns, detect_race_conditions, risk). aggregationType options: [health, modules, molecule, patterns, race_conditions, async_analysis, risk, society]. OPTIONS: offset, limit para paginación; patternType, minSeverity, scopeType para filtrado.',
+    description: 'Enrutador unificado para extraer métricas agrupadas y detectar patrones en lote. Reemplaza herramientas (get_health_metrics, get_module_overview, get_molecule_summary, detect_patterns, detect_race_conditions, risk). aggregationType options ACTIVOS: [health, modules, molecule, patterns, race_conditions, async_analysis, risk, society, duplicates, pipeline_health, watcher_alerts]. OPTIONS: offset, limit para paginación; patternType, minSeverity, scopeType para filtrado.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -113,7 +113,8 @@ export const toolDefinitions = [
       properties: {
         filePath: { type: 'string', description: 'Path to the new file' },
         content: { type: 'string', description: 'Full content of the file' },
-        autoFix: { type: 'boolean', description: 'Si es true, intenta resolver conflictos de exportación automáticamente si el archivo tiene duplicados.', default: false }
+        autoFix: { type: 'boolean', description: 'Si es true, intenta resolver conflictos de exportación automáticamente si el archivo tiene duplicados.', default: false },
+        failOnDuplicate: { type: 'boolean', description: 'Si es true, falla la operación cuando detecta símbolos potencialmente duplicados en el proyecto.', default: false }
       },
       required: ['filePath', 'content']
     }

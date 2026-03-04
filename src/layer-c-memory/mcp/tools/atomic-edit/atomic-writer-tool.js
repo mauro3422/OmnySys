@@ -23,7 +23,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
     }
 
     async performAction(args) {
-        let { filePath, content, autoFix = false } = args;
+        let { filePath, content, autoFix = false, failOnDuplicate = false } = args;
         const { orchestrator, projectPath } = this.context;
 
         if (!filePath || !content) {
@@ -49,6 +49,21 @@ export class AtomicWriterTool extends AtomicMutationTool {
 
         // Análisis estático del código nuevo (Exports y Namespace Risk)
         const analysis = await analyzeExports(content, filePath, projectPath);
+        const duplicateCandidates = analysis?.refactoring?.duplicates || [];
+        if (duplicateCandidates.length > 0) {
+            const duplicatedSymbols = duplicateCandidates.map(d => d.name);
+            const duplicateOccurrences = duplicateCandidates.reduce((sum, d) => sum + (d.occurrenceCount || 0), 0);
+            const msg = `[DuplicateGuard] ${duplicateCandidates.length} symbols with duplication risk (${duplicateOccurrences} occurrences): ${duplicatedSymbols.join(', ')}`;
+
+            this.logger.warn(msg);
+
+            if (failOnDuplicate) {
+                return this.formatError('DUPLICATE_SYMBOL_RISK', msg, {
+                    suggestion: 'Refactor/unify duplicated symbols or rerun with failOnDuplicate: false',
+                    duplicates: duplicateCandidates
+                });
+            }
+        }
         if (analysis.critical.length > 0) {
             if (autoFix) {
                 this.logger.warn(`[AutoFix] Export conflict detected for ${filePath}. Downgrading to atomic_edit override...`);
@@ -123,8 +138,12 @@ export class AtomicWriterTool extends AtomicMutationTool {
             refactoring: analysis.refactoring.duplicates.length > 0 ? analysis.refactoring : undefined
         }, 'Atomic write successful');
 
-        if (analysis.conflicts.length > 0 || analysis.namespaceRisk.warnings.length > 0) {
-            response.warnings = [...(analysis.conflicts.length > 0 ? [`⚠️ ${analysis.conflicts.length} export name(s) already exist`] : []), ...analysis.namespaceRisk.warnings.map(w => w.message)];
+        if (analysis.conflicts.length > 0 || analysis.namespaceRisk.warnings.length > 0 || duplicateCandidates.length > 0) {
+            response.warnings = [
+                ...(analysis.conflicts.length > 0 ? [`WARNING: ${analysis.conflicts.length} export name(s) already exist`] : []),
+                ...(duplicateCandidates.length > 0 ? [`WARNING: ${duplicateCandidates.length} duplicated symbol candidate(s) detected. Review response.refactoring.`] : []),
+                ...analysis.namespaceRisk.warnings.map(w => w.message)
+            ];
         }
 
         return response;

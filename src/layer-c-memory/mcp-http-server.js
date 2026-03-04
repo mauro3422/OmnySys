@@ -149,7 +149,7 @@ function buildServerForSession() {
   }));
 
   sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-    return handleToolCall(request);
+    return executeMcpToolCall(request);
   });
 
   sessionServer.onerror = (error) => {
@@ -159,7 +159,7 @@ function buildServerForSession() {
   return sessionServer;
 }
 
-async function handleToolCall(request) {
+async function executeMcpToolCall(request) {
   if (initError) {
     return {
       content: [{ type: 'text', text: `❌ OmnySys initialization failed: ${initError.message}` }]
@@ -294,7 +294,20 @@ const conditionalJson = (req, res, next) => {
   if (req.headers['mcp-session-id']) {
     return next();
   }
-  express.json()(req, res, next);
+  express.json()(req, res, (err) => {
+    if (!err) return next();
+
+    // Keep malformed JSON visible in OmnySys logs instead of Express HTML stack traces.
+    logger.warn(`[MCP JSON PARSE] ${req.method} ${req.path}: ${err.message}`);
+    res.status(400).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32700,
+        message: 'Parse error: invalid JSON payload'
+      },
+      id: null
+    });
+  });
 };
 
 app.all('/mcp', conditionalJson, handleMcpRequest);
@@ -362,7 +375,7 @@ core.initialize().catch((error) => {
   logger.error(`Core initialization failed: ${error.message}`);
 });
 
-async function shutdown() {
+async function gracefulHttpShutdown() {
   for (const [sid, session] of sessions.entries()) {
     try {
       await session.server?.close();
@@ -381,5 +394,5 @@ async function shutdown() {
   process.exit(0);
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', gracefulHttpShutdown);
+process.on('SIGTERM', gracefulHttpShutdown);

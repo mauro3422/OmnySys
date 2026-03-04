@@ -79,16 +79,12 @@ export async function _processNext() {
 
   // Eliminado log individual de job Starting para evitar ruido
 
-  // Verify worker exists before calling
-  if (!this.worker) {
-    logger.error(`❌ FATAL: this.worker is NULL or UNDEFINED!`);
-    this.activeJobs -= 1;
-    return;
-  }
-
-  if (!this.worker.analyze) {
-    logger.error(`❌ FATAL: this.worker.analyze is not a function!`);
-    this.activeJobs -= 1;
+  // Verify worker exists before calling.
+  // In isolated tests/shutdown windows worker may be temporarily unavailable.
+  if (!this.worker || typeof this.worker.analyze !== 'function') {
+    logger.debug(`Worker unavailable, re-queueing ${nextJob.filePath}`);
+    this.activeJobs = Math.max(0, this.activeJobs - 1);
+    this.queue.enqueueJob(nextJob, nextJob.priority || 'critical');
     return;
   }
 

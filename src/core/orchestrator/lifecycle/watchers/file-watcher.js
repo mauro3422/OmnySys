@@ -1,5 +1,6 @@
 import { FileWatcher } from '../../../file-watcher/index.js';
 import { BatchProcessor } from '../../../batch-processor/index.js';
+import { calculatePriority } from '../../../batch-processor/priority-calculator.js';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:lifecycle');
@@ -59,6 +60,57 @@ export async function _initializeFileWatcher() {
     this.batchProcessor?.addChange(event.affectedFile, 'modified');
   });
 
+  // Metadata cleanup can emit orphaned import relationships.
+  this.fileWatcher.on('import:orphaned', (event) => {
+    logger.warn(`Import orphaned: ${event.importer} -> ${event.imported} (${event.reason})`);
+    this.wsManager?.broadcast({
+      type: 'import:orphaned',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Lightweight impact-wave signal emitted by file-watcher after each change.
+  this.fileWatcher.on('impact:wave', (event) => {
+    logger.warn(`\n🌊 Impact Wave: ${event.filePath} [${event.level}] score=${event.score}`);
+    this.wsManager?.broadcast({
+      type: 'impact:wave',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Duplicate risk signal from watcher duplicate guard.
+  this.fileWatcher.on('duplicate:risk', (event) => {
+    logger.warn(`[DUPLICATE RISK] ${event.filePath} (${event.findings?.length || 0} symbols)`);
+    this.wsManager?.broadcast({
+      type: 'duplicate:risk',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Runtime processing errors detected by watcher lifecycle.
+  this.fileWatcher.on('change:error', (event) => {
+    logger.error(`[FILEWATCHER CHANGE ERROR] ${event.filePath} -> ${event.error}`);
+    this.wsManager?.broadcast({
+      type: 'change:error',
+      ...event,
+      timestamp: Date.now()
+    });
+  });
+
+  // Raw watcher-level errors.
+  this.fileWatcher.on('error', (error) => {
+    const message = error?.message || String(error);
+    logger.error(`[FILEWATCHER ERROR] ${message}`);
+    this.wsManager?.broadcast({
+      type: 'file-watcher:error',
+      message,
+      timestamp: Date.now()
+    });
+  });
+
   await this.fileWatcher.initialize();
 
   // Initialize batch processor
@@ -66,7 +118,7 @@ export async function _initializeFileWatcher() {
     maxBatchSize: 20,
     batchTimeoutMs: 1000,
     processChange: async (change) => {
-      const priority = this._calculateChangePriority(change);
+      const priority = calculatePriority(change.filePath, change.changeType);
       this.queue.enqueue(change.filePath, priority);
 
       if (!this.currentJob && this.isRunning) {

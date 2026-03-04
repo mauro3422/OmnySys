@@ -2,6 +2,54 @@ import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
 
+async function persistWatcherRuntimeError(projectPath, filePath, error, context = {}) {
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    if (!repo?.db) return false;
+
+    const detectedAt = new Date().toISOString();
+    const message = `[watcher] Runtime error while processing change: ${error?.message || String(error)}`;
+    const contextJson = JSON.stringify({
+      source: 'file_watcher',
+      ...context
+    });
+
+    repo.db.prepare(`
+      DELETE FROM semantic_issues
+      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
+    `).run(filePath, 'watcher_runtime_error');
+
+    repo.db.prepare(`
+      INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(filePath, 'watcher_runtime_error', 'high', message, null, contextJson, detectedAt);
+
+    return true;
+  } catch (persistError) {
+    logger.debug(`[WATCHER RUNTIME ISSUE SKIP] ${filePath}: ${persistError.message}`);
+    return false;
+  }
+}
+
+async function clearWatcherRuntimeError(projectPath, filePath) {
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    if (!repo?.db) return false;
+
+    repo.db.prepare(`
+      DELETE FROM semantic_issues
+      WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
+    `).run(filePath, 'watcher_runtime_error');
+
+    return true;
+  } catch (clearError) {
+    logger.debug(`[WATCHER RUNTIME CLEAR SKIP] ${filePath}: ${clearError.message}`);
+    return false;
+  }
+}
+
 /**
  * Procesa cambios pendientes
  * Usa SmartBatchProcessor si está disponible
@@ -83,10 +131,14 @@ export async function processChange(change) {
         logger.warn(`Unknown change type: ${type}`);
     }
 
+    await clearWatcherRuntimeError(this.rootPath, filePath);
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
   } catch (error) {
     logger.error(`Error processing ${filePath}:`, error);
+    await persistWatcherRuntimeError(this.rootPath, filePath, error, {
+      changeType: type
+    });
     this.stats.failedChanges++;
     this.emit('change:error', { filePath, error: error.message });
   } finally {

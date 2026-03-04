@@ -6,28 +6,10 @@
  * @module unified-server/initialization/batch-processor-init
  */
 
-import path from 'path';
-import { BatchProcessor } from '../../batch-processor/index.js';
+import { BatchProcessor, calculatePriority } from '../../batch-processor/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:batch:processor:init');
-
-
-
-/**
- * Calcula prioridad basada en el tipo de cambio
- * @param {Object} change - Cambio detectado
- * @returns {string} - Prioridad (critical, high, medium, low)
- */
-export function calculateChangePriority(change) {
-  if (change.changeType === 'deleted') return 'critical';
-  if (change.changeType === 'created') return 'high';
-  
-  if (change.priority >= 4) return 'critical';
-  if (change.priority === 3) return 'high';
-  if (change.priority === 2) return 'medium';
-  return 'low';
-}
 
 /**
  * Inicializa Batch Processor para cambios concurrentes
@@ -46,7 +28,7 @@ export async function initializeBatchProcessor(context) {
     batchTimeoutMs: 1000,
     maxConcurrent: 3,
     processChange: async (change) => {
-      const priority = calculateChangePriority(change);
+      const priority = calculatePriority(change.filePath, change.changeType);
       const position = queue.enqueue(change.filePath, priority);
       
       logger.info(`📥 BatchProcessor → Queue: ${path.basename(change.filePath)} [${priority}] at position ${position}`);

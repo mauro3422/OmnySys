@@ -50,6 +50,7 @@ export class OmnysysHealthDetector {
             multiSelectThreshold: config.multiSelectThreshold || 2, // N+ SELECTs en misma funcion = JOIN candidate
             ...config
         };
+        this._storageCache = new Map();
     }
 
     async detect(systemMap) {
@@ -61,94 +62,16 @@ export class OmnysysHealthDetector {
             const sqlAtoms = allAtoms.filter(a => a.type === 'sql_query');
             if (sqlAtoms.length === 0) continue;
 
-            if (!this._storageCache) this._storageCache = new Map();
             let isStorageLayer = this._storageCache.get(filePath);
             if (isStorageLayer === undefined) {
                 isStorageLayer = STORAGE_PATHS.some(p => filePath.includes(p));
                 this._storageCache.set(filePath, isStorageLayer);
             }
 
-            const jsAtomsByName = new Map(allAtoms.filter(a => a.type !== 'sql_query').map(a => [a.name, a]));
-
-            // 1. Repository Bypass — SQL directo fuera de la capa de storage
-            if (!isStorageLayer) {
-                for (const atom of sqlAtoms) {
-                    const purpose = atom._meta?.sql_purpose || '';
-                    // DDL_OPERATION y SCHEMA_QUERY a veces se usan en scripts de init — solo flaggear DATA_*
-                    if (['DATA_READ', 'DATA_INSERT', 'DATA_UPDATE', 'DATA_DELETE', 'CACHE_READ',
-                        'BULK_MUTATION', 'AGGREGATION', 'UPSERT'].includes(purpose)) {
-                        findings.push(this._finding('sql-repo-bypass', 'high', filePath, atom,
-                            `Direct DB access outside storage layer — should use getRepository() instead`,
-                            { sql_purpose: purpose, suggestion: 'Move to src/layer-c-memory/storage/' }
-                        ));
-                    }
-                }
-            }
-
-            // 2. Multi-SELECT JOIN candidates — misma funcion padre, varias tablas distintas
-            const selectsByParent = {};
-            for (const atom of sqlAtoms) {
-                if (atom._meta?.sql_operation !== 'SELECT') continue;
-                const pid = atom._meta?.parent_atom_name || atom._meta?.parent_atom_id;
-                if (!pid) continue;
-                if (!selectsByParent[pid]) selectsByParent[pid] = [];
-                selectsByParent[pid].push(atom);
-            }
-            for (const [parentName, selects] of Object.entries(selectsByParent)) {
-                if (selects.length < this.config.multiSelectThreshold) continue;
-                // Verificar que son tablas distintas (seria JOIN candidate)
-                const allTables = selects.flatMap(s => s._meta?.tables_referenced || []);
-                const uniqueTables = new Set(allTables);
-
-                // FILTER FALSE POSITIVES (different domains that shouldn't be JOINed)
-                const ignoredTables = ['count', 'system_files', 'semantic_connections', 'risk_assessments', 'file_dependencies', 'sqlite_master', 'system_metadata', 'changes', 'max', 'min'];
-                for (const ignored of ignoredTables) uniqueTables.delete(ignored);
-
-                if (uniqueTables.size >= 2) {
-                    findings.push({
-                        type: 'sql-join-candidate', severity: 'medium', filePath,
-                        atomId: selects[0].id, atomName: parentName, line: selects[0].lineStart || 0,
-                        message: `${selects.length} separate SELECTs in '${parentName}' on tables [${[...uniqueTables].join(', ')}] — consider JOIN`,
-                        details: { select_count: selects.length, tables: [...uniqueTables], sql_purposes: selects.map(s => s._meta?.sql_purpose) }
-                    });
-                }
-            }
-
-            // 3. Schema Column Drift — usa columns_referenced del AST (tree-sitter-sql)
-            for (const atom of sqlAtoms) {
-                const referencedCols = atom._meta?.columns_referenced || [];
-                if (referencedCols.length === 0) continue;
-
-                const tables = atom._meta?.tables_referenced || [];
-                for (const table of tables) {
-                    const knownCols = KNOWN_COLUMNS_BY_TABLE[table];
-                    if (!knownCols) continue; // tabla desconocida = no la medimos
-
-                    for (const col of referencedCols) {
-                        // Skip special cases efficiently
-                        if (col === '*' || col.length <= 1) continue;
-
-                        if (!knownCols.has(col)) {
-                            findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
-                                `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
-                                { column: col, table }
-                            ));
-                        }
-                    }
-                }
-            }
-
-            // 4. DYNAMIC_QUERY en capa core — queries que deberian ser estaticas
-            if (isStorageLayer) {
-                for (const atom of sqlAtoms) {
-                    if (atom._meta?.sql_purpose === 'DYNAMIC_QUERY' && !atom._meta?.sql_injection_risk) {
-                        findings.push(this._finding('sql-dynamic-in-storage', 'medium', filePath, atom,
-                            `Dynamic query in storage layer — table name resolved at runtime, consider making it static`,
-                            { template_vars: atom._meta?.template_vars, resolved: atom._meta?.resolved_tables_from_vars }
-                        ));
-                    }
-                }
-            }
+            this._checkRepositoryBypass(findings, filePath, sqlAtoms, isStorageLayer);
+            this._checkJoinCandidates(findings, filePath, sqlAtoms);
+            this._checkSchemaDrift(findings, filePath, sqlAtoms);
+            this._checkDynamicInStorage(findings, filePath, sqlAtoms, isStorageLayer);
         }
 
         const highCount = findings.filter(f => f.severity === 'high').length;
@@ -167,6 +90,87 @@ export class OmnysysHealthDetector {
                 totalFindings: findings.length
             }
         };
+    }
+
+    /** 1. Repository Bypass — SQL directo fuera de la capa de storage */
+    _checkRepositoryBypass(findings, filePath, sqlAtoms, isStorageLayer) {
+        if (isStorageLayer) return;
+        const bypassPurposes = new Set(['DATA_READ', 'DATA_INSERT', 'DATA_UPDATE', 'DATA_DELETE',
+            'CACHE_READ', 'BULK_MUTATION', 'AGGREGATION', 'UPSERT']);
+        for (const atom of sqlAtoms) {
+            const purpose = atom._meta?.sql_purpose || '';
+            if (bypassPurposes.has(purpose)) {
+                findings.push(this._finding('sql-repo-bypass', 'high', filePath, atom,
+                    `Direct DB access outside storage layer — should use getRepository() instead`,
+                    { sql_purpose: purpose, suggestion: 'Move to src/layer-c-memory/storage/' }
+                ));
+            }
+        }
+    }
+
+    /** 2. Multi-SELECT JOIN candidates — misma funcion padre, varias tablas distintas */
+    _checkJoinCandidates(findings, filePath, sqlAtoms) {
+        const IGNORED_TABLES = new Set(['count', 'system_files', 'semantic_connections',
+            'risk_assessments', 'file_dependencies', 'sqlite_master', 'system_metadata',
+            'changes', 'max', 'min']);
+
+        const selectsByParent = new Map();
+        for (const atom of sqlAtoms) {
+            if (atom._meta?.sql_operation !== 'SELECT') continue;
+            const pid = atom._meta?.parent_atom_name || atom._meta?.parent_atom_id;
+            if (!pid) continue;
+            if (!selectsByParent.has(pid)) selectsByParent.set(pid, []);
+            selectsByParent.get(pid).push(atom);
+        }
+
+        for (const [parentName, selects] of selectsByParent.entries()) {
+            if (selects.length < this.config.multiSelectThreshold) continue;
+            const uniqueTables = new Set(selects.flatMap(s => s._meta?.tables_referenced || []));
+            for (const ignored of IGNORED_TABLES) uniqueTables.delete(ignored);
+            if (uniqueTables.size < 2) continue;
+
+            findings.push({
+                type: 'sql-join-candidate', severity: 'medium', filePath,
+                atomId: selects[0].id, atomName: parentName, line: selects[0].lineStart || 0,
+                message: `${selects.length} separate SELECTs in '${parentName}' on tables [${[...uniqueTables].join(', ')}] — consider JOIN`,
+                details: { select_count: selects.length, tables: [...uniqueTables], sql_purposes: selects.map(s => s._meta?.sql_purpose) }
+            });
+        }
+    }
+
+    /** 3. Schema Column Drift — usa columns_referenced del AST (tree-sitter-sql) */
+    _checkSchemaDrift(findings, filePath, sqlAtoms) {
+        for (const atom of sqlAtoms) {
+            const referencedCols = atom._meta?.columns_referenced || [];
+            if (referencedCols.length === 0) continue;
+            const tables = atom._meta?.tables_referenced || [];
+            for (const table of tables) {
+                const knownCols = KNOWN_COLUMNS_BY_TABLE[table];
+                if (!knownCols) continue;
+                for (const col of referencedCols) {
+                    if (col === '*' || col.length <= 1) continue;
+                    if (!knownCols.has(col)) {
+                        findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
+                            `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
+                            { column: col, table }
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    /** 4. DYNAMIC_QUERY en capa core — queries que deberian ser estaticas */
+    _checkDynamicInStorage(findings, filePath, sqlAtoms, isStorageLayer) {
+        if (!isStorageLayer) return;
+        for (const atom of sqlAtoms) {
+            if (atom._meta?.sql_purpose === 'DYNAMIC_QUERY' && !atom._meta?.sql_injection_risk) {
+                findings.push(this._finding('sql-dynamic-in-storage', 'medium', filePath, atom,
+                    `Dynamic query in storage layer — table name resolved at runtime, consider making it static`,
+                    { template_vars: atom._meta?.template_vars, resolved: atom._meta?.resolved_tables_from_vars }
+                ));
+            }
+        }
     }
 
     _finding(type, severity, filePath, atom, message, details = {}) {

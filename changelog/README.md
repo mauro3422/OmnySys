@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.0 (Pattern Detection Engine V2)
+**Última versión:** v0.9.85 (FileWatcher Alerts, Runtime Guardrails, and MCP HTTP Hardening)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.85-filewatcher-alerts-guardrails.md](v0.9.85-filewatcher-alerts-guardrails.md) | 2026-03-04 | FileWatcher alerts persisted in SQLite + runtime error guardrails + MCP parse-error hardening |
 | [v0.9.49-bugfixes-refactoring.md](v0.9.49-bugfixes-refactoring.md) | 2026-02-21 | **Bugfixes + Refactoring God Functions + Test Generator Improvements** |
 | [v0.9.48-semantic-domain-test-generator.md](v0.9.48-semantic-domain-test-generator.md) | 2026-02-21 | Semantic Domain + Test Generator + Registry System |
 | [v0.9.29-preprocessor-framework-mcp-fixes.md](v0.9.29-preprocessor-framework-mcp-fixes.md) | 2026-02-19 | **Preprocessor Framework + Import Cleanup (v0.9.20–28) + MCP Stability** |

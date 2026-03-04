@@ -144,7 +144,7 @@ describe('MCP Tools Registry — toolHandlers', () => {
     'mcp_omnysystem_restart_server',
     'mcp_omnysystem_atomic_edit',
     'mcp_omnysystem_atomic_write',
-    'mcp_omnysystem_get_atom_schema'
+    'mcp_omnysystem_get_schema'
   ])('la tool conocida "%s" está registrada', (toolName) => {
     const def = toolDefinitions.find(t => t.name === toolName);
     expect(def, `Tool "${toolName}" no está en toolDefinitions`).toBeDefined();

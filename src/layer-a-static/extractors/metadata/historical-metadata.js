@@ -12,6 +12,23 @@
 import { execSync } from 'child_process';
 import path from 'path';
 
+let gitAvailableCache = null;
+
+function isGitAvailable() {
+  if (gitAvailableCache !== null) {
+    return gitAvailableCache;
+  }
+
+  try {
+    execSync('git --version', { stdio: 'ignore', windowsHide: true });
+    gitAvailableCache = true;
+  } catch {
+    gitAvailableCache = false;
+  }
+
+  return gitAvailableCache;
+}
+
 /**
  * Extracts historical metadata from git
  * @param {string} filePath - Relative file path
@@ -29,85 +46,62 @@ export function extractHistoricalMetadata(filePath) {
     hotspotScore: 0
   };
 
-  try {
-    // Check if git is available
-    execSync('git --version', { stdio: 'ignore', windowsHide: true });
-  } catch {
-    // Git not available
+  if (!isGitAvailable()) {
     return defaultResult;
   }
 
   try {
-    // Get commit count for file
-    const commitCountStr = execSync(
-      `git log --oneline -- "${filePath}" | wc -l`,
+    // Single log scan: date|author|subject
+    const logOutput = execSync(
+      `git log --format=%aI%x1f%an%x1f%s -- "${filePath}"`,
       { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
     ).trim();
-    const commitCount = parseInt(commitCountStr, 10) || 0;
 
-    // Get last modified date
+    if (!logOutput) {
+      return defaultResult;
+    }
+
+    const lines = logOutput.split('\n').filter(Boolean);
+    const commitCount = lines.length;
+
+    const contributorsSet = new Set();
     let lastModified = null;
-    try {
-      const lastModifiedStr = execSync(
-        `git log -1 --format=%aI -- "${filePath}"`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-      ).trim();
-      lastModified = lastModifiedStr || null;
-    } catch {
-      // File not in git yet
-    }
-
-    // Get creation date (first commit)
-    let age = null;
-    try {
-      const firstCommitStr = execSync(
-        `git log --reverse --format=%aI -- "${filePath}" | head -1`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-      ).trim();
-
-      if (firstCommitStr) {
-        const firstCommitDate = new Date(firstCommitStr);
-        const now = new Date();
-        age = Math.floor((now - firstCommitDate) / (1000 * 60 * 60 * 24)); // days
-      }
-    } catch {
-      // Can't determine age
-    }
-
-    // Get contributors
-    let contributors = [];
-    try {
-      const contributorsStr = execSync(
-        `git log --format=%an -- "${filePath}" | sort -u`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-      ).trim();
-      contributors = contributorsStr ? contributorsStr.split('\n').filter(Boolean) : [];
-    } catch {
-      // Can't get contributors
-    }
-
-    // Get recent changes (last 30 days)
+    let firstCommitDate = null;
     let recentChanges = 0;
-    try {
-      const recentStr = execSync(
-        `git log --since="30 days ago" --oneline -- "${filePath}" | wc -l`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-      ).trim();
-      recentChanges = parseInt(recentStr, 10) || 0;
-    } catch {
-      // Can't get recent changes
+    let bugFixCommits = 0;
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+    for (let i = 0; i < lines.length; i++) {
+      const [dateStr = '', author = '', subject = ''] = lines[i].split('\x1f');
+      const ts = Date.parse(dateStr);
+
+      if (i === 0) {
+        lastModified = dateStr || null;
+      }
+
+      if (!Number.isNaN(ts)) {
+        if (ts >= thirtyDaysAgo) {
+          recentChanges++;
+        }
+        if (i === lines.length - 1) {
+          firstCommitDate = new Date(ts);
+        }
+      }
+
+      if (author) {
+        contributorsSet.add(author);
+      }
+
+      if (/\bfix(es|ed|ing)?\b/i.test(subject)) {
+        bugFixCommits++;
+      }
     }
 
-    // Get bug fix commits (commits with "fix" in message)
-    let bugFixCommits = 0;
-    try {
-      const bugFixStr = execSync(
-        `git log --grep="fix" -i --oneline -- "${filePath}" | wc -l`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true }
-      ).trim();
-      bugFixCommits = parseInt(bugFixStr, 10) || 0;
-    } catch {
-      // Can't get bug fix commits
+    const contributors = Array.from(contributorsSet);
+
+    let age = null;
+    if (firstCommitDate) {
+      age = Math.floor((Date.now() - firstCommitDate.getTime()) / (1000 * 60 * 60 * 24));
     }
 
     // Calculate churn rate (commits per month)

@@ -36,87 +36,8 @@ export class SqlPatternsDetector {
                 }
             }
 
-            const mutationsByParent = new Map();
-            const parentHasTransaction = new Set();
-
-            // Single pass for most checks and data gathering
-            for (const atom of sqlAtoms) {
-                const raw = (atom._meta?.raw_sql || '').toUpperCase();
-                const sqlPurpose = atom._meta?.sql_purpose;
-                const sqlOp = atom._meta?.sql_operation;
-                const parentName = atom._meta?.parent_atom_name;
-                const parentId = atom._meta?.parent_atom_id || parentName;
-
-                // 1: SELECT * check
-                if (raw.includes('SELECT *') || raw.includes('SELECT  *')) {
-                    findings.push(this._finding('sql-select-star', 'medium', filePath, atom,
-                        `SELECT * detected — fetches all columns, prevents index-only scans`,
-                        { sql_purpose: sqlPurpose, parent: parentName }
-                    ));
-                }
-
-                // 2: BULK_MUTATION check
-                if (sqlPurpose === 'BULK_MUTATION') {
-                    findings.push(this._finding('sql-bulk-mutation', 'high', filePath, atom,
-                        `${sqlOp} without WHERE clause — modifies ALL rows in table`,
-                        { tables: atom._meta?.tables_referenced }
-                    ));
-                }
-
-                // Data gathering for Transaction check (3)
-                if (sqlOp === 'INSERT' || sqlOp === 'UPDATE' || sqlOp === 'DELETE') {
-                    if (parentId) {
-                        if (!mutationsByParent.has(parentId)) mutationsByParent.set(parentId, []);
-                        mutationsByParent.get(parentId).push(atom);
-                    }
-                }
-                if (sqlPurpose === 'TRANSACTION_CONTROL') {
-                    if (parentId) parentHasTransaction.add(parentId);
-                }
-
-                // 4: N+1 risk check
-                if (parentName) {
-                    const parent = jsAtomsByName.get(parentName);
-                    if (parent && (parent.complexity || 1) >= this.config.n1ComplexityThreshold) {
-                        if (sqlOp === 'SELECT' || sqlOp === 'INSERT') {
-                            findings.push(this._finding('sql-n1-risk', 'high', filePath, atom,
-                                `SQL ${sqlOp} inside high-complexity '${parentName}' (complexity:${parent.complexity}) — likely N+1 pattern`,
-                                { parent_complexity: parent.complexity, sql_purpose: sqlPurpose }
-                            ));
-                        }
-                    }
-
-                    // 5: Dead SQL check
-                    if (parent?.callerPattern?.id === 'truly_dead' || parent?.isDeadCode) {
-                        findings.push(this._finding('sql-dead-query', 'medium', filePath, atom,
-                            `SQL query in dead function '${parentName}' — never executed but still in codebase`,
-                            { sql_purpose: sqlPurpose, tables: atom._meta?.tables_referenced }
-                        ));
-                    }
-                }
-            }
-
-            // 3: Transaction check evaluation
-            for (const [parentId, mutations] of mutationsByParent.entries()) {
-                if (mutations.length >= this.config.multiMutationThreshold && !parentHasTransaction.has(parentId)) {
-                    const parentAtom = jsAtomsById.get(parentId) || jsAtomsByName.get(parentId);
-                    findings.push(this._finding('sql-missing-transaction', 'high', filePath, mutations[0],
-                        `${mutations.length} mutations in '${parentAtom?.name || parentId}' without transaction — data integrity risk on crash`,
-                        { mutation_count: mutations.length, operations: mutations.map(a => a._meta?.sql_operation) }
-                    ));
-                }
-            }
-
-            // 6: Query density check
-            if (sqlAtoms.length >= this.config.queryDensityThreshold) {
-                const purposes = [...new Set(sqlAtoms.map(a => a._meta?.sql_purpose).filter(Boolean))];
-                findings.push({
-                    type: 'sql-query-density', severity: 'medium', filePath,
-                    atomId: null, atomName: null, line: 0,
-                    message: `${sqlAtoms.length} SQL queries in one file — extract a dedicated repository module`,
-                    details: { sql_count: sqlAtoms.length, sql_purposes: purposes }
-                });
-            }
+            this._detectPerAtom(findings, filePath, sqlAtoms, jsAtomsByName, jsAtomsById);
+            this._checkQueryDensity(findings, filePath, sqlAtoms);
         }
 
         const highCount = findings.filter(f => f.severity === 'high').length;
@@ -137,6 +58,111 @@ export class SqlPatternsDetector {
                 totalFindings: findings.length
             }
         };
+    }
+
+    /**
+     * Single-pass per-atom checks + data gathering for the deferred transaction check.
+     */
+    _detectPerAtom(findings, filePath, sqlAtoms, jsAtomsByName, jsAtomsById) {
+        const mutationsByParent = new Map();
+        const parentHasTransaction = new Set();
+
+        for (const atom of sqlAtoms) {
+            const raw = (atom._meta?.raw_sql || '').toUpperCase();
+            const sqlPurpose = atom._meta?.sql_purpose;
+            const sqlOp = atom._meta?.sql_operation;
+            const parentName = atom._meta?.parent_atom_name;
+            const parentId = atom._meta?.parent_atom_id || parentName;
+
+            // 1: SELECT * check
+            if (raw.includes('SELECT *') || raw.includes('SELECT  *')) {
+                findings.push(this._finding('sql-select-star', 'medium', filePath, atom,
+                    `SELECT * detected — fetches all columns, prevents index-only scans`,
+                    { sql_purpose: sqlPurpose, parent: parentName }
+                ));
+            }
+
+            // 2: BULK_MUTATION check
+            if (sqlPurpose === 'BULK_MUTATION') {
+                findings.push(this._finding('sql-bulk-mutation', 'high', filePath, atom,
+                    `${sqlOp} without WHERE clause — modifies ALL rows in table`,
+                    { tables: atom._meta?.tables_referenced }
+                ));
+            }
+
+            // Gather data for deferred transaction check (3)
+            this._gatherMutationData(mutationsByParent, parentHasTransaction, atom, sqlOp, sqlPurpose, parentId);
+
+            // 4 & 5: Parent-context checks
+            if (parentName) {
+                this._checkN1Risk(findings, filePath, atom, sqlOp, sqlPurpose, parentName, jsAtomsByName);
+                this._checkDeadSql(findings, filePath, atom, sqlPurpose, parentName, jsAtomsByName);
+            }
+        }
+
+        // 3: Deferred transaction check
+        this._checkMissingTransactions(findings, filePath, mutationsByParent, parentHasTransaction, jsAtomsById, jsAtomsByName);
+    }
+
+    /** Accumulates mutation data for the missing-transaction check. */
+    _gatherMutationData(mutationsByParent, parentHasTransaction, atom, sqlOp, sqlPurpose, parentId) {
+        if ((sqlOp === 'INSERT' || sqlOp === 'UPDATE' || sqlOp === 'DELETE') && parentId) {
+            if (!mutationsByParent.has(parentId)) mutationsByParent.set(parentId, []);
+            mutationsByParent.get(parentId).push(atom);
+        }
+        if (sqlPurpose === 'TRANSACTION_CONTROL' && parentId) {
+            parentHasTransaction.add(parentId);
+        }
+    }
+
+    /** 3: Multiple mutations in same parent without wrapping transaction. */
+    _checkMissingTransactions(findings, filePath, mutationsByParent, parentHasTransaction, jsAtomsById, jsAtomsByName) {
+        for (const [parentId, mutations] of mutationsByParent.entries()) {
+            if (mutations.length >= this.config.multiMutationThreshold && !parentHasTransaction.has(parentId)) {
+                const parentAtom = jsAtomsById.get(parentId) || jsAtomsByName.get(parentId);
+                findings.push(this._finding('sql-missing-transaction', 'high', filePath, mutations[0],
+                    `${mutations.length} mutations in '${parentAtom?.name || parentId}' without transaction — data integrity risk on crash`,
+                    { mutation_count: mutations.length, operations: mutations.map(a => a._meta?.sql_operation) }
+                ));
+            }
+        }
+    }
+
+    /** 4: SQL inside a high-complexity parent — likely N+1. */
+    _checkN1Risk(findings, filePath, atom, sqlOp, sqlPurpose, parentName, jsAtomsByName) {
+        const parent = jsAtomsByName.get(parentName);
+        if (parent && (parent.complexity || 1) >= this.config.n1ComplexityThreshold) {
+            if (sqlOp === 'SELECT' || sqlOp === 'INSERT') {
+                findings.push(this._finding('sql-n1-risk', 'high', filePath, atom,
+                    `SQL ${sqlOp} inside high-complexity '${parentName}' (complexity:${parent.complexity}) — likely N+1 pattern`,
+                    { parent_complexity: parent.complexity, sql_purpose: sqlPurpose }
+                ));
+            }
+        }
+    }
+
+    /** 5: SQL query living inside a dead-code function. */
+    _checkDeadSql(findings, filePath, atom, sqlPurpose, parentName, jsAtomsByName) {
+        const parent = jsAtomsByName.get(parentName);
+        if (parent?.callerPattern?.id === 'truly_dead' || parent?.isDeadCode) {
+            findings.push(this._finding('sql-dead-query', 'medium', filePath, atom,
+                `SQL query in dead function '${parentName}' — never executed but still in codebase`,
+                { sql_purpose: sqlPurpose, tables: atom._meta?.tables_referenced }
+            ));
+        }
+    }
+
+    /** 6: Too many SQL queries concentrated in a single file. */
+    _checkQueryDensity(findings, filePath, sqlAtoms) {
+        if (sqlAtoms.length >= this.config.queryDensityThreshold) {
+            const purposes = [...new Set(sqlAtoms.map(a => a._meta?.sql_purpose).filter(Boolean))];
+            findings.push({
+                type: 'sql-query-density', severity: 'medium', filePath,
+                atomId: null, atomName: null, line: 0,
+                message: `${sqlAtoms.length} SQL queries in one file — extract a dedicated repository module`,
+                details: { sql_count: sqlAtoms.length, sql_purposes: purposes }
+            });
+        }
     }
 
     _finding(type, severity, filePath, atom, message, details = {}) {

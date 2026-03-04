@@ -21,6 +21,8 @@ export {
   enrichAtomsWithAncestry,
   saveAtom,
   handleFileModified,
+  detectImpactWaveForFile,
+  detectDuplicateRiskForFile,
   handleFileDeleted,
   createShadowsForFile,
   getAtomsForFile,

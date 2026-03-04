@@ -35,28 +35,36 @@ export function buildFileClusters(atoms) {
     
     // Calcular propósito dominante
     const purposes = {};
+    const exports = [];
+    const atomIds = [];
+    let totalComplexity = 0;
+    let dominantPurpose = 'UNKNOWN';
+    let dominantPurposeCount = 0;
+
+    // Calcula metricas en una sola pasada para reducir costo.
     for (const atom of fileAtoms) {
       const p = atom.purpose || 'UNKNOWN';
       purposes[p] = (purposes[p] || 0) + 1;
+      if (purposes[p] > dominantPurposeCount) {
+        dominantPurpose = p;
+        dominantPurposeCount = purposes[p];
+      }
+
+      if (atom.isExported) {
+        exports.push(atom.name);
+      }
+      atomIds.push(atom.id);
+      totalComplexity += (atom.complexity || 1);
     }
-    
-    const dominantPurpose = Object.entries(purposes)
-      .sort((a, b) => b[1] - a[1])[0][0];
-    
+
     // Calcular cohesión (qué tan conectados están los átomos entre sí)
     const cohesion = calculateCohesion(fileAtoms);
-    
-    // Calcular exports
-    const exports = fileAtoms.filter(a => a.isExported).map(a => a.name);
-    
-    // Calcular complejidad total
-    const totalComplexity = fileAtoms.reduce((sum, a) => sum + (a.complexity || 1), 0);
     
     // Crear cluster
     const cluster = createClusterNode(
       filePath.replace(/\//g, '_').replace(/\.js$/, ''),
       {
-        atoms: fileAtoms.map(a => a.id),
+        atoms: atomIds,
         file: filePath,
         purposes: Object.keys(purposes),
         cohesion,
@@ -172,6 +180,14 @@ function calculateCohesion(atoms) {
  */
 export function detectBoundaryViolations(clusters, atoms) {
   const violations = [];
+  const atomByName = new Map();
+
+  // Preserva la semantica actual de "primer match" por orden de insercion del Map.
+  for (const atom of atoms.values()) {
+    if (atom?.name && !atomByName.has(atom.name)) {
+      atomByName.set(atom.name, atom);
+    }
+  }
   
   for (const cluster of clusters) {
     const clusterAtoms = new Set(cluster.atoms);
@@ -185,7 +201,7 @@ export function detectBoundaryViolations(clusters, atoms) {
       
       for (const call of (atom.calls || [])) {
         // Buscar átomo llamado
-        const targetAtom = Array.from(atoms.values()).find(a => a.name === call.name);
+        const targetAtom = atomByName.get(call.name);
         
         if (targetAtom && !clusterAtoms.has(targetAtom.id)) {
           // Llamada a átomo fuera del cluster
@@ -240,3 +256,4 @@ export default {
   detectBoundaryViolations,
   getClusterStats 
 };
+

@@ -103,9 +103,9 @@ export async function getTree(filePath, code) {
  */
 export async function parseFile(filePath, code) {
     const ext = path.extname(filePath).toLowerCase();
-    const supportedExts = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'];
+    const grammars = await ensureInitialized();
 
-    if (!supportedExts.includes(ext)) {
+    if (!grammars[ext]) {
         return {
             filePath,
             fileName: path.basename(filePath),

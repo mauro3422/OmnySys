@@ -7,11 +7,8 @@
  * Example: node scripts/generate-meta-tests.js "tests/unit/layer-a-analysis/parser/*.test.js"
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 import { join, resolve } from 'path';
-import { parse } from '@babel/parser';
-import _traverse from '@babel/traverse';
-const traverse = _traverse.default || _traverse;
 
 /**
  * Simple glob implementation using fs
@@ -47,8 +44,8 @@ function globSync(pattern, cwd = process.cwd()) {
 /**
  * Analyzes a test file and extracts test cases
  */
-function analyzeTestFile(testPath) {
-  const content = readFileSync(testPath, 'utf-8');
+function analyzeTestFile(testPath, preloadedContent = null) {
+  const content = preloadedContent ?? readFileSync(testPath, 'utf-8');
   
   // Extract imports
   const importMatches = content.matchAll(/import\s+(?:{([^}]+)}|(\w+))\s+from\s+['"]([^'"]+)['"]/g);
@@ -202,7 +199,7 @@ function migrateBatch(pattern) {
     console.log(`🔄 Migrating: ${file}`);
     
     try {
-      const analysis = analyzeTestFile(file);
+      const analysis = analyzeTestFile(file, content);
       const newContent = generateMetaFactoryTest(file, analysis);
       
       // Backup old file

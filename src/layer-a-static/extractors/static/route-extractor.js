@@ -35,15 +35,31 @@ const ROUTE_PATTERNS = {
 export function extractRoutes(filePath, code) {
   const routes = { server: [], client: [], all: [] };
 
+  // Pre-compute newline positions for O(log(N)) line number lookups
+  // replacing the O(N) code.substring.split('\n') which caused O(N^2) complexity
+  const nlPositions = [];
+  for (let i = 0; i < code.length; i++) {
+    if (code[i] === '\n') nlPositions.push(i);
+  }
+
+  const getLineNumber = (index) => {
+    let low = 0, high = nlPositions.length - 1;
+    while (low <= high) {
+      const mid = (low + high) >>> 1;
+      if (nlPositions[mid] < index) low = mid + 1;
+      else high = mid - 1;
+    }
+    return low + 1;
+  };
+
   // Extraer rutas de servidor
   for (const pattern of ROUTE_PATTERNS.serverRoutes) {
-    // Reset lastIndex para cada archivo
     pattern.lastIndex = 0;
     let match;
     while ((match = pattern.exec(code)) !== null) {
       const method = match[1].toUpperCase();
       const route = match[2];
-      const line = code.substring(0, match.index).split('\n').length;
+      const line = getLineNumber(match.index);
       routes.server.push({ method, route, line, type: 'server' });
       routes.all.push({ route, line, type: 'server', method });
     }
@@ -55,7 +71,7 @@ export function extractRoutes(filePath, code) {
     let match;
     while ((match = pattern.exec(code)) !== null) {
       const route = match[2] || match[1]; // Depende del grupo de captura
-      const line = code.substring(0, match.index).split('\n').length;
+      const line = getLineNumber(match.index);
       routes.client.push({ route, line, type: 'client' });
       routes.all.push({ route, line, type: 'client' });
     }

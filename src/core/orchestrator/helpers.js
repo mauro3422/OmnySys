@@ -132,41 +132,52 @@ export async function _syncProjectFiles() {
 }
 
 /**
- * ⚠️ DEPRECADO: Usar CacheInvalidator.invalidateSync() en su lugar
- * 
- * Esta función ha sido reemplazada por el sistema de CacheInvalidator
- * que proporciona invalidación síncrona, atómica y con rollback.
- * 
- * Se mantiene por compatibilidad con código legacy, pero se recomienda
- * usar el nuevo sistema en src/core/cache-invalidator/
- * 
- * @deprecated Usar CacheInvalidator.invalidateSync()
+ * Invalidates orchestrator cache for a file.
+ * Uses CacheInvalidator when available, with a safe legacy fallback.
+ *
  * @param {string} filePath - Ruta del archivo a invalidar
  */
 export async function _invalidateFileCache(filePath) {
-  logger.warn('⚠️  _invalidateFileCache() is deprecated. Use CacheInvalidator.invalidateSync() instead.');
   try {
     const relativePath = path.relative(this.projectPath, path.resolve(this.projectPath, filePath));
     const normalizedPath = relativePath.replace(/\\/g, '/');
-    
-    // Eliminar del caché del UnifiedCacheManager
+
+    const hasCacheIndex =
+      !!this.cache &&
+      !!this.cache.index &&
+      !!this.cache.index.entries;
+
+    // Primary path: atomic cache invalidation (only when cache/index is ready).
+    if (hasCacheIndex && typeof this._getCacheInvalidator === 'function') {
+      const invalidator = await this._getCacheInvalidator();
+      const result = await invalidator.invalidateSync(normalizedPath);
+
+      // Keep legacy state behavior for orchestrator bookkeeping.
+      this.indexedFiles.delete(normalizedPath);
+
+      if (result?.success) {
+        logger.debug(`🗑️  Invalidated cache for: ${normalizedPath}`);
+        return;
+      }
+
+      logger.warn(`⚠️  CacheInvalidator failed for ${normalizedPath}, using legacy fallback`);
+    }
+
+    // Legacy fallback
     if (this.cache) {
       this.cache.invalidate(`analysis:${normalizedPath}`);
       this.cache.invalidate(`atom:${normalizedPath}`);
     }
-    
-    // Eliminar archivo de análisis de .omnysysdata/files/
+
     const fileDataPath = path.join(this.OmnySysDataPath, 'files', normalizedPath + '.json');
     try {
       await fs.unlink(fileDataPath);
-      logger.info(`🗑️  Invalidated cache for: ${normalizedPath}`);
     } catch {
       // Archivo no existía, ignorar
     }
-    
-    // Marcar como no indexado para forzar re-análisis
+
     this.indexedFiles.delete(normalizedPath);
-    
+    logger.debug(`🗑️  Invalidated cache for: ${normalizedPath} (legacy fallback)`);
   } catch (error) {
     logger.warn(`⚠️  Failed to invalidate cache for ${filePath}:`, error.message);
   }

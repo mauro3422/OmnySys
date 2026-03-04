@@ -39,15 +39,16 @@ export async function handlePipelineHealth(tool) {
 
     // --- CHECK 2: Cobertura de campos ---
     const suspiciousFields = [
-        { field: 'centrality_score', description: 'persistGraphMetrics() not connected' },
-        { field: 'age_days', description: 'Git integration missing for age_days' },
-        { field: 'change_frequency', description: 'Git integration missing for change_frequency' },
-        { field: 'has_network_calls', description: 'Network call detector not covering Node.js patterns' },
+        { field: 'centrality_score', description: 'persistGraphMetrics() not connected', minWarningCoverage: 5 },
+        { field: 'age_days', description: 'Git integration missing for age_days', minWarningCoverage: 5 },
+        { field: 'change_frequency', description: 'Git integration missing for change_frequency', minWarningCoverage: 5 },
+        // Network calls are naturally sparse across total atoms, so use a lower threshold.
+        { field: 'has_network_calls', description: 'Network call detector coverage appears low', minWarningCoverage: 1 },
     ];
 
     const zeroFields = [];
     const atomTotal = tableCounts['atoms'] || 1;
-    for (const { field, description } of suspiciousFields) {
+    for (const { field, description, minWarningCoverage = 5 } of suspiciousFields) {
         try {
             const row = db.prepare(
                 `SELECT SUM(CASE WHEN ${field} != 0 AND ${field} IS NOT NULL THEN 1 ELSE 0 END) as nonzero FROM atoms`
@@ -57,7 +58,7 @@ export async function handlePipelineHealth(tool) {
             if (coveragePct === 0) {
                 issues.push({ field, coverage: '0%', nonZeroCount, issue: description });
                 zeroFields.push(field);
-            } else if (coveragePct < 5) {
+            } else if (coveragePct < minWarningCoverage) {
                 warnings.push({ field, coverage: `${coveragePct}%`, nonZeroCount, issue: `Very low coverage — ${description}` });
             }
         } catch (e) { /* field missing */ }
@@ -105,3 +106,4 @@ export async function handlePipelineHealth(tool) {
         }
     };
 }
+

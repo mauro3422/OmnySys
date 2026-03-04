@@ -16,6 +16,15 @@ import { getRegisteredTables, getTableDefinition, detectMissingColumns, generate
 
 const logger = createLogger('OmnySys:Storage:Connection');
 
+// Schema SQL is read once at module load to avoid repeated disk I/O on hot-reloads.
+// Note: better-sqlite3 is deliberately synchronous — it serialises all DB calls on the
+// calling thread and achieves higher throughput than async SQLite drivers for the
+// write-heavy indexing workload this project uses.
+const __fileUrl = new URL(import.meta.url);
+const __dirForSchema = dirname(fileURLToPath(__fileUrl));
+const _schemaPath = resolve(__dirForSchema, 'schema.sql');
+const _schemaSql = existsSync(_schemaPath) ? readFileSync(_schemaPath, 'utf8') : null;
+
 /**
  * Connection Manager para SQLite
  * Implementa patron Singleton para mantener una sola conexion
@@ -104,14 +113,9 @@ class ConnectionManager {
    */
   initializeSchema() {
     try {
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-
-      // ── STEP 1: Leer schema.sql base (para tablas básicas) ───────────────
-      const schemaPath = resolve(__dirname, 'schema.sql');
-      if (existsSync(schemaPath)) {
-        const schema = readFileSync(schemaPath, 'utf8');
-        this.db.exec(schema);
+      // ── STEP 1: Apply base schema.sql (read once at module load, no repeated disk I/O) ──
+      if (_schemaSql) {
+        this.db.exec(_schemaSql);
         logger.debug('[Connection] Base schema.sql executed');
       }
 

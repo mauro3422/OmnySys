@@ -64,9 +64,9 @@ export class TraverseGraphTool extends SemanticQueryTool {
                     if (options.includeSemantic) {
                         result.semanticSummary = {
                             hasSharedState: (fileData.semanticAnalysis?.sharedState?.reads?.length || 0) > 0 ||
-                                           (fileData.semanticAnalysis?.sharedState?.writes?.length || 0) > 0,
+                                (fileData.semanticAnalysis?.sharedState?.writes?.length || 0) > 0,
                             hasEvents: (fileData.semanticAnalysis?.eventPatterns?.eventEmitters?.length || 0) > 0 ||
-                                      (fileData.semanticAnalysis?.eventPatterns?.eventListeners?.length || 0) > 0,
+                                (fileData.semanticAnalysis?.eventPatterns?.eventListeners?.length || 0) > 0,
                             sharedStateReads: fileData.semanticAnalysis?.sharedState?.reads || [],
                             sharedStateWrites: fileData.semanticAnalysis?.sharedState?.writes || [],
                             eventEmitters: fileData.semanticAnalysis?.eventPatterns?.eventEmitters || [],
@@ -103,12 +103,12 @@ export class TraverseGraphTool extends SemanticQueryTool {
                 case 'trace_data_flow':
                 case 'explain_connection':
                 case 'signature_change':
-                    // Estas funcionalidades hiper-específicas de Data Flow eran simuladas por el LLM o no eran reales en SQLite.
-                    // Fase 17 consolida esto bajo un prompt estructurado tras pedir el `impact_map` o `query_graph(value_flow)`.
+                    // Estas funcionalidades fueron consolidadas en Fase 17.
+                    // El agente debe combinar impact_map + call_graph + query_graph{details} para cubrirlas.
                     return this.formatError('DEPRECATED_ROUTING',
-                        `The complex traversal '${traverseType}' has been deprecated to simplify the MCP. ` +
-                        `Instead, please use 'impact_map' or 'call_graph' first to get structural boundaries, ` +
-                        `and then use 'mcp_omnysystem_query_graph' with queryType 'value_flow' for deeper IO details.`
+                        `The traversal '${traverseType}' is deprecated. ` +
+                        `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
+                        `or query_graph(details, includeSemantic:true) for deep per-atom analysis.`
                     );
 
                 default:
@@ -134,12 +134,12 @@ export class TraverseGraphTool extends SemanticQueryTool {
 
             // Buscar átomos en este archivo
             const atoms = this.repo.query({ filePath: node.file || node.filePath, limit: 100 });
-            
+
             if (atoms.length === 0) return node;
 
             // Calcular resumen semántico del archivo
             const hasSharedState = atoms.some(a => a.shared_state_json && a.shared_state_json !== '[]');
-            const hasEvents = atoms.some(a => 
+            const hasEvents = atoms.some(a =>
                 (a.event_emitters_json && a.event_emitters_json !== '[]') ||
                 (a.event_listeners_json && a.event_listeners_json !== '[]')
             );
