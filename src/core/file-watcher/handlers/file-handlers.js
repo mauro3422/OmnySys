@@ -322,6 +322,7 @@ export async function detectDuplicateRiskForFile(filePath, options = {}) {
       FROM atoms
       WHERE file_path = ?
         AND dna_json IS NOT NULL AND dna_json != ''
+        AND atom_type IN ('function', 'method', 'arrow', 'class')
         AND (lines_of_code IS NULL OR lines_of_code >= ?)
         AND (is_removed IS NULL OR is_removed = 0)
         AND (is_dead_code IS NULL OR is_dead_code = 0)
