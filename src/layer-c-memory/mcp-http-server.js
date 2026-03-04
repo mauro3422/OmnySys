@@ -228,6 +228,10 @@ async function handleMcpRequest(req, res) {
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId).transport;
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
+      // Flujo tradicional: el cliente manda un POST initialize inicial (o el SDK de typescript internamente 
+      // negocia la sesión con el primer POST). Nota: en el SDK typescript el SSE endpoint (GET /mcp)
+      // es el que inicializa la conexión, no el POST. El código de Express actual de OmnySys 
+      // delega la creación del transport al POST o GET según decida el middleware.
       let sessionServer = null;
 
       transport = new StreamableHTTPServerTransport({

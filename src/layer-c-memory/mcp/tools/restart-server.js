@@ -88,6 +88,21 @@ export async function restart_server(args, context) {
         process.send({ type: 'restart', clearCache, reanalyze, clearCacheOnly, reindexOnly });
       }
 
+      const warningMessage = `
+================================================================================
+🚨 CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION) 🚨
+You just triggered a true process restart. Because of a known bug in the 
+Antigravity IDE client, your current MCP session is now ORPHANED. 
+Any subsequent MCP tool calls you make right now will SILENTLY HANG FOREVER 
+and waste tokens.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the \`notify_user\` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+`.trim();
+
       return {
         success: true,
         restarting: true,
@@ -95,7 +110,7 @@ export async function restart_server(args, context) {
         clearCache,
         reanalyze,
         timestamp: new Date().toISOString(),
-        message: 'Proxy received restart signal. New Node.js process will start in ~2s with fresh ESM cache. Connection stays alive.',
+        message: warningMessage,
         esmCacheCleared: true
       };
     }

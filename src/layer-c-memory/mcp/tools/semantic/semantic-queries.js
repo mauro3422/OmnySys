@@ -145,12 +145,27 @@ export function queryDnaCoverage(db) {
  * @param {Object} options
  * @returns {{ rows: Array, stats: Object }}
  */
-export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3 } = {}) {
-    const testFilter = excludeTests
+export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow', 'class'] } = {}) {
+    const testFilterCte = excludeTests
+        ? `AND file_path NOT LIKE '%.test.js'
+           AND file_path NOT LIKE '%.spec.js'
+           AND file_path NOT LIKE '%/test/%'
+           AND file_path NOT LIKE '%/tests/%'`
+        : '';
+
+    const testFilterMain = excludeTests
         ? `AND a.file_path NOT LIKE '%.test.js'
            AND a.file_path NOT LIKE '%.spec.js'
            AND a.file_path NOT LIKE '%/test/%'
            AND a.file_path NOT LIKE '%/tests/%'`
+        : '';
+
+    const typeFilterCte = atomTypes && atomTypes.length > 0
+        ? `AND atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
+        : '';
+
+    const typeFilterMain = atomTypes && atomTypes.length > 0
+        ? `AND a.atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
         : '';
 
     const rows = db.prepare(`
@@ -158,10 +173,8 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
             SELECT dna_json, COUNT(*) as group_size
             FROM atoms
             WHERE dna_json IS NOT NULL AND dna_json != ''
-              ${excludeTests ? `AND file_path NOT LIKE '%.test.js'
-              AND file_path NOT LIKE '%.spec.js'
-              AND file_path NOT LIKE '%/test/%'
-              AND file_path NOT LIKE '%/tests/%'` : ''}
+              ${testFilterCte}
+              ${typeFilterCte}
               AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
               AND (is_removed IS NULL OR is_removed = 0)
               AND (is_dead_code IS NULL OR is_dead_code = 0)
@@ -180,7 +193,9 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
                AND ca.file_path != a.file_path) AS caller_count
         FROM atoms a
         JOIN DuplicateGroups dg ON a.dna_json = dg.dna_json
-        ${testFilter}
+        WHERE 1=1 
+        ${testFilterMain}
+        ${typeFilterMain}
         ORDER BY
             (dg.group_size * COALESCE(a.importance_score, 0) * (1 + COALESCE(a.change_frequency, 0))) DESC,
             dg.group_size DESC,
@@ -190,20 +205,20 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     // Stats globales del query
     const stats = db.prepare(`
-        SELECT COUNT(DISTINCT dna_json) groups, COUNT(*) total_instances
-        FROM atoms
-        WHERE dna_json IN (
+        SELECT COUNT(DISTINCT a_stats.dna_json) groups, COUNT(*) total_instances
+        FROM atoms a_stats
+        WHERE a_stats.dna_json IN (
             SELECT dna_json FROM atoms
             WHERE dna_json IS NOT NULL AND dna_json != ''
-              ${excludeTests ? `AND file_path NOT LIKE '%.test.js'
-              AND file_path NOT LIKE '%.spec.js'
-              AND file_path NOT LIKE '%/test/%'
-              AND file_path NOT LIKE '%/tests/%'` : ''}
+              ${testFilterCte}
+              ${typeFilterCte}
               AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
               AND (is_removed IS NULL OR is_removed = 0)
               AND (is_dead_code IS NULL OR is_dead_code = 0)
             GROUP BY dna_json HAVING COUNT(*) > 1
         )
+        ${testFilterCte.replace(/file_path/g, 'a_stats.file_path')}
+        ${typeFilterCte.replace(/atom_type/g, 'a_stats.atom_type')}
     `).get();
 
     return { rows, stats: stats || { groups: 0, total_instances: 0 } };
