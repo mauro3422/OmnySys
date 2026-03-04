@@ -11,6 +11,29 @@
 import { SQLiteRelationOperations } from './sqlite-relation-operations.js';
 import { connectionManager } from '../../database/connection.js';
 import { atomToRow } from './helpers/converters.js';
+import crypto from 'crypto';
+
+// --- Hashing Helpers for Atom Versions ---
+function calculateHash(data) {
+  const str = typeof data === 'string' ? data : JSON.stringify(data);
+  return crypto.createHash('sha256').update(str).digest('hex');
+}
+
+function calculateFieldHashes(atomData) {
+  const hashes = {};
+  const excludedFields = ['_meta', 'lineage', 'timestamp'];
+  for (const [key, value] of Object.entries(atomData)) {
+    if (excludedFields.includes(key)) continue;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      hashes[key] = calculateHash(value);
+    } else if (Array.isArray(value)) {
+      hashes[key] = calculateHash(value.map((item, i) => typeof item === 'object' ? calculateHash(item) : `${i}:${item}`));
+    } else {
+      hashes[key] = calculateHash(String(value));
+    }
+  }
+  return hashes;
+}
 
 /**
  * Clase para operaciones bulk
@@ -85,26 +108,51 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       this.db.prepare(sql).run(...params);
     });
 
-    // Fase 4: Registrar atom_events (created/updated) — fuera de la transacción crítica
+    // Fase 4: Registrar atom_events y atom_versions — fuera de la transacción crítica
     // para no impactar la performance del bulk save.
     try {
       const now = new Date().toISOString();
+      const msNow = Date.now();
+
       const eventStmt = this.db.prepare(`
         INSERT OR IGNORE INTO atom_events (atom_id, event_type, impact_score, timestamp, source)
         VALUES (?, ?, ?, ?, ?)
       `);
 
-      const logEvents = this.db.transaction((atomList) => {
+      const versionStmt = this.db.prepare(`
+        INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(atom_id) DO UPDATE SET
+          hash = excluded.hash,
+          field_hashes_json = excluded.field_hashes_json,
+          last_modified = excluded.last_modified
+      `);
+
+      const logPostTransaction = this.db.transaction((atomList) => {
         for (const atom of atomList) {
           const atomId = atom.id || `${this._normalize(atom.filePath || atom.file)}::${atom.name}`;
+
+          // 4.1 Atom Events
           const eventType = existingIds.has(atomId) ? 'updated' : 'created';
           eventStmt.run(atomId, eventType, atom.derived?.changeRisk || 0, now, 'bulk_save');
+
+          // 4.2 Atom Versions
+          const fieldHashes = calculateFieldHashes(atom);
+          const totalHash = calculateHash(atom);
+          versionStmt.run(
+            atomId,
+            totalHash,
+            JSON.stringify(fieldHashes),
+            msNow,
+            this._normalize(atom.filePath || atom.file),
+            atom.name
+          );
         }
       });
-      logEvents(atoms);
-    } catch (eventErr) {
-      // Non-critical — don't fail the save if event logging fails
-      this._logger.debug(`[SQLiteAdapter] atom_events logging skipped: ${eventErr.message}`);
+      logPostTransaction(atoms);
+    } catch (postErr) {
+      // Non-critical — don't fail the save if event/version logging fails
+      this._logger.debug(`[SQLiteAdapter] Post-transaction logging skipped: ${postErr.message}`);
     }
 
     this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
