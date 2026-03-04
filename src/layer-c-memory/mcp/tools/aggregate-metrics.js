@@ -5,6 +5,7 @@ import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getRiskAssessment } from '../../query/queries/risk-query.js';
 import { SoftwarePhysicsEngine } from '../../../layer-b-semantic/physics-engine/SoftwarePhysicsEngine.js';
 import { DnaAnalyzer } from '../../../layer-b-semantic/dna-analyzer/DnaAnalyzer.js';
+import { getRepository } from '../../storage/repository/index.js';
 
 /**
  * mcp_omnysystem_aggregate_metrics
@@ -43,14 +44,40 @@ export class AggregateMetricsTool extends SemanticQueryTool {
             switch (aggregationType) {
                 case 'health': {
                     const stats = await getProjectStats(this.projectPath);
+
+                    // Compute real physics vectors from SQLite atoms
+                    let physics = { averageGravity: 0, averageReactivity: 0, avgFragility: 0, avgCoupling: 0, avgCohesion: 0, avgImportance: 0, totalAtoms: 0 };
+                    if (this.repo?.db) {
+                        const row = this.repo.db.prepare(`
+                            SELECT COUNT(*) as total,
+                                   AVG(fragility_score) as avg_fragility,
+                                   AVG(coupling_score) as avg_coupling,
+                                   AVG(cohesion_score) as avg_cohesion,
+                                   AVG(importance_score) as avg_importance,
+                                   AVG(centrality_score) as avg_centrality
+                            FROM atoms
+                        `).get();
+                        if (row) {
+                            physics = {
+                                totalAtoms: row.total || 0,
+                                avgFragility: Math.round((row.avg_fragility || 0) * 1000) / 1000,
+                                avgCoupling: Math.round((row.avg_coupling || 0) * 1000) / 1000,
+                                avgCohesion: Math.round((row.avg_cohesion || 0) * 1000) / 1000,
+                                avgImportance: Math.round((row.avg_importance || 0) * 1000) / 1000,
+                                avgCentrality: Math.round((row.avg_centrality || 0) * 1000) / 1000,
+                                // Gravity ≈ importance × centrality (how much this codebase "gravitates" change)
+                                averageGravity: Math.round((row.avg_importance || 0) * (row.avg_centrality || 0) * 1000) / 1000,
+                                // Reactivity ≈ fragility × coupling (how easily things break)
+                                averageReactivity: Math.round((row.avg_fragility || 0) * (row.avg_coupling || 0) * 1000) / 1000
+                            };
+                        }
+                    }
+
                     return this.formatSuccess({
                         project: this.projectPath,
                         globalHealth: stats.health,
                         quality: stats.quality,
-                        physics: {
-                            averageGravity: 0, // TODO: Calcular promedio
-                            averageReactivity: 0
-                        }
+                        physics
                     });
                 }
 
@@ -130,14 +157,34 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                         minSeverity: options.minSeverity || 0
                     });
 
+                    // ALSO query semantic_connections — these are the ~250 real connections
+                    // (localStorage, env vars, globals, routes) detected during analysis.
+                    // Event emitters/listeners may be empty if the project uses no EventEmitter.
+                    let semanticSummary = { total: 0, byType: {} };
+                    try {
+                        const db = this.repo?.db;
+                        if (db) {
+                            const semRows = db.prepare(`
+                            SELECT connection_type, COUNT(*) as count
+                            FROM semantic_connections
+                            GROUP BY connection_type
+                            ORDER BY count DESC
+                        `).all();
+                            semanticSummary.total = semRows.reduce((s, r) => s + r.count, 0);
+                            semRows.forEach(r => { semanticSummary.byType[r.connection_type] = r.count; });
+                        }
+                    } catch (_) { /* DB not ready yet */ }
+
                     return this.formatSuccess({
                         aggregationType: 'patterns',
-                        ...result,
+                        eventPatterns: result,
+                        semanticConnections: semanticSummary,
                         summary: {
-                            totalPatterns: result.total,
+                            totalEventPatterns: result.total,
                             emitters: result.patterns.filter(p => p.hasEmitters).length,
                             listeners: result.patterns.filter(p => p.hasListeners).length,
-                            both: result.patterns.filter(p => p.hasEmitters && p.hasListeners).length
+                            totalSemanticConnections: semanticSummary.total,
+                            semanticByType: semanticSummary.byType
                         }
                     });
                 }

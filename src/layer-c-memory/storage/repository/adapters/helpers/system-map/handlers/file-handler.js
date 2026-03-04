@@ -5,7 +5,7 @@
 import { safeString, safeNumber } from '../../converters.js';
 
 export async function saveSystemFiles(db, files, now) {
-  const stmt = db.prepare(`
+  const insertStmt = db.prepare(`
     INSERT INTO files (path, last_analyzed, total_lines)
     VALUES (?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
@@ -13,10 +13,12 @@ export async function saveSystemFiles(db, files, now) {
       total_lines = excluded.total_lines
   `);
 
+  const isoNow = new Date(now).toISOString();
+
   for (const [path, data] of Object.entries(files)) {
-    stmt.run(
+    insertStmt.run(
       path,
-      new Date(now).toISOString(),
+      isoNow,
       safeNumber(data.lines || data.totalLines || 0)
     );
   }

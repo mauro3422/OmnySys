@@ -43,6 +43,19 @@ export async function get_server_status(args, context) {
       totalFunctions: metadata?.stats?.totalAtoms || metadata?.totalFunctions || 0,
       lastAnalyzed: metadata?.system_map_metadata?.analyzedAt || metadata?.indexedAt || null
     };
+
+    // Live SQLite count — may differ from metadata if Phase 2 background indexer is still running
+    try {
+      const { getRepository } = await import('#layer-c/storage/repository/index.js');
+      const repo = getRepository(projectPath);
+      if (repo?.db) {
+        const row = repo.db.prepare('SELECT COUNT(*) as n FROM atoms').get();
+        status.metadata.liveAtomCount = row?.n || 0;
+        status.metadata.liveFileCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0;
+      }
+    } catch {
+      // Repo not ready yet — skip live count
+    }
   } catch (e) {
     status.metadata = { error: 'Metadata not available', message: e.message };
   }

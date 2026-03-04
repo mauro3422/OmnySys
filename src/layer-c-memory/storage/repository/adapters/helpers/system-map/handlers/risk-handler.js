@@ -5,31 +5,33 @@
 import { safeJson, safeParseJson } from '../../converters.js';
 
 export async function saveRiskAssessments(db, riskAssessment, now) {
+  // Using a simplified purge + insert pattern for risks
   db.prepare('DELETE FROM risk_assessments').run();
-  const stmt = db.prepare(`
+
+  if (!riskAssessment) return;
+
+  const isoNow = new Date(now).toISOString();
+
+  const insertRisk = db.prepare(`
     INSERT OR REPLACE INTO risk_assessments (file_path, risk_level, factors_json, assessed_at)
     VALUES (?, ?, ?, ?)
   `);
 
-  if (!riskAssessment) return;
-
-  const fileStmt = db.prepare(`INSERT OR IGNORE INTO files (path, last_analyzed, total_lines) VALUES (?, ?, 0)`);
-  const isoNow = new Date(now).toISOString();
+  const insertFile = db.prepare(`
+    INSERT OR IGNORE INTO files (path, last_analyzed, total_lines) 
+    VALUES (?, ?, 0)
+  `);
 
   for (const [category, data] of Object.entries(riskAssessment)) {
-    // Some legacy risk assessments grouping passed here use category as the key.
-    // The DB schema expects `file_path`. We'll encode category into a pseudo file path
-    // or use the file_path if it exists in data, and set risk_level to category.
-    if (Array.isArray(data)) {
-      for (const item of data) {
-        const path = item.file_path || item.file || item.path || `_category_${category}_${Math.random()}`;
-        fileStmt.run(path, isoNow);
-        stmt.run(path, item.severity || category || 'low', safeJson(item), now);
-      }
-    } else {
-      const path = data.file_path || data.file || data.path || `_category_${category}`;
-      fileStmt.run(path, isoNow);
-      stmt.run(path, data.severity || category || 'low', safeJson(data), now);
+    const items = Array.isArray(data) ? data : [data];
+    for (const item of items) {
+      // Only persist items that have a real file path — skip metadata blobs
+      // (e.g. 'scores', 'report' category entries that are summary objects, not file risks)
+      const filePath = item.file_path || item.file || item.path;
+      if (!filePath || typeof filePath !== 'string' || filePath.startsWith('_category_')) continue;
+
+      insertFile.run(filePath, isoNow);
+      insertRisk.run(filePath, item.severity || item.risk_level || category || 'low', safeJson(item.factors || item), now);
     }
   }
 }

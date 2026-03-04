@@ -22,8 +22,36 @@ export async function persistSystemMapToDb(db, connectionManager, systemMap, log
       if (systemMap.files) saveSystemFiles(db, systemMap.files, now);
       if (systemMap.dependencies) saveFileDependencies(db, systemMap.dependencies, now);
 
-      const connections = Array.isArray(systemMap.semanticConnections) ? systemMap.semanticConnections : [];
-      const issues = Array.isArray(systemMap.semanticIssues) ? systemMap.semanticIssues : [];
+      // Normalize connections — accept both shapes:
+      // 1. flat array:  systemMap.semanticConnections = [{from, to, type, ...}]  (new enhancer)
+      // 2. structured:  systemMap.connections.{sharedState, eventListeners, envVars, routes, ...} (old enhancer)
+      let connections = [];
+      if (Array.isArray(systemMap.semanticConnections) && systemMap.semanticConnections.length > 0) {
+        connections = systemMap.semanticConnections;
+      } else if (systemMap.connections && typeof systemMap.connections === 'object') {
+        // Flatten the structured object into the schema saveSemanticData expects
+        const c = systemMap.connections;
+        const buckets = [
+          ...(Array.isArray(c.sharedState) ? c.sharedState : []),
+          ...(Array.isArray(c.eventListeners) ? c.eventListeners : []),
+          ...(Array.isArray(c.envVars) ? c.envVars : []),
+          ...(Array.isArray(c.routes) ? c.routes : []),
+          ...(Array.isArray(c.colocation) ? c.colocation : [])
+        ];
+        connections = buckets.map(conn => ({
+          from: conn.sourceFile || conn.from || '',
+          to: conn.targetFile || conn.to || '',
+          type: conn.type || 'unknown',
+          key: conn.connectionKey || conn.key || null,
+          weight: typeof conn.weight === 'number' ? conn.weight : 1.0,
+          metadata: conn.metadata || {}
+        }));
+      }
+
+      const issues = Array.isArray(systemMap.semanticIssues)
+        ? systemMap.semanticIssues
+        : (systemMap.semanticIssues?.issues || []);
+
       saveSemanticData(db, connections, issues, now);
 
       if (systemMap.riskAssessment) saveRiskAssessments(db, systemMap.riskAssessment, now);

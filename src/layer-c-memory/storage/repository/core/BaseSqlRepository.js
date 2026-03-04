@@ -62,9 +62,27 @@ export class BaseSqlRepository {
     }
 
     /**
+     * Realiza un UPSERT genérico.
+     */
+    upsert(tableName, columns, values, conflictColumn) {
+        const placeholders = columns.map(() => '?').join(', ');
+        const updates = columns
+            .filter(c => c !== conflictColumn)
+            .map(c => `${c} = excluded.${c}`)
+            .join(', ');
+
+        const sql = `
+            INSERT INTO ${tableName} (${columns.join(', ')})
+            VALUES (${placeholders})
+            ON CONFLICT(${conflictColumn}) DO UPDATE SET ${updates}
+        `;
+        return this.prepare(`upsert_${tableName}`, sql).run(...values);
+    }
+
+    /**
      * Limpia una tabla completa.
      */
     clearTable(tableName) {
-        return this.db.prepare(`DELETE FROM ${tableName}`).run();
+        return this.prepare(`clear_${tableName}`, `DELETE FROM ${tableName}`).run();
     }
 }

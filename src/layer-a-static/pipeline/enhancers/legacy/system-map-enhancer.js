@@ -140,6 +140,19 @@ export async function enhanceSystemMap(absoluteRootPath, parsedFiles, systemMap,
     enhanced.connections = constructEnhancedConnections(semanticResults, allConnections);
     enhanced.riskAssessment = { scores: riskScores, report: riskReport };
 
+    // ── CRITICAL: persistSystemMapToDb reads systemMap.semanticConnections (flat array)
+    // enhanced.connections is the structured object used for printSummary/display.
+    // We need BOTH: the structured form AND the flat array for SQLite persistence.
+    // Map each connection to the schema saveSemanticData expects: {from, to, type, key, weight, metadata}
+    enhanced.semanticConnections = allConnections.map(c => ({
+      from: c.sourceFile || c.from || '',
+      to: c.targetFile || c.to || '',
+      type: c.type || 'unknown',
+      key: c.connectionKey || c.key || null,
+      weight: typeof c.weight === 'number' ? c.weight : 1.0,
+      metadata: c.metadata || {}
+    }));
+
     const semanticIssues = collectSemanticIssues(enhanced, semanticResults);
     enhanced.semanticIssues = semanticIssues;
 

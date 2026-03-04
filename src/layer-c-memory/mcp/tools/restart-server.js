@@ -28,11 +28,33 @@ const logger = createLogger('OmnySys:restart:server');
  */
 
 export async function restart_server(args, context) {
-  const { clearCache = false, reanalyze = false } = args;
+  const { clearCache = false, reanalyze = false, reindexOnly = false, clearCacheOnly = false } = args;
   const { cache, server, orchestrator } = context;
 
   try {
     logger.info('🔄 Reiniciando servidor OmnySys...');
+
+    // ── FAST PATH: clearCacheOnly — just flush in-memory cache + refresh tools ──────
+    if (clearCacheOnly) {
+      logger.info('⚡ Cache-only flush requested...');
+      if (cache) {
+        await cache.clear();
+        logger.info('✅ In-memory cache cleared');
+      }
+      // Refresh tool registry to pick up any edited tool files
+      try {
+        const { refreshToolRegistry } = await import('../../mcp-http-server.js');
+        await refreshToolRegistry();
+        logger.info('🔄 Tool registry refreshed');
+      } catch { /* not in HTTP mode */ }
+      return {
+        success: true,
+        restarting: false,
+        restartType: 'cache_only_flush',
+        message: 'In-memory cache flushed and tool registry refreshed. No reindex needed.',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     // ── TRUE RESTART via proxy ────────────────────────────────────────────
     // Si corremos bajo mcp-server.js (proxy), process.send() está disponible.
@@ -115,13 +137,19 @@ export async function restart_server(args, context) {
         const dataDir = path.join(server.projectPath, '.omnysysdata');
 
         try {
-          const toDelete = ['files', 'atoms', 'molecules'];
-          for (const dir of toDelete) {
-            await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
+          // SQLite-only mode: only delete the DB files (no JSON dirs)
+          // atoms/, molecules/, files/ directories no longer exist (removed in v0.9.70)
+          const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm'];
+          for (const file of dbFiles) {
+            await fs.unlink(path.join(dataDir, file)).catch(() => { });
           }
-          await fs.unlink(path.join(dataDir, 'index.json')).catch(() => { });
+          // Also clean up old JSON legacy files if they somehow still exist
+          const legacyFiles = ['index.json', 'atom-versions.json'];
+          for (const file of legacyFiles) {
+            await fs.unlink(path.join(dataDir, file)).catch(() => { });
+          }
 
-          logger.info('✅ Análisis anterior eliminado (atoms + molecules + files + index)');
+          logger.info('✅ Análisis anterior eliminado (DB SQLite + legacy files)');
           result.analysisCleared = true;
         } catch (err) {
           logger.warn('⚠️  No se pudo eliminar análisis anterior:', err.message);
@@ -131,9 +159,31 @@ export async function restart_server(args, context) {
       result.cacheCleared = true;
     }
 
-    // Paso 2: Detener componentes actuales
-    logger.info('⏹️  Deteniendo componentes...');
+    // ── FAST PATH: reindexOnly — force Layer A reanalysis without clearing DB ─────────
+    if (reindexOnly) {
+      logger.info('🔄 ReindexOnly: forcing Layer A re-analysis (DB preserved)...');
+      try {
+        const { LayerAAnalysisStep } = await import('../core/initialization/steps/index.js');
+        const step = new LayerAAnalysisStep();
+        // Force reindex by temporarily marking as not analyzed
+        const originalAnalyzed = server._layerAComplete;
+        server._layerAComplete = false;
+        await step.execute(server);
+        server._layerAComplete = originalAnalyzed;
+        logger.info('✅ Layer A re-analysis complete');
+        result.reindexed = true;
+      } catch (err) {
+        logger.warn('⚠️  ReindexOnly failed:', err.message);
+        result.reindexError = err.message;
+      }
+      result.success = true;
+      result.restartType = 'reindex_only';
+      result.message = 'Layer A re-analysis forced. DB preserved, no process restart.';
+      return result;
+    }
 
+    // Paso 2: Detener SOLO el orchestrator (rápido, sin matar el proceso ni el HTTP server)
+    logger.info('⏹️  Deteniendo orchestrator...');
     if (orchestrator) {
       try {
         await orchestrator.stop();
@@ -143,96 +193,89 @@ export async function restart_server(args, context) {
       }
     }
 
-    // Paso 3: Reiniciar el pipeline de inicialización
-    logger.info('🚀 Reiniciando pipeline de inicialización...');
+    // Paso 3: Si reanalyze=true → full pipeline con LayerA (lento, ~10-30s).
+    // De lo contrario → restart rápido del Orchestrator solamente (<1s). 
+    //
+    // ⚠️ CRÍTICO: LayerAAnalysisStep tarda 10-30s. Durante ese tiempo el HTTP
+    // server sigue levantado, pero el MCP sesión puede expirar o VS Code puede
+    // re-lanzar el terminal task y colisionar con el puerto 9999.
+    // Por eso, LayerA SOLO corre si el usuario lo pide explícitamente.
+    if (reanalyze) {
+      logger.info('🔄 reanalyze=true — Ejecutando pipeline completo (LayerA + Cache + Orchestrator)...');
 
-    // Cerrar el health beacon existente antes de reiniciar
-    // (para que InstanceDetectionStep no colisione con el puerto 9998)
-    if (server._healthBeacon) {
+      // Cerrar el health beacon antes de reiniciar el pipeline completo
+      if (server._healthBeacon) {
+        try {
+          await new Promise(resolve => server._healthBeacon.close(resolve));
+          server._healthBeacon = null;
+        } catch { server._healthBeacon = null; }
+      }
+
+      server.initialized = false;
+      server.orchestrator = null;
+      server.cache = null;
+      server.startTime = Date.now();
+
       try {
-        await new Promise(resolve => server._healthBeacon.close(resolve));
-        server._healthBeacon = null;
-        logger.info('🔌 Health beacon cerrado correctamente antes del restart');
-      } catch (beaconErr) {
-        logger.warn('⚠️  No se pudo cerrar el health beacon:', beaconErr.message);
-        server._healthBeacon = null;
+        const { InitializationPipeline } = await import('../core/initialization/pipeline.js');
+        const { LLMSetupStep, LayerAAnalysisStep, OrchestratorInitStep, CacheInitStep, ReadyStep } =
+          await import('../core/initialization/steps/index.js');
+
+        // ⚠️ McpSetupStep + InstanceDetectionStep omitidos — ya están activos
+        server.pipeline = new InitializationPipeline([
+          new LayerAAnalysisStep(),
+          new CacheInitStep(),
+          new LLMSetupStep(),
+          new OrchestratorInitStep(),
+          new ReadyStep()
+        ]);
+
+        const initResult = await server.pipeline.execute(server);
+
+        if (initResult.success) {
+          server.initialized = true;
+          logger.info('✅ Pipeline completo terminado');
+          result.success = true;
+          result.componentsRestarted = ['LayerA', 'Cache', 'LLM', 'Orchestrator'];
+        } else {
+          throw new Error(`Pipeline falló en: ${initResult.failedAt || initResult.haltedAt}`);
+        }
+      } catch (pipelineErr) {
+        logger.error('❌ Error en pipeline completo:', pipelineErr.message);
+        result.success = false;
+        result.error = pipelineErr.message;
+        return result;
+      }
+    } else {
+      // ── FAST RESTART: solo reiniciar el Orchestrator (<1s) ────────────────
+      logger.info('⚡ Fast restart — solo reiniciando Orchestrator (sin LayerA)...');
+      try {
+        const { OrchestratorInitStep } = await import('../core/initialization/steps/index.js');
+        const step = new OrchestratorInitStep();
+        await step.execute(server);
+        server.initialized = true;
+        logger.info('✅ Orchestrator reiniciado');
+        result.success = true;
+        result.componentsRestarted = ['Orchestrator'];
+        result.message = 'Fast restart complete. Orchestrator restarted, tool registry refreshed. No Layer A reindex.';
+      } catch (orchErr) {
+        logger.error('❌ Error reiniciando Orchestrator:', orchErr.message);
+        result.success = false;
+        result.error = orchErr.message;
+        return result;
       }
     }
 
-    // Resetear estado
-    server.initialized = false;
-    server.orchestrator = null;
-    server.cache = null;
-    server.startTime = Date.now();
-
-    // Volver a ejecutar el pipeline
+    // Paso 4: Refresh tool registry (cache-busting import para cargar código nuevo)
     try {
-      const { InitializationPipeline } = await import('../core/initialization/pipeline.js');
-      const {
-        LLMSetupStep,
-        LayerAAnalysisStep,
-        OrchestratorInitStep,
-        CacheInitStep,
-        ReadyStep
-      } = await import('../core/initialization/steps/index.js');
-
-      // Crear nuevo pipeline SIN McpSetupStep NI InstanceDetectionStep
-      // ⚠️ CRITICAL: McpSetupStep MUST NOT be re-run during restart.
-      // The MCP protocol is already configured on the active stdio connection.
-      // Re-running it would re-configure the transport, causing:
-      //   - "Cannot call write after a stream was destroyed" errors
-      //   - Duplicate server instances in the IDE
-      //   - Broken stdio pipe between IDE and MCP
-      //
-      // ⚠️ ORDER MATTERS (same as initial pipeline):
-      // 1. LayerAAnalysisStep — re-check/re-run static analysis if files changed
-      // 2. CacheInitStep      — load fresh data BEFORE orchestrator starts
-      // 3. LLMSetupStep       — start LLM in background
-      // 4. OrchestratorInitStep — init orchestrator (requires cache to exist)
-      // 5. ReadyStep          — finalize
-      server.pipeline = new InitializationPipeline([
-        new LayerAAnalysisStep(),
-        new CacheInitStep(),
-        new LLMSetupStep(),
-        new OrchestratorInitStep(),
-        new ReadyStep()
-      ]);
-
-      // Ejecutar inicialización
-      const initResult = await server.pipeline.execute(server);
-
-      if (initResult.success) {
-        server.initialized = true;
-        logger.info('✅ Servidor reiniciado exitosamente');
-        result.success = true;
-        result.componentsRestarted = ['LLM', 'LayerA', 'Orchestrator', 'Cache'];
-
-        // Refresh the live tool registry so code changes in tool files
-        // (e.g. code-generator.js, batch-generator.js) are picked up
-        // without needing a true process restart.
-        try {
-          const { pathToFileURL } = await import('url');
-          const path = await import('path');
-          const serverPath = path.default.resolve(process.cwd(), 'src/layer-c-memory/mcp-http-server.js');
-          const bustUrl = `${pathToFileURL(serverPath).href}?bust=${Date.now()}`;
-          const mod = await import(bustUrl);
-          if (typeof mod.refreshToolRegistry === 'function') {
-            await mod.refreshToolRegistry();
-            logger.info('🔄 Tool registry refreshed after component restart');
-            result.toolRegistryRefreshed = true;
-          }
-        } catch (refreshErr) {
-          logger.warn('⚠️  Tool registry refresh failed:', refreshErr.message);
-          result.toolRegistryRefreshed = false;
-          result.toolRegistryError = refreshErr.message;
-        }
-      } else {
-        throw new Error(`Inicialización falló en: ${initResult.failedAt || initResult.haltedAt}`);
-      }
-    } catch (initError) {
-      logger.error('❌ Error reiniciando servidor:', initError.message);
-      result.success = false;
-      result.error = initError.message;
+      const { refreshToolRegistry } = await import('../../mcp-http-server.js');
+      await refreshToolRegistry();
+      logger.info('🔄 Tool registry refreshed after restart');
+      result.toolRegistryRefreshed = true;
+    } catch (refreshErr) {
+      // May fail if imported from a non-HTTP context
+      logger.warn('⚠️  Tool registry refresh skipped:', refreshErr.message);
+      result.toolRegistryRefreshed = false;
     }
 
     return result;

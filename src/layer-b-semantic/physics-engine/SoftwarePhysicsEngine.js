@@ -23,24 +23,39 @@ export class SoftwarePhysicsEngine {
     /**
      * Calcula la Reactividad Química (R) de un átomo.
      * Representa la inestabilidad y el "Blast Radius".
+     * R = (Risk * (1 + FanOut + FanIn))
      */
     static calculateReactivity(atom) {
         const changeRisk = atom.changeRisk || 0;
-        const coupling = (atom.externalCallCount || 0) + (atom.internalCalls?.length || 0);
+        const fanOut = atom.internalCalls?.length || 0;
+        const fanIn = atom.calledBy?.length || 0;
+        const coupling = fanOut + fanIn;
 
-        // R = Risk * Coupling
         return Math.round(changeRisk * (1 + coupling) * 100) / 100;
     }
 
     /**
-     * Calcula la Salud Sistémica simplificada.
+     * Calcula la Fragilidad (F).
+     * F = (Reactivity / (1 + TestCoverage)) * Complexity
+     */
+    static calculateFragility(atom) {
+        const reactivity = this.calculateReactivity(atom);
+        const hasTests = !!(atom.testFile || (atom._meta && atom._meta.has_tests));
+        const complexity = atom.complexity || 1;
+
+        const fragility = (reactivity / (hasTests ? 2 : 1)) * (complexity / 5);
+        return Math.round(fragility * 100) / 100;
+    }
+
+    /**
+     * Calcula la Salud Sistémica.
      */
     static calculateHealth(atom) {
         const gravity = this.calculateGravity(atom);
         const reactivity = this.calculateReactivity(atom);
+        const fragility = this.calculateFragility(atom);
 
-        // Mas gravedad + mas reactividad = Menos salud
-        const score = 100 - (gravity + reactivity);
+        const score = 100 - (gravity + reactivity + fragility);
         return Math.max(0, Math.round(score));
     }
 }

@@ -15,22 +15,22 @@ export async function ensureDataDir(absoluteRootPath) {
 
 export async function saveSystemMap(systemMap, verbose = true, rootPath = null) {
   if (verbose) logger.info('💾 Saving graph...');
-  
+
   if (!rootPath) {
     throw new Error('rootPath is required for SQLite storage');
   }
-  
+
   const repo = getRepository(rootPath);
   if (!repo.saveSystemMap) {
     throw new Error('Repository does not support saveSystemMap');
   }
-  
+
   repo.saveSystemMap(systemMap);
-  
+
   if (verbose) {
     logger.info(`  ✔ Saved to SQLite: ${Object.keys(systemMap.files || {}).length} files\n`);
   }
-  
+
   return '[SQLite]';
 }
 
@@ -38,18 +38,18 @@ export async function saveEnhancedSystemMap(enhancedSystemMap, verbose = true, r
   if (!rootPath) {
     throw new Error('rootPath is required for SQLite storage');
   }
-  
+
   const repo = getRepository(rootPath);
   if (!repo.saveSystemMap) {
     throw new Error('Repository does not support saveSystemMap');
   }
-  
-  repo.saveSystemMap(enhancedSystemMap);
-  
+
+  await repo.saveSystemMap(enhancedSystemMap);
+
   if (verbose) {
     logger.info(`  ✔ Saved to SQLite (enhanced)\n`);
   }
-  
+
   return '[SQLite]';
 }
 

@@ -96,6 +96,11 @@ export class ReloadHandler {
    * @param {Object} moduleInfo - Module classification
    */
   async _executeStrategy(filename, moduleInfo) {
+    // moduleInfo is null when the file doesn't match any reloadable pattern — skip silently
+    if (!moduleInfo) {
+      return;
+    }
+
     const strategy = this.strategies[moduleInfo.type];
 
     if (!strategy) {

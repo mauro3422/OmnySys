@@ -117,8 +117,8 @@ export class SQLiteAdapterCore extends AtomRepository {
   }
 
   // System Map
-  saveSystemMap(systemMap) {
-    persistSystemMapToDb(this.db, connectionManager, systemMap, this._logger);
+  async saveSystemMap(systemMap) {
+    await persistSystemMapToDb(this.db, connectionManager, systemMap, this._logger);
   }
 
   loadSystemMap() {
