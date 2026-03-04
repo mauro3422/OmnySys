@@ -155,6 +155,21 @@ export async function _deriveStaticInsights() {
       }
     })();
 
+    // 📊 PERSIST GRAPH METRICS (centrality, propagation, risk)
+    // Se ejecuta asíncronamente después del boot para poblar centralityScore,
+    // propagationScore y risk_level en todos los átomos indexados.
+    (async () => {
+      try {
+        // Small delay to let the save pipeline flush first
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
+        await persistGraphMetrics(this.projectPath);
+        logger.info('  📊 Graph metrics persisted (centrality, propagation, risk_level)');
+      } catch (e) {
+        logger.debug('  ⚠️  Graph metrics persistence failed:', e.message);
+      }
+    })();
+
   } catch (error) {
     logger.error('  ❌ Static insights init failed:', error.message);
   }
@@ -254,6 +269,18 @@ export async function _startPhase2BackgroundIndexer() {
         }
         clearInterval(this._phase2Interval);
         this._phase2Interval = null;
+
+        // ✅ Phase 2 complete — persist final graph metrics now that all atoms are deep-scanned
+        (async () => {
+          try {
+            const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
+            await persistGraphMetrics(this.projectPath);
+            logger.info('  📊 Phase 2 complete — final graph metrics persisted (centrality, risk_level, propagation)');
+          } catch (e) {
+            logger.debug('  ⚠️  Post-Phase2 graph metrics failed:', e.message);
+          }
+        })();
+
         return;
       }
 

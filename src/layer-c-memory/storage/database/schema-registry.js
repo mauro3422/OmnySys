@@ -283,6 +283,61 @@ export const TABLE_DEFINITIONS = {
       { name: 'idx_societies_type', columns: ['type'] },
       { name: 'idx_societies_cohesion', columns: ['cohesion_score DESC'] }
     ]
+  },
+
+  // ── Tables that exist in DB but were previously unregistered ─────────────────
+
+  risk_assessments: {
+    description: 'Risk assessment por archivo: nivel, factores, scores (escrito por risk-handler.js)',
+    addedIn: 'v2.1-registry',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'file_path', type: 'TEXT', nullable: false, description: 'Ruta del archivo evaluado' },
+      { name: 'risk_score', type: 'REAL', nullable: true, description: 'Score de riesgo agregado (0-1)' },
+      { name: 'risk_level', type: 'TEXT', nullable: true, description: 'Nivel: critical, high, medium, low' },
+      { name: 'factors_json', type: 'TEXT', nullable: true, description: 'Factores de riesgo detallados' },
+      { name: 'shared_state_count', type: 'INTEGER', nullable: true, description: 'Cantidad de accesos a estado compartido' },
+      { name: 'external_deps_count', type: 'INTEGER', nullable: true, description: 'Cantidad de dependencias externas' },
+      { name: 'complexity_score', type: 'REAL', nullable: true, description: 'Score de complejidad ciclomática agregada' },
+      { name: 'propagation_score', type: 'REAL', nullable: true, description: 'Score de propagación de riesgo' },
+      { name: 'assessed_at', type: 'TEXT', nullable: false, description: 'Timestamp de evaluación' }
+    ],
+    indexes: [
+      { name: 'idx_risk_level', columns: ['risk_level'] },
+      { name: 'idx_risk_score', columns: ['risk_score DESC'] },
+      { name: 'idx_risk_file', columns: ['file_path'] }
+    ]
+  },
+
+  semantic_issues: {
+    description: 'Issues semánticos detectados por archivo (escrito por semantic-handler.js y orchestrator/issues.js)',
+    addedIn: 'v2.1-registry',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'file_path', type: 'TEXT', nullable: false, description: 'Ruta del archivo con el issue' },
+      { name: 'issue_type', type: 'TEXT', nullable: false, description: 'Tipo: dead_code, circular_dep, god_function, etc.' },
+      { name: 'severity', type: 'TEXT', nullable: false, description: 'Severidad: critical, high, medium, low' },
+      { name: 'message', type: 'TEXT', nullable: false, description: 'Descripción del issue' },
+      { name: 'line_number', type: 'INTEGER', nullable: true, description: 'Línea donde ocurre' },
+      { name: 'context_json', type: 'TEXT', nullable: true, description: 'Contexto adicional del issue' },
+      { name: 'detected_at', type: 'TEXT', nullable: false, description: 'Timestamp de detección' }
+    ],
+    indexes: [
+      { name: 'idx_semantic_issues_file', columns: ['file_path'] },
+      { name: 'idx_semantic_issues_type', columns: ['issue_type'] },
+      { name: 'idx_semantic_issues_severity', columns: ['severity'] }
+    ]
+  },
+
+  system_metadata: {
+    description: 'Metadata global del sistema: versión schema, totales, configuración (key-value store)',
+    addedIn: 'v2.1-registry',
+    columns: [
+      { name: 'key', type: 'TEXT', pk: true, description: 'Clave de metadata (ej: schema_version, core_metadata, cache_sqlite_enabled)' },
+      { name: 'value', type: 'TEXT', nullable: false, description: 'Valor (puede ser JSON)' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, description: 'Timestamp de última actualización' }
+    ],
+    indexes: []
   }
 };
 

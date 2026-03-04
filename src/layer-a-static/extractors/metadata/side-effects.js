@@ -168,12 +168,48 @@ export function extractSideEffects(code) {
   const consoleUsage = [];
   const timerUsage = [];
 
-  // Network calls patterns
+  // Network calls patterns — browser + Node.js
   const networkPatterns = [
+    // Browser fetch API
     { pattern: /fetch\s*\(/g, type: 'fetch' },
-    { pattern: /axios\.(get|post|put|delete|patch|request)\s*\(/g, type: 'axios' },
+    // Axios (browser + Node)
+    { pattern: /axios\.(get|post|put|delete|patch|request|head|options)\s*\(/g, type: 'axios' },
+    { pattern: /axios\s*\(\s*[{'"]/g, type: 'axios' },
+    // XMLHttpRequest (browser)
     { pattern: /new\s+XMLHttpRequest\s*\(/g, type: 'xhr' },
-    { pattern: /\$\.(get|post|ajax)\s*\(/g, type: 'jquery' }
+    // jQuery AJAX (browser)
+    { pattern: /\$\.(get|post|ajax|getJSON|getScript)\s*\(/g, type: 'jquery' },
+    // Node.js built-in http/https modules
+    { pattern: /https?\.(get|request|post)\s*\(/g, type: 'node-http' },
+    { pattern: /http\.(get|request)\s*\(/g, type: 'node-http' },
+    // got (Node HTTP library)
+    { pattern: /got\.(get|post|put|delete|patch|head|stream)\s*\(/g, type: 'got' },
+    { pattern: /\bgot\s*\(\s*['"]/g, type: 'got' },
+    // node-fetch
+    { pattern: /nodeFetch\s*\(/g, type: 'node-fetch' },
+    // superagent
+    { pattern: /superagent\.(get|post|put|delete|patch)\s*\(/g, type: 'superagent' },
+    { pattern: /request\.(get|post|put|delete|patch)\s*\(/g, type: 'superagent' },
+    // undici (Node.js native)
+    { pattern: /undici\.(fetch|request|stream|pipeline|connect|upgrade)\s*\(/g, type: 'undici' },
+    // ky (browser/bun)
+    { pattern: /ky\.(get|post|put|delete|patch|head)\s*\(/g, type: 'ky' },
+    { pattern: /\bky\s*\(\s*['"]/g, type: 'ky' },
+    // wretch
+    { pattern: /wretch\s*\(\s*['"]/g, type: 'wretch' },
+    // needle (Node)
+    { pattern: /needle\.(get|post|put|delete|patch|request)\s*\(/g, type: 'needle' },
+    // socket.io client
+    { pattern: /io\s*\(\s*['"]/g, type: 'socket.io' },
+    { pattern: /socket\.(emit|on|connect)\s*\(/g, type: 'websocket' },
+    // WebSocket (browser/Node)
+    { pattern: /new\s+WebSocket\s*\(/g, type: 'websocket' },
+    // gRPC
+    { pattern: /\.grpc\b/g, type: 'grpc' },
+    // EventSource (SSE)
+    { pattern: /new\s+EventSource\s*\(/g, type: 'sse' },
+    // Legacy request module
+    { pattern: /require\s*\(\s*['"]request['"]\s*\)/g, type: 'request-module' }
   ];
 
   for (const { pattern, type } of networkPatterns) {

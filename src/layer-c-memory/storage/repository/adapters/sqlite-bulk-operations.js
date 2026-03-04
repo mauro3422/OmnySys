@@ -40,6 +40,13 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     const rawFilePath = firstAtom.file_path || firstAtom.file || firstAtom.filePath || 'unknown';
     const filePath = this._normalize(rawFilePath);
 
+    // Pre-check which atoms already exist (1 query for the whole file) for event type detection
+    const existingIds = new Set(
+      this.db.prepare(
+        `SELECT id FROM atoms WHERE file_path = ?`
+      ).all(filePath).map(r => r.id)
+    );
+
     // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
     connectionManager.transaction(() => {
       // Fase 1: Guardar todos los atomos
@@ -77,6 +84,28 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
       this.db.prepare(sql).run(...params);
     });
+
+    // Fase 4: Registrar atom_events (created/updated) — fuera de la transacción crítica
+    // para no impactar la performance del bulk save.
+    try {
+      const now = new Date().toISOString();
+      const eventStmt = this.db.prepare(`
+        INSERT OR IGNORE INTO atom_events (atom_id, event_type, impact_score, timestamp, source)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+
+      const logEvents = this.db.transaction((atomList) => {
+        for (const atom of atomList) {
+          const atomId = atom.id || `${this._normalize(atom.filePath || atom.file)}::${atom.name}`;
+          const eventType = existingIds.has(atomId) ? 'updated' : 'created';
+          eventStmt.run(atomId, eventType, atom.derived?.changeRisk || 0, now, 'bulk_save');
+        }
+      });
+      logEvents(atoms);
+    } catch (eventErr) {
+      // Non-critical — don't fail the save if event logging fails
+      this._logger.debug(`[SQLiteAdapter] atom_events logging skipped: ${eventErr.message}`);
+    }
 
     this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
 
