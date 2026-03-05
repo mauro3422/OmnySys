@@ -5,6 +5,7 @@ import * as tools from './tools.js';
 import * as call from './call.js';
 import * as setup from './setup.js';
 import * as setupTerminal from './setup-terminal.js';
+import * as refresh from './refresh.js';
 import * as help from './help.js';
 
 export const commands = {
@@ -15,6 +16,7 @@ export const commands = {
   call,
   setup,
   setupTerminal,
+  refresh,
   help
 };
 
@@ -30,9 +32,9 @@ export function findCommand(name) {
 export async function findCommandLogic(name) {
   const cmd = findCommand(name);
   if (!cmd) return null;
-  
+
   const logicName = Object.keys(cmd).find(k => k.endsWith('Logic'));
   if (!logicName) return null;
-  
+
   return cmd[logicName];
 }

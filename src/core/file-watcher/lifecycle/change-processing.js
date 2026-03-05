@@ -93,6 +93,11 @@ export async function processChange(change) {
         logger.warn(`Unknown change type: ${type}`);
     }
 
+    // 🧠 SEMANTIC INVALIDATION: Si cambia un detector o regla, refrescar patrones globalmente
+    if (this._isPatternLogicFile(filePath)) {
+      this._triggerGlobalPatternRefresh();
+    }
+
     await clearWatcherRuntimeError(this.rootPath, filePath);
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
@@ -105,5 +110,38 @@ export async function processChange(change) {
     this.emit('change:error', { filePath, error: error.message });
   } finally {
     this.processingFiles.delete(filePath);
+  }
+}
+
+/**
+ * Verifica si un archivo contiene lógica de detección de patrones
+ * @private
+ */
+export function _isPatternLogicFile(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  return (
+    normalized.includes('src/layer-a-static/pattern-detection/') ||
+    normalized.includes('src/layer-a-static/race-detector/') ||
+    normalized.includes('src/layer-a-static/parser/extractors/sql-analyzer')
+  );
+}
+
+/**
+ * Lanza un refresh global de patrones en segundo plano
+ * @private
+ */
+export async function _triggerGlobalPatternRefresh() {
+  logger.info('🧠 Detector logic change detected. Triggering GLOBAL pattern refresh...');
+
+  try {
+    // Importación dinámica para evitar dependencias circulares pesadas en el arranque
+    const { refreshPatterns } = await import('../../../layer-a-static/indexer.js');
+
+    // Ejecutar en segundo plano (sin await para no bloquear el watcher)
+    refreshPatterns(this.rootPath, this.options.verbose).catch(err => {
+      logger.error('❌ Background pattern refresh failed:', err);
+    });
+  } catch (error) {
+    logger.error('❌ Failed to load refreshPatterns for semantic invalidation:', error);
   }
 }

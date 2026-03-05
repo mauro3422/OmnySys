@@ -121,6 +121,62 @@ export async function indexProject(rootPath, options = {}) {
   return finalContext.systemMap;
 }
 
+/**
+ * Re-calcula patrones y métricas de calidad sin re-indexar/re-parsear archivos.
+ * Útil cuando cambian las reglas de los detectores.
+ */
+export async function refreshPatterns(rootPath, verbose = true) {
+  const absoluteRootPath = path.isAbsolute(rootPath) ? rootPath : path.resolve(process.cwd(), rootPath);
+  const repo = getRepository(absoluteRootPath);
+
+  if (verbose) logger.info('\n🔄 Refreshing patterns from existing database atoms...');
+
+  const runner = new PipelineRunner({ absoluteRootPath, verbose });
+
+  runner
+    .addPhase('1. Load State', async () => {
+      const systemMap = await repo.loadSystemMap();
+      const atoms = repo.getAll({ limit: 0 }); // Load all atoms
+
+      // Re-indexar átomos por archivo para que el analyzer los encuentre
+      const atomsByFile = {};
+      for (const atom of atoms) {
+        if (!atomsByFile[atom.file_path]) atomsByFile[atom.file_path] = { atoms: [], atomCount: 0 };
+        atomsByFile[atom.file_path].atoms.push(atom);
+        atomsByFile[atom.file_path].atomCount++;
+      }
+
+      return { systemMap, atomsByFile };
+    })
+    .addPhase('2. Re-run Quality Analysis', async (ctx) => {
+      const { generateAnalysisReport } = await import('./analyzer.js');
+      const { enhanceSystemMap } = await import('./pipeline/enhancers/index.js');
+
+      // Pasar atomsIndex (atomsByFile) para evitar re-análisis molecular si no es necesario,
+      // pero aquí forzamos la reconstrucción de los hallazgos.
+      const [analysisReport, enhancedSystemMap] = await Promise.all([
+        generateAnalysisReport(ctx.systemMap),
+        enhanceSystemMap(ctx.absoluteRootPath, ctx.atomsByFile, ctx.systemMap, ctx.verbose)
+      ]);
+
+      return { analysisReport, enhancedSystemMap };
+    })
+    .addPhase('3. Persist Findings', async (ctx) => {
+      await saveEnhancedSystemMap(ctx.enhancedSystemMap, ctx.verbose, ctx.absoluteRootPath);
+
+      if (ctx.verbose) {
+        printSummary({
+          systemMap: ctx.systemMap,
+          analysisReport: ctx.analysisReport,
+          enhancedSystemMap: ctx.enhancedSystemMap
+        });
+      }
+    });
+
+  const finalContext = await runner.run(verbose);
+  return finalContext.enhancedSystemMap;
+}
+
 // CLI Support
 const isMainModule = process.argv[1]?.includes('indexer.js') || false;
 if (isMainModule) {
