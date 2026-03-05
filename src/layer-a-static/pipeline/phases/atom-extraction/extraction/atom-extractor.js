@@ -20,7 +20,7 @@ import { semanticAnalyzer } from '#core/analysis/semantic-analyzer/index.js';
 
 /**
  * Extract metadata for all atoms from file info
- * @param {Object} fileInfo - Parsed file info with functions
+ * @param {Object} fileInfo - Parsed file info with atoms
  * @param {string} code - Source code
  * @param {Object} fileMetadata - File-level metadata
  * @param {string} filePath - File path
@@ -29,41 +29,36 @@ import { semanticAnalyzer } from '#core/analysis/semantic-analyzer/index.js';
  */
 export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extractionDepth = 'deep') {
   const atoms = [];
-
   const fileImports = fileInfo.imports || [];
 
-  const functionAtoms = await Promise.all(
-    (fileInfo.functions || []).map(async (functionInfo) => {
-      const functionCode = extractFunctionCode(code, functionInfo);
-      return extractAtomMetadata(functionInfo, functionCode, fileMetadata, filePath, fileImports, code, extractionDepth);
+  // 1. Procesar Átomos Base (Funciones, Clases, Variables, SQL)
+  const baseAtoms = await Promise.all(
+    (fileInfo.atoms || []).map(async (atomInfo) => {
+      // Si ya es un átomo completo (como los de SQL), lo devolvemos tal cual
+      if (atomInfo.type === 'sql_query') return atomInfo;
+
+      // Para el resto (JS/TS), extraemos código y metadatos profundos
+      const atomCode = atomInfo.type === 'function' || atomInfo.type === 'method'
+        ? extractFunctionCode(code, atomInfo)
+        : code.split('\n').slice((atomInfo.lineStart || 1) - 1, atomInfo.lineEnd || atomInfo.lineStart || 1).join('\n'); // Extraer por líneas
+
+      return extractAtomMetadata(atomInfo, atomCode, fileMetadata, filePath, fileImports, code, extractionDepth);
     })
   );
-  atoms.push(...functionAtoms);
+  atoms.push(...baseAtoms);
 
-
-  const constantAtoms = (fileInfo.constantExports || []).map(constInfo => {
-    return buildVariableAtom(constInfo, filePath, 'constant', fileImports, extractionDepth);
-  });
-  atoms.push(...constantAtoms);
-
-  const objectAtoms = (fileInfo.objectExports || []).map(objInfo => {
-    return buildVariableAtom(objInfo, filePath, 'config', fileImports, extractionDepth);
-  });
-  atoms.push(...objectAtoms);
-
-  // Propagate SQL queries extracted by the tree-sitter-sql injection pass
-  // Also resolve parent JS atom by line-range containment (in memory, no DB needed)
-  const sqlAtoms = (fileInfo.definitions || []).filter(def => def.type === 'sql_query');
+  // 2. Propagar SQL queries y resolver jerarquía (parent_atom_id)
+  const sqlAtoms = atoms.filter(def => def.type === 'sql_query');
   for (const sqlAtom of sqlAtoms) {
     const sqlLine = sqlAtom.lineStart || (sqlAtom._meta && sqlAtom._meta.line_start) || 0;
     if (sqlLine > 0) {
-      // Find the smallest enclosing function atom
+      // Encontrar el átomo padre que lo contiene (el más pequeño que lo encierre)
       let bestParent = null;
       let bestSize = Infinity;
       for (const candidate of atoms) {
         if (candidate.type === 'sql_query') continue;
-        const cStart = candidate.line || candidate.lineStart || 0;
-        const cEnd = candidate.endLine || candidate.lineEnd || 0;
+        const cStart = candidate.lineStart || candidate.line || 0;
+        const cEnd = candidate.lineEnd || candidate.endLine || 0;
         if (cStart <= sqlLine && cEnd >= sqlLine) {
           const size = cEnd - cStart;
           if (size < bestSize) { bestSize = size; bestParent = candidate; }
@@ -74,10 +69,8 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
         sqlAtom._meta.parent_atom_name = bestParent.name || null;
       }
     }
-    // FIX: Evitar deadlock en Phase 2 para los átomos SQL nativos
     sqlAtom.isPhase2Complete = extractionDepth !== 'structural';
   }
-  atoms.push(...sqlAtoms);
 
   return atoms;
 }

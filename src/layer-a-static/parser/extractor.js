@@ -60,17 +60,21 @@ export function extractFileInfo(tree, code, filePath) {
     const { functions, definitions } = extractFunctions(root, code, filePath, exportedNames);
     fileInfo.functions = functions;
     fileInfo.definitions = definitions;
+    fileInfo.atoms = [...(functions || [])];
 
     // 5. Classes
-    extractClasses(root, code, fileInfo.definitions);
+    const classAtoms = extractClasses(root, code, filePath, exportedNames);
+    fileInfo.atoms.push(...classAtoms);
+    fileInfo.definitions.push(...classAtoms.map(a => ({ type: 'class', name: a.name, className: a.className, params: 0 })));
 
     // 6. Identifiers
     extractIdentifierRefs(root, code, fileInfo);
 
     // 7. Constants and Variables (ESM + Global)
-    const { constantExports, objectExports } = extractVariables(root, code, exportedNames);
-    fileInfo.constantExports = constantExports;
-    fileInfo.objectExports = objectExports;
+    const variableAtoms = extractVariables(root, code, filePath, exportedNames);
+    fileInfo.atoms.push(...variableAtoms);
+    fileInfo.constantExports = variableAtoms.filter(a => a._meta.value_type !== 'object');
+    fileInfo.objectExports = variableAtoms.filter(a => a._meta.value_type === 'object');
 
     // 8. Top-level calls (fuera de funciones)
     const topLevelCalls = [];

@@ -31,7 +31,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
       SELECT name, dna_json, lines_of_code
       FROM atoms
       WHERE file_path = ?
-        AND dna_json IS NOT NULL AND dna_json != ''
+        AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
         AND atom_type IN ('function', 'method', 'arrow', 'class')
         AND (lines_of_code IS NULL OR lines_of_code >= ?)
         AND (is_removed IS NULL OR is_removed = 0)

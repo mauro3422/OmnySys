@@ -1,6 +1,8 @@
 import { indexProject } from '#layer-a/indexer.js';
 import { resolveProjectPath } from '../utils/paths.js';
-import { showHelp } from '../help.js';
+import { log } from '../utils/logger.js';
+
+export const aliases = ['analyze', 'index'];
 
 export async function analyzeLogic(projectPath, options = {}) {
   const absolutePath = resolveProjectPath(projectPath);
@@ -44,14 +46,15 @@ export async function analyzeLogic(projectPath, options = {}) {
   }
 }
 
-export async function analyze(projectPath, options = {}) {
-  const result = await analyzeLogic(projectPath, { ...options, exitOnComplete: false });
-  if (options.exitOnComplete !== false) {
-    process.exit(result.exitCode);
-    return;
+export async function execute(projectPath) {
+  const absolutePath = resolveProjectPath(projectPath);
+  log(`Starting analysis for: ${absolutePath}`, 'loading');
+
+  const result = await analyzeLogic(absolutePath, { verbose: true });
+
+  if (result.success) {
+    log('Analysis complete!', 'success');
+  } else {
+    log(`Analysis failed: ${result.error}`, 'error');
   }
-  if (!result.success) {
-    throw new Error(result.error);
-  }
-  return result;
 }

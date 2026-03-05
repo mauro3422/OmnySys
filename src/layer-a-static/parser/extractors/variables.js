@@ -1,20 +1,19 @@
-import { walk, text, startLine } from './utils.js';
+import { walk, text, AtomBuilder } from './utils.js';
 
 /**
- * Extrae constantes y variables globales (incluyendo exports)
+ * Extrae constantes y variables globales convirtiéndolas en Átomos.
  * 
  * @param {import('tree-sitter').SyntaxNode} root - Nodo raíz
  * @param {string} code - Código fuente
+ * @param {string} filePath - Path del archivo
  * @param {Set<string>} exportedNames - Nombres de símbolos exportados
- * @returns {Object} { constantExports, objectExports }
+ * @returns {Object[]} Lista de átomos de variables
  */
-export function extractVariables(root, code, exportedNames) {
-    const constantExports = [];
-    const objectExports = [];
+export function extractVariables(root, code, filePath, exportedNames) {
+    const builder = new AtomBuilder(filePath);
+    const variableAtoms = [];
 
-    // Buscamos declaraciones de variables a nivel raíz (o dentro de export_statement)
     walk(root, ['lexical_declaration', 'variable_declaration'], (node) => {
-        // Solo procesamos si el padre es el root o un export_statement
         const parentType = node.parent?.type;
         const isTopLevel = parentType === 'program' || parentType === 'export_statement';
         if (!isTopLevel) return;
@@ -25,24 +24,17 @@ export function extractVariables(root, code, exportedNames) {
 
             const name = text(nameNode, code);
             const isExported = exportedNames.has(name);
-
             const valueNode = decl.childForFieldName('value');
             const isObject = valueNode && valueNode.type === 'object';
 
-            const varInfo = {
-                name,
-                line: startLine(decl),
-                isExported: isExported,
-                valueType: isObject ? 'object' : 'unknown'
-            };
+            const atom = builder.createAtom(name, 'variable', decl, {
+                isExported,
+                value_type: isObject ? 'object' : 'unknown',
+            });
 
-            if (isObject) {
-                objectExports.push(varInfo);
-            } else {
-                constantExports.push(varInfo);
-            }
+            variableAtoms.push(atom);
         });
     });
 
-    return { constantExports, objectExports };
+    return variableAtoms;
 }

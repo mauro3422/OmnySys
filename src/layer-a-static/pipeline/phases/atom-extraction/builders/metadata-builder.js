@@ -122,9 +122,9 @@ export function buildAtomMetadata({
 
   return {
     // Identity
-    id: `${filePath}::${functionInfo.fullName || functionInfo.name}`,
+    id: functionInfo.id || `${filePath}::${functionInfo.fullName || functionInfo.name}`,
     name: functionInfo.name,
-    type: 'atom',
+    type: functionInfo.type || 'atom',
     filePath,
     line: functionInfo.line,
     endLine: functionInfo.endLine,

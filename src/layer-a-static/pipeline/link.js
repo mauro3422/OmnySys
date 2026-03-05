@@ -35,7 +35,7 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     try {
         const timerFunc = startTimer('6b. Function calledBy links');
         if (verbose) logger.info('🔗 Building cross-file calledBy index...');
-        const { updatedAtoms } = await linkFunctionCalledBy(allAtoms, absoluteRootPath, index, verbose);
+        const { updatedAtoms } = await linkFunctionCalledBy(allAtoms, parsedFiles, absoluteRootPath, index, verbose);
         updatedAtoms.forEach(a => modifiedAtoms.add(a));
         timerFunc.end(verbose);
     } catch (err) {

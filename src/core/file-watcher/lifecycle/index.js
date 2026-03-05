@@ -10,5 +10,5 @@
 export { initialize, loadCurrentState } from './initialization.js';
 export { startWatching, notifyChange } from './watching.js';
 export { _processWithBatchProcessor, _processBatchChanges } from './batch-processing.js';
-export { processPendingChanges, processChange } from './change-processing.js';
+export { processPendingChanges, processChange, _isPatternLogicFile, _triggerGlobalPatternRefresh } from './change-processing.js';
 export { stop } from './shutdown.js';

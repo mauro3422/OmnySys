@@ -25,5 +25,7 @@ export {
   _processBatchChanges,
   processPendingChanges,
   processChange,
+  _isPatternLogicFile,
+  _triggerGlobalPatternRefresh,
   stop
 } from './lifecycle/index.js';

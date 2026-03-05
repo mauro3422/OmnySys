@@ -209,7 +209,16 @@ export function extractSideEffects(code) {
     // EventSource (SSE)
     { pattern: /new\s+EventSource\s*\(/g, type: 'sse' },
     // Legacy request module
-    { pattern: /require\s*\(\s*['"]request['"]\s*\)/g, type: 'request-module' }
+    { pattern: /require\s*\(\s*['"]request['"]\s*\)/g, type: 'request-module' },
+    // --- INFRASTRUCTURE (Express / Node) ---
+    { pattern: /express\s*\(/g, type: 'express-init' },
+    { pattern: /\.(get|post|put|delete|patch|use|all|route|listen|listen|set|engine)\s*\(/g, type: 'express-app' },
+    { pattern: /http\.createServer\s*\(/g, type: 'node-http-server' },
+    { pattern: /https\.createServer\s*\(/g, type: 'node-https-server' },
+    { pattern: /process\.env\.PORT/g, type: 'network-env' },
+    { pattern: /\.listen\s*\(/g, type: 'server-listen' },
+    { pattern: /stream\.pipeline\s*\(/g, type: 'node-stream' },
+    { pattern: /net\.connect\s*\(/g, type: 'node-net' }
   ];
 
   for (const { pattern, type } of networkPatterns) {

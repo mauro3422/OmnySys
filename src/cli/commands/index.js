@@ -6,6 +6,7 @@ import * as call from './call.js';
 import * as setup from './setup.js';
 import * as setupTerminal from './setup-terminal.js';
 import * as refresh from './refresh.js';
+import * as analyze from './analyze.js';
 import * as help from './help.js';
 
 export const commands = {
@@ -17,6 +18,7 @@ export const commands = {
   setup,
   setupTerminal,
   refresh,
+  analyze,
   help
 };
 

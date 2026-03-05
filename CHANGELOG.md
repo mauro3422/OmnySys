@@ -4,8 +4,9 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.84 - Sprint Q/A: Deuda Técnica Completa](changelog/v0.9.84-qa-technical-debt-complete.md)** - **✅ Refactor final de Type Detector y Semantic Queries. Sistema validado en Grado A (95/100).** (Latest)
-- **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelog/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data**
+- **[v0.9.88 - Sprint 8: Integridad y Detección de Infraestructura](changelogs/v0.9.88.md)** - **✅ 687 puntos de red detectados, 0 falsos positivos de duplicados, Watcher resilienciado.** (Latest)
+- **[v0.9.84 - Sprint Q/A: Deuda Técnica Completa](changelogs/v0.9.84-qa-technical-debt-complete.md)** - **✅ Refactor final de Type Detector y Semantic Queries. Sistema validado en Grado A (95/100).**
+- **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelogs/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data**
 - **[v0.9.82 - SQL Health Eradication](changelog/v0.9.82-health-eradication.md)** - **✅ Eliminación de N+1 queries y purificado de las 37 deudas técnicas SQL**
 - **[v0.9.81 - Algorithmic O(n²) Eradication](changelog/v0.9.81-algorithmic-eradication.md)** - **✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying**
 - **[v0.9.80 - SQL Optimization & Schema Drift Extinction](changelog/v0.9.80-sql-optimization.md)** - **✅ Schema Drift False Positives eradicated, Window Functions optimization**
@@ -46,7 +47,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.84]** | 2026-03-04 | **🛡️ Version 0.9.84: Sprint Q/A & Technical Debt Complete — ✅ Refactored detectTypeAndName (C=51→12) & SemanticQueryTool (C=41→15). 0 High Risk Files.** (Latest) |
+| **[0.9.88]** | 2026-03-05 | **🛡️ Version 0.9.88: Sprint 8 — ✅ 687 puntos de red detectados, erradicación de 8k+ falsos positivos de duplicados en el Watcher y resolución de imports huérfanos del call graph.** (Latest) |
+| **[0.9.84]** | 2026-03-04 | **🛡️ Version 0.9.84: Sprint Q/A & Technical Debt Complete — ✅ Refactored detectTypeAndName (C=51→12) & SemanticQueryTool (C=41→15). 0 High Risk Files.** |
 | **[0.9.83]** | 2026-03-04 | **🛡️ Daemon Stability & Semantic Pipeline Fix — ✅ 7 bugs fixed: restart_server fast path (<1s), 264 semantic connections persisted, NOT NULL transaction cascade fixed** |
 | **[0.9.81]** | 2026-03-03 | **🚀 Algorithmic O(n²) Eradication — ✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** |
 | **[0.9.80]** | 2026-03-03 | **🚀 SQL Optimization & Schema Drift Extinction — ✅ Window functions refactoring for N+1 queries, SQLite JSON metadata parsing fixed** |

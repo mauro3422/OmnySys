@@ -12,6 +12,39 @@ export function getFileId(filePath) {
         .replace(/^_|_$/g, '') || 'unknown';
 }
 
+/**
+ * Clase para estandarizar la creación de Átomos en OmnySys.
+ */
+export class AtomBuilder {
+    constructor(filePath) {
+        this.filePath = filePath;
+        this.fileId = getFileId(filePath);
+    }
+
+    createAtom(name, type, node, meta = {}) {
+        return {
+            id: `${this.fileId}::${name}_L${startLine(node)}`,
+            name,
+            type,
+            lineStart: startLine(node),
+            lineEnd: endLine(node),
+            lines_of_code: (endLine(node) - startLine(node)) + 1,
+            complexity: 1, // Default, será actualizado por complexity-strategy
+            parameter_count: meta.parameter_count || 0,
+            calls: meta.calls || [],
+            calledBy: [],
+            className: meta.className || null,
+            externalCallCount: 0,
+            isExported: meta.isExported || false,
+            isAsync: meta.isAsync || false,
+            isDeadCode: false,
+            extracted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            _meta: meta
+        };
+    }
+}
+
 export function text(node, code) {
     return code.slice(node.startIndex, node.endIndex);
 }
@@ -94,5 +127,4 @@ export const FUNCTION_NODE_TYPES = [
     'method_definition',
     'generator_function_declaration',
     'generator_function',
-    'class_declaration',
 ];
