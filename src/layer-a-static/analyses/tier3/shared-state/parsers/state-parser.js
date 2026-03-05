@@ -4,7 +4,7 @@
 
 import { createLogger } from '../../../../../utils/logger.js';
 import { isPartOfAssignmentLeft } from '../utils/index.js';
-import { startLine, text } from '../../../../extractors/data-flow/utils/ts-ast-utils.js';
+import { startLine, text, getMemberPath } from '../../../../extractors/data-flow/utils/ts-ast-utils.js';
 import { getTree } from '../../../../parser/index.js';
 
 const logger = createLogger('OmnySys:shared:state:parser');
@@ -52,15 +52,22 @@ export async function detectGlobalState(code, filePath = '') {
         }
 
         if (nodeType === 'member_expression') {
-          const objectNode = node.childForFieldName('object');
-          const propertyNode = node.childForFieldName('property');
+          const node = cursor.currentNode;
+          const fullPath = getMemberPath(node, code);
 
-          if (objectNode && propertyNode) {
-            const objName = text(objectNode, code);
-            const propName = text(propertyNode, code);
+          if (fullPath) {
+            const parts = fullPath.split('.');
+            const root = parts[0];
 
-            if (objName === 'window' || objName === 'global' || objName === 'globalThis') {
-              const fullRef = `${objName}.${propName}`;
+            const isGlobal = root === 'window' || root === 'global' || root === 'globalThis' ||
+              (root === 'process' && parts[1] === 'env');
+
+            if (isGlobal) {
+              // Si es process.env.KEY, extraemos el KEY para propName. De lo contrario usamos parts[1]
+              const objName = root === 'process' ? 'process.env' : root;
+              const propName = root === 'process' ? (parts[2] || 'env') : (parts[1] || 'unknown');
+              const fullRef = fullPath;
+
               let accessType = isPartOfAssignmentLeft(node) ? 'write' : 'read';
 
               const location = {

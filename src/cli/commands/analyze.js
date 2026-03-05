@@ -1,6 +1,6 @@
 import { indexProject } from '#layer-a/indexer.js';
 import { resolveProjectPath } from '../utils/paths.js';
-import { log } from '../utils/logger.js';
+import { log, showHelp } from '../utils/logger.js';
 
 export const aliases = ['analyze', 'index'];
 

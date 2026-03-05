@@ -5,6 +5,10 @@ import { startMCP } from '../handlers/process-manager.js';
 
 export const aliases = ['start', 'up'];
 
+/**
+ * @omny_side_effect spawns_daemon, restarts_daemon
+ * @description Inicia o reinicia el daemon MCP HTTP.
+ */
 export async function upLogic(options = {}) {
   const { silent = false } = options;
 

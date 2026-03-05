@@ -138,6 +138,24 @@ export class SessionManager {
             logger.error(`Failed to cleanup sessions: ${err.message}`);
         }
     }
+
+    /**
+     * Retrieves all active sessions from the database
+     * @returns {Array<Object>}
+     */
+    getAllSessions() {
+        if (!this.statements) return [];
+        try {
+            // Lazy-init the statement if not present to avoid breaking initialize()
+            if (!this.statements.getAll) {
+                this.statements.getAll = this.db.prepare('SELECT * FROM mcp_sessions');
+            }
+            return this.statements.getAll.all();
+        } catch (err) {
+            logger.error(`Failed to get all sessions: ${err.message}`);
+            return [];
+        }
+    }
 }
 
 // Export singleton

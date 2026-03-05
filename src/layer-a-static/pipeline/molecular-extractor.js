@@ -101,7 +101,7 @@ export class MolecularExtractionPipeline {
         logger.debug(`Phase ${phase.name} completed`);
       } catch (error) {
         logger.warn(`Phase ${phase.name} failed: ${error.message}`);
-        
+
         // Try to handle error gracefully
         if (phase.handleError) {
           context = phase.handleError(error, context);
@@ -111,6 +111,7 @@ export class MolecularExtractionPipeline {
       }
     }
 
+    console.log(`DEBUG: Final Context atoms count: ${context.atoms?.length || 0}`);
     return this.buildResult(context);
   }
 
@@ -142,7 +143,7 @@ export async function analyzeProjectSystem(projectRoot, allMolecules) {
 
   try {
     const { analyzeModules, enrichMoleculesWithSystemContext } = await import('../module-system/index.js');
-    
+
     const moduleData = analyzeModules(projectRoot, allMolecules);
     const enrichedMolecules = enrichMoleculesWithSystemContext(allMolecules, moduleData);
 
@@ -171,7 +172,7 @@ export async function detectRaceConditions(projectData) {
 
   try {
     const { analyzeProjectRaces, enrichProjectWithRaces } = await import('../race-detector/integration.js');
-    
+
     const raceResults = await analyzeProjectRaces(projectData);
     const enrichedProjectData = enrichProjectWithRaces(projectData, raceResults);
 

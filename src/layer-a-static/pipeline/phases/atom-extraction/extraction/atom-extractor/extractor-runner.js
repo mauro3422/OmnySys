@@ -30,7 +30,7 @@ export async function runAtomExtractors(ctx) {
         fn = await loadExtractor(entry);
       }
       const args = entry.getArgs(ctx);
-      results[entry.name] = fn(...args);
+      results[entry.name] = await fn(...args);
 
     } catch (err) {
       console.warn(`Extractor "${entry.name}" failed for ${ctx.filePath || 'unknown'}: ${err.message}`);

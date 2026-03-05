@@ -209,7 +209,8 @@ export function buildAtomMetadata({
     extractedAt: new Date().toISOString(),
     _meta: {
       ...buildMeta(dataFlowV2),
-      identifierRefs: functionInfo.identifierRefs || []
+      identifierRefs: functionInfo.identifierRefs || [],
+      daemonSideEffects: jsdocMatch?.tags?.filter(t => t.title === 'omny_side_effect').map(t => t.content) || []
     }
   };
 }

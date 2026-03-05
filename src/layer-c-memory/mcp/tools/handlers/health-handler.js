@@ -32,8 +32,16 @@ export async function handleHealthMetrics(tool, projectPath) {
         `).get();
 
         if (row) {
+            // Contar relaciones semánticas totales (Sprint 10)
+            const semanticRow = tool.repo.db.prepare(`
+                SELECT COUNT(*) as total
+                FROM atom_relations
+                WHERE relation_type IN ('shares_state', 'emits', 'listens')
+            `).get();
+
             physics = {
                 totalAtoms: row.total || 0,
+                totalSemanticLinks: semanticRow?.total || 0,
                 avgFragility: Math.round((row.avg_fragility || 0) * 1000) / 1000,
                 avgCoupling: Math.round((row.avg_coupling || 0) * 1000) / 1000,
                 avgCohesion: Math.round((row.avg_cohesion || 0) * 1000) / 1000,
@@ -42,7 +50,8 @@ export async function handleHealthMetrics(tool, projectPath) {
                 // Gravity ≈ importance × centrality
                 averageGravity: Math.round((row.avg_importance || 0) * (row.avg_centrality || 0) * 1000) / 1000,
                 // Reactivity ≈ fragility × coupling
-                averageReactivity: Math.round((row.avg_fragility || 0) * (row.avg_coupling || 0) * 1000) / 1000
+                averageReactivity: Math.round((row.avg_fragility || 0) * (row.avg_coupling || 0) * 1000) / 1000,
+                semanticBadge: (semanticRow?.total || 0) > 50 ? 'RADIOACTIVE' : 'STABLE'
             };
         }
     }

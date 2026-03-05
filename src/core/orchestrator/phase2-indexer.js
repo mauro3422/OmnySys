@@ -148,8 +148,17 @@ export class Phase2Indexer {
                     const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
                     await persistGraphMetrics(this.projectPath);
                     logger.info('  📊 Phase 2 complete — final graph metrics persisted');
+
+                    // NEW: Build Shared State relations across entire project now that deep scan is fully complete
+                    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+                    const repo = getRepository(this.projectPath);
+                    const allAtoms = repo.getAll({ limit: 0 });
+                    if (allAtoms && allAtoms.length > 0) {
+                        const { saveSharedStateRelations } = await import('#layer-a/pipeline/link.js');
+                        await saveSharedStateRelations(allAtoms, this.projectPath, true);
+                    }
                 } catch (e) {
-                    logger.debug('  ⚠️  Post-Phase2 graph metrics failed:', e.message);
+                    logger.debug('  ⚠️  Post-Phase2 completion tasks failed:', e.message);
                 }
             })();
         }

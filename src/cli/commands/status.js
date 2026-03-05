@@ -3,6 +3,10 @@ import { log } from '../utils/logger.js';
 
 export const aliases = ['status'];
 
+/**
+ * @omny_side_effect reads_daemon_status
+ * @description Consulta el estado actual del daemon y las sesiones activas.
+ */
 export async function statusLogic(options = {}) {
   const { silent = false } = options;
 

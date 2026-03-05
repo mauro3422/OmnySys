@@ -38,7 +38,7 @@ function log(msg) {
 async function checkDaemon() {
     const { default: http } = await import('http');
     return new Promise((resolve) => {
-        const req = http.get(DAEMON_HEALTH, { timeout: 2000 }, (res) => {
+        const req = http.get(DAEMON_HEALTH, { timeout: 5000 }, (res) => {
             let data = '';
             res.on('data', (c) => (data += c));
             res.on('end', () => {

@@ -135,6 +135,14 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     if (verbose) logger.info('🔗 Saving atom relations to database...');
     await saveAtomRelations(allAtoms, absoluteRootPath, verbose);
     timerRelations.end(verbose);
+
+    // 🚀 NEW: 3.10: Guardar relaciones de estado compartido (Sprint 10)
+    const timerSharedState = startTimer('6h. Save shared state relations');
+    if (verbose) logger.info('🧠 Linking shared state dependencies...');
+    await saveSharedStateRelations(allAtoms, absoluteRootPath, verbose);
+    timerSharedState.end(verbose);
+
+    timerTotal.end(verbose);
 }
 
 /**
@@ -157,7 +165,7 @@ export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
         }
     }
 
-    const timerRelations = startTimer('Bulk save relations');
+    const timerRelationsLog = startTimer('Bulk save relations');
 
     if (relationsToSave.length > 0) {
         if (repo.saveRelationsBulk) {
@@ -179,7 +187,7 @@ export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
         }
     }
 
-    timerRelations.end(verbose);
+    timerRelationsLog.end(verbose);
 
     // 🔗 EXECUTES_SQL RELATIONS: Link parent JS atoms → SQL query atoms
     try {
@@ -213,6 +221,130 @@ export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
 
     if (verbose) {
         logger.info(`  ✓ Saved ${relationsToSave.length} atom relations\n`);
+    }
+}
+
+/**
+ * Detecta y guarda relaciones de estado compartido entre átomos (global.*, process.env.*)
+ */
+export async function saveSharedStateRelations(allAtoms, absoluteRootPath, verbose) {
+    const repo = getRepository(absoluteRootPath);
+    const db = repo.db || repo.getDatabase?.();
+    if (!db) {
+        if (verbose) logger.warn('  ⚠️ Repository/DB not available for shared state links');
+        return;
+    }
+
+    await _processSharedStateLinkage(db, allAtoms, verbose);
+}
+
+/**
+ * Detecta y guarda relaciones de estado compartido de forma incremental.
+ * Útil para el FileWatcher cuando solo cambia un archivo limitado.
+ */
+export async function saveSharedStateRelationsIncrementally(targetAtoms, absoluteRootPath, verbose) {
+    const repo = getRepository(absoluteRootPath);
+    const db = repo.db || repo.getDatabase?.();
+    if (!db) return;
+
+    const sharedTargetAtoms = targetAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
+
+    // 1. Limpiar relaciones antiguas de los átomos objetivo para evitar duplicados o huérfanos
+    const deleteStmt = db.prepare(`DELETE FROM atom_relations WHERE (source_id = ? OR target_id = ?) AND relation_type = 'shares_state'`);
+    db.transaction(() => {
+        for (const atom of targetAtoms) deleteStmt.run(atom.id, atom.id);
+    })();
+
+    if (sharedTargetAtoms.length === 0) return;
+
+    // 2. Cargar otros átomos que tienen estado compartido desde la DB para cruzar referencias
+    // Filtramos por shared_state_json poblado.
+    const rows = db.prepare(`
+        SELECT * FROM atoms 
+        WHERE shared_state_json IS NOT NULL 
+          AND shared_state_json != '[]' 
+          AND shared_state_json != ''
+    `).all();
+
+    const { rowToAtom } = await import('#layer-c/storage/repository/adapters/helpers/converters.js');
+    const existingSharedAtoms = rows.map(rowToAtom);
+
+    // 3. Mezclar: Átomos frescos del archivo cambiado + átomos conocidos del resto del proyecto
+    const targetIds = new Set(targetAtoms.map(a => a.id));
+    const allRelevantAtoms = [
+        ...existingSharedAtoms.filter(a => !targetIds.has(a.id)),
+        ...targetAtoms
+    ];
+
+    // 4. Procesar vinculación (aprovechando la lógica común)
+    await _processSharedStateLinkage(db, allRelevantAtoms, verbose);
+}
+
+/**
+ * Lógica interna común para procesar el mapa de estado compartido
+ * @private
+ */
+async function _processSharedStateLinkage(db, allAtoms, verbose) {
+    const sharedAtoms = allAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
+    const stateMap = new Map();
+
+    for (const atom of sharedAtoms) {
+        for (const access of atom.sharedStateAccess) {
+            const key = access.fullReference || `${access.objectName}.${access.propName}`;
+            if (!stateMap.has(key)) stateMap.set(key, []);
+            stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
+        }
+    }
+
+    const relations = [];
+    for (const [key, accesses] of stateMap.entries()) {
+        const writers = accesses.filter(a => a.type === 'write');
+        const readers = accesses.filter(a => a.type === 'read');
+
+        // Link writers to readers
+        for (const writer of writers) {
+            for (const reader of readers) {
+                if (writer.id === reader.id) continue;
+                relations.push({
+                    sourceId: writer.id,
+                    targetId: reader.id,
+                    type: 'shares_state',
+                    weight: 1.0,
+                    line: writer.line,
+                    context: JSON.stringify({ key, direction: 'writer_to_reader' })
+                });
+            }
+        }
+
+        // Link multiple writers together
+        for (let i = 0; i < writers.length; i++) {
+            for (let j = i + 1; j < writers.length; j++) {
+                relations.push({
+                    sourceId: writers[i].id,
+                    targetId: writers[j].id,
+                    type: 'shares_state',
+                    weight: 0.8,
+                    line: writers[i].line,
+                    context: JSON.stringify({ key, direction: 'co_writers' })
+                });
+            }
+        }
+    }
+
+    if (relations.length > 0) {
+        const insertRelation = db.prepare(`
+            INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `);
+
+        const insertBatch = db.transaction((rels) => {
+            for (const r of rels) {
+                insertRelation.run(r.sourceId, r.targetId, r.type, r.weight, r.line, r.context);
+            }
+        });
+
+        insertBatch(relations);
+        if (verbose) logger.info(`  ✓ ${relations.length} shares_state relations saved (AI Impact Map ready)`);
     }
 }
 

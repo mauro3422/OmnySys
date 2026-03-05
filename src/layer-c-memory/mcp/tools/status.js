@@ -71,6 +71,55 @@ export async function get_server_status(args, context) {
     status.cache = { status: 'not_ready', message: 'Cache is initializing' };
   }
 
+  // 🚀 SPRINT 10: Deep Daemon Vitals (AI-Centric)
+  status.nodeVitals = {
+    uptime: Math.round((Date.now() - server.startTime) / 1000),
+    memory: process.memoryUsage(),
+    activeHandles: (typeof process._getActiveHandles === 'function')
+      ? process._getActiveHandles().length
+      : 'N/A'
+  };
+
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    if (repo?.db) {
+      // Shared State Societies
+      const societies = repo.db.prepare(`
+        SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links 
+        FROM atom_relations 
+        WHERE relation_type = 'shares_state'
+      `).get();
+
+      const topStateKeys = repo.db.prepare(`
+        SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
+        FROM atom_relations 
+        WHERE relation_type = 'shares_state'
+        GROUP BY key
+        ORDER BY count DESC
+        LIMIT 5
+      `).all();
+
+      status.sharedState = {
+        activeSocietiesBadge: societies.actors > 0 ? 'RADIOACTIVE' : 'CLEAN',
+        actorCount: societies.actors,
+        totalLinks: societies.links,
+        topContentionKeys: topStateKeys
+      };
+
+      // MCP Session Health
+      const { sessionManager } = await import('../core/session-manager.js');
+      const persistentSessions = sessionManager.getAllSessions();
+      status.mcpSessions = {
+        totalActive: (server.sessions?.size || 0),
+        totalPersistent: Object.keys(persistentSessions).length,
+        health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
+      };
+    }
+  } catch (err) {
+    status.deepVitalsError = err.message;
+  }
+
   return status;
 }
 

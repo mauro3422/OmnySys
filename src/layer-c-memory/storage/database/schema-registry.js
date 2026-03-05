@@ -159,7 +159,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
       { name: 'source_id', type: 'TEXT', nullable: false, description: 'Átomo origen' },
       { name: 'target_id', type: 'TEXT', nullable: false, description: 'Átomo destino' },
-      { name: 'relation_type', type: 'TEXT', nullable: false, description: 'Tipo: calls, imports, depends, emits' },
+      { name: 'relation_type', type: 'TEXT', nullable: false, description: 'Tipo: calls, imports, depends, emits, shares_state' },
       { name: 'weight', type: 'REAL', default: 1.0, description: 'Peso de la relación' },
       { name: 'line_number', type: 'INTEGER', nullable: true, description: 'Línea donde ocurre' },
       { name: 'context_json', type: 'TEXT', nullable: true, description: 'Metadata adicional' },

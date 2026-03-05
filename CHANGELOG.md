@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.89 - Sprint 9: Daemon Stability & Session Persistence](changelogs/v0.9.89.md)** - **✅ Session Recovery (SQLite), Syntax Check Shield, 3 New Daemon Heuristics.** (Latest)
+- **[v0.9.90 - Sprint 10: Daemon Intelligence (AI-Centric)](changelogs/v0.9.90.md)** - **✅ Shared State Tracking, Resource Leak Detection, CLI-Daemon Protocol Mapping.** (Latest)
+- **[v0.9.89 - Sprint 9: Daemon Stability & Session Persistence](changelogs/v0.9.89.md)** - **✅ Session Recovery (SQLite), Syntax Check Shield, 3 New Daemon Heuristics.**
 - **[v0.9.88 - Sprint 8: Integridad y Detección de Infraestructura](changelogs/v0.9.88.md)** - **✅ 687 puntos de red detectados, 0 falsos positivos de duplicados, Watcher resilienciado.**
 - **[v0.9.84 - Sprint Q/A: Deuda Técnica Completa](changelogs/v0.9.84-qa-technical-debt-complete.md)** - **✅ Refactor final de Type Detector y Semantic Queries. Sistema validado en Grado A (95/100).**
 - **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelogs/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data**
@@ -48,7 +49,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.89]** | 2026-03-05 | **🛡️ Version 0.9.89: Sprint 9 — ✅ Persistencia de Sesiones MCP (SQLite), Escudo de Validación de Sintaxis, Heurísticas de Salud del Daemon.** (Latest) |
+| **[0.9.90]** | 2026-03-05 | **🧠 Version 0.9.90: Sprint 10 — ✅ Shared State Tracking, Detection of Node.js Resource Leaks, CLI-Daemon Protocol Mapping.** (Latest) |
+| **[0.9.89]** | 2026-03-05 | **🛡️ Version 0.9.89: Sprint 9 — ✅ Persistencia de Sesiones MCP (SQLite), Escudo de Validación de Sintaxis, Heurísticas de Salud del Daemon.** |
 | **[0.9.88]** | 2026-03-05 | **🛡️ Version 0.9.88: Sprint 8 — ✅ 687 puntos de red detectados, erradicación de 8k+ falsos positivos de duplicados.** |
 | **[0.9.84]** | 2026-03-04 | **🛡️ Version 0.9.84: Sprint Q/A & Technical Debt Complete — ✅ Refactored detectTypeAndName (C=51→12) & SemanticQueryTool (C=41→15). 0 High Risk Files.** |
 | **[0.9.83]** | 2026-03-04 | **🛡️ Daemon Stability & Semantic Pipeline Fix — ✅ 7 bugs fixed: restart_server fast path (<1s), 264 semantic connections persisted, NOT NULL transaction cascade fixed** |

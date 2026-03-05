@@ -8,8 +8,8 @@ export class ImpactMapStrategy {
         const fileData = await getFileAnalysis(projectPath, filePath);
         if (!fileData) throw new Error(`File ${filePath} not found in index`);
 
-        const directDeps = await getFileDependents(projectPath, filePath);
-        const transDeps = await getTransitiveDependents(projectPath, filePath);
+        const directDeps = await getFileDependents(projectPath, filePath, options);
+        const transDeps = await getTransitiveDependents(projectPath, filePath, options);
 
         const result = {
             file: filePath,

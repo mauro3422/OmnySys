@@ -32,20 +32,26 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
   const fileImports = fileInfo.imports || [];
 
   // 1. Procesar Átomos Base (Funciones, Clases, Variables, SQL)
+  console.log(`DEBUG: Found ${fileInfo.atoms?.length || 0} atoms to extract in ${filePath}`);
   const baseAtoms = await Promise.all(
     (fileInfo.atoms || []).map(async (atomInfo) => {
-      // Si ya es un átomo completo (como los de SQL), lo devolvemos tal cual
-      if (atomInfo.type === 'sql_query') return atomInfo;
+      try {
+        // Para el resto (JS/TS), extraemos código y metadatos profundos
+        const atomCode = atomInfo.type === 'function' || atomInfo.type === 'method'
+          ? extractFunctionCode(code, atomInfo)
+          : code.split('\n').slice((atomInfo.lineStart || 1) - 1, atomInfo.lineEnd || atomInfo.lineStart || 1).join('\n'); // Extraer por líneas
 
-      // Para el resto (JS/TS), extraemos código y metadatos profundos
-      const atomCode = atomInfo.type === 'function' || atomInfo.type === 'method'
-        ? extractFunctionCode(code, atomInfo)
-        : code.split('\n').slice((atomInfo.lineStart || 1) - 1, atomInfo.lineEnd || atomInfo.lineStart || 1).join('\n'); // Extraer por líneas
-
-      return extractAtomMetadata(atomInfo, atomCode, fileMetadata, filePath, fileImports, code, extractionDepth);
+        console.log(`DEBUG: Extracting metadata for atom: ${atomInfo.name}`);
+        const metadata = await extractAtomMetadata(atomInfo, atomCode, fileMetadata, filePath, fileImports, code, extractionDepth);
+        console.log(`DEBUG: Metadata extracted for: ${atomInfo.name}`);
+        return metadata;
+      } catch (err) {
+        console.error(`DEBUG: Failed to extract atom ${atomInfo.name}:`, err.message);
+        return null;
+      }
     })
   );
-  atoms.push(...baseAtoms);
+  atoms.push(...baseAtoms.filter(a => a !== null));
 
   // 2. Propagar SQL queries y resolver jerarquía (parent_atom_id)
   const sqlAtoms = atoms.filter(def => def.type === 'sql_query');

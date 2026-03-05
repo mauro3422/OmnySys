@@ -23,28 +23,28 @@ const FIELD_TO_TOOLS_MAP = {
   'purpose': ['detect_patterns', 'find_dead_code', 'get_function_details'],
   'complexity': ['detect_patterns', 'suggest_refactoring', 'get_health_metrics'],
   'linesOfCode': ['detect_patterns', 'architectural_debt', 'get_health_metrics'],
-  
+
   // Campos de grafo de llamadas
   'calledBy': ['get_call_graph', 'get_impact_map', 'detect_race_conditions'],
   'calls': ['get_call_graph', 'explain_value_flow', 'simulate_data_journey'],
-  
+
   // Campos de análisis avanzado
   'isAsync': ['get_async_analysis', 'detect_race_conditions'],
   'hasErrorHandling': ['detect_race_conditions', 'get_async_analysis'],
   'hasSideEffects': ['detect_race_conditions', 'explain_value_flow'],
-  
+
   // Campos de calidad
   'quality': ['get_health_metrics', 'suggest_refactoring'],
   'dna': ['detect_patterns', 'get_atom_schema'],
-  
+
   // Campos de tests
   'isTestCallback': ['detect_patterns', 'get_health_metrics'],
   'testCallbackType': ['detect_patterns', 'get_health_metrics'],
-  
+
   // Campos de conexiones
   'externalCalls': ['detect_race_conditions', 'get_risk_assessment'],
   'networkEndpoints': ['detect_race_conditions', 'get_risk_assessment'],
-  
+
   // Campos de flujo de datos
   'dataFlow': ['explain_value_flow', 'trace_variable_impact'],
   'inputs': ['explain_value_flow'],
@@ -58,17 +58,17 @@ const FIELD_TO_TOOLS_MAP = {
  */
 export function getAffectedCaches(changedFields) {
   const cachesToInvalidate = new Set();
-  
+
   for (const field of changedFields) {
     const affectedTools = FIELD_TO_TOOLS_MAP[field];
     if (affectedTools) {
       affectedTools.forEach(tool => cachesToInvalidate.add(tool));
     }
   }
-  
+
   // Siempre invalidar el caché general de átomos
   cachesToInvalidate.add('atoms');
-  
+
   return Array.from(cachesToInvalidate);
 }
 
@@ -77,13 +77,13 @@ export function getAffectedCaches(changedFields) {
  * 
  * @param {string} atomId - ID del átomo modificado
  * @param {Array<string>} changedFields - Campos que cambiaron
- * @param {Object} cacheManager - Instancia del cache manager (opcional)
+ * @param {string|Object} projectPathOrManager - Ruta del proyecto o instancia del cache manager
  */
-export async function invalidateAtomCaches(atomId, changedFields, cacheManager = null) {
+export async function invalidateAtomCaches(atomId, changedFields, projectPathOrManager = null) {
   if (!changedFields || changedFields.length === 0) {
     return { invalidated: [], skipped: true };
   }
-  
+
   const affectedCaches = getAffectedCaches(changedFields);
   const results = {
     atomId,
@@ -91,32 +91,44 @@ export async function invalidateAtomCaches(atomId, changedFields, cacheManager =
     fields: changedFields,
     timestamp: Date.now()
   };
-  
+
   try {
     // Obtener cache manager si no se proporcionó
-    const cache = cacheManager || getCacheManager();
-    
+    let cache;
+    if (projectPathOrManager && typeof projectPathOrManager === 'object') {
+      cache = projectPathOrManager;
+    } else {
+      // Si recibimos un string (path) o null, obtenemos el singleton (y esperamos el await)
+      cache = await getCacheManager(projectPathOrManager || process.cwd());
+    }
+
     for (const cacheName of affectedCaches) {
       try {
         // Invalidar entrada específica del átomo en el caché
         const cacheKey = `${cacheName}:${atomId}`;
-        await cache.invalidate?.(cacheKey);
-        
+        if (cache.invalidate) {
+          await cache.invalidate(cacheKey);
+        }
+
         // También invalidar cachés de patrones que incluyan este átomo
-        await cache.invalidatePattern?.(atomId);
-        
+        if (cache.invalidatePattern) {
+          await cache.invalidatePattern(atomId);
+        }
+
         results.invalidated.push(cacheName);
       } catch (err) {
         logger.debug(`Could not invalidate cache ${cacheName}:`, err.message);
       }
     }
-    
-    logger.debug(`🗑️ Invalidated caches for ${atomId}:`, results.invalidated.join(', '));
-    
+
+    if (results.invalidated.length > 0) {
+      logger.debug(`🗑️ Invalidated caches for ${atomId}: ${results.invalidated.join(', ')}`);
+    }
+
   } catch (error) {
-    logger.warn('Failed to invalidate caches:', error.message);
+    logger.warn(`Failed to invalidate caches for ${atomId}:`, error.message);
   }
-  
+
   return results;
 }
 
@@ -128,12 +140,12 @@ export async function invalidateAtomCaches(atomId, changedFields, cacheManager =
  */
 export async function invalidateMultipleAtoms(atomUpdates) {
   const results = [];
-  
+
   for (const update of atomUpdates) {
     const result = await invalidateAtomCaches(update.atomId, update.changedFields);
     results.push(result);
   }
-  
+
   return results;
 }
 
@@ -146,12 +158,12 @@ export async function invalidateMultipleAtoms(atomUpdates) {
  */
 export function getInvalidationStats(changedFields) {
   const affectedCaches = getAffectedCaches(changedFields);
-  
+
   return {
     fieldsChanged: changedFields.length,
     cachesAffected: affectedCaches.length,
     caches: affectedCaches,
-    efficiency: changedFields.length > 0 
+    efficiency: changedFields.length > 0
       ? (1 - (affectedCaches.length / Object.keys(FIELD_TO_TOOLS_MAP).length))
       : 1
   };

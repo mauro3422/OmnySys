@@ -219,6 +219,7 @@ async function executeMcpToolCall(request) {
 }
 
 async function handleMcpRequest(req, res) {
+  let transport;
   try {
     const rawSessionId = req.headers['mcp-session-id'];
     const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
@@ -282,6 +283,16 @@ async function handleMcpRequest(req, res) {
           logger.info(`MCP HTTP session initialized: ${newSessionId}`);
         }
       });
+
+      transport.onclose = async () => {
+        const sid = transport.sessionId;
+        if (!sid) return;
+        sessions.delete(sid);
+        sessionManager.deleteSession(sid);
+      };
+
+      sessionServer = buildServerForSession();
+      await sessionServer.connect(transport);
     } else {
       res.status(400).json({
         jsonrpc: '2.0',

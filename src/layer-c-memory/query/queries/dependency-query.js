@@ -67,13 +67,14 @@ export async function getDependencyGraph(rootPath, filePath, depth) {
 
 /**
  * Finds all files that (transitively) depend on the given file.
- * Reads from file_dependencies table.
+ * Reads from file_dependencies table, and optionally from atom_relations (semantic).
  * 
  * @param {string} rootPath - Raíz del proyecto
  * @param {string} filePath - Ruta del archivo
+ * @param {Object} options - Opciones (includeSemantic = true para incluir shares_state)
  * @returns {Promise<string[]>}
  */
-export async function getTransitiveDependents(rootPath, filePath) {
+export async function getTransitiveDependents(rootPath, filePath, options = {}) {
   const repo = getRepository(rootPath);
   if (!repo?.db) return [];
 
@@ -82,10 +83,32 @@ export async function getTransitiveDependents(rootPath, filePath) {
     'SELECT source_path, target_path FROM file_dependencies'
   ).all();
 
-  const reverseMap = new Map(); // target → Set<source>
+  const reverseMap = new Map(); // target_path → Set<source_path>
+
+  function addLink(source, target) {
+    if (!reverseMap.has(target)) reverseMap.set(target, new Set());
+    reverseMap.get(target).add(source);
+  }
+
   for (const { source_path, target_path } of allRows) {
-    if (!reverseMap.has(target_path)) reverseMap.set(target_path, new Set());
-    reverseMap.get(target_path).add(source_path);
+    addLink(source_path, target_path);
+  }
+
+  // OPTIONAL: Include semantic relations (shares_state) from atom_relations
+  if (options.includeSemantic) {
+    const semanticRows = repo.db.prepare(`
+      SELECT DISTINCT a1.file_path as source_file, a2.file_path as target_file
+      FROM atom_relations ar
+      JOIN atoms a1 ON ar.source_id = a1.id
+      JOIN atoms a2 ON ar.target_id = a2.id
+      WHERE ar.relation_type = 'shares_state'
+    `).all();
+
+    for (const { source_file, target_file } of semanticRows) {
+      if (source_file && target_file && source_file !== target_file) {
+        addLink(source_file, target_file);
+      }
+    }
   }
 
   // BFS from filePath in the reverse graph
