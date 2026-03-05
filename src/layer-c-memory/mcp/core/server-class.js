@@ -44,6 +44,7 @@ import {
 } from './initialization/steps/index.js';
 import { getErrorGuardian } from '../../../core/error-guardian/index.js';
 import { HotReloadManager } from './hot-reload-manager/index.js';
+import { performServerShutdown } from './server-shutdown.js';
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
@@ -188,65 +189,7 @@ export class OmnySysMCPServer extends EventEmitter {
    * Shutdown the server gracefully
    */
   async shutdown() {
-    logger.info('\n🛑 Shutting down server...');
-
-    try {
-      // Kill LLM processes first
-      logger.info('  🛑 Stopping LLM servers...');
-      try {
-        const { exec } = await import('child_process');
-        const util = await import('util');
-        const execPromise = util.promisify(exec);
-
-        // Kill llama-server processes
-        if (process.platform === 'win32') {
-          await execPromise('taskkill /F /IM llama-server.exe 2>nul', { windowsHide: true }).catch(() => { });
-          await execPromise('taskkill /F /IM brain_gpu.bat 2>nul', { windowsHide: true }).catch(() => { });
-        } else {
-          await execPromise('pkill -f llama-server 2>/dev/null').catch(() => { });
-          await execPromise('pkill -f brain_gpu 2>/dev/null').catch(() => { });
-        }
-        logger.info('  ✅ LLM servers stopped');
-      } catch (err) {
-        // Ignore errors - processes might not be running
-      }
-
-      if (this.server) {
-        await this.server.close();
-        logger.info('  ✅ MCP server closed');
-      }
-
-      if (this._healthBeacon) {
-        await new Promise(resolve => this._healthBeacon.close(resolve));
-        logger.info('  ✅ Health beacon closed');
-      }
-
-      if (this._watchdogInterval) {
-        clearInterval(this._watchdogInterval);
-        this._watchdogInterval = null;
-        logger.info('  ✅ Watchdog stopped');
-      }
-
-      if (this.orchestrator) {
-        await this.orchestrator.stop();
-        logger.info('  ✅ Orchestrator stopped');
-      }
-
-      if (this.cache) {
-        // Cache cleanup if needed
-        logger.info('  ✅ Cache cleaned up');
-      }
-
-      if (this.hotReloadManager) {
-        this.hotReloadManager.stop();
-        logger.info('  ✅ Hot-reload stopped');
-      }
-
-      const mode = this.isPrimary ? 'PRIMARY' : 'LIGHT';
-      logger.info(`\n👋 Server shutdown complete (was ${mode})\n`);
-    } catch (error) {
-      logger.info('Error during shutdown:', error.message);
-    }
+    await performServerShutdown(this);
   }
 }
 

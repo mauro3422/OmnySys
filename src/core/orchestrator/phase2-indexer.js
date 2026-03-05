@@ -110,12 +110,20 @@ export class Phase2Indexer {
                 if (this.globalTimer) {
                     const remainingQuery = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
                     if (remainingQuery) {
-                        this.globalTimer.totalItems = this.globalTimer.itemsProcessed + remainingQuery.count;
+                        // Sumamos los itemsProcessed previos + el grupo actual procesado + los que faltan = total real actualizado
+                        this.globalTimer.totalItems = this.globalTimer.itemsProcessed + countProcessedGroup + remainingQuery.count;
                     }
                     this.globalTimer.onItemProcessed(countProcessedGroup);
                 }
 
                 this.orchestrator.emit('job:complete', { filePath: filesToProcess[0] }, {});
+            } else if (rows.length > 0) {
+                // DEADLOCK DETECTED: the query returned files, but ALL of them are already in processedPaths.
+                // This means these specific files failed completely in a previous batch and never
+                // got marked as is_phase2_complete = 1. If we don't stop, this will loop infinitely.
+                logger.warn(`⚠️ Phase 2 Indexer Deadlock Detected: ${rows.length} files constantly failing analysis. Bypassing them and ending phase 2.`);
+                this.stop(true);
+                return;
             }
         } catch (e) {
             if (!e.message.includes('not initialized')) {

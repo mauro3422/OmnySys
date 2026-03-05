@@ -223,3 +223,136 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     return { rows, stats: stats || { groups: 0, total_instances: 0 } };
 }
+
+/**
+ * Construye y ejecuta query de isomorfismo funcional.
+ * Encuentra átomos que tienen el mismo is_async, parameter_count
+ * y exactamente las mismas relaciones ordenadas hacia otros métodos/archivos.
+ * @param {Object} db - Instancia SQLite
+ * @param {Object} options
+ * @returns {{ rows: Array, stats: Object }}
+ */
+export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow'] } = {}) {
+    const testFilterCte = excludeTests
+        ? `AND file_path NOT LIKE '%.test.js'
+           AND file_path NOT LIKE '%.spec.js'
+           AND file_path NOT LIKE '%/test/%'
+           AND file_path NOT LIKE '%/tests/%'`
+        : '';
+
+    const testFilterMain = excludeTests
+        ? `AND a.file_path NOT LIKE '%.test.js'
+           AND a.file_path NOT LIKE '%.spec.js'
+           AND a.file_path NOT LIKE '%/test/%'
+           AND a.file_path NOT LIKE '%/tests/%'`
+        : '';
+
+    const typeFilterCte = atomTypes && atomTypes.length > 0
+        ? `AND atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
+        : '';
+
+    const typeFilterMain = atomTypes && atomTypes.length > 0
+        ? `AND a.atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
+        : '';
+
+    const rows = db.prepare(`
+        WITH AtomDependencies AS (
+            SELECT 
+                source_id, 
+                GROUP_CONCAT(target_id, ',') as deps_signature
+            FROM (
+                SELECT source_id, target_id
+                FROM atom_relations
+                ORDER BY source_id, target_id
+            )
+            GROUP BY source_id
+        ),
+        IsomorphicGroups AS (
+            SELECT 
+                a.is_async, 
+                a.parameter_count, 
+                ad.deps_signature,
+                (CAST(a.is_async AS TEXT) || '|' || CAST(a.parameter_count AS TEXT) || '|' || COALESCE(ad.deps_signature, 'none')) as isomorphic_hash,
+                COUNT(*) as group_size
+            FROM atoms a
+            LEFT JOIN AtomDependencies ad ON a.id = ad.source_id
+            WHERE 1=1
+              ${testFilterCte}
+              ${typeFilterCte}
+              AND (a.lines_of_code IS NULL OR a.lines_of_code >= ${minLines})
+              AND (a.is_removed IS NULL OR a.is_removed = 0)
+              AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+              -- Exclude standard getter/setter properties and empty functions
+              AND ad.deps_signature IS NOT NULL
+            GROUP BY 
+                a.is_async, 
+                a.parameter_count, 
+                ad.deps_signature
+            HAVING COUNT(*) > 1
+        )
+        SELECT 
+            a.id, a.name, a.file_path, a.line_start, 
+            a.lines_of_code, a.atom_type,
+            a.archetype_type, a.purpose_type,
+            a.change_frequency, a.importance_score,
+            a.complexity,
+            ig.isomorphic_hash,
+            ig.group_size,
+            (SELECT COUNT(*) FROM atoms ca
+             WHERE ca.calls_json LIKE '%' || a.name || '%'
+               AND ca.file_path != a.file_path) AS caller_count
+        FROM atoms a
+        LEFT JOIN AtomDependencies ad ON a.id = ad.source_id
+        JOIN IsomorphicGroups ig ON 
+            a.is_async = ig.is_async AND 
+            a.parameter_count = ig.parameter_count AND 
+            (ad.deps_signature = ig.deps_signature OR (ad.deps_signature IS NULL AND ig.deps_signature IS NULL))
+        WHERE 1=1 
+        ${testFilterMain}
+        ${typeFilterMain}
+        ORDER BY 
+            ig.group_size DESC,
+            (ig.group_size * COALESCE(a.importance_score, 0) * (1 + COALESCE(a.change_frequency, 0))) DESC,
+            a.name ASC
+        LIMIT ? OFFSET ?
+    `).all(limit, offset);
+
+    // Global stats
+    const stats = db.prepare(`
+        WITH AtomDependencies AS (
+            SELECT 
+                source_id, 
+                GROUP_CONCAT(target_id, ',') as deps_signature
+            FROM (
+                SELECT source_id, target_id
+                FROM atom_relations
+                ORDER BY source_id, target_id
+            )
+            GROUP BY source_id
+        ),
+        IsomorphicGroups AS (
+            SELECT 
+                a.is_async, 
+                a.parameter_count, 
+                ad.deps_signature,
+                COUNT(*) as group_size
+            FROM atoms a
+            LEFT JOIN AtomDependencies ad ON a.id = ad.source_id
+            WHERE 1=1
+              ${testFilterCte.replace(/file_path/g, 'a.file_path')}
+              ${typeFilterCte.replace(/atom_type/g, 'a.atom_type')}
+              AND (a.lines_of_code IS NULL OR a.lines_of_code >= ${minLines})
+              AND (a.is_removed IS NULL OR a.is_removed = 0)
+              AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+              AND ad.deps_signature IS NOT NULL
+            GROUP BY a.is_async, a.parameter_count, ad.deps_signature
+            HAVING COUNT(*) > 1
+        )
+        SELECT 
+            COUNT(*) as groups, 
+            SUM(group_size) as total_instances
+        FROM IsomorphicGroups
+    `).get();
+
+    return { rows, stats: stats || { groups: 0, total_instances: 0 } };
+}

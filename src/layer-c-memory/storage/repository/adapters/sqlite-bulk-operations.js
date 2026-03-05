@@ -11,29 +11,7 @@
 import { SQLiteRelationOperations } from './sqlite-relation-operations.js';
 import { connectionManager } from '../../database/connection.js';
 import { atomToRow } from './helpers/converters.js';
-import crypto from 'crypto';
-
-// --- Hashing Helpers for Atom Versions ---
-function calculateHash(data) {
-  const str = typeof data === 'string' ? data : JSON.stringify(data);
-  return crypto.createHash('sha256').update(str).digest('hex');
-}
-
-function calculateFieldHashes(atomData) {
-  const hashes = {};
-  const excludedFields = ['_meta', 'lineage', 'timestamp'];
-  for (const [key, value] of Object.entries(atomData)) {
-    if (excludedFields.includes(key)) continue;
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      hashes[key] = calculateHash(value);
-    } else if (Array.isArray(value)) {
-      hashes[key] = calculateHash(value.map((item, i) => typeof item === 'object' ? calculateHash(item) : `${i}:${item}`));
-    } else {
-      hashes[key] = calculateHash(String(value));
-    }
-  }
-  return hashes;
-}
+import { calculateHash, calculateFieldHashes } from './helpers/hashing.js';
 
 /**
  * Clase para operaciones bulk
@@ -109,7 +87,19 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     });
 
     // Fase 4: Registrar atom_events y atom_versions — fuera de la transacción crítica
-    // para no impactar la performance del bulk save.
+    // delegándolo a un submétodo más limpio que reduce la complejidad.
+    this._logAtomEventsAndVersions(atoms, existingIds);
+
+    this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
+
+    return atoms;
+  }
+
+  /**
+   * Registra eventos de átomos y control de versiones
+   * @private
+   */
+  _logAtomEventsAndVersions(atoms, existingIds) {
     try {
       const now = new Date().toISOString();
       const msNow = Date.now();
@@ -154,10 +144,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       console.error("FATAL ERROR IN POST TRANSACTION:", postErr);
       this._logger.error(`[SQLiteAdapter] Post-transaction logging skipped: ${postErr.message}`);
     }
-
-    this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
-
-    return atoms;
   }
 
   /**

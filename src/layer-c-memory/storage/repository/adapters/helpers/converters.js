@@ -13,191 +13,131 @@
  * TODOS los valores deben ser: number, string, bigint, buffer, o null
  * NO puede haber: undefined, NaN, Infinity, objects, arrays, functions
  */
+import { TABLE_DEFINITIONS } from '../../../database/schema-registry.js';
+
+const ATOM_CUSTOM_EXTRACTORS = {
+  atom_type: atom => atom.type || atom.atomType || 'function',
+  file_path: atom => atom.file || atom.filePath || 'unknown',
+  line_start: atom => atom.line || atom.lineStart || 1,
+  line_end: atom => atom.endLine || atom.lineEnd || atom.line || (atom.line || atom.lineStart || 1),
+  lines_of_code: atom => atom.linesOfCode || ((atom.endLine || atom.lineEnd || atom.line || 1) - (atom.line || atom.lineStart || 1) + 1),
+  parameter_count: atom => atom.parameterCount || atom.signature?.params?.length || 0,
+  is_exported: atom => atom.exported || atom.isExported,
+  is_async: atom => atom.isAsync || atom.async,
+  archetype_type: atom => atom.archetype?.type || atom.archetype,
+  archetype_severity: atom => atom.archetype?.severity,
+  archetype_confidence: atom => atom.archetype?.confidence,
+  purpose_type: atom => atom.purpose,
+  purpose_confidence: atom => atom.purposeConfidence || atom.purpose?.confidence,
+  is_dead_code: atom => atom.isDeadCode || atom.purpose?.isDeadCode,
+  is_deprecated: atom => atom.deprecated,
+  importance_score: atom => atom.importanceScore || atom.derived?.fragilityScore,
+  coupling_score: atom => atom.couplingScore || atom.derived?.couplingScore,
+  propagation_score: atom => atom.propagationScore || atom.derived?.changeRisk,
+  in_degree: atom => atom.inDegree || atom.calledBy?.length,
+  out_degree: atom => atom.outDegree || atom.calls?.length,
+  extracted_at: (atom, now) => atom.extractedAt || atom.analyzedAt || now,
+  updated_at: (atom, now) => atom.updatedAt || now,
+  derived_json: atom => ({ ...(atom.derived || {}), semantic: atom.semantic || {} }),
+  _meta_json: atom => atom._meta || atom.meta,
+  shared_state_json: atom => atom.sharedStateAccess || [],
+  event_emitters_json: atom => atom.eventEmitters || [],
+  event_listeners_json: atom => atom.eventListeners || [],
+  called_by_json: atom => atom.calledBy || [],
+  function_type: atom => atom.functionType || atom.type || 'declaration'
+};
+
+const ATOM_CUSTOM_INJECTORS = {
+  line_start: (atom, val) => { atom.line = val; atom.lineStart = val; },
+  line_end: (atom, val) => { atom.endLine = val; atom.lineEnd = val; },
+  atom_type: (atom, val) => { atom.type = val; },
+  file_path: (atom, val) => { atom.filePath = val; },
+  parameter_count: (atom, val) => { atom.parameterCount = val; },
+  purpose_type: (atom, val) => { atom.purpose = val; },
+  calls_json: (atom, val) => { atom.calls = safeParseJson(val, []) || []; },
+  called_by_json: (atom, val) => { atom.calledBy = safeParseJson(val, []) || []; },
+  shared_state_json: (atom, val) => { atom.sharedStateAccess = safeParseJson(val, []) || []; },
+  event_emitters_json: (atom, val) => { atom.eventEmitters = safeParseJson(val, []) || []; },
+  event_listeners_json: (atom, val) => { atom.eventListeners = safeParseJson(val, []) || []; },
+  archetype_type: () => { },
+  archetype_severity: () => { },
+  archetype_confidence: () => { },
+  derived_json: () => { },
+  extracted_at: (atom, val) => { atom.extractedAt = val; },
+  updated_at: (atom, val) => { atom.updatedAt = val; },
+  is_deprecated: (atom, val) => { atom.deprecated = Boolean(val); },
+  deprecated_reason: (atom, val) => { atom.deprecatedReason = val; },
+  _meta_json: (atom, val) => { atom._meta = safeParseJson(val); }
+};
+
+/**
+ * Convierte un atomo de la estructura JSON a formato SQLite (Aplanando campos dinámicamente)
+ */
 export function atomToRow(atom) {
   const now = new Date().toISOString();
+  const row = { id: safeString(atom.id, 'unknown::unknown'), name: safeString(atom.name, 'unknown') };
 
-  // Calcular lines_of_code de forma segura
-  const lineStart = safeNumber(atom.line || atom.lineStart, 1);
-  const lineEnd = safeNumber(atom.endLine || atom.lineEnd || atom.line, lineStart);
-  const linesOfCode = safeNumber(
-    atom.linesOfCode || (lineEnd - lineStart + 1),
-    1
-  );
+  for (const col of TABLE_DEFINITIONS.atoms.columns) {
+    if (col.name === 'id' || col.name === 'name') continue;
 
-  return {
-    // Identidad - strings obligatorios
-    id: safeString(atom.id, 'unknown::unknown'),
-    name: safeString(atom.name, 'unknown'),
-    atom_type: safeString(atom.type || atom.atomType, 'function'),
-    file_path: safeString(atom.file || atom.filePath, 'unknown'),
+    let val;
+    if (ATOM_CUSTOM_EXTRACTORS[col.name]) {
+      val = ATOM_CUSTOM_EXTRACTORS[col.name](atom, now);
+    } else {
+      const camelProp = col.name.replace(/_([a-z])/g, g => g[1].toUpperCase());
+      val = atom[camelProp];
+    }
 
-    // Vectores estructurales - integers
-    line_start: lineStart,
-    line_end: lineEnd,
-    lines_of_code: linesOfCode,
-    complexity: safeNumber(atom.complexity, 1),
-    parameter_count: safeNumber(atom.signature?.params?.length, 0),
-
-    // Flags - integers (0/1)
-    is_exported: safeBoolInt(atom.exported || atom.isExported),
-    is_async: safeBoolInt(atom.isAsync || atom.async),
-    is_test_callback: safeBoolInt(atom.isTestCallback),
-    test_callback_type: safeString(atom.testCallbackType),
-    has_error_handling: safeBoolInt(atom.hasErrorHandling),
-    has_network_calls: safeBoolInt(atom.hasNetworkCalls),
-
-    // Clasificacion - purpose puede ser string o objeto { type, reason, confidence }
-    archetype_type: safeString(atom.archetype?.type || atom.archetype),
-    archetype_severity: safeNumber(atom.archetype?.severity),
-    archetype_confidence: safeNumber(atom.archetype?.confidence),
-    purpose_type: safePurpose(atom.purpose),
-    purpose_confidence: safeNumber(atom.purposeConfidence || atom.purpose?.confidence),
-    is_dead_code: safeBoolInt(atom.isDeadCode || atom.purpose?.isDeadCode),
-    is_phase2_complete: safeBoolInt(atom.isPhase2Complete),
-
-    // Vectores matematicos - REAL numbers
-    importance_score: safeNumber(atom.importanceScore || atom.derived?.fragilityScore, 0),
-    coupling_score: safeNumber(atom.couplingScore || atom.derived?.couplingScore, 0),
-    cohesion_score: safeNumber(atom.cohesionScore, 0),
-    stability_score: safeNumber(atom.stabilityScore, 1),
-    propagation_score: safeNumber(atom.propagationScore || atom.derived?.changeRisk, 0),
-    fragility_score: safeNumber(atom.derived?.fragilityScore, 0),
-    testability_score: safeNumber(atom.derived?.testabilityScore, 0),
-
-    // Contadores - integers
-    callers_count: safeNumber(atom.calledBy?.length, 0),
-    callees_count: safeNumber(atom.calls?.length, 0),
-    dependency_depth: safeNumber(atom.dependencyDepth, 0),
-    external_call_count: safeNumber(atom.externalCallCount, 0),
-
-    // Graph Algebra columns
-    in_degree: safeNumber(atom.inDegree || atom.calledBy?.length, 0),
-    out_degree: safeNumber(atom.outDegree || atom.calls?.length, 0),
-    centrality_score: safeNumber(atom.centralityScore, 0),
-    centrality_classification: safeString(atom.centralityClassification),
-    risk_level: safeString(atom.riskLevel),
-    risk_prediction: safeString(atom.riskPrediction),
-
-    // Temporales
-    extracted_at: safeString(atom.extractedAt || atom.analyzedAt, now),
-    updated_at: safeString(atom.updatedAt, now),
-    change_frequency: safeNumber(atom.changeFrequency, 0),
-    age_days: safeNumber(atom.ageDays, 0),
-    generation: safeNumber(atom.generation, 1),
-
-    // JSON fields - siempre strings
-    signature_json: safeJson(atom.signature),
-    data_flow_json: safeJson(atom.dataFlow),
-    calls_json: safeJson(atom.calls),
-    temporal_json: safeJson(atom.temporal),
-    error_flow_json: safeJson(atom.errorFlow),
-    performance_json: safeJson(atom.performance),
-    dna_json: safeJson(atom.dna),
-    derived_json: safeJson({
-      ...(atom.derived || {}),
-      semantic: atom.semantic || {}
-    }),
-    _meta_json: safeJson(atom._meta || atom.meta),
-
-    // Tree-sitter metadata (v0.9.62)
-    shared_state_json: safeJson(atom.sharedStateAccess || []),
-    event_emitters_json: safeJson(atom.eventEmitters || []),
-    event_listeners_json: safeJson(atom.eventListeners || []),
-    scope_type: safeString(atom.scopeType),
-
-    // Relations and type
-    called_by_json: safeJson(atom.calledBy || []),
-    function_type: safeString(atom.functionType || atom.type || 'declaration')
-  };
+    if (col.type === 'BOOLEAN') {
+      row[col.name] = safeBoolInt(val);
+    } else if (col.type === 'INTEGER' || col.type === 'REAL') {
+      row[col.name] = safeNumber(val, col.default || 0);
+    } else if (col.type === 'TEXT') {
+      if (col.name.endsWith('_json')) row[col.name] = safeJson(val);
+      else if (col.name === 'purpose_type') row[col.name] = safePurpose(val);
+      else row[col.name] = safeString(val, col.nullable ? null : (col.default || ''));
+    }
+  }
+  return row;
 }
 
 /**
- * Convierte una fila de SQLite a estructura de atomo
+ * Convierte una fila de SQLite a estructura de atomo (Rehidratando dinámicamente)
  */
 export function rowToAtom(row) {
-  const enriched = {
+  const atom = {
     id: row.id,
     name: row.name,
-    type: row.atom_type,
-    filePath: row.file_path,
-
-    line: row.line_start,
-    lineStart: row.line_start,
-    endLine: row.line_end,
-    lineEnd: row.line_end,
-    linesOfCode: row.lines_of_code,
-    complexity: row.complexity,
-    parameterCount: row.parameter_count,
-
-    isExported: Boolean(row.is_exported),
-    isAsync: Boolean(row.is_async),
-    isTestCallback: Boolean(row.is_test_callback),
-    testCallbackType: row.test_callback_type,
-    hasErrorHandling: Boolean(row.has_error_handling),
-    hasNetworkCalls: Boolean(row.has_network_calls),
-
-    archetype: row.archetype_type ? {
-      type: row.archetype_type,
-      severity: row.archetype_severity,
-      confidence: row.archetype_confidence
-    } : null,
+    archetype: row.archetype_type ? { type: row.archetype_type, severity: row.archetype_severity, confidence: row.archetype_confidence } : null,
     purpose: row.purpose_type,
-    purposeConfidence: row.purpose_confidence,
-    isDeadCode: Boolean(row.is_dead_code),
-    isPhase2Complete: Boolean(row.is_phase2_complete),
-
-    // Vectores matematicos
-    importanceScore: row.importance_score,
-    couplingScore: row.coupling_score,
-    cohesionScore: row.cohesion_score,
-    stabilityScore: row.stability_score,
-    propagationScore: row.propagation_score,
-    fragilityScore: row.fragility_score,
-    testabilityScore: row.testability_score,
-
-    // Contadores
-    calls: safeParseJson(row.calls_json, []) || [],
-    calledBy: safeParseJson(row.called_by_json, []) || [],
-    dependencyDepth: row.dependency_depth,
-    externalCallCount: row.external_call_count,
-
-    // Graph Algebra columns
-    inDegree: row.in_degree,
-    outDegree: row.out_degree,
-    centralityScore: row.centrality_score,
-    centralityClassification: row.centrality_classification,
-    riskLevel: row.risk_level,
-    riskPrediction: row.risk_prediction,
-
-    // Legacy compatibility - función declarada vs arrow vs método
-    functionType: row.function_type || 'declaration',
-
-    // JSON parseados
-    signature: safeParseJson(row.signature_json),
-    dataFlow: safeParseJson(row.data_flow_json),
-    temporal: safeParseJson(row.temporal_json),
-    errorFlow: safeParseJson(row.error_flow_json),
-    performance: safeParseJson(row.performance_json),
-    dna: safeParseJson(row.dna_json),
     derived: safeParseJson(row.derived_json),
-    semantic: safeParseJson(row.derived_json)?.semantic || {},
-
-    // Tree-sitter metadata (v0.9.62)
-    sharedStateAccess: safeParseJson(row.shared_state_json, []),
-    eventEmitters: safeParseJson(row.event_emitters_json, []),
-    eventListeners: safeParseJson(row.event_listeners_json, []),
-    scopeType: row.scope_type,
-
-    // Metadata
-    extractedAt: row.extracted_at,
-    updatedAt: row.updated_at,
-    changeFrequency: row.change_frequency,
-    ageDays: row.age_days,
-    generation: row.generation,
-    _meta: safeParseJson(row._meta_json)
+    semantic: safeParseJson(row.derived_json)?.semantic || {}
   };
 
-  return enriched;
+  for (const col of TABLE_DEFINITIONS.atoms.columns) {
+    if (col.name === 'id' || col.name === 'name') continue;
+
+    if (ATOM_CUSTOM_INJECTORS[col.name]) {
+      ATOM_CUSTOM_INJECTORS[col.name](atom, row[col.name]);
+    } else {
+      const camelProp = col.name.replace(/_([a-z])/g, g => g[1].toUpperCase());
+      if (atom[camelProp] === undefined) {
+        if (col.type === 'BOOLEAN') {
+          atom[camelProp] = Boolean(row[col.name]);
+        } else if (col.name.endsWith('_json')) {
+          atom[camelProp] = safeParseJson(row[col.name]);
+        } else {
+          atom[camelProp] = row[col.name];
+        }
+      }
+    }
+  }
+
+  // Custom Fallbacks
+  if (!atom.linesOfCode) atom.linesOfCode = atom.lineEnd - atom.lineStart + 1;
+  if (!atom.functionType) atom.functionType = 'declaration';
+
+  return atom;
 }
 
 // Helper para asegurar valores numericos seguros

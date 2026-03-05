@@ -14,6 +14,7 @@ import {
     queryAsyncAtoms,
     querySocieties,
     queryDuplicates,
+    queryIsomorphicDuplicates,
     queryDnaCoverage
 } from './semantic-queries.js';
 
@@ -193,6 +194,66 @@ export class SemanticQueryTool extends GraphQueryTool {
                 duplicateGroups: stats.groups || 0,
                 totalDuplicateInstances: stats.total_instances || 0,
                 status: (stats.groups || 0) === 0 ? '✅ No logic duplicates found' : `⚠️ ${stats.groups} duplicate group(s) detected`
+            },
+            total: duplicates.length,
+            duplicates
+        };
+    }
+
+    /**
+     * Obtiene duplicados potenciales basados en Isomorfismo Funcional.
+     * Evalúa el comportamiento (dependencias ordenadas + firma) en vez del AST crudo.
+     */
+    async getIsomorphicDuplicates(options = {}) {
+        if (!this.repo) throw new Error('Repository not initialized');
+
+        const { rows, stats } = queryIsomorphicDuplicates(this.repo.db, options);
+        const coverage = queryDnaCoverage(this.repo.db); // Reusamos coverage ya que es global
+
+        const groups = {};
+        rows.forEach(row => {
+            if (!groups[row.isomorphic_hash]) {
+                groups[row.isomorphic_hash] = {
+                    hash: null, // omitimos el hash largo del output final
+                    groupSize: row.group_size,
+                    instances: [],
+                    urgencyScore: Math.round(
+                        row.group_size *
+                        (row.importance_score || 0.1) *
+                        (1 + (row.change_frequency || 0))
+                    )
+                };
+            }
+            groups[row.isomorphic_hash].instances.push({
+                id: row.id,
+                name: row.name,
+                file: row.file_path,
+                line: row.line_start,
+                linesOfCode: row.lines_of_code,
+                atomType: row.atom_type,
+                archetype: row.archetype_type,
+                purpose: row.purpose_type,
+                changeFrequency: row.change_frequency,
+                importanceScore: row.importance_score,
+                callerCount: row.caller_count || 0
+            });
+        });
+
+        const duplicates = Object.values(groups)
+            .sort((a, b) => b.urgencyScore - a.urgencyScore);
+
+        return {
+            coverage: {
+                totalAtoms: coverage.totalAtoms,
+                withDna: coverage.withDna,
+                coveragePct: coverage.coveragePct,
+                srcOnlyAtoms: coverage.srcOnlyAtoms,
+                srcWithDna: coverage.srcWithDna
+            },
+            summary: {
+                duplicateGroups: stats.groups || 0,
+                totalDuplicateInstances: stats.total_instances || 0,
+                status: (stats.groups || 0) === 0 ? '✅ No isomorphic duplicates found' : `⚠️ ${stats.groups} isomorphic group(s) detected`
             },
             total: duplicates.length,
             duplicates

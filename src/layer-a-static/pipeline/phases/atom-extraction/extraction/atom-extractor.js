@@ -74,6 +74,8 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
         sqlAtom._meta.parent_atom_name = bestParent.name || null;
       }
     }
+    // FIX: Evitar deadlock en Phase 2 para los átomos SQL nativos
+    sqlAtom.isPhase2Complete = extractionDepth !== 'structural';
   }
   atoms.push(...sqlAtoms);
 
@@ -118,6 +120,7 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
     dataFlowV2,
     functionCode,
     imports,
+    jsdocContracts: fileMetadata.jsdoc,
     performanceHints: extractorResults.performanceHints,
     performanceMetrics: extractorResults.performanceMetrics,
     ...extractorResults

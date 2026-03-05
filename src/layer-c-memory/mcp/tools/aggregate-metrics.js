@@ -131,6 +131,14 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                     return this.formatSuccess({ aggregationType: 'duplicates', ...result });
                 }
 
+                case 'isomorphism': {
+                    const result = await this.getIsomorphicDuplicates({
+                        offset: options.offset || 0,
+                        limit: options.limit || 20
+                    });
+                    return this.formatSuccess({ aggregationType: 'isomorphism', ...result });
+                }
+
                 case 'watcher_alerts': {
                     const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
                     if (result.error) return result; // MISSING_DB pre-formatError from handler

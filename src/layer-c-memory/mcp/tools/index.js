@@ -27,6 +27,7 @@ import { PAGINATION_SCHEMA } from '../core/pagination.js';
 // Super-Tools (Fase 17)
 import { query_graph } from './query-graph.js';
 import { traverse_graph } from './traverse-graph.js';
+import { impact_atomic } from './impact-atomic.js';
 import { aggregate_metrics } from './aggregate-metrics.js';
 
 // Action Tools (Mutation & Refactoring)
@@ -44,6 +45,7 @@ import { get_server_status, get_recent_errors } from './status.js';
 import { restart_server } from './restart-server.js';
 import { get_schema } from './get-schema.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
+import { execute_sql } from './execute-sql.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
@@ -75,6 +77,19 @@ export const toolDefinitions = [
         options: { type: 'object', description: 'Opciones extra como maxDepth, newSignature, includeSemantic, etc.' }
       },
       required: ['traverseType', 'filePath']
+    }
+  },
+  {
+    name: 'mcp_omnysystem_impact_atomic',
+    description: 'Simulador de impacto a nivel atómico. Traza todas las dependencias upstream (qué funciones/clases llaman a este átomo recursivamente) para predecir qué se romperá antes de hacer mutaciones complejas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbolName: { type: 'string', description: 'Nombre del átomo o función a modificar' },
+        filePath: { type: 'string', description: 'Opcional: Archivo donde reside el átomo, mejora la precisión si hay duplicados' },
+        intent: { type: 'string', enum: ['usage', 'signature_change', 'deletion', 'semantic_state_change'], default: 'usage', description: 'Intención del cambio para generar el reporte' }
+      },
+      required: ['symbolName']
     }
   },
   {
@@ -294,13 +309,27 @@ export const toolDefinitions = [
         filePath: { type: 'string', description: 'Optional: Filter by specific file path' }
       }
     }
+  },
+  {
+    name: 'mcp_omnysystem_execute_sql',
+    description: 'Ejecuta consultas SQL crudas contra la base de datos de OmnySys. Ideal para debug, extracción de datos a bajo nivel o si las tools existentes no cubren una necesidad. Uso: SELECT * FROM atoms LIMIT 10.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Query SQL a ejecutar (SELECT, PRAGMA, etc)' },
+        parameters: { type: 'array', items: { type: 'string' }, description: 'Parámetros opcionales para la query' }
+      },
+      required: ['query']
+    }
   }
 ];
+
 
 export const toolHandlers = {
   // Super Tools (Lectura)
   mcp_omnysystem_query_graph: query_graph,
   mcp_omnysystem_traverse_graph: traverse_graph,
+  mcp_omnysystem_impact_atomic: impact_atomic,
   mcp_omnysystem_aggregate_metrics: aggregate_metrics,
 
   // Action Tools (Escritura)
@@ -320,5 +349,7 @@ export const toolHandlers = {
   mcp_omnysystem_get_server_status: get_server_status,
   mcp_omnysystem_get_recent_errors: get_recent_errors,
   mcp_omnysystem_restart_server: restart_server,
-  mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots
+  mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots,
+  mcp_omnysystem_execute_sql: execute_sql
 };
+

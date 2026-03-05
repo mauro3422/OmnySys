@@ -96,6 +96,7 @@ export function buildAtomMetadata({
   dataFlowV2,
   functionCode,
   imports = [],
+  jsdocContracts = null,
   treeSitter = null // NEW: Tree-sitter metadata
 }) {
   // Normalize extractor results — guard against null/undefined when an extractor fails gracefully
@@ -103,6 +104,21 @@ export function buildAtomMetadata({
   const cg = callGraph || { internalCalls: [], externalCalls: [] };
   const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
   const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
+
+  // Intentar parear el jsdoc. Usar preferentemente la línea extraída por el parser AST si está disponible
+  let jsdocMatch = null;
+  if (jsdocContracts?.functions) {
+    const astDocLine = functionInfo.jsdoc?.line;
+    if (astDocLine) {
+      jsdocMatch = jsdocContracts.functions.find(c => c.line === astDocLine);
+    }
+
+    // Fallback: usar una ventana muy pequeña encima de la función
+    if (!jsdocMatch) {
+      const fnLine = functionInfo.line || functionInfo.lineStart || 0;
+      jsdocMatch = jsdocContracts.functions.find(c => c.line >= fnLine - 10 && c.line < fnLine);
+    }
+  }
 
   return {
     // Identity
@@ -152,6 +168,10 @@ export function buildAtomMetadata({
     // Contracts & flow
     typeContracts,
     errorFlow,
+
+    // Deprecation details
+    deprecated: jsdocMatch?.deprecated || false,
+    deprecatedReason: jsdocMatch?.deprecatedReason || '',
 
     // Performance
     hasNestedLoops: ph.nestedLoops.length > 0,

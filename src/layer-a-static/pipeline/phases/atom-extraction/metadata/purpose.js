@@ -11,18 +11,20 @@
  * Propósitos posibles de un átomo
  */
 export const ATOM_PURPOSES = {
-  API_EXPORT:     { name: 'API Export',      description: 'Exported function - part of public API',                   isDead: false, icon: '📤' },
-  EVENT_HANDLER:  { name: 'Event Handler',   description: 'Handles events/lifecycle hooks',                           isDead: false, icon: '⚡' },
-  TEST_HELPER:    { name: 'Test Helper',     description: 'Function in test file',                                    isDead: false, icon: '🧪' },
-  TIMER_ASYNC:    { name: 'Timer/Async',     description: 'Timer callback or async pattern',                          isDead: false, icon: '⏱️' },
-  NETWORK_HANDLER:{ name: 'Network Handler', description: 'Makes network calls',                                      isDead: false, icon: '🌐' },
-  INTERNAL_HELPER:{ name: 'Internal Helper', description: 'Helper called within file',                                isDead: false, icon: '🔧' },
-  PRIVATE_HELPER: { name: 'Private Helper',  description: 'Private function called only within the same file',        isDead: false, icon: '🔒' },
-  CONFIG_SETUP:   { name: 'Config/Setup',    description: 'Configuration or setup function',                          isDead: false, icon: '⚙️' },
-  SCRIPT_MAIN:    { name: 'Script Entry',    description: 'Main function in script',                                  isDead: false, icon: '🚀' },
-  ANALYSIS_SCRIPT:{ name: 'Analysis Script', description: 'Audit/analysis script - internal tooling',                 isDead: false, icon: '🔍', isInternalTool: true },
-  CLASS_METHOD:   { name: 'Class Method',    description: 'Method in a class (may be called dynamically)',            isDead: false, icon: '📦' },
-  DEAD_CODE:      { name: 'Potential Dead Code', description: 'No evidence of use - review needed',                   isDead: true,  icon: '💀' }
+  API_EXPORT: { name: 'API Export', description: 'Exported function - part of public API', isDead: false, icon: '📤' },
+  EVENT_HANDLER: { name: 'Event Handler', description: 'Handles events/lifecycle hooks', isDead: false, icon: '⚡' },
+  TEST_HELPER: { name: 'Test Helper', description: 'Function in test file', isDead: false, icon: '🧪' },
+  WRAPPER: { name: 'Wrapper / Delegate', description: 'Function that delegates to another without logic', isDead: false, icon: '🔄' },
+  FACTORY: { name: 'Factory / Builder', description: 'Function that instantiates or constructs objects', isDead: false, icon: '🏭' },
+  TIMER_ASYNC: { name: 'Timer/Async', description: 'Timer callback or async pattern', isDead: false, icon: '⏱️' },
+  NETWORK_HANDLER: { name: 'Network Handler', description: 'Makes network calls', isDead: false, icon: '🌐' },
+  INTERNAL_HELPER: { name: 'Internal Helper', description: 'Helper called within file', isDead: false, icon: '🔧' },
+  PRIVATE_HELPER: { name: 'Private Helper', description: 'Private function called only within the same file', isDead: false, icon: '🔒' },
+  CONFIG_SETUP: { name: 'Config/Setup', description: 'Configuration or setup function', isDead: false, icon: '⚙️' },
+  SCRIPT_MAIN: { name: 'Script Entry', description: 'Main function in script', isDead: false, icon: '🚀' },
+  ANALYSIS_SCRIPT: { name: 'Analysis Script', description: 'Audit/analysis script - internal tooling', isDead: false, icon: '🔍', isInternalTool: true },
+  CLASS_METHOD: { name: 'Class Method', description: 'Method in a class (may be called dynamically)', isDead: false, icon: '📦' },
+  DEAD_CODE: { name: 'Potential Dead Code', description: 'No evidence of use - review needed', isDead: true, icon: '💀' }
 };
 
 // ── Private check helpers ─────────────────────────────────────────────────────
@@ -34,8 +36,8 @@ function checkExported(atom) {
 
 function checkTestFile(filePath) {
   const inTest = filePath.includes('.test.') || filePath.includes('.spec.') ||
-                 filePath.includes('tests/') || filePath.includes('test-cases/') ||
-                 filePath.includes('__tests__/');
+    filePath.includes('tests/') || filePath.includes('test-cases/') ||
+    filePath.includes('__tests__/');
   if (!inTest) return null;
   return { purpose: 'TEST_HELPER', purposeReason: 'Function in test file', purposeConfidence: 1.0, isDeadCode: false };
 }
@@ -62,9 +64,9 @@ function checkClassMethod(atom) {
 
 function checkLifecycle(atom) {
   const hasLifecycle = (atom.lifecycleHooks || []).length > 0;
-  const hasEvents    = (atom.temporal?.patterns?.events || []).length > 0;
+  const hasEvents = (atom.temporal?.patterns?.events || []).length > 0;
   if (!hasLifecycle && !hasEvents) return null;
-  return { purpose: 'EVENT_HANDLER', purposeReason: `Has lifecycle hooks (${(atom.lifecycleHooks||[]).length}) or events`, purposeConfidence: 0.95, isDeadCode: false };
+  return { purpose: 'EVENT_HANDLER', purposeReason: `Has lifecycle hooks (${(atom.lifecycleHooks || []).length}) or events`, purposeConfidence: 0.95, isDeadCode: false };
 }
 
 function checkTimerAsync(atom) {
@@ -98,6 +100,23 @@ function checkArchetype(atom) {
   return null;
 }
 
+function checkWrapperOrFactory(atom) {
+  const name = atom.name?.toLowerCase() || '';
+  if (name.includes('wrapper') || name.includes('delegate')) {
+    return { purpose: 'WRAPPER', purposeReason: 'Function name implies it is a wrapper or delegate', purposeConfidence: 0.9, isDeadCode: false };
+  }
+  if (name.startsWith('create') || name.startsWith('build') || name.startsWith('make') || name.includes('factory')) {
+    return { purpose: 'FACTORY', purposeReason: 'Function name implies it is a factory or builder', purposeConfidence: 0.85, isDeadCode: false };
+  }
+  // Data flow check for wrapper
+  if (atom.linesOfCode <= 4 && atom.calls?.length === 1 && !atom.hasErrorHandling && !atom.hasNetworkCalls && atom.complexity <= 2) {
+    if (atom.dataFlow?.transformers?.length === 0) {
+      return { purpose: 'WRAPPER', purposeReason: 'Function is very short, calls exactly one external, and has no transformations (Duck Typed Wrapper)', purposeConfidence: 0.8, isDeadCode: false };
+    }
+  }
+  return null;
+}
+
 function checkCalledBy(atom) {
   const count = Array.isArray(atom.calledBy) ? atom.calledBy.length : (atom.calledBy || 0);
   if (count <= 0) return null;
@@ -115,17 +134,18 @@ function checkCalledBy(atom) {
  */
 export function detectAtomPurpose(atom, filePath = '') {
   return (
-    checkExported(atom)      ||
-    checkTestFile(filePath)  ||
+    checkTestFile(filePath) ||
     checkScript(atom, filePath) ||
-    checkConfig(filePath)    ||
-    checkClassMethod(atom)   ||
-    checkLifecycle(atom)     ||
-    checkTimerAsync(atom)    ||
-    checkNetwork(atom)       ||
-    checkDom(atom)           ||
-    checkArchetype(atom)     ||
-    checkCalledBy(atom)      ||
+    checkConfig(filePath) ||
+    checkWrapperOrFactory(atom) ||
+    checkExported(atom) ||
+    checkClassMethod(atom) ||
+    checkLifecycle(atom) ||
+    checkTimerAsync(atom) ||
+    checkNetwork(atom) ||
+    checkDom(atom) ||
+    checkArchetype(atom) ||
+    checkCalledBy(atom) ||
     { purpose: 'DEAD_CODE', purposeReason: 'No evidence of use found in metadata', purposeConfidence: 0.5, isDeadCode: true }
   );
 }

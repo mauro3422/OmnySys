@@ -23,6 +23,7 @@ export {
   handleFileModified,
   detectImpactWaveForFile,
   detectDuplicateRiskForFile,
+  detectCircularDependencyForFile,
   handleFileDeleted,
   createShadowsForFile,
   getAtomsForFile,

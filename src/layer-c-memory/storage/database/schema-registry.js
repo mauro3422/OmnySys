@@ -62,6 +62,8 @@ export const TABLE_DEFINITIONS = {
       { name: 'is_dead_code', type: 'BOOLEAN', default: 0, description: 'Es código muerto' },
       { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el átomo fue removido', addedIn: 'v0.9.84' },
       { name: 'is_phase2_complete', type: 'BOOLEAN', default: 0, description: 'Si completó el análisis semántico profundo (Lazy Indexing)', addedIn: 'v0.9.73' },
+      { name: 'is_deprecated', type: 'BOOLEAN', default: 0, description: 'Si el átomo está marcado como obsoleto (@deprecated)', addedIn: 'v0.9.87' },
+      { name: 'deprecated_reason', type: 'TEXT', nullable: true, description: 'Razón de la deprecación o alternativa sugerida', addedIn: 'v0.9.87' },
 
       // Vectores matemáticos (Semantic Algebra)
       { name: 'importance_score', type: 'REAL', default: 0, description: 'Score de importancia (0-1)' },
