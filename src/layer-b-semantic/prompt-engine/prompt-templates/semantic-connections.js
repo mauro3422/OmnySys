@@ -5,8 +5,7 @@
  * Incluye CoT para mejorar razonamiento sobre conexiones
  */
 
-export default {
-  systemPrompt: `<|im_start|>system
+const SYSTEM_PROMPT = `<|im_start|>system
 You are a code analyzer specializing in semantic connection detection.
 
 <task>
@@ -85,9 +84,9 @@ Write a clear explanation that:
 - DO NOT assume connections without evidence
 - ONLY analyze the CODE section provided
 - NEVER copy example data into your response
-</warning><|im_end|>`,
+</warning><|im_end|>`;
 
-  userPrompt: `<|im_start|>user
+const USER_PROMPT = `<|im_start|>user
 <context>
 You are analyzing a JavaScript file to detect semantic connections with other files.
 This helps understand the architecture beyond simple imports/exports.
@@ -114,5 +113,9 @@ Provide your analysis as JSON following the schema.
 </question>
 <|im_end|>
 <|im_start|>assistant
-{`
+{`;
+
+export default {
+  systemPrompt: SYSTEM_PROMPT,
+  userPrompt: USER_PROMPT
 };

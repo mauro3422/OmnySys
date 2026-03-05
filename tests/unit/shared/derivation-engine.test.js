@@ -1,8 +1,10 @@
 /**
  * @fileoverview derivation-engine.test.js
- * 
+ *
  * REAL tests for Derivation Engine.
  * NO MOCKS - tests real derivation rules with real atom data.
+ *
+ * @module tests/unit/shared/derivation-engine.test.js
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -35,6 +37,92 @@ import {
 } from '#shared/derivation-engine/index.js';
 import { AtomBuilder } from '../../factories/shared/builders.js';
 
+/**
+ * Base Builder for test data creation.
+ * Provides fluent interface for creating test scenarios with common patterns.
+ * Reduces duplication by centralizing atom creation logic.
+ */
+class TestScenarioBuilder {
+  constructor() {
+    this._atoms = [];
+    this._filePath = 'test.js';
+  }
+
+  static create() {
+    return new TestScenarioBuilder();
+  }
+
+  withFilePath(filePath) {
+    this._filePath = filePath;
+    return this;
+  }
+
+  addAtom(builderFn) {
+    const builder = AtomBuilder.create(`${this._filePath}::func${this._atoms.length}`);
+    builderFn(builder);
+    this._atoms.push(builder.build());
+    return this;
+  }
+
+  addExportedAtom(name, modifiers = []) {
+    const builder = AtomBuilder.create(`${this._filePath}::${name}`);
+    builder.asExported();
+    modifiers.forEach(fn => fn(builder));
+    this._atoms.push(builder.build());
+    return this;
+  }
+
+  addPrivateAtom(name, modifiers = []) {
+    const builder = AtomBuilder.create(`${this._filePath}::${name}`);
+    builder.asExported(false);
+    modifiers.forEach(fn => fn(builder));
+    this._atoms.push(builder.build());
+    return this;
+  }
+
+  build() {
+    return { atoms: this._atoms, filePath: this._filePath };
+  }
+
+  buildAtoms() {
+    return this._atoms;
+  }
+}
+
+/**
+ * Atom Factory - Pre-configured atom builders for common test patterns.
+ * Follows SOLID Single Responsibility Principle.
+ */
+const AtomFactory = {
+  exported: (name = 'func') => AtomBuilder.create(`f.js::${name}`).asExported(),
+  private: (name = 'func') => AtomBuilder.create(`f.js::${name}`).asExported(false),
+  network: (name = 'net') => AtomBuilder.create(`f.js::${name}`).asFragileNetwork().asExported(),
+  hotPath: (name = 'hot') => AtomBuilder.create(`f.js::${name}`).asHotPath(),
+  validator: (name = 'val') => AtomBuilder.create(`f.js::${name}`).asValidator(),
+  godFunction: (name = 'god') => AtomBuilder.create(`f.js::${name}`).asGodFunction(),
+  withComplexity: (value) => (builder) => builder.withComplexity(value),
+  withNetwork: (builder) => builder.withNetworkCalls(),
+  withDom: (builder) => builder.withDomManipulation(),
+  withStorage: (builder) => builder.withStorageAccess(),
+  async: (builder) => builder.asAsync(),
+};
+
+/**
+ * Cache Test Helper - Centralizes cache operation logic.
+ */
+const CacheTestHelper = {
+  deriveTwice: (cache, atoms, rule) => {
+    cache.derive('test.js', atoms, rule);
+    cache.derive('test.js', atoms, rule);
+    return cache.getStats();
+  },
+
+  deriveMultiple: (cache, atoms, rules) => {
+    rules.forEach(rule => cache.derive('test.js', atoms, rule));
+    return cache;
+  },
+};
+
 describe('DerivationCache - Basic Operations', () => {
   let cache;
 
@@ -47,7 +135,7 @@ describe('DerivationCache - Basic Operations', () => {
   });
 
   it('derives and caches result', () => {
-    const atoms = [AtomBuilder.create().build()];
+    const { atoms } = TestScenarioBuilder.create().build();
 
     const result1 = cache.derive('test.js', atoms, 'moleculeExportCount');
     const result2 = cache.derive('test.js', atoms, 'moleculeExportCount');
@@ -58,30 +146,29 @@ describe('DerivationCache - Basic Operations', () => {
   });
 
   it('invalidates by atom ID', () => {
-    const atom = AtomBuilder.create().build();
-    const atoms = [atom];
+    const atom = AtomBuilder.create('test.js::func1').build();
 
-    cache.derive('test.js', atoms, 'moleculeExportCount');
+    cache.derive('test.js', [atom], 'moleculeExportCount');
     cache.invalidate(atom.id);
 
     expect(cache.cache.size).toBe(0);
   });
 
   it('invalidates molecule', () => {
-    const atoms = [AtomBuilder.create().build()];
+    const { atoms } = TestScenarioBuilder.create().build();
 
-    cache.derive('test.js', atoms, 'moleculeExportCount');
-    cache.derive('test.js', atoms, 'moleculeComplexity');
+    CacheTestHelper.deriveMultiple(cache, atoms, ['moleculeExportCount', 'moleculeComplexity']);
     cache.invalidateMolecule('test.js');
 
     expect(cache.cache.size).toBe(0);
   });
 
   it('clears all cache', () => {
-    const atoms = [AtomBuilder.create().build()];
+    const scenario1 = TestScenarioBuilder.create().withFilePath('file1.js').build();
+    const scenario2 = TestScenarioBuilder.create().withFilePath('file2.js').build();
 
-    cache.derive('file1.js', atoms, 'moleculeExportCount');
-    cache.derive('file2.js', atoms, 'moleculeExportCount');
+    cache.derive(scenario1.filePath, scenario1.atoms, 'moleculeExportCount');
+    cache.derive(scenario2.filePath, scenario2.atoms, 'moleculeExportCount');
     cache.clear();
 
     expect(cache.cache.size).toBe(0);
@@ -89,22 +176,20 @@ describe('DerivationCache - Basic Operations', () => {
   });
 
   it('tracks dependencies', () => {
-    const atom1 = AtomBuilder.create('file.js::func1').build();
-    const atom2 = AtomBuilder.create('file.js::func2').build();
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.withId('file.js::func1'))
+      .addAtom(b => b.withId('file.js::func2'))
+      .build();
 
-    cache.derive('file.js', [atom1, atom2], 'moleculeExportCount');
+    cache.derive('file.js', atoms, 'moleculeExportCount');
 
-    expect(cache.dependencyGraph.has(atom1.id)).toBe(true);
-    expect(cache.dependencyGraph.has(atom2.id)).toBe(true);
+    expect(cache.dependencyGraph.has(atoms[0].id)).toBe(true);
+    expect(cache.dependencyGraph.has(atoms[1].id)).toBe(true);
   });
 
   it('getStats returns correct information', () => {
-    const atoms = [AtomBuilder.create().build()];
-
-    cache.derive('test.js', atoms, 'moleculeExportCount');
-    cache.derive('test.js', atoms, 'moleculeExportCount');
-
-    const stats = cache.getStats();
+    const { atoms } = TestScenarioBuilder.create().build();
+    const stats = CacheTestHelper.deriveTwice(cache, atoms, 'moleculeExportCount');
 
     expect(stats.cacheSize).toBe(1);
     expect(stats.hits).toBe(1);
@@ -113,7 +198,7 @@ describe('DerivationCache - Basic Operations', () => {
   });
 
   it('has and get methods work', () => {
-    const atoms = [AtomBuilder.create().build()];
+    const { atoms } = TestScenarioBuilder.create().build();
     const cacheKey = 'test.js::moleculeExportCount';
 
     expect(cache.has(cacheKey)).toBe(false);
@@ -126,12 +211,12 @@ describe('DerivationCache - Basic Operations', () => {
 });
 
 describe('DerivationRules - Registry', () => {
+  const EXPECTED_RULES = ['moleculeArchetype', 'moleculeComplexity', 'moleculeExportCount'];
+
   it('getAvailableRules returns all rules', () => {
     const rules = Object.keys(DerivationRules);
 
-    expect(rules).toContain('moleculeArchetype');
-    expect(rules).toContain('moleculeComplexity');
-    expect(rules).toContain('moleculeExportCount');
+    EXPECTED_RULES.forEach(rule => expect(rules).toContain(rule));
     expect(rules.length).toBeGreaterThan(10);
   });
 
@@ -141,238 +226,232 @@ describe('DerivationRules - Registry', () => {
   });
 
   it('DerivationRules contains all expected rules', () => {
-    expect(DerivationRules.moleculeArchetype).toBeDefined();
-    expect(DerivationRules.moleculeComplexity).toBeDefined();
-    expect(DerivationRules.moleculeExportCount).toBeDefined();
+    EXPECTED_RULES.forEach(rule => {
+      expect(DerivationRules[rule]).toBeDefined();
+    });
   });
 });
 
 describe('moleculeArchetype - Derivation Rules', () => {
-  it('returns standard for empty atoms', () => {
-    const result = moleculeArchetype([]);
+  const ARCHETYPE_TESTS = [
+    {
+      name: 'returns standard for empty atoms',
+      atoms: [],
+      expected: { type: 'standard', severity: 1 },
+    },
+    {
+      name: 'detects network-hub archetype',
+      build: () => TestScenarioBuilder.create()
+        .addExportedAtom('net1', [b => b.asFragileNetwork()])
+        .addExportedAtom('net2', [b => b.asFragileNetwork()])
+        .buildAtoms(),
+      expected: { type: 'network-hub', severity: 8 },
+    },
+    {
+      name: 'detects internal-module archetype',
+      build: () => TestScenarioBuilder.create()
+        .addPrivateAtom('priv1')
+        .addPrivateAtom('priv2')
+        .buildAtoms(),
+      expected: { type: 'internal-module' },
+    },
+    {
+      name: 'detects critical-module archetype',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.asHotPath())
+        .addAtom(b => b.asHotPath())
+        .buildAtoms(),
+      expected: { type: 'critical-module', severity: 9 },
+    },
+    {
+      name: 'detects god-object archetype',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.asGodFunction())
+        .buildAtoms(),
+      expected: { type: 'god-object', severity: 10 },
+    },
+    {
+      name: 'detects validation-module archetype',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.asValidator())
+        .addAtom(b => b.asValidator())
+        .buildAtoms(),
+      expected: { type: 'validation-module' },
+    },
+  ];
 
-    expect(result.type).toBe('standard');
-    expect(result.severity).toBe(1);
-  });
+  ARCHETYPE_TESTS.forEach(({ name, build, expected }) => {
+    it(name, () => {
+      const atoms = build ? build() : [];
+      const result = moleculeArchetype(atoms);
 
-  it('detects network-hub archetype', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::net1').asFragileNetwork().asExported().build(),
-      AtomBuilder.create('f.js::net2').asFragileNetwork().asExported().build()
-    ];
-
-    const result = moleculeArchetype(atoms);
-
-    expect(result.type).toBe('network-hub');
-    expect(result.severity).toBe(8);
-  });
-
-  it('detects internal-module archetype', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::priv1').asExported(false).build(),
-      AtomBuilder.create('f.js::priv2').asExported(false).build()
-    ];
-
-    const result = moleculeArchetype(atoms);
-
-    expect(result.type).toBe('internal-module');
-  });
-
-  it('detects critical-module archetype', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::hot1').asHotPath().build(),
-      AtomBuilder.create('f.js::hot2').asHotPath().build()
-    ];
-
-    const result = moleculeArchetype(atoms);
-
-    expect(result.type).toBe('critical-module');
-    expect(result.severity).toBe(9);
-  });
-
-  it('detects god-object archetype', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::god').asGodFunction().build()
-    ];
-
-    const result = moleculeArchetype(atoms);
-
-    expect(result.type).toBe('god-object');
-    expect(result.severity).toBe(10);
-  });
-
-  it('detects validation-module archetype', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::v1').asValidator().build(),
-      AtomBuilder.create('f.js::v2').asValidator().build()
-    ];
-
-    const result = moleculeArchetype(atoms);
-
-    expect(result.type).toBe('validation-module');
+      expect(result.type).toBe(expected.type);
+      if (expected.severity !== undefined) {
+        expect(result.severity).toBe(expected.severity);
+      }
+    });
   });
 });
 
 describe('moleculeComplexity - Derivation Rules', () => {
-  it('sums atom complexities', () => {
-    const atoms = [
-      AtomBuilder.create().withComplexity(5).build(),
-      AtomBuilder.create().withComplexity(10).build(),
-      AtomBuilder.create().withComplexity(3).build()
-    ];
+  const COMPLEXITY_TESTS = [
+    {
+      name: 'sums atom complexities',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.withComplexity(5))
+        .addAtom(b => b.withComplexity(10))
+        .addAtom(b => b.withComplexity(3))
+        .buildAtoms(),
+      expected: 18,
+    },
+    {
+      name: 'handles zero complexity',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.withComplexity(0))
+        .buildAtoms(),
+      expected: 0,
+    },
+    {
+      name: 'handles empty atoms',
+      build: () => [],
+      expected: 0,
+    },
+    {
+      name: 'handles missing complexity',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.withoutField('complexity'))
+        .buildAtoms(),
+      expected: 0,
+    },
+  ];
 
-    const result = moleculeComplexity(atoms);
-
-    expect(result).toBe(18);
-  });
-
-  it('handles zero complexity', () => {
-    const atoms = [
-      AtomBuilder.create().withComplexity(0).build()
-    ];
-
-    const result = moleculeComplexity(atoms);
-
-    expect(result).toBe(0);
-  });
-
-  it('handles empty atoms', () => {
-    const result = moleculeComplexity([]);
-
-    expect(result).toBe(0);
-  });
-
-  it('handles missing complexity', () => {
-    const atoms = [
-      AtomBuilder.create().withoutField('complexity').build()
-    ];
-
-    const result = moleculeComplexity(atoms);
-
-    expect(result).toBe(0);
+  COMPLEXITY_TESTS.forEach(({ name, build, expected }) => {
+    it(name, () => {
+      const atoms = build();
+      expect(moleculeComplexity(atoms)).toBe(expected);
+    });
   });
 });
 
 describe('moleculeRisk - Derivation Rules', () => {
   it('calculates risk from atoms', () => {
-    const atoms = [
-      AtomBuilder.create().withComplexity(10).asFragileNetwork().build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.withComplexity(10).asFragileNetwork())
+      .build();
 
-    const result = moleculeRisk(atoms);
-
-    expect(result).toBeGreaterThan(0);
+    expect(moleculeRisk(atoms)).toBeGreaterThan(0);
   });
 });
 
 describe('moleculeExports - Derivation Rules', () => {
   it('returns list of exported atom names', () => {
-    const atoms = [
-      AtomBuilder.create('f.js::exp1').asExported().build(),
-      AtomBuilder.create('f.js::exp2').asExported().build(),
-      AtomBuilder.create('f.js::priv').asExported(false).build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addExportedAtom('exp1')
+      .addExportedAtom('exp2')
+      .addPrivateAtom('priv')
+      .build();
 
     const result = moleculeExports(atoms);
 
-    expect(result).toContain('exp1');
-    expect(result).toContain('exp2');
-    expect(result).not.toContain('priv');
-    expect(result.length).toBe(2);
+    expect(result).toEqual(['exp1', 'exp2']);
   });
 
   it('returns empty array for no exports', () => {
-    const atoms = [
-      AtomBuilder.create().asExported(false).build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addPrivateAtom('priv')
+      .build();
 
-    const result = moleculeExports(atoms);
-
-    expect(result).toEqual([]);
+    expect(moleculeExports(atoms)).toEqual([]);
   });
 });
 
 describe('moleculeExportCount - Derivation Rules', () => {
   it('counts exported atoms', () => {
-    const atoms = [
-      AtomBuilder.create().asExported().build(),
-      AtomBuilder.create().asExported().build(),
-      AtomBuilder.create().asExported(false).build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addExportedAtom('exp1')
+      .addExportedAtom('exp2')
+      .addPrivateAtom('priv')
+      .build();
 
-    const result = moleculeExportCount(atoms);
-
-    expect(result).toBe(2);
+    expect(moleculeExportCount(atoms)).toBe(2);
   });
 });
 
 describe('moleculeFunctionCount - Derivation Rules', () => {
   it('counts all atoms', () => {
-    const atoms = [
-      AtomBuilder.create().build(),
-      AtomBuilder.create().build(),
-      AtomBuilder.create().build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(() => {})
+      .addAtom(() => {})
+      .addAtom(() => {})
+      .build();
 
-    const result = moleculeFunctionCount(atoms);
-
-    expect(result).toBe(3);
+    expect(moleculeFunctionCount(atoms)).toBe(3);
   });
 
   it('handles empty array', () => {
-    const result = moleculeFunctionCount([]);
-
-    expect(result).toBe(0);
+    expect(moleculeFunctionCount([])).toBe(0);
   });
 });
 
 describe('moleculeHasSideEffects - Derivation Rules', () => {
-  it('returns true when any atom has side effects', () => {
-    const atoms = [
-      AtomBuilder.create().withNetworkCalls().build(),
-      AtomBuilder.create().build()
-    ];
+  const SIDE_EFFECT_TESTS = [
+    {
+      name: 'returns true when any atom has side effects',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.withNetworkCalls())
+        .addAtom(() => {})
+        .buildAtoms(),
+      expected: true,
+    },
+    {
+      name: 'returns false when no atoms have side effects',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(() => {})
+        .addAtom(() => {})
+        .buildAtoms(),
+      expected: false,
+    },
+  ];
 
-    const result = moleculeHasSideEffects(atoms);
-
-    expect(result).toBe(true);
-  });
-
-  it('returns false when no atoms have side effects', () => {
-    const atoms = [
-      AtomBuilder.create().build(),
-      AtomBuilder.create().build()
-    ];
-
-    const result = moleculeHasSideEffects(atoms);
-
-    expect(result).toBe(false);
+  SIDE_EFFECT_TESTS.forEach(({ name, build, expected }) => {
+    it(name, () => {
+      const atoms = build();
+      expect(moleculeHasSideEffects(atoms)).toBe(expected);
+    });
   });
 });
 
 describe('moleculeHasNetworkCalls - Derivation Rules', () => {
-  it('detects network calls', () => {
-    const atoms = [
-      AtomBuilder.create().withNetworkCalls().build()
-    ];
+  const NETWORK_TESTS = [
+    {
+      name: 'detects network calls',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(b => b.withNetworkCalls())
+        .buildAtoms(),
+      expected: true,
+    },
+    {
+      name: 'returns false without network calls',
+      build: () => TestScenarioBuilder.create()
+        .addAtom(() => {})
+        .buildAtoms(),
+      expected: false,
+    },
+  ];
 
-    expect(moleculeHasNetworkCalls(atoms)).toBe(true);
-  });
-
-  it('returns false without network calls', () => {
-    const atoms = [
-      AtomBuilder.create().build()
-    ];
-
-    expect(moleculeHasNetworkCalls(atoms)).toBe(false);
+  NETWORK_TESTS.forEach(({ name, build, expected }) => {
+    it(name, () => {
+      const atoms = build();
+      expect(moleculeHasNetworkCalls(atoms)).toBe(expected);
+    });
   });
 });
 
 describe('moleculeHasDomManipulation - Derivation Rules', () => {
   it('detects DOM manipulation', () => {
-    const atoms = [
-      AtomBuilder.create().withDomManipulation().build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.withDomManipulation())
+      .build();
 
     expect(moleculeHasDomManipulation(atoms)).toBe(true);
   });
@@ -380,9 +459,9 @@ describe('moleculeHasDomManipulation - Derivation Rules', () => {
 
 describe('moleculeHasStorageAccess - Derivation Rules', () => {
   it('detects storage access', () => {
-    const atoms = [
-      AtomBuilder.create().withStorageAccess().build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.withStorageAccess())
+      .build();
 
     expect(moleculeHasStorageAccess(atoms)).toBe(true);
   });
@@ -390,9 +469,9 @@ describe('moleculeHasStorageAccess - Derivation Rules', () => {
 
 describe('moleculeHasErrorHandling - Derivation Rules', () => {
   it('detects error handling', () => {
-    const atoms = [
-      AtomBuilder.create().withInvalidType('hasErrorHandling', true).build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.withInvalidType('hasErrorHandling', true))
+      .build();
 
     expect(moleculeHasErrorHandling(atoms)).toBe(true);
   });
@@ -400,9 +479,9 @@ describe('moleculeHasErrorHandling - Derivation Rules', () => {
 
 describe('moleculeHasAsyncPatterns - Derivation Rules', () => {
   it('detects async patterns', () => {
-    const atoms = [
-      AtomBuilder.create().asAsync().build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .addAtom(b => b.asAsync())
+      .build();
 
     expect(moleculeHasAsyncPatterns(atoms)).toBe(true);
   });
@@ -410,33 +489,37 @@ describe('moleculeHasAsyncPatterns - Derivation Rules', () => {
 
 describe('moleculeExternalCallCount - Derivation Rules', () => {
   it('sums external calls', () => {
-    const atom1 = AtomBuilder.create().build();
-    atom1.calls = [{ type: 'external', name: 'api1' }, { type: 'external', name: 'api2' }, { type: 'internal', name: 'local' }];
-    const atom2 = AtomBuilder.create().build();
-    atom2.calls = [{ type: 'external', name: 'api3' }, { type: 'external', name: 'api4' }];
+    const atom1 = AtomBuilder.create('test.js::func1').build();
+    atom1.calls = [
+      { type: 'external', name: 'api1' },
+      { type: 'external', name: 'api2' },
+      { type: 'internal', name: 'local' },
+    ];
+    const atom2 = AtomBuilder.create('test.js::func2').build();
+    atom2.calls = [
+      { type: 'external', name: 'api3' },
+      { type: 'external', name: 'api4' },
+    ];
 
-    const atoms = [atom1, atom2];
-
-    expect(moleculeExternalCallCount(atoms)).toBe(4);
+    expect(moleculeExternalCallCount([atom1, atom2])).toBe(4);
   });
 });
 
 describe('moleculeNetworkEndpoints - Derivation Rules', () => {
   it('collects network endpoints', () => {
-    const atom1 = AtomBuilder.create().build();
+    const atom1 = AtomBuilder.create('test.js::func1').build();
     atom1.networkEndpoints = ['https://api.example.com/users'];
-    const atom2 = AtomBuilder.create().build();
+    const atom2 = AtomBuilder.create('test.js::func2').build();
     atom2.networkEndpoints = ['https://api.example.com/posts'];
 
     const result = moleculeNetworkEndpoints([atom1, atom2]);
-
     expect(result.length).toBe(2);
   });
 });
 
 describe('moleculeHasLifecycleHooks - Derivation Rules', () => {
   it('detects lifecycle hooks', () => {
-    const atom = AtomBuilder.create().build();
+    const atom = AtomBuilder.create('test.js::func1').build();
     atom.hasLifecycleHooks = true;
 
     expect(moleculeHasLifecycleHooks([atom])).toBe(true);
@@ -445,7 +528,7 @@ describe('moleculeHasLifecycleHooks - Derivation Rules', () => {
 
 describe('moleculeHasCleanupPatterns - Derivation Rules', () => {
   it('detects cleanup patterns', () => {
-    const atom = AtomBuilder.create().build();
+    const atom = AtomBuilder.create('test.js::func1').build();
     atom.hasLifecycleHooks = true;
     atom.hasCleanupPatterns = true;
 
@@ -454,95 +537,109 @@ describe('moleculeHasCleanupPatterns - Derivation Rules', () => {
 });
 
 describe('composeMolecularMetadata - Full Composition', () => {
-  it('composes complete molecular metadata', () => {
-    const atoms = [
-      AtomBuilder.create('test.js::func1')
-        .asExported()
-        .withComplexity(5)
+  const COMPOSITION_TESTS = [
+    {
+      name: 'composes complete molecular metadata',
+      build: () => TestScenarioBuilder.create()
+        .withFilePath('test.js')
+        .addExportedAtom('func1', [b => b.withComplexity(5)])
+        .addExportedAtom('func2', [b => b.withComplexity(10)])
         .build(),
-      AtomBuilder.create('test.js::func2')
-        .asExported()
-        .withComplexity(10)
-        .build()
-    ];
+      assertions: (result) => {
+        expect(result.id).toBe('test.js');
+        expect(result.type).toBe('molecule');
+        expect(result.atomCount).toBe(2);
+        expect(result.totalComplexity).toBe(15);
+        expect(result.exportCount).toBe(2);
+        expect(result.derivedAt).toBeDefined();
+        expect(result.derivationSource).toBe('atomic-composition');
+      },
+    },
+    {
+      name: 'includes all derived fields',
+      build: () => TestScenarioBuilder.create()
+        .withFilePath('network.js')
+        .addExportedAtom('func1', [b => b.withNetworkCalls()])
+        .build(),
+      assertions: (result) => {
+        expect(result.hasNetworkCalls).toBe(true);
+        expect(result.hasSideEffects).toBe(true);
+        expect(result.archetype).toBeDefined();
+      },
+    },
+    {
+      name: 'handles empty atoms array',
+      build: () => ({ atoms: [], filePath: 'empty.js' }),
+      assertions: (result) => {
+        expect(result.atomCount).toBe(0);
+        expect(result.exportCount).toBe(0);
+        expect(result.totalComplexity).toBe(0);
+      },
+    },
+  ];
 
-    const result = composeMolecularMetadata('test.js', atoms);
-
-    expect(result.id).toBe('test.js');
-    expect(result.type).toBe('molecule');
-    expect(result.atomCount).toBe(2);
-    expect(result.totalComplexity).toBe(15);
-    expect(result.exportCount).toBe(2);
-    expect(result.derivedAt).toBeDefined();
-    expect(result.derivationSource).toBe('atomic-composition');
-  });
-
-  it('includes all derived fields', () => {
-    const atoms = [
-      AtomBuilder.create()
-        .asExported()
-        .withNetworkCalls()
-        .build()
-    ];
-
-    const result = composeMolecularMetadata('network.js', atoms);
-
-    expect(result.hasNetworkCalls).toBe(true);
-    expect(result.hasSideEffects).toBe(true);
-    expect(result.archetype).toBeDefined();
-  });
-
-  it('handles empty atoms array', () => {
-    const result = composeMolecularMetadata('empty.js', []);
-
-    expect(result.atomCount).toBe(0);
-    expect(result.exportCount).toBe(0);
-    expect(result.totalComplexity).toBe(0);
+  COMPOSITION_TESTS.forEach(({ name, build, assertions }) => {
+    it(name, () => {
+      const { atoms, filePath } = build();
+      const result = composeMolecularMetadata(filePath, atoms);
+      assertions(result);
+    });
   });
 });
 
 describe('createComposer - Factory Function', () => {
-  it('creates composer with cache', () => {
-    const composer = createComposer();
+  const COMPOSER_TESTS = [
+    {
+      name: 'creates composer with cache',
+      test: () => {
+        const composer = createComposer();
+        expect(composer.compose).toBeDefined();
+        expect(composer.getStats).toBeDefined();
+        expect(composer.invalidate).toBeDefined();
+        expect(composer.clear).toBeDefined();
+      },
+    },
+    {
+      name: 'composer caches derivations',
+      test: () => {
+        const composer = createComposer();
+        const { atoms } = TestScenarioBuilder.create().build();
 
-    expect(composer.compose).toBeDefined();
-    expect(composer.getStats).toBeDefined();
-    expect(composer.invalidate).toBeDefined();
-    expect(composer.clear).toBeDefined();
-  });
+        composer.compose('test.js', atoms);
+        composer.compose('test.js', atoms);
 
-  it('composer caches derivations', () => {
-    const composer = createComposer();
-    const atoms = [AtomBuilder.create().build()];
+        const stats = composer.getStats();
+        expect(stats.hits).toBeGreaterThan(0);
+      },
+    },
+    {
+      name: 'composer.invalidate clears by atom',
+      test: () => {
+        const composer = createComposer();
+        const atom = AtomBuilder.create('test.js::func1').build();
 
-    composer.compose('test.js', atoms);
-    composer.compose('test.js', atoms);
+        composer.compose('test.js', [atom]);
+        composer.invalidate(atom.id);
 
-    const stats = composer.getStats();
+        expect(composer.getStats().cacheSize).toBe(0);
+      },
+    },
+    {
+      name: 'composer.clear resets everything',
+      test: () => {
+        const composer = createComposer();
+        const { atoms } = TestScenarioBuilder.create().build();
 
-    expect(stats.hits).toBeGreaterThan(0);
-  });
+        composer.compose('test.js', atoms);
+        composer.clear();
 
-  it('composer.invalidate clears by atom', () => {
-    const composer = createComposer();
-    const atom = AtomBuilder.create().build();
+        expect(composer.getStats().cacheSize).toBe(0);
+      },
+    },
+  ];
 
-    composer.compose('test.js', [atom]);
-    composer.invalidate(atom.id);
-
-    const stats = composer.getStats();
-    expect(stats.cacheSize).toBe(0);
-  });
-
-  it('composer.clear resets everything', () => {
-    const composer = createComposer();
-    const atoms = [AtomBuilder.create().build()];
-
-    composer.compose('test.js', atoms);
-    composer.clear();
-
-    const stats = composer.getStats();
-    expect(stats.cacheSize).toBe(0);
+  COMPOSER_TESTS.forEach(({ name, test }) => {
+    it(name, test);
   });
 });
 
@@ -575,22 +672,12 @@ function internalHelper() {
 
     await fs.writeFile(path.join(tempDir, 'api.js'), jsContent);
 
-    const atoms = [
-      AtomBuilder.create(`${tempDir}/api.js::fetchUsers`)
-        .asExported()
-        .asAsync()
-        .withNetworkCalls()
-        .withComplexity(5)
-        .build(),
-      AtomBuilder.create(`${tempDir}/api.js::processUsers`)
-        .asExported()
-        .withComplexity(3)
-        .build(),
-      AtomBuilder.create(`${tempDir}/api.js::internalHelper`)
-        .asExported(false)
-        .withComplexity(1)
-        .build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .withFilePath(`${tempDir}/api.js`)
+      .addExportedAtom('fetchUsers', [b => b.asAsync().withNetworkCalls().withComplexity(5)])
+      .addExportedAtom('processUsers', [b => b.withComplexity(3)])
+      .addPrivateAtom('internalHelper', [b => b.withComplexity(1)])
+      .build();
 
     const result = composeMolecularMetadata(`${tempDir}/api.js`, atoms);
 
@@ -601,11 +688,12 @@ function internalHelper() {
   });
 
   it('composes metadata for complex module', async () => {
-    const atoms = [
-      AtomBuilder.create('complex.js::api1').asExported().asFragileNetwork().withComplexity(15).build(),
-      AtomBuilder.create('complex.js::api2').asExported().asFragileNetwork().withComplexity(12).build(),
-      AtomBuilder.create('complex.js::util').asExported().withComplexity(3).build()
-    ];
+    const { atoms } = TestScenarioBuilder.create()
+      .withFilePath('complex.js')
+      .addExportedAtom('api1', [b => b.asFragileNetwork().withComplexity(15)])
+      .addExportedAtom('api2', [b => b.asFragileNetwork().withComplexity(12)])
+      .addExportedAtom('util', [b => b.withComplexity(3)])
+      .build();
 
     const result = composeMolecularMetadata('complex.js', atoms);
 

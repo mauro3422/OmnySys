@@ -57,7 +57,8 @@ let restartScheduled = false;
 let restartCount = 0;
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
-function spawnWorker() {
+function spawnWorker(extraArgs = []) {
+    const ts = new Date().toISOString().slice(11, 23);
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
     // Inherit memory flags, add defaults
@@ -71,7 +72,10 @@ function spawnWorker() {
         execArgv.push('--expose-gc');
     }
 
-    worker = spawn(process.execPath, [...execArgv, workerPath, projectPath, port], {
+    // Prepare worker arguments
+    const workerArgs = [workerPath, projectPath, port, ...extraArgs];
+
+    worker = spawn(process.execPath, [...execArgv, ...workerArgs], {
         // IPC channel enables process.send() from inside mcp-http-server.js
         stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
         windowsHide: true,
@@ -93,11 +97,17 @@ function spawnWorker() {
 
             log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
 
+            // Capture flags to pass to the next spawn
+            const nextArgs = [];
+            if (msg.reanalyze) nextArgs.push('--reanalyze');
+            if (msg.clearCache) nextArgs.push('--clearCache');
+            if (msg.reindexOnly) nextArgs.push('--reindexOnly');
+
             // Give 300ms for the tool response to flush back to IDE before killing
             setTimeout(() => {
                 log('⏹️  Sending SIGTERM to worker...');
                 worker.kill('SIGTERM');
-                // spawnWorker() is called from the 'close' event handler below
+                restartScheduled = nextArgs; // Store args instead of just true
             }, 300);
         }
     });
@@ -107,13 +117,16 @@ function spawnWorker() {
         log(`Worker exited (code=${code}, signal=${signal})`);
 
         if (restartScheduled) {
+            const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
             restartScheduled = false;
             log('🚀 Respawning worker with fresh ESM cache...');
-            // Small delay to allow OS to release port 9999 (Windows needs ~1s)
-            setTimeout(spawnWorker, 1500);
+            // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
+            const delay = process.platform === 'win32' ? 3000 : 1000;
+            setTimeout(() => spawnWorker(nextArgs), delay);
         } else if (code !== 0) {
-            log(`⚠️  Worker crashed (code=${code}). Respawning in 2s...`);
-            setTimeout(spawnWorker, 2000);
+            log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
+            // Increased delay for crashes to avoid tight loops on port conflict
+            setTimeout(spawnWorker, 5000);
         } else {
             log('Worker exited cleanly. Proxy shutting down.');
             process.exit(0);

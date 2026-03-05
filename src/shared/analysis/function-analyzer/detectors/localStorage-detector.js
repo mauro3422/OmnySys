@@ -11,98 +11,57 @@
  * @param {string} functionCode - Function code
  * @returns {Array} Storage operations
  */
+/**
+ * Helper to extract operations using a given regex pattern
+ */
+function extractOpsByPattern(code, pattern, type, seen, ops, customKeyIndex = 2, filterFn = null) {
+  let match;
+  while ((match = pattern.exec(code)) !== null) {
+    const storage = match[1];
+    const rawKey = match[customKeyIndex];
+    if (filterFn && !filterFn(rawKey)) continue;
+
+    const uniqueId = `${storage}-${rawKey}-${type}`;
+    if (!seen.has(uniqueId)) {
+      seen.add(uniqueId);
+      ops.push({
+        key: rawKey,
+        type: type,
+        storage: storage
+      });
+    }
+  }
+}
+
+/**
+ * Detect localStorage/sessionStorage operations
+ * @param {string} functionCode - Function code
+ * @returns {Array} Storage operations
+ */
 export function detectLocalStorageOps(functionCode) {
   const ops = [];
   const seen = new Set();
-  
-  // localStorage.setItem('key', value)
-  const setItemPattern = /(localStorage|sessionStorage)\.setItem\s*\(\s*['"`](\w+)['"`]/g;
-  let match;
-  while ((match = setItemPattern.exec(functionCode)) !== null) {
-    const key = `${match[1]}-${match[2]}-write`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'write',
-        storage: match[1]
-      });
-    }
-  }
-  
-  // localStorage['key'] = value or localStorage.key = value
-  const bracketAssignPattern = /(localStorage|sessionStorage)\[['"`]?(\w+)['"`]?\]\s*=/g;
-  while ((match = bracketAssignPattern.exec(functionCode)) !== null) {
-    const key = `${match[1]}-${match[2]}-write`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'write',
-        storage: match[1]
-      });
-    }
-  }
-  
-  // localStorage.key = value (property assignment)
-  const propAssignPattern = /(localStorage|sessionStorage)\.(\w+)\s*=\s*(?!function)/g;
-  while ((match = propAssignPattern.exec(functionCode)) !== null) {
-    // Skip method names that are built-in
-    const methods = ['setItem', 'getItem', 'removeItem', 'clear'];
-    if (methods.includes(match[2])) continue;
-    
-    const key = `${match[1]}-${match[2]}-write`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'write',
-        storage: match[1]
-      });
-    }
-  }
-  
-  // localStorage.getItem('key')
-  const getItemPattern = /(localStorage|sessionStorage)\.getItem\s*\(\s*['"`](\w+)['"`]/g;
-  while ((match = getItemPattern.exec(functionCode)) !== null) {
-    const key = `${match[1]}-${match[2]}-read`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'read',
-        storage: match[1]
-      });
-    }
-  }
-  
-  // localStorage['key'] or localStorage.key (read access)
-  const bracketReadPattern = /(localStorage|sessionStorage)\[['"`]?(\w+)['"`]?\](?!\s*=)/g;
-  while ((match = bracketReadPattern.exec(functionCode)) !== null) {
-    const key = `${match[1]}-${match[2]}-read`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'read',
-        storage: match[1]
-      });
-    }
-  }
-  
-  // localStorage.removeItem('key')
-  const removePattern = /(localStorage|sessionStorage)\.removeItem\s*\(\s*['"`](\w+)['"`]/g;
-  while ((match = removePattern.exec(functionCode)) !== null) {
-    const key = `${match[1]}-${match[2]}-remove`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      ops.push({
-        key: match[2],
-        type: 'remove',
-        storage: match[1]
-      });
-    }
-  }
-  
+
+  // Define Patterns
+  const patterns = {
+    writeSetItem: /(localStorage|sessionStorage)\.setItem\s*\(\s*['"`](\w+)['"`]/g,
+    writeBracket: /(localStorage|sessionStorage)\[['"`]?(\w+)['"`]?\]\s*=/g,
+    writeProp: /(localStorage|sessionStorage)\.(\w+)\s*=\s*(?!function)/g,
+    readGetItem: /(localStorage|sessionStorage)\.getItem\s*\(\s*['"`](\w+)['"`]/g,
+    readBracket: /(localStorage|sessionStorage)\[['"`]?(\w+)['"`]?\](?!\s*=)/g,
+    removeOp: /(localStorage|sessionStorage)\.removeItem\s*\(\s*['"`](\w+)['"`]/g
+  };
+
+  const BUILTIN_METHODS = ['setItem', 'getItem', 'removeItem', 'clear'];
+
+  extractOpsByPattern(functionCode, patterns.writeSetItem, 'write', seen, ops);
+  extractOpsByPattern(functionCode, patterns.writeBracket, 'write', seen, ops);
+  extractOpsByPattern(functionCode, patterns.writeProp, 'write', seen, ops, 2, k => !BUILTIN_METHODS.includes(k));
+
+  extractOpsByPattern(functionCode, patterns.readGetItem, 'read', seen, ops);
+  extractOpsByPattern(functionCode, patterns.readBracket, 'read', seen, ops);
+
+  extractOpsByPattern(functionCode, patterns.removeOp, 'remove', seen, ops);
+
   return ops;
 }
