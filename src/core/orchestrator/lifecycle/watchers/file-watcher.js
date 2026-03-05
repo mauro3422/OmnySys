@@ -13,7 +13,7 @@ export async function _initializeFileWatcher() {
 
   // Obtener o crear cacheInvalidator
   const cacheInvalidator = this.cacheInvalidator || await this._getCacheInvalidator();
-  
+
   this.fileWatcher = new FileWatcher(this.projectPath, {
     debounceMs: 500,
     batchDelayMs: 1000,
@@ -108,6 +108,28 @@ export async function _initializeFileWatcher() {
       type: 'file-watcher:error',
       message,
       timestamp: Date.now()
+    });
+  });
+
+  // 🧠 Pattern Refresh Events
+  this.fileWatcher.on('pattern:refresh:start', (event) => {
+    this.wsManager?.broadcast({
+      type: 'pattern:refresh:start',
+      ...event
+    });
+  });
+
+  this.fileWatcher.on('pattern:refresh:complete', (event) => {
+    this.wsManager?.broadcast({
+      type: 'pattern:refresh:complete',
+      ...event
+    });
+  });
+
+  this.fileWatcher.on('pattern:refresh:error', (event) => {
+    this.wsManager?.broadcast({
+      type: 'pattern:refresh:error',
+      ...event
     });
   });
 

@@ -132,16 +132,29 @@ export function _isPatternLogicFile(filePath) {
  */
 export async function _triggerGlobalPatternRefresh() {
   logger.info('🧠 Detector logic change detected. Triggering GLOBAL pattern refresh...');
+  const startTime = Date.now();
+  this.emit('pattern:refresh:start', { timestamp: startTime });
 
   try {
     // Importación dinámica para evitar dependencias circulares pesadas en el arranque
     const { refreshPatterns } = await import('../../../layer-a-static/indexer.js');
 
     // Ejecutar en segundo plano (sin await para no bloquear el watcher)
-    refreshPatterns(this.rootPath, this.options.verbose).catch(err => {
-      logger.error('❌ Background pattern refresh failed:', err);
-    });
+    refreshPatterns(this.rootPath, this.options.verbose)
+      .then(enhancedMap => {
+        const duration = Date.now() - startTime;
+        this.emit('pattern:refresh:complete', {
+          duration,
+          totalAtoms: enhancedMap?.metadata?.totalAtoms || 0,
+          timestamp: Date.now()
+        });
+      })
+      .catch(err => {
+        logger.error('❌ Background pattern refresh failed:', err);
+        this.emit('pattern:refresh:error', { error: err.message });
+      });
   } catch (error) {
     logger.error('❌ Failed to load refreshPatterns for semantic invalidation:', error);
+    this.emit('pattern:refresh:error', { error: error.message });
   }
 }
