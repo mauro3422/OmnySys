@@ -5,9 +5,6 @@ import * as lifecycle from './lifecycle.js';
 import * as handlers from './handlers.js';
 import * as analyze from './analyze.js';
 import * as helpers from './helpers.js';
-import { SmartBatchProcessor } from './batch-processor/index.js';
-import { IncrementalAnalyzer } from './incremental-analyzer.js';
-
 class FileWatcher extends EventEmitter {
   constructor(rootPath, options = {}) {
     super();
@@ -29,8 +26,11 @@ class FileWatcher extends EventEmitter {
 
     // Estado interno
     this.processingFiles = new Set();  // Archivos actualmente en análisis
+    this.pendingChanges = new Map();   // Cambios pendientes: path -> changeInfo
     this.fileHashes = new Map();       // Cache de hashes: filePath -> hash
     this.isRunning = false;
+    this.fsWatcher = null;             // Instancia de fs.watch
+    this.batchProcessor = null;        // SmartBatchProcessor instance
 
     // Estadísticas
     this.stats = {

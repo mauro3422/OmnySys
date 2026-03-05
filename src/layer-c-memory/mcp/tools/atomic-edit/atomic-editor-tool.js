@@ -97,7 +97,16 @@ export class AtomicEditorTool extends AtomicMutationTool {
         const mutationLogic = async (txId) => {
             const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(this.projectPath, orchestrator);
             const editResult = await atomicEditor.edit(filePath, oldString, newString, { symbolName });
-            if (!editResult.success) return { success: false, message: editResult.error };
+            if (!editResult.success) {
+                // Propagar información de ayuda si está disponible
+                return { 
+                    success: false, 
+                    message: editResult.error,
+                    help: editResult.help,
+                    suggestions: editResult.help?.suggestions,
+                    filePreview: editResult.help?.filePreview
+                };
+            }
 
             // Como `atomic_edit` tiene su propio wrapper interno, se acopla sutilmente:
             // Inyectamos validación y autofix dentro de la transacción padre.

@@ -1,7 +1,22 @@
+/**
+ * @fileoverview circular-guard.js
+ *
+ * Detecta ciclos de dependencias circulares (imports y llamadas de funciones).
+ * Previene acoplamiento circular y recursión infinita.
+ *
+ * @module core/file-watcher/guards/circular-guard
+ * @version 2.0.0 - Estandarizado
+ */
+
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
+import {
+    IssueDomains,
+    createIssueType,
+    createStandardContext
+} from './guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
@@ -43,7 +58,11 @@ function findCycleDFS(startId, getChildrenFn) {
 }
 
 /**
- * Guard on-save principal que verifica tanto ciclos de imports como de llamados (atoms).
+ * Detecta dependencias circulares en módulos y llamadas de átomos
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @param {string} filePath - Archivo analizado
+ * @param {Object} repo - Repositorio de datos
+ * @returns {Promise<Object|null>} Resultado del análisis
  */
 export async function detectCircularDependencies(rootPath, filePath, repo) {
     const relPath = normalizePath(path.relative(rootPath, filePath));
@@ -57,7 +76,6 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
         // ============================================
         // 1. Detección de Ciclos Estructurales (Imports)
         // ============================================
-        // Leemos eficientemente el mapa de todos los imports del proyecto
         const allFiles = repo.db.prepare('SELECT path, imports_json FROM files').all();
 
         function safeArray(val) {
@@ -78,39 +96,57 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
         const fileCycle = findCycleDFS(relPath, (id) => fileGraph.get(id));
 
         if (fileCycle) {
-            const msg = `Module Circular Dependency detected: ${fileCycle.join(' ➔ ')}`;
+            const cycleStr = fileCycle.join(' ➔ ');
+            const msg = `Circular module dependency detected: ${cycleStr}`;
             logger.warn(`[CIRCULAR GUARD] ${msg}`);
 
+            // Crear contexto estandarizado
+            const context = createStandardContext({
+                guardName: 'circular-guard',
+                severity: 'high',
+                suggestedAction: 'Break the circular dependency by extracting shared code to a separate module',
+                suggestedAlternatives: [
+                    'Extract common functionality to a third module',
+                    'Use dependency injection to break the cycle',
+                    'Consider if the modules have too many responsibilities'
+                ],
+                extraData: {
+                    cycleType: 'module',
+                    cyclePath: fileCycle,
+                    cycleLength: fileCycle.length
+                }
+            });
+
+            const issueType = createIssueType(IssueDomains.ARCH, 'circular', 'high');
             await persistWatcherIssue(
                 rootPath,
                 filePath,
-                'watcher_circular_dependency',
-                'critical',
+                issueType,
+                'high',
                 msg,
-                { cycleType: 'module', cyclePath: fileCycle }
+                context
             );
+
+            await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
         } else {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_circular_dependency');
+            await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
         }
 
         // ============================================
-        // 2. Detección de Ciclos Lógicos (Llamadas de Átomos - Recursividad Infinita)
+        // 2. Detección de Ciclos Lógicos (Llamadas de Átomos)
         // ============================================
-        // Solo levantamos los átomos del archivo actual que fue guardado para ver si inician un ciclo
         const localAtoms = repo.db.prepare(`
-      SELECT id, calls_json 
-      FROM atoms 
-      WHERE file_path = ?
-    `).all(relPath);
+            SELECT id, calls_json 
+            FROM atoms 
+            WHERE file_path = ?
+        `).all(relPath);
 
         if (localAtoms.length > 0) {
-            // Necesitamos cargar un mini-grafo de las llamadas que salen de estos átomos.
-            // Para latencia ultra-baja (<5ms) traemos todos los calls en una sola query plana de ID -> ID
             const relations = repo.db.prepare(`
-        SELECT source_id, target_id 
-        FROM atom_relations 
-        WHERE relation_type = 'calls'
-      `).all();
+                SELECT source_id, target_id 
+                FROM atom_relations 
+                WHERE relation_type = 'calls'
+            `).all();
 
             const callGraph = new Map();
             for (const rel of relations) {
@@ -118,7 +154,7 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                 callGraph.get(rel.source_id).push(rel.target_id);
             }
 
-            // Además, añadimos los calls_json del archivo en memoria sin guardar por si son nuevitos
+            // Añadir calls_json del archivo en memoria
             for (const atom of localAtoms) {
                 if (!atom.calls_json) continue;
                 try {
@@ -138,23 +174,48 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                     // Si el ciclo es consigo mismo [A, A] es recursión directa (suele ser intencional)
                     if (atomCycle.length <= 2) continue;
 
-                    const msg = `Cross-file Functional Recursion detected: ${atomCycle.map(a => a.split('::')[1] || a).join(' ➔ ')}`;
+                    const atomNames = atomCycle.map(a => a.split('::')[1] || a);
+                    const cycleStr = atomNames.join(' ➔ ');
+                    const msg = `Cross-file functional recursion detected: ${cycleStr}`;
+                    
                     logger.warn(`[CIRCULAR FUNCTION GUARD] ${msg}`);
 
+                    // Crear contexto estandarizado
+                    const context = createStandardContext({
+                        guardName: 'circular-guard',
+                        atomId: atom.id,
+                        atomName: atomNames[0],
+                        severity: 'high',
+                        suggestedAction: 'Review the call chain for potential infinite recursion. Consider using iteration or adding base case guards.',
+                        suggestedAlternatives: [
+                            'Convert recursive calls to iterative loops',
+                            'Add termination condition checks',
+                            'Use memoization to prevent repeated calls',
+                            'Break the cycle by restructuring the logic'
+                        ],
+                        extraData: {
+                            cycleType: 'function',
+                            cyclePath: atomCycle,
+                            cycleLength: atomCycle.length,
+                            atomNames
+                        }
+                    });
+
+                    const issueType = createIssueType(IssueDomains.ARCH, 'circular', 'high');
                     await persistWatcherIssue(
                         rootPath,
                         filePath,
-                        'watcher_circular_call',
+                        issueType,
                         'high',
                         msg,
-                        { cycleType: 'function', cyclePath: atomCycle }
+                        context
                     );
 
-                    return { fileCycle, atomCycle }; // Salimos ante el primer átomo defectuoso
+                    return { fileCycle, atomCycle, context };
                 }
             }
 
-            await clearWatcherIssue(rootPath, filePath, 'watcher_circular_call');
+            await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
         }
 
         return { fileCycle, atomCycle: null };
@@ -167,7 +228,11 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
 
 /**
  * Legacy circular import detector on-demand
- * Utiliza la tabla `file_dependencies` local en SQLite para un BFS de max_depth = 5.
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @param {string} filePath - Archivo analizado
+ * @param {Object} EventEmitterContext - Contexto para emitir eventos
+ * @param {Object} options - Opciones de configuración
+ * @returns {Promise<Array|null>} Ciclos encontrados
  */
 export async function detectCircularImportsForFile(rootPath, filePath, EventEmitterContext, options = {}) {
     const { maxDepth = 5 } = options;
@@ -185,10 +250,10 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
         let getDeps;
         try {
             getDeps = repo.db.prepare(`
-        SELECT DISTINCT target_path 
-        FROM file_dependencies 
-        WHERE source_path = ?
-      `);
+                SELECT DISTINCT target_path 
+                FROM file_dependencies 
+                WHERE source_path = ?
+            `);
         } catch (e) {
             return null;
         }
@@ -221,21 +286,40 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
             const shortestCycle = cyclesFound.sort((a, b) => a.length - b.length)[0];
             const cycleStr = shortestCycle.join(' -> ');
 
-            logger.warn(`[CIRCULAR GUARD] 🚨 Circular import detected involving ${filePath}: \n   ${cycleStr}`);
+            logger.warn(`[CIRCULAR GUARD] Circular import detected: ${cycleStr}`);
 
+            // Crear contexto estandarizado
+            const context = createStandardContext({
+                guardName: 'circular-guard',
+                severity: 'high',
+                suggestedAction: 'Break the circular import by extracting shared code',
+                suggestedAlternatives: [
+                    'Create a shared types/utils module',
+                    'Use dependency injection',
+                    'Merge tightly coupled modules'
+                ],
+                extraData: {
+                    cycleType: 'import',
+                    cycles: cyclesFound,
+                    shortestCycle,
+                    cycleLength: shortestCycle.length
+                }
+            });
+
+            const issueType = createIssueType(IssueDomains.ARCH, 'circular', 'high');
             await persistWatcherIssue(
                 rootPath,
                 filePath,
-                'watcher_circular_import',
+                issueType,
                 'high',
-                `Circular dependency detected: ${cycleStr}`,
-                { cycles: cyclesFound }
+                `Circular dependency: ${cycleStr}`,
+                context
             );
 
-            EventEmitterContext.emit('circular:detected', { filePath, cycles: cyclesFound });
+            EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound });
             return cyclesFound;
         } else {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_circular_import');
+            await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
             return [];
         }
     } catch (error) {
@@ -243,3 +327,5 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
         return null;
     }
 }
+
+export default { detectCircularDependencies, detectCircularImportsForFile };

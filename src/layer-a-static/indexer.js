@@ -36,7 +36,10 @@ export async function indexProject(rootPath, options = {}) {
     skipLLM = false
   } = options;
 
+  const startTime = Date.now();
   const absoluteRootPath = path.isAbsolute(rootPath) ? rootPath : path.resolve(process.cwd(), rootPath);
+
+  try {
 
   if (singleFile) {
     return await analyzeSingleFile(absoluteRootPath, singleFile, { verbose, incremental });
@@ -117,8 +120,21 @@ export async function indexProject(rootPath, options = {}) {
       }
     });
 
-  const finalContext = await runner.run(verbose);
-  return finalContext.systemMap;
+    const finalContext = await runner.run(verbose);
+    if (verbose) {
+      logger.info(`✅ Indexing completed in ${Date.now() - startTime}ms`);
+    }
+    return finalContext.systemMap;
+  } catch (error) {
+    logger.error('❌ indexProject failed:', error);
+    // Return minimal valid structure instead of crashing
+    return { 
+      metadata: { totalAtoms: 0, totalFunctions: 0, totalFunctionLinks: 0 },
+      atoms: [],
+      files: [],
+      error: error.message 
+    };
+  }
 }
 
 /**
@@ -126,10 +142,13 @@ export async function indexProject(rootPath, options = {}) {
  * Útil cuando cambian las reglas de los detectores.
  */
 export async function refreshPatterns(rootPath, verbose = true) {
+  const startTime = Date.now();
   const absoluteRootPath = path.isAbsolute(rootPath) ? rootPath : path.resolve(process.cwd(), rootPath);
-  const repo = getRepository(absoluteRootPath);
+  
+  try {
+    const repo = getRepository(absoluteRootPath);
 
-  if (verbose) logger.info('\n🔄 Refreshing patterns from existing database atoms...');
+    if (verbose) logger.info('\n🔄 Refreshing patterns from existing database atoms...');
 
   const runner = new PipelineRunner({ absoluteRootPath, verbose });
 
@@ -173,8 +192,21 @@ export async function refreshPatterns(rootPath, verbose = true) {
       }
     });
 
-  const finalContext = await runner.run(verbose);
-  return finalContext.enhancedSystemMap;
+    const finalContext = await runner.run(verbose);
+    if (verbose) {
+      logger.info(`✅ Pattern refresh completed in ${Date.now() - startTime}ms`);
+    }
+    return finalContext.enhancedSystemMap;
+  } catch (error) {
+    logger.error('❌ refreshPatterns failed:', error);
+    // Return minimal valid structure instead of crashing
+    return { 
+      metadata: { totalAtoms: 0, totalFunctions: 0, totalFunctionLinks: 0 },
+      atoms: [],
+      files: [],
+      error: error.message 
+    };
+  }
 }
 
 // CLI Support

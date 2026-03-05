@@ -81,6 +81,7 @@ When you open the OmnySystem workspace in VS Code, a background task automatical
 | Cline (VS Code) | `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json` | HTTP |
 | Cursor | `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json` | HTTP |
 | OpenCode | `~/.config\opencode\opencode.json` | HTTP |
+| **Kimi (VS Code)** | `~/.kimi/mcp.json` | HTTP |
 
 ### Workspace Configuration
 

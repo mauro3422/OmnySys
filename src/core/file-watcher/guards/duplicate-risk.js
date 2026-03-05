@@ -1,20 +1,60 @@
+/**
+ * @fileoverview duplicate-risk.js
+ *
+ * Detecta riesgo de símbolos duplicados tras creación/modificación.
+ * Usa comparación de DNA hash para encontrar duplicados lógicos.
+ *
+ * @module core/file-watcher/guards/duplicate-risk
+ * @version 2.0.0 - Estandarizado
+ */
+
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import {
+    IssueDomains,
+    createIssueType,
+    createStandardContext,
+    StandardSuggestions,
+    isLowSignalName
+} from './guard-standards.js';
+
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 
-const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
-
-function isLowSignalAtomName(name) {
-    return LOW_SIGNAL_NAME_REGEX.test(name);
+/**
+ * Genera nombres alternativos para evitar colisiones
+ */
+function generateAlternativeNames(originalName) {
+    const alternatives = [];
+    const suffixes = ['New', 'V2', 'Ext', 'Impl', 'Async'];
+    
+    for (const suffix of suffixes) {
+        alternatives.push(`${originalName}${suffix}`);
+    }
+    
+    const prefixes = ['fetch', 'load', 'build', 'compute', 'process'];
+    const lowerName = originalName.toLowerCase();
+    
+    for (const prefix of prefixes) {
+        if (lowerName.startsWith(prefix)) {
+            const rest = originalName.slice(prefix.length);
+            const altPrefixes = prefixes.filter(p => p !== prefix);
+            for (const altPrefix of altPrefixes.slice(0, 2)) {
+                alternatives.push(`${altPrefix}${rest}`);
+            }
+            break;
+        }
+    }
+    
+    return alternatives.slice(0, 5);
 }
 
 /**
- * Detecta riesgo de simbolos duplicados tras una creacion/modificacion.
- * Usa dos niveles de análisis:
- * 1. Nombre: coincidencias en otros archivos
- * 2. DNA hash: si el nombre está en la whitelist de nombres comunes,
- *    solo se reporta si el dna_json es similar (duplicación lógica real).
- * El resultado aparece en _recentErrors en la siguiente tool call.
+ * Detecta riesgo de duplicados por DNA hash
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @param {string} filePath - Archivo analizado
+ * @param {Object} EventEmitterContext - Contexto para emitir eventos
+ * @param {Object} options - Opciones de configuración
+ * @returns {Promise<Array<Object>>} Findings detectados
  */
 export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
     const {
@@ -31,62 +71,64 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         let localAtoms;
 
         if (providedAtoms && Array.isArray(providedAtoms)) {
-            // Use in-memory atoms (structural scan results)
             localAtoms = providedAtoms
                 .filter(a => a.dna_json && a.dna_json !== 'null')
                 .filter(a => ['function', 'method', 'arrow', 'class'].includes(a.type || a.atom_type))
                 .filter(a => !minLinesOfCode || (a.lines_of_code || a.loc || 0) >= minLinesOfCode)
                 .map(a => ({
+                    id: a.id,
                     name: a.name,
                     dna_json: a.dna_json,
                     lines_of_code: a.lines_of_code || a.loc || 0
                 }));
         } else {
-            // Fallback to database
             localAtoms = repo.db.prepare(`
-              SELECT name, dna_json, lines_of_code
-              FROM atoms
-              WHERE file_path = ?
-                AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-                AND atom_type IN ('function', 'method', 'arrow', 'class')
-                AND (lines_of_code IS NULL OR lines_of_code >= ?)
-                AND (is_removed IS NULL OR is_removed = 0)
-                AND (is_dead_code IS NULL OR is_dead_code = 0)
-              LIMIT ?
+                SELECT id, name, dna_json, lines_of_code
+                FROM atoms
+                WHERE file_path = ?
+                    AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
+                    AND atom_type IN ('function', 'method', 'arrow', 'class')
+                    AND (lines_of_code IS NULL OR lines_of_code >= ?)
+                    AND (is_removed IS NULL OR is_removed = 0)
+                    AND (is_dead_code IS NULL OR is_dead_code = 0)
+                LIMIT ?
             `).all(filePath, minLinesOfCode, maxFindings * 4);
         }
 
         if (localAtoms.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_duplicate_risk');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
             return [];
         }
 
         const candidateDnas = localAtoms
-            .filter(a => a.name && !isLowSignalAtomName(a.name))
+            .filter(a => a.name && !isLowSignalName(a.name))
             .map(a => a.dna_json);
 
         if (candidateDnas.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_duplicate_risk');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
             return [];
         }
 
         const placeholders = candidateDnas.map(() => '?').join(',');
         const duplicateRows = repo.db.prepare(`
-      SELECT a.name, a.file_path, a.dna_json, a.line_start
-      FROM atoms a
-      WHERE a.dna_json IN (${placeholders})
-        AND a.file_path != ?
-        AND a.file_path NOT LIKE '%.test.js'
-        AND a.file_path NOT LIKE '%.spec.js'
-        AND a.file_path NOT LIKE '%/test/%'
-        AND a.file_path NOT LIKE '%/tests/%'
-        AND (a.is_removed IS NULL OR a.is_removed = 0)
-        AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
-      ORDER BY a.dna_json, a.file_path
-    `).all(...candidateDnas, filePath);
+            SELECT a.name, a.file_path, a.dna_json, a.line_start
+            FROM atoms a
+            WHERE a.dna_json IN (${placeholders})
+                AND a.file_path != ?
+                AND a.file_path NOT LIKE '%.test.js'
+                AND a.file_path NOT LIKE '%.spec.js'
+                AND a.file_path NOT LIKE '%/test/%'
+                AND a.file_path NOT LIKE '%/tests/%'
+                AND (a.is_removed IS NULL OR a.is_removed = 0)
+                AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+            ORDER BY a.dna_json, a.file_path
+        `).all(...candidateDnas, filePath);
 
         if (duplicateRows.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_duplicate_risk');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
             return [];
         }
 
@@ -97,19 +139,24 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         }
 
         const localDnaToName = new Map(localAtoms.map(a => [a.dna_json, a.name]));
+        const localDnaToId = new Map(localAtoms.map(a => [a.dna_json, a.id]));
 
         const findings = [];
         for (const [dna, remoteAtoms] of byDna) {
             const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
+            const localAtomId = localDnaToId.get(dna);
             const uniqueFiles = [...new Set(remoteAtoms.map(a => a.file_path))];
-
+            const totalInstances = remoteAtoms.length + 1;
+            
             findings.push({
                 symbol: symbolName,
+                atomId: localAtomId,
                 duplicateType: 'LOGIC_DUPLICATE',
-                totalInstances: remoteAtoms.length + 1,
+                totalInstances,
                 duplicateFiles: uniqueFiles,
                 sample: uniqueFiles.slice(0, 3),
-                dnaSimilarity: 'identical'
+                dnaSimilarity: 'identical',
+                suggestedAlternatives: generateAlternativeNames(symbolName)
             });
 
             if (findings.length >= maxFindings) break;
@@ -117,35 +164,70 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         if (findings.length > 0) {
             const preview = findings
-                .map(f => `${f.symbol}(${f.totalInstances},LOGIC_DUPLICATE)`)
+                .map(f => `${f.symbol}(${f.totalInstances})`)
                 .join(', ');
 
+            const severity = findings.length >= 3 ? 'high' : 'medium';
+            const issueType = createIssueType(IssueDomains.CODE, 'duplicate', severity);
+
             logger.warn(
-                `[DUPLICATE GUARD] ${filePath}: ${findings.length} duplicated symbol(s) detected -> ${preview}`
+                `[DUPLICATE GUARD] ${filePath}: ${findings.length} duplicated symbol(s) -> ${preview}`
             );
 
-            const severity = findings.length >= 3 ? 'high' : 'medium';
+            // Crear contexto estandarizado
+            const context = createStandardContext({
+                guardName: 'duplicate-risk-guard',
+                severity,
+                suggestedAction: findings.length >= 3 
+                    ? StandardSuggestions.DUPLICATE_REUSE + ' (multiple duplicates detected)'
+                    : StandardSuggestions.DUPLICATE_REUSE,
+                suggestedAlternatives: findings.map(f => 
+                    `Consider reusing '${f.symbol}' or rename to: ${f.suggestedAlternatives.slice(0, 3).join(', ')}`
+                ),
+                relatedFiles: findings.flatMap(f => f.duplicateFiles).filter((v, i, a) => a.indexOf(v) === i),
+                extraData: {
+                    duplicateCount: findings.length,
+                    findings: findings.slice(0, maxFindings)
+                }
+            });
 
             await persistWatcherIssue(
                 rootPath,
                 filePath,
-                'watcher_duplicate_risk',
+                issueType,
                 severity,
-                `Duplicate risk (${findings.length} symbols): ${preview}`,
-                {
-                    duplicateCount: findings.length,
-                    findings: findings.slice(0, maxFindings)
-                }
+                `${findings.length} duplicate symbol(s): ${preview}`,
+                context
             );
 
-            EventEmitterContext.emit('duplicate:risk', { filePath, findings });
+            // Limpiar severidad opuesta
+            if (severity === 'high') {
+                await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+            } else {
+                await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+            }
+
+            EventEmitterContext.emit('code:duplicate', {
+                filePath,
+                severity,
+                duplicateCount: findings.length,
+                findings: findings.map(f => ({
+                    symbol: f.symbol,
+                    instances: f.totalInstances,
+                    files: f.duplicateFiles.length
+                }))
+            });
         } else {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_duplicate_risk');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
         }
 
         return findings;
+
     } catch (error) {
         logger.debug(`[DUPLICATE GUARD SKIP] ${filePath}: ${error.message}`);
         return [];
     }
 }
+
+export default detectDuplicateRisk;

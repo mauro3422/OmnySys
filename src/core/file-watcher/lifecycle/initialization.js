@@ -2,7 +2,6 @@ import path from 'path';
 import { getProjectMetadata } from '../../../layer-c-memory/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 import { SmartBatchProcessor } from '../batch-processor/index.js';
-import { IncrementalAnalyzer } from '../incremental-analyzer.js';
 
 const logger = createLogger('file-watcher');
 

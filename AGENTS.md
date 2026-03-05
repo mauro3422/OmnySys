@@ -13,6 +13,8 @@ ANTES de editar → traverse_graph(impact_map) — ¿qué se rompe?
 SIEMPRE después de editar → get_recent_errors() — ¿el watcher captó algo?
 ```
 
+> 💡 **Nota sobre duplicados:** El FileWatcher detecta automáticamente duplicados al indexar. Si creas código duplicado, el sistema lo detectará y te avisará en `_recentErrors` con sugerencias de nombres alternativos.
+
 ---
 
 ## Catálogo de Herramientas (verificado desde el código)
@@ -122,8 +124,8 @@ aggregate_metrics({ aggregationType: "duplicates" })
 // 3. Crear con validación
 atomic_write({ filePath, content })
 
-// 4. Alertas post-creación (o revisar _recentErrors del paso anterior)
-get_recent_errors()
+// 4. El FileWatcher detectará automáticamente si hay duplicados
+// y te avisará en _recentErrors con sugerencias de nombres alternativos
 ```
 
 ### ✏️ Editar código existente

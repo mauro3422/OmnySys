@@ -7,6 +7,25 @@
  * @module mcp/tools/semantic/semantic-queries
  */
 
+import { createLogger } from '#utils/logger.js';
+
+const logger = createLogger('OmnySys:SemanticQueries');
+
+/**
+ * Helper para ejecutar queries con manejo de errores
+ * @param {Function} fn - Función a ejecutar
+ * @param {string} operation - Nombre de la operación para logging
+ * @param {*} defaultValue - Valor por defecto en caso de error
+ */
+function safeQuery(fn, operation, defaultValue = null) {
+    try {
+        return fn();
+    } catch (error) {
+        logger.error(`[${operation}] Database query failed:`, error.message);
+        return defaultValue;
+    }
+}
+
 /**
  * Construye y ejecuta query de race conditions
  * @param {Object} db - Instancia SQLite
@@ -14,25 +33,27 @@
  * @returns {{ total, races: Array }}
  */
 export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asyncOnly = true }) {
-    let whereClause = "WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]'";
-    const params = [];
+    return safeQuery(() => {
+        let whereClause = "WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]'";
+        const params = [];
 
-    if (asyncOnly) whereClause += ' AND is_async = 1';
-    if (scopeType) { whereClause += ' AND scope_type = ?'; params.push(scopeType); }
+        if (asyncOnly) whereClause += ' AND is_async = 1';
+        if (scopeType) { whereClause += ' AND scope_type = ?'; params.push(scopeType); }
 
-    const rows = db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               id, name, file_path, line_start, line_end,
-               is_async, scope_type, shared_state_json,
-               complexity, importance_score, risk_level,
-               archetype_type, purpose_type
-        FROM atoms
-        ${whereClause}
-        ORDER BY importance_score DESC, complexity DESC
-        LIMIT ? OFFSET ?
-    `).all(...params, limit, offset);
+        const rows = db.prepare(`
+            SELECT COUNT(*) OVER() as total_count,
+                   id, name, file_path, line_start, line_end,
+                   is_async, scope_type, shared_state_json,
+                   complexity, importance_score, risk_level,
+                   archetype_type, purpose_type
+            FROM atoms
+            ${whereClause}
+            ORDER BY importance_score DESC, complexity DESC
+            LIMIT ? OFFSET ?
+        `).all(...params, limit, offset);
 
-    return { total: rows[0]?.total_count || 0, rows };
+        return { total: rows[0]?.total_count || 0, rows };
+    }, 'queryRaceConditions', { total: 0, rows: [] });
 }
 
 /**
@@ -42,26 +63,28 @@ export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asy
  * @returns {{ total, patterns: Array }}
  */
 export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' }) {
-    const conditions = [];
-    if (type === 'emitters' || type === 'all')
-        conditions.push("(event_emitters_json IS NOT NULL AND event_emitters_json != '[]')");
-    if (type === 'listeners' || type === 'all')
-        conditions.push("(event_listeners_json IS NOT NULL AND event_listeners_json != '[]')");
+    return safeQuery(() => {
+        const conditions = [];
+        if (type === 'emitters' || type === 'all')
+            conditions.push("(event_emitters_json IS NOT NULL AND event_emitters_json != '[]')");
+        if (type === 'listeners' || type === 'all')
+            conditions.push("(event_listeners_json IS NOT NULL AND event_listeners_json != '[]')");
 
-    const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' OR ')}` : '';
+        const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' OR ')}` : '';
 
-    const rows = db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               id, name, file_path, line_start, line_end,
-               event_emitters_json, event_listeners_json,
-               is_async, scope_type, complexity, importance_score, risk_level
-        FROM atoms
-        ${whereSql}
-        ORDER BY importance_score DESC
-        LIMIT ? OFFSET ?
-    `).all(limit, offset);
+        const rows = db.prepare(`
+            SELECT COUNT(*) OVER() as total_count,
+                   id, name, file_path, line_start, line_end,
+                   event_emitters_json, event_listeners_json,
+                   is_async, scope_type, complexity, importance_score, risk_level
+            FROM atoms
+            ${whereSql}
+            ORDER BY importance_score DESC
+            LIMIT ? OFFSET ?
+        `).all(limit, offset);
 
-    return { total: rows[0]?.total_count || 0, rows };
+        return { total: rows[0]?.total_count || 0, rows };
+    }, 'queryEventPatterns', { total: 0, rows: [] });
 }
 
 /**
@@ -71,23 +94,25 @@ export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' })
  * @returns {{ total, rows: Array }}
  */
 export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls = false, withErrorHandling = false }) {
-    let whereClause = 'WHERE is_async = 1';
-    if (withNetworkCalls) whereClause += ' AND has_network_calls = 1';
-    if (withErrorHandling) whereClause += ' AND has_error_handling = 1';
+    return safeQuery(() => {
+        let whereClause = 'WHERE is_async = 1';
+        if (withNetworkCalls) whereClause += ' AND has_network_calls = 1';
+        if (withErrorHandling) whereClause += ' AND has_error_handling = 1';
 
-    const rows = db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               id, name, file_path, line_start, line_end,
-               is_async, has_network_calls, has_error_handling,
-               external_call_count, complexity, importance_score,
-               risk_level, archetype_type
-        FROM atoms
-        ${whereClause}
-        ORDER BY external_call_count DESC, complexity DESC
-        LIMIT ? OFFSET ?
-    `).all(limit, offset);
+        const rows = db.prepare(`
+            SELECT COUNT(*) OVER() as total_count,
+                   id, name, file_path, line_start, line_end,
+                   is_async, has_network_calls, has_error_handling,
+                   external_call_count, complexity, importance_score,
+                   risk_level, archetype_type
+            FROM atoms
+            ${whereClause}
+            ORDER BY external_call_count DESC, complexity DESC
+            LIMIT ? OFFSET ?
+        `).all(limit, offset);
 
-    return { total: rows[0]?.total_count || 0, rows };
+        return { total: rows[0]?.total_count || 0, rows };
+    }, 'queryAsyncAtoms', { total: 0, rows: [] });
 }
 
 /**
@@ -97,21 +122,23 @@ export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls =
  * @returns {{ total, rows: Array }}
  */
 export function querySocieties(db, { offset = 0, limit = 20, type }) {
-    let whereClause = 'WHERE 1=1';
-    const params = [];
-    if (type) { whereClause += ' AND type = ?'; params.push(type); }
+    return safeQuery(() => {
+        let whereClause = 'WHERE 1=1';
+        const params = [];
+        if (type) { whereClause += ' AND type = ?'; params.push(type); }
 
-    const rows = db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               id, name, type, cohesion_score, entropy_score, molecule_count,
-               metadata_json, created_at, updated_at
-        FROM societies
-        ${whereClause}
-        ORDER BY cohesion_score DESC
-        LIMIT ? OFFSET ?
-    `).all(...params, limit, offset);
+        const rows = db.prepare(`
+            SELECT COUNT(*) OVER() as total_count,
+                   id, name, type, cohesion_score, entropy_score, molecule_count,
+                   metadata_json, created_at, updated_at
+            FROM societies
+            ${whereClause}
+            ORDER BY cohesion_score DESC
+            LIMIT ? OFFSET ?
+        `).all(...params, limit, offset);
 
-    return { total: rows[0]?.total_count || 0, rows };
+        return { total: rows[0]?.total_count || 0, rows };
+    }, 'querySocieties', { total: 0, rows: [] });
 }
 
 /**
@@ -121,20 +148,22 @@ export function querySocieties(db, { offset = 0, limit = 20, type }) {
  * @returns {{ totalAtoms, withDna, coveragePct, srcOnlyAtoms, srcWithDna }}
  */
 export function queryDnaCoverage(db) {
-    const row = db.prepare(`
-        SELECT
-            COUNT(*) totalAtoms,
-            COUNT(CASE WHEN dna_json IS NOT NULL AND dna_json != '' THEN 1 END) withDna,
-            COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
-            COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND dna_json IS NOT NULL AND dna_json != '' THEN 1 END) srcWithDna
-        FROM atoms
-        WHERE is_removed IS NULL OR is_removed = 0
-    `).get();
+    return safeQuery(() => {
+        const row = db.prepare(`
+            SELECT
+                COUNT(*) totalAtoms,
+                COUNT(CASE WHEN dna_json IS NOT NULL AND dna_json != '' THEN 1 END) withDna,
+                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
+                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND dna_json IS NOT NULL AND dna_json != '' THEN 1 END) srcWithDna
+            FROM atoms
+            WHERE is_removed IS NULL OR is_removed = 0
+        `).get();
 
-    return {
-        ...row,
-        coveragePct: row.totalAtoms > 0 ? Math.round((row.withDna / row.totalAtoms) * 100) : 0
-    };
+        return {
+            ...row,
+            coveragePct: row.totalAtoms > 0 ? Math.round((row.withDna / row.totalAtoms) * 100) : 0
+        };
+    }, 'queryDnaCoverage', { totalAtoms: 0, withDna: 0, coveragePct: 0, srcOnlyAtoms: 0, srcWithDna: 0 });
 }
 
 /**
@@ -146,6 +175,7 @@ export function queryDnaCoverage(db) {
  * @returns {{ rows: Array, stats: Object }}
  */
 export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow', 'class'] } = {}) {
+    return safeQuery(() => {
     const testFilterCte = excludeTests
         ? `AND file_path NOT LIKE '%.test.js'
            AND file_path NOT LIKE '%.spec.js'
@@ -222,6 +252,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
     `).get();
 
     return { rows, stats: stats || { groups: 0, total_instances: 0 } };
+    }, 'queryDuplicates', { rows: [], stats: { groups: 0, total_instances: 0 } });
 }
 
 /**
@@ -233,6 +264,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
  * @returns {{ rows: Array, stats: Object }}
  */
 export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow'] } = {}) {
+    return safeQuery(() => {
     const testFilterCte = excludeTests
         ? `AND file_path NOT LIKE '%.test.js'
            AND file_path NOT LIKE '%.spec.js'
@@ -355,4 +387,5 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
     `).get();
 
     return { rows, stats: stats || { groups: 0, total_instances: 0 } };
+    }, 'queryIsomorphicDuplicates', { rows: [], stats: { groups: 0, total_instances: 0 } });
 }

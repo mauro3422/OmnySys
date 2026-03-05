@@ -24,7 +24,10 @@ export const ATOM_PURPOSES = {
   SCRIPT_MAIN: { name: 'Script Entry', description: 'Main function in script', isDead: false, icon: '🚀' },
   ANALYSIS_SCRIPT: { name: 'Analysis Script', description: 'Audit/analysis script - internal tooling', isDead: false, icon: '🔍', isInternalTool: true },
   CLASS_METHOD: { name: 'Class Method', description: 'Method in a class (may be called dynamically)', isDead: false, icon: '📦' },
-  DEAD_CODE: { name: 'Potential Dead Code', description: 'No evidence of use - review needed', isDead: true, icon: '💀' }
+  ENTRY_POINT: { name: 'Entry Point', description: 'Application entry point (main, start, etc)', isDead: false, icon: '🚪' },
+  WORKER_ENTRY: { name: 'Worker Entry', description: 'Worker or process entry point', isDead: false, icon: '👷' },
+  SERVER_HANDLER: { name: 'Server Handler', description: 'HTTP/WebSocket handler', isDead: false, icon: '🌐' },
+  POTENTIALLY_UNUSED: { name: 'Potentially Unused', description: 'No evidence of use - may be dead code or dynamically called', isDead: false, icon: '❓' }
 };
 
 // ── Private check helpers ─────────────────────────────────────────────────────
@@ -123,6 +126,51 @@ function checkCalledBy(atom) {
   return { purpose: 'INTERNAL_HELPER', purposeReason: `Called by ${count} caller(s) — internal helper`, purposeConfidence: 0.8, isDeadCode: false };
 }
 
+function checkEntryPoint(atom, filePath) {
+  // Common entry point names
+  const entryNames = ['main', 'start', 'run', 'init', 'bootstrap', 'launch'];
+  const name = atom.name?.toLowerCase() || '';
+  
+  // Entry point in server/proxy/worker files
+  const isServerFile = filePath.includes('server') || filePath.includes('proxy') || 
+                       filePath.includes('worker') || filePath.includes('mcp-') ||
+                       filePath.includes('bridge') || filePath.includes('handler');
+  
+  if (entryNames.includes(name) || (isServerFile && name === 'main')) {
+    if (filePath.includes('worker') || filePath.includes('Worker')) {
+      return { purpose: 'WORKER_ENTRY', purposeReason: `Worker entry point (${atom.name})`, purposeConfidence: 0.95, isDeadCode: false };
+    }
+    return { purpose: 'ENTRY_POINT', purposeReason: `Application entry point (${atom.name})`, purposeConfidence: 0.95, isDeadCode: false };
+  }
+  
+  return null;
+}
+
+function checkServerHandler(atom, filePath) {
+  // Server-related files
+  const isServerFile = filePath.includes('server') || filePath.includes('proxy') || 
+                       filePath.includes('websocket') || filePath.includes('http') ||
+                       filePath.includes('mcp-') || filePath.includes('handler');
+  
+  if (!isServerFile) return null;
+  
+  // Handler patterns
+  const handlerNames = ['handler', 'request', 'response', 'connection', 'message', 
+                        'setup', 'shutdown', 'listen', 'emit', 'broadcast'];
+  const name = atom.name?.toLowerCase() || '';
+  
+  if (handlerNames.some(h => name.includes(h))) {
+    return { purpose: 'SERVER_HANDLER', purposeReason: `Server/Handler function (${atom.name})`, purposeConfidence: 0.85, isDeadCode: false };
+  }
+  
+  // Check for lifecycle patterns in the code
+  if (atom.hasLifecycleHooks || atom.hasEventHandlers || atom.hasSideEffects) {
+    return { purpose: 'SERVER_HANDLER', purposeReason: 'Has lifecycle hooks or event handlers', purposeConfidence: 0.8, isDeadCode: false };
+  }
+  
+  return null;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -137,6 +185,8 @@ export function detectAtomPurpose(atom, filePath = '') {
     checkTestFile(filePath) ||
     checkScript(atom, filePath) ||
     checkConfig(filePath) ||
+    checkEntryPoint(atom, filePath) ||
+    checkServerHandler(atom, filePath) ||
     checkWrapperOrFactory(atom) ||
     checkExported(atom) ||
     checkClassMethod(atom) ||
@@ -146,7 +196,7 @@ export function detectAtomPurpose(atom, filePath = '') {
     checkDom(atom) ||
     checkArchetype(atom) ||
     checkCalledBy(atom) ||
-    { purpose: 'DEAD_CODE', purposeReason: 'No evidence of use found in metadata', purposeConfidence: 0.5, isDeadCode: true }
+    { purpose: 'POTENTIALLY_UNUSED', purposeReason: 'No evidence of use found - may be dynamically called or dead code', purposeConfidence: 0.3, isDeadCode: false }
   );
 }
 

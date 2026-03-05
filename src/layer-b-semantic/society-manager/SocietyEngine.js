@@ -22,33 +22,75 @@ export class SocietyEngine {
 
     async buildSocieties() {
         logger.info('[SocietyEngine] Building societies...');
+        
+        const startTime = Date.now();
+        const timeout = 30000; // 30 segundos timeout
 
-        // Load ALL atoms — NOTE: limit:0 means LIMIT 0 in SQLite = 0 rows, so pass {} for no limit
-        const atomsList = await this.repo.getAll({});
-        const atomsMap = new Map(atomsList.map(a => [a.id, a]));
+        try {
+            // Load ALL atoms — NOTE: limit:0 means LIMIT 0 in SQLite = 0 rows, so pass {} for no limit
+            const atomsList = await Promise.race([
+                this.repo.getAll({}),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout loading atoms from repository')), timeout)
+                )
+            ]);
+            
+            if (!Array.isArray(atomsList)) {
+                throw new Error('Invalid response from repository: expected array of atoms');
+            }
+            
+            const atomsMap = new Map(atomsList.map(a => [a.id, a]));
+            logger.debug(`[SocietyEngine] Loaded ${atomsList.length} atoms`);
 
-        // 2. Generar Clusters Funcionales (basados en propósito/arquetipo)
-        const functionalClusters = buildPurposeClusters(atomsMap);
+            // 2. Generar Clusters Funcionales (basados en propósito/arquetipo)
+            let functionalClusters;
+            try {
+                functionalClusters = buildPurposeClusters(atomsMap);
+            } catch (err) {
+                logger.error('[SocietyEngine] Error building purpose clusters:', err);
+                functionalClusters = [];
+            }
 
-        // 3. Generar Clusters Estructurales (basados en archivos/módulos)
-        const structuralClusters = buildFileClusters(atomsMap);
+            // 3. Generar Clusters Estructurales (basados en archivos/módulos)
+            let structuralClusters;
+            try {
+                structuralClusters = buildFileClusters(atomsMap);
+            } catch (err) {
+                logger.error('[SocietyEngine] Error building file clusters:', err);
+                structuralClusters = [];
+            }
 
-        const societies = [];
+            const societies = [];
 
-        // Transformar clusters en Sociedades (Pueblos)
-        for (const cluster of functionalClusters) {
-            societies.push(this._createSocietyFromCluster(cluster, 'functional', atomsMap));
+            // Transformar clusters en Sociedades (Pueblos)
+            for (const cluster of functionalClusters) {
+                try {
+                    societies.push(this._createSocietyFromCluster(cluster, 'functional', atomsMap));
+                } catch (err) {
+                    logger.warn(`[SocietyEngine] Skipping invalid functional cluster ${cluster?.id}:`, err.message);
+                }
+            }
+
+            for (const cluster of structuralClusters) {
+                try {
+                    societies.push(this._createSocietyFromCluster(cluster, 'structural', atomsMap));
+                } catch (err) {
+                    logger.warn(`[SocietyEngine] Skipping invalid structural cluster ${cluster?.id}:`, err.message);
+                }
+            }
+
+            // 4. Identificar Sociedades Culturales (vía vecindarios y jerarquías)
+            // TODO: Implementar análisis de vecindarios entre clusters
+
+            const duration = Date.now() - startTime;
+            logger.info(`[SocietyEngine] Generated ${societies.length} societies in ${duration}ms`);
+            return societies;
+            
+        } catch (error) {
+            logger.error('[SocietyEngine] Fatal error building societies:', error);
+            // Retornar array vacío en lugar de crashar el daemon
+            return [];
         }
-
-        for (const cluster of structuralClusters) {
-            societies.push(this._createSocietyFromCluster(cluster, 'structural', atomsMap));
-        }
-
-        // 4. Identificar Sociedades Culturales (vía vecindarios y jerarquías)
-        // TODO: Implementar análisis de vecindarios entre clusters
-
-        logger.info(`[SocietyEngine] Generated ${societies.length} societies`);
-        return societies;
     }
 
     _createSocietyFromCluster(cluster, type, atomsMap) {

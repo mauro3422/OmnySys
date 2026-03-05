@@ -124,6 +124,17 @@ const port = Number(process.env.OMNYSYS_MCP_PORT || (arg1IsPort ? arg1 : arg2) |
 const host = process.env.OMNYSYS_MCP_HOST || '127.0.0.1';
 
 const app = express();
+
+// Force UTF-8 charset on all JSON responses to prevent Windows cp1252 issues
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = function(body) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return originalJson(body);
+  };
+  next();
+});
+
 const sessions = new Map();
 
 const core = new OmnySysMCPServer(projectPath);

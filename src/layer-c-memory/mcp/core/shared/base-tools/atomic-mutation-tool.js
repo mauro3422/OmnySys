@@ -34,7 +34,19 @@ export class AtomicMutationTool extends BaseMCPTool {
 
             if (!mutationResult.success) {
                 await atomicEditor.rollbackTransaction();
-                return this.formatError('MUTATION_FAILED', mutationResult.message || 'Specific mutation logic failed', mutationResult);
+                // Incluir información de ayuda si está disponible (ej: suggestions de oldString not found)
+                const errorDetails = {
+                    ...mutationResult,
+                    severity: 'critical'
+                };
+                // Si hay información de ayuda, hacerla prominente
+                if (mutationResult.help) {
+                    errorDetails.help = mutationResult.help;
+                    errorDetails.suggestions = mutationResult.suggestions;
+                    errorDetails.filePreview = mutationResult.filePreview;
+                    errorDetails.recommendation = mutationResult.help.recommendation;
+                }
+                return this.formatError('MUTATION_FAILED', mutationResult.message || 'Specific mutation logic failed', errorDetails);
             }
 
             // 2. Validación Post-Edición

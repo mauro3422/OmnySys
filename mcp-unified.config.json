@@ -14,7 +14,8 @@
     "opencode": "C:\\Users\\mauro\\.config\\opencode\\opencode.json",
     "qwen": "C:\\Users\\mauro\\.qwen\\settings.json",
     "antigravity": "C:\\Users\\mauro\\.gemini\\antigravity\\mcp_config.json",
-    "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json"
+    "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json",
+    "kimi": "C:\\Users\\mauro\\.kimi\\mcp.json"
   },
   "workspace": {
     "dotMcp": "C:\\Dev\\OmnySystem\\.mcp.json",

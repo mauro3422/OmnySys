@@ -68,9 +68,19 @@ export class ModifyOperation extends BaseOperation {
 
       // If oldString is provided, it MUST exist in the target content
       if (oldString && !targetContent.includes(oldString)) {
+        const suggestions = this._generateSuggestions(oldString, targetContent, fileContent);
+        
         return {
           valid: false,
-          error: `oldString not found${symbolName ? ` in symbol "${symbolName}"` : ''}: ${oldString.substring(0, 50)}...`
+          error: `oldString not found${symbolName ? ` in symbol "${symbolName}"` : ''}`,
+          help: {
+            whatYouProvided: oldString.substring(0, 100) + (oldString.length > 100 ? '...' : ''),
+            suggestions,
+            filePreview: this._getFilePreview(fileContent, oldString),
+            recommendation: suggestions.length > 0 
+              ? 'Use one of the suggested strings above, or read the file first to see the exact content'
+              : 'Read the file first to see the exact content that needs to be replaced'
+          }
         };
       }
 
@@ -308,6 +318,101 @@ export class ModifyOperation extends BaseOperation {
 
   _getAbsolutePath() {
     return path.join(this.context.projectPath, this.filePath);
+  }
+
+  /**
+   * Genera sugerencias cuando oldString no se encuentra exacto
+   * Busca substrings similares usando heurísticas de matching
+   * @private
+   */
+  _generateSuggestions(oldString, targetContent, fullContent) {
+    const suggestions = [];
+    const oldTrimmed = oldString.trim();
+    
+    // 1. Buscar ignorando whitespace al inicio/final
+    const lines = targetContent.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim() === oldTrimmed) {
+        suggestions.push({
+          type: 'WHITESPACE_MISMATCH',
+          confidence: 'high',
+          line: i + 1,
+          suggestedString: line,
+          reason: 'Same content but different indentation/whitespace'
+        });
+      }
+    }
+    
+    // 2. Buscar primera línea del oldString
+    const oldFirstLine = oldTrimmed.split('\n')[0];
+    if (oldFirstLine) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(oldFirstLine)) {
+          // Encontramos una línea similar, extraer contexto
+          const contextLines = lines.slice(i, i + oldTrimmed.split('\n').length);
+          const contextString = contextLines.join('\n');
+          
+          if (contextString.length > 0 && contextString !== oldString) {
+            suggestions.push({
+              type: 'CONTEXT_MATCH',
+              confidence: 'medium',
+              line: i + 1,
+              suggestedString: contextString,
+              reason: `Found "${oldFirstLine.substring(0, 30)}..." at line ${i + 1}`
+            });
+          }
+          
+          // Solo mostrar las primeras 3 coincidencias
+          if (suggestions.length >= 5) break;
+        }
+      }
+    }
+    
+    // 3. Buscar con fuzzy matching (primeros 50 chars)
+    const oldStart = oldTrimmed.substring(0, 50);
+    if (targetContent.includes(oldStart)) {
+      const idx = targetContent.indexOf(oldStart);
+      const linesBefore = targetContent.substring(0, idx).split('\n').length;
+      suggestions.push({
+        type: 'PARTIAL_MATCH',
+        confidence: 'medium',
+        line: linesBefore,
+        suggestedString: targetContent.substring(idx, idx + Math.min(oldString.length, 200)),
+        reason: 'Content starts similarly but differs later'
+      });
+    }
+    
+    return suggestions.slice(0, 5); // Máximo 5 sugerencias
+  }
+  
+  /**
+   * Extrae un preview del archivo mostrando dónde podría estar el contenido similar
+   * @private
+   */
+  _getFilePreview(fileContent, oldString) {
+    const lines = fileContent.split('\n');
+    const oldFirstLine = oldString.split('\n')[0].trim();
+    
+    // Buscar líneas que contengan parte del inicio del oldString
+    let targetLine = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (oldFirstLine.length > 10 && lines[i].includes(oldFirstLine.substring(0, 20))) {
+        targetLine = i;
+        break;
+      }
+    }
+    
+    // Si no encontramos, mostrar primeras líneas
+    if (targetLine === -1) {
+      return lines.slice(0, 30).map((l, i) => `${i + 1}: ${l}`).join('\n');
+    }
+    
+    // Mostrar contexto alrededor de la línea encontrada
+    const start = Math.max(0, targetLine - 5);
+    const end = Math.min(lines.length, targetLine + 25);
+    
+    return lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join('\n');
   }
 }
 

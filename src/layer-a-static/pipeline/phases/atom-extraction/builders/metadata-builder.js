@@ -8,6 +8,50 @@
 
 import { determineScopeType } from '../../../../extractors/metadata/tree-sitter-integration.js';
 
+// ── Helper functions ──────────────────────────────────────────────────────────
+
+/**
+ * Detecta manejo de errores en el código de la función
+ * @param {string} functionCode - Código fuente de la función
+ * @returns {boolean} true si tiene try/catch o .catch()
+ */
+function detectErrorHandling(functionCode) {
+  if (!functionCode || typeof functionCode !== 'string') {
+    return false;
+  }
+
+  const code = functionCode;
+
+  // Patrón 1: Bloque try/catch
+  // Busca: try { ... } catch ... {
+  const tryCatchPattern = /try\s*\{[\s\S]*?\}\s*catch\s*\(?[\s\S]*?\)?\s*\{/;
+  if (tryCatchPattern.test(code)) {
+    return true;
+  }
+
+  // Patrón 2: Método .catch() en promises
+  // Busca: .catch( o .catch (
+  const catchMethodPattern = /\.catch\s*\(/;
+  if (catchMethodPattern.test(code)) {
+    return true;
+  }
+
+  // Patrón 3: Bloque try/catch en una línea (arrow functions)
+  // Busca: try { ... } catch ... { ... }
+  const tryCatchInlinePattern = /try\s*\{[^}]*\}\s*catch\s*[\({][^}]*\{/;
+  if (tryCatchInlinePattern.test(code)) {
+    return true;
+  }
+
+  // Patrón 4: async/await con try/catch
+  const asyncTryPattern = /async.*try\s*\{/;
+  if (asyncTryPattern.test(code)) {
+    return true;
+  }
+
+  return false;
+}
+
 // ── Section builders ──────────────────────────────────────────────────────────
 
 function buildSideEffectFields(se, dataFlowV2) {
@@ -155,8 +199,8 @@ export function buildAtomMetadata({
     ...buildCallFields(functionInfo, cg),
 
     // Code patterns - Error handling detection
-    hasErrorHandling: (functionCode || '').includes('try') ||
-      (functionCode || '').includes('catch'),
+    // Mejorado: detecta patrones reales de try/catch, no solo las palabras
+    hasErrorHandling: detectErrorHandling(functionCode),
     isAsync: functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
     // Temporal

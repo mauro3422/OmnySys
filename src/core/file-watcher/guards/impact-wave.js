@@ -1,5 +1,24 @@
+/**
+ * @fileoverview impact-wave.js
+ *
+ * Simula una "ola de impacto" local tras cambios de archivo.
+ * Detecta el radio de explosión de cambios y potenciales rupturas.
+ *
+ * @module core/file-watcher/guards/impact-wave
+ * @version 2.0.0 - Estandarizado
+ */
+
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import {
+    IssueDomains,
+    createIssueType,
+    createStandardContext,
+    StandardThresholds,
+    StandardSuggestions,
+    severityFromImpact
+} from './guard-standards.js';
+
 const logger = createLogger('OmnySys:file-watcher:guards:impact');
 
 function safeArray(value) {
@@ -26,16 +45,15 @@ function getFileFromRelationEntry(entry) {
     return null;
 }
 
-function impactLevelFromScore(score) {
-    if (score >= 18) return 'high';
-    if (score >= 10) return 'medium';
-    if (score >= 4) return 'low';
-    return 'none';
-}
-
 /**
- * Simula una "ola de impacto" local tras cambios de archivo.
- * Señala riesgo sin bloquear, para aparecer en _recentErrors en la siguiente tool call.
+ * Detecta ola de impacto de cambios
+ * @param {string} rootPath - Ruta raíz del proyecto
+ * @param {string} filePath - Archivo analizado
+ * @param {Array<Object>} previousAtoms - Átomos previos
+ * @param {Object} EventEmitterContext - Contexto para emitir eventos
+ * @param {Function} getAtomsFn - Función para obtener átomos
+ * @param {Object} options - Opciones de configuración
+ * @returns {Promise<Object|null>} Resultado del análisis
  */
 export async function detectImpactWave(rootPath, filePath, previousAtoms = [], EventEmitterContext, getAtomsFn, options = {}) {
     const {
@@ -48,7 +66,9 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
     try {
         const currentAtoms = options.atoms || await getAtomsFn(filePath);
         if (!currentAtoms || currentAtoms.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_impact_wave');
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_high');
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_medium');
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_low');
             return null;
         }
 
@@ -61,26 +81,27 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
         for (const atom of currentAtoms) {
             const prev = previousByName.get(atom.name);
             if (!prev) {
-                changedAtoms.push({ name: atom.name, type: 'added' });
+                changedAtoms.push({ id: atom.id, name: atom.name, type: 'added' });
                 continue;
             }
 
             const prevRequired = getRequiredParamsCount(prev);
             const currRequired = getRequiredParamsCount(atom);
             if (prevRequired !== currRequired) {
-                changedAtoms.push({ name: atom.name, type: 'signature' });
+                changedAtoms.push({ id: atom.id, name: atom.name, type: 'signature' });
             }
         }
 
         for (const prev of previousAtoms) {
             const stillExists = currentAtoms.some(a => a.name === prev.name);
             if (!stillExists) {
-                changedAtoms.push({ name: prev.name, type: 'removed' });
+                changedAtoms.push({ id: prev.id, name: prev.name, type: 'removed' });
             }
         }
 
         const focusedAtoms = changedAtoms.slice(0, maxAtoms);
         const focusedAtomNames = new Set(focusedAtoms.map(a => a.name));
+        const focusedAtomIds = focusedAtoms.map(a => a.id).filter(Boolean);
 
         const relatedFiles = new Set();
         for (const atom of currentAtoms) {
@@ -115,9 +136,11 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
         if (brokenImports.length > 0) score += 8 + Math.min(brokenImports.length, 4);
         if (brokenCallers.length > 0) score += 10 + Math.min(brokenCallers.length * 2, 10);
 
-        const level = impactLevelFromScore(score);
-        if (level === 'none') {
-            await clearWatcherIssue(rootPath, filePath, 'watcher_impact_wave');
+        const severity = severityFromImpact(score);
+        if (!severity) {
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_high');
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_medium');
+            await clearWatcherIssue(rootPath, filePath, 'arch_impact_low');
             return null;
         }
 
@@ -127,46 +150,41 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
             brokenImports: brokenImports.length,
             brokenCallers: brokenCallers.length,
             score,
-            level
+            severity
         };
 
         logger.warn(
-            `[IMPACT WAVE][${level.toUpperCase()}] ${filePath}: atoms=${summary.changedAtoms}, relatedFiles=${summary.relatedFiles}, brokenImports=${summary.brokenImports}, brokenCallers=${summary.brokenCallers}, score=${summary.score}`
+            `[IMPACT WAVE][${severity.toUpperCase()}] ${filePath}: atoms=${summary.changedAtoms}, related=${summary.relatedFiles}, brokenImports=${summary.brokenImports}, brokenCallers=${summary.brokenCallers}, score=${summary.score}`
         );
 
-        if (brokenCallers.length > 0) {
-            const sample = brokenCallers.slice(0, maxBrokenSamples).map(c => `${c.file}:${c.line}`).join(', ');
-            logger.warn(`[IMPACT WAVE] Broken caller sample: ${sample}`);
-        }
-
-        if (brokenImports.length > 0) {
-            const sample = brokenImports.slice(0, maxBrokenSamples).map(i => i.import).join(', ');
-            logger.warn(`[IMPACT WAVE] Broken import sample: ${sample}`);
-        }
-
-        EventEmitterContext.emit('impact:wave', {
-            filePath,
-            ...summary,
-            sample: {
-                atoms: focusedAtoms.slice(0, 8),
-                relatedFiles: Array.from(relatedFiles).slice(0, maxRelatedFiles),
-                brokenImports: brokenImports.slice(0, maxBrokenSamples),
-                brokenCallers: brokenCallers.slice(0, maxBrokenSamples)
-            }
-        });
-
-        await persistWatcherIssue(
-            rootPath,
-            filePath,
-            'watcher_impact_wave',
-            level,
-            `Impact wave ${level} (score=${summary.score}, relatedFiles=${summary.relatedFiles})`,
-            {
-                score: summary.score,
-                changedAtoms: summary.changedAtoms,
-                relatedFiles: summary.relatedFiles,
-                brokenImports: summary.brokenImports,
-                brokenCallers: summary.brokenCallers,
+        // Crear contexto estandarizado
+        const hasBreakingChanges = brokenCallers.length > 0 || brokenImports.length > 0;
+        const context = createStandardContext({
+            guardName: 'impact-wave-guard',
+            severity,
+            metricValue: score,
+            threshold: severity === 'high' ? StandardThresholds.IMPACT_HIGH : 
+                       (severity === 'medium' ? StandardThresholds.IMPACT_MEDIUM : StandardThresholds.IMPACT_LOW),
+            suggestedAction: hasBreakingChanges 
+                ? StandardSuggestions.IMPACT_BREAKING
+                : StandardSuggestions.IMPACT_REVIEW,
+            suggestedAlternatives: hasBreakingChanges ? [
+                'Add backward compatibility layer',
+                'Update all callers before deploying',
+                'Use atomic_edit to fix broken callers'
+            ] : [
+                'Review changes in related files',
+                'Run integration tests',
+                'Check for unexpected side effects'
+            ],
+            relatedFiles: Array.from(relatedFiles).slice(0, maxRelatedFiles),
+            extraData: {
+                score,
+                changedAtoms: focusedAtoms.length,
+                changedAtomIds: focusedAtomIds,
+                relatedFiles: Math.min(relatedFiles.size, maxRelatedFiles),
+                brokenImports: brokenImports.length,
+                brokenCallers: brokenCallers.length,
                 sample: {
                     atoms: focusedAtoms.slice(0, 8),
                     relatedFiles: Array.from(relatedFiles).slice(0, maxRelatedFiles),
@@ -178,11 +196,35 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
                     }))
                 }
             }
+        });
+
+        const issueType = createIssueType(IssueDomains.ARCH, 'impact', severity);
+        await persistWatcherIssue(
+            rootPath,
+            filePath,
+            issueType,
+            severity,
+            `Impact wave ${severity}: ${summary.relatedFiles} related file(s), score=${summary.score}`,
+            context
         );
 
+        // Limpiar severidades que no aplican
+        if (severity !== 'high') await clearWatcherIssue(rootPath, filePath, 'arch_impact_high');
+        if (severity !== 'medium') await clearWatcherIssue(rootPath, filePath, 'arch_impact_medium');
+        if (severity !== 'low') await clearWatcherIssue(rootPath, filePath, 'arch_impact_low');
+
+        EventEmitterContext.emit('arch:impact-wave', {
+            filePath,
+            ...summary,
+            sample: context.extraData.sample
+        });
+
         return summary;
+
     } catch (error) {
         logger.debug(`[IMPACT WAVE SKIP] ${filePath}: ${error.message}`);
         return null;
     }
 }
+
+export default detectImpactWave;

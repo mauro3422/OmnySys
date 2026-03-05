@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.92 - Sprint 12: Unified Analysis Core](changelogs/v0.9.92.md)** - **✅ Core Analyzer, Dynamic Shadow Volume, Queue Consolidation.** (Latest)
+- **[v0.9.93 - Critical Error Handling & Live Debugging](changelogs/v0.9.93.md)** - **✅ SocietyEngine/indexer hardening, Syntax Shield validation, Kimi MCP integration.** (Latest)
+- **[v0.9.92 - Sprint 12: Unified Analysis Core](changelogs/v0.9.92.md)** - **✅ Core Analyzer, Dynamic Shadow Volume, Queue Consolidation.**
 - **[v0.9.91 - Sprint 11: Real-time Integrity Guards](changelogs/v0.9.91.md)** - **✅ Atomic Integrity Guard, Shared State Guard, Real-time Alerts.**
 - **[v0.9.90 - Sprint 10: Daemon Intelligence (AI-Centric)](changelogs/v0.9.90.md)** - **✅ Shared State Tracking, Resource Leak Detection, CLI-Daemon Protocol Mapping.**
 - **[v0.9.89 - Sprint 9: Daemon Stability & Session Persistence](changelogs/v0.9.89.md)** - **✅ Session Recovery (SQLite), Syntax Check Shield, 3 New Daemon Heuristics.**
