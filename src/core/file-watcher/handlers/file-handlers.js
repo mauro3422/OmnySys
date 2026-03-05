@@ -8,11 +8,10 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { detectCircularDependencies } from '../guards/circular-guard.js';
-import { detectImpactWave } from '../guards/impact-wave.js';
-import { detectDuplicateRisk } from '../guards/duplicate-risk.js';
-import { detectCircularImportsForFile as legacyCircularImports } from '../guards/circular-guard.js';
+import { guardRegistry } from '../guards/registry.js';
+import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave.js';
+import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
+import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
@@ -60,16 +59,16 @@ function impactLevelFromScore(score) {
 export async function handleFileCreated(filePath, fullPath) {
   logger.debug(`[CREATED] ${filePath}`);
 
-  // Analizar y agregar al indice
-  await this.analyzeAndIndex(filePath, fullPath);
-  await this.detectImpactWaveForFile(filePath, [], { fullPath });
-  await this.detectDuplicateRiskForFile(filePath);
-  await this.detectCircularDependencyForFile(filePath);
+  // Analyse Skeleton (Fast structural scan)
+  const analysis = await analyzeFileCore(filePath, this.rootPath, {
+    depth: 'structural'
+  });
 
-  // Enriquecer atomos con ancestry
-  await this.enrichAtomsWithAncestry(filePath);
+  // Execute Impact Guards only (optional, but good for real-time feedback)
+  await guardRegistry.initializeDefaultGuards();
+  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, { fullPath });
 
-  this.emit('file:created', { filePath });
+  this.emit('file:created', { filePath, analysis });
 }
 
 /**
@@ -136,11 +135,17 @@ export async function handleFileModified(filePath, fullPath) {
     }
   }
 
-  await this.analyzeAndIndex(filePath, fullPath, true);
-  await this.detectImpactWaveForFile(filePath, previousAtoms, { fullPath });
-  await this.detectDuplicateRiskForFile(filePath);
-  await this.detectCircularDependencyForFile(filePath);
-  this.emit('file:modified', { filePath });
+  // Analyse Skeleton (Fast structural scan)
+  const analysis = await analyzeFileCore(filePath, this.rootPath, {
+    depth: 'structural',
+    source: content // Use the content we already read for the hash
+  });
+
+  // Execute Impact Guards
+  await guardRegistry.initializeDefaultGuards();
+  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, { fullPath, previousAtoms });
+
+  this.emit('file:modified', { filePath, analysis });
 }
 
 /**
@@ -148,7 +153,7 @@ export async function handleFileModified(filePath, fullPath) {
  * Delegado a guards/impact-wave.js para mantenibilidad.
  */
 export async function detectImpactWaveForFile(filePath, previousAtoms = [], options = {}) {
-  return await detectImpactWave(this.rootPath, filePath, previousAtoms, this, async (fp) => await this.getAtomsForFile(fp), options);
+  return await detectImpactWaveGuard(this.rootPath, filePath, previousAtoms, this, async (fp) => await this.getAtomsForFile(fp), options);
 }
 
 /**
@@ -156,7 +161,7 @@ export async function detectImpactWaveForFile(filePath, previousAtoms = [], opti
  * Delegado a guards/duplicate-risk.js para mantenibilidad.
  */
 export async function detectDuplicateRiskForFile(filePath, options = {}) {
-  return await detectDuplicateRisk(this.rootPath, filePath, this, options);
+  return await detectDuplicateRiskGuard(this.rootPath, filePath, this, options);
 }
 
 /**
@@ -164,7 +169,7 @@ export async function detectDuplicateRiskForFile(filePath, options = {}) {
  * Delegado a guards/circular-guard.js para mantenibilidad.
  */
 export async function detectCircularImportsForFile(filePath, options = {}) {
-  return await legacyCircularImports(this.rootPath, filePath, this, options);
+  return await detectCircularImportsForFileGuard(this.rootPath, filePath, this, options);
 }
 
 /**
@@ -182,9 +187,9 @@ export async function handleFileDeleted(filePath) {
 
   if (!fileExists) {
     logger.debug(`[SKIP] File already deleted on disk: ${filePath}`);
-    await this.removeFromIndex(filePath);
+    await this.removeFileMetadata(filePath);
     await this.removeAtomMetadata(filePath);
-    this.fileHashes.delete(filePath);
+    if (this.fileHashes) this.fileHashes.delete(filePath);
     this.emit('file:deleted', { filePath });
     return;
   }
@@ -192,10 +197,9 @@ export async function handleFileDeleted(filePath) {
   try {
     await this.createShadowsForFile(filePath);
     await this.cleanupRelationships(filePath);
-    await this.removeFromIndex(filePath);
     await this.removeFileMetadata(filePath);
     await this.removeAtomMetadata(filePath);
-    this.fileHashes.delete(filePath);
+    if (this.fileHashes) this.fileHashes.delete(filePath);
     await this.notifyDependents(filePath, 'file_deleted');
 
     this.emit('file:deleted', { filePath });

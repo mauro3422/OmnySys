@@ -14,43 +14,15 @@ export async function initialize() {
     logger.info('FileWatcher initializing...');
   }
 
-  // Inicializar SmartBatchProcessor si está habilitado
-  if (this.options.useSmartBatch) {
-    this.batchProcessor = new SmartBatchProcessor({
-      debounceMs: this.options.debounceMs,
-      maxConcurrent: this.options.maxConcurrent,
-      verbose: this.options.verbose
-    });
-    
-    // Configurar callback para procesar batches
-    this.batchProcessor.onProcessBatch = async (changes) => {
-      await this._processBatchChanges(changes);
-    };
-    
-    if (this.options.verbose) {
-      logger.info('✅ SmartBatchProcessor initialized');
-    }
-  }
-  
-  // Inicializar IncrementalAnalyzer
-  this.incrementalAnalyzer = new IncrementalAnalyzer(
-    this.cacheInvalidator?.cache,
-    this.rootPath
-  );
-
-  // Cargar estado actual del proyecto
+  // Cargar estado actual del proyecto (hashes para dedup)
   await this.loadCurrentState();
 
-  // Iniciar procesamiento periódico
   this.isRunning = true;
-  this.processingInterval = setInterval(() => this.processPendingChanges(), this.options.batchDelayMs);
 
   if (this.options.verbose) {
     logger.info('FileWatcher ready', {
       debounce: this.options.debounceMs,
-      batchDelay: this.options.batchDelayMs,
-      maxConcurrent: this.options.maxConcurrent,
-      smartBatch: this.options.useSmartBatch
+      maxConcurrent: this.options.maxConcurrent
     });
   }
 
@@ -70,14 +42,14 @@ export async function loadCurrentState() {
     // Cargar hashes de archivos existentes con yield cada 50 archivos
     const entries = Object.entries(metadata.fileIndex || {});
     let count = 0;
-    
+
     for (const [filePath, fileInfo] of entries) {
       const fullPath = path.join(this.rootPath, filePath);
       const hash = await this._calculateContentHash(fullPath);
       if (hash) {
         this.fileHashes.set(filePath, hash);
       }
-      
+
       // Yield al event loop cada 50 archivos para no bloquear
       if (++count % 50 === 0) {
         await new Promise(resolve => setImmediate(resolve));

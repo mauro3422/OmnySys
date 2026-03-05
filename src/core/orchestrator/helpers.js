@@ -178,7 +178,42 @@ export async function _invalidateFileCache(filePath) {
 
     this.indexedFiles.delete(normalizedPath);
     logger.debug(`🗑️  Invalidated cache for: ${normalizedPath} (legacy fallback)`);
-  } catch (error) {
-    logger.warn(`⚠️  Failed to invalidate cache for ${filePath}:`, error.message);
+  } catch (e) {
+    logger.debug(`[InvalidateCache] Error for ${filePath}: ${e.message}`);
+  }
+}
+
+/**
+ * Dispara una actualización incremental de sociedades para un archivo.
+ */
+export async function _triggerIncrementalSocietyUpdate(filePath) {
+  const relativePath = path.isAbsolute(filePath) ? path.relative(this.projectPath, filePath).replace(/\\/g, '/') : filePath;
+
+  logger.info(`🏘️  Triggering incremental society update for: ${relativePath}`);
+
+  // Por ahora marcamos como "stale" en la DB para que el próximo query sepa que el cluster puede estar desactualizado
+  try {
+    const db = this.repo?.db;
+    if (db) {
+      db.prepare('UPDATE societies SET updated_at = ? WHERE id IN (SELECT id FROM societies WHERE metadata_json LIKE ?)')
+        .run(new Date().toISOString(), `%${relativePath}%`);
+    }
+
+    // Emitir evento para que el frontend sepa que hay "churn" semántico
+    this.emit('society:stale', { filePath: relativePath });
+  } catch (e) {
+    logger.debug(`[SocietyUpdate] Incremental hook failed: ${e.message}`);
+  }
+}
+
+/**
+ * Ejecuta guardias de integridad de la pipeline tras un análisis.
+ */
+export async function _runPipelineGuard(filePath, analysisResult) {
+  const { pipelineAlertGuard } = await import('../file-watcher/guards/pipeline-alert-guard.js');
+  try {
+    await pipelineAlertGuard.run(this.projectPath, filePath, this.fileWatcher, analysisResult);
+  } catch (e) {
+    logger.debug(`[PipelineGuard] Execution failed: ${e.message}`);
   }
 }

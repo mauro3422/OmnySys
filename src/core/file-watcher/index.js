@@ -28,24 +28,16 @@ class FileWatcher extends EventEmitter {
     this.cacheInvalidator = options.cacheInvalidator || null;
 
     // Estado interno
-    this.pendingChanges = new Map();   // Cambios pendientes: filePath -> { type, timestamp }
     this.processingFiles = new Set();  // Archivos actualmente en análisis
     this.fileHashes = new Map();       // Cache de hashes: filePath -> hash
     this.isRunning = false;
-    this.processingInterval = null;
-
-    // Nuevos componentes
-    this.batchProcessor = null;
-    this.incrementalAnalyzer = null;
 
     // Estadísticas
     this.stats = {
       totalChanges: 0,
       processedChanges: 0,
       failedChanges: 0,
-      lastProcessedAt: null,
-      batchesProcessed: 0,
-      avgBatchSize: 0
+      lastProcessedAt: null
     };
   }
 }

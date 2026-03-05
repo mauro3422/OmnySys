@@ -32,7 +32,7 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
   const fileImports = fileInfo.imports || [];
 
   // 1. Procesar Átomos Base (Funciones, Clases, Variables, SQL)
-  console.log(`DEBUG: Found ${fileInfo.atoms?.length || 0} atoms to extract in ${filePath}`);
+  // console.log(`DEBUG: Found ${fileInfo.atoms?.length || 0} atoms to extract in ${filePath}`);
   const baseAtoms = await Promise.all(
     (fileInfo.atoms || []).map(async (atomInfo) => {
       try {
@@ -41,12 +41,12 @@ export async function extractAtoms(fileInfo, code, fileMetadata, filePath, extra
           ? extractFunctionCode(code, atomInfo)
           : code.split('\n').slice((atomInfo.lineStart || 1) - 1, atomInfo.lineEnd || atomInfo.lineStart || 1).join('\n'); // Extraer por líneas
 
-        console.log(`DEBUG: Extracting metadata for atom: ${atomInfo.name}`);
+        // console.log(`DEBUG: Extracting metadata for atom: ${atomInfo.name}`);
         const metadata = await extractAtomMetadata(atomInfo, atomCode, fileMetadata, filePath, fileImports, code, extractionDepth);
-        console.log(`DEBUG: Metadata extracted for: ${atomInfo.name}`);
+        // console.log(`DEBUG: Metadata extracted for: ${atomInfo.name}`);
         return metadata;
       } catch (err) {
-        console.error(`DEBUG: Failed to extract atom ${atomInfo.name}:`, err.message);
+        // console.error(`DEBUG: Failed to extract atom ${atomInfo.name}:`, err.message);
         return null;
       }
     })

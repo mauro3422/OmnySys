@@ -14,6 +14,7 @@ import * as staticInsights from './static-insights.js';
 import * as iterative from './iterative.js';
 import * as issues from './issues.js';
 import * as helpers from './helpers.js';
+import { pipelineAlertGuard } from '../file-watcher/guards/pipeline-alert-guard.js';
 
 class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
@@ -69,11 +70,11 @@ class Orchestrator extends EventEmitter {
     // Atomic Editor - Para ediciones seguras con vibración
     this.atomicEditor = getAtomicEditor(() => new AtomicEditor(projectPath, this));
     this._setupAtomicEditor();
-    
+
     // Cache Invalidator - Para invalidación síncrona de caché
     this.cacheInvalidator = null; // Se inicializa lazy
   }
-  
+
   /**
    * Obtiene o inicializa el Cache Invalidator (lazy initialization)
    * @returns {Promise<CacheInvalidator>}
@@ -94,7 +95,7 @@ class Orchestrator extends EventEmitter {
     this.atomicEditor.on('atom:validation:failed', (event) => {
       logger.error(`🚫 Atomic validation failed: ${event.file}`);
       logger.error(`   Error: ${event.error}`);
-      
+
       // Notificar por WebSocket si está disponible
       this.wsManager?.broadcast({
         type: 'atomic:validation:failed',
@@ -106,7 +107,10 @@ class Orchestrator extends EventEmitter {
     // Escuchar cambios atómicos exitosos
     this.atomicEditor.on('atom:modified', (event) => {
       logger.info(`✅ Atomic edit complete: ${event.file}`);
-      
+
+      // Hook para actualización incremental de sociedades
+      this._triggerIncrementalSocietyUpdate(event.file);
+
       // Notificar dependientes
       this.wsManager?.broadcast({
         type: 'atomic:modified',
@@ -119,7 +123,7 @@ class Orchestrator extends EventEmitter {
     this.atomicEditor.on('vibration:propagating', (event) => {
       logger.info(`📡 Vibration propagating from ${event.source}`);
       logger.info(`   Affects: ${event.affected.length} files`);
-      
+
       // Actualizar caché de dependientes
       event.affected.forEach(file => {
         this._invalidateFileCache(file);
@@ -160,19 +164,19 @@ class Orchestrator extends EventEmitter {
    */
   async handleFileChange(filePath, changeType, options = {}) {
     const { skipDebounce = false, priority = 'normal' } = options;
-    
+
     logger.info(`📁 File change detected: ${filePath} (${changeType})`);
-    
+
     // Invalidar caché
     await this._invalidateFileCache(filePath);
-    
+
     // Agregar a cola de análisis
     if (changeType === 'modified' || changeType === 'created') {
-      const queuePriority = priority === 'critical' ? 'critical' : 
-                           changeType === 'created' ? 'high' : 'normal';
-      
+      const queuePriority = priority === 'critical' ? 'critical' :
+        changeType === 'created' ? 'high' : 'normal';
+
       this.queue.enqueue(filePath, queuePriority);
-      
+
       // Procesar inmediatamente si es crítico o skipDebounce
       if (skipDebounce || priority === 'critical') {
         if (!this.currentJob && this.isRunning) {
@@ -180,7 +184,7 @@ class Orchestrator extends EventEmitter {
         }
       }
     }
-    
+
     // Broadcast por WebSocket
     this.wsManager?.broadcast({
       type: 'file:changed',

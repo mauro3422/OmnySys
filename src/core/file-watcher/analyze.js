@@ -7,10 +7,7 @@ const DATA_DIR = '.omnysysdata';
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 // Esta función queda como stub para compatibilidad
 const persistFileAnalysis = async () => { };
-import { detectAllSemanticConnections } from '../../layer-a-static/extractors/static/index.js';
-import { detectAllAdvancedConnections } from '../../layer-a-static/extractors/communication/index.js';
-import { extractAllMetadata } from '../../layer-a-static/extractors/metadata/index.js';
-import { extractMolecularStructure } from '../../layer-a-static/pipeline/molecular-extractor.js';
+import { analyzeFileCore, calculateShadowVolume } from '../../layer-a-static/pipeline/core-analyzer.js';
 import { saveAtom, saveMolecule, loadAtoms } from '#layer-c/storage/index.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { invalidateAtomCaches } from '#layer-c/cache/smart-cache-invalidator.js';
@@ -41,15 +38,19 @@ export async function analyzeFile(filePath, fullPath) {
     const parsed = await parseFileFromDisk(fullPath);
     if (!parsed) throw new Error('Failed to parse file');
 
-    const resolvedImports = await resolveAllImports(parsed, fullPath, this.rootPath);
-    const fileSourceCode = await loadDependencySources(resolvedImports, filePath, parsed.source || '', this.rootPath);
+    // Unified Analysis Core
+    const result_core = await analyzeFileCore(filePath, this.rootPath, {
+      depth: 'deep', // Real-time is always deep for context, but skeleton is for initial project scan
+      source: parsed.source
+    });
 
-    const staticConnections = detectAllSemanticConnections(fileSourceCode);
-    const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
+    const moleculeAtoms = result_core.atoms;
+    const metadata = result_core.metadata;
 
-    const metadata = extractAllMetadata(filePath, parsed.source || '');
-    const molecularStructure = await extractMolecularStructure(filePath, parsed.source || '', parsed, metadata);
-    const moleculeAtoms = molecularStructure?.atoms ?? [];
+    // Shadow Volume Calculation
+    const shadowStats = calculateShadowVolume(parsed.source, moleculeAtoms);
+    metadata.shadowVolume = shadowStats.percentage;
+    metadata.unindexedLines = shadowStats.unindexedLines;
 
     // 1. Manejar átomos removidos
     const previousAtoms = await loadAtoms(this.rootPath, filePath, { includeRemoved: true });
@@ -85,7 +86,7 @@ export async function analyzeFile(filePath, fullPath) {
     });
 
     const contentHash = await _calculateContentHash(fullPath);
-    const result = buildFileResult(filePath, parsed, resolvedImports, staticConnections, advancedConnections, metadata, moleculeAtoms, contentHash);
+    const result = buildFileResult(filePath, parsed, result_core.parsed.imports || [], [], [], metadata, moleculeAtoms, contentHash);
 
     // Exponer los átomos para procesamiento posterior (como vinculación incremental)
     result.moleculeAtoms = moleculeAtoms;
@@ -107,16 +108,12 @@ export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
   // 2. Ejecutar Guardias Semánticos
   if (analysis.moleculeAtoms && analysis.moleculeAtoms.length > 0) {
     try {
-      // Detección de Contención de Estado Compartido
-      const { detectSharedStateContention } = await import('./guards/shared-state-guard.js');
-      await detectSharedStateContention(this.rootPath, filePath, this, analysis.moleculeAtoms, { verbose: true });
+      const { guardRegistry } = await import('./guards/registry.js');
+      await guardRegistry.initializeDefaultGuards();
 
-      // Validación de Integridad Atómica
-      const { detectIntegrityViolations } = await import('./guards/integrity-guard.js');
-      await detectIntegrityViolations(this.rootPath, filePath, this, analysis.moleculeAtoms, { verbose: true });
-
+      await guardRegistry.runSemanticGuards(this.rootPath, filePath, this, analysis.moleculeAtoms, { verbose: true });
     } catch (guardError) {
-      logger.debug(`Semantic guards skipped for ${filePath}: ${guardError.message}`);
+      logger.debug(`Semantic guards failed or skipped for ${filePath}: ${guardError.message}`);
     }
   }
 

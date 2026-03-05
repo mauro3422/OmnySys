@@ -117,6 +117,11 @@ export function _onJobComplete(job, result) {
 
   this.emit('job:complete', job, result);
 
+  // 🛡️ Run Pipeline Guard to detect Shadow Volume issues or zero-atom extractions
+  if (result) {
+    this._runPipelineGuard(job.filePath, result);
+  }
+
   if (this.totalFilesToAnalyze > 0) {
     const processed = this.processedFiles.size;
     const total = this.totalFilesToAnalyze;

@@ -30,7 +30,7 @@ export async function detectIntegrityViolations(rootPath, filePath, EventEmitter
 
                 const analysis = analyzer.analyze();
 
-                if (analysis.coherence < 0.5) {
+                if (analysis.coherence < 0.3) {
                     violations.push({
                         atom: atom.name,
                         type: 'LOW_COHERENCE',
@@ -39,10 +39,13 @@ export async function detectIntegrityViolations(rootPath, filePath, EventEmitter
                 }
 
                 if (analysis.unusedInputs?.length > 0) {
+                    const inputNames = analysis.unusedInputs.map(input =>
+                        typeof input === 'object' ? (input.name || JSON.stringify(input)) : input
+                    );
                     violations.push({
                         atom: atom.name,
                         type: 'UNUSED_INPUTS',
-                        message: `Atom '${atom.name}' has unused inputs: ${analysis.unusedInputs.join(', ')}.`
+                        message: `Atom '${atom.name}' has unused inputs: ${inputNames.join(', ')}.`
                     });
                 }
             }

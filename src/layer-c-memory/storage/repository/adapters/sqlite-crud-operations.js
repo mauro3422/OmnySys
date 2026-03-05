@@ -145,6 +145,12 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
     return result.changes;
   }
 
+  deleteFile(filePath) {
+    const normalizedPath = this._normalize(filePath);
+    const result = this.statements.deleteFile.run(normalizedPath);
+    return result.changes > 0;
+  }
+
   exists(id) {
     const normalizedId = this._normalizeId(id);
     const row = this.statements.exists.get(normalizedId);

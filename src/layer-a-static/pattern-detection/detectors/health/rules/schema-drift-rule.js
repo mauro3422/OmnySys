@@ -1,4 +1,4 @@
-import { TABLE_DEFINITIONS } from '../../../../layer-c-memory/storage/database/schema-registry.js';
+import { TABLE_DEFINITIONS } from '../../../../../layer-c-memory/storage/database/schema-registry.js';
 
 export class SchemaDriftRule {
     constructor() {

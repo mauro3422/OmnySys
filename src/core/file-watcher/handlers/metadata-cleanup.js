@@ -13,44 +13,36 @@ import { createLogger } from '../../../utils/logger.js';
 const logger = createLogger('OmnySys:file-watcher:cleanup');
 
 /**
- * Borra metadata del archivo en .omnysysdata/files/
+ * Borra metadata del archivo en SQLite
  */
 export async function removeFileMetadata(filePath) {
-  const metadataPath = path.join(this.dataPath, 'files', filePath) + '.json';
-
   try {
-    await fs.unlink(metadataPath);
-    logger.debug(`[DELETED META] ${metadataPath}`);
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn(`[DELETE META FAIL] ${filePath}:`, error.message);
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(this.rootPath);
+    const result = await repo.deleteFile(filePath);
+
+    if (result) {
+      logger.debug(`[DELETED FILE META] ${filePath} from SQLite`);
     }
+  } catch (error) {
+    logger.warn(`[DELETE FILE META FAIL] ${filePath}:`, error.message);
   }
 }
 
 /**
- * Borra atomos asociados al archivo
+ * Borra atomos asociados al archivo en SQLite
  */
 export async function removeAtomMetadata(filePath) {
-  const atomsDir = path.join(this.dataPath, 'atoms');
-  const fileDir = path.dirname(filePath);
-  const fileName = path.basename(filePath, path.extname(filePath));
-  const atomDirPath = path.join(atomsDir, fileDir, fileName);
-
   try {
-    await fs.access(atomDirPath);
-    const atoms = await fs.readdir(atomDirPath);
-    
-    for (const atom of atoms) {
-      await fs.unlink(path.join(atomDirPath, atom));
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(this.rootPath);
+    const count = await repo.deleteByFile(filePath);
+
+    if (count > 0) {
+      logger.debug(`[DELETED ATOMS] ${count} atoms for ${filePath} from SQLite`);
     }
-    
-    await fs.rmdir(atomDirPath);
-    logger.debug(`[DELETED ATOMS] ${atoms.length} atoms for ${filePath}`);
   } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn(`[DELETE ATOMS FAIL] ${filePath}:`, error.message);
-    }
+    logger.warn(`[DELETE ATOMS FAIL] ${filePath}:`, error.message);
   }
 }
 

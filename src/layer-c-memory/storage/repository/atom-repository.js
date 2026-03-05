@@ -80,6 +80,15 @@ export class AtomRepository {
   }
 
   /**
+   * Elimina un registro de archivo
+   * @param {string} filePath - Ruta del archivo
+   * @returns {Promise<boolean>} True si se elimino
+   */
+  async deleteFile(filePath) {
+    throw new Error('Method deleteFile() must be implemented');
+  }
+
+  /**
    * Elimina todos los atomos de un archivo
    * @param {string} filePath - Ruta del archivo
    * @returns {Promise<number>} Cantidad eliminada
