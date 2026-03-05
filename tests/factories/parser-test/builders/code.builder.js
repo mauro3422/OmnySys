@@ -6,53 +6,38 @@
  * @module tests/factories/parser-test/code
  */
 
+import { FunctionBuilder } from './function.builder.js';
+import { ClassBuilder } from './class-generator.builder.js';
+import { TSBuilder } from './ts.builder.js';
+
 export class CodeSampleBuilder {
     constructor() {
         this.code = '';
         this.filePath = 'test.js';
+
+        // Specialized sub-builders
+        this.fnBuilder = new FunctionBuilder();
+        this.classBuilder = new ClassBuilder();
+        this.tsBuilder = new TSBuilder();
     }
 
     withFunction(name, params = [], body = 'return null;', options = {}) {
-        const async = options.async ? 'async ' : '';
-        const generator = options.generator ? '* ' : '';
-        const exported = options.exported ? 'export ' : '';
-        const paramStr = params.join(', ');
-        const funcCode = exported + async + 'function' + generator + ' ' + name + '(' + paramStr + ') {\n  ' + body + '\n}\n\n';
-        this.code += funcCode;
+        this.code += this.fnBuilder.buildFunction(name, params, body, options);
         return this;
     }
 
     withArrow(name, params = [], body = 'null', options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        const paramStr = params.join(', ');
-        const blockBody = options.block ? '{\n  return ' + body + ';\n}' : body;
-        const arrowCode = exported + 'const ' + name + ' = (' + paramStr + ') => ' + blockBody + ';\n\n';
-        this.code += arrowCode;
+        this.code += this.fnBuilder.buildArrow(name, params, body, options);
         return this;
     }
 
     withFunctionExpression(name, params = [], body = 'return null;', options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        const async = options.async ? 'async ' : '';
-        const paramStr = params.join(', ');
-        const exprCode = exported + 'const ' + name + ' = ' + async + 'function(' + paramStr + ') {\n  ' + body + '\n};\n\n';
-        this.code += exprCode;
+        this.code += this.fnBuilder.buildFunctionExpression(name, params, body, options);
         return this;
     }
 
     withClass(name, methods = [], options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        const extendsClause = options.extends ? ' extends ' + options.extends : '';
-        let classCode = exported + 'class ' + name + extendsClause + ' {\n';
-        for (const method of methods) {
-            const staticKeyword = method.static ? 'static ' : '';
-            const async = method.async ? 'async ' : '';
-            const params = method.params?.join(', ') || '';
-            const methodBody = method.body || '';
-            classCode += '  ' + staticKeyword + async + method.name + '(' + params + ') {\n    ' + methodBody + '\n  }\n\n';
-        }
-        classCode += '}\n\n';
-        this.code += classCode;
+        this.code += this.classBuilder.buildClass(name, methods, options);
         return this;
     }
 
@@ -125,30 +110,17 @@ export class CodeSampleBuilder {
     }
 
     withTSInterface(name, properties = {}, options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        let interfaceCode = exported + 'interface ' + name + ' {\n';
-        for (const [propName, propType] of Object.entries(properties)) {
-            interfaceCode += '  ' + propName + ': ' + propType + ';\n';
-        }
-        interfaceCode += '}\n\n';
-        this.code += interfaceCode;
+        this.code += this.tsBuilder.buildInterface(name, properties, options);
         return this;
     }
 
     withTSTypeAlias(name, definition, options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        this.code += exported + 'type ' + name + ' = ' + definition + ';\n\n';
+        this.code += this.tsBuilder.buildTypeAlias(name, definition, options);
         return this;
     }
 
     withTSEnum(name, members = {}, options = {}) {
-        const exported = options.exported ? 'export ' : '';
-        let enumCode = exported + 'enum ' + name + ' {\n';
-        for (const [memberName, memberValue] of Object.entries(members)) {
-            enumCode += '  ' + memberName + (memberValue !== undefined ? ' = ' + memberValue : '') + ',\n';
-        }
-        enumCode += '}\n\n';
-        this.code += enumCode;
+        this.code += this.tsBuilder.buildEnum(name, members, options);
         return this;
     }
 

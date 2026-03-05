@@ -18,17 +18,26 @@ import {
     queryDnaCoverage
 } from './semantic-queries.js';
 
+import { RaceConditionHandler } from './handlers/race-condition-handler.js';
+import { DuplicateHandler } from './handlers/duplicate-handler.js';
+import { EventPatternHandler } from './handlers/event-pattern-handler.js';
+import { AsyncAnalysisHandler } from './handlers/async-analysis-handler.js';
+
 /**
  * Clase base para herramientas de análisis semántico.
- * Proporciona métodos reutilizables para consultar datos semánticos de SQLite.
- * Las queries SQL están encapsuladas en `semantic-queries.js`.
  */
 export class SemanticQueryTool extends GraphQueryTool {
     constructor(toolName) {
         super(toolName);
+        this._initHandlers();
     }
 
-    // ─── Métodos de consulta ────────────────────────────────────────────────────
+    _initHandlers() {
+        this.raceHandler = new RaceConditionHandler();
+        this.duplicateHandler = new DuplicateHandler();
+        this.eventHandler = new EventPatternHandler();
+        this.asyncHandler = new AsyncAnalysisHandler();
+    }
 
     /**
      * Obtiene átomos con acceso a shared state (race conditions potenciales)
@@ -39,22 +48,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, total } = queryRaceConditions(this.repo.db, options);
         const { offset = 0, limit = 20 } = options;
 
-        const races = rows.map(atom => ({
-            id: atom.id,
-            name: atom.name,
-            file: atom.file_path,
-            line: atom.line_start,
-            isAsync: atom.is_async,
-            scopeType: atom.scope_type,
-            sharedStateAccess: JSON.parse(atom.shared_state_json || '[]'),
-            complexity: atom.complexity,
-            importanceScore: atom.importance_score,
-            riskLevel: atom.risk_level,
-            archetype: atom.archetype_type,
-            purpose: atom.purpose_type,
-            severity: this._calculateRaceSeverity(atom)
-        }));
-
+        const races = this.raceHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, races };
     }
 
@@ -67,22 +61,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, total } = queryEventPatterns(this.repo.db, options);
         const { offset = 0, limit = 20 } = options;
 
-        const patterns = rows.map(atom => ({
-            id: atom.id,
-            name: atom.name,
-            file: atom.file_path,
-            line: atom.line_start,
-            eventEmitters: JSON.parse(atom.event_emitters_json || '[]'),
-            eventListeners: JSON.parse(atom.event_listeners_json || '[]'),
-            isAsync: atom.is_async,
-            scopeType: atom.scope_type,
-            complexity: atom.complexity,
-            importanceScore: atom.importance_score,
-            riskLevel: atom.risk_level,
-            hasEmitters: !!(atom.event_emitters_json && atom.event_emitters_json !== '[]'),
-            hasListeners: !!(atom.event_listeners_json && atom.event_listeners_json !== '[]')
-        }));
-
+        const patterns = this.eventHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, patterns };
     }
 
@@ -95,21 +74,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, total } = queryAsyncAtoms(this.repo.db, options);
         const { offset = 0, limit = 20 } = options;
 
-        const asyncAtoms = rows.map(atom => ({
-            id: atom.id,
-            name: atom.name,
-            file: atom.file_path,
-            line: atom.line_start,
-            isAsync: atom.is_async,
-            hasNetworkCalls: atom.has_network_calls,
-            hasErrorHandling: atom.has_error_handling,
-            externalCallCount: atom.external_call_count,
-            complexity: atom.complexity,
-            importanceScore: atom.importance_score,
-            riskLevel: atom.risk_level,
-            archetype: atom.archetype_type
-        }));
-
+        const asyncAtoms = this.asyncHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, asyncAtoms };
     }
 
@@ -139,57 +104,16 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     /**
      * Obtiene duplicados potenciales basados en DNA.
-     * Incluye stats globales de cobertura, metadata de urgencia y ranking.
-     * Reemplaza la necesidad de scripts externos para auditar duplicados.
      */
     async getDuplicates(options = {}) {
         if (!this.repo) throw new Error('Repository not initialized');
 
         const { rows, stats } = queryDuplicates(this.repo.db, options);
         const coverage = queryDnaCoverage(this.repo.db);
-
-        const groups = {};
-        rows.forEach(row => {
-            if (!groups[row.dna_json]) {
-                groups[row.dna_json] = {
-                    dna: null,           // omitir el JSON crudo del output (es muy largo)
-                    groupSize: row.group_size,
-                    instances: [],
-                    // Urgency: cuánto importa arreglar este duplicado
-                    urgencyScore: Math.round(
-                        row.group_size *
-                        (row.importance_score || 0.1) *
-                        (1 + (row.change_frequency || 0))
-                    )
-                };
-            }
-            groups[row.dna_json].instances.push({
-                id: row.id,
-                name: row.name,
-                file: row.file_path,
-                line: row.line_start,
-                linesOfCode: row.lines_of_code,
-                atomType: row.atom_type,
-                archetype: row.archetype_type,
-                purpose: row.purpose_type,
-                changeFrequency: row.change_frequency,
-                importanceScore: row.importance_score,
-                callerCount: row.caller_count || 0
-            });
-        });
-
-        const duplicates = Object.values(groups)
-            .sort((a, b) => b.urgencyScore - a.urgencyScore);
+        const duplicates = this.duplicateHandler.handle(rows);
 
         return {
-            // Stats globales — lo que antes requería scripts externos
-            coverage: {
-                totalAtoms: coverage.totalAtoms,
-                withDna: coverage.withDna,
-                coveragePct: coverage.coveragePct,
-                srcOnlyAtoms: coverage.srcOnlyAtoms,
-                srcWithDna: coverage.srcWithDna
-            },
+            coverage,
             summary: {
                 duplicateGroups: stats.groups || 0,
                 totalDuplicateInstances: stats.total_instances || 0,
@@ -202,54 +126,16 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     /**
      * Obtiene duplicados potenciales basados en Isomorfismo Funcional.
-     * Evalúa el comportamiento (dependencias ordenadas + firma) en vez del AST crudo.
      */
     async getIsomorphicDuplicates(options = {}) {
         if (!this.repo) throw new Error('Repository not initialized');
 
         const { rows, stats } = queryIsomorphicDuplicates(this.repo.db, options);
-        const coverage = queryDnaCoverage(this.repo.db); // Reusamos coverage ya que es global
-
-        const groups = {};
-        rows.forEach(row => {
-            if (!groups[row.isomorphic_hash]) {
-                groups[row.isomorphic_hash] = {
-                    hash: null, // omitimos el hash largo del output final
-                    groupSize: row.group_size,
-                    instances: [],
-                    urgencyScore: Math.round(
-                        row.group_size *
-                        (row.importance_score || 0.1) *
-                        (1 + (row.change_frequency || 0))
-                    )
-                };
-            }
-            groups[row.isomorphic_hash].instances.push({
-                id: row.id,
-                name: row.name,
-                file: row.file_path,
-                line: row.line_start,
-                linesOfCode: row.lines_of_code,
-                atomType: row.atom_type,
-                archetype: row.archetype_type,
-                purpose: row.purpose_type,
-                changeFrequency: row.change_frequency,
-                importanceScore: row.importance_score,
-                callerCount: row.caller_count || 0
-            });
-        });
-
-        const duplicates = Object.values(groups)
-            .sort((a, b) => b.urgencyScore - a.urgencyScore);
+        const coverage = queryDnaCoverage(this.repo.db);
+        const duplicates = this.duplicateHandler.handle(rows);
 
         return {
-            coverage: {
-                totalAtoms: coverage.totalAtoms,
-                withDna: coverage.withDna,
-                coveragePct: coverage.coveragePct,
-                srcOnlyAtoms: coverage.srcOnlyAtoms,
-                srcWithDna: coverage.srcWithDna
-            },
+            coverage,
             summary: {
                 duplicateGroups: stats.groups || 0,
                 totalDuplicateInstances: stats.total_instances || 0,
@@ -297,32 +183,10 @@ export class SemanticQueryTool extends GraphQueryTool {
         return { total, offset, limit, hasMore: offset + limit < total, connections: society };
     }
 
-    // ─── Helpers privados ───────────────────────────────────────────────────────
-
-    /**
-     * Calcula severidad de race condition basado en múltiples factores
-     */
-    _calculateRaceSeverity(atom) {
-        let severity = 0;
-        if (atom.is_async) severity += 2;
-
-        const sharedState = JSON.parse(atom.shared_state_json || '[]');
-        severity += Math.min(sharedState.length * 2, 4);
-
-        if (atom.scope_type === 'global') severity += 2;
-        else if (atom.scope_type === 'closure') severity += 1;
-
-        if (atom.complexity > 10) severity += 1;
-        if (atom.complexity > 20) severity += 1;
-        if (atom.importance_score > 0.8) severity += 1;
-
-        return Math.min(severity, 10);
-    }
-
     formatSemanticResult(type, data, pagination) {
         return {
             [type]: data,
-            pagination: { offset: pagination.offset, limit: pagination.limit, total: pagination.total, hasMore: pagination.hasMore },
+            pagination,
             source: 'sqlite',
             timestamp: new Date().toISOString()
         };

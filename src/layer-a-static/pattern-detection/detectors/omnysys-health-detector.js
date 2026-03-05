@@ -1,33 +1,21 @@
-/**
- * @fileoverview omnysys-health-detector.js
- *
- * Detector de salud arquitectural de OmnySys usando atoms SQL.
- * Analiza los patrones de acceso a base de datos del propio sistema
- * para detectar violaciones, ineficiencias y oportunidades de optimizacion.
- *
- * Detecta:
- *  1. Repository Bypass — DB directo fuera de storage/
- *  2. Multi-SELECT JOIN candidates — N queries que podrian unificarse
- *  3. Schema Column Drift — columnas referenciadas que no existen
- *  4. Direct db.prepare vs getRepository() en capas de negocio
- *  5. BULK_MUTATION sin transaccion en funciones de escritura masiva
- *
- * @module pattern-detection/detectors/omnysys-health-detector
- */
+import { RepositoryBypassRule } from './health/rules/repository-bypass-rule.js';
+import { JoinCandidateRule } from './health/rules/join-candidate-rule.js';
+import { SchemaDriftRule } from './health/rules/schema-drift-rule.js';
+import { DynamicStorageRule } from './health/rules/dynamic-storage-rule.js';
 
 // Rutas que SON el repositorio — acceso directo a DB aqui es correcto
 const STORAGE_PATHS = [
     'src/layer-c-memory/storage/',
-    'src/layer-c-memory/mcp/',       // MCP tools pueden necesitar DB para introspection
-    'src/layer-c-memory/query/',     // Query layer es parte del acceso intencional
-    'src/core/orchestrator/',        // Orquestador necesita acceso directo durante boot
-    'src/core/unified-server/',      // API server usa DB para introspection
-    'src/core/cache/',               // Cache manager gestiona DB directamente
-    'src/core/file-watcher/',        // File watcher necesita leer/actualizar DB
-    'src/layer-a-static/pipeline/',  // Pipeline de analisis — acceso legitimo durante index
-    'src/layer-a-static/indexer',   // Indexer principal
-    'src/layer-c-memory/verification/', // Integity checkers need db read access
-    'src/layer-c-memory/shadow-registry/', // Background persistence needs write access
+    'src/layer-c-memory/mcp/',
+    'src/layer-c-memory/query/',
+    'src/core/orchestrator/',
+    'src/core/unified-server/',
+    'src/core/cache/',
+    'src/core/file-watcher/',
+    'src/layer-a-static/pipeline/',
+    'src/layer-a-static/indexer',
+    'src/layer-c-memory/verification/',
+    'src/layer-c-memory/shadow-registry/',
     'scripts/',
     'migrations/',
     'tests/',
@@ -36,21 +24,26 @@ const STORAGE_PATHS = [
     'tmp-debug',
 ];
 
-import { TABLE_DEFINITIONS } from '../../../layer-c-memory/storage/database/schema-registry.js';
-
-// Build KNOWN_COLUMNS_BY_TABLE dynamically from the Single Source of Truth
-const KNOWN_COLUMNS_BY_TABLE = {};
-for (const [tableName, definition] of Object.entries(TABLE_DEFINITIONS)) {
-    KNOWN_COLUMNS_BY_TABLE[tableName] = new Set(definition.columns.map(col => col.name));
-}
-
+/**
+ * Detector de salud arquitectural de OmnySys usando atoms SQL.
+ */
 export class OmnysysHealthDetector {
-    constructor({ config = {}, globalConfig = {} } = {}) {
+    constructor({ config = {} } = {}) {
         this.config = {
-            multiSelectThreshold: config.multiSelectThreshold || 2, // N+ SELECTs en misma funcion = JOIN candidate
+            multiSelectThreshold: config.multiSelectThreshold || 2,
             ...config
         };
         this._storageCache = new Map();
+        this._initRules();
+    }
+
+    _initRules() {
+        this.rules = [
+            new RepositoryBypassRule(),
+            new JoinCandidateRule(this.config),
+            new SchemaDriftRule(),
+            new DynamicStorageRule()
+        ];
     }
 
     async detect(systemMap) {
@@ -62,18 +55,29 @@ export class OmnysysHealthDetector {
             const sqlAtoms = allAtoms.filter(a => a.type === 'sql_query');
             if (sqlAtoms.length === 0) continue;
 
-            let isStorageLayer = this._storageCache.get(filePath);
-            if (isStorageLayer === undefined) {
-                isStorageLayer = STORAGE_PATHS.some(p => filePath.includes(p));
-                this._storageCache.set(filePath, isStorageLayer);
-            }
+            const isStorageLayer = this._isStorage(filePath);
 
-            this._checkRepositoryBypass(findings, filePath, sqlAtoms, isStorageLayer);
-            this._checkJoinCandidates(findings, filePath, sqlAtoms);
-            this._checkSchemaDrift(findings, filePath, sqlAtoms);
-            this._checkDynamicInStorage(findings, filePath, sqlAtoms, isStorageLayer);
+            for (const rule of this.rules) {
+                rule.check(findings, filePath, sqlAtoms, {
+                    isStorageLayer,
+                    createFinding: this._finding.bind(this)
+                });
+            }
         }
 
+        return this._summarize(findings);
+    }
+
+    _isStorage(filePath) {
+        let isStorageLayer = this._storageCache.get(filePath);
+        if (isStorageLayer === undefined) {
+            isStorageLayer = STORAGE_PATHS.some(p => filePath.includes(p));
+            this._storageCache.set(filePath, isStorageLayer);
+        }
+        return isStorageLayer;
+    }
+
+    _summarize(findings) {
         const highCount = findings.filter(f => f.severity === 'high').length;
         const medCount = findings.filter(f => f.severity === 'medium').length;
         const score = Math.max(0, 100 - highCount * 10 - medCount * 4);
@@ -90,94 +94,6 @@ export class OmnysysHealthDetector {
                 totalFindings: findings.length
             }
         };
-    }
-
-    /** 1. Repository Bypass — SQL directo fuera de la capa de storage */
-    _checkRepositoryBypass(findings, filePath, sqlAtoms, isStorageLayer) {
-        if (isStorageLayer) return;
-        const bypassPurposes = new Set(['DATA_READ', 'DATA_INSERT', 'DATA_UPDATE', 'DATA_DELETE',
-            'CACHE_READ', 'BULK_MUTATION', 'AGGREGATION', 'UPSERT']);
-        for (const atom of sqlAtoms) {
-            const purpose = atom._meta?.sql_purpose || '';
-            if (bypassPurposes.has(purpose)) {
-                findings.push(this._finding('sql-repo-bypass', 'high', filePath, atom,
-                    `Direct DB access outside storage layer — should use getRepository() instead`,
-                    { sql_purpose: purpose, suggestion: 'Move to src/layer-c-memory/storage/' }
-                ));
-            }
-        }
-    }
-
-    /** 2. Multi-SELECT JOIN candidates — misma funcion padre, varias tablas distintas */
-    _checkJoinCandidates(findings, filePath, sqlAtoms) {
-        const IGNORED_TABLES = new Set(['count', 'system_files', 'semantic_connections',
-            'risk_assessments', 'file_dependencies', 'sqlite_master', 'system_metadata',
-            'changes', 'max', 'min']);
-
-        const selectsByParent = new Map();
-        for (const atom of sqlAtoms) {
-            if (atom._meta?.sql_operation !== 'SELECT') continue;
-            const pid = atom._meta?.parent_atom_name || atom._meta?.parent_atom_id;
-            if (!pid) continue;
-            if (!selectsByParent.has(pid)) selectsByParent.set(pid, []);
-            selectsByParent.get(pid).push(atom);
-        }
-
-        for (const [parentName, selects] of selectsByParent.entries()) {
-            if (selects.length < this.config.multiSelectThreshold) continue;
-            const uniqueTables = new Set(selects.flatMap(s => s._meta?.tables_referenced || []));
-            for (const ignored of IGNORED_TABLES) uniqueTables.delete(ignored);
-            if (uniqueTables.size < 2) continue;
-
-            findings.push({
-                type: 'sql-join-candidate', severity: 'medium', filePath,
-                atomId: selects[0].id, atomName: parentName, line: selects[0].lineStart || 0,
-                message: `${selects.length} separate SELECTs in '${parentName}' on tables [${[...uniqueTables].join(', ')}] — consider JOIN`,
-                details: { select_count: selects.length, tables: [...uniqueTables], sql_purposes: selects.map(s => s._meta?.sql_purpose) }
-            });
-        }
-    }
-
-    /** 3. Schema Column Drift — usa columns_referenced del AST (tree-sitter-sql) */
-    _checkSchemaDrift(findings, filePath, sqlAtoms) {
-        for (const atom of sqlAtoms) {
-            const referencedCols = atom._meta?.columns_referenced;
-            const tables = atom._meta?.tables_referenced;
-
-            if (!referencedCols || referencedCols.length === 0 || !tables || tables.length === 0) continue;
-
-            this._validateSymbolSchema(findings, filePath, atom, tables, referencedCols);
-        }
-    }
-
-    _validateSymbolSchema(findings, filePath, atom, tables, referencedCols) {
-        for (const table of tables) {
-            const knownCols = KNOWN_COLUMNS_BY_TABLE[table];
-            if (!knownCols) continue;
-
-            for (const col of referencedCols) {
-                if (col === '*' || col.length <= 1) continue;
-                if (!knownCols.has(col)) {
-                    findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
-                        `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
-                        { column: col, table }
-                    ));
-                }
-            }
-        }
-    }
-
-    /** 4. DYNAMIC_QUERY en capa core — queries que deberian ser estaticas */
-    _checkDynamicInStorage(findings, filePath, sqlAtoms, isStorageLayer) {
-        if (!isStorageLayer) return;
-        for (const atom of sqlAtoms) {
-            if (atom._meta?.sql_purpose === 'DYNAMIC_QUERY' && !atom._meta?.sql_injection_risk) {
-                findings.push(this._finding('sql-dynamic-in-storage', 'medium', filePath, atom,
-                    `Dynamic query in storage layer — table name resolved at runtime, consider making it static`,
-                    { template_vars: atom._meta?.template_vars, resolved: atom._meta?.resolved_tables_from_vars }
-                ));
-            }
-        }
     }
 
     _finding(type, severity, filePath, atom, message, details = {}) {

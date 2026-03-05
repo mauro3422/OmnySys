@@ -10,28 +10,45 @@
 
 import { SQLiteRelationOperations } from './sqlite-relation-operations.js';
 import { connectionManager } from '../../database/connection.js';
-import { atomToRow } from './helpers/converters.js';
-import { calculateHash, calculateFieldHashes } from './helpers/hashing.js';
+
+// Handlers especializados
+import { AtomBulkHandler } from './handlers/atom-bulk-handler.js';
+import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
+import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 
 /**
  * Clase para operaciones bulk
  * Extiende Relations con operaciones de alto volumen
  * 
- * IMPORTANTE: Los métodos bulk DEBEN mantener la transacción atómica
- * para evitar degradación de performance (de 2s a 26s).
+ * Orquestador que delega en handlers especializados para reducir complejidad
+ * manteniendo una transacción atómica única para performance.
  */
 export class SQLiteBulkOperations extends SQLiteRelationOperations {
+  constructor(db, logger) {
+    super();
+    if (db) this.db = db;
+    if (logger) this._logger = logger;
+
+    // Inicializar handlers (pueden ser re-inicializados en initialize() si db cambia)
+    this._initHandlers();
+  }
+
+  _initHandlers() {
+    this.atomHandler = new AtomBulkHandler(this.db, this._logger);
+    this.relationHandler = new RelationBulkHandler(this.db, this._logger);
+    this.eventHandler = new EventBulkHandler(this.db, this._logger);
+  }
+
+  initialize(projectPath) {
+    super.initialize(projectPath);
+    this._initHandlers();
+  }
 
   /**
    * Guarda múltiples átomos + relaciones en una sola transacción
    * 
-   * FLUJO:
-   * 1. Transacción BEGIN
-   * 2. Bulk insert de todos los átomos
-   * 3. Bulk insert de todas las relaciones (ahora los targets existen)
-   * 4. Transacción COMMIT
-   * 
    * @param {Array} atoms - Array de átomos a guardar
+   * @param {string} fileHash - Hash del archivo para control de cambios
    * @returns {Array} - Átomos guardados
    */
   saveMany(atoms, fileHash = null) {
@@ -40,8 +57,9 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     const firstAtom = atoms[0];
     const rawFilePath = firstAtom.file_path || firstAtom.file || firstAtom.filePath || 'unknown';
     const filePath = this._normalize(rawFilePath);
+    const now = new Date().toISOString();
 
-    // Pre-check which atoms already exist (1 query for the whole file) for event type detection
+    // Pre-check IDs existentes para detección de eventos (fuera de la transacción de escritura)
     const existingIds = new Set(
       this.db.prepare(
         `SELECT id FROM atoms WHERE file_path = ?`
@@ -51,9 +69,9 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
     // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
     connectionManager.transaction(() => {
       // Fase 1: Guardar todos los atomos
-      this.saveManyBulk(atoms);
+      this.atomHandler.handle(atoms, now, (p) => this._normalize(p));
 
-      // Fase 2: Guardar todas las relaciones
+      // Fase 2: Collect y Guardar todas las relaciones
       const relationsToSave = [];
       for (const atom of atoms) {
         if (atom.calls?.length > 0) {
@@ -64,192 +82,51 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       }
 
       if (relationsToSave.length > 0) {
-        this.saveRelationsBulk(relationsToSave);
+        this.relationHandler.handle(relationsToSave, now, (id) => this._normalizeId(id));
       }
 
-      // Fase 3: Actualizar tabla 'files' para que fix_imports lo vea inmediatamente
-      const now = new Date().toISOString();
-      const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
-
-      const sql = fileHash
-        ? `INSERT INTO files (path, last_analyzed, total_lines, hash) VALUES (?, ?, ?, ?)
-           ON CONFLICT(path) DO UPDATE SET 
-             last_analyzed = excluded.last_analyzed,
-             total_lines = MAX(total_lines, excluded.total_lines),
-             hash = excluded.hash`
-        : `INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
-           ON CONFLICT(path) DO UPDATE SET 
-             last_analyzed = excluded.last_analyzed,
-             total_lines = MAX(total_lines, excluded.total_lines)`;
-
-      const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
-      this.db.prepare(sql).run(...params);
+      // Fase 3: Actualizar metadatos del archivo
+      this._updateFileMetadata(filePath, atoms, fileHash, now);
     });
 
-    // Fase 4: Registrar atom_events y atom_versions — fuera de la transacción crítica
-    // delegándolo a un submétodo más limpio que reduce la complejidad.
-    this._logAtomEventsAndVersions(atoms, existingIds);
+    // Fase 4: Registrar eventos y versiones (usando otra transacción interna del handler)
+    this.eventHandler.handle(atoms, existingIds, now, Date.now(), (p) => this._normalize(p));
 
-    this._logger.debug(`[SQLiteAdapter] Saved ${atoms.length} atoms and updated file metadata for ${filePath} (Hash: ${fileHash || 'N/A'})`);
-
+    this._logger.debug(`[BulkOrchestrator] Processed ${atoms.length} atoms for ${filePath}`);
     return atoms;
   }
 
   /**
-   * Registra eventos de átomos y control de versiones
-   * @private
+   * @private - Actualiza tabla 'files'
    */
-  _logAtomEventsAndVersions(atoms, existingIds) {
-    try {
-      const now = new Date().toISOString();
-      const msNow = Date.now();
+  _updateFileMetadata(filePath, atoms, fileHash, now) {
+    const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
 
-      const eventStmt = this.db.prepare(`
-        INSERT OR IGNORE INTO atom_events (atom_id, event_type, impact_score, timestamp, source)
-        VALUES (?, ?, ?, ?, ?)
-      `);
+    const sql = fileHash
+      ? `INSERT INTO files (path, last_analyzed, total_lines, hash) VALUES (?, ?, ?, ?)
+         ON CONFLICT(path) DO UPDATE SET 
+           last_analyzed = excluded.last_analyzed,
+           total_lines = MAX(total_lines, excluded.total_lines),
+           hash = excluded.hash`
+      : `INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
+         ON CONFLICT(path) DO UPDATE SET 
+           last_analyzed = excluded.last_analyzed,
+           total_lines = MAX(total_lines, excluded.total_lines)`;
 
-      const versionStmt = this.db.prepare(`
-        INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(atom_id) DO UPDATE SET
-          hash = excluded.hash,
-          field_hashes_json = excluded.field_hashes_json,
-          last_modified = excluded.last_modified
-      `);
-
-      const logPostTransaction = this.db.transaction((atomList) => {
-        for (const atom of atomList) {
-          const atomId = atom.id || `${this._normalize(atom.filePath || atom.file)}::${atom.name}`;
-
-          // 4.1 Atom Events
-          const eventType = existingIds.has(atomId) ? 'updated' : 'created';
-          eventStmt.run(atomId, eventType, atom.derived?.changeRisk || 0, now, 'bulk_save');
-
-          // 4.2 Atom Versions
-          const fieldHashes = calculateFieldHashes(atom);
-          const totalHash = calculateHash(atom);
-          versionStmt.run(
-            atomId,
-            totalHash,
-            JSON.stringify(fieldHashes),
-            msNow,
-            this._normalize(atom.filePath || atom.file),
-            atom.name
-          );
-        }
-      });
-      logPostTransaction(atoms);
-    } catch (postErr) {
-      console.error("FATAL ERROR IN POST TRANSACTION:", postErr);
-      this._logger.error(`[SQLiteAdapter] Post-transaction logging skipped: ${postErr.message}`);
-    }
+    const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
+    this.db.prepare(sql).run(...params);
   }
 
-  /**
-   * Guarda múltiples átomos usando multi-row INSERT para máxima performance
-   */
-  saveManyBulk(atoms, batchSize = 500) {
-    if (!atoms || atoms.length === 0) return;
-
-    const now = new Date().toISOString();
-    const totalBatches = Math.ceil(atoms.length / batchSize);
-    let totalSaved = 0;
-
-    const columns = this._getAtomColumns();
-
-    const columnStr = columns.join(', ');
-    const placeholders = columns.map(() => '?').join(', ');
-    const sql = `INSERT OR REPLACE INTO atoms (${columnStr}) VALUES (${placeholders})`;
-    const stmt = this.db.prepare(sql);
-
-    connectionManager.transaction(() => {
-      for (const atom of atoms) {
-        // Asegurar normalización antes de convertir a row
-        atom.filePath = this._normalize(atom.file || atom.filePath);
-        atom.file = atom.filePath;
-
-        // Mantener el ID consistente (si no tiene lNo, detectTypeAndName ya se encargó del resto)
-        if (!atom.id || !atom.id.includes('::')) {
-          atom.id = `${atom.filePath}::${atom.name}`;
-        }
-
-        const row = atomToRow(atom);
-        const values = this._buildAtomInsertValues(row, now);
-
-        stmt.run(...values);
-        totalSaved++;
-      }
-    });
-
-    this._logger.debug(`[SQLiteAdapter] Bulk saved ${totalSaved} atoms using single transaction`);
+  // Métodos antiguos mantenidos por compatibilidad pero delegando a handlers
+  saveManyBulk(atoms) {
+    return connectionManager.transaction(() =>
+      this.atomHandler.handle(atoms, new Date().toISOString(), (p) => this._normalize(p))
+    );
   }
 
-  saveRelationsBulk(relations, batchSize = 500) {
-    if (!relations || relations.length === 0) return;
-
-    const now = new Date().toISOString();
-    const totalBatches = Math.ceil(relations.length / batchSize);
-    let totalSaved = 0;
-
-    connectionManager.transaction(() => {
-      for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
-        const batch = relations.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
-        const validRelations = [];
-
-        for (const { atomId, call } of batch) {
-          const normalizedSourceId = this._normalizeId(atomId);
-
-          let calleeName;
-          if (typeof call === 'string') {
-            calleeName = call;
-          } else if (call && typeof call === 'object') {
-            calleeName = call.callee || call.name || call.id || 'unknown';
-          } else {
-            calleeName = 'unknown';
-          }
-
-          let targetId;
-          if (calleeName.includes('::')) {
-            targetId = this._normalizeId(calleeName);
-          } else {
-            const filePath = normalizedSourceId.split('::')[0];
-            targetId = `${filePath}::${calleeName}`;
-          }
-
-          const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
-          const lineNumber = typeof call?.line === 'number' ? call.line : null;
-
-          let contextJson = '{}';
-          try {
-            contextJson = JSON.stringify(call && typeof call === 'object' ? call : {});
-          } catch (e) {
-            contextJson = '{}';
-          }
-
-          validRelations.push({
-            atomId: normalizedSourceId, targetId, weight, lineNumber, contextJson, now
-          });
-        }
-
-        if (validRelations.length === 0) continue;
-
-        const placeholders = validRelations.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
-        const sql = `
-          INSERT OR IGNORE INTO atom_relations 
-          (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-          VALUES ${placeholders}
-        `;
-
-        const flatValues = validRelations.flatMap(r => [
-          r.atomId, r.targetId, 'calls', r.weight, r.lineNumber, r.contextJson, r.now
-        ]);
-
-        this.db.prepare(sql).run(...flatValues);
-        totalSaved += validRelations.length;
-      }
-    });
-
-    this._logger.debug(`[SQLiteAdapter] Bulk saved ${totalSaved} relations in ${totalBatches} batches (without per-row check)`);
+  saveRelationsBulk(relations) {
+    return connectionManager.transaction(() =>
+      this.relationHandler.handle(relations, new Date().toISOString(), (id) => this._normalizeId(id))
+    );
   }
 }

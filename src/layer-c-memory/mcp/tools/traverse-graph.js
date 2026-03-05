@@ -1,24 +1,19 @@
 import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
-
-import { getFileAnalysis, getFileDependents } from '../../query/apis/file-api.js';
-import { getDependencyGraph, getTransitiveDependents } from '../../query/queries/dependency-query.js';
+import { ImpactMapStrategy } from './traverse/strategies/impact-map-strategy.js';
+import { CallGraphStrategy } from './traverse/strategies/call-graph-strategy.js';
 
 /**
  * mcp_omnysystem_traverse_graph
- *
- * Replaces:
- * - get_impact_map
- * - get_call_graph
- * - analyze_change
- * - simulate_data_journey
- * - trace_variable_impact
- * - trace_data_journey
- * - explain_connection
- * - analyze_signature_change
  */
 export class TraverseGraphTool extends SemanticQueryTool {
     constructor() {
         super('traverse:graph');
+        this._initStrategies();
+    }
+
+    _initStrategies() {
+        this.impactStrategy = new ImpactMapStrategy();
+        this.callGraphStrategy = new CallGraphStrategy(this.repo);
     }
 
     async performAction(args) {
@@ -32,68 +27,23 @@ export class TraverseGraphTool extends SemanticQueryTool {
 
         if (!traverseType) {
             return this.formatError('MISSING_PARAMS', 'traverseType is required', {
-                allowedValues: ['impact_map', 'call_graph', 'analyze_change', 'simulate_data_journey', 'trace_variable', 'trace_data_flow', 'explain_connection', 'signature_change']
+                allowedValues: ['impact_map', 'call_graph']
             });
         }
 
         this.logger.debug(`Executing traverse:graph -> ${traverseType}`, { filePath, symbolName, options });
 
-        const innerArgs = { filePath, symbolName, variableName, ...options };
-
         try {
             switch (traverseType) {
                 case 'impact_map': {
-                    if (!filePath) return this.formatError('MISSING_PARAMS', 'filePath required for impact_map');
-                    const fileData = await getFileAnalysis(this.projectPath, filePath);
-                    if (!fileData) return this.formatError('NOT_FOUND', `File ${filePath} not found in index`);
-
-                    const directDeps = await getFileDependents(this.projectPath, filePath);
-                    const transDeps = await getTransitiveDependents(this.projectPath, filePath);
-
-                    const result = {
-                        file: filePath,
-                        directlyAffects: directDeps,
-                        transitiveAffects: transDeps,
-                        totalAffected: directDeps.length + transDeps.length,
-                        riskLevel: fileData.riskScore?.severity || 'low',
-                        subsystem: fileData.subsystem || 'unknown',
-                        exports: (fileData.exports || []).map(e => e.name)
-                    };
-
-                    // Agregar datos semánticos si se solicitan
-                    if (options.includeSemantic) {
-                        result.semanticSummary = {
-                            hasSharedState: (fileData.semanticAnalysis?.sharedState?.reads?.length || 0) > 0 ||
-                                (fileData.semanticAnalysis?.sharedState?.writes?.length || 0) > 0,
-                            hasEvents: (fileData.semanticAnalysis?.eventPatterns?.eventEmitters?.length || 0) > 0 ||
-                                (fileData.semanticAnalysis?.eventPatterns?.eventListeners?.length || 0) > 0,
-                            sharedStateReads: fileData.semanticAnalysis?.sharedState?.reads || [],
-                            sharedStateWrites: fileData.semanticAnalysis?.sharedState?.writes || [],
-                            eventEmitters: fileData.semanticAnalysis?.eventPatterns?.eventEmitters || [],
-                            eventListeners: fileData.semanticAnalysis?.eventPatterns?.eventListeners || []
-                        };
-                    }
-
+                    const result = await this.impactStrategy.execute(this.projectPath, filePath, options);
                     return this.formatSuccess(result);
                 }
 
                 case 'call_graph': {
-                    if (!filePath) return this.formatError('MISSING_PARAMS', 'filePath required for call_graph');
-                    const depthNum = parseInt(options.depth || options.maxDepth || 2, 10);
-                    const tree = await getDependencyGraph(this.projectPath, filePath, depthNum);
-
-                    const result = {
-                        root: filePath,
-                        depth: depthNum,
-                        graph: tree
-                    };
-
-                    // Agregar datos semánticos si se solicitan
-                    if (options.includeSemantic) {
-                        // Enriquecer nodos del grafo con datos semánticos
-                        result.graph = this._enrichGraphWithSemantic(tree);
-                    }
-
+                    // Re-inject safe repo if needed
+                    this.callGraphStrategy.repo = this.repo;
+                    const result = await this.callGraphStrategy.execute(this.projectPath, filePath, options);
                     return this.formatSuccess(result);
                 }
 
@@ -103,8 +53,6 @@ export class TraverseGraphTool extends SemanticQueryTool {
                 case 'trace_data_flow':
                 case 'explain_connection':
                 case 'signature_change':
-                    // Estas funcionalidades fueron consolidadas en Fase 17.
-                    // El agente debe combinar impact_map + call_graph + query_graph{details} para cubrirlas.
                     return this.formatError('DEPRECATED_ROUTING',
                         `The traversal '${traverseType}' is deprecated. ` +
                         `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
@@ -117,46 +65,6 @@ export class TraverseGraphTool extends SemanticQueryTool {
         } catch (error) {
             return this.formatError('EXECUTION_ERROR', `Error executing traversal ${traverseType}: ${error.message}`);
         }
-    }
-
-    /**
-     * Enriquece el grafo de dependencias con datos semánticos
-     * @param {Object} tree - Árbol de dependencias
-     * @returns {Object} Árbol enriquecido
-     * @private
-     */
-    _enrichGraphWithSemantic(tree) {
-        if (!tree || !tree.nodes) return tree;
-
-        // Para cada nodo, agregar datos semánticos si existen
-        tree.nodes = tree.nodes.map(node => {
-            if (!this.repo) return node;
-
-            // Buscar átomos en este archivo
-            const atoms = this.repo.query({ filePath: node.file || node.filePath, limit: 100 });
-
-            if (atoms.length === 0) return node;
-
-            // Calcular resumen semántico del archivo
-            const hasSharedState = atoms.some(a => a.shared_state_json && a.shared_state_json !== '[]');
-            const hasEvents = atoms.some(a =>
-                (a.event_emitters_json && a.event_emitters_json !== '[]') ||
-                (a.event_listeners_json && a.event_listeners_json !== '[]')
-            );
-            const asyncCount = atoms.filter(a => a.is_async).length;
-
-            return {
-                ...node,
-                semantic: {
-                    hasSharedState,
-                    hasEvents,
-                    asyncCount,
-                    totalAtoms: atoms.length
-                }
-            };
-        });
-
-        return tree;
     }
 }
 
