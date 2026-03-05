@@ -14,7 +14,7 @@ export function analyzeErrorHandling(atoms) {
   for (const atom of atoms) {
     // Skip test files — tests intentionally omit error handling
     const fp = atom.filePath || atom.file || '';
-    if (fp.match(/\.(test|spec)\.[jt]sx?$/) || fp.includes('/test/') || fp.includes('/tests/') || fp.includes('/__tests__/') || fp.includes('/factories/')) continue;
+    if (fp.match(/\.(test|spec)\.[jt]sx?$/) || fp.match(/(^|\/)test(s)?\//) || fp.includes('/__tests__/') || fp.match(/(^|\/)factories\//)) continue;
 
     // Ignorar getters/setters y funciones extremadamente cortas (falsos positivos)
     if (atom.linesOfCode < 4) continue;
