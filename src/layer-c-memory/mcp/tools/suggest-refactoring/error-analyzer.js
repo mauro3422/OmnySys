@@ -16,6 +16,10 @@ export function analyzeErrorHandling(atoms) {
     const fp = atom.filePath || atom.file || '';
     if (fp.match(/\.(test|spec)\.[jt]sx?$/) || fp.includes('/test/') || fp.includes('/tests/') || fp.includes('/__tests__/') || fp.includes('/factories/')) continue;
 
+    // Ignorar getters/setters y funciones extremadamente cortas (falsos positivos)
+    if (atom.linesOfCode < 4) continue;
+    if (atom.name && (atom.name.startsWith('get') || atom.name.startsWith('set'))) continue;
+
     // Funciones async sin try/catch
     if (atom.isAsync && !atom.hasErrorHandling) {
       const hasNetwork = atom.hasNetworkCalls;

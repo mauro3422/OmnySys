@@ -41,7 +41,18 @@ function calculatePriority(suggestion, enrichedAtoms) {
   const centralityBoost = classification === NODE_TYPES.HUB ? 50 :
     classification === NODE_TYPES.BRIDGE ? 25 : 0;
 
-  return baseScore + centralityBoost;
+  // GIT METRICS BOOST: Priorizar átomos volátiles, despriorizar legacy estable
+  let gitBoost = 0;
+  if (enrichedAtom.changeFrequency > 0) {
+    // Si cambia mucho (ej: >0.5 por día), aumenta su prioridad (max +50)
+    gitBoost += Math.min(Math.floor(enrichedAtom.changeFrequency * 40), 50);
+  }
+  if (enrichedAtom.ageDays > 365 && (enrichedAtom.changeFrequency || 0) < 0.1) {
+    // Si es código de más de un año casi sin cambios, es maduro/estable -> bajamos urgencia (-20)
+    gitBoost -= 20;
+  }
+
+  return baseScore + centralityBoost + gitBoost;
 }
 
 function countByType(suggestions) {
