@@ -7,6 +7,8 @@ import { getRiskAssessment } from '../../query/queries/risk-query.js';
 // Nuevos manejadores modulares
 import { handleHealthMetrics } from './handlers/health-handler.js';
 import { handlePipelineHealth } from './handlers/pipeline-health-handler.js';
+import { handleWatcherAlerts } from './handlers/watcher-handler.js';
+import { handlePatterns, handleAsyncAnalysis } from './handlers/patterns-handler.js';
 
 /**
  * mcp_omnysystem_aggregate_metrics
@@ -94,56 +96,13 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                 }
 
                 case 'patterns': {
-                    const result = await this.getEventPatterns({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20,
-                        type: options.patternType || 'all',
-                        minSeverity: options.minSeverity || 0
-                    });
-
-                    // Añadir resumen de conexiones semánticas crudas
-                    let semanticSummary = { total: 0, byType: {} };
-                    const db = this.repo?.db;
-                    if (db) {
-                        try {
-                            const semRows = db.prepare(`SELECT connection_type, COUNT(*) as count FROM semantic_connections GROUP BY connection_type`).all();
-                            semanticSummary.total = semRows.reduce((s, r) => s + r.count, 0);
-                            semRows.forEach(r => { semanticSummary.byType[r.connection_type] = r.count; });
-                        } catch (e) { }
-                    }
-
-                    return this.formatSuccess({
-                        aggregationType: 'patterns',
-                        eventPatterns: result,
-                        semanticConnections: semanticSummary,
-                        summary: {
-                            totalEventPatterns: result.total,
-                            emitters: result.patterns.filter(p => p.hasEmitters).length,
-                            listeners: result.patterns.filter(p => p.hasListeners).length,
-                            totalSemanticConnections: semanticSummary.total,
-                            semanticByType: semanticSummary.byType
-                        }
-                    });
+                    const result = await handlePatterns(this, options);
+                    return this.formatSuccess(result);
                 }
 
                 case 'async_analysis': {
-                    const result = await this.getAsyncAnalysis({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20,
-                        withNetworkCalls: options.withNetworkCalls || false,
-                        withErrorHandling: options.withErrorHandling || false
-                    });
-
-                    return this.formatSuccess({
-                        aggregationType: 'async_analysis',
-                        ...result,
-                        summary: {
-                            totalAsync: result.total,
-                            withNetworkCalls: result.asyncAtoms.filter(a => a.hasNetworkCalls).length,
-                            withErrorHandling: result.asyncAtoms.filter(a => a.hasErrorHandling).length,
-                            highComplexity: result.asyncAtoms.filter(a => a.complexity > 10).length
-                        }
-                    });
+                    const result = await handleAsyncAnalysis(this, options);
+                    return this.formatSuccess(result);
                 }
 
                 case 'society': {
@@ -173,75 +132,9 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                 }
 
                 case 'watcher_alerts': {
-                    const db = this.repo?.db;
-                    if (!db) {
-                        return this.formatError('MISSING_DB', 'Repository database not initialized');
-                    }
-
-                    const offset = options.offset || 0;
-                    const limit = options.limit || 20;
-                    const issueType = options.issueType || 'all';
-
-                    let whereClause = `WHERE message LIKE '[watcher]%'`;
-                    const whereParams = [];
-
-                    if (filePath) {
-                        whereClause += ' AND file_path = ?';
-                        whereParams.push(filePath);
-                    }
-
-                    if (issueType !== 'all') {
-                        whereClause += ' AND issue_type = ?';
-                        whereParams.push(issueType);
-                    }
-
-                    const rows = db.prepare(`
-                        SELECT COUNT(*) OVER() as total_count,
-                               file_path, issue_type, severity, message, line_number, context_json, detected_at
-                        FROM semantic_issues
-                        ${whereClause}
-                        ORDER BY detected_at DESC
-                        LIMIT ? OFFSET ?
-                    `).all(...whereParams, limit, offset);
-
-                    const total = rows[0]?.total_count || 0;
-                    const alerts = rows.map(r => ({
-                        filePath: r.file_path,
-                        issueType: r.issue_type,
-                        severity: r.severity,
-                        message: r.message,
-                        lineNumber: r.line_number,
-                        context: (() => {
-                            try { return JSON.parse(r.context_json || '{}'); } catch { return {}; }
-                        })(),
-                        detectedAt: r.detected_at
-                    }));
-
-                    const severitySummary = alerts.reduce((acc, a) => {
-                        const key = a.severity || 'unknown';
-                        acc[key] = (acc[key] || 0) + 1;
-                        return acc;
-                    }, {});
-
-                    const typeSummary = alerts.reduce((acc, a) => {
-                        const key = a.issueType || 'unknown';
-                        acc[key] = (acc[key] || 0) + 1;
-                        return acc;
-                    }, {});
-
-                    return this.formatSuccess({
-                        aggregationType: 'watcher_alerts',
-                        total,
-                        offset,
-                        limit,
-                        hasMore: offset + limit < total,
-                        alerts,
-                        summary: {
-                            totalAlerts: total,
-                            bySeverity: severitySummary,
-                            byType: typeSummary
-                        }
-                    });
+                    const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
+                    if (result.error) return result; // MISSING_DB pre-formatError from handler
+                    return this.formatSuccess(result);
                 }
 
                 default:

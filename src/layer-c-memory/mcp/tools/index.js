@@ -37,6 +37,7 @@ import { execute_solid_split } from './execute-solid-split.js';
 import { suggest_refactoring } from './suggest-refactoring.js';
 import { validate_imports } from './validate-imports.js';
 import { generate_tests, generate_batch_tests } from './generate-tests/index.js';
+import { suggest_architecture } from './suggest-architecture.js';
 
 // Admin & Debug Tools
 import { get_server_status, get_recent_errors } from './status.js';
@@ -170,6 +171,17 @@ export const toolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_suggest_architecture',
+    description: 'Refactorización Arquitectónica/DDD (Domain-Driven Design). Lee las sociedades de código (funcionales) descubiertas por OmnySys y sugiere reagrupar archivos altamente cohesivos que se encuentren dispersos por el proyecto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', default: 10, description: 'Máximo número de dominios sugeridos a devolver.' },
+        confidenceThreshold: { type: 'number', default: 0.5, description: 'Penalidad de confianza en la cohesión (0.0 a 1.0).' }
+      }
+    }
+  },
+  {
     name: 'mcp_omnysystem_validate_imports',
     description: 'Validates imports in files: detects broken imports, unused imports, circular dependencies, and non-existent modules.',
     inputSchema: {
@@ -298,6 +310,7 @@ export const toolHandlers = {
   mcp_omnysystem_fix_imports: fix_imports,
   mcp_omnysystem_execute_solid_split: execute_solid_split,
   mcp_omnysystem_suggest_refactoring: suggest_refactoring,
+  mcp_omnysystem_suggest_architecture: suggest_architecture,
   mcp_omnysystem_validate_imports: validate_imports,
   mcp_omnysystem_generate_tests: generate_tests,
   mcp_omnysystem_generate_batch_tests: generate_batch_tests,

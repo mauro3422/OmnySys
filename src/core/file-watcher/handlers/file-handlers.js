@@ -542,6 +542,89 @@ export async function getRecentCommits() {
   }
 }
 
+/**
+ * Detecta dependencias circulares introducidas por el archivo modificado/creado
+ * Utiliza la tabla `file_dependencies` local en SQLite para un BFS de max_depth = 5.
+ */
+export async function detectCircularImportsForFile(filePath, options = {}) {
+  const { maxDepth = 5 } = options;
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(this.rootPath);
+    if (!repo?.db) return null;
+
+    const startNode = filePath.replace(/\\/g, '/');
+    let cyclesFound = [];
+
+    // BFS configuration
+    const queue = [{ path: startNode, chain: [startNode] }];
+    const visited = new Set();
+
+    // Helper to query descendants fast
+    let getDeps;
+    try {
+      getDeps = repo.db.prepare(`
+        SELECT DISTINCT target_path 
+        FROM file_dependencies 
+        WHERE source_path = ?
+      `);
+    } catch (e) {
+      // Table might not exist yet if the schema is very old, ignore smoothly
+      return null;
+    }
+
+    let iter = 0;
+    while (queue.length > 0 && iter < 1000) {
+      iter++;
+      const { path: currentPath, chain } = queue.shift();
+
+      if (chain.length > maxDepth) continue;
+
+      const outgoing = getDeps.all(currentPath);
+      for (const row of outgoing) {
+        const nextPath = row.target_path;
+        if (nextPath === startNode) {
+          // Ciclo formado hacia el archivo inicial
+          const cycle = [...chain, startNode];
+          cyclesFound.push(cycle);
+          continue;
+        }
+
+        const visitKey = `${currentPath}->${nextPath}`;
+        if (!visited.has(visitKey) && !chain.includes(nextPath)) {
+          visited.add(visitKey);
+          queue.push({ path: nextPath, chain: [...chain, nextPath] });
+        }
+      }
+    }
+
+    if (cyclesFound.length > 0) {
+      const shortestCycle = cyclesFound.sort((a, b) => a.length - b.length)[0];
+      const cycleStr = shortestCycle.join(' -> ');
+
+      logger.warn(`[CIRCULAR GUARD] 🚨 Circular import detected involving ${filePath}: \n   ${cycleStr}`);
+
+      await persistWatcherIssue(
+        this.rootPath,
+        filePath,
+        'watcher_circular_import',
+        'high',
+        `Circular dependency detected: ${cycleStr}`,
+        { cycles: cyclesFound }
+      );
+
+      this.emit('circular:detected', { filePath, cycles: cyclesFound });
+      return cyclesFound;
+    } else {
+      await clearWatcherIssue(this.rootPath, filePath, 'watcher_circular_import');
+      return [];
+    }
+  } catch (error) {
+    logger.debug(`[CIRCULAR GUARD SKIP] ${filePath}: ${error.message}`);
+    return null;
+  }
+}
+
 export default {
   handleFileCreated,
   enrichAtomsWithAncestry,
@@ -549,6 +632,7 @@ export default {
   handleFileModified,
   detectImpactWaveForFile,
   detectDuplicateRiskForFile,
+  detectCircularImportsForFile,
   handleFileDeleted,
   createShadowsForFile,
   getAtomsForFile,

@@ -141,20 +141,27 @@ export class OmnysysHealthDetector {
     /** 3. Schema Column Drift — usa columns_referenced del AST (tree-sitter-sql) */
     _checkSchemaDrift(findings, filePath, sqlAtoms) {
         for (const atom of sqlAtoms) {
-            const referencedCols = atom._meta?.columns_referenced || [];
-            if (referencedCols.length === 0) continue;
-            const tables = atom._meta?.tables_referenced || [];
-            for (const table of tables) {
-                const knownCols = KNOWN_COLUMNS_BY_TABLE[table];
-                if (!knownCols) continue;
-                for (const col of referencedCols) {
-                    if (col === '*' || col.length <= 1) continue;
-                    if (!knownCols.has(col)) {
-                        findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
-                            `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
-                            { column: col, table }
-                        ));
-                    }
+            const referencedCols = atom._meta?.columns_referenced;
+            const tables = atom._meta?.tables_referenced;
+
+            if (!referencedCols || referencedCols.length === 0 || !tables || tables.length === 0) continue;
+
+            this._validateSymbolSchema(findings, filePath, atom, tables, referencedCols);
+        }
+    }
+
+    _validateSymbolSchema(findings, filePath, atom, tables, referencedCols) {
+        for (const table of tables) {
+            const knownCols = KNOWN_COLUMNS_BY_TABLE[table];
+            if (!knownCols) continue;
+
+            for (const col of referencedCols) {
+                if (col === '*' || col.length <= 1) continue;
+                if (!knownCols.has(col)) {
+                    findings.push(this._finding('sql-schema-drift', 'high', filePath, atom,
+                        `Column '${col}' referenced by SQL but not in schema for table '${table}' — runtime error risk`,
+                        { column: col, table }
+                    ));
                 }
             }
         }

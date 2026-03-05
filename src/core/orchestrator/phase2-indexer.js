@@ -59,15 +59,19 @@ export class Phase2Indexer {
                 return;
             }
 
-            const filesToProcessGroup = rows
-                .map(r => r.file_path)
-                .filter(fp => !this.processedPaths.has(fp));
-
             const filesToProcess = [];
             const missingFiles = [];
             const fs = await import('fs');
 
-            for (const relPath of filesToProcessGroup) {
+            let countProcessedGroup = 0;
+
+            for (const row of rows) {
+                const relPath = row.file_path;
+                if (this.processedPaths.has(relPath)) continue;
+
+                this.processedPaths.add(relPath);
+                countProcessedGroup++;
+
                 const absPath = path.join(this.projectPath, relPath);
                 if (fs.existsSync(absPath)) {
                     filesToProcess.push(relPath);
@@ -76,9 +80,7 @@ export class Phase2Indexer {
                 }
             }
 
-            for (const fp of filesToProcessGroup) this.processedPaths.add(fp);
-
-            if (filesToProcessGroup.length > 0) {
+            if (countProcessedGroup > 0) {
                 const { analyzeProjectFilesUnified } = await import('#layer-a/pipeline/unified-analysis.js');
 
                 if (missingFiles.length > 0) {
@@ -110,7 +112,7 @@ export class Phase2Indexer {
                     if (remainingQuery) {
                         this.globalTimer.totalItems = this.globalTimer.itemsProcessed + remainingQuery.count;
                     }
-                    this.globalTimer.onItemProcessed(filesToProcessGroup.length);
+                    this.globalTimer.onItemProcessed(countProcessedGroup);
                 }
 
                 this.orchestrator.emit('job:complete', { filePath: filesToProcess[0] }, {});
