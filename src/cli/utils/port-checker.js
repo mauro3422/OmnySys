@@ -20,7 +20,19 @@ export async function checkPort(port) {
   return new Promise((resolve) => {
     try {
       const req = http.get(`http://localhost:${port}/health`, { timeout: 1000 }, (res) => {
-        resolve(res.statusCode === 200);
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          try {
+            if (res.statusCode === 200) {
+              resolve(JSON.parse(data));
+            } else {
+              resolve(false);
+            }
+          } catch {
+            resolve(res.statusCode === 200);
+          }
+        });
       });
       req.on('error', () => resolve(false));
       req.on('timeout', () => { req.destroy(); resolve(false); });

@@ -223,58 +223,65 @@ async function handleMcpRequest(req, res) {
     const rawSessionId = req.headers['mcp-session-id'];
     const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
 
-    let transport;
-
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId).transport;
+    } else if (sessionId && !sessions.has(sessionId)) {
+      // ── POST-RESTART RECOVERY ──────────────────────────────────────────────
+      // El worker se reinició y perdió el sessions Map. 
+      // Intentamos recuperar la sesión desde SQLite.
+      const { sessionManager } = await import('./mcp/core/session-manager.js');
+      const persistedSession = sessionManager.getSession(sessionId);
+
+      if (persistedSession) {
+        logger.info(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
+
+        let sessionServer = null;
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => sessionId,
+          onsessioninitialized: (recoveredId) => {
+            sessions.set(recoveredId, { transport, server: sessionServer });
+            logger.info(`MCP HTTP session recovered: ${recoveredId}`);
+          }
+        });
+
+        transport.onclose = async () => {
+          const sid = transport.sessionId;
+          if (!sid) return;
+          sessions.delete(sid);
+          sessionManager.deleteSession(sid);
+        };
+
+        sessionServer = buildServerForSession();
+        await sessionServer.connect(transport);
+
+        // Importante: No retornamos aquí, dejamos que fluya a transport.handleRequest al final.
+      } else {
+        logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
+        res.status(404)
+          .set('Mcp-Session-Expired', 'true')
+          .json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32001,
+              message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
+              data: { reason: 'session_not_found' }
+            },
+            id: req.body?.id ?? null
+          });
+        return;
+      }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
-      // Flujo tradicional: el cliente manda un POST initialize inicial (o el SDK de typescript internamente 
-      // negocia la sesión con el primer POST). Nota: en el SDK typescript el SSE endpoint (GET /mcp)
-      // es el que inicializa la conexión, no el POST. El código de Express actual de OmnySys 
-      // delega la creación del transport al POST o GET según decida el middleware.
+      const { sessionManager } = await import('./mcp/core/session-manager.js');
       let sessionServer = null;
 
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (newSessionId) => {
           sessions.set(newSessionId, { transport, server: sessionServer });
+          sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {});
           logger.info(`MCP HTTP session initialized: ${newSessionId}`);
         }
       });
-
-      transport.onclose = async () => {
-        const sid = transport.sessionId;
-        if (!sid) return;
-        // Important: do NOT close the session server here.
-        // server.close() triggers transport.close(), which triggers onclose again.
-        // That creates a recursive close loop (RangeError: max call stack).
-        sessions.delete(sid);
-      };
-
-      sessionServer = buildServerForSession();
-      await sessionServer.connect(transport);
-    } else if (sessionId && !sessions.has(sessionId)) {
-      // ── POST-RESTART RECOVERY ──────────────────────────────────────────────
-      // El worker se reinició y perdió el sessions Map. El cliente (Antigravity)
-      // sigue mandando calls con el sessionId viejo.
-      // En vez del 404 silencioso (que el cliente cancela sin reintentar),
-      // respondemos con SESSION_EXPIRED + headers de hint para diagnóstico.
-      // El cliente debe hacer un nuevo POST /mcp sin mcp-session-id para re-initialize.
-      logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found (server restarted?). Client must re-initialize.`);
-
-      res.status(404)
-        .set('Mcp-Session-Expired', 'true')
-        .set('Mcp-Restart-Hint', 'Send POST /mcp without mcp-session-id to re-initialize')
-        .json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32001,
-            message: 'SESSION_EXPIRED: Server restarted. Re-initialize by sending a new POST /mcp without mcp-session-id header.',
-            data: { reason: 'server_restarted', hint: 're-initialize' }
-          },
-          id: req.body?.id ?? null
-        });
-      return;
     } else {
       res.status(400).json({
         jsonrpc: '2.0',
@@ -386,7 +393,15 @@ httpServer.on('error', (error) => {
   process.exit(1);
 });
 
-core.initialize().catch((error) => {
+core.initialize().then(async () => {
+  try {
+    const { sessionManager } = await import('./mcp/core/session-manager.js');
+    sessionManager.initialize();
+    sessionManager.cleanup(48); // Cleanup sessions older than 48h
+  } catch (err) {
+    logger.warn(`SessionManager initialization failed: ${err.message}`);
+  }
+}).catch((error) => {
   initError = error;
   logger.error(`Core initialization failed: ${error.message}`);
 });

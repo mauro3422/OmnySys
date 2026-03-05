@@ -9,12 +9,12 @@
  * Operation sets for flow type detection
  */
 const READ_OPS = new Set([
-  'property_access', 'array_index_access', 'function_call', 
+  'property_access', 'array_index_access', 'function_call',
   'await_function_call', 'instantiation'
 ]);
 
 const TRANSFORM_OPS = new Set([
-  'binary_operation', 'unary_operation', 'template_literal', 
+  'binary_operation', 'unary_operation', 'template_literal',
   'conditional', 'object_literal', 'array_literal'
 ]);
 
@@ -32,7 +32,7 @@ export function detectFlowType(dataFlow) {
   const hasRead = operations.some(o => READ_OPS.has(o));
   const hasTransform = operations.some(o => TRANSFORM_OPS.has(o));
   const hasWrite = (dataFlow.outputs || []).some(o => o.type === 'side_effect' || o.isSideEffect) ||
-                   operations.some(o => WRITE_OPS.has(o));
+    operations.some(o => WRITE_OPS.has(o));
   const hasReturn = (dataFlow.outputs || []).some(o => o.type === 'return');
   const hasThrowOnly = !hasReturn && (dataFlow.outputs || []).some(o => o.type === 'throw');
 
@@ -40,11 +40,17 @@ export function detectFlowType(dataFlow) {
   if (hasRead && hasTransform && hasWrite && hasReturn) return 'read-transform-persist-return';
   if (hasRead && hasTransform && hasReturn) return 'read-transform-return';
   if (hasRead && hasWrite && hasReturn) return 'read-persist-return';
+  if (hasTransform && hasWrite && hasReturn) return 'transform-persist-return';
+  if (hasRead && hasTransform && hasWrite) return 'read-transform-persist';
   if (hasRead && hasWrite) return 'read-persist';
+  if (hasTransform && hasWrite) return 'transform-persist';
   if (hasTransform && hasReturn) return 'transform-return';
   if (hasRead && hasReturn) return 'read-return';
   if (hasWrite) return 'side-effect-only';
   if (hasReturn) return 'passthrough';
+  if (hasTransform) return 'transform-only';
+  if (hasRead) return 'read-only';
+  if (!hasRead && !hasTransform && !hasWrite && !hasReturn) return 'noop';
 
   return 'unknown';
 }

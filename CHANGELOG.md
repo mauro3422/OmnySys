@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file and organized by
 
 ## Quick Links
 
-- **[v0.9.88 - Sprint 8: Integridad y Detección de Infraestructura](changelogs/v0.9.88.md)** - **✅ 687 puntos de red detectados, 0 falsos positivos de duplicados, Watcher resilienciado.** (Latest)
+- **[v0.9.89 - Sprint 9: Daemon Stability & Session Persistence](changelogs/v0.9.89.md)** - **✅ Session Recovery (SQLite), Syntax Check Shield, 3 New Daemon Heuristics.** (Latest)
+- **[v0.9.88 - Sprint 8: Integridad y Detección de Infraestructura](changelogs/v0.9.88.md)** - **✅ 687 puntos de red detectados, 0 falsos positivos de duplicados, Watcher resilienciado.**
 - **[v0.9.84 - Sprint Q/A: Deuda Técnica Completa](changelogs/v0.9.84-qa-technical-debt-complete.md)** - **✅ Refactor final de Type Detector y Semantic Queries. Sistema validado en Grado A (95/100).**
 - **[v0.9.83 - Daemon Stability & Semantic Pipeline Fix](changelogs/v0.9.83-daemon-stability-semantic-pipeline.md)** - **✅ 7 bugs fixed: daemon restart no longer kills connection, semantic_connections 264 real connections persisted, health/risk/patterns tools return real data**
 - **[v0.9.82 - SQL Health Eradication](changelog/v0.9.82-health-eradication.md)** - **✅ Eliminación de N+1 queries y purificado de las 37 deudas técnicas SQL**
@@ -47,7 +48,8 @@ All notable changes to this project are documented in this file and organized by
 
 ### Latest Versions
 
-| **[0.9.88]** | 2026-03-05 | **🛡️ Version 0.9.88: Sprint 8 — ✅ 687 puntos de red detectados, erradicación de 8k+ falsos positivos de duplicados en el Watcher y resolución de imports huérfanos del call graph.** (Latest) |
+| **[0.9.89]** | 2026-03-05 | **🛡️ Version 0.9.89: Sprint 9 — ✅ Persistencia de Sesiones MCP (SQLite), Escudo de Validación de Sintaxis, Heurísticas de Salud del Daemon.** (Latest) |
+| **[0.9.88]** | 2026-03-05 | **🛡️ Version 0.9.88: Sprint 8 — ✅ 687 puntos de red detectados, erradicación de 8k+ falsos positivos de duplicados.** |
 | **[0.9.84]** | 2026-03-04 | **🛡️ Version 0.9.84: Sprint Q/A & Technical Debt Complete — ✅ Refactored detectTypeAndName (C=51→12) & SemanticQueryTool (C=41→15). 0 High Risk Files.** |
 | **[0.9.83]** | 2026-03-04 | **🛡️ Daemon Stability & Semantic Pipeline Fix — ✅ 7 bugs fixed: restart_server fast path (<1s), 264 semantic connections persisted, NOT NULL transaction cascade fixed** |
 | **[0.9.81]** | 2026-03-03 | **🚀 Algorithmic O(n²) Eradication — ✅ Elimination of O(n²) bottlenecks in AST parsers and SQLite querying** |
@@ -107,7 +109,30 @@ All notable changes to this project are documented in this file and organized by
 
 ---
 
-## 🚀 Latest Release: v0.9.84 (2026-03-04)
+## 🚀 Latest Release: v0.9.89 (2026-03-05)
+
+**Sprint 9: Daemon Stability & Session Persistence**: Enfoque en resiliencia del daemon ante errores de desarrollo y persistencia de estado entre reinicios. Implementación de escudo de sintaxis y recuperación automática de sesiones MCP.
+
+### Key Achievements
+
+1. **MCP Session Persistence (SQLite)**:
+   - Creado `SessionManager` para persistir sesiones en la tabla `mcp_sessions`.
+   - Recuperación automática de sesiones tras reinicios del worker en `mcp-http-server.js`.
+   - Cleanup automático de sesiones antiguas (>48h).
+
+2. **Syntax Validation Shield**:
+   - Integrada validación `node --check` en el `ReloadHandler`.
+   - Bloqueo preventivo de hot-reloads ante archivos con errores de sintaxis, evitando crashes del daemon.
+
+3. **Daemon Health Heuristics**:
+   - Nuevos checks en `network-analyzer.js`: Mutable Global State, `async` Event Listeners sin `try/catch`, y riesgos de corte de sesión (`process.exit`).
+
+4. **CLI Introspection**:
+   - Comando `omny status` actualizado con métricas en tiempo real: Salud del Daemon y Conteo de Sesiones MCP activas.
+
+---
+
+## v0.9.88 (2026-03-05)
 
 **Sprint Q/A: Deuda Técnica Completa**: Culminación exitosa del sprint masivo de limpieza de deuda técnica. Resolución de God Functions finales y verificación de infraestructura mediante MCP garantizando un estado "Grade A" del sistema.
 

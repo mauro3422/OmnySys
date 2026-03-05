@@ -22,11 +22,7 @@ export class AggregateMetricsTool extends SemanticQueryTool {
     }
 
     async performAction(args) {
-        const {
-            aggregationType,
-            filePath,
-            options = {}
-        } = args;
+        const { aggregationType, filePath, options = {} } = args;
 
         if (!aggregationType) {
             return this.formatError('MISSING_PARAMS', 'aggregationType is required');
@@ -36,122 +32,75 @@ export class AggregateMetricsTool extends SemanticQueryTool {
 
         try {
             switch (aggregationType) {
-                case 'health': {
-                    const health = await handleHealthMetrics(this, this.projectPath);
-                    return this.formatSuccess(health);
-                }
-
-                case 'pipeline_health': {
-                    const diagnostic = await handlePipelineHealth(this);
-                    return this.formatSuccess({
-                        aggregationType: 'pipeline_health',
-                        ...diagnostic
-                    });
-                }
-
-                case 'modules': {
-                    const metadata = await getProjectMetadata(this.projectPath);
-                    return this.formatSuccess({
-                        modules: metadata.modules || [],
-                        totalFiles: metadata.totalFiles
-                    });
-                }
-
-                case 'molecule': {
-                    if (!filePath) return this.formatError('MISSING_PARAMS', 'filePath required');
-                    const fileData = await getFileAnalysis(this.projectPath, filePath);
-                    if (!fileData) return this.formatError('NOT_FOUND', `File ${filePath} not found`);
-
-                    return this.formatSuccess({
-                        file: filePath,
-                        atomsCount: (fileData.atoms || []).length,
-                        riskScore: fileData.riskScore
-                    });
-                }
-
-                case 'risk': {
-                    const riskData = await getRiskAssessment(this.projectPath);
-                    return this.formatSuccess({ ...riskData });
-                }
-
-                case 'race_conditions': {
-                    const result = await this.getRaceConditions({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20,
-                        scopeType: options.scopeType,
-                        asyncOnly: options.asyncOnly !== false,
-                        minSeverity: options.minSeverity || 0
-                    });
-
-                    return this.formatSuccess({
-                        aggregationType: 'race_conditions',
-                        ...result,
-                        summary: {
-                            totalRaces: result.total,
-                            highSeverity: result.races.filter(r => r.severity >= 7).length,
-                            mediumSeverity: result.races.filter(r => r.severity >= 4 && r.severity < 7).length,
-                            lowSeverity: result.races.filter(r => r.severity < 4).length
-                        }
-                    });
-                }
-
-                case 'patterns': {
-                    const result = await handlePatterns(this, options);
-                    return this.formatSuccess(result);
-                }
-
-                case 'async_analysis': {
-                    const result = await handleAsyncAnalysis(this, options);
-                    return this.formatSuccess(result);
-                }
-
-                case 'society': {
-                    const result = await this.getSocieties({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20,
-                        type: options.societyType
-                    });
-
-                    return this.formatSuccess({
-                        aggregationType: 'societies',
-                        ...result,
-                        summary: {
-                            totalSocieties: result.total,
-                            functional: result.societies.filter(s => s.type === 'functional').length,
-                            avgCohesion: result.societies.reduce((sum, s) => sum + s.cohesion, 0) / (result.societies.length || 1)
-                        }
-                    });
-                }
-
-                case 'duplicates': {
-                    const result = await this.getDuplicates({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20
-                    });
-                    return this.formatSuccess({ aggregationType: 'duplicates', ...result });
-                }
-
-                case 'isomorphism': {
-                    const result = await this.getIsomorphicDuplicates({
-                        offset: options.offset || 0,
-                        limit: options.limit || 20
-                    });
-                    return this.formatSuccess({ aggregationType: 'isomorphism', ...result });
-                }
-
+                case 'health': return this.formatSuccess(await handleHealthMetrics(this, this.projectPath));
+                case 'pipeline_health': return this.formatSuccess({ aggregationType: 'pipeline_health', ...(await handlePipelineHealth(this)) });
+                case 'modules': return this.formatSuccess(await this._handleModules());
+                case 'molecule': return await this._handleMolecule(filePath);
+                case 'risk': return this.formatSuccess({ ...(await getRiskAssessment(this.projectPath)) });
+                case 'race_conditions': return this.formatSuccess(await this._handleRaceConditions(options));
+                case 'patterns': return this.formatSuccess(await handlePatterns(this, options));
+                case 'async_analysis': return this.formatSuccess(await handleAsyncAnalysis(this, options));
+                case 'society': return this.formatSuccess(await this._handleSociety(options));
+                case 'duplicates': return this.formatSuccess({ aggregationType: 'duplicates', ...(await this.getDuplicates(this._getPaginationOpts(options))) });
+                case 'isomorphism': return this.formatSuccess({ aggregationType: 'isomorphism', ...(await this.getIsomorphicDuplicates(this._getPaginationOpts(options))) });
                 case 'watcher_alerts': {
                     const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
-                    if (result.error) return result; // MISSING_DB pre-formatError from handler
-                    return this.formatSuccess(result);
+                    return result.error ? result : this.formatSuccess(result);
                 }
-
-                default:
-                    return this.formatError('INVALID_PARAM', `Unknown aggregationType: ${aggregationType}`);
+                default: return this.formatError('INVALID_PARAM', `Unknown aggregationType: ${aggregationType}`);
             }
         } catch (error) {
             this.logger.error(`[AggregateMetrics] Error: ${error.message}`);
             return this.formatError('EXECUTION_ERROR', `Error executing aggregation ${aggregationType}: ${error.message}`);
         }
+    }
+
+    _getPaginationOpts(options) {
+        return { offset: options.offset || 0, limit: options.limit || 20 };
+    }
+
+    async _handleModules() {
+        const metadata = await getProjectMetadata(this.projectPath);
+        return { modules: metadata.modules || [], totalFiles: metadata.totalFiles };
+    }
+
+    async _handleMolecule(filePath) {
+        if (!filePath) return this.formatError('MISSING_PARAMS', 'filePath required');
+        const fileData = await getFileAnalysis(this.projectPath, filePath);
+        if (!fileData) return this.formatError('NOT_FOUND', `File ${filePath} not found`);
+        return this.formatSuccess({
+            file: filePath,
+            atomsCount: (fileData.atoms || []).length,
+            riskScore: fileData.riskScore
+        });
+    }
+
+    async _handleRaceConditions(options) {
+        const opts = { ...this._getPaginationOpts(options), scopeType: options.scopeType, asyncOnly: options.asyncOnly !== false, minSeverity: options.minSeverity || 0 };
+        const result = await this.getRaceConditions(opts);
+        return {
+            aggregationType: 'race_conditions',
+            ...result,
+            summary: {
+                totalRaces: result.total,
+                highSeverity: result.races.filter(r => r.severity >= 7).length,
+                mediumSeverity: result.races.filter(r => r.severity >= 4 && r.severity < 7).length,
+                lowSeverity: result.races.filter(r => r.severity < 4).length
+            }
+        };
+    }
+
+    async _handleSociety(options) {
+        const result = await this.getSocieties({ ...this._getPaginationOpts(options), type: options.societyType });
+        return {
+            aggregationType: 'societies',
+            ...result,
+            summary: {
+                totalSocieties: result.total,
+                functional: result.societies.filter(s => s.type === 'functional').length,
+                avgCohesion: result.societies.reduce((sum, s) => sum + s.cohesion, 0) / (result.societies.length || 1)
+            }
+        };
     }
 }
 

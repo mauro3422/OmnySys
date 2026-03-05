@@ -15,6 +15,11 @@ import { HandlerStrategy } from '../strategies/handler-strategy.js';
 import { QueryStrategy } from '../strategies/query-strategy.js';
 import { LifecycleStrategy } from '../strategies/lifecycle-strategy.js';
 import { PipelineStrategy } from '../strategies/pipeline-strategy.js';
+import { exec } from 'child_process';
+import util from 'util';
+import path from 'path';
+
+const execPromise = util.promisify(exec);
 
 const logger = createLogger('OmnySys:hot-reload:handler');
 
@@ -61,6 +66,16 @@ export class ReloadHandler {
 
     try {
       logger.info(`File change detected: ${filename}`);
+
+      // 0. SYNTAX VALIDATION SHIELD
+      try {
+        const absolutePath = path.join(this.server.projectPath, filename);
+        await execPromise(`node --check "${absolutePath}"`);
+      } catch (checkError) {
+        logger.error(`🚨 SYNTAX SHIELD: Blocked daemon crash! Valid syntax required in ${filename}`);
+        const errorMsg = checkError.stderr ? checkError.stderr.trim().split('\\n').slice(0, 3).join(' | ') : checkError.message;
+        throw new Error(`SyntaxError: ${errorMsg}`);
+      }
 
       // 1. Preserve state
       this.stateHandler.preserve();

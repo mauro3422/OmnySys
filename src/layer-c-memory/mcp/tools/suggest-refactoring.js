@@ -11,6 +11,7 @@ import { analyzeErrorHandling } from './suggest-refactoring/error-analyzer.js';
 import { analyzePerformance } from './suggest-refactoring/performance-analyzer.js';
 import { analyzeFileSize } from './suggest-refactoring/file-analyzer.js';
 import { analyzeCohesion } from './suggest-refactoring/cohesion-analyzer.js';
+import { analyzeNetworkConnections } from './suggest-refactoring/network-analyzer.js';
 
 import { AnalysisEngine, NODE_TYPES } from '../core/shared/analysis-engine.js';
 
@@ -91,7 +92,8 @@ export async function suggest_refactoring(args, context) {
       ...analyzeErrorHandling(atoms),
       ...analyzePerformance(atoms),
       ...analyzeFileSize(atoms, filePath),
-      ...analyzeCohesion(atoms)
+      ...analyzeCohesion(atoms),
+      ...analyzeNetworkConnections(atoms)
     ];
 
     // Filtrar por severidad
