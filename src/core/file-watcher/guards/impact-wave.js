@@ -46,7 +46,7 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
     } = options;
 
     try {
-        const currentAtoms = await getAtomsFn(filePath);
+        const currentAtoms = options.atoms || await getAtomsFn(filePath);
         if (!currentAtoms || currentAtoms.length === 0) {
             await clearWatcherIssue(rootPath, filePath, 'watcher_impact_wave');
             return null;

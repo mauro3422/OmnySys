@@ -66,7 +66,10 @@ export async function handleFileCreated(filePath, fullPath) {
 
   // Execute Impact Guards only (optional, but good for real-time feedback)
   await guardRegistry.initializeDefaultGuards();
-  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, { fullPath });
+  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
+    fullPath,
+    atoms: analysis.atoms
+  });
 
   this.emit('file:created', { filePath, analysis });
 }
@@ -143,7 +146,11 @@ export async function handleFileModified(filePath, fullPath) {
 
   // Execute Impact Guards
   await guardRegistry.initializeDefaultGuards();
-  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, { fullPath, previousAtoms });
+  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
+    fullPath,
+    previousAtoms,
+    atoms: analysis.atoms
+  });
 
   this.emit('file:modified', { filePath, analysis });
 }

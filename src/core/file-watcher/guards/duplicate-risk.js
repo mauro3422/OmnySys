@@ -19,7 +19,8 @@ function isLowSignalAtomName(name) {
 export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
     const {
         maxFindings = 8,
-        minLinesOfCode = 4
+        minLinesOfCode = 4,
+        atoms: providedAtoms = null
     } = options;
 
     try {
@@ -27,17 +28,33 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         const repo = getRepository(rootPath);
         if (!repo?.db) return [];
 
-        const localAtoms = repo.db.prepare(`
-      SELECT name, dna_json, lines_of_code
-      FROM atoms
-      WHERE file_path = ?
-        AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-        AND atom_type IN ('function', 'method', 'arrow', 'class')
-        AND (lines_of_code IS NULL OR lines_of_code >= ?)
-        AND (is_removed IS NULL OR is_removed = 0)
-        AND (is_dead_code IS NULL OR is_dead_code = 0)
-      LIMIT ?
-    `).all(filePath, minLinesOfCode, maxFindings * 4);
+        let localAtoms;
+
+        if (providedAtoms && Array.isArray(providedAtoms)) {
+            // Use in-memory atoms (structural scan results)
+            localAtoms = providedAtoms
+                .filter(a => a.dna_json && a.dna_json !== 'null')
+                .filter(a => ['function', 'method', 'arrow', 'class'].includes(a.type || a.atom_type))
+                .filter(a => !minLinesOfCode || (a.lines_of_code || a.loc || 0) >= minLinesOfCode)
+                .map(a => ({
+                    name: a.name,
+                    dna_json: a.dna_json,
+                    lines_of_code: a.lines_of_code || a.loc || 0
+                }));
+        } else {
+            // Fallback to database
+            localAtoms = repo.db.prepare(`
+              SELECT name, dna_json, lines_of_code
+              FROM atoms
+              WHERE file_path = ?
+                AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
+                AND atom_type IN ('function', 'method', 'arrow', 'class')
+                AND (lines_of_code IS NULL OR lines_of_code >= ?)
+                AND (is_removed IS NULL OR is_removed = 0)
+                AND (is_dead_code IS NULL OR is_dead_code = 0)
+              LIMIT ?
+            `).all(filePath, minLinesOfCode, maxFindings * 4);
+        }
 
         if (localAtoms.length === 0) {
             await clearWatcherIssue(rootPath, filePath, 'watcher_duplicate_risk');
