@@ -76,6 +76,10 @@ function hasCanonicalSharedStateContentionAdoption(canonicalAdoptions = {}) {
   return canonicalAdoptions.sharedStateContention === true;
 }
 
+function hasCanonicalScannedFileManifestAdoption(canonicalAdoptions = {}) {
+  return canonicalAdoptions.scannedFileManifest === true;
+}
+
 function buildCanonicalAdoptionCoverage(canonicalFamilies = [], adoptionGaps = []) {
   const totalFamilies = canonicalFamilies.length;
   const adoptedFamilies = canonicalFamilies.filter((family) =>
@@ -129,7 +133,8 @@ export function buildCompilerStandardizationReport({
   watcherAlerts = [],
   sharedState = {},
   compilerRemediation = null,
-  canonicalAdoptions = {}
+  canonicalAdoptions = {},
+  persistedFileCoverage = null
 } = {}) {
   const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
     .map(([area, count]) => normalizeDriftArea(area, count))
@@ -183,6 +188,18 @@ export function buildCompilerStandardizationReport({
         'Adopt the canonical centrality coverage policy in health/pipeline/watcher consumers before adding new ad hoc physics checks.'
       ));
     }
+  }
+
+  if (
+    Number(persistedFileCoverage?.missingFileCount || 0) > 0 &&
+    !hasCanonicalScannedFileManifestAdoption(canonicalAdoptions)
+  ) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'scanned_file_manifest',
+      'medium',
+      'The scanner/hash cache sees more files than the persisted compiler manifest currently tracks.',
+      'Persist the scanned-file manifest through a canonical compiler API so hash recovery, startup telemetry and file-level coverage read the same file universe.'
+    ));
   }
 
   const adoptionGaps = driftAreas.filter((item) => item.count > 0);

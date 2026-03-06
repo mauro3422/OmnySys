@@ -8,6 +8,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.101 - Scanned File Manifest Unification](changelog/v0.9.101.md)
+- [v0.9.100 - Centrality Coverage Adoption](changelog/v0.9.100.md)
 - [v0.9.99 - Compiler Explainability & Full Canonical Adoption](changelog/v0.9.99.md)
 - [v0.9.98 - Compiler Foundations & Docs Sync](changelog/v0.9.98.md)
 - [v0.9.97 - Canonical Testability & Semantic Purity APIs](changelog/v0.9.97.md)
@@ -23,6 +25,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **0.9.101** | 2026-03-06 | Unified scanned-file manifest, aligned scanner/hash/index file universes, and exposed persisted file coverage in compiler explainability. |
+| **0.9.100** | 2026-03-06 | Canonical centrality-coverage adoption wired into health and pipeline reporting surfaces. |
 | **0.9.99** | 2026-03-06 | Compiler explainability, signal confidence, telemetry provenance and full canonical adoption closure. |
 | **0.9.98** | 2026-03-06 | Compiler foundations, docs sync, base compiler/runtime files committed and indexed cleanly. |
 | **0.9.97** | 2026-03-06 | Canonical testability and semantic-purity APIs wired into MCP/query consumers. |
@@ -37,20 +41,20 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.99 (2026-03-06)
+## Latest Release: v0.9.101 (2026-03-06)
 
-**Compiler Explainability & Full Canonical Adoption**
+**Scanned File Manifest Unification**
 
 ### Key Achievements
 
-1. The compiler now exposes `signalConfidence`, `telemetryProvenance`, `compilerExplainability` and canonical-adoption coverage to agents through MCP status surfaces.
-2. Canonical shared-state reporting was added and connected to watcher/MCP consumers instead of ad hoc contention scans.
-3. The remaining `testability`, `semantic_purity` and `shared_state_hotspots` adoption gaps were closed.
-4. Direct conformance scans now return `0` findings for those policy families and status reports `adoptionCoverage: 21/21`.
-5. The remaining canonical backlog is now explicit and narrow: `centrality_coverage_adoption` plus normal structural runtime debt.
+1. Added a canonical scanned-file manifest API so the compiler can persist files that intentionally produce `0` atoms.
+2. Aligned `discoverProjectSourceFiles()`, hash-cache change detection and persisted-file coverage around the same file universe.
+3. `get_server_status()` now exposes `compilerExplainability.persistedFileCoverage` so agents can verify scanner/hash/index synchronization directly.
+4. The previous startup recovery noise for files present in hash cache but missing from the persisted index is now resolved through manifest sync instead of repeated recovery.
+5. Canonical guidance and standardization reporting can now recommend the scanned-file manifest pattern when this drift reappears elsewhere.
 
 ## What To Do Next
 
-1. Adopt the canonical centrality-coverage policy in the remaining health/pipeline/watcher consumers.
-2. Reduce complexity in runtime-heavy modules like atomic-edit tools and large coordinators.
-3. Keep expanding explainability surfaces only through shared/compiler entry points, not per-tool heuristics.
+1. Extend the same “canonical manifest + adoption detection” pattern to any remaining telemetry families that still compare mismatched universes.
+2. Reduce structural debt in runtime-heavy modules and watcher policy files now that the compiler surfaces are aligned.
+3. Keep promoting new families through shared/compiler entry points before MCP/runtime consumers add local heuristics.

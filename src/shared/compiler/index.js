@@ -110,6 +110,10 @@ export {
 export {
   hasPersistedCompilerAnalysis,
   getPersistedIndexedFilePaths,
+  getPersistedScannedFilePaths,
+  getPersistedKnownFilePaths,
+  syncPersistedScannedFileManifest,
+  summarizePersistedScannedFileCoverage,
   findIndexedFileCandidate,
   cleanupOrphanedCompilerArtifacts,
   removePersistedFileMetadata,

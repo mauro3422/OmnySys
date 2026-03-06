@@ -73,6 +73,11 @@ const RULE_GUIDANCE = {
     existingCanonicalEntryPoint: 'compiler-persistence helpers',
     recommendedImport: "import { hasPersistedCompilerAnalysis, getPersistedIndexedFilePaths, cleanupOrphanedCompilerArtifacts } from '../../../shared/compiler/index.js'",
     recommendedReplacement: 'Route filesystem + persistence coupling through shared/compiler compiler-persistence helpers instead of opening fs + repository logic inline.'
+  },
+  scanned_file_manifest: {
+    existingCanonicalEntryPoint: 'syncPersistedScannedFileManifest',
+    recommendedImport: "import { syncPersistedScannedFileManifest, getPersistedKnownFilePaths } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Persist the scanned-file manifest before comparing scanner/hash/index universes so zero-atom files stay visible without forcing duplicate recovery.'
   }
 };
 

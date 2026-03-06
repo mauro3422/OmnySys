@@ -11,6 +11,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const DATA_DIR = '.omnysysdata';
+const SCANNED_FILE_MANIFEST_TABLE = 'compiler_scanned_files';
 
 function normalizeFilePath(filePath = '') {
   return String(filePath || '').replace(/\\/g, '/');
@@ -40,6 +41,32 @@ async function withRepository(rootPath, operation) {
     return null;
   }
   return operation(repo);
+}
+
+function createScannedFileManifestSummary({
+  scannedFileTotal = 0,
+  manifestFileTotal = 0,
+  missingFromManifest = []
+} = {}) {
+  const missingCount = missingFromManifest.length;
+
+  return {
+    scannedFileTotal,
+    manifestFileTotal,
+    missingFileCount: missingCount,
+    synchronized: missingCount === 0 && manifestFileTotal >= scannedFileTotal,
+    missingSample: missingFromManifest.slice(0, 10)
+  };
+}
+
+async function ensureScannedFileManifestTable(projectPath) {
+  return withRepository(projectPath, (repo) => repo.db.prepare(`
+    CREATE TABLE IF NOT EXISTS ${SCANNED_FILE_MANIFEST_TABLE} (
+      path TEXT PRIMARY KEY,
+      first_seen TEXT NOT NULL,
+      last_seen TEXT NOT NULL
+    )
+  `).run());
 }
 
 export async function hasPersistedCompilerAnalysis(projectPath) {
@@ -87,6 +114,107 @@ export async function getPersistedIndexedFilePaths(projectPath) {
   } catch {
     return new Set();
   }
+}
+
+export async function getPersistedScannedFilePaths(projectPath) {
+  try {
+    await ensureScannedFileManifestTable(projectPath);
+    const rows = await withRepository(projectPath, (repo) => repo.db.prepare(`
+      SELECT path AS file_path
+      FROM ${SCANNED_FILE_MANIFEST_TABLE}
+    `).all());
+
+    return new Set(
+      (rows || [])
+        .map((row) => row?.file_path)
+        .filter(Boolean)
+        .map(normalizeFilePath)
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+export async function syncPersistedScannedFileManifest(projectPath, scannedFilePaths = [], options = {}) {
+  const normalizedPaths = [...new Set(
+    (Array.isArray(scannedFilePaths) ? scannedFilePaths : [])
+      .filter(Boolean)
+      .map(normalizeFilePath)
+  )];
+
+  const pruneMissing = options.pruneMissing !== false;
+  const now = new Date().toISOString();
+
+  try {
+    await ensureScannedFileManifestTable(projectPath);
+    await withRepository(projectPath, (repo) => {
+      const insertStmt = repo.db.prepare(`
+        INSERT INTO ${SCANNED_FILE_MANIFEST_TABLE} (path, first_seen, last_seen)
+        VALUES (?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+          last_seen = excluded.last_seen
+      `);
+
+      const deleteStmt = repo.db.prepare(`
+        DELETE FROM ${SCANNED_FILE_MANIFEST_TABLE}
+        WHERE path = ?
+      `);
+
+      const existingRows = repo.db.prepare(`
+        SELECT path
+        FROM ${SCANNED_FILE_MANIFEST_TABLE}
+      `).all();
+
+      const existingPaths = new Set((existingRows || []).map((row) => normalizeFilePath(row?.path)).filter(Boolean));
+      const currentPaths = new Set(normalizedPaths);
+
+      const transaction = repo.db.transaction(() => {
+        for (const filePath of normalizedPaths) {
+          insertStmt.run(filePath, now, now);
+        }
+
+        if (pruneMissing) {
+          for (const filePath of existingPaths) {
+            if (!currentPaths.has(filePath)) {
+              deleteStmt.run(filePath);
+            }
+          }
+        }
+      });
+
+      transaction();
+    });
+  } catch {
+    // Best effort only; callers can still compare against the pre-existing index.
+  }
+
+  return summarizePersistedScannedFileCoverage(projectPath, normalizedPaths);
+}
+
+export async function summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths = []) {
+  const normalizedPaths = [...new Set(
+    (Array.isArray(scannedFilePaths) ? scannedFilePaths : [])
+      .filter(Boolean)
+      .map(normalizeFilePath)
+  )];
+
+  const manifestPaths = await getPersistedScannedFilePaths(projectPath);
+  const missingFromManifest = normalizedPaths.filter((filePath) => !manifestPaths.has(filePath));
+
+  return createScannedFileManifestSummary({
+    scannedFileTotal: normalizedPaths.length,
+    manifestFileTotal: manifestPaths.size,
+    missingFromManifest
+  });
+}
+
+export async function getPersistedKnownFilePaths(projectPath) {
+  const [indexedPaths, manifestPaths] = await Promise.all([
+    getPersistedIndexedFilePaths(projectPath),
+    getPersistedScannedFilePaths(projectPath)
+  ]);
+
+  return new Set([...indexedPaths, ...manifestPaths]);
 }
 
 export async function findIndexedFileCandidate(rootPath, importPath) {

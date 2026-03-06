@@ -9,7 +9,9 @@ import { collectRecentNotifications, normalizeRecentNotifications } from '../cor
 import {
   buildCompilerReadinessStatus,
   buildCompilerStandardizationReport,
+  discoverProjectSourceFiles,
   buildTelemetryProvenance,
+  summarizePersistedScannedFileCoverage,
   summarizeSignalConfidence,
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
@@ -254,19 +256,24 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
+    const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const standardization = buildCompilerStandardizationReport({
       policySummary,
       watcherAlerts,
       sharedState,
+      persistedFileCoverage,
       canonicalAdoptions: {
         centralityCoverage: true,
-        sharedStateContention: true
+        sharedStateContention: true,
+        scannedFileManifest: persistedFileCoverage.synchronized
       }
     });
 
     return {
       policySummary,
-      standardization
+      standardization,
+      persistedFileCoverage
     };
   } catch (error) {
     return {

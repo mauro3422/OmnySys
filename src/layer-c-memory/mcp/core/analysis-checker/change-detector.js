@@ -6,6 +6,10 @@
 import { scanCurrentFiles, getIndexedFilePaths } from './file-scanner.js';
 import { detectRealChanges } from '../../../../layer-c-memory/storage/cache/hash-cache.js';
 import { createLogger } from '../../../../utils/logger.js';
+import {
+  summarizePersistedScannedFileCoverage,
+  syncPersistedScannedFileManifest
+} from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:analysis:checker');
 
@@ -19,6 +23,7 @@ export async function detectCacheChanges(projectPath, metadata) {
   try {
     const currentFiles = await scanCurrentFiles(projectPath);
     const filePaths = currentFiles.map(f => f.path);
+    await syncPersistedScannedFileManifest(projectPath, filePaths);
     const indexedFiles = await getIndexedFilePaths(projectPath);
     
     // Usar sistema de hash cache persistente
@@ -39,7 +44,12 @@ export async function detectCacheChanges(projectPath, metadata) {
         }
       }
 
-      logger.warn(`   ⚠️  Recovered ${orphanedByIndex.length} file(s) present in hash cache but missing from the persisted index`);
+      logger.warn(`   ⚠️  Recovered ${orphanedByIndex.length} file(s) present in hash cache but missing from the persisted manifest`);
+    }
+
+    const fileCoverage = await summarizePersistedScannedFileCoverage(projectPath, filePaths);
+    if (fileCoverage.missingFileCount > 0) {
+      logger.warn(`   ⚠️  Persisted scanned-file manifest is missing ${fileCoverage.missingFileCount} file(s) after sync`);
     }
     
     return changes;

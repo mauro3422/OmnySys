@@ -14,11 +14,13 @@ import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     buildLiveRowReconciliationPlan,
     classifyFieldCoverage,
+    discoverProjectSourceFiles,
     ensureLiveRowSync,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
-    summarizeCompilerPolicyDrift
+    summarizeCompilerPolicyDrift,
+    summarizePersistedScannedFileCoverage
 } from '../../../../shared/compiler/index.js';
 
 function getFieldCoverageContext(field) {
@@ -262,14 +264,18 @@ export async function handlePipelineHealth(tool) {
         }
     ]);
     const recentWatcherAlerts = tool.recentNotifications?.watcherAlerts || tool.latestRecentErrors?.watcherAlerts || [];
+    const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const standardizationReport = buildCompilerStandardizationReport({
         policySummary,
         watcherAlerts: recentWatcherAlerts,
         sharedState: tool.server?.sharedCache?.metadata?.sharedState || tool.server?.sharedState || {},
         compilerRemediation,
+        persistedFileCoverage,
         canonicalAdoptions: {
             centralityCoverage: true,
-            sharedStateContention: true
+            sharedStateContention: true,
+            scannedFileManifest: persistedFileCoverage.synchronized
         }
     });
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
@@ -288,6 +294,7 @@ export async function handlePipelineHealth(tool) {
         duplicateRemediation,
         pipelineOrphanRemediation,
         compilerRemediation,
+        persistedFileCoverage,
         standardizationReport,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
