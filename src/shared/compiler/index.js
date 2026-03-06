@@ -31,6 +31,18 @@ export {
 } from './standardization-report.js';
 
 export {
+  detectStateOwnershipConformanceFromSource
+} from './state-ownership-conformance.js';
+
+export {
+  detectServiceBoundaryConformanceFromSource
+} from './service-boundary-conformance.js';
+
+export {
+  detectCanonicalExtensionConformanceFromSource
+} from './canonical-extension-conformance.js';
+
+export {
   getCompilerRuntimeDir,
   getDaemonOwnerLockPath,
   ensureCompilerRuntimeDirSync,

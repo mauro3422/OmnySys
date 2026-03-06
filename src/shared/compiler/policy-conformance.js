@@ -15,6 +15,9 @@ import {
   discoverCompilerFiles,
   isCompilerRuntimeFile
 } from './file-discovery.js';
+import { detectStateOwnershipConformanceFromSource } from './state-ownership-conformance.js';
+import { detectServiceBoundaryConformanceFromSource } from './service-boundary-conformance.js';
+import { detectCanonicalExtensionConformanceFromSource } from './canonical-extension-conformance.js';
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
@@ -26,7 +29,10 @@ export const COMPILER_POLICY_AREA = {
   SIGNAL_COVERAGE: 'signal_coverage',
   LIVE_ROW_DRIFT: 'live_row_drift',
   PIPELINE_ORPHANS: 'pipeline_orphans',
-  RUNTIME_OWNERSHIP: 'runtime_ownership'
+  RUNTIME_OWNERSHIP: 'runtime_ownership',
+  STATE_OWNERSHIP: 'state_ownership',
+  SERVICE_BOUNDARY: 'service_boundary',
+  CANONICAL_EXTENSION: 'canonical_extension'
 };
 
 function normalizePath(filePath = '') {
@@ -251,6 +257,19 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
       'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
     ));
   }
+
+  findings.push(...detectStateOwnershipConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.STATE_OWNERSHIP
+  }));
+  findings.push(...detectServiceBoundaryConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.SERVICE_BOUNDARY
+  }));
+  findings.push(...detectCanonicalExtensionConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.CANONICAL_EXTENSION
+  }));
 
   return findings;
 }

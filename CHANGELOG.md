@@ -41,6 +41,7 @@ All notable changes to this project are documented in this file and organized by
 - Compiler diagnostics now have a canonical API: watcher/MCP consumers share the same signal classification (`high_signal` vs `low_signal`) instead of each tool inventing its own alert severity summary.
 - Live row cleanup now has a canonical execution API too, so stale-row reconciliation is no longer limited to reporting/remediation planning and can be reused by future tools from one compiler entrypoint.
 - Bridge/proxy startup coordination now persists a daemon owner lock, so bridges can wait for a hot-restarting proxy instead of spawning duplicate proxies during rapid runtime edits.
+- The compiler now has canonical architectural conformance families too: `state_ownership`, `service_boundary`, and `canonical_extension` are detected through shared APIs and fed into the standardization report so the system can flag inline singleton/state ownership, mixed runtime boundaries, and private helper bypasses before they spread.
 
 ## Quick Links
 

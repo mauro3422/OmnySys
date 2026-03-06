@@ -19,6 +19,9 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'watcher_diagnostics', label: 'Watcher diagnostics contract', status: 'canonical' },
   { id: 'watcher_lifecycle', label: 'Watcher diagnostics lifecycle', status: 'canonical' },
   { id: 'runtime_ownership', label: 'Runtime ownership/daemon lock', status: 'canonical' },
+  { id: 'state_ownership', label: 'State ownership/singleton policy', status: 'canonical' },
+  { id: 'service_boundary', label: 'Service boundary policy', status: 'canonical' },
+  { id: 'canonical_extension', label: 'Canonical extension policy', status: 'canonical' },
   { id: 'compiler_diagnostics', label: 'Compiler diagnostics', status: 'canonical' },
   { id: 'session_lifecycle', label: 'Session/restart lifecycle', status: 'canonical' },
   { id: 'remediation', label: 'Compiler remediation backlog', status: 'canonical' }
