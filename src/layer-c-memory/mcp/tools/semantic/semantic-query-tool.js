@@ -7,6 +7,7 @@
  */
 
 import { GraphQueryTool } from '../../core/shared/base-tools/graph-query-tool.js';
+import { buildDuplicateRemediationPlan } from '../../../../shared/compiler/index.js';
 import {
     queryRaceConditions,
     queryEventPatterns,
@@ -92,6 +93,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, stats } = queryDuplicates(this.repo.db, options);
         const coverage = queryDnaCoverage(this.repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
+        const remediation = buildDuplicateRemediationPlan(duplicates);
         const hasUsableDnaCoverage = (coverage?.duplicateEligibleWithDna || 0) > 0;
 
         return {
@@ -105,6 +107,7 @@ export class SemanticQueryTool extends GraphQueryTool {
                         ? 'No logic duplicates found'
                         : `${stats.groups} duplicate group(s) detected`)
             },
+            remediation,
             total: duplicates.length,
             duplicates
         };
@@ -116,6 +119,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, stats } = queryIsomorphicDuplicates(this.repo.db, options);
         const coverage = queryDnaCoverage(this.repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
+        const remediation = buildDuplicateRemediationPlan(duplicates);
         const hasUsableDnaCoverage = (coverage?.duplicateEligibleWithDna || 0) > 0;
 
         return {
@@ -129,6 +133,7 @@ export class SemanticQueryTool extends GraphQueryTool {
                         ? 'No isomorphic duplicates found'
                         : `${stats.groups} isomorphic group(s) detected`)
             },
+            remediation,
             total: duplicates.length,
             duplicates
         };

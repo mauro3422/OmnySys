@@ -23,6 +23,7 @@ import {
     normalizeDuplicateCandidateAtom,
     DUPLICATE_MODES
 } from '#layer-c/storage/repository/utils/index.js';
+import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
@@ -174,6 +175,23 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         }
 
         if (findings.length > 0) {
+            const remediationPlan = buildDuplicateRemediationPlan(findings.map((finding) => ({
+                groupSize: finding.totalInstances,
+                urgencyScore: finding.totalInstances,
+                instances: [{
+                    name: finding.symbol,
+                    file: filePath,
+                    importanceScore: 0,
+                    callerCount: 0,
+                    changeFrequency: 0
+                }, ...finding.duplicateFiles.map((duplicateFile) => ({
+                    name: finding.symbol,
+                    file: duplicateFile,
+                    importanceScore: 0,
+                    callerCount: 0,
+                    changeFrequency: 0
+                }))]
+            })));
             const preview = findings
                 .map(f => `${f.symbol}(${f.totalInstances})`)
                 .join(', ');
@@ -192,13 +210,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 suggestedAction: findings.length >= 3 
                     ? StandardSuggestions.DUPLICATE_REUSE + ' (multiple duplicates detected)'
                     : StandardSuggestions.DUPLICATE_REUSE,
-                suggestedAlternatives: findings.map(f => 
-                    `Consider reusing '${f.symbol}' or rename to: ${f.suggestedAlternatives.slice(0, 3).join(', ')}`
-                ),
+                suggestedAlternatives: remediationPlan.items.flatMap((item) => item.recommendedActions).slice(0, 6),
                 relatedFiles: findings.flatMap(f => f.duplicateFiles).filter((v, i, a) => a.indexOf(v) === i),
                 extraData: {
                     duplicateCount: findings.length,
-                    findings: findings.slice(0, maxFindings)
+                    findings: findings.slice(0, maxFindings),
+                    remediation: remediationPlan
                 }
             });
 

@@ -60,6 +60,11 @@ export {
 } from './live-row-remediation.js';
 
 export {
+  buildDuplicateRemediation,
+  buildDuplicateRemediationPlan
+} from './duplicate-remediation.js';
+
+export {
   PIPELINE_ORPHAN_NAME_PATTERNS,
   getEffectiveCallerCount,
   isPipelineProductionFile,
