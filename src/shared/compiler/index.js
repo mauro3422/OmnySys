@@ -55,6 +55,14 @@ export {
 } from './centrality-coverage-conformance.js';
 
 export {
+  detectTestabilityConformanceFromSource
+} from './testability-conformance.js';
+
+export {
+  detectSemanticPurityConformanceFromSource
+} from './semantic-purity-conformance.js';
+
+export {
   getCompilerRuntimeDir,
   getDaemonOwnerLockPath,
   ensureCompilerRuntimeDirSync,

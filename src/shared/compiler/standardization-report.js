@@ -25,6 +25,8 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'async_error', label: 'Async error/recovery policy', status: 'canonical' },
   { id: 'shared_state_hotspots', label: 'Shared-state hotspot policy', status: 'canonical' },
   { id: 'centrality_coverage', label: 'Centrality coverage policy', status: 'canonical' },
+  { id: 'testability', label: 'Testability policy', status: 'canonical' },
+  { id: 'semantic_purity', label: 'Semantic purity policy', status: 'canonical' },
   { id: 'compiler_diagnostics', label: 'Compiler diagnostics', status: 'canonical' },
   { id: 'session_lifecycle', label: 'Session/restart lifecycle', status: 'canonical' },
   { id: 'remediation', label: 'Compiler remediation backlog', status: 'canonical' }

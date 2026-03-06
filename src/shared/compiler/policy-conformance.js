@@ -21,6 +21,8 @@ import { detectCanonicalExtensionConformanceFromSource } from './canonical-exten
 import { detectAsyncErrorConformanceFromSource } from './async-error-conformance.js';
 import { detectSharedStateHotspotConformanceFromSource } from './shared-state-hotspot-conformance.js';
 import { detectCentralityCoverageConformanceFromSource } from './centrality-coverage-conformance.js';
+import { detectTestabilityConformanceFromSource } from './testability-conformance.js';
+import { detectSemanticPurityConformanceFromSource } from './semantic-purity-conformance.js';
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
@@ -38,7 +40,9 @@ export const COMPILER_POLICY_AREA = {
   CANONICAL_EXTENSION: 'canonical_extension',
   ASYNC_ERROR: 'async_error',
   SHARED_STATE_HOTSPOTS: 'shared_state_hotspots',
-  CENTRALITY_COVERAGE: 'centrality_coverage'
+  CENTRALITY_COVERAGE: 'centrality_coverage',
+  TESTABILITY: 'testability',
+  SEMANTIC_PURITY: 'semantic_purity'
 };
 
 function normalizePath(filePath = '') {
@@ -287,6 +291,14 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   findings.push(...detectCentralityCoverageConformanceFromSource(normalizedPath, source, {
     severity: COMPILER_POLICY_SEVERITY.MEDIUM,
     policyArea: COMPILER_POLICY_AREA.CENTRALITY_COVERAGE
+  }));
+  findings.push(...detectTestabilityConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.TESTABILITY
+  }));
+  findings.push(...detectSemanticPurityConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.SEMANTIC_PURITY
   }));
 
   return findings;
