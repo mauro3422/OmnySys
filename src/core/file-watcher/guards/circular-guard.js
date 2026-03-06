@@ -12,6 +12,7 @@ import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
+import { classifyCircularCycle } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -227,14 +228,15 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                     if (atomCycle.length <= 2) continue;
 
                     const atomNames = atomCycle.map(a => a.split('::')[1] || a);
+                    const cycleClassification = classifyCircularCycle(relPath, atomCycle, atomNames);
 
-                    if (isIntentionalAlgorithmicRecursion(atomCycle, atomNames)) {
+                    if (cycleClassification === 'algorithmic') {
                         logger.debug(`[CIRCULAR FUNCTION GUARD][ALGORITHMIC] Ignoring intentional recursion: ${atomNames.join(' ➔ ')}`);
                         await clearCircularFamily();
                         continue;
                     }
 
-                    if (isEventDrivenLifecycleCycle(relPath, atomCycle, atomNames)) {
+                    if (cycleClassification === 'lifecycle') {
                         const cycleStr = atomNames.join(' ➔ ');
                         const msg = `Event-driven lifecycle loop detected: ${cycleStr}`;
 

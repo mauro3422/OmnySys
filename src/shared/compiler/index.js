@@ -63,6 +63,14 @@ export {
 } from './semantic-purity-conformance.js';
 
 export {
+  isRuntimeLifecycleFile,
+  isSameFileCycle,
+  isIntentionalAlgorithmicCycle,
+  isEventDrivenLifecycleCycle,
+  classifyCircularCycle
+} from './circular-conformance.js';
+
+export {
   getCompilerRuntimeDir,
   getDaemonOwnerLockPath,
   ensureCompilerRuntimeDirSync,

@@ -20,8 +20,20 @@ import {
 } from '../../shared/compiler/index.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { normalizePath } from '#shared/utils/path-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
+
+function normalizeWatcherIssueFilePath(projectPath, filePath) {
+  const rawPath = String(filePath || '').trim();
+  if (!rawPath) return rawPath;
+
+  const normalized = path.isAbsolute(rawPath)
+    ? path.relative(projectPath, rawPath)
+    : rawPath;
+
+  return normalizePath(normalized);
+}
 
 /**
  * Persiste un issue del watcher en semantic_issues (SQLite).
@@ -41,8 +53,9 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
     const repo = getRepository(projectPath);
     if (!repo?.db) return false;
 
+    const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const record = createWatcherIssueRecord({
-      filePath,
+      filePath: normalizedFilePath,
       issueType,
       severity,
       message,
@@ -52,7 +65,7 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
     repo.db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type = ? AND message LIKE ?
-    `).run(filePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+    `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
 
     repo.db.prepare(`
       INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
@@ -91,13 +104,14 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
     const repo = getRepository(projectPath);
     if (!repo?.db) return false;
 
+    const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const result = repo.db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type = ? AND message LIKE ?
-    `).run(filePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+    `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
 
     if ((result?.changes || 0) > 0) {
-      logger.info(`[WATCHER ISSUE CLEARED] ${filePath} -> ${issueType}`);
+      logger.info(`[WATCHER ISSUE CLEARED] ${normalizedFilePath} -> ${issueType}`);
     }
 
     return true;
@@ -113,16 +127,17 @@ export async function clearWatcherIssueFamily(projectPath, filePath, issueTypePr
     const repo = getRepository(projectPath);
     if (!repo?.db) return false;
 
+    const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const normalizedPrefix = String(issueTypePrefix || '').trim().replace(/[_%]+$/g, '');
     if (!normalizedPrefix) return false;
 
     const result = repo.db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type LIKE ? AND message LIKE ?
-    `).run(filePath, `${normalizedPrefix}%`, `${WATCHER_MESSAGE_PREFIX}%`);
+    `).run(normalizedFilePath, `${normalizedPrefix}%`, `${WATCHER_MESSAGE_PREFIX}%`);
 
     if ((result?.changes || 0) > 0) {
-      logger.info(`[WATCHER ISSUE FAMILY CLEARED] ${filePath} -> ${normalizedPrefix}* (${result.changes})`);
+      logger.info(`[WATCHER ISSUE FAMILY CLEARED] ${normalizedFilePath} -> ${normalizedPrefix}* (${result.changes})`);
     }
 
     return true;
