@@ -266,20 +266,21 @@ export function extractAtomMetrics(atom) {
     return {
         id: atom.id,
         name: atom.name,
-        type: atom.type,
+        type: atom.type || atom.atom_type,
         complexity: atom.complexity || 1,
-        linesOfCode: atom.linesOfCode || 0,
-        isAsync: atom.isAsync || false,
-        isExported: atom.isExported || false,
-        hasErrorHandling: atom.hasErrorHandling || false,
-        hasNetworkCalls: atom.hasNetworkCalls || false,
-        sharedStateAccess: atom.sharedStateAccess || [],
-        eventEmitters: atom.eventEmitters || [],
-        eventListeners: atom.eventListeners || [],
-        changeFrequency: atom.changeFrequency || 0,
-        ageDays: atom.ageDays || 0,
-        fragilityScore: atom.fragilityScore || 0,
-        riskLevel: atom.riskLevel || 'LOW'
+        linesOfCode: atom.linesOfCode || atom.lines_of_code || 0,
+        isAsync: atom.isAsync || atom.is_async || false,
+        isExported: atom.isExported || atom.is_exported || false,
+        hasErrorHandling: atom.hasErrorHandling || atom.has_error_handling || false,
+        hasNetworkCalls: atom.hasNetworkCalls || atom.has_network_calls || false,
+        sharedStateAccess: atom.sharedStateAccess || atom.shared_state_json || [],
+        eventEmitters: atom.eventEmitters || atom.event_emitters_json || [],
+        eventListeners: atom.eventListeners || atom.event_listeners_json || [],
+        changeFrequency: atom.changeFrequency || atom.change_frequency || 0,
+        ageDays: atom.ageDays || atom.age_days || 0,
+        fragilityScore: atom.fragilityScore || atom.fragility_score || 0,
+        riskLevel: atom.riskLevel || atom.risk_level || 'LOW',
+        isDeadCode: atom.isDeadCode || atom.is_dead_code || false
     };
 }
 

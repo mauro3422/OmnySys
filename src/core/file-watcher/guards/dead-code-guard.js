@@ -18,6 +18,10 @@ import {
     isValidGuardTarget,
     extractAtomMetrics
 } from './guard-standards.js';
+import {
+    isSuspiciousDeadCodeAtom,
+    normalizeDeadCodeAtom
+} from '../../../shared/compiler/dead-code-heuristics.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:dead-code');
 
@@ -51,18 +55,19 @@ export async function detectDeadCode(rootPath, filePath, EventEmitterContext, at
             const metrics = extractAtomMetrics(atom);
 
             // Verificar si es código muerto
-            const isDead = metrics.isDeadCode || isDeadCodeAtom(atom, metrics);
+            const normalized = normalizeDeadCodeAtom(atom);
+            const isDead = metrics.isDeadCode || isSuspiciousDeadCodeAtom(atom, { minLines });
 
             if (isDead && metrics.linesOfCode >= minLines) {
                 const severity = metrics.linesOfCode > 20 ? 'medium' : 'low';
                 const issueType = createIssueType(IssueDomains.CODE, 'dead_code', severity);
 
-                const reason = metrics.isExported 
-                    ? 'is exported but never imported elsewhere'
-                    : 'is not exported and has no internal references';
+                const reason = normalized.isExported
+                    ? 'is exported but appears fully disconnected'
+                    : 'is not exported and has no callers/callees';
 
-                const suggestedAction = metrics.isExported
-                    ? StandardSuggestions.DEAD_CODE_REMOVE + ' or check if should be used'
+                const suggestedAction = normalized.isExported
+                    ? `${StandardSuggestions.DEAD_CODE_REMOVE} or verify the missing wiring/import`
                     : StandardSuggestions.DEAD_CODE_REMOVE;
 
                 issues.push({
@@ -93,8 +98,9 @@ export async function detectDeadCode(rootPath, filePath, EventEmitterContext, at
                             isDeadCode: true,
                             linesOfCode: metrics.linesOfCode,
                             functionType: metrics.type,
-                            calledBy: atom.calledBy || [],
-                            calls: atom.calls || []
+                            calledBy: normalized.calledBy,
+                            calls: normalized.calls,
+                            purpose: normalized.purpose
                         }
                     })
                 });
@@ -162,86 +168,6 @@ export async function detectDeadCode(rootPath, filePath, EventEmitterContext, at
         logger.debug(`[DEAD-CODE GUARD SKIP] ${filePath}: ${error.message}`);
         return [];
     }
-}
-
-/**
- * Determina si un átomo es código muerto
- * @param {Object} atom - Átomo a analizar
- * @param {Object} metrics - Métricas extraídas
- * @returns {boolean}
- */
-function isDeadCodeAtom(atom, metrics) {
-    // Obtener purpose del átomo (puede ser purpose o purpose_type)
-    const purpose = atom.purpose || atom.purpose_type || '';
-    const filePath = atom.file_path || atom.filePath || '';
-    
-    // NO reportar falsos positivos conocidos por purpose
-    const nonDeadPurposes = ['ENTRY_POINT', 'WORKER_ENTRY', 'SERVER_HANDLER', 
-                             'EVENT_HANDLER', 'TIMER_ASYNC', 'NETWORK_HANDLER',
-                             'API_EXPORT', 'SCRIPT_MAIN', 'ANALYSIS_SCRIPT',
-                             'POTENTIALLY_UNUSED', 'FACTORY', 'WRAPPER'];
-    
-    if (nonDeadPurposes.includes(purpose)) {
-        return false;
-    }
-    
-    // NO reportar dead code en archivos de servidor/sistema (entry points)
-    const systemFilePatterns = [
-        /mcp-.*proxy/,
-        /mcp-.*server/,
-        /mcp-.*bridge/,
-        /websocket.*server/,
-        /orchestrator.*server/,
-        /error-guardian/,
-        /initialization.*steps/
-    ];
-    
-    if (systemFilePatterns.some(pattern => pattern.test(filePath))) {
-        return false;
-    }
-
-    // Si ya está marcado como dead code en la DB, verificar que no sea falso positivo
-    if (atom.isDeadCode || atom.isRemoved) {
-        // Solo reportar si tiene llamadas (podría ser verdaderamente muerto)
-        const calledBy = atom.calledBy || [];
-        return calledBy.length === 0;
-    }
-
-    // Si no es exportado y no es llamado por nadie
-    if (!metrics.isExported) {
-        const calledBy = atom.calledBy || [];
-        // Verificar si es llamado internamente
-        const hasInternalCalls = calledBy.some(ref => {
-            // Si el caller es del mismo archivo, es llamada interna
-            const callerFile = typeof ref === 'string' 
-                ? ref.split('::')[0] 
-                : (ref.filePath || ref.file);
-            return callerFile === atom.filePath;
-        });
-        
-        if (!hasInternalCalls) {
-            // Solo reportar si tiene purpose explícito de DEAD_CODE
-            return atom.purpose === 'DEAD_CODE';
-        }
-    }
-
-    // Si es exportado pero nadie lo importa
-    if (metrics.isExported) {
-        const calledBy = atom.calledBy || [];
-        const hasExternalCalls = calledBy.some(ref => {
-            const callerFile = typeof ref === 'string' 
-                ? ref.split('::')[0] 
-                : (ref.filePath || ref.file);
-            return callerFile !== atom.filePath;
-        });
-        
-        // Solo reportar si está explícitamente marcado
-        if (!hasExternalCalls) {
-            return atom.purpose === 'DEAD_CODE';
-        }
-    }
-
-    return false;
 }
 
 export default detectDeadCode;

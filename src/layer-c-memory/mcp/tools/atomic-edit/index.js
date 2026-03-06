@@ -38,26 +38,6 @@ const logger = createLogger('OmnySys:atomic:edit:tool');
 
 
 /**
- * Valida los argumentos de entrada para atomic_edit
- */
-function validateEditArgs(args, projectPath) {
-  const { filePath, oldString, newString, symbolName } = args;
-
-  if (!projectPath) {
-    return { error: 'MISSING_PROJECT_PATH', message: 'projectPath not provided in context' };
-  }
-
-  if (!filePath || (!oldString && !symbolName) || newString === undefined) {
-    return {
-      error: 'INVALID_PARAMS',
-      message: 'Missing required: filePath, newString, and (oldString OR symbolName)'
-    };
-  }
-
-  return null;
-}
-
-/**
  * Realiza todas las validaciones previas al edit (importaciones, exportaciones, etc.)
  */
 async function performPreEditValidation(filePath, oldString, newString, symbolName, projectPath) {

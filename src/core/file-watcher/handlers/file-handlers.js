@@ -45,15 +45,6 @@ function getFileFromRelationEntry(entry) {
   return null;
 }
 
-function impactLevelFromScore(score) {
-  if (score >= 18) return 'high';
-  if (score >= 10) return 'medium';
-  if (score >= 4) return 'low';
-  return 'none';
-}
-
-
-
 /**
  * Maneja creacion de archivo
  */

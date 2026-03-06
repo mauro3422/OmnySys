@@ -18,6 +18,16 @@ export const DUPLICATE_DNA_FIELDS = [
   'semanticFingerprint'
 ];
 
+export const STRUCTURAL_DUPLICATE_DNA_FIELDS = [
+  'patternHash',
+  'flowType',
+  'operationSequence',
+  'complexityScore',
+  'inputCount',
+  'outputCount',
+  'transformationCount'
+];
+
 export function normalizeDnaValue(atom = {}) {
   const raw = atom.dna_json ?? atom.dnaJson ?? atom.dna ?? null;
   if (!raw) return null;
@@ -55,9 +65,32 @@ export function buildDuplicateKeyFromDna(dna) {
     .join('|');
 }
 
+export function buildStructuralDuplicateKeyFromDna(dna) {
+  const parsed = parseDnaValue(dna);
+  if (!parsed) return null;
+
+  return STRUCTURAL_DUPLICATE_DNA_FIELDS
+    .map((field) => {
+      const value = parsed[field];
+      if (Array.isArray(value)) return value.join('>');
+      return value || '';
+    })
+    .join('|');
+}
+
 export function getDuplicateKeySql(columnName = 'dna_json') {
   return DUPLICATE_DNA_FIELDS
     .map((field) => `COALESCE(json_extract(${columnName}, '$.${field}'), '')`)
     .join(` || '|' || `);
 }
 
+export function getStructuralDuplicateKeySql(columnName = 'dna_json') {
+  return STRUCTURAL_DUPLICATE_DNA_FIELDS
+    .map((field) => {
+      if (field === 'operationSequence') {
+        return `COALESCE(REPLACE(REPLACE(REPLACE(REPLACE(json_extract(${columnName}, '$.${field}'), '[', ''), ']', ''), '\"', ''), ',', '>'), '')`;
+      }
+      return `COALESCE(json_extract(${columnName}, '$.${field}'), '')`;
+    })
+    .join(` || '|' || `);
+}

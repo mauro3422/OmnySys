@@ -95,7 +95,16 @@ export async function loadDependencySources(resolvedImports, filePath, parsedSou
     return fileSourceCode;
 }
 
+function normalizeConnectionList(connections) {
+    if (Array.isArray(connections)) return connections;
+    if (Array.isArray(connections?.all)) return connections.all;
+    return [];
+}
+
 export function buildFileResult(filePath, parsed, resolvedImports, staticConnections, advancedConnections, metadata, moleculeAtoms, contentHash) {
+    const normalizedStaticConnections = normalizeConnectionList(staticConnections);
+    const normalizedAdvancedConnections = normalizeConnectionList(advancedConnections);
+
     return {
         filePath,
         fileName: path.basename(filePath),
@@ -113,11 +122,11 @@ export function buildFileResult(filePath, parsed, resolvedImports, staticConnect
         atomCount: moleculeAtoms.length,
         calls: parsed.calls || [],
         semanticConnections: [
-            ...staticConnections.all.map(conn => ({
+            ...normalizedStaticConnections.map(conn => ({
                 target: conn.targetFile, type: conn.via, key: conn.key || conn.event,
                 confidence: conn.confidence, detectedBy: 'static-extractor'
             })),
-            ...(advancedConnections.all || []).map(conn => ({
+            ...normalizedAdvancedConnections.map(conn => ({
                 target: conn.targetFile, type: conn.via, channelName: conn.channelName,
                 confidence: conn.confidence, detectedBy: 'advanced-extractor'
             }))

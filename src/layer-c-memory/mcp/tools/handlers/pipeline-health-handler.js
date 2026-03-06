@@ -3,6 +3,8 @@
  * @param {Object} tool - Instancia de AggregateMetricsTool
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
+import { getDeadCodeSqlPredicate } from '../../../../shared/compiler/dead-code-heuristics.js';
+
 function getEffectiveCallerCount(atomRow) {
     if ((atomRow?.callers_count || 0) > 0) {
         return atomRow.callers_count;
@@ -236,15 +238,7 @@ export async function handlePipelineHealth(tool) {
     const suspiciousDeadCandidates = db.prepare(`
         SELECT COUNT(*) as total
         FROM atoms
-        WHERE file_path LIKE 'src/%'
-          AND atom_type IN ('function', 'method', 'arrow', 'class')
-          AND (is_removed IS NULL OR is_removed = 0)
-          AND (is_dead_code IS NULL OR is_dead_code = 0)
-          AND (is_exported IS NULL OR is_exported = 0)
-          AND COALESCE(callers_count, 0) = 0
-          AND COALESCE(callees_count, 0) = 0
-          AND (called_by_json IS NULL OR called_by_json = '' OR called_by_json = '[]')
-          AND (calls_json IS NULL OR calls_json = '' OR calls_json = '[]')
+        WHERE ${getDeadCodeSqlPredicate('atoms', { minLines: 5 })}
     `).get()?.total || 0;
 
     if (flaggedDeadCode === 0 && suspiciousDeadCandidates > 50) {

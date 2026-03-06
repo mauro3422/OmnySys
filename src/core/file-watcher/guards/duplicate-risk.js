@@ -18,13 +18,28 @@ import {
     isLowSignalName
 } from './guard-standards.js';
 import {
-    buildDuplicateKeyFromDna,
-    getDuplicateKeySql,
+    buildStructuralDuplicateKeyFromDna,
+    getStructuralDuplicateKeySql,
     normalizeDnaValue
 } from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
-const DUPLICATE_KEY_SQL = getDuplicateKeySql('a.dna_json');
+const DUPLICATE_KEY_SQL = getStructuralDuplicateKeySql('a.dna_json');
+
+function loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings) {
+    return repo.db.prepare(`
+        SELECT id, name, dna_json, lines_of_code,
+               ${DUPLICATE_KEY_SQL} AS duplicate_key
+        FROM atoms
+        WHERE a.file_path = ?
+            AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
+            AND a.atom_type IN ('function', 'method', 'arrow', 'class')
+            AND (a.lines_of_code IS NULL OR a.lines_of_code >= ?)
+            AND (a.is_removed IS NULL OR a.is_removed = 0)
+            AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+        LIMIT ?
+    `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, minLinesOfCode, maxFindings * 4);
+}
 
 function getAtomType(atom = {}) {
     return atom.type || atom.atom_type || null;
@@ -82,7 +97,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         const repo = getRepository(rootPath);
         if (!repo?.db) return [];
 
-        let localAtoms;
+        let localAtoms = [];
 
         if (providedAtoms && Array.isArray(providedAtoms)) {
             localAtoms = providedAtoms
@@ -90,7 +105,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                     id: atom.id,
                     name: atom.name,
                     dna_json: normalizeDnaValue(atom),
-                    duplicate_key: buildDuplicateKeyFromDna(atom.dna ?? atom.dnaJson ?? atom.dna_json),
+                    duplicate_key: buildStructuralDuplicateKeyFromDna(atom.dna ?? atom.dnaJson ?? atom.dna_json),
                     atom_type: getAtomType(atom),
                     lines_of_code: getLinesOfCode(atom),
                     isRemoved: Boolean(atom.isRemoved || atom.is_removed),
@@ -101,19 +116,10 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 .filter((atom) => ['function', 'method', 'arrow', 'class'].includes(atom.atom_type))
                 .filter((atom) => !atom.isRemoved && !atom.isDeadCode)
                 .filter((atom) => !minLinesOfCode || atom.lines_of_code >= minLinesOfCode);
-        } else {
-            localAtoms = repo.db.prepare(`
-                SELECT id, name, dna_json, lines_of_code,
-                       ${DUPLICATE_KEY_SQL} AS duplicate_key
-                FROM atoms
-                WHERE a.file_path = ?
-                    AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-                    AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-                    AND (a.lines_of_code IS NULL OR a.lines_of_code >= ?)
-                    AND (a.is_removed IS NULL OR a.is_removed = 0)
-                    AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
-                LIMIT ?
-            `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, minLinesOfCode, maxFindings * 4);
+        }
+
+        if (localAtoms.length === 0) {
+            localAtoms = loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings);
         }
 
         if (localAtoms.length === 0) {
@@ -179,7 +185,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 totalInstances,
                 duplicateFiles: uniqueFiles,
                 sample: uniqueFiles.slice(0, 3),
-                dnaSimilarity: 'identical',
+                dnaSimilarity: 'structural',
                 suggestedAlternatives: generateAlternativeNames(symbolName)
             });
 
