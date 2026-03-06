@@ -76,7 +76,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   }
 
   const importsGetAllAtoms = /getAllAtoms/.test(source);
-  const importsImpactApis = /getFileDependents|getTransitiveDependents/.test(source);
+  const importsImpactApis = /getFileDependents|getTransitiveDependents|getFileImpactSummary|classifyImpactSeverity/.test(source);
   const importsDuplicateApi = /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|buildDuplicateWhereSql|normalizeDuplicateCandidateAtom|getValidDnaPredicate|DUPLICATE_MODES/.test(source);
 
   if (
@@ -102,7 +102,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
       COMPILER_POLICY_SEVERITY.HIGH,
       COMPILER_POLICY_AREA.IMPACT,
       'Manual topology/impact scan detected',
-      'Use the canonical file dependency APIs (getFileDependents/getTransitiveDependents) instead of rebuilding impact from getAllAtoms().'
+      'Use the canonical impact APIs (getFileImpactSummary / getFileDependents / getTransitiveDependents) instead of rebuilding impact from getAllAtoms().'
     ));
   }
 

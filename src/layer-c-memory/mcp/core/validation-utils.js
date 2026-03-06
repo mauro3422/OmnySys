@@ -8,9 +8,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getAtomsByName, getAtomsInFile } from '#layer-c/storage/index.js';
-import { getFileDependents } from '#layer-c/query/apis/file-api.js';
-import { getTransitiveDependents } from '#layer-c/query/queries/dependency-query.js';
+import { getAtomsByName } from '#layer-c/storage/index.js';
+import { getFileImpactSummary } from '#layer-c/query/apis/dependency-api.js';
 import { arePathsEqual, normalizePath } from '../../../shared/utils/path-utils.js';
 import { createLogger } from '../../../utils/logger.js';
 
@@ -233,34 +232,26 @@ export async function validateImpact(filePath, symbolName, projectPath) {
 
   try {
     const normalizedFilePath = normalizePath(filePath, projectPath);
-    const [directDependents, transitiveDependents, fileAtoms] = await Promise.all([
-      getFileDependents(projectPath, normalizedFilePath, { includeSemantic: true }),
-      getTransitiveDependents(projectPath, normalizedFilePath, { includeSemantic: true }),
-      getAtomsInFile(projectPath, normalizedFilePath)
-    ]);
-
-    const directSet = new Set((directDependents || []).map((dep) => normalizePath(dep, projectPath)));
-    const transitiveSet = new Set((transitiveDependents || []).map((dep) => normalizePath(dep, projectPath)));
-
-    if (directSet.size > 0) {
-      result.warnings.push(
-        `This change will affect ${directSet.size} files directly${transitiveSet.size > directSet.size ? ` and ${transitiveSet.size} transitively` : ''}`
-      );
-      result.context.affectedFiles = Array.from(directSet).slice(0, 5);
-      result.context.transitiveAffectedFiles = Array.from(transitiveSet).slice(0, 10);
-    }
-
-    if (transitiveSet.size > 10 || directSet.size > 5) {
-      result.warnings.push(
-        `HIGH IMPACT: ${directSet.size} direct / ${transitiveSet.size} transitive files affected. Consider careful review.`
-      );
-    }
-
-    const highFragilityAtoms = (fileAtoms || []).filter((atom) => {
-      const derivedFragility = atom.derived?.fragilityScore;
-      const persistedFragility = atom.fragilityScore ?? atom.fragility_score;
-      return Math.max(Number(derivedFragility) || 0, Number(persistedFragility) || 0) > 0.5;
+    const impact = await getFileImpactSummary(projectPath, normalizedFilePath, {
+      includeSemantic: true,
+      includeAtoms: true
     });
+
+    if (impact.directCount > 0) {
+      result.warnings.push(
+        `This change will affect ${impact.directCount} files directly${impact.transitiveCount > impact.directCount ? ` and ${impact.transitiveCount} transitively` : ''}`
+      );
+      result.context.affectedFiles = impact.directDependents.slice(0, 5);
+      result.context.transitiveAffectedFiles = impact.transitiveDependents.slice(0, 10);
+    }
+
+    if (impact.severity === 'high') {
+      result.warnings.push(
+        `HIGH IMPACT: ${impact.directCount} direct / ${impact.transitiveCount} transitive files affected. Consider careful review.`
+      );
+    }
+
+    const highFragilityAtoms = impact.highFragilityAtoms || [];
     if (highFragilityAtoms.length > 0) {
       result.warnings.push(`${highFragilityAtoms.length} fragile atoms in this file (fragility > 0.5)`);
       result.context.fragileAtoms = highFragilityAtoms.slice(0, 5).map((atom) => atom.name);

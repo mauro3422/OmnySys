@@ -11,7 +11,7 @@
  */
 
 import { enrichAtomsWithRelations, getAllAtoms } from '#layer-c/storage/index.js';
-import { getFileDependents } from '#layer-c/query/apis/file-api.js';
+import { getFileImpactSummary } from '#layer-c/query/apis/dependency-api.js';
 
 /**
  * Constantes de Clasificación
@@ -76,8 +76,11 @@ export class AnalysisEngine {
         const directAffectedFiles = new Set(directDependents.map(d => d.split('::')[0]));
 
         // 3. Calcular impacto transitivo (archivos)
-        const transitiveFiles = await getFileDependents(projectPath, filePath);
-        for (const f of transitiveFiles) directAffectedFiles.add(f);
+        const fileImpact = await getFileImpactSummary(projectPath, filePath, {
+            includeSemantic: true,
+            includeAtoms: false
+        });
+        for (const f of fileImpact.transitiveDependents) directAffectedFiles.add(f);
 
         // 4. Scoring
         let score = (directDependents.length * 2) + (directAffectedFiles.size * 5);

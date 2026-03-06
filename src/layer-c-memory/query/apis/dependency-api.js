@@ -11,5 +11,7 @@
 
 export {
   getDependencyGraph,
-  getTransitiveDependents
+  getTransitiveDependents,
+  getFileImpactSummary,
+  classifyImpactSeverity
 } from '../queries/dependency-query.js';

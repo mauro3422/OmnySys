@@ -11,6 +11,16 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getAtomsInFile } from '#layer-c/storage/index.js';
+import { normalizePath } from '#shared/utils/path-utils.js';
+import { getFileDependents } from './file-query/dependencies/deps.js';
+
+const IMPACT_THRESHOLDS = Object.freeze({
+  directHigh: 5,
+  transitiveHigh: 10,
+  directMedium: 1,
+  transitiveMedium: 3
+});
 
 /**
  * Builds a BFS dependency graph starting from filePath,
@@ -130,4 +140,68 @@ export async function getTransitiveDependents(rootPath, filePath, options = {}) 
   // Remove the starting file itself
   visited.delete(filePath);
   return Array.from(visited);
+}
+
+export function classifyImpactSeverity({ directCount = 0, transitiveCount = 0 } = {}) {
+  if (directCount > IMPACT_THRESHOLDS.directHigh || transitiveCount > IMPACT_THRESHOLDS.transitiveHigh) {
+    return 'high';
+  }
+
+  if (directCount >= IMPACT_THRESHOLDS.directMedium || transitiveCount >= IMPACT_THRESHOLDS.transitiveMedium) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+export async function getFileImpactSummary(rootPath, filePath, options = {}) {
+  const {
+    includeSemantic = true,
+    includeAtoms = true,
+    fragilityThreshold = 0.5
+  } = options;
+
+  const normalizedFilePath = normalizePath(filePath, rootPath);
+  const [directDependents, transitiveDependents, fileAtoms] = await Promise.all([
+    getFileDependents(rootPath, normalizedFilePath, { includeSemantic }),
+    getTransitiveDependents(rootPath, normalizedFilePath, { includeSemantic }),
+    includeAtoms ? getAtomsInFile(rootPath, normalizedFilePath) : Promise.resolve([])
+  ]);
+
+  const directSet = new Set(
+    (directDependents || [])
+      .map((dep) => normalizePath(dep, rootPath))
+      .filter(Boolean)
+      .filter((dep) => dep !== normalizedFilePath)
+  );
+  const transitiveSet = new Set(
+    (transitiveDependents || [])
+      .map((dep) => normalizePath(dep, rootPath))
+      .filter(Boolean)
+      .filter((dep) => dep !== normalizedFilePath)
+  );
+
+  const highFragilityAtoms = (fileAtoms || []).filter((atom) => {
+    const derivedFragility = atom.derived?.fragilityScore;
+    const persistedFragility = atom.fragilityScore ?? atom.fragility_score;
+    return Math.max(Number(derivedFragility) || 0, Number(persistedFragility) || 0) > fragilityThreshold;
+  });
+
+  return {
+    filePath: normalizedFilePath,
+    directDependents: Array.from(directSet),
+    transitiveDependents: Array.from(transitiveSet),
+    directCount: directSet.size,
+    transitiveCount: transitiveSet.size,
+    severity: classifyImpactSeverity({
+      directCount: directSet.size,
+      transitiveCount: transitiveSet.size
+    }),
+    highFragilityAtoms,
+    maxFragility: highFragilityAtoms.reduce((max, atom) => {
+      const derivedFragility = atom.derived?.fragilityScore;
+      const persistedFragility = atom.fragilityScore ?? atom.fragility_score;
+      return Math.max(max, Number(derivedFragility) || 0, Number(persistedFragility) || 0);
+    }, 0)
+  };
 }
