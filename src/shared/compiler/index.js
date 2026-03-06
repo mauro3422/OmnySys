@@ -71,3 +71,11 @@ export {
   attachWatcherAlertLifecycle,
   summarizeWatcherAlertLifecycle
 } from './watcher-issue-lifecycle.js';
+
+export {
+  WATCHER_LIFECYCLE_FILTER,
+  normalizeWatcherAlertLifecycleFilter,
+  matchesWatcherAlertLifecycle,
+  partitionWatcherAlertsByLifecycle,
+  filterWatcherAlertsByLifecycle
+} from './watcher-issue-reconciliation.js';

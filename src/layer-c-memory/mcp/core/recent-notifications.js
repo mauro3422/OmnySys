@@ -1,11 +1,9 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 import {
-  attachWatcherAlertLifecycle,
-  mapSemanticIssueRowToWatcherAlert,
   summarizeWatcherAlerts,
-  summarizeWatcherAlertLifecycle,
-  WATCHER_MESSAGE_PREFIX
+  summarizeWatcherAlertLifecycle
 } from '../../../shared/compiler/index.js';
+import { loadWatcherIssues } from '../../../core/file-watcher/watcher-issue-persistence.js';
 
 function mapLoggerEntry(entry) {
   return {
@@ -15,24 +13,6 @@ function mapLoggerEntry(entry) {
     message: entry.message,
     time: new Date(entry.time).toISOString()
   };
-}
-
-async function loadWatcherAlerts(projectPath, limit = 10) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return [];
-
-    return repo.db.prepare(`
-      SELECT file_path, issue_type, severity, message, context_json, detected_at
-      FROM semantic_issues
-      WHERE message LIKE ?
-      ORDER BY detected_at DESC
-      LIMIT ?
-    `).all(`${WATCHER_MESSAGE_PREFIX}%`, limit);
-  } catch {
-    return [];
-  }
 }
 
 export async function collectRecentNotifications(projectPath, options = {}) {
@@ -47,9 +27,13 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   }
 
   const loggerEntries = rawLogs.map(mapLoggerEntry);
-  const watcherEntries = (await loadWatcherAlerts(projectPath, watcherLimit))
-    .map(mapSemanticIssueRowToWatcherAlert)
-    .map((alert) => attachWatcherAlertLifecycle(alert));
+  const watcherResult = await loadWatcherIssues(projectPath, {
+    limit: watcherLimit,
+    offset: 0,
+    lifecycle: 'all',
+    pruneExpired: true
+  });
+  const watcherEntries = watcherResult.alerts;
   const watcherSummary = summarizeWatcherAlerts(watcherEntries);
   const watcherLifecycle = summarizeWatcherAlertLifecycle(watcherEntries);
 
@@ -68,7 +52,8 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     logs: loggerEntries,
     watcherAlerts: watcherEntries,
     watcherSummary,
-    watcherLifecycle
+    watcherLifecycle,
+    watcherReconciliation: watcherResult.reconciliation
   };
 }
 
@@ -83,6 +68,7 @@ export function normalizeRecentNotifications(notifications = {}) {
     logs,
     watcherAlerts,
     watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts),
-    watcherLifecycle: notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts)
+    watcherLifecycle: notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts),
+    watcherReconciliation: notifications.watcherReconciliation || { deletedExpired: 0, summary: { total: watcherAlerts.length, byStatus: {} } }
   };
 }

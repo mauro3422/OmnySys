@@ -88,6 +88,7 @@ export function createWatcherIssueRecord({
 export function mapSemanticIssueRowToWatcherAlert(row = {}) {
   const severity = normalizeSeverity(row.severity);
   return {
+    id: row.id ?? null,
     source: 'watcher',
     level: severityToLevel(severity),
     severity,

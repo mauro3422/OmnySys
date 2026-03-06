@@ -1,10 +1,8 @@
 import {
-    attachWatcherAlertLifecycle,
-    mapSemanticIssueRowToWatcherAlert,
     summarizeWatcherAlerts,
-    summarizeWatcherAlertLifecycle,
-    WATCHER_MESSAGE_PREFIX
+    summarizeWatcherAlertLifecycle
 } from '../../../../shared/compiler/index.js';
+import { loadWatcherIssues } from '../../../../core/file-watcher/watcher-issue-persistence.js';
 
 export async function handleWatcherAlerts(tool, db, options, filePath) {
     if (!db) {
@@ -14,31 +12,18 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     const offset = options.offset || 0;
     const limit = options.limit || 20;
     const issueType = options.issueType || 'all';
-
-    let whereClause = `WHERE message LIKE ?`;
-    const whereParams = [`${WATCHER_MESSAGE_PREFIX}%`];
-
-    if (filePath) {
-        whereClause += ' AND file_path = ?';
-        whereParams.push(filePath);
-    }
-
-    if (issueType !== 'all') {
-        whereClause += ' AND issue_type = ?';
-        whereParams.push(issueType);
-    }
-
-    const rows = db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               file_path, issue_type, severity, message, line_number, context_json, detected_at
-        FROM semantic_issues
-        ${whereClause}
-        ORDER BY detected_at DESC
-        LIMIT ? OFFSET ?
-    `).all(...whereParams, limit, offset);
-
-    const total = rows[0]?.total_count || 0;
-    const alerts = rows.map(mapSemanticIssueRowToWatcherAlert).map((alert) => attachWatcherAlertLifecycle(alert));
+    const lifecycle = options.lifecycle || 'all';
+    const projectPath = tool?.projectPath || tool?.projectRoot || tool?.rootPath;
+    const result = await loadWatcherIssues(projectPath, {
+        limit,
+        offset,
+        filePath,
+        issueType,
+        lifecycle,
+        pruneExpired: true
+    });
+    const alerts = result.alerts;
+    const total = result.total;
     const watcherSummary = summarizeWatcherAlerts(alerts);
     const watcherLifecycle = summarizeWatcherAlertLifecycle(alerts);
 
@@ -53,6 +38,7 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
             ...watcherSummary,
             lifecycle: watcherLifecycle,
             totalAlerts: total
-        }
+        },
+        reconciliation: result.reconciliation
     };
 }

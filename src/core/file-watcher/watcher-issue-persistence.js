@@ -11,7 +11,11 @@
 import { createLogger } from '../../utils/logger.js';
 import {
   WATCHER_MESSAGE_PREFIX,
-  createWatcherIssueRecord
+  attachWatcherAlertLifecycle,
+  createWatcherIssueRecord,
+  filterWatcherAlertsByLifecycle,
+  mapSemanticIssueRowToWatcherAlert,
+  partitionWatcherAlertsByLifecycle
 } from '../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
@@ -97,5 +101,100 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
   } catch (error) {
     logger.debug(`[WATCHER ISSUE CLEAR SKIP] ${filePath}:${issueType} -> ${error.message}`);
     return false;
+  }
+}
+
+export async function loadWatcherIssues(projectPath, options = {}) {
+  try {
+    const {
+      limit = 10,
+      offset = 0,
+      filePath,
+      issueType = 'all',
+      lifecycle = 'all',
+      pruneExpired = true
+    } = options;
+
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    if (!repo?.db) {
+      return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, summary: { total: 0, byStatus: {} } } };
+    }
+
+    const reconciliation = pruneExpired
+      ? await reconcileWatcherIssues(projectPath, { repo })
+      : { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
+
+    let whereClause = 'WHERE message LIKE ?';
+    const params = [`${WATCHER_MESSAGE_PREFIX}%`];
+
+    if (filePath) {
+      whereClause += ' AND file_path = ?';
+      params.push(filePath);
+    }
+
+    if (issueType !== 'all') {
+      whereClause += ' AND issue_type = ?';
+      params.push(issueType);
+    }
+
+    const rows = repo.db.prepare(`
+      SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
+      FROM semantic_issues
+      ${whereClause}
+      ORDER BY detected_at DESC
+    `).all(...params);
+
+    const alerts = rows
+      .map(mapSemanticIssueRowToWatcherAlert)
+      .map((alert) => attachWatcherAlertLifecycle(alert));
+    const filtered = filterWatcherAlertsByLifecycle(alerts, lifecycle);
+
+    return {
+      total: filtered.length,
+      alerts: filtered.slice(offset, offset + limit),
+      reconciliation
+    };
+  } catch (error) {
+    logger.debug(`[WATCHER ISSUE LOAD SKIP] ${error.message}`);
+    return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, summary: { total: 0, byStatus: {} } } };
+  }
+}
+
+export async function reconcileWatcherIssues(projectPath, options = {}) {
+  try {
+    const { repo: existingRepo = null, maxDelete = 500 } = options;
+    const repo = existingRepo || (await import('#layer-c/storage/repository/index.js')).getRepository(projectPath);
+    if (!repo?.db) {
+      return { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
+    }
+
+    const rows = repo.db.prepare(`
+      SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
+      FROM semantic_issues
+      WHERE message LIKE ?
+      ORDER BY detected_at DESC
+    `).all(`${WATCHER_MESSAGE_PREFIX}%`);
+
+    const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
+    const partitioned = partitionWatcherAlertsByLifecycle(alerts);
+    const expiredIds = partitioned.expired
+      .map((alert) => alert.id)
+      .filter((id) => Number.isInteger(id))
+      .slice(0, maxDelete);
+
+    if (expiredIds.length > 0) {
+      const placeholders = expiredIds.map(() => '?').join(', ');
+      repo.db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...expiredIds);
+      logger.info(`[WATCHER ISSUE RECONCILE] deleted ${expiredIds.length} expired watcher alert(s)`);
+    }
+
+    return {
+      deletedExpired: expiredIds.length,
+      summary: partitioned.summary
+    };
+  } catch (error) {
+    logger.debug(`[WATCHER ISSUE RECONCILE SKIP] ${error.message}`);
+    return { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
   }
 }
