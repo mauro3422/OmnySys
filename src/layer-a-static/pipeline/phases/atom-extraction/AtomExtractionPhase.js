@@ -35,8 +35,7 @@ export class AtomExtractionPhase extends ExtractionPhase {
   async execute(context) {
     const { filePath, code, fileInfo, fileMetadata, extractionDepth = 'deep' } = context;
 
-    logger.info(`Phase 1: Extracting atoms from ${filePath} (Depth: ${extractionDepth})`);
-    console.log(`DEBUG: Phase 1 started for ${filePath}`);
+    logger.debug(`Phase 1: Extracting atoms from ${filePath} (Depth: ${extractionDepth})`);
 
     // Extract atoms (functions)
     const atoms = await extractAtoms(fileInfo, code, fileMetadata, filePath, extractionDepth);

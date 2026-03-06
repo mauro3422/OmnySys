@@ -348,6 +348,7 @@ export const TABLE_DEFINITIONS = {
     addedIn: 'v3.0.0-sessions',
     columns: [
       { name: 'id', type: 'TEXT', pk: true, nullable: false, description: 'ID de la sesión (UUID)' },
+      { name: 'client_id', type: 'TEXT', nullable: true, description: 'Identificador del cliente (ej: Kimi, Cline)', addedIn: 'v3.0.1-dedup' },
       { name: 'client_info_json', type: 'TEXT', nullable: true, description: 'Información del cliente (nombre, versión)' },
       { name: 'session_metadata_json', type: 'TEXT', nullable: true, description: 'Metadata adicional de la sesión' },
       { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
@@ -356,7 +357,8 @@ export const TABLE_DEFINITIONS = {
     ],
     indexes: [
       { name: 'idx_mcp_sessions_updated', columns: ['updated_at'] },
-      { name: 'idx_mcp_sessions_active', columns: ['is_active'] }
+      { name: 'idx_mcp_sessions_active', columns: ['is_active'] },
+      { name: 'idx_mcp_sessions_client', columns: ['client_id'] }
     ]
   }
 };

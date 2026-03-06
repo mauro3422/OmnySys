@@ -1,26 +1,37 @@
 /**
- * Obtiene estadísticas del caché
+ * Returns cache statistics.
+ *
+ * In SQLite mode the manager may not populate `index.entries`, so we fall back
+ * to persisted metadata to keep status telemetry truthful.
  */
 export function getStats() {
   const entries = Object.values(this.index.entries);
+  const metadata = this.index.metadata || {};
+  const totalFiles = entries.length || metadata.totalFiles || 0;
+  const staticAnalyzed = entries.length
+    ? entries.filter((entry) => entry.staticAnalyzed || entry.staticVersion || entry.definitions?.length || entry.exports?.length).length
+    : totalFiles;
+  const llmAnalyzed = entries.length
+    ? entries.filter((entry) => entry.llmAnalyzed || entry.llmVersion || entry.llmInsights).length
+    : 0;
 
   return {
-    totalFiles: entries.length,
-    // 🆕 FIX #4: Derivar de campos existentes si no hay flags directos
-    staticAnalyzed: entries.filter(e => e.staticAnalyzed || e.staticVersion || e.definitions?.length || e.exports?.length).length,
-    llmAnalyzed: entries.filter(e => e.llmAnalyzed || e.llmVersion || e.llmInsights).length,
+    totalFiles,
+    totalAtoms: metadata.totalAtoms || 0,
+    staticAnalyzed,
+    llmAnalyzed,
     byChangeType: {
-      none: entries.filter(e => e.changeType === 'none').length,
-      cosmetic: entries.filter(e => e.changeType === 'cosmetic').length,
-      static: entries.filter(e => e.changeType === 'static').length,
-      semantic: entries.filter(e => e.changeType === 'semantic').length,
-      critical: entries.filter(e => e.changeType === 'critical').length
+      none: entries.filter((entry) => entry.changeType === 'none').length,
+      cosmetic: entries.filter((entry) => entry.changeType === 'cosmetic').length,
+      static: entries.filter((entry) => entry.changeType === 'static').length,
+      semantic: entries.filter((entry) => entry.changeType === 'semantic').length,
+      critical: entries.filter((entry) => entry.changeType === 'critical').length
     }
   };
 }
 
 /**
- * Obtiene estadísticas completas (persistente + RAM)
+ * Returns full cache statistics, including the RAM cache layer.
  */
 export function getAllStats() {
   return {

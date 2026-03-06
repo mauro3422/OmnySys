@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file and organized by version.
 
+## Unreleased
+
+- MCP/Codex startup moved to `stdio -> bridge -> proxy -> worker`, including workspace/global config generation for Codex Desktop.
+- Session deduplication hardened with startup cleanup, in-flight reservation of `client_id` handshakes, and better persistence of active/inactive rows.
+- `reindexOnly` now preserves the process, refreshes cache metadata, and restarts the Phase 2 background indexer instead of leaving all atoms pending forever.
+- Server/status telemetry now exposes compiler readiness, Phase 2 progress, `fast_phase2` fallback during deep indexing, cache/live count alignment, and `/health.background` details.
+- Core metadata persistence now normalizes against live SQLite counts, reducing drift between `system_metadata` and the current atom graph.
+- Remaining limitation: after true worker restarts, some MCP clients can still keep a stale session/tool channel even though the OmnySys daemon is healthy again.
+
 ## Quick Links
 
 - **[v0.9.94 - File Watcher Guard System v2.0](changelog/v0.9.94.md)** - **✅ 11 standardized guards, improved error handling detection, +371% async detection accuracy.** (Latest)

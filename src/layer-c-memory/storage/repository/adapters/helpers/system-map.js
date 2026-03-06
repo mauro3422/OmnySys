@@ -79,12 +79,26 @@ export async function retrieveSystemMapFromDb(db) {
 }
 
 function updateSystemMetadata(db, metadata, now) {
+  const liveCounts = {
+    totalAtoms: db.prepare('SELECT COUNT(*) as n FROM atoms').get()?.n || 0,
+    totalFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0,
+    totalFunctionLinks: db.prepare("SELECT COUNT(*) as n FROM atom_relations WHERE relation_type = 'calls'").get()?.n || 0
+  };
+
+  const normalizedMetadata = {
+    ...metadata,
+    totalFiles: liveCounts.totalFiles,
+    totalAtoms: liveCounts.totalAtoms,
+    totalFunctions: liveCounts.totalAtoms,
+    totalFunctionLinks: liveCounts.totalFunctionLinks
+  };
+
   const stmt = db.prepare(`
     INSERT INTO system_metadata (key, value, updated_at)
     VALUES (?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
   `);
-  stmt.run('core_metadata', safeJson(metadata), now);
+  stmt.run('core_metadata', safeJson(normalizedMetadata), now);
 }
 
 async function loadSystemMetadata(db) {

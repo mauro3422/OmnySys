@@ -1,7 +1,8 @@
-import fs from 'fs/promises';
+﻿import fs from 'fs/promises';
 import path from 'path';
 import { CONFIG_PATHS, SERVER_KEY, LEGACY_SERVER_KEYS, repoRoot } from './constants.js';
 import {
+    getHealthUrl,
     readJsonSafe,
     writeJsonNoBom,
     ensureMcpServersContainer,
@@ -12,8 +13,67 @@ import {
     normalizeSlashes
 } from './utils.js';
 
-export async function applyCodexConfig(url) {
+function getNodeCommand() {
+    return normalizeSlashes(process.execPath);
+}
+
+function buildBridgePath() {
+    return normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));
+}
+
+function buildBridgeEnv(url, projectPath) {
+    return {
+        OMNYSYS_DAEMON_URL: url,
+        OMNYSYS_HEALTH_URL: getHealthUrl(),
+        OMNYSYS_AUTO_START: '1',
+        OMNYSYS_PROJECT_PATH: normalizeSlashes(projectPath)
+    };
+}
+
+function buildCodexTableBody(url, projectPath) {
+    const bridgePath = buildBridgePath();
+    const nodeCommand = getNodeCommand();
+    const normalizedProjectPath = normalizeSlashes(projectPath);
+    const env = buildBridgeEnv(url, normalizedProjectPath);
+
+    return [
+        'type = "stdio"',
+        `command = "${nodeCommand}"`,
+        `args = ["${bridgePath}"]`,
+        `cwd = "${normalizedProjectPath}"`,
+        'startup_timeout_sec = 120',
+        `env = { OMNYSYS_DAEMON_URL = "${env.OMNYSYS_DAEMON_URL}", OMNYSYS_HEALTH_URL = "${env.OMNYSYS_HEALTH_URL}", OMNYSYS_AUTO_START = "${env.OMNYSYS_AUTO_START}", OMNYSYS_PROJECT_PATH = "${env.OMNYSYS_PROJECT_PATH}" }`
+    ];
+}
+
+function buildCodexProjectTableName(projectPath) {
+    return `projects.'${path.resolve(projectPath)}'`;
+}
+
+function removeTomlTable(content, tableName) {
+    const lines = String(content || '').split(/\r?\n/);
+    const header = `[${tableName}]`;
+    const start = lines.findIndex((line) => line.trim() === header);
+
+    if (start === -1) {
+        return String(content || '');
+    }
+
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+        if (lines[i].trim().startsWith('[') && lines[i].trim().endsWith(']')) {
+            end = i;
+            break;
+        }
+    }
+
+    return [...lines.slice(0, start), ...lines.slice(end)].join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+export async function applyCodexConfig(url, projectPath = repoRoot) {
     const targetPath = CONFIG_PATHS.codex;
+    const projectConfigPath = path.join(projectPath, '.codex', 'config.toml');
+    const codexTableBody = buildCodexTableBody(url, projectPath);
     let content = '';
 
     try {
@@ -22,12 +82,31 @@ export async function applyCodexConfig(url) {
         content = '';
     }
 
-    const updated = upsertTomlTable(content, `mcp_servers.${SERVER_KEY}`, [`url = "${url}"`]);
+    content = removeTomlTable(content, `mcp.servers.${SERVER_KEY}`);
+
+    let updated = upsertTomlTable(content, `mcp_servers.${SERVER_KEY}`, codexTableBody);
+    updated = upsertTomlTable(updated, buildCodexProjectTableName(projectPath), ['trust_level = "trusted"']);
 
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, updated, 'utf8');
 
-    return { client: 'codex', path: targetPath, applied: true };
+    let projectContent = '';
+    try {
+        projectContent = stripBom(await fs.readFile(projectConfigPath, 'utf8'));
+    } catch {
+        projectContent = '';
+    }
+
+    const updatedProject = upsertTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`, codexTableBody);
+    await fs.mkdir(path.dirname(projectConfigPath), { recursive: true });
+    await fs.writeFile(projectConfigPath, updatedProject, 'utf8');
+
+    return {
+        client: 'codex',
+        path: targetPath,
+        applied: true,
+        projectConfigPath
+    };
 }
 
 export async function applyClineConfig(filePath, url, clientName) {
@@ -136,51 +215,39 @@ export async function applyOpenCodeConfig(url) {
 export async function applyQwenConfig(url, projectPath) {
     const targetPath = CONFIG_PATHS.qwen;
     const config = await readJsonSafe(targetPath, {});
+    const bridgePath = buildBridgePath();
+    const nodeCommand = getNodeCommand();
+    const env = buildBridgeEnv(url, projectPath);
 
-    // Ruta al STDIO bridge (tiene auto-start incorporado)
-    const bridgePath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js');
-
-    // Configurar MCP global (nivel usuario) - USANDO STDIO BRIDGE con auto-start
     const globalServers = ensureMcpServersContainer(config);
-
-    // Usar STDIO bridge en lugar de httpUrl directo para permitir auto-start
     globalServers[SERVER_KEY] = {
-        command: 'node',
-        args: [normalizeSlashes(bridgePath)],
-        env: {
-            OMNYSYS_DAEMON_URL: url,
-            OMNYSYS_AUTO_START: '1'  // Habilitar auto-start del daemon
-        }
+        command: nodeCommand,
+        args: [bridgePath],
+        env
     };
     clearLegacyAliases(globalServers);
 
-    // Asegurar que el contenedor mcp exista para configuración global
     if (!config.mcp || typeof config.mcp !== 'object') {
         config.mcp = {};
     }
     if (!Array.isArray(config.mcp.allowed)) {
         config.mcp.allowed = [];
     }
-    // Agregar omnysystem a la lista de servidores permitidos
     if (!config.mcp.allowed.includes(SERVER_KEY)) {
         config.mcp.allowed.push(SERVER_KEY);
     }
 
     await writeJsonNoBom(targetPath, config);
 
-    // Configurar MCP a nivel de proyecto (para referencia) - también con STDIO bridge
     const projectQwenDir = path.join(projectPath, '.qwen');
     const projectConfigPath = path.join(projectQwenDir, 'settings.json');
 
     const projectConfig = {
         mcpServers: {
             [SERVER_KEY]: {
-                command: 'node',
-                args: [normalizeSlashes(bridgePath)],
-                env: {
-                    OMNYSYS_DAEMON_URL: url,
-                    OMNYSYS_AUTO_START: '1'
-                }
+                command: nodeCommand,
+                args: [bridgePath],
+                env
             }
         },
         mcp: {
@@ -197,14 +264,17 @@ export async function applyQwenConfig(url, projectPath) {
 
 export async function applyAntigravityConfig(projectPath) {
     const targetPath = CONFIG_PATHS.antigravity;
-    const bridgePath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js');
+    const bridgePath = buildBridgePath();
+    const nodeCommand = getNodeCommand();
+    const env = buildBridgeEnv('http://127.0.0.1:9999/mcp', projectPath);
     const config = await readJsonSafe(targetPath, { mcpServers: {} });
 
     const mcpServers = ensureMcpServersContainer(config);
     clearLegacyAliases(mcpServers);
     mcpServers[SERVER_KEY] = {
-        command: 'node',
-        args: [normalizeSlashes(bridgePath)]
+        command: nodeCommand,
+        args: [bridgePath],
+        env
     };
 
     await writeJsonNoBom(targetPath, config);

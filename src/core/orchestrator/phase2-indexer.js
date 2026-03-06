@@ -11,24 +11,44 @@ export class Phase2Indexer {
         this.interval = null;
         this.isBursting = false;
         this.processedPaths = new Set();
+        this.startedAt = null;
+    }
+
+    async _ensureGlobalTimer(totalItems) {
+        if (this.globalTimer || totalItems <= 0) return;
+
+        const { BatchTimer } = await import('#utils/performance-tracker.js');
+        this.globalTimer = new BatchTimer('Phase 2 Deep Scan', totalItems, true);
+    }
+
+    _syncPhase2Totals(pendingFiles, processedGroup = 0) {
+        const processedCount = this.processedPaths.size;
+        const inferredTotal = pendingFiles + processedCount;
+        const currentTotal = this.orchestrator.totalPhase2Files || 0;
+        const nextTotal = Math.max(currentTotal, inferredTotal, pendingFiles + processedGroup);
+
+        this.orchestrator.totalPhase2Files = nextTotal;
+        return nextTotal;
     }
 
     async start() {
         if (this.interval) return;
 
-        logger.info('🔄 Starting Background Phase 2 Indexer (Deep Metadata)...');
+        logger.debug('Starting Background Phase 2 Indexer (Deep Metadata)...');
+        this.startedAt = Date.now();
 
         try {
             const { getRepository } = await import('#layer-c/storage/repository/index.js');
             const repo = getRepository(this.projectPath);
             if (repo && repo.db) {
                 const countResult = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
-                this.orchestrator.totalPhase2Files = countResult?.count || 0;
+                const initialPending = countResult?.count || 0;
+                this.orchestrator.totalPhase2Files = initialPending;
+                this._updateStatus(initialPending);
 
-                if (this.orchestrator.totalPhase2Files > 0) {
-                    logger.info(`📊 Phase 2: Pending analysis for ${this.orchestrator.totalPhase2Files} files`);
-                    const { BatchTimer } = await import('#utils/performance-tracker.js');
-                    this.globalTimer = new BatchTimer('Phase 2 Deep Scan', this.orchestrator.totalPhase2Files, true);
+                if (initialPending > 0) {
+                    logger.debug(`Phase 2: Pending analysis for ${this.orchestrator.totalPhase2Files} files`);
+                    await this._ensureGlobalTimer(initialPending);
                 }
             }
         } catch (e) {
@@ -108,13 +128,19 @@ export class Phase2Indexer {
                 }
 
                 if (this.globalTimer) {
-                    const remainingQuery = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
-                    if (remainingQuery) {
-                        // Sumamos los itemsProcessed previos + el grupo actual procesado + los que faltan = total real actualizado
-                        this.globalTimer.totalItems = this.globalTimer.itemsProcessed + countProcessedGroup + remainingQuery.count;
-                    }
                     this.globalTimer.onItemProcessed(countProcessedGroup);
                 }
+
+                const remainingQuery = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
+                const remainingCount = remainingQuery?.count || 0;
+                const nextTotal = this._syncPhase2Totals(remainingCount, countProcessedGroup);
+                await this._ensureGlobalTimer(nextTotal);
+
+                if (this.globalTimer) {
+                    this.globalTimer.totalItems = nextTotal;
+                }
+
+                this._updateStatus(remainingCount);
 
                 this.orchestrator.emit('job:complete', { filePath: filesToProcess[0] }, {});
             } else if (rows.length > 0) {
@@ -141,13 +167,14 @@ export class Phase2Indexer {
         }
         clearInterval(this.interval);
         this.interval = null;
+        this._updateStatus(0, complete);
 
         if (complete) {
             (async () => {
                 try {
                     const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
                     await persistGraphMetrics(this.projectPath);
-                    logger.info('  📊 Phase 2 complete — final graph metrics persisted');
+                    logger.debug('Phase 2 complete - final graph metrics persisted');
 
                     // NEW: Build Shared State relations across entire project now that deep scan is fully complete
                     const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -162,5 +189,28 @@ export class Phase2Indexer {
                 }
             })();
         }
+    }
+
+    _updateStatus(pendingFiles = 0, completed = false) {
+        const totalFiles = this.orchestrator.totalPhase2Files || pendingFiles || 0;
+        const processedFiles = Math.max(0, totalFiles - pendingFiles);
+        const elapsedMs = this.startedAt ? Date.now() - this.startedAt : 0;
+        const rate = elapsedMs > 0 ? processedFiles / (elapsedMs / 1000) : 0;
+        const percent = totalFiles > 0 ? Number(((processedFiles / totalFiles) * 100).toFixed(1)) : 100;
+        const etaMs = (!completed && rate > 0) ? Math.round((pendingFiles / rate) * 1000) : 0;
+
+        this.orchestrator.phase2Status = {
+            inProgress: !completed && pendingFiles > 0,
+            completed,
+            totalFiles,
+            processedFiles,
+            pendingFiles,
+            completedFiles: processedFiles,
+            percentComplete: percent,
+            rateItemsPerSecond: Number(rate.toFixed(1)),
+            etaMs,
+            startedAt: this.startedAt ? new Date(this.startedAt).toISOString() : null,
+            lastUpdatedAt: new Date().toISOString()
+        };
     }
 }

@@ -4,13 +4,10 @@
  * Detects changes to source files and notifies the orchestrator to re-index
  * affected atoms in SQLite.
  *
- * ⚠️ IMPORTANT — What this does NOT do:
- * This system does NOT attempt to hot-reload Node.js ESM modules at runtime.
- * Node.js ESM modules are permanently cached within a running process.
- * Reloading source code requires restarting the VS Code task (~8 seconds).
- *
- * When a tool/pipeline file changes, the watcher logs a notice:
- *   "Tool changed — restart task to apply (8s)"
+ * ⚠️ IMPORTANT — Runtime code changes still need a fresh ESM cache.
+ * In proxy mode, runtime-facing modules now request a controlled worker
+ * restart automatically. In standalone mode the watcher still falls back to
+ * a manual restart notice.
  *
  * FUTURE: User-defined plugin tools (outside the main module graph)
  * could be hot-loaded via isolated dynamic imports.

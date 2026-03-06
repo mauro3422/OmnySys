@@ -22,7 +22,7 @@ export class SocietyPersistor {
      * @param {Array} societies - Lista de sociedades
      */
     async saveSocieties(societies) {
-        logger.info(`[SocietyPersistor] Saving ${societies.length} societies...`);
+        logger.debug(`[SocietyPersistor] Saving ${societies.length} societies...`);
 
         const db = this.repo.db;
 
@@ -54,7 +54,7 @@ export class SocietyPersistor {
 
         try {
             transaction(societies);
-            logger.info('[SocietyPersistor] Societies persisted successfully');
+            logger.debug('[SocietyPersistor] Societies persisted successfully');
         } catch (error) {
             logger.error(`[SocietyPersistor] Error persisting societies: ${error.message}`);
             throw error;

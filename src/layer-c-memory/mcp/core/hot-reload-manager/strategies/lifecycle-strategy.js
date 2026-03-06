@@ -1,10 +1,10 @@
 /**
  * @fileoverview Lifecycle Reload Strategy
- * 
- * Handles hot-reload of lifecycle modules.
- * Lifecycle methods require more complex reloading
- * as they are assigned to prototypes.
- * 
+ *
+ * Lifecycle modules wire runtime behavior onto server instances. In proxy mode
+ * we request a controlled worker restart so prototype-bound changes are applied
+ * safely. Standalone mode still requires a manual restart.
+ *
  * @module hot-reload-manager/strategies/lifecycle-strategy
  */
 
@@ -15,21 +15,21 @@ const logger = createLogger('OmnySys:hot-reload:strategy:lifecycle');
 
 /**
  * Strategy for reloading lifecycle modules
- * 
+ *
  * @class LifecycleStrategy
  * @extends BaseStrategy
  */
 export class LifecycleStrategy extends BaseStrategy {
   /**
-   * Reloads a lifecycle module
-   * 
+   * Reloads a lifecycle module.
+   *
    * @param {string} filename - Lifecycle file to reload
    * @returns {Promise<void>}
    */
   async reload(filename) {
-    // Lifecycle methods are assigned to prototypes
-    // Requires more complex reloading
-    logger.warn(`Lifecycle reload partially supported: ${filename}`);
+    if (!this._requestWorkerRestart(filename, 'Lifecycle module')) {
+      logger.warn(`Lifecycle reload requires manual restart in standalone mode: ${filename}`);
+    }
   }
 }
 

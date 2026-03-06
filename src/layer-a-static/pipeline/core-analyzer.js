@@ -9,7 +9,7 @@
  */
 
 import path from 'path';
-import { parseFileFromDisk } from '../parser/index.js';
+import { parseFile, parseFileFromDisk } from '../parser/index.js';
 import { AtomExtractionPhase } from './phases/atom-extraction/index.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -38,7 +38,12 @@ export async function analyzeFileCore(filePath, rootPath, options = {}) {
 
     try {
         // 1. Parsing (Layer A)
-        const parsed = source ? { source } : await parseFileFromDisk(fullPath);
+        const parsed = source
+            ? await parseFile(fullPath, source)
+            : await parseFileFromDisk(fullPath);
+        if (parsed && !parsed.source) {
+            parsed.source = source || parsed.source;
+        }
         if (!parsed) {
             throw new Error(`Failed to parse file: ${fullPath}`);
         }

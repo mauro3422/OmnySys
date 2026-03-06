@@ -38,7 +38,7 @@ export async function applyUnifiedMcpConfig(options = {}) {
         }
     };
 
-    await apply('codex', () => applyCodexConfig(mcpUrl));
+    await apply('codex', () => applyCodexConfig(mcpUrl, projectPath));
     await apply('cline-vscode', () => applyClineConfig(CONFIG_PATHS.clineVsCode, mcpUrl, 'cline-vscode'));
     await apply('cline-cursor', () => applyClineConfig(CONFIG_PATHS.clineCursor, mcpUrl, 'cline-cursor'));
     await apply('claude', () => applyClaudeConfig(mcpUrl, projectPath));
@@ -80,8 +80,5 @@ export async function standardizeMcpInstallation(options = {}) {
     };
 }
 
-// Re-export paths functions for external use
 export { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath, getClientConfigPath };
-
-// Re-export specific utils often used outside this standardizer (like repoRoot if needed)
 export { repoRoot } from './constants.js';

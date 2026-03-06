@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @fileoverview risk-query.js
  *
  * Consultas de evaluación de riesgos
@@ -23,16 +23,15 @@ export async function getRiskAssessment(rootPath) {
   }
 
   const riskRows = repo.db.prepare(`
-    SELECT file_path, risk_score, risk_level, factors_json, 
-           shared_state_count, external_deps_count, complexity_score, 
+    SELECT file_path, risk_score, risk_level, factors_json,
+           shared_state_count, external_deps_count, complexity_score,
            propagation_score, assessed_at
-    FROM risk_assessments 
+    FROM risk_assessments
     WHERE risk_level IS NOT NULL
     ORDER BY risk_score DESC
   `).all();
 
   if (!riskRows || riskRows.length === 0) {
-    // Fallback: derive basic risk summary from atoms table
     const stats = repo.db.prepare('SELECT COUNT(*) as atoms, COUNT(DISTINCT file_path) as files FROM atoms').get();
     return {
       report: {
@@ -47,7 +46,8 @@ export async function getRiskAssessment(rootPath) {
         },
         criticalRiskFiles: [],
         highRiskFiles: [],
-        mediumRiskFiles: []
+        mediumRiskFiles: [],
+        lowRiskFiles: []
       },
       scores: {}
     };
@@ -56,19 +56,26 @@ export async function getRiskAssessment(rootPath) {
   const criticalRiskFiles = [];
   const highRiskFiles = [];
   const mediumRiskFiles = [];
+  const lowRiskFiles = [];
 
-  let criticalCount = 0, highCount = 0, mediumCount = 0;
+  let criticalCount = 0;
+  let highCount = 0;
+  let mediumCount = 0;
+  let lowCount = 0;
 
   for (const row of riskRows) {
-    // factors_json may be stored as [] or {} — always coerce to array
     const rawFactors = (() => {
-      try { const p = JSON.parse(row.factors_json || '[]'); return Array.isArray(p) ? p : []; }
-      catch { return []; }
+      try {
+        const parsed = JSON.parse(row.factors_json || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     })();
 
     const fileRisk = {
       file: row.file_path,
-      severity: row.risk_level.toUpperCase(),
+      severity: String(row.risk_level || 'low').toUpperCase(),
       score: row.risk_score,
       reason: rawFactors.slice(0, 3).map(f => f.type || 'unknown').join(', ') || 'Multiple risk factors',
       factors: rawFactors,
@@ -81,9 +88,12 @@ export async function getRiskAssessment(rootPath) {
     } else if (row.risk_level === 'high') {
       highRiskFiles.push(fileRisk);
       highCount++;
-    } else {
+    } else if (row.risk_level === 'medium') {
       mediumRiskFiles.push(fileRisk);
       mediumCount++;
+    } else {
+      lowRiskFiles.push(fileRisk);
+      lowCount++;
     }
   }
 
@@ -93,15 +103,14 @@ export async function getRiskAssessment(rootPath) {
         criticalCount,
         highCount,
         mediumCount,
-        lowCount: riskRows.filter(r => r.risk_level === 'low').length,
+        lowCount,
         totalFiles: riskRows.length
       },
       criticalRiskFiles,
       highRiskFiles,
-      mediumRiskFiles
+      mediumRiskFiles,
+      lowRiskFiles
     },
     scores: {}
   };
 }
-
-// DEAD CODE REMOVED: getAllRiskFiles, getHighRiskFiles (never used)

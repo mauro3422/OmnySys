@@ -1,12 +1,10 @@
-import { SemanticChangeType as ChangeType } from '#config/change-types.js';
 import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 
 const logger = createLogger('OmnySys:storage');
 
 /**
- * Inicializa el caché
- * USA SQLite como fuente de datos
+ * Initializes the cache using SQLite as the primary source of truth.
  */
 export async function initialize() {
   try {
@@ -18,40 +16,36 @@ export async function initialize() {
       return;
     }
 
-    // Cargar índices desde SQLite
     const stats = repo.db.prepare(`
-        SELECT 
-            COUNT(*) as atomsCount, 
-            COUNT(DISTINCT file_path) as filesCount 
+        SELECT
+            COUNT(*) as atomsCount,
+            COUNT(DISTINCT file_path) as filesCount
         FROM atoms
     `).get();
 
-    this.index.metadata.totalFiles = stats?.atomsCount || 0;
-    this.index.metadata.totalDependencies = stats?.filesCount || 0;
+    this.index.metadata.totalFiles = stats?.filesCount || 0;
+    this.index.metadata.totalAtoms = stats?.atomsCount || 0;
+    this.index.metadata.totalDependencies = 0;
 
     this.loaded = true;
-    logger.info(`📦 UnifiedCache: ${this.index.metadata.totalFiles} átomos indexados (from SQLite)`);
+    logger.info(`UnifiedCache: ${this.index.metadata.totalAtoms} atoms indexed (from SQLite)`);
   } catch (error) {
-    logger.warn('⚠️ Failed to initialize unified cache:', error.message);
+    logger.warn('Failed to initialize unified cache:', error.message);
   }
 }
 
 /**
- * Carga el índice desde archivo legacy (deprecated)
- * Ya no se usa - mantenido solo para compatibilidad
- * @deprecated
+ * Loads the legacy on-disk index.
+ * Deprecated: SQLite is now the source of truth.
  */
 export async function loadIndex() {
-  // Ya no carga desde JSON - SQLite es la fuente
   this.index.entries = {};
-  return;
 }
 
 /**
- * Guarda el índice (deprecated - ya no se usa)
- * @deprecated
+ * Saves the legacy on-disk index.
+ * Deprecated: SQLite is now the source of truth.
  */
 export async function saveIndex() {
-  // Ya no guarda a JSON - SQLite es la fuente
   return;
 }

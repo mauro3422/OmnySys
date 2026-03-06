@@ -1,26 +1,46 @@
-import path from 'path';
+﻿import path from 'path';
 import {
     VSCODE_DAEMON_TASK_LABEL,
     VSCODE_DAEMON_TASK_COMMAND,
     SERVER_KEY,
-    CONFIG_PATHS
+    CONFIG_PATHS,
+    repoRoot
 } from './constants.js';
-import { readJsonSafe, writeJsonNoBom, getMcpUrl, getHealthUrl } from './utils.js';
+import { readJsonSafe, writeJsonNoBom, getMcpUrl, getHealthUrl, normalizeSlashes } from './utils.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath } from './paths.js';
 
-export function buildWorkspaceMcpPayload(url, includeDescription = false) {
+function getNodeCommand() {
+    return normalizeSlashes(process.execPath);
+}
+
+function buildWorkspaceBridgeServer(projectPath, includeDescription = false) {
+    const bridgePath = normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));
+    const normalizedProjectPath = normalizeSlashes(projectPath);
+
     const server = {
-        type: 'http',
-        url
+        type: 'stdio',
+        command: getNodeCommand(),
+        args: [bridgePath],
+        cwd: normalizedProjectPath,
+        env: {
+            OMNYSYS_DAEMON_URL: getMcpUrl(),
+            OMNYSYS_HEALTH_URL: getHealthUrl(),
+            OMNYSYS_AUTO_START: '1',
+            OMNYSYS_PROJECT_PATH: normalizedProjectPath
+        }
     };
 
     if (includeDescription) {
-        server.description = 'OmnySys shared MCP daemon (Streamable HTTP)';
+        server.description = 'OmnySys MCP bridge with auto-start';
     }
 
+    return server;
+}
+
+export function buildWorkspaceMcpPayload(projectPath, includeDescription = false) {
     return {
         mcpServers: {
-            [SERVER_KEY]: server
+            [SERVER_KEY]: buildWorkspaceBridgeServer(projectPath, includeDescription)
         }
     };
 }
@@ -31,7 +51,8 @@ export async function writeUnifiedConfig(projectPath, url) {
         version: 1,
         server: {
             name: SERVER_KEY,
-            transport: 'streamableHttp',
+            transport: 'stdio-bridge',
+            entry: normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js')),
             url,
             health: getHealthUrl()
         },
@@ -66,14 +87,13 @@ export function buildDaemonTask() {
 
 export async function applyWorkspaceMcpConfig(options = {}) {
     const projectPath = path.resolve(options.projectPath || process.cwd());
-    const mcpUrl = options.mcpUrl || getMcpUrl();
     const files = getWorkspaceConfigPaths(projectPath);
 
-    await writeJsonNoBom(files.dotMcp, buildWorkspaceMcpPayload(mcpUrl));
-    await writeJsonNoBom(files.mcpServers, buildWorkspaceMcpPayload(mcpUrl));
+    await writeJsonNoBom(files.dotMcp, buildWorkspaceMcpPayload(projectPath));
+    await writeJsonNoBom(files.mcpServers, buildWorkspaceMcpPayload(projectPath));
     await writeJsonNoBom(files.mcpServersSchema, {
         $schema: 'https://modelcontextprotocol.io/schemas/2024-11-05/mcp-servers-config.schema.json',
-        ...buildWorkspaceMcpPayload(mcpUrl, true)
+        ...buildWorkspaceMcpPayload(projectPath, true)
     });
 
     return { success: true, files };
@@ -119,3 +139,4 @@ export async function applyVsCodeAutostartConfig(options = {}) {
         return { success: false, error: error.message };
     }
 }
+

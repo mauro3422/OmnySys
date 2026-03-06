@@ -16,10 +16,15 @@ const RELOADABLE_PATTERNS = [
   { pattern: /extractors[\\/].*\.js$/, type: 'extractor', priority: 2 },
   { pattern: /handlers[\\/].*\.js$/, type: 'handler', priority: 2 },
   { pattern: /queries[\\/].*\.js$/, type: 'query', priority: 3 },
+  { pattern: /mcp[\\/]core[\\/].*\.js$/, type: 'handler', priority: 1 },
+  { pattern: /hot-reload-manager[\\/]strategies[\\/].*\.js$/, type: 'handler', priority: 1 },
+  { pattern: /hot-reload-manager[\\/]watchers[\\/].*\.js$/, type: 'handler', priority: 1 },
+  { pattern: /hot-reload-manager[\\/]index\.js$/, type: 'lifecycle', priority: 1 },
   { pattern: /lifecycle\.js$/, type: 'lifecycle', priority: 1 },
   // Storage atoms layer — changes to atom.js, converters.js etc. affect all tools
   { pattern: /storage[\\/]atoms[\\/].*\.js$/, type: 'tool', priority: 1 },
   { pattern: /storage[\\/]repository[\\/].*\.js$/, type: 'tool', priority: 1 },
+  { pattern: /storage[\\/]enrichment[\\/].*\.js$/, type: 'handler', priority: 1 },
 ];
 
 /**
@@ -88,9 +93,12 @@ export class ModuleClassifier {
    * @returns {boolean}
    */
   _isPipelineModule(filename) {
-    return filename.includes('/analyses/') ||
-      filename.includes('/analyzer.js') ||
-      filename.includes('/indexer.js');
+    const normalized = filename.replace(/\\/g, '/');
+
+    return normalized.includes('/analyses/') ||
+      normalized.includes('/layer-a-static/pipeline/') ||
+      normalized.endsWith('/analyzer.js') ||
+      normalized.endsWith('/indexer.js');
   }
 
   /**

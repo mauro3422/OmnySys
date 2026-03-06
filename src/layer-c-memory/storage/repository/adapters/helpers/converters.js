@@ -1,7 +1,7 @@
-/**
+﻿/**
  * @fileoverview converters.js
  * 
- * Funciones de conversión entre objetos Atom y filas de SQLite.
+ * Funciones de conversiÃ³n entre objetos Atom y filas de SQLite.
  * 
  * @module storage/repository/adapters/helpers/converters
  */
@@ -36,6 +36,8 @@ const ATOM_CUSTOM_EXTRACTORS = {
   propagation_score: atom => atom.propagationScore || atom.derived?.changeRisk,
   in_degree: atom => atom.inDegree || atom.calledBy?.length,
   out_degree: atom => atom.outDegree || atom.calls?.length,
+  callers_count: atom => Math.max(Number(atom.callersCount) || 0, Number(atom.callerCount) || 0, Number(atom.inDegree) || 0, Array.isArray(atom.calledBy) ? atom.calledBy.length : 0),
+  callees_count: atom => Math.max(Number(atom.calleesCount) || 0, Number(atom.calleeCount) || 0, Number(atom.outDegree) || 0, Array.isArray(atom.calls) ? atom.calls.length : 0),
   extracted_at: (atom, now) => atom.extractedAt || atom.analyzedAt || now,
   updated_at: (atom, now) => atom.updatedAt || now,
   derived_json: atom => ({ ...(atom.derived || {}), semantic: atom.semantic || {} }),
@@ -71,7 +73,7 @@ const ATOM_CUSTOM_INJECTORS = {
 };
 
 /**
- * Convierte un atomo de la estructura JSON a formato SQLite (Aplanando campos dinámicamente)
+ * Convierte un atomo de la estructura JSON a formato SQLite (Aplanando campos dinÃ¡micamente)
  */
 export function atomToRow(atom) {
   const now = new Date().toISOString();
@@ -102,7 +104,7 @@ export function atomToRow(atom) {
 }
 
 /**
- * Convierte una fila de SQLite a estructura de atomo (Rehidratando dinámicamente)
+ * Convierte una fila de SQLite a estructura de atomo (Rehidratando dinÃ¡micamente)
  */
 export function rowToAtom(row) {
   const atom = {
@@ -193,3 +195,5 @@ export function safeParseJson(str, defaultValue = null) {
     return defaultValue;
   }
 }
+
+

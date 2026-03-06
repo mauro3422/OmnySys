@@ -35,6 +35,23 @@ export async function restart_server(args, context) {
     logger.info('🔄 Reiniciando servidor OmnySys...');
 
     if (clearCacheOnly) return await handleClearCacheOnly(cache);
+    if (reindexOnly) {
+      const result = {
+        restarting: false,
+        restartType: 'reindex_only',
+        clearCache,
+        reanalyze: false,
+        timestamp: new Date().toISOString(),
+        esmCacheCleared: false
+      };
+
+      if (clearCache && cache) {
+        await cache.clear();
+        result.cacheCleared = true;
+      }
+
+      return await handleReindexOnly(server, cache, result);
+    }
     if (isProxyMode()) return await handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindexOnly, cache, server);
 
     logger.info('⚠️  Running in standalone mode (no proxy). True ESM cache clear requires proxy.');
@@ -52,7 +69,7 @@ export async function restart_server(args, context) {
     };
 
     if (clearCache && cache) await clearStandaloneCache(cache, reanalyze, server, result);
-    if (reindexOnly) return await handleReindexOnly(server, result);
+    if (reindexOnly) return await handleReindexOnly(server, cache, result);
 
     await stopOrchestrator(orchestrator);
 
@@ -183,15 +200,42 @@ async function clearStandaloneCache(cache, reanalyze, server, result) {
   result.cacheCleared = true;
 }
 
-async function handleReindexOnly(server, result) {
+async function handleReindexOnly(server, cache, result) {
   logger.info('🔄 ReindexOnly: forcing Layer A re-analysis (DB preserved)...');
   try {
+    await invalidateIncrementalState(server);
+
     const { LayerAAnalysisStep } = await import('../core/initialization/steps/index.js');
     const step = new LayerAAnalysisStep();
     const originalAnalyzed = server._layerAComplete;
     server._layerAComplete = false;
     await step.execute(server);
     server._layerAComplete = originalAnalyzed;
+
+    if (typeof server.reloadMetadata === 'function') {
+      await server.reloadMetadata();
+    }
+
+    if (cache?.initialize) {
+      await cache.initialize();
+      if (server.metadata && cache.set) {
+        cache.set('metadata', server.metadata);
+      }
+    }
+
+    if (server.orchestrator && typeof server.orchestrator._startPhase2BackgroundIndexer === 'function') {
+      try {
+        server.orchestrator._phase2IndexerInstance?.stop?.(false);
+      } catch {
+        // Best effort cleanup of any stale Phase 2 loop.
+      }
+
+      server.orchestrator._phase2IndexerInstance = null;
+      server.orchestrator.totalPhase2Files = 0;
+      await server.orchestrator._startPhase2BackgroundIndexer();
+      result.phase2Restarted = true;
+    }
+
     logger.info('✅ Layer A re-analysis complete');
     result.reindexed = true;
   } catch (err) {
@@ -202,6 +246,28 @@ async function handleReindexOnly(server, result) {
   result.restartType = 'reindex_only';
   result.message = 'Layer A re-analysis forced. DB preserved, no process restart.';
   return result;
+}
+
+async function invalidateIncrementalState(server) {
+  if (!server?.projectPath) return;
+
+  const { getRepository } = await import('#layer-c/storage/repository/index.js');
+  const repo = getRepository(server.projectPath);
+  const db = repo?.db || repo?.getDatabase?.();
+
+  if (!db) return;
+
+  try {
+    db.prepare('DELETE FROM file_hashes').run();
+  } catch {
+    // file_hashes may not exist yet on older databases
+  }
+
+  try {
+    db.prepare('UPDATE files SET hash = NULL WHERE hash IS NOT NULL').run();
+  } catch {
+    // files.hash may be absent on older databases
+  }
 }
 
 async function stopOrchestrator(orchestrator) {
@@ -290,3 +356,4 @@ async function refreshRegistry(result) {
     result.toolRegistryRefreshed = false;
   }
 }
+

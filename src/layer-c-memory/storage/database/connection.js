@@ -12,12 +12,19 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createLogger } from '#utils/logger.js';
 import { readFileSync, mkdirSync, existsSync } from 'fs';
-import { getRegisteredTables, getTableDefinition, detectMissingColumns, generateAddColumnSQL, generateCreateTableSQL, generateCreateIndexesSQL } from './schema-registry.js';
+import {
+  getRegisteredTables,
+  getTableDefinition,
+  detectMissingColumns,
+  generateAddColumnSQL,
+  generateCreateTableSQL,
+  generateCreateIndexesSQL
+} from './schema-registry.js';
 
 const logger = createLogger('OmnySys:Storage:Connection');
 
 // Schema SQL is read once at module load to avoid repeated disk I/O on hot-reloads.
-// Note: better-sqlite3 is deliberately synchronous — it serialises all DB calls on the
+// Note: better-sqlite3 is deliberately synchronous - it serialises all DB calls on the
 // calling thread and achieves higher throughput than async SQLite drivers for the
 // write-heavy indexing workload this project uses.
 const __fileUrl = new URL(import.meta.url);
@@ -107,63 +114,62 @@ class ConnectionManager {
 
   /**
    * Inicializa el schema de la base de datos
-   * 
-   * Usa schema-registry.js como SINGLE SOURCE OF TRUTH
-   * Detecta y migra automáticamente columnas faltantes
+   *
+   * Usa schema-registry.js como single source of truth.
+   * Detecta y migra automaticamente columnas faltantes.
    */
   initializeSchema() {
     try {
-      // ── STEP 1: Apply base schema.sql (read once at module load, no repeated disk I/O) ──
+      // Step 1: Apply base schema.sql
       if (_schemaSql) {
         this.db.exec(_schemaSql);
         logger.debug('[Connection] Base schema.sql executed');
       }
 
-      // ── STEP 2: Usar schema-registry como SSOT ───────────────────────────
-      // Crear tablas registradas que puedan faltar en schema.sql
+      // Step 2: Use schema-registry as SSOT
       const registeredTables = getRegisteredTables();
 
       for (const tableName of registeredTables) {
-        // Verificar si la tabla existe
         const tableExists = this.db.prepare(
           `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
         ).get(tableName);
 
         if (!tableExists) {
-          // Crear tabla desde registry
           const createSQL = generateCreateTableSQL(tableName);
           this.db.exec(createSQL);
           logger.info(`[Connection] Created table '${tableName}' from registry`);
         }
 
-        // Crear índices
-        const indexes = generateCreateIndexesSQL(tableName);
-        for (const indexSQL of indexes) {
-          this.db.exec(indexSQL);
-        }
-
-        // ── STEP 3: Detectar y agregar columnas faltantes ─────────────────
+        // Add missing columns before creating indexes.
+        // Otherwise an existing database can fail boot when a new index targets
+        // a column introduced by the migration in this same startup cycle.
         const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
         const missingColumns = detectMissingColumns(tableName, existingColumns);
 
         if (missingColumns.length > 0) {
-          logger.info(`[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`);
+          logger.info(
+            `[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`
+          );
 
           for (const column of missingColumns) {
             try {
               const addColumnSQL = generateAddColumnSQL(tableName, column.name);
               this.db.exec(addColumnSQL);
             } catch (err) {
-              // Ignorar si la columna ya existe (race condition)
               if (!err.message.includes('duplicate column')) {
                 logger.warn(`[Connection] Failed to add column ${column.name} to ${tableName}: ${err.message}`);
               }
             }
           }
         }
+
+        const indexes = generateCreateIndexesSQL(tableName);
+        for (const indexSQL of indexes) {
+          this.db.exec(indexSQL);
+        }
       }
 
-      // ── STEP 4: Reporte de drift detection ──────────────────────────────
+      // Step 4: Report schema drift
       this._checkSchemaDrift();
 
       logger.debug('[Connection] Schema initialization complete (registry-based)');
@@ -175,7 +181,7 @@ class ConnectionManager {
 
   /**
    * Detecta drift entre schema.sql y schema-registry
-   * Advierte si hay columnas en schema.sql que no están en el registry
+   * Advierte si hay columnas en schema.sql que no estan en el registry
    */
   _checkSchemaDrift() {
     const registeredTables = getRegisteredTables();
@@ -187,14 +193,13 @@ class ConnectionManager {
       const existingNames = new Set(existingColumns.map(c => c.name));
       const registeredNames = new Set(registeredColumns.map(c => c.name));
 
-      // Columnas que existen pero no están en el registry (drift)
       const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
 
       if (driftColumns.length > 0) {
         logger.warn(
-          `[Connection] ⚠️  SCHEMA DRIFT detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
-          `   These columns exist in DB but not in schema-registry.js\n` +
-          `   → Consider adding them to registry or removing from DB`
+          `[Connection] Schema drift detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
+          '   These columns exist in DB but not in schema-registry.js\n' +
+          '   -> Consider adding them to registry or removing from DB'
         );
       }
     }
@@ -256,7 +261,7 @@ class ConnectionManager {
 
     // Combine 4 SELECT COUNT(*) into a single query to reduce DB roundtrips
     const stats = this.db.prepare(`
-      SELECT 
+      SELECT
         (SELECT COUNT(*) FROM atoms) as atoms,
         (SELECT COUNT(*) FROM atom_relations) as relations,
         (SELECT COUNT(*) FROM files) as files,
@@ -273,7 +278,7 @@ class ConnectionManager {
 
   /**
    * Fuerza checkpoint WAL para persistir datos
-   * Útil después de bulk operations
+   * Util despues de bulk operations
    */
   checkpoint() {
     if (!this.db) return;
@@ -287,10 +292,8 @@ class ConnectionManager {
   }
 }
 
-// Exportar instancia singleton
 export const connectionManager = new ConnectionManager();
 
-// Exportar funcion de conveniencia
 export function initializeStorage(projectPath) {
   return connectionManager.initialize(projectPath);
 }

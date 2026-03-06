@@ -82,8 +82,10 @@ export function findCallsInScope(fnNode, code) {
     const calls = [];
     const seen = new Set();
 
-    walk(fnNode, ['call_expression'], (callNode) => {
-        const fnNameNode = callNode.childForFieldName('function');
+    walk(fnNode, ['call_expression', 'new_expression'], (callNode) => {
+        const isNewExpression = callNode.type === 'new_expression';
+        const targetField = isNewExpression ? 'constructor' : 'function';
+        const fnNameNode = callNode.childForFieldName(targetField);
         if (!fnNameNode) return;
 
         let name = null;
@@ -102,7 +104,12 @@ export function findCallsInScope(fnNode, code) {
                 }
                 if (!seen.has(key)) {
                     seen.add(key);
-                    calls.push({ name: `${objName}.${propName}`, type: 'member_call', line: startLine(callNode) });
+                    calls.push({
+                        name: `${objName}.${propName}`,
+                        type: isNewExpression ? 'constructor_call' : 'member_call',
+                        line: startLine(callNode),
+                        ...(isNewExpression ? { isNew: true } : {})
+                    });
                 }
                 return;
             }
@@ -112,7 +119,12 @@ export function findCallsInScope(fnNode, code) {
             const key = `${name}:${startLine(callNode)}`;
             if (!seen.has(key)) {
                 seen.add(key);
-                calls.push({ name, type: 'direct_call', line: startLine(callNode) });
+                calls.push({
+                    name,
+                    type: isNewExpression ? 'constructor_call' : 'direct_call',
+                    line: startLine(callNode),
+                    ...(isNewExpression ? { isNew: true } : {})
+                });
             }
         }
     });

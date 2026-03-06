@@ -111,7 +111,7 @@ export class MolecularExtractionPipeline {
       }
     }
 
-    console.log(`DEBUG: Final Context atoms count: ${context.atoms?.length || 0}`);
+    logger.debug(`Final context atoms count: ${context.atoms?.length || 0}`);
     return this.buildResult(context);
   }
 

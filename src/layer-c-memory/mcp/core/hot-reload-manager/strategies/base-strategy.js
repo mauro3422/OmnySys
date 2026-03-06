@@ -86,6 +86,57 @@ export class BaseStrategy {
   _log(action, filename) {
     logger.debug(`${action}: ${filename}`);
   }
+
+  /**
+   * Returns true when the worker runs under the HTTP proxy and can request a
+   * fresh child process without dropping the parent listener.
+   *
+   * @protected
+   * @returns {boolean}
+   */
+  _isProxyManaged() {
+    return process.env.OMNYSYS_PROXY_MODE === '1' && typeof process.send === 'function';
+  }
+
+  /**
+   * Requests a proxy-managed worker restart so runtime code changes are applied
+   * with a fresh ESM cache. Returns false when running standalone.
+   *
+   * @protected
+   * @param {string} filename
+   * @param {string} reason
+   * @returns {boolean}
+   */
+  _requestWorkerRestart(filename, reason) {
+    if (!this._isProxyManaged()) {
+      return false;
+    }
+
+    if (this.server._hotReloadRestartScheduled) {
+      this._log('Worker restart already scheduled', filename);
+      return true;
+    }
+
+    this.server._hotReloadRestartScheduled = true;
+    logger.warn(`${reason} changed - requesting worker restart for fresh runtime cache: ${filename}`);
+
+    try {
+      process.send({
+        type: 'restart',
+        clearCache: false,
+        reanalyze: false,
+        clearCacheOnly: false,
+        reindexOnly: false,
+        reason: 'hot_reload_runtime_change',
+        file: filename
+      });
+      return true;
+    } catch (error) {
+      this.server._hotReloadRestartScheduled = false;
+      logger.warn(`Failed to request worker restart for ${filename}: ${error.message}`);
+      return false;
+    }
+  }
 }
 
 export default BaseStrategy;

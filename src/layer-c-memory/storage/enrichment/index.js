@@ -10,7 +10,10 @@
  * @module storage/enrichment
  */
 
+import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../repository/index.js';
+
+const logger = createLogger('OmnySys:storage:enrichment');
 
 /**
  * Opciones de enrichment
@@ -42,6 +45,24 @@ function calculateCentrality(inDegree, outDegree) {
     inDegree,
     outDegree
   };
+}
+
+function getStoredGraphCounts(atomRow = {}) {
+  const inDegree = Math.max(
+    Number(atomRow.callers_count) || 0,
+    Number(atomRow.callerCount) || 0,
+    Number(atomRow.in_degree) || 0,
+    Number(atomRow.inDegree) || 0
+  );
+
+  const outDegree = Math.max(
+    Number(atomRow.callees_count) || 0,
+    Number(atomRow.calleeCount) || 0,
+    Number(atomRow.out_degree) || 0,
+    Number(atomRow.outDegree) || 0
+  );
+
+  return { inDegree, outDegree };
 }
 
 /**
@@ -118,7 +139,7 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
   try {
     const repo = getRepository(projectPath);
     if (!repo || !repo.db) {
-      console.warn('[enrichAtomsWithRelations] No repository available');
+      logger.debug('[enrichAtomsWithRelations] No repository available');
       return atoms;
     }
 
@@ -216,7 +237,7 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
     return isSingleAtom ? enrichedAtoms[0] : enrichedAtoms;
 
   } catch (err) {
-    console.error('[enrichAtomsWithRelations] Error:', err.message);
+    logger.error('[enrichAtomsWithRelations] Error:', err.message);
     return atoms;
   }
 }
@@ -310,7 +331,7 @@ export async function getRelationStats(atomIds, projectPath) {
     return statsMap;
 
   } catch (err) {
-    console.error('[getRelationStats] Error:', err.message);
+    logger.error('[getRelationStats] Error:', err.message);
     return new Map();
   }
 }
@@ -326,7 +347,7 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
   try {
     const repo = getRepository(projectPath);
     if (!repo || !repo.db) {
-      console.warn('[persistGraphMetrics] No repo available');
+      logger.debug('[persistGraphMetrics] No repo available');
       return;
     }
 
@@ -335,21 +356,21 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
       // Actualizar solo los átomos especificados
       const placeholders = atomIds.map(() => '?').join(',');
       atomsToUpdate = repo.db.prepare(`
-        SELECT id FROM atoms WHERE id IN (${placeholders})
-      `).all(...atomIds).map(a => a.id);
+        SELECT id, callers_count, callees_count, in_degree, out_degree
+        FROM atoms
+        WHERE id IN (${placeholders})
+      `).all(...atomIds);
     } else {
       // Actualizar todos los átomos
-      atomsToUpdate = repo.db.prepare(`SELECT id FROM atoms`).all().map(a => a.id);
+      atomsToUpdate = repo.db.prepare(`
+        SELECT id, callers_count, callees_count, in_degree, out_degree
+        FROM atoms
+      `).all();
     }
 
-    // Obtener estadísticas de relaciones
-    const statsMap = await getRelationStats(atomsToUpdate, projectPath);
-
     // Calcular y persistir métricas
-    for (const atomId of atomsToUpdate) {
-      const stats = statsMap.get(atomId) || { callerCount: 0, calleeCount: 0 };
-      const inDegree = stats.callerCount;
-      const outDegree = stats.calleeCount;
+    for (const atomRow of atomsToUpdate) {
+      const { inDegree, outDegree } = getStoredGraphCounts(atomRow);
 
       // Calcular usando las funciones de algebra de grafos
       const centrality = calculateCentrality(inDegree, outDegree);
@@ -375,14 +396,14 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
         propagation.propagationScore,
         risk.riskLevel,
         risk.prediction,
-        atomId
+        atomRow.id
       );
     }
 
-    console.log(`[persistGraphMetrics] Updated ${atomsToUpdate.length} atoms with graph metrics`);
+    logger.debug(`[persistGraphMetrics] Updated ${atomsToUpdate.length} atoms with graph metrics`);
 
   } catch (err) {
-    console.error('[persistGraphMetrics] Error:', err.message);
+    logger.error('[persistGraphMetrics] Error:', err.message);
   }
 }
 

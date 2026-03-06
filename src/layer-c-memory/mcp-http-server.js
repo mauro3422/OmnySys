@@ -138,6 +138,7 @@ app.use((req, res, next) => {
 const sessions = new Map();
 
 const core = new OmnySysMCPServer(projectPath);
+core.sessions = sessions;
 let initError = null;
 
 function buildServerForSession() {
@@ -242,10 +243,11 @@ async function handleMcpRequest(req, res) {
       // El worker se reinició y perdió el sessions Map. 
       // Intentamos recuperar la sesión desde SQLite.
       const { sessionManager } = await import('./mcp/core/session-manager.js');
+      sessionManager.ensureInitialized();
       const persistedSession = sessionManager.getSession(sessionId);
 
       if (persistedSession) {
-        logger.info(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
+        logger.debug(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
 
         let sessionServer = null;
         transport = new StreamableHTTPServerTransport({
@@ -284,14 +286,38 @@ async function handleMcpRequest(req, res) {
       }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
       const { sessionManager } = await import('./mcp/core/session-manager.js');
+      sessionManager.ensureInitialized();
       let sessionServer = null;
 
+      // 🔄 DEDUPLICATION: Check if this client already has an active session
+      const clientInfo = req.body.params?.clientInfo;
+      const clientId = clientInfo?.name || clientInfo?.client_id || 'unknown';
+      const reservation = sessionManager.reserveSession(clientInfo, randomUUID());
+      const sessionIdToUse = reservation.sessionId;
+      const isNewSession = !reservation.reused;
+
+      if (reservation.reused) {
+        logger.debug(`[DEDUP] Reusing ${reservation.source} session ${sessionIdToUse} for client ${clientId}`);
+      } else {
+        logger.info(`[DEDUP] Creating new session ${sessionIdToUse} for client ${clientId}`);
+      }
+
       transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
+        sessionIdGenerator: () => sessionIdToUse,
         onsessioninitialized: (newSessionId) => {
           sessions.set(newSessionId, { transport, server: sessionServer });
-          sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {});
-          logger.info(`MCP HTTP session initialized: ${newSessionId}`);
+          const savedId = sessionManager.saveSession(newSessionId, clientInfo, {});
+          if (savedId !== newSessionId) {
+            // Session was deduped - update our local map
+            sessions.delete(newSessionId);
+            sessions.set(savedId, { transport, server: sessionServer });
+            logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${savedId}`);
+          }
+          if (isNewSession) {
+            logger.info(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
+          } else {
+            logger.debug(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
+          }
         }
       });
 
@@ -303,7 +329,12 @@ async function handleMcpRequest(req, res) {
       };
 
       sessionServer = buildServerForSession();
-      await sessionServer.connect(transport);
+      try {
+        await sessionServer.connect(transport);
+      } catch (error) {
+        sessionManager.releasePendingSession(sessionIdToUse, clientInfo);
+        throw error;
+      }
     } else {
       res.status(400).json({
         jsonrpc: '2.0',
@@ -358,13 +389,30 @@ const conditionalJson = (req, res, next) => {
 app.all('/mcp', conditionalJson, handleMcpRequest);
 app.all('/', conditionalJson, handleMcpRequest);
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  let background = null;
+  try {
+    const { getRepository } = await import('./storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    const db = repo?.db || null;
+    if (db) {
+      background = {
+        phase2PendingFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
+        societiesCount: db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0,
+        phase2: core.orchestrator?.phase2Status || null
+      };
+    }
+  } catch {
+    background = null;
+  }
+
   res.json({
     status: initError ? 'degraded' : (core.initialized ? 'healthy' : 'starting'),
     service: 'omnysys-mcp-http',
     initialized: core.initialized,
     projectPath,
     sessions: sessions.size,
+    background,
     transport: 'streamable-http',
     error: initError?.message || null
   });
@@ -418,7 +466,7 @@ httpServer.on('error', (error) => {
 core.initialize().then(async () => {
   try {
     const { sessionManager } = await import('./mcp/core/session-manager.js');
-    sessionManager.initialize();
+    sessionManager.ensureInitialized();
     sessionManager.cleanup(48); // Cleanup sessions older than 48h
   } catch (err) {
     logger.warn(`SessionManager initialization failed: ${err.message}`);

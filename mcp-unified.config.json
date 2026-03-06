@@ -2,7 +2,8 @@
   "version": 1,
   "server": {
     "name": "omnysystem",
-    "transport": "streamableHttp",
+    "transport": "stdio-bridge",
+    "entry": "C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js",
     "url": "http://127.0.0.1:9999/mcp",
     "health": "http://127.0.0.1:9999/health"
   },
@@ -14,8 +15,7 @@
     "opencode": "C:\\Users\\mauro\\.config\\opencode\\opencode.json",
     "qwen": "C:\\Users\\mauro\\.qwen\\settings.json",
     "antigravity": "C:\\Users\\mauro\\.gemini\\antigravity\\mcp_config.json",
-    "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json",
-    "kimi": "C:\\Users\\mauro\\.kimi\\mcp.json"
+    "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json"
   },
   "workspace": {
     "dotMcp": "C:\\Dev\\OmnySystem\\.mcp.json",

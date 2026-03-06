@@ -8,6 +8,26 @@
  */
 
 import path from 'node:path';
+import { resolveImport } from '../../../resolver.js';
+
+// Cache para aliases del proyecto
+let aliasCache = null;
+let projectRootCache = null;
+
+async function getAliases(projectRoot) {
+  if (aliasCache && projectRootCache === projectRoot) {
+    return aliasCache;
+  }
+  
+  try {
+    const { readAliasConfig } = await import('../../../resolver/resolver-aliases.js');
+    aliasCache = await readAliasConfig(projectRoot);
+    projectRootCache = projectRoot;
+    return aliasCache;
+  } catch (e) {
+    return {};
+  }
+}
 
 /**
  * Builds a multi-level atom lookup index from allAtoms.
@@ -35,13 +55,15 @@ export function buildAtomIndex(allAtoms) {
 
 /**
  * Finds the best matching target atom for a call, using imports for precision.
+ * Now with support for path aliases (#layer-c, #utils, etc.)
  * @param {string} callName
  * @param {Object} callerAtom
  * @param {{ bySimpleName: Map, byQualifiedName: Map }} index
  * @param {Array} fileImports - Imports of the caller's file
- * @returns {Object|null}
+ * @param {string} projectRoot - Project root path for alias resolution
+ * @returns {Promise<Object|null>}
  */
-export function findTargetAtom(callName, callerAtom, index, fileImports = []) {
+export async function findTargetAtom(callName, callerAtom, index, fileImports = [], projectRoot = null) {
   if (callName && callName.includes('.')) {
     return index.byQualifiedName.get(callName) || null;
   }
@@ -55,22 +77,45 @@ export function findTargetAtom(callName, callerAtom, index, fileImports = []) {
     const parentImport = fileImports.find(i => (i.specifiers || []).includes(importSpec));
     if (parentImport && parentImport.source) {
       const candidates = index.bySimpleName.get(importSpec.imported || importSpec.name) || [];
-      const exactMatch = candidates.find(a => {
-        try {
-          // Resolve relative path using caller's directory
-          const callerDir = path.dirname(callerAtom.filePath);
-          const resolvedImport = path.resolve(callerDir, parentImport.source).replace(/\\/g, '/');
-          const atomPath = a.filePath.replace(/\\/g, '/');
-
-          return atomPath === resolvedImport ||
-            atomPath === resolvedImport + '.js' ||
-            atomPath === resolvedImport + '.mjs' ||
-            atomPath.replace(/\.[jt]sx?$/, '') === resolvedImport.replace(/\.[jt]sx?$/, '');
-        } catch (e) {
-          return false;
+      
+      // Try to resolve the import path (handles both relative and aliases)
+      let resolvedImportPath = null;
+      
+      if (parentImport.source.startsWith('.')) {
+        // Relative import
+        const callerDir = path.dirname(callerAtom.filePath);
+        resolvedImportPath = path.resolve(callerDir, parentImport.source).replace(/\\/g, '/');
+      } else if (projectRoot) {
+        // Try to resolve as alias
+        const aliases = await getAliases(projectRoot);
+        const resolution = await resolveImport(parentImport.source, callerAtom.filePath, projectRoot, aliases);
+        if (resolution.resolved) {
+          resolvedImportPath = resolution.resolved.replace(/\\/g, '/');
         }
+      }
+      
+      if (resolvedImportPath) {
+        const exactMatch = candidates.find(a => {
+          try {
+            const atomPath = a.filePath.replace(/\\/g, '/');
+            return atomPath === resolvedImportPath ||
+              atomPath === resolvedImportPath + '.js' ||
+              atomPath === resolvedImportPath + '.mjs' ||
+              atomPath.replace(/\.[jt]sx?$/, '') === resolvedImportPath.replace(/\.[jt]sx?$/, '');
+          } catch (e) {
+            return false;
+          }
+        });
+        if (exactMatch) return exactMatch;
+      }
+      
+      // Fallback: try without resolution (for cases where alias config is missing)
+      const fallbackMatch = candidates.find(a => {
+        const atomPath = a.filePath.replace(/\\/g, '/');
+        const importPath = parentImport.source.replace(/\\/g, '/');
+        return atomPath.includes(importPath) || importPath.includes(atomPath.replace(/\.js$/, ''));
       });
-      if (exactMatch) return exactMatch;
+      if (fallbackMatch) return fallbackMatch;
     }
   }
 
@@ -117,7 +162,7 @@ export async function linkFunctionCalledBy(allAtoms, parsedFiles, absoluteRootPa
     for (const call of allCalls) {
       if (!call.name) continue;
 
-      const targetAtom = findTargetAtom(call.name, callerAtom, index, fileImports);
+      const targetAtom = await findTargetAtom(call.name, callerAtom, index, fileImports, absoluteRootPath);
       if (!targetAtom || targetAtom.id === callerAtom.id) continue;
 
       if (!targetAtom.calledBy) targetAtom.calledBy = [];

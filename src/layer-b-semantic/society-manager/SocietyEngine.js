@@ -21,7 +21,7 @@ export class SocietyEngine {
     }
 
     async buildSocieties() {
-        logger.info('[SocietyEngine] Building societies...');
+        logger.debug('[SocietyEngine] Building societies...');
         
         const startTime = Date.now();
         const timeout = 30000; // 30 segundos timeout
@@ -83,7 +83,7 @@ export class SocietyEngine {
             // TODO: Implementar análisis de vecindarios entre clusters
 
             const duration = Date.now() - startTime;
-            logger.info(`[SocietyEngine] Generated ${societies.length} societies in ${duration}ms`);
+            logger.debug(`[SocietyEngine] Generated ${societies.length} societies in ${duration}ms`);
             return societies;
             
         } catch (error) {

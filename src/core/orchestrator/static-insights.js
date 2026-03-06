@@ -77,7 +77,7 @@ export async function _deriveStaticInsights() {
         try {
           const { analyzeSocieties } = await import('#layer-b/society-manager/index.js');
           await analyzeSocieties(this.projectPath);
-          logger.info('  🏘️  Society analysis (Pueblos) initial pass complete');
+          logger.debug('Society analysis (Pueblos) initial pass complete');
           return true;
         } catch (e) {
           logger.debug('  ⚠️  Initial society analysis failed:', e.message);
@@ -98,7 +98,7 @@ export async function _deriveStaticInsights() {
           await new Promise(resolve => setTimeout(resolve, 5000));
           const { persistGraphMetrics } = await import('#layer-c/storage/enrichment/index.js');
           await persistGraphMetrics(this.projectPath);
-          logger.info('  📊 Graph metrics persisted (centrality, propagation, risk_level)');
+          logger.debug('Graph metrics persisted (centrality, propagation, risk_level)');
           return true;
         } catch (e) {
           logger.debug('  ⚠️  Graph metrics persistence failed:', e.message);
