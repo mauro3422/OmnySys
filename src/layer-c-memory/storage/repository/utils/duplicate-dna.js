@@ -54,6 +54,28 @@ export const DUPLICATE_MODES = Object.freeze({
   STRUCTURAL: 'structural'
 });
 
+export const DEFAULT_DUPLICATE_ATOM_TYPES = Object.freeze([
+  'function',
+  'method',
+  'arrow',
+  'class'
+]);
+
+const TEST_FILE_EXCLUSION_PATTERNS = Object.freeze([
+  "%.test.js",
+  "%.spec.js",
+  "%/test/%",
+  "%/tests/%"
+]);
+
+function qualifyColumn(columnName = '', alias = '') {
+  return alias ? `${alias}.${columnName}` : columnName;
+}
+
+function sqlQuote(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 export function normalizeDnaValue(atom = {}) {
   const raw = atom.dna_json ?? atom.dnaJson ?? atom.dna ?? null;
   if (!raw) return null;
@@ -80,6 +102,164 @@ export function parseDnaValue(dna) {
   }
 
   return typeof dna === 'object' ? dna : null;
+}
+
+export function getValidDnaPredicate(columnName = 'dna_json') {
+  return VALID_DNA_PREDICATE.replaceAll('dna_json', columnName);
+}
+
+export function getDuplicateEligiblePredicate({
+  filePathColumn = 'file_path',
+  atomTypeColumn = 'atom_type',
+  removedColumn = 'is_removed',
+  deadColumn = 'is_dead_code'
+} = {}) {
+  return `
+  ${atomTypeColumn} IN ('function', 'method', 'arrow', 'class')
+  AND (${removedColumn} IS NULL OR ${removedColumn} = 0)
+  AND (${deadColumn} IS NULL OR ${deadColumn} = 0)
+  AND ${filePathColumn} LIKE 'src/%'
+  AND ${filePathColumn} NOT LIKE 'tests/%'
+  AND name NOT GLOB '*_callback'
+  AND name NOT GLOB 'anonymous*'
+  AND name NOT GLOB 'describe_arg*'
+  AND name NOT GLOB 'it_arg*'
+  AND name NOT GLOB 'on_arg*'
+  AND name NOT GLOB 'then_callback'
+  AND name NOT GLOB 'catch_callback'
+  AND name NOT GLOB 'map_callback'
+  AND name NOT GLOB 'filter_callback'
+  AND name NOT GLOB 'some_callback'
+  AND name NOT GLOB 'sort_callback'
+`;
+}
+
+export function getDuplicateScopeClauses({
+  alias = '',
+  excludeTests = true,
+  atomTypes = DEFAULT_DUPLICATE_ATOM_TYPES,
+  minLines = 0,
+  requireValidDna = false,
+  eligibleOnly = false,
+  includeRemoved = false,
+  includeDeadCode = false,
+  sourceOnly = false
+} = {}) {
+  const filePathColumn = qualifyColumn('file_path', alias);
+  const atomTypeColumn = qualifyColumn('atom_type', alias);
+  const removedColumn = qualifyColumn('is_removed', alias);
+  const deadColumn = qualifyColumn('is_dead_code', alias);
+  const linesColumn = qualifyColumn('lines_of_code', alias);
+  const dnaColumn = qualifyColumn('dna_json', alias);
+  const clauses = [];
+
+  if (requireValidDna) {
+    clauses.push(getValidDnaPredicate(dnaColumn));
+  }
+
+  if (eligibleOnly) {
+    clauses.push(getDuplicateEligiblePredicate({
+      filePathColumn,
+      atomTypeColumn,
+      removedColumn,
+      deadColumn
+    }).trim());
+  } else {
+    if (!includeRemoved) {
+      clauses.push(`(${removedColumn} IS NULL OR ${removedColumn} = 0)`);
+    }
+    if (!includeDeadCode) {
+      clauses.push(`(${deadColumn} IS NULL OR ${deadColumn} = 0)`);
+    }
+    if (sourceOnly) {
+      clauses.push(`${filePathColumn} LIKE 'src/%'`);
+    }
+    if (atomTypes && atomTypes.length > 0) {
+      clauses.push(`${atomTypeColumn} IN (${atomTypes.map(sqlQuote).join(', ')})`);
+    }
+    if (excludeTests) {
+      clauses.push(...TEST_FILE_EXCLUSION_PATTERNS.map((pattern) => `${filePathColumn} NOT LIKE ${sqlQuote(pattern)}`));
+    }
+  }
+
+  if (minLines > 0) {
+    clauses.push(`(${linesColumn} IS NULL OR ${linesColumn} >= ${Number(minLines) || 0})`);
+  }
+
+  return clauses;
+}
+
+export function buildDuplicateWhereSql(options = {}) {
+  const clauses = getDuplicateScopeClauses(options);
+  return clauses.length > 0 ? `WHERE ${clauses.join('\n  AND ')}` : '';
+}
+
+export function isDuplicateEligibleAtom(atom = {}, {
+  excludeTests = true,
+  atomTypes = DEFAULT_DUPLICATE_ATOM_TYPES,
+  minLines = 0,
+  requireDna = false
+} = {}) {
+  const atomType = atom.type || atom.atom_type || null;
+  const filePath = (atom.file_path || atom.filePath || '').replace(/\\/g, '/');
+  const linesOfCode = Number(atom.lines_of_code || atom.linesOfCode || atom.loc || 0);
+  const isRemoved = Boolean(atom.isRemoved || atom.is_removed);
+  const isDeadCode = Boolean(atom.isDeadCode || atom.is_dead_code);
+  const dnaValue = normalizeDnaValue(atom);
+
+  if (requireDna && !dnaValue) return false;
+  if (isRemoved || isDeadCode) return false;
+  if (atomTypes && atomTypes.length > 0 && !atomTypes.includes(atomType)) return false;
+  if (minLines > 0 && linesOfCode < minLines) return false;
+  if (filePath && !filePath.startsWith('src/')) return false;
+  if (filePath && filePath.startsWith('tests/')) return false;
+  if (excludeTests && TEST_FILE_EXCLUSION_PATTERNS.some((pattern) => {
+    const normalizedPattern = pattern.replace(/%/g, '');
+    return normalizedPattern && filePath.includes(normalizedPattern.replace(/^\//, '').replace(/\/$/, ''));
+  })) {
+    return false;
+  }
+
+  const name = atom.name || '';
+  return ![
+    /_callback$/,
+    /^anonymous/,
+    /^describe_arg/,
+    /^it_arg/,
+    /^on_arg/,
+    /^then_callback$/,
+    /^catch_callback$/,
+    /^map_callback$/,
+    /^filter_callback$/,
+    /^some_callback$/,
+    /^sort_callback$/
+  ].some((pattern) => pattern.test(name));
+}
+
+export function normalizeDuplicateCandidateAtom(atom = {}, {
+  mode = DUPLICATE_MODES.STRICT,
+  excludeTests = true,
+  atomTypes = DEFAULT_DUPLICATE_ATOM_TYPES,
+  minLines = 0,
+  requireDna = true
+} = {}) {
+  if (!isDuplicateEligibleAtom(atom, { excludeTests, atomTypes, minLines, requireDna })) {
+    return null;
+  }
+
+  const dnaJson = normalizeDnaValue(atom);
+  const duplicateKey = buildDuplicateKeyForMode(atom.dna ?? atom.dnaJson ?? atom.dna_json, mode);
+  if (!duplicateKey) return null;
+
+  return {
+    id: atom.id,
+    name: atom.name,
+    file_path: atom.file_path || atom.filePath || null,
+    atom_type: atom.type || atom.atom_type || null,
+    lines_of_code: Number(atom.lines_of_code || atom.linesOfCode || atom.loc || 0),
+    dna_json: dnaJson,
+    duplicate_key: duplicateKey
+  };
 }
 
 export function buildDuplicateKeyFromDna(dna) {

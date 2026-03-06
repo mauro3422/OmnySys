@@ -18,35 +18,28 @@ import {
     isLowSignalName
 } from './guard-standards.js';
 import {
-    buildStructuralDuplicateKeyFromDna,
-    getStructuralDuplicateKeySql,
-    normalizeDnaValue
-} from '#layer-c/storage/repository/utils/duplicate-dna.js';
+    buildDuplicateWhereSql,
+    getDuplicateKeySqlForMode,
+    normalizeDuplicateCandidateAtom,
+    DUPLICATE_MODES
+} from '#layer-c/storage/repository/utils/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
-const DUPLICATE_KEY_SQL = getStructuralDuplicateKeySql('a.dna_json');
+const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
+const DUPLICATE_KEY_SQL = getDuplicateKeySqlForMode(DUPLICATE_MODE, 'a.dna_json');
 
 function loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings) {
     return repo.db.prepare(`
         SELECT id, name, dna_json, lines_of_code,
                ${DUPLICATE_KEY_SQL} AS duplicate_key
         FROM atoms
-        WHERE a.file_path = ?
-            AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-            AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-            AND (a.lines_of_code IS NULL OR a.lines_of_code >= ?)
-            AND (a.is_removed IS NULL OR a.is_removed = 0)
-            AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+        ${buildDuplicateWhereSql({
+            alias: 'a',
+            minLines: minLinesOfCode,
+            requireValidDna: true
+        })} AND a.file_path = ?
         LIMIT ?
-    `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, minLinesOfCode, maxFindings * 4);
-}
-
-function getAtomType(atom = {}) {
-    return atom.type || atom.atom_type || null;
-}
-
-function getLinesOfCode(atom = {}) {
-    return atom.lines_of_code || atom.linesOfCode || atom.loc || 0;
+    `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, maxFindings * 4);
 }
 
 /**
@@ -101,21 +94,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         if (providedAtoms && Array.isArray(providedAtoms)) {
             localAtoms = providedAtoms
-                .map((atom) => ({
-                    id: atom.id,
-                    name: atom.name,
-                    dna_json: normalizeDnaValue(atom),
-                    duplicate_key: buildStructuralDuplicateKeyFromDna(atom.dna ?? atom.dnaJson ?? atom.dna_json),
-                    atom_type: getAtomType(atom),
-                    lines_of_code: getLinesOfCode(atom),
-                    isRemoved: Boolean(atom.isRemoved || atom.is_removed),
-                    isDeadCode: Boolean(atom.isDeadCode || atom.is_dead_code)
+                .map((atom) => normalizeDuplicateCandidateAtom(atom, {
+                    mode: DUPLICATE_MODE,
+                    minLines: minLinesOfCode,
+                    requireDna: true
                 }))
-                .filter((atom) => atom.dna_json)
-                .filter((atom) => atom.duplicate_key)
-                .filter((atom) => ['function', 'method', 'arrow', 'class'].includes(atom.atom_type))
-                .filter((atom) => !atom.isRemoved && !atom.isDeadCode)
-                .filter((atom) => !minLinesOfCode || atom.lines_of_code >= minLinesOfCode);
+                .filter(Boolean);
         }
 
         if (localAtoms.length === 0) {
@@ -146,13 +130,10 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
             FROM atoms a
             WHERE (${DUPLICATE_KEY_SQL}) IN (${placeholders})
                 AND a.file_path != ?
-                AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-                AND a.file_path NOT LIKE '%.test.js'
-                AND a.file_path NOT LIKE '%.spec.js'
-                AND a.file_path NOT LIKE '%/test/%'
-                AND a.file_path NOT LIKE '%/tests/%'
-                AND (a.is_removed IS NULL OR a.is_removed = 0)
-                AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+                AND ${buildDuplicateWhereSql({
+                    alias: 'a',
+                    requireValidDna: false
+                }).replace(/^WHERE /, '').replace(/\n/g, '\n                AND ')}
             ORDER BY a.dna_json, a.file_path
         `).all(...candidateDnas, filePath);
 

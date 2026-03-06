@@ -10,9 +10,10 @@
 import { createLogger } from '#utils/logger.js';
 import {
     getDuplicateKeySqlForMode,
-    VALID_DNA_PREDICATE,
-    DUPLICATE_ELIGIBLE_PREDICATE,
-    DUPLICATE_MODES
+    getValidDnaPredicate,
+    buildDuplicateWhereSql,
+    DUPLICATE_MODES,
+    DEFAULT_DUPLICATE_ATOM_TYPES
 } from '#layer-c/storage/repository/utils/index.js';
 
 const logger = createLogger('OmnySys:SemanticQueries');
@@ -155,14 +156,23 @@ export function querySocieties(db, { offset = 0, limit = 20, type }) {
  */
 export function queryDnaCoverage(db) {
     return safeQuery(() => {
+        const validDnaPredicate = getValidDnaPredicate();
         const row = db.prepare(`
             SELECT
                 COUNT(*) totalAtoms,
-                COUNT(CASE WHEN ${VALID_DNA_PREDICATE} THEN 1 END) withDna,
+                COUNT(CASE WHEN ${validDnaPredicate} THEN 1 END) withDna,
                 COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
-                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND ${VALID_DNA_PREDICATE} THEN 1 END) srcWithDna,
-                COUNT(CASE WHEN ${DUPLICATE_ELIGIBLE_PREDICATE} THEN 1 END) duplicateEligibleAtoms,
-                COUNT(CASE WHEN ${DUPLICATE_ELIGIBLE_PREDICATE} AND ${VALID_DNA_PREDICATE} THEN 1 END) duplicateEligibleWithDna
+                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND ${validDnaPredicate} THEN 1 END) srcWithDna,
+                (
+                    SELECT COUNT(*)
+                    FROM atoms eligible_atoms
+                    ${buildDuplicateWhereSql({ alias: 'eligible_atoms', eligibleOnly: true })}
+                ) duplicateEligibleAtoms,
+                (
+                    SELECT COUNT(*)
+                    FROM atoms eligible_atoms
+                    ${buildDuplicateWhereSql({ alias: 'eligible_atoms', eligibleOnly: true, requireValidDna: true })}
+                ) duplicateEligibleWithDna
             FROM atoms
             WHERE is_removed IS NULL OR is_removed = 0
         `).get();
@@ -199,50 +209,45 @@ export function queryDuplicates(db, {
     limit = 20,
     excludeTests = true,
     minLines = 3,
-    atomTypes = ['function', 'method', 'arrow', 'class'],
+    atomTypes = DEFAULT_DUPLICATE_ATOM_TYPES,
     mode = DUPLICATE_MODES.STRICT
 } = {}) {
     return safeQuery(() => {
     const duplicateKeySql = getDuplicateKeySqlForMode(mode, 'dna_json');
     const duplicateKeySqlForAlias = (alias) => getDuplicateKeySqlForMode(mode, `${alias}.dna_json`);
-    const testFilterCte = excludeTests
-        ? `AND file_path NOT LIKE '%.test.js'
-           AND file_path NOT LIKE '%.spec.js'
-           AND file_path NOT LIKE '%/test/%'
-           AND file_path NOT LIKE '%/tests/%'`
-        : '';
-
-    const testFilterMain = excludeTests
-        ? `AND a.file_path NOT LIKE '%.test.js'
-           AND a.file_path NOT LIKE '%.spec.js'
-           AND a.file_path NOT LIKE '%/test/%'
-           AND a.file_path NOT LIKE '%/tests/%'`
-        : '';
-
-    const typeFilterCte = atomTypes && atomTypes.length > 0
-        ? `AND atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
-        : '';
-
-    const typeFilterMain = atomTypes && atomTypes.length > 0
-        ? `AND a.atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
-        : '';
+    const duplicateKeySqlForSelect = duplicateKeySqlForAlias('a');
+    const cteWhere = buildDuplicateWhereSql({
+        excludeTests,
+        atomTypes,
+        minLines,
+        requireValidDna: true
+    });
+    const mainWhere = buildDuplicateWhereSql({
+        alias: 'a',
+        excludeTests,
+        atomTypes,
+        minLines,
+        requireValidDna: false
+    });
+    const statsWhere = buildDuplicateWhereSql({
+        alias: 'a_stats',
+        excludeTests,
+        atomTypes,
+        minLines,
+        requireValidDna: false
+    });
 
     const rows = db.prepare(`
         WITH DuplicateGroups AS (
             SELECT ${duplicateKeySql} as duplicate_key, COUNT(*) as group_size
             FROM atoms
-            WHERE ${VALID_DNA_PREDICATE}
-              ${testFilterCte}
-              ${typeFilterCte}
-              AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
-              AND (is_removed IS NULL OR is_removed = 0)
-              AND (is_dead_code IS NULL OR is_dead_code = 0)
+            ${cteWhere}
             GROUP BY duplicate_key
             HAVING COUNT(*) > 1
         )
         SELECT
             a.id, a.name, a.file_path, a.line_start, a.dna_json,
-            ${duplicateKeySql} as duplicate_key,
+            ${duplicateKeySqlForSelect} as duplicate_key,
             a.lines_of_code, a.atom_type,
             a.archetype_type, a.purpose_type,
             a.change_frequency, a.importance_score,
@@ -253,9 +258,7 @@ export function queryDuplicates(db, {
                AND ca.file_path != a.file_path) AS caller_count
         FROM atoms a
         JOIN DuplicateGroups dg ON (${duplicateKeySqlForAlias('a')}) = dg.duplicate_key
-        WHERE 1=1 
-        ${testFilterMain}
-        ${typeFilterMain}
+        ${mainWhere}
         ORDER BY
             (dg.group_size * COALESCE(a.importance_score, 0) * (1 + COALESCE(a.change_frequency, 0))) DESC,
             dg.group_size DESC,
@@ -267,18 +270,12 @@ export function queryDuplicates(db, {
     const stats = db.prepare(`
         SELECT COUNT(DISTINCT (${duplicateKeySqlForAlias('a_stats')})) groups, COUNT(*) total_instances
         FROM atoms a_stats
-        WHERE (${duplicateKeySqlForAlias('a_stats')}) IN (
+        ${statsWhere}
+        AND (${duplicateKeySqlForAlias('a_stats')}) IN (
             SELECT ${duplicateKeySql} FROM atoms
-            WHERE ${VALID_DNA_PREDICATE}
-            ${testFilterCte}
-            ${typeFilterCte}
-            AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
-              AND (is_removed IS NULL OR is_removed = 0)
-              AND (is_dead_code IS NULL OR is_dead_code = 0)
+            ${cteWhere}
             GROUP BY ${duplicateKeySql} HAVING COUNT(*) > 1
         )
-        ${testFilterCte.replace(/file_path/g, 'a_stats.file_path')}
-        ${typeFilterCte.replace(/atom_type/g, 'a_stats.atom_type')}
     `).get();
 
     return { rows, stats: stats || { groups: 0, total_instances: 0 } };

@@ -77,7 +77,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
 
   const importsGetAllAtoms = /getAllAtoms/.test(source);
   const importsImpactApis = /getFileDependents|getTransitiveDependents/.test(source);
-  const importsDuplicateApi = /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|DUPLICATE_MODES/.test(source);
+  const importsDuplicateApi = /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|buildDuplicateWhereSql|normalizeDuplicateCandidateAtom|getValidDnaPredicate|DUPLICATE_MODES/.test(source);
 
   if (
     importsGetAllAtoms &&
