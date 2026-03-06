@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file and organized by
 - Health and pipeline telemetry now distinguish missing physics coverage from real zero values, exposing `fragility/coupling/cohesion` gaps as compiler debt instead of reporting a misleading perfect grade.
 - Semantic Algebra persistence now restores real `fragility/coupling/cohesion` vectors: converters no longer drop derived scores, `persistGraphMetrics()` backfills physics from live atoms, and semantic formulas were realigned with the project paper for deterministic DB coverage.
 - MCP proxy/runtime restarts are more robust: the proxy now cancels stale respawn timers, new proxy instances refuse to spawn duplicate workers when a healthy daemon already exists, and the worker retries port bind before giving up under proxy mode.
+- The stdio bridge now auto-recovers not only on transport close but also when a restarted daemon rejects requests with stale-session / not-initialized errors, allowing the same IDE session to resume after hot-reload restarts.
 - Core metadata persistence now normalizes against live SQLite counts, reducing drift between `system_metadata` and the current atom graph.
 - Remaining limitation: after true worker restarts, some MCP clients can still keep a stale session/tool channel even though the OmnySys daemon is healthy again.
 

@@ -38,6 +38,11 @@ function isResponseMessage(message) {
         Object.prototype.hasOwnProperty.call(message, 'id');
 }
 
+function shouldTriggerRecovery(error) {
+    const message = String(error?.message || error || '');
+    return /Server not initialized|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(message);
+}
+
 async function checkDaemon() {
     const { default: http } = await import('http');
     return new Promise((resolve) => {
@@ -166,6 +171,9 @@ async function main() {
     let reconnectPromise = null;
     let lastSessionId = null;
     const pendingRequests = new Map();
+    const internalRequests = new Map();
+    let cachedInitializeRequest = null;
+    let cachedInitializedNotification = null;
 
     async function sendRetryableError(id, message, data = {}) {
         if (typeof id === 'undefined') return;
@@ -203,11 +211,119 @@ async function main() {
         }
     }
 
+    async function sendInternalRequest(message, timeoutMs = 10000) {
+        return await new Promise(async (resolve, reject) => {
+            const timeout = setTimeout(() => {
+                internalRequests.delete(message.id);
+                reject(new Error(`Internal MCP request timed out: ${message.method}`));
+            }, timeoutMs);
+
+            internalRequests.set(message.id, {
+                resolve,
+                reject,
+                timeout
+            });
+
+            try {
+                await httpTransport.send(message);
+                if (httpTransport?._sessionId) {
+                    lastSessionId = httpTransport._sessionId;
+                }
+            } catch (error) {
+                clearTimeout(timeout);
+                internalRequests.delete(message.id);
+                reject(error);
+            }
+        });
+    }
+
+    async function silentReinitialize() {
+        if (!cachedInitializeRequest?.params) {
+            log('No cached initialize request available. Bridge cannot auto-reinitialize this client session.');
+            return;
+        }
+
+        const internalId = `bridge-reinit-${Date.now()}`;
+        const initMessage = {
+            ...cachedInitializeRequest,
+            id: internalId
+        };
+
+        log('Replaying cached initialize request to rebuild MCP session...');
+        await sendInternalRequest(initMessage, 15000);
+
+        if (cachedInitializedNotification) {
+            try {
+                await httpTransport.send(cachedInitializedNotification);
+            } catch (error) {
+                log(`Failed to replay initialized notification: ${error.message}`);
+            }
+        }
+    }
+
+    async function startRecovery(trigger) {
+        if (isReconnecting) {
+            return reconnectPromise;
+        }
+
+        isReconnecting = true;
+        await failPendingRequests('DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.');
+
+        reconnectPromise = (async () => {
+            log(`Starting bridge recovery (${trigger})...`);
+
+            let recovered = false;
+            for (let i = 0; i < 15; i++) {
+                recovered = await checkDaemon();
+                if (recovered) break;
+                log(`Waiting for daemon to restart (${i + 1}/15)...`);
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+
+            if (!recovered) {
+                log('Daemon recovery failed. Shutting down bridge.');
+                stdioTransport.close().catch(() => {});
+                process.exit(1);
+            }
+
+            log('Daemon recovered. Reconnecting HTTP transport...');
+            try {
+                lastSessionId = null;
+                await connectToDaemon();
+                await silentReinitialize();
+                log(`Bridge reconnected successfully${lastSessionId ? ` (session ${lastSessionId})` : ''}.`);
+            } catch (error) {
+                log(`Reconnection failed: ${error.message}`);
+                process.exit(1);
+            }
+        })();
+
+        try {
+            await reconnectPromise;
+        } finally {
+            isReconnecting = false;
+            reconnectPromise = null;
+        }
+    }
+
     async function connectToDaemon() {
         httpTransport = new StreamableHTTPClientTransport(DAEMON_URL, lastSessionId ? { sessionId: lastSessionId } : undefined);
 
         httpTransport.onmessage = async (message) => {
             try {
+                if (isResponseMessage(message) && internalRequests.has(message.id)) {
+                    const pending = internalRequests.get(message.id);
+                    internalRequests.delete(message.id);
+                    clearTimeout(pending.timeout);
+
+                    if (message.error) {
+                        pending.reject(new Error(message.error.message || 'Internal MCP request failed'));
+                    } else {
+                        pending.resolve(message);
+                    }
+                    return;
+                }
+
                 if (isResponseMessage(message)) {
                     pendingRequests.delete(message.id);
                 }
@@ -221,42 +337,7 @@ async function main() {
 
         httpTransport.onclose = async () => {
             log('Daemon disconnected.');
-            if (isReconnecting) return;
-            isReconnecting = true;
-            await failPendingRequests('DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.');
-            reconnectPromise = (async () => {
-                log('Daemon disconnected - attempting recovery for 15 seconds...');
-
-                let recovered = false;
-                for (let i = 0; i < 15; i++) {
-                    recovered = await checkDaemon();
-                    if (recovered) break;
-                    log(`Waiting for daemon to restart (${i + 1}/15)...`);
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
-                }
-
-                if (!recovered) {
-                    log('Daemon recovery failed. Shutting down bridge.');
-                    stdioTransport.close().catch(() => {});
-                    process.exit(1);
-                }
-
-                log('Daemon recovered. Reconnecting HTTP transport...');
-                try {
-                    await connectToDaemon();
-                    log(`Bridge reconnected successfully${lastSessionId ? ` (session ${lastSessionId})` : ''}.`);
-                } catch (error) {
-                    log(`Reconnection failed: ${error.message}`);
-                    process.exit(1);
-                }
-            })();
-
-            try {
-                await reconnectPromise;
-            } finally {
-                isReconnecting = false;
-                reconnectPromise = null;
-            }
+            await startRecovery('transport closed');
         };
 
         await httpTransport.start();
@@ -280,6 +361,12 @@ async function main() {
             return;
         }
         try {
+            if (message?.method === 'initialize' && isRequestMessage(message)) {
+                cachedInitializeRequest = message;
+            } else if (message?.method === 'notifications/initialized' && !Object.prototype.hasOwnProperty.call(message, 'id')) {
+                cachedInitializedNotification = message;
+            }
+
             if (isRequestMessage(message)) {
                 pendingRequests.set(message.id, message);
             }
@@ -288,6 +375,10 @@ async function main() {
                 lastSessionId = httpTransport._sessionId;
             }
         } catch (err) {
+            if (shouldTriggerRecovery(err)) {
+                void startRecovery('server rejected request after daemon restart');
+            }
+
             if (isRequestMessage(message)) {
                 pendingRequests.delete(message.id);
                 await sendRetryableError(
