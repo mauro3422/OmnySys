@@ -15,14 +15,17 @@ import {
   discoverCompilerFiles,
   isCompilerRuntimeFile
 } from './file-discovery.js';
-const COMPILER_POLICY_SEVERITY = {
+export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
 };
-const COMPILER_POLICY_AREA = {
+export const COMPILER_POLICY_AREA = {
   DUPLICATES: 'duplicates',
   IMPACT: 'impact',
-  FILE_DISCOVERY: 'file_discovery'
+  FILE_DISCOVERY: 'file_discovery',
+  SIGNAL_COVERAGE: 'signal_coverage',
+  LIVE_ROW_DRIFT: 'live_row_drift',
+  PIPELINE_ORPHANS: 'pipeline_orphans'
 };
 
 function normalizePath(filePath = '') {
@@ -56,6 +59,40 @@ function looksLikeManualTopologyScan(source = '') {
   return manualGraphWalk && !topologyReportingOnly;
 }
 
+function looksLikeManualDerivedScoreCoverage(source = '') {
+  const derivedSignalHits = [
+    /fragility_score/.test(source),
+    /coupling_score/.test(source),
+    /cohesion_score/.test(source)
+  ].filter(Boolean).length;
+
+  return (
+    derivedSignalHits >= 2 &&
+    /(missingAtoms|missingRatio|candidateAtoms|nonZeroCount|coveragePct|all zero)/.test(source)
+  );
+}
+
+function looksLikeManualSemanticCoverage(source = '') {
+  return (
+    /(hasNetworkCalls|sharesStateRelations|sharedStateCandidates|networkCandidates|networkFlagged)/.test(source) &&
+    /(look network-bound|semantic coverage|coverage gap|missing flags|network coverage|shared state relations?)/i.test(source)
+  );
+}
+
+function looksLikeManualLiveRowDrift(source = '') {
+  return (
+    /(LEFT JOIN|NOT IN)\s+live_files/.test(source) ||
+    /(staleFileRows|staleRiskRows|liveFileTotal|unassessedLiveFiles)/.test(source)
+  );
+}
+
+function looksLikeManualPipelineOrphanScan(source = '') {
+  return (
+    /(called_by_json|calls_json|callers_count|callees_count)/.test(source) &&
+    /(pipeline_orphans|orphanFunctions|patternCondition|fileLevelImportEvidence|disconnected pipeline)/i.test(source)
+  );
+}
+
 export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   const normalizedPath = normalizePath(filePath);
   const findings = [];
@@ -64,10 +101,20 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
     return findings;
   }
 
+  if (
+    normalizedPath.endsWith('/guard-standards.js') ||
+    normalizedPath.endsWith('/shared-state-guard.js')
+  ) {
+    return findings;
+  }
+
   const importsGetAllAtoms = /getAllAtoms/.test(source);
   const importsImpactApis = /getFileDependents|getTransitiveDependents|getFileImpactSummary|classifyImpactSeverity/.test(source);
   const importsDuplicateApi = /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|buildDuplicateWhereSql|normalizeDuplicateCandidateAtom|getValidDnaPredicate|DUPLICATE_MODES/.test(source);
   const importsFileDiscoveryApi = /discoverCompilerFiles|discoverProjectSourceFiles|isCompilerRuntimeFile/.test(source);
+  const importsSignalCoverageApi = /summarizeDerivedScoreCoverage|summarizeSemanticCoverage|classifyFieldCoverage/.test(source);
+  const importsLiveRowDriftApi = /getLiveRowDriftSummary|getStaleTableRowCount|getLiveFileTotal|getLiveFileSetSql/.test(source);
+  const importsPipelineOrphansApi = /classifyPipelineOrphans|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan/.test(source);
 
   if (
     importsGetAllAtoms &&
@@ -126,6 +173,62 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
     ));
   }
 
+  if (
+    looksLikeManualDerivedScoreCoverage(source) &&
+    !importsSignalCoverageApi &&
+    !normalizedPath.endsWith('/signal-coverage.js')
+  ) {
+    findings.push(createFinding(
+      'manual_signal_coverage_scan',
+      COMPILER_POLICY_SEVERITY.MEDIUM,
+      COMPILER_POLICY_AREA.SIGNAL_COVERAGE,
+      'Manual derived-score coverage scan detected',
+      'Use summarizeDerivedScoreCoverage / classifyFieldCoverage from shared/compiler instead of recomputing coverage locally.'
+    ));
+  }
+
+  if (
+    looksLikeManualSemanticCoverage(source) &&
+    !importsSignalCoverageApi &&
+    !normalizedPath.endsWith('/signal-coverage.js')
+  ) {
+    findings.push(createFinding(
+      'manual_semantic_coverage_scan',
+      COMPILER_POLICY_SEVERITY.MEDIUM,
+      COMPILER_POLICY_AREA.SIGNAL_COVERAGE,
+      'Manual semantic coverage scan detected',
+      'Use summarizeSemanticCoverage from shared/compiler instead of rebuilding semantic coverage heuristics locally.'
+    ));
+  }
+
+  if (
+    looksLikeManualLiveRowDrift(source) &&
+    !importsLiveRowDriftApi &&
+    !normalizedPath.endsWith('/live-row-drift.js')
+  ) {
+    findings.push(createFinding(
+      'manual_live_row_drift_scan',
+      COMPILER_POLICY_SEVERITY.MEDIUM,
+      COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
+      'Manual live/stale row drift logic detected',
+      'Use getLiveRowDriftSummary / getStaleTableRowCount from shared/compiler instead of hand-rolling stale row SQL.'
+    ));
+  }
+
+  if (
+    looksLikeManualPipelineOrphanScan(source) &&
+    !importsPipelineOrphansApi &&
+    !normalizedPath.endsWith('/pipeline-orphans.js')
+  ) {
+    findings.push(createFinding(
+      'manual_pipeline_orphan_scan',
+      COMPILER_POLICY_SEVERITY.MEDIUM,
+      COMPILER_POLICY_AREA.PIPELINE_ORPHANS,
+      'Manual pipeline orphan classification detected',
+      'Use classifyPipelineOrphans / getPipelineNamePatternSqlCondition from shared/compiler instead of rebuilding orphan heuristics inline.'
+    ));
+  }
+
   return findings;
 }
 
@@ -146,6 +249,19 @@ export function summarizeCompilerPolicyDrift(findings = []) {
   }
 
   return summary;
+}
+
+export function buildCompilerPolicyIssueSummary(findings = []) {
+  const summary = summarizeCompilerPolicyDrift(findings);
+  const severity = summary.high > 0 ? COMPILER_POLICY_SEVERITY.HIGH : COMPILER_POLICY_SEVERITY.MEDIUM;
+  const sampleRules = findings.map((finding) => finding.rule).slice(0, 3).join(', ');
+
+  return {
+    severity,
+    summary,
+    sampleRules,
+    message: `${summary.total} compiler policy drift finding(s): ${sampleRules}`.trim()
+  };
 }
 
 export async function scanCompilerPolicyDrift(rootPath, options = {}) {
