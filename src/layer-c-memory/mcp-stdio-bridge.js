@@ -24,6 +24,20 @@ function log(message) {
     process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
 }
 
+function isRequestMessage(message) {
+    return !!message &&
+        typeof message === 'object' &&
+        typeof message.method === 'string' &&
+        Object.prototype.hasOwnProperty.call(message, 'id');
+}
+
+function isResponseMessage(message) {
+    return !!message &&
+        typeof message === 'object' &&
+        !Object.prototype.hasOwnProperty.call(message, 'method') &&
+        Object.prototype.hasOwnProperty.call(message, 'id');
+}
+
 async function checkDaemon() {
     const { default: http } = await import('http');
     return new Promise((resolve) => {
@@ -151,12 +165,52 @@ async function main() {
     let isReconnecting = false;
     let reconnectPromise = null;
     let lastSessionId = null;
+    const pendingRequests = new Map();
+
+    async function sendRetryableError(id, message, data = {}) {
+        if (typeof id === 'undefined') return;
+
+        try {
+            await stdioTransport.send({
+                jsonrpc: '2.0',
+                id,
+                error: {
+                    code: -32098,
+                    message,
+                    data: {
+                        retryable: true,
+                        daemonUrl: DAEMON_URL.href,
+                        sessionId: lastSessionId,
+                        ...data
+                    }
+                }
+            });
+        } catch (err) {
+            log(`Failed to send retryable error for request ${id}: ${err.message}`);
+        }
+    }
+
+    async function failPendingRequests(reason) {
+        const requests = Array.from(pendingRequests.values());
+        pendingRequests.clear();
+
+        for (const request of requests) {
+            await sendRetryableError(
+                request.id,
+                reason,
+                { interruptedMethod: request.method || 'unknown' }
+            );
+        }
+    }
 
     async function connectToDaemon() {
         httpTransport = new StreamableHTTPClientTransport(DAEMON_URL, lastSessionId ? { sessionId: lastSessionId } : undefined);
 
         httpTransport.onmessage = async (message) => {
             try {
+                if (isResponseMessage(message)) {
+                    pendingRequests.delete(message.id);
+                }
                 await stdioTransport.send(message);
             } catch (err) {
                 log(`Error forwarding daemon->IDE: ${err.message}`);
@@ -169,6 +223,7 @@ async function main() {
             log('Daemon disconnected.');
             if (isReconnecting) return;
             isReconnecting = true;
+            await failPendingRequests('DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.');
             reconnectPromise = (async () => {
                 log('Daemon disconnected - attempting recovery for 15 seconds...');
 
@@ -211,15 +266,37 @@ async function main() {
 
     stdioTransport.onmessage = async (message) => {
         if (isReconnecting) {
-            log('IDE requested an operation while daemon is restarting. Waiting for bridge recovery...');
-            await reconnectPromise;
+            if (isRequestMessage(message)) {
+                log(`Rejecting request ${message.method} while daemon is restarting.`);
+                await sendRetryableError(
+                    message.id,
+                    'DAEMON_RESTARTING: bridge is recovering. Retry this request in a moment.',
+                    { interruptedMethod: message.method }
+                );
+                return;
+            }
+
+            log('Dropping notification while daemon is restarting.');
+            return;
         }
         try {
+            if (isRequestMessage(message)) {
+                pendingRequests.set(message.id, message);
+            }
             await httpTransport.send(message);
             if (httpTransport?._sessionId) {
                 lastSessionId = httpTransport._sessionId;
             }
         } catch (err) {
+            if (isRequestMessage(message)) {
+                pendingRequests.delete(message.id);
+                await sendRetryableError(
+                    message.id,
+                    `BRIDGE_FORWARD_FAILED: ${err.message}`,
+                    { interruptedMethod: message.method }
+                );
+                return;
+            }
             log(`Error forwarding IDE->daemon: ${err.message}`);
         }
     };

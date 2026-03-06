@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file and organized by
 - Session deduplication hardened with startup cleanup, in-flight reservation of `client_id` handshakes, and better persistence of active/inactive rows.
 - `reindexOnly` now preserves the process, refreshes cache metadata, and restarts the Phase 2 background indexer instead of leaving all atoms pending forever.
 - Server/status telemetry now exposes compiler readiness, Phase 2 progress, `fast_phase2` fallback during deep indexing, cache/live count alignment, and `/health.background` details.
+- The stdio bridge now fails fast with retryable MCP errors during daemon restarts instead of leaving in-flight tool calls hanging until client timeouts.
 - Core metadata persistence now normalizes against live SQLite counts, reducing drift between `system_metadata` and the current atom graph.
 - Remaining limitation: after true worker restarts, some MCP clients can still keep a stale session/tool channel even though the OmnySys daemon is healthy again.
 
