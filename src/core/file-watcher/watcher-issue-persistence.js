@@ -107,6 +107,31 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
   }
 }
 
+export async function clearWatcherIssueFamily(projectPath, filePath, issueTypePrefix) {
+  try {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    if (!repo?.db) return false;
+
+    const normalizedPrefix = String(issueTypePrefix || '').trim().replace(/[_%]+$/g, '');
+    if (!normalizedPrefix) return false;
+
+    const result = repo.db.prepare(`
+      DELETE FROM semantic_issues
+      WHERE file_path = ? AND issue_type LIKE ? AND message LIKE ?
+    `).run(filePath, `${normalizedPrefix}%`, `${WATCHER_MESSAGE_PREFIX}%`);
+
+    if ((result?.changes || 0) > 0) {
+      logger.info(`[WATCHER ISSUE FAMILY CLEARED] ${filePath} -> ${normalizedPrefix}* (${result.changes})`);
+    }
+
+    return true;
+  } catch (error) {
+    logger.debug(`[WATCHER ISSUE FAMILY CLEAR SKIP] ${filePath}:${issueTypePrefix} -> ${error.message}`);
+    return false;
+  }
+}
+
 export async function loadWatcherIssues(projectPath, options = {}) {
   try {
     const {

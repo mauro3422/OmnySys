@@ -10,7 +10,7 @@
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
 import {
     IssueDomains,
@@ -120,6 +120,10 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
     }
 
     try {
+        const clearCircularFamily = async () => {
+            await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
+        };
+
         // ============================================
         // 1. Detección de Ciclos Estructurales (Imports)
         // ============================================
@@ -176,6 +180,7 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
 
             await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
         } else {
+            await clearCircularFamily();
             await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
         }
 
@@ -225,7 +230,7 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
 
                     if (isIntentionalAlgorithmicRecursion(atomCycle, atomNames)) {
                         logger.debug(`[CIRCULAR FUNCTION GUARD][ALGORITHMIC] Ignoring intentional recursion: ${atomNames.join(' ➔ ')}`);
-                        await clearWatcherIssue(rootPath, filePath, 'arch_circular_high');
+                        await clearCircularFamily();
                         continue;
                     }
 
@@ -264,7 +269,7 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                             context
                         );
 
-                        await clearWatcherIssue(rootPath, filePath, 'arch_circular_high');
+                        await clearCircularFamily();
                         return { fileCycle, atomCycle, context };
                     }
 
@@ -308,6 +313,7 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                 }
             }
 
+            await clearCircularFamily();
             await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
         }
 
@@ -412,6 +418,7 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
             EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound });
             return cyclesFound;
         } else {
+            await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
             await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
             return [];
         }
