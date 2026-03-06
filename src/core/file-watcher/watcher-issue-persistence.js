@@ -14,9 +14,12 @@ import {
   attachWatcherAlertLifecycle,
   createWatcherIssueRecord,
   filterWatcherAlertsByLifecycle,
+  findSupersededWatcherAlertIds,
   mapSemanticIssueRowToWatcherAlert,
   partitionWatcherAlertsByLifecycle
 } from '../../shared/compiler/index.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
 
@@ -118,12 +121,12 @@ export async function loadWatcherIssues(projectPath, options = {}) {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
     if (!repo?.db) {
-      return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, summary: { total: 0, byStatus: {} } } };
+      return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } } };
     }
 
     const reconciliation = pruneExpired
       ? await reconcileWatcherIssues(projectPath, { repo })
-      : { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
+      : { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } };
 
     let whereClause = 'WHERE message LIKE ?';
     const params = [`${WATCHER_MESSAGE_PREFIX}%`];
@@ -157,7 +160,7 @@ export async function loadWatcherIssues(projectPath, options = {}) {
     };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE LOAD SKIP] ${error.message}`);
-    return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, summary: { total: 0, byStatus: {} } } };
+    return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } } };
   }
 }
 
@@ -182,19 +185,49 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
       .map((alert) => alert.id)
       .filter((id) => Number.isInteger(id))
       .slice(0, maxDelete);
+    const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
 
-    if (expiredIds.length > 0) {
-      const placeholders = expiredIds.map(() => '?').join(', ');
-      repo.db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...expiredIds);
-      logger.info(`[WATCHER ISSUE RECONCILE] deleted ${expiredIds.length} expired watcher alert(s)`);
+    const outdatedIds = [];
+    for (const alert of alerts) {
+      const id = alert?.id;
+      if (!Number.isInteger(id)) continue;
+
+      const detectedAtMs = Date.parse(alert?.detectedAt || '');
+      if (!Number.isFinite(detectedAtMs)) continue;
+
+      const relativePath = String(alert?.filePath || '');
+      if (!relativePath) continue;
+
+      const absolutePath = path.resolve(projectPath, relativePath);
+      try {
+        const stat = await fs.stat(absolutePath);
+        if (stat.mtimeMs > (detectedAtMs + 1000)) {
+          outdatedIds.push(id);
+        }
+      } catch {
+        // If the file no longer exists, let regular lifecycle/cleanup handle it.
+      }
+    }
+
+    const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds])].slice(0, maxDelete);
+
+    if (idsToDelete.length > 0) {
+      const placeholders = idsToDelete.map(() => '?').join(', ');
+      repo.db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...idsToDelete);
+      logger.info(
+        `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
+        ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length})`
+      );
     }
 
     return {
       deletedExpired: expiredIds.length,
+      deletedSuperseded: supersededIds.length,
+      deletedOutdated: outdatedIds.length,
       summary: partitioned.summary
     };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE RECONCILE SKIP] ${error.message}`);
-    return { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
+    return { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } };
   }
 }

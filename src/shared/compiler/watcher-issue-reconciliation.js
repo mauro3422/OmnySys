@@ -72,3 +72,42 @@ export function filterWatcherAlertsByLifecycle(alerts = [], lifecycle = 'all', o
   const { alerts: hydrated } = partitionWatcherAlertsByLifecycle(alerts, options);
   return hydrated.filter((alert) => matchesWatcherAlertLifecycle(alert, lifecycle));
 }
+
+export function getWatcherIssueFamily(issueType = '') {
+  return String(issueType || '')
+    .replace(/_(high|medium|low|info)$/i, '')
+    .trim();
+}
+
+export function getWatcherIssueIdentity(alert = {}) {
+  const atomId = alert?.context?.atomId || '';
+  return [
+    String(alert?.filePath || ''),
+    getWatcherIssueFamily(alert?.issueType || ''),
+    String(atomId)
+  ].join('::');
+}
+
+export function findSupersededWatcherAlertIds(alerts = []) {
+  const latestByIdentity = new Map();
+  const supersededIds = [];
+
+  for (const alert of alerts) {
+    const id = alert?.id;
+    if (!Number.isInteger(id)) continue;
+
+    const identity = getWatcherIssueIdentity(alert);
+    const detectedAtMs = Date.parse(alert?.detectedAt || '') || 0;
+    const current = latestByIdentity.get(identity);
+
+    if (!current || detectedAtMs > current.detectedAtMs || (detectedAtMs === current.detectedAtMs && id > current.id)) {
+      if (current?.id) supersededIds.push(current.id);
+      latestByIdentity.set(identity, { id, detectedAtMs });
+      continue;
+    }
+
+    supersededIds.push(id);
+  }
+
+  return [...new Set(supersededIds)];
+}
