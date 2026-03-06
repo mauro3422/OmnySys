@@ -34,3 +34,14 @@ export {
   getStaleTableRowCount,
   getLiveRowDriftSummary
 } from './live-row-drift.js';
+
+export {
+  PIPELINE_ORPHAN_NAME_PATTERNS,
+  getEffectiveCallerCount,
+  isPipelineProductionFile,
+  hasFileLevelImportEvidence,
+  isLikelyDisconnectedPipelineAtom,
+  getPipelineNamePatternSqlCondition,
+  normalizePipelineOrphan,
+  classifyPipelineOrphans
+} from './pipeline-orphans.js';

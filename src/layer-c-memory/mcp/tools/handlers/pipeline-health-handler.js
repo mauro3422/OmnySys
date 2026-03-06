@@ -6,28 +6,14 @@
 import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     classifyFieldCoverage,
+    classifyPipelineOrphans,
     getDeadCodeSqlPredicate,
     getLiveRowDriftSummary,
+    getPipelineNamePatternSqlCondition,
+    normalizePipelineOrphan,
     scanCompilerPolicyDrift,
     summarizeCompilerPolicyDrift
 } from '../../../../shared/compiler/index.js';
-
-function getEffectiveCallerCount(atomRow) {
-    if ((atomRow?.callers_count || 0) > 0) {
-        return atomRow.callers_count;
-    }
-
-    if (!atomRow?.called_by_json || atomRow.called_by_json === '[]') {
-        return 0;
-    }
-
-    try {
-        const parsed = JSON.parse(atomRow.called_by_json);
-        return Array.isArray(parsed) ? parsed.length : 0;
-    } catch {
-        return 0;
-    }
-}
 
 function getFieldCoverageContext(field) {
     if (field === 'has_network_calls') {
@@ -41,25 +27,6 @@ function getFieldCoverageContext(field) {
         whereClause: '',
         descriptionSuffix: ''
     };
-}
-
-function isPipelineProductionFile(filePath = '') {
-    return typeof filePath === 'string'
-        && !filePath.startsWith('tests/')
-        && !filePath.startsWith('scripts/');
-}
-
-function hasFileLevelImportEvidence(atomRow = {}) {
-    return (atomRow?.file_importer_count || 0) > 0;
-}
-
-function isLikelyDisconnected(atomRow = {}) {
-    const effectiveCallers = getEffectiveCallerCount(atomRow);
-    if (effectiveCallers > 0) return false;
-    if (!isPipelineProductionFile(atomRow.file_path)) return false;
-    if (hasFileLevelImportEvidence(atomRow)) return false;
-    if ((atomRow?.callees_count || 0) > 0) return false;
-    return true;
 }
 
 export async function handlePipelineHealth(tool) {
@@ -171,8 +138,7 @@ export async function handlePipelineHealth(tool) {
     }
 
     // --- CHECK 3: Pipeline orphans ---
-    const pipelinePatterns = ['persist', 'analyze', 'compute', 'calculate', 'build', 'generate', 'process', 'index'];
-    const patternCondition = pipelinePatterns.map(p => `name LIKE '%${p}%'`).join(' OR ');
+    const patternCondition = getPipelineNamePatternSqlCondition('name');
     const potentialOrphans = db.prepare(`
         SELECT
             a.id,
@@ -203,9 +169,7 @@ export async function handlePipelineHealth(tool) {
         LIMIT 50
     `).all();
 
-    const orphanFunctions = potentialOrphans
-        .filter(isLikelyDisconnected)
-        .slice(0, 20);
+    const orphanFunctions = classifyPipelineOrphans(potentialOrphans, { limit: 20 });
 
     if (orphanFunctions.length > 0) {
         warnings.push({
@@ -279,12 +243,7 @@ export async function handlePipelineHealth(tool) {
         tableCounts,
         issues,
         warnings,
-        orphanPipelineFunctions: orphanFunctions.map(f => ({
-            name: f.name,
-            file: f.file_path,
-            complexity: f.complexity,
-            diagnosis: 'Exported pipeline atom with no effective callers — likely disconnected'
-        })),
+        orphanPipelineFunctions: orphanFunctions.map(normalizePipelineOrphan),
         summary: {
             totalIssues: issues.length,
             totalWarnings: warnings.length,
