@@ -21,6 +21,175 @@ import {
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
 
+const INTEGRITY_ISSUE_TYPES = [
+    'sem_data_flow_high',
+    'sem_data_flow_medium',
+    'sem_data_flow_low'
+];
+
+function normalizeUnusedInputName(input) {
+    if (typeof input === 'object' && input !== null) {
+        return String(input.name || '').trim();
+    }
+
+    return String(input || '').trim();
+}
+
+function isLikelyParserNoiseUnusedInput(name = '') {
+    if (!name) return true;
+    if (name === '__destructured_0') return true;
+    if (/\s/.test(name)) return true;
+    if (/['"`]/.test(name)) return true;
+    if (/[;(){}]/.test(name)) return true;
+    if (name.length < 2) return true;
+    return false;
+}
+
+function getActionableUnusedInputs(analysis = {}) {
+    const inputCount = analysis.inputs?.length || 0;
+    if (inputCount === 0) {
+        return [];
+    }
+
+    return (analysis.unusedInputs || [])
+        .map(normalizeUnusedInputName)
+        .filter((name) => !isLikelyParserNoiseUnusedInput(name));
+}
+
+async function clearIntegrityIssues(rootPath, filePath) {
+    try {
+        await Promise.all(
+            INTEGRITY_ISSUE_TYPES.map((issueType) => clearWatcherIssue(rootPath, filePath, issueType))
+        );
+    } catch (error) {
+        logger.debug(`[INTEGRITY CLEAR SKIP] ${filePath}: ${error.message}`);
+    }
+}
+
+function buildLowCoherenceViolation(atom, analysis) {
+    const severity = analysis.coherence < 0.1 ? 'high' : 'medium';
+
+    return {
+        atomId: atom.id,
+        atomName: atom.name,
+        type: 'LOW_COHERENCE',
+        severity,
+        message: `Atom '${atom.name}' has low data-flow coherence (${Math.round(analysis.coherence * 100)}%). Possible broken logic.`,
+        context: createStandardContext({
+            guardName: 'integrity-guard',
+            atomId: atom.id,
+            atomName: atom.name,
+            metricValue: analysis.coherence,
+            threshold: StandardThresholds.COHERENCE_MIN,
+            severity,
+            suggestedAction: 'Review data-flow logic for disconnected inputs/outputs',
+            suggestedAlternatives: [
+                'Remove unused inputs',
+                'Connect dangling outputs to appropriate destinations',
+                'Refactor into smaller, coherent functions'
+            ],
+            extraData: {
+                coherence: analysis.coherence,
+                inputs: analysis.inputs?.length || 0,
+                outputs: analysis.outputs?.length || 0,
+                transformationCount: analysis.transformations?.length || 0
+            }
+        })
+    };
+}
+
+function buildUnusedInputsViolation(atom, analysis, inputNames) {
+    return {
+        atomId: atom.id,
+        atomName: atom.name,
+        type: 'UNUSED_INPUTS',
+        severity: 'low',
+        message: `Atom '${atom.name}' has unused inputs: ${inputNames.join(', ')}.`,
+        context: createStandardContext({
+            guardName: 'integrity-guard',
+            atomId: atom.id,
+            atomName: atom.name,
+            severity: 'low',
+            suggestedAction: 'Remove unused parameters or use them in the function logic',
+            suggestedAlternatives: [
+                'Remove unused parameters',
+                'Use the parameters in the function body',
+                'Mark optional parameters as such'
+            ],
+            extraData: {
+                unusedInputs: inputNames,
+                inputCount: analysis.inputs?.length || 0
+            }
+        })
+    };
+}
+
+function analyzeAtomDataFlow(atom) {
+    if (!atom.dataFlow) {
+        return [];
+    }
+
+    const analyzer = new DataFlowAnalyzer(
+        atom.dataFlow.inputs || [],
+        atom.dataFlow.transformations || [],
+        atom.dataFlow.outputs || []
+    );
+    const analysis = analyzer.analyze();
+    const violations = [];
+
+    if (analysis.coherence < StandardThresholds.COHERENCE_MIN) {
+        violations.push(buildLowCoherenceViolation(atom, analysis));
+    }
+
+    const inputNames = getActionableUnusedInputs(analysis);
+    if (inputNames.length > 0) {
+        violations.push(buildUnusedInputsViolation(atom, analysis, inputNames));
+    }
+
+    return violations;
+}
+
+function analyzeAtomNaming(atom) {
+    if (atom.is_async !== 0 || !atom.name.toLowerCase().includes('async')) {
+        return [];
+    }
+
+    return [{
+        atomId: atom.id,
+        atomName: atom.name,
+        type: 'NAMING_MISMATCH',
+        severity: 'low',
+        message: `Function '${atom.name}' is synchronous but its name suggests async behavior.`,
+        context: createStandardContext({
+            guardName: 'integrity-guard',
+            atomId: atom.id,
+            atomName: atom.name,
+            severity: 'low',
+            suggestedAction: 'Rename function to reflect its synchronous nature, or make it async',
+            suggestedAlternatives: [
+                'Rename to remove "async" from name',
+                'Add async keyword if function should be async',
+                'Check if missing await in the function body'
+            ],
+            extraData: {
+                isAsync: atom.is_async,
+                expectedAsync: true
+            }
+        })
+    }];
+}
+
+function analyzeAtomIntegrity(atom) {
+    if (!isValidGuardTarget(atom)) {
+        return [];
+    }
+
+    return [
+        ...analyzeAtomDataFlow(atom),
+        ...analyzeAtomNaming(atom)
+    ];
+}
+
 /**
  * Detecta violaciones de integridad atómica
  * @param {string} rootPath - Ruta raíz del proyecto
@@ -35,153 +204,14 @@ export async function detectIntegrityViolations(rootPath, filePath, EventEmitter
 
     try {
         if (!atoms || atoms.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_high');
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_medium');
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_low');
+            await clearIntegrityIssues(rootPath, filePath);
             return null;
         }
 
-        const violations = [];
-
-        for (const atom of atoms) {
-            if (!isValidGuardTarget(atom)) continue;
-
-            // 1. Validar Data Flow si está presente
-            if (atom.dataFlow) {
-                const analyzer = new DataFlowAnalyzer(
-                    atom.dataFlow.inputs || [],
-                    atom.dataFlow.transformations || [],
-                    atom.dataFlow.outputs || []
-                );
-
-                const analysis = analyzer.analyze();
-
-                // Baja coherencia = posible lógica rota
-                if (analysis.coherence < StandardThresholds.COHERENCE_MIN) {
-                    const severity = analysis.coherence < 0.1 ? 'high' : 'medium';
-                    
-                    violations.push({
-                        atomId: atom.id,
-                        atomName: atom.name,
-                        type: 'LOW_COHERENCE',
-                        severity,
-                        message: `Atom '${atom.name}' has low data-flow coherence (${Math.round(analysis.coherence * 100)}%). Possible broken logic.`,
-                        context: createStandardContext({
-                            guardName: 'integrity-guard',
-                            atomId: atom.id,
-                            atomName: atom.name,
-                            metricValue: analysis.coherence,
-                            threshold: StandardThresholds.COHERENCE_MIN,
-                            severity,
-                            suggestedAction: 'Review data-flow logic for disconnected inputs/outputs',
-                            suggestedAlternatives: [
-                                'Remove unused inputs',
-                                'Connect dangling outputs to appropriate destinations',
-                                'Refactor into smaller, coherent functions'
-                            ],
-                            extraData: {
-                                coherence: analysis.coherence,
-                                inputs: analysis.inputs?.length || 0,
-                                outputs: analysis.outputs?.length || 0,
-                                transformationCount: analysis.transformations?.length || 0
-                            }
-                        })
-                    });
-                }
-
-                // Inputs no utilizados
-                if (analysis.unusedInputs?.length > 0) {
-                    const inputNames = analysis.unusedInputs.map(input =>
-                        typeof input === 'object' ? (input.name || JSON.stringify(input)) : input
-                    );
-                    
-                    violations.push({
-                        atomId: atom.id,
-                        atomName: atom.name,
-                        type: 'UNUSED_INPUTS',
-                        severity: 'low',
-                        message: `Atom '${atom.name}' has unused inputs: ${inputNames.join(', ')}.`,
-                        context: createStandardContext({
-                            guardName: 'integrity-guard',
-                            atomId: atom.id,
-                            atomName: atom.name,
-                            severity: 'low',
-                            suggestedAction: 'Remove unused parameters or use them in the function logic',
-                            suggestedAlternatives: [
-                                'Remove unused parameters',
-                                'Use the parameters in the function body',
-                                'Mark optional parameters as such'
-                            ],
-                            extraData: {
-                                unusedInputs: inputNames,
-                                inputCount: analysis.inputs?.length || 0
-                            }
-                        })
-                    });
-                }
-            }
-
-            // 2. Validar inconsistencias de nomenclatura
-            // Ejemplo: funciones async que no tienen await pero sí efectos secundarios marcados
-            if (atom.is_async === 0 && atom.name.toLowerCase().includes('async')) {
-                violations.push({
-                    atomId: atom.id,
-                    atomName: atom.name,
-                    type: 'NAMING_MISMATCH',
-                    severity: 'low',
-                    message: `Function '${atom.name}' is synchronous but its name suggests async behavior.`,
-                    context: createStandardContext({
-                        guardName: 'integrity-guard',
-                        atomId: atom.id,
-                        atomName: atom.name,
-                        severity: 'low',
-                        suggestedAction: 'Rename function to reflect its synchronous nature, or make it async',
-                        suggestedAlternatives: [
-                            'Rename to remove "async" from name',
-                            'Add async keyword if function should be async',
-                            'Check if missing await in the function body'
-                        ],
-                        extraData: {
-                            isAsync: atom.is_async,
-                            expectedAsync: true
-                        }
-                    })
-                });
-            }
-
-            // 3. Validar que funciones puras no tengan efectos secundarios
-            if (atom.archetype?.type === 'pure' && (atom.sharedStateAccess?.length > 0 || atom.globalReads?.length > 0)) {
-                violations.push({
-                    atomId: atom.id,
-                    atomName: atom.name,
-                    type: 'PURE_FUNCTION_SIDE_EFFECTS',
-                    severity: 'medium',
-                    message: `Pure function '${atom.name}' appears to have side effects (accesses shared state).`,
-                    context: createStandardContext({
-                        guardName: 'integrity-guard',
-                        atomId: atom.id,
-                        atomName: atom.name,
-                        severity: 'medium',
-                        suggestedAction: 'Remove side effects or change archetype to reflect impure nature',
-                        suggestedAlternatives: [
-                            'Remove access to shared state',
-                            'Pass state as parameters instead',
-                            'Update archetype classification'
-                        ],
-                        extraData: {
-                            archetype: atom.archetype,
-                            sharedStateAccess: atom.sharedStateAccess,
-                            globalReads: atom.globalReads
-                        }
-                    })
-                });
-            }
-        }
+        const violations = atoms.flatMap(analyzeAtomIntegrity);
 
         if (violations.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_high');
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_medium');
-            await clearWatcherIssue(rootPath, filePath, 'sem_data_flow_low');
+            await clearIntegrityIssues(rootPath, filePath);
             return null;
         }
 
