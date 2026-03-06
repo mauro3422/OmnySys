@@ -193,3 +193,8 @@ export {
   partitionWatcherAlertsByLifecycle,
   filterWatcherAlertsByLifecycle
 } from './watcher-issue-reconciliation.js';
+
+export {
+  normalizeWatcherIssueFilePath,
+  findOutdatedWatcherAlertIds
+} from './watcher-issue-storage.js';

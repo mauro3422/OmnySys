@@ -15,25 +15,13 @@ import {
   createWatcherIssueRecord,
   filterWatcherAlertsByLifecycle,
   findSupersededWatcherAlertIds,
+  findOutdatedWatcherAlertIds,
   mapSemanticIssueRowToWatcherAlert,
+  normalizeWatcherIssueFilePath,
   partitionWatcherAlertsByLifecycle
 } from '../../shared/compiler/index.js';
-import fs from 'fs/promises';
-import path from 'path';
-import { normalizePath } from '#shared/utils/path-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
-
-function normalizeWatcherIssueFilePath(projectPath, filePath) {
-  const rawPath = String(filePath || '').trim();
-  if (!rawPath) return rawPath;
-
-  const normalized = path.isAbsolute(rawPath)
-    ? path.relative(projectPath, rawPath)
-    : rawPath;
-
-  return normalizePath(normalized);
-}
 
 /**
  * Persiste un issue del watcher en semantic_issues (SQLite).
@@ -227,27 +215,7 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
       .slice(0, maxDelete);
     const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
 
-    const outdatedIds = [];
-    for (const alert of alerts) {
-      const id = alert?.id;
-      if (!Number.isInteger(id)) continue;
-
-      const detectedAtMs = Date.parse(alert?.detectedAt || '');
-      if (!Number.isFinite(detectedAtMs)) continue;
-
-      const relativePath = String(alert?.filePath || '');
-      if (!relativePath) continue;
-
-      const absolutePath = path.resolve(projectPath, relativePath);
-      try {
-        const stat = await fs.stat(absolutePath);
-        if (stat.mtimeMs > (detectedAtMs + 1000)) {
-          outdatedIds.push(id);
-        }
-      } catch {
-        // If the file no longer exists, let regular lifecycle/cleanup handle it.
-      }
-    }
+    const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts)).slice(0, maxDelete);
 
     const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds])].slice(0, maxDelete);
 
