@@ -10,14 +10,19 @@
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
-import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
 import { classifyCircularCycle } from '../../../shared/compiler/index.js';
 import {
-    IssueDomains,
-    createIssueType,
-    createStandardContext
-} from './guard-standards.js';
+    clearCircularIssues,
+    persistCircularIssue
+} from './circular-issue-service.js';
+import {
+    getCircularCallRelations,
+    getCircularFileImports,
+    getCircularLocalAtoms,
+    prepareFileDependencyLookup
+} from './circular-repository.js';
+import { createStandardContext } from './guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
@@ -151,15 +156,7 @@ async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
     });
 
     logger.warn(`[CIRCULAR GUARD] ${message}`);
-    await persistWatcherIssue(
-        rootPath,
-        filePath,
-        createIssueType(IssueDomains.ARCH, 'circular', 'high'),
-        'high',
-        message,
-        context
-    );
-    await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
+    await persistCircularIssue(rootPath, filePath, 'high', message, context);
 }
 
 async function persistLifecycleCycleIssue(rootPath, filePath, atom, atomCycle, atomNames) {
@@ -183,15 +180,8 @@ async function persistLifecycleCycleIssue(rootPath, filePath, atom, atomCycle, a
     });
 
     logger.info(`[CIRCULAR FUNCTION GUARD][LIFECYCLE] ${message}`);
-    await persistWatcherIssue(
-        rootPath,
-        filePath,
-        createIssueType(IssueDomains.ARCH, 'circular', 'low'),
-        'low',
-        message,
-        context
-    );
-    await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
+    await persistCircularIssue(rootPath, filePath, 'low', message, context);
+    await clearCircularIssues(rootPath, filePath);
     return context;
 }
 
@@ -217,25 +207,13 @@ async function persistFunctionalCycleIssue(rootPath, filePath, atom, atomCycle, 
     });
 
     logger.warn(`[CIRCULAR FUNCTION GUARD] ${message}`);
-    await persistWatcherIssue(
-        rootPath,
-        filePath,
-        createIssueType(IssueDomains.ARCH, 'circular', 'high'),
-        'high',
-        message,
-        context
-    );
+    await persistCircularIssue(rootPath, filePath, 'high', message, context);
     return context;
 }
 
 async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, fileCycle) {
     try {
-        const relations = repo.db.prepare(`
-            SELECT source_id, target_id
-            FROM atom_relations
-            WHERE relation_type = 'calls'
-        `).all();
-
+        const relations = getCircularCallRelations(repo?.db);
         const callGraph = mergeLocalCalls(buildCallGraph(relations), localAtoms);
 
         for (const atom of localAtoms) {
@@ -249,7 +227,7 @@ async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, f
 
             if (cycleClassification === 'algorithmic') {
                 logger.debug(`[CIRCULAR FUNCTION GUARD][ALGORITHMIC] Ignoring intentional recursion: ${atomNames.join(' âž” ')}`);
-                await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
+                await clearCircularIssues(rootPath, filePath);
                 continue;
             }
 
@@ -262,8 +240,7 @@ async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, f
             return { fileCycle, atomCycle, context };
         }
 
-        await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
-        await clearWatcherIssue(rootPath, filePath, 'arch_circular_call_high');
+        await clearCircularIssues(rootPath, filePath);
         return { fileCycle, atomCycle: null };
     } catch (error) {
         logger.debug(`[CIRCULAR FUNCTION GUARD][SKIP] ${relPath}: ${error.message}`);
@@ -280,22 +257,17 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
     }
 
     try {
-        const allFiles = repo.db.prepare('SELECT path, imports_json FROM files').all();
+        const allFiles = getCircularFileImports(repo.db);
         const fileGraph = buildFileGraph(allFiles);
         const fileCycle = findCycleDFS(relPath, (id) => fileGraph.get(id));
 
         if (fileCycle) {
             await persistModuleCycleIssue(rootPath, filePath, fileCycle);
         } else {
-            await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
-            await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
+            await clearCircularIssues(rootPath, filePath);
         }
 
-        const localAtoms = repo.db.prepare(`
-            SELECT id, calls_json
-            FROM atoms
-            WHERE file_path = ?
-        `).all(relPath);
+        const localAtoms = getCircularLocalAtoms(repo.db, relPath);
 
         if (localAtoms.length === 0) {
             return { fileCycle, atomCycle: null };
@@ -321,14 +293,8 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
         const queue = [{ path: startNode, chain: [startNode] }];
         const visited = new Set();
 
-        let getDeps;
-        try {
-            getDeps = repo.db.prepare(`
-                SELECT DISTINCT target_path
-                FROM file_dependencies
-                WHERE source_path = ?
-            `);
-        } catch {
+        const getDeps = prepareFileDependencyLookup(repo.db);
+        if (!getDeps) {
             return null;
         }
 
@@ -356,8 +322,7 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
         }
 
         if (cyclesFound.length === 0) {
-            await clearWatcherIssueFamily(rootPath, filePath, 'arch_circular');
-            await clearWatcherIssue(rootPath, filePath, 'arch_circular_import_high');
+            await clearCircularIssues(rootPath, filePath);
             return [];
         }
 
@@ -381,14 +346,7 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
             }
         });
 
-        await persistWatcherIssue(
-            rootPath,
-            filePath,
-            createIssueType(IssueDomains.ARCH, 'circular', 'high'),
-            'high',
-            `Circular dependency: ${cycleStr}`,
-            context
-        );
+        await persistCircularIssue(rootPath, filePath, 'high', `Circular dependency: ${cycleStr}`, context);
 
         EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound });
         return cyclesFound;
