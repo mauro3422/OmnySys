@@ -442,26 +442,48 @@ app.post('/restart', express.json(), async (req, res) => {
   }
 });
 
-const httpServer = app.listen(port, host, () => {
-  logger.info(`🌐 OmnySys MCP HTTP daemon listening on http://${host}:${port}/mcp`);
-  logger.info(`📂 Project: ${projectPath}`);
-});
+const isProxyMode = process.env.OMNYSYS_PROXY_MODE === '1';
+const bindRetryDelayMs = process.platform === 'win32' ? 1000 : 300;
+const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 8 : 3) : 0;
+let httpServer = null;
 
-httpServer.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
-    // If we are under proxy management, returning 0 causes the proxy to think
-    // this was a clean exit and it commits suicide. We must return 1 so the proxy
-    // interprets it as a crash and waits to respawn again until the OS frees the port!
-    if (process.env.OMNYSYS_PROXY_MODE === '1') {
-      logger.error('Proxy Mode active. Port still locked by OS. Exiting with code 1 to force proxy retry loop.');
+async function startHttpServer(attempt = 0) {
+  return await new Promise((resolve) => {
+    const server = app.listen(port, host, () => {
+      httpServer = server;
+      logger.info(`🌐 OmnySys MCP HTTP daemon listening on http://${host}:${port}/mcp`);
+      logger.info(`📂 Project: ${projectPath}`);
+      resolve(server);
+    });
+
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        server.close(() => { });
+
+        if (isProxyMode && attempt < bindRetryLimit) {
+          const nextAttempt = attempt + 1;
+          logger.warn(`Port ${port} still busy after restart. Retrying bind in ${bindRetryDelayMs}ms (${nextAttempt}/${bindRetryLimit})...`);
+          setTimeout(() => {
+            resolve(startHttpServer(nextAttempt));
+          }, bindRetryDelayMs);
+          return;
+        }
+
+        logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
+        if (isProxyMode) {
+          logger.error('Proxy Mode active. Port remained locked after bind retries. Exiting with code 1 to let proxy retry cleanly.');
+          process.exit(1);
+        }
+        process.exit(0);
+      }
+
+      logger.error(`HTTP daemon startup failed: ${error.message}`);
       process.exit(1);
-    }
-    process.exit(0);
-  }
-  logger.error(`HTTP daemon startup failed: ${error.message}`);
-  process.exit(1);
-});
+    });
+  });
+}
+
+await startHttpServer();
 
 core.initialize().then(async () => {
   try {

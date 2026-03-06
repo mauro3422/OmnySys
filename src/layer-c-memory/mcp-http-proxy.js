@@ -28,6 +28,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import http from 'http';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
@@ -55,10 +56,53 @@ const port = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
 let worker = null;
 let restartScheduled = false;
 let restartCount = 0;
+let respawnTimer = null;
+
+function clearRespawnTimer() {
+    if (respawnTimer) {
+        clearTimeout(respawnTimer);
+        respawnTimer = null;
+    }
+}
+
+function scheduleRespawn(delayMs, extraArgs = []) {
+    clearRespawnTimer();
+    respawnTimer = setTimeout(() => {
+        respawnTimer = null;
+        spawnWorker(extraArgs);
+    }, delayMs);
+}
+
+async function detectHealthyDaemon() {
+    return await new Promise((resolve) => {
+        try {
+            const req = http.get(`http://127.0.0.1:${port}/health`, { timeout: 1500 }, (res) => {
+                let body = '';
+                res.on('data', (chunk) => { body += chunk; });
+                res.on('end', () => {
+                    try {
+                        const json = JSON.parse(body);
+                        resolve(json?.status === 'healthy' && json?.service === 'omnysys-mcp-http');
+                    } catch {
+                        resolve(false);
+                    }
+                });
+            });
+
+            req.on('error', () => resolve(false));
+            req.on('timeout', () => {
+                req.destroy();
+                resolve(false);
+            });
+        } catch {
+            resolve(false);
+        }
+    });
+}
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
 function spawnWorker(extraArgs = []) {
-    const ts = new Date().toISOString().slice(11, 23);
+    clearRespawnTimer();
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
     // Inherit memory flags, add defaults
@@ -94,6 +138,7 @@ function spawnWorker(extraArgs = []) {
         if (msg?.type === 'restart') {
             if (restartScheduled) return;
             restartScheduled = true;
+            clearRespawnTimer();
 
             log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
 
@@ -113,7 +158,7 @@ function spawnWorker(extraArgs = []) {
     });
 
     // ── Worker exit handler ───────────────────────────────────────────────────
-    worker.on('close', (code, signal) => {
+    worker.on('close', async (code, signal) => {
         log(`Worker exited (code=${code}, signal=${signal})`);
 
         if (restartScheduled) {
@@ -122,11 +167,15 @@ function spawnWorker(extraArgs = []) {
             log('🚀 Respawning worker with fresh ESM cache...');
             // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
             const delay = process.platform === 'win32' ? 3000 : 1000;
-            setTimeout(() => spawnWorker(nextArgs), delay);
+            scheduleRespawn(delay, nextArgs);
         } else if (code !== 0) {
+            if (await detectHealthyDaemon()) {
+                log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
+                process.exit(0);
+            }
             log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
             // Increased delay for crashes to avoid tight loops on port conflict
-            setTimeout(spawnWorker, 5000);
+            scheduleRespawn(5000);
         } else {
             log('Worker exited cleanly. Proxy shutting down.');
             process.exit(0);
@@ -141,6 +190,7 @@ function spawnWorker(extraArgs = []) {
 // ── Proxy shutdown ────────────────────────────────────────────────────────────
 function shutdown() {
     log('Proxy SIGINT/SIGTERM — shutting down worker...');
+    clearRespawnTimer();
     if (worker) {
         worker.kill('SIGTERM');
     }
@@ -153,4 +203,10 @@ process.on('SIGTERM', shutdown);
 // ── Start ─────────────────────────────────────────────────────────────────────
 log(`OmnySys MCP HTTP Proxy starting — project: ${projectPath}, port: ${port}`);
 log(`Worker: ${workerPath}`);
+
+if (await detectHealthyDaemon()) {
+    log('✅ Existing healthy OmnySys daemon detected. Proxy will not spawn a duplicate worker.');
+    process.exit(0);
+}
+
 spawnWorker();
