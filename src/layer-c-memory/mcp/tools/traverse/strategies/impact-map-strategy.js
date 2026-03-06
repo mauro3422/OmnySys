@@ -1,5 +1,6 @@
 import { getFileAnalysis, getFileDependents } from '../../../../query/apis/file-api.js';
 import { getTransitiveDependents } from '../../../../query/queries/dependency-query.js';
+import { summarizeSharedStateHotspots } from '../../../../../shared/compiler/index.js';
 
 export class ImpactMapStrategy {
     async execute(projectPath, filePath, options) {
@@ -22,13 +23,14 @@ export class ImpactMapStrategy {
         };
 
         if (options.includeSemantic) {
+            const sharedState = summarizeSharedStateHotspots(fileData.semanticAnalysis?.sharedState || {});
             result.semanticSummary = {
-                hasSharedState: (fileData.semanticAnalysis?.sharedState?.reads?.length || 0) > 0 ||
-                    (fileData.semanticAnalysis?.sharedState?.writes?.length || 0) > 0,
+                hasSharedState: sharedState.hasSharedState,
                 hasEvents: (fileData.semanticAnalysis?.eventPatterns?.eventEmitters?.length || 0) > 0 ||
                     (fileData.semanticAnalysis?.eventPatterns?.eventListeners?.length || 0) > 0,
-                sharedStateReads: fileData.semanticAnalysis?.sharedState?.reads || [],
-                sharedStateWrites: fileData.semanticAnalysis?.sharedState?.writes || [],
+                sharedStateReads: sharedState.reads,
+                sharedStateWrites: sharedState.writes,
+                sharedStateHotspots: sharedState.topContentionKeys,
                 eventEmitters: fileData.semanticAnalysis?.eventPatterns?.eventEmitters || [],
                 eventListeners: fileData.semanticAnalysis?.eventPatterns?.eventListeners || []
             };

@@ -19,6 +19,7 @@ import { checkEditExportConflicts } from './exports.js';
 import { analyzeFullImpact } from './analysis.js';
 import { analyzeBlastRadius } from './graph-alerts.js';
 import { normalizeAtomicPath } from './write-orchestrator.js';
+import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
 
 export class AtomicEditorTool extends AtomicMutationTool {
     constructor() {
@@ -158,6 +159,7 @@ export class AtomicEditorTool extends AtomicMutationTool {
         // Mapeo Final de Respuesta MCP
         const { reindexResult, autoFixed, autoFixedFiles } = txResult.analysisContext;
         const impact = await analyzeFullImpact(filePath, this.projectPath, previousAtoms, reindexResult.atoms);
+        const semanticPurity = summarizeAtomSemanticPurity(reindexResult.atoms || []);
 
         return this.formatSuccess({
             file: filePath,
@@ -175,6 +177,7 @@ export class AtomicEditorTool extends AtomicMutationTool {
             })),
             autoFixed,
             autoFixedFiles,
+            semanticPurity,
             warnings: preValidation.exportConflicts.warnings.length > 0 ? preValidation.exportConflicts.warnings : undefined,
             blastRadius: preValidation.blastRadius,
             solidViolations: Object.values(preValidation.solidViolations).some(v => v !== null) ? preValidation.solidViolations : undefined

@@ -9,6 +9,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { evaluateAtomTestability } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:guards:standards');
 
@@ -284,6 +285,14 @@ export function extractAtomMetrics(atom) {
     };
 }
 
+export function evaluateGuardTargetTestability(atom) {
+    const evaluation = evaluateAtomTestability(atom);
+    return {
+        ...evaluation,
+        isHighSignal: evaluation.score <= 69 || evaluation.signals.isAsync || evaluation.signals.isExported
+    };
+}
+
 /**
  * ============================================================================
  * GENERADORES DE MENSAJES
@@ -421,6 +430,7 @@ export default {
     isValidGuardTarget,
     isLowSignalName,
     extractAtomMetrics,
+    evaluateGuardTargetTestability,
     formatDuplicateMessage,
     formatImpactMessage,
     formatAsyncSafetyMessage,

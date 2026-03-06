@@ -5,6 +5,7 @@
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getAtomsByName } from '#layer-c/storage/index.js';
+import { summarizeAtomTestability } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:atomic:exports');
 
@@ -70,9 +71,11 @@ export async function checkExportConflictsInGraph(exports, projectPath, excludeP
       );
 
       if (existing.length > 0) {
+        const testability = summarizeAtomTestability(existing);
         conflicts.push({
           name: exportItem.name,
           type: exportItem.type,
+          testability,
           existingLocations: existing.map(e => ({
             filePath: e.filePath,
             line: e.line,
@@ -136,12 +139,14 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
 
       if (existing.length > 0) {
         const critical = existing.filter(e => (e.calledBy?.length || 0) > 0);
+        const testability = summarizeAtomTestability(existing);
 
         conflicts.globalConflicts.push({
           name: exportItem.name,
           type: exportItem.type,
           isNew: addedExports.some(ae => ae.name === exportItem.name),
           isRename: conflicts.renamedExports.some(re => re.to === exportItem.name),
+          testability,
           existingLocations: existing.map(e => ({
             filePath: e.filePath,
             line: e.line,

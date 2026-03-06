@@ -5,6 +5,7 @@
 import Database from 'better-sqlite3';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { evaluateAtomTestability } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -99,7 +100,10 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
             return [];
         }
 
-        const severity = disconnected.some((atom) => (atom.complexity || 0) >= 20) ? 'high' : 'medium';
+        const severity = disconnected.some((atom) => {
+            const evaluation = evaluateAtomTestability(atom);
+            return evaluation.severity === 'high' || evaluation.signals.complexity >= 20;
+        }) ? 'high' : 'medium';
         const issueType = createIssueType(IssueDomains.ARCH, 'pipeline_orphan', severity);
         const message = `Detected ${disconnected.length} exported pipeline atom(s) with no callers, no callees, and no file-level import evidence`;
 

@@ -11,7 +11,7 @@ import {
     createStandardContext,
     StandardSuggestions,
     isValidGuardTarget,
-    extractAtomMetrics
+    evaluateGuardTargetTestability
 } from './guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:metadata-completeness');
@@ -42,8 +42,7 @@ export async function detectMetadataCompleteness(rootPath, filePath, EventEmitte
 
         const ratio = coverage.missingRatio;
         const hasHighSignalAtom = missingAtoms.some((atom) => {
-            const metrics = extractAtomMetrics(atom);
-            return metrics.complexity >= 10 || metrics.isAsync || metrics.isExported;
+            return evaluateGuardTargetTestability(atom).isHighSignal;
         });
 
         let severity = null;

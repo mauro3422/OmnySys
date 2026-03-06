@@ -68,6 +68,54 @@ function buildSuggestedTarget(id, priority, rationale, recommendation) {
   };
 }
 
+function buildCanonicalAdoptionCoverage(canonicalFamilies = [], adoptionGaps = []) {
+  const totalFamilies = canonicalFamilies.length;
+  const adoptedFamilies = canonicalFamilies.filter((family) =>
+    !adoptionGaps.some((gap) => gap.area === family.id)
+  ).length;
+
+  return {
+    totalFamilies,
+    adoptedFamilies,
+    adoptionRatio: totalFamilies > 0 ? Number((adoptedFamilies / totalFamilies).toFixed(3)) : 0,
+    gapFamilies: adoptionGaps.length
+  };
+}
+
+function buildMissingCanonicalSurfaceReport(adoptionGaps = []) {
+  const byArea = Object.fromEntries(adoptionGaps.map((gap) => [gap.area, gap.count]));
+  const surfaces = [];
+
+  if ((byArea.testability || 0) > 0 && (byArea.semantic_purity || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'refactoring_signal_surfaces',
+      'high',
+      'Testability and semantic-purity still surface together across multiple MCP consumers.',
+      'Prefer shared evaluation + summary/reporting APIs before adding more per-tool heuristics.'
+    ));
+  }
+
+  if ((byArea.async_error || 0) > 0 || (byArea.service_boundary || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'runtime_boundary_surfaces',
+      'medium',
+      'Async recovery and service-boundary drift often appear together in runtime-facing modules.',
+      'Promote runtime boundary checks through shared compiler APIs before handlers/tools reclassify network and error boundaries inline.'
+    ));
+  }
+
+  if ((byArea.live_row_drift || 0) > 0 || (byArea.pipeline_orphans || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'sync_and_health_surfaces',
+      'medium',
+      'Health/pipeline reporting still has residual sync-style adoption gaps.',
+      'Use canonical synchronization/reporting entrypoints before exposing support-table or orphan metrics in MCP.'
+    ));
+  }
+
+  return surfaces;
+}
+
 export function buildCompilerStandardizationReport({
   policySummary = {},
   watcherAlerts = [],
@@ -125,9 +173,12 @@ export function buildCompilerStandardizationReport({
   const stableCanonicalFamilies = CANONICAL_COMPILER_FAMILIES.filter((family) =>
     !adoptionGaps.some((gap) => gap.area === family.id)
   );
+  const adoptionCoverage = buildCanonicalAdoptionCoverage(CANONICAL_COMPILER_FAMILIES, adoptionGaps);
+  const missingCanonicalSurfaces = buildMissingCanonicalSurfaceReport(adoptionGaps);
 
   const totalRemediationItems = compilerRemediation?.totalItems || 0;
   const nextAction = missingCanonicalApis[0]?.recommendation
+    || missingCanonicalSurfaces[0]?.recommendation
     || (adoptionGaps.length > 0
       ? 'Reduce policy drift in existing canonical families before adding new ones.'
       : 'No missing canonical family detected right now; focus on adopting the existing ones consistently.');
@@ -136,11 +187,14 @@ export function buildCompilerStandardizationReport({
     canonicalFamilies: CANONICAL_COMPILER_FAMILIES,
     stableCanonicalFamilies,
     adoptionGaps,
+    adoptionCoverage,
     missingCanonicalApis,
+    missingCanonicalSurfaces,
     summary: {
       canonicalFamilyCount: CANONICAL_COMPILER_FAMILIES.length,
       adoptionGapCount: adoptionGaps.length,
       missingCanonicalApiCount: missingCanonicalApis.length,
+      missingCanonicalSurfaceCount: missingCanonicalSurfaces.length,
       totalRemediationItems,
       nextAction
     }

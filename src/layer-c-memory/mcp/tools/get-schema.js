@@ -15,7 +15,11 @@
 
 import { getAllAtoms } from '#layer-c/storage/index.js';
 import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
-import { ensureLiveRowSync } from '../../../shared/compiler/index.js';
+import {
+  ensureLiveRowSync,
+  summarizeAtomSemanticPurity,
+  summarizeAtomTestability
+} from '../../../shared/compiler/index.js';
 import { getDatabase } from '../../storage/database/connection.js';
 import { getRegisteredTables, getTableDefinition, getTableColumns, generateSchemaReport, exportSchemaSQL } from '../../storage/database/schema-registry.js';
 
@@ -384,6 +388,10 @@ async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focus
     matchingAtoms: filtered.length,
     inventory,
     keyMetrics: buildKeyMetrics(filtered),
+    compilerEvaluation: {
+      testability: summarizeAtomTestability(filtered),
+      semanticPurity: summarizeAtomSemanticPurity(filtered)
+    },
     fieldCoverage: buildFieldCoverage(),
     correlations: computeCorrelations(analysisSet),
     evolution: focusField ? { [focusField]: fieldEvolution(analysisSet, focusField) } : undefined,

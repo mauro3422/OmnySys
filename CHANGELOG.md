@@ -8,6 +8,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.99 - Compiler Explainability & Full Canonical Adoption](changelog/v0.9.99.md)
+- [v0.9.98 - Compiler Foundations & Docs Sync](changelog/v0.9.98.md)
+- [v0.9.97 - Canonical Testability & Semantic Purity APIs](changelog/v0.9.97.md)
 - [v0.9.96 - Canonical Persistence Sync & Runtime Drift Reduction](changelog/v0.9.96.md)
 - [v0.9.95 - Compiler Canonicalization & Runtime Self-Healing](changelog/v0.9.95.md)
 - [v0.9.94 - File Watcher Guard System v2.0](changelog/v0.9.94.md)
@@ -20,6 +23,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **0.9.99** | 2026-03-06 | Compiler explainability, signal confidence, telemetry provenance and full canonical adoption closure. |
+| **0.9.98** | 2026-03-06 | Compiler foundations, docs sync, base compiler/runtime files committed and indexed cleanly. |
+| **0.9.97** | 2026-03-06 | Canonical testability and semantic-purity APIs wired into MCP/query consumers. |
 | **0.9.96** | 2026-03-06 | Canonical persistence sync, manual runtime restart, service-boundary cleanup, detector hardening. |
 | **0.9.95** | 2026-03-06 | Compiler canonicalization, remediation/reporting unification, watcher diagnostics lifecycle, runtime ownership hardening. |
 | **0.9.94** | 2026-03-05 | File Watcher Guard System v2.0, guard standardization, error-handling detection fix. |
@@ -31,20 +37,20 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.96 (2026-03-06)
+## Latest Release: v0.9.99 (2026-03-06)
 
-**Canonical Persistence Sync & Runtime Drift Reduction**
+**Compiler Explainability & Full Canonical Adoption**
 
 ### Key Achievements
 
-1. New canonical persistence bridge in `shared/compiler` for indexed files, stale metadata cleanup and import orphan emission.
-2. Live-row sync now acts as the runtime entrypoint for DB drift reconciliation across MCP/query consumers.
-3. Runtime restart behavior is decoupled from DB/cache refresh through manual restart mode and better pending-restart visibility.
-4. Service-boundary, canonical-extension and async-error detectors were hardened so they report code reality instead of comments/strings/noisy helper names.
-5. Policy drift was reduced to the remaining real backlog: mostly `testability`, `semantic_purity` and one shared-state hotspot family.
+1. The compiler now exposes `signalConfidence`, `telemetryProvenance`, `compilerExplainability` and canonical-adoption coverage to agents through MCP status surfaces.
+2. Canonical shared-state reporting was added and connected to watcher/MCP consumers instead of ad hoc contention scans.
+3. The remaining `testability`, `semantic_purity` and `shared_state_hotspots` adoption gaps were closed.
+4. Direct conformance scans now return `0` findings for those policy families and status reports `adoptionCoverage: 21/21`.
+5. The remaining canonical backlog is now explicit and narrow: `centrality_coverage_adoption` plus normal structural runtime debt.
 
 ## What To Do Next
 
-1. Use the new standardization report to close adoption gaps instead of adding more ad-hoc helpers.
-2. Reduce complexity in the compiler runtime itself, especially policy/conformance modules and bridge logic.
-3. Keep historical release details in `changelog/` and use this file only as the live release index.
+1. Adopt the canonical centrality-coverage policy in the remaining health/pipeline/watcher consumers.
+2. Reduce complexity in runtime-heavy modules like atomic-edit tools and large coordinators.
+3. Keep expanding explainability surfaces only through shared/compiler entry points, not per-tool heuristics.

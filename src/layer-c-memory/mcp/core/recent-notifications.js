@@ -1,6 +1,10 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 import {
+  buildRestartLifecycleGuidance,
+  buildTelemetryProvenance,
+  classifySignalConfidence,
   summarizeCompilerDiagnostics,
+  summarizeSignalConfidence,
   summarizeWatcherAlerts,
   summarizeWatcherAlertLifecycle
 } from '../../../shared/compiler/index.js';
@@ -13,6 +17,24 @@ function mapLoggerEntry(entry) {
     severity: entry.level === 'error' ? 'high' : (entry.level === 'warn' ? 'medium' : 'low'),
     message: entry.message,
     time: new Date(entry.time).toISOString()
+  };
+}
+
+function buildNotificationsProvenance(watcherLifecycle, watcherEntries = []) {
+  const restartGuidance = buildRestartLifecycleGuidance({
+    proxyManaged: true,
+    trueRestart: false,
+    inProcessOnly: true
+  });
+
+  return {
+    ...buildTelemetryProvenance({
+      source: 'watcher+logger',
+      watcherLifecycle,
+      pendingRuntimeRestartFiles: [],
+      runtimeRestartMode: 'manual'
+    }),
+    restartLifecycle: restartGuidance
   };
 }
 
@@ -35,28 +57,35 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     pruneExpired: true
   });
   const watcherEntries = watcherResult.alerts;
-  const watcherSummary = summarizeWatcherAlerts(watcherEntries);
-  const watcherLifecycle = summarizeWatcherAlertLifecycle(watcherEntries);
-  const compilerDiagnostics = summarizeCompilerDiagnostics(watcherEntries);
+  const watcherEntriesWithConfidence = watcherEntries.map((entry) => ({
+    ...entry,
+    confidence: classifySignalConfidence(entry)
+  }));
+  const watcherSummary = summarizeWatcherAlerts(watcherEntriesWithConfidence);
+  const watcherLifecycle = summarizeWatcherAlertLifecycle(watcherEntriesWithConfidence);
+  const compilerDiagnostics = summarizeCompilerDiagnostics(watcherEntriesWithConfidence);
+  const signalConfidence = summarizeSignalConfidence(watcherEntriesWithConfidence);
 
   const warnings =
     loggerEntries.filter((entry) => entry.level === 'warn').length +
-    watcherEntries.filter((entry) => entry.severity === 'medium' || entry.severity === 'low').length;
+    watcherEntriesWithConfidence.filter((entry) => entry.severity === 'medium' || entry.severity === 'low').length;
 
   const errors =
     loggerEntries.filter((entry) => entry.level === 'error').length +
-    watcherEntries.filter((entry) => entry.severity === 'high').length;
+    watcherEntriesWithConfidence.filter((entry) => entry.severity === 'high').length;
 
   return {
-    count: loggerEntries.length + watcherEntries.length,
+    count: loggerEntries.length + watcherEntriesWithConfidence.length,
     warnings,
     errors,
     logs: loggerEntries,
-    watcherAlerts: watcherEntries,
+    watcherAlerts: watcherEntriesWithConfidence,
     watcherSummary,
     compilerDiagnostics,
+    signalConfidence,
     watcherLifecycle,
-    watcherReconciliation: watcherResult.reconciliation
+    watcherReconciliation: watcherResult.reconciliation,
+    provenance: buildNotificationsProvenance(watcherLifecycle, watcherEntriesWithConfidence)
   };
 }
 
@@ -72,7 +101,12 @@ export function normalizeRecentNotifications(notifications = {}) {
     watcherAlerts,
     watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts),
     compilerDiagnostics: notifications.compilerDiagnostics || summarizeCompilerDiagnostics(watcherAlerts),
+    signalConfidence: notifications.signalConfidence || summarizeSignalConfidence(watcherAlerts),
     watcherLifecycle: notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts),
-    watcherReconciliation: notifications.watcherReconciliation || { deletedExpired: 0, summary: { total: watcherAlerts.length, byStatus: {} } }
+    watcherReconciliation: notifications.watcherReconciliation || { deletedExpired: 0, summary: { total: watcherAlerts.length, byStatus: {} } },
+    provenance: notifications.provenance || buildNotificationsProvenance(
+      notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts),
+      watcherAlerts
+    )
   };
 }

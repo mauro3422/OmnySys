@@ -16,6 +16,7 @@ import {
     analyzeExports,
     computeWriteImpact
 } from './write-orchestrator.js';
+import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
 
 export class AtomicWriterTool extends AtomicMutationTool {
     constructor() {
@@ -111,7 +112,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
 
             return {
                 valid: true,
-                analysisContext: { impact, analysis, circularCheck }
+                analysisContext: { impact, analysis, circularCheck, reindexResult }
             };
         };
 
@@ -120,7 +121,8 @@ export class AtomicWriterTool extends AtomicMutationTool {
         if (!txResult.success) return txResult; // Propagar rollback
 
         // Mapeo Final de Respuesta MCP
-        const { impact, circularCheck } = txResult.analysisContext;
+        const { impact, circularCheck, reindexResult } = txResult.analysisContext;
+        const semanticPurity = summarizeAtomSemanticPurity(reindexResult?.atoms || []);
         const response = this.formatSuccess({
             file: filePath,
             impact: impact ? {
@@ -135,6 +137,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
                 exports: { count: analysis.exports.length, conflicts: analysis.conflicts.length },
                 circular: circularCheck?.summary?.totalCircular || 0
             },
+            semanticPurity,
             refactoring: analysis.refactoring.duplicates.length > 0 ? analysis.refactoring : undefined
         }, 'Atomic write successful');
 

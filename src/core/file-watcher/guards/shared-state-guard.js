@@ -10,6 +10,7 @@
 
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { summarizeSharedStateHotspots } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -74,10 +75,17 @@ export async function detectSharedStateContention(rootPath, filePath, EventEmitt
         }
 
         // Determinar severidad usando estándar
-        let severity = severityFromSharedState(maxContention);
+        const sharedStateSummary = summarizeSharedStateHotspots({
+            totalLinks: totalContention,
+            topContentionKeys: hotAtom ? [{ key: hotAtom.name, count: maxContention }] : []
+        }, {
+            mediumThreshold: contentionThreshold,
+            highThreshold: criticalThreshold
+        });
+        let severity = severityFromSharedState(sharedStateSummary.maxContention);
         
         // Si no hay contención individual pero hay mucha difusa
-        if (!severity && totalContention > criticalThreshold * 1.5) {
+        if (!severity && sharedStateSummary.totalLinks > criticalThreshold * 1.5) {
             severity = 'low';
         }
 
@@ -119,11 +127,12 @@ export async function detectSharedStateContention(rootPath, filePath, EventEmitt
                 'Consider immutable state patterns'
             ],
             extraData: {
-                maxContention,
-                totalContention,
+                maxContention: sharedStateSummary.maxContention,
+                totalContention: sharedStateSummary.totalLinks,
                 contentionThreshold,
                 criticalThreshold,
-                atomCount: atoms.length
+                atomCount: atoms.length,
+                hottestKey: sharedStateSummary.hottestKey
             }
         });
 

@@ -6,7 +6,13 @@
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 import { collectRecentNotifications, normalizeRecentNotifications } from '../core/recent-notifications.js';
-import { buildCompilerReadinessStatus } from '../../../shared/compiler/index.js';
+import {
+  buildCompilerReadinessStatus,
+  buildCompilerStandardizationReport,
+  buildTelemetryProvenance,
+  summarizeSignalConfidence,
+  summarizeCompilerPolicyDrift
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -29,16 +35,8 @@ function getPhase2Status(orchestrator) {
   return orchestrator?.phase2Status || null;
 }
 
-export async function get_server_status(args, context) {
-  const { orchestrator, cache, projectPath, server } = context;
-  const phase2Status = getPhase2Status(orchestrator);
-  const phase2InProgress = !!phase2Status?.inProgress;
-  const cachedMetadata = getCachedMetadata(server, cache);
-  const cachedCounts = getCachedCounts(cache, cachedMetadata);
-
-  logger.info('[Tool] get_server_status()');
-
-  const status = {
+function buildBaseStatus(server, projectPath, phase2InProgress) {
+  return {
     initialized: server?.initialized || false,
     initializing: !!server && !server.initialized,
     project: projectPath,
@@ -46,18 +44,33 @@ export async function get_server_status(args, context) {
     timestamp: new Date().toISOString(),
     telemetryMode: phase2InProgress ? 'fast_phase2' : 'full'
   };
+}
 
+function buildNodeVitals(server) {
+  return {
+    uptime: Math.round((Date.now() - server.startTime) / 1000),
+    memory: process.memoryUsage(),
+    activeHandles: (typeof process._getActiveHandles === 'function')
+      ? process._getActiveHandles().length
+      : 'N/A'
+  };
+}
+
+function attachOrchestratorStatus(status, orchestrator) {
   if (orchestrator) {
     try {
       status.orchestrator = orchestrator.getStatus ? orchestrator.getStatus() : { status: 'initializing' };
     } catch (error) {
       status.orchestrator = { status: 'error', message: error.message };
     }
-  } else {
-    status.orchestrator = { status: 'not_ready', message: 'Orchestrator is initializing' };
+    return;
   }
 
-  status.hotReload = server?.hotReloadManager?.getStats?.() || {
+  status.orchestrator = { status: 'not_ready', message: 'Orchestrator is initializing' };
+}
+
+function buildHotReloadStatus(server) {
+  return server?.hotReloadManager?.getStats?.() || {
     isWatching: false,
     isReloading: false,
     runtimeRestartMode: server?.runtimeRestartMode || 'manual',
@@ -66,69 +79,78 @@ export async function get_server_status(args, context) {
       files: Array.from(server?._pendingHotReloadRestartFiles || [])
     }
   };
+}
 
-  if (phase2InProgress) {
-    status.metadata = {
-      totalFiles: cachedCounts.totalFiles,
-      totalFunctions: cachedCounts.totalAtoms,
-      lastAnalyzed: getLastAnalyzed(cachedMetadata),
-      liveAtomCount: cachedCounts.totalAtoms,
-      liveFileCount: cachedCounts.totalFiles,
-      phase2PendingFiles: phase2Status.pendingFiles,
-      phase2CompletedFiles: phase2Status.completedFiles,
-      societiesCount: null
-    };
+async function loadNotifications(projectPath) {
+  return normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
+    clearLoggerBuffer: false,
+    watcherLimit: 20
+  }));
+}
 
-    status.cache = cache?.getStats ? cache.getStats() : { status: 'initializing' };
-    status.nodeVitals = {
-      uptime: Math.round((Date.now() - server.startTime) / 1000),
-      memory: process.memoryUsage(),
-      activeHandles: (typeof process._getActiveHandles === 'function')
-        ? process._getActiveHandles().length
-        : 'N/A'
-    };
+function attachNotificationSignals(status, notifications) {
+  status.recentNotifications = notifications;
+  status.signalConfidence = notifications.signalConfidence || summarizeSignalConfidence(notifications.watcherAlerts || []);
+}
 
-    status.sharedState = {
-      status: 'settling',
-      message: 'Phase 2 deep scan in progress; global semantic metrics may lag.'
-    };
+function attachPhase2Status(status, server, cache, cachedMetadata, cachedCounts, phase2Status, notifications) {
+  status.metadata = {
+    totalFiles: cachedCounts.totalFiles,
+    totalFunctions: cachedCounts.totalAtoms,
+    lastAnalyzed: getLastAnalyzed(cachedMetadata),
+    liveAtomCount: cachedCounts.totalAtoms,
+    liveFileCount: cachedCounts.totalFiles,
+    phase2PendingFiles: phase2Status.pendingFiles,
+    phase2CompletedFiles: phase2Status.completedFiles,
+    societiesCount: null
+  };
 
-    status.background = {
-      phase2PendingFiles: phase2Status.pendingFiles,
-      phase2CompletedFiles: phase2Status.completedFiles,
-      societiesCount: null,
-      phase2: phase2Status
-    };
+  status.cache = cache?.getStats ? cache.getStats() : { status: 'initializing' };
+  status.nodeVitals = buildNodeVitals(server);
+  status.sharedState = {
+    status: 'settling',
+    message: 'Phase 2 deep scan in progress; global semantic metrics may lag.'
+  };
+  status.background = {
+    phase2PendingFiles: phase2Status.pendingFiles,
+    phase2CompletedFiles: phase2Status.completedFiles,
+    societiesCount: null,
+    phase2: phase2Status
+  };
+  status.mcpSessions = {
+    totalActive: server.sessions?.size || 0,
+    totalPersistent: null,
+    totalPersistentActive: null,
+    uniqueClients: server.sessions?.size || 0,
+    clientsWithDuplicates: null,
+    health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
+  };
+  status.compilerReadiness = {
+    ready: false,
+    checks: {
+      phase2Complete: false,
+      societiesReady: false,
+      dedupHealthy: true,
+      sessionCountsAligned: true
+    },
+    warnings: [
+      `Phase 2 deep scan still running (${phase2Status.processedFiles}/${phase2Status.totalFiles}, ${phase2Status.percentComplete}%).`,
+      'Global metrics are still settling; use atom/file-level queries for fresh detail.'
+    ]
+  };
+  status.telemetryProvenance = buildTelemetryProvenance({
+    source: 'status.phase2',
+    phase2PendingFiles: phase2Status.pendingFiles,
+    runtimeRestartMode: status.hotReload.runtimeRestartMode,
+    pendingRuntimeRestartFiles: status.hotReload.pendingRuntimeRestart?.files || [],
+    watcherLifecycle: notifications.watcherLifecycle
+  });
+}
 
-    status.mcpSessions = {
-      totalActive: server.sessions?.size || 0,
-      totalPersistent: null,
-      totalPersistentActive: null,
-      uniqueClients: server.sessions?.size || 0,
-      clientsWithDuplicates: null,
-      health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
-    };
-
-    status.compilerReadiness = {
-      ready: false,
-      checks: {
-        phase2Complete: false,
-        societiesReady: false,
-        dedupHealthy: true,
-        sessionCountsAligned: true
-      },
-      warnings: [
-        `Phase 2 deep scan still running (${phase2Status.processedFiles}/${phase2Status.totalFiles}, ${phase2Status.percentComplete}%).`,
-        'Global metrics are still settling; use atom/file-level queries for fresh detail.'
-      ]
-    };
-
-    return status;
-  }
-
+async function loadMetadataStatus(projectPath) {
   try {
     const metadata = await getProjectMetadata(projectPath);
-    status.metadata = {
+    const statusMetadata = {
       totalFiles: metadata?.stats?.totalFiles || metadata?.totalFiles || 0,
       totalFunctions: metadata?.stats?.totalAtoms || metadata?.totalFunctions || 0,
       lastAnalyzed: getLastAnalyzed(metadata)
@@ -138,98 +160,149 @@ export async function get_server_status(args, context) {
       const { getRepository } = await import('#layer-c/storage/repository/index.js');
       const repo = getRepository(projectPath);
       if (repo?.db) {
-        status.metadata.liveAtomCount = repo.db.prepare('SELECT COUNT(*) as n FROM atoms').get()?.n || 0;
-        status.metadata.liveFileCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0;
-        status.metadata.phase2PendingFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0;
-        status.metadata.phase2CompletedFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 1').get()?.n || 0;
-        status.metadata.societiesCount = repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0;
+        statusMetadata.liveAtomCount = repo.db.prepare('SELECT COUNT(*) as n FROM atoms').get()?.n || 0;
+        statusMetadata.liveFileCount = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0;
+        statusMetadata.phase2PendingFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0;
+        statusMetadata.phase2CompletedFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 1').get()?.n || 0;
+        statusMetadata.societiesCount = repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0;
       }
     } catch {
       // Repo not ready yet; live counts remain omitted.
     }
-  } catch (error) {
-    status.metadata = { error: 'Metadata not available', message: error.message };
-  }
 
+    return statusMetadata;
+  } catch (error) {
+    return { error: 'Metadata not available', message: error.message };
+  }
+}
+
+function attachCacheStatus(status, cache) {
   if (cache) {
     try {
       status.cache = cache.getStats ? cache.getStats() : { status: 'initializing' };
     } catch (error) {
       status.cache = { status: 'error', message: error.message };
     }
-  } else {
-    status.cache = { status: 'not_ready', message: 'Cache is initializing' };
+    return;
   }
 
-  status.nodeVitals = {
-    uptime: Math.round((Date.now() - server.startTime) / 1000),
-    memory: process.memoryUsage(),
-    activeHandles: (typeof process._getActiveHandles === 'function')
-      ? process._getActiveHandles().length
-      : 'N/A'
-  };
+  status.cache = { status: 'not_ready', message: 'Cache is initializing' };
+}
 
+async function attachDeepVitals(status, projectPath, server) {
   try {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
-    if (repo?.db) {
-      const societies = repo.db.prepare(`
-        SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links
-        FROM atom_relations
-        WHERE relation_type = 'shares_state'
-      `).get();
-
-      const topStateKeys = repo.db.prepare(`
-        SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
-        FROM atom_relations
-        WHERE relation_type = 'shares_state'
-        GROUP BY key
-        ORDER BY count DESC
-        LIMIT 5
-      `).all();
-
-      status.sharedState = {
-        activeSocietiesBadge: societies.actors > 0 ? 'RADIOACTIVE' : 'CLEAN',
-        actorCount: societies.actors,
-        totalLinks: societies.links,
-        topContentionKeys: topStateKeys
-      };
-
-      status.background = {
-        phase2PendingFiles: repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
-        societiesCount: repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0
-      };
-
-      const { sessionManager } = await import('../core/session-manager.js');
-      const persistentSessions = sessionManager.getAllSessions(false);
-      const activePersistentSessions = sessionManager.getAllSessions(true);
-      const dedupStats = sessionManager.getDedupStats();
-      status.mcpSessions = {
-        totalActive: server.sessions?.size || 0,
-        totalPersistent: persistentSessions.length,
-        totalPersistentActive: activePersistentSessions.length,
-        uniqueClients: dedupStats.uniqueClients || 0,
-        clientsWithDuplicates: dedupStats.clientsWithDuplicates || 0,
-        health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
-      };
-
-      const phase2PendingFiles = status.metadata?.phase2PendingFiles ?? 0;
-      const societiesCount = status.metadata?.societiesCount ?? 0;
-      const runtimeSessions = server.sessions?.size || 0;
-      const persistentActive = activePersistentSessions.length;
-      const clientsWithDuplicates = dedupStats.clientsWithDuplicates || 0;
-
-      status.compilerReadiness = buildCompilerReadinessStatus({
-        phase2PendingFiles,
-        societiesCount,
-        runtimeSessions,
-        persistentActive,
-        clientsWithDuplicates
-      });
+    if (!repo?.db) {
+      return;
     }
+
+    const societies = repo.db.prepare(`
+      SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links
+      FROM atom_relations
+      WHERE relation_type = 'shares_state'
+    `).get();
+
+    const topStateKeys = repo.db.prepare(`
+      SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
+      FROM atom_relations
+      WHERE relation_type = 'shares_state'
+      GROUP BY key
+      ORDER BY count DESC
+      LIMIT 5
+    `).all();
+
+    status.sharedState = {
+      activeSocietiesBadge: societies.actors > 0 ? 'RADIOACTIVE' : 'CLEAN',
+      actorCount: societies.actors,
+      totalLinks: societies.links,
+      topContentionKeys: topStateKeys
+    };
+
+    status.background = {
+      phase2PendingFiles: repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
+      societiesCount: repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0
+    };
+
+    const { sessionManager } = await import('../core/session-manager.js');
+    const persistentSessions = sessionManager.getAllSessions(false);
+    const activePersistentSessions = sessionManager.getAllSessions(true);
+    const dedupStats = sessionManager.getDedupStats();
+    status.mcpSessions = {
+      totalActive: server.sessions?.size || 0,
+      totalPersistent: persistentSessions.length,
+      totalPersistentActive: activePersistentSessions.length,
+      uniqueClients: dedupStats.uniqueClients || 0,
+      clientsWithDuplicates: dedupStats.clientsWithDuplicates || 0,
+      health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
+    };
+
+    status.compilerReadiness = buildCompilerReadinessStatus({
+      phase2PendingFiles: status.metadata?.phase2PendingFiles ?? 0,
+      societiesCount: status.metadata?.societiesCount ?? 0,
+      runtimeSessions: server.sessions?.size || 0,
+      persistentActive: activePersistentSessions.length,
+      clientsWithDuplicates: dedupStats.clientsWithDuplicates || 0
+    });
   } catch (error) {
     status.deepVitalsError = error.message;
   }
+}
+
+async function loadCompilerExplainability(projectPath, watcherAlerts = []) {
+  try {
+    const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
+    const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+    const policySummary = summarizeCompilerPolicyDrift(findings);
+    const standardization = buildCompilerStandardizationReport({
+      policySummary,
+      watcherAlerts
+    });
+
+    return {
+      policySummary,
+      standardization
+    };
+  } catch (error) {
+    return {
+      error: error.message
+    };
+  }
+}
+
+export async function get_server_status(args, context) {
+  const { orchestrator, cache, projectPath, server } = context;
+  const phase2Status = getPhase2Status(orchestrator);
+  const phase2InProgress = !!phase2Status?.inProgress;
+  const cachedMetadata = getCachedMetadata(server, cache);
+  const cachedCounts = getCachedCounts(cache, cachedMetadata);
+
+  logger.info('[Tool] get_server_status()');
+
+  const status = buildBaseStatus(server, projectPath, phase2InProgress);
+  attachOrchestratorStatus(status, orchestrator);
+  status.hotReload = buildHotReloadStatus(server);
+  const notifications = await loadNotifications(projectPath);
+  attachNotificationSignals(status, notifications);
+
+  if (phase2InProgress) {
+    attachPhase2Status(status, server, cache, cachedMetadata, cachedCounts, phase2Status, notifications);
+    return status;
+  }
+
+  status.metadata = await loadMetadataStatus(projectPath);
+  attachCacheStatus(status, cache);
+  status.nodeVitals = buildNodeVitals(server);
+  await attachDeepVitals(status, projectPath, server);
+  status.telemetryProvenance = buildTelemetryProvenance({
+    source: 'status.runtime',
+    phase2PendingFiles: status.metadata?.phase2PendingFiles || 0,
+    runtimeRestartMode: status.hotReload.runtimeRestartMode,
+    pendingRuntimeRestartFiles: status.hotReload.pendingRuntimeRestart?.files || [],
+    watcherLifecycle: notifications.watcherLifecycle
+  });
+
+  status.compilerExplainability = await loadCompilerExplainability(projectPath, notifications.watcherAlerts || []);
 
   return status;
 }
@@ -271,6 +344,8 @@ export async function get_recent_errors(args, context) {
       message: entry.message,
       time: new Date(entry.time).toISOString()
     })),
-    watcherAlerts
+    watcherAlerts,
+    signalConfidence: notifications.signalConfidence,
+    provenance: notifications.provenance
   };
 }

@@ -33,6 +33,20 @@ export {
 } from './standardization-report.js';
 
 export {
+  classifyAtomOperationalRole,
+  classifyFileOperationalRole
+} from './atom-role-classification.js';
+
+export {
+  classifySignalConfidence,
+  summarizeSignalConfidence
+} from './signal-confidence.js';
+
+export {
+  buildTelemetryProvenance
+} from './telemetry-provenance.js';
+
+export {
   detectStateOwnershipConformanceFromSource
 } from './state-ownership-conformance.js';
 
@@ -77,6 +91,10 @@ export {
 export {
   summarizeAtomSemanticPurity
 } from './semantic-purity-reporting.js';
+
+export {
+  summarizeSharedStateHotspots
+} from './shared-state-reporting.js';
 
 export {
   buildCanonicalReuseGuidance
