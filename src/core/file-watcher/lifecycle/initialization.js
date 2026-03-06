@@ -13,6 +13,14 @@ export async function initialize() {
     logger.info('FileWatcher initializing...');
   }
 
+  if (this.options.useSmartBatch && !this.batchProcessor) {
+    this.batchProcessor = new SmartBatchProcessor({
+      debounceMs: this.options.debounceMs,
+      maxConcurrent: this.options.maxConcurrent,
+      verbose: this.options.verbose
+    });
+  }
+
   // Cargar estado actual del proyecto (hashes para dedup)
   await this.loadCurrentState();
 
@@ -27,6 +35,14 @@ export async function initialize() {
 
   // Iniciar watching del filesystem
   this.startWatching();
+
+  if (!this.processingInterval) {
+    this.processingInterval = setInterval(() => {
+      this.processPendingChanges().catch((error) => {
+        logger.error('FileWatcher processing loop failed:', error);
+      });
+    }, this.options.batchDelayMs);
+  }
 
   this.emit('ready');
 }

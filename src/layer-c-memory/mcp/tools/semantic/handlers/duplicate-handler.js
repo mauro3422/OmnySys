@@ -6,7 +6,7 @@ export class DuplicateHandler {
     handle(rows) {
         const groups = {};
         rows.forEach(row => {
-            const groupKey = row.dna_json || row.isomorphic_hash;
+            const groupKey = row.duplicate_key || row.dna_json || row.isomorphic_hash;
             if (!groups[groupKey]) {
                 groups[groupKey] = {
                     groupSize: row.group_size,

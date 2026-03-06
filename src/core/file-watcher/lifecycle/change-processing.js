@@ -12,6 +12,27 @@ async function clearWatcherRuntimeError(projectPath, filePath) {
   return clearWatcherIssue(projectPath, filePath, 'watcher_runtime_error');
 }
 
+export async function _processWithBatchProcessor() {
+  if (!this.batchProcessor) {
+    return { processed: 0, skipped: 0, errors: [] };
+  }
+
+  const readyChanges = this.batchProcessor.getReadyChanges();
+  if (readyChanges.length === 0) {
+    return { processed: 0, skipped: 0, errors: [] };
+  }
+
+  const results = await this.batchProcessor.processBatch(async (change) => {
+    await this.processChange(change);
+  });
+
+  for (const change of readyChanges) {
+    this.pendingChanges.delete(change.filePath);
+  }
+
+  return results;
+}
+
 /**
  * Procesa cambios pendientes
  * Usa SmartBatchProcessor si está disponible

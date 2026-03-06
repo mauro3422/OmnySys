@@ -17,8 +17,22 @@ import {
     StandardSuggestions,
     isLowSignalName
 } from './guard-standards.js';
+import {
+    buildDuplicateKeyFromDna,
+    getDuplicateKeySql,
+    normalizeDnaValue
+} from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
+const DUPLICATE_KEY_SQL = getDuplicateKeySql('a.dna_json');
+
+function getAtomType(atom = {}) {
+    return atom.type || atom.atom_type || null;
+}
+
+function getLinesOfCode(atom = {}) {
+    return atom.lines_of_code || atom.linesOfCode || atom.loc || 0;
+}
 
 /**
  * Genera nombres alternativos para evitar colisiones
@@ -72,27 +86,34 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         if (providedAtoms && Array.isArray(providedAtoms)) {
             localAtoms = providedAtoms
-                .filter(a => a.dna_json && a.dna_json !== 'null')
-                .filter(a => ['function', 'method', 'arrow', 'class'].includes(a.type || a.atom_type))
-                .filter(a => !minLinesOfCode || (a.lines_of_code || a.loc || 0) >= minLinesOfCode)
-                .map(a => ({
-                    id: a.id,
-                    name: a.name,
-                    dna_json: a.dna_json,
-                    lines_of_code: a.lines_of_code || a.loc || 0
-                }));
+                .map((atom) => ({
+                    id: atom.id,
+                    name: atom.name,
+                    dna_json: normalizeDnaValue(atom),
+                    duplicate_key: buildDuplicateKeyFromDna(atom.dna ?? atom.dnaJson ?? atom.dna_json),
+                    atom_type: getAtomType(atom),
+                    lines_of_code: getLinesOfCode(atom),
+                    isRemoved: Boolean(atom.isRemoved || atom.is_removed),
+                    isDeadCode: Boolean(atom.isDeadCode || atom.is_dead_code)
+                }))
+                .filter((atom) => atom.dna_json)
+                .filter((atom) => atom.duplicate_key)
+                .filter((atom) => ['function', 'method', 'arrow', 'class'].includes(atom.atom_type))
+                .filter((atom) => !atom.isRemoved && !atom.isDeadCode)
+                .filter((atom) => !minLinesOfCode || atom.lines_of_code >= minLinesOfCode);
         } else {
             localAtoms = repo.db.prepare(`
-                SELECT id, name, dna_json, lines_of_code
+                SELECT id, name, dna_json, lines_of_code,
+                       ${DUPLICATE_KEY_SQL} AS duplicate_key
                 FROM atoms
-                WHERE file_path = ?
+                WHERE a.file_path = ?
                     AND dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-                    AND atom_type IN ('function', 'method', 'arrow', 'class')
-                    AND (lines_of_code IS NULL OR lines_of_code >= ?)
-                    AND (is_removed IS NULL OR is_removed = 0)
-                    AND (is_dead_code IS NULL OR is_dead_code = 0)
+                    AND a.atom_type IN ('function', 'method', 'arrow', 'class')
+                    AND (a.lines_of_code IS NULL OR a.lines_of_code >= ?)
+                    AND (a.is_removed IS NULL OR a.is_removed = 0)
+                    AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
                 LIMIT ?
-            `).all(filePath, minLinesOfCode, maxFindings * 4);
+            `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, minLinesOfCode, maxFindings * 4);
         }
 
         if (localAtoms.length === 0) {
@@ -103,7 +124,8 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         const candidateDnas = localAtoms
             .filter(a => a.name && !isLowSignalName(a.name))
-            .map(a => a.dna_json);
+            .map(a => a.duplicate_key)
+            .filter(Boolean);
 
         if (candidateDnas.length === 0) {
             await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
@@ -113,10 +135,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         const placeholders = candidateDnas.map(() => '?').join(',');
         const duplicateRows = repo.db.prepare(`
-            SELECT a.name, a.file_path, a.dna_json, a.line_start
+            SELECT a.name, a.file_path, a.dna_json, a.line_start,
+                   ${DUPLICATE_KEY_SQL} AS duplicate_key
             FROM atoms a
-            WHERE a.dna_json IN (${placeholders})
+            WHERE (${DUPLICATE_KEY_SQL}) IN (${placeholders})
                 AND a.file_path != ?
+                AND a.atom_type IN ('function', 'method', 'arrow', 'class')
                 AND a.file_path NOT LIKE '%.test.js'
                 AND a.file_path NOT LIKE '%.spec.js'
                 AND a.file_path NOT LIKE '%/test/%'
@@ -134,12 +158,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
         const byDna = new Map();
         for (const row of duplicateRows) {
-            if (!byDna.has(row.dna_json)) byDna.set(row.dna_json, []);
-            byDna.get(row.dna_json).push(row);
+            if (!byDna.has(row.duplicate_key)) byDna.set(row.duplicate_key, []);
+            byDna.get(row.duplicate_key).push(row);
         }
 
-        const localDnaToName = new Map(localAtoms.map(a => [a.dna_json, a.name]));
-        const localDnaToId = new Map(localAtoms.map(a => [a.dna_json, a.id]));
+        const localDnaToName = new Map(localAtoms.map(a => [a.duplicate_key, a.name]));
+        const localDnaToId = new Map(localAtoms.map(a => [a.duplicate_key, a.id]));
 
         const findings = [];
         for (const [dna, remoteAtoms] of byDna) {

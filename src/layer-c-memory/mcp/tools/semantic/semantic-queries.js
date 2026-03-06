@@ -8,9 +8,14 @@
  */
 
 import { createLogger } from '#utils/logger.js';
+import {
+    getDuplicateKeySql,
+    VALID_DNA_PREDICATE
+} from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
 const logger = createLogger('OmnySys:SemanticQueries');
-const VALID_DNA_PREDICATE = `dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'`;
+const DUPLICATE_KEY_SQL = getDuplicateKeySql('dna_json');
+const DUPLICATE_KEY_SQL_FOR_ALIAS = (alias) => getDuplicateKeySql(`${alias}.dna_json`);
 const DUPLICATE_ELIGIBLE_PREDICATE = `
     atom_type IN ('function', 'method', 'arrow', 'class')
     AND (is_removed IS NULL OR is_removed = 0)
@@ -233,7 +238,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     const rows = db.prepare(`
         WITH DuplicateGroups AS (
-            SELECT dna_json, COUNT(*) as group_size
+            SELECT ${DUPLICATE_KEY_SQL} as duplicate_key, COUNT(*) as group_size
             FROM atoms
             WHERE ${VALID_DNA_PREDICATE}
               ${testFilterCte}
@@ -241,11 +246,12 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
               AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
               AND (is_removed IS NULL OR is_removed = 0)
               AND (is_dead_code IS NULL OR is_dead_code = 0)
-            GROUP BY dna_json
+            GROUP BY duplicate_key
             HAVING COUNT(*) > 1
         )
         SELECT
             a.id, a.name, a.file_path, a.line_start, a.dna_json,
+            ${DUPLICATE_KEY_SQL} as duplicate_key,
             a.lines_of_code, a.atom_type,
             a.archetype_type, a.purpose_type,
             a.change_frequency, a.importance_score,
@@ -255,7 +261,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
              WHERE ca.calls_json LIKE '%' || a.name || '%'
                AND ca.file_path != a.file_path) AS caller_count
         FROM atoms a
-        JOIN DuplicateGroups dg ON a.dna_json = dg.dna_json
+        JOIN DuplicateGroups dg ON (${DUPLICATE_KEY_SQL_FOR_ALIAS('a')}) = dg.duplicate_key
         WHERE 1=1 
         ${testFilterMain}
         ${typeFilterMain}
@@ -268,17 +274,17 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     // Stats globales del query
     const stats = db.prepare(`
-        SELECT COUNT(DISTINCT a_stats.dna_json) groups, COUNT(*) total_instances
+        SELECT COUNT(DISTINCT (${DUPLICATE_KEY_SQL_FOR_ALIAS('a_stats')})) groups, COUNT(*) total_instances
         FROM atoms a_stats
-        WHERE a_stats.dna_json IN (
-            SELECT dna_json FROM atoms
+        WHERE (${DUPLICATE_KEY_SQL_FOR_ALIAS('a_stats')}) IN (
+            SELECT ${DUPLICATE_KEY_SQL} FROM atoms
             WHERE ${VALID_DNA_PREDICATE}
-              ${testFilterCte}
-              ${typeFilterCte}
-              AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
+            ${testFilterCte}
+            ${typeFilterCte}
+            AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
               AND (is_removed IS NULL OR is_removed = 0)
               AND (is_dead_code IS NULL OR is_dead_code = 0)
-            GROUP BY dna_json HAVING COUNT(*) > 1
+            GROUP BY ${DUPLICATE_KEY_SQL} HAVING COUNT(*) > 1
         )
         ${testFilterCte.replace(/file_path/g, 'a_stats.file_path')}
         ${typeFilterCte.replace(/atom_type/g, 'a_stats.atom_type')}

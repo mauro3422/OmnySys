@@ -21,7 +21,9 @@ export {
   loadCurrentState,
   startWatching,
   notifyChange,
+  processPendingChanges,
   processChange,
+  _processWithBatchProcessor,
   _isPatternLogicFile,
   _triggerGlobalPatternRefresh,
   stop
