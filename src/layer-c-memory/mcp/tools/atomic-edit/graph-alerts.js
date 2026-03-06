@@ -1,4 +1,4 @@
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { loadAtoms } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
 
@@ -9,11 +9,9 @@ const logger = createLogger('OmnySys:atomic:graph-alerts');
  */
 export async function analyzeBlastRadius(filePath, projectPath, symbolName = null) {
   try {
-    const allAtoms = await getAllAtoms(projectPath);
-
     // Si hay un símbolo específico, usar el engine para análisis profundo
     if (symbolName) {
-      const blastResults = await AnalysisEngine.analyzeBlastRadius(symbolName, filePath, projectPath, allAtoms);
+      const blastResults = await AnalysisEngine.analyzeBlastRadius(symbolName, filePath, projectPath);
       return {
         level: blastResults.level,
         score: blastResults.score,
@@ -25,12 +23,12 @@ export async function analyzeBlastRadius(filePath, projectPath, symbolName = nul
     }
 
     // Si es un archivo completo, analizar el átomo más crítico del archivo
-    const atomsInFile = allAtoms.filter(a => (a.filePath === filePath || a.file === filePath));
+    const atomsInFile = await loadAtoms(projectPath, filePath);
     if (atomsInFile.length === 0) return { level: 'low', score: 0, reason: 'No atoms found' };
 
     let highestBlast = { score: -1 };
     for (const atom of atomsInFile) {
-      const result = await AnalysisEngine.analyzeBlastRadius(atom.name, filePath, projectPath, allAtoms);
+      const result = await AnalysisEngine.analyzeBlastRadius(atom.name, filePath, projectPath);
       if (result.score > highestBlast.score) highestBlast = result;
     }
 

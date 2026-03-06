@@ -7,7 +7,7 @@ import path from 'path';
 import { AtomicMutationTool } from '#layer-c/mcp/core/shared/base-tools/atomic-mutation-tool.js';
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
 import { reindexFile } from './reindex.js';
-import { loadAtoms, getAllAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
+import { loadAtoms } from '#layer-c/storage/index.js';
 import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
 import { validateBeforeEdit } from '../../core/validation-utils.js';
 import { validateImportsInEdit, validatePostEditOptimized } from './validators.js';
@@ -157,9 +157,7 @@ export class AtomicEditorTool extends AtomicMutationTool {
 
         // Mapeo Final de Respuesta MCP
         const { reindexResult, autoFixed, autoFixedFiles } = txResult.analysisContext;
-        const allAtoms = await getAllAtoms(this.projectPath);
-        const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, { withStats: true }, this.projectPath);
-        const impact = await analyzeFullImpact(filePath, this.projectPath, previousAtoms, reindexResult.atoms, enrichedAtoms);
+        const impact = await analyzeFullImpact(filePath, this.projectPath, previousAtoms, reindexResult.atoms);
 
         return this.formatSuccess({
             file: filePath,

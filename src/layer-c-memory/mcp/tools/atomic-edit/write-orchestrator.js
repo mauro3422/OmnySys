@@ -11,7 +11,6 @@ import { validateImportsInEdit } from './validators.js';
 import { analyzeFullImpact, analyzeNamespaceRisk } from './analysis.js';
 import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
 import { validateBeforeWrite } from '../../core/validation-utils.js';
-import { getAllAtoms, loadAtoms, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:atomic:write:orchestrator');
@@ -95,9 +94,7 @@ export async function analyzeExports(content, filePath, projectPath) {
  */
 export async function computeWriteImpact(filePath, projectPath, previousAtoms, reindexResult) {
   try {
-    const allAtoms = await getAllAtoms(projectPath);
-    const enrichedAtoms = await enrichAtomsWithRelations(allAtoms, { withStats: true }, projectPath);
-    return await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms || [], enrichedAtoms);
+    return await analyzeFullImpact(filePath, projectPath, previousAtoms, reindexResult.atoms || []);
   } catch (e) {
     logger.warn(`Could not compute impact map: ${e.message}`);
     return null;

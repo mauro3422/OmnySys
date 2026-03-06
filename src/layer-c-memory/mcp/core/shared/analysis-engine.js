@@ -10,7 +10,7 @@
  * @module mcp/core/shared/analysis-engine
  */
 
-import { enrichAtomsWithRelations } from '#layer-c/storage/index.js';
+import { enrichAtomsWithRelations, getAllAtoms } from '#layer-c/storage/index.js';
 import { getFileDependents } from '#layer-c/query/apis/file-api.js';
 
 /**
@@ -52,13 +52,14 @@ export class AnalysisEngine {
     /**
      * Calcula el Blast Radius (Radio de Explosión) de un cambio en un símbolo
      */
-    static async analyzeBlastRadius(symbolName, filePath, projectPath, allAtoms) {
+    static async analyzeBlastRadius(symbolName, filePath, projectPath, allAtoms = null) {
+        const graphAtoms = Array.isArray(allAtoms) ? allAtoms : await getAllAtoms(projectPath);
         // 1. Encontrar el átomo
-        const atom = allAtoms.find(a => (a.name === symbolName || a.id?.endsWith(`::${symbolName}`)) && (a.file === filePath || a.filePath === filePath));
+        const atom = graphAtoms.find(a => (a.name === symbolName || a.id?.endsWith(`::${symbolName}`)) && (a.file === filePath || a.filePath === filePath));
 
         if (!atom) {
             // Fallback: Si no está en allAtoms, intentar buscar por nombre
-            const sameName = allAtoms.filter(a => a.name === symbolName);
+            const sameName = graphAtoms.filter(a => a.name === symbolName);
             if (sameName.length === 1) return this.analyzeBlastRadius(symbolName, sameName[0].file || sameName[0].filePath, projectPath, allAtoms);
             return { score: 0, level: 'safe', reason: 'Symbol not found in graph' };
         }

@@ -4,7 +4,7 @@
 
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAtomsByName } from '#layer-c/storage/index.js';
 
 const logger = createLogger('OmnySys:atomic:exports');
 
@@ -61,10 +61,9 @@ export async function checkExportConflictsInGraph(exports, projectPath, excludeP
   const conflicts = [];
 
   try {
-    const allAtoms = await getAllAtoms(projectPath);
-
     for (const exportItem of exports) {
-      const existing = allAtoms.filter(atom =>
+      const candidates = await getAtomsByName(projectPath, exportItem.name);
+      const existing = candidates.filter(atom =>
         atom.name === exportItem.name &&
         atom.isExported &&
         (!excludePath || !excludePath.includes(atom.filePath))
@@ -125,11 +124,11 @@ export async function checkEditExportConflicts(oldString, newString, filePath, p
 
     conflicts.newExports = addedExports;
 
-    const allAtoms = await getAllAtoms(projectPath);
     const exportsToCheck = [...addedExports, ...conflicts.renamedExports.map(r => ({ name: r.to, type: r.type }))];
 
     for (const exportItem of exportsToCheck) {
-      const existing = allAtoms.filter(atom =>
+      const candidates = await getAtomsByName(projectPath, exportItem.name);
+      const existing = candidates.filter(atom =>
         atom.name === exportItem.name &&
         atom.isExported &&
         !filePath.includes(atom.filePath)
