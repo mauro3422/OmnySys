@@ -43,6 +43,18 @@ export {
 } from './canonical-extension-conformance.js';
 
 export {
+  detectAsyncErrorConformanceFromSource
+} from './async-error-conformance.js';
+
+export {
+  detectSharedStateHotspotConformanceFromSource
+} from './shared-state-hotspot-conformance.js';
+
+export {
+  detectCentralityCoverageConformanceFromSource
+} from './centrality-coverage-conformance.js';
+
+export {
   getCompilerRuntimeDir,
   getDaemonOwnerLockPath,
   ensureCompilerRuntimeDirSync,

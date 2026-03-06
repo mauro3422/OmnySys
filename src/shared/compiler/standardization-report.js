@@ -22,6 +22,9 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'state_ownership', label: 'State ownership/singleton policy', status: 'canonical' },
   { id: 'service_boundary', label: 'Service boundary policy', status: 'canonical' },
   { id: 'canonical_extension', label: 'Canonical extension policy', status: 'canonical' },
+  { id: 'async_error', label: 'Async error/recovery policy', status: 'canonical' },
+  { id: 'shared_state_hotspots', label: 'Shared-state hotspot policy', status: 'canonical' },
+  { id: 'centrality_coverage', label: 'Centrality coverage policy', status: 'canonical' },
   { id: 'compiler_diagnostics', label: 'Compiler diagnostics', status: 'canonical' },
   { id: 'session_lifecycle', label: 'Session/restart lifecycle', status: 'canonical' },
   { id: 'remediation', label: 'Compiler remediation backlog', status: 'canonical' }
@@ -84,7 +87,7 @@ export function buildCompilerStandardizationReport({
     ));
   }
 
-  if (hasSharedStateHotspot(sharedState)) {
+  if (hasSharedStateHotspot(sharedState) && !driftAreas.some((item) => item.area === 'shared_state_hotspots')) {
     missingCanonicalApis.push(buildSuggestedTarget(
       'shared_state_contention',
       'medium',
@@ -100,6 +103,20 @@ export function buildCompilerStandardizationReport({
       'Compiler helper files are still generating low-signal integrity warnings.',
       'Create a canonical guard-noise normalization policy so compiler helpers are not treated like product code by default.'
     ));
+  }
+
+  if (!driftAreas.some((item) => item.area === 'centrality_coverage')) {
+    const centralityCoverage = watcherAlerts.some((alert) =>
+      String(alert?.filePath || '').includes('signal-coverage')
+    );
+    if (!centralityCoverage) {
+      missingCanonicalApis.push(buildSuggestedTarget(
+        'centrality_coverage_adoption',
+        'low',
+        'Centrality coverage is a known weak signal and should stay visible as a first-class compiler policy.',
+        'Adopt the canonical centrality coverage policy in health/pipeline/watcher consumers before adding new ad hoc physics checks.'
+      ));
+    }
   }
 
   const adoptionGaps = driftAreas.filter((item) => item.count > 0);

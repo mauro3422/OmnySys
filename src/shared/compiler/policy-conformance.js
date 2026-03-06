@@ -18,6 +18,9 @@ import {
 import { detectStateOwnershipConformanceFromSource } from './state-ownership-conformance.js';
 import { detectServiceBoundaryConformanceFromSource } from './service-boundary-conformance.js';
 import { detectCanonicalExtensionConformanceFromSource } from './canonical-extension-conformance.js';
+import { detectAsyncErrorConformanceFromSource } from './async-error-conformance.js';
+import { detectSharedStateHotspotConformanceFromSource } from './shared-state-hotspot-conformance.js';
+import { detectCentralityCoverageConformanceFromSource } from './centrality-coverage-conformance.js';
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
@@ -32,7 +35,10 @@ export const COMPILER_POLICY_AREA = {
   RUNTIME_OWNERSHIP: 'runtime_ownership',
   STATE_OWNERSHIP: 'state_ownership',
   SERVICE_BOUNDARY: 'service_boundary',
-  CANONICAL_EXTENSION: 'canonical_extension'
+  CANONICAL_EXTENSION: 'canonical_extension',
+  ASYNC_ERROR: 'async_error',
+  SHARED_STATE_HOTSPOTS: 'shared_state_hotspots',
+  CENTRALITY_COVERAGE: 'centrality_coverage'
 };
 
 function normalizePath(filePath = '') {
@@ -269,6 +275,18 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   findings.push(...detectCanonicalExtensionConformanceFromSource(normalizedPath, source, {
     severity: COMPILER_POLICY_SEVERITY.MEDIUM,
     policyArea: COMPILER_POLICY_AREA.CANONICAL_EXTENSION
+  }));
+  findings.push(...detectAsyncErrorConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.ASYNC_ERROR
+  }));
+  findings.push(...detectSharedStateHotspotConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.SHARED_STATE_HOTSPOTS
+  }));
+  findings.push(...detectCentralityCoverageConformanceFromSource(normalizedPath, source, {
+    severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+    policyArea: COMPILER_POLICY_AREA.CENTRALITY_COVERAGE
   }));
 
   return findings;
