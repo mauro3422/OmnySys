@@ -1,57 +1,175 @@
-# OmnySys — Motor de Contexto de Código
+# OmnySys - Compilador Vivo de Contexto para IAs
 
-> **Previene la visión de túnel al editar código.**
-> Analiza el impacto completo antes de cualquier cambio y lo expone a tu IA vía MCP.
+> OmnySys no es solo un MCP server. Es una capa de compilacion de contexto para agentes: indexa el codebase, persiste metadata estructural/semantica en SQLite, vigila cambios con FileWatcher, y expone el estado del sistema por MCP para que una IA no trabaje a ciegas.
 
-**Versión**: v0.9.62
-**Estado**: ✅ **100% Estático, 0% LLM** - Tree-sitter + Schema Unificado + SQLite
-**Última actualización**: 2026-02-25
+- Version: `v0.9.95`
+- Estado: beta activa
+- Analisis: `100% estatico, 0% LLM` en el pipeline principal
+- Runtime MCP verificado desde codigo: `20` tools
+- Transporte soportado: `HTTP + stdio bridge`
 
----
+## Que Es OmnySys
 
-## ¿Qué es OmnySys?
+Las IAs suelen editar un archivo con vision de tunel: no saben que se rompe, no distinguen si una metrica esta incompleta, y vuelven a inventar logica que ya existe.
 
-Las IAs sufren **visión de túnel**: editan un archivo sin saber qué rompen en el resto del sistema.
+OmnySys intenta resolver eso con una capa intermedia entre el codebase y el agente:
 
-OmnySys resuelve esto construyendo un **mapa completo del codebase** (grafo de dependencias, funciones, flujo de datos) y exponiéndolo como **30 herramientas MCP** que cualquier IA puede usar antes de tocar código.
+- construye un grafo vivo de archivos, atomos y relaciones
+- persiste DNA estructural, riesgo, cobertura y topologia
+- observa cambios de archivos en tiempo real
+- genera alerts del compilador en `_recentErrors`
+- expone consultas, metricas, edicion segura y administracion por MCP
 
-**IMPORTANTE (v0.9.62)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. Usamos **Tree-sitter** para AST de alta precisión + regex + álgebra de grafos.
+La forma mas precisa de describirlo hoy es:
 
-### Novedades v0.9.62
+> un compilador/debugger de contexto para IAs
 
-- ✅ **Tree-sitter integrado al schema MCP**: 4 campos nuevos (sharedStateAccess, eventEmitters, eventListeners, scopeType)
-- ✅ **Race-detector estandarizado**: Usa Tree-sitter como única fuente de verdad (SSOT)
-- ✅ **SQLite WAL con checkpoint automático**: Datos visibles inmediatamente después de escrituras
-- ✅ **Eliminada duplicación**: Trackers de race-detector consumen del schema, no replican lógica
+No compila binarios. Compila conocimiento operativo sobre el codebase.
 
+## Que Hace Bien Hoy
+
+- evita bastante vision de tunel antes de editar
+- te deja consultar impacto, dependencias, duplicados y salud del pipeline
+- detecta deuda y ruido del propio sistema mientras se desarrolla
+- mantiene un ciclo `watcher -> SQLite -> MCP -> alertas`
+- ya tiene politicas canonicas para que las tools no reimplementen logica localmente
+
+Familias canonicas ya estandarizadas:
+
+- `duplicates`
+- `impact`
+- `file_discovery`
+- `signal_coverage`
+- `live_row_drift`
+- `pipeline_orphans`
+- `dead_code`
+- `watcher_diagnostics`
+- `watcher_lifecycle`
+- `runtime_ownership`
+- `compiler_diagnostics`
+- `session_lifecycle`
+- `remediation`
+- `state_ownership`
+- `service_boundary`
+- `canonical_extension`
+- `async_error`
+- `shared_state_hotspots`
+- `centrality_coverage`
+- `testability`
+- `semantic_purity`
+
+## Arquitectura Viva
+
+```text
+IDE / Agent
+  -> mcp-stdio-bridge
+  -> mcp-http-proxy
+  -> mcp-http-server
+  -> SQLite + UnifiedCache + FileWatcher + Layer A/B/C
 ```
-"Voy a modificar orchestrator.js"
 
-IA usa: get_impact_map("src/core/orchestrator.js")
+Capas:
 
-Resultado:
-  ✅ Afecta directamente: 2 archivos
-  ⚠️  Afecta transitivamente: 6 archivos
-  📊 Total: 8 archivos  |  🟡 Riesgo: MEDIO
-
-IA edita considerando TODO el impacto.
+```text
+src/
+|- layer-a-static/     Analisis estatico, extraccion de atomos, pipeline
+|- layer-b-semantic/   Enriquecimiento semantico, sociedades, fisicas
+|- layer-graph/        Grafo y navegacion de dependencias
+|- layer-c-memory/     MCP, SQLite, cache, transporte
+|- core/               watcher, orchestrator, runtime, editor atomico
+|- shared/compiler/    politicas canonicas del compilador
+|- cli/                setup, install, comandos operativos
 ```
 
----
+## Flujo Mental Correcto Para Usarlo
 
-## Instalación Rápida
+Antes de crear codigo:
+
+```js
+query_graph({ queryType: "instances", symbolName: "miFuncion" })
+aggregate_metrics({ aggregationType: "duplicates" })
+```
+
+Antes de editar:
+
+```js
+traverse_graph({ traverseType: "impact_map", filePath: "src/algo.js" })
+validate_imports({ filePath: "src/algo.js", checkBroken: true })
+```
+
+Despues de editar:
+
+```js
+get_recent_errors()
+```
+
+Ese flujo importa porque el compilador ya te puede advertir:
+
+- duplicacion estructural
+- deriva de politicas canonicas
+- problemas de watcher/runtime
+- deuda de complejidad o impacto
+- alerts que ya no son reales y deben reconciliarse
+
+## Tools MCP Actuales
+
+Fuente de verdad: [`src/layer-c-memory/mcp/tools/index.js`](src/layer-c-memory/mcp/tools/index.js)
+
+### Lectura / consulta
+
+- `mcp_omnysystem_query_graph`
+- `mcp_omnysystem_traverse_graph`
+- `mcp_omnysystem_impact_atomic`
+- `mcp_omnysystem_aggregate_metrics`
+
+### Escritura / refactor
+
+- `mcp_omnysystem_atomic_edit`
+- `mcp_omnysystem_atomic_write`
+- `mcp_omnysystem_move_file`
+- `mcp_omnysystem_fix_imports`
+- `mcp_omnysystem_execute_solid_split`
+- `mcp_omnysystem_suggest_refactoring`
+- `mcp_omnysystem_suggest_architecture`
+- `mcp_omnysystem_validate_imports`
+- `mcp_omnysystem_generate_tests`
+- `mcp_omnysystem_generate_batch_tests`
+
+### Admin / debug
+
+- `mcp_omnysystem_get_schema`
+- `mcp_omnysystem_get_server_status`
+- `mcp_omnysystem_get_recent_errors`
+- `mcp_omnysystem_restart_server`
+- `mcp_omnysystem_detect_performance_hotspots`
+- `mcp_omnysystem_execute_sql`
+
+## Instalacion Rapida
 
 ```bash
 git clone https://github.com/mauro3422/OmnySys.git
-cd OmnySys && npm install
+cd OmnySys
+npm install
 npm start
 ```
 
-### Integración con tu IDE
+Comandos utiles:
 
-**Para Qwen Code / Claude Code / OpenCode:**
+```bash
+npm start
+npm stop
+npm status
+npm tools
+npm test
+npm run analyze
+npm run mcp:proxy
+npm run mcp:bridge
+```
 
-Crear `.mcp.json` en tu proyecto:
+## Integracion MCP
+
+Workspace/local:
+
 ```json
 {
   "mcpServers": {
@@ -63,217 +181,64 @@ Crear `.mcp.json` en tu proyecto:
 }
 ```
 
-Luego en tu IDE:
-```
-> Analiza el impacto de cambiar src/app.js
-> ¿Qué funciones llaman a processOrder?
-> Detecta código muerto en este archivo
-```
+En entornos donde quieras auto-start real del cliente, OmnySys tambien soporta `stdio bridge`.
 
----
+## Estado Tecnico Real
 
-## Las 29 Herramientas MCP
+Lo que esta fuerte hoy:
 
-### Impacto y Análisis de Cambios (6 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `get_impact_map(file)` | Archivos afectados por un cambio | Antes de editar cualquier archivo |
-| `analyze_change(file, symbol)` | Impacto de cambiar un símbolo | Evaluando riesgo |
-| `trace_variable_impact(file, fn, var)` | Propagación de variable (PageRank) | Cambiando estructuras de datos |
-| `trace_data_journey(file, fn, var)` | Flujo de datos de variable específica | Auditar seguridad de datos |
-| `explain_connection(a, b)` | Por qué dos archivos están conectados | Entendiendo arquitectura |
-| `analyze_signature_change(...)` | Breaking changes de firma | Cambiando APIs |
+- schema SQLite sano
+- DNA persistido y usable
+- session dedup mucho mas robusta que antes
+- reconciliacion de watcher alerts
+- runtime ownership con locks para evitar proxies duplicados
+- compilador cada vez mas guiado por politicas compartidas
 
-### Análisis de Código (5 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `get_call_graph(file, symbol)` | Quién llama a esta función | Refactorizando código |
-| `explain_value_flow(...)` | Inputs → proceso → outputs | Data pipelines |
-| `get_function_details(file, fn)` | Metadata completa de función | Análisis detallado |
-| `get_molecule_summary(file)` | Resumen de archivo con insights | Vista completa de archivo |
-| `find_symbol_instances(symbol)` | Encuentra todas las instancias de un símbolo | Debugging |
+Lo que sigue siendo deuda real:
 
-### Métricas y Salud (5 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `get_risk_assessment()` | Riesgos de todo el proyecto | Priorizando trabajo |
-| `get_health_metrics()` | Métricas de salud del código | Auditar calidad |
-| `detect_patterns(type)` | Duplicados, god functions, dead code | Optimizando codebase |
-| `get_async_analysis()` | Análisis async con recommendations | Optimizando performance |
-| `detect_race_conditions()` | Detecta race conditions en async | Seguridad concurrente |
+- complejidad en partes del runtime MCP
+- adopcion incompleta de algunas politicas canonicas
+- ciertos `arch_impact_low` y churn de runtime que son normales pero ruidosos
+- `base-strategy.js` y `mcp-stdio-bridge.js` siguen siendo hotspots
 
-### Sociedad de Átomos (3 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `get_atom_society()` | Chains, clusters, hubs, orphans | Entendiendo estructura |
-| `get_atom_history(file, fn)` | Historial Git de función | Debugging cambios |
-| `get_removed_atoms()` | Átomos eliminados del código | Prevención de duplicados |
+## Mi Opinion Tecnica Como GPT-5
 
-### Búsqueda y Sistema (4 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `search_files(pattern)` | Buscar archivos por patrón | Navegando codebase |
-| `get_server_status()` | Estado del sistema | Diagnóstico |
-| `restart_server()` | Reinicia servidor y recarga datos | Después de cambios en código |
-| `get_atom_schema(type)` | Schema de metadatos de átomos | Debugging |
+Use OmnySys durante muchas horas para depurarse a si mismo. Mi conclusion:
 
-### Editor Atómico (2 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `atomic_edit(file, old, new)` | Edita con validación atómica | Editando código |
-| `atomic_write(file, content)` | Escribe archivo con validación | Creando archivos |
+- si, tiene potencial real
+- si, acelera programar cuando la metadata es honesta
+- no lo veo como "otro MCP con tools"
+- lo veo como una capa de compilacion de contexto para agentes
 
-### Refactoring y Validación (2 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `suggest_refactoring(file)` | Sugiere mejoras de código | Refactorizando |
-| `validate_imports(file)` | Valida imports del archivo | Prevención de errores |
+Lo mas valioso no es solo el grafo, sino esto:
 
-### Testing (2 tools)
-| Herramienta | Qué hace | Cuándo usar |
-|-------------|----------|-------------|
-| `generate_tests(file, fn)` | Genera tests para función | Mejorando coverage |
-| `generate_batch_tests(...)` | Genera tests en batch | Testing masivo |
+- distingue mejor entre dato real, dato faltante y ruido
+- evita reimplementar logica localmente
+- deja que el propio sistema audite y corrija su infraestructura
+- convierte alerts de runtime y de analisis en una superficie operativa reusable
 
-**Ver documentación completa**: [docs/04-guides/tools.md](docs/04-guides/tools.md)
+Lo mas parecido que existe afuera son code graph / intelligence layers para asistentes, pero OmnySys mezcla algo menos comun:
 
----
+- code graph
+- watcher en vivo
+- persistencia local en SQLite
+- politicas canonicas
+- reconciliacion de alerts
+- MCP como interfaz de ejecucion
 
-## Estado del Sistema (v0.9.61)
+Eso lo acerca mas a un "compilador vivo para IAs" que a un simple indexador.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.61 — Estado del Sistema                     │
-├─────────────────────────────────────────────────────────────┤
-│  Átomos:         13,485 funciones analizadas              │
-│  Archivos:       1,860                                    │
-│  Health Score:   99/100 (Grade A)                        │
-│  Test Coverage:  79%                                      │
-│  God Functions:  193 (complejidad > 15)                  │
-│  Dead Code:      42 casos (85% menos falsos positivos)   │
-│  Duplicados:     118 exactos, 694 contextuales           │
-│  Debt Arch:      15 archivos críticos                    │
-│  Storage:        SQLite (WAL mode)                        │
-│  MCP Tools:      29 herramientas                          │
-│  LLM Usage:      0% - 100% ESTÁTICO                      │
-└─────────────────────────────────────────────────────────────┘
-```
+Mi reseña corta:
 
----
+> OmnySys ya paso la barrera de experimento interesante. Todavia es beta, pero ya sirve como compilador de contexto para agentes y como debugger operacional del codebase. Su mayor fuerza no es buscar codigo: es evitar que una IA trabaje a ciegas.
 
-## Arquitectura
+## Documentacion Relacionada
 
-### Capas del Sistema
-
-```
-src/
-├── layer-a-static/     # Análisis estático puro (AST + regex)
-├── layer-b-semantic/   # Metadata enrichment (100% estático)
-├── layer-graph/        # Sistema de grafos de dependencias
-├── layer-c-memory/     # MCP Server, SQLite, exposición
-├── core/               # Core: FileWatcher, Orchestrator
-└── cli/                # CLI de administración
-```
-
-**Ver arquitectura completa**: [docs/02-architecture/core.md](docs/02-architecture/core.md)
-
----
-
-## Comandos Útiles
-
-```bash
-# Iniciar servidor
-npm start
-
-# Analizar proyecto
-npm run analyze
-
-# Ver status
-npm run status
-
-# Reiniciar servidor
-npm run restart
-
-# Limpiar y reanalizar
-npm run clean && npm run analyze
-
-# Ejecutar tests
-npm test
-
-# Ver coverage
-npm run coverage
-```
-
----
-
-## Documentación
-
-### Guías Principales
-
-- **[Quick Start](docs/04-guides/quickstart.md)** - Empezar en 5 minutos
-- **[MCP Tools](docs/04-guides/tools.md)** - Guía de las 29 herramientas
-- **[INDEX](docs/INDEX.md)** - Índice completo de documentación
-
-### Fundamentos
-
-- **[Problem](docs/01-core/problem.md)** - Visión de túnel en IAs
-- **[Principles](docs/01-core/principles.md)** - Los 4 Pilares
-- **[Philosophy](docs/01-core/philosophy.md)** - Física del software
-
-### Arquitectura
-
-- **[Core](docs/02-architecture/core.md)** - Arquitectura unificada
-- **[Data Flow](docs/02-architecture/DATA_FLOW.md)** - Flujo de datos detallado
-- **[Code Physics](docs/02-architecture/code-physics.md)** - Vectores matemáticos
-
-### Referencia
-
-- **[System Status](docs/06-reference/SYSTEM_STATUS.md)** - Estado actual
-- **[Cleanup Plan](docs/06-reference/CLEANUP_PLAN.md)** - Refactorizaciones
-- **[Issues](docs/04-maintenance/ISSUES_AND_IMPROVEMENTS.md)** - Issues conocidos
-
----
-
-## Roadmap
-
-### Q2 2026 - Tree-sitter Migration
-
-- Reemplazar Babel con Tree-sitter
-- Mejor detección de `isExported` para arrow functions
-- Análisis de tipos TypeScript más preciso
-- Performance mejorado en proyectos grandes
-- Soporte para más lenguajes (Rust, Go, Python)
-
-### Q3 2026 - Intra-Atómico
-
-- Dentro de cada transformación, ver los **sub-átomos**
-- Detectar precision loss en cálculos financieros
-- Optimizar transformaciones innecesarias
-
-### Q4 2026 - Estado Cuántico
-
-- Simular **todos los paths posibles** (if/else, try/catch)
-- Generar test cases automáticamente
-- Detectar paths no cubiertos por tests
-
----
-
-## Contribuir
-
-1. Fork del repositorio
-2. Crear branch para feature (`git checkout -b feature/amazing-feature`)
-3. Commit de cambios (`git commit -m 'Add amazing feature'`)
-4. Push a la branch (`git push origin feature/amazing-feature`)
-5. Abrir Pull Request
-
----
+- [AGENTS.md](AGENTS.md)
+- [docs/INDEX.md](docs/INDEX.md)
+- [CHANGELOG.md](CHANGELOG.md)
+- [changelog/README.md](changelog/README.md)
 
 ## Licencia
 
-MIT License - ver [LICENSE](LICENSE) para detalles.
-
----
-
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ **100% Estático, 0% LLM**  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+MIT
