@@ -4,6 +4,7 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    buildDeadCodeRemediationPlan,
     buildLiveRowRemediationPlan,
     buildPipelineOrphanRemediationPlan,
     PIPELINE_FIELD_COVERAGE_SIGNALS,
@@ -150,6 +151,7 @@ export async function handlePipelineHealth(tool) {
     // --- CHECK 4: Dead code plausibility ---
     const deadCodeSummary = getDeadCodePlausibilitySummary(db, { minLines: 5 });
     const suspiciousDeadCandidates = deadCodeSummary.suspiciousDeadCandidates;
+    const deadCodeRemediation = buildDeadCodeRemediationPlan(db, { limit: 10, minLines: 5 });
 
     if (deadCodeSummary.warning) {
         warnings.push(deadCodeSummary.warning);
@@ -201,6 +203,7 @@ export async function handlePipelineHealth(tool) {
         warnings,
         liveRowReconciliation,
         liveRowRemediation,
+        deadCodeRemediation,
         pipelineOrphanRemediation,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {

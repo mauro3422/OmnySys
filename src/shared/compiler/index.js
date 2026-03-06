@@ -29,6 +29,12 @@ export {
 } from './dead-code-reporting.js';
 
 export {
+  loadSuspiciousDeadCodeCandidates,
+  buildDeadCodeRemediation,
+  buildDeadCodeRemediationPlan
+} from './dead-code-remediation.js';
+
+export {
   DERIVED_SCORE_SIGNALS,
   PIPELINE_FIELD_COVERAGE_SIGNALS,
   summarizeDerivedScoreCoverage,

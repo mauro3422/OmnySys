@@ -19,9 +19,10 @@ import {
     extractAtomMetrics
 } from './guard-standards.js';
 import {
+    buildDeadCodeRemediation,
     isSuspiciousDeadCodeAtom,
     normalizeDeadCodeAtom
-} from '../../../shared/compiler/dead-code-heuristics.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:dead-code');
 
@@ -61,14 +62,16 @@ export async function detectDeadCode(rootPath, filePath, EventEmitterContext, at
             if (isDead && metrics.linesOfCode >= minLines) {
                 const severity = metrics.linesOfCode > 20 ? 'medium' : 'low';
                 const issueType = createIssueType(IssueDomains.CODE, 'dead_code', severity);
+                const remediation = buildDeadCodeRemediation(atom);
 
                 const reason = normalized.isExported
                     ? 'is exported but appears fully disconnected'
                     : 'is not exported and has no callers/callees';
 
-                const suggestedAction = normalized.isExported
-                    ? `${StandardSuggestions.DEAD_CODE_REMOVE} or verify the missing wiring/import`
-                    : StandardSuggestions.DEAD_CODE_REMOVE;
+                const suggestedAction = remediation.recommendedActions[0]
+                    || (normalized.isExported
+                        ? `${StandardSuggestions.DEAD_CODE_REMOVE} or verify the missing wiring/import`
+                        : StandardSuggestions.DEAD_CODE_REMOVE);
 
                 issues.push({
                     atomId: metrics.id,
@@ -84,15 +87,7 @@ export async function detectDeadCode(rootPath, filePath, EventEmitterContext, at
                         threshold: minLines,
                         severity,
                         suggestedAction,
-                        suggestedAlternatives: metrics.isExported ? [
-                            'If temporarily unused, add @deprecated with revival date',
-                            'If permanently unused, remove to reduce bundle size',
-                            'Check if it should be called from another function'
-                        ] : [
-                            'Remove the unused function',
-                            'Export it if should be used externally',
-                            'If temporarily disabled, add a TODO comment with reason'
-                        ],
+                        suggestedAlternatives: remediation.recommendedActions,
                         extraData: {
                             isExported: metrics.isExported,
                             isDeadCode: true,
