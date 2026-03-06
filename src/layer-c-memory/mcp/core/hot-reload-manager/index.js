@@ -108,13 +108,13 @@ export class HotReloadManager {
 
     // Handle critical modules
     if (moduleInfo.type === 'critical') {
-      logger.warn(`Critical module changed: ${filename}`);
+      logger.warn(`🚨 Live compiler critical change: ${filename}`);
       logger.warn('   Manual restart required for changes to take effect');
       this.server.emit('hot-reload:critical-change', { file: filename });
       return;
     }
 
-    logger.info(`Detected change: ${filename} (${eventType})`);
+    logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo.type}/${eventType})`);
 
     // Execute reload
     this.reloadHandler.reload(filename, moduleInfo);

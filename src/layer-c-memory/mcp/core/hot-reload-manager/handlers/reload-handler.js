@@ -65,7 +65,7 @@ export class ReloadHandler {
     const startTime = Date.now();
 
     try {
-      logger.info(`File change detected: ${filename}`);
+      logger.info(`🧠 Live compiler runtime pass: ${filename} -> ${moduleInfo.type}`);
 
       // 0. SYNTAX VALIDATION SHIELD
       try {
@@ -87,7 +87,7 @@ export class ReloadHandler {
       this.stateHandler.restore();
 
       const duration = Date.now() - startTime;
-      logger.info(`File change processed: ${filename} (${duration}ms)`);
+      logger.info(`✅ Runtime reload applied: ${filename} (${moduleInfo.type}, ${duration}ms)`);
 
       this._emitSuccess(filename, moduleInfo, duration);
 

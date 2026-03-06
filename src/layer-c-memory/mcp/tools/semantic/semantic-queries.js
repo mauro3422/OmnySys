@@ -10,6 +10,7 @@
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:SemanticQueries');
+const VALID_DNA_PREDICATE = `dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'`;
 
 /**
  * Helper para ejecutar queries con manejo de errores
@@ -152,9 +153,9 @@ export function queryDnaCoverage(db) {
         const row = db.prepare(`
             SELECT
                 COUNT(*) totalAtoms,
-                COUNT(CASE WHEN dna_json IS NOT NULL AND dna_json != '' THEN 1 END) withDna,
+                COUNT(CASE WHEN ${VALID_DNA_PREDICATE} THEN 1 END) withDna,
                 COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
-                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND dna_json IS NOT NULL AND dna_json != '' THEN 1 END) srcWithDna
+                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND ${VALID_DNA_PREDICATE} THEN 1 END) srcWithDna
             FROM atoms
             WHERE is_removed IS NULL OR is_removed = 0
         `).get();
@@ -202,7 +203,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
         WITH DuplicateGroups AS (
             SELECT dna_json, COUNT(*) as group_size
             FROM atoms
-            WHERE dna_json IS NOT NULL AND dna_json != ''
+            WHERE ${VALID_DNA_PREDICATE}
               ${testFilterCte}
               ${typeFilterCte}
               AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
@@ -239,7 +240,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
         FROM atoms a_stats
         WHERE a_stats.dna_json IN (
             SELECT dna_json FROM atoms
-            WHERE dna_json IS NOT NULL AND dna_json != ''
+            WHERE ${VALID_DNA_PREDICATE}
               ${testFilterCte}
               ${typeFilterCte}
               AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
