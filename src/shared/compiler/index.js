@@ -27,6 +27,17 @@ export {
 } from './remediation-orchestration.js';
 
 export {
+  getCompilerRuntimeDir,
+  getDaemonOwnerLockPath,
+  ensureCompilerRuntimeDirSync,
+  writeDaemonOwnerLockSync,
+  removeDaemonOwnerLockSync,
+  isCompilerProcessAlive,
+  readDaemonOwnerLock,
+  waitForDaemonOwner
+} from './runtime-ownership.js';
+
+export {
   buildCompilerReadinessStatus,
   buildRestartLifecycleGuidance
 } from './session-restart-lifecycle.js';

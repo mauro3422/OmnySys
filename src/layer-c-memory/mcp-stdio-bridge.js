@@ -12,6 +12,10 @@ import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+    readDaemonOwnerLock,
+    waitForDaemonOwner
+} from '../shared/compiler/index.js';
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
@@ -20,7 +24,6 @@ const PROJECT_PATH = path.resolve(process.env.OMNYSYS_PROJECT_PATH || process.cw
 const DAEMON_PORT = String(DAEMON_URL.port || '9999');
 const START_LOCK_DIR = path.join(PROJECT_PATH, '.omnysysdata');
 const START_LOCK_PATH = path.join(START_LOCK_DIR, `daemon-start-${DAEMON_PORT}.lock`);
-const OWNER_LOCK_PATH = path.join(START_LOCK_DIR, `daemon-owner-${DAEMON_PORT}.json`);
 const START_LOCK_STALE_MS = 30000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -120,63 +123,17 @@ async function releaseStartLock(handle) {
     }
 }
 
-function isProcessAlive(pid) {
-    if (!Number.isInteger(pid) || pid <= 0) {
-        return false;
-    }
-
-    try {
-        process.kill(pid, 0);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function readOwnerLock() {
-    try {
-        const raw = await fs.readFile(OWNER_LOCK_PATH, 'utf8');
-        const lock = JSON.parse(raw);
-        if (String(lock?.port) !== DAEMON_PORT) {
-            return null;
-        }
-        if (!isProcessAlive(Number(lock?.pid))) {
-            try {
-                await fs.unlink(OWNER_LOCK_PATH);
-            } catch {
-                // ignore stale cleanup errors
-            }
-            return null;
-        }
-        return lock;
-    } catch {
-        return null;
-    }
-}
-
 async function waitForExistingOwner(timeoutMs = 20000) {
-    const ownerLock = await readOwnerLock();
+    const ownerLock = await readDaemonOwnerLock(PROJECT_PATH, DAEMON_PORT);
     if (!ownerLock) {
         return false;
     }
-
-    log(`Existing daemon owner detected (pid=${ownerLock.pid}, state=${ownerLock.state || 'unknown'}). Waiting for recovery instead of spawning another proxy...`);
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-        if (await checkDaemon()) {
-            log('Daemon became healthy while waiting for existing owner.');
-            return true;
-        }
-
-        if (!await readOwnerLock()) {
-            break;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    return false;
+    return await waitForDaemonOwner(PROJECT_PATH, {
+        port: DAEMON_PORT,
+        checkDaemon,
+        timeoutMs,
+        log
+    });
 }
 
 async function acquireStartLock() {

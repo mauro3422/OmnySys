@@ -25,7 +25,8 @@ export const COMPILER_POLICY_AREA = {
   FILE_DISCOVERY: 'file_discovery',
   SIGNAL_COVERAGE: 'signal_coverage',
   LIVE_ROW_DRIFT: 'live_row_drift',
-  PIPELINE_ORPHANS: 'pipeline_orphans'
+  PIPELINE_ORPHANS: 'pipeline_orphans',
+  RUNTIME_OWNERSHIP: 'runtime_ownership'
 };
 
 function normalizePath(filePath = '') {
@@ -93,6 +94,13 @@ function looksLikeManualPipelineOrphanScan(source = '') {
   );
 }
 
+function looksLikeManualRuntimeOwnership(source = '') {
+  return (
+    /(daemon-owner-|ownerLockPath|OWNER_LOCK_PATH|readOwnerLock|writeOwnerLock|waitForExistingOwner|removeOwnerLock)/.test(source) &&
+    /(process\.kill\(.*0\)|unlink\(|writeFileSync\(|readFile\(|state=.*restarting|state=.*starting)/.test(source)
+  );
+}
+
 export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   const normalizedPath = normalizePath(filePath);
   const findings = [];
@@ -115,6 +123,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   const importsSignalCoverageApi = /summarizeDerivedScoreCoverage|summarizeSemanticCoverage|classifyFieldCoverage/.test(source);
   const importsLiveRowDriftApi = /getLiveRowDriftSummary|getStaleTableRowCount|getLiveFileTotal|getLiveFileSetSql/.test(source);
   const importsPipelineOrphansApi = /classifyPipelineOrphans|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan/.test(source);
+  const importsRuntimeOwnershipApi = /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source);
 
   if (
     importsGetAllAtoms &&
@@ -226,6 +235,20 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
       COMPILER_POLICY_AREA.PIPELINE_ORPHANS,
       'Manual pipeline orphan classification detected',
       'Use classifyPipelineOrphans / getPipelineNamePatternSqlCondition from shared/compiler instead of rebuilding orphan heuristics inline.'
+    ));
+  }
+
+  if (
+    looksLikeManualRuntimeOwnership(source) &&
+    !importsRuntimeOwnershipApi &&
+    !normalizedPath.endsWith('/runtime-ownership.js')
+  ) {
+    findings.push(createFinding(
+      'manual_runtime_ownership',
+      COMPILER_POLICY_SEVERITY.MEDIUM,
+      COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
+      'Manual daemon ownership/lock logic detected',
+      'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
     ));
   }
 

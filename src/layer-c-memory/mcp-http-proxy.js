@@ -31,10 +31,14 @@ import fs from 'fs';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import {
+    ensureCompilerRuntimeDirSync,
+    removeDaemonOwnerLockSync,
+    writeDaemonOwnerLockSync
+} from '../shared/compiler/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
-const runtimeDir = path.join(projectRoot, '.omnysysdata');
 
 // ── Logging ─────────────────────────────────────────────────────────────────
 const logsDir = path.join(projectRoot, 'logs');
@@ -53,36 +57,23 @@ function log(msg) {
 const workerPath = path.join(__dirname, 'mcp-http-server.js');
 const projectPath = process.argv[2] || process.cwd();
 const port = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
-const ownerLockPath = path.join(runtimeDir, `daemon-owner-${port}.json`);
 
 let worker = null;
 let restartScheduled = false;
 let restartCount = 0;
 let respawnTimer = null;
 
-function ensureRuntimeDir() {
-    if (!fs.existsSync(runtimeDir)) {
-        fs.mkdirSync(runtimeDir, { recursive: true });
-    }
-}
-
 function writeOwnerLock(state) {
-    ensureRuntimeDir();
-    fs.writeFileSync(ownerLockPath, JSON.stringify({
+    writeDaemonOwnerLockSync(projectRoot, {
         pid: process.pid,
         port,
         state,
-        projectPath,
-        updatedAt: new Date().toISOString()
-    }, null, 2));
+        projectPath
+    });
 }
 
 function removeOwnerLock() {
-    try {
-        fs.unlinkSync(ownerLockPath);
-    } catch {
-        // ignore missing lock
-    }
+    removeDaemonOwnerLockSync(projectRoot, port);
 }
 
 function clearRespawnTimer() {
@@ -242,5 +233,6 @@ if (await detectHealthyDaemon()) {
     process.exit(0);
 }
 
+ensureCompilerRuntimeDirSync(projectRoot);
 writeOwnerLock('starting');
 spawnWorker();
