@@ -22,6 +22,16 @@ export {
 } from './compiler-diagnostics.js';
 
 export {
+  normalizeRemediationSection,
+  buildCompilerRemediationBacklog
+} from './remediation-orchestration.js';
+
+export {
+  buildCompilerReadinessStatus,
+  buildRestartLifecycleGuidance
+} from './session-restart-lifecycle.js';
+
+export {
   getDeadCodeSqlPredicate,
   isSuspiciousDeadCodeAtom,
   normalizeDeadCodeAtom

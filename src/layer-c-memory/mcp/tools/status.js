@@ -6,6 +6,7 @@
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
 import { createLogger } from '../../../utils/logger.js';
 import { collectRecentNotifications, normalizeRecentNotifications } from '../core/recent-notifications.js';
+import { buildCompilerReadinessStatus } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -208,26 +209,13 @@ export async function get_server_status(args, context) {
       const persistentActive = activePersistentSessions.length;
       const clientsWithDuplicates = dedupStats.clientsWithDuplicates || 0;
 
-      const checks = {
-        phase2Complete: phase2PendingFiles === 0,
-        societiesReady: societiesCount > 0,
-        dedupHealthy: clientsWithDuplicates === 0,
-        sessionCountsAligned: persistentActive >= runtimeSessions
-      };
-
-      const warnings = [];
-      if (!checks.phase2Complete) warnings.push(`Phase 2 still pending for ${phase2PendingFiles} files`);
-      if (!checks.societiesReady) warnings.push('Society extraction has not produced persisted rows yet');
-      if (!checks.dedupHealthy) warnings.push(`${clientsWithDuplicates} clients still have duplicated active sessions`);
-      if (!checks.sessionCountsAligned) {
-        warnings.push(`Runtime sessions (${runtimeSessions}) exceed persistent active rows (${persistentActive})`);
-      }
-
-      status.compilerReadiness = {
-        ready: warnings.length === 0,
-        checks,
-        warnings
-      };
+      status.compilerReadiness = buildCompilerReadinessStatus({
+        phase2PendingFiles,
+        societiesCount,
+        runtimeSessions,
+        persistentActive,
+        clientsWithDuplicates
+      });
     }
   } catch (error) {
     status.deepVitalsError = error.message;

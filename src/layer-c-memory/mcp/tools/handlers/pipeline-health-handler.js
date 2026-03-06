@@ -4,8 +4,10 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    buildCompilerRemediationBacklog,
     buildDeadCodeRemediationPlan,
     buildLiveRowRemediationPlan,
+    buildDuplicateRemediationPlan,
     buildPipelineOrphanRemediationPlan,
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     buildLiveRowReconciliationPlan,
@@ -192,6 +194,56 @@ export async function handlePipelineHealth(tool) {
 
     const liveRowReconciliation = buildLiveRowReconciliationPlan(db, { sampleLimit: 5 });
     const liveRowRemediation = buildLiveRowRemediationPlan(db, { sampleLimit: 5 });
+    const duplicateGroups = db.prepare(`
+        SELECT dna_json as duplicate_key, COUNT(*) as group_size
+        FROM atoms
+        WHERE dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
+          AND atom_type IN ('function', 'arrow')
+          AND file_path LIKE 'src/%'
+        GROUP BY dna_json
+        HAVING COUNT(*) > 1
+        ORDER BY COUNT(*) DESC
+        LIMIT 10
+    `).all().map((row) => ({
+        groupSize: row.group_size,
+        urgencyScore: row.group_size,
+        instances: []
+    }));
+    const duplicateRemediation = buildDuplicateRemediationPlan(duplicateGroups);
+    const compilerRemediation = buildCompilerRemediationBacklog([
+        {
+            id: 'live_rows',
+            label: 'Live/stale row cleanup',
+            severity: staleFileRows > 0 || staleRiskRows > 0 ? 'high' : 'low',
+            totalItems: staleFileRows + staleRiskRows,
+            recommendation: liveRowRemediation.recommendation,
+            items: liveRowRemediation.items || []
+        },
+        {
+            id: 'pipeline_orphans',
+            label: 'Pipeline orphan remediation',
+            severity: orphanFunctions.length > 0 ? 'high' : 'low',
+            totalItems: pipelineOrphanRemediation.totalCandidates || orphanFunctions.length,
+            recommendation: pipelineOrphanRemediation.recommendation,
+            items: pipelineOrphanRemediation.items || []
+        },
+        {
+            id: 'dead_code',
+            label: 'Dead code remediation',
+            severity: suspiciousDeadCandidates > 0 ? 'medium' : 'low',
+            totalItems: deadCodeRemediation.totalCandidates || suspiciousDeadCandidates,
+            recommendation: deadCodeRemediation.recommendation,
+            items: deadCodeRemediation.items || []
+        },
+        {
+            id: 'duplicates',
+            label: 'Duplicate remediation',
+            severity: duplicateRemediation.totalGroups > 0 ? 'medium' : 'low',
+            totalItems: duplicateRemediation.totalGroups || 0,
+            recommendation: duplicateRemediation.recommendation,
+            items: duplicateRemediation.items || []
+        }
+    ]);
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -204,7 +256,9 @@ export async function handlePipelineHealth(tool) {
         liveRowReconciliation,
         liveRowRemediation,
         deadCodeRemediation,
+        duplicateRemediation,
         pipelineOrphanRemediation,
+        compilerRemediation,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,

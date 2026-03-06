@@ -14,6 +14,7 @@
  * @module mcp/tools/restart-server
  */
 import { createLogger } from '../../../utils/logger.js';
+import { buildRestartLifecycleGuidance } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:restart:server');
 
@@ -109,6 +110,7 @@ async function handleClearCacheOnly(cache) {
     success: true,
     restarting: false,
     restartType: 'cache_only_flush',
+    lifecycle: buildRestartLifecycleGuidance({ restartType: 'cache_only_flush', clearCacheOnly: true }),
     message: 'In-memory cache flushed and tool registry refreshed. No reindex needed.',
     timestamp: new Date().toISOString()
   };
@@ -164,6 +166,14 @@ and waste tokens.
     success: true,
     restarting: true,
     restartType: 'true_process_restart',
+    lifecycle: buildRestartLifecycleGuidance({
+      restartType: 'true_process_restart',
+      proxyMode: true,
+      clearCache,
+      reanalyze,
+      reindexOnly,
+      clearCacheOnly
+    }),
     clearCache,
     reanalyze,
     timestamp: new Date().toISOString(),
@@ -244,6 +254,11 @@ async function handleReindexOnly(server, cache, result) {
   }
   result.success = true;
   result.restartType = 'reindex_only';
+  result.lifecycle = buildRestartLifecycleGuidance({
+    restartType: 'reindex_only',
+    clearCache: result.cacheCleared || false,
+    reindexOnly: true
+  });
   result.message = 'Layer A re-analysis forced. DB preserved, no process restart.';
   return result;
 }
