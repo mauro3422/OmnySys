@@ -1,0 +1,126 @@
+/**
+ * @fileoverview standardization-report.js
+ *
+ * Reporte canónico para decidir qué familias del compilador ya están
+ * estandarizadas, cuáles siguen con deriva en sus consumers y qué nuevas
+ * APIs conviene crear según la telemetría viva del sistema.
+ *
+ * @module shared/compiler/standardization-report
+ */
+
+const CANONICAL_COMPILER_FAMILIES = [
+  { id: 'duplicates', label: 'Duplicate policy', status: 'canonical' },
+  { id: 'impact', label: 'Impact/topology', status: 'canonical' },
+  { id: 'file_discovery', label: 'File discovery', status: 'canonical' },
+  { id: 'signal_coverage', label: 'Signal coverage', status: 'canonical' },
+  { id: 'live_row_drift', label: 'Live/stale row drift', status: 'canonical' },
+  { id: 'pipeline_orphans', label: 'Pipeline orphan classification', status: 'canonical' },
+  { id: 'dead_code', label: 'Dead code reporting/remediation', status: 'canonical' },
+  { id: 'watcher_diagnostics', label: 'Watcher diagnostics contract', status: 'canonical' },
+  { id: 'watcher_lifecycle', label: 'Watcher diagnostics lifecycle', status: 'canonical' },
+  { id: 'runtime_ownership', label: 'Runtime ownership/daemon lock', status: 'canonical' },
+  { id: 'compiler_diagnostics', label: 'Compiler diagnostics', status: 'canonical' },
+  { id: 'session_lifecycle', label: 'Session/restart lifecycle', status: 'canonical' },
+  { id: 'remediation', label: 'Compiler remediation backlog', status: 'canonical' }
+];
+
+function normalizeDriftArea(area, count = 0) {
+  return {
+    area,
+    count,
+    status: count > 0 ? 'adoption_gap' : 'stable'
+  };
+}
+
+function hasRuntimeRestartPressure(watcherAlerts = []) {
+  return watcherAlerts.some((alert) =>
+    ['src/layer-c-memory/mcp-http-proxy.js', 'src/layer-c-memory/mcp-stdio-bridge.js'].includes(alert?.filePath) &&
+    ['arch_circular_high', 'code_complexity_high'].includes(alert?.issueType)
+  );
+}
+
+function hasSharedStateHotspot(sharedState = {}) {
+  const hottest = sharedState?.topContentionKeys?.[0];
+  return hottest && Number(hottest.count || 0) >= 100;
+}
+
+function hasGuardNoise(watcherAlerts = []) {
+  return watcherAlerts.some((alert) =>
+    String(alert?.filePath || '').startsWith('src/shared/compiler/') &&
+    String(alert?.issueType || '').startsWith('sem_data_flow_')
+  );
+}
+
+function buildSuggestedTarget(id, priority, rationale, recommendation) {
+  return {
+    id,
+    priority,
+    rationale,
+    recommendation
+  };
+}
+
+export function buildCompilerStandardizationReport({
+  policySummary = {},
+  watcherAlerts = [],
+  sharedState = {},
+  compilerRemediation = null
+} = {}) {
+  const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
+    .map(([area, count]) => normalizeDriftArea(area, count))
+    .sort((a, b) => b.count - a.count || a.area.localeCompare(b.area));
+
+  const missingCanonicalApis = [];
+
+  if (hasRuntimeRestartPressure(watcherAlerts)) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'runtime_restart_recovery',
+      'high',
+      'Bridge/proxy still surface restart-related cycles and complexity hotspots.',
+      'Extract restart/recovery flow into a dedicated canonical API so bridge/proxy stop owning lifecycle heuristics inline.'
+    ));
+  }
+
+  if (hasSharedStateHotspot(sharedState)) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'shared_state_contention',
+      'medium',
+      'Shared state contention is dominated by a single hot key and lacks a canonical reporting/remediation API.',
+      'Create a canonical shared-state contention/reporting API before more MCP tools start reading topContentionKeys ad hoc.'
+    ));
+  }
+
+  if (hasGuardNoise(watcherAlerts)) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'guard_noise_normalization',
+      'medium',
+      'Compiler helper files are still generating low-signal integrity warnings.',
+      'Create a canonical guard-noise normalization policy so compiler helpers are not treated like product code by default.'
+    ));
+  }
+
+  const adoptionGaps = driftAreas.filter((item) => item.count > 0);
+  const stableCanonicalFamilies = CANONICAL_COMPILER_FAMILIES.filter((family) =>
+    !adoptionGaps.some((gap) => gap.area === family.id)
+  );
+
+  const totalRemediationItems = compilerRemediation?.totalItems || 0;
+  const nextAction = missingCanonicalApis[0]?.recommendation
+    || (adoptionGaps.length > 0
+      ? 'Reduce policy drift in existing canonical families before adding new ones.'
+      : 'No missing canonical family detected right now; focus on adopting the existing ones consistently.');
+
+  return {
+    canonicalFamilies: CANONICAL_COMPILER_FAMILIES,
+    stableCanonicalFamilies,
+    adoptionGaps,
+    missingCanonicalApis,
+    summary: {
+      canonicalFamilyCount: CANONICAL_COMPILER_FAMILIES.length,
+      adoptionGapCount: adoptionGaps.length,
+      missingCanonicalApiCount: missingCanonicalApis.length,
+      totalRemediationItems,
+      nextAction
+    }
+  };
+}

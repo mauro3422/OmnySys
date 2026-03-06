@@ -27,6 +27,10 @@ export {
 } from './remediation-orchestration.js';
 
 export {
+  buildCompilerStandardizationReport
+} from './standardization-report.js';
+
+export {
   getCompilerRuntimeDir,
   getDaemonOwnerLockPath,
   ensureCompilerRuntimeDirSync,

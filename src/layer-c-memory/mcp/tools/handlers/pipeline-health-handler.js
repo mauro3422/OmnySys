@@ -5,6 +5,7 @@
  */
 import {
     buildCompilerRemediationBacklog,
+    buildCompilerStandardizationReport,
     buildDeadCodeRemediationPlan,
     buildLiveRowRemediationPlan,
     buildDuplicateRemediationPlan,
@@ -37,6 +38,8 @@ export async function handlePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
     const projectPath = tool.projectPath;
+    let policyFindings = [];
+    let policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} };
 
     const issues = [];
     const warnings = [];
@@ -162,8 +165,8 @@ export async function handlePipelineHealth(tool) {
     // --- CHECK 5: Compiler policy drift ---
     if (projectPath) {
         try {
-            const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
-            const policySummary = summarizeCompilerPolicyDrift(policyFindings);
+            policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+            policySummary = summarizeCompilerPolicyDrift(policyFindings);
 
             if (policySummary.total > 0) {
                 warnings.push({
@@ -183,6 +186,8 @@ export async function handlePipelineHealth(tool) {
                 tableCounts.compiler_policy_findings = policySummary.total;
                 tableCounts.compiler_policy_high = policySummary.high;
             }
+
+            tableCounts.compiler_policy_areas = Object.keys(policySummary.byPolicyArea || {}).length;
         } catch (error) {
             warnings.push({
                 field: 'compiler_policy',
@@ -244,6 +249,13 @@ export async function handlePipelineHealth(tool) {
             items: duplicateRemediation.items || []
         }
     ]);
+    const recentWatcherAlerts = tool.recentNotifications?.watcherAlerts || tool.latestRecentErrors?.watcherAlerts || [];
+    const standardizationReport = buildCompilerStandardizationReport({
+        policySummary,
+        watcherAlerts: recentWatcherAlerts,
+        sharedState: tool.server?.sharedCache?.metadata?.sharedState || tool.server?.sharedState || {},
+        compilerRemediation
+    });
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -259,6 +271,7 @@ export async function handlePipelineHealth(tool) {
         duplicateRemediation,
         pipelineOrphanRemediation,
         compilerRemediation,
+        standardizationReport,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,
