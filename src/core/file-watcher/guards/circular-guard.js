@@ -57,6 +57,53 @@ function findCycleDFS(startId, getChildrenFn) {
     return foundCycle;
 }
 
+function isRuntimeLifecycleFile(filePath = '') {
+    const normalized = normalizePath(filePath);
+    return normalized.endsWith('/mcp-http-proxy.js')
+        || normalized.endsWith('/mcp-stdio-bridge.js');
+}
+
+function isEventDrivenLifecycleCycle(filePath, atomCycle = [], atomNames = []) {
+    if (!isRuntimeLifecycleFile(filePath) || atomCycle.length < 3) {
+        return false;
+    }
+
+    const normalizedCycleFiles = new Set(
+        atomCycle
+            .map((atomId) => String(atomId || '').split('::')[0])
+            .filter(Boolean)
+    );
+
+    if (normalizedCycleFiles.size !== 1) {
+        return false;
+    }
+
+    const lifecycleNamePattern = /schedule|spawn|restart|reconnect|recover|wait|connect|disconnect|shutdown|start|stop|close/i;
+    const lifecycleHits = atomNames.filter((name) => lifecycleNamePattern.test(String(name || ''))).length;
+
+    return lifecycleHits >= Math.max(2, atomNames.length - 1);
+}
+
+function isIntentionalAlgorithmicRecursion(atomCycle = [], atomNames = []) {
+    if (atomCycle.length < 3) {
+        return false;
+    }
+
+    const normalizedCycleFiles = new Set(
+        atomCycle
+            .map((atomId) => String(atomId || '').split('::')[0])
+            .filter(Boolean)
+    );
+
+    if (normalizedCycleFiles.size !== 1) {
+        return false;
+    }
+
+    const algorithmicNames = /^(dfs|bfs|walk|visit|traverse|findCycleDFS|scan|search)$/i;
+    const matches = atomNames.filter((name) => algorithmicNames.test(String(name || ''))).length;
+    return matches >= Math.max(2, atomNames.length - 1);
+}
+
 /**
  * Detecta dependencias circulares en módulos y llamadas de átomos
  * @param {string} rootPath - Ruta raíz del proyecto
@@ -175,6 +222,52 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
                     if (atomCycle.length <= 2) continue;
 
                     const atomNames = atomCycle.map(a => a.split('::')[1] || a);
+
+                    if (isIntentionalAlgorithmicRecursion(atomCycle, atomNames)) {
+                        logger.debug(`[CIRCULAR FUNCTION GUARD][ALGORITHMIC] Ignoring intentional recursion: ${atomNames.join(' ➔ ')}`);
+                        await clearWatcherIssue(rootPath, filePath, 'arch_circular_high');
+                        continue;
+                    }
+
+                    if (isEventDrivenLifecycleCycle(relPath, atomCycle, atomNames)) {
+                        const cycleStr = atomNames.join(' ➔ ');
+                        const msg = `Event-driven lifecycle loop detected: ${cycleStr}`;
+
+                        logger.info(`[CIRCULAR FUNCTION GUARD][LIFECYCLE] ${msg}`);
+
+                        const context = createStandardContext({
+                            guardName: 'circular-guard',
+                            atomId: atom.id,
+                            atomName: atomNames[0],
+                            severity: 'low',
+                            suggestedAction: 'Verify that the lifecycle loop is event-driven and guarded by restart/connection state checks.',
+                            suggestedAlternatives: [
+                                'Keep lifecycle loops behind event/timer boundaries',
+                                'Document why the control loop is intentional',
+                                'Avoid direct synchronous recursion inside runtime ownership code'
+                            ],
+                            extraData: {
+                                cycleType: 'lifecycle',
+                                cyclePath: atomCycle,
+                                cycleLength: atomCycle.length,
+                                atomNames
+                            }
+                        });
+
+                        const issueType = createIssueType(IssueDomains.ARCH, 'circular', 'low');
+                        await persistWatcherIssue(
+                            rootPath,
+                            filePath,
+                            issueType,
+                            'low',
+                            msg,
+                            context
+                        );
+
+                        await clearWatcherIssue(rootPath, filePath, 'arch_circular_high');
+                        return { fileCycle, atomCycle, context };
+                    }
+
                     const cycleStr = atomNames.join(' ➔ ');
                     const msg = `Cross-file functional recursion detected: ${cycleStr}`;
                     
