@@ -283,6 +283,13 @@ class GuardRegistry {
             description: 'Detects sudden loss of topology signal after a file change'
         });
 
+        const { detectPipelineOrphans } = await import('./pipeline-orphan-guard.js');
+        this.registerImpactGuard('pipeline-orphan', detectPipelineOrphans, {
+            domain: 'arch',
+            version: '1.0.0',
+            description: 'Detects exported pipeline atoms that became disconnected after a change'
+        });
+
         const { detectSemanticCoverage } = await import('./semantic-coverage-guard.js');
         this.registerImpactGuard('semantic-coverage', detectSemanticCoverage, {
             domain: 'sem',

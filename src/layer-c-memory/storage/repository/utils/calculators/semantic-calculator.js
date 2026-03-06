@@ -92,11 +92,19 @@ export function calculateFragility(atom, context = {}) {
     const stability = atom.stabilityScore
         ?? atom.stability_score
         ?? calculateStability(atom, context.gitHistory || null);
+    const complexityFactor = Math.min(
+        1,
+        Math.log2(Math.max(2, complexity + 1)) / Math.log2(51)
+    );
+    const reliabilityPenalty =
+        (atom.hasErrorHandling ? 0 : 0.12) +
+        (atom.hasNetworkCalls ? 0.08 : 0) +
+        (atom.hasSideEffects ? 0.05 : 0);
 
-    const numerator = complexity * coupling;
-    const denominator = Math.max(0.1, cohesion * stability);
+    const numerator = (complexityFactor * 0.45) + (coupling * 0.35) + reliabilityPenalty;
+    const denominator = 0.6 + (cohesion * 0.25) + (stability * 0.15);
 
-    return Math.round(Math.min(1, numerator / denominator) * 100) / 100;
+    return Math.round(Math.min(1, numerator / Math.max(0.35, denominator)) * 100) / 100;
 }
 
 /**

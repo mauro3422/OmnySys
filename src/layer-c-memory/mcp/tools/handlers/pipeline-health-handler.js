@@ -34,6 +34,25 @@ function getFieldCoverageContext(field) {
     };
 }
 
+function isPipelineProductionFile(filePath = '') {
+    return typeof filePath === 'string'
+        && !filePath.startsWith('tests/')
+        && !filePath.startsWith('scripts/');
+}
+
+function hasFileLevelImportEvidence(atomRow = {}) {
+    return (atomRow?.file_importer_count || 0) > 0;
+}
+
+function isLikelyDisconnected(atomRow = {}) {
+    const effectiveCallers = getEffectiveCallerCount(atomRow);
+    if (effectiveCallers > 0) return false;
+    if (!isPipelineProductionFile(atomRow.file_path)) return false;
+    if (hasFileLevelImportEvidence(atomRow)) return false;
+    if ((atomRow?.callees_count || 0) > 0) return false;
+    return true;
+}
+
 export async function handlePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
@@ -70,7 +89,7 @@ export async function handlePipelineHealth(tool) {
 
     const desyncedCallerCounts = db.prepare(`
         SELECT COUNT(*) as total
-        FROM atoms
+        FROM atoms a
         WHERE callers_count = 0
           AND called_by_json IS NOT NULL
           AND called_by_json != ''
@@ -122,21 +141,46 @@ export async function handlePipelineHealth(tool) {
     const pipelinePatterns = ['persist', 'analyze', 'compute', 'calculate', 'build', 'generate', 'process', 'index'];
     const patternCondition = pipelinePatterns.map(p => `name LIKE '%${p}%'`).join(' OR ');
     const potentialOrphans = db.prepare(`
-        SELECT id, name, file_path, atom_type, callers_count, called_by_json, complexity, is_phase2_complete
-        FROM atoms
-        WHERE is_exported = 1
-          AND atom_type IN ('function', 'arrow', 'method', 'class')
-          AND is_test_callback = 0
-          AND is_phase2_complete = 1
+        SELECT
+            a.id,
+            a.name,
+            a.file_path,
+            a.atom_type,
+            a.callers_count,
+            a.callees_count,
+            a.called_by_json,
+            a.complexity,
+            a.is_phase2_complete,
+            (
+              SELECT COUNT(*)
+              FROM files f
+              WHERE f.path != a.file_path
+                AND f.imports_json LIKE '%' || a.file_path || '%'
+            ) as file_importer_count
+        FROM atoms a
+        WHERE a.is_exported = 1
+          AND a.atom_type IN ('function', 'arrow', 'method', 'class')
+          AND a.is_test_callback = 0
+          AND a.is_phase2_complete = 1
+          AND a.file_path NOT LIKE 'tests/%'
+          AND a.file_path NOT LIKE 'scripts/%'
           AND (${patternCondition})
-          AND complexity > 3
-        ORDER BY complexity DESC
+          AND a.complexity > 3
+        ORDER BY a.complexity DESC
         LIMIT 50
     `).all();
 
     const orphanFunctions = potentialOrphans
-        .filter(atom => getEffectiveCallerCount(atom) === 0)
+        .filter(isLikelyDisconnected)
         .slice(0, 20);
+
+    if (orphanFunctions.length > 0) {
+        warnings.push({
+            field: 'pipeline_orphans',
+            coverage: `${orphanFunctions.length} atoms`,
+            issue: 'Exported pipeline atoms appear disconnected after filtering import-backed modules'
+        });
+    }
 
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
