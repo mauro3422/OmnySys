@@ -179,6 +179,9 @@ export {
   WATCHER_LIFECYCLE_FILTER,
   normalizeWatcherAlertLifecycleFilter,
   matchesWatcherAlertLifecycle,
+  getWatcherIssueFamily,
+  getWatcherIssueIdentity,
+  findSupersededWatcherAlertIds,
   partitionWatcherAlertsByLifecycle,
   filterWatcherAlertsByLifecycle
 } from './watcher-issue-reconciliation.js';
