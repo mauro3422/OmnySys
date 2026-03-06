@@ -20,6 +20,7 @@ import {
   normalizeWatcherIssueFilePath,
   partitionWatcherAlertsByLifecycle
 } from '../../shared/compiler/index.js';
+import { getWatcherIssueDb } from './watcher-issue-repository.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
 
@@ -37,9 +38,8 @@ const logger = createLogger('OmnySys:file-watcher:persistence');
  */
 export async function persistWatcherIssue(projectPath, filePath, issueType, severity, message, context = {}) {
   try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
+    const db = await getWatcherIssueDb(projectPath);
+    if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const record = createWatcherIssueRecord({
@@ -50,12 +50,12 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
       context
     });
 
-    repo.db.prepare(`
+    db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type = ? AND message LIKE ?
     `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
 
-    repo.db.prepare(`
+    db.prepare(`
       INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -88,12 +88,11 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
  */
 export async function clearWatcherIssue(projectPath, filePath, issueType) {
   try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
+    const db = await getWatcherIssueDb(projectPath);
+    if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    const result = repo.db.prepare(`
+    const result = db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type = ? AND message LIKE ?
     `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
@@ -111,15 +110,14 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
 
 export async function clearWatcherIssueFamily(projectPath, filePath, issueTypePrefix) {
   try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) return false;
+    const db = await getWatcherIssueDb(projectPath);
+    if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const normalizedPrefix = String(issueTypePrefix || '').trim().replace(/[_%]+$/g, '');
     if (!normalizedPrefix) return false;
 
-    const result = repo.db.prepare(`
+    const result = db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type LIKE ? AND message LIKE ?
     `).run(normalizedFilePath, `${normalizedPrefix}%`, `${WATCHER_MESSAGE_PREFIX}%`);
@@ -146,14 +144,13 @@ export async function loadWatcherIssues(projectPath, options = {}) {
       pruneExpired = true
     } = options;
 
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(projectPath);
-    if (!repo?.db) {
+    const db = await getWatcherIssueDb(projectPath);
+    if (!db) {
       return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } } };
     }
 
     const reconciliation = pruneExpired
-      ? await reconcileWatcherIssues(projectPath, { repo })
+      ? await reconcileWatcherIssues(projectPath, { db })
       : { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } };
 
     let whereClause = 'WHERE message LIKE ?';
@@ -169,7 +166,7 @@ export async function loadWatcherIssues(projectPath, options = {}) {
       params.push(issueType);
     }
 
-    const rows = repo.db.prepare(`
+    const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
       FROM semantic_issues
       ${whereClause}
@@ -194,13 +191,13 @@ export async function loadWatcherIssues(projectPath, options = {}) {
 
 export async function reconcileWatcherIssues(projectPath, options = {}) {
   try {
-    const { repo: existingRepo = null, maxDelete = 500 } = options;
-    const repo = existingRepo || (await import('#layer-c/storage/repository/index.js')).getRepository(projectPath);
-    if (!repo?.db) {
+    const { db: existingDb = null, maxDelete = 500 } = options;
+    const db = existingDb || await getWatcherIssueDb(projectPath);
+    if (!db) {
       return { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
     }
 
-    const rows = repo.db.prepare(`
+    const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
       FROM semantic_issues
       WHERE message LIKE ?
@@ -221,7 +218,7 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
 
     if (idsToDelete.length > 0) {
       const placeholders = idsToDelete.map(() => '?').join(', ');
-      repo.db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...idsToDelete);
+      db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...idsToDelete);
       logger.info(
         `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
         ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length})`

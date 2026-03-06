@@ -36,7 +36,8 @@ export function getEffectiveCallerCount(atomRow = {}) {
 export function isPipelineProductionFile(filePath = '') {
   return typeof filePath === 'string'
     && !filePath.startsWith('tests/')
-    && !filePath.startsWith('scripts/');
+    && !filePath.startsWith('scripts/')
+    && !filePath.startsWith('src/shared/compiler/');
 }
 
 export function hasFileLevelImportEvidence(atomRow = {}) {
