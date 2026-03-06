@@ -4,6 +4,7 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    buildLiveRowRemediationPlan,
     buildPipelineOrphanRemediationPlan,
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     buildLiveRowReconciliationPlan,
@@ -188,6 +189,7 @@ export async function handlePipelineHealth(tool) {
     }
 
     const liveRowReconciliation = buildLiveRowReconciliationPlan(db, { sampleLimit: 5 });
+    const liveRowRemediation = buildLiveRowRemediationPlan(db, { sampleLimit: 5 });
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -198,6 +200,7 @@ export async function handlePipelineHealth(tool) {
         issues,
         warnings,
         liveRowReconciliation,
+        liveRowRemediation,
         pipelineOrphanRemediation,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {

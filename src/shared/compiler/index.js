@@ -50,6 +50,10 @@ export {
 } from './live-row-reconciliation.js';
 
 export {
+  buildLiveRowRemediationPlan
+} from './live-row-remediation.js';
+
+export {
   PIPELINE_ORPHAN_NAME_PATTERNS,
   getEffectiveCallerCount,
   isPipelineProductionFile,
