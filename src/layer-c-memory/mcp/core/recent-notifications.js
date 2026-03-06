@@ -1,7 +1,9 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 import {
+  attachWatcherAlertLifecycle,
   mapSemanticIssueRowToWatcherAlert,
   summarizeWatcherAlerts,
+  summarizeWatcherAlertLifecycle,
   WATCHER_MESSAGE_PREFIX
 } from '../../../shared/compiler/index.js';
 
@@ -45,8 +47,11 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   }
 
   const loggerEntries = rawLogs.map(mapLoggerEntry);
-  const watcherEntries = (await loadWatcherAlerts(projectPath, watcherLimit)).map(mapSemanticIssueRowToWatcherAlert);
+  const watcherEntries = (await loadWatcherAlerts(projectPath, watcherLimit))
+    .map(mapSemanticIssueRowToWatcherAlert)
+    .map((alert) => attachWatcherAlertLifecycle(alert));
   const watcherSummary = summarizeWatcherAlerts(watcherEntries);
+  const watcherLifecycle = summarizeWatcherAlertLifecycle(watcherEntries);
 
   const warnings =
     loggerEntries.filter((entry) => entry.level === 'warn').length +
@@ -62,7 +67,8 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     errors,
     logs: loggerEntries,
     watcherAlerts: watcherEntries,
-    watcherSummary
+    watcherSummary,
+    watcherLifecycle
   };
 }
 
@@ -76,6 +82,7 @@ export function normalizeRecentNotifications(notifications = {}) {
     errors: notifications.errors || 0,
     logs,
     watcherAlerts,
-    watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts)
+    watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts),
+    watcherLifecycle: notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts)
   };
 }

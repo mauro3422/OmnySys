@@ -1,6 +1,8 @@
 import {
+    attachWatcherAlertLifecycle,
     mapSemanticIssueRowToWatcherAlert,
     summarizeWatcherAlerts,
+    summarizeWatcherAlertLifecycle,
     WATCHER_MESSAGE_PREFIX
 } from '../../../../shared/compiler/index.js';
 
@@ -36,8 +38,9 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     `).all(...whereParams, limit, offset);
 
     const total = rows[0]?.total_count || 0;
-    const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
+    const alerts = rows.map(mapSemanticIssueRowToWatcherAlert).map((alert) => attachWatcherAlertLifecycle(alert));
     const watcherSummary = summarizeWatcherAlerts(alerts);
+    const watcherLifecycle = summarizeWatcherAlertLifecycle(alerts);
 
     return {
         aggregationType: 'watcher_alerts',
@@ -48,6 +51,7 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
         alerts,
         summary: {
             ...watcherSummary,
+            lifecycle: watcherLifecycle,
             totalAlerts: total
         }
     };

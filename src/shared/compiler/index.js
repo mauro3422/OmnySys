@@ -62,3 +62,12 @@ export {
   mapSemanticIssueRowToWatcherAlert,
   summarizeWatcherAlerts
 } from './watcher-issues.js';
+
+export {
+  WATCHER_ALERT_LIFECYCLE,
+  WATCHER_ALERT_TTL_MS,
+  getWatcherAlertTtlMs,
+  classifyWatcherAlertLifecycle,
+  attachWatcherAlertLifecycle,
+  summarizeWatcherAlertLifecycle
+} from './watcher-issue-lifecycle.js';
