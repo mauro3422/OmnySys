@@ -10,14 +10,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-
-const TARGET_DIRS = [
-  'src/core/file-watcher',
-  'src/layer-c-memory/mcp',
-  'src/layer-c-memory/query'
-];
-
-const JS_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
+import {
+  COMPILER_TARGET_DIRS,
+  discoverCompilerFiles,
+  isCompilerRuntimeFile
+} from './file-discovery.js';
 const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
@@ -32,16 +29,8 @@ function normalizePath(filePath = '') {
   return filePath.replace(/\\/g, '/');
 }
 
-function isJavaScriptFile(filePath = '') {
-  return JS_EXTENSIONS.has(path.extname(filePath));
-}
-
 function shouldScanCompilerFile(filePath = '') {
-  const normalized = normalizePath(filePath);
-  if (!isJavaScriptFile(normalized)) return false;
-  if (normalized.includes('/tests/')) return false;
-  if (normalized.includes('/__tests__/')) return false;
-  return TARGET_DIRS.some((dir) => normalized.startsWith(`${dir}/`));
+  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
 }
 
 function createFinding(rule, severity, policyArea, message, recommendation) {
@@ -78,6 +67,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   const importsGetAllAtoms = /getAllAtoms/.test(source);
   const importsImpactApis = /getFileDependents|getTransitiveDependents|getFileImpactSummary|classifyImpactSeverity/.test(source);
   const importsDuplicateApi = /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|buildDuplicateWhereSql|normalizeDuplicateCandidateAtom|getValidDnaPredicate|DUPLICATE_MODES/.test(source);
+  const importsFileDiscoveryApi = /discoverCompilerFiles|discoverProjectSourceFiles|isCompilerRuntimeFile/.test(source);
 
   if (
     importsGetAllAtoms &&
@@ -124,7 +114,8 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   if (
     /fs\.readdir|fs\.readFile/.test(source) &&
     /collectFilesRecursively|readdirSync|walkDir|walkDirectory/.test(source) &&
-    normalizedPath.includes('/mcp/')
+    (normalizedPath.includes('/mcp/') || normalizedPath.includes('/shared/compiler/')) &&
+    !importsFileDiscoveryApi
   ) {
     findings.push(createFinding(
       'manual_file_discovery_scan',
@@ -157,30 +148,9 @@ export function summarizeCompilerPolicyDrift(findings = []) {
   return summary;
 }
 
-async function collectFilesRecursively(rootPath, relativeDir) {
-  const dirPath = path.join(rootPath, relativeDir);
-  const entries = await fs.readdir(dirPath, { withFileTypes: true }).catch(() => []);
-  const files = [];
-
-  for (const entry of entries) {
-    const absolute = path.join(dirPath, entry.name);
-    const relative = normalizePath(path.relative(rootPath, absolute));
-    if (entry.isDirectory()) {
-      files.push(...await collectFilesRecursively(rootPath, relative));
-      continue;
-    }
-    if (shouldScanCompilerFile(relative)) {
-      files.push(relative);
-    }
-  }
-
-  return files;
-}
-
 export async function scanCompilerPolicyDrift(rootPath, options = {}) {
   const { limit = 20 } = options;
-  const candidateLists = await Promise.all(TARGET_DIRS.map((dir) => collectFilesRecursively(rootPath, dir)));
-  const files = [...new Set(candidateLists.flat())];
+  const files = await discoverCompilerFiles(rootPath);
   const findings = [];
 
   for (const filePath of files) {

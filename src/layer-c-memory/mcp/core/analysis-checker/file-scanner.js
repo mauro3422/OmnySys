@@ -5,6 +5,7 @@
 
 import path from 'path';
 import fs from 'fs/promises';
+import { discoverProjectSourceFiles } from '#shared/compiler/file-discovery.js';
 
 const DATA_DIR = '.omnysysdata';
 
@@ -44,37 +45,18 @@ export async function hasExistingAnalysis(projectPath) {
  * @returns {Promise<Array>} - Array of file info objects
  */
 export async function scanCurrentFiles(projectPath) {
-  const files = [];
-  
-  async function scanDir(dir, relativePath = '') {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        const relPath = path.join(relativePath, entry.name);
-        
-        if (entry.name === 'node_modules' || entry.name === '.omnysysdata' || entry.name.startsWith('.')) {
-          continue;
-        }
-        
-        if (entry.isDirectory()) {
-          await scanDir(fullPath, relPath);
-        } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.ts') || entry.name.endsWith('.jsx') || entry.name.endsWith('.tsx'))) {
-          const stats = await fs.stat(fullPath);
-          files.push({
-            path: relPath.replace(/\\/g, '/'),
-            fullPath,
-            mtime: stats.mtime.getTime(),
-            size: stats.size
-          });
-        }
-      }
-    } catch (error) {
-    }
-  }
-  
-  await scanDir(projectPath);
+  const relativePaths = await discoverProjectSourceFiles(projectPath);
+  const files = await Promise.all(relativePaths.map(async (relativePath) => {
+    const fullPath = path.join(projectPath, relativePath);
+    const stats = await fs.stat(fullPath);
+    return {
+      path: relativePath,
+      fullPath,
+      mtime: stats.mtime.getTime(),
+      size: stats.size
+    };
+  }));
+
   return files;
 }
 
