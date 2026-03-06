@@ -59,6 +59,29 @@ export async function handlePipelineHealth(tool) {
 
     const issues = [];
     const warnings = [];
+    const liveAtomFiles = db.prepare(`
+        SELECT COUNT(DISTINCT file_path) as total
+        FROM atoms
+        WHERE file_path IS NOT NULL AND file_path != ''
+    `).get()?.total || 0;
+    const staleFileRows = db.prepare(`
+        SELECT COUNT(*) as total
+        FROM files f
+        WHERE f.path NOT IN (
+            SELECT DISTINCT file_path
+            FROM atoms
+            WHERE file_path IS NOT NULL AND file_path != ''
+        )
+    `).get()?.total || 0;
+    const staleRiskRows = db.prepare(`
+        SELECT COUNT(*) as total
+        FROM risk_assessments r
+        WHERE r.file_path NOT IN (
+            SELECT DISTINCT file_path
+            FROM atoms
+            WHERE file_path IS NOT NULL AND file_path != ''
+        )
+    `).get()?.total || 0;
 
     // --- CHECK 1: Tablas vacías ---
     const expectedNonEmpty = [
@@ -85,6 +108,26 @@ export async function handlePipelineHealth(tool) {
         } catch (e) {
             issues.push({ table: check.table, rows: null, issue: `Table missing or inaccessible: ${e.message}` });
         }
+    }
+
+    tableCounts.live_atom_files = liveAtomFiles;
+    tableCounts.stale_file_rows = staleFileRows;
+    tableCounts.stale_risk_rows = staleRiskRows;
+
+    if (staleFileRows > 0) {
+        warnings.push({
+            field: 'files_table',
+            coverage: `${staleFileRows} stale rows`,
+            issue: 'files table contains historical entries not present in the live atom graph'
+        });
+    }
+
+    if (staleRiskRows > 0) {
+        warnings.push({
+            field: 'risk_assessments',
+            coverage: `${staleRiskRows} stale rows`,
+            issue: 'risk_assessments contains entries for files that are no longer present in the live atom graph'
+        });
     }
 
     const desyncedCallerCounts = db.prepare(`
@@ -182,6 +225,36 @@ export async function handlePipelineHealth(tool) {
         });
     }
 
+    // --- CHECK 4: Dead code plausibility ---
+    const flaggedDeadCode = db.prepare(`
+        SELECT COUNT(*) as total
+        FROM atoms
+        WHERE is_dead_code = 1
+          AND file_path LIKE 'src/%'
+    `).get()?.total || 0;
+
+    const suspiciousDeadCandidates = db.prepare(`
+        SELECT COUNT(*) as total
+        FROM atoms
+        WHERE file_path LIKE 'src/%'
+          AND atom_type IN ('function', 'method', 'arrow', 'class')
+          AND (is_removed IS NULL OR is_removed = 0)
+          AND (is_dead_code IS NULL OR is_dead_code = 0)
+          AND (is_exported IS NULL OR is_exported = 0)
+          AND COALESCE(callers_count, 0) = 0
+          AND COALESCE(callees_count, 0) = 0
+          AND (called_by_json IS NULL OR called_by_json = '' OR called_by_json = '[]')
+          AND (calls_json IS NULL OR calls_json = '' OR calls_json = '[]')
+    `).get()?.total || 0;
+
+    if (flaggedDeadCode === 0 && suspiciousDeadCandidates > 50) {
+        warnings.push({
+            field: 'dead_code',
+            coverage: `${suspiciousDeadCandidates} suspicious atoms`,
+            issue: 'Dead code detector reports zero dead atoms, but many production atoms look fully disconnected'
+        });
+    }
+
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -202,9 +275,12 @@ export async function handlePipelineHealth(tool) {
             totalWarnings: warnings.length,
             orphanFunctionsFound: orphanFunctions.length,
             zeroFieldsFound: zeroFields.length,
-            recommendation: issues.length === 0
-                ? 'Pipeline looks healthy ✅'
-                : `${issues.length} critical issues detected`
+            suspiciousDeadCandidates,
+            recommendation: issues.length > 0
+                ? `${issues.length} critical issues detected`
+                : warnings.length > 0
+                    ? `${warnings.length} warnings detected — compiler telemetry still needs cleanup`
+                    : 'Pipeline looks healthy ✅'
         }
     };
 }
