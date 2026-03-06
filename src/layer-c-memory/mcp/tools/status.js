@@ -249,14 +249,19 @@ async function attachDeepVitals(status, projectPath, server) {
   }
 }
 
-async function loadCompilerExplainability(projectPath, watcherAlerts = []) {
+async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}) {
   try {
     const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const standardization = buildCompilerStandardizationReport({
       policySummary,
-      watcherAlerts
+      watcherAlerts,
+      sharedState,
+      canonicalAdoptions: {
+        centralityCoverage: true,
+        sharedStateContention: true
+      }
     });
 
     return {
@@ -302,7 +307,11 @@ export async function get_server_status(args, context) {
     watcherLifecycle: notifications.watcherLifecycle
   });
 
-  status.compilerExplainability = await loadCompilerExplainability(projectPath, notifications.watcherAlerts || []);
+  status.compilerExplainability = await loadCompilerExplainability(
+    projectPath,
+    notifications.watcherAlerts || [],
+    status.sharedState || {}
+  );
 
   return status;
 }

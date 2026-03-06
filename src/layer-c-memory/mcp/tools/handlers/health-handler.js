@@ -1,5 +1,8 @@
 import { getProjectStats } from '../../../query/apis/project-api.js';
-import { summarizePhysicsCoverageRow } from '../../../../shared/compiler/index.js';
+import {
+    summarizeCentralityCoverageRow,
+    summarizePhysicsCoverageRow
+} from '../../../../shared/compiler/index.js';
 
 /**
  * Maneja la agregación de métricas de salud (health)
@@ -40,6 +43,9 @@ export async function handleHealthMetrics(tool, projectPath) {
 
         if (row) {
             const { coverage, missingSignals } = summarizePhysicsCoverageRow(row);
+            const centralityCoverage = summarizeCentralityCoverageRow(row, {
+                description: 'persistGraphMetrics() not connected'
+            });
             // Contar relaciones semánticas totales (Sprint 10)
             const semanticRow = tool.repo.db.prepare(`
                 SELECT COUNT(*) as total
@@ -62,6 +68,7 @@ export async function handleHealthMetrics(tool, projectPath) {
                     ? Math.round(row.avg_fragility * row.avg_coupling * 1000) / 1000
                     : null,
                 semanticBadge: (semanticRow?.total || 0) > 50 ? 'RADIOACTIVE' : 'STABLE',
+                centralityCoverage,
                 coverage,
                 missingSignals
             };

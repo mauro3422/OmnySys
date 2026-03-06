@@ -6,6 +6,7 @@
 import {
     buildCompilerRemediationBacklog,
     buildCompilerStandardizationReport,
+    summarizeCentralityCoverageRow,
     buildDeadCodeRemediationPlan,
     buildLiveRowRemediationPlan,
     buildDuplicateRemediationPlan,
@@ -128,13 +129,22 @@ export async function handlePipelineHealth(tool) {
                 `SELECT SUM(CASE WHEN ${field} != 0 AND ${field} IS NOT NULL THEN 1 ELSE 0 END) as nonzero FROM atoms ${whereClause}`
             ).get();
             const nonZeroCount = row?.nonzero || 0;
-            const coverage = classifyFieldCoverage({
-                total: scopedTotal,
-                nonZeroCount,
-                minWarningCoverage,
-                description,
-                descriptionSuffix
-            });
+            const coverage = field === 'centrality_score'
+                ? summarizeCentralityCoverageRow({
+                    total: scopedTotal,
+                    centrality_nonzero: nonZeroCount
+                }, {
+                    minWarningCoverage,
+                    description,
+                    descriptionSuffix
+                })?.classification
+                : classifyFieldCoverage({
+                    total: scopedTotal,
+                    nonZeroCount,
+                    minWarningCoverage,
+                    description,
+                    descriptionSuffix
+                });
             if (!coverage || coverage.level === 'ok') continue;
 
             if (coverage.level === 'issue') {
@@ -256,7 +266,11 @@ export async function handlePipelineHealth(tool) {
         policySummary,
         watcherAlerts: recentWatcherAlerts,
         sharedState: tool.server?.sharedCache?.metadata?.sharedState || tool.server?.sharedState || {},
-        compilerRemediation
+        compilerRemediation,
+        canonicalAdoptions: {
+            centralityCoverage: true,
+            sharedStateContention: true
+        }
     });
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';

@@ -171,6 +171,41 @@ export function summarizePhysicsCoverageRow(row = {}) {
   return { total, coverage, missingSignals };
 }
 
+export function summarizeFieldCoverageRow(row = {}, signalName, options = {}) {
+  const signal = DERIVED_SCORE_SIGNALS.find((candidate) => candidate.name === signalName);
+  if (!signal) {
+    return null;
+  }
+
+  const {
+    minWarningCoverage = 5,
+    description = `${signalName} coverage is missing`,
+    descriptionSuffix = ''
+  } = options;
+
+  const total = toNumber(row.total);
+  const nonZeroCount = toNumber(row[`${signal.name}_nonzero`]);
+  const classification = classifyFieldCoverage({
+    total,
+    nonZeroCount,
+    minWarningCoverage,
+    description,
+    descriptionSuffix
+  });
+
+  return {
+    signal: signal.name,
+    total,
+    nonZeroCount,
+    coveragePct: total > 0 ? Math.round((nonZeroCount / total) * 100) : 0,
+    classification
+  };
+}
+
+export function summarizeCentralityCoverageRow(row = {}, options = {}) {
+  return summarizeFieldCoverageRow(row, 'centrality', options);
+}
+
 export function classifyFieldCoverage({ total = 0, nonZeroCount = 0, minWarningCoverage = 5, description = '', descriptionSuffix = '' }) {
   const safeTotal = toNumber(total);
   if (safeTotal === 0) return null;

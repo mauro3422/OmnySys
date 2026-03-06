@@ -68,6 +68,14 @@ function buildSuggestedTarget(id, priority, rationale, recommendation) {
   };
 }
 
+function hasCanonicalCentralityCoverageAdoption(canonicalAdoptions = {}) {
+  return canonicalAdoptions.centralityCoverage === true;
+}
+
+function hasCanonicalSharedStateContentionAdoption(canonicalAdoptions = {}) {
+  return canonicalAdoptions.sharedStateContention === true;
+}
+
 function buildCanonicalAdoptionCoverage(canonicalFamilies = [], adoptionGaps = []) {
   const totalFamilies = canonicalFamilies.length;
   const adoptedFamilies = canonicalFamilies.filter((family) =>
@@ -120,7 +128,8 @@ export function buildCompilerStandardizationReport({
   policySummary = {},
   watcherAlerts = [],
   sharedState = {},
-  compilerRemediation = null
+  compilerRemediation = null,
+  canonicalAdoptions = {}
 } = {}) {
   const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
     .map(([area, count]) => normalizeDriftArea(area, count))
@@ -137,7 +146,11 @@ export function buildCompilerStandardizationReport({
     ));
   }
 
-  if (hasSharedStateHotspot(sharedState) && !driftAreas.some((item) => item.area === 'shared_state_hotspots')) {
+  if (
+    hasSharedStateHotspot(sharedState) &&
+    !driftAreas.some((item) => item.area === 'shared_state_hotspots') &&
+    !hasCanonicalSharedStateContentionAdoption(canonicalAdoptions)
+  ) {
     missingCanonicalApis.push(buildSuggestedTarget(
       'shared_state_contention',
       'medium',
@@ -155,7 +168,10 @@ export function buildCompilerStandardizationReport({
     ));
   }
 
-  if (!driftAreas.some((item) => item.area === 'centrality_coverage')) {
+  if (
+    !driftAreas.some((item) => item.area === 'centrality_coverage') &&
+    !hasCanonicalCentralityCoverageAdoption(canonicalAdoptions)
+  ) {
     const centralityCoverage = watcherAlerts.some((alert) =>
       String(alert?.filePath || '').includes('signal-coverage')
     );

@@ -164,6 +164,8 @@ export {
   PIPELINE_FIELD_COVERAGE_SIGNALS,
   summarizeDerivedScoreCoverage,
   summarizeSemanticCoverage,
+  summarizeFieldCoverageRow,
+  summarizeCentralityCoverageRow,
   summarizePhysicsCoverageRow,
   classifyFieldCoverage
 } from './signal-coverage.js';
