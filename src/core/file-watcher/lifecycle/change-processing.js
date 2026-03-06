@@ -79,6 +79,8 @@ export async function processChange(change) {
   this.processingFiles.add(filePath);
 
   try {
+    logger.info(`File change detected: ${filePath} (${type})`);
+
     switch (type) {
       case 'created':
         await this.handleFileCreated(filePath, fullPath);
@@ -101,6 +103,7 @@ export async function processChange(change) {
     await clearWatcherRuntimeError(this.rootPath, filePath);
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
+    logger.info(`File change processed: ${filePath}`);
   } catch (error) {
     logger.error(`Error processing ${filePath}:`, error);
     await persistWatcherRuntimeError(this.rootPath, filePath, error, {

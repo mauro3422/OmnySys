@@ -58,7 +58,7 @@ function impactLevelFromScore(score) {
  * Maneja creacion de archivo
  */
 export async function handleFileCreated(filePath, fullPath) {
-  logger.debug(`[CREATED] ${filePath}`);
+  logger.info(`[FILE CREATED] ${filePath}`);
 
   const analysis = await analyzeAndIndex.call(this, filePath, fullPath, false);
 
@@ -68,6 +68,8 @@ export async function handleFileCreated(filePath, fullPath) {
     atoms: analysis.moleculeAtoms || analysis.atoms || [],
     analysis
   });
+
+  logger.info(`[FILE COMPILED] ${filePath} -> ${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0} atoms`);
 
   this.emit('file:created', { filePath, analysis });
 }
@@ -102,6 +104,7 @@ export async function enrichAtomsWithAncestry(filePath) {
 export async function saveAtom(atom, filePath) {
   const { saveAtom: saveAtomToStorage } = await import('#layer-c/storage/index.js');
   await saveAtomToStorage(this.rootPath, filePath, atom.name, atom);
+  logger.info(`[ATOM SAVED] ${filePath}::${atom.name}`);
 }
 
 /**
@@ -119,7 +122,7 @@ export async function handleFileModified(filePath, fullPath) {
     this.fileHashes.set(filePath, newHash);
   }
 
-  logger.debug(`[MODIFIED] ${filePath}`);
+  logger.info(`[FILE MODIFIED] ${filePath}`);
   const previousAtoms = await this.getAtomsForFile(filePath);
 
   // Invalidar cache si existe cacheInvalidator
@@ -146,6 +149,10 @@ export async function handleFileModified(filePath, fullPath) {
     atoms: analysis.moleculeAtoms || analysis.atoms || [],
     analysis
   });
+
+  logger.info(
+    `[FILE PROCESSED] ${filePath} -> atoms=${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0}, previous=${previousAtoms.length}`
+  );
 
   this.emit('file:modified', { filePath, analysis });
 }
@@ -178,7 +185,7 @@ export async function detectCircularImportsForFile(filePath, options = {}) {
  * Maneja borrado de archivo
  */
 export async function handleFileDeleted(filePath) {
-  logger.debug(`[DELETING] ${filePath}`);
+  logger.info(`[FILE DELETING] ${filePath}`);
 
   const fs = await import('fs/promises');
   const fullPath = this.rootPath ?
@@ -205,7 +212,7 @@ export async function handleFileDeleted(filePath) {
     await this.notifyDependents(filePath, 'file_deleted');
 
     this.emit('file:deleted', { filePath });
-    logger.debug(`[DELETED] ${filePath} - shadows preserved`);
+    logger.info(`[FILE DELETED] ${filePath} - shadows preserved`);
   } catch (error) {
     logger.error(`[DELETE ERROR] ${filePath}:`, error);
     throw error;

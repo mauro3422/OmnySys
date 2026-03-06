@@ -104,6 +104,7 @@ export async function analyzeFile(filePath, fullPath) {
 export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
   // 1. Analizar archivo
   const analysis = await analyzeFile.call(this, filePath, fullPath);
+  logger.info(`🧩 FileWatcher compile: ${filePath} -> ${analysis.moleculeAtoms?.length || 0} atoms, shadow=${analysis.metadata?.shadowVolume ?? 'n/a'}%${isUpdate ? ' [update]' : ' [create]'}`);
 
   // 2. Ejecutar Guardias Semánticos
   if (analysis.moleculeAtoms && analysis.moleculeAtoms.length > 0) {
@@ -112,6 +113,7 @@ export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
       await guardRegistry.initializeDefaultGuards();
 
       await guardRegistry.runSemanticGuards(this.rootPath, filePath, this, analysis.moleculeAtoms, { verbose: true });
+      logger.info(`🛡️  Semantic guards checked: ${filePath}`);
     } catch (guardError) {
       logger.debug(`Semantic guards failed or skipped for ${filePath}: ${guardError.message}`);
     }

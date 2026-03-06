@@ -44,6 +44,7 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(filePath, issueType, severity, dbMessage, null, contextJson, detectedAt);
 
+    logger.info(`[WATCHER ISSUE][${severity.toUpperCase()}] ${filePath} -> ${issueType}: ${message}`);
     return true;
   } catch (error) {
     logger.debug(`[WATCHER ISSUE PERSIST SKIP] ${filePath}:${issueType} -> ${error.message}`);
@@ -67,10 +68,14 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
     const repo = getRepository(projectPath);
     if (!repo?.db) return false;
 
-    repo.db.prepare(`
+    const result = repo.db.prepare(`
       DELETE FROM semantic_issues
       WHERE file_path = ? AND issue_type = ? AND message LIKE '[watcher]%'
     `).run(filePath, issueType);
+
+    if ((result?.changes || 0) > 0) {
+      logger.info(`[WATCHER ISSUE CLEARED] ${filePath} -> ${issueType}`);
+    }
 
     return true;
   } catch (error) {
