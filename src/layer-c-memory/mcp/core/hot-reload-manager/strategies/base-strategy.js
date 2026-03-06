@@ -12,6 +12,7 @@ import { pathToFileURL } from 'url';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:hot-reload:strategy');
+const RUNTIME_RESTART_DEBOUNCE_MS = 900;
 
 /**
  * Abstract base class for reload strategies
@@ -112,26 +113,53 @@ export class BaseStrategy {
       return false;
     }
 
+    if (!this.server._pendingHotReloadRestartFiles) {
+      this.server._pendingHotReloadRestartFiles = new Set();
+    }
+    this.server._pendingHotReloadRestartFiles.add(filename);
+
+    if (this.server._hotReloadRestartTimer) {
+      clearTimeout(this.server._hotReloadRestartTimer);
+    }
+
     if (this.server._hotReloadRestartScheduled) {
       this._log('Worker restart already scheduled', filename);
       return true;
     }
 
-    this.server._hotReloadRestartScheduled = true;
-    logger.warn(`${reason} changed - requesting worker restart for fresh runtime cache: ${filename}`);
-
     try {
-      process.send({
-        type: 'restart',
-        clearCache: false,
-        reanalyze: false,
-        clearCacheOnly: false,
-        reindexOnly: false,
-        reason: 'hot_reload_runtime_change',
-        file: filename
-      });
+      this.server._hotReloadRestartTimer = setTimeout(() => {
+        const touchedFiles = Array.from(this.server._pendingHotReloadRestartFiles || []);
+        this.server._pendingHotReloadRestartFiles?.clear();
+        this.server._hotReloadRestartTimer = null;
+        this.server._hotReloadRestartScheduled = true;
+
+        logger.warn(
+          `${reason} changed - requesting worker restart for fresh runtime cache: ${touchedFiles.join(', ')}`
+        );
+
+        process.send({
+          type: 'restart',
+          clearCache: false,
+          reanalyze: false,
+          clearCacheOnly: false,
+          reindexOnly: false,
+          reason: 'hot_reload_runtime_change',
+          file: filename,
+          files: touchedFiles
+        });
+      }, RUNTIME_RESTART_DEBOUNCE_MS);
+
+      if (this.server._hotReloadRestartTimer?.unref) {
+        this.server._hotReloadRestartTimer.unref();
+      }
       return true;
     } catch (error) {
+      if (this.server._hotReloadRestartTimer) {
+        clearTimeout(this.server._hotReloadRestartTimer);
+        this.server._hotReloadRestartTimer = null;
+      }
+      this.server._pendingHotReloadRestartFiles?.clear();
       this.server._hotReloadRestartScheduled = false;
       logger.warn(`Failed to request worker restart for ${filename}: ${error.message}`);
       return false;

@@ -29,6 +29,7 @@
 import path from 'path';
 import fs from 'fs';
 import http from 'http';
+import net from 'net';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import {
@@ -87,7 +88,20 @@ function scheduleRespawn(delayMs, extraArgs = []) {
     clearRespawnTimer();
     respawnTimer = setTimeout(() => {
         respawnTimer = null;
-        spawnWorker(extraArgs);
+        waitForPortRelease(port, process.platform === 'win32' ? 12 : 6, process.platform === 'win32' ? 750 : 400)
+            .then(async (released) => {
+                if (!released && await detectHealthyDaemon()) {
+                    log('✅ Healthy daemon detected while waiting for port release. Proxy will not respawn a duplicate worker.');
+                    removeOwnerLock();
+                    process.exit(0);
+                    return;
+                }
+                spawnWorker(extraArgs);
+            })
+            .catch((error) => {
+                log(`Port release wait failed: ${error.message}`);
+                spawnWorker(extraArgs);
+            });
     }, delayMs);
 }
 
@@ -116,6 +130,27 @@ async function detectHealthyDaemon() {
             resolve(false);
         }
     });
+}
+
+async function isPortInUse(portToCheck) {
+    return await new Promise((resolve) => {
+        const socket = net.connect({ host: '127.0.0.1', port: Number(portToCheck) });
+        socket.once('connect', () => {
+            socket.destroy();
+            resolve(true);
+        });
+        socket.once('error', () => resolve(false));
+    });
+}
+
+async function waitForPortRelease(portToCheck, attempts = 10, delayMs = 750) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        if (!(await isPortInUse(portToCheck))) {
+            return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return false;
 }
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────

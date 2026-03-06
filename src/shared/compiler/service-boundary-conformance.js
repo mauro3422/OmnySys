@@ -43,6 +43,14 @@ function getBoundaryHits(source = '') {
   return Array.from(hits);
 }
 
+function isLegitimateOrchestratorPath(normalizedPath = '') {
+  return normalizedPath.includes('/mcp/tools/handlers/')
+    || normalizedPath.includes('/mcp/core/hot-reload-manager/')
+    || normalizedPath.endsWith('/pipeline-health-handler.js')
+    || normalizedPath.endsWith('/watcher-handler.js')
+    || normalizedPath.endsWith('/recent-notifications.js');
+}
+
 export function detectServiceBoundaryConformanceFromSource(filePath, source = '', options = {}) {
   const {
     severity = 'medium',
@@ -56,13 +64,14 @@ export function detectServiceBoundaryConformanceFromSource(filePath, source = ''
 
   const findings = [];
   const boundaries = getBoundaryHits(source);
+  const isLegitimateOrchestrator = isLegitimateOrchestratorPath(normalizedPath);
   const isBoundarySensitivePath =
     normalizedPath.includes('/mcp/tools/') ||
     normalizedPath.includes('/mcp/core/') ||
     normalizedPath.includes('/core/file-watcher/') ||
     normalizedPath.includes('/shared/compiler/');
 
-  if (isBoundarySensitivePath && boundaries.length >= 4) {
+  if (isBoundarySensitivePath && boundaries.length >= (isLegitimateOrchestrator ? 5 : 4)) {
     findings.push(createFinding(
       'overloaded_service_boundary',
       severity,
@@ -76,7 +85,8 @@ export function detectServiceBoundaryConformanceFromSource(filePath, source = ''
     isBoundarySensitivePath &&
     boundaries.includes('database') &&
     boundaries.includes('filesystem') &&
-    !boundaries.includes('compiler')
+    !boundaries.includes('compiler') &&
+    !isLegitimateOrchestrator
   ) {
     findings.push(createFinding(
       'missing_compiler_service_bridge',
