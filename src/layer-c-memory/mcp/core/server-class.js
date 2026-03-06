@@ -82,6 +82,12 @@ export class OmnySysMCPServer extends EventEmitter {
 
     // 🔥 Hot-reload manager (self-improvement capability)
     this.hotReloadManager = null;
+    this.runtimeRestartMode = (process.env.OMNYSYS_RUNTIME_RESTART_MODE || 'manual').toLowerCase() === 'auto'
+      ? 'auto'
+      : 'manual';
+    this._pendingHotReloadRestartFiles = new Set();
+    this._hotReloadRestartScheduled = false;
+    this._hotReloadRestartTimer = null;
 
     // State
     this.initialized = false;
@@ -132,6 +138,7 @@ export class OmnySysMCPServer extends EventEmitter {
             this.hotReloadManager = new HotReloadManager(this);
             await this.hotReloadManager.start();
             logger.info('🔥 Hot-reload enabled - System can self-improve');
+            logger.info(`   Runtime restart mode: ${this.runtimeRestartMode}`);
             logger.info('   Watching for code changes in src/\n');
           } catch (error) {
             logger.warn('⚠️  Hot-reload failed to start:', error.message);

@@ -5,9 +5,10 @@
  */
 
 import { buildLiveRowReconciliationPlan } from './live-row-reconciliation.js';
+import { getLiveFileSetSql } from './live-row-drift.js';
 
 function buildDeleteStatement(tableName, fileColumn) {
-  return `DELETE FROM ${tableName} WHERE ${fileColumn} NOT IN (SELECT DISTINCT file_path FROM atoms WHERE file_path IS NOT NULL AND file_path != '')`;
+  return `DELETE FROM ${tableName} WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()})`;
 }
 
 export function buildLiveRowCleanupPlan(db, options = {}) {

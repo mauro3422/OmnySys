@@ -57,6 +57,16 @@ export async function get_server_status(args, context) {
     status.orchestrator = { status: 'not_ready', message: 'Orchestrator is initializing' };
   }
 
+  status.hotReload = server?.hotReloadManager?.getStats?.() || {
+    isWatching: false,
+    isReloading: false,
+    runtimeRestartMode: server?.runtimeRestartMode || 'manual',
+    pendingRuntimeRestart: {
+      scheduled: !!server?._hotReloadRestartScheduled,
+      files: Array.from(server?._pendingHotReloadRestartFiles || [])
+    }
+  };
+
   if (phase2InProgress) {
     status.metadata = {
       totalFiles: cachedCounts.totalFiles,

@@ -13,8 +13,8 @@ import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     buildLiveRowReconciliationPlan,
     classifyFieldCoverage,
+    ensureLiveRowSync,
     getDeadCodePlausibilitySummary,
-    getLiveRowDriftSummary,
     getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
     summarizeCompilerPolicyDrift
@@ -40,14 +40,15 @@ export async function handlePipelineHealth(tool) {
     const projectPath = tool.projectPath;
     let policyFindings = [];
     let policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} };
+    const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
 
     const issues = [];
     const warnings = [];
     const {
-        liveFileTotal: liveAtomFiles,
-        staleFileRows,
-        staleRiskRows
-    } = getLiveRowDriftSummary(db);
+        liveFileTotal: liveAtomFiles = 0,
+        staleFileRows = 0,
+        staleRiskRows = 0
+    } = liveRowSync.summary || {};
 
     // --- CHECK 1: Tablas vacías ---
     const expectedNonEmpty = [
@@ -79,6 +80,7 @@ export async function handlePipelineHealth(tool) {
     tableCounts.live_atom_files = liveAtomFiles;
     tableCounts.stale_file_rows = staleFileRows;
     tableCounts.stale_risk_rows = staleRiskRows;
+    tableCounts.live_row_sync_deleted = liveRowSync.deleted.total;
 
     if (staleFileRows > 0) {
         warnings.push({
@@ -265,6 +267,7 @@ export async function handlePipelineHealth(tool) {
         tableCounts,
         issues,
         warnings,
+        liveRowSync,
         liveRowReconciliation,
         liveRowRemediation,
         deadCodeRemediation,

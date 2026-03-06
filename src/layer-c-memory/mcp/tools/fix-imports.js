@@ -1,10 +1,10 @@
 
 import fs from 'fs/promises';
 import { validate_imports } from './validate-imports.js';
-import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { calculateRelativeImport } from '../../../utils/path-utils.js';
 import { atomic_edit } from './atomic-edit/index.js';
 import { createLogger } from '../../../utils/logger.js';
+import { findIndexedFileCandidate } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:fix_imports');
 
@@ -36,7 +36,6 @@ export async function fix_imports(args, context) {
             return { success: true, message: 'No broken imports detected in this file.' };
         }
 
-        const repo = getRepository(projectPath);
         const results = {
             success: true,
             fixed: [],
@@ -56,29 +55,7 @@ export async function fix_imports(args, context) {
             // Buscar por nombre de archivo o átomo coincidente
             logger.info(`[FixImports] Searching for resolution for: ${importStr}`);
 
-            let bestMatchPath = null;
-            if (repo.db) {
-                // Buscamos directamente en la DB cualquier archivo que coincida con el nombre
-                const db = repo.db;
-                const symbolName = baseName; // Use baseName as the symbol to search for
-
-                const fileBaseName = symbolName.split('/').pop().replace(/\\.[^/.]+$/, "");
-                const row = db.prepare(`
-                    SELECT file_path as path FROM atoms WHERE name = ? OR name LIKE ?
-                    UNION ALL
-                    SELECT path FROM files WHERE path LIKE ?
-                    LIMIT 1
-                `).get(symbolName, `%${symbolName}%`, `%/${fileBaseName}.%`);
-
-                if (row) {
-                    bestMatchPath = row.path;
-                }
-            } else {
-                // Fallback (Memory) - Lento pero a prueba de fallos
-                const potentialMatches = repo.query({});
-                const match = potentialMatches.find(a => a.file_path && a.file_path.includes(baseName));
-                if (match) bestMatchPath = match.file_path;
-            }
+            const bestMatchPath = await findIndexedFileCandidate(projectPath, importStr) || null;
 
             if (bestMatchPath && bestMatchPath !== filePath) {
                 const newImportPath = calculateRelativeImport(filePath, bestMatchPath, projectPath);

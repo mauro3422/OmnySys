@@ -30,15 +30,31 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
   };
 }
 
+function stripComments(source = '') {
+  return String(source || '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+}
+
+function stripStrings(source = '') {
+  return String(source || '')
+    .replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, "''");
+}
+
+function importsCompilerApi(source = '') {
+  return /shared\/compiler\/index\.js|buildCompiler|summarizeCompiler|classifyPipelineOrphans|ensureLiveRowSync|cleanupOrphanedCompilerArtifacts|hasPersistedCompilerAnalysis|getPersistedIndexedFilePaths|removePersistedFileMetadata|removePersistedAtomMetadata|emitOrphanedImportsFromPersistedMetadata/.test(source);
+}
+
 function getBoundaryHits(source = '') {
+  const sanitizedSource = stripStrings(stripComments(source));
   const hits = new Set();
 
-  if (/db\.prepare\(|SELECT\s+|INSERT\s+|UPDATE\s+|DELETE\s+|sqlite/i.test(source)) hits.add('database');
-  if (/fs\.|fsPromises|readdir|readFile|writeFile|scanProject/.test(source)) hits.add('filesystem');
-  if (/fetch\(|http\.|https\.|StreamableHTTP|spawn\(/.test(source)) hits.add('runtime_io');
-  if (/shared\/compiler\/index\.js|buildCompiler|summarizeCompiler|classifyPipelineOrphans/.test(source)) hits.add('compiler');
-  if (/watcher|semantic_issues|persistWatcherIssue|runImpactGuards|runSemanticGuards/i.test(source)) hits.add('watcher');
-  if (/repo\.|query_graph|traverse_graph|getFileImpactSummary|getTransitiveDependents/.test(source)) hits.add('graph_query');
+  if (/db\.prepare\(|repo\.db|getRepository\(|better-sqlite3|deleteFile\(|deleteByFile\(/.test(sanitizedSource)) hits.add('database');
+  if (/fs\.|fsPromises|readdir|readFile|writeFile|stat\(|unlink\(|mkdir\(/.test(sanitizedSource)) hits.add('filesystem');
+  if (/fetch\(|http\.|https\.|StreamableHTTP|spawn\(/.test(sanitizedSource)) hits.add('runtime_io');
+  if (importsCompilerApi(source)) hits.add('compiler');
+  if (/watcher|semantic_issues|persistWatcherIssue|runImpactGuards|runSemanticGuards|collectRecentNotifications|normalizeRecentNotifications/i.test(source)) hits.add('watcher');
+  if (/query_graph|traverse_graph|getFileImpactSummary|getTransitiveDependents|getAtomDetails|getProjectMetadata|findCallSites/.test(sanitizedSource)) hits.add('graph_query');
 
   return Array.from(hits);
 }
@@ -46,7 +62,9 @@ function getBoundaryHits(source = '') {
 function isLegitimateOrchestratorPath(normalizedPath = '') {
   return normalizedPath.includes('/mcp/tools/handlers/')
     || normalizedPath.includes('/mcp/core/hot-reload-manager/')
+    || normalizedPath.endsWith('/file-handlers.js')
     || normalizedPath.endsWith('/pipeline-health-handler.js')
+    || normalizedPath.endsWith('/status.js')
     || normalizedPath.endsWith('/watcher-handler.js')
     || normalizedPath.endsWith('/recent-notifications.js');
 }

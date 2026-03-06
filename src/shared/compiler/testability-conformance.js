@@ -32,7 +32,7 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
 }
 
 function importsCanonicalTestabilityApi(source = '') {
-  return /testabilityScore|generate_tests|generate_batch_tests|suggest_refactoring|buildDeadCodeRemediation|buildCompilerDiagnostics/i.test(source);
+  return /evaluateAtomTestability|evaluateAtomRefactoringSignals|compilerEvaluation\?\.(testability|testabilityScore)|testabilityScore|generate_tests|generate_batch_tests|suggest_refactoring|buildDeadCodeRemediation|buildCompilerDiagnostics/i.test(source);
 }
 
 function looksLikeManualTestabilityScan(source = '') {

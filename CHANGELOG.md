@@ -8,6 +8,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.96 - Canonical Persistence Sync & Runtime Drift Reduction](changelog/v0.9.96.md)
 - [v0.9.95 - Compiler Canonicalization & Runtime Self-Healing](changelog/v0.9.95.md)
 - [v0.9.94 - File Watcher Guard System v2.0](changelog/v0.9.94.md)
 - [v0.9.93 - Critical Error Handling & Live Debugging](changelogs/v0.9.93.md)
@@ -19,6 +20,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **0.9.96** | 2026-03-06 | Canonical persistence sync, manual runtime restart, service-boundary cleanup, detector hardening. |
 | **0.9.95** | 2026-03-06 | Compiler canonicalization, remediation/reporting unification, watcher diagnostics lifecycle, runtime ownership hardening. |
 | **0.9.94** | 2026-03-05 | File Watcher Guard System v2.0, guard standardization, error-handling detection fix. |
 | **0.9.93** | 2026-03-05 | Critical error-handling hardening, live debugging validation, UTF-8 MCP fixes. |
@@ -29,17 +31,17 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.95 (2026-03-06)
+## Latest Release: v0.9.96 (2026-03-06)
 
-**Compiler Canonicalization & Runtime Self-Healing**
+**Canonical Persistence Sync & Runtime Drift Reduction**
 
 ### Key Achievements
 
-1. Canonical compiler APIs for duplicates, impact, file discovery, signal coverage, live-row drift, pipeline orphans, dead code, watcher diagnostics, session lifecycle, runtime ownership and remediation.
-2. New conformance families for state ownership, service boundary, canonical extension, async error, shared-state hotspots, centrality coverage, testability and semantic purity.
-3. Better MCP runtime resilience: faster fail/retry semantics, improved stale-session recovery, owner locks shared by bridge and proxy, and safer hot-reload behavior.
-4. Honest compiler telemetry: watcher diagnostics lifecycle, unified `_recentErrors`, and health/pipeline signals that distinguish missing data from real zero values.
-5. Restored semantic persistence for DNA/data flow/signature and standardized duplicate/dead-code/pipeline remediation logic.
+1. New canonical persistence bridge in `shared/compiler` for indexed files, stale metadata cleanup and import orphan emission.
+2. Live-row sync now acts as the runtime entrypoint for DB drift reconciliation across MCP/query consumers.
+3. Runtime restart behavior is decoupled from DB/cache refresh through manual restart mode and better pending-restart visibility.
+4. Service-boundary, canonical-extension and async-error detectors were hardened so they report code reality instead of comments/strings/noisy helper names.
+5. Policy drift was reduced to the remaining real backlog: mostly `testability`, `semantic_purity` and one shared-state hotspot family.
 
 ## What To Do Next
 

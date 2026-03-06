@@ -9,8 +9,8 @@
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
+  ensureLiveRowSync,
   getLiveFileSetSql,
-  getLiveRowDriftSummary
 } from '../../../shared/compiler/index.js';
 
 /**
@@ -26,13 +26,18 @@ export async function getRiskAssessment(rootPath) {
     throw new Error('SQLite not available. Run analysis first.');
   }
 
+  const liveRowSync = ensureLiveRowSync(repo.db, { autoSync: true, sampleLimit: 5 });
+
   const totalRiskRows = repo.db.prepare(`
     SELECT COUNT(*) as total
     FROM risk_assessments
     WHERE risk_level IS NOT NULL
   `).get()?.total || 0;
 
-  const { liveFileTotal, staleRiskRows } = getLiveRowDriftSummary(repo.db);
+  const {
+    liveFileTotal = 0,
+    staleRiskRows = 0
+  } = liveRowSync.summary || {};
 
   const riskRows = repo.db.prepare(`
     SELECT ra.file_path, ra.risk_score, ra.risk_level, ra.factors_json,
@@ -120,7 +125,10 @@ export async function getRiskAssessment(rootPath) {
         totalFiles: riskRows.length,
         liveFilesTotal: liveFileTotal,
         unassessedLiveFiles: Math.max(0, liveFileTotal - riskRows.length),
-        staleRowsDropped: Math.max(0, staleRiskRows || (totalRiskRows - riskRows.length))
+        staleRowsDropped: Math.max(
+          0,
+          liveRowSync.deleted.riskAssessments || staleRiskRows || (totalRiskRows - riskRows.length)
+        )
       },
       criticalRiskFiles,
       highRiskFiles,

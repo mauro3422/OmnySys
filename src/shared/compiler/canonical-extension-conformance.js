@@ -35,7 +35,7 @@ function usesPrivateCompilerHelperImport(source = '') {
 }
 
 function definesCanonicalStyleHelper(source = '') {
-  return /(build[A-Z]\w+(Plan|Report|Summary|Remediation)|summarize[A-Z]\w+|classify[A-Z]\w+|detect[A-Z]\w+Conformance)/.test(source);
+  return /\b(?:export\s+)?(?:async\s+)?function\s+(build[A-Z]\w+(Plan|Report|Summary|Remediation)|summarize[A-Z]\w+|detect[A-Z]\w+Conformance)\b|\b(?:const|let|var)\s+(build[A-Z]\w+(Plan|Report|Summary|Remediation)|summarize[A-Z]\w+|detect[A-Z]\w+Conformance)\s*=\s*(?:async\s*)?(?:\(|[A-Za-z_$])/.test(source);
 }
 
 function importsSharedCompilerBarrel(source = '') {

@@ -21,6 +21,9 @@ const RELOADABLE_PATTERNS = [
   { pattern: /hot-reload-manager[\\/]watchers[\\/].*\.js$/, type: 'handler', priority: 1 },
   { pattern: /hot-reload-manager[\\/]index\.js$/, type: 'lifecycle', priority: 1 },
   { pattern: /lifecycle\.js$/, type: 'lifecycle', priority: 1 },
+  // Shared compiler and file-watcher changes must restart the worker to avoid stale notifications.
+  { pattern: /shared[\\/]compiler[\\/].*\.js$/, type: 'lifecycle', priority: 1 },
+  { pattern: /core[\\/]file-watcher[\\/].*\.js$/, type: 'lifecycle', priority: 1 },
   // Storage atoms layer — changes to atom.js, converters.js etc. affect all tools
   { pattern: /storage[\\/]atoms[\\/].*\.js$/, type: 'tool', priority: 1 },
   { pattern: /storage[\\/]repository[\\/].*\.js$/, type: 'tool', priority: 1 },

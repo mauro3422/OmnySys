@@ -13,6 +13,7 @@ import {
   WATCHER_MESSAGE_PREFIX,
   attachWatcherAlertLifecycle,
   createWatcherIssueRecord,
+  findOrphanedWatcherAlertIds,
   filterWatcherAlertsByLifecycle,
   findSupersededWatcherAlertIds,
   findOutdatedWatcherAlertIds,
@@ -215,20 +216,21 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
 
     const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts)).slice(0, maxDelete);
+    const orphanedIds = findOrphanedWatcherAlertIds(db, alerts).slice(0, maxDelete);
     const lowSignalIds = alerts
       .filter((alert) => shouldSuppressWatcherAlert(alert))
       .map((alert) => alert.id)
       .filter((id) => Number.isInteger(id))
       .slice(0, maxDelete);
 
-    const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...lowSignalIds])].slice(0, maxDelete);
+    const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...orphanedIds, ...lowSignalIds])].slice(0, maxDelete);
 
     if (idsToDelete.length > 0) {
       const placeholders = idsToDelete.map(() => '?').join(', ');
       db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...idsToDelete);
       logger.info(
         `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
-        ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length}, lowSignal=${lowSignalIds.length})`
+        ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length}, orphaned=${orphanedIds.length}, lowSignal=${lowSignalIds.length})`
       );
     }
 
@@ -236,11 +238,12 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
       deletedExpired: expiredIds.length,
       deletedSuperseded: supersededIds.length,
       deletedOutdated: outdatedIds.length,
+      deletedOrphaned: orphanedIds.length,
       deletedLowSignal: lowSignalIds.length,
       summary: partitioned.summary
     };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE RECONCILE SKIP] ${error.message}`);
-    return { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } };
+    return { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedOrphaned: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } };
   }
 }

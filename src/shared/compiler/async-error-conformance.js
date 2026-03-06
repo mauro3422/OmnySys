@@ -31,6 +31,19 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
   };
 }
 
+function stripComments(source = '') {
+  return String(source || '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+function stripStrings(source = '') {
+  return String(source || '')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/`(?:\\.|[^`\\])*`/g, '``');
+}
+
 function countMatches(source = '', pattern) {
   return (source.match(pattern) || []).length;
 }
@@ -48,6 +61,15 @@ function hasExplicitErrorBoundary(source = '') {
     /\.catch\s*\(/.test(source) ||
     /Promise\.allSettled/.test(source) ||
     /\bwithRetry\b|\bretryable\b|buildRestartLifecycleGuidance|buildCompilerReadinessStatus/.test(source)
+  );
+}
+
+function hasDelegatedRecoveryContract(source = '') {
+  return (
+    /extends\s+BaseStrategy/.test(source) ||
+    /_requestWorkerRestart\s*\(/.test(source) ||
+    /reloadHandler\.reload\s*\(/.test(source) ||
+    /stateHandler\.(preserve|restore)\s*\(/.test(source)
   );
 }
 
@@ -75,9 +97,11 @@ export function detectAsyncErrorConformanceFromSource(filePath, source = '', opt
     return [];
   }
 
+  const runtimeSource = stripStrings(stripComments(source));
   const findings = [];
-  const asyncPressureSignals = countAsyncPressureSignals(source);
-  const hasErrorHandling = hasExplicitErrorBoundary(source);
+  const asyncPressureSignals = countAsyncPressureSignals(runtimeSource);
+  const hasErrorHandling = hasExplicitErrorBoundary(runtimeSource);
+  const hasRecoveryContract = hasDelegatedRecoveryContract(runtimeSource);
   const asyncRuntimePath =
     normalizedPath.includes('/mcp/') ||
     normalizedPath.includes('/file-watcher/') ||
@@ -86,9 +110,10 @@ export function detectAsyncErrorConformanceFromSource(filePath, source = '', opt
 
   if (
     asyncRuntimePath &&
-    looksLikeAsyncRuntimeFlow(source) &&
+    looksLikeAsyncRuntimeFlow(runtimeSource) &&
     asyncPressureSignals >= 4 &&
-    !hasErrorHandling
+    !hasErrorHandling &&
+    !hasRecoveryContract
   ) {
     findings.push(createFinding(
       'async_flow_without_error_boundary',
@@ -101,8 +126,10 @@ export function detectAsyncErrorConformanceFromSource(filePath, source = '', opt
 
   if (
     asyncRuntimePath &&
-    hasTimeoutOrRestartPressure(source) &&
-    !hasErrorHandling
+    (looksLikeAsyncRuntimeFlow(runtimeSource) || /_requestWorkerRestart\s*\(|reloadHandler\.reload\s*\(|setTimeout\(|process\.send\s*\(/.test(runtimeSource)) &&
+    hasTimeoutOrRestartPressure(runtimeSource) &&
+    !hasErrorHandling &&
+    !hasRecoveryContract
   ) {
     findings.push(createFinding(
       'restart_or_timeout_without_recovery_contract',

@@ -65,8 +65,31 @@ export {
 } from './semantic-purity-conformance.js';
 
 export {
+  evaluateAtomTestability,
+  evaluateAtomSemanticPurity,
+  evaluateAtomRefactoringSignals
+} from './atom-evaluation.js';
+
+export {
   buildCanonicalReuseGuidance
 } from './canonical-reuse-guidance.js';
+
+export {
+  COMPILER_TARGET_DIRS,
+  discoverProjectSourceFiles,
+  discoverCompilerFiles,
+  isCompilerRuntimeFile
+} from './file-discovery.js';
+
+export {
+  hasPersistedCompilerAnalysis,
+  getPersistedIndexedFilePaths,
+  findIndexedFileCandidate,
+  cleanupOrphanedCompilerArtifacts,
+  removePersistedFileMetadata,
+  removePersistedAtomMetadata,
+  emitOrphanedImportsFromPersistedMetadata
+} from './compiler-persistence.js';
 
 export {
   isRuntimeLifecycleFile,
@@ -141,6 +164,10 @@ export {
 } from './live-row-cleanup.js';
 
 export {
+  ensureLiveRowSync
+} from './live-row-sync.js';
+
+export {
   buildDuplicateRemediation,
   buildDuplicateRemediationPlan
 } from './duplicate-remediation.js';
@@ -202,5 +229,6 @@ export {
 
 export {
   normalizeWatcherIssueFilePath,
+  findOrphanedWatcherAlertIds,
   findOutdatedWatcherAlertIds
 } from './watcher-issue-storage.js';

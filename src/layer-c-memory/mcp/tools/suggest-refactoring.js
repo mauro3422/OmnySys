@@ -5,6 +5,7 @@
 
 import { getAllAtoms, getAtomsInFile, enrichAtomsWithRelations } from '#layer-c/storage/index.js';
 import { createLogger } from '../../../utils/logger.js';
+import { evaluateAtomRefactoringSignals } from '../../../shared/compiler/index.js';
 import { analyzeExtractFunction } from './suggest-refactoring/extract-analyzer.js';
 import { analyzeNaming } from './suggest-refactoring/naming-analyzer.js';
 import { analyzeErrorHandling } from './suggest-refactoring/error-analyzer.js';
@@ -65,6 +66,13 @@ function countByType(suggestions) {
   return counts;
 }
 
+function enrichAtomsWithCompilerEvaluation(atoms = []) {
+  return atoms.map((atom) => ({
+    ...atom,
+    compilerEvaluation: evaluateAtomRefactoringSignals(atom)
+  }));
+}
+
 /**
  * Tool principal
  */
@@ -80,22 +88,24 @@ export async function suggest_refactoring(args, context) {
       ? await getAtomsInFile(projectPath, filePath)
       : await getAllAtoms(projectPath);
 
+    const atomsWithCompilerEvaluation = enrichAtomsWithCompilerEvaluation(atoms);
+
     // ÁLGEBRA DE GRAFOS: Enriquecer con centrality, propagation, risk
-    const enrichedAtoms = await enrichAtomsWithRelations(atoms, {
+    const enrichedAtoms = await enrichAtomsWithRelations(atomsWithCompilerEvaluation, {
       withStats: true,
       withCallers: false,
       withCallees: false
     }, projectPath);
 
     const allSuggestions = [
-      ...analyzeExtractFunction(atoms, filePath),
-      ...analyzeNaming(atoms),
-      ...analyzeErrorHandling(atoms),
-      ...analyzePerformance(atoms),
-      ...analyzeFileSize(atoms, filePath),
-      ...analyzeCohesion(atoms),
-      ...analyzeNetworkConnections(atoms),
-      ...analyzeResourceLifecycle(atoms)
+      ...analyzeExtractFunction(enrichedAtoms, filePath),
+      ...analyzeNaming(enrichedAtoms),
+      ...analyzeErrorHandling(enrichedAtoms),
+      ...analyzePerformance(enrichedAtoms),
+      ...analyzeFileSize(enrichedAtoms, filePath),
+      ...analyzeCohesion(enrichedAtoms),
+      ...analyzeNetworkConnections(enrichedAtoms),
+      ...analyzeResourceLifecycle(enrichedAtoms)
     ];
 
     // Filtrar por severidad

@@ -14,6 +14,17 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('OmnySys:process:manager');
 
+function safelyClosePortProbe(server) {
+  if (!server?.listening) {
+    return;
+  }
+
+  server.close((closeError) => {
+    if (closeError) {
+      logger.debug(`[PORT_PROBE_CLOSE_SKIP] ${closeError.message}`);
+    }
+  });
+}
 
 
 /**
@@ -22,18 +33,31 @@ const logger = createLogger('OmnySys:process:manager');
 export async function isPortInUse(port) {
   return new Promise((resolve) => {
     const server = net.createServer();
+
+    const resolveWith = (inUse) => {
+      safelyClosePortProbe(server);
+      resolve(inUse);
+    };
+
     server.once('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        resolve(true);
+        resolveWith(true);
       } else {
-        resolve(false);
+        logger.debug(`[PORT_PROBE_ERROR] port=${port} code=${err.code || 'unknown'} message=${err.message}`);
+        resolveWith(false);
       }
     });
+
     server.once('listening', () => {
-      server.close();
-      resolve(false);
+      resolveWith(false);
     });
-    server.listen(port);
+
+    try {
+      server.listen(port);
+    } catch (error) {
+      logger.debug(`[PORT_PROBE_LISTEN_SKIP] port=${port} message=${error.message}`);
+      resolve(false);
+    }
   });
 }
 
@@ -72,16 +96,26 @@ export async function killProcess(pid) {
  * Verifica estado de los servicios
  */
 export async function checkServices() {
-  const [orchestratorPort, wsPort] = await Promise.all([
-    isPortInUse(9999),   // Orchestrator
-    isPortInUse(9997)    // WebSocket
-  ]);
+  try {
+    const [orchestratorPort, wsPort] = await Promise.all([
+      isPortInUse(9999),   // Orchestrator
+      isPortInUse(9997)    // WebSocket
+    ]);
 
-  return {
-    orchestrator: orchestratorPort,
-    websocket: wsPort,
-    anyRunning: orchestratorPort || wsPort
-  };
+    return {
+      orchestrator: orchestratorPort,
+      websocket: wsPort,
+      anyRunning: orchestratorPort || wsPort
+    };
+  } catch (error) {
+    logger.warn(`[CHECK_SERVICES_FALLBACK] ${error.message}`);
+    return {
+      orchestrator: false,
+      websocket: false,
+      anyRunning: false,
+      error: error.message
+    };
+  }
 }
 
 /**

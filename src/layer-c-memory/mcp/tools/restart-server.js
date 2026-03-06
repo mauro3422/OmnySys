@@ -34,6 +34,7 @@ export async function restart_server(args, context) {
 
   try {
     logger.info('🔄 Reiniciando servidor OmnySys...');
+    clearPendingHotReloadRestart(server);
 
     if (clearCacheOnly) return await handleClearCacheOnly(cache);
     if (reindexOnly) {
@@ -90,6 +91,17 @@ export async function restart_server(args, context) {
       restarting: false,
       success: false
     };
+  }
+}
+
+function clearPendingHotReloadRestart(server) {
+  server?._pendingHotReloadRestartFiles?.clear?.();
+  if (server) {
+    server._hotReloadRestartScheduled = false;
+  }
+  if (server?._hotReloadRestartTimer) {
+    clearTimeout(server._hotReloadRestartTimer);
+    server._hotReloadRestartTimer = null;
   }
 }
 

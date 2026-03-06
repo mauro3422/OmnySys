@@ -439,40 +439,83 @@ const bindRetryDelayMs = process.platform === 'win32' ? 1000 : 300;
 const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 8 : 3) : 0;
 let httpServer = null;
 
-async function startHttpServer(attempt = 0) {
-  return await new Promise((resolve) => {
+function closeBindAttempt(server) {
+  if (!server) {
+    return;
+  }
+
+  server.close(() => { });
+}
+
+function handlePortInUse(server, attempt) {
+  closeBindAttempt(server);
+
+  if (isProxyMode && attempt < bindRetryLimit) {
+    const nextAttempt = attempt + 1;
+    logger.warn(`Port ${port} still busy after restart. Retrying bind in ${bindRetryDelayMs}ms (${nextAttempt}/${bindRetryLimit})...`);
+    return { action: 'retry', nextAttempt };
+  }
+
+  logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
+  if (isProxyMode) {
+    logger.error('Proxy Mode active. Port remained locked after bind retries. Exiting with code 1 to let proxy retry cleanly.');
+    process.exit(1);
+  }
+
+  process.exit(0);
+}
+
+function handleHttpStartupFailure(error) {
+  logger.error(`HTTP daemon startup failed: ${error.message}`);
+  process.exit(1);
+}
+
+function waitForBindRetry() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, bindRetryDelayMs);
+  });
+}
+
+function tryListen(attempt) {
+  return new Promise((resolve, reject) => {
     const server = app.listen(port, host, () => {
       httpServer = server;
       logger.info(`🌐 OmnySys MCP HTTP daemon listening on http://${host}:${port}/mcp`);
       logger.info(`📂 Project: ${projectPath}`);
-      resolve(server);
+      resolve({ status: 'listening', server });
     });
 
-    server.on('error', (error) => {
+    server.once('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        server.close(() => { });
-
-        if (isProxyMode && attempt < bindRetryLimit) {
-          const nextAttempt = attempt + 1;
-          logger.warn(`Port ${port} still busy after restart. Retrying bind in ${bindRetryDelayMs}ms (${nextAttempt}/${bindRetryLimit})...`);
-          setTimeout(() => {
-            resolve(startHttpServer(nextAttempt));
-          }, bindRetryDelayMs);
-          return;
-        }
-
-        logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
-        if (isProxyMode) {
-          logger.error('Proxy Mode active. Port remained locked after bind retries. Exiting with code 1 to let proxy retry cleanly.');
-          process.exit(1);
-        }
-        process.exit(0);
+        const outcome = handlePortInUse(server, attempt);
+        resolve(outcome || { action: 'exit' });
+        return;
       }
 
-      logger.error(`HTTP daemon startup failed: ${error.message}`);
-      process.exit(1);
+      reject(error);
     });
   });
+}
+
+async function startHttpServer() {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const outcome = await tryListen(attempt);
+      if (outcome?.status === 'listening') {
+        return outcome.server;
+      }
+
+      if (outcome?.action === 'retry') {
+        await waitForBindRetry();
+        continue;
+      }
+
+      return null;
+    } catch (error) {
+      handleHttpStartupFailure(error);
+      return null;
+    }
+  }
 }
 
 await startHttpServer();

@@ -109,10 +109,24 @@ function looksLikeManualLiveRowDrift(source = '') {
   );
 }
 
+function readsCanonicalLiveRowSyncSummary(source = '') {
+  return (
+    /ensureLiveRowSync\s*\(/.test(source) &&
+    /liveRowSync\.summary/.test(source)
+  );
+}
+
 function looksLikeManualPipelineOrphanScan(source = '') {
   return (
     /(called_by_json|calls_json|callers_count|callees_count)/.test(source) &&
     /(pipeline_orphans|orphanFunctions|patternCondition|fileLevelImportEvidence|disconnected pipeline)/i.test(source)
+  );
+}
+
+function readsCanonicalPipelineOrphanSummary(source = '') {
+  return (
+    /(getPipelineOrphanSummary|classifyPipelineOrphans)\s*\(/.test(source) ||
+    /pipelineOrphanSummary\.(orphans|warning|normalizedOrphans)/.test(source)
   );
 }
 
@@ -131,7 +145,8 @@ function buildPolicyImportMap(source = '') {
     importsFileDiscoveryApi: /discoverCompilerFiles|discoverProjectSourceFiles|isCompilerRuntimeFile/.test(source),
     importsSignalCoverageApi: /summarizeDerivedScoreCoverage|summarizeSemanticCoverage|classifyFieldCoverage/.test(source),
     importsLiveRowDriftApi: /getLiveRowDriftSummary|getStaleTableRowCount|getLiveFileTotal|getLiveFileSetSql/.test(source),
-    importsPipelineOrphansApi: /classifyPipelineOrphans|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan/.test(source),
+    importsLiveRowSyncApi: /ensureLiveRowSync/.test(source),
+    importsPipelineOrphansApi: /classifyPipelineOrphans|getPipelineOrphanSummary|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan|buildPipelineOrphanRemediationPlan/.test(source),
     importsRuntimeOwnershipApi: /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source)
   };
 }
@@ -211,6 +226,7 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
     },
     {
       when: looksLikeManualLiveRowDrift(source) &&
+        !readsCanonicalLiveRowSyncSummary(source) &&
         !imports.importsLiveRowDriftApi &&
         !normalizedPath.endsWith('/live-row-drift.js'),
       finding: createFinding(
@@ -222,7 +238,25 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
       )
     },
     {
+      when:
+        imports.importsLiveRowDriftApi &&
+        !imports.importsLiveRowSyncApi &&
+        (normalizedPath.includes('/mcp/') || normalizedPath.includes('/query/')) &&
+        !normalizedPath.endsWith('/live-row-drift.js') &&
+        !normalizedPath.endsWith('/live-row-sync.js') &&
+        !normalizedPath.endsWith('/live-row-cleanup.js') &&
+        !normalizedPath.endsWith('/live-row-reconciliation.js'),
+      finding: createFinding(
+        'live_row_sync_missing',
+        COMPILER_POLICY_SEVERITY.MEDIUM,
+        COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
+        'Module reads live/stale row drift without the canonical synchronization entrypoint',
+        'Use ensureLiveRowSync in MCP/query runtime modules so support-table drift is reconciled before reporting.'
+      )
+    },
+    {
       when: looksLikeManualPipelineOrphanScan(source) &&
+        !readsCanonicalPipelineOrphanSummary(source) &&
         !imports.importsPipelineOrphansApi &&
         !normalizedPath.endsWith('/pipeline-orphans.js'),
       finding: createFinding(

@@ -31,7 +31,7 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
 }
 
 function importsCanonicalSemanticLayer(source = '') {
-  return /summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints/.test(source);
+  return /evaluateAtomSemanticPurity|evaluateAtomRefactoringSignals|compilerEvaluation\?\.(semanticPurity|testability)|summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints/.test(source);
 }
 
 function looksLikeManualPurityScan(source = '') {

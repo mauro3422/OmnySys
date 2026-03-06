@@ -15,21 +15,36 @@
 
 import { getAllAtoms } from '#layer-c/storage/index.js';
 import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
+import { ensureLiveRowSync } from '../../../shared/compiler/index.js';
 import { getDatabase } from '../../storage/database/connection.js';
 import { getRegisteredTables, getTableDefinition, getTableColumns, generateSchemaReport, exportSchemaSQL } from '../../storage/database/schema-registry.js';
 
 const TEST_CALLBACK_PATTERN = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
 const isTestAtom = a => a.isTestCallback === true || TEST_CALLBACK_PATTERN.test(a.name);
 
+function normalizeAtomKind(atom = {}) {
+  const explicitType = String(atom.type || atom.atomType || atom.atom_type || '').trim();
+  const explicitFunctionType = String(atom.functionType || atom.function_type || '').trim();
+
+  if (isTestAtom(atom)) return 'testCallback';
+  if (explicitType && explicitType !== 'atom') return explicitType;
+
+  const normalizedFunctionType = explicitFunctionType === 'declaration'
+    ? 'function'
+    : explicitFunctionType;
+
+  return normalizedFunctionType || explicitType || 'unknown';
+}
+
 const ATOM_TYPE_FILTERS = {
-  testCallback:  a => isTestAtom(a),
-  function:      a => !isTestAtom(a) && a.type === 'atom' && a.functionType === 'declaration',
-  arrow:         a => !isTestAtom(a) && a.type === 'atom' && a.functionType === 'arrow',
-  expression:    a => !isTestAtom(a) && a.type === 'atom' && a.functionType === 'expression',
-  method:        a => !isTestAtom(a) && a.type === 'atom' && a.functionType === 'method',
-  variable:      a => a.type === 'variable',
-  constant:      a => a.type === 'constant',
-  config:        a => a.type === 'config',
+  testCallback:  a => normalizeAtomKind(a) === 'testCallback',
+  function:      a => normalizeAtomKind(a) === 'function',
+  arrow:         a => normalizeAtomKind(a) === 'arrow',
+  expression:    a => normalizeAtomKind(a) === 'expression',
+  method:        a => normalizeAtomKind(a) === 'method',
+  variable:      a => normalizeAtomKind(a) === 'variable',
+  constant:      a => normalizeAtomKind(a) === 'constant',
+  config:        a => normalizeAtomKind(a) === 'config',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,7 +210,14 @@ function buildInventory(allAtoms) {
 function filterAtoms(allAtoms, atomType) {
   if (!atomType) return { filtered: allAtoms, filterUsed: 'all' };
   if (ATOM_TYPE_FILTERS[atomType]) return { filtered: allAtoms.filter(ATOM_TYPE_FILTERS[atomType]), filterUsed: atomType };
-  return { filtered: allAtoms.filter(a => a.type === atomType || a.functionType === atomType || a.archetype?.type === atomType || a.testCallbackType === atomType), filterUsed: atomType };
+  return {
+    filtered: allAtoms.filter(a =>
+      normalizeAtomKind(a) === atomType
+      || a.archetype?.type === atomType
+      || a.testCallbackType === atomType
+    ),
+    filterUsed: atomType
+  };
 }
 
 function buildKeyMetrics(filtered) {
@@ -339,6 +361,89 @@ function generateRecommendations(report, missingTables) {
   return recs;
 }
 
+async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focusField }) {
+  const allAtoms = await getAllAtoms(projectPath);
+  const inventory = buildInventory(allAtoms);
+  const { filtered, filterUsed } = filterAtoms(allAtoms, atomType);
+
+  if (filtered.length === 0) {
+    return {
+      error: `No atoms found for type "${atomType}"`,
+      inventory,
+      totalAtoms: allAtoms.length,
+      schemaType: 'atoms'
+    };
+  }
+
+  const analysisSet = filtered.slice(0, Math.min(500, filtered.length));
+
+  return {
+    schemaType: 'atoms',
+    filter: filterUsed,
+    totalAtoms: allAtoms.length,
+    matchingAtoms: filtered.length,
+    inventory,
+    keyMetrics: buildKeyMetrics(filtered),
+    fieldCoverage: buildFieldCoverage(),
+    correlations: computeCorrelations(analysisSet),
+    evolution: focusField ? { [focusField]: fieldEvolution(analysisSet, focusField) } : undefined,
+    schema: deriveSchema(analysisSet),
+    sampleAtoms: buildSample(filtered, sampleSize),
+    timestamp: new Date().toISOString()
+  };
+}
+
+function buildDatabaseSchemaResult({ includeSQL }) {
+  const db = getDatabase();
+  const liveRowSync = db ? ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 }) : null;
+  const status = getDatabaseSchemaStatus();
+
+  if (!status.success) {
+    return { ...status, schemaType: 'database' };
+  }
+
+  const result = {
+    schemaType: 'database',
+    ...status,
+    liveRowSync
+  };
+
+  if (includeSQL) {
+    result.sql = exportSchemaSQL();
+  }
+
+  return result;
+}
+
+function buildRegistrySchemaResult() {
+  const tables = getRegisteredTables();
+  const registry = {};
+
+  for (const tableName of tables) {
+    const tableDef = getTableDefinition(tableName);
+    registry[tableName] = {
+      description: tableDef.description,
+      columnCount: tableDef.columns.length,
+      columns: tableDef.columns.map(col => ({
+        name: col.name,
+        type: col.type,
+        nullable: col.nullable !== false,
+        default: col.default,
+        pk: col.pk || false,
+        description: col.description
+      })),
+      indexes: tableDef.indexes || []
+    };
+  }
+
+  return {
+    schemaType: 'registry',
+    totalTables: tables.length,
+    tables: registry,
+    timestamp: new Date().toISOString()
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HERRAMIENTA MCP PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,6 +501,8 @@ export async function get_schema(args, context) {
 
       case 'database': {
         // ── DATABASE SCHEMA (estado de la DB SQLite) ────────────────────────
+        const db = getDatabase();
+        const liveRowSync = db ? ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 }) : null;
         const status = getDatabaseSchemaStatus();
         
         if (!status.success) {
@@ -404,7 +511,8 @@ export async function get_schema(args, context) {
 
         const result = {
           schemaType: 'database',
-          ...status
+          ...status,
+          liveRowSync
         };
 
         if (includeSQL) {

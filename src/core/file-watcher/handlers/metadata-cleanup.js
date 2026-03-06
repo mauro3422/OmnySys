@@ -6,9 +6,12 @@
  * @module file-watcher/handlers/metadata-cleanup
  */
 
-import fs from 'fs/promises';
-import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
+import {
+  emitOrphanedImportsFromPersistedMetadata,
+  removePersistedAtomMetadata,
+  removePersistedFileMetadata
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:cleanup');
 
@@ -17,9 +20,7 @@ const logger = createLogger('OmnySys:file-watcher:cleanup');
  */
 export async function removeFileMetadata(filePath) {
   try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(this.rootPath);
-    const result = await repo.deleteFile(filePath);
+    const result = await removePersistedFileMetadata(this.rootPath, filePath);
 
     if (result) {
       logger.debug(`[DELETED FILE META] ${filePath} from SQLite`);
@@ -34,9 +35,7 @@ export async function removeFileMetadata(filePath) {
  */
 export async function removeAtomMetadata(filePath) {
   try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(this.rootPath);
-    const count = await repo.deleteByFile(filePath);
+    const count = await removePersistedAtomMetadata(this.rootPath, filePath);
 
     if (count > 0) {
       logger.debug(`[DELETED ATOMS] ${count} atoms for ${filePath} from SQLite`);
@@ -52,30 +51,15 @@ export async function removeAtomMetadata(filePath) {
  */
 export async function cleanupRelationships(filePath) {
   logger.debug(`[CLEANUP RELATIONS] ${filePath}`);
+  const importsCount = await emitOrphanedImportsFromPersistedMetadata(
+    this.dataPath,
+    filePath,
+    (payload) => this.emit('import:orphaned', payload)
+  );
 
-  const fileName = path.basename(filePath);
-  const fileDir = path.dirname(filePath);
-  const metadataPath = path.join(this.dataPath, 'files', fileDir, `${fileName}.json`);
-
-  try {
-    const content = await fs.readFile(metadataPath, 'utf-8');
-    const metadata = JSON.parse(content);
-    const imports = metadata.imports || [];
-
-    if (imports.length > 0) {
-      logger.debug(`  ${filePath} had ${imports.length} import(s) - emitting import:orphaned`);
-      for (const imported of imports) {
-        const importedPath = typeof imported === 'string' ? imported : (imported.path || imported.from || '');
-        if (importedPath) {
-          this.emit('import:orphaned', {
-            importer: filePath,
-            imported: importedPath,
-            reason: 'importer_deleted'
-          });
-        }
-      }
-    }
-  } catch {
+  if (importsCount > 0) {
+    logger.debug(`  ${filePath} had ${importsCount} import(s) - emitting import:orphaned`);
+  } else {
     logger.debug(`  No metadata for ${filePath}, skip relationship cleanup`);
   }
 }

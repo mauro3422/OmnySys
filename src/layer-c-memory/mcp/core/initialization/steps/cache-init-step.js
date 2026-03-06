@@ -2,7 +2,7 @@
  * @fileoverview cache-init-step.js
  *
  * Step 2: Initialize Cache (AFTER Layer A, BEFORE LLM)
- * 
+ *
  * Must run AFTER Layer A creates the .omnysysdata/ files.
  * Loads cache data before LLM and Orchestrator start.
  *
@@ -14,8 +14,6 @@ import { getCacheManager } from '#core/cache/singleton.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:init:step');
-
-
 
 /**
  * Step 2: Cache Initialization
@@ -31,36 +29,48 @@ export class CacheInitStep extends InitializationStep {
 
     const startTime = performance.now();
 
-    server.cache = await getCacheManager(server.projectPath);
+    try {
+      server.cache = await getCacheManager(server.projectPath);
+      const preload = await this.loadCriticalData(server.projectPath);
 
-    // Preload critical data
+      server.metadata = preload.metadata;
+      server.cache.set('metadata', preload.metadata);
+      logger.info('  Metadata cached');
+
+      server.cache.set('connections', preload.connections);
+      logger.info(`  Connections cached (${preload.connections.total} total)`);
+
+      server.cache.set('assessment', preload.assessment);
+      const totalIssues = this.countIssues(preload.assessment);
+      logger.info(`  Risk assessment cached (${totalIssues} issues)`);
+
+      const elapsed = (performance.now() - startTime).toFixed(2);
+      logger.info(`\n  Cache load time: ${elapsed}ms`);
+
+      return true;
+    } catch (error) {
+      logger.error(`Cache initialization failed: ${error.message}`);
+      await this.rollback(server, error);
+      throw new Error(`CacheInitStep failed: ${error.message}`);
+    }
+  }
+
+  async loadCriticalData(projectPath) {
     const { getProjectMetadata } = await import('#layer-c/query/apis/project-api.js');
     const { getAllConnections } = await import('#layer-c/query/apis/connections-api.js');
     const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
 
-    server.metadata = await getProjectMetadata(server.projectPath);
-    server.cache.set('metadata', server.metadata);
-    logger.info('  ✅ Metadata cached');
+    const metadata = await getProjectMetadata(projectPath);
+    const connections = await getAllConnections(projectPath);
+    const assessment = await getRiskAssessment(projectPath);
 
-    const connections = await getAllConnections(server.projectPath);
-    server.cache.set('connections', connections);
-    logger.info(`  ✅ Connections cached (${connections.total} total)`);
-
-    const assessment = await getRiskAssessment(server.projectPath);
-    server.cache.set('assessment', assessment);
-    const totalIssues = this.countIssues(assessment);
-    logger.info(`  ✅ Risk assessment cached (${totalIssues} issues)`);
-
-    const elapsed = (performance.now() - startTime).toFixed(2);
-    logger.info(`\n  Cache load time: ${elapsed}ms`);
-
-    return true;
+    return { metadata, connections, assessment };
   }
 
   countIssues(assessment) {
     if (!assessment?.report?.summary) return 0;
     const s = assessment.report.summary;
-    return (s.criticalCount || 0) + (s.highCount || 0) + 
+    return (s.criticalCount || 0) + (s.highCount || 0) +
            (s.mediumCount || 0) + (s.lowCount || 0);
   }
 
@@ -69,6 +79,7 @@ export class CacheInitStep extends InitializationStep {
       await server.cache.clear();
       server.cache = null;
     }
+    server.metadata = null;
   }
 }
 

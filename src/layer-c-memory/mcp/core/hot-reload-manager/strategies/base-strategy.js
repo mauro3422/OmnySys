@@ -100,6 +100,46 @@ export class BaseStrategy {
   }
 
   /**
+   * Returns the runtime restart mode for hot-reload runtime-facing changes.
+   *
+   * `manual`: queue pending restart files but do not restart automatically.
+   * `auto`: current behavior, request a proxy-managed worker restart.
+   *
+   * @protected
+   * @returns {'manual'|'auto'}
+   */
+  _getRuntimeRestartMode() {
+    return this.server?.runtimeRestartMode === 'auto' ? 'auto' : 'manual';
+  }
+
+  /**
+   * Queues a runtime restart without executing it automatically.
+   *
+   * @protected
+   * @param {string} filename
+   * @param {string} reason
+   * @returns {boolean}
+   */
+  _queueManualRuntimeRestart(filename, reason) {
+    if (!this.server._pendingHotReloadRestartFiles) {
+      this.server._pendingHotReloadRestartFiles = new Set();
+    }
+
+    this.server._pendingHotReloadRestartFiles.add(filename);
+    logger.warn(
+      `${reason} changed - queued manual runtime restart: ${Array.from(this.server._pendingHotReloadRestartFiles).join(', ')}`
+    );
+
+    this.server.emit?.('hot-reload:restart-pending', {
+      file: filename,
+      files: Array.from(this.server._pendingHotReloadRestartFiles),
+      reason: 'manual_runtime_restart_required'
+    });
+
+    return true;
+  }
+
+  /**
    * Requests a proxy-managed worker restart so runtime code changes are applied
    * with a fresh ESM cache. Returns false when running standalone.
    *
@@ -109,6 +149,10 @@ export class BaseStrategy {
    * @returns {boolean}
    */
   _requestWorkerRestart(filename, reason) {
+    if (this._getRuntimeRestartMode() !== 'auto') {
+      return this._queueManualRuntimeRestart(filename, reason);
+    }
+
     if (!this._isProxyManaged()) {
       return false;
     }

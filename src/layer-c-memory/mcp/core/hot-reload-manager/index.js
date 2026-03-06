@@ -130,6 +130,11 @@ export class HotReloadManager {
     return {
       isWatching: this.fileWatcher?.isWatching() || false,
       isReloading: status.isReloading,
+      runtimeRestartMode: this.server?.runtimeRestartMode || 'manual',
+      pendingRuntimeRestart: {
+        scheduled: !!this.server?._hotReloadRestartScheduled,
+        files: Array.from(this.server?._pendingHotReloadRestartFiles || [])
+      },
       criticalModules: this.classifier.getCriticalModules().length,
       reloadablePatterns: this.classifier.getPatterns().length
     };

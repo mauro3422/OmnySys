@@ -39,6 +39,11 @@ const RULE_GUIDANCE = {
     recommendedImport: "import { getLiveRowDriftSummary } from '../../../shared/compiler/index.js'",
     recommendedReplacement: 'Reuse getLiveRowDriftSummary / reconciliation helpers instead of hand-rolled stale row SQL.'
   },
+  live_row_sync_missing: {
+    existingCanonicalEntryPoint: 'ensureLiveRowSync',
+    recommendedImport: "import { ensureLiveRowSync } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Use ensureLiveRowSync as the canonical runtime entrypoint so drift is reconciled before reporting support-table counts.'
+  },
   manual_pipeline_orphan_scan: {
     existingCanonicalEntryPoint: 'classifyPipelineOrphans',
     recommendedImport: "import { classifyPipelineOrphans } from '../../../shared/compiler/index.js'",
@@ -63,6 +68,11 @@ const RULE_GUIDANCE = {
     existingCanonicalEntryPoint: 'canonical service helper',
     recommendedImport: null,
     recommendedReplacement: 'Split the module so each boundary delegates to the canonical service/helper for that concern.'
+  },
+  missing_compiler_service_bridge: {
+    existingCanonicalEntryPoint: 'compiler-persistence helpers',
+    recommendedImport: "import { hasPersistedCompilerAnalysis, getPersistedIndexedFilePaths, cleanupOrphanedCompilerArtifacts } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Route filesystem + persistence coupling through shared/compiler compiler-persistence helpers instead of opening fs + repository logic inline.'
   }
 };
 
