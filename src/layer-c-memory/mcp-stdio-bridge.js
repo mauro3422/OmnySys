@@ -9,6 +9,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { spawn } from 'child_process';
+import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -17,6 +18,9 @@ const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/h
 const AUTO_START = process.env.OMNYSYS_AUTO_START !== '0';
 const PROJECT_PATH = path.resolve(process.env.OMNYSYS_PROJECT_PATH || process.cwd());
 const DAEMON_PORT = String(DAEMON_URL.port || '9999');
+const START_LOCK_DIR = path.join(PROJECT_PATH, '.omnysysdata');
+const START_LOCK_PATH = path.join(START_LOCK_DIR, `daemon-start-${DAEMON_PORT}.lock`);
+const START_LOCK_STALE_MS = 30000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -83,7 +87,6 @@ async function resolveDaemonEntry() {
         path.join(PROJECT_PATH, 'src', 'layer-c-memory', 'mcp-http-server.js')
     ];
 
-    const { default: fs } = await import('fs/promises');
     for (const candidate of candidates) {
         try {
             await fs.access(candidate);
@@ -96,46 +99,126 @@ async function resolveDaemonEntry() {
     return null;
 }
 
+async function ensureStartLockDir() {
+    await fs.mkdir(START_LOCK_DIR, { recursive: true });
+}
+
+async function releaseStartLock(handle) {
+    if (!handle) return;
+
+    try {
+        await handle.close();
+    } catch {
+        // ignore close errors
+    }
+
+    try {
+        await fs.unlink(START_LOCK_PATH);
+    } catch {
+        // ignore unlink errors
+    }
+}
+
+async function acquireStartLock() {
+    await ensureStartLockDir();
+
+    try {
+        const handle = await fs.open(START_LOCK_PATH, 'wx');
+        await handle.writeFile(JSON.stringify({
+            pid: process.pid,
+            port: DAEMON_PORT,
+            projectPath: PROJECT_PATH,
+            createdAt: new Date().toISOString()
+        }));
+        return handle;
+    } catch (error) {
+        if (error?.code !== 'EEXIST') {
+            throw error;
+        }
+
+        try {
+            const stats = await fs.stat(START_LOCK_PATH);
+            const ageMs = Date.now() - stats.mtimeMs;
+            if (ageMs > START_LOCK_STALE_MS) {
+                await fs.unlink(START_LOCK_PATH);
+                return await acquireStartLock();
+            }
+        } catch {
+            return await acquireStartLock();
+        }
+
+        return null;
+    }
+}
+
 async function startDaemon() {
     log(`Daemon not running, attempting auto-start for ${PROJECT_PATH}...`);
 
-    const daemonEntry = await resolveDaemonEntry();
-    if (!daemonEntry) {
-        log('ERROR: Cannot find mcp-http-server.js');
+    if (await checkDaemon()) {
+        log('Daemon became healthy before auto-start. Skipping spawn.');
+        return true;
+    }
+
+    const startLock = await acquireStartLock();
+    if (!startLock) {
+        log('Another bridge is already auto-starting the daemon. Waiting for readiness...');
+        for (let i = 0; i < 20; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            if (await checkDaemon()) {
+                log('Daemon became healthy while waiting on start lock.');
+                return true;
+            }
+        }
+        log('ERROR: Timed out waiting for another bridge to start the daemon.');
         return false;
     }
 
-    log(`Starting daemon entry: ${daemonEntry}`);
-
-    const daemonProcess = spawn(process.execPath, [
-        '--max-old-space-size=8192',
-        daemonEntry,
-        PROJECT_PATH,
-        DAEMON_PORT
-    ], {
-        cwd: PROJECT_PATH,
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true,
-        env: {
-            ...process.env,
-            OMNYSYS_MCP_PORT: DAEMON_PORT
-        }
-    });
-
-    daemonProcess.unref();
-
-    for (let i = 0; i < 20; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const ready = await checkDaemon();
-        if (ready) {
-            log('Daemon started successfully');
+    try {
+        if (await checkDaemon()) {
+            log('Daemon became healthy after acquiring start lock. Skipping spawn.');
             return true;
         }
-    }
 
-    log('ERROR: Daemon failed to start within 10 seconds');
-    return false;
+        const daemonEntry = await resolveDaemonEntry();
+        if (!daemonEntry) {
+            log('ERROR: Cannot find mcp-http-server.js');
+            return false;
+        }
+
+        log(`Starting daemon entry: ${daemonEntry}`);
+
+        const daemonProcess = spawn(process.execPath, [
+            '--max-old-space-size=8192',
+            daemonEntry,
+            PROJECT_PATH,
+            DAEMON_PORT
+        ], {
+            cwd: PROJECT_PATH,
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: true,
+            env: {
+                ...process.env,
+                OMNYSYS_MCP_PORT: DAEMON_PORT
+            }
+        });
+
+        daemonProcess.unref();
+
+        for (let i = 0; i < 20; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const ready = await checkDaemon();
+            if (ready) {
+                log('Daemon started successfully');
+                return true;
+            }
+        }
+
+        log('ERROR: Daemon failed to start within 10 seconds');
+        return false;
+    } finally {
+        await releaseStartLock(startLock);
+    }
 }
 
 async function main() {
