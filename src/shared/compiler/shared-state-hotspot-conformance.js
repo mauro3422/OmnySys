@@ -21,7 +21,7 @@ function shouldScanCompilerFile(filePath = '') {
   return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
 }
 
-function createFinding(rule, severity, policyArea, message, recommendation) {
+function createFinding({ rule, severity, policyArea, message, recommendation }) {
   return {
     rule,
     severity,
@@ -74,11 +74,13 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
 
   if (referencesHotspotKeys(source) && !usesCanonicalLayer) {
     findings.push(createFinding(
-      'manual_shared_state_hotspot_key',
-      severity,
-      policyArea,
-      'Module references known shared-state hotspot keys directly',
-      'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.'
+      {
+        rule: 'manual_shared_state_hotspot_key',
+        severity,
+        policyArea,
+        message: 'Module references known shared-state hotspot keys directly',
+        recommendation: 'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.'
+      }
     ));
   }
 
@@ -89,11 +91,13 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
     !runtimeEnvConfigurationOnly
   ) {
     findings.push(createFinding(
-      'manual_shared_state_hotspot_scan',
-      severity,
-      policyArea,
-      `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
-      'Promote shared-state hotspot analysis to a canonical compiler API before more runtime modules consume shared state ad hoc.'
+      {
+        rule: 'manual_shared_state_hotspot_scan',
+        severity,
+        policyArea,
+        message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
+        recommendation: 'Promote shared-state hotspot analysis to a canonical compiler API before more runtime modules consume shared state ad hoc.'
+      }
     ));
   }
 

@@ -24,6 +24,21 @@ import {
 
 const logger = createLogger('OmnySys:file-watcher:guards:compiler-policy');
 
+function buildSuggestedAlternatives(findings = [], reuseGuidance = []) {
+  const alternatives = new Set(findings.map((finding) => finding.recommendation).filter(Boolean));
+
+  for (const guidance of reuseGuidance) {
+    if (guidance?.recommendedReplacement) {
+      alternatives.add(guidance.recommendedReplacement);
+    }
+    if (guidance?.recommendedImport) {
+      alternatives.add(`Import sugerido: ${guidance.recommendedImport}`);
+    }
+  }
+
+  return [...alternatives];
+}
+
 export async function detectCompilerPolicyConformance(rootPath, filePath) {
   const absolutePath = path.join(rootPath, filePath);
   const source = await fs.readFile(absolutePath, 'utf8').catch(() => null);
@@ -39,17 +54,11 @@ export async function detectCompilerPolicyConformance(rootPath, filePath) {
 
   const { severity, summary, message, reuseGuidance = [] } = buildCompilerPolicyIssueSummary(findings);
   const issueType = createIssueType(IssueDomains.ARCH, 'policy_drift', severity);
-  const reuseAlternatives = reuseGuidance.flatMap((guidance) =>
-    [
-      guidance?.recommendedReplacement,
-      guidance?.recommendedImport && `Import sugerido: ${guidance.recommendedImport}`
-    ].filter(Boolean)
-  );
   const context = createStandardContext({
     guardName: 'compiler-policy-conformance-guard',
     severity,
     suggestedAction: 'Replace ad-hoc policy logic with the canonical compiler API entrypoint for this signal.',
-    suggestedAlternatives: [...new Set([...findings.map((finding) => finding.recommendation), ...reuseAlternatives])],
+    suggestedAlternatives: buildSuggestedAlternatives(findings, reuseGuidance),
     extraData: {
       byPolicyArea: summary.byPolicyArea,
       byRule: summary.byRule,
