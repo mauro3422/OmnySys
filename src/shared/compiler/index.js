@@ -71,6 +71,14 @@ export {
 } from './atom-evaluation.js';
 
 export {
+  summarizeAtomTestability
+} from './testability-reporting.js';
+
+export {
+  summarizeAtomSemanticPurity
+} from './semantic-purity-reporting.js';
+
+export {
   buildCanonicalReuseGuidance
 } from './canonical-reuse-guidance.js';
 

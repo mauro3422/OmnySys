@@ -6,6 +6,7 @@
 import { getFileAnalysis } from '../core/single-file.js';
 import { loadAtoms, loadMolecule } from '#layer-c/storage/index.js';
 import { composeMolecularMetadata } from '#shared/derivation-engine/index.js';
+import { summarizeAtomSemanticPurity, summarizeAtomTestability } from '../../../../../shared/compiler/index.js';
 
 /**
  * Loads atoms with cache integration
@@ -94,7 +95,11 @@ export async function getFileAnalysisWithAtoms(rootPath, filePath, cache = null)
     atoms,
     molecule,
     derived: derivedMetadata,
-    stats
+    stats,
+    compilerSignals: {
+      testability: summarizeAtomTestability(atoms),
+      semanticPurity: summarizeAtomSemanticPurity(atoms)
+    }
   };
 
   if (cache && typeof cache.setDerivedMetadata === 'function') {

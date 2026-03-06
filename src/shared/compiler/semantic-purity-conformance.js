@@ -30,21 +30,34 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
   };
 }
 
+function stripComments(source = '') {
+  return String(source || '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+}
+
+function stripStrings(source = '') {
+  return String(source || '')
+    .replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, "''");
+}
+
 function importsCanonicalSemanticLayer(source = '') {
-  return /evaluateAtomSemanticPurity|evaluateAtomRefactoringSignals|compilerEvaluation\?\.(semanticPurity|testability)|summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints/.test(source);
+  return /evaluateAtomSemanticPurity|evaluateAtomRefactoringSignals|summarizeAtomSemanticPurity|compilerEvaluation\?\.(semanticPurity|testability)|summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints/.test(source);
 }
 
 function looksLikeManualPurityScan(source = '') {
+  const sanitized = stripStrings(stripComments(source));
   return (
-    /(isPure|purity|side effect|side-effect|mutatesParams|usesThisContext|hasReturnValue)/i.test(source) &&
-    /(semantic|helper|transformer|utility|return value|pure function)/i.test(source)
+    /(isPure|purity|side effect|side-effect|mutatesParams|usesThisContext|hasReturnValue)/i.test(sanitized) &&
+    /(semantic|helper|transformer|utility|return value|pure function)/i.test(sanitized)
   );
 }
 
 function looksLikeManualMutationClassification(source = '') {
+  const sanitized = stripStrings(stripComments(source));
   return (
-    /(mutatesParams|mutation|side effect|impure|this context)/i.test(source) &&
-    /(classify|detect|summarize|heuristic|score)/i.test(source)
+    /(mutatesParams|mutation|side effect|impure|this context)/i.test(sanitized) &&
+    /(classify|detect|summarize|heuristic|score)/i.test(sanitized)
   );
 }
 

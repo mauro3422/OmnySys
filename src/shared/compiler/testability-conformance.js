@@ -31,21 +31,34 @@ function createFinding(rule, severity, policyArea, message, recommendation) {
   };
 }
 
+function stripComments(source = '') {
+  return String(source || '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+}
+
+function stripStrings(source = '') {
+  return String(source || '')
+    .replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, "''");
+}
+
 function importsCanonicalTestabilityApi(source = '') {
-  return /evaluateAtomTestability|evaluateAtomRefactoringSignals|compilerEvaluation\?\.(testability|testabilityScore)|testabilityScore|generate_tests|generate_batch_tests|suggest_refactoring|buildDeadCodeRemediation|buildCompilerDiagnostics/i.test(source);
+  return /evaluateAtomTestability|evaluateAtomRefactoringSignals|summarizeAtomTestability|compilerEvaluation\?\.(testability|testabilityScore)|testabilityScore|generate_tests|generate_batch_tests|suggest_refactoring|buildDeadCodeRemediation|buildCompilerDiagnostics/i.test(source);
 }
 
 function looksLikeManualTestabilityScan(source = '') {
+  const sanitized = stripStrings(stripComments(source));
   return (
-    /(testability|testabilityScore|untestable|hard to test|low testability)/i.test(source) &&
-    /(complexity|linesOfCode|isExported|archetype|god-function|pure|side effect)/i.test(source)
+    /(testability|testabilityScore|untestable|hard to test|low testability)/i.test(sanitized) &&
+    /(complexity|linesOfCode|isExported|archetype|god-function|pure|side effect)/i.test(sanitized)
   );
 }
 
 function looksLikeExportedComplexityHeuristic(source = '') {
+  const sanitized = stripStrings(stripComments(source));
   return (
-    /(isExported|exported)/.test(source) &&
-    /(complexity|linesOfCode|god-function|untestable|test helper)/i.test(source)
+    /(isExported|exported)/.test(sanitized) &&
+    /(complexity|linesOfCode|god-function|untestable|test helper)/i.test(sanitized)
   );
 }
 

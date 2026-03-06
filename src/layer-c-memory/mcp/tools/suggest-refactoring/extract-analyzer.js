@@ -4,6 +4,7 @@
  */
 
 import { generateBlockName } from './naming-helpers.js';
+import { evaluateAtomTestability } from '../../../../shared/compiler/index.js';
 
 /**
  * Identifica bloques lógicos dentro de una función
@@ -51,6 +52,8 @@ export function analyzeExtractFunction(atoms, filePath) {
   const suggestions = [];
 
   for (const atom of atoms) {
+    const testability = atom.compilerEvaluation?.testability || evaluateAtomTestability(atom);
+
     // Funciones muy largas (> 80 LOC) con complejidad alta — candidatas para extracción
     if (atom.linesOfCode > 80 && atom.complexity > 5) {
       suggestions.push({
@@ -78,7 +81,7 @@ export function analyzeExtractFunction(atoms, filePath) {
         line: atom.line,
         currentComplexity: atom.complexity,
         suggestion: `High cyclomatic complexity (${atom.complexity}) — simplify conditions`,
-        reason: `Functions with complexity > 15 have elevated defect probability and are hard to test.`,
+        reason: `Functions with complexity > 15 have elevated defect probability and are hard to test (score ${testability.score}).`,
         benefit: 'Reduce branches to simplify logic flow'
       });
     }
