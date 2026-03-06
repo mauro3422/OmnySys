@@ -48,3 +48,17 @@ export {
   normalizePipelineOrphan,
   classifyPipelineOrphans
 } from './pipeline-orphans.js';
+
+export {
+  WATCHER_MESSAGE_PREFIX,
+  WATCHER_ALERT_SOURCE,
+  WATCHER_CONTRACT_VERSION,
+  isWatcherIssueMessage,
+  stripWatcherMessagePrefix,
+  normalizeWatcherIssueContext,
+  serializeWatcherIssueContext,
+  parseWatcherIssueContext,
+  createWatcherIssueRecord,
+  mapSemanticIssueRowToWatcherAlert,
+  summarizeWatcherAlerts
+} from './watcher-issues.js';

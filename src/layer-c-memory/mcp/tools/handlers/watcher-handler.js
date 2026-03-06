@@ -1,3 +1,9 @@
+import {
+    mapSemanticIssueRowToWatcherAlert,
+    summarizeWatcherAlerts,
+    WATCHER_MESSAGE_PREFIX
+} from '../../../../shared/compiler/index.js';
+
 export async function handleWatcherAlerts(tool, db, options, filePath) {
     if (!db) {
         return tool.formatError('MISSING_DB', 'Repository database not initialized');
@@ -7,8 +13,8 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     const limit = options.limit || 20;
     const issueType = options.issueType || 'all';
 
-    let whereClause = `WHERE message LIKE '[watcher]%'`;
-    const whereParams = [];
+    let whereClause = `WHERE message LIKE ?`;
+    const whereParams = [`${WATCHER_MESSAGE_PREFIX}%`];
 
     if (filePath) {
         whereClause += ' AND file_path = ?';
@@ -30,29 +36,8 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     `).all(...whereParams, limit, offset);
 
     const total = rows[0]?.total_count || 0;
-    const alerts = rows.map(r => ({
-        filePath: r.file_path,
-        issueType: r.issue_type,
-        severity: r.severity,
-        message: r.message,
-        lineNumber: r.line_number,
-        context: (() => {
-            try { return JSON.parse(r.context_json || '{}'); } catch { return {}; }
-        })(),
-        detectedAt: r.detected_at
-    }));
-
-    const severitySummary = alerts.reduce((acc, a) => {
-        const key = a.severity || 'unknown';
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {});
-
-    const typeSummary = alerts.reduce((acc, a) => {
-        const key = a.issueType || 'unknown';
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-    }, {});
+    const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
+    const watcherSummary = summarizeWatcherAlerts(alerts);
 
     return {
         aggregationType: 'watcher_alerts',
@@ -62,9 +47,8 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
         hasMore: offset + limit < total,
         alerts,
         summary: {
-            totalAlerts: total,
-            bySeverity: severitySummary,
-            byType: typeSummary
+            ...watcherSummary,
+            totalAlerts: total
         }
     };
 }

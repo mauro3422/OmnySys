@@ -1,4 +1,9 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
+import {
+  mapSemanticIssueRowToWatcherAlert,
+  summarizeWatcherAlerts,
+  WATCHER_MESSAGE_PREFIX
+} from '../../../shared/compiler/index.js';
 
 function mapLoggerEntry(entry) {
   return {
@@ -7,26 +12,6 @@ function mapLoggerEntry(entry) {
     severity: entry.level === 'error' ? 'high' : (entry.level === 'warn' ? 'medium' : 'low'),
     message: entry.message,
     time: new Date(entry.time).toISOString()
-  };
-}
-
-function mapWatcherRow(row) {
-  let context = {};
-  try {
-    context = JSON.parse(row.context_json || '{}');
-  } catch {
-    context = {};
-  }
-
-  return {
-    source: 'watcher',
-    level: row.severity === 'high' ? 'error' : 'warn',
-    severity: row.severity || 'medium',
-    issueType: row.issue_type,
-    filePath: row.file_path,
-    message: row.message,
-    detectedAt: row.detected_at,
-    context
   };
 }
 
@@ -39,10 +24,10 @@ async function loadWatcherAlerts(projectPath, limit = 10) {
     return repo.db.prepare(`
       SELECT file_path, issue_type, severity, message, context_json, detected_at
       FROM semantic_issues
-      WHERE message LIKE '[watcher]%'
+      WHERE message LIKE ?
       ORDER BY detected_at DESC
       LIMIT ?
-    `).all(limit);
+    `).all(`${WATCHER_MESSAGE_PREFIX}%`, limit);
   } catch {
     return [];
   }
@@ -60,7 +45,8 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   }
 
   const loggerEntries = rawLogs.map(mapLoggerEntry);
-  const watcherEntries = (await loadWatcherAlerts(projectPath, watcherLimit)).map(mapWatcherRow);
+  const watcherEntries = (await loadWatcherAlerts(projectPath, watcherLimit)).map(mapSemanticIssueRowToWatcherAlert);
+  const watcherSummary = summarizeWatcherAlerts(watcherEntries);
 
   const warnings =
     loggerEntries.filter((entry) => entry.level === 'warn').length +
@@ -75,7 +61,8 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     warnings,
     errors,
     logs: loggerEntries,
-    watcherAlerts: watcherEntries
+    watcherAlerts: watcherEntries,
+    watcherSummary
   };
 }
 
@@ -88,7 +75,7 @@ export function normalizeRecentNotifications(notifications = {}) {
     warnings: notifications.warnings || 0,
     errors: notifications.errors || 0,
     logs,
-    watcherAlerts
+    watcherAlerts,
+    watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts)
   };
 }
-
