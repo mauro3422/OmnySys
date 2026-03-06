@@ -10,6 +10,48 @@ function isCompilerHelperPath(filePath = '') {
   return String(filePath || '').startsWith('src/shared/compiler/');
 }
 
+function normalizeUnusedInputFragment(value = '') {
+  return String(value || '').trim();
+}
+
+function isLikelyParserNoiseUnusedInput(name = '') {
+  if (!name) return true;
+  if (name === '__destructured_0') return true;
+  if (/\s/.test(name)) return true;
+  if (/['"`]/.test(name)) return true;
+  if (/[;(){}]/.test(name)) return true;
+  if (name.length < 2) return true;
+  return false;
+}
+
+export function isLowSignalDataFlowAlert(alert = {}) {
+  if (String(alert?.issueType || '') !== 'sem_data_flow_low') {
+    return false;
+  }
+
+  const violations = Array.isArray(alert?.context?.violations) ? alert.context.violations : [];
+  if (violations.length === 0) {
+    return false;
+  }
+
+  return violations.every((violation) => {
+    const inputCount = violation?.inputCount ?? null;
+    const unusedInputs = Array.isArray(violation?.unusedInputs) ? violation.unusedInputs : [];
+
+    if (inputCount !== 0) {
+      return false;
+    }
+
+    return unusedInputs
+      .map(normalizeUnusedInputFragment)
+      .every(isLikelyParserNoiseUnusedInput);
+  });
+}
+
+export function shouldSuppressWatcherAlert(alert = {}) {
+  return isLowSignalDataFlowAlert(alert);
+}
+
 export function classifyCompilerDiagnosticSignal(alert = {}) {
   const issueType = String(alert?.issueType || '');
   const severity = String(alert?.severity || 'low');
@@ -17,6 +59,10 @@ export function classifyCompilerDiagnosticSignal(alert = {}) {
 
   if (severity === 'high') {
     return 'high_signal';
+  }
+
+  if (shouldSuppressWatcherAlert(alert)) {
+    return 'low_signal';
   }
 
   if (isCompilerHelperPath(filePath) && issueType === 'sem_data_flow_low') {

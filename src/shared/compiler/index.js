@@ -17,6 +17,8 @@ export {
 } from './policy-conformance.js';
 
 export {
+  isLowSignalDataFlowAlert,
+  shouldSuppressWatcherAlert,
   classifyCompilerDiagnosticSignal,
   summarizeCompilerDiagnostics
 } from './compiler-diagnostics.js';
