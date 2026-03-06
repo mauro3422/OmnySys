@@ -4,13 +4,13 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    buildPipelineOrphanRemediationPlan,
     PIPELINE_FIELD_COVERAGE_SIGNALS,
+    buildLiveRowReconciliationPlan,
     classifyFieldCoverage,
-    classifyPipelineOrphans,
     getDeadCodePlausibilitySummary,
     getLiveRowDriftSummary,
-    getPipelineNamePatternSqlCondition,
-    normalizePipelineOrphan,
+    getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
     summarizeCompilerPolicyDrift
 } from '../../../../shared/compiler/index.js';
@@ -138,45 +138,12 @@ export async function handlePipelineHealth(tool) {
     }
 
     // --- CHECK 3: Pipeline orphans ---
-    const patternCondition = getPipelineNamePatternSqlCondition('name');
-    const potentialOrphans = db.prepare(`
-        SELECT
-            a.id,
-            a.name,
-            a.file_path,
-            a.atom_type,
-            a.callers_count,
-            a.callees_count,
-            a.called_by_json,
-            a.complexity,
-            a.is_phase2_complete,
-            (
-              SELECT COUNT(*)
-              FROM files f
-              WHERE f.path != a.file_path
-                AND f.imports_json LIKE '%' || a.file_path || '%'
-            ) as file_importer_count
-        FROM atoms a
-        WHERE a.is_exported = 1
-          AND a.atom_type IN ('function', 'arrow', 'method', 'class')
-          AND a.is_test_callback = 0
-          AND a.is_phase2_complete = 1
-          AND a.file_path NOT LIKE 'tests/%'
-          AND a.file_path NOT LIKE 'scripts/%'
-          AND (${patternCondition})
-          AND a.complexity > 3
-        ORDER BY a.complexity DESC
-        LIMIT 50
-    `).all();
+    const pipelineOrphanSummary = getPipelineOrphanSummary(db, { candidateLimit: 50, orphanLimit: 20, minComplexity: 3 });
+    const orphanFunctions = pipelineOrphanSummary.orphans;
+    const pipelineOrphanRemediation = buildPipelineOrphanRemediationPlan(orphanFunctions);
 
-    const orphanFunctions = classifyPipelineOrphans(potentialOrphans, { limit: 20 });
-
-    if (orphanFunctions.length > 0) {
-        warnings.push({
-            field: 'pipeline_orphans',
-            coverage: `${orphanFunctions.length} atoms`,
-            issue: 'Exported pipeline atoms appear disconnected after filtering import-backed modules'
-        });
+    if (pipelineOrphanSummary.warning) {
+        warnings.push(pipelineOrphanSummary.warning);
     }
 
     // --- CHECK 4: Dead code plausibility ---
@@ -220,6 +187,7 @@ export async function handlePipelineHealth(tool) {
         }
     }
 
+    const liveRowReconciliation = buildLiveRowReconciliationPlan(db, { sampleLimit: 5 });
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -229,7 +197,9 @@ export async function handlePipelineHealth(tool) {
         tableCounts,
         issues,
         warnings,
-        orphanPipelineFunctions: orphanFunctions.map(normalizePipelineOrphan),
+        liveRowReconciliation,
+        pipelineOrphanRemediation,
+        orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,
             totalWarnings: warnings.length,

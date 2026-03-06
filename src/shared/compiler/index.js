@@ -45,6 +45,11 @@ export {
 } from './live-row-drift.js';
 
 export {
+  loadStaleTableRows,
+  buildLiveRowReconciliationPlan
+} from './live-row-reconciliation.js';
+
+export {
   PIPELINE_ORPHAN_NAME_PATTERNS,
   getEffectiveCallerCount,
   isPipelineProductionFile,
@@ -54,6 +59,16 @@ export {
   normalizePipelineOrphan,
   classifyPipelineOrphans
 } from './pipeline-orphans.js';
+
+export {
+  getPipelineOrphanCandidates,
+  getPipelineOrphanSummary
+} from './pipeline-orphan-reporting.js';
+
+export {
+  buildPipelineOrphanRemediation,
+  buildPipelineOrphanRemediationPlan
+} from './pipeline-orphan-remediation.js';
 
 export {
   WATCHER_MESSAGE_PREFIX,
