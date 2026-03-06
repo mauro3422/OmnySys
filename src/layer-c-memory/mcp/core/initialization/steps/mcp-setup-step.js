@@ -17,6 +17,7 @@ import {
 import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
+import { collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
 
@@ -138,17 +139,12 @@ export class McpSetupStep extends InitializationStep {
     const rawResult = await handler(args, context);
 
     // Get recent errors/warnings AFTER the tool runs (not before)
-    let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [] };
+    let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
     try {
-      const { getRecentLogs, clearRecentLogs } = await import('#utils/logger.js');
-      const logs = getRecentLogs();
-      recentErrors = {
-        count: logs.length,
-        warnings: logs.filter(l => l.level === 'warn').length,
-        errors: logs.filter(l => l.level === 'error').length,
-        logs: logs.map(l => ({ level: l.level, message: l.message, time: new Date(l.time).toISOString() }))
-      };
-      clearRecentLogs();
+      recentErrors = normalizeRecentNotifications(await collectRecentNotifications(server.projectPath, {
+        clearLoggerBuffer: true,
+        watcherLimit: 10
+      }));
     } catch (e) {
       // Ignore - logger may not have these functions yet
     }

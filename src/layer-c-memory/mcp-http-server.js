@@ -200,21 +200,13 @@ async function executeMcpToolCall(request) {
 
   const rawResult = await handler(args, context);
 
-  let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [] };
+  let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
   try {
-    const { getRecentLogs, clearRecentLogs } = await import('#utils/logger.js');
-    const logs = getRecentLogs();
-    recentErrors = {
-      count: logs.length,
-      warnings: logs.filter(l => l.level === 'warn').length,
-      errors: logs.filter(l => l.level === 'error').length,
-      logs: logs.map(l => ({
-        level: l.level,
-        message: l.message,
-        time: new Date(l.time).toISOString()
-      }))
-    };
-    clearRecentLogs();
+    const { collectRecentNotifications, normalizeRecentNotifications } = await import('./mcp/core/recent-notifications.js');
+    recentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
+      clearLoggerBuffer: true,
+      watcherLimit: 10
+    }));
   } catch {
     // Optional logger extensions not available in all environments.
   }

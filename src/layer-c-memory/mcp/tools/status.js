@@ -4,7 +4,8 @@
  */
 
 import { getProjectMetadata } from '#layer-c/query/apis/project-api.js';
-import { createLogger, getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
+import { createLogger } from '../../../utils/logger.js';
+import { collectRecentNotifications, normalizeRecentNotifications } from '../core/recent-notifications.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -241,12 +242,16 @@ export async function get_server_status(args, context) {
  */
 export async function get_recent_errors(args, context) {
   logger.info('[Tool] get_recent_errors()');
-
-  const logs = getRecentLogs();
-  clearRecentLogs();
-
+  const notifications = normalizeRecentNotifications(await collectRecentNotifications(context.projectPath, {
+    clearLoggerBuffer: true,
+    watcherLimit: 20
+  }));
+  const logs = notifications.logs || [];
+  const watcherAlerts = notifications.watcherAlerts || [];
   const warnings = logs.filter((entry) => entry.level === 'warn');
   const errors = logs.filter((entry) => entry.level === 'error');
+  const watcherHigh = watcherAlerts.filter((entry) => entry.severity === 'high').length;
+  const watcherWarn = watcherAlerts.filter((entry) => entry.severity !== 'high').length;
 
   const incidents = {
     atomic: errors.filter((entry) => entry.message.includes('atomic') || entry.message.includes('AutoFix')).length,
@@ -258,15 +263,16 @@ export async function get_recent_errors(args, context) {
 
   return {
     summary: {
-      total: logs.length,
-      warnings: warnings.length,
-      errors: errors.length,
+      total: notifications.count,
+      warnings: warnings.length + watcherWarn,
+      errors: errors.length + watcherHigh,
       incidents
     },
     logs: logs.map((entry) => ({
       level: entry.level,
       message: entry.message,
       time: new Date(entry.time).toISOString()
-    }))
+    })),
+    watcherAlerts
   };
 }
