@@ -31,9 +31,12 @@ const ATOM_CUSTOM_EXTRACTORS = {
   purpose_confidence: atom => atom.purposeConfidence || atom.purpose?.confidence,
   is_dead_code: atom => atom.isDeadCode || atom.purpose?.isDeadCode,
   is_deprecated: atom => atom.deprecated,
-  importance_score: atom => atom.importanceScore || atom.derived?.fragilityScore,
+  importance_score: atom => atom.importanceScore || atom.derived?.importanceScore,
   coupling_score: atom => atom.couplingScore || atom.derived?.couplingScore,
+  cohesion_score: atom => atom.cohesionScore || atom.derived?.cohesionScore,
   propagation_score: atom => atom.propagationScore || atom.derived?.changeRisk,
+  fragility_score: atom => atom.fragilityScore || atom.derived?.fragilityScore,
+  testability_score: atom => atom.testabilityScore || atom.derived?.testabilityScore,
   in_degree: atom => atom.inDegree || atom.calledBy?.length,
   out_degree: atom => atom.outDegree || atom.calls?.length,
   callers_count: atom => Math.max(Number(atom.callersCount) || 0, Number(atom.callerCount) || 0, Number(atom.inDegree) || 0, Array.isArray(atom.calledBy) ? atom.calledBy.length : 0),
@@ -69,7 +72,8 @@ const ATOM_CUSTOM_INJECTORS = {
   updated_at: (atom, val) => { atom.updatedAt = val; },
   is_deprecated: (atom, val) => { atom.deprecated = Boolean(val); },
   deprecated_reason: (atom, val) => { atom.deprecatedReason = val; },
-  _meta_json: (atom, val) => { atom._meta = safeParseJson(val); }
+  _meta_json: (atom, val) => { atom._meta = safeParseJson(val); },
+  signature_json: (atom, val) => { atom.signature = safeParseJson(val, {}); }
 };
 
 /**

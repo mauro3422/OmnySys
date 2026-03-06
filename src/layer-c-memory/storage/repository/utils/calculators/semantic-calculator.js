@@ -4,16 +4,26 @@
  */
 
 import { calculateCoupling, calculateCohesion } from './structural-calculator.js';
+import { calculateStability } from './temporal-calculator.js';
+
+function getRelationCount(value, fallback = 0) {
+    if (Array.isArray(value)) return value.length;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+}
 
 /**
  * Calcula centralidad (0-1) basada en el grado de entrada/salida y dependencias
  */
 export function calculateCentrality(atom, context = {}) {
-    const callers = context.callers || atom.calledBy || [];
-    const callees = context.callees || atom.calls || [];
-
-    const inDegree = callers.length;
-    const outDegree = callees.length;
+    const inDegree = getRelationCount(
+        context.callers,
+        getRelationCount(atom.calledBy, atom.callersCount || atom.callerCount || atom.callers_count || atom.inDegree || atom.in_degree || 0)
+    );
+    const outDegree = getRelationCount(
+        context.callees,
+        getRelationCount(atom.calls, atom.calleesCount || atom.calleeCount || atom.callees_count || atom.outDegree || atom.out_degree || 0)
+    );
 
     const normIn = Math.min(inDegree / 10, 1);
     const normOut = Math.min(outDegree / 10, 1);
@@ -28,9 +38,10 @@ export function calculateCentrality(atom, context = {}) {
  * Calcula importancia del atomo (PageRank-like) (0-1)
  */
 export function calculateImportance(atom, context = {}) {
-    const { callers = [] } = context;
-
-    const callerCount = callers.length;
+    const callerCount = getRelationCount(
+        context.callers,
+        getRelationCount(atom.calledBy, atom.callersCount || atom.callerCount || atom.callers_count || atom.inDegree || atom.in_degree || 0)
+    );
     const isExported = atom.isExported || atom.exported ? 1 : 0;
     const complexity = Math.min(atom.complexity || 1, 50) / 50;
 
@@ -48,11 +59,15 @@ export function calculateImportance(atom, context = {}) {
  * Calcula score de propagación de cambios (0-1)
  */
 export function calculatePropagation(atom, context = {}) {
-    const { callers = [], callees = [] } = context;
-
     const complexity = atom.complexity || 1;
-    const callerCount = callers.length;
-    const calleeCount = callees.length;
+    const callerCount = getRelationCount(
+        context.callers,
+        getRelationCount(atom.calledBy, atom.callersCount || atom.callerCount || atom.callers_count || atom.inDegree || atom.in_degree || 0)
+    );
+    const calleeCount = getRelationCount(
+        context.callees,
+        getRelationCount(atom.calls, atom.calleesCount || atom.calleeCount || atom.callees_count || atom.outDegree || atom.out_degree || 0)
+    );
     const coupling = calculateCoupling(atom, context);
 
     const normComplexity = Math.min(complexity / 30, 1);
@@ -71,34 +86,40 @@ export function calculatePropagation(atom, context = {}) {
  * Calcula fragilidad (0-1)
  */
 export function calculateFragility(atom, context = {}) {
-    const complexity = Math.min((atom.complexity || 1) / 20, 1);
-    const noErrorHandling = atom.hasErrorHandling ? 0 : 1;
-    const hasNetwork = atom.hasNetworkCalls ? 0.5 : 0;
-    const highCoupling = calculateCoupling(atom, context);
+    const complexity = atom.complexity || 1;
+    const coupling = calculateCoupling(atom, context);
+    const cohesion = calculateCohesion(atom);
+    const stability = atom.stabilityScore
+        ?? atom.stability_score
+        ?? calculateStability(atom, context.gitHistory || null);
 
-    const fragility = (complexity * 0.3) +
-        (noErrorHandling * 0.3) +
-        (hasNetwork * 0.2) +
-        (highCoupling * 0.2);
+    const numerator = complexity * coupling;
+    const denominator = Math.max(0.1, cohesion * stability);
 
-    return Math.round(fragility * 100) / 100;
+    return Math.round(Math.min(1, numerator / denominator) * 100) / 100;
 }
 
 /**
  * Calcula testabilidad (0-1)
  */
 export function calculateTestability(atom, context = {}) {
-    const lowComplexity = 1 - Math.min((atom.complexity || 1) / 20, 1);
-    const noSideEffects = atom.hasSideEffects ? 0 : 1;
-    const highCohesion = calculateCohesion(atom);
-    const fewParams = atom.signature?.params?.length < 4 ? 1 : 0.5;
+    const complexity = atom.complexity || 1;
+    const cohesion = calculateCohesion(atom);
+    const stability = atom.stabilityScore
+        ?? atom.stability_score
+        ?? calculateStability(atom, context.gitHistory || null);
+    const externalCalls = Math.max(
+        1,
+        Number(atom.externalCallCount)
+        || Number(atom.external_call_count)
+        || getRelationCount(atom.externalCalls, 0)
+        || 1
+    );
 
-    const testability = (lowComplexity * 0.3) +
-        (noSideEffects * 0.3) +
-        (highCohesion * 0.2) +
-        (fewParams * 0.2);
+    const numerator = cohesion * stability;
+    const denominator = Math.max(1, complexity * externalCalls);
 
-    return Math.round(testability * 100) / 100;
+    return Math.round(Math.min(1, numerator / denominator) * 100) / 100;
 }
 
 /**

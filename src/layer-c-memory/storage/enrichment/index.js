@@ -12,6 +12,8 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../repository/index.js';
+import { rowToAtom } from '../repository/adapters/helpers/converters.js';
+import { calculateAtomVectors } from '../repository/utils/vector-calculator.js';
 
 const logger = createLogger('OmnySys:storage:enrichment');
 
@@ -63,6 +65,11 @@ function getStoredGraphCounts(atomRow = {}) {
   );
 
   return { inDegree, outDegree };
+}
+
+function buildSyntheticRelations(count) {
+  const safeCount = Math.max(0, Number(count) || 0);
+  return Array.from({ length: safeCount }, (_, index) => `__synthetic_${index}`);
 }
 
 /**
@@ -356,14 +363,14 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
       // Actualizar solo los átomos especificados
       const placeholders = atomIds.map(() => '?').join(',');
       atomsToUpdate = repo.db.prepare(`
-        SELECT id, callers_count, callees_count, in_degree, out_degree
+        SELECT *
         FROM atoms
         WHERE id IN (${placeholders})
       `).all(...atomIds);
     } else {
       // Actualizar todos los átomos
       atomsToUpdate = repo.db.prepare(`
-        SELECT id, callers_count, callees_count, in_degree, out_degree
+        SELECT *
         FROM atoms
       `).all();
     }
@@ -371,29 +378,61 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
     // Calcular y persistir métricas
     for (const atomRow of atomsToUpdate) {
       const { inDegree, outDegree } = getStoredGraphCounts(atomRow);
+      const atom = rowToAtom(atomRow);
+      const vectors = calculateAtomVectors(
+        {
+          ...atom,
+          inDegree,
+          outDegree,
+          callersCount: inDegree,
+          calleesCount: outDegree,
+          externalCallCount: atom.externalCallCount || atom.external_call_count || 0
+        },
+        {
+          callers: buildSyntheticRelations(inDegree),
+          callees: buildSyntheticRelations(outDegree),
+          gitHistory: {
+            changeFrequency: atom.changeFrequency || atom.change_frequency || 0,
+            ageDays: atom.ageDays || atom.age_days || 0
+          }
+        }
+      );
 
       // Calcular usando las funciones de algebra de grafos
       const centrality = calculateCentrality(inDegree, outDegree);
       const propagation = calculatePropagationScore(inDegree, outDegree);
-      const risk = predictBreakingRisk(centrality, 0.3);
+      const fragilityScore = vectors.fragilityScore ?? atom.fragilityScore ?? atomRow.fragility_score ?? 0;
+      const risk = predictBreakingRisk(centrality, fragilityScore);
 
       // Actualizar en la base de datos
       repo.db.prepare(`
         UPDATE atoms SET 
           in_degree = ?,
           out_degree = ?,
+          importance_score = ?,
+          coupling_score = ?,
+          cohesion_score = ?,
+          stability_score = ?,
           centrality_score = ?,
           centrality_classification = ?,
           propagation_score = ?,
+          fragility_score = ?,
+          testability_score = ?,
           risk_level = ?,
           risk_prediction = ?
         WHERE id = ?
       `).run(
         inDegree,
         outDegree,
+        vectors.importance ?? atom.importanceScore ?? atomRow.importance_score ?? 0,
+        vectors.couplingScore ?? atom.couplingScore ?? atomRow.coupling_score ?? 0,
+        vectors.cohesionScore ?? atom.cohesionScore ?? atomRow.cohesion_score ?? 0,
+        vectors.stability ?? atom.stabilityScore ?? atomRow.stability_score ?? 1,
         centrality.centrality,
         centrality.classification,
         propagation.propagationScore,
+        fragilityScore,
+        vectors.testabilityScore ?? atom.testabilityScore ?? atomRow.testability_score ?? 0,
         risk.riskLevel,
         risk.prediction,
         atomRow.id
