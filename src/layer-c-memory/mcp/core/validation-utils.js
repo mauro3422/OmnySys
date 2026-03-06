@@ -8,7 +8,10 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAtomsByName, getAtomsInFile } from '#layer-c/storage/index.js';
+import { getFileDependents } from '#layer-c/query/apis/file-api.js';
+import { getTransitiveDependents } from '#layer-c/query/queries/dependency-query.js';
+import { arePathsEqual, normalizePath } from '../../../shared/utils/path-utils.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:validation');
@@ -88,12 +91,11 @@ export async function validateNoDuplicates(filePath, symbolName, projectPath) {
   }
 
   try {
-    const atoms = await getAllAtoms(projectPath);
-    const instances = atoms.filter((atom) => atom.name === symbolName);
+    const instances = await getAtomsByName(projectPath, symbolName);
 
     if (instances.length > 1) {
       const sameFileInstances = instances.filter(
-        (instance) => instance.filePath === filePath || instance.filePath.includes(path.basename(filePath))
+        (instance) => arePathsEqual(instance.filePath || instance.file_path, filePath, projectPath)
       );
 
       if (sameFileInstances.length > 1) {
@@ -108,10 +110,17 @@ export async function validateNoDuplicates(filePath, symbolName, projectPath) {
           complexity: atom.complexity
         }));
       } else {
+        const relatedFiles = [...new Set(
+          instances
+            .map((instance) => normalizePath(instance.filePath || instance.file_path, projectPath))
+            .filter(Boolean)
+            .filter((instancePath) => !arePathsEqual(instancePath, filePath, projectPath))
+        )];
         result.warnings.push(
           `Symbol "${symbolName}" exists in ${instances.length} files - editing this one may affect: ` +
-          `${instances.slice(0, 3).map((instance) => instance.filePath).join(', ')}`
+          `${relatedFiles.slice(0, 3).join(', ')}`
         );
+        result.context.relatedFiles = relatedFiles.slice(0, 10);
       }
     }
   } catch (error) {
@@ -223,39 +232,38 @@ export async function validateImpact(filePath, symbolName, projectPath) {
   }
 
   try {
-    const atoms = await getAllAtoms(projectPath);
-    const fileAtoms = atoms.filter((atom) => atom.filePath === filePath);
+    const normalizedFilePath = normalizePath(filePath, projectPath);
+    const [directDependents, transitiveDependents, fileAtoms] = await Promise.all([
+      getFileDependents(projectPath, normalizedFilePath, { includeSemantic: true }),
+      getTransitiveDependents(projectPath, normalizedFilePath, { includeSemantic: true }),
+      getAtomsInFile(projectPath, normalizedFilePath)
+    ]);
 
-    const affectedFiles = new Set();
-    let totalCallers = 0;
+    const directSet = new Set((directDependents || []).map((dep) => normalizePath(dep, projectPath)));
+    const transitiveSet = new Set((transitiveDependents || []).map((dep) => normalizePath(dep, projectPath)));
 
-    for (const atom of fileAtoms) {
-      if (atom.calledBy && atom.calledBy.length > 0) {
-        totalCallers += atom.calledBy.length;
-
-        for (const callerId of atom.calledBy) {
-          const caller = atoms.find((candidate) => candidate.id === callerId);
-          if (caller) {
-            affectedFiles.add(caller.filePath);
-          }
-        }
-      }
-    }
-
-    if (affectedFiles.size > 0) {
+    if (directSet.size > 0) {
       result.warnings.push(
-        `This change will affect ${affectedFiles.size} files directly (${totalCallers} total call sites)`
+        `This change will affect ${directSet.size} files directly${transitiveSet.size > directSet.size ? ` and ${transitiveSet.size} transitively` : ''}`
       );
-      result.context.affectedFiles = Array.from(affectedFiles).slice(0, 5);
+      result.context.affectedFiles = Array.from(directSet).slice(0, 5);
+      result.context.transitiveAffectedFiles = Array.from(transitiveSet).slice(0, 10);
     }
 
-    if (affectedFiles.size > 10) {
-      result.warnings.push(`HIGH IMPACT: ${affectedFiles.size} total files affected. Consider careful review.`);
+    if (transitiveSet.size > 10 || directSet.size > 5) {
+      result.warnings.push(
+        `HIGH IMPACT: ${directSet.size} direct / ${transitiveSet.size} transitive files affected. Consider careful review.`
+      );
     }
 
-    const highFragilityAtoms = fileAtoms.filter((atom) => atom.derived?.fragilityScore > 0.5);
+    const highFragilityAtoms = (fileAtoms || []).filter((atom) => {
+      const derivedFragility = atom.derived?.fragilityScore;
+      const persistedFragility = atom.fragilityScore ?? atom.fragility_score;
+      return Math.max(Number(derivedFragility) || 0, Number(persistedFragility) || 0) > 0.5;
+    });
     if (highFragilityAtoms.length > 0) {
       result.warnings.push(`${highFragilityAtoms.length} fragile atoms in this file (fragility > 0.5)`);
+      result.context.fragileAtoms = highFragilityAtoms.slice(0, 5).map((atom) => atom.name);
     }
   } catch (error) {
     result.warnings.push(`Could not analyze impact: ${error.message}`);

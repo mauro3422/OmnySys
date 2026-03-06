@@ -3,7 +3,11 @@
  * @param {Object} tool - Instancia de AggregateMetricsTool
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
-import { getDeadCodeSqlPredicate } from '../../../../shared/compiler/dead-code-heuristics.js';
+import {
+    getDeadCodeSqlPredicate,
+    scanCompilerPolicyDrift,
+    summarizeCompilerPolicyDrift
+} from '../../../../shared/compiler/index.js';
 
 function getEffectiveCallerCount(atomRow) {
     if ((atomRow?.callers_count || 0) > 0) {
@@ -58,6 +62,7 @@ function isLikelyDisconnected(atomRow = {}) {
 export async function handlePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
+    const projectPath = tool.projectPath;
 
     const issues = [];
     const warnings = [];
@@ -247,6 +252,39 @@ export async function handlePipelineHealth(tool) {
             coverage: `${suspiciousDeadCandidates} suspicious atoms`,
             issue: 'Dead code detector reports zero dead atoms, but many production atoms look fully disconnected'
         });
+    }
+
+    // --- CHECK 5: Compiler policy drift ---
+    if (projectPath) {
+        try {
+            const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+            const policySummary = summarizeCompilerPolicyDrift(policyFindings);
+
+            if (policySummary.total > 0) {
+                warnings.push({
+                    field: 'compiler_policy',
+                    coverage: `${policySummary.total} findings`,
+                    issue: 'Compiler policy drift detected — some MCP/watcher paths still recompute canonical signals manually'
+                });
+
+                if (policySummary.high > 0) {
+                    issues.push({
+                        field: 'compiler_policy_high',
+                        coverage: `${policySummary.high} high`,
+                        issue: 'High-severity compiler policy drift found in core runtime modules'
+                    });
+                }
+
+                tableCounts.compiler_policy_findings = policySummary.total;
+                tableCounts.compiler_policy_high = policySummary.high;
+            }
+        } catch (error) {
+            warnings.push({
+                field: 'compiler_policy',
+                coverage: 'unknown',
+                issue: `Could not scan compiler policy drift: ${error.message}`
+            });
+        }
     }
 
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));

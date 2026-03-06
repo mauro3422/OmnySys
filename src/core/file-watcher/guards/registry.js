@@ -194,6 +194,13 @@ class GuardRegistry {
             description: 'Detects production atoms missing derived compiler metadata'
         });
 
+        const { detectCompilerPolicyConformance } = await import('./compiler-policy-conformance-guard.js');
+        this.registerSemanticGuard('compiler-policy-conformance', detectCompilerPolicyConformance, {
+            domain: 'arch',
+            version: '1.0.0',
+            description: 'Detects ad-hoc compiler policy implementations instead of canonical shared APIs'
+        });
+
         // 1.4 Complexity Monitor (nuevo)
         const { detectHighComplexity } = await import('./complexity-guard.js');
         this.registerSemanticGuard('complexity-monitor', detectHighComplexity, {
