@@ -1,4 +1,5 @@
 import { getProjectStats } from '../../../query/apis/project-api.js';
+import { summarizePhysicsCoverageRow } from '../../../../shared/compiler/index.js';
 
 /**
  * Maneja la agregación de métricas de salud (health)
@@ -38,6 +39,7 @@ export async function handleHealthMetrics(tool, projectPath) {
         `).get();
 
         if (row) {
+            const { coverage, missingSignals } = summarizePhysicsCoverageRow(row);
             // Contar relaciones semánticas totales (Sprint 10)
             const semanticRow = tool.repo.db.prepare(`
                 SELECT COUNT(*) as total
@@ -60,18 +62,8 @@ export async function handleHealthMetrics(tool, projectPath) {
                     ? Math.round(row.avg_fragility * row.avg_coupling * 1000) / 1000
                     : null,
                 semanticBadge: (semanticRow?.total || 0) > 50 ? 'RADIOACTIVE' : 'STABLE',
-                coverage: {
-                    fragilityPct: row.total ? Math.round((row.fragility_nonzero / row.total) * 100) : 0,
-                    couplingPct: row.total ? Math.round((row.coupling_nonzero / row.total) * 100) : 0,
-                    cohesionPct: row.total ? Math.round((row.cohesion_nonzero / row.total) * 100) : 0,
-                    importancePct: row.total ? Math.round((row.importance_nonzero / row.total) * 100) : 0,
-                    centralityPct: row.total ? Math.round((row.centrality_nonzero / row.total) * 100) : 0
-                },
-                missingSignals: [
-                    row.fragility_nonzero === 0 ? 'fragility' : null,
-                    row.coupling_nonzero === 0 ? 'coupling' : null,
-                    row.cohesion_nonzero === 0 ? 'cohesion' : null
-                ].filter(Boolean)
+                coverage,
+                missingSignals
             };
         }
     }

@@ -4,6 +4,8 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    PIPELINE_FIELD_COVERAGE_SIGNALS,
+    classifyFieldCoverage,
     getDeadCodeSqlPredicate,
     scanCompilerPolicyDrift,
     summarizeCompilerPolicyDrift
@@ -155,18 +157,8 @@ export async function handlePipelineHealth(tool) {
     }
 
     // --- CHECK 2: Cobertura de campos ---
-    const suspiciousFields = [
-        { field: 'fragility_score', description: 'Fragility scores never populated', minWarningCoverage: 5 },
-        { field: 'coupling_score', description: 'Coupling scores never populated', minWarningCoverage: 5 },
-        { field: 'cohesion_score', description: 'Cohesion scores never populated', minWarningCoverage: 5 },
-        { field: 'centrality_score', description: 'persistGraphMetrics() not connected', minWarningCoverage: 5 },
-        { field: 'age_days', description: 'Git integration missing for age_days', minWarningCoverage: 5 },
-        { field: 'change_frequency', description: 'Git integration missing for change_frequency', minWarningCoverage: 5 },
-        { field: 'has_network_calls', description: 'Network call detector coverage appears low', minWarningCoverage: 1 },
-    ];
-
     const zeroFields = [];
-    for (const { field, description, minWarningCoverage = 5 } of suspiciousFields) {
+    for (const { field, description, minWarningCoverage = 5 } of PIPELINE_FIELD_COVERAGE_SIGNALS) {
         try {
             const { whereClause, descriptionSuffix } = getFieldCoverageContext(field);
             const denominatorRow = db.prepare(`SELECT COUNT(*) as total FROM atoms ${whereClause}`).get();
@@ -177,12 +169,20 @@ export async function handlePipelineHealth(tool) {
                 `SELECT SUM(CASE WHEN ${field} != 0 AND ${field} IS NOT NULL THEN 1 ELSE 0 END) as nonzero FROM atoms ${whereClause}`
             ).get();
             const nonZeroCount = row?.nonzero || 0;
-            const coveragePct = Math.round((nonZeroCount / scopedTotal) * 100);
-            if (coveragePct === 0) {
-                issues.push({ field, coverage: '0%', nonZeroCount, issue: `${description}${descriptionSuffix}` });
+            const coverage = classifyFieldCoverage({
+                total: scopedTotal,
+                nonZeroCount,
+                minWarningCoverage,
+                description,
+                descriptionSuffix
+            });
+            if (!coverage || coverage.level === 'ok') continue;
+
+            if (coverage.level === 'issue') {
+                issues.push({ field, coverage: '0%', nonZeroCount, issue: coverage.issue });
                 zeroFields.push(field);
-            } else if (coveragePct < minWarningCoverage) {
-                warnings.push({ field, coverage: `${coveragePct}%`, nonZeroCount, issue: `Very low coverage — ${description}${descriptionSuffix}` });
+            } else if (coverage.level === 'warning') {
+                warnings.push({ field, coverage: `${coverage.coveragePct}%`, nonZeroCount, issue: coverage.issue });
             }
         } catch (e) { /* field missing */ }
     }

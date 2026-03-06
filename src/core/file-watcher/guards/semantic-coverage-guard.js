@@ -4,42 +4,16 @@
 
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { summarizeSemanticCoverage } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
     createStandardContext,
     StandardSuggestions,
-    isValidGuardTarget,
-    extractAtomMetrics
+    isValidGuardTarget
 } from './guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:semantic-coverage');
-
-const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;
-const NETWORK_PATTERNS = [
-    /fetch\s*\(/,
-    /axios\./,
-    /http\.(get|post|put|delete)/,
-    /\.request\s*\(/,
-    /new\s+XMLHttpRequest/,
-    /WebSocket\s*\(/,
-    /prisma\./,
-    /mongoose\./,
-    /sequelize\./
-];
-const SHARED_STATE_PATTERNS = [
-    /process\.env/,
-    /localStorage/,
-    /sessionStorage/,
-    /globalThis\./,
-    /\bglobal\./,
-    /\bwindow\./,
-    /\bdocument\./
-];
-
-function matchesAny(patterns, code = '') {
-    return patterns.some((pattern) => pattern.test(code));
-}
 
 export async function detectSemanticCoverage(rootPath, filePath, EventEmitterContext, options = {}) {
     const { atoms = [], verbose = true } = options;
@@ -48,7 +22,7 @@ export async function detectSemanticCoverage(rootPath, filePath, EventEmitterCon
         await clearWatcherIssue(rootPath, filePath, 'sem_coverage_gap_high');
         await clearWatcherIssue(rootPath, filePath, 'sem_coverage_gap_medium');
 
-        if (TEST_FILE_PATTERNS.test(filePath) || !Array.isArray(atoms) || atoms.length === 0) {
+        if (!Array.isArray(atoms) || atoms.length === 0) {
             return [];
         }
 
@@ -73,42 +47,18 @@ export async function detectSemanticCoverage(rootPath, filePath, EventEmitterCon
             `).get(...atomIds, ...atomIds)?.n || 0;
         }
 
-        const networkCandidates = candidates.filter((atom) => {
-            const metrics = extractAtomMetrics(atom);
-            const purpose = atom.purpose || atom.purpose_type || '';
-            const code = atom.sourceCode || atom.code || '';
-            return metrics.isAsync || purpose === 'NETWORK_HANDLER' || purpose === 'SERVER_HANDLER' || matchesAny(NETWORK_PATTERNS, code);
-        });
-        const networkFlagged = networkCandidates.filter((atom) => {
-            const metrics = extractAtomMetrics(atom);
-            return metrics.hasNetworkCalls;
-        });
-
-        const sharedStateCandidates = candidates.filter((atom) => {
-            const metrics = extractAtomMetrics(atom);
-            const code = atom.sourceCode || atom.code || '';
-            return metrics.sharedStateAccess.length > 0 || matchesAny(SHARED_STATE_PATTERNS, code);
-        });
-
-        const gaps = [];
-        if (networkCandidates.length > 0 && networkFlagged.length === 0) {
-            gaps.push({
-                kind: 'network_coverage',
-                message: `${networkCandidates.length} atom(s) look network-bound but none were flagged as hasNetworkCalls`
-            });
-        }
-        if (sharedStateCandidates.length > 0 && sharesStateRelations === 0) {
-            gaps.push({
-                kind: 'shared_state_coverage',
-                message: `${sharedStateCandidates.length} atom(s) touch shared-state patterns but no shares_state relations were persisted`
-            });
-        }
+        const {
+            networkCandidates,
+            networkFlagged,
+            sharedStateCandidates,
+            gaps,
+            severity
+        } = summarizeSemanticCoverage(candidates, { filePath, sharesStateRelations });
 
         if (gaps.length === 0) {
             return [];
         }
 
-        const severity = gaps.length > 1 || networkCandidates.length >= 3 ? 'high' : 'medium';
         const issueType = createIssueType(IssueDomains.SEM, 'coverage_gap', severity);
         const message = gaps.map((gap) => gap.message).join('; ');
 

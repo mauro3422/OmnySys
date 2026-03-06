@@ -4,6 +4,7 @@
 
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { summarizeDerivedScoreCoverage } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -15,13 +16,6 @@ import {
 
 const logger = createLogger('OmnySys:file-watcher:guards:metadata-completeness');
 
-const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;
-const EXCLUDED_PURPOSES = new Set(['TEST_HELPER', 'ANALYSIS_SCRIPT']);
-
-function getScore(atom, camelKey, snakeKey) {
-    return Number(atom?.[camelKey] ?? atom?.[snakeKey] ?? 0) || 0;
-}
-
 export async function detectMetadataCompleteness(rootPath, filePath, EventEmitterContext, atoms = [], options = {}) {
     const { verbose = true } = options;
 
@@ -29,32 +23,24 @@ export async function detectMetadataCompleteness(rootPath, filePath, EventEmitte
         await clearWatcherIssue(rootPath, filePath, 'code_metadata_completeness_high');
         await clearWatcherIssue(rootPath, filePath, 'code_metadata_completeness_medium');
 
-        if (!Array.isArray(atoms) || atoms.length === 0 || TEST_FILE_PATTERNS.test(filePath)) {
+        if (!Array.isArray(atoms) || atoms.length === 0) {
             return [];
         }
 
-        const candidates = atoms.filter((atom) => {
-            if (!isValidGuardTarget(atom)) return false;
-            const purpose = atom.purpose || atom.purpose_type || '';
-            return !EXCLUDED_PURPOSES.has(purpose);
-        });
+        const coverage = summarizeDerivedScoreCoverage(atoms, { filePath });
+        const candidates = coverage.candidates.filter(isValidGuardTarget);
 
         if (candidates.length === 0) {
             return [];
         }
 
-        const missingAtoms = candidates.filter((atom) => {
-            const fragility = getScore(atom, 'fragilityScore', 'fragility_score');
-            const coupling = getScore(atom, 'couplingScore', 'coupling_score');
-            const cohesion = getScore(atom, 'cohesionScore', 'cohesion_score');
-            return fragility === 0 && coupling === 0 && cohesion === 0;
-        });
+        const missingAtoms = coverage.missingAtoms.filter(isValidGuardTarget);
 
         if (missingAtoms.length === 0) {
             return [];
         }
 
-        const ratio = missingAtoms.length / candidates.length;
+        const ratio = coverage.missingRatio;
         const hasHighSignalAtom = missingAtoms.some((atom) => {
             const metrics = extractAtomMetrics(atom);
             return metrics.complexity >= 10 || metrics.isAsync || metrics.isExported;
@@ -69,7 +55,7 @@ export async function detectMetadataCompleteness(rootPath, filePath, EventEmitte
         }
 
         const issueType = createIssueType(IssueDomains.CODE, 'metadata_completeness', severity);
-        const sampleAtoms = missingAtoms.slice(0, 5).map((atom) => atom.name);
+        const sampleAtoms = coverage.sampleAtoms;
         const message = `Derived graph metadata missing for ${missingAtoms.length}/${candidates.length} production atoms (fragility/coupling/cohesion all zero)`;
 
         await persistWatcherIssue(
