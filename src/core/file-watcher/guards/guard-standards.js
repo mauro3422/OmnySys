@@ -367,7 +367,12 @@ export const StandardSuggestions = {
     
     // Dead code
     DEAD_CODE_REMOVE: 'Remove dead code or mark with @deprecated if needed for migration',
-    DEAD_CODE_REVIVE: 'If temporarily disabled, add a TODO with revival conditions'
+    DEAD_CODE_REVIVE: 'If temporarily disabled, add a TODO with revival conditions',
+
+    // Metadata / topology
+    METADATA_REINDEX: 'Trigger a reindex and inspect graph/semantic enrichment for missing derived fields',
+    TOPOLOGY_VERIFY: 'Verify caller/callee extraction and relation persistence before trusting this topology',
+    SEMANTIC_REFRESH: 'Re-run semantic extraction for this file and inspect missing flags or relations'
 };
 
 /**

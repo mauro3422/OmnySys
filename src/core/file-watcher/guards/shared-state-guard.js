@@ -55,7 +55,7 @@ export async function detectSharedStateContention(rootPath, filePath, EventEmitt
         const query = repo.db.prepare(`
             SELECT source_id, COUNT(*) as connection_count
             FROM atom_relations
-            WHERE type = 'shares_state' AND source_id IN (${atomIds.map(() => '?').join(',')})
+            WHERE relation_type = 'shares_state' AND source_id IN (${atomIds.map(() => '?').join(',')})
             GROUP BY source_id
         `);
 

@@ -187,6 +187,13 @@ class GuardRegistry {
             description: 'Detects async functions without proper error handling'
         });
 
+        const { detectMetadataCompleteness } = await import('./metadata-completeness-guard.js');
+        this.registerSemanticGuard('metadata-completeness', detectMetadataCompleteness, {
+            domain: 'code',
+            version: '1.0.0',
+            description: 'Detects production atoms missing derived compiler metadata'
+        });
+
         // 1.4 Complexity Monitor (nuevo)
         const { detectHighComplexity } = await import('./complexity-guard.js');
         this.registerSemanticGuard('complexity-monitor', detectHighComplexity, {
@@ -267,6 +274,20 @@ class GuardRegistry {
             domain: 'code',
             version: '1.0.0',
             description: 'Monitors pipeline health (shadow volume, zero atoms)'
+        });
+
+        const { detectTopologyRegression } = await import('./topology-regression-guard.js');
+        this.registerImpactGuard('topology-regression', detectTopologyRegression, {
+            domain: 'arch',
+            version: '1.0.0',
+            description: 'Detects sudden loss of topology signal after a file change'
+        });
+
+        const { detectSemanticCoverage } = await import('./semantic-coverage-guard.js');
+        this.registerImpactGuard('semantic-coverage', detectSemanticCoverage, {
+            domain: 'sem',
+            version: '1.0.0',
+            description: 'Detects code patterns not reflected in semantic metadata'
         });
 
         this.initialized = true;

@@ -9,6 +9,8 @@ All notable changes to this project are documented in this file and organized by
 - `reindexOnly` now preserves the process, refreshes cache metadata, and restarts the Phase 2 background indexer instead of leaving all atoms pending forever.
 - Server/status telemetry now exposes compiler readiness, Phase 2 progress, `fast_phase2` fallback during deep indexing, cache/live count alignment, and `/health.background` details.
 - The stdio bridge now fails fast with retryable MCP errors during daemon restarts instead of leaving in-flight tool calls hanging until client timeouts.
+- FileWatcher now runs semantic guards through the real `analyzeAndIndex` path, includes new compiler guards for metadata completeness, topology regression, and semantic coverage, and fixes shared-state guard relation queries.
+- Health and pipeline telemetry now distinguish missing physics coverage from real zero values, exposing `fragility/coupling/cohesion` gaps as compiler debt instead of reporting a misleading perfect grade.
 - Core metadata persistence now normalizes against live SQLite counts, reducing drift between `system_metadata` and the current atom graph.
 - Remaining limitation: after true worker restarts, some MCP clients can still keep a stale session/tool channel even though the OmnySys daemon is healthy again.
 

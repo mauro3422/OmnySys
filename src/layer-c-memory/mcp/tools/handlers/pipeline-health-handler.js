@@ -87,6 +87,9 @@ export async function handlePipelineHealth(tool) {
 
     // --- CHECK 2: Cobertura de campos ---
     const suspiciousFields = [
+        { field: 'fragility_score', description: 'Fragility scores never populated', minWarningCoverage: 5 },
+        { field: 'coupling_score', description: 'Coupling scores never populated', minWarningCoverage: 5 },
+        { field: 'cohesion_score', description: 'Cohesion scores never populated', minWarningCoverage: 5 },
         { field: 'centrality_score', description: 'persistGraphMetrics() not connected', minWarningCoverage: 5 },
         { field: 'age_days', description: 'Git integration missing for age_days', minWarningCoverage: 5 },
         { field: 'change_frequency', description: 'Git integration missing for change_frequency', minWarningCoverage: 5 },

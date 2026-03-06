@@ -12,6 +12,7 @@ import { guardRegistry } from '../guards/registry.js';
 import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave.js';
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
+import { analyzeAndIndex } from '../analyze.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
@@ -59,16 +60,13 @@ function impactLevelFromScore(score) {
 export async function handleFileCreated(filePath, fullPath) {
   logger.debug(`[CREATED] ${filePath}`);
 
-  // Analyse Skeleton (Fast structural scan)
-  const analysis = await analyzeFileCore(filePath, this.rootPath, {
-    depth: 'structural'
-  });
+  const analysis = await analyzeAndIndex.call(this, filePath, fullPath, false);
 
-  // Execute Impact Guards only (optional, but good for real-time feedback)
   await guardRegistry.initializeDefaultGuards();
   await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
     fullPath,
-    atoms: analysis.atoms
+    atoms: analysis.moleculeAtoms || analysis.atoms || [],
+    analysis
   });
 
   this.emit('file:created', { filePath, analysis });
@@ -138,18 +136,15 @@ export async function handleFileModified(filePath, fullPath) {
     }
   }
 
-  // Analyse Skeleton (Fast structural scan)
-  const analysis = await analyzeFileCore(filePath, this.rootPath, {
-    depth: 'structural',
-    source: content // Use the content we already read for the hash
-  });
+  const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
 
   // Execute Impact Guards
   await guardRegistry.initializeDefaultGuards();
   await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
     fullPath,
     previousAtoms,
-    atoms: analysis.atoms
+    atoms: analysis.moleculeAtoms || analysis.atoms || [],
+    analysis
   });
 
   this.emit('file:modified', { filePath, analysis });
