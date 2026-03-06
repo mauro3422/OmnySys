@@ -7,7 +7,7 @@ import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     classifyFieldCoverage,
     classifyPipelineOrphans,
-    getDeadCodeSqlPredicate,
+    getDeadCodePlausibilitySummary,
     getLiveRowDriftSummary,
     getPipelineNamePatternSqlCondition,
     normalizePipelineOrphan,
@@ -180,25 +180,11 @@ export async function handlePipelineHealth(tool) {
     }
 
     // --- CHECK 4: Dead code plausibility ---
-    const flaggedDeadCode = db.prepare(`
-        SELECT COUNT(*) as total
-        FROM atoms
-        WHERE is_dead_code = 1
-          AND file_path LIKE 'src/%'
-    `).get()?.total || 0;
+    const deadCodeSummary = getDeadCodePlausibilitySummary(db, { minLines: 5 });
+    const suspiciousDeadCandidates = deadCodeSummary.suspiciousDeadCandidates;
 
-    const suspiciousDeadCandidates = db.prepare(`
-        SELECT COUNT(*) as total
-        FROM atoms
-        WHERE ${getDeadCodeSqlPredicate('atoms', { minLines: 5 })}
-    `).get()?.total || 0;
-
-    if (flaggedDeadCode === 0 && suspiciousDeadCandidates > 50) {
-        warnings.push({
-            field: 'dead_code',
-            coverage: `${suspiciousDeadCandidates} suspicious atoms`,
-            issue: 'Dead code detector reports zero dead atoms, but many production atoms look fully disconnected'
-        });
+    if (deadCodeSummary.warning) {
+        warnings.push(deadCodeSummary.warning);
     }
 
     // --- CHECK 5: Compiler policy drift ---

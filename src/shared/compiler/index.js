@@ -23,6 +23,12 @@ export {
 } from './dead-code-heuristics.js';
 
 export {
+  getFlaggedDeadCodeCount,
+  getSuspiciousDeadCodeCount,
+  getDeadCodePlausibilitySummary
+} from './dead-code-reporting.js';
+
+export {
   DERIVED_SCORE_SIGNALS,
   PIPELINE_FIELD_COVERAGE_SIGNALS,
   summarizeDerivedScoreCoverage,
