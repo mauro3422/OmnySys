@@ -8,6 +8,10 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import {
+  getLiveFileSetSql,
+  getLiveRowDriftSummary
+} from '../../../shared/compiler/index.js';
 
 /**
  * Obtiene el assessment de riesgos completo
@@ -22,30 +26,20 @@ export async function getRiskAssessment(rootPath) {
     throw new Error('SQLite not available. Run analysis first.');
   }
 
-  const liveFileTotal = repo.db.prepare(`
-    SELECT COUNT(DISTINCT file_path) as total
-    FROM atoms
-    WHERE file_path IS NOT NULL
-      AND file_path != ''
-  `).get()?.total || 0;
-
   const totalRiskRows = repo.db.prepare(`
     SELECT COUNT(*) as total
     FROM risk_assessments
     WHERE risk_level IS NOT NULL
   `).get()?.total || 0;
 
+  const { liveFileTotal, staleRiskRows } = getLiveRowDriftSummary(repo.db);
+
   const riskRows = repo.db.prepare(`
     SELECT ra.file_path, ra.risk_score, ra.risk_level, ra.factors_json,
            ra.shared_state_count, ra.external_deps_count, ra.complexity_score,
            ra.propagation_score, ra.assessed_at
     FROM risk_assessments ra
-    JOIN (
-      SELECT DISTINCT file_path
-      FROM atoms
-      WHERE file_path IS NOT NULL
-        AND file_path != ''
-    ) live ON live.file_path = ra.file_path
+    JOIN (${getLiveFileSetSql()}) live ON live.file_path = ra.file_path
     WHERE ra.risk_level IS NOT NULL
     ORDER BY ra.risk_score DESC
   `).all();
@@ -126,7 +120,7 @@ export async function getRiskAssessment(rootPath) {
         totalFiles: riskRows.length,
         liveFilesTotal: liveFileTotal,
         unassessedLiveFiles: Math.max(0, liveFileTotal - riskRows.length),
-        staleRowsDropped: Math.max(0, totalRiskRows - riskRows.length)
+        staleRowsDropped: Math.max(0, staleRiskRows || (totalRiskRows - riskRows.length))
       },
       criticalRiskFiles,
       highRiskFiles,

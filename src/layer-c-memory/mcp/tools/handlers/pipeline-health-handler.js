@@ -7,6 +7,7 @@ import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     classifyFieldCoverage,
     getDeadCodeSqlPredicate,
+    getLiveRowDriftSummary,
     scanCompilerPolicyDrift,
     summarizeCompilerPolicyDrift
 } from '../../../../shared/compiler/index.js';
@@ -68,29 +69,11 @@ export async function handlePipelineHealth(tool) {
 
     const issues = [];
     const warnings = [];
-    const liveAtomFiles = db.prepare(`
-        SELECT COUNT(DISTINCT file_path) as total
-        FROM atoms
-        WHERE file_path IS NOT NULL AND file_path != ''
-    `).get()?.total || 0;
-    const staleFileRows = db.prepare(`
-        SELECT COUNT(*) as total
-        FROM files f
-        WHERE f.path NOT IN (
-            SELECT DISTINCT file_path
-            FROM atoms
-            WHERE file_path IS NOT NULL AND file_path != ''
-        )
-    `).get()?.total || 0;
-    const staleRiskRows = db.prepare(`
-        SELECT COUNT(*) as total
-        FROM risk_assessments r
-        WHERE r.file_path NOT IN (
-            SELECT DISTINCT file_path
-            FROM atoms
-            WHERE file_path IS NOT NULL AND file_path != ''
-        )
-    `).get()?.total || 0;
+    const {
+        liveFileTotal: liveAtomFiles,
+        staleFileRows,
+        staleRiskRows
+    } = getLiveRowDriftSummary(db);
 
     // --- CHECK 1: Tablas vacías ---
     const expectedNonEmpty = [

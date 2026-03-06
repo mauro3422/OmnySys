@@ -27,3 +27,10 @@ export {
   summarizePhysicsCoverageRow,
   classifyFieldCoverage
 } from './signal-coverage.js';
+
+export {
+  getLiveFileSetSql,
+  getLiveFileTotal,
+  getStaleTableRowCount,
+  getLiveRowDriftSummary
+} from './live-row-drift.js';
