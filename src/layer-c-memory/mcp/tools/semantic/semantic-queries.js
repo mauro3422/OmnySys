@@ -9,31 +9,13 @@
 
 import { createLogger } from '#utils/logger.js';
 import {
-    getDuplicateKeySql,
-    VALID_DNA_PREDICATE
-} from '#layer-c/storage/repository/utils/duplicate-dna.js';
+    getDuplicateKeySqlForMode,
+    VALID_DNA_PREDICATE,
+    DUPLICATE_ELIGIBLE_PREDICATE,
+    DUPLICATE_MODES
+} from '#layer-c/storage/repository/utils/index.js';
 
 const logger = createLogger('OmnySys:SemanticQueries');
-const DUPLICATE_KEY_SQL = getDuplicateKeySql('dna_json');
-const DUPLICATE_KEY_SQL_FOR_ALIAS = (alias) => getDuplicateKeySql(`${alias}.dna_json`);
-const DUPLICATE_ELIGIBLE_PREDICATE = `
-    atom_type IN ('function', 'method', 'arrow', 'class')
-    AND (is_removed IS NULL OR is_removed = 0)
-    AND (is_dead_code IS NULL OR is_dead_code = 0)
-    AND file_path LIKE 'src/%'
-    AND file_path NOT LIKE 'tests/%'
-    AND name NOT GLOB '*_callback'
-    AND name NOT GLOB 'anonymous*'
-    AND name NOT GLOB 'describe_arg*'
-    AND name NOT GLOB 'it_arg*'
-    AND name NOT GLOB 'on_arg*'
-    AND name NOT GLOB 'then_callback'
-    AND name NOT GLOB 'catch_callback'
-    AND name NOT GLOB 'map_callback'
-    AND name NOT GLOB 'filter_callback'
-    AND name NOT GLOB 'some_callback'
-    AND name NOT GLOB 'sort_callback'
-`;
 
 /**
  * Helper para ejecutar queries con manejo de errores
@@ -212,8 +194,17 @@ export function queryDnaCoverage(db) {
  * @param {Object} options
  * @returns {{ rows: Array, stats: Object }}
  */
-export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow', 'class'] } = {}) {
+export function queryDuplicates(db, {
+    offset = 0,
+    limit = 20,
+    excludeTests = true,
+    minLines = 3,
+    atomTypes = ['function', 'method', 'arrow', 'class'],
+    mode = DUPLICATE_MODES.STRICT
+} = {}) {
     return safeQuery(() => {
+    const duplicateKeySql = getDuplicateKeySqlForMode(mode, 'dna_json');
+    const duplicateKeySqlForAlias = (alias) => getDuplicateKeySqlForMode(mode, `${alias}.dna_json`);
     const testFilterCte = excludeTests
         ? `AND file_path NOT LIKE '%.test.js'
            AND file_path NOT LIKE '%.spec.js'
@@ -238,7 +229,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     const rows = db.prepare(`
         WITH DuplicateGroups AS (
-            SELECT ${DUPLICATE_KEY_SQL} as duplicate_key, COUNT(*) as group_size
+            SELECT ${duplicateKeySql} as duplicate_key, COUNT(*) as group_size
             FROM atoms
             WHERE ${VALID_DNA_PREDICATE}
               ${testFilterCte}
@@ -251,7 +242,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
         )
         SELECT
             a.id, a.name, a.file_path, a.line_start, a.dna_json,
-            ${DUPLICATE_KEY_SQL} as duplicate_key,
+            ${duplicateKeySql} as duplicate_key,
             a.lines_of_code, a.atom_type,
             a.archetype_type, a.purpose_type,
             a.change_frequency, a.importance_score,
@@ -261,7 +252,7 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
              WHERE ca.calls_json LIKE '%' || a.name || '%'
                AND ca.file_path != a.file_path) AS caller_count
         FROM atoms a
-        JOIN DuplicateGroups dg ON (${DUPLICATE_KEY_SQL_FOR_ALIAS('a')}) = dg.duplicate_key
+        JOIN DuplicateGroups dg ON (${duplicateKeySqlForAlias('a')}) = dg.duplicate_key
         WHERE 1=1 
         ${testFilterMain}
         ${typeFilterMain}
@@ -274,17 +265,17 @@ export function queryDuplicates(db, { offset = 0, limit = 20, excludeTests = tru
 
     // Stats globales del query
     const stats = db.prepare(`
-        SELECT COUNT(DISTINCT (${DUPLICATE_KEY_SQL_FOR_ALIAS('a_stats')})) groups, COUNT(*) total_instances
+        SELECT COUNT(DISTINCT (${duplicateKeySqlForAlias('a_stats')})) groups, COUNT(*) total_instances
         FROM atoms a_stats
-        WHERE (${DUPLICATE_KEY_SQL_FOR_ALIAS('a_stats')}) IN (
-            SELECT ${DUPLICATE_KEY_SQL} FROM atoms
+        WHERE (${duplicateKeySqlForAlias('a_stats')}) IN (
+            SELECT ${duplicateKeySql} FROM atoms
             WHERE ${VALID_DNA_PREDICATE}
             ${testFilterCte}
             ${typeFilterCte}
             AND (lines_of_code IS NULL OR lines_of_code >= ${minLines})
               AND (is_removed IS NULL OR is_removed = 0)
               AND (is_dead_code IS NULL OR is_dead_code = 0)
-            GROUP BY ${DUPLICATE_KEY_SQL} HAVING COUNT(*) > 1
+            GROUP BY ${duplicateKeySql} HAVING COUNT(*) > 1
         )
         ${testFilterCte.replace(/file_path/g, 'a_stats.file_path')}
         ${typeFilterCte.replace(/atom_type/g, 'a_stats.atom_type')}
