@@ -63,6 +63,10 @@ export {
 } from './semantic-purity-conformance.js';
 
 export {
+  buildCanonicalReuseGuidance
+} from './canonical-reuse-guidance.js';
+
+export {
   isRuntimeLifecycleFile,
   isSameFileCycle,
   isIntentionalAlgorithmicCycle,

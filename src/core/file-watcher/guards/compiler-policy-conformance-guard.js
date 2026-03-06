@@ -37,17 +37,24 @@ export async function detectCompilerPolicyConformance(rootPath, filePath) {
     return [];
   }
 
-  const { severity, summary, message } = buildCompilerPolicyIssueSummary(findings);
+  const { severity, summary, message, reuseGuidance = [] } = buildCompilerPolicyIssueSummary(findings);
   const issueType = createIssueType(IssueDomains.ARCH, 'policy_drift', severity);
+  const reuseAlternatives = reuseGuidance.flatMap((guidance) =>
+    [
+      guidance?.recommendedReplacement,
+      guidance?.recommendedImport && `Import sugerido: ${guidance.recommendedImport}`
+    ].filter(Boolean)
+  );
   const context = createStandardContext({
     guardName: 'compiler-policy-conformance-guard',
     severity,
     suggestedAction: 'Replace ad-hoc policy logic with the canonical compiler API entrypoint for this signal.',
-    suggestedAlternatives: findings.map((finding) => finding.recommendation),
+    suggestedAlternatives: [...new Set([...findings.map((finding) => finding.recommendation), ...reuseAlternatives])],
     extraData: {
       byPolicyArea: summary.byPolicyArea,
       byRule: summary.byRule,
-      findings
+      findings,
+      reuseGuidance
     }
   });
 

@@ -47,7 +47,13 @@ function importsCanonicalSharedStateLayer(source = '') {
 }
 
 function referencesHotspotKeys(source = '') {
-  return /window\.PR_SHOULD_USE_CONTINUATION|process\.env|global\.fetch/.test(source);
+  return /window\.PR_SHOULD_USE_CONTINUATION|global\.fetch|topContentionKeys|shared[- ]state contention/i.test(source);
+}
+
+function isRuntimeEnvConfigurationOnly(source = '') {
+  const envReads = countMatches(source, /process\.env\.[A-Z0-9_]+|process\.env\[['"][A-Z0-9_]+['"]\]/g);
+  const hotspotSpecificSignals = countMatches(source, /window\.PR_SHOULD_USE_CONTINUATION|topContentionKeys|contention|sharedState|shares_state|global\.fetch/g);
+  return envReads > 0 && hotspotSpecificSignals === 0;
 }
 
 export function detectSharedStateHotspotConformanceFromSource(filePath, source = '', options = {}) {
@@ -64,6 +70,7 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
   const findings = [];
   const sharedStateSignals = countSharedStateSignals(source);
   const usesCanonicalLayer = importsCanonicalSharedStateLayer(source);
+  const runtimeEnvConfigurationOnly = isRuntimeEnvConfigurationOnly(source);
 
   if (referencesHotspotKeys(source) && !usesCanonicalLayer) {
     findings.push(createFinding(
@@ -78,7 +85,8 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
   if (
     sharedStateSignals >= 4 &&
     /sharedState|contention|global|window\.|process\.env/.test(source) &&
-    !usesCanonicalLayer
+    !usesCanonicalLayer &&
+    !runtimeEnvConfigurationOnly
   ) {
     findings.push(createFinding(
       'manual_shared_state_hotspot_scan',
