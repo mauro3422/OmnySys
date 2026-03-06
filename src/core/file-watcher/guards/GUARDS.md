@@ -28,18 +28,19 @@ Se ejecutan después de que todo el archivo ha sido indexado y persistido.
 
 ## Guards Registrados
 
-### Semantic Guards (6)
+### Semantic Guards (7)
 
 | Guard | Dominio | Versión | Detecta |
 |-------|---------|---------|---------|
 | `shared-state` | sem | 2.0.0 | "Átomos radioactivos" con >5 conexiones de estado |
 | `atomic-integrity` | sem | 2.0.0 | Data-flow incoherente, inputs sin usar |
 | `async-safety` | runtime | 1.0.0 | Funciones async sin error handling |
+| `metadata-completeness` | code | 1.0.0 | Física derivada faltante tras la compilación |
 | `complexity-monitor` | code | 1.0.0 | Complejidad ciclomática alta, funciones largas |
 | `event-leak` | runtime | 1.0.0 | Memory leaks por event listeners sin cleanup |
 | `dead-code` | code | 1.0.0 | Código muerto recién creado |
 
-### Impact Guards (5)
+### Impact Guards (9)
 
 | Guard | Dominio | Versión | Detecta |
 |-------|---------|---------|---------|
@@ -48,6 +49,10 @@ Se ejecutan después de que todo el archivo ha sido indexado y persistido.
 | `circular-dependencies` | arch | 2.0.0 | Ciclos de imports y llamadas |
 | `hotspot-detector` | perf | 1.0.0 | Funciones que cambian frecuentemente |
 | `pipeline-health` | code | 1.0.0 | Shadow volume alto, zero atoms |
+| `topology-regression` | arch | 1.0.0 | Pérdida súbita de señal topológica tras un cambio |
+| `pipeline-orphan` | arch | 1.0.0 | Exportaciones pipeline que quedaron desconectadas |
+| `semantic-coverage` | sem | 1.0.0 | Patrones semánticos sin flags/relations persistidas |
+| `semantic-persistence` | sem | 1.0.0 | DNA/data-flow/signature extraídos pero perdidos al persistir |
 
 ---
 

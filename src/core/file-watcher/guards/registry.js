@@ -297,6 +297,13 @@ class GuardRegistry {
             description: 'Detects code patterns not reflected in semantic metadata'
         });
 
+        const { detectSemanticPersistence } = await import('./semantic-persistence-guard.js');
+        this.registerImpactGuard('semantic-persistence', detectSemanticPersistence, {
+            domain: 'sem',
+            version: '1.0.0',
+            description: 'Detects atoms whose semantic compiler metadata was dropped during persistence'
+        });
+
         this.initialized = true;
         logger.info(`Guard registry initialized with ${this.semanticGuards.size} semantic and ${this.impactGuards.size} impact guards`);
     }

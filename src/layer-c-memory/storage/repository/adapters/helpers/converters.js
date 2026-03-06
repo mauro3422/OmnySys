@@ -43,6 +43,13 @@ const ATOM_CUSTOM_EXTRACTORS = {
   callees_count: atom => Math.max(Number(atom.calleesCount) || 0, Number(atom.calleeCount) || 0, Number(atom.outDegree) || 0, Array.isArray(atom.calls) ? atom.calls.length : 0),
   extracted_at: (atom, now) => atom.extractedAt || atom.analyzedAt || now,
   updated_at: (atom, now) => atom.updatedAt || now,
+  signature_json: atom => atom.signature || null,
+  data_flow_json: atom => atom.dataFlow || atom.data_flow || null,
+  calls_json: atom => atom.calls || [],
+  temporal_json: atom => atom.temporal || atom.temporalJson || null,
+  error_flow_json: atom => atom.errorFlow || atom.error_flow || null,
+  performance_json: atom => atom.performance || atom.performanceJson || null,
+  dna_json: atom => atom.dna || atom.dnaJson || null,
   derived_json: atom => ({ ...(atom.derived || {}), semantic: atom.semantic || {} }),
   _meta_json: atom => atom._meta || atom.meta,
   shared_state_json: atom => atom.sharedStateAccess || [],
@@ -59,8 +66,14 @@ const ATOM_CUSTOM_INJECTORS = {
   file_path: (atom, val) => { atom.filePath = val; },
   parameter_count: (atom, val) => { atom.parameterCount = val; },
   purpose_type: (atom, val) => { atom.purpose = val; },
+  signature_json: (atom, val) => { atom.signature = safeParseJson(val, {}); },
+  data_flow_json: (atom, val) => { atom.dataFlow = safeParseJson(val); atom.dataFlowJson = atom.dataFlow; },
   calls_json: (atom, val) => { atom.calls = safeParseJson(val, []) || []; },
   called_by_json: (atom, val) => { atom.calledBy = safeParseJson(val, []) || []; },
+  temporal_json: (atom, val) => { atom.temporal = safeParseJson(val); atom.temporalJson = atom.temporal; },
+  error_flow_json: (atom, val) => { atom.errorFlow = safeParseJson(val); atom.errorFlowJson = atom.errorFlow; },
+  performance_json: (atom, val) => { atom.performance = safeParseJson(val); atom.performanceJson = atom.performance; },
+  dna_json: (atom, val) => { atom.dna = safeParseJson(val); atom.dnaJson = atom.dna; },
   shared_state_json: (atom, val) => { atom.sharedStateAccess = safeParseJson(val, []) || []; },
   event_emitters_json: (atom, val) => { atom.eventEmitters = safeParseJson(val, []) || []; },
   event_listeners_json: (atom, val) => { atom.eventListeners = safeParseJson(val, []) || []; },
@@ -72,8 +85,7 @@ const ATOM_CUSTOM_INJECTORS = {
   updated_at: (atom, val) => { atom.updatedAt = val; },
   is_deprecated: (atom, val) => { atom.deprecated = Boolean(val); },
   deprecated_reason: (atom, val) => { atom.deprecatedReason = val; },
-  _meta_json: (atom, val) => { atom._meta = safeParseJson(val); },
-  signature_json: (atom, val) => { atom.signature = safeParseJson(val, {}); }
+  _meta_json: (atom, val) => { atom._meta = safeParseJson(val); }
 };
 
 /**

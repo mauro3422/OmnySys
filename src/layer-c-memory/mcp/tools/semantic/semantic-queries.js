@@ -11,6 +11,24 @@ import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:SemanticQueries');
 const VALID_DNA_PREDICATE = `dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'`;
+const DUPLICATE_ELIGIBLE_PREDICATE = `
+    atom_type IN ('function', 'method', 'arrow', 'class')
+    AND (is_removed IS NULL OR is_removed = 0)
+    AND (is_dead_code IS NULL OR is_dead_code = 0)
+    AND file_path LIKE 'src/%'
+    AND file_path NOT LIKE 'tests/%'
+    AND name NOT GLOB '*_callback'
+    AND name NOT GLOB 'anonymous*'
+    AND name NOT GLOB 'describe_arg*'
+    AND name NOT GLOB 'it_arg*'
+    AND name NOT GLOB 'on_arg*'
+    AND name NOT GLOB 'then_callback'
+    AND name NOT GLOB 'catch_callback'
+    AND name NOT GLOB 'map_callback'
+    AND name NOT GLOB 'filter_callback'
+    AND name NOT GLOB 'some_callback'
+    AND name NOT GLOB 'sort_callback'
+`;
 
 /**
  * Helper para ejecutar queries con manejo de errores
@@ -155,16 +173,30 @@ export function queryDnaCoverage(db) {
                 COUNT(*) totalAtoms,
                 COUNT(CASE WHEN ${VALID_DNA_PREDICATE} THEN 1 END) withDna,
                 COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' THEN 1 END) srcOnlyAtoms,
-                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND ${VALID_DNA_PREDICATE} THEN 1 END) srcWithDna
+                COUNT(CASE WHEN file_path NOT LIKE '%/test%' AND file_path NOT LIKE '%.test.%' AND file_path NOT LIKE '%.spec.%' AND ${VALID_DNA_PREDICATE} THEN 1 END) srcWithDna,
+                COUNT(CASE WHEN ${DUPLICATE_ELIGIBLE_PREDICATE} THEN 1 END) duplicateEligibleAtoms,
+                COUNT(CASE WHEN ${DUPLICATE_ELIGIBLE_PREDICATE} AND ${VALID_DNA_PREDICATE} THEN 1 END) duplicateEligibleWithDna
             FROM atoms
             WHERE is_removed IS NULL OR is_removed = 0
         `).get();
 
         return {
             ...row,
-            coveragePct: row.totalAtoms > 0 ? Math.round((row.withDna / row.totalAtoms) * 100) : 0
+            coveragePct: row.totalAtoms > 0 ? Math.round((row.withDna / row.totalAtoms) * 100) : 0,
+            duplicateEligibleCoveragePct: row.duplicateEligibleAtoms > 0
+                ? Math.round((row.duplicateEligibleWithDna / row.duplicateEligibleAtoms) * 100)
+                : 0
         };
-    }, 'queryDnaCoverage', { totalAtoms: 0, withDna: 0, coveragePct: 0, srcOnlyAtoms: 0, srcWithDna: 0 });
+    }, 'queryDnaCoverage', {
+        totalAtoms: 0,
+        withDna: 0,
+        coveragePct: 0,
+        srcOnlyAtoms: 0,
+        srcWithDna: 0,
+        duplicateEligibleAtoms: 0,
+        duplicateEligibleWithDna: 0,
+        duplicateEligibleCoveragePct: 0
+    });
 }
 
 /**

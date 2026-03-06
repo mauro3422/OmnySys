@@ -92,7 +92,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, stats } = queryDuplicates(this.repo.db, options);
         const coverage = queryDnaCoverage(this.repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
-        const hasUsableDnaCoverage = (coverage?.withDna || 0) > 0;
+        const hasUsableDnaCoverage = (coverage?.duplicateEligibleWithDna || 0) > 0;
 
         return {
             coverage,
@@ -116,7 +116,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const { rows, stats } = queryIsomorphicDuplicates(this.repo.db, options);
         const coverage = queryDnaCoverage(this.repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
-        const hasUsableDnaCoverage = (coverage?.withDna || 0) > 0;
+        const hasUsableDnaCoverage = (coverage?.duplicateEligibleWithDna || 0) > 0;
 
         return {
             coverage,
