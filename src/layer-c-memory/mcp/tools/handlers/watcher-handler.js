@@ -1,4 +1,5 @@
 import {
+    summarizeCompilerDiagnostics,
     summarizeWatcherAlerts,
     summarizeWatcherAlertLifecycle
 } from '../../../../shared/compiler/index.js';
@@ -26,6 +27,7 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     const total = result.total;
     const watcherSummary = summarizeWatcherAlerts(alerts);
     const watcherLifecycle = summarizeWatcherAlertLifecycle(alerts);
+    const compilerDiagnostics = summarizeCompilerDiagnostics(alerts);
 
     return {
         aggregationType: 'watcher_alerts',
@@ -36,6 +38,7 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
         alerts,
         summary: {
             ...watcherSummary,
+            compilerDiagnostics,
             lifecycle: watcherLifecycle,
             totalAlerts: total
         },

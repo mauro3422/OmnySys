@@ -38,6 +38,9 @@ All notable changes to this project are documented in this file and organized by
 - The stdio bridge now auto-recovers not only on transport close but also when a restarted daemon rejects requests with stale-session / not-initialized errors, allowing the same IDE session to resume after hot-reload restarts.
 - Core metadata persistence now normalizes against live SQLite counts, reducing drift between `system_metadata` and the current atom graph.
 - Remaining limitation: after true worker restarts, some MCP clients can still keep a stale session/tool channel even though the OmnySys daemon is healthy again.
+- Compiler diagnostics now have a canonical API: watcher/MCP consumers share the same signal classification (`high_signal` vs `low_signal`) instead of each tool inventing its own alert severity summary.
+- Live row cleanup now has a canonical execution API too, so stale-row reconciliation is no longer limited to reporting/remediation planning and can be reused by future tools from one compiler entrypoint.
+- Bridge/proxy startup coordination now persists a daemon owner lock, so bridges can wait for a hot-restarting proxy instead of spawning duplicate proxies during rapid runtime edits.
 
 ## Quick Links
 

@@ -34,6 +34,7 @@ import { spawn } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
+const runtimeDir = path.join(projectRoot, '.omnysysdata');
 
 // ── Logging ─────────────────────────────────────────────────────────────────
 const logsDir = path.join(projectRoot, 'logs');
@@ -52,11 +53,37 @@ function log(msg) {
 const workerPath = path.join(__dirname, 'mcp-http-server.js');
 const projectPath = process.argv[2] || process.cwd();
 const port = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
+const ownerLockPath = path.join(runtimeDir, `daemon-owner-${port}.json`);
 
 let worker = null;
 let restartScheduled = false;
 let restartCount = 0;
 let respawnTimer = null;
+
+function ensureRuntimeDir() {
+    if (!fs.existsSync(runtimeDir)) {
+        fs.mkdirSync(runtimeDir, { recursive: true });
+    }
+}
+
+function writeOwnerLock(state) {
+    ensureRuntimeDir();
+    fs.writeFileSync(ownerLockPath, JSON.stringify({
+        pid: process.pid,
+        port,
+        state,
+        projectPath,
+        updatedAt: new Date().toISOString()
+    }, null, 2));
+}
+
+function removeOwnerLock() {
+    try {
+        fs.unlinkSync(ownerLockPath);
+    } catch {
+        // ignore missing lock
+    }
+}
 
 function clearRespawnTimer() {
     if (respawnTimer) {
@@ -103,6 +130,7 @@ async function detectHealthyDaemon() {
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
 function spawnWorker(extraArgs = []) {
     clearRespawnTimer();
+    writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
     // Inherit memory flags, add defaults
@@ -141,6 +169,7 @@ function spawnWorker(extraArgs = []) {
             clearRespawnTimer();
 
             log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
+            writeOwnerLock('restarting');
 
             // Capture flags to pass to the next spawn
             const nextArgs = [];
@@ -171,13 +200,16 @@ function spawnWorker(extraArgs = []) {
         } else if (code !== 0) {
             if (await detectHealthyDaemon()) {
                 log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
+                removeOwnerLock();
                 process.exit(0);
             }
+            writeOwnerLock('restarting');
             log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
             // Increased delay for crashes to avoid tight loops on port conflict
             scheduleRespawn(5000);
         } else {
             log('Worker exited cleanly. Proxy shutting down.');
+            removeOwnerLock();
             process.exit(0);
         }
     });
@@ -191,6 +223,7 @@ function spawnWorker(extraArgs = []) {
 function shutdown() {
     log('Proxy SIGINT/SIGTERM — shutting down worker...');
     clearRespawnTimer();
+    removeOwnerLock();
     if (worker) {
         worker.kill('SIGTERM');
     }
@@ -209,4 +242,5 @@ if (await detectHealthyDaemon()) {
     process.exit(0);
 }
 
+writeOwnerLock('starting');
 spawnWorker();

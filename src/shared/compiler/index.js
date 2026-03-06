@@ -17,6 +17,11 @@ export {
 } from './policy-conformance.js';
 
 export {
+  classifyCompilerDiagnosticSignal,
+  summarizeCompilerDiagnostics
+} from './compiler-diagnostics.js';
+
+export {
   getDeadCodeSqlPredicate,
   isSuspiciousDeadCodeAtom,
   normalizeDeadCodeAtom
@@ -58,6 +63,11 @@ export {
 export {
   buildLiveRowRemediationPlan
 } from './live-row-remediation.js';
+
+export {
+  buildLiveRowCleanupPlan,
+  executeLiveRowCleanup
+} from './live-row-cleanup.js';
 
 export {
   buildDuplicateRemediation,

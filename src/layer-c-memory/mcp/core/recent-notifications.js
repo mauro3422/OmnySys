@@ -1,5 +1,6 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 import {
+  summarizeCompilerDiagnostics,
   summarizeWatcherAlerts,
   summarizeWatcherAlertLifecycle
 } from '../../../shared/compiler/index.js';
@@ -36,6 +37,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   const watcherEntries = watcherResult.alerts;
   const watcherSummary = summarizeWatcherAlerts(watcherEntries);
   const watcherLifecycle = summarizeWatcherAlertLifecycle(watcherEntries);
+  const compilerDiagnostics = summarizeCompilerDiagnostics(watcherEntries);
 
   const warnings =
     loggerEntries.filter((entry) => entry.level === 'warn').length +
@@ -52,6 +54,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     logs: loggerEntries,
     watcherAlerts: watcherEntries,
     watcherSummary,
+    compilerDiagnostics,
     watcherLifecycle,
     watcherReconciliation: watcherResult.reconciliation
   };
@@ -68,6 +71,7 @@ export function normalizeRecentNotifications(notifications = {}) {
     logs,
     watcherAlerts,
     watcherSummary: notifications.watcherSummary || summarizeWatcherAlerts(watcherAlerts),
+    compilerDiagnostics: notifications.compilerDiagnostics || summarizeCompilerDiagnostics(watcherAlerts),
     watcherLifecycle: notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts),
     watcherReconciliation: notifications.watcherReconciliation || { deletedExpired: 0, summary: { total: watcherAlerts.length, byStatus: {} } }
   };
