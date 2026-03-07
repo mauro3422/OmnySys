@@ -50,22 +50,14 @@ export const COMPILER_POLICY_AREA = {
   SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity'
 };
 
-function normalizePath(filePath = '') {
-  return filePath.replace(/\\/g, '/');
-}
-
-function shouldScanCompilerFile(filePath = '') {
-  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
-}
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  createFinding as baseCreateFinding
+} from './conformance-utils.js';
 
 function createFinding(rule, severity, policyArea, message, recommendation) {
-  const finding = {
-    rule,
-    severity,
-    policyArea,
-    message,
-    recommendation
-  };
+  const finding = baseCreateFinding({ rule, severity, policyArea, message, recommendation });
   const reuseGuidance = buildCanonicalReuseGuidance(finding);
   if (reuseGuidance) {
     finding.reuseGuidance = reuseGuidance;

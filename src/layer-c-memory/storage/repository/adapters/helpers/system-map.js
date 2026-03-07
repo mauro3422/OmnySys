@@ -22,35 +22,8 @@ export async function persistSystemMapToDb(db, connectionManager, systemMap, log
       if (systemMap.files) saveSystemFiles(db, systemMap.files, now);
       if (systemMap.dependencies) saveFileDependencies(db, systemMap.dependencies, now);
 
-      // Normalize connections — accept both shapes:
-      // 1. flat array:  systemMap.semanticConnections = [{from, to, type, ...}]  (new enhancer)
-      // 2. structured:  systemMap.connections.{sharedState, eventListeners, envVars, routes, ...} (old enhancer)
-      let connections = [];
-      if (Array.isArray(systemMap.semanticConnections) && systemMap.semanticConnections.length > 0) {
-        connections = systemMap.semanticConnections;
-      } else if (systemMap.connections && typeof systemMap.connections === 'object') {
-        // Flatten the structured object into the schema saveSemanticData expects
-        const c = systemMap.connections;
-        const buckets = [
-          ...(Array.isArray(c.sharedState) ? c.sharedState : []),
-          ...(Array.isArray(c.eventListeners) ? c.eventListeners : []),
-          ...(Array.isArray(c.envVars) ? c.envVars : []),
-          ...(Array.isArray(c.routes) ? c.routes : []),
-          ...(Array.isArray(c.colocation) ? c.colocation : [])
-        ];
-        connections = buckets.map(conn => ({
-          from: conn.sourceFile || conn.from || '',
-          to: conn.targetFile || conn.to || '',
-          type: conn.type || 'unknown',
-          key: conn.connectionKey || conn.key || null,
-          weight: typeof conn.weight === 'number' ? conn.weight : 1.0,
-          metadata: conn.metadata || {}
-        }));
-      }
-
-      const issues = Array.isArray(systemMap.semanticIssues)
-        ? systemMap.semanticIssues
-        : (systemMap.semanticIssues?.issues || []);
+      const connections = normalizeConnections(systemMap);
+      const issues = normalizeIssues(systemMap);
 
       saveSemanticData(db, connections, issues, now);
 
@@ -62,6 +35,45 @@ export async function persistSystemMapToDb(db, connectionManager, systemMap, log
     logger?.error('Error saving system map:', error);
     throw error;
   }
+}
+
+/**
+ * Normaliza las conexiones semánticas desde diferentes formatos
+ */
+function normalizeConnections(systemMap) {
+  if (Array.isArray(systemMap.semanticConnections) && systemMap.semanticConnections.length > 0) {
+    return systemMap.semanticConnections;
+  }
+
+  if (systemMap.connections && typeof systemMap.connections === 'object') {
+    const c = systemMap.connections;
+    const buckets = [
+      ...(Array.isArray(c.sharedState) ? c.sharedState : []),
+      ...(Array.isArray(c.eventListeners) ? c.eventListeners : []),
+      ...(Array.isArray(c.envVars) ? c.envVars : []),
+      ...(Array.isArray(c.routes) ? c.routes : []),
+      ...(Array.isArray(c.colocation) ? c.colocation : [])
+    ];
+    return buckets.map(conn => ({
+      from: conn.sourceFile || conn.from || '',
+      to: conn.targetFile || conn.to || '',
+      type: conn.type || 'unknown',
+      key: conn.connectionKey || conn.key || null,
+      weight: typeof conn.weight === 'number' ? conn.weight : 1.0,
+      metadata: conn.metadata || {}
+    }));
+  }
+
+  return [];
+}
+
+/**
+ * Normaliza los problemas semánticos
+ */
+function normalizeIssues(systemMap) {
+  return Array.isArray(systemMap.semanticIssues)
+    ? systemMap.semanticIssues
+    : (systemMap.semanticIssues?.issues || []);
 }
 
 /**
@@ -79,10 +91,12 @@ export async function retrieveSystemMapFromDb(db) {
 }
 
 function updateSystemMetadata(db, metadata, now) {
+  const repo = new BaseSqlRepository(db, 'SystemMapMetadata');
+
   const liveCounts = {
-    totalAtoms: db.prepare('SELECT COUNT(*) as n FROM atoms').get()?.n || 0,
-    totalFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0,
-    totalFunctionLinks: db.prepare("SELECT COUNT(*) as n FROM atom_relations WHERE relation_type = 'calls'").get()?.n || 0
+    totalAtoms: db.prepare('SELECT COUNT(*) as n FROM atoms WHERE (is_removed IS NULL OR is_removed = 0)').get()?.n || 0,
+    totalFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE (is_removed IS NULL OR is_removed = 0)').get()?.n || 0,
+    totalFunctionLinks: db.prepare("SELECT COUNT(*) as n FROM atom_relations WHERE relation_type = 'calls' AND (is_removed IS NULL OR is_removed = 0)").get()?.n || 0
   };
 
   const normalizedMetadata = {
@@ -93,15 +107,15 @@ function updateSystemMetadata(db, metadata, now) {
     totalFunctionLinks: liveCounts.totalFunctionLinks
   };
 
-  const stmt = db.prepare(`
-    INSERT INTO system_metadata (key, value, updated_at)
-    VALUES (?, ?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-  `);
-  stmt.run('core_metadata', safeJson(normalizedMetadata), now);
+  repo.saveTableRows('system_metadata', ['key', 'value', 'updated_at'], [{
+    key: 'core_metadata',
+    value: safeJson(normalizedMetadata),
+    updated_at: now
+  }], 'key');
 }
 
 async function loadSystemMetadata(db) {
-  const row = db.prepare("SELECT value FROM system_metadata WHERE key = 'core_metadata'").get();
-  return row ? safeParseJson(row.value) : {};
+  const repo = new BaseSqlRepository(db, 'SystemMapMetadata');
+  const rows = repo.loadTableRows('system_metadata', "key = 'core_metadata'");
+  return rows.length > 0 ? safeParseJson(rows[0].value) : {};
 }

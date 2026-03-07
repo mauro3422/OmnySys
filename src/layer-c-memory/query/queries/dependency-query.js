@@ -46,7 +46,7 @@ export async function getDependencyGraph(rootPath, filePath, depth) {
 
   // Load full dependency map once into memory (fast O(1) lookups)
   const allRows = repo.db.prepare(
-    'SELECT source_path, target_path FROM file_dependencies'
+    'SELECT source_path, target_path FROM file_dependencies WHERE (is_removed IS NULL OR is_removed = 0)'
   ).all();
 
   const depMap = new Map(); // source → Set<target>
@@ -101,7 +101,7 @@ export async function getTransitiveDependents(rootPath, filePath, options = {}) 
 
   // Build reverse dependency map: target → sources
   const allRows = repo.db.prepare(
-    'SELECT source_path, target_path FROM file_dependencies'
+    'SELECT source_path, target_path FROM file_dependencies WHERE (is_removed IS NULL OR is_removed = 0)'
   ).all();
 
   const reverseMap = new Map(); // target_path → Set<source_path>
@@ -123,6 +123,9 @@ export async function getTransitiveDependents(rootPath, filePath, options = {}) 
       JOIN atoms a1 ON ar.source_id = a1.id
       JOIN atoms a2 ON ar.target_id = a2.id
       WHERE ar.relation_type = 'shares_state'
+        AND (ar.is_removed IS NULL OR ar.is_removed = 0)
+        AND (a1.is_removed IS NULL OR a1.is_removed = 0)
+        AND (a2.is_removed IS NULL OR a2.is_removed = 0)
     `).all();
 
     for (const { source_file, target_file } of semanticRows) {

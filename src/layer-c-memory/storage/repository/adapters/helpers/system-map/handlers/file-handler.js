@@ -20,9 +20,10 @@ export async function saveSystemFiles(db, files, now) {
       depends_on_json,
       transitive_depends_json,
       transitive_dependents_json,
+      is_removed,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
       display_path = excluded.display_path,
       culture = excluded.culture,
@@ -36,6 +37,7 @@ export async function saveSystemFiles(db, files, now) {
       depends_on_json = excluded.depends_on_json,
       transitive_depends_json = excluded.transitive_depends_json,
       transitive_dependents_json = excluded.transitive_dependents_json,
+      is_removed = excluded.is_removed,
       updated_at = excluded.updated_at
   `);
 
@@ -56,13 +58,14 @@ export async function saveSystemFiles(db, files, now) {
       safeJson(data.dependsOn || []),
       safeJson(data.transitiveDepends || []),
       safeJson(data.transitiveDependents || []),
+      data.isRemoved ? 1 : 0,
       isoNow
     );
   }
 }
 
 export async function loadSystemFiles(db) {
-  const rows = db.prepare('SELECT * FROM system_files').all();
+  const rows = db.prepare('SELECT * FROM system_files WHERE (is_removed IS NULL OR is_removed = 0)').all();
   const files = {};
   for (const row of rows) {
     files[row.path] = {

@@ -43,4 +43,18 @@ export class DuplicateHandler {
             callerCount: row.caller_count || 0
         };
     }
+
+    buildSummary(stats, hasUsableDnaCoverage, detectedLabel, unavailableLabel) {
+        return {
+            duplicateGroups: stats.groups || 0,
+            totalDuplicateInstances: stats.total_instances || 0,
+            status: !hasUsableDnaCoverage
+                ? unavailableLabel
+                : ((stats.groups || 0) === 0
+                    ? `No ${detectedLabel} found`
+                    : `${stats.groups} ${detectedLabel} group(s) detected`)
+        };
+    }
 }
+
+export default DuplicateHandler;

@@ -39,9 +39,10 @@ function safeQuery(fn, operation, defaultValue = null) {
  * @param {Object} options 
  * @returns {{ total, races: Array }}
  */
-export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asyncOnly = true }) {
+export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asyncOnly = true, includeRemoved = false }) {
     return safeQuery(() => {
-        let whereClause = "WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]' AND (is_removed IS NULL OR is_removed = 0)";
+        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
+        let whereClause = `WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]' AND ${removedPredicate}`;
         const params = [];
 
         if (asyncOnly) whereClause += ' AND is_async = 1';
@@ -69,8 +70,9 @@ export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asy
  * @param {Object} options
  * @returns {{ total, patterns: Array }}
  */
-export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' }) {
+export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all', includeRemoved = false }) {
     return safeQuery(() => {
+        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
         const conditions = [];
         if (type === 'emitters' || type === 'all')
             conditions.push("(event_emitters_json IS NOT NULL AND event_emitters_json != '[]')");
@@ -78,8 +80,8 @@ export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' })
             conditions.push("(event_listeners_json IS NOT NULL AND event_listeners_json != '[]')");
 
         const whereSql = conditions.length > 0
-            ? `WHERE (${conditions.join(' OR ')}) AND (is_removed IS NULL OR is_removed = 0)`
-            : 'WHERE (is_removed IS NULL OR is_removed = 0)';
+            ? `WHERE (${conditions.join(' OR ')}) AND ${removedPredicate}`
+            : `WHERE ${removedPredicate}`;
 
         const rows = db.prepare(`
             SELECT COUNT(*) OVER() as total_count,
@@ -102,9 +104,10 @@ export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' })
  * @param {Object} options
  * @returns {{ total, rows: Array }}
  */
-export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls = false, withErrorHandling = false }) {
+export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls = false, withErrorHandling = false, includeRemoved = false }) {
     return safeQuery(() => {
-        let whereClause = 'WHERE is_async = 1 AND (is_removed IS NULL OR is_removed = 0)';
+        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
+        let whereClause = `WHERE is_async = 1 AND ${removedPredicate}`;
         if (withNetworkCalls) whereClause += ' AND has_network_calls = 1';
         if (withErrorHandling) whereClause += ' AND has_error_handling = 1';
 
@@ -130,9 +133,10 @@ export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls =
  * @param {Object} options
  * @returns {{ total, rows: Array }}
  */
-export function querySocieties(db, { offset = 0, limit = 20, type }) {
+export function querySocieties(db, { offset = 0, limit = 20, type, includeRemoved = false }) {
     return safeQuery(() => {
-        let whereClause = 'WHERE (is_removed IS NULL OR is_removed = 0)';
+        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
+        let whereClause = `WHERE ${removedPredicate}`;
         const params = [];
         if (type) { whereClause += ' AND type = ?'; params.push(type); }
 
@@ -212,7 +216,8 @@ export function queryDuplicates(db, {
     excludeTests = true,
     minLines = 3,
     atomTypes = DEFAULT_DUPLICATE_ATOM_TYPES,
-    mode = DUPLICATE_MODES.STRICT
+    mode = DUPLICATE_MODES.STRICT,
+    includeRemoved = false
 } = {}) {
     return safeQuery(() => {
         const duplicateKeySql = getDuplicateKeySqlForMode(mode, 'dna_json');
@@ -222,21 +227,24 @@ export function queryDuplicates(db, {
             excludeTests,
             atomTypes,
             minLines,
-            requireValidDna: true
+            requireValidDna: true,
+            includeRemoved
         });
         const mainWhere = buildDuplicateWhereSql({
             alias: 'a',
             excludeTests,
             atomTypes,
             minLines,
-            requireValidDna: false
+            requireValidDna: false,
+            includeRemoved
         });
         const statsWhere = buildDuplicateWhereSql({
             alias: 'a_stats',
             excludeTests,
             atomTypes,
             minLines,
-            requireValidDna: false
+            requireValidDna: false,
+            includeRemoved
         });
 
         const rows = db.prepare(`
@@ -292,7 +300,7 @@ export function queryDuplicates(db, {
  * @param {Object} options
  * @returns {{ rows: Array, stats: Object }}
  */
-export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow'] } = {}) {
+export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow'], includeRemoved = false } = {}) {
     return safeQuery(() => {
         const testFilterCte = excludeTests
             ? `AND file_path NOT LIKE '%.test.js'
@@ -341,7 +349,7 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
               ${testFilterCte}
               ${typeFilterCte}
               AND (a.lines_of_code IS NULL OR a.lines_of_code >= ${minLines})
-              AND (a.is_removed IS NULL OR a.is_removed = 0)
+              AND (${includeRemoved ? '1=1' : 'a.is_removed IS NULL OR a.is_removed = 0'})
               AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
               -- Exclude standard getter/setter properties and empty functions
               AND ad.deps_signature IS NOT NULL
@@ -403,7 +411,7 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
               ${testFilterCte.replace(/file_path/g, 'a.file_path')}
               ${typeFilterCte.replace(/atom_type/g, 'a.atom_type')}
               AND (a.lines_of_code IS NULL OR a.lines_of_code >= ${minLines})
-              AND (a.is_removed IS NULL OR a.is_removed = 0)
+              AND (${includeRemoved ? '1=1' : 'a.is_removed IS NULL OR a.is_removed = 0'})
               AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
               AND ad.deps_signature IS NOT NULL
             GROUP BY a.is_async, a.parameter_count, ad.deps_signature

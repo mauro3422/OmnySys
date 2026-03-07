@@ -171,7 +171,8 @@ export const TABLE_DEFINITIONS = {
       { name: 'context_json', type: 'TEXT', nullable: true, description: 'Metadata adicional' },
       { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si la relación fue removida', addedIn: 'v3.0.1' },
       { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
-      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' },
+      { name: 'lifecycle_status', type: 'TEXT', default: 'active', description: 'Estado: active, removed, archived', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_relations_source', columns: ['source_id'] },
@@ -200,6 +201,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'depends_on_json', type: 'TEXT', nullable: true, description: 'Dependencias directas' },
       { name: 'transitive_depends_json', type: 'TEXT', nullable: true, description: 'Dependencias transitivas' },
       { name: 'transitive_dependents_json', type: 'TEXT', nullable: true, description: 'Dependientes transitivos' },
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el análisis fue removido', addedIn: 'v3.0.1' },
       { name: 'updated_at', type: 'TEXT', nullable: false, description: 'Fecha de actualización' }
     ],
     indexes: [
@@ -218,7 +220,10 @@ export const TABLE_DEFINITIONS = {
       { name: 'connection_key', type: 'TEXT', nullable: true, description: 'Nombre de variable/evento/env' },
       { name: 'context_json', type: 'TEXT', nullable: true, description: 'Metadata adicional' },
       { name: 'weight', type: 'REAL', default: 1.0, description: 'Peso de la conexión' },
-      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' }
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si la conexión fue removida', addedIn: 'v3.0.1' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' },
+      { name: 'lifecycle_status', type: 'TEXT', default: 'active', description: 'Estado: active, removed, archived', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_semantic_conn_type', columns: ['connection_type'] },
@@ -255,6 +260,49 @@ export const TABLE_DEFINITIONS = {
     indexes: [
       { name: 'idx_atom_versions_file', columns: ['file_path'] }
     ]
+  },
+
+  modules: {
+    description: 'Metadatos por módulo (agrupación de archivos)',
+    columns: [
+      { name: 'path', type: 'TEXT', pk: true, description: 'Ruta del módulo' },
+      { name: 'name', type: 'TEXT', nullable: false, description: 'Nombre del módulo' },
+      { name: 'type', type: 'TEXT', nullable: true, description: 'Tipo de módulo (ej: library, feature, component)' },
+      { name: 'file_count', type: 'INTEGER', default: 0, description: 'Cantidad de archivos en el módulo' },
+      { name: 'atom_count', type: 'INTEGER', default: 0, description: 'Cantidad de átomos en el módulo' },
+      { name: 'complexity_score', type: 'REAL', default: 0, description: 'Complejidad agregada del módulo' },
+      { name: 'cohesion_score', type: 'REAL', default: 0, description: 'Cohesión del módulo (0-1)' },
+      { name: 'coupling_score', type: 'REAL', default: 0, description: 'Acoplamiento del módulo (0-1)' },
+      { name: 'risk_score', type: 'REAL', default: 0, description: 'Score de riesgo agregado (0-1)' },
+      { name: 'metadata_json', type: 'TEXT', nullable: true, description: 'Metadata adicional del módulo' },
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el módulo fue removido', addedIn: 'v3.0.1' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
+    ],
+    indexes: [
+      { name: 'idx_modules_path', columns: ['path'] }
+    ]
+  },
+
+  file_dependencies: {
+    description: 'Grafo de dependencias entre archivos',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'source_path', type: 'TEXT', nullable: false, description: 'Archivo origen' },
+      { name: 'target_path', type: 'TEXT', nullable: false, description: 'Archivo destino' },
+      { name: 'dependency_type', type: 'TEXT', nullable: false, description: 'Tipo: local, npm, builtin, alias' },
+      { name: 'symbols_json', type: 'TEXT', nullable: true, description: 'Símbolos importados' },
+      { name: 'reason', type: 'TEXT', nullable: true, description: 'Razón de la dependencia' },
+      { name: 'is_dynamic', type: 'BOOLEAN', default: 0, description: '¿Import dinámico?' },
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si la dependencia fue removida', addedIn: 'v3.0.1' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
+    ],
+    indexes: [
+      { name: 'idx_file_deps_source', columns: ['source_path'] },
+      { name: 'idx_file_deps_target', columns: ['target_path'] },
+      { name: 'idx_file_deps_type', columns: ['dependency_type'] }
+    ],
+    unique: [['source_path', 'target_path', 'dependency_type']]
   },
 
   atom_events: {
@@ -311,7 +359,10 @@ export const TABLE_DEFINITIONS = {
       { name: 'external_deps_count', type: 'INTEGER', nullable: true, description: 'Cantidad de dependencias externas' },
       { name: 'complexity_score', type: 'REAL', nullable: true, description: 'Score de complejidad ciclomática agregada' },
       { name: 'propagation_score', type: 'REAL', nullable: true, description: 'Score de propagación de riesgo' },
-      { name: 'assessed_at', type: 'TEXT', nullable: false, description: 'Timestamp de evaluación' }
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si la evaluación fue removida', addedIn: 'v3.0.1' },
+      { name: 'assessed_at', type: 'TEXT', nullable: false, description: 'Timestamp de evaluación' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' },
+      { name: 'lifecycle_status', type: 'TEXT', default: 'active', description: 'Estado: active, removed, archived', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_risk_level', columns: ['risk_level'] },
@@ -415,6 +466,24 @@ export function hasColumn(tableName, columnName) {
 }
 
 /**
+ * Genera la definición SQL de una columna
+ */
+function _getColumnDefinitionSQL(col, options = {}) {
+  let sql = `${col.name} ${col.type}`;
+
+  if (col.pk) sql += ' PRIMARY KEY';
+  if (col.autoIncrement) sql += ' AUTOINCREMENT';
+  if (!col.nullable && !col.pk && !options.isAlter) sql += ' NOT NULL';
+
+  if (col.default !== undefined) {
+    const defaultVal = typeof col.default === 'string' ? `'${col.default}'` : col.default;
+    sql += ` DEFAULT ${defaultVal}`;
+  }
+
+  return sql;
+}
+
+/**
  * Obtiene una columna específica
  */
 export function getColumn(tableName, columnName) {
@@ -429,29 +498,13 @@ export function generateCreateTableSQL(tableName) {
   const table = TABLE_DEFINITIONS[tableName];
   if (!table) throw new Error(`Table ${tableName} not found in registry`);
 
-  const columnDefs = table.columns.map(col => {
-    let sql = `${col.name} ${col.type}`;
+  const columnDefs = table.columns.map(col => _getColumnDefinitionSQL(col));
 
-    if (col.pk) sql += ' PRIMARY KEY';
-    if (col.autoIncrement) sql += ' AUTOINCREMENT';
-    if (!col.nullable && !col.pk) sql += ' NOT NULL';
-    if (col.default !== undefined) sql += ` DEFAULT ${typeof col.default === 'string' ? `'${col.default}'` : col.default}`;
-
-    return sql;
-  });
-
-  // Agregar constraints UNIQUE
   if (table.unique) {
-    for (const uniqueCols of table.unique) {
+    table.unique.forEach(uniqueCols => {
       columnDefs.push(`UNIQUE(${uniqueCols.join(', ')})`);
-    }
+    });
   }
-
-  // Agregar FOREIGN KEYs (Removido para permitir discovery cross-file sin errores de constraint)
-  /* if (tableName === 'atom_relations') {
-    columnDefs.push('FOREIGN KEY (source_id) REFERENCES atoms(id) ON DELETE CASCADE');
-    columnDefs.push('FOREIGN KEY (target_id) REFERENCES atoms(id) ON DELETE CASCADE');
-  } */
 
   return `CREATE TABLE IF NOT EXISTS ${tableName} (\n    ${columnDefs.join(',\n    ')}\n);`;
 }
@@ -487,13 +540,7 @@ export function generateAddColumnSQL(tableName, columnName) {
   const column = getColumn(tableName, columnName);
   if (!column) throw new Error(`Column ${columnName} not found in registry`);
 
-  let sql = `ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type}`;
-
-  if (!column.nullable && column.default !== undefined) {
-    sql += ` DEFAULT ${typeof column.default === 'string' ? `'${column.default}'` : column.default}`;
-  }
-
-  return sql;
+  return `ALTER TABLE ${tableName} ADD COLUMN ${_getColumnDefinitionSQL(column, { isAlter: true })}`;
 }
 
 /**
@@ -518,51 +565,39 @@ export function generateSchemaReport(existingTablesInfo) {
     totalExistingColumns: 0
   };
 
-  for (const [tableName, tableDef] of Object.entries(TABLE_DEFINITIONS)) {
+  Object.entries(TABLE_DEFINITIONS).forEach(([tableName, tableDef]) => {
     const existingTable = existingTablesInfo.find(t => t.name === tableName);
+    const registeredColumns = tableDef.columns;
 
     if (!existingTable) {
       report.tables[tableName] = {
         status: 'missing',
-        registeredColumns: tableDef.columns.length,
+        registeredColumns: registeredColumns.length,
         existingColumns: 0
       };
-      report.missingColumns.push({
-        table: tableName,
-        columns: tableDef.columns.map(c => c.name)
-      });
+      report.missingColumns.push({ table: tableName, columns: registeredColumns.map(c => c.name) });
     } else {
-      const missing = detectMissingColumns(tableName, existingTable.columns);
       const existingNames = new Set(existingTable.columns.map(c => c.name));
-      const registeredNames = new Set(tableDef.columns.map(c => c.name));
+      const registeredNames = new Set(registeredColumns.map(c => c.name));
+
+      const missing = registeredColumns.filter(col => !existingNames.has(col.name)).map(c => c.name);
       const extra = [...existingNames].filter(name => !registeredNames.has(name));
 
       report.tables[tableName] = {
         status: missing.length === 0 ? 'ok' : 'mismatch',
-        registeredColumns: tableDef.columns.length,
+        registeredColumns: registeredColumns.length,
         existingColumns: existingTable.columns.length,
-        missingColumns: missing.map(c => c.name),
+        missingColumns: missing,
         extraColumns: extra
       };
 
-      if (missing.length > 0) {
-        report.missingColumns.push({
-          table: tableName,
-          columns: missing.map(c => c.name)
-        });
-      }
-
-      if (extra.length > 0) {
-        report.extraColumns.push({
-          table: tableName,
-          columns: extra
-        });
-      }
+      if (missing.length > 0) report.missingColumns.push({ table: tableName, columns: missing });
+      if (extra.length > 0) report.extraColumns.push({ table: tableName, columns: extra });
     }
 
-    report.totalRegisteredColumns += tableDef.columns.length;
+    report.totalRegisteredColumns += registeredColumns.length;
     report.totalExistingColumns += report.tables[tableName].existingColumns;
-  }
+  });
 
   return report;
 }
@@ -571,21 +606,21 @@ export function generateSchemaReport(existingTablesInfo) {
  * Exporta el schema completo como SQL
  */
 export function exportSchemaSQL() {
-  let sql = '-- OmnySystem SQLite Schema\n';
-  sql += `-- Generated from schema-registry.js\n`;
-  sql += `-- ${new Date().toISOString()}\n\n`;
+  const header = [
+    '-- OmnySystem SQLite Schema',
+    `-- Generated from schema-registry.js`,
+    `-- ${new Date().toISOString()}\n`
+  ].join('\n');
 
-  for (const tableName of Object.keys(TABLE_DEFINITIONS)) {
-    sql += `-- ${TABLE_DEFINITIONS[tableName].description}\n`;
-    sql += generateCreateTableSQL(tableName) + '\n\n';
+  const body = Object.keys(TABLE_DEFINITIONS).map(tableName => {
+    const tableSql = generateCreateTableSQL(tableName);
+    const indexesSql = generateCreateIndexesSQL(tableName).join('\n');
+    const description = `-- ${TABLE_DEFINITIONS[tableName].description}`;
 
-    const indexes = generateCreateIndexesSQL(tableName);
-    if (indexes.length > 0) {
-      sql += indexes.join('\n') + '\n\n';
-    }
-  }
+    return [description, tableSql, indexesSql].filter(Boolean).join('\n');
+  }).join('\n\n');
 
-  return sql;
+  return header + body;
 }
 
 export default {

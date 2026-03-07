@@ -48,6 +48,7 @@ import { get_schema } from './get-schema.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
 import { technical_debt_report } from './technical-debt-report.js';
+import { get_atom_history } from './get-atom-history.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
@@ -64,6 +65,19 @@ export const toolDefinitions = [
         options: { type: 'object', description: 'Opciones extra como maxDepth, includeSimilar, includeCode, includeSemantic, etc.' }
       },
       required: ['queryType']
+    }
+  },
+  {
+    name: 'mcp_omnysystem_get_atom_history',
+    description: 'Recupera el historial de versiones de un átomo específico (función/clase) consultando los logs de Git. Permite ver quién, cuándo y por qué cambió el código.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        symbolName: { type: 'string', description: 'Nombre del símbolo (función/clase) a consultar' },
+        filePath: { type: 'string', description: 'Ruta del archivo (relativa al proyecto)' },
+        limit: { type: 'number', default: 10, description: 'Número máximo de versiones a recuperar' }
+      },
+      required: ['symbolName', 'filePath']
     }
   },
   {
@@ -351,32 +365,33 @@ export const toolDefinitions = [
 
 export const toolHandlers = {
   // Super Tools (Lectura)
-  query_graph: query_graph,
-  traverse_graph: traverse_graph,
-  impact_atomic: impact_atomic,
-  aggregate_metrics: aggregate_metrics,
-  get_technical_debt_report: technical_debt_report,
-  check_pipeline_integrity: check_pipeline_integrity,
+  mcp_omnysystem_query_graph: query_graph,
+  mcp_omnysystem_traverse_graph: traverse_graph,
+  mcp_omnysystem_impact_atomic: impact_atomic,
+  mcp_omnysystem_aggregate_metrics: aggregate_metrics,
+  mcp_omnysystem_get_technical_debt_report: technical_debt_report,
+  mcp_omnysystem_check_pipeline_integrity: check_pipeline_integrity,
 
   // Action Tools (Escritura)
-  atomic_edit: atomic_edit,
-  atomic_write: atomic_write,
-  move_file: move_file,
-  fix_imports: fix_imports,
-  execute_solid_split: execute_solid_split,
-  suggest_refactoring: suggest_refactoring,
-  suggest_architecture: suggest_architecture,
-  validate_imports: validate_imports,
-  generate_tests: generate_tests,
-  generate_batch_tests: generate_batch_tests,
+  mcp_omnysystem_atomic_edit: atomic_edit,
+  mcp_omnysystem_atomic_write: atomic_write,
+  mcp_omnysystem_move_file: move_file,
+  mcp_omnysystem_fix_imports: fix_imports,
+  mcp_omnysystem_execute_solid_split: execute_solid_split,
+  mcp_omnysystem_suggest_refactoring: suggest_refactoring,
+  mcp_omnysystem_suggest_architecture: suggest_architecture,
+  mcp_omnysystem_validate_imports: validate_imports,
+  mcp_omnysystem_generate_tests: generate_tests,
+  mcp_omnysystem_generate_batch_tests: generate_batch_tests,
 
   // Admin & Debug
-  get_schema: get_schema,
-  get_server_status: get_server_status,
-  get_recent_errors: get_recent_errors,
-  restart_server: restart_server,
-  detect_performance_hotspots: detect_performance_hotspots,
-  execute_sql: execute_sql
+  mcp_omnysystem_get_schema: get_schema,
+  mcp_omnysystem_get_server_status: get_server_status,
+  mcp_omnysystem_get_recent_errors: get_recent_errors,
+  mcp_omnysystem_restart_server: restart_server,
+  mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots,
+  mcp_omnysystem_execute_sql: execute_sql,
+  mcp_omnysystem_get_atom_history: get_atom_history
 };
 
 // Export default para compatibilidad

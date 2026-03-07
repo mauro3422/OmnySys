@@ -52,6 +52,18 @@ export class SQLiteAdapterCore extends AtomRepository {
   }
 
   /**
+   * Obtiene el predicado SQL standard para filtrar registros removidos.
+   * @param {string} [tableAlias] - Alias de la tabla (ej: 'a')
+   * @param {boolean} [includeRemoved=false] - Si es true, retorna '1=1'
+   * @returns {string} Predicado SQL
+   */
+  getStandardPredicate(tableAlias = '', includeRemoved = false) {
+    if (includeRemoved) return '1=1';
+    const prefix = tableAlias ? `${tableAlias}.` : '';
+    return `(${prefix}is_removed IS NULL OR ${prefix}is_removed = 0)`;
+  }
+
+  /**
    * Prepara statements frecuentes para mejor performance
    * @protected
    */

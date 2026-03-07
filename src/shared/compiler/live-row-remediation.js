@@ -6,6 +6,7 @@
  */
 
 import { buildLiveRowReconciliationPlan } from './live-row-reconciliation.js';
+import { buildStandardPlan } from './remediation-plan-builder.js';
 
 export function buildLiveRowRemediationPlan(db, options = {}) {
   const reconciliationPlan = buildLiveRowReconciliationPlan(db, options);
@@ -17,12 +18,15 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
 
   const severity = (staleFileRows + staleRiskRows) > 0 ? 'warning' : 'ok';
 
-  return {
+  return buildStandardPlan({
+    total: staleFileRows + staleRiskRows,
+    items: [], // Reconciliation plan returns samples directly
+    recommendation: 'Reconcile support tables with the live atom graph.',
     severity,
     summary: reconciliationPlan.summary,
     staleFileSamples: reconciliationPlan.staleFileSamples,
     staleRiskSamples: reconciliationPlan.staleRiskSamples,
-    recommendedActions: [
+    actions: [
       liveFileTotal > 0
         ? 'Use atom-backed live file totals as the source of truth for compiler telemetry.'
         : 'Populate atoms before reconciling support-table drift.',
@@ -33,5 +37,5 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
         ? 'Purge or archive stale risk rows after their owning files disappear from atoms.'
         : 'risk_assessments is aligned with the live atom graph.'
     ]
-  };
+  });
 }

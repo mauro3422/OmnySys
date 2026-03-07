@@ -13,27 +13,12 @@ import {
   isCompilerRuntimeFile
 } from './file-discovery.js';
 
-function normalizePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
-
-function shouldScanCompilerFile(filePath = '') {
-  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
-}
-
-function createFinding({ rule, severity, policyArea, message, recommendation }) {
-  return {
-    rule,
-    severity,
-    policyArea,
-    message,
-    recommendation
-  };
-}
-
-function countMatches(source = '', pattern) {
-  return (source.match(pattern) || []).length;
-}
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  createFinding,
+  countMatches
+} from './conformance-utils.js';
 
 function countSharedStateSignals(source = '') {
   return countMatches(

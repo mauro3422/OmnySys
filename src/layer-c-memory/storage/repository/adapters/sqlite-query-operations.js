@@ -17,7 +17,8 @@ import { rowToAtom } from './helpers/converters.js';
 export class SQLiteQueryOperations extends SQLiteCrudOperations {
 
   query(filter = {}, options = {}) {
-    let sql = 'SELECT * FROM atoms WHERE 1=1';
+    const predicate = this.getStandardPredicate('', options.includeRemoved);
+    let sql = `SELECT * FROM atoms WHERE ${predicate}`;
     const params = [];
 
     if (filter.filePath) {
@@ -203,7 +204,7 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
       .map(([fingerprint, atoms]) => {
         const filePaths = [...new Set(atoms.map(a => a.filePath))];
         const [verb, domain, entity] = fingerprint.split(':');
-        
+
         return {
           semanticFingerprint: fingerprint,
           concept: { verb, domain, entity },

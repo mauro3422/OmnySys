@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.105 - SOLID Standardization & Git Unification](changelogs/v0.9.105.md)
 - [v0.9.104 - Core Consolidation & Genetic Lineage](changelogs/v0.9.104.md)
 - [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
 - [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
@@ -29,6 +30,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **0.9.105** | 2026-03-07 | SOLID standardization of tool handlers, Git bridge unification, event-sourcing prototype, and database health cleanup (Grade F fix). |
 | **0.9.103** | 2026-03-07 | Genetic Preservation Policy, Soft Delete migration for atoms/issues, schema stabilization, and 100/100 Health Score recovery. |
 | **0.9.102** | 2026-03-07 | Pipeline Integrity Detector, auto-audit system, technical debt consolidation, unified duplicate detection API. |
 | **0.9.101** | 2026-03-06 | Unified scanned-file manifest, aligned scanner/hash/index file universes, and exposed persisted file coverage in compiler explainability. |
@@ -47,18 +49,28 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.103 (2026-03-07)
+## Latest Release: v0.9.105 (2026-03-07)
 
-**Genetic Preservation Policy & System Stabilization**
+**SOLID Standardization & Git Unification**
 
 ### Key Achievements
 
-1. **Genetic Preservation Migration**: Transitioned from physical deletions to a logical "Soft Delete" model across the entire pipeline (`live-row-cleanup.js`, `issues.js`, `watcher-issue-persistence.js`).
-2. **System Health Recovery**: Restored system integrity to **100/100 (Grade A)**, resolving technical debt and schema drift issues.
-3. **Watcher Contract Sync**: Synchronized diagnostics lifecycle metadata between the file watcher and the persistence layer.
-4. **Genetic-Aware APIs**: Updated `SemanticQueryTool` and query logic to intelligently filter historical data while maintaining the system's "Genetic Memory".
+1. **SOLID Handler Pattern**: Decoupled `SemanticQueryTool` and `QueryGraphTool` logic into specialized handlers (`GraphQueryHandler`, `SocietyHandler`, `DuplicateHandler`, etc.), improving maintainability and reducing "God Object" complexity.
+2. **Git Bridge Unification**: Created `GitTerminalBridge` as the central authority for all shell and git interactions, replacing fragmented `exec` calls across the project.
+3. **Database Health Restoration**: Developed and executed `cleanup-orphans.js`, purging **~4600 orphaned records** (atoms and relations) and resolving the "Grade F" integrity issue.
+4. **Event Sourcing Prototype**: Implemented native event tracking in `SQLiteCrudOperations`, capturing `created`, `updated`, and `deleted` events in the `atom_events` table for better traceability.
+5. **High-Coherence History**: Refactored `get_atom_history` to provide strict input correlation and include historical code snippets in the response.
+
+### New & Refactored Files
+
+- `src/shared/utils/git-terminal-bridge.js` (Canonical Git service)
+- `src/layer-c-memory/mcp/tools/semantic/handlers/` (New SOLID handlers)
+- `scripts/cleanup-orphans.js` (Database janitor)
+- `src/layer-c-memory/storage/repository/adapters/sqlite-crud-operations.js` (Event sourcing logic)
 
 ---
+
+## Previous Release: v0.9.103 (2026-03-07)
 
 ## Previous Release: v0.9.102 (2026-03-07)
 

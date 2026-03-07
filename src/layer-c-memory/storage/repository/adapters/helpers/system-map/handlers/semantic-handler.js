@@ -11,40 +11,47 @@ export function saveSemanticData(db, connections, issues, now) {
   // Connections
   repo.clearTable('semantic_connections');
   if (connections?.length) {
-    const connStmt = db.prepare(`
-      INSERT INTO semantic_connections (source_path, target_path, connection_type, connection_key, weight, context_json, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    for (const conn of connections) {
-      connStmt.run(
-        conn.from,
-        conn.to,
-        conn.type || 'unknown',
-        conn.key || conn.connectionKey || null,
-        typeof conn.weight === 'number' ? conn.weight : 1.0,
-        safeJson(conn.metadata),
-        now
-      );
-    }
+    const connRows = connections.map(conn => ({
+      source_path: conn.from,
+      target_path: conn.to,
+      connection_type: conn.type || 'unknown',
+      connection_key: conn.key || conn.connectionKey || null,
+      weight: typeof conn.weight === 'number' ? conn.weight : 1.0,
+      context_json: safeJson(conn.metadata),
+      created_at: now
+    }));
+
+    repo.saveTableRows('semantic_connections',
+      ['source_path', 'target_path', 'connection_type', 'connection_key', 'weight', 'context_json', 'created_at'],
+      connRows,
+      'connection_key'
+    );
   }
 
   // Issues — only persist entries with a valid file_path (NOT NULL constraint)
   repo.clearTable('semantic_issues');
   const validIssues = (issues || []).filter(i => i.filePath || i.file_path);
   if (validIssues.length) {
-    const issueStmt = db.prepare(`
-      INSERT INTO semantic_issues (file_path, issue_type, severity, message, context_json, detected_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    for (const issue of validIssues) {
-      issueStmt.run(issue.filePath, issue.type || 'unknown', issue.severity || 'low', issue.description || issue.message || '', safeJson({ symbol: issue.symbol }), now);
-    }
+    const issueRows = validIssues.map(issue => ({
+      file_path: issue.filePath || issue.file_path,
+      issue_type: issue.type || 'unknown',
+      severity: issue.severity || 'low',
+      message: issue.description || issue.message || '',
+      context_json: safeJson({ symbol: issue.symbol }),
+      detected_at: now
+    }));
+
+    repo.saveTableRows('semantic_issues',
+      ['file_path', 'issue_type', 'severity', 'message', 'context_json', 'detected_at'],
+      issueRows,
+      'file_path'
+    );
   }
 }
 
 export function loadSemanticConnections(db) {
-  const rows = db.prepare('SELECT * FROM semantic_connections').all();
-  return rows.map(r => ({
+  const repo = new BaseSqlRepository(db, 'SemanticHandler');
+  return repo.loadTableRows('semantic_connections', '(is_removed IS NULL OR is_removed = 0)', [], r => ({
     from: r.source_path,
     to: r.target_path,
     type: r.connection_type,
@@ -53,8 +60,8 @@ export function loadSemanticConnections(db) {
 }
 
 export function loadSemanticIssues(db) {
-  const rows = db.prepare('SELECT * FROM semantic_issues').all();
-  return rows.map(r => {
+  const repo = new BaseSqlRepository(db, 'SemanticHandler');
+  return repo.loadTableRows('semantic_issues', '(is_removed IS NULL OR is_removed = 0)', [], r => {
     const context = safeParseJson(r.context_json) || {};
     return {
       filePath: r.file_path,

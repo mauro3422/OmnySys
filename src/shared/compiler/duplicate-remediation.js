@@ -4,6 +4,11 @@
  * @module shared/compiler/duplicate-remediation
  */
 
+import {
+  buildStandardPlan,
+  buildStandardItem
+} from './remediation-plan-builder.js';
+
 function pickCanonicalInstance(instances = []) {
   return [...instances]
     .sort((a, b) => {
@@ -34,23 +39,26 @@ function getDuplicateGroupActions(group = {}, canonical = null) {
 export function buildDuplicateRemediation(group = {}) {
   const canonical = pickCanonicalInstance(group.instances);
 
-  return {
+  return buildStandardItem({
+    id: canonical?.id,
+    name: canonical?.name,
+    diagnosis: `Detected duplicate DNA cluster with ${group.groupSize} instances.`,
+    actions: getDuplicateGroupActions(group, canonical),
+    // Extensions
     groupSize: group.groupSize || 0,
     urgencyScore: group.urgencyScore || 0,
     canonical,
-    duplicateFiles: [...new Set((group.instances || []).map((instance) => instance.file))],
-    recommendedActions: getDuplicateGroupActions(group, canonical)
-  };
+    duplicateFiles: [...new Set((group.instances || []).map((instance) => instance.file))]
+  });
 }
 
 export function buildDuplicateRemediationPlan(groups = []) {
   const items = groups.map(buildDuplicateRemediation);
 
-  return {
-    totalGroups: items.length,
+  return buildStandardPlan({
+    total: items.length,
     items,
-    recommendation: items.length > 0
-      ? 'Consolidate duplicate DNA groups around a canonical implementation before the cluster grows.'
-      : 'No duplicate groups require remediation.'
-  };
+    recommendation: 'Consolidate duplicate DNA groups around a canonical implementation before the cluster grows.',
+    emptyRecommendation: 'No duplicate groups require remediation.'
+  });
 }

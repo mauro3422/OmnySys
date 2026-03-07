@@ -66,15 +66,47 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
     atom.file = atom.filePath;
     atom.id = `${atom.filePath}::${atom.name}`;
 
-    const row = atomToRow(atom);
+    const normalizedId = atom.id;
     const now = new Date().toISOString();
 
+    // 1. Snapshot del estado anterior (para diffing/historia)
+    const atomBefore = this.statements.getById.get(normalizedId);
+
+    const row = atomToRow(atom);
     const values = this._buildAtomInsertValues(row, now);
 
+    // 2. Guardar/Actualizar átomo
     this.statements.insertAtom.run(...values);
+
+    // 3. Registrar evento (Event Sourcing prototype)
+    if (atomBefore) {
+      // Si el DNA cambió, es un evento de actualización semántica
+      const dnaBefore = atomBefore.dna_json;
+      const dnaAfter = row.dna_json;
+
+      if (dnaBefore !== dnaAfter) {
+        try {
+          this.db.prepare(`
+            INSERT INTO atom_events (atom_id, event_type, before_state, after_state, timestamp, source)
+            VALUES (?, 'updated', ?, ?, ?, 'extractor')
+          `).run(normalizedId, dnaBefore, dnaAfter, now);
+        } catch (e) {
+          this._logger.warn(`[SQLiteAdapter] Failed to log update event: ${e.message}`);
+        }
+      }
+    } else {
+      // Evento de creación
+      try {
+        this.db.prepare(`
+          INSERT INTO atom_events (atom_id, event_type, after_state, timestamp, source)
+          VALUES (?, 'created', ?, ?, 'extractor')
+        `).run(normalizedId, row.dna_json, now);
+      } catch (e) {
+        this._logger.warn(`[SQLiteAdapter] Failed to log creation event: ${e.message}`);
+      }
+    }
+
     this._logger.debug(`[SQLiteAdapter] Saved atom: ${atom.id}`);
-    // WAL checkpoint es manejado automáticamente por SQLite al superar el umbral.
-    // No forzamos checkpoint manual para evitar bloqueos innecesarios en escrituras.
     return atom;
   }
 

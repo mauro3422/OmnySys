@@ -5,6 +5,11 @@
  * @module shared/compiler/pipeline-orphan-remediation
  */
 
+import {
+  buildStandardPlan,
+  buildStandardItem
+} from './remediation-plan-builder.js';
+
 function getRemediationActions(orphan = {}) {
   const importerCount = Math.max(
     Number(orphan?.dependency_importer_count) || 0,
@@ -34,24 +39,24 @@ export function buildPipelineOrphanRemediation(orphan = {}) {
     Number(orphan?.dependency_importer_count) || 0,
     Number(orphan?.file_importer_count) || 0
   );
-  return {
+  return buildStandardItem({
     name: orphan.name,
     file: orphan.file_path,
+    diagnosis: 'Pipeline atom appears disconnected from both function-level and file-level reachability.',
+    actions: getRemediationActions(orphan),
+    // Extensions
     complexity: orphan.complexity,
     effectiveCallers: orphan.callers_count || 0,
     callees: orphan.callees_count || 0,
-    fileImporters: importerCount,
-    diagnosis: 'Pipeline atom appears disconnected from both function-level and file-level reachability.',
-    recommendedActions: getRemediationActions(orphan)
-  };
+    fileImporters: importerCount
+  });
 }
 
 export function buildPipelineOrphanRemediationPlan(orphans = []) {
-  return {
+  return buildStandardPlan({
     total: orphans.length,
     items: orphans.map(buildPipelineOrphanRemediation),
-    recommendation: orphans.length > 0
-      ? 'Review pipeline orphan candidates before deleting or rewiring them.'
-      : 'No disconnected pipeline atoms detected.'
-  };
+    recommendation: 'Review pipeline orphan candidates before deleting or rewiring them.',
+    emptyRecommendation: 'No disconnected pipeline atoms detected.'
+  });
 }

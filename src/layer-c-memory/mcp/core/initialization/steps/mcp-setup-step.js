@@ -170,7 +170,7 @@ export class McpSetupStep extends InitializationStep {
         }
       }
     });
-    
+
     const resultWithProvenance = {
       ...resultWithErrors,
       _provenance: provenance

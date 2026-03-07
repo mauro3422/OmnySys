@@ -13,56 +13,13 @@ import {
   isCompilerRuntimeFile
 } from './file-discovery.js';
 
-function normalizePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  looksLikeAsyncRuntimeFlow,
+  createPositionalFinding as createFinding
+} from './conformance-utils.js';
 
-function shouldScanCompilerFile(filePath = '') {
-  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
-}
-
-function createFinding(rule, severity, policyArea, message, recommendation) {
-  return {
-    rule,
-    severity,
-    policyArea,
-    message,
-    recommendation
-  };
-}
-
-function stripComments(source = '') {
-  return String(source || '')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
-}
-
-function stripStrings(source = '') {
-  return String(source || '')
-    .replace(/'(?:\\.|[^'\\])*'/g, "''")
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
-    .replace(/`(?:\\.|[^`\\])*`/g, '``');
-}
-
-function countMatches(source = '', pattern) {
-  return (source.match(pattern) || []).length;
-}
-
-function countAsyncPressureSignals(source = '') {
-  return countMatches(
-    source,
-    /\bawait\b|Promise\.all|Promise\.race|Promise\.allSettled|setTimeout\(|setInterval\(|queueMicrotask\(|restartPromise|reconnectPromise|fetch\(|StreamableHTTP|spawn\(/g
-  );
-}
-
-function hasExplicitErrorBoundary(source = '') {
-  return (
-    /\btry\s*\{/.test(source) ||
-    /\.catch\s*\(/.test(source) ||
-    /Promise\.allSettled/.test(source) ||
-    /\bwithRetry\b|\bretryable\b|buildRestartLifecycleGuidance|buildCompilerReadinessStatus/.test(source)
-  );
-}
 
 function hasDelegatedRecoveryContract(source = '') {
   return (
@@ -73,14 +30,6 @@ function hasDelegatedRecoveryContract(source = '') {
   );
 }
 
-function looksLikeAsyncRuntimeFlow(source = '') {
-  return (
-    /\basync\b/.test(source) ||
-    /\bawait\b/.test(source) ||
-    /Promise\./.test(source) ||
-    /setTimeout\(|setInterval\(/.test(source)
-  );
-}
 
 function hasTimeoutOrRestartPressure(source = '') {
   return /(timeout|deadline|restart|reconnect|respawn|retry|bridge recovering|DAEMON_RESTARTING)/i.test(source);

@@ -13,34 +13,13 @@ import {
   isCompilerRuntimeFile
 } from './file-discovery.js';
 
-function normalizePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  createPositionalFinding as createFinding,
+  stripComments
+} from './conformance-utils.js';
 
-function shouldScanCompilerFile(filePath = '') {
-  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
-}
-
-function createFinding(rule, severity, policyArea, message, recommendation) {
-  return {
-    rule,
-    severity,
-    policyArea,
-    message,
-    recommendation
-  };
-}
-
-function stripComments(source = '') {
-  return String(source || '')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
-}
-
-function stripStrings(source = '') {
-  return String(source || '')
-    .replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, "''");
-}
 
 function importsCanonicalTestabilityApi(source = '') {
   return /evaluateAtomTestability|evaluateAtomRefactoringSignals|summarizeAtomTestability|compilerEvaluation\?\.(testability|testabilityScore)|testabilityScore|generate_tests|generate_batch_tests|suggest_refactoring|buildDeadCodeRemediation|buildCompilerDiagnostics/i.test(source);

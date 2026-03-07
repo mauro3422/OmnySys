@@ -1,7 +1,4 @@
-﻿/**
- * @fileoverview risk-handler.js
- * Persistence handlers for risk assessments
- */
+﻿import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { safeJson, safeParseJson } from '../../converters.js';
 
 function normalizeRiskFactors(riskEntry, fallbackLevel = 'low') {
@@ -75,7 +72,8 @@ function extractRiskRows(riskAssessment) {
 }
 
 export async function saveRiskAssessments(db, riskAssessment, now) {
-  db.prepare('DELETE FROM risk_assessments').run();
+  const repo = new BaseSqlRepository(db, 'RiskHandler');
+  repo.clearTable('risk_assessments');
 
   if (!riskAssessment) return;
 
@@ -84,36 +82,42 @@ export async function saveRiskAssessments(db, riskAssessment, now) {
 
   if (extractedRisks.length === 0) return;
 
-  const insertRisk = db.prepare(`
-    INSERT INTO risk_assessments (
-      file_path, risk_score, risk_level, factors_json,
-      shared_state_count, external_deps_count, complexity_score, propagation_score, assessed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
+  // Usamos el repository para asegurar que el archivo existe (como hacía la lógica original)
   const insertFile = db.prepare(`
     INSERT OR IGNORE INTO files (path, last_analyzed, total_lines)
     VALUES (?, ?, 0)
   `);
 
-  for (const item of extractedRisks) {
-    insertFile.run(item.file_path, isoNow);
-    insertRisk.run(
-      item.file_path,
-      item.risk_score,
-      item.risk_level,
-      safeJson(item.factors),
-      item.shared_state_count,
-      item.external_deps_count,
-      item.complexity_score,
-      item.propagation_score,
-      isoNow
-    );
-  }
+  repo.transaction(() => {
+    for (const item of extractedRisks) {
+      insertFile.run(item.file_path, isoNow);
+    }
+  });
+
+  const riskRows = extractedRisks.map(item => ({
+    file_path: item.file_path,
+    risk_score: item.risk_score,
+    risk_level: item.risk_level,
+    factors_json: safeJson(item.factors),
+    shared_state_count: item.shared_state_count,
+    external_deps_count: item.external_deps_count,
+    complexity_score: item.complexity_score,
+    propagation_score: item.propagation_score,
+    is_removed: 0,
+    assessed_at: isoNow,
+    updated_at: isoNow
+  }));
+
+  repo.saveTableRows('risk_assessments',
+    ['file_path', 'risk_score', 'risk_level', 'factors_json', 'shared_state_count', 'external_deps_count', 'complexity_score', 'propagation_score', 'is_removed', 'assessed_at', 'updated_at'],
+    riskRows,
+    'file_path'
+  );
 }
 
 export async function loadRiskAssessments(db) {
-  const rows = db.prepare('SELECT * FROM risk_assessments').all();
+  const repo = new BaseSqlRepository(db, 'RiskHandler');
+  const rows = repo.loadTableRows('risk_assessments', '(is_removed IS NULL OR is_removed = 0)');
   const assessment = {};
 
   for (const row of rows) {

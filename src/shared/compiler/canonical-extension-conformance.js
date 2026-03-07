@@ -12,23 +12,11 @@ import {
   isCompilerRuntimeFile
 } from './file-discovery.js';
 
-function normalizePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
-
-function shouldScanCompilerFile(filePath = '') {
-  return isCompilerRuntimeFile(normalizePath(filePath), COMPILER_TARGET_DIRS);
-}
-
-function createFinding(rule, severity, policyArea, message, recommendation) {
-  return {
-    rule,
-    severity,
-    policyArea,
-    message,
-    recommendation
-  };
-}
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  createPositionalFinding as createFinding
+} from './conformance-utils.js';
 
 function usesPrivateCompilerHelperImport(source = '') {
   return /from\s+['"][^'"]*shared\/compiler\/(?!index\.js)[^'"]+['"]/.test(source);

@@ -11,6 +11,10 @@ import {
 import {
   getSuspiciousDeadCodeCount
 } from './dead-code-reporting.js';
+import {
+  buildStandardPlan,
+  buildStandardItem
+} from './remediation-plan-builder.js';
 
 function getDeadCodeActions(atom) {
   const actions = [];
@@ -63,17 +67,18 @@ export function loadSuspiciousDeadCodeCandidates(db, options = {}) {
 export function buildDeadCodeRemediation(atom = {}) {
   const normalized = normalizeDeadCodeAtom(atom);
 
-  return {
+  return buildStandardItem({
     id: normalized.id,
     name: normalized.name,
     file: normalized.filePath,
-    linesOfCode: normalized.linesOfCode,
-    isExported: normalized.isExported,
     diagnosis: normalized.isExported
       ? 'Exported atom appears disconnected from the live graph.'
       : 'Non-exported atom has no observed callers or callees in production code.',
-    recommendedActions: getDeadCodeActions(normalized)
-  };
+    actions: getDeadCodeActions(normalized),
+    // Extra metadata preserved for UI consistency
+    linesOfCode: normalized.linesOfCode,
+    isExported: normalized.isExported
+  });
 }
 
 export function buildDeadCodeRemediationPlan(db, options = {}) {
@@ -89,15 +94,14 @@ export function buildDeadCodeRemediationPlan(db, options = {}) {
     allowExported
   }).map(buildDeadCodeRemediation);
 
-  return {
-    totalCandidates: getSuspiciousDeadCodeCount(db, {
+  return buildStandardPlan({
+    total: getSuspiciousDeadCodeCount(db, {
       alias: 'atoms',
       minLines,
       allowExported
     }),
     items,
-    recommendation: items.length > 0
-      ? 'Review suspicious dead-code atoms before deleting or rewiring them.'
-      : 'No suspicious dead-code atoms detected.'
-  };
+    recommendation: 'Review suspicious dead-code atoms before deleting or rewiring them.',
+    emptyRecommendation: 'No suspicious dead-code atoms detected.'
+  });
 }

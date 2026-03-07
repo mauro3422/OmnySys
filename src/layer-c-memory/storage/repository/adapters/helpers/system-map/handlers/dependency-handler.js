@@ -88,6 +88,6 @@ function groupLoadedDependencies(rows) {
 }
 
 export async function loadFileDependencies(db) {
-  const rows = db.prepare('SELECT * FROM file_dependencies').all();
+  const rows = db.prepare('SELECT * FROM file_dependencies WHERE (is_removed IS NULL OR is_removed = 0)').all();
   return groupLoadedDependencies(rows);
 }

@@ -1,10 +1,3 @@
-/**
- * @fileoverview Base tool for semantic graph queries.
- * Extends GraphQueryTool with helpers for race conditions, events, duplicates,
- * async analysis, and societies.
- *
- * @module mcp/tools/semantic/semantic-query-tool
- */
 
 import { GraphQueryTool } from '../../core/shared/base-tools/graph-query-tool.js';
 import {
@@ -25,7 +18,12 @@ import { RaceConditionHandler } from './handlers/race-condition-handler.js';
 import { DuplicateHandler } from './handlers/duplicate-handler.js';
 import { EventPatternHandler } from './handlers/event-pattern-handler.js';
 import { AsyncAnalysisHandler } from './handlers/async-analysis-handler.js';
+import { SocietyHandler } from './handlers/society-handler.js';
 
+/**
+ * requireSemanticRepo
+ * Ensures the repository is available for semantic queries.
+ */
 function requireSemanticRepo(repo) {
     if (!repo) {
         throw new Error('Repository not initialized');
@@ -33,85 +31,13 @@ function requireSemanticRepo(repo) {
     return repo;
 }
 
-function buildSocietyQuery(options = {}) {
-    const { connectionType, filePath } = options;
-    const clauses = ['WHERE (is_removed IS NULL OR is_removed = 0)'];
-    const params = [];
-
-    if (connectionType && connectionType !== 'all') {
-        clauses.push('AND connection_type = ?');
-        params.push(connectionType);
-    }
-
-    if (filePath) {
-        clauses.push('AND (source_path = ? OR target_path = ?)');
-        params.push(filePath, filePath);
-    }
-
-    return {
-        whereClause: clauses.join(' '),
-        params
-    };
-}
-
-function loadAtomSocietyRows(repo, options = {}) {
-    const { offset = 0, limit = 20 } = options;
-    const { whereClause, params } = buildSocietyQuery(options);
-    const rows = repo.db.prepare(`
-        SELECT COUNT(*) OVER() as total_count,
-               id, connection_type, source_path, target_path,
-               connection_key, context_json, weight, created_at
-        FROM semantic_connections
-        ${whereClause}
-        ORDER BY weight DESC, created_at DESC
-        LIMIT ? OFFSET ?
-    `).all(...params, limit, offset);
-
-    return {
-        total: rows[0]?.total_count || 0,
-        rows
-    };
-}
-
-function mapSocietyConnection(row) {
-    return {
-        id: row.id,
-        type: row.connection_type,
-        source: row.source_path,
-        target: row.target_path,
-        key: row.connection_key,
-        context: JSON.parse(row.context_json || '{}'),
-        weight: row.weight,
-        createdAt: row.created_at
-    };
-}
-
-function buildAtomSocietyResult(queryResult, semanticSurface, options = {}) {
-    const { offset = 0, limit = 20 } = options;
-
-    return {
-        total: queryResult.total,
-        offset,
-        limit,
-        hasMore: offset + limit < queryResult.total,
-        granularity: semanticSurface.contract,
-        semanticByType: semanticSurface.fileLevel.byType,
-        connections: queryResult.rows.map(mapSocietyConnection)
-    };
-}
-
-function buildDuplicateSummary(stats, hasUsableDnaCoverage, detectedLabel, unavailableLabel) {
-    return {
-        duplicateGroups: stats.groups || 0,
-        totalDuplicateInstances: stats.total_instances || 0,
-        status: !hasUsableDnaCoverage
-            ? unavailableLabel
-            : ((stats.groups || 0) === 0
-                ? `No ${detectedLabel} found`
-                : `${stats.groups} ${detectedLabel} group(s) detected`)
-    };
-}
-
+/**
+ * SemanticQueryTool
+ *
+ * Base tool for semantic graph queries. orchestrates multiple handlers
+ * to provide insights into race conditions, event patterns, duplicates,
+ * and functional societies.
+ */
 export class SemanticQueryTool extends GraphQueryTool {
     constructor(toolName) {
         super(toolName);
@@ -123,11 +49,12 @@ export class SemanticQueryTool extends GraphQueryTool {
         this.duplicateHandler = new DuplicateHandler();
         this.eventHandler = new EventPatternHandler();
         this.asyncHandler = new AsyncAnalysisHandler();
+        this.societyHandler = new SocietyHandler(this.logger);
     }
 
     async getRaceConditions(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, total } = queryRaceConditions(repo.db, options);
+        const { rows, total } = queryRaceConditions(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const { offset = 0, limit = 20 } = options;
         const races = this.raceHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, races };
@@ -135,7 +62,7 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     async getEventPatterns(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, total } = queryEventPatterns(repo.db, options);
+        const { rows, total } = queryEventPatterns(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const { offset = 0, limit = 20 } = options;
         const patterns = this.eventHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, patterns };
@@ -143,7 +70,7 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     async getAsyncAnalysis(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, total } = queryAsyncAtoms(repo.db, options);
+        const { rows, total } = queryAsyncAtoms(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const { offset = 0, limit = 20 } = options;
         const asyncAtoms = this.asyncHandler.handle(rows);
         return { total, offset, limit, hasMore: offset + limit < total, asyncAtoms };
@@ -151,27 +78,15 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     async getSocieties(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, total } = querySocieties(repo.db, options);
+        const { rows, total } = querySocieties(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const { offset = 0, limit = 20 } = options;
-
-        const societies = rows.map((row) => ({
-            id: row.id,
-            name: row.name,
-            type: row.type,
-            cohesion: row.cohesion_score,
-            entropy: row.entropy_score,
-            moleculeCount: row.molecule_count,
-            metadata: JSON.parse(row.metadata_json || '{}'),
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
-        }));
-
+        const societies = this.societyHandler.mapSocieties(rows);
         return { total, offset, limit, hasMore: offset + limit < total, societies };
     }
 
     async getDuplicates(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, stats } = queryDuplicates(repo.db, options);
+        const { rows, stats } = queryDuplicates(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const coverage = queryDnaCoverage(repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
         const remediation = buildDuplicateRemediationPlan(duplicates);
@@ -179,7 +94,7 @@ export class SemanticQueryTool extends GraphQueryTool {
 
         return {
             coverage,
-            summary: buildDuplicateSummary(
+            summary: this.duplicateHandler.buildSummary(
                 stats,
                 hasUsableDnaCoverage,
                 'logic duplicate',
@@ -193,7 +108,7 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     async getIsomorphicDuplicates(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const { rows, stats } = queryIsomorphicDuplicates(repo.db, options);
+        const { rows, stats } = queryIsomorphicDuplicates(repo.db, { ...options, includeRemoved: !!options.includeRemoved });
         const coverage = queryDnaCoverage(repo.db);
         const duplicates = this.duplicateHandler.handle(rows);
         const remediation = buildDuplicateRemediationPlan(duplicates);
@@ -201,7 +116,7 @@ export class SemanticQueryTool extends GraphQueryTool {
 
         return {
             coverage,
-            summary: buildDuplicateSummary(
+            summary: this.duplicateHandler.buildSummary(
                 stats,
                 hasUsableDnaCoverage,
                 'isomorphic duplicate',
@@ -213,90 +128,71 @@ export class SemanticQueryTool extends GraphQueryTool {
         };
     }
 
-    /**
-     * Find conceptual duplicates - functions with same semantic purpose but different implementations
-     * Uses semanticFingerprint (verb:domain:entity format) to group conceptually similar functions
-     * @param {Object} options - Query options
-     * @returns {Object} Conceptual duplicate groups with risk assessment
-     */
     async getConceptualDuplicates(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-
-        // Use the repository's findConceptualDuplicates method
         const groups = repo.findConceptualDuplicates ?
             repo.findConceptualDuplicates(options) :
-            // Fallback: query directly if method not available
             this._queryConceptualDuplicates(repo.db, options);
 
-        // Build summary statistics
-        const totalGroups = groups.length;
-        const highRisk = groups.filter(g => g.risk === 'high').length;
-        const mediumRisk = groups.filter(g => g.risk === 'medium').length;
-        const lowRisk = groups.filter(g => g.risk === 'low').length;
-        const totalImplementations = groups.reduce((sum, g) => sum + g.implementationCount, 0);
-        const withStructuralVariations = groups.filter(g => g.hasStructuralVariations).length;
-        const publicApiIssues = groups.filter(g => g.allExported).length;
+        const summary = this._buildConceptualSummary(groups);
 
         return {
             aggregationType: 'conceptual_duplicates',
-            summary: {
-                totalGroups,
-                totalImplementations,
-                highRisk,
-                mediumRisk,
-                lowRisk,
-                withStructuralVariations,
-                publicApiIssues,
-                message: totalGroups > 0
-                    ? `Found ${totalGroups} conceptual duplicate groups with ${totalImplementations} total implementations`
-                    : 'No conceptual duplicates found - all functions have unique semantic purposes'
-            },
-            total: totalGroups,
+            summary,
+            total: groups.length,
             groups,
-            // Provide remediation guidance for top issues
-            remediation: totalGroups > 0 ? {
-                priority: highRisk > 0 ? 'high' : mediumRisk > 0 ? 'medium' : 'low',
-                suggestedActions: [
-                    highRisk > 0 && `Consolidate ${highRisk} high-risk groups with 3+ implementations each`,
-                    publicApiIssues > 0 && `Review ${publicApiIssues} public API groups where all variants are exported`,
-                    withStructuralVariations > 0 && `Standardize ${withStructuralVariations} groups with structural variations`,
-                    'Consider creating shared utilities in `src/shared/` for common patterns'
-                ].filter(Boolean),
-                canonicalReuseGuidance: 'Use existing canonical implementations from src/shared/ when available'
-            } : null
+            remediation: groups.length > 0 ? this._buildConceptualRemediation(summary) : null
         };
     }
 
-    /**
-     * Fallback query for conceptual duplicates if repository method not available
-     * @private
-     */
+    _buildConceptualSummary(groups) {
+        const totalGroups = groups.length;
+        const highRisk = groups.filter(g => g.risk === 'high').length;
+        return {
+            totalGroups,
+            totalImplementations: groups.reduce((sum, g) => sum + g.implementationCount, 0),
+            highRisk,
+            mediumRisk: groups.filter(g => g.risk === 'medium').length,
+            lowRisk: groups.filter(g => g.risk === 'low').length,
+            message: totalGroups > 0
+                ? `Found ${totalGroups} conceptual duplicate groups`
+                : 'No conceptual duplicates found'
+        };
+    }
+
+    _buildConceptualRemediation(summary) {
+        return {
+            priority: summary.highRisk > 0 ? 'high' : 'medium',
+            suggestedActions: [
+                summary.highRisk > 0 && `Consolidate ${summary.highRisk} high-risk groups`,
+                'Standardize groups with structural variations'
+            ].filter(Boolean)
+        };
+    }
+
     _queryConceptualDuplicates(db, options = {}) {
         const minCount = options.minCount || 2;
         const limit = options.limit || 50;
-
-        const stmt = db.prepare(`
+        return db.prepare(`
             SELECT 
                 json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
                 COUNT(*) as count
             FROM atoms
             WHERE atom_type IN ('function', 'method', 'arrow')
-                AND (is_removed IS NULL OR is_removed = 0)
+                AND (${options.includeRemoved ? '1=1' : 'is_removed IS NULL OR is_removed = 0'})
                 AND json_extract(dna_json, '$.semanticFingerprint') IS NOT NULL
             GROUP BY fingerprint
             HAVING count >= ?
             ORDER BY count DESC
             LIMIT ?
-        `);
-
-        return stmt.all(minCount, limit);
+        `).all(minCount, limit);
     }
 
     async getAtomSociety(options = {}) {
         const repo = requireSemanticRepo(this.repo);
         const semanticSurface = getSemanticSurfaceGranularity(repo.db);
-        const queryResult = loadAtomSocietyRows(repo, options);
-        return buildAtomSocietyResult(queryResult, semanticSurface, options);
+        const queryResult = this.societyHandler.loadRows(repo.db, options);
+        return this.societyHandler.buildResult(queryResult, semanticSurface, options);
     }
 
     formatSemanticResult(type, data, pagination) {

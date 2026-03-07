@@ -85,4 +85,44 @@ export class BaseSqlRepository {
     clearTable(tableName) {
         return this.prepare(`clear_${tableName}`, `DELETE FROM ${tableName}`).run();
     }
+
+    /**
+     * Carga filas de una tabla usando un mapeador opcional.
+     */
+    loadTableRows(tableName, filter = '1=1', params = [], mapper = null) {
+        const sql = `SELECT * FROM ${tableName} WHERE ${filter}`;
+        const rows = this.db.prepare(sql).all(...params);
+        return mapper ? rows.map(mapper) : rows;
+    }
+
+    /**
+     * Guarda múltiples filas en una tabla usando UPSERT.
+     */
+    saveTableRows(tableName, columns, items, conflictColumn) {
+        if (!items || items.length === 0) return { changes: 0 };
+
+        const placeholders = columns.map(() => '?').join(', ');
+        const updates = columns
+            .filter(c => c !== conflictColumn)
+            .map(c => `${c} = excluded.${c}`)
+            .join(', ');
+
+        const sql = `
+            INSERT INTO ${tableName} (${columns.join(', ')})
+            VALUES (${placeholders})
+            ON CONFLICT(${conflictColumn}) DO UPDATE SET ${updates}
+        `;
+
+        const stmt = this.prepare(`upsert_batch_${tableName}`, sql);
+
+        return this.transaction(() => {
+            let changes = 0;
+            for (const item of items) {
+                const values = columns.map(col => item[col]);
+                const result = stmt.run(...values);
+                changes += result.changes;
+            }
+            return { changes };
+        });
+    }
 }
