@@ -3,7 +3,7 @@
  * Extract class definitions from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: class X extends Y implements Z
 const CLASS_PATTERN = /class\s+(\w+)\s*(?:extends\s+(\w+))?\s*(?:implements\s+([^{]+))?\s*\{/g;
@@ -31,3 +31,7 @@ export function extractClasses(code) {
 
   return classes;
 }
+
+
+
+

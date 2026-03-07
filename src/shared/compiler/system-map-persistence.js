@@ -9,9 +9,8 @@
  * @module shared/compiler/system-map-persistence
  */
 
-function toNumber(value) {
-  return Number(value ?? 0) || 0;
-}
+import { toNumber } from './core-utils.js';
+
 
 export function getSystemMapPersistenceCoverage(db) {
   const row = db.prepare(`
@@ -83,5 +82,5 @@ export function shouldTrustSystemMapDependencies(coverage = {}) {
     return false;
   }
 
-  return Number(coverage.dependencySourceCoverageRatio || 0) >= 0.5;
+  return toNumber(coverage.dependencySourceCoverageRatio) >= 0.5;
 }

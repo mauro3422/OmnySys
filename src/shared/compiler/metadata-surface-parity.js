@@ -9,14 +9,9 @@
  * @module shared/compiler/metadata-surface-parity
  */
 
-function toNumber(value) {
-  return Number(value ?? 0) || 0;
-}
+import { toNumber, toRatio } from './core-utils.js';
 
-function toRatio(numerator, denominator) {
-  if (!denominator) return 0;
-  return Number((numerator / denominator).toFixed(3));
-}
+
 
 export function getMetadataSurfaceParity(db) {
   const row = db.prepare(`

@@ -3,7 +3,7 @@
  * Extract interface definitions from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: interface Name extends Other { ... }
 const INTERFACE_PATTERN = /interface\s+(\w+)\s*(?:extends\s+([^{]+))?\s*\{/g;
@@ -31,3 +31,7 @@ export function extractInterfaces(code) {
 
   return interfaces;
 }
+
+
+
+

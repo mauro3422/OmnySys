@@ -199,3 +199,4 @@ export function detectOnlyGlobalConnections(fileSourceCode) {
   const fileResults = extractAllFromFiles(fileSourceCode);
   return detectGlobalConnections(fileResults);
 }
+

@@ -91,3 +91,4 @@ export function extractGlobalWrites(code) {
   
   return Array.from(props);
 }
+

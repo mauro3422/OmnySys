@@ -1,5 +1,5 @@
 /**
- * @fileoverview ast-utils.js
+ * @fileoverview line-utils.js
  *
  * Utilidades para manipulación de AST y código fuente
  * Funciones helper usadas por extractors y analyzers
@@ -198,3 +198,4 @@ export default {
   normalizeIndentation,
   findFunctionDeclarations
 };
+

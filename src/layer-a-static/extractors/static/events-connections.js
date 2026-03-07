@@ -105,3 +105,4 @@ export function getEventFlow(eventsA, eventsB, eventName) {
   
   return { source: null, target: null, flow: 'bidirectional' };
 }
+

@@ -6,6 +6,16 @@
  * @module shared/compiler/signal-coverage
  */
 
+import { toNumber } from './core-utils.js';
+import {
+  getAtomCode,
+  getAtomPurpose,
+  isAsyncAtom,
+  getSharedStateAccess,
+  hasNetworkCalls,
+  matchesAny
+} from './atom-utils.js';
+
 const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;
 const EXCLUDED_PURPOSES = new Set(['TEST_HELPER', 'ANALYSIS_SCRIPT']);
 
@@ -25,6 +35,17 @@ export const PIPELINE_FIELD_COVERAGE_SIGNALS = [
   { field: 'age_days', description: 'Git integration missing for age_days', minWarningCoverage: 5 },
   { field: 'change_frequency', description: 'Git integration missing for change_frequency', minWarningCoverage: 5 },
   { field: 'has_network_calls', description: 'Network call detector coverage appears low', minWarningCoverage: 1 }
+];
+
+const MANUAL_COVERAGE_PATTERNS = [
+  /(centralityPct|centrality_score|centralityScore|avgCentrality|centralityClassification)/,
+  /(coverage|missingSignals|missingAtoms|nonZero|all zero|physics)/i
+];
+
+const COVERAGE_API_IMPORTS = [
+  /summarizeDerivedScoreCoverage/,
+  /summarizePhysicsCoverageRow/,
+  /classifyFieldCoverage/
 ];
 
 const NETWORK_PATTERNS = [
@@ -49,37 +70,7 @@ const SHARED_STATE_PATTERNS = [
   /\bdocument\./
 ];
 
-function toNumber(value) {
-  return Number(value ?? 0) || 0;
-}
 
-function getAtomCode(atom = {}) {
-  return atom.sourceCode || atom.code || '';
-}
-
-function getAtomPurpose(atom = {}) {
-  return atom.purpose || atom.purpose_type || '';
-}
-
-function isAsyncAtom(atom = {}) {
-  return atom.isAsync === true || atom.is_async === true;
-}
-
-function getSharedStateAccess(atom = {}) {
-  return Array.isArray(atom.sharedStateAccess)
-    ? atom.sharedStateAccess
-    : Array.isArray(atom.shared_state_access)
-      ? atom.shared_state_access
-      : [];
-}
-
-function hasNetworkCalls(atom = {}) {
-  return atom.hasNetworkCalls === true || atom.has_network_calls === true;
-}
-
-function matchesAny(patterns, code = '') {
-  return patterns.some((pattern) => pattern.test(code));
-}
 
 function isProductionCandidate(atom = {}, filePath = '') {
   if (!atom || TEST_FILE_PATTERNS.test(filePath)) return false;
@@ -200,6 +191,31 @@ export function summarizeFieldCoverageRow(row = {}, signalName, options = {}) {
     coveragePct: total > 0 ? Math.round((nonZeroCount / total) * 100) : 0,
     classification
   };
+}
+
+/**
+ * Detecta si un código está reimplementando lógica de cobertura de señales
+ * de forma manual en lugar de usar las APIs canónicas.
+ * @param {string} source - Código fuente
+ * @param {string} filePath - Ruta del archivo
+ * @returns {Array} Findings de deriva
+ */
+export function detectSignalCoverageDrift(source = '', filePath = '') {
+  const findings = [];
+  const hasManualLogic = MANUAL_COVERAGE_PATTERNS.every(p => p.test(source));
+  const hasCanonicalImports = COVERAGE_API_IMPORTS.some(p => p.test(source));
+
+  if (hasManualLogic && !hasCanonicalImports && !filePath.endsWith('/signal-coverage.js')) {
+    findings.push({
+      rule: 'manual_signal_coverage_scan',
+      severity: 'medium',
+      policyArea: 'signal_coverage',
+      message: 'Manual centrality coverage/physics scan detected',
+      recommendation: 'Use the canonical signal coverage APIs for centrality/physics coverage instead of rebuilding coverage heuristics inline.'
+    });
+  }
+
+  return findings;
 }
 
 export function summarizeCentralityCoverageRow(row = {}, options = {}) {

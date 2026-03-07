@@ -72,13 +72,13 @@ export { generateEventConnections } from './connection-generator.js';
  */
 export function analyzeEventPatterns(fileSourceCode) {
   const fileResults = {};
-  
+
   for (const [filePath, code] of Object.entries(fileSourceCode)) {
     fileResults[filePath] = detectEventPatterns(code, filePath);
   }
-  
+
   const connections = generateEventConnections(fileResults);
-  
+
   return {
     connections,
     fileResults
@@ -90,3 +90,4 @@ export default {
   detectEventPatterns,
   generateEventConnections
 };
+

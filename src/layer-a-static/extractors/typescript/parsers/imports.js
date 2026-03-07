@@ -3,7 +3,7 @@
  * Extract type imports from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: import type { X } from '...'
 const TYPE_IMPORT_PATTERN = /import\s+type\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g;
@@ -32,3 +32,7 @@ export function extractImports(code) {
 
   return imports;
 }
+
+
+
+

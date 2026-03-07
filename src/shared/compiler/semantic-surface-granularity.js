@@ -11,23 +11,9 @@
  * @module shared/compiler/semantic-surface-granularity
  */
 
-function toNumber(value) {
-  return Number(value ?? 0) || 0;
-}
+import { toNumber, toRatio, safeParseJson } from './core-utils.js';
 
-function toRatio(numerator, denominator) {
-  if (!denominator) return 0;
-  return Number((numerator / denominator).toFixed(3));
-}
 
-function safeParseJson(value, fallback) {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
 
 function classifyLegacyBucket(connectionType = '') {
   if (/^eventListener|^eventListeners$/i.test(connectionType)) {

@@ -6,7 +6,7 @@
  * @module pipeline/phases/atom-extraction/extraction/atom-extractor
  */
 
-import { extractFunctionCode } from '#shared/utils/ast-utils.js';
+import { extractFunctionCode } from '../../../../../shared/utils/line-utils.js';
 import { calculateComplexity } from '../metadata/complexity.js';
 import { detectAtomArchetype } from '../metadata/archetype.js';
 import { detectAtomPurpose } from '../metadata/purpose.js';
@@ -149,3 +149,5 @@ export async function extractAtomMetadata(functionInfo, functionCode, fileMetada
 }
 
 export default { extractAtoms, extractAtomMetadata };
+
+

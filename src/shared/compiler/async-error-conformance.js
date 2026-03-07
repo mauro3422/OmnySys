@@ -16,6 +16,10 @@ import {
 import {
   normalizePath,
   shouldScanCompilerFile,
+  stripStrings,
+  stripComments,
+  countAsyncPressureSignals,
+  hasExplicitErrorBoundary,
   looksLikeAsyncRuntimeFlow,
   createPositionalFinding as createFinding
 } from './conformance-utils.js';

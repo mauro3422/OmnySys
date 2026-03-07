@@ -31,3 +31,5 @@ export function classifyConditional(node, code) {
   if (node.type !== 'ternary_expression') return null;
   return { type: OPERATION_TYPES.CONDITIONAL, via: 'ternary', details: {} };
 }
+
+

@@ -3,7 +3,7 @@
  * Extract enum definitions from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: (export )?enum Name { ... }
 const ENUM_PATTERN = /(?:export\s+)?enum\s+(\w+)\s*\{([^}]+)\}/g;
@@ -31,3 +31,5 @@ export function extractEnums(code) {
 
   return enums;
 }
+
+

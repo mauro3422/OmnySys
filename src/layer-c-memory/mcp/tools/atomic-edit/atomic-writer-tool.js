@@ -17,6 +17,8 @@ import {
     computeWriteImpact
 } from './write-orchestrator.js';
 import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
+import { extractExportsFromCode } from './exports.js';
+import { query_graph } from '../query-graph.js';
 
 export class AtomicWriterTool extends AtomicMutationTool {
     constructor() {
@@ -63,6 +65,72 @@ export class AtomicWriterTool extends AtomicMutationTool {
                     suggestion: 'Refactor/unify duplicated symbols or rerun with failOnDuplicate: false',
                     duplicates: duplicateCandidates
                 });
+            }
+        }
+
+        // ============================================================
+        // DUPLICATE GUARD CROSS-FILE (NUEVO - FASE 17)
+        // Valida que los símbolos NO existan en OTROS archivos
+        // ============================================================
+        const newExports = extractExportsFromCode(content);
+        if (newExports.length > 0) {
+            const crossFileDuplicates = [];
+
+            for (const exportItem of newExports) {
+                // Skip low-signal names
+                if (exportItem.name.length < 3 || /^[a-z]$/.test(exportItem.name)) {
+                    continue;
+                }
+
+                try {
+                    const existing = await query_graph(
+                        { queryType: 'instances', symbolName: exportItem.name },
+                        this.context
+                    );
+
+                    if (existing?.success && existing?.data?.totalInstances > 0) {
+                        // Filtrar el mismo archivo (es válido re-escribir en el mismo lugar)
+                        const otherFiles = existing.data.instances.filter(
+                            inst => !inst.file_path.endsWith(filePath)
+                        );
+
+                        if (otherFiles.length > 0) {
+                            crossFileDuplicates.push({
+                                symbol: exportItem.name,
+                                type: exportItem.type,
+                                existingInstances: otherFiles.length,
+                                existingFiles: otherFiles.map(f => f.file_path),
+                                existingLocations: otherFiles.map(f => ({
+                                    file: f.file_path,
+                                    line: f.line_start
+                                }))
+                            });
+                        }
+                    }
+                } catch (error) {
+                    // Silencioso: si query_graph falla, continuamos
+                    this.logger.debug(`[CrossFileGuard] Skip ${exportItem.name}: ${error.message}`);
+                }
+            }
+
+            if (crossFileDuplicates.length > 0) {
+                const msg = `[CrossFileDuplicateGuard] ${crossFileDuplicates.length} symbol(s) already exist in other file(s)`;
+                this.logger.warn(msg);
+
+                if (failOnDuplicate) {
+                    return this.formatError('DUPLICATE_SYMBOL_CROSS_FILE', msg, {
+                        suggestion: 'Consider reusing existing implementation or rename symbol',
+                        duplicates: crossFileDuplicates,
+                        canonicalLocations: crossFileDuplicates.map(d => ({
+                            symbol: d.symbol,
+                            recommendedFile: d.existingFiles[0],
+                            reason: 'First existing instance (canonical candidate)'
+                        }))
+                    });
+                } else {
+                    // Warning no bloqueante
+                    this.logger.warn(`${msg}: ${crossFileDuplicates.map(d => d.symbol).join(', ')}`);
+                }
             }
         }
         if (analysis.critical.length > 0) {

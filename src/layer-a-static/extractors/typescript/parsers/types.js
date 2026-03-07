@@ -3,7 +3,7 @@
  * Extract type alias definitions from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: type Name = ...
 const TYPE_PATTERN = /type\s+(\w+)\s*(?:<[^>]+>)?\s*=\s*([^;]+);/g;
@@ -29,3 +29,7 @@ export function extractTypes(code) {
 
   return types;
 }
+
+
+
+

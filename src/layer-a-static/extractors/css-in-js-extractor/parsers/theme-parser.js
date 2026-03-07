@@ -6,6 +6,8 @@
  * @module css-in-js-extractor/parsers/theme-parser
  */
 
+import { getLineNumber } from '#shared/utils/line-utils.js';
+
 /**
  * Parse ThemeProvider
  * @param {string} code - Source code
@@ -89,10 +91,7 @@ export function parseThemeAccess(code) {
   return themes;
 }
 
-/**
- * Get line number from position
- */
-function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+
+
+
+

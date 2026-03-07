@@ -93,3 +93,4 @@ export function getSharedGlobalVariables(globalsA, globalsB) {
   
   return propsB.filter(p => propsA.has(p));
 }
+

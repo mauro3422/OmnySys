@@ -12,12 +12,12 @@ import { getLineNumber } from '../utils.js';
 // ── Private helpers ───────────────────────────────────────────────────────────
 
 const BLOCKING_PATTERNS = [
-  { pattern: /readFileSync\s*\(/g,  type: 'fs.readFileSync' },
+  { pattern: /readFileSync\s*\(/g, type: 'fs.readFileSync' },
   { pattern: /writeFileSync\s*\(/g, type: 'fs.writeFileSync' },
-  { pattern: /execSync\s*\(/g,      type: 'execSync' },
-  { pattern: /alert\s*\(/g,         type: 'alert' },
-  { pattern: /prompt\s*\(/g,        type: 'prompt' },
-  { pattern: /confirm\s*\(/g,       type: 'confirm' }
+  { pattern: /execSync\s*\(/g, type: 'execSync' },
+  { pattern: /alert\s*\(/g, type: 'alert' },
+  { pattern: /prompt\s*\(/g, type: 'prompt' },
+  { pattern: /confirm\s*\(/g, type: 'confirm' }
 ];
 
 function findLoopStarts(code) {
@@ -115,12 +115,12 @@ function detectMemoryRisks(loopStarts, code) {
  * @returns {Object} Performance information
  */
 export function extractPerformanceHints(code) {
-  const loopStarts         = findLoopStarts(code);
-  const nestedLoops        = detectNestedLoops(loopStarts, code);
-  const largeArrayOps      = detectArrayChains(code);
+  const loopStarts = findLoopStarts(code);
+  const nestedLoops = detectNestedLoops(loopStarts, code);
+  const largeArrayOps = detectArrayChains(code);
   const blockingOperations = detectBlockingOps(code);
-  const regexIssues        = detectRegexInLoops(loopStarts, code);
-  const memoryRisks        = detectMemoryRisks(loopStarts, code);
+  const regexIssues = detectRegexInLoops(loopStarts, code);
+  const memoryRisks = detectMemoryRisks(loopStarts, code);
 
   let estimatedComplexity = 'O(n)';
   if (nestedLoops.length > 0) estimatedComplexity = nestedLoops.some(n => n.depth >= 3) ? 'O(n^3)' : 'O(n^2)';

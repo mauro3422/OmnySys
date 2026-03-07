@@ -129,3 +129,5 @@ export async function detectGlobalState(code, filePath = '') {
 export const parseGlobalState = detectGlobalState;
 
 export default { detectGlobalState, parseGlobalState };
+
+

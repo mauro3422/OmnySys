@@ -130,3 +130,5 @@ export function extractProperties(node, code) {
 // Utility removed as it's now internal or from shared
 
 export default { inferShape, extractProperties };
+
+

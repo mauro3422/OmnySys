@@ -107,10 +107,15 @@ export class BaseSqlRepository {
             .map(c => `${c} = excluded.${c}`)
             .join(', ');
 
-        const sql = `
+        const sql = conflictColumn
+            ? `
             INSERT INTO ${tableName} (${columns.join(', ')})
             VALUES (${placeholders})
             ON CONFLICT(${conflictColumn}) DO UPDATE SET ${updates}
+        `
+            : `
+            INSERT INTO ${tableName} (${columns.join(', ')})
+            VALUES (${placeholders})
         `;
 
         const stmt = this.prepare(`upsert_batch_${tableName}`, sql);

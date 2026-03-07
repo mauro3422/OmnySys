@@ -20,6 +20,8 @@ import { analyzeFullImpact } from './analysis.js';
 import { analyzeBlastRadius } from './graph-alerts.js';
 import { normalizeAtomicPath } from './write-orchestrator.js';
 import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
+import { extractExportsFromCode } from './exports.js';
+import { query_graph } from '../query-graph.js';
 
 export class AtomicEditorTool extends AtomicMutationTool {
     constructor() {
@@ -67,7 +69,62 @@ export class AtomicEditorTool extends AtomicMutationTool {
             });
         }
 
-        return { valid: true, exportConflicts, blastRadius, solidViolations };
+        // 5. DUPLICATE GUARD CROSS-FILE (NUEVO - FASE 17)
+        // Valida que los nuevos símbolos NO existan en OTROS archivos
+        const newExports = extractExportsFromCode(newString);
+        if (newExports.length > 0) {
+            const crossFileDuplicates = [];
+
+            for (const exportItem of newExports) {
+                // Skip low-signal names
+                if (exportItem.name.length < 3 || /^[a-z]$/.test(exportItem.name)) {
+                    continue;
+                }
+
+                try {
+                    const existing = await query_graph(
+                        { queryType: 'instances', symbolName: exportItem.name },
+                        this.context
+                    );
+
+                    if (existing?.success && existing?.data?.totalInstances > 0) {
+                        // Filtrar el mismo archivo
+                        const otherFiles = existing.data.instances.filter(
+                            inst => !inst.file_path.endsWith(filePath)
+                        );
+
+                        if (otherFiles.length > 0) {
+                            crossFileDuplicates.push({
+                                symbol: exportItem.name,
+                                type: exportItem.type,
+                                existingInstances: otherFiles.length,
+                                existingFiles: otherFiles.map(f => f.file_path),
+                                existingLocations: otherFiles.map(f => ({
+                                    file: f.file_path,
+                                    line: f.line_start
+                                }))
+                            });
+                        }
+                    }
+                } catch (error) {
+                    this.logger.debug(`[CrossFileGuard] Skip ${exportItem.name}: ${error.message}`);
+                }
+            }
+
+            if (crossFileDuplicates.length > 0 && autoFix) {
+                // Con autoFix, solo warn
+                this.logger.warn(
+                    `[CrossFileDuplicateGuard] ${crossFileDuplicates.length} symbol(s) exist in other files: ${crossFileDuplicates.map(d => d.symbol).join(', ')}`
+                );
+            } else if (crossFileDuplicates.length > 0) {
+                // Sin autoFix, retornamos warning en la respuesta
+                exportConflicts.warnings.push(
+                    `${crossFileDuplicates.length} symbol(s) already exist in other file(s): ${crossFileDuplicates.map(d => d.symbol).join(', ')}`
+                );
+            }
+        }
+
+        return { valid: true, exportConflicts, blastRadius, solidViolations, crossFileDuplicates };
     }
 
     async performAction(args) {
@@ -161,6 +218,14 @@ export class AtomicEditorTool extends AtomicMutationTool {
         const impact = await analyzeFullImpact(filePath, this.projectPath, previousAtoms, reindexResult.atoms);
         const semanticPurity = summarizeAtomSemanticPurity(reindexResult.atoms || []);
 
+        // Construir warnings consolidados
+        const allWarnings = [
+            ...(preValidation.exportConflicts.warnings || []),
+            ...(preValidation.crossFileDuplicates?.length > 0 
+                ? [`[CrossFileDuplicateGuard] ${preValidation.crossFileDuplicates.length} symbol(s) exist in other files: ${preValidation.crossFileDuplicates.map(d => d.symbol).join(', ')}`]
+                : [])
+        ];
+
         return this.formatSuccess({
             file: filePath,
             impact: {
@@ -178,7 +243,8 @@ export class AtomicEditorTool extends AtomicMutationTool {
             autoFixed,
             autoFixedFiles,
             semanticPurity,
-            warnings: preValidation.exportConflicts.warnings.length > 0 ? preValidation.exportConflicts.warnings : undefined,
+            warnings: allWarnings.length > 0 ? allWarnings : undefined,
+            crossFileDuplicates: preValidation.crossFileDuplicates?.length > 0 ? preValidation.crossFileDuplicates : undefined,
             blastRadius: preValidation.blastRadius,
             solidViolations: Object.values(preValidation.solidViolations).some(v => v !== null) ? preValidation.solidViolations : undefined
         }, `Atomic edit successful${autoFixed ? ` (AutoFixed ${autoFixedFiles} callers)` : ''}`);

@@ -3,7 +3,7 @@
  * Extract type exports from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Pattern: export type, export interface
 const TYPE_EXPORT_PATTERN = /export\s+(type|interface)\s+(\w+)/g;
@@ -27,3 +27,7 @@ export function extractExports(code) {
 
   return exports;
 }
+
+
+
+

@@ -3,7 +3,7 @@
  * Extract generic function definitions from TypeScript code
  */
 
-import { getLineNumber } from '../utils/line-utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 // Patterns for generic functions
 const GENERIC_FUNC_PATTERN = /function\s+(\w+)\s*<([^>]+)>\s*\(/g;
@@ -40,3 +40,7 @@ export function extractGenerics(code) {
 
   return generics;
 }
+
+
+
+

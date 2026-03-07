@@ -10,6 +10,7 @@ import { saveFileDependencies, loadFileDependencies } from './system-map/handler
 import { saveSemanticData, loadSemanticConnections, loadSemanticIssues } from './system-map/handlers/semantic-handler.js';
 import { saveRiskAssessments, loadRiskAssessments } from './system-map/handlers/risk-handler.js';
 import { safeJson, safeParseJson } from './converters.js';
+import { BaseSqlRepository } from '../../core/BaseSqlRepository.js';
 
 /**
  * Guarda el system map completo en SQLite

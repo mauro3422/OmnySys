@@ -7,7 +7,7 @@
  * @module extractors/communication/web-workers
  */
 
-import { getLineNumber } from '../utils.js';
+import { getLineNumber } from '../static/utils.js';
 
 /**
  * Extrae comunicación Web Worker (postMessage/onmessage)
@@ -17,24 +17,24 @@ import { getLineNumber } from '../utils.js';
 export function extractWebWorkerCommunication(code) {
   const incoming = []; // Mensajes que recibe este archivo
   const outgoing = []; // Mensajes que envía este archivo
-  
+
   // Patrones para Worker.postMessage (outgoing)
   const workerPostMessagePatterns = [
     /(\w+)\.postMessage\s*\(/g,  // worker.postMessage(...)
     /worker\.postMessage\s*\(/g,
     /new\s+Worker\s*\([^)]+\)[\s\S]*?\.postMessage\s*\(/g
   ];
-  
+
   // Patrones para self.postMessage en Worker (outgoing desde worker)
   const selfPostMessagePattern = /self\.postMessage\s*\(/g;
-  
+
   // Patrones para onmessage (incoming)
   const onMessagePatterns = [
     /(?:self|window)\.onmessage\s*=\s*(?:function|\(|\w+)/g,
     /(?:self|window)\.addEventListener\s*\(\s*['"]message['"]/g,
     /\w+\.onmessage\s*=\s*(?:function|\(|\w+)/g  // worker.onmessage = ...
   ];
-  
+
   // Detectar outgoing (postMessage)
   for (const pattern of workerPostMessagePatterns) {
     let match;
@@ -46,7 +46,7 @@ export function extractWebWorkerCommunication(code) {
       });
     }
   }
-  
+
   // Detectar self.postMessage (Worker enviando a Main)
   let match;
   while ((match = selfPostMessagePattern.exec(code)) !== null) {
@@ -56,7 +56,7 @@ export function extractWebWorkerCommunication(code) {
       direction: 'outgoing'
     });
   }
-  
+
   // Detectar incoming (onmessage)
   for (const pattern of onMessagePatterns) {
     let match;
@@ -68,7 +68,7 @@ export function extractWebWorkerCommunication(code) {
       });
     }
   }
-  
+
   // Detectar new Worker() - creación de workers
   const newWorkerPattern = /new\s+(?:Worker|SharedWorker)\s*\(\s*['"]([^'"]+)['"]/g;
   while ((match = newWorkerPattern.exec(code)) !== null) {
@@ -79,7 +79,7 @@ export function extractWebWorkerCommunication(code) {
       direction: 'creates_worker'
     });
   }
-  
+
   return { incoming, outgoing, all: [...incoming, ...outgoing] };
 }
 
@@ -90,10 +90,10 @@ export function extractWebWorkerCommunication(code) {
  */
 export function extractSharedWorkerUsage(code) {
   const workers = [];
-  
+
   // new SharedWorker('path')
   const sharedWorkerPattern = /new\s+SharedWorker\s*\(\s*['"]([^'"]+)['"]/g;
-  
+
   let match;
   while ((match = sharedWorkerPattern.exec(code)) !== null) {
     workers.push({
@@ -102,6 +102,6 @@ export function extractSharedWorkerUsage(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   return { workers, all: workers };
 }

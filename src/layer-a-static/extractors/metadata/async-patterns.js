@@ -25,31 +25,31 @@ export function extractAsyncPatterns(code) {
     raceConditions: [],     // Patrones sospechosos
     all: []
   };
-  
+
   // async function declarations
   const asyncFuncPattern = /async\s+(?:function\s+)?(\w+)?\s*[\(=>]/g;
-  
+
   // new Promise((resolve, reject) => ...)
   const newPromisePattern = /new\s+Promise\s*\(\s*(?:async\s*)?\(\s*(\w+)\s*,\s*(\w+)\s*\)/g;
-  
+
   // Promise.all() / Promise.allSettled()
   const promiseAllPattern = /Promise\.(all|allSettled|race|any)\s*\(\s*(\[)/g;
-  
+
   // await expressions
   const awaitPattern = /await\s+([^;\n]+)/g;
-  
+
   // .then().catch().finally() chains
   const promiseChainPattern = /(\w+)\.(then|catch|finally)\s*\(/g;
-  
+
   // setTimeout / setInterval
   const timeoutPattern = /(setTimeout|setInterval)\s*\(\s*([^,]+)\s*,\s*(\d+)/g;
-  
+
   // Patrones de race condition sospechosos
   // await en loop: for (...) { await ... }
   const awaitInLoopPattern = /(for|while)\s*\([^)]+\)\s*\{[^}]*await\s+/g;
-  
+
   let match;
-  
+
   while ((match = asyncFuncPattern.exec(code)) !== null) {
     patterns.asyncFunctions.push({
       type: 'async_function',
@@ -57,7 +57,7 @@ export function extractAsyncPatterns(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = newPromisePattern.exec(code)) !== null) {
     patterns.promiseCreations.push({
       type: 'new_promise',
@@ -66,7 +66,7 @@ export function extractAsyncPatterns(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = promiseAllPattern.exec(code)) !== null) {
     const method = match[1];
     if (method === 'race') {
@@ -81,7 +81,7 @@ export function extractAsyncPatterns(code) {
       });
     }
   }
-  
+
   while ((match = awaitPattern.exec(code)) !== null) {
     patterns.awaitExpressions.push({
       type: 'await',
@@ -89,7 +89,7 @@ export function extractAsyncPatterns(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = promiseChainPattern.exec(code)) !== null) {
     patterns.promiseChains.push({
       type: 'promise_chain',
@@ -98,7 +98,7 @@ export function extractAsyncPatterns(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = timeoutPattern.exec(code)) !== null) {
     patterns.timeouts.push({
       type: match[1],
@@ -106,7 +106,7 @@ export function extractAsyncPatterns(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   // Detectar await en loops (patrón sospechoso)
   const loopMatch = awaitInLoopPattern.exec(code);
   if (loopMatch) {
@@ -117,7 +117,7 @@ export function extractAsyncPatterns(code) {
       severity: 'WARNING'
     });
   }
-  
+
   patterns.all = [
     ...patterns.asyncFunctions,
     ...patterns.promiseCreations,
@@ -127,6 +127,6 @@ export function extractAsyncPatterns(code) {
     ...patterns.promiseChains,
     ...patterns.timeouts
   ];
-  
+
   return patterns;
 }

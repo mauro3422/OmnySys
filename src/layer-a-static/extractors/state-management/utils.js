@@ -1,21 +1,12 @@
 /**
  * @fileoverview utils.js
- * 
+ *
  * Utilidades para extracción de state management
- * 
+ *
  * @module extractors/state-management/utils
  */
 
-/**
- * Obtiene el número de línea para una posición en el código
- * @param {string} code - Código fuente
- * @param {number} position - Posición en el string
- * @returns {number} - Número de línea (1-based)
- */
-export function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+export { getLineNumber } from '../../../shared/utils/line-utils.js';
 
 /**
  * Extrae paths de estado de un string (state.x.y.z)
@@ -26,7 +17,7 @@ export function extractStatePaths(text) {
   const paths = [];
   const pathRegex = /(\w+(?:\.\w+)+)/g;
   let match;
-  
+
   while ((match = pathRegex.exec(text)) !== null) {
     const fullPath = match[1];
     // Filtrar solo paths que parecen acceso a estado
@@ -34,7 +25,7 @@ export function extractStatePaths(text) {
       paths.push(fullPath);
     }
   }
-  
+
   return paths;
 }
 
@@ -63,3 +54,5 @@ export function createResult(type, line, extra = {}) {
     ...extra
   };
 }
+
+

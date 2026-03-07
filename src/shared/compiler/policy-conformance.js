@@ -20,11 +20,14 @@ import { detectServiceBoundaryConformanceFromSource } from './service-boundary-c
 import { detectCanonicalExtensionConformanceFromSource } from './canonical-extension-conformance.js';
 import { detectAsyncErrorConformanceFromSource } from './async-error-conformance.js';
 import { detectSharedStateHotspotConformanceFromSource } from './shared-state-hotspot-conformance.js';
-import { detectCentralityCoverageConformanceFromSource } from './centrality-coverage-conformance.js';
 import { detectTestabilityConformanceFromSource } from './testability-conformance.js';
 import { detectSemanticPurityConformanceFromSource } from './semantic-purity-conformance.js';
 import { detectMetadataPropagationConformanceFromSource } from './metadata-propagation-conformance.js';
 import { detectSemanticSurfaceGranularityConformanceFromSource } from './semantic-surface-granularity-conformance.js';
+import { detectSignalCoverageDrift } from './signal-coverage.js';
+import { detectPipelineOrphanDrift } from './pipeline-orphans.js';
+import { detectDeadCodeDrift } from './dead-code-utils.js';
+import { detectLiveRowDrift } from './live-row-utils.js';
 import { buildCanonicalReuseGuidance } from './canonical-reuse-guidance.js';
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
@@ -78,59 +81,11 @@ function looksLikeManualTopologyScan(source = '') {
   return manualGraphWalk && !topologyReportingOnly;
 }
 
-function looksLikeManualDerivedScoreCoverage(source = '') {
-  const derivedSignalHits = [
-    /fragility_score/.test(source),
-    /coupling_score/.test(source),
-    /cohesion_score/.test(source)
-  ].filter(Boolean).length;
 
-  return (
-    derivedSignalHits >= 2 &&
-    /(missingAtoms|missingRatio|candidateAtoms|nonZeroCount|coveragePct|all zero)/.test(source)
-  );
-}
 
-function looksLikeManualSemanticCoverage(source = '') {
-  return (
-    /(hasNetworkCalls|sharesStateRelations|sharedStateCandidates|networkCandidates|networkFlagged)/.test(source) &&
-    /(look network-bound|semantic coverage|coverage gap|missing flags|network coverage|shared state relations?)/i.test(source)
-  );
-}
-
-function looksLikeManualLiveRowDrift(source = '') {
-  return (
-    /(LEFT JOIN|NOT IN)\s+live_files/.test(source) ||
-    /(staleFileRows|staleRiskRows|liveFileTotal|unassessedLiveFiles)/.test(source)
-  );
-}
-
-function readsCanonicalLiveRowSyncSummary(source = '') {
-  return (
-    /ensureLiveRowSync\s*\(/.test(source) &&
-    /liveRowSync\.summary/.test(source)
-  );
-}
-
-function looksLikeManualPipelineOrphanScan(source = '') {
-  return (
-    /(called_by_json|calls_json|callers_count|callees_count)/.test(source) &&
-    /(pipeline_orphans|orphanFunctions|patternCondition|fileLevelImportEvidence|disconnected pipeline)/i.test(source)
-  );
-}
-
-function readsCanonicalPipelineOrphanSummary(source = '') {
-  return (
-    /(getPipelineOrphanSummary|classifyPipelineOrphans)\s*\(/.test(source) ||
-    /pipelineOrphanSummary\.(orphans|warning|normalizedOrphans)/.test(source)
-  );
-}
 
 function looksLikeManualRuntimeOwnership(source = '') {
-  return (
-    /(daemon-owner-|ownerLockPath|OWNER_LOCK_PATH|readOwnerLock|writeOwnerLock|waitForExistingOwner|removeOwnerLock)/.test(source) &&
-    /(process\.kill\(.*0\)|unlink\(|writeFileSync\(|readFile\(|state=.*restarting|state=.*starting)/.test(source)
-  );
+  return /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source);
 }
 
 function buildPolicyImportMap(source = '') {
@@ -143,6 +98,7 @@ function buildPolicyImportMap(source = '') {
     importsLiveRowDriftApi: /getLiveRowDriftSummary|getStaleTableRowCount|getLiveFileTotal|getLiveFileSetSql/.test(source),
     importsLiveRowSyncApi: /ensureLiveRowSync/.test(source),
     importsPipelineOrphansApi: /classifyPipelineOrphans|getPipelineOrphanSummary|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan|buildPipelineOrphanRemediationPlan/.test(source),
+    importsDeadCodeApi: /getSuspiciousDeadCodeCount|getDeadCodePlausibilitySummary|getDeadCodeSqlPredicate|loadSuspiciousDeadCodeCandidates|buildDeadCodeRemediationPlan/.test(source),
     importsRuntimeOwnershipApi: /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source)
   };
 }
@@ -197,51 +153,19 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
       )
     },
     {
-      when: looksLikeManualDerivedScoreCoverage(source) &&
-        !imports.importsSignalCoverageApi &&
-        !normalizedPath.endsWith('/signal-coverage.js'),
-      finding: createFinding(
-        'manual_signal_coverage_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.SIGNAL_COVERAGE,
-        'Manual derived-score coverage scan detected',
-        'Use summarizeDerivedScoreCoverage / classifyFieldCoverage from shared/compiler instead of recomputing coverage locally.'
-      )
+      when: true, // Siempre evaluamos la deriva de señales ahora via el nuevo detector
+      findings: (normalizedPath, source) => detectSignalCoverageDrift(source, normalizedPath)
     },
     {
-      when: looksLikeManualSemanticCoverage(source) &&
-        !imports.importsSignalCoverageApi &&
-        !normalizedPath.endsWith('/signal-coverage.js'),
-      finding: createFinding(
-        'manual_semantic_coverage_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.SIGNAL_COVERAGE,
-        'Manual semantic coverage scan detected',
-        'Use summarizeSemanticCoverage from shared/compiler instead of rebuilding semantic coverage heuristics locally.'
-      )
-    },
-    {
-      when: looksLikeManualLiveRowDrift(source) &&
-        !readsCanonicalLiveRowSyncSummary(source) &&
-        !imports.importsLiveRowDriftApi &&
-        !normalizedPath.endsWith('/live-row-drift.js'),
-      finding: createFinding(
-        'manual_live_row_drift_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
-        'Manual live/stale row drift logic detected',
-        'Use getLiveRowDriftSummary / getStaleTableRowCount from shared/compiler instead of hand-rolling stale row SQL.'
-      )
+      when: true,
+      findings: (normalizedPath, source) => detectLiveRowDrift(source, normalizedPath)
     },
     {
       when:
         imports.importsLiveRowDriftApi &&
         !imports.importsLiveRowSyncApi &&
         (normalizedPath.includes('/mcp/') || normalizedPath.includes('/query/')) &&
-        !normalizedPath.endsWith('/live-row-drift.js') &&
-        !normalizedPath.endsWith('/live-row-sync.js') &&
-        !normalizedPath.endsWith('/live-row-cleanup.js') &&
-        !normalizedPath.endsWith('/live-row-reconciliation.js'),
+        !normalizedPath.endsWith('/live-row-utils.js'),
       finding: createFinding(
         'live_row_sync_missing',
         COMPILER_POLICY_SEVERITY.MEDIUM,
@@ -251,17 +175,12 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
       )
     },
     {
-      when: looksLikeManualPipelineOrphanScan(source) &&
-        !readsCanonicalPipelineOrphanSummary(source) &&
-        !imports.importsPipelineOrphansApi &&
-        !normalizedPath.endsWith('/pipeline-orphans.js'),
-      finding: createFinding(
-        'manual_pipeline_orphan_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.PIPELINE_ORPHANS,
-        'Manual pipeline orphan classification detected',
-        'Use classifyPipelineOrphans / getPipelineNamePatternSqlCondition from shared/compiler instead of rebuilding orphan heuristics inline.'
-      )
+      when: true,
+      findings: (normalizedPath, source) => detectPipelineOrphanDrift(source, normalizedPath)
+    },
+    {
+      when: true,
+      findings: (normalizedPath, source) => detectDeadCodeDrift(source, normalizedPath)
     },
     {
       when: looksLikeManualRuntimeOwnership(source) &&
@@ -287,7 +206,6 @@ function collectConformanceFindings(normalizedPath, source) {
     [detectCanonicalExtensionConformanceFromSource, COMPILER_POLICY_AREA.CANONICAL_EXTENSION],
     [detectAsyncErrorConformanceFromSource, COMPILER_POLICY_AREA.ASYNC_ERROR],
     [detectSharedStateHotspotConformanceFromSource, COMPILER_POLICY_AREA.SHARED_STATE_HOTSPOTS],
-    [detectCentralityCoverageConformanceFromSource, COMPILER_POLICY_AREA.CENTRALITY_COVERAGE],
     [detectTestabilityConformanceFromSource, COMPILER_POLICY_AREA.TESTABILITY],
     [detectSemanticPurityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_PURITY],
     [detectMetadataPropagationConformanceFromSource, COMPILER_POLICY_AREA.METADATA_PROPAGATION],

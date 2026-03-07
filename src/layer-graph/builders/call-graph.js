@@ -7,16 +7,8 @@
  * @module layer-graph/builders/call-graph
  */
 
-/**
- * Gets line number from character index
- * @param {string} code - Source code
- * @param {number} index - Character index
- * @returns {number} Line number (1-based)
- */
-function getLineNumber(code, index) {
-  const lines = code.substring(0, index).split('\n');
-  return lines.length;
-}
+import { getLineNumber } from '../../shared/utils/line-utils.js';
+
 
 /**
  * Extracts call graph information from code
@@ -123,3 +115,4 @@ export function extractCallGraph(code) {
     all
   };
 }
+

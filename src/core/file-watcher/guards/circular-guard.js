@@ -8,21 +8,9 @@
  * @version 2.1.0 - Refactorizado
  */
 
-import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
-import { normalizePath } from '#shared/utils/path-utils.js';
-import { classifyCircularCycle } from '../../../shared/compiler/index.js';
-import {
-    clearCircularIssues,
-    persistCircularIssue
-} from './circular-issue-service.js';
-import {
-    getCircularCallRelations,
-    getCircularFileImports,
-    getCircularLocalAtoms,
-    prepareFileDependencyLookup
-} from './circular-repository.js';
 import { createStandardContext } from './guard-standards.js';
+import { safeArray } from '../../../shared/compiler/core-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
@@ -58,9 +46,6 @@ function findCycleDFS(startId, getChildrenFn) {
     return foundCycle;
 }
 
-function safeArray(value) {
-    return Array.isArray(value) ? value : [];
-}
 
 function buildCircularContext({
     severity,

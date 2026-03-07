@@ -6,7 +6,7 @@
  * @module extractors/communication/message-channel
  */
 
-import { getLineNumber } from '../utils.js';
+import { getLineNumber } from '../static/utils.js';
 
 /**
  * Extrae uso de MessageChannel / MessagePort
@@ -15,13 +15,13 @@ import { getLineNumber } from '../utils.js';
  */
 export function extractMessageChannel(code) {
   const channels = [];
-  
+
   // new MessageChannel()
   const channelPattern = /new\s+MessageChannel\s*\(\s*\)/g;
-  
+
   // Uso de port1 y port2
   const portPattern = /(\w+)\.port[12]\.(postMessage|onmessage)/g;
-  
+
   let match;
   while ((match = channelPattern.exec(code)) !== null) {
     channels.push({
@@ -29,7 +29,7 @@ export function extractMessageChannel(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = portPattern.exec(code)) !== null) {
     channels.push({
       type: 'messageChannel_port_usage',
@@ -38,6 +38,6 @@ export function extractMessageChannel(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   return { channels, all: channels };
 }

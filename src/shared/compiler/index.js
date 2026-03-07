@@ -73,9 +73,6 @@ export {
   detectSharedStateHotspotConformanceFromSource
 } from './shared-state-hotspot-conformance.js';
 
-export {
-  detectCentralityCoverageConformanceFromSource
-} from './centrality-coverage-conformance.js';
 
 export {
   detectTestabilityConformanceFromSource
@@ -181,20 +178,14 @@ export {
 export {
   getDeadCodeSqlPredicate,
   isSuspiciousDeadCodeAtom,
-  normalizeDeadCodeAtom
-} from './dead-code-heuristics.js';
-
-export {
+  normalizeDeadCodeAtom,
   getFlaggedDeadCodeCount,
   getSuspiciousDeadCodeCount,
-  getDeadCodePlausibilitySummary
-} from './dead-code-reporting.js';
-
-export {
+  getDeadCodePlausibilitySummary,
   loadSuspiciousDeadCodeCandidates,
   buildDeadCodeRemediation,
   buildDeadCodeRemediationPlan
-} from './dead-code-remediation.js';
+} from './dead-code-utils.js';
 
 export {
   DERIVED_SCORE_SIGNALS,
@@ -211,26 +202,14 @@ export {
   getLiveFileSetSql,
   getLiveFileTotal,
   getStaleTableRowCount,
-  getLiveRowDriftSummary
-} from './live-row-drift.js';
-
-export {
+  getLiveRowDriftSummary,
   loadStaleTableRows,
-  buildLiveRowReconciliationPlan
-} from './live-row-reconciliation.js';
-
-export {
-  buildLiveRowRemediationPlan
-} from './live-row-remediation.js';
-
-export {
+  buildLiveRowReconciliationPlan,
+  buildLiveRowRemediationPlan,
   buildLiveRowCleanupPlan,
-  executeLiveRowCleanup
-} from './live-row-cleanup.js';
-
-export {
+  executeLiveRowCleanup,
   ensureLiveRowSync
-} from './live-row-sync.js';
+} from './live-row-utils.js';
 
 export {
   buildDuplicateRemediation,
@@ -267,15 +246,13 @@ export {
   classifyPipelineOrphans
 } from './pipeline-orphans.js';
 
-export {
-  getPipelineOrphanCandidates,
-  getPipelineOrphanSummary
-} from './pipeline-orphan-reporting.js';
 
 export {
+  getPipelineOrphanCandidates,
+  getPipelineOrphanSummary,
   buildPipelineOrphanRemediation,
   buildPipelineOrphanRemediationPlan
-} from './pipeline-orphan-remediation.js';
+} from './pipeline-orphans.js';
 
 export {
   WATCHER_MESSAGE_PREFIX,

@@ -22,27 +22,27 @@ export function extractBuildTimeDependencies(code) {
     deadCodeCandidates: [], // Código que puede eliminarse en prod
     all: []
   };
-  
+
   // process.env.VAR o import.meta.env.VAR
   const envPattern = /(?:process\.env|import\.meta\.env)\.(\w+)/g;
-  
+
   // __DEV__, __PROD__, __TEST__
   const devFlagPattern = /__(DEV|PROD|TEST|DEBUG)__/g;
-  
+
   // NODE_ENV checks
   const nodeEnvPattern = /process\.env\.NODE_ENV\s*===?\s*['"]([^'"]+)['"]/g;
-  
+
   // typeof window !== 'undefined'
   const platformPattern = /typeof\s+(window|document|global|process)\s*!==?\s*['"]undefined['"]/g;
-  
+
   // Feature flags: flags.x, featureFlags.y
   const featureFlagPattern = /(?:flags|featureFlags)\.(\w+)/g;
-  
+
   // DEBUG || debug()
   const debugPattern = /(?:^|\s)(DEBUG|debug)\s*[\(&]/g;
-  
+
   let match;
-  
+
   while ((match = envPattern.exec(code)) !== null) {
     build.envVars.push({
       type: 'env_var',
@@ -50,14 +50,14 @@ export function extractBuildTimeDependencies(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = devFlagPattern.exec(code)) !== null) {
     build.devFlags.push({
       type: 'build_flag',
       name: match[1],
       line: getLineNumber(code, match.index)
     });
-    
+
     // Marcar como código potencialmente muerto en producción
     if (match[1] === 'DEV' || match[1] === 'DEBUG') {
       build.deadCodeCandidates.push({
@@ -68,7 +68,7 @@ export function extractBuildTimeDependencies(code) {
       });
     }
   }
-  
+
   while ((match = nodeEnvPattern.exec(code)) !== null) {
     build.devFlags.push({
       type: 'node_env',
@@ -76,7 +76,7 @@ export function extractBuildTimeDependencies(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = platformPattern.exec(code)) !== null) {
     build.platformChecks.push({
       type: 'platform_check',
@@ -84,7 +84,7 @@ export function extractBuildTimeDependencies(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = featureFlagPattern.exec(code)) !== null) {
     build.featureFlags.push({
       type: 'feature_flag',
@@ -92,7 +92,7 @@ export function extractBuildTimeDependencies(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = debugPattern.exec(code)) !== null) {
     build.devFlags.push({
       type: 'debug_call',
@@ -100,13 +100,13 @@ export function extractBuildTimeDependencies(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   build.all = [
     ...build.envVars,
     ...build.devFlags,
     ...build.platformChecks,
     ...build.featureFlags
   ];
-  
+
   return build;
 }

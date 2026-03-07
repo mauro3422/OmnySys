@@ -6,7 +6,7 @@
  * @module extractors/communication/broadcast-channel
  */
 
-import { getLineNumber } from '../utils.js';
+import { getLineNumber } from '../static/utils.js';
 
 /**
  * Extrae uso de BroadcastChannel
@@ -15,13 +15,13 @@ import { getLineNumber } from '../utils.js';
  */
 export function extractBroadcastChannel(code) {
   const channels = [];
-  
+
   // new BroadcastChannel('channel-name')
   const channelCreationPattern = /new\s+BroadcastChannel\s*\(\s*['"]([^'"]+)['"]/g;
-  
+
   // broadcastChannel.postMessage(...) o .onmessage
   const channelUsagePattern = /(\w+)\.(postMessage|onmessage|addEventListener)\s*[\(=]/g;
-  
+
   let match;
   while ((match = channelCreationPattern.exec(code)) !== null) {
     channels.push({
@@ -30,6 +30,6 @@ export function extractBroadcastChannel(code) {
       type: 'broadcastChannel'
     });
   }
-  
+
   return { channels, all: channels };
 }

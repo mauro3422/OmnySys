@@ -7,7 +7,7 @@
  */
 
 import { STORAGE_PATTERNS } from './constants.js';
-import { getLineNumber } from './utils.js';
+import { getLineNumber } from '#shared/utils/line-utils.js';
 
 /**
  * Extrae todas las keys de localStorage/sessionStorage usadas en el código
@@ -17,7 +17,7 @@ import { getLineNumber } from './utils.js';
 export function extractLocalStorageKeys(code) {
   const reads = [];
   const writes = [];
-  
+
   // Extraer writes
   for (const pattern of STORAGE_PATTERNS.writes) {
     let match;
@@ -29,7 +29,7 @@ export function extractLocalStorageKeys(code) {
       });
     }
   }
-  
+
   // Extraer reads
   for (const pattern of STORAGE_PATTERNS.reads) {
     let match;
@@ -41,7 +41,7 @@ export function extractLocalStorageKeys(code) {
       });
     }
   }
-  
+
   return {
     reads,
     writes,
@@ -56,14 +56,14 @@ export function extractLocalStorageKeys(code) {
  */
 export function extractStorageWrites(code) {
   const writes = new Set();
-  
+
   for (const pattern of STORAGE_PATTERNS.writes) {
     let match;
     while ((match = pattern.exec(code)) !== null) {
       writes.add(match[1]);
     }
   }
-  
+
   return Array.from(writes);
 }
 
@@ -74,13 +74,15 @@ export function extractStorageWrites(code) {
  */
 export function extractStorageReads(code) {
   const reads = new Set();
-  
+
   for (const pattern of STORAGE_PATTERNS.reads) {
     let match;
     while ((match = pattern.exec(code)) !== null) {
       reads.add(match[1]);
     }
   }
-  
+
   return Array.from(reads);
 }
+
+

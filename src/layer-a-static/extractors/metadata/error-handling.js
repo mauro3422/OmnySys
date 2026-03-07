@@ -23,27 +23,27 @@ export function extractErrorHandling(code) {
     catchBlocks: [],        // catch (e) { ... }
     all: []
   };
-  
+
   // try/catch/finally blocks
   const tryCatchPattern = /try\s*\{[^}]*\}\s*catch\s*\(\s*(\w+)\s*\)\s*\{/g;
-  
+
   // throw new Error() o throw custom
   const throwPattern = /throw\s+(?:new\s+)?(\w+)?\s*\(\s*['"]?([^'"\)]*)['"]?\)?/g;
-  
+
   // Error codes: 'ERR_SOMETHING', 'E_SOMETHING', etc.
   const errorCodePattern = /['"](ERR_[A-Z_]+|E_[A-Z_]+|CODE_[A-Z_]+)['"]/g;
-  
+
   // class XError extends Error
   const customErrorPattern = /class\s+(\w+Error)\s+extends\s+(?:Error|\w+Error)/g;
-  
+
   // Mensajes de error hardcodeados: throw new Error('mensaje')
   const errorMessagePattern = /(?:throw|Error)\s*\(\s*['"]([^'"]{10,})['"]/g;
-  
+
   // e.code === 'SOMETHING' (comparación de códigos)
   const codeCheckPattern = /(\w+)\.code\s*===?\s*['"]([^'"]+)['"]/g;
-  
+
   let match;
-  
+
   while ((match = tryCatchPattern.exec(code)) !== null) {
     errors.tryBlocks.push({
       type: 'try_catch',
@@ -51,7 +51,7 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = throwPattern.exec(code)) !== null) {
     errors.throwStatements.push({
       type: 'throw',
@@ -60,7 +60,7 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = errorCodePattern.exec(code)) !== null) {
     errors.errorCodes.push({
       type: 'error_code',
@@ -68,7 +68,7 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = customErrorPattern.exec(code)) !== null) {
     errors.customErrors.push({
       type: 'custom_error_class',
@@ -76,7 +76,7 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = errorMessagePattern.exec(code)) !== null) {
     errors.errorMessages.push({
       type: 'error_message',
@@ -84,7 +84,7 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = codeCheckPattern.exec(code)) !== null) {
     errors.errorCodes.push({
       type: 'error_code_check',
@@ -93,13 +93,13 @@ export function extractErrorHandling(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   errors.all = [
     ...errors.tryBlocks,
     ...errors.throwStatements,
     ...errors.errorCodes,
     ...errors.customErrors
   ];
-  
+
   return errors;
 }

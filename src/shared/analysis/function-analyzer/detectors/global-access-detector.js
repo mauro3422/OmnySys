@@ -6,6 +6,8 @@
  * @module function-analyzer/detectors/global-access-detector
  */
 
+import { getLineNumber } from '../../../utils/line-utils.js';
+
 /**
  * Detect global variable access
  * @param {string} functionCode - Function code
@@ -13,7 +15,7 @@
  */
 export function detectGlobalAccess(functionCode) {
   const globals = [];
-  
+
   // window.x, global.x, self.x
   const patterns = [
     { regex: /\bwindow\.(\w+)/g, type: 'window' },
@@ -23,7 +25,7 @@ export function detectGlobalAccess(functionCode) {
     { regex: /\bnavigator\.(\w+)/g, type: 'navigator' },
     { regex: /\blocation\.(\w+)/g, type: 'location' }
   ];
-  
+
   for (const { regex, type } of patterns) {
     let match;
     while ((match = regex.exec(functionCode)) !== null) {
@@ -34,13 +36,8 @@ export function detectGlobalAccess(functionCode) {
       });
     }
   }
-  
+
   return globals;
 }
 
-/**
- * Get line number
- */
-function getLineNumber(code, position) {
-  return code.substring(0, position).split('\n').length;
-}
+

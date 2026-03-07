@@ -21,24 +21,24 @@ export function extractRuntimeContracts(code) {
     nullChecks: [],    // if (!x) return
     all: []
   };
-  
+
   // console.assert() o assert()
   const assertPattern = /(?:console\.)?assert\s*\(\s*([^,]+)(?:,\s*([^)]+))?\)/g;
-  
+
   // typeof checks
   const typeofPattern = /typeof\s+(\w+)\s*===?\s*['"]([^'"]+)['"]/g;
-  
+
   // instanceof checks
   const instanceofPattern = /(\w+)\s+instanceof\s+(\w+)/g;
-  
+
   // if (x === null || x === undefined) throw
   const nullGuardPattern = /if\s*\(\s*(\w+)\s*===?\s*(?:null|undefined)\s*\)\s*\{\s*throw\s+new\s+(\w+)/g;
-  
+
   // if (!x) return early
   const earlyReturnPattern = /if\s*\(\s*!(\w+)\s*\)\s*(?:return|throw)/g;
-  
+
   let match;
-  
+
   while ((match = assertPattern.exec(code)) !== null) {
     contracts.assertions.push({
       type: 'assert',
@@ -47,7 +47,7 @@ export function extractRuntimeContracts(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = typeofPattern.exec(code)) !== null) {
     contracts.validations.push({
       type: 'typeof',
@@ -56,7 +56,7 @@ export function extractRuntimeContracts(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = instanceofPattern.exec(code)) !== null) {
     contracts.validations.push({
       type: 'instanceof',
@@ -65,7 +65,7 @@ export function extractRuntimeContracts(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = nullGuardPattern.exec(code)) !== null) {
     contracts.nullChecks.push({
       type: 'null_guard',
@@ -74,7 +74,7 @@ export function extractRuntimeContracts(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   while ((match = earlyReturnPattern.exec(code)) !== null) {
     contracts.invariants.push({
       type: 'early_return',
@@ -82,13 +82,13 @@ export function extractRuntimeContracts(code) {
       line: getLineNumber(code, match.index)
     });
   }
-  
+
   contracts.all = [
     ...contracts.assertions,
     ...contracts.validations,
     ...contracts.nullChecks,
     ...contracts.invariants
   ];
-  
+
   return contracts;
 }

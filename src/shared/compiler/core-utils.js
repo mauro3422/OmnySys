@@ -61,3 +61,50 @@ export function stripPrefix(message = '', prefix = '') {
     const msgStr = String(message || '');
     return msgStr.startsWith(prefix) ? msgStr.slice(prefix.length).trimStart() : msgStr;
 }
+
+/**
+ * Convierte un valor a array de forma segura.
+ * @param {*} value 
+ * @returns {Array}
+ */
+export function safeArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Convierte un valor a número de forma segura.
+ * @param {*} value 
+ * @returns {number}
+ */
+export function toNumber(value) {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Calcula un ratio de forma segura.
+ * @param {number} numerator 
+ * @param {number} denominator 
+ * @returns {number}
+ */
+export function toRatio(numerator, denominator) {
+    const n = toNumber(numerator);
+    const d = toNumber(denominator);
+    if (!d) return 0;
+    return Number((n / d).toFixed(3));
+}
+
+/**
+ * Parsea un JSON de forma segura.
+ * @param {string} value 
+ * @param {*} fallback 
+ * @returns {*}
+ */
+export function safeParseJson(value, fallback = {}) {
+    if (!value) return fallback;
+    try {
+        return JSON.parse(value);
+    } catch {
+        return fallback;
+    }
+}

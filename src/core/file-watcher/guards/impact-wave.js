@@ -1,13 +1,3 @@
-/**
- * @fileoverview impact-wave.js
- *
- * Simula una "ola de impacto" local tras cambios de archivo.
- * Detecta el radio de explosión de cambios y potenciales rupturas.
- *
- * @module core/file-watcher/guards/impact-wave
- * @version 2.0.0 - Estandarizado
- */
-
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
 import {
@@ -18,12 +8,10 @@ import {
     StandardSuggestions,
     severityFromImpact
 } from './guard-standards.js';
+import { safeArray } from '../../../shared/compiler/core-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:impact');
 
-function safeArray(value) {
-    return Array.isArray(value) ? value : [];
-}
 
 function getRequiredParamsCount(atom) {
     return safeArray(atom?.signature?.params).filter(p => !p?.optional).length;
@@ -163,9 +151,9 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
             guardName: 'impact-wave-guard',
             severity,
             metricValue: score,
-            threshold: severity === 'high' ? StandardThresholds.IMPACT_HIGH : 
-                       (severity === 'medium' ? StandardThresholds.IMPACT_MEDIUM : StandardThresholds.IMPACT_LOW),
-            suggestedAction: hasBreakingChanges 
+            threshold: severity === 'high' ? StandardThresholds.IMPACT_HIGH :
+                (severity === 'medium' ? StandardThresholds.IMPACT_MEDIUM : StandardThresholds.IMPACT_LOW),
+            suggestedAction: hasBreakingChanges
                 ? StandardSuggestions.IMPACT_BREAKING
                 : StandardSuggestions.IMPACT_REVIEW,
             suggestedAlternatives: hasBreakingChanges ? [

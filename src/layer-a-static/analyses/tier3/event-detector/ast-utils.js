@@ -1,5 +1,5 @@
 /**
- * @fileoverview ast-utils.js
+ * @fileoverview line-utils.js
  * 
  * Utilidades para trabajar con nodos AST
  * 
@@ -84,3 +84,5 @@ export function isMethodCall(node) {
   const functionNode = node.childForFieldName('function');
   return functionNode?.type === 'member_expression';
 }
+
+

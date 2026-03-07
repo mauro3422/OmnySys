@@ -6,7 +6,7 @@
  * @module extractors/communication/server-sent-events
  */
 
-import { getLineNumber } from '../utils.js';
+import { getLineNumber } from '../static/utils.js';
 
 /**
  * Extrae conexiones Server-Sent Events (EventSource)
@@ -16,13 +16,13 @@ import { getLineNumber } from '../utils.js';
 export function extractServerSentEvents(code) {
   const urls = [];
   const events = [];
-  
+
   // new EventSource('url')
   const esPattern = /new\s+EventSource\s*\(\s*['"]([^'"]+)['"]/g;
-  
+
   // eventSource.addEventListener('event-name', ...)
   const esEventPattern = /\w+\.addEventListener\s*\(\s*['"]([^'"]+)['"]/g;
-  
+
   let match;
   while ((match = esPattern.exec(code)) !== null) {
     urls.push({
@@ -31,7 +31,7 @@ export function extractServerSentEvents(code) {
       type: 'eventsource_url'
     });
   }
-  
+
   while ((match = esEventPattern.exec(code)) !== null) {
     events.push({
       event: match[1],
@@ -39,6 +39,6 @@ export function extractServerSentEvents(code) {
       type: 'eventsource_event'
     });
   }
-  
+
   return { urls, events, all: [...urls, ...events] };
 }

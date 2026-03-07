@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.108 - Compiler Stabilization & Integrity](changelogs/v0.9.108.md)
 - [v0.9.105 - SOLID Standardization & Git Unification](changelogs/v0.9.105.md)
 - [v0.9.104 - Core Consolidation & Genetic Lineage](changelogs/v0.9.104.md)
 - [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
@@ -30,7 +31,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
-| **0.9.105** | 2026-03-07 | SOLID standardization of tool handlers, Git bridge unification, event-sourcing prototype, and database health cleanup (Grade F fix). |
+| **0.9.108** | 2026-03-07 | Compiler stabilization, utility canonization, SOLID persistence handlers, and Grade A structural integrity. |
+| **0.9.107** | 2026-03-07 | Fix missing imports in conformance layer and repository regressions. |
+| **0.9.105** | 2026-03-07 | SOLID standardization of tool handlers, Git bridge unification, event-sourcing prototype, and database health cleanup. |
 | **0.9.103** | 2026-03-07 | Genetic Preservation Policy, Soft Delete migration for atoms/issues, schema stabilization, and 100/100 Health Score recovery. |
 | **0.9.102** | 2026-03-07 | Pipeline Integrity Detector, auto-audit system, technical debt consolidation, unified duplicate detection API. |
 | **0.9.101** | 2026-03-06 | Unified scanned-file manifest, aligned scanner/hash/index file universes, and exposed persisted file coverage in compiler explainability. |

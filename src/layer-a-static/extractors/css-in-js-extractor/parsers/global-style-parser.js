@@ -6,6 +6,8 @@
  * @module css-in-js-extractor/parsers/global-style-parser
  */
 
+import { getLineNumber } from '#shared/utils/line-utils.js';
+
 /**
  * Parse createGlobalStyle
  * @param {string} code - Source code
@@ -27,10 +29,7 @@ export function parseGlobalStyles(code) {
   return globalStyles;
 }
 
-/**
- * Get line number from position
- */
-function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+
+
+
+

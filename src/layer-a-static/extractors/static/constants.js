@@ -105,3 +105,4 @@ export const ConnectionType = {
  * @constant {number}
  */
 export const DEFAULT_CONFIDENCE = 1.0;
+

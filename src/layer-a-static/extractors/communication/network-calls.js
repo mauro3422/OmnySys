@@ -7,7 +7,7 @@
  * @module extractors/communication/network-calls
  */
 
-import { getLineNumber } from '../utils.js';
+import { getLineNumber } from '../static/utils.js';
 
 /**
  * Extrae URLs usadas en fetch() o XMLHttpRequest
@@ -16,17 +16,17 @@ import { getLineNumber } from '../utils.js';
  */
 export function extractNetworkCalls(code) {
   const urls = [];
-  
+
   try {
     // fetch('url') o fetch("url")
     const fetchPattern = /fetch\s*\(\s*['"]([^'"]+)['"]/g;
-    
+
     // xhr.open('GET', 'url') o xhr.open("POST", "url")
     const xhrPattern = /\.open\s*\(\s*['"][^'"]*['"]\s*,\s*['"]([^'"]+)['"]/g;
-    
+
     // axios.get('url') o axios.post('url', ...)
     const axiosPattern = /axios\.(get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"]/g;
-    
+
     let match;
     while ((match = fetchPattern.exec(code)) !== null) {
       urls.push({
@@ -36,7 +36,7 @@ export function extractNetworkCalls(code) {
         type: 'network_fetch'
       });
     }
-    
+
     while ((match = xhrPattern.exec(code)) !== null) {
       urls.push({
         url: match[1],
@@ -45,7 +45,7 @@ export function extractNetworkCalls(code) {
         type: 'network_xhr'
       });
     }
-    
+
     while ((match = axiosPattern.exec(code)) !== null) {
       urls.push({
         url: match[2],
@@ -57,6 +57,6 @@ export function extractNetworkCalls(code) {
   } catch (error) {
     // Silently handle regex errors or undefined code
   }
-  
+
   return { urls, all: urls };
 }

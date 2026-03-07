@@ -1,23 +1,13 @@
 /**
  * @fileoverview utils.js
- * 
+ *
  * Utilidades compartidas para extractores estáticos
- * 
+ *
  * @module extractors/static/utils
  */
 
 import { NATIVE_WINDOW_PROPS } from './constants.js';
-
-/**
- * Obtiene el número de línea para una posición en el código
- * @param {string} code - Código fuente
- * @param {number} position - Posición en el string
- * @returns {number} - Número de línea (1-based)
- */
-export function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+export { getLineNumber } from '#shared/utils/line-utils.js';
 
 /**
  * Verifica si una propiedad es nativa de window/global
@@ -25,9 +15,9 @@ export function getLineNumber(code, position) {
  * @returns {boolean}
  */
 export function isNativeWindowProp(prop) {
-  return NATIVE_WINDOW_PROPS.includes(prop) || 
-         prop.startsWith('on') ||  // Event handlers
-         /^[A-Z]/.test(prop);      // Constructores (Array, Object, etc)
+  return NATIVE_WINDOW_PROPS.includes(prop) ||
+    prop.startsWith('on') ||  // Event handlers
+    /^[A-Z]/.test(prop);      // Constructores (Array, Object, etc)
 }
 
 /**
@@ -40,10 +30,12 @@ export function isNativeWindowProp(prop) {
 export function extractMatches(code, pattern, transform) {
   const results = [];
   let match;
-  
+
   while ((match = pattern.exec(code)) !== null) {
     results.push(transform(match, code));
   }
-  
+
   return results;
 }
+
+

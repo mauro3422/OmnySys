@@ -3,7 +3,7 @@
  * Persistence handlers for semantic data
  */
 import { safeJson, safeParseJson } from '../../converters.js';
-import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '../../../../core/BaseSqlRepository.js';
 
 export function saveSemanticData(db, connections, issues, now) {
   const repo = new BaseSqlRepository(db, 'SemanticHandler');
@@ -23,8 +23,7 @@ export function saveSemanticData(db, connections, issues, now) {
 
     repo.saveTableRows('semantic_connections',
       ['source_path', 'target_path', 'connection_type', 'connection_key', 'weight', 'context_json', 'created_at'],
-      connRows,
-      'connection_key'
+      connRows
     );
   }
 
@@ -43,8 +42,7 @@ export function saveSemanticData(db, connections, issues, now) {
 
     repo.saveTableRows('semantic_issues',
       ['file_path', 'issue_type', 'severity', 'message', 'context_json', 'detected_at'],
-      issueRows,
-      'file_path'
+      issueRows
     );
   }
 }

@@ -129,3 +129,4 @@ export function getSharedRoutes(routesA, routesB) {
     .map(r => normalizeRoute(r.route))
     .filter(normalized => routeSetA.has(normalized));
 }
+

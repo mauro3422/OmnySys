@@ -6,6 +6,8 @@
  * @module css-in-js-extractor/parsers/styled-parser
  */
 
+import { getLineNumber } from '#shared/utils/line-utils.js';
+
 /**
  * Parse styled tag pattern: styled.div`...`
  * @param {string} code - Source code
@@ -113,10 +115,7 @@ function extractInterpolations(css) {
   return interpolations;
 }
 
-/**
- * Get line number from position
- */
-function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+
+
+
+

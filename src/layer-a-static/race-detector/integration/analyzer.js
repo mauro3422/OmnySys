@@ -1,5 +1,5 @@
 import { RaceConditionDetector } from '../index.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:integration');
 

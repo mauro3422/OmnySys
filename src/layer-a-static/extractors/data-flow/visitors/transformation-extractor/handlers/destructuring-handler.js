@@ -130,3 +130,5 @@ export function handleDestructuring(pattern, init, addTransformation, trackVaria
     handleArrayDestructuring(pattern, init, addTransformation, trackVariable, code);
   }
 }
+
+

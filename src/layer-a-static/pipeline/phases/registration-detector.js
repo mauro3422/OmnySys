@@ -11,6 +11,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { getLineNumber } from '../../../shared/utils/line-utils.js';
 
 const logger = createLogger('OmnySys:RegistrationDetector');
 
@@ -99,16 +100,6 @@ export function detectRegistrations(filePath, code) {
   return registrations;
 }
 
-/**
- * Calcula el número de línea para un índice en el código
- * @param {string} code - Código fuente
- * @param {number} index - Índice en el string
- * @returns {number} Número de línea (1-based)
- */
-function getLineNumber(code, index) {
-  const lines = code.substring(0, index).split('\n');
-  return lines.length;
-}
 
 /**
  * Calcula el impacto de una modificación considerando registros dinámicos
@@ -198,3 +189,4 @@ export default {
   calculateDynamicImpact,
   enrichImpactGraphWithRegistrations
 };
+

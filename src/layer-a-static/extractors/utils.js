@@ -1,20 +1,11 @@
 /**
  * @fileoverview utils.js
  * Utilidades compartidas para extractors
- * 
+ *
  * @module extractors/utils
  */
 
-/**
- * Obtiene el número de línea para una posición en el código
- * @param {string} code - Código fuente
- * @param {number} position - Posición en el string
- * @returns {number} - Número de línea (1-based)
- */
-export function getLineNumber(code, position) {
-  const lines = code.substring(0, position).split('\n');
-  return lines.length;
-}
+export { getLineNumber } from '../../shared/utils/line-utils.js';
 
 /**
  * Obtiene la siguiente línea de código después de una posición
@@ -61,16 +52,16 @@ export function extractFunctionBody(code, startIndex) {
   // Buscar el inicio del cuerpo {
   let braceStart = code.indexOf('{', startIndex);
   if (braceStart === -1) return null;
-  
+
   let braceCount = 0;
   let inString = false;
   let stringChar = '';
   let i = braceStart;
-  
+
   while (i < code.length) {
     const char = code[i];
     const prevChar = code[i - 1];
-    
+
     // Manejar strings
     if (!inString && (char === '"' || char === "'" || char === '`')) {
       inString = true;
@@ -78,7 +69,7 @@ export function extractFunctionBody(code, startIndex) {
     } else if (inString && char === stringChar && prevChar !== '\\') {
       inString = false;
     }
-    
+
     // Contar braces solo fuera de strings
     if (!inString) {
       if (char === '{') braceCount++;
@@ -89,9 +80,10 @@ export function extractFunctionBody(code, startIndex) {
         }
       }
     }
-    
+
     i++;
   }
-  
+
   return null;
 }
+

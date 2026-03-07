@@ -116,3 +116,4 @@ export function hasTestCompanion(filePath, allFilePaths) {
   const colocated = getColocatedFilesFor(filePath, allFilePaths);
   return colocated.some(c => c.colocationType === 'test-companion');
 }
+

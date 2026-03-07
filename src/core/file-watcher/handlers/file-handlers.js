@@ -1,18 +1,10 @@
-/**
- * @fileoverview file-handlers.js
- * 
- * Handlers principales para eventos del file watcher.
- * Maneja creacion, modificacion y borrado de archivos.
- * 
- * @module file-watcher/handlers/file-handlers
- */
-
 import { createLogger } from '../../../utils/logger.js';
 import { guardRegistry } from '../guards/registry.js';
 import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave.js';
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
 import { analyzeAndIndex } from '../analyze.js';
+import { safeArray } from '../../../shared/compiler/core-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
@@ -21,9 +13,7 @@ function isLowSignalAtomName(name) {
   return LOW_SIGNAL_NAME_REGEX.test(name);
 }
 
-function safeArray(value) {
-  return Array.isArray(value) ? value : [];
-}
+
 
 function getRequiredParamsCount(atom) {
   return safeArray(atom?.signature?.params).filter(p => !p?.optional).length;

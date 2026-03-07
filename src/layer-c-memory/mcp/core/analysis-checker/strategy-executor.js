@@ -11,7 +11,7 @@
 import { IndexingStrategy } from './strategies/indexing-strategy.js';
 import { runFullIndexing } from './index-runner.js';
 import { createLogger } from '../../../../utils/logger.js';
-import { executeLiveRowCleanup } from '../../../../shared/compiler/live-row-cleanup.js';
+import { executeLiveRowCleanup } from '../../../../shared/compiler/live-row-utils.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 
 

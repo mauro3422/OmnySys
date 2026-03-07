@@ -121,3 +121,4 @@ export function isValidRoute(route) {
     route.startsWith('/') &&
     route.length > 1;
 }
+
