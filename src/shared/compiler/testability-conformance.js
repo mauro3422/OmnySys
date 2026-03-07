@@ -17,7 +17,8 @@ import {
   normalizePath,
   shouldScanCompilerFile,
   createPositionalFinding as createFinding,
-  stripComments
+  stripComments,
+  stripStrings
 } from './conformance-utils.js';
 
 

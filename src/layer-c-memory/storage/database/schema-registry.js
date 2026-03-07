@@ -265,11 +265,14 @@ export const TABLE_DEFINITIONS = {
   modules: {
     description: 'Metadatos por módulo (agrupación de archivos)',
     columns: [
-      { name: 'path', type: 'TEXT', pk: true, description: 'Ruta del módulo' },
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true, description: 'ID autoincremental', addedIn: 'v2.1-registry' },
       { name: 'name', type: 'TEXT', nullable: false, description: 'Nombre del módulo' },
+      { name: 'path', type: 'TEXT', nullable: false, description: 'Ruta del módulo' },
       { name: 'type', type: 'TEXT', nullable: true, description: 'Tipo de módulo (ej: library, feature, component)' },
       { name: 'file_count', type: 'INTEGER', default: 0, description: 'Cantidad de archivos en el módulo' },
       { name: 'atom_count', type: 'INTEGER', default: 0, description: 'Cantidad de átomos en el módulo' },
+      { name: 'entry_points', type: 'TEXT', nullable: true, description: 'JSON array de puntos de entrada', addedIn: 'v2.1-registry' },
+      { name: 'total_complexity', type: 'INTEGER', default: 0, description: 'Complejidad total histórica', addedIn: 'v2.1-registry' },
       { name: 'complexity_score', type: 'REAL', default: 0, description: 'Complejidad agregada del módulo' },
       { name: 'cohesion_score', type: 'REAL', default: 0, description: 'Cohesión del módulo (0-1)' },
       { name: 'coupling_score', type: 'REAL', default: 0, description: 'Acoplamiento del módulo (0-1)' },

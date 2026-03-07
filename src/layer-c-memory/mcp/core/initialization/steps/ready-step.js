@@ -21,23 +21,34 @@ export class ReadyStep extends InitializationStep {
     super('ready');
   }
 
-  execute(server) {
+  async execute(server) {
     // Display stats
     const uptime = ((Date.now() - server.startTime) / 1000).toFixed(2);
     logger.info(`   ✓ Server ready in ${uptime}s`);
 
     // Categorize and display tools
-    this.displayTools();
+    await this.displayTools();
+
+    // 📊 Print Diagnostics Dashboard (FINAL initialization output)
+    try {
+      const { printDiagnosticsDashboard } = await import('../dashboard-reporter.js');
+      await printDiagnosticsDashboard(server.projectPath);
+    } catch (err) {
+      logger.warn('   ⚠️ Failed to display Diagnostics Dashboard:', err.message);
+    }
 
     server.initialized = true;
     return true;
   }
 
-  displayTools() {
-    // Import here to avoid circular dependencies
-    import('../../../tools/index.js').then(({ toolDefinitions }) => {
+  async displayTools() {
+    try {
+      // Import here to avoid circular dependencies
+      const { toolDefinitions } = await import('../../../tools/index.js');
       logger.info(`   ✓ ${toolDefinitions.length} MCP tools registered`);
-    });
+    } catch (err) {
+      logger.warn('   ⚠️ Failed to load tool definitions for display:', err.message);
+    }
   }
 }
 

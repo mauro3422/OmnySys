@@ -139,19 +139,7 @@ async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindex
     logger.info('🧹 Limpiando caché local antes de reiniciar...');
     await cache.clear();
     if (reanalyze) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      const dataDir = path.join(server.projectPath, '.omnysysdata');
-
-      const toDelete = ['files', 'atoms', 'molecules'];
-      for (const dir of toDelete) {
-        await fs.rm(path.join(dataDir, dir), { recursive: true, force: true }).catch(() => { });
-      }
-      const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
-      for (const file of dbFiles) {
-        await fs.unlink(path.join(dataDir, file)).catch(() => { });
-      }
-      logger.info('✅ Análisis anterior eliminado (DB + atoms + molecules + files + index)');
+      logger.info('⏳ reanalyze=true: Delegando limpieza de datos al Proxy para evitar bloqueos de archivos en Windows.');
     }
   }
 

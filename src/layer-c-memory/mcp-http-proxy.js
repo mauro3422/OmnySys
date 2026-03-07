@@ -219,6 +219,34 @@ function spawnWorker(extraArgs = []) {
         if (restartScheduled) {
             const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
             restartScheduled = false;
+
+            // ── Cleanup for reanalyze ─────────────────────────────────────────────
+            // On Windows, file locks often prevent the worker from deleting its own DB.
+            // By doing it here, after the worker has closed, we ensure success.
+            if (nextArgs.includes('--reanalyze')) {
+                log('🗑️  reanalyze=true: Cleaning up old analysis data from Proxy...');
+                const dataDir = path.join(projectPath, '.omnysysdata');
+                try {
+                    const toDelete = ['files', 'atoms', 'molecules', 'watcher'];
+                    for (const dir of toDelete) {
+                        const dirPath = path.join(dataDir, dir);
+                        if (fs.existsSync(dirPath)) {
+                            fs.rmSync(dirPath, { recursive: true, force: true });
+                        }
+                    }
+                    const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
+                    for (const file of dbFiles) {
+                        const filePath = path.join(dataDir, file);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                        }
+                    }
+                    log('✅ Data cleanup complete (Proxy-side)');
+                } catch (err) {
+                    log(`⚠️  Cleanup failed: ${err.message}`);
+                }
+            }
+
             log('🚀 Respawning worker with fresh ESM cache...');
             // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
             const delay = process.platform === 'win32' ? 3000 : 1000;
