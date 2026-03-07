@@ -18,6 +18,7 @@ import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
 import { collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
+import { buildTelemetryProvenance } from '../../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
 
@@ -154,9 +155,30 @@ export class McpSetupStep extends InitializationStep {
       ? { _recentErrors: recentErrors, ...rawResult }
       : rawResult;
 
+    // Add canonical telemetry provenance to all responses
+    const provenance = buildTelemetryProvenance({
+      source: name,
+      phase2PendingFiles: server.orchestrator?.phase2Pending || 0,
+      runtimeRestartMode: server.runtimeRestartMode || 'manual',
+      pendingRuntimeRestartFiles: Array.from(server._pendingHotReloadRestartFiles || []),
+      watcherLifecycle: {
+        total: recentErrors.watcherAlerts?.length || 0,
+        byStatus: {
+          active: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'active').length || 0,
+          stale: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'stale').length || 0,
+          expired: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'expired').length || 0
+        }
+      }
+    });
+    
+    const resultWithProvenance = {
+      ...resultWithErrors,
+      _provenance: provenance
+    };
+
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.
-    const result = applyPagination(resultWithErrors, args || {});
+    const result = applyPagination(resultWithProvenance, args || {});
 
     const elapsed = (performance.now() - startTime).toFixed(2);
     logger.info(`   ✅ Completed in ${elapsed}ms\n`);

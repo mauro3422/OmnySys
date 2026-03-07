@@ -105,6 +105,10 @@ export const TABLE_DEFINITIONS = {
       { name: 'performance_json', type: 'TEXT', nullable: true, description: 'Métricas de performance' },
       { name: 'dna_json', type: 'TEXT', nullable: true, description: 'DNA fingerprint' },
       { name: 'derived_json', type: 'TEXT', nullable: true, description: 'Scores derivados adicionales' },
+      { name: 'imports_json', type: 'TEXT', nullable: true, description: 'Lista de imports que usa este átomo', addedIn: 'v3.0.1' },
+      { name: 'exports_json', type: 'TEXT', nullable: true, description: 'Símbolos que exporta (si es clase/módulo)', addedIn: 'v3.0.1' },
+      { name: 'uses_json', type: 'TEXT', nullable: true, description: 'Átomos que usa directamente', addedIn: 'v3.0.1' },
+      { name: 'side_effects_json', type: 'TEXT', nullable: true, description: 'Efectos secundarios detectados', addedIn: 'v3.0.1' },
 
       // Function metadata
       { name: 'function_type', type: 'TEXT', nullable: true, description: 'Tipo de función: declaration, arrow, expression, method', addedIn: 'v0.9.20' },
@@ -146,7 +150,9 @@ export const TABLE_DEFINITIONS = {
       { name: 'module_name', type: 'TEXT', nullable: true, description: 'Nombre del módulo' },
       { name: 'imports_json', type: 'TEXT', nullable: true, description: 'Lista de imports' },
       { name: 'exports_json', type: 'TEXT', nullable: true, description: 'Lista de exports' },
-      { name: 'hash', type: 'TEXT', nullable: true, description: 'Hash del contenido para análisis incremental', addedIn: 'v2.1' }
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el archivo fue removido o excluido', addedIn: 'v3.0.1' },
+      { name: 'hash', type: 'TEXT', nullable: true, description: 'Hash del contenido para análisis incremental', addedIn: 'v2.1' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_files_module', columns: ['module_name'] }
@@ -163,7 +169,9 @@ export const TABLE_DEFINITIONS = {
       { name: 'weight', type: 'REAL', default: 1.0, description: 'Peso de la relación' },
       { name: 'line_number', type: 'INTEGER', nullable: true, description: 'Línea donde ocurre' },
       { name: 'context_json', type: 'TEXT', nullable: true, description: 'Metadata adicional' },
-      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' }
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si la relación fue removida', addedIn: 'v3.0.1' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_relations_source', columns: ['source_id'] },
@@ -323,7 +331,10 @@ export const TABLE_DEFINITIONS = {
       { name: 'message', type: 'TEXT', nullable: false, description: 'Descripción del issue' },
       { name: 'line_number', type: 'INTEGER', nullable: true, description: 'Línea donde ocurre' },
       { name: 'context_json', type: 'TEXT', nullable: true, description: 'Contexto adicional del issue' },
-      { name: 'detected_at', type: 'TEXT', nullable: false, description: 'Timestamp de detección' }
+      { name: 'lifecycle_status', type: 'TEXT', default: 'active', description: 'Estado: active, expired, superseded', addedIn: 'v3.0.1' },
+      { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el issue fue removido', addedIn: 'v3.0.1' },
+      { name: 'detected_at', type: 'TEXT', nullable: false, description: 'Timestamp de detección' },
+      { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
     ],
     indexes: [
       { name: 'idx_semantic_issues_file', columns: ['file_path'] },

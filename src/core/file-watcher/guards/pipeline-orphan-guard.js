@@ -5,7 +5,10 @@
 import Database from 'better-sqlite3';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
-import { evaluateAtomTestability } from '../../../shared/compiler/index.js';
+import {
+    evaluateAtomTestability,
+    getPipelineOrphanSummary
+} from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -61,19 +64,21 @@ function hasPipelineShape(atom) {
     return PIPELINE_NAME_PATTERN.test(atom?.name || '');
 }
 
-function countFileImporters(rootPath, filePath) {
+function loadDisconnectedPipelineAtoms(rootPath, filePath) {
+    let db;
     try {
-        const db = new Database(`${rootPath}/.omnysysdata/omnysys.db`, { readonly: true });
-        const row = db.prepare(`
-            SELECT COUNT(*) as c
-            FROM files
-            WHERE path != ?
-              AND imports_json LIKE '%' || ? || '%'
-        `).get(filePath, filePath);
-        db.close();
-        return row?.c || 0;
+        db = new Database(`${rootPath}/.omnysysdata/omnysys.db`, { readonly: true });
+        const summary = getPipelineOrphanSummary(db, {
+            candidateLimit: 200,
+            orphanLimit: 100,
+            minComplexity: 0
+        });
+
+        return summary.orphans.filter((atom) => atom.file_path === filePath);
     } catch {
-        return 0;
+        return [];
+    } finally {
+        db?.close();
     }
 }
 
@@ -89,16 +94,22 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
             return [];
         }
 
-        const fileImporterCount = countFileImporters(rootPath, filePath);
+        const canonicalOrphans = loadDisconnectedPipelineAtoms(rootPath, filePath);
+        const canonicalNames = new Set(canonicalOrphans.map((atom) => atom.name));
         const disconnected = candidates.filter((atom) =>
+            canonicalNames.has(atom.name) &&
             getEffectiveCallerCount(atom) === 0 &&
-            getEffectiveCalleeCount(atom) === 0 &&
-            fileImporterCount === 0
+            getEffectiveCalleeCount(atom) === 0
         );
 
         if (disconnected.length === 0) {
             return [];
         }
+
+        const fileImporterCount = Math.max(
+            ...canonicalOrphans.map((atom) => Number(atom.file_importer_count) || 0),
+            0
+        );
 
         const severity = disconnected.some((atom) => {
             const evaluation = evaluateAtomTestability(atom);

@@ -41,7 +41,10 @@ export function isPipelineProductionFile(filePath = '') {
 }
 
 export function hasFileLevelImportEvidence(atomRow = {}) {
-  return (atomRow?.file_importer_count || 0) > 0;
+  return Math.max(
+    Number(atomRow?.dependency_importer_count) || 0,
+    Number(atomRow?.file_importer_count) || 0
+  ) > 0;
 }
 
 export function isLikelyDisconnectedPipelineAtom(atomRow = {}) {

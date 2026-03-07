@@ -184,6 +184,121 @@ export class Phase2Indexer {
                         const { saveSharedStateRelations } = await import('#layer-a/pipeline/link.js');
                         await saveSharedStateRelations(allAtoms, this.projectPath, true);
                     }
+
+                    // NEW: Generate Technical Debt Report post-Phase 2
+                    logger.info('📊 Generating Technical Debt Report...');
+                    const { getRepository: getRepo } = await import('#layer-c/storage/repository/index.js');
+                    const debtRepo = getRepo(this.projectPath);
+                    if (debtRepo?.db) {
+                        const { queryDuplicates, queryIsomorphicDuplicates } = await import('#layer-c/mcp/tools/semantic/semantic-queries.js');
+                        const { buildDuplicateRemediationPlan } = await import('#shared/compiler/index.js');
+
+                        // Structural duplicates
+                        const { rows: dupRows, stats: dupStats } = queryDuplicates(debtRepo.db, { limit: 50 });
+                        const structuralDuplicates = new (await import('#layer-c/mcp/tools/semantic/handlers/duplicate-handler.js')).DuplicateHandler(debtRepo.db).handle(dupRows);
+                        const structuralRemediation = buildDuplicateRemediationPlan(structuralDuplicates);
+
+                        // Conceptual duplicates
+                        const conceptualGroups = debtRepo.findConceptualDuplicates ? debtRepo.findConceptualDuplicates({ limit: 50 }) : [];
+
+                        // Pipeline orphans
+                        const { getPipelineOrphanSummary } = await import('#shared/compiler/index.js');
+                        const orphanSummary = getPipelineOrphanSummary(debtRepo.db);
+
+                        // Log consolidated report
+                        logger.info(`✅ Technical Debt Report Generated:`);
+                        logger.info(`   - Structural Duplicates: ${structuralDuplicates.length} groups (${dupStats.total_instances} instances)`);
+                        logger.info(`   - Conceptual Duplicates: ${conceptualGroups.length} groups`);
+                        logger.info(`   - Pipeline Orphans: ${orphanSummary?.total || 0} atoms`);
+                        logger.info(`   - Top Priority: ${structuralRemediation?.items?.[0]?.canonical?.name || 'None'}`);
+
+                        // Store in semantic_issues for MCP tools to read
+                        const { persistWatcherIssue, clearWatcherIssue } = await import('#core/file-watcher/watcher-issue-persistence.js');
+                        const { createIssueType, createStandardContext } = await import('#core/file-watcher/guards/guard-standards.js');
+
+                        await clearWatcherIssue(this.projectPath, 'project-wide', 'technical_debt_report');
+
+                        const totalDebtItems = (structuralRemediation?.totalGroups || 0) + (conceptualGroups?.length || 0) + (orphanSummary?.total || 0);
+                        if (totalDebtItems > 0) {
+                            await persistWatcherIssue(
+                                this.projectPath,
+                                'project-wide',
+                                createIssueType('arch', 'technical_debt', totalDebtItems > 10 ? 'high' : totalDebtItems > 5 ? 'medium' : 'low'),
+                                totalDebtItems > 10 ? 'high' : totalDebtItems > 5 ? 'medium' : 'low',
+                                `${totalDebtItems} technical debt items detected post-Phase 2`,
+                                {
+                                    source: 'phase2_post_completion',
+                                    timestamp: new Date().toISOString(),
+                                    structural: {
+                                        groups: structuralDuplicates.length,
+                                        instances: dupStats.total_instances,
+                                        topIssues: structuralRemediation?.items?.slice(0, 5) || []
+                                    },
+                                    conceptual: {
+                                        groups: conceptualGroups.length,
+                                        topIssues: conceptualGroups.slice(0, 5).map(g => ({
+                                            fingerprint: g.semanticFingerprint,
+                                            implementationCount: g.implementationCount
+                                        }))
+                                    },
+                                    pipelineOrphans: {
+                                        total: orphanSummary?.total || 0,
+                                        items: orphanSummary?.items?.slice(0, 5) || []
+                                    },
+                                    remediation: {
+                                        nextAction: structuralRemediation?.recommendation || orphanSummary?.recommendation || 'No immediate action required'
+                                    }
+                                }
+                            );
+                            logger.info('   - Report persisted in semantic_issues for MCP tools');
+                        }
+                    }
+
+                    // NEW: Run Pipeline Integrity Check post-Phase 2
+                    logger.info('🔍 Running Pipeline Integrity Check...');
+                    const { PipelineIntegrityDetector } = await import('#core/meta-detector/pipeline-integrity-detector.js');
+                    const { IntegrityDashboard } = await import('#core/meta-detector/integrity-dashboard.js');
+                    
+                    const detector = new PipelineIntegrityDetector(this.projectPath);
+                    const integrityResults = await detector.verify();
+                    
+                    if (integrityResults.length > 0) {
+                        const dashboard = new IntegrityDashboard();
+                        const integrityReport = await dashboard.generateReport(integrityResults);
+                        
+                        logger.info(`✅ Pipeline Integrity Check Complete:`);
+                        logger.info(`   - Overall Health: ${integrityReport.overallHealth}/100 (Grade: ${integrityReport.grade})`);
+                        logger.info(`   - Passed Checks: ${integrityReport.summary.passedChecks}/${integrityReport.summary.totalChecks}`);
+                        logger.info(`   - Critical Issues: ${integrityReport.summary.criticalIssues}`);
+                        logger.info(`   - Warnings: ${integrityReport.summary.warnings}`);
+                        
+                        if (integrityReport.recommendations.length > 0) {
+                            logger.info(`   - Top Recommendation: ${integrityReport.recommendations[0].action}`);
+                        }
+                        
+                        // Store in semantic_issues if there are critical issues
+                        if (integrityReport.summary.criticalIssues > 0) {
+                            const { persistWatcherIssue } = await import('#core/file-watcher/watcher-issue-persistence.js');
+                            const { createIssueType } = await import('#core/file-watcher/guards/guard-standards.js');
+                            
+                            await persistWatcherIssue(
+                                this.projectPath,
+                                'project-wide',
+                                createIssueType('arch', 'pipeline_integrity', 'high'),
+                                'high',
+                                `Pipeline integrity check failed: ${integrityReport.overallHealth}/100 (Grade: ${integrityReport.grade})`,
+                                {
+                                    source: 'phase2_post_completion',
+                                    timestamp: new Date().toISOString(),
+                                    overallHealth: integrityReport.overallHealth,
+                                    grade: integrityReport.grade,
+                                    criticalIssues: integrityReport.criticalIssues,
+                                    recommendations: integrityReport.recommendations.slice(0, 5)
+                                }
+                            );
+                            logger.info('   - Critical issues persisted in semantic_issues');
+                        }
+                    }
                 } catch (e) {
                     logger.debug('  ⚠️  Post-Phase2 completion tasks failed:', e.message);
                 }

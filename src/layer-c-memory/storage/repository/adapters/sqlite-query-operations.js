@@ -140,6 +140,84 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
     }).filter(a => a.similarity >= threshold);
   }
 
+  /**
+   * Find conceptual duplicates - functions with same semantic purpose but different implementations
+   * Groups by semanticFingerprint (format: verb:domain:entity)
+   * Optimized: Single query with in-memory grouping
+   * @param {Object} options - Query options
+   * @param {number} options.minCount - Minimum number of implementations to report (default: 2)
+   * @param {number} options.limit - Max groups to return (default: 50)
+   * @returns {Array} Groups of conceptually similar functions
+   */
+  findConceptualDuplicates(options = {}) {
+    const minCount = options.minCount || 2;
+    const limit = options.limit || 50;
+    const minEntitySpecificity = options.minEntitySpecificity || 3;
+
+    // Single optimized query: Get all atoms with valid fingerprints
+    const stmt = this.db.prepare(`
+      SELECT 
+        id, name, file_path, atom_type, complexity, is_exported,
+        json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
+        json_extract(dna_json, '$.semanticHash') as semanticHash,
+        json_extract(dna_json, '$.structuralHash') as structuralHash
+      FROM atoms
+      WHERE atom_type IN ('function', 'method', 'arrow')
+        AND (is_removed IS NULL OR is_removed = 0)
+        AND (is_dead_code IS NULL OR is_dead_code = 0)
+        AND fingerprint IS NOT NULL
+        AND fingerprint != 'unknown:unknown:unknown'
+        AND fingerprint NOT LIKE '%:unknown'
+        AND fingerprint NOT LIKE '%:_callback'
+        AND fingerprint NOT LIKE '%:constructor'
+        AND length(fingerprint) > ?
+      ORDER BY fingerprint, file_path
+    `);
+
+    const rows = stmt.all(minEntitySpecificity + 10);
+
+    // Group by fingerprint in memory (faster than GROUP_CONCAT + N+1 queries)
+    const groups = new Map();
+    for (const row of rows) {
+      const fp = row.fingerprint;
+      if (!groups.has(fp)) {
+        groups.set(fp, []);
+      }
+      groups.get(fp).push({
+        id: row.id,
+        name: row.name,
+        filePath: row.file_path,
+        atomType: row.atom_type,
+        complexity: row.complexity,
+        isExported: row.is_exported === 1,
+        semanticHash: row.semanticHash,
+        structuralHash: row.structuralHash
+      });
+    }
+
+    // Filter to groups with minCount+ implementations and build result
+    return Array.from(groups.entries())
+      .filter(([, atoms]) => atoms.length >= minCount)
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, limit)
+      .map(([fingerprint, atoms]) => {
+        const filePaths = [...new Set(atoms.map(a => a.filePath))];
+        const [verb, domain, entity] = fingerprint.split(':');
+        
+        return {
+          semanticFingerprint: fingerprint,
+          concept: { verb, domain, entity },
+          implementationCount: atoms.length,
+          fileCount: filePaths.length,
+          files: filePaths,
+          implementations: atoms,
+          hasStructuralVariations: new Set(atoms.map(a => a.structuralHash)).size > 1,
+          allExported: atoms.every(a => a.isExported),
+          risk: atoms.length >= 3 ? 'high' : atoms.length >= 2 ? 'medium' : 'low'
+        };
+      });
+  }
+
   updateVectors(id, vectors) {
     const fields = Object.keys(vectors).filter(f => this._isValidVectorField(f));
     if (fields.length === 0) return;

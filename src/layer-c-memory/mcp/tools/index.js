@@ -29,6 +29,7 @@ import { query_graph } from './query-graph.js';
 import { traverse_graph } from './traverse-graph.js';
 import { impact_atomic } from './impact-atomic.js';
 import { aggregate_metrics } from './aggregate-metrics.js';
+import { check_pipeline_integrity } from './check-pipeline-integrity.js';
 
 // Action Tools (Mutation & Refactoring)
 import { atomic_edit, atomic_write } from './atomic-edit.js';
@@ -46,6 +47,7 @@ import { restart_server } from './restart-server.js';
 import { get_schema } from './get-schema.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
+import { technical_debt_report } from './technical-debt-report.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
@@ -321,35 +323,62 @@ export const toolDefinitions = [
       },
       required: ['query']
     }
+  },
+  {
+    name: 'mcp_omnysystem_get_technical_debt_report',
+    description: 'Reporte automático de deuda técnica al conectar. Ejecuta múltiples queries de duplicados (estructurales y conceptuales), pipeline orphans y dead code, y consolida en un reporte unificado con score de deuda (0-100) y acciones prioritarias.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'mcp_omnysystem_check_pipeline_integrity',
+    description: 'Verifica la integridad de TODO el pipeline de OmnySys. Ejecuta 8 verificaciones críticas: cobertura de extracción, completitud de metadata, resolución de calledBy, ejecución de guards, persistencia de issues, acceso de MCP tools, datos huérfanos y consistencia de relaciones. Retorna score de salud (0-100), grade (A-F), issues críticos y recomendaciones priorizadas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fullCheck: { type: 'boolean', default: true, description: 'Si es false, solo ejecuta verificaciones rápidas' },
+        includeSamples: { type: 'boolean', default: true, description: 'Incluir samples de datos en el reporte' },
+        verbose: { type: 'boolean', default: false, description: 'Mostrar logs detallados en consola' }
+      },
+      required: []
+    }
   }
 ];
 
 
 export const toolHandlers = {
   // Super Tools (Lectura)
-  mcp_omnysystem_query_graph: query_graph,
-  mcp_omnysystem_traverse_graph: traverse_graph,
-  mcp_omnysystem_impact_atomic: impact_atomic,
-  mcp_omnysystem_aggregate_metrics: aggregate_metrics,
+  query_graph: query_graph,
+  traverse_graph: traverse_graph,
+  impact_atomic: impact_atomic,
+  aggregate_metrics: aggregate_metrics,
+  get_technical_debt_report: technical_debt_report,
+  check_pipeline_integrity: check_pipeline_integrity,
 
   // Action Tools (Escritura)
-  mcp_omnysystem_atomic_edit: atomic_edit,
-  mcp_omnysystem_atomic_write: atomic_write,
-  mcp_omnysystem_move_file: move_file,
-  mcp_omnysystem_fix_imports: fix_imports,
-  mcp_omnysystem_execute_solid_split: execute_solid_split,
-  mcp_omnysystem_suggest_refactoring: suggest_refactoring,
-  mcp_omnysystem_suggest_architecture: suggest_architecture,
-  mcp_omnysystem_validate_imports: validate_imports,
-  mcp_omnysystem_generate_tests: generate_tests,
-  mcp_omnysystem_generate_batch_tests: generate_batch_tests,
+  atomic_edit: atomic_edit,
+  atomic_write: atomic_write,
+  move_file: move_file,
+  fix_imports: fix_imports,
+  execute_solid_split: execute_solid_split,
+  suggest_refactoring: suggest_refactoring,
+  suggest_architecture: suggest_architecture,
+  validate_imports: validate_imports,
+  generate_tests: generate_tests,
+  generate_batch_tests: generate_batch_tests,
 
   // Admin & Debug
-  mcp_omnysystem_get_schema: get_schema,
-  mcp_omnysystem_get_server_status: get_server_status,
-  mcp_omnysystem_get_recent_errors: get_recent_errors,
-  mcp_omnysystem_restart_server: restart_server,
-  mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots,
-  mcp_omnysystem_execute_sql: execute_sql
+  get_schema: get_schema,
+  get_server_status: get_server_status,
+  get_recent_errors: get_recent_errors,
+  restart_server: restart_server,
+  detect_performance_hotspots: detect_performance_hotspots,
+  execute_sql: execute_sql
 };
+
+// Export default para compatibilidad
+export default toolHandlers;
 

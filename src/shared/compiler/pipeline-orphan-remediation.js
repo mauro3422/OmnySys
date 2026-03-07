@@ -6,6 +6,10 @@
  */
 
 function getRemediationActions(orphan = {}) {
+  const importerCount = Math.max(
+    Number(orphan?.dependency_importer_count) || 0,
+    Number(orphan?.file_importer_count) || 0
+  );
   const actions = [
     'Verify whether the export is still referenced by a production entrypoint.'
   ];
@@ -18,7 +22,7 @@ function getRemediationActions(orphan = {}) {
     actions.push('Check whether the atom should be inlined, deleted, or wired into the pipeline graph.');
   }
 
-  if ((orphan?.file_importer_count || 0) === 0) {
+  if (importerCount === 0) {
     actions.push('Confirm whether the file itself is imported anywhere in production code.');
   }
 
@@ -26,13 +30,17 @@ function getRemediationActions(orphan = {}) {
 }
 
 export function buildPipelineOrphanRemediation(orphan = {}) {
+  const importerCount = Math.max(
+    Number(orphan?.dependency_importer_count) || 0,
+    Number(orphan?.file_importer_count) || 0
+  );
   return {
     name: orphan.name,
     file: orphan.file_path,
     complexity: orphan.complexity,
     effectiveCallers: orphan.callers_count || 0,
     callees: orphan.callees_count || 0,
-    fileImporters: orphan.file_importer_count || 0,
+    fileImporters: importerCount,
     diagnosis: 'Pipeline atom appears disconnected from both function-level and file-level reachability.',
     recommendedActions: getRemediationActions(orphan)
   };

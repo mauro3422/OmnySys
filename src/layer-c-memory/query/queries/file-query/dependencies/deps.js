@@ -5,6 +5,7 @@
 
 import { getFileAnalysis } from '../core/single-file.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '#shared/compiler/index.js';
 
 /**
  * Obtiene dependencias de un archivo
@@ -19,13 +20,31 @@ export async function getFileDependencies(rootPath, filePath, options = {}) {
     const repo = getRepository(rootPath);
     if (repo && repo.db) {
       const normalizedPath = filePath.replace(/\\/g, '/');
+      const coverage = getSystemMapPersistenceCoverage(repo.db);
 
       // 1. Structural dependencies (imports)
-      const deps = repo.db.prepare(`
-        SELECT DISTINCT target_path FROM file_dependencies
-        WHERE source_path = ?
-      `).all(normalizedPath);
-      deps.forEach(d => result.add(d.target_path));
+      if (shouldTrustSystemMapDependencies(coverage)) {
+        const deps = repo.db.prepare(`
+          SELECT DISTINCT target_path FROM file_dependencies
+          WHERE source_path = ?
+        `).all(normalizedPath);
+        deps.forEach(d => result.add(d.target_path));
+      } else {
+        const fileRows = repo.db.prepare(`
+          SELECT imports_json FROM files WHERE path = ?
+        `).all(normalizedPath);
+        for (const row of fileRows) {
+          try {
+            const imports = JSON.parse(row.imports_json || '[]');
+            for (const imp of imports) {
+              const target = imp?.resolved || imp?.source;
+              if (target) result.add(target);
+            }
+          } catch {
+            // Fallback keeps query resilient to malformed rows.
+          }
+        }
+      }
 
       // 2. Semantic dependencies (shares_state)
       if (options.includeSemantic) {
@@ -63,13 +82,16 @@ export async function getFileDependents(rootPath, filePath, options = {}) {
     const repo = getRepository(rootPath);
     if (repo && repo.db) {
       const normalizedPath = filePath.replace(/\\/g, '/');
+      const coverage = getSystemMapPersistenceCoverage(repo.db);
 
       // 1. Structural dependents (importers)
-      const deps = repo.db.prepare(`
-        SELECT DISTINCT source_path FROM file_dependencies 
-        WHERE target_path = ? OR target_path LIKE ?
-      `).all(normalizedPath, normalizedPath.replace(/\.js$/, '') + '%');
-      deps.forEach(d => result.add(d.source_path));
+      if (shouldTrustSystemMapDependencies(coverage)) {
+        const deps = repo.db.prepare(`
+          SELECT DISTINCT source_path FROM file_dependencies 
+          WHERE target_path = ? OR target_path LIKE ?
+        `).all(normalizedPath, normalizedPath.replace(/\.js$/, '') + '%');
+        deps.forEach(d => result.add(d.source_path));
+      }
 
       // 2. Semantic dependents (shares_state callers)
       if (options.includeSemantic) {

@@ -1,3 +1,5 @@
+import { getSemanticSurfaceGranularity } from '../../../../shared/compiler/index.js';
+
 export async function handlePatterns(tool, options) {
     const result = await tool.getEventPatterns({
         offset: options.offset || 0,
@@ -10,9 +12,13 @@ export async function handlePatterns(tool, options) {
     const db = tool.repo?.db;
     if (db) {
         try {
-            const semRows = db.prepare(`SELECT connection_type, COUNT(*) as count FROM semantic_connections GROUP BY connection_type`).all();
-            semanticSummary.total = semRows.reduce((s, r) => s + r.count, 0);
-            semRows.forEach(r => { semanticSummary.byType[r.connection_type] = r.count; });
+            const semanticSurface = getSemanticSurfaceGranularity(db);
+            semanticSummary = {
+                total: semanticSurface.fileLevel.total,
+                byType: semanticSurface.fileLevel.byType,
+                atomLevel: semanticSurface.atomLevel,
+                contract: semanticSurface.contract
+            };
         } catch (e) { }
     }
 

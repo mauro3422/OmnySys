@@ -9,6 +9,7 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:relations');
 
@@ -42,6 +43,11 @@ export async function getDependents(filePath) {
     const repo = getRepository(this.projectPath);
     
     if (!repo.db) {
+      return [];
+    }
+
+    const coverage = getSystemMapPersistenceCoverage(repo.db);
+    if (!shouldTrustSystemMapDependencies(coverage)) {
       return [];
     }
     

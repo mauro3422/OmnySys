@@ -4,10 +4,13 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
-- No unreleased changes yet.
+- [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
+- [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
 
 ## Quick Links
 
+- [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
+- [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
 - [v0.9.101 - Scanned File Manifest Unification](changelog/v0.9.101.md)
 - [v0.9.100 - Centrality Coverage Adoption](changelog/v0.9.100.md)
 - [v0.9.99 - Compiler Explainability & Full Canonical Adoption](changelog/v0.9.99.md)
@@ -25,6 +28,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **0.9.103** | 2026-03-07 | Genetic Preservation Policy, Soft Delete migration for atoms/issues, schema stabilization, and 100/100 Health Score recovery. |
+| **0.9.102** | 2026-03-07 | Pipeline Integrity Detector, auto-audit system, technical debt consolidation, unified duplicate detection API. |
 | **0.9.101** | 2026-03-06 | Unified scanned-file manifest, aligned scanner/hash/index file universes, and exposed persisted file coverage in compiler explainability. |
 | **0.9.100** | 2026-03-06 | Canonical centrality-coverage adoption wired into health and pipeline reporting surfaces. |
 | **0.9.99** | 2026-03-06 | Compiler explainability, signal confidence, telemetry provenance and full canonical adoption closure. |
@@ -41,7 +46,63 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.101 (2026-03-06)
+## Latest Release: v0.9.103 (2026-03-07)
+
+**Genetic Preservation Policy & System Stabilization**
+
+### Key Achievements
+
+1. **Genetic Preservation Migration**: Transitioned from physical deletions to a logical "Soft Delete" model across the entire pipeline (`live-row-cleanup.js`, `issues.js`, `watcher-issue-persistence.js`).
+2. **System Health Recovery**: Restored system integrity to **100/100 (Grade A)**, resolving technical debt and schema drift issues.
+3. **Watcher Contract Sync**: Synchronized diagnostics lifecycle metadata between the file watcher and the persistence layer.
+4. **Genetic-Aware APIs**: Updated `SemanticQueryTool` and query logic to intelligently filter historical data while maintaining the system's "Genetic Memory".
+
+---
+
+## Previous Release: v0.9.102 (2026-03-07)
+
+**Pipeline Integrity Detector & Auto-Audit System**
+
+### Key Achievements
+
+1. Implemented `PipelineIntegrityDetector` with 8 critical verifications: scan-to-atom coverage, metadata completeness, calledBy resolution, guard execution, issue persistence, MCP data access, orphaned data, and relation consistency.
+2. Created `IntegrityDashboard` that calculates overall health score (0-100), assigns grade (A+ to F), and generates prioritized recommendations.
+3. Added MCP tool `mcp_omnysystem_check_pipeline_integrity` for on-demand pipeline auditing.
+4. Integrated auto-execution post-Phase 2 that logs results and persists critical issues in `semantic_issues`.
+5. Unified duplicate detection API with `duplicate-utils.js` providing shared functions for structural, conceptual, and unified duplicate guards.
+6. Implemented technical debt consolidation with debt score (0-100), trend tracking, and priority actions.
+7. Created metadata utilities API for standardized metadata handling across guards and MCP tools.
+
+### System Now Self-Audits
+
+- **Automatic post-Phase 2:** Pipeline integrity check runs after every Phase 2 completion
+- **On-demand via MCP:** `check_pipeline_integrity(fullCheck: true)` returns comprehensive report
+- **Critical issues persisted:** Issues with severity 'high' are stored in `semantic_issues` for tracking
+- **Console logging:** Executive summary with health score, grade, and top recommendations
+
+### New Files
+
+- `src/core/meta-detector/pipeline-integrity-detector.js` (367 lines)
+- `src/core/meta-detector/integrity-dashboard.js` (237 lines)
+- `src/layer-c-memory/mcp/tools/check-pipeline-integrity.js` (87 lines)
+- `src/layer-c-memory/mcp/tools/technical-debt-report.js` (194 lines)
+- `src/shared/compiler/duplicate-utils.js` (366 lines)
+- `src/shared/compiler/metadata-utils.js` (151 lines)
+- `src/core/file-watcher/guards/unified-duplicate-guard.js` (447 lines)
+
+**Total:** 1,849 new lines + 3 comprehensive documentation files
+
+## What To Do Next
+
+1. Consider implementing auto-fix for simple issues (dead code, async safety)
+2. Add webhook notifications for critical pipeline integrity issues
+3. Create visual dashboard for real-time health monitoring
+4. Implement historical trends tracking for health score by sprint
+5. Integrate with CI/CD to block PRs with health score below threshold
+
+---
+
+## Previous Release: v0.9.101 (2026-03-06)
 
 **Scanned File Manifest Unification**
 

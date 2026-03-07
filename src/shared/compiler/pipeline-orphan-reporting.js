@@ -12,6 +12,7 @@ import {
   getPipelineNamePatternSqlCondition,
   normalizePipelineOrphan
 } from './pipeline-orphans.js';
+import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
 
 export function getPipelineOrphanCandidates(db, options = {}) {
   const {
@@ -37,7 +38,13 @@ export function getPipelineOrphanCandidates(db, options = {}) {
           FROM files f
           WHERE f.path != a.file_path
             AND f.imports_json LIKE '%' || a.file_path || '%'
-        ) AS file_importer_count
+        ) AS file_importer_count,
+        (
+          SELECT COUNT(*)
+          FROM file_dependencies fd
+          WHERE fd.target_path = a.file_path
+            AND fd.source_path != a.file_path
+        ) AS dependency_importer_count
     FROM atoms a
     WHERE a.is_exported = 1
       AND a.atom_type IN ('function', 'arrow', 'method', 'class')
@@ -59,22 +66,34 @@ export function getPipelineOrphanSummary(db, options = {}) {
     minComplexity = 3
   } = options;
 
+  const fileImportCoverage = getFileImportEvidenceCoverage(db);
   const candidates = getPipelineOrphanCandidates(db, {
     limit: candidateLimit,
     minComplexity
   });
-  const orphans = classifyPipelineOrphans(candidates, { limit: orphanLimit });
+  const orphans = fileImportCoverage.trustworthy
+    ? classifyPipelineOrphans(candidates, { limit: orphanLimit })
+    : [];
+
+  const lowConfidenceWarning = !fileImportCoverage.trustworthy && candidates.length > 0
+    ? {
+        field: 'pipeline_orphans',
+        coverage: `${Math.round(fileImportCoverage.coverageRatio * 100)}% file import coverage`,
+        issue: 'Pipeline orphan detection is suppressed because file-level import evidence is too sparse to trust.'
+      }
+    : null;
 
   return {
+    fileImportCoverage,
     totalCandidates: candidates.length,
     orphanCount: orphans.length,
-    warning: orphans.length > 0
+    warning: lowConfidenceWarning || (orphans.length > 0
       ? {
           field: 'pipeline_orphans',
           coverage: `${orphans.length} atoms`,
           issue: 'Exported pipeline atoms appear disconnected after filtering import-backed modules'
         }
-      : null,
+      : null),
     orphans,
     normalizedOrphans: orphans.map(normalizePipelineOrphan)
   };

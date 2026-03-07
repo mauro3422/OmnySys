@@ -24,6 +24,14 @@ import {
     DUPLICATE_MODES
 } from '#layer-c/storage/repository/utils/index.js';
 import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js';
+import {
+    generateAlternativeNames,
+    normalizeFilePath,
+    loadPreviousFindings,
+    buildDuplicateDebtHistory,
+    buildDuplicateContext,
+    coordinateDuplicateFindings
+} from '../../../shared/compiler/duplicate-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
@@ -44,34 +52,6 @@ function loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings) {
 }
 
 /**
- * Genera nombres alternativos para evitar colisiones
- */
-function generateAlternativeNames(originalName) {
-    const alternatives = [];
-    const suffixes = ['New', 'V2', 'Ext', 'Impl', 'Async'];
-    
-    for (const suffix of suffixes) {
-        alternatives.push(`${originalName}${suffix}`);
-    }
-    
-    const prefixes = ['fetch', 'load', 'build', 'compute', 'process'];
-    const lowerName = originalName.toLowerCase();
-    
-    for (const prefix of prefixes) {
-        if (lowerName.startsWith(prefix)) {
-            const rest = originalName.slice(prefix.length);
-            const altPrefixes = prefixes.filter(p => p !== prefix);
-            for (const altPrefix of altPrefixes.slice(0, 2)) {
-                alternatives.push(`${altPrefix}${rest}`);
-            }
-            break;
-        }
-    }
-    
-    return alternatives.slice(0, 5);
-}
-
-/**
  * Detecta riesgo de duplicados por DNA hash
  * @param {string} rootPath - Ruta raíz del proyecto
  * @param {string} filePath - Archivo analizado
@@ -86,10 +66,16 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         atoms: providedAtoms = null
     } = options;
 
+    // Normalizar filePath
+    const normalizedFilePath = normalizeFilePath(filePath);
+
     try {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
         const repo = getRepository(rootPath);
         if (!repo?.db) return [];
+
+        // Cargar findings previos para tracking de historial
+        const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_duplicate');
 
         let localAtoms = [];
 
@@ -104,12 +90,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         }
 
         if (localAtoms.length === 0) {
-            localAtoms = loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings);
+            localAtoms = loadPersistedLocalAtoms(repo, normalizedFilePath, minLinesOfCode, maxFindings);
         }
 
         if (localAtoms.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
             return [];
         }
 
@@ -119,8 +105,8 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
             .filter(Boolean);
 
         if (candidateDnas.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
             return [];
         }
 
@@ -180,7 +166,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 urgencyScore: finding.totalInstances,
                 instances: [{
                     name: finding.symbol,
-                    file: filePath,
+                    file: normalizedFilePath,
                     importanceScore: 0,
                     callerCount: 0,
                     changeFrequency: 0
@@ -199,15 +185,19 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
             const severity = findings.length >= 3 ? 'high' : 'medium';
             const issueType = createIssueType(IssueDomains.CODE, 'duplicate', severity);
 
+            // Construir historial de deuda técnica
+            const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
+
             logger.warn(
-                `[DUPLICATE GUARD] ${filePath}: ${findings.length} duplicated symbol(s) -> ${preview}`
+                `[DUPLICATE GUARD] ${normalizedFilePath}: ${findings.length} duplicated symbol(s) -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
             );
 
-            // Crear contexto estandarizado
+            // Crear contexto estandarizado con historial de deuda
+            const enrichedContext = buildDuplicateContext(findings, debtHistory);
             const context = createStandardContext({
                 guardName: 'duplicate-risk-guard',
                 severity,
-                suggestedAction: findings.length >= 3 
+                suggestedAction: findings.length >= 3
                     ? StandardSuggestions.DUPLICATE_REUSE + ' (multiple duplicates detected)'
                     : StandardSuggestions.DUPLICATE_REUSE,
                 suggestedAlternatives: remediationPlan.items.flatMap((item) => item.recommendedActions).slice(0, 6),
@@ -215,13 +205,15 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 extraData: {
                     duplicateCount: findings.length,
                     findings: findings.slice(0, maxFindings),
-                    remediation: remediationPlan
+                    remediation: remediationPlan,
+                    debtHistory: enrichedContext.debtHistory,
+                    recommendations: enrichedContext.recommendations
                 }
             });
 
             await persistWatcherIssue(
                 rootPath,
-                filePath,
+                normalizedFilePath,
                 issueType,
                 severity,
                 `${findings.length} duplicate symbol(s): ${preview}`,
@@ -230,13 +222,13 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
             // Limpiar severidad opuesta
             if (severity === 'high') {
-                await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+                await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
             } else {
-                await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
+                await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
             }
 
             EventEmitterContext.emit('code:duplicate', {
-                filePath,
+                filePath: normalizedFilePath,
                 severity,
                 duplicateCount: findings.length,
                 findings: findings.map(f => ({
@@ -246,8 +238,8 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 }))
             });
         } else {
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
         }
 
         return findings;

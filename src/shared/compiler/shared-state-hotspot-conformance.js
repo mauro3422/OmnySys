@@ -43,7 +43,7 @@ function countSharedStateSignals(source = '') {
 }
 
 function importsCanonicalSharedStateLayer(source = '') {
-  return /shared[- ]state contention|topContentionKeys|buildCompilerStandardizationReport|summarizeSemanticCoverage|summarizeSharedStateHotspots|get_server_status|sharedState\./i.test(source);
+  return /shared[- ]state contention|topContentionKeys|buildCompilerStandardizationReport|summarizeSemanticCoverage|summarizeSharedStateHotspots|getSharedStateContentionSummary|getSemanticSurfaceGranularity|semanticSurface\.(legacyView|contract|fileLevel)|get_server_status|sharedState\./i.test(source);
 }
 
 function referencesHotspotKeys(source = '') {

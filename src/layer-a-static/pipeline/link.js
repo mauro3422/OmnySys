@@ -249,8 +249,8 @@ export async function saveSharedStateRelationsIncrementally(targetAtoms, absolut
 
     const sharedTargetAtoms = targetAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
 
-    // 1. Limpiar relaciones antiguas de los átomos objetivo para evitar duplicados o huérfanos
-    const deleteStmt = db.prepare(`DELETE FROM atom_relations WHERE (source_id = ? OR target_id = ?) AND relation_type = 'shares_state'`);
+    // 1. Marcar relaciones antiguas como removidas para evitar duplicados, preservando la genética
+    const deleteStmt = db.prepare(`UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now') WHERE (source_id = ? OR target_id = ?) AND relation_type = 'shares_state'`);
     db.transaction(() => {
         for (const atom of targetAtoms) deleteStmt.run(atom.id, atom.id);
     })();
@@ -262,8 +262,8 @@ export async function saveSharedStateRelationsIncrementally(targetAtoms, absolut
     const rows = db.prepare(`
         SELECT * FROM atoms 
         WHERE shared_state_json IS NOT NULL 
-          AND shared_state_json != '[]' 
-          AND shared_state_json != ''
+          AND (shared_state_json != '[]' AND shared_state_json != '')
+          AND is_removed = 0
     `).all();
 
     const { rowToAtom } = await import('#layer-c/storage/repository/adapters/helpers/converters.js');

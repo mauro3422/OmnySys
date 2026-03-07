@@ -8,6 +8,7 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getSemanticSurfaceGranularity } from '#shared/compiler/index.js';
 
 /**
  * Obtiene todas las conexiones del proyecto
@@ -22,42 +23,22 @@ export async function getAllConnections(rootPath) {
     throw new Error('SQLite not available. Run analysis first.');
   }
   
-  const connections = repo.db.prepare(`
-    SELECT connection_type, source_path, target_path, connection_key, context_json, weight
-    FROM semantic_connections
-  `).all();
-  
-  if (!connections || connections.length === 0) {
+  const semanticSurface = getSemanticSurfaceGranularity(repo.db);
+
+  if (semanticSurface.legacyView.total === 0) {
     return {
       sharedState: [],
       eventListeners: [],
-      total: 0
+      total: 0,
+      granularity: semanticSurface.contract
     };
   }
-  
-  const sharedState = [];
-  const eventListeners = [];
-  
-  for (const conn of connections) {
-    const connData = {
-      source: conn.source_path,
-      target: conn.target_path,
-      type: conn.connection_type,
-      key: conn.connection_key,
-      weight: conn.weight,
-      context: JSON.parse(conn.context_json || '{}')
-    };
-    
-    if (conn.connection_type === 'sharedState') {
-      sharedState.push(connData);
-    } else if (conn.connection_type === 'eventListeners') {
-      eventListeners.push(connData);
-    }
-  }
-  
+
   return {
-    sharedState,
-    eventListeners,
-    total: connections.length
+    sharedState: semanticSurface.legacyView.sharedState,
+    eventListeners: semanticSurface.legacyView.eventListeners,
+    total: semanticSurface.legacyView.total,
+    granularity: semanticSurface.contract,
+    semanticByType: semanticSurface.fileLevel.byType
   };
 }

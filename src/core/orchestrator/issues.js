@@ -55,8 +55,14 @@ export async function _detectSemanticIssues() {
     // Save to SQLite instead of JSON
     const repo = getRepository(this.projectPath);
     if (repo && repo.db && issuesReport.issues) {
-      // Clear existing issues
-      repo.db.prepare('DELETE FROM semantic_issues').run();
+      // Mark existing active issues as superseded/removed instead of deleting
+      repo.db.prepare(`
+        UPDATE semantic_issues 
+        SET lifecycle_status = 'superseded', 
+            is_removed = 1, 
+            updated_at = datetime('now') 
+        WHERE is_removed = 0
+      `).run();
 
       // Insert new issues - flatten all issue arrays from the issues object
       const insertStmt = repo.db.prepare(`

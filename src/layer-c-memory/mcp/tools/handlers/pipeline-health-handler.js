@@ -16,6 +16,10 @@ import {
     classifyFieldCoverage,
     discoverProjectSourceFiles,
     ensureLiveRowSync,
+    getFileImportEvidenceCoverage,
+    getMetadataSurfaceParity,
+    getSemanticSurfaceGranularity,
+    getSystemMapPersistenceCoverage,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
@@ -44,6 +48,8 @@ export async function handlePipelineHealth(tool) {
     let policyFindings = [];
     let policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} };
     const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+    const phase2PendingFiles = db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
+    const graphMetricFields = new Set(['coupling_score', 'cohesion_score', 'centrality_score']);
 
     const issues = [];
     const warnings = [];
@@ -149,6 +155,16 @@ export async function handlePipelineHealth(tool) {
                 });
             if (!coverage || coverage.level === 'ok') continue;
 
+            if (coverage.level === 'issue' && phase2PendingFiles > 0 && graphMetricFields.has(field)) {
+                warnings.push({
+                    field,
+                    coverage: '0%',
+                    nonZeroCount,
+                    issue: `Phase 2 still settling — ${description}`
+                });
+                continue;
+            }
+
             if (coverage.level === 'issue') {
                 issues.push({ field, coverage: '0%', nonZeroCount, issue: coverage.issue });
                 zeroFields.push(field);
@@ -229,6 +245,24 @@ export async function handlePipelineHealth(tool) {
         instances: []
     }));
     const duplicateRemediation = buildDuplicateRemediationPlan(duplicateGroups);
+    const metadataSurfaceParity = getMetadataSurfaceParity(db);
+    if (metadataSurfaceParity.healthy === false) {
+        warnings.push({
+            field: 'metadata_surface_parity',
+            coverage: `${Math.round(Number(metadataSurfaceParity.importsParityRatio || 0) * 100)}% import parity`,
+            issue: 'Mirrored system-map metadata is much sparser than the primary files table'
+        });
+        tableCounts.metadata_surface_parity_issues = metadataSurfaceParity.issues.length;
+    }
+    const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+    if (semanticSurfaceGranularity.healthy === false) {
+        warnings.push({
+            field: 'semantic_surface_granularity',
+            coverage: `${semanticSurfaceGranularity.fileLevel.total} file-level vs ${semanticSurfaceGranularity.atomLevel.total} atom-level semantic links`,
+            issue: 'Semantic summary/detail surfaces are drifting or incomplete; do not compare file-level semantic_connections as if they were atom-level semantic relations'
+        });
+        tableCounts.semantic_surface_granularity_issues = semanticSurfaceGranularity.issues.length;
+    }
     const compilerRemediation = buildCompilerRemediationBacklog([
         {
             id: 'live_rows',
@@ -266,12 +300,17 @@ export async function handlePipelineHealth(tool) {
     const recentWatcherAlerts = tool.recentNotifications?.watcherAlerts || tool.latestRecentErrors?.watcherAlerts || [];
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
+    const fileImportEvidenceCoverage = getFileImportEvidenceCoverage(db);
+    const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
     const standardizationReport = buildCompilerStandardizationReport({
         policySummary,
         watcherAlerts: recentWatcherAlerts,
         sharedState: tool.server?.sharedCache?.metadata?.sharedState || tool.server?.sharedState || {},
         compilerRemediation,
         persistedFileCoverage,
+        fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage,
+        semanticSurfaceGranularity,
         canonicalAdoptions: {
             centralityCoverage: true,
             sharedStateContention: true,
@@ -295,6 +334,8 @@ export async function handlePipelineHealth(tool) {
         pipelineOrphanRemediation,
         compilerRemediation,
         persistedFileCoverage,
+        fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage,
         standardizationReport,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {

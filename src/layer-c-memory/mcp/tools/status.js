@@ -10,7 +10,13 @@ import {
   buildCompilerReadinessStatus,
   buildCompilerStandardizationReport,
   discoverProjectSourceFiles,
+  getSystemMapPersistenceCoverage,
+  getMetadataSurfaceParity,
+  getSharedStateContentionSummary,
   buildTelemetryProvenance,
+  getFileImportEvidenceCoverage,
+  getFileUniverseGranularity,
+  getSemanticSurfaceGranularity,
   summarizePersistedScannedFileCoverage,
   summarizeSignalConfidence,
   summarizeCompilerPolicyDrift
@@ -199,26 +205,14 @@ async function attachDeepVitals(status, projectPath, server) {
       return;
     }
 
-    const societies = repo.db.prepare(`
-      SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links
-      FROM atom_relations
-      WHERE relation_type = 'shares_state'
-    `).get();
-
-    const topStateKeys = repo.db.prepare(`
-      SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
-      FROM atom_relations
-      WHERE relation_type = 'shares_state'
-      GROUP BY key
-      ORDER BY count DESC
-      LIMIT 5
-    `).all();
-
+    const sharedStateSummary = getSharedStateContentionSummary(repo.db);
     status.sharedState = {
-      activeSocietiesBadge: societies.actors > 0 ? 'RADIOACTIVE' : 'CLEAN',
-      actorCount: societies.actors,
-      totalLinks: societies.links,
-      topContentionKeys: topStateKeys
+      activeSocietiesBadge: sharedStateSummary.actorCount > 0 ? 'RADIOACTIVE' : 'CLEAN',
+      actorCount: sharedStateSummary.actorCount,
+      totalLinks: sharedStateSummary.totalLinks,
+      maxContention: sharedStateSummary.maxContention,
+      hottestKey: sharedStateSummary.hottestKey,
+      topContentionKeys: sharedStateSummary.topContentionKeys
     };
 
     status.background = {
@@ -258,11 +252,27 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    const fileImportEvidenceCoverage = repo?.db ? getFileImportEvidenceCoverage(repo.db) : null;
+    const systemMapPersistenceCoverage = repo?.db ? getSystemMapPersistenceCoverage(repo.db) : null;
+    const metadataSurfaceParity = repo?.db ? getMetadataSurfaceParity(repo.db) : null;
+    const semanticSurfaceGranularity = repo?.db ? getSemanticSurfaceGranularity(repo.db) : null;
+    const fileUniverseGranularity = getFileUniverseGranularity({
+      scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
+      manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
+      liveFileCount: repo?.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0
+    });
     const standardization = buildCompilerStandardizationReport({
       policySummary,
       watcherAlerts,
       sharedState,
       persistedFileCoverage,
+      fileImportEvidenceCoverage,
+      systemMapPersistenceCoverage,
+      metadataSurfaceParity,
+      semanticSurfaceGranularity,
+      fileUniverseGranularity,
       canonicalAdoptions: {
         centralityCoverage: true,
         sharedStateContention: true,
@@ -273,7 +283,12 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     return {
       policySummary,
       standardization,
-      persistedFileCoverage
+      persistedFileCoverage,
+      fileImportEvidenceCoverage,
+      systemMapPersistenceCoverage,
+      metadataSurfaceParity,
+      semanticSurfaceGranularity,
+      fileUniverseGranularity
     };
   } catch (error) {
     return {

@@ -8,6 +8,8 @@
  * @module shared/compiler/watcher-issues
  */
 
+import { WATCHER_ALERT_LIFECYCLE } from './watcher-issue-lifecycle.js';
+
 export const WATCHER_MESSAGE_PREFIX = '[watcher]';
 export const WATCHER_ALERT_SOURCE = 'file_watcher';
 export const WATCHER_CONTRACT_VERSION = 1;
@@ -42,6 +44,10 @@ export function normalizeWatcherIssueContext(context = {}) {
   return {
     source: WATCHER_ALERT_SOURCE,
     contractVersion: WATCHER_CONTRACT_VERSION,
+    lifecycle: {
+      status: WATCHER_ALERT_LIFECYCLE.ACTIVE,
+      stale: false
+    },
     ...normalized
   };
 }

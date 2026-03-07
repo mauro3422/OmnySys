@@ -1,5 +1,6 @@
 import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
 import { getFileAnalysis } from '../../query/apis/file-api.js';
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 
 export class ValidateImportsTool extends GraphQueryTool {
     constructor() {
@@ -35,11 +36,14 @@ export class ValidateImportsTool extends GraphQueryTool {
         }
 
         if (checkCircular && this.repo?.db) {
-            const rows = this.repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
+            const coverage = getSystemMapPersistenceCoverage(this.repo.db);
             const graph = {};
-            for (const row of rows) {
-                if (!graph[row.source_path]) graph[row.source_path] = [];
-                graph[row.source_path].push(row.target_path);
+            if (shouldTrustSystemMapDependencies(coverage)) {
+                const rows = this.repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
+                for (const row of rows) {
+                    if (!graph[row.source_path]) graph[row.source_path] = [];
+                    graph[row.source_path].push(row.target_path);
+                }
             }
 
             const visited = new Set();

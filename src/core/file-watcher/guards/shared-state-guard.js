@@ -10,7 +10,7 @@
 
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
-import { summarizeSharedStateHotspots } from '../../../shared/compiler/index.js';
+import { getSharedStateContentionSummary } from '../../../shared/compiler/index.js';
 import {
     IssueDomains,
     createIssueType,
@@ -50,38 +50,17 @@ export async function detectSharedStateContention(rootPath, filePath, EventEmitt
         const repo = getRepository(rootPath);
         if (!repo?.db) return null;
 
-        const atomIds = atoms.map(a => a.id);
-
-        // Contar relaciones de tipo shares_state para los átomos del archivo actual
-        const query = repo.db.prepare(`
-            SELECT source_id, COUNT(*) as connection_count
-            FROM atom_relations
-            WHERE relation_type = 'shares_state' AND source_id IN (${atomIds.map(() => '?').join(',')})
-            GROUP BY source_id
-        `);
-
-        const rows = query.all(...atomIds);
-
-        let maxContention = 0;
-        let totalContention = 0;
-        let hotAtom = null;
-
-        for (const row of rows) {
-            totalContention += row.connection_count;
-            if (row.connection_count > maxContention) {
-                maxContention = row.connection_count;
-                hotAtom = atoms.find(a => a.id === row.source_id);
-            }
-        }
-
-        // Determinar severidad usando estándar
-        const sharedStateSummary = summarizeSharedStateHotspots({
-            totalLinks: totalContention,
-            topContentionKeys: hotAtom ? [{ key: hotAtom.name, count: maxContention }] : []
-        }, {
+        const atomIds = atoms.map((atom) => atom.id).filter(Boolean);
+        const sharedStateSummary = getSharedStateContentionSummary(repo.db, {
+            atomIds,
             mediumThreshold: contentionThreshold,
             highThreshold: criticalThreshold
         });
+        const hotAtom = sharedStateSummary.hottestKey
+            ? atoms.find((atom) => atom.name === sharedStateSummary.hottestKey.key) || null
+            : null;
+        const maxContention = sharedStateSummary.maxContention;
+        const totalContention = sharedStateSummary.totalLinks;
         let severity = severityFromSharedState(sharedStateSummary.maxContention);
         
         // Si no hay contención individual pero hay mucha difusa

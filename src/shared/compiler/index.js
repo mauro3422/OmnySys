@@ -79,6 +79,10 @@ export {
 } from './semantic-purity-conformance.js';
 
 export {
+  detectMetadataPropagationConformanceFromSource
+} from './metadata-propagation-conformance.js';
+
+export {
   evaluateAtomTestability,
   evaluateAtomSemanticPurity,
   evaluateAtomRefactoringSignals
@@ -93,8 +97,30 @@ export {
 } from './semantic-purity-reporting.js';
 
 export {
-  summarizeSharedStateHotspots
+  summarizeSharedStateHotspots,
+  getSharedStateContentionSummary
 } from './shared-state-reporting.js';
+
+export {
+  getFileImportEvidenceCoverage
+} from './file-import-evidence.js';
+
+export {
+  getSystemMapPersistenceCoverage,
+  shouldTrustSystemMapDependencies
+} from './system-map-persistence.js';
+
+export {
+  getMetadataSurfaceParity
+} from './metadata-surface-parity.js';
+
+export {
+  getSemanticSurfaceGranularity
+} from './semantic-surface-granularity.js';
+
+export {
+  getFileUniverseGranularity
+} from './file-universe-granularity.js';
 
 export {
   buildCanonicalReuseGuidance
@@ -203,6 +229,25 @@ export {
   buildDuplicateRemediation,
   buildDuplicateRemediationPlan
 } from './duplicate-remediation.js';
+
+export {
+  generateAlternativeNames,
+  normalizeFilePath,
+  loadPreviousFindings,
+  buildDuplicateDebtHistory,
+  buildDuplicateContext,
+  coordinateDuplicateFindings
+} from './duplicate-utils.js';
+
+export {
+  getCachedMetadata,
+  getCachedCounts,
+  getLastAnalyzed,
+  getPhase2Status,
+  buildGuardMetadata,
+  getMetadataFromMap,
+  listMetadataItems
+} from './metadata-utils.js';
 
 export {
   PIPELINE_ORPHAN_NAME_PATTERNS,

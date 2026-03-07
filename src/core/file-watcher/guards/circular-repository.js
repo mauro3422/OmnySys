@@ -7,6 +7,8 @@
  * @module core/file-watcher/guards/circular-repository
  */
 
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
+
 export function getCircularFileImports(db) {
   if (!db) return [];
 
@@ -40,6 +42,11 @@ export function prepareFileDependencyLookup(db) {
   if (!db) return null;
 
   try {
+    const coverage = getSystemMapPersistenceCoverage(db);
+    if (!shouldTrustSystemMapDependencies(coverage)) {
+      return null;
+    }
+
     return db.prepare(`
       SELECT DISTINCT target_path
       FROM file_dependencies

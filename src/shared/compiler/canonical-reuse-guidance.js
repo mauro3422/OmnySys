@@ -78,6 +78,41 @@ const RULE_GUIDANCE = {
     existingCanonicalEntryPoint: 'syncPersistedScannedFileManifest',
     recommendedImport: "import { syncPersistedScannedFileManifest, getPersistedKnownFilePaths } from '../../../shared/compiler/index.js'",
     recommendedReplacement: 'Persist the scanned-file manifest before comparing scanner/hash/index universes so zero-atom files stay visible without forcing duplicate recovery.'
+  },
+  file_import_evidence: {
+    existingCanonicalEntryPoint: 'getFileImportEvidenceCoverage',
+    recommendedImport: "import { getFileImportEvidenceCoverage } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Measure file-level import evidence coverage before trusting reachability/orphan signals derived from imports_json or dependency tables.'
+  },
+  system_map_persistence: {
+    existingCanonicalEntryPoint: 'getSystemMapPersistenceCoverage',
+    recommendedImport: "import { getSystemMapPersistenceCoverage } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Validate `system_files` / `file_dependencies` persistence through the canonical coverage API before relying on legacy system-map tables in queries or guards.'
+  },
+  metadata_surface_parity: {
+    existingCanonicalEntryPoint: 'getMetadataSurfaceParity',
+    recommendedImport: "import { getMetadataSurfaceParity } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Check mirrored surface parity before assuming `system_files` is a faithful substitute for primary file metadata.'
+  },
+  metadata_propagation: {
+    existingCanonicalEntryPoint: 'getSystemMapPersistenceCoverage',
+    recommendedImport: "import { getSystemMapPersistenceCoverage } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Before mixing `files`, `system_files`, `file_dependencies`, or file-level coverage signals, read propagation coverage from a canonical API so producers/consumers stay aligned.'
+  },
+  semantic_surface_granularity: {
+    existingCanonicalEntryPoint: 'getSemanticSurfaceGranularity',
+    recommendedImport: "import { getSemanticSurfaceGranularity } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Read semantic summary/detail contracts through the canonical granularity API before mixing `semantic_connections` with `atom_relations`.'
+  },
+  file_universe_granularity: {
+    existingCanonicalEntryPoint: 'getFileUniverseGranularity',
+    recommendedImport: "import { getFileUniverseGranularity } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Explain scanner/manifest/live-index differences through the canonical file-universe contract before treating zero-atom files as missing index coverage.'
+  },
+  mirror_atom_detected: {
+    existingCanonicalEntryPoint: 'canonical-concept-reuse-guard',
+    recommendedImport: null,
+    recommendedReplacement: 'This file duplicates a canonical concept. Delete it and use the canonical API instead. Check the guard output for specific guidance.'
   }
 };
 
@@ -90,6 +125,11 @@ const AREA_FALLBACK_GUIDANCE = {
   pipeline_orphans: RULE_GUIDANCE.manual_pipeline_orphan_scan,
   runtime_ownership: RULE_GUIDANCE.manual_runtime_ownership,
   shared_state_hotspots: RULE_GUIDANCE.manual_shared_state_hotspot_scan
+  ,
+  metadata_surface_parity: RULE_GUIDANCE.metadata_surface_parity,
+  metadata_propagation: RULE_GUIDANCE.metadata_propagation,
+  semantic_surface_granularity: RULE_GUIDANCE.semantic_surface_granularity,
+  file_universe_granularity: RULE_GUIDANCE.file_universe_granularity
 };
 
 export function buildCanonicalReuseGuidance(finding = {}) {

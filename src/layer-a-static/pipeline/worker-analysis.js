@@ -35,6 +35,7 @@ async function runWorker() {
     let processedSinceLastPing = 0;
     const allLiteResults = {};
     const allFileHashesToSave = new Map();
+    const allFileSummariesToSave = new Map();
     const globalWorkerBuffer = [];
 
     // Pre-warm extractors
@@ -43,6 +44,11 @@ async function runWorker() {
     const knownHashes = (typeof repo.getAllFileHashes === 'function')
         ? repo.getAllFileHashes()
         : new Map();
+    const getPersistedFileSummary = repo?.db?.prepare(`
+        SELECT imports_json, exports_json
+        FROM files
+        WHERE path = ?
+    `);
 
     async function processFile(absoluteFilePath) {
         try {
@@ -60,10 +66,12 @@ async function runWorker() {
             if (existingHash && existingHash === currentHash && extractionDepth !== 'deep') {
                 const dbAtoms = repo.getByFile(relativeFilePath);
                 if (dbAtoms && dbAtoms.length > 0) {
+                    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
                     allLiteResults[absoluteFilePath] = {
                         atoms: dbAtoms.map(a => ({ ...a, skipped: true })),
                         atomCount: dbAtoms.length,
-                        imports: [],
+                        imports: JSON.parse(persistedSummary.imports_json || '[]'),
+                        exports: JSON.parse(persistedSummary.exports_json || '[]'),
                         skipped: true
                     };
                     return { skipped: true };
@@ -102,11 +110,18 @@ async function runWorker() {
             });
 
             totalExtractedCount += liteAtoms.length;
+            allFileSummariesToSave.set(relativeFilePath, {
+                imports: result.parsed?.imports || [],
+                exports: result.parsed?.exports || [],
+                atomCount: liteAtoms.length,
+                totalLines: content.split(/\r?\n/).length
+            });
             allLiteResults[absoluteFilePath] = {
                 atoms: liteAtoms,
                 atomCount: liteAtoms.length,
                 metadata: result.metadata,
                 imports: result.parsed?.imports || [],
+                exports: result.parsed?.exports || [],
                 skipped: false
             };
 
@@ -139,6 +154,32 @@ async function runWorker() {
     // Bulk Save
     if (globalWorkerBuffer.length > 0) {
         repo.saveManyBulk(globalWorkerBuffer);
+    }
+    if (allFileSummariesToSave.size > 0 && repo?.db) {
+        const upsertFileSummary = repo.db.prepare(`
+            INSERT INTO files (path, imports_json, exports_json, atom_count, total_lines, last_analyzed)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(path) DO UPDATE SET
+                imports_json = excluded.imports_json,
+                exports_json = excluded.exports_json,
+                atom_count = excluded.atom_count,
+                total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
+                last_analyzed = excluded.last_analyzed
+        `);
+        const now = new Date().toISOString();
+        const saveFileSummaries = repo.db.transaction((entries) => {
+            for (const [filePath, summary] of entries) {
+                upsertFileSummary.run(
+                    filePath,
+                    JSON.stringify(summary.imports || []),
+                    JSON.stringify(summary.exports || []),
+                    Number(summary.atomCount || 0),
+                    Number(summary.totalLines || 0),
+                    now
+                );
+            }
+        });
+        saveFileSummaries(Array.from(allFileSummariesToSave.entries()));
     }
 
     // Final Report

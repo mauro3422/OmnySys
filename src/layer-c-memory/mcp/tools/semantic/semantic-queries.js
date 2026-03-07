@@ -41,7 +41,7 @@ function safeQuery(fn, operation, defaultValue = null) {
  */
 export function queryRaceConditions(db, { offset = 0, limit = 20, scopeType, asyncOnly = true }) {
     return safeQuery(() => {
-        let whereClause = "WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]'";
+        let whereClause = "WHERE shared_state_json IS NOT NULL AND shared_state_json != '[]' AND (is_removed IS NULL OR is_removed = 0)";
         const params = [];
 
         if (asyncOnly) whereClause += ' AND is_async = 1';
@@ -77,7 +77,9 @@ export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' })
         if (type === 'listeners' || type === 'all')
             conditions.push("(event_listeners_json IS NOT NULL AND event_listeners_json != '[]')");
 
-        const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' OR ')}` : '';
+        const whereSql = conditions.length > 0
+            ? `WHERE (${conditions.join(' OR ')}) AND (is_removed IS NULL OR is_removed = 0)`
+            : 'WHERE (is_removed IS NULL OR is_removed = 0)';
 
         const rows = db.prepare(`
             SELECT COUNT(*) OVER() as total_count,
@@ -102,7 +104,7 @@ export function queryEventPatterns(db, { offset = 0, limit = 20, type = 'all' })
  */
 export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls = false, withErrorHandling = false }) {
     return safeQuery(() => {
-        let whereClause = 'WHERE is_async = 1';
+        let whereClause = 'WHERE is_async = 1 AND (is_removed IS NULL OR is_removed = 0)';
         if (withNetworkCalls) whereClause += ' AND has_network_calls = 1';
         if (withErrorHandling) whereClause += ' AND has_error_handling = 1';
 
@@ -130,7 +132,7 @@ export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls =
  */
 export function querySocieties(db, { offset = 0, limit = 20, type }) {
     return safeQuery(() => {
-        let whereClause = 'WHERE 1=1';
+        let whereClause = 'WHERE (is_removed IS NULL OR is_removed = 0)';
         const params = [];
         if (type) { whereClause += ' AND type = ?'; params.push(type); }
 
@@ -213,31 +215,31 @@ export function queryDuplicates(db, {
     mode = DUPLICATE_MODES.STRICT
 } = {}) {
     return safeQuery(() => {
-    const duplicateKeySql = getDuplicateKeySqlForMode(mode, 'dna_json');
-    const duplicateKeySqlForAlias = (alias) => getDuplicateKeySqlForMode(mode, `${alias}.dna_json`);
-    const duplicateKeySqlForSelect = duplicateKeySqlForAlias('a');
-    const cteWhere = buildDuplicateWhereSql({
-        excludeTests,
-        atomTypes,
-        minLines,
-        requireValidDna: true
-    });
-    const mainWhere = buildDuplicateWhereSql({
-        alias: 'a',
-        excludeTests,
-        atomTypes,
-        minLines,
-        requireValidDna: false
-    });
-    const statsWhere = buildDuplicateWhereSql({
-        alias: 'a_stats',
-        excludeTests,
-        atomTypes,
-        minLines,
-        requireValidDna: false
-    });
+        const duplicateKeySql = getDuplicateKeySqlForMode(mode, 'dna_json');
+        const duplicateKeySqlForAlias = (alias) => getDuplicateKeySqlForMode(mode, `${alias}.dna_json`);
+        const duplicateKeySqlForSelect = duplicateKeySqlForAlias('a');
+        const cteWhere = buildDuplicateWhereSql({
+            excludeTests,
+            atomTypes,
+            minLines,
+            requireValidDna: true
+        });
+        const mainWhere = buildDuplicateWhereSql({
+            alias: 'a',
+            excludeTests,
+            atomTypes,
+            minLines,
+            requireValidDna: false
+        });
+        const statsWhere = buildDuplicateWhereSql({
+            alias: 'a_stats',
+            excludeTests,
+            atomTypes,
+            minLines,
+            requireValidDna: false
+        });
 
-    const rows = db.prepare(`
+        const rows = db.prepare(`
         WITH DuplicateGroups AS (
             SELECT ${duplicateKeySql} as duplicate_key, COUNT(*) as group_size
             FROM atoms
@@ -266,8 +268,8 @@ export function queryDuplicates(db, {
         LIMIT ? OFFSET ?
     `).all(limit, offset);
 
-    // Stats globales del query
-    const stats = db.prepare(`
+        // Stats globales del query
+        const stats = db.prepare(`
         SELECT COUNT(DISTINCT (${duplicateKeySqlForAlias('a_stats')})) groups, COUNT(*) total_instances
         FROM atoms a_stats
         ${statsWhere}
@@ -278,7 +280,7 @@ export function queryDuplicates(db, {
         )
     `).get();
 
-    return { rows, stats: stats || { groups: 0, total_instances: 0 } };
+        return { rows, stats: stats || { groups: 0, total_instances: 0 } };
     }, 'queryDuplicates', { rows: [], stats: { groups: 0, total_instances: 0 } });
 }
 
@@ -292,29 +294,29 @@ export function queryDuplicates(db, {
  */
 export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeTests = true, minLines = 3, atomTypes = ['function', 'method', 'arrow'] } = {}) {
     return safeQuery(() => {
-    const testFilterCte = excludeTests
-        ? `AND file_path NOT LIKE '%.test.js'
+        const testFilterCte = excludeTests
+            ? `AND file_path NOT LIKE '%.test.js'
            AND file_path NOT LIKE '%.spec.js'
            AND file_path NOT LIKE '%/test/%'
            AND file_path NOT LIKE '%/tests/%'`
-        : '';
+            : '';
 
-    const testFilterMain = excludeTests
-        ? `AND a.file_path NOT LIKE '%.test.js'
+        const testFilterMain = excludeTests
+            ? `AND a.file_path NOT LIKE '%.test.js'
            AND a.file_path NOT LIKE '%.spec.js'
            AND a.file_path NOT LIKE '%/test/%'
            AND a.file_path NOT LIKE '%/tests/%'`
-        : '';
+            : '';
 
-    const typeFilterCte = atomTypes && atomTypes.length > 0
-        ? `AND atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
-        : '';
+        const typeFilterCte = atomTypes && atomTypes.length > 0
+            ? `AND atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
+            : '';
 
-    const typeFilterMain = atomTypes && atomTypes.length > 0
-        ? `AND a.atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
-        : '';
+        const typeFilterMain = atomTypes && atomTypes.length > 0
+            ? `AND a.atom_type IN (${atomTypes.map(t => `'${t}'`).join(',')})`
+            : '';
 
-    const rows = db.prepare(`
+        const rows = db.prepare(`
         WITH AtomDependencies AS (
             SELECT 
                 source_id, 
@@ -376,8 +378,8 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
         LIMIT ? OFFSET ?
     `).all(limit, offset);
 
-    // Global stats
-    const stats = db.prepare(`
+        // Global stats
+        const stats = db.prepare(`
         WITH AtomDependencies AS (
             SELECT 
                 source_id, 
@@ -413,6 +415,6 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
         FROM IsomorphicGroups
     `).get();
 
-    return { rows, stats: stats || { groups: 0, total_instances: 0 } };
+        return { rows, stats: stats || { groups: 0, total_instances: 0 } };
     }, 'queryIsomorphicDuplicates', { rows: [], stats: { groups: 0, total_instances: 0 } });
 }

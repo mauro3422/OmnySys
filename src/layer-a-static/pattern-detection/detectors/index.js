@@ -1,13 +1,13 @@
 /**
  * @fileoverview index.js
- * 
- * Detector exports (placeholders for actual detectors).
- * 
+ *
+ * Detector exports.
+ *
  * @module pattern-detection/detectors
  */
 
-// Placeholder exports - actual detectors would be implemented separately
-export const DeepChainsDetector = null;
-export const SharedObjectsDetector = null;
-export const CouplingDetector = null;
-export const HotspotsDetector = null;
+export { HotspotsDetector } from './hotspots-detector.js';
+export { CouplingDetector } from './coupling-detector.js';
+export { DeepChainsDetector } from './deep-chains-detector.js';
+export { OmnysysHealthDetector } from './omnysys-health-detector.js';
+export { OrchestrationGapDetector } from './orchestration-gap-detector.js';

@@ -57,27 +57,29 @@ export class SQLiteAdapterCore extends AtomRepository {
    */
   _prepareStatements() {
     this.statements = {
-      getById: this.db.prepare('SELECT * FROM atoms WHERE id = ?'),
-      getByFile: this.db.prepare('SELECT * FROM atoms WHERE file_path = ?'),
+      getById: this.db.prepare('SELECT * FROM atoms WHERE id = ? AND is_removed = 0'),
+      getByFile: this.db.prepare('SELECT * FROM atoms WHERE file_path = ? AND is_removed = 0'),
       insertAtom: this.db.prepare(this._buildInsertSQL()),
-      deleteById: this.db.prepare('DELETE FROM atoms WHERE id = ?'),
-      deleteByFile: this.db.prepare('DELETE FROM atoms WHERE file_path = ?'),
-      deleteFile: this.db.prepare('DELETE FROM files WHERE path = ?'),
-      query: this.db.prepare('SELECT * FROM files WHERE path = ?'),
-      getAll: this.db.prepare('SELECT * FROM atoms LIMIT ? OFFSET ?'),
+      deleteById: this.db.prepare("UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE id = ?"),
+      deleteByFile: this.db.prepare("UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE file_path = ?"),
+      deleteFile: this.db.prepare("UPDATE files SET is_removed = 1, updated_at = datetime('now') WHERE path = ?"),
+      query: this.db.prepare('SELECT * FROM files WHERE path = ? AND is_removed = 0'),
+      getAll: this.db.prepare('SELECT * FROM atoms WHERE is_removed = 0 LIMIT ? OFFSET ?'),
       getCallers: this.db.prepare(`
         SELECT a.id, a.name, a.file_path, r.weight, r.line_number
         FROM atom_relations r
         JOIN atoms a ON r.source_id = a.id
-        WHERE r.target_id = ? AND r.relation_type = 'calls'
+        WHERE r.target_id = ? AND r.relation_type = 'calls' 
+          AND r.is_removed = 0 AND a.is_removed = 0
       `),
       getCallees: this.db.prepare(`
         SELECT a.id, a.name, a.file_path, r.weight, r.line_number
         FROM atom_relations r
         JOIN atoms a ON r.target_id = a.id
         WHERE r.source_id = ? AND r.relation_type = 'calls'
+          AND r.is_removed = 0 AND a.is_removed = 0
       `),
-      exists: this.db.prepare('SELECT 1 FROM atoms WHERE id = ?')
+      exists: this.db.prepare('SELECT 1 FROM atoms WHERE id = ? AND is_removed = 0')
     };
   }
 

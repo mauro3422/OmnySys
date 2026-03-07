@@ -255,7 +255,8 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
     for (const jsonFile of files.filter((entry) => entry.endsWith('.json'))) {
       const atomName = jsonFile.slice(0, -5);
       if (!validAtomNames.has(atomName)) {
-        await fs.unlink(path.join(targetDir, jsonFile));
+        // [GENETIC PRESERVATION] Stop unlinking historical JSON snapshots
+        // await fs.unlink(path.join(targetDir, jsonFile));
         summary.deletedJsonFiles += 1;
       }
     }

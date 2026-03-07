@@ -23,6 +23,8 @@ import { detectSharedStateHotspotConformanceFromSource } from './shared-state-ho
 import { detectCentralityCoverageConformanceFromSource } from './centrality-coverage-conformance.js';
 import { detectTestabilityConformanceFromSource } from './testability-conformance.js';
 import { detectSemanticPurityConformanceFromSource } from './semantic-purity-conformance.js';
+import { detectMetadataPropagationConformanceFromSource } from './metadata-propagation-conformance.js';
+import { detectSemanticSurfaceGranularityConformanceFromSource } from './semantic-surface-granularity-conformance.js';
 import { buildCanonicalReuseGuidance } from './canonical-reuse-guidance.js';
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
@@ -43,7 +45,9 @@ export const COMPILER_POLICY_AREA = {
   SHARED_STATE_HOTSPOTS: 'shared_state_hotspots',
   CENTRALITY_COVERAGE: 'centrality_coverage',
   TESTABILITY: 'testability',
-  SEMANTIC_PURITY: 'semantic_purity'
+  SEMANTIC_PURITY: 'semantic_purity',
+  METADATA_PROPAGATION: 'metadata_propagation',
+  SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity'
 };
 
 function normalizePath(filePath = '') {
@@ -293,7 +297,9 @@ function collectConformanceFindings(normalizedPath, source) {
     [detectSharedStateHotspotConformanceFromSource, COMPILER_POLICY_AREA.SHARED_STATE_HOTSPOTS],
     [detectCentralityCoverageConformanceFromSource, COMPILER_POLICY_AREA.CENTRALITY_COVERAGE],
     [detectTestabilityConformanceFromSource, COMPILER_POLICY_AREA.TESTABILITY],
-    [detectSemanticPurityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_PURITY]
+    [detectSemanticPurityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_PURITY],
+    [detectMetadataPropagationConformanceFromSource, COMPILER_POLICY_AREA.METADATA_PROPAGATION],
+    [detectSemanticSurfaceGranularityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_SURFACE_GRANULARITY]
   ];
 
   return conformanceDetectors.flatMap(([detector, policyArea]) => detector(normalizedPath, source, {

@@ -36,6 +36,53 @@ function buildContentionStatus(maxContention, mediumThreshold, highThreshold) {
   return 'none';
 }
 
+function normalizeAtomIds(atomIds = []) {
+  return Array.isArray(atomIds)
+    ? atomIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+}
+
+function buildSharedStateQuery(atomIds = []) {
+  if (atomIds.length === 0) {
+    return {
+      societiesSql: `
+        SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links
+        FROM atom_relations
+        WHERE relation_type = 'shares_state'
+      `,
+      topKeysSql: `
+        SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
+        FROM atom_relations
+        WHERE relation_type = 'shares_state'
+        GROUP BY key
+        ORDER BY count DESC
+        LIMIT 5
+      `,
+      params: []
+    };
+  }
+
+  const placeholders = atomIds.map(() => '?').join(', ');
+  return {
+    societiesSql: `
+      SELECT COUNT(DISTINCT source_id) as actors, COUNT(*) as links
+      FROM atom_relations
+      WHERE relation_type = 'shares_state'
+        AND source_id IN (${placeholders})
+    `,
+    topKeysSql: `
+      SELECT json_extract(context_json, '$.key') as key, COUNT(*) as count
+      FROM atom_relations
+      WHERE relation_type = 'shares_state'
+        AND source_id IN (${placeholders})
+      GROUP BY key
+      ORDER BY count DESC
+      LIMIT 5
+    `,
+    params: atomIds
+  };
+}
+
 export function summarizeSharedStateHotspots(sharedState = {}, options = {}) {
   const {
     mediumThreshold = 5,
@@ -61,4 +108,21 @@ export function summarizeSharedStateHotspots(sharedState = {}, options = {}) {
     hottestKey,
     topContentionKeys
   };
+}
+
+export function getSharedStateContentionSummary(db, options = {}) {
+  if (!db) {
+    return summarizeSharedStateHotspots({}, options);
+  }
+
+  const atomIds = normalizeAtomIds(options.atomIds);
+  const { societiesSql, topKeysSql, params } = buildSharedStateQuery(atomIds);
+  const societies = db.prepare(societiesSql).get(...params) || {};
+  const topContentionKeys = db.prepare(topKeysSql).all(...params);
+
+  return summarizeSharedStateHotspots({
+    actorCount: Number(societies.actors) || 0,
+    totalLinks: Number(societies.links) || 0,
+    topContentionKeys
+  }, options);
 }

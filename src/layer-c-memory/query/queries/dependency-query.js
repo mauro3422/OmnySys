@@ -13,6 +13,7 @@
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { getAtomsInFile } from '#layer-c/storage/index.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '#shared/compiler/index.js';
 import { getFileDependents } from './file-query/dependencies/deps.js';
 
 const IMPACT_THRESHOLDS = Object.freeze({
@@ -34,6 +35,10 @@ const IMPACT_THRESHOLDS = Object.freeze({
 export async function getDependencyGraph(rootPath, filePath, depth) {
   const repo = getRepository(rootPath);
   if (!repo?.db) return { nodes: [], edges: [] };
+  const coverage = getSystemMapPersistenceCoverage(repo.db);
+  if (!shouldTrustSystemMapDependencies(coverage)) {
+    return { nodes: [{ id: filePath, depth: 0 }], edges: [] };
+  }
 
   const maxDepth = depth ?? 2;
   const visited = new Set();
@@ -87,6 +92,12 @@ export async function getDependencyGraph(rootPath, filePath, depth) {
 export async function getTransitiveDependents(rootPath, filePath, options = {}) {
   const repo = getRepository(rootPath);
   if (!repo?.db) return [];
+  const coverage = getSystemMapPersistenceCoverage(repo.db);
+  if (!shouldTrustSystemMapDependencies(coverage)) {
+    return options.includeSemantic
+      ? getFileDependents(rootPath, filePath, options)
+      : [];
+  }
 
   // Build reverse dependency map: target → sources
   const allRows = repo.db.prepare(

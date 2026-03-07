@@ -21,6 +21,8 @@ function mapLoggerEntry(entry) {
 }
 
 function buildNotificationsProvenance(watcherLifecycle, watcherEntries = []) {
+  // Note: This function shares semantic fingerprint with buildTelemetryProvenance
+  // Both implement 'build:core:provenance' - consider consolidation
   const restartGuidance = buildRestartLifecycleGuidance({
     proxyManaged: true,
     trueRestart: false,
@@ -110,3 +112,8 @@ export function normalizeRecentNotifications(notifications = {}) {
     )
   };
 }
+// Force reindex: 1430014351
+// Trigger reindex: 1696058712
+// Test conceptual duplicate detection: 723619026
+// Debug: 841588844
+// Test after fix: 1345224501

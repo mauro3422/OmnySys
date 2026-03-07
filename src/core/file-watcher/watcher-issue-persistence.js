@@ -53,8 +53,9 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
     });
 
     db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE ?
+      UPDATE semantic_issues
+      SET is_removed = 1, updated_at = datetime('now')
+      WHERE file_path = ? AND issue_type = ? AND message LIKE ? AND is_removed = 0
     `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
 
     db.prepare(`
@@ -95,8 +96,9 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
     const result = db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type = ? AND message LIKE ?
+      UPDATE semantic_issues
+      SET is_removed = 1, updated_at = datetime('now')
+      WHERE file_path = ? AND issue_type = ? AND message LIKE ? AND is_removed = 0
     `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
 
     if ((result?.changes || 0) > 0) {
@@ -120,8 +122,9 @@ export async function clearWatcherIssueFamily(projectPath, filePath, issueTypePr
     if (!normalizedPrefix) return false;
 
     const result = db.prepare(`
-      DELETE FROM semantic_issues
-      WHERE file_path = ? AND issue_type LIKE ? AND message LIKE ?
+      UPDATE semantic_issues
+      SET is_removed = 1, updated_at = datetime('now')
+      WHERE file_path = ? AND issue_type LIKE ? AND message LIKE ? AND is_removed = 0
     `).run(normalizedFilePath, `${normalizedPrefix}%`, `${WATCHER_MESSAGE_PREFIX}%`);
 
     if ((result?.changes || 0) > 0) {
@@ -171,7 +174,7 @@ export async function loadWatcherIssues(projectPath, options = {}) {
     const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
       FROM semantic_issues
-      ${whereClause}
+      ${whereClause} AND (is_removed IS NULL OR is_removed = 0)
       ORDER BY detected_at DESC
     `).all(...params);
 
@@ -188,7 +191,7 @@ export async function loadWatcherIssues(projectPath, options = {}) {
     };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE LOAD SKIP] ${error.message}`);
-      return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } } };
+    return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } } };
   }
 }
 
@@ -203,7 +206,7 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
       FROM semantic_issues
-      WHERE message LIKE ?
+      WHERE message LIKE ? AND (is_removed IS NULL OR is_removed = 0)
       ORDER BY detected_at DESC
     `).all(`${WATCHER_MESSAGE_PREFIX}%`);
 
@@ -227,7 +230,11 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
 
     if (idsToDelete.length > 0) {
       const placeholders = idsToDelete.map(() => '?').join(', ');
-      db.prepare(`DELETE FROM semantic_issues WHERE id IN (${placeholders})`).run(...idsToDelete);
+      db.prepare(`
+        UPDATE semantic_issues 
+        SET is_removed = 1, updated_at = datetime('now') 
+        WHERE id IN (${placeholders})
+      `).run(...idsToDelete);
       logger.info(
         `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
         ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length}, orphaned=${orphanedIds.length}, lowSignal=${lowSignalIds.length})`

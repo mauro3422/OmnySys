@@ -8,7 +8,7 @@ import { buildLiveRowReconciliationPlan } from './live-row-reconciliation.js';
 import { getLiveFileSetSql } from './live-row-drift.js';
 
 function buildDeleteStatement(tableName, fileColumn) {
-  return `DELETE FROM ${tableName} WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()})`;
+  return `UPDATE ${tableName} SET is_removed = 1, updated_at = datetime('now') WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`;
 }
 
 export function buildLiveRowCleanupPlan(db, options = {}) {

@@ -9,6 +9,7 @@ import { handleHealthMetrics } from './handlers/health-handler.js';
 import { handlePipelineHealth } from './handlers/pipeline-health-handler.js';
 import { handleWatcherAlerts } from './handlers/watcher-handler.js';
 import { handlePatterns, handleAsyncAnalysis } from './handlers/patterns-handler.js';
+import { handlePrioritizedBacklog } from './handlers/prioritized-backlog-handler.js';
 
 /**
  * mcp_omnysystem_aggregate_metrics
@@ -43,9 +44,14 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                 case 'society': return this.formatSuccess(await this._handleSociety(options));
                 case 'duplicates': return this.formatSuccess({ aggregationType: 'duplicates', ...(await this.getDuplicates(this._getPaginationOpts(options))) });
                 case 'isomorphism': return this.formatSuccess({ aggregationType: 'isomorphism', ...(await this.getIsomorphicDuplicates(this._getPaginationOpts(options))) });
+                case 'conceptual_duplicates': return this.formatSuccess(await this.getConceptualDuplicates(options));
                 case 'watcher_alerts': {
                     const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
                     return result.error ? result : this.formatSuccess(result);
+                }
+                case 'prioritized_backlog': {
+                    const result = await handlePrioritizedBacklog(this, this.projectPath, options);
+                    return this.formatSuccess(result);
                 }
                 default: return this.formatError('INVALID_PARAM', `Unknown aggregationType: ${aggregationType}`);
             }

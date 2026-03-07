@@ -13,6 +13,12 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'impact', label: 'Impact/topology', status: 'canonical' },
   { id: 'file_discovery', label: 'File discovery', status: 'canonical' },
   { id: 'signal_coverage', label: 'Signal coverage', status: 'canonical' },
+  { id: 'file_import_evidence', label: 'File import evidence coverage', status: 'canonical' },
+  { id: 'system_map_persistence', label: 'System-map persistence coverage', status: 'canonical' },
+  { id: 'metadata_surface_parity', label: 'Metadata surface parity', status: 'canonical' },
+  { id: 'metadata_propagation', label: 'Metadata propagation drift', status: 'canonical' },
+  { id: 'semantic_surface_granularity', label: 'Semantic surface granularity', status: 'canonical' },
+  { id: 'file_universe_granularity', label: 'File-universe granularity', status: 'canonical' },
   { id: 'live_row_drift', label: 'Live/stale row drift', status: 'canonical' },
   { id: 'pipeline_orphans', label: 'Pipeline orphan classification', status: 'canonical' },
   { id: 'dead_code', label: 'Dead code reporting/remediation', status: 'canonical' },
@@ -125,6 +131,33 @@ function buildMissingCanonicalSurfaceReport(adoptionGaps = []) {
     ));
   }
 
+  if ((byArea.metadata_propagation || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'metadata_propagation_surfaces',
+      'high',
+      'Producer/consumer metadata contracts are drifting across persistence surfaces.',
+      'Introduce or adopt a canonical propagation coverage API before mixing legacy and primary metadata tables in runtime code.'
+    ));
+  }
+
+  if ((byArea.semantic_surface_granularity || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'semantic_surface_contracts',
+      'medium',
+      'Semantic summaries and atom-level semantic relations are being mixed without an explicit granularity contract.',
+      'Expose semantic summary/detail comparisons through a canonical granularity API before MCP/query tools compare file-level semantic_connections with atom_relations.'
+    ));
+  }
+
+  if ((byArea.file_universe_granularity || 0) > 0) {
+    surfaces.push(buildSuggestedTarget(
+      'file_universe_contracts',
+      'medium',
+      'Scanner, manifest, and live indexed file counts are being treated as equivalent without an explicit contract.',
+      'Expose file-universe granularity through a canonical API before tools treat scanned, manifest, and live indexed counts as the same thing.'
+    ));
+  }
+
   return surfaces;
 }
 
@@ -134,7 +167,13 @@ export function buildCompilerStandardizationReport({
   sharedState = {},
   compilerRemediation = null,
   canonicalAdoptions = {},
-  persistedFileCoverage = null
+  persistedFileCoverage = null,
+  fileImportEvidenceCoverage = null,
+  systemMapPersistenceCoverage = null
+  ,
+  metadataSurfaceParity = null,
+  semanticSurfaceGranularity = null,
+  fileUniverseGranularity = null
 } = {}) {
   const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
     .map(([area, count]) => normalizeDriftArea(area, count))
@@ -199,6 +238,51 @@ export function buildCompilerStandardizationReport({
       'medium',
       'The scanner/hash cache sees more files than the persisted compiler manifest currently tracks.',
       'Persist the scanned-file manifest through a canonical compiler API so hash recovery, startup telemetry and file-level coverage read the same file universe.'
+    ));
+  }
+
+  if (Number(fileImportEvidenceCoverage?.coverageRatio || 0) > 0 && Number(fileImportEvidenceCoverage?.coverageRatio || 0) < 0.5) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'file_import_evidence',
+      'medium',
+      'File-level import evidence coverage is too sparse to trust reachability warnings uniformly.',
+      'Promote a canonical import-evidence coverage API and avoid treating file-level reachability as high-confidence until imports/dependencies telemetry is broadly populated.'
+    ));
+  }
+
+  if (systemMapPersistenceCoverage?.healthy === false) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'system_map_persistence',
+      'high',
+      'Legacy system-map tables are expected by several queries/guards, but their persisted coverage is incomplete.',
+      'Route system-map persistence checks through a canonical coverage API and keep `system_files` / `file_dependencies` aligned with the graph builder output.'
+    ));
+  }
+
+  if (metadataSurfaceParity?.healthy === false) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'metadata_surface_parity',
+      'high',
+      'Primary and mirrored file-level metadata surfaces disagree on payload richness.',
+      'Read surface parity from a canonical API before trusting mirrored support tables as a substitute for the primary files surface.'
+    ));
+  }
+
+  if (semanticSurfaceGranularity?.healthy === false) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'semantic_surface_granularity',
+      'medium',
+      'Semantic telemetry mixes file-level summaries and atom-level relations without an explicit contract.',
+      'Adopt the canonical semantic surface granularity API before consumers treat semantic_connections as equivalent to atom_relations.'
+    ));
+  }
+
+  if (fileUniverseGranularity?.healthy === false) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'file_universe_granularity',
+      'medium',
+      'Scanner, manifest, and live indexed file universes are no longer aligned.',
+      'Read file-universe differences through a canonical contract before treating scanned files, persisted manifest rows, and live indexed files as interchangeable.'
     ));
   }
 
