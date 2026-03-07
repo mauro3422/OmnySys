@@ -8,6 +8,13 @@
  */
 
 export {
+  normalizeSeverity,
+  severityToLevel,
+  scoreToSeverity,
+  stripPrefix
+} from './core-utils.js';
+
+export {
   COMPILER_POLICY_SEVERITY,
   COMPILER_POLICY_AREA,
   detectCompilerPolicyDriftFromSource,

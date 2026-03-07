@@ -6,15 +6,18 @@ import {
   summarizeCompilerDiagnostics,
   summarizeSignalConfidence,
   summarizeWatcherAlerts,
-  summarizeWatcherAlertLifecycle
+  summarizeWatcherAlertLifecycle,
+  normalizeSeverity,
+  severityToLevel
 } from '../../../shared/compiler/index.js';
 import { loadWatcherIssues } from '../../../core/file-watcher/watcher-issue-persistence.js';
 
 function mapLoggerEntry(entry) {
+  const severity = normalizeSeverity(entry.level === 'error' ? 'high' : (entry.level === 'warn' ? 'medium' : 'low'));
   return {
     source: 'logger',
     level: entry.level,
-    severity: entry.level === 'error' ? 'high' : (entry.level === 'warn' ? 'medium' : 'low'),
+    severity,
     message: entry.message,
     time: new Date(entry.time).toISOString()
   };
@@ -69,12 +72,12 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   const signalConfidence = summarizeSignalConfidence(watcherEntriesWithConfidence);
 
   const warnings =
-    loggerEntries.filter((entry) => entry.level === 'warn').length +
-    watcherEntriesWithConfidence.filter((entry) => entry.severity === 'medium' || entry.severity === 'low').length;
+    loggerEntries.filter((entry) => severityToLevel(entry.severity) === 'warn').length +
+    watcherEntriesWithConfidence.filter((entry) => severityToLevel(entry.severity) === 'warn').length;
 
   const errors =
-    loggerEntries.filter((entry) => entry.level === 'error').length +
-    watcherEntriesWithConfidence.filter((entry) => entry.severity === 'high').length;
+    loggerEntries.filter((entry) => severityToLevel(entry.severity) === 'error').length +
+    watcherEntriesWithConfidence.filter((entry) => severityToLevel(entry.severity) === 'error').length;
 
   return {
     count: loggerEntries.length + watcherEntriesWithConfidence.length,

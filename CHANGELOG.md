@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.104 - Core Consolidation & Genetic Lineage](changelogs/v0.9.104.md)
 - [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
 - [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
 

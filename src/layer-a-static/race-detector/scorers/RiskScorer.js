@@ -14,6 +14,7 @@ import { ScopeScorer } from './ScopeScorer.js';
 import { ImpactScorer } from './ImpactScorer.js';
 import { FrequencyScorer } from './FrequencyScorer.js';
 import { TestingAdvisor } from './TestingAdvisor.js';
+import { scoreToSeverity } from '#shared/compiler/index.js';
 
 /**
  * Calculates risk scores for race conditions
@@ -42,7 +43,7 @@ export class RiskScorer {
    */
   calculate(race, projectData) {
     if (!race) return 'low';
-    
+
     const scores = {
       type: this.typeScorer.score(race),
       async: this.asyncScorer.score(race),
@@ -61,18 +62,9 @@ export class RiskScorer {
       scores.frequency * 0.05
     );
 
-    return this.scoreToSeverity(totalScore);
+    return scoreToSeverity(totalScore);
   }
 
-  /**
-   * Convert score to severity
-   */
-  scoreToSeverity(score) {
-    if (score >= 0.8) return 'critical';
-    if (score >= 0.6) return 'high';
-    if (score >= 0.4) return 'medium';
-    return 'low';
-  }
 
   /**
    * Generate explanation of score

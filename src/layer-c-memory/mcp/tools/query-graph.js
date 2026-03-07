@@ -1,4 +1,5 @@
 import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
+import { queryAtomHistory } from './semantic/semantic-queries.js';
 
 import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getAtomDetails } from '../../query/queries/file-query/atoms/atom-query.js';
@@ -135,7 +136,30 @@ export class QueryGraphTool extends SemanticQueryTool {
                     });
                 }
 
-                case 'history':
+                case 'history': {
+                    if (!symbolName && !options.dnaHash) {
+                        return this.formatError('MISSING_PARAMS', 'symbolName or options.dnaHash is required for history');
+                    }
+
+                    const history = queryAtomHistory(this.repo.db, {
+                        name: symbolName,
+                        filePath,
+                        dnaHash: options.dnaHash,
+                        limit: options.limit || 50
+                    });
+
+                    return this.formatSuccess({
+                        symbol: symbolName,
+                        filePath,
+                        dnaHash: options.dnaHash,
+                        versionCount: history.length,
+                        history: history.map(v => ({
+                            ...v,
+                            dna: JSON.parse(v.dna_json || '{}')
+                        }))
+                    });
+                }
+
                 case 'value_flow':
                 case 'removed':
                 case 'search':

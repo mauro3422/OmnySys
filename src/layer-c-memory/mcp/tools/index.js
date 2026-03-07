@@ -53,7 +53,7 @@ export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
   {
     name: 'mcp_omnysystem_query_graph',
-    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, get_function_details). queryType options ACTIVOS: [instances, details]. DEPRECATED (retornan error): [history, value_flow, search, removed]. OPTIONS: includeSemantic=true agrega sharedState, events, async info.',
+    description: 'Enrutador unificado para Point Queries. Usa esto para buscar o inspeccionar un símbolo específico. Reemplaza herramientas antiguas (find_symbol_instances, get_function_details). queryType options ACTIVOS: [instances, details, history]. DEPRECATED (retornan error): [value_flow, search, removed]. OPTIONS: includeSemantic=true agrega sharedState, events, async info.',
     inputSchema: {
       type: 'object',
       properties: {

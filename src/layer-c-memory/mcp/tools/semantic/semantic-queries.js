@@ -418,3 +418,39 @@ export function queryIsomorphicDuplicates(db, { offset = 0, limit = 20, excludeT
         return { rows, stats: stats || { groups: 0, total_instances: 0 } };
     }, 'queryIsomorphicDuplicates', { rows: [], stats: { groups: 0, total_instances: 0 } });
 }
+
+/**
+ * Consulta el historial de un átomo por nombre y path, o por DNA hash.
+ * @param {Object} db - Instancia SQLite
+ * @param {Object} options
+ * @returns {Array} Listado de versiones del átomo
+ */
+export function queryAtomHistory(db, { name, filePath, dnaHash, limit = 50 }) {
+    return safeQuery(() => {
+        let whereClause = '';
+        const params = [];
+
+        if (dnaHash) {
+            whereClause = "WHERE json_extract(dna_json, '$.hash') = ?";
+            params.push(dnaHash);
+        } else if (name && filePath) {
+            whereClause = 'WHERE name = ? AND file_path = ?';
+            params.push(name, filePath);
+        } else if (name) {
+            whereClause = 'WHERE name = ?';
+            params.push(name);
+        } else {
+            throw new Error('Debe proporcionar name/filePath o dnaHash para consultar el historial.');
+        }
+
+        return db.prepare(`
+            SELECT id, name, file_path, atom_type, line_start, line_end,
+                   dna_json, is_removed, updated_at, complexity,
+                   importance_score, archetype_type, purpose_type
+            FROM atoms
+            ${whereClause}
+            ORDER BY updated_at DESC, is_removed ASC
+            LIMIT ?
+        `).all(...params, limit);
+    }, 'queryAtomHistory', []);
+}

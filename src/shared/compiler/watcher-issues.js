@@ -9,33 +9,22 @@
  */
 
 import { WATCHER_ALERT_LIFECYCLE } from './watcher-issue-lifecycle.js';
+import {
+  normalizeSeverity,
+  severityToLevel,
+  stripPrefix
+} from './core-utils.js';
 
 export const WATCHER_MESSAGE_PREFIX = '[watcher]';
 export const WATCHER_ALERT_SOURCE = 'file_watcher';
 export const WATCHER_CONTRACT_VERSION = 1;
-
-function normalizeSeverity(severity = 'medium') {
-  const normalized = String(severity || 'medium').toLowerCase();
-  if (normalized === 'high' || normalized === 'medium' || normalized === 'low' || normalized === 'info') {
-    return normalized;
-  }
-  return 'medium';
-}
-
-function severityToLevel(severity = 'medium') {
-  if (severity === 'high') return 'error';
-  if (severity === 'info') return 'info';
-  return 'warn';
-}
 
 export function isWatcherIssueMessage(message = '') {
   return String(message || '').startsWith(WATCHER_MESSAGE_PREFIX);
 }
 
 export function stripWatcherMessagePrefix(message = '') {
-  return isWatcherIssueMessage(message)
-    ? String(message).slice(WATCHER_MESSAGE_PREFIX.length).trimStart()
-    : String(message || '');
+  return stripPrefix(message, WATCHER_MESSAGE_PREFIX);
 }
 
 export function normalizeWatcherIssueContext(context = {}) {

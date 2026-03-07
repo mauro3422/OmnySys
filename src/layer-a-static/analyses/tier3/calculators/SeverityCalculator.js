@@ -6,16 +6,15 @@
  * @module analyses/tier3/calculators/SeverityCalculator
  */
 
+import { scoreToSeverity } from '#shared/compiler/index.js';
+
 /**
  * Calculate severity from score
  * @param {number} score - Score 0-10
  * @returns {string} - Severity level
  */
 export function calculateScoreSeverity(score) {
-  if (score >= 8) return 'critical';
-  if (score >= 6) return 'high';
-  if (score >= 3) return 'medium';
-  return 'low';
+  return scoreToSeverity(score);
 }
 
 /**
