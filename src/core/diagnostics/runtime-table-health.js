@@ -6,6 +6,7 @@ import {
   getLiveFileTotal,
   getMetadataSurfaceParity,
   getSystemMapPersistenceCoverage,
+  repairSystemMapPersistenceCoverage,
   getFileUniverseGranularity,
   discoverProjectSourceFiles,
   summarizePersistedScannedFileCoverage,
@@ -205,7 +206,18 @@ async function buildDeepRuntimeHealthIssues(projectPath, db) {
   }
 
   const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
+  let effectiveSystemMapPersistenceCoverage = systemMapPersistenceCoverage;
   if (systemMapPersistenceCoverage.healthy === false) {
+    const repairResult = repairSystemMapPersistenceCoverage(db);
+    if (repairResult.repaired === true) {
+      effectiveSystemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
+      if (effectiveSystemMapPersistenceCoverage.healthy === true) {
+        logger.warn(`[RUNTIME TABLE HEALTH] repaired system-map dependency coverage (${repairResult.inserted} dependencies across ${repairResult.sources} source files).`);
+      }
+    }
+  }
+
+  if (effectiveSystemMapPersistenceCoverage.healthy === false) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_system_map_persistence`,
       severity: 'medium',
@@ -213,7 +225,7 @@ async function buildDeepRuntimeHealthIssues(projectPath, db) {
       context: {
         source: 'runtime_table_health',
         category: 'system_map_persistence',
-        coverage: systemMapPersistenceCoverage
+        coverage: effectiveSystemMapPersistenceCoverage
       }
     });
   }

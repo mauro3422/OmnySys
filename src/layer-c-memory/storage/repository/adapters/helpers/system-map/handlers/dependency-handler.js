@@ -19,14 +19,27 @@ function normalizeDependencies(dependencies) {
     .flatMap(([source, targets]) => {
       if (!targets || typeof targets[Symbol.iterator] !== 'function') return [];
       return Array.from(targets)
-        .map((target) => ({
-          source: safeString(source),
-          target: safeString(target),
-          dependencyType: 'import',
-          symbolsJson: safeJson([]),
-          reason: null,
-          isDynamic: 0
-        }))
+        .map((target) => {
+          if (target && typeof target === 'object') {
+            return {
+              source: safeString(source),
+              target: safeString(target.targetPath || target.target || target.to),
+              dependencyType: safeString(target.type, 'import'),
+              symbolsJson: safeJson(target.symbols || []),
+              reason: safeString(target.reason),
+              isDynamic: target.dynamic ? 1 : 0
+            };
+          }
+
+          return {
+            source: safeString(source),
+            target: safeString(target),
+            dependencyType: 'import',
+            symbolsJson: safeJson([]),
+            reason: null,
+            isDynamic: 0
+          };
+        })
         .filter((dep) => dep.source && dep.target);
     });
 }

@@ -111,6 +111,7 @@ export {
 
 export {
   getSystemMapPersistenceCoverage,
+  repairSystemMapPersistenceCoverage,
   shouldTrustSystemMapDependencies
 } from './system-map-persistence.js';
 
