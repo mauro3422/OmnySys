@@ -8,11 +8,19 @@
  * - generateAlternativeNames: Lógica unificada para sugerencias de renombrado
  * - normalizeFilePath: Normalización de rutas para Windows/Unix
  * - coordinateDuplicateFindings: Coordina structural + conceptual duplicates
- * - buildDuplicateDebtHistory: Tracking de deuda técnica con historial
  * - loadPreviousFindings: Carga findings previos de semantic_issues
  *
  * @module shared/compiler/duplicate-utils
  */
+
+export {
+    buildDuplicateDebtHistory,
+    buildDuplicateContext
+} from './duplicate-debt.js';
+
+export { normalizeFilePath } from './path-normalization.js';
+
+import { normalizeFilePath } from './path-normalization.js';
 
 // Logger opcional - descomentar si se necesita debug
 // import { createLogger } from '../../logger-system.js';
@@ -68,17 +76,6 @@ export function generateAlternativeNames(originalName, existingName = null) {
     }
 
     return [...new Set(alternatives)].slice(0, 6);
-}
-
-/**
- * Normaliza filePath a forward slashes para coincidir con formato de DB
- * Esencial para Windows donde path.join usa backslashes
- *
- * @param {string} filePath - Ruta a normalizar
- * @returns {string} Ruta normalizada con forward slashes
- */
-export function normalizeFilePath(filePath) {
-    return String(filePath || '').replace(/\\/g, '/');
 }
 
 const LOW_SIGNAL_GENERATED_ATOM_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|sort_callback|get_arg\d+)$/i;
@@ -422,169 +419,4 @@ export function loadPreviousFindings(db, filePath, issueTypePrefix = 'code_dupli
         console.debug(`[LOAD PREVIOUS FINDINGS] Error for ${filePath}: ${error.message}`);
         return [];
     }
-}
-
-/**
- * Construye historial de deuda técnica por duplicados
- * Trackea nuevos, persistentes y resueltos para medir deuda técnica acumulada
- *
- * @param {string} filePath - Archivo afectado
- * @param {Array<Object>} currentFindings - Findings actuales
- * @param {Array<Object>} [previousFindings] - Findings previos (de loadPreviousFindings)
- * @returns {Object} Reporte de deuda técnica con historial y métricas
- */
-export function buildDuplicateDebtHistory(filePath, currentFindings = [], previousFindings = []) {
-    const currentSymbols = new Set(currentFindings.map(f => `${f.symbol}:${f.duplicateType || 'UNKNOWN'}`));
-    const previousSymbols = new Set(previousFindings.map(f => `${f.symbol}:${f.duplicateType || 'UNKNOWN'}`));
-
-    const newFindings = currentFindings.filter(f => !previousSymbols.has(`${f.symbol}:${f.duplicateType || 'UNKNOWN'}`));
-    const resolvedFindings = previousFindings.filter(f => !currentSymbols.has(`${f.symbol}:${f.duplicateType || 'UNKNOWN'}`));
-
-    // Persistentes = están en ambos sets
-    const persistentFindings = currentFindings.filter(f =>
-        previousSymbols.has(`${f.symbol}:${f.duplicateType || 'UNKNOWN'}`)
-    );
-
-    // Calcular métricas de deuda técnica
-    const debtScore = calculateDebtScore(newFindings, persistentFindings, resolvedFindings);
-    const trend = calculateTrend(newFindings.length, resolvedFindings.length, persistentFindings.length);
-
-    return {
-        filePath,
-        detectedAt: new Date().toISOString(),
-        summary: {
-            total: currentFindings.length,
-            new: newFindings.length,
-            persistent: persistentFindings.length,
-            resolved: resolvedFindings.length,
-            resolutionRate: previousFindings.length > 0
-                ? Math.round((resolvedFindings.length / previousFindings.length) * 100)
-                : 0
-        },
-        debt: {
-            score: debtScore, // 0-100
-            level: debtScore >= 75 ? 'critical' : debtScore >= 50 ? 'high' : debtScore >= 25 ? 'medium' : 'low',
-            trend, // 'increasing' | 'decreasing' | 'stable' | 'stable-high' | 'critical-increasing'
-            accumulationRate: persistentFindings.length > 0 ? 'high' : newFindings.length > 0 ? 'medium' : 'low'
-        },
-        history: {
-            new: newFindings.map(f => ({
-                symbol: f.symbol,
-                type: f.duplicateType,
-                semanticFingerprint: f.semanticFingerprint || null,
-                totalInstances: f.totalInstances || 0,
-                duplicateFiles: f.duplicateFiles || []
-            })),
-            persistent: persistentFindings.map(f => ({
-                symbol: f.symbol,
-                type: f.duplicateType,
-                semanticFingerprint: f.semanticFingerprint || null,
-                totalInstances: f.totalInstances || 0,
-                duplicateFiles: f.duplicateFiles || [],
-                // Marcar como deuda acumulada
-                isDebt: true
-            })),
-            resolved: resolvedFindings.map(f => ({
-                symbol: f.symbol,
-                type: f.duplicateType,
-                resolvedAt: new Date().toISOString()
-            }))
-        },
-        recommendations: generateDebtRecommendations(newFindings, persistentFindings, resolvedFindings)
-    };
-}
-
-/**
- * Calcula score de deuda técnica (0-100)
- * Peso: persistentes = 3x, nuevos = 2x, resueltos = -1x (reducen deuda)
- */
-function calculateDebtScore(newFindings, persistentFindings, resolvedFindings) {
-    const persistentWeight = 3;
-    const newWeight = 2;
-    const resolvedWeight = -1;
-
-    const rawScore = (
-        (persistentFindings.length * persistentWeight) +
-        (newFindings.length * newWeight) +
-        (resolvedFindings.length * resolvedWeight)
-    );
-
-    // Normalizar a 0-100 (max 10 findings considerados)
-    const maxScore = 10 * persistentWeight;
-    const normalizedScore = Math.min(100, Math.max(0, (rawScore / maxScore) * 100));
-
-    return Math.round(normalizedScore);
-}
-
-/**
- * Calcula tendencia de deuda técnica
- */
-function calculateTrend(newCount, resolvedCount, persistentCount) {
-    if (persistentCount > 5) return 'critical-increasing';
-    if (newCount > resolvedCount) return 'increasing';
-    if (newCount < resolvedCount) return 'decreasing';
-    if (persistentCount > 0) return 'stable-high';
-    return 'stable';
-}
-
-/**
- * Genera recomendaciones basadas en el historial de deuda
- */
-function generateDebtRecommendations(newFindings, persistentFindings, resolvedFindings) {
-    const recommendations = [];
-
-    if (persistentFindings.length > 3) {
-        recommendations.push({
-            priority: 'critical',
-            action: 'High technical debt from persistent duplicates. Schedule refactoring sprint.',
-            reason: `${persistentFindings.length} duplicate(s) carried over without resolution`
-        });
-    }
-
-    if (newFindings.length > persistentFindings.length && newFindings.length > 2) {
-        recommendations.push({
-            priority: 'high',
-            action: 'New duplicates detected faster than resolution. Review code review process.',
-            reason: `${newFindings.length} new vs ${resolvedFindings.length} resolved`
-        });
-    }
-
-    if (resolvedFindings.length > 0 && persistentFindings.length === 0 && newFindings.length === 0) {
-        recommendations.push({
-            priority: 'positive',
-            action: 'All duplicates resolved. Consider adding duplicate detection to CI/CD.',
-            reason: 'Clean state achieved'
-        });
-    }
-
-    if (persistentFindings.length > 0 && newFindings.length === 0) {
-        recommendations.push({
-            priority: 'medium',
-            action: 'Focus on resolving existing duplicates before adding new features.',
-            reason: `${persistentFindings.length} persistent duplicate(s) blocking technical health`
-        });
-    }
-
-    return recommendations;
-}
-
-/**
- * Exporta findings para persistencia en semantic_issues
- * Incluye metadatos de historial para tracking
- *
- * @param {Array<Object>} currentFindings - Findings actuales
- * @param {Object} debtHistory - Historial de deuda (de buildDuplicateDebtHistory)
- * @returns {Object} Contexto enriquecido para persistWatcherIssue
- */
-export function buildDuplicateContext(currentFindings = [], debtHistory = null) {
-    return {
-        findings: currentFindings,
-        debtHistory: debtHistory ? {
-            summary: debtHistory.summary,
-            score: debtHistory.debt.score,
-            trend: debtHistory.debt.trend,
-            level: debtHistory.debt.level
-        } : null,
-        recommendations: debtHistory?.recommendations || []
-    };
 }

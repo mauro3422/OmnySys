@@ -218,17 +218,23 @@ export {
 } from './duplicate-remediation.js';
 
 export {
+  normalizeFilePath
+} from './path-normalization.js';
+
+export {
   generateAlternativeNames,
-  normalizeFilePath,
   isLowSignalGeneratedAtom,
   isRepositoryContractSurface,
   shouldIgnoreConceptualDuplicateFinding,
   shouldIgnoreStructuralDuplicateFinding,
   loadPreviousFindings,
-  buildDuplicateDebtHistory,
-  buildDuplicateContext,
   coordinateDuplicateFindings
 } from './duplicate-utils.js';
+
+export {
+  buildDuplicateDebtHistory,
+  buildDuplicateContext
+} from './duplicate-debt.js';
 
 export {
   getCachedMetadata,

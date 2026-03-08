@@ -9,13 +9,10 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { normalizeFilePath } from './path-normalization.js';
 
 const DATA_DIR = '.omnysysdata';
 const SCANNED_FILE_MANIFEST_TABLE = 'compiler_scanned_files';
-
-function normalizeFilePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
 
 function getDataDir(rootPath) {
   return path.join(rootPath, DATA_DIR);
