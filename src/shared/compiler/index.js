@@ -233,6 +233,7 @@ export {
 
 export {
   generateAlternativeNames,
+  isCanonicalDuplicateSignalPolicyFile,
   isLowSignalGeneratedAtom,
   isLowSignalConceptualFingerprint,
   isRepositoryContractSurface,
