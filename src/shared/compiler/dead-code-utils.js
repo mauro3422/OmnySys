@@ -9,6 +9,10 @@ import {
     buildStandardPlan,
     buildStandardItem
 } from './remediation-plan-builder.js';
+import {
+    stripComments,
+    stripStrings
+} from './conformance-utils.js';
 
 const LOW_SIGNAL_PATTERNS = [
     /^anonymous(_\d+)?$/i,
@@ -163,8 +167,9 @@ export function getDeadCodeSqlPredicate(alias = 'a', { minLines = 0, allowExport
  */
 export function detectDeadCodeDrift(source = '', filePath = '') {
     const findings = [];
-    const hasManualLogic = MANUAL_DEAD_CODE_PATTERNS.every(p => p.test(source));
-    const hasCanonicalUse = CANONICAL_DEAD_CODE_RESOURCES.some(p => p.test(source));
+    const sanitizedSource = stripStrings(stripComments(source));
+    const hasManualLogic = MANUAL_DEAD_CODE_PATTERNS.every((pattern) => pattern.test(sanitizedSource));
+    const hasCanonicalUse = CANONICAL_DEAD_CODE_RESOURCES.some((pattern) => pattern.test(sanitizedSource));
 
     if (hasManualLogic && !hasCanonicalUse && !filePath.endsWith('/dead-code-utils.js')) {
         findings.push({
