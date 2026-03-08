@@ -271,17 +271,19 @@ function buildRuntimeHealthIssues(db) {
   }
 
   const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
-  if (semanticSurfaceGranularity.healthy === false) {
+  if (semanticSurfaceGranularity.materiallyDrifting === true) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_semantic_surface_drift`,
       severity: 'medium',
-      message: `semantic_connections (${semanticSurfaceGranularity.fileLevel.total}) is drifting from atom_relations (${semanticSurfaceGranularity.atomLevel.total}); do not treat both semantic surfaces as equivalent.`,
+      message: `semantic_connections (${semanticSurfaceGranularity.fileLevel.total}) is drifting from the canonical semantic summary derived from atom_relations (${semanticSurfaceGranularity.legacyView.total}).`,
       context: {
         source: 'runtime_table_health',
         category: 'semantic_surface_granularity',
         fileLevel: semanticSurfaceGranularity.fileLevel,
         atomLevel: semanticSurfaceGranularity.atomLevel,
         contract: semanticSurfaceGranularity.contract,
+        materialIssues: semanticSurfaceGranularity.materialIssues,
+        advisories: semanticSurfaceGranularity.advisories,
         issues: semanticSurfaceGranularity.issues
       }
     });

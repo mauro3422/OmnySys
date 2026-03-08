@@ -128,16 +128,21 @@ export function getSemanticSurfaceGranularity(db) {
   const atomLevelTotal = atomLevelSharedStateTotal + atomLevelEventTotal;
   const sharedStateGranularityRatio = toRatio(fileLevelTotal, atomLevelSharedStateTotal);
 
-  const issues = [];
+  const materialIssues = [];
+  const advisories = [];
   if (fileLevelTotal === 0 && atomLevelTotal > 0) {
-    issues.push('file-level semantic summary is empty while atom-level semantic relations exist');
+    materialIssues.push('file-level semantic summary is empty while atom-level semantic relations exist');
   }
   if (persistedSemanticRows.length > 0 && (semanticByType.sharedState || semanticByType.eventListeners)) {
-    issues.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
+    advisories.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
   }
   if (persistedLegacyView.total !== canonicalLegacyView.total) {
-    issues.push('semantic_connections summary count is drifting from the canonical adapter derived from atom_relations');
+    materialIssues.push('semantic_connections summary count is drifting from the canonical adapter derived from atom_relations');
   }
+
+  const issues = [...materialIssues, ...advisories];
+  const materiallyDrifting = materialIssues.length > 0;
+  const requiresCanonicalAdapter = advisories.length > 0 || materiallyDrifting;
 
   return {
     fileLevel: {
@@ -161,15 +166,18 @@ export function getSemanticSurfaceGranularity(db) {
       atomLevelSurface: 'atom_relations',
       summaryVsDetail: true,
       equivalentTotals: false,
-      trustworthy: issues.length === 0,
+      trustworthy: !materiallyDrifting,
       sharedStateGranularityRatio,
-      status: issues.length === 0 ? 'stable' : 'advisory_only',
+      status: materiallyDrifting ? 'drift' : (requiresCanonicalAdapter ? 'advisory_only' : 'stable'),
       recommendedSourceOfTruth: 'atom_relations',
       summarySurfaceAdvisory: true,
-      unsafeForTotalsComparison: issues.length > 0 || fileLevelTotal !== atomLevelTotal,
-      requiresCanonicalAdapter: issues.length > 0
+      unsafeForTotalsComparison: fileLevelTotal !== atomLevelTotal,
+      requiresCanonicalAdapter
     },
-    healthy: issues.length === 0,
+    healthy: !materiallyDrifting,
+    materiallyDrifting,
+    materialIssues,
+    advisories,
     issues
   };
 }
