@@ -19,6 +19,7 @@ import {
     getFileImportEvidenceCoverage,
     getLiveFileTotal,
     getMetadataSurfaceParity,
+    getPipelineFieldCoverageContext,
     getSemanticSurfaceGranularity,
     summarizeSemanticCanonicality,
     getSystemMapPersistenceCoverage,
@@ -30,20 +31,6 @@ import {
     summarizePersistedScannedFileCoverage
 } from '../../../../shared/compiler/index.js';
 import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
-
-function getFieldCoverageContext(field) {
-    if (field === 'has_network_calls') {
-        return {
-            whereClause: 'WHERE is_phase2_complete = 1',
-            descriptionSuffix: ' (Phase 2 atoms only)'
-        };
-    }
-
-    return {
-        whereClause: '',
-        descriptionSuffix: ''
-    };
-}
 
 export async function handlePipelineHealth(tool) {
     const db = tool.repo?.db;
@@ -138,7 +125,7 @@ export async function handlePipelineHealth(tool) {
     const zeroFields = [];
     for (const { field, description, minWarningCoverage = 5 } of PIPELINE_FIELD_COVERAGE_SIGNALS) {
         try {
-            const { whereClause, descriptionSuffix } = getFieldCoverageContext(field);
+            const { whereClause, descriptionSuffix } = getPipelineFieldCoverageContext(field);
             const denominatorRow = db.prepare(`SELECT COUNT(*) as total FROM atoms ${whereClause}`).get();
             const scopedTotal = denominatorRow?.total || 0;
             if (scopedTotal === 0) continue;

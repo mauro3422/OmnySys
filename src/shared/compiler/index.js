@@ -256,6 +256,10 @@ export {
 } from './pipeline-orphans.js';
 
 export {
+  getPipelineFieldCoverageContext
+} from './pipeline-health-context.js';
+
+export {
   WATCHER_MESSAGE_PREFIX,
   WATCHER_ALERT_SOURCE,
   WATCHER_CONTRACT_VERSION,
