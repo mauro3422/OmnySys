@@ -135,19 +135,18 @@ function attachPhase2Status(status, server, cache, cachedMetadata, cachedCounts,
     clientsWithDuplicates: null,
     health: (server.sessions?.size || 0) > 20 ? 'STRESSED' : 'HEALTHY'
   };
-  status.compilerReadiness = {
-    ready: false,
-    checks: {
-      phase2Complete: false,
-      societiesReady: false,
-      dedupHealthy: true,
-      sessionCountsAligned: true
-    },
-    warnings: [
-      `Phase 2 deep scan still running (${phase2Status.processedFiles}/${phase2Status.totalFiles}, ${phase2Status.percentComplete}%).`,
-      'Global metrics are still settling; use atom/file-level queries for fresh detail.'
-    ]
-  };
+  status.compilerReadiness = buildCompilerReadinessStatus({
+    phase2PendingFiles: phase2Status.pendingFiles,
+    societiesCount: 0,
+    runtimeSessions: server.sessions?.size || 0,
+    persistentActive: 0,
+    clientsWithDuplicates: 0
+  });
+  status.compilerReadiness.ready = false;
+  status.compilerReadiness.warnings = [
+    `Phase 2 deep scan still running (${phase2Status.processedFiles}/${phase2Status.totalFiles}, ${phase2Status.percentComplete}%).`,
+    'Global metrics are still settling; use atom/file-level queries for fresh detail.'
+  ];
   status.telemetryProvenance = buildTelemetryProvenance({
     source: 'status.phase2',
     phase2PendingFiles: phase2Status.pendingFiles,
