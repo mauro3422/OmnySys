@@ -168,6 +168,48 @@ const STORAGE_QUERY_POLICY_FINGERPRINTS = new Set([
     'process:core:query'
 ]);
 
+const WATCHER_ISSUE_CANONICAL_FILE_MARKERS = [
+    '/shared/compiler/watcher-issue-storage.js',
+    '/shared/compiler/watcher-issue-reconciliation.js'
+];
+
+const WATCHER_ISSUE_CANONICAL_HELPER_NAMES = new Set([
+    'normalizewatcherissuefilepath',
+    'collectreferencedatomids',
+    'collectreferencedsymbols',
+    'getmaxmtimerecursively',
+    'getcachedruntimedependencymtime',
+    'getcachedfilecontents',
+    'getalertfilesnapshot',
+    'isalertoutdatedbymissingsymbols',
+    'isalertoutdatedbyruntimedependencies',
+    'findorphanedwatcheralertids',
+    'findoutdatedwatcheralertids',
+    'normalizewatcheralertlifecyclefilter',
+    'matcheswatcheralertlifecycle',
+    'partitionwatcheralertsbylifecycle',
+    'filterwatcheralertsbylifecycle',
+    'getwatcherissuefamily',
+    'getwatcherissueidentity',
+    'findsupersededwatcheralertids'
+]);
+
+const WATCHER_ISSUE_CANONICAL_FINGERPRINTS = new Set([
+    'normalize:core:path',
+    'process:core:atoms',
+    'process:core:symbols',
+    'get:core:mtime',
+    'get:core:contents',
+    'get:core:snapshot',
+    'process:core:dependencies',
+    'find:core:ids',
+    'filter:core:lifecycle',
+    'match:core:lifecycle',
+    'partition:core:lifecycle',
+    'get:core:family',
+    'get:core:identity'
+]);
+
 const DUPLICATE_STRUCTURAL_CORE_FILE_MARKER = '/core/file-watcher/guards/duplicate-structural-core.js';
 const DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES = new Set([
     'loadstructurallocalatoms',
@@ -492,6 +534,15 @@ export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerpri
     });
 }
 
+export function isWatcherIssueCanonicalHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: WATCHER_ISSUE_CANONICAL_FILE_MARKERS,
+        pathMode: 'endsWith',
+        names: WATCHER_ISSUE_CANONICAL_HELPER_NAMES,
+        fingerprints: WATCHER_ISSUE_CANONICAL_FINGERPRINTS
+    });
+}
+
 export function isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: [DUPLICATE_STRUCTURAL_CORE_FILE_MARKER],
@@ -619,6 +670,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
         () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
         () => isCanonicalPipelineHealthHelper(filePath, atomName, semanticFingerprint),
         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
+        () => isWatcherIssueCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateConceptualCoreHelper(filePath, atomName, semanticFingerprint),
@@ -647,6 +699,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isCanonicalGuidanceHelper(filePath, atomName, null),
         () => isCanonicalPipelineHealthHelper(filePath, atomName, null),
         () => isStorageQueryPolicyHelper(filePath, atomName, null),
+        () => isWatcherIssueCanonicalHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, null),
         () => isDuplicateConceptualCoreHelper(filePath, atomName, null),
