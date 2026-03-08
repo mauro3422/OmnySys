@@ -366,6 +366,29 @@ const STANDALONE_SCRIPT_HELPER_FINGERPRINTS = new Set([
     'build:core:issue'
 ]);
 
+const ORCHESTRATION_BOUNDARY_PATH_MARKERS = [
+    '/core/orchestrator/',
+    '/core/unified-server/',
+    '/mcp/core/',
+    '/storage/repository/adapters/'
+];
+
+const ORCHESTRATION_LIFECYCLE_NAMES = new Set([
+    'start',
+    'stop',
+    'initialize',
+    'close',
+    'shutdown',
+    'constructor'
+]);
+
+const ORCHESTRATION_LIFECYCLE_FINGERPRINTS = new Set([
+    'process:core:shutdown',
+    'process:core:close',
+    'process:core:constructor',
+    'init:core:ialize'
+]);
+
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
@@ -653,6 +676,14 @@ export function isStandaloneScriptEntryHelper(filePath, atomName, semanticFinger
     );
 }
 
+export function isOrchestrationLifecycleBoundaryHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: ORCHESTRATION_BOUNDARY_PATH_MARKERS,
+        names: ORCHESTRATION_LIFECYCLE_NAMES,
+        fingerprints: ORCHESTRATION_LIFECYCLE_FINGERPRINTS
+    });
+}
+
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
     const normalizedPath = normalizeFilePath(filePath).toLowerCase();
     const normalizedName = String(atomName || '').toLowerCase();
@@ -709,6 +740,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),
         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null),
         () => isStandaloneScriptEntryHelper(filePath, atomName, null),
+        () => isOrchestrationLifecycleBoundaryHelper(filePath, atomName, null),
         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, null),
         () => isPolicyConformanceCanonicalHelper(filePath, atomName, null),
         () => isRepositoryContractSurface(filePath, atomName, null),
