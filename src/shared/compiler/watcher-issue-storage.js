@@ -214,7 +214,10 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
         continue;
       }
     } catch {
-      // If the file no longer exists, regular lifecycle cleanup will handle it.
+      // Deleted files should immediately invalidate any persisted watcher alert
+      // targeting the old path instead of waiting for a separate lifecycle pass.
+      outdatedIds.push(id);
+      continue;
     }
 
     if (await isAlertOutdatedByRuntimeDependencies(projectPath, detectedAtMs, runtimeDependencyMtimes)) {
