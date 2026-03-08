@@ -34,6 +34,35 @@ import {
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
 
+async function loadConceptualDuplicateRepo(rootPath) {
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    return getRepository(rootPath);
+}
+
+function loadConceptualDuplicateContext(repo, normalizedFilePath, minLinesOfCode) {
+    const previousFindings = loadPreviousFindings(
+        repo.db,
+        normalizedFilePath,
+        'code_conceptual_duplicate'
+    );
+    const localAtoms = loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode);
+
+    return {
+        previousFindings,
+        localAtoms
+    };
+}
+
+function detectConceptualDuplicateFindings(repo, normalizedFilePath, localAtoms, maxFindings) {
+    return detectConceptualFindings(
+        repo,
+        normalizedFilePath,
+        localAtoms,
+        maxFindings,
+        isLowSignalName
+    );
+}
+
 async function persistConceptualDuplicateFinding(
     rootPath,
     normalizedFilePath,
@@ -111,6 +140,10 @@ async function persistConceptualDuplicateFinding(
  * @returns {Promise<Array<Object>>} Findings detectados
  */
 export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
+    const {
+        maxFindings = 5,
+        minLinesOfCode = 3
+    } = options;
     const normalizedFilePath = normalizeFilePath(filePath);
 
     if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
@@ -118,36 +151,31 @@ export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmi
         return [];
     }
 
-    const {
-        maxFindings = 5,
-        minLinesOfCode = 3
-    } = options;
-
     try {
-        const { getRepository } = await import('#layer-c/storage/repository/index.js');
-        const repo = getRepository(rootPath);
+        const repo = await loadConceptualDuplicateRepo(rootPath);
         if (!repo?.db) {
             return [];
         }
 
-        const previousFindings = loadPreviousFindings(
-            repo.db,
+        const {
+            previousFindings,
+            localAtoms
+        } = loadConceptualDuplicateContext(
+            repo,
             normalizedFilePath,
-            'code_conceptual_duplicate'
+            minLinesOfCode
         );
-        const localAtoms = loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode);
 
         if (localAtoms.length === 0) {
             await clearConceptualDuplicateIssues(rootPath, normalizedFilePath);
             return [];
         }
 
-        const findings = detectConceptualFindings(
+        const findings = detectConceptualDuplicateFindings(
             repo,
             normalizedFilePath,
             localAtoms,
-            maxFindings,
-            isLowSignalName
+            maxFindings
         );
 
         if (findings.length === 0) {
