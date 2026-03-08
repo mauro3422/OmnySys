@@ -240,6 +240,39 @@ function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint)
     };
 }
 
+function matchesPolicyPath(normalizedPath, pathMatchers = [], mode = 'includes') {
+    return pathMatchers.some((marker) => (
+        mode === 'endsWith' ? normalizedPath.endsWith(marker) : normalizedPath.includes(marker)
+    ));
+}
+
+function matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, options = {}) {
+    const {
+        pathMatchers = [],
+        pathMode = 'includes',
+        names = null,
+        nameRegex = null,
+        fingerprints = null,
+        extraFingerprintMatchers = []
+    } = options;
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (pathMatchers.length > 0 && !matchesPolicyPath(normalizedPath, pathMatchers, pathMode)) {
+        return false;
+    }
+
+    const hasNameMatch = names ? names.has(normalizedName) : nameRegex?.test(normalizedName);
+    if (!hasNameMatch) return false;
+    if (!fingerprint) return true;
+    if (fingerprints?.has(fingerprint)) return true;
+
+    return extraFingerprintMatchers.some((matcher) => matcher(normalizedName, fingerprint));
+}
+
 export function isCanonicalDuplicateSignalPolicyFile(filePath) {
     const normalizedPath = normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase();
     return normalizedPath.endsWith(DUPLICATE_SIGNAL_POLICY_FILE_MARKER);
@@ -333,110 +366,87 @@ export function isCompilerConformancePolicyHelper(filePath, atomName, semanticFi
 }
 
 export function isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+    const { normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
         filePath,
         atomName,
         semanticFingerprint
     );
 
-    const isPolicyFile = COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS.some((marker) => normalizedPath.endsWith(marker));
-    if (!isPolicyFile) return false;
-
-    if (!COMPILER_POLICY_ORCHESTRATION_NAME_REGEX.test(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS.has(fingerprint);
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS,
+        pathMode: 'endsWith',
+        nameRegex: COMPILER_POLICY_ORCHESTRATION_NAME_REGEX,
+        fingerprints: COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS,
+        extraFingerprintMatchers: [
+            () => !fingerprint && COMPILER_POLICY_ORCHESTRATION_NAME_REGEX.test(normalizedName)
+        ]
+    });
 }
 
 export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    const isPolicyFile = STORAGE_QUERY_POLICY_FILE_MARKERS.some((marker) => normalizedPath.includes(marker));
-    if (!isPolicyFile) return false;
-    if (!STORAGE_QUERY_POLICY_HELPER_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return STORAGE_QUERY_POLICY_FINGERPRINTS.has(fingerprint);
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: STORAGE_QUERY_POLICY_FILE_MARKERS,
+        names: STORAGE_QUERY_POLICY_HELPER_NAMES,
+        fingerprints: STORAGE_QUERY_POLICY_FINGERPRINTS
+    });
 }
 
 export function isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    if (!normalizedPath.endsWith(INTEGRITY_ANALYSIS_FILE_MARKER)) return false;
-    if (!INTEGRITY_ANALYSIS_HELPER_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return INTEGRITY_ANALYSIS_FINGERPRINTS.has(fingerprint);
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [INTEGRITY_ANALYSIS_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: INTEGRITY_ANALYSIS_HELPER_NAMES,
+        fingerprints: INTEGRITY_ANALYSIS_FINGERPRINTS
+    });
 }
 
 export function isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    if (!normalizedPath.endsWith(RUNTIME_PORT_PROBE_FILE_MARKER)) return false;
-    if (!RUNTIME_PORT_PROBE_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return RUNTIME_PORT_PROBE_FINGERPRINTS.has(fingerprint);
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [RUNTIME_PORT_PROBE_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: RUNTIME_PORT_PROBE_NAMES,
+        fingerprints: RUNTIME_PORT_PROBE_FINGERPRINTS
+    });
 }
 
 export function isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    if (!normalizedPath.endsWith(MCP_HTTP_PROXY_FILE_MARKER)) return false;
-    if (!MCP_HTTP_PROXY_LIFECYCLE_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return MCP_HTTP_PROXY_LIFECYCLE_FINGERPRINTS.has(fingerprint) ||
-        normalizedName === 'schedulerespawn' ||
-        normalizedName === 'detecthealthydaemon';
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [MCP_HTTP_PROXY_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: MCP_HTTP_PROXY_LIFECYCLE_NAMES,
+        fingerprints: MCP_HTTP_PROXY_LIFECYCLE_FINGERPRINTS,
+        extraFingerprintMatchers: [
+            (normalizedName) => normalizedName === 'schedulerespawn' || normalizedName === 'detecthealthydaemon'
+        ]
+    });
 }
 
 export function isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    if (!normalizedPath.endsWith(LEGACY_LLM_BOOTSTRAP_FILE_MARKER)) return false;
-    if (!LEGACY_LLM_BOOTSTRAP_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return LEGACY_LLM_BOOTSTRAP_FINGERPRINTS.has(fingerprint);
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [LEGACY_LLM_BOOTSTRAP_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: LEGACY_LLM_BOOTSTRAP_NAMES,
+        fingerprints: LEGACY_LLM_BOOTSTRAP_FINGERPRINTS
+    });
 }
 
 export function isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) {
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [],
+        names: STANDALONE_SCRIPT_HELPER_NAMES,
+        fingerprints: STANDALONE_SCRIPT_HELPER_FINGERPRINTS,
+        extraFingerprintMatchers: [
+            (normalizedName) => (
+                STANDALONE_SCRIPT_FILE_REGEX.test(normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase()) &&
+                (normalizedName === 'getscalar' ||
+                    normalizedName === 'extractfunctionblock' ||
+                    normalizedName === 'extractlatestreleaseversion' ||
+                    normalizedName === 'readtext')
+            )
+        ]
+    }) && STANDALONE_SCRIPT_FILE_REGEX.test(
+        normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase()
     );
-
-    if (!STANDALONE_SCRIPT_FILE_REGEX.test(normalizedPath)) return false;
-    if (!STANDALONE_SCRIPT_HELPER_NAMES.has(normalizedName)) return false;
-    if (!fingerprint) return true;
-
-    return STANDALONE_SCRIPT_HELPER_FINGERPRINTS.has(fingerprint) ||
-        normalizedName === 'getscalar' ||
-        normalizedName === 'extractfunctionblock' ||
-        normalizedName === 'extractlatestreleaseversion' ||
-        normalizedName === 'readtext';
 }
 
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
