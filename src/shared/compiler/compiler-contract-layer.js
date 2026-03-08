@@ -62,6 +62,41 @@ function buildInvariant({
   };
 }
 
+function buildCanonicalGovernanceMetrics(policySummary = {}, standardization = null) {
+  const byRule = policySummary?.byRule || {};
+  const byArea = policySummary?.byPolicyArea || {};
+  const missingCanonicalApiCount = normalizeCount(standardization?.summary?.missingCanonicalApiCount);
+  const missingCanonicalSurfaceCount = normalizeCount(standardization?.summary?.missingCanonicalSurfaceCount);
+
+  const canonicalWrapperFindings = normalizeCount(byRule.local_canonical_wrapper);
+  const canonicalBypassFindings =
+    normalizeCount(byRule.canonical_diagnostics_bypass) +
+    normalizeCount(byArea.canonical_bypass);
+  const parallelCanonicalSurfaceFindings =
+    normalizeCount(byRule.local_canonical_helper_without_barrel) +
+    normalizeCount(byRule.private_compiler_helper_import) +
+    missingCanonicalApiCount +
+    missingCanonicalSurfaceCount;
+
+  const totalFindings =
+    canonicalWrapperFindings +
+    canonicalBypassFindings +
+    parallelCanonicalSurfaceFindings;
+
+  return {
+    totalFindings,
+    canonicalWrapperFindings,
+    canonicalBypassFindings,
+    parallelCanonicalSurfaceFindings,
+    missingCanonicalApiCount,
+    missingCanonicalSurfaceCount,
+    healthy: totalFindings === 0,
+    nextAction: totalFindings > 0
+      ? 'Consolidate the active canonical drift findings before adding new wrappers or policy surfaces.'
+      : 'No active canonical drift findings; keep extending the existing canonical surfaces.'
+  };
+}
+
 function buildCanonicalEntrypoints() {
   return [
     {
@@ -319,21 +354,29 @@ function buildInvariants({
   ];
 }
 
-function buildApiGovernance(standardization = null, invariants = []) {
+function buildApiGovernance(standardization = null, invariants = [], policySummary = {}) {
   const missingCanonicalApis = standardization?.missingCanonicalApis || [];
   const missingCanonicalSurfaces = standardization?.missingCanonicalSurfaces || [];
   const failedInvariantCount = invariants.filter((item) => item.status === 'fail').length;
+  const governanceMetrics = buildCanonicalGovernanceMetrics(policySummary, standardization);
 
   const shouldCreateCanonicalApi =
-    missingCanonicalApis.length > 0 || missingCanonicalSurfaces.length > 0;
+    missingCanonicalApis.length > 0 ||
+    missingCanonicalSurfaces.length > 0 ||
+    governanceMetrics.parallelCanonicalSurfaceFindings > 0;
 
-  const shouldBlockNewWrappers = failedInvariantCount > 0 || shouldCreateCanonicalApi;
+  const shouldBlockNewWrappers =
+    failedInvariantCount > 0 ||
+    shouldCreateCanonicalApi ||
+    governanceMetrics.canonicalWrapperFindings > 0 ||
+    governanceMetrics.canonicalBypassFindings > 0;
 
   return {
     shouldCreateCanonicalApi,
     shouldBlockNewWrappers,
     currentCreationCandidates: missingCanonicalApis,
     missingCanonicalSurfaces,
+    governanceMetrics,
     creationRules: [
       'Create a new canonical API only when two or more runtime/MCP surfaces are recomputing the same contract or when standardization reports a missing canonical API.',
       'Do not create a wrapper if an existing canonical entrypoint already exposes the needed truth surface.',
@@ -345,7 +388,9 @@ function buildApiGovernance(standardization = null, invariants = []) {
       'No direct reads from advisory/legacy tables when a canonical contract helper already exists.',
       'No totals comparison across surfaces with different granularity unless the contract explicitly says they are equivalent.'
     ],
-    nextAction: standardization?.summary?.nextAction || 'Adopt existing canonical families before creating a new one.'
+    nextAction: governanceMetrics.totalFindings > 0
+      ? governanceMetrics.nextAction
+      : (standardization?.summary?.nextAction || 'Adopt existing canonical families before creating a new one.')
   };
 }
 
@@ -357,6 +402,7 @@ export function buildCompilerContractLayer({
   semanticCanonicality = null,
   systemMapPersistenceCoverage = null,
   standardization = null,
+  policySummary = {},
   tableCounts = {}
 } = {}) {
   const surfaces = buildSurfaceInventory({
@@ -379,7 +425,7 @@ export function buildCompilerContractLayer({
     tableCounts
   });
 
-  const apiGovernance = buildApiGovernance(standardization, invariants);
+  const apiGovernance = buildApiGovernance(standardization, invariants, policySummary);
   const canonicalEntrypoints = buildCanonicalEntrypoints();
   const failedInvariantCount = invariants.filter((item) => item.status === 'fail').length;
   const advisorySurfaceCount = surfaces.filter((item) => item.status === 'advisory' || item.status === 'advisory_only').length;
@@ -392,6 +438,9 @@ export function buildCompilerContractLayer({
       advisorySurfaceCount,
       supportSurfaceCount,
       failedInvariantCount,
+      canonicalWrapperFindings: apiGovernance.governanceMetrics.canonicalWrapperFindings,
+      canonicalBypassFindings: apiGovernance.governanceMetrics.canonicalBypassFindings,
+      parallelCanonicalSurfaceFindings: apiGovernance.governanceMetrics.parallelCanonicalSurfaceFindings,
       healthy: failedInvariantCount === 0,
       mode: failedInvariantCount === 0 ? 'explicit_contract' : 'contract_violation',
       nextAction: apiGovernance.nextAction

@@ -224,6 +224,18 @@ const CANONICAL_GUIDANCE_FINGERPRINTS = new Set([
     'build:core:status'
 ]);
 
+const PIPELINE_HEALTH_CANONICAL_FILE_MARKER = '/layer-c-memory/mcp/tools/handlers/pipeline-health-handler.js';
+const PIPELINE_HEALTH_CANONICAL_NAMES = new Set([
+    'aggregatepipelinehealth',
+    'loadexpectedpipelinetablecounts',
+    'scancompilerpolicyhealth'
+]);
+const PIPELINE_HEALTH_CANONICAL_FINGERPRINTS = new Set([
+    'process:core:health',
+    'load:core:counts',
+    'scan:core:health'
+]);
+
 const RUNTIME_PORT_PROBE_FILE_MARKER = '/shared/utils/port-probe.js';
 const RUNTIME_PORT_PROBE_NAMES = new Set([
     'isportbound',
@@ -479,6 +491,15 @@ export function isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprin
     });
 }
 
+export function isCanonicalPipelineHealthHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [PIPELINE_HEALTH_CANONICAL_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: PIPELINE_HEALTH_CANONICAL_NAMES,
+        fingerprints: PIPELINE_HEALTH_CANONICAL_FINGERPRINTS
+    });
+}
+
 export function isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: [MCP_HTTP_PROXY_FILE_MARKER],
@@ -534,6 +555,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
     const checks = [
         () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
         () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
+        () => isCanonicalPipelineHealthHelper(filePath, atomName, semanticFingerprint),
         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanticFingerprint),
@@ -558,6 +580,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
     const checks = [
         () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
         () => isCanonicalGuidanceHelper(filePath, atomName, null),
+        () => isCanonicalPipelineHealthHelper(filePath, atomName, null),
         () => isStorageQueryPolicyHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, null),

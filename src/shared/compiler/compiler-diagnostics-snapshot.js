@@ -70,6 +70,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         systemMapPersistenceCoverage,
         standardization: standardizationReport,
+        policySummary,
         tableCounts
     });
 
