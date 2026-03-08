@@ -9,6 +9,7 @@
 
 import { SQLiteAdapterCore } from './sqlite-adapter-core.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
+import { buildAtomInsertValues } from './helpers/atom-schema.js';
 
 /**
  * Mixin/Clase base para operaciones CRUD
@@ -73,7 +74,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
     const atomBefore = this.statements.getById.get(normalizedId);
 
     const row = atomToRow(atom);
-    const values = this._buildAtomInsertValues(row, now);
+    const values = buildAtomInsertValues(row, now);
 
     // 2. Guardar/Actualizar átomo
     this.statements.insertAtom.run(...values);

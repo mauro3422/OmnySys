@@ -132,6 +132,26 @@ const COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS = [
     '/shared/compiler/compiler-contract-layer.js'
 ];
 
+const STORAGE_QUERY_POLICY_FILE_MARKERS = [
+    '/storage/repository/adapters/helpers/query-field-policy.js',
+    '/storage/repository/adapters/helpers/query-filter-builder.js'
+];
+
+const STORAGE_QUERY_POLICY_HELPER_NAMES = new Set([
+    'validateatomsortfield',
+    'isvalidatomvectorfield',
+    'appendatomqueryfilters',
+    'appendequalityfilter',
+    'appendbooleanfilter',
+    'appendboundfilter'
+]);
+
+const STORAGE_QUERY_POLICY_FINGERPRINTS = new Set([
+    'validate:core:field',
+    'process:core:field',
+    'process:core:query'
+]);
+
 const COMPILER_POLICY_ORCHESTRATION_NAME_REGEX = /^(?:coordinate[A-Z]\w+|build[A-Z]\w*Plan|build[A-Z]\w*Details|resolve[A-Z]\w*Priority)$/i;
 
 const COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS = new Set([
@@ -327,6 +347,21 @@ export function isCompilerPolicyOrchestrationHelper(filePath, atomName, semantic
     return COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS.has(fingerprint);
 }
 
+export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    const isPolicyFile = STORAGE_QUERY_POLICY_FILE_MARKERS.some((marker) => normalizedPath.includes(marker));
+    if (!isPolicyFile) return false;
+    if (!STORAGE_QUERY_POLICY_HELPER_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return STORAGE_QUERY_POLICY_FINGERPRINTS.has(fingerprint);
+}
+
 export function isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) {
     const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
         filePath,
@@ -416,6 +451,7 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
 
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint) ||
         isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) ||
         isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) ||
         isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) ||
@@ -432,6 +468,7 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
 
 export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isStorageQueryPolicyHelper(filePath, atomName, null) ||
         isIntegrityAnalysisCanonicalHelper(filePath, atomName, null) ||
         isRuntimePortProbeHelper(filePath, atomName, null) ||
         isMcpHttpProxyLifecycleHelper(filePath, atomName, null) ||

@@ -1,9 +1,9 @@
 /**
  * @fileoverview sqlite-adapter-core.js
- * 
- * Core del SQLite Adapter - inicialización y configuración.
- * Separado para mantener el código organizado sin romper la API.
- * 
+ *
+ * Core del SQLite Adapter - inicializacion y configuracion.
+ * Separado para mantener el codigo organizado sin romper la API.
+ *
  * @module storage/repository/adapters/sqlite-adapter-core
  */
 
@@ -11,15 +11,15 @@ import { AtomRepository } from '../atom-repository.js';
 import { connectionManager } from '../../database/connection.js';
 import { createLogger } from '#utils/logger.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
+import { buildAtomInsertSql } from './helpers/atom-schema.js';
 import { persistSystemMapToDb, retrieveSystemMapFromDb } from './helpers/system-map.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
-import { TABLE_DEFINITIONS } from '../../database/schema-registry.js';
 
 const logger = createLogger('OmnySys:Storage:SQLiteAdapter');
 
 /**
  * Core base del SQLite Adapter
- * Mantiene estado y configuración base
+ * Mantiene estado y configuracion base
  */
 export class SQLiteAdapterCore extends AtomRepository {
   constructor() {
@@ -52,18 +52,6 @@ export class SQLiteAdapterCore extends AtomRepository {
   }
 
   /**
-   * Obtiene el predicado SQL standard para filtrar registros removidos.
-   * @param {string} [tableAlias] - Alias de la tabla (ej: 'a')
-   * @param {boolean} [includeRemoved=false] - Si es true, retorna '1=1'
-   * @returns {string} Predicado SQL
-   */
-  getStandardPredicate(tableAlias = '', includeRemoved = false) {
-    if (includeRemoved) return '1=1';
-    const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `(${prefix}is_removed IS NULL OR ${prefix}is_removed = 0)`;
-  }
-
-  /**
    * Prepara statements frecuentes para mejor performance
    * @protected
    */
@@ -71,7 +59,7 @@ export class SQLiteAdapterCore extends AtomRepository {
     this.statements = {
       getById: this.db.prepare('SELECT * FROM atoms WHERE id = ? AND is_removed = 0'),
       getByFile: this.db.prepare('SELECT * FROM atoms WHERE file_path = ? AND is_removed = 0'),
-      insertAtom: this.db.prepare(this._buildInsertSQL()),
+      insertAtom: this.db.prepare(buildAtomInsertSql()),
       deleteById: this.db.prepare("UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE id = ?"),
       deleteByFile: this.db.prepare("UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE file_path = ?"),
       deleteFile: this.db.prepare("UPDATE files SET is_removed = 1, updated_at = datetime('now') WHERE path = ?"),
@@ -81,7 +69,7 @@ export class SQLiteAdapterCore extends AtomRepository {
         SELECT a.id, a.name, a.file_path, r.weight, r.line_number
         FROM atom_relations r
         JOIN atoms a ON r.source_id = a.id
-        WHERE r.target_id = ? AND r.relation_type = 'calls' 
+        WHERE r.target_id = ? AND r.relation_type = 'calls'
           AND r.is_removed = 0 AND a.is_removed = 0
       `),
       getCallees: this.db.prepare(`
@@ -93,36 +81,6 @@ export class SQLiteAdapterCore extends AtomRepository {
       `),
       exists: this.db.prepare('SELECT 1 FROM atoms WHERE id = ? AND is_removed = 0')
     };
-  }
-
-  _buildInsertSQL() {
-    const columns = this._getAtomColumns();
-    const placeholders = columns.map(() => '?').join(', ');
-    return `INSERT OR REPLACE INTO atoms (${columns.join(', ')}) VALUES (${placeholders})`;
-  }
-
-  /**
-   * Orden canonico de columnas para INSERT/UPSERT de atoms.
-   * Derivado dinámicamente de schema-registry.js para evitar duplicidad de código.
-   * @protected
-   */
-  _getAtomColumns() {
-    return TABLE_DEFINITIONS.atoms.columns.map(c => c.name);
-  }
-
-  /**
-   * Construye el array de valores iterando las columnas generadas en _getAtomColumns.
-   * @param {object} row
-   * @param {string} updatedAt ISO timestamp para updated_at
-   * @returns {Array}
-   * @protected
-   */
-  _buildAtomInsertValues(row, updatedAt) {
-    const columns = this._getAtomColumns();
-    return columns.map(col => {
-      if (col === 'updated_at' && updatedAt) return updatedAt;
-      return row[col] !== undefined ? row[col] : null;
-    });
   }
 
   getStats() {
