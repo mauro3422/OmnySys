@@ -2,7 +2,7 @@
  * @fileoverview Refactored entry point for function extraction.
  */
 
-import { walk, startLine, endLine, getFileId, findCallsInScope, FUNCTION_NODE_TYPES } from '../utils.js';
+import { walk, startLine, endLine, normalizeExtractorFilePath, findCallsInScope, FUNCTION_NODE_TYPES } from '../utils.js';
 import { detectTypeAndName } from './type-detector.js';
 import { extractParams } from './param-extractor.js';
 import { trackReferences } from './reference-tracker.js';
@@ -15,7 +15,7 @@ import { trackReferences } from './reference-tracker.js';
  * @param {Set<string>} exportedNames 
  */
 export function extractFunctions(root, code, filePath, exportedNames) {
-    const fileId = getFileId(filePath);
+    const normalizedFilePath = normalizeExtractorFilePath(filePath);
     const functions = [];
     const definitions = [];
 
@@ -24,7 +24,7 @@ export function extractFunctions(root, code, filePath, exportedNames) {
         const params = extractParams(node, code);
         const identifierRefs = trackReferences(node, code);
 
-        const functionId = `${fileId}::${fullName}`;
+        const functionId = `${normalizedFilePath}::${fullName}`;
         const isAsync = node.children.some(c => c.type === 'async');
         const isGenerator = node.type.includes('generator');
         const isExported = exportedNames.has(functionName) || exportedNames.has(fullName);

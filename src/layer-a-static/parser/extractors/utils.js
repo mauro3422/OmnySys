@@ -12,18 +12,22 @@ export function getFileId(filePath) {
         .replace(/^_|_$/g, '') || 'unknown';
 }
 
+export function normalizeExtractorFilePath(filePath) {
+    return String(filePath || '').replace(/\\/g, '/');
+}
+
 /**
  * Clase para estandarizar la creación de Átomos en OmnySys.
  */
 export class AtomBuilder {
     constructor(filePath) {
-        this.filePath = filePath;
+        this.filePath = normalizeExtractorFilePath(filePath);
         this.fileId = getFileId(filePath);
     }
 
     createAtom(name, type, node, meta = {}) {
         return {
-            id: `${this.fileId}::${name}_L${startLine(node)}`,
+            id: `${this.filePath}::${name}_L${startLine(node)}`,
             name,
             type,
             lineStart: startLine(node),

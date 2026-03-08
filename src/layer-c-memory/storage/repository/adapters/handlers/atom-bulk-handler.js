@@ -23,6 +23,8 @@ export class AtomBulkHandler {
     handle(atoms, now, normalizeFn) {
         if (!atoms || atoms.length === 0) return 0;
 
+        this._cleanupLegacyAtomIds(atoms, normalizeFn);
+
         const columns = this._getAtomColumns();
         const columnStr = columns.join(', ');
         const placeholders = columns.map(() => '?').join(', ');
@@ -49,6 +51,26 @@ export class AtomBulkHandler {
         }
 
         return totalSaved;
+    }
+
+    _cleanupLegacyAtomIds(atoms, normalizeFn) {
+        const filePaths = new Set();
+        for (const atom of atoms) {
+            const normalizedPath = normalizeFn(atom.file || atom.filePath);
+            if (normalizedPath) {
+                filePaths.add(normalizedPath);
+            }
+        }
+
+        const deleteStmt = this.db.prepare(`
+            DELETE FROM atoms
+            WHERE file_path = ?
+              AND id NOT LIKE ?
+        `);
+
+        for (const filePath of filePaths) {
+            deleteStmt.run(filePath, `${filePath}::%`);
+        }
     }
 
     /**
