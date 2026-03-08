@@ -8,7 +8,7 @@ import {
     StandardSuggestions,
     severityFromImpact
 } from './guard-standards.js';
-import { safeArray } from '../../../shared/compiler/core-utils.js';
+import { safeArray } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:impact');
 

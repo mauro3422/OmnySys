@@ -10,7 +10,7 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { validateGuard } from './guard-standards.js';
-import { getMetadataFromMap, listMetadataItems } from '../../../shared/compiler/metadata-utils.js';
+import { getMetadataFromMap, listMetadataItems } from '../../../shared/compiler/index.js';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 
 const logger = createLogger('OmnySys:guards:registry');

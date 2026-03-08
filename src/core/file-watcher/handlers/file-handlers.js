@@ -4,7 +4,7 @@ import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
 import { analyzeAndIndex } from '../analyze.js';
-import { safeArray } from '../../../shared/compiler/core-utils.js';
+import { safeArray } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;

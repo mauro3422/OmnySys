@@ -11,7 +11,8 @@ export {
   normalizeSeverity,
   severityToLevel,
   scoreToSeverity,
-  stripPrefix
+  stripPrefix,
+  safeArray
 } from './core-utils.js';
 
 export {

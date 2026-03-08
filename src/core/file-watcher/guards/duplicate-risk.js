@@ -32,7 +32,7 @@ import {
     buildDuplicateDebtHistory,
     buildDuplicateContext,
     coordinateDuplicateFindings
-} from '../../../shared/compiler/duplicate-utils.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;

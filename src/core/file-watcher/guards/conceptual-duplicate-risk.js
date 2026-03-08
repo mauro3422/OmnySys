@@ -25,7 +25,7 @@ import {
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext
-} from '../../../shared/compiler/duplicate-utils.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
 
