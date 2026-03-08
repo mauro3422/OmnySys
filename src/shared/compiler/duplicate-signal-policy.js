@@ -107,10 +107,6 @@ const STRUCTURAL_GUARD_PATH_MARKERS = [
     '/shared/compiler/'
 ];
 
-function matchesAnyPrefix(value, prefixes) {
-    return prefixes.some((prefix) => value.startsWith(prefix));
-}
-
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).toLowerCase(),
@@ -135,7 +131,7 @@ export function isLowSignalConceptualFingerprint(filePath, atomName, semanticFin
     );
 
     const isDataAccessPath = DATA_ACCESS_PATH_MARKERS.some((marker) => normalizedPath.includes(marker));
-    const isDataAccessName = matchesAnyPrefix(normalizedName, DATA_ACCESS_NAME_PREFIXES);
+    const isDataAccessName = DATA_ACCESS_NAME_PREFIXES.some((prefix) => normalizedName.startsWith(prefix));
 
     return isDataAccessPath && isDataAccessName && LOW_SIGNAL_DATA_ACCESS_FINGERPRINTS.has(fingerprint);
 }
@@ -162,7 +158,7 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
     );
 
     const isGuardUtilityPath = GUARD_UTILITY_PATH_MARKERS.some((marker) => normalizedPath.includes(marker));
-    const isGuardUtilityName = matchesAnyPrefix(normalizedName, LOW_SIGNAL_GUARD_UTILITY_NAME_PREFIXES);
+    const isGuardUtilityName = LOW_SIGNAL_GUARD_UTILITY_NAME_PREFIXES.some((prefix) => normalizedName.startsWith(prefix));
 
     return isGuardUtilityPath &&
         isGuardUtilityName &&
