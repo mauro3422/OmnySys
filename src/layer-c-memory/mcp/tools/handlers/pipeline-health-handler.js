@@ -27,6 +27,93 @@ import {
 } from '../../../../shared/compiler/index.js';
 import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
 
+function loadExpectedPipelineTableCounts(db) {
+    const expectedNonEmpty = [
+        { table: 'atoms', minRows: 100, description: 'No atoms indexed — pipeline never ran?' },
+        { table: 'atom_relations', minRows: 1, description: 'No relations — call graph not built' },
+        { table: 'files', minRows: 1, description: 'No files indexed' },
+        { table: 'atom_versions', minRows: 1, description: 'atom_versions empty — AtomVersionManager.trackAtomVersion() not called' },
+        { table: 'atom_events', minRows: 1, description: 'atom_events empty — no activity tracked' },
+        { table: 'societies', minRows: 1, description: 'societies empty — analyzeSocieties() not running' },
+        { table: 'risk_assessments', minRows: 0, description: 'risk_assessments empty — risk pipeline missing', severity: 'warning' },
+        { table: 'semantic_issues', minRows: 0, description: 'semantic_issues empty — semantic analysis missing', severity: 'warning' }
+    ];
+    const tableCounts = {};
+    const issues = [];
+    const warnings = [];
+
+    for (const check of expectedNonEmpty) {
+        try {
+            const row = db.prepare(`SELECT COUNT(*) as c FROM "${check.table}"`).get();
+            tableCounts[check.table] = row?.c || 0;
+            if (row?.c < check.minRows) {
+                const entry = { table: check.table, rows: row?.c || 0, issue: check.description };
+                if (check.severity === 'warning') warnings.push(entry);
+                else issues.push(entry);
+            }
+        } catch (e) {
+            issues.push({ table: check.table, rows: null, issue: `Table missing or inaccessible: ${e.message}` });
+        }
+    }
+
+    return { tableCounts, issues, warnings };
+}
+
+async function scanCompilerPolicyHealth(projectPath) {
+    if (!projectPath) {
+        return {
+            policyFindings: [],
+            policySummary: { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
+            issues: [],
+            warnings: [],
+            tableCounts: {}
+        };
+    }
+
+    try {
+        const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+        const policySummary = summarizeCompilerPolicyDrift(policyFindings);
+        const issues = [];
+        const warnings = [];
+        const tableCounts = {
+            compiler_policy_areas: Object.keys(policySummary.byPolicyArea || {}).length
+        };
+
+        if (policySummary.total > 0) {
+            warnings.push({
+                field: 'compiler_policy',
+                coverage: `${policySummary.total} findings`,
+                issue: 'Compiler policy drift detected — some MCP/watcher paths still recompute canonical signals manually'
+            });
+
+            if (policySummary.high > 0) {
+                issues.push({
+                    field: 'compiler_policy_high',
+                    coverage: `${policySummary.high} high`,
+                    issue: 'High-severity compiler policy drift found in core runtime modules'
+                });
+            }
+
+            tableCounts.compiler_policy_findings = policySummary.total;
+            tableCounts.compiler_policy_high = policySummary.high;
+        }
+
+        return { policyFindings, policySummary, issues, warnings, tableCounts };
+    } catch (error) {
+        return {
+            policyFindings: [],
+            policySummary: { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
+            issues: [],
+            warnings: [{
+                field: 'compiler_policy',
+                coverage: 'unknown',
+                issue: `Could not scan compiler policy drift: ${error.message}`
+            }],
+            tableCounts: {}
+        };
+    }
+}
+
 export async function aggregatePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
@@ -46,32 +133,10 @@ export async function aggregatePipelineHealth(tool) {
         staleRiskRows = 0
     } = liveRowSync.summary || {};
 
-    // --- CHECK 1: Tablas vacías ---
-    const expectedNonEmpty = [
-        { table: 'atoms', minRows: 100, description: 'No atoms indexed — pipeline never ran?' },
-        { table: 'atom_relations', minRows: 1, description: 'No relations — call graph not built' },
-        { table: 'files', minRows: 1, description: 'No files indexed' },
-        { table: 'atom_versions', minRows: 1, description: 'atom_versions empty — AtomVersionManager.trackAtomVersion() not called' },
-        { table: 'atom_events', minRows: 1, description: 'atom_events empty — no activity tracked' },
-        { table: 'societies', minRows: 1, description: 'societies empty — analyzeSocieties() not running' },
-        { table: 'risk_assessments', minRows: 0, description: 'risk_assessments empty — risk pipeline missing', severity: 'warning' },
-        { table: 'semantic_issues', minRows: 0, description: 'semantic_issues empty — semantic analysis missing', severity: 'warning' },
-    ];
-
-    const tableCounts = {};
-    for (const check of expectedNonEmpty) {
-        try {
-            const row = db.prepare(`SELECT COUNT(*) as c FROM "${check.table}"`).get();
-            tableCounts[check.table] = row?.c || 0;
-            if (row?.c < check.minRows) {
-                const entry = { table: check.table, rows: row?.c || 0, issue: check.description };
-                if (check.severity === 'warning') warnings.push(entry);
-                else issues.push(entry);
-            }
-        } catch (e) {
-            issues.push({ table: check.table, rows: null, issue: `Table missing or inaccessible: ${e.message}` });
-        }
-    }
+    const tableHealth = loadExpectedPipelineTableCounts(db);
+    const tableCounts = { ...tableHealth.tableCounts };
+    issues.push(...tableHealth.issues);
+    warnings.push(...tableHealth.warnings);
 
     tableCounts.live_atom_files = liveAtomFiles;
     tableCounts.stale_file_rows = staleFileRows;
@@ -116,7 +181,6 @@ export async function aggregatePipelineHealth(tool) {
         });
     }
 
-    // --- CHECK 2: Cobertura de campos ---
     const zeroFields = [];
     for (const { field, description, minWarningCoverage = 5 } of PIPELINE_FIELD_COVERAGE_SIGNALS) {
         try {
@@ -184,40 +248,12 @@ export async function aggregatePipelineHealth(tool) {
         warnings.push(deadCodeSummary.warning);
     }
 
-    // --- CHECK 5: Compiler policy drift ---
-    if (projectPath) {
-        try {
-            policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
-            policySummary = summarizeCompilerPolicyDrift(policyFindings);
-
-            if (policySummary.total > 0) {
-                warnings.push({
-                    field: 'compiler_policy',
-                    coverage: `${policySummary.total} findings`,
-                    issue: 'Compiler policy drift detected — some MCP/watcher paths still recompute canonical signals manually'
-                });
-
-                if (policySummary.high > 0) {
-                    issues.push({
-                        field: 'compiler_policy_high',
-                        coverage: `${policySummary.high} high`,
-                        issue: 'High-severity compiler policy drift found in core runtime modules'
-                    });
-                }
-
-                tableCounts.compiler_policy_findings = policySummary.total;
-                tableCounts.compiler_policy_high = policySummary.high;
-            }
-
-            tableCounts.compiler_policy_areas = Object.keys(policySummary.byPolicyArea || {}).length;
-        } catch (error) {
-            warnings.push({
-                field: 'compiler_policy',
-                coverage: 'unknown',
-                issue: `Could not scan compiler policy drift: ${error.message}`
-            });
-        }
-    }
+    const policyHealth = await scanCompilerPolicyHealth(projectPath);
+    policyFindings = policyHealth.policyFindings;
+    policySummary = policyHealth.policySummary;
+    issues.push(...policyHealth.issues);
+    warnings.push(...policyHealth.warnings);
+    Object.assign(tableCounts, policyHealth.tableCounts);
 
     const liveRowReconciliation = buildLiveRowReconciliationPlan(db, { sampleLimit: 5 });
     const liveRowRemediation = buildLiveRowRemediationPlan(db, { sampleLimit: 5 });
