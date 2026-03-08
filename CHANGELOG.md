@@ -52,24 +52,24 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.105 (2026-03-07)
+## Latest Release: v0.9.108 (2026-03-07)
 
-**SOLID Standardization & Git Unification**
+**Compiler Stabilization & Integrity**
 
 ### Key Achievements
 
-1. **SOLID Handler Pattern**: Decoupled `SemanticQueryTool` and `QueryGraphTool` logic into specialized handlers (`GraphQueryHandler`, `SocietyHandler`, `DuplicateHandler`, etc.), improving maintainability and reducing "God Object" complexity.
-2. **Git Bridge Unification**: Created `GitTerminalBridge` as the central authority for all shell and git interactions, replacing fragmented `exec` calls across the project.
-3. **Database Health Restoration**: Developed and executed `cleanup-orphans.js`, purging **~4600 orphaned records** (atoms and relations) and resolving the "Grade F" integrity issue.
-4. **Event Sourcing Prototype**: Implemented native event tracking in `SQLiteCrudOperations`, capturing `created`, `updated`, and `deleted` events in the `atom_events` table for better traceability.
-5. **High-Coherence History**: Refactored `get_atom_history` to provide strict input correlation and include historical code snippets in the response.
+1. **Compiler Stabilization**: Consolidated compiler explainability and reporting surfaces so runtime health and standardization diagnostics share the same canonical helpers.
+2. **Utility Canonization**: Continued centralizing cross-cutting helpers and reducing fragmented implementations that were drifting across MCP/reporting paths.
+3. **Persistence Handler Hardening**: Extended the SOLID handler migration around repository and persistence flows to reduce coupling and make failures easier to isolate.
+4. **Integrity Reporting Focus**: Added clearer reporting around pipeline and compiler drift so structural contradictions surface earlier during startup and audit flows.
+5. **Release Alignment**: Promoted the compiler integrity work as the current release authority instead of leaving the release index pinned to an older version.
 
 ### New & Refactored Files
 
-- `src/shared/utils/git-terminal-bridge.js` (Canonical Git service)
-- `src/layer-c-memory/mcp/tools/semantic/handlers/` (New SOLID handlers)
-- `scripts/cleanup-orphans.js` (Database janitor)
-- `src/layer-c-memory/storage/repository/adapters/sqlite-crud-operations.js` (Event sourcing logic)
+- `src/shared/compiler/` (Canonical compiler and integrity helpers)
+- `src/layer-c-memory/mcp/tools/handlers/` (Reporting and health handlers)
+- `src/layer-c-memory/storage/repository/adapters/` (Persistence hardening)
+- `changelogs/v0.9.108.md` (Detailed release notes)
 
 ---
 

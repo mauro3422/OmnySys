@@ -1,6 +1,13 @@
 ﻿import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { safeJson, safeParseJson } from '../../converters.js';
 
+function normalizeDerivedRiskLevel(score) {
+  if (score >= 0.85) return 'critical';
+  if (score >= 0.65) return 'high';
+  if (score >= 0.4) return 'medium';
+  return 'low';
+}
+
 function normalizeRiskFactors(riskEntry, fallbackLevel = 'low') {
   if (Array.isArray(riskEntry?.factors)) {
     return riskEntry.factors;
@@ -71,14 +78,64 @@ function extractRiskRows(riskAssessment) {
   return Array.from(extracted.values());
 }
 
+function extractDerivedRiskRows(db) {
+  return db.prepare(`
+    SELECT
+      a.file_path,
+      ROUND(AVG(COALESCE(a.propagation_score, 0)), 4) as propagation_score,
+      ROUND(AVG(COALESCE(a.complexity, 0) / 15.0), 4) as complexity_score,
+      ROUND(AVG(COALESCE(a.coupling_score, 0)), 4) as coupling_score,
+      ROUND(AVG(COALESCE(a.fragility_score, 0)), 4) as fragility_score,
+      ROUND(AVG(COALESCE(a.centrality_score, 0) / 100.0), 4) as centrality_score,
+      SUM(CASE WHEN COALESCE(a.has_network_calls, 0) = 1 THEN 1 ELSE 0 END) as network_atoms,
+      SUM(CASE WHEN LOWER(COALESCE(a.risk_level, 'low')) IN ('high', 'critical') THEN 1 ELSE 0 END) as high_risk_atoms,
+      SUM(CASE WHEN COALESCE(a.has_error_handling, 0) = 0 THEN 1 ELSE 0 END) as atoms_without_error_handling,
+      COUNT(*) as atom_count
+    FROM atoms a
+    WHERE (a.is_removed IS NULL OR a.is_removed = 0)
+      AND a.file_path IS NOT NULL
+    GROUP BY a.file_path
+  `).all().map((row) => {
+    const rawScore =
+      (Number(row.propagation_score) || 0) * 0.3 +
+      (Number(row.complexity_score) || 0) * 0.2 +
+      (Number(row.coupling_score) || 0) * 0.15 +
+      (Number(row.fragility_score) || 0) * 0.15 +
+      (Number(row.centrality_score) || 0) * 0.1 +
+      (Math.min(Number(row.network_atoms) || 0, 5) / 5) * 0.05 +
+      (Math.min(Number(row.high_risk_atoms) || 0, 5) / 5) * 0.05;
+
+    const riskScore = Number(Math.max(0, Math.min(1, rawScore)).toFixed(4));
+    return {
+      file_path: row.file_path,
+      risk_score: riskScore,
+      risk_level: normalizeDerivedRiskLevel(riskScore),
+      factors: [
+        { type: 'derived_from_atoms', atomCount: Number(row.atom_count) || 0 },
+        { type: 'propagation_score', score: Number(row.propagation_score) || 0 },
+        { type: 'complexity_score', score: Number(row.complexity_score) || 0 },
+        { type: 'coupling_score', score: Number(row.coupling_score) || 0 },
+        { type: 'fragility_score', score: Number(row.fragility_score) || 0 },
+        { type: 'network_atoms', count: Number(row.network_atoms) || 0 },
+        { type: 'high_risk_atoms', count: Number(row.high_risk_atoms) || 0 },
+        { type: 'atoms_without_error_handling', count: Number(row.atoms_without_error_handling) || 0 }
+      ],
+      shared_state_count: null,
+      external_deps_count: Number(row.network_atoms) || 0,
+      complexity_score: Number(row.complexity_score) || 0,
+      propagation_score: Number(row.propagation_score) || 0
+    };
+  });
+}
+
 export async function saveRiskAssessments(db, riskAssessment, now) {
   const repo = new BaseSqlRepository(db, 'RiskHandler');
   repo.clearTable('risk_assessments');
 
-  if (!riskAssessment) return;
-
   const isoNow = new Date(now).toISOString();
-  const extractedRisks = extractRiskRows(riskAssessment);
+  const extractedRisks = riskAssessment
+    ? extractRiskRows(riskAssessment)
+    : extractDerivedRiskRows(db);
 
   if (extractedRisks.length === 0) return;
 

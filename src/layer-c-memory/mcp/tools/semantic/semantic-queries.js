@@ -135,8 +135,11 @@ export function queryAsyncAtoms(db, { offset = 0, limit = 20, withNetworkCalls =
  */
 export function querySocieties(db, { offset = 0, limit = 20, type, includeRemoved = false }) {
     return safeQuery(() => {
-        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
-        let whereClause = `WHERE ${removedPredicate}`;
+        // Societies do not currently implement soft-delete semantics.
+        // Keep the includeRemoved flag accepted for API compatibility, but do not
+        // generate predicates for columns that do not exist in the persisted table.
+        void includeRemoved;
+        let whereClause = 'WHERE 1=1';
         const params = [];
         if (type) { whereClause += ' AND type = ?'; params.push(type); }
 

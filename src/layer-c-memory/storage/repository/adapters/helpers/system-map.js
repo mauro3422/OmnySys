@@ -28,7 +28,7 @@ export async function persistSystemMapToDb(db, connectionManager, systemMap, log
 
       saveSemanticData(db, connections, issues, now);
 
-      if (systemMap.riskAssessment) saveRiskAssessments(db, systemMap.riskAssessment, now);
+      saveRiskAssessments(db, systemMap.riskAssessment, now);
       if (systemMap.metadata) updateSystemMetadata(db, systemMap.metadata, now);
     })();
     return true;

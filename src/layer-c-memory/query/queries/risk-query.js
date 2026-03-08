@@ -13,6 +13,68 @@ import {
   getLiveFileSetSql,
 } from '../../../shared/compiler/index.js';
 
+function normalizeDerivedRiskLevel(score) {
+  if (score >= 0.85) return 'critical';
+  if (score >= 0.65) return 'high';
+  if (score >= 0.4) return 'medium';
+  return 'low';
+}
+
+function buildDerivedRiskRows(repo) {
+  return repo.db.prepare(`
+    SELECT
+      a.file_path,
+      ROUND(AVG(COALESCE(a.propagation_score, 0)), 4) as propagation_score,
+      ROUND(AVG(COALESCE(a.complexity, 0) / 15.0), 4) as complexity_score,
+      ROUND(AVG(COALESCE(a.coupling_score, 0)), 4) as coupling_score,
+      ROUND(AVG(COALESCE(a.fragility_score, 0)), 4) as fragility_score,
+      ROUND(AVG(COALESCE(a.centrality_score, 0) / 100.0), 4) as centrality_score,
+      SUM(CASE WHEN COALESCE(a.has_network_calls, 0) = 1 THEN 1 ELSE 0 END) as network_atoms,
+      SUM(CASE WHEN COALESCE(a.is_async, 0) = 1 THEN 1 ELSE 0 END) as async_atoms,
+      SUM(CASE WHEN COALESCE(a.has_error_handling, 0) = 0 THEN 1 ELSE 0 END) as atoms_without_error_handling,
+      SUM(CASE WHEN LOWER(COALESCE(a.risk_level, 'low')) IN ('high', 'critical') THEN 1 ELSE 0 END) as high_risk_atoms,
+      COUNT(*) as atom_count
+    FROM atoms a
+    JOIN (${getLiveFileSetSql()}) live ON live.file_path = a.file_path
+    WHERE (a.is_removed IS NULL OR a.is_removed = 0)
+      AND a.file_path IS NOT NULL
+    GROUP BY a.file_path
+  `).all().map((row) => {
+    const rawScore =
+      (Number(row.propagation_score) || 0) * 0.3 +
+      (Number(row.complexity_score) || 0) * 0.2 +
+      (Number(row.coupling_score) || 0) * 0.15 +
+      (Number(row.fragility_score) || 0) * 0.15 +
+      (Number(row.centrality_score) || 0) * 0.1 +
+      (Math.min(Number(row.network_atoms) || 0, 5) / 5) * 0.05 +
+      (Math.min(Number(row.high_risk_atoms) || 0, 5) / 5) * 0.05;
+
+    const score = Number(Math.max(0, Math.min(1, rawScore)).toFixed(4));
+    return {
+      file_path: row.file_path,
+      risk_score: score,
+      risk_level: normalizeDerivedRiskLevel(score),
+      assessed_at: null,
+      factors_json: JSON.stringify([
+        { type: 'derived_from_atoms', atomCount: Number(row.atom_count) || 0 },
+        { type: 'propagation_score', score: Number(row.propagation_score) || 0 },
+        { type: 'complexity_score', score: Number(row.complexity_score) || 0 },
+        { type: 'coupling_score', score: Number(row.coupling_score) || 0 },
+        { type: 'fragility_score', score: Number(row.fragility_score) || 0 },
+        { type: 'network_atoms', count: Number(row.network_atoms) || 0 },
+        { type: 'high_risk_atoms', count: Number(row.high_risk_atoms) || 0 },
+        { type: 'atoms_without_error_handling', count: Number(row.atoms_without_error_handling) || 0 },
+        { type: 'async_atoms', count: Number(row.async_atoms) || 0 }
+      ]),
+      shared_state_count: null,
+      external_deps_count: Number(row.network_atoms) || 0,
+      complexity_score: Number(row.complexity_score) || 0,
+      propagation_score: Number(row.propagation_score) || 0,
+      source: 'derived_from_atoms'
+    };
+  });
+}
+
 /**
  * Obtiene el assessment de riesgos completo
  * @param {string} rootPath - Raíz del proyecto
@@ -49,27 +111,8 @@ export async function getRiskAssessment(rootPath) {
     ORDER BY ra.risk_score DESC
   `).all();
 
-  if (!riskRows || riskRows.length === 0) {
-    const stats = repo.db.prepare('SELECT COUNT(*) as atoms, COUNT(DISTINCT file_path) as files FROM atoms').get();
-    return {
-      report: {
-        summary: {
-          criticalCount: 0,
-          highCount: 0,
-          mediumCount: 0,
-          lowCount: 0,
-          totalFiles: stats?.files || 0,
-          totalAtoms: stats?.atoms || 0,
-          note: 'Risk assessment not yet computed. Run full analysis to populate risk_assessments table.'
-        },
-        criticalRiskFiles: [],
-        highRiskFiles: [],
-        mediumRiskFiles: [],
-        lowRiskFiles: []
-      },
-      scores: {}
-    };
-  }
+  const resolvedRiskRows = riskRows?.length > 0 ? riskRows : buildDerivedRiskRows(repo);
+  const usedFallback = (!riskRows || riskRows.length === 0) && resolvedRiskRows.length > 0;
 
   const criticalRiskFiles = [];
   const highRiskFiles = [];
@@ -81,7 +124,7 @@ export async function getRiskAssessment(rootPath) {
   let mediumCount = 0;
   let lowCount = 0;
 
-  for (const row of riskRows) {
+  for (const row of resolvedRiskRows) {
     const rawFactors = (() => {
       try {
         const parsed = JSON.parse(row.factors_json || '[]');
@@ -122,13 +165,17 @@ export async function getRiskAssessment(rootPath) {
         highCount,
         mediumCount,
         lowCount,
-        totalFiles: riskRows.length,
+        totalFiles: resolvedRiskRows.length,
         liveFilesTotal: liveFileTotal,
-        unassessedLiveFiles: Math.max(0, liveFileTotal - riskRows.length),
+        unassessedLiveFiles: Math.max(0, liveFileTotal - resolvedRiskRows.length),
         staleRowsDropped: Math.max(
           0,
-          liveRowSync.deleted.riskAssessments || staleRiskRows || (totalRiskRows - riskRows.length)
-        )
+          liveRowSync.deleted.riskAssessments || staleRiskRows || (totalRiskRows - resolvedRiskRows.length)
+        ),
+        source: usedFallback ? 'derived_from_atoms' : 'risk_assessments',
+        note: usedFallback
+          ? 'Risk assessment derived from live atom metrics because risk_assessments is empty.'
+          : undefined
       },
       criticalRiskFiles,
       highRiskFiles,

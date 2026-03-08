@@ -42,7 +42,7 @@ export class BaseSqlRepository {
      * Ejecuta una operación atómica dentro de una transacción.
      */
     transaction(fn) {
-        return this.db.transaction(fn);
+        return this.db.transaction(fn)();
     }
 
     /**

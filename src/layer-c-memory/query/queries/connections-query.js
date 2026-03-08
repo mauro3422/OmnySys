@@ -39,6 +39,9 @@ export async function getAllConnections(rootPath) {
     eventListeners: semanticSurface.legacyView.eventListeners,
     total: semanticSurface.legacyView.total,
     granularity: semanticSurface.contract,
-    semanticByType: semanticSurface.fileLevel.byType
+    semanticByType: semanticSurface.fileLevel.byType,
+    derivedFrom: semanticSurface.fileLevel.total === 0 && semanticSurface.legacyView.total > 0
+      ? 'atom_relations'
+      : 'semantic_connections'
   };
 }

@@ -14,6 +14,44 @@
 import { toNumber, toRatio, safeParseJson } from './core-utils.js';
 
 
+function mapRelationTypeToLegacyType(relationType = '') {
+  if (relationType === 'shares_state') return 'sharedState';
+  if (relationType === 'emits' || relationType === 'listens') return 'eventListeners';
+  return 'unknown';
+}
+
+function loadDerivedLegacyConnections(db) {
+  return db.prepare(`
+    SELECT
+      a1.file_path as source_path,
+      a2.file_path as target_path,
+      ar.relation_type,
+      json_extract(ar.context_json, '$.key') as connection_key,
+      COUNT(*) as weight
+    FROM atom_relations ar
+    JOIN atoms a1 ON a1.id = ar.source_id
+    JOIN atoms a2 ON a2.id = ar.target_id
+    WHERE ar.relation_type IN ('shares_state', 'emits', 'listens')
+      AND (ar.is_removed IS NULL OR ar.is_removed = 0)
+      AND (a1.is_removed IS NULL OR a1.is_removed = 0)
+      AND (a2.is_removed IS NULL OR a2.is_removed = 0)
+      AND a1.file_path IS NOT NULL
+      AND a2.file_path IS NOT NULL
+    GROUP BY a1.file_path, a2.file_path, ar.relation_type, json_extract(ar.context_json, '$.key')
+  `).all().map((row) => ({
+    connection_type: mapRelationTypeToLegacyType(row.relation_type),
+    source_path: row.source_path,
+    target_path: row.target_path,
+    connection_key: row.connection_key,
+    weight: Number(row.weight) || 0,
+    context_json: JSON.stringify({
+      derivedFrom: 'atom_relations',
+      relationType: row.relation_type,
+      key: row.connection_key || null
+    })
+  }));
+}
+
 
 function classifyLegacyBucket(connectionType = '') {
   if (/^eventListener|^eventListeners$/i.test(connectionType)) {
@@ -50,9 +88,10 @@ function summarizeConnectionTypes(rows = []) {
 }
 
 export function getSemanticSurfaceGranularity(db) {
-  const semanticRows = db.prepare(`
+  const persistedSemanticRows = db.prepare(`
     SELECT connection_type, source_path, target_path, connection_key, weight, context_json
     FROM semantic_connections
+    WHERE is_removed IS NULL OR is_removed = 0
   `).all();
 
   const relationCounts = db.prepare(`
@@ -66,6 +105,10 @@ export function getSemanticSurfaceGranularity(db) {
     acc[row.relation_type] = toNumber(row.count);
     return acc;
   }, {});
+
+  const semanticRows = persistedSemanticRows.length > 0
+    ? persistedSemanticRows
+    : loadDerivedLegacyConnections(db);
 
   const semanticByType = summarizeConnectionTypes(semanticRows);
   const legacyConnections = semanticRows.map(normalizeSemanticConnectionRow);
@@ -82,7 +125,7 @@ export function getSemanticSurfaceGranularity(db) {
   if (fileLevelTotal === 0 && atomLevelTotal > 0) {
     issues.push('file-level semantic summary is empty while atom-level semantic relations exist');
   }
-  if (semanticByType.sharedState || semanticByType.eventListeners) {
+  if (persistedSemanticRows.length > 0 && (semanticByType.sharedState || semanticByType.eventListeners)) {
     issues.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
   }
 
@@ -108,7 +151,12 @@ export function getSemanticSurfaceGranularity(db) {
       summaryVsDetail: true,
       equivalentTotals: false,
       trustworthy: issues.length === 0,
-      sharedStateGranularityRatio
+      sharedStateGranularityRatio,
+      status: issues.length === 0 ? 'stable' : 'advisory_only',
+      recommendedSourceOfTruth: 'atom_relations',
+      summarySurfaceAdvisory: true,
+      unsafeForTotalsComparison: issues.length > 0 || fileLevelTotal !== atomLevelTotal,
+      requiresCanonicalAdapter: issues.length > 0
     },
     healthy: issues.length === 0,
     issues

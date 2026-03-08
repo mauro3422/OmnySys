@@ -65,6 +65,7 @@
     "build": "echo \"No build step needed for now\"",
     "lint": "echo \"No linter configured yet\"",
     "validate": "node scripts/validate-syntax.js",
+    "audit:contracts": "node scripts/audit-mcp-contract-drift.js",
     "check": "node scripts/validate-syntax.js && node scripts/detect-broken-imports.js",
     "postinstall": "node install.js",
     "mcp": "node --max-old-space-size=8192 src/layer-c-memory/mcp-http-proxy.js",
