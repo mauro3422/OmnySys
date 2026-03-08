@@ -20,7 +20,11 @@
 
 import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
+import {
+    executeLiveRowCleanup,
+    getFileUniverseGranularity,
+    getLiveFileTotal
+} from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:PipelineIntegrityDetector');
 
@@ -31,6 +35,7 @@ export class PipelineIntegrityDetector {
     constructor(projectPath) {
         this.projectPath = projectPath;
         this.repo = null;
+        this.lastCleanupResult = null;
     }
 
     /**
@@ -56,6 +61,8 @@ export class PipelineIntegrityDetector {
             logger.error('Cannot verify pipeline: repository not available');
             return [];
         }
+
+        this._reconcileLiveRows();
 
         const checks = [
             // 1. Verificar que todos los archivos escaneados tengan átomos
@@ -99,6 +106,28 @@ export class PipelineIntegrityDetector {
                 };
             }
         });
+    }
+
+    _reconcileLiveRows() {
+        try {
+            const cleanup = executeLiveRowCleanup(this.repo.db, { dryRun: false });
+            this.lastCleanupResult = cleanup;
+
+            const totalDeleted = (cleanup?.deleted?.files || 0)
+                + (cleanup?.deleted?.riskAssessments || 0)
+                + (cleanup?.deleted?.relations || 0)
+                + (cleanup?.deleted?.issues || 0)
+                + (cleanup?.deleted?.connections || 0);
+
+            if (totalDeleted > 0) {
+                logger.info(
+                    `Pipeline integrity reconciled ${totalDeleted} stale rows ` +
+                    `(${cleanup.deleted.relations || 0} relations, ${cleanup.deleted.issues || 0} issues)`
+                );
+            }
+        } catch (error) {
+            logger.warn(`Pipeline integrity live-row reconciliation failed: ${error.message}`);
+        }
     }
 
     /**
@@ -514,26 +543,31 @@ export class PipelineIntegrityDetector {
                     SELECT COUNT(*) as count
                     FROM atoms a
                     LEFT JOIN files f ON a.file_path = f.path
-                    WHERE f.path IS NULL
+                    WHERE (f.path IS NULL OR f.is_removed = 1)
                       AND (a.is_removed IS NULL OR a.is_removed = 0)
                 `).get().count,
 
-                // Relaciones sin átomos (o con átomos removidos)
+                // Relaciones sin átomos vivos en cualquiera de los extremos
                 relationsWithoutAtoms: db.prepare(`
                     SELECT COUNT(*) as count
                     FROM atom_relations ar
-                    LEFT JOIN atoms a ON ar.source_id = a.id
-                    WHERE (a.id IS NULL OR a.is_removed = 1)
+                    LEFT JOIN atoms src ON ar.source_id = src.id
+                    LEFT JOIN atoms tgt ON ar.target_id = tgt.id
+                    WHERE (
+                        src.id IS NULL OR src.is_removed = 1 OR
+                        tgt.id IS NULL OR tgt.is_removed = 1
+                    )
                       AND (ar.is_removed IS NULL OR ar.is_removed = 0)
                 `).get().count,
 
-                // Issues sin archivo (o con archivo removido)
+                // Issues sin archivo (o con archivo removido); project-wide es un scope válido
                 issuesWithoutFile: db.prepare(`
                     SELECT COUNT(*) as count
                     FROM semantic_issues si
                     LEFT JOIN files f ON si.file_path = f.path
                     WHERE (f.path IS NULL OR f.is_removed = 1)
                       AND (si.is_removed IS NULL OR si.is_removed = 0)
+                      AND si.file_path != 'project-wide'
                 `).get().count
             };
 
