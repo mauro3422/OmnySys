@@ -89,9 +89,20 @@ function hasBoundaryContainerPath(filePath = '') {
 
 function hasBoundaryContainerFingerprint(semanticFingerprint = '') {
   return semanticFingerprint === 'process:core:operations' ||
+    semanticFingerprint === 'process:core:manager' ||
     semanticFingerprint.endsWith(':repository') ||
     semanticFingerprint.endsWith(':adapter') ||
-    semanticFingerprint.endsWith(':handler');
+    semanticFingerprint.endsWith(':handler') ||
+    semanticFingerprint.endsWith(':manager');
+}
+
+function hasOrchestratorContainerPath(filePath = '') {
+  return /\/(mcp\/core|core\/orchestrator|core\/file-watcher)\//.test(filePath);
+}
+
+function hasOrchestratorContainerFingerprint(semanticFingerprint = '') {
+  return semanticFingerprint.endsWith(':manager') ||
+    semanticFingerprint.endsWith(':orchestrator');
 }
 
 export function isLikelyBoundaryContainerAtom(atom = {}) {
@@ -108,8 +119,13 @@ export function isLikelyBoundaryContainerAtom(atom = {}) {
   const boundaryName = hasBoundaryContainerName(name);
   const boundaryPath = hasBoundaryContainerPath(filePath);
   const boundaryFingerprint = hasBoundaryContainerFingerprint(semanticFingerprint);
+  const orchestratorPath = hasOrchestratorContainerPath(filePath);
+  const orchestratorFingerprint = hasOrchestratorContainerFingerprint(semanticFingerprint);
 
-  return (boundaryName && boundaryPath) || boundaryFingerprint;
+  return (boundaryName && boundaryPath) ||
+    (boundaryName && orchestratorPath) ||
+    boundaryFingerprint ||
+    orchestratorFingerprint;
 }
 
 export function hasAsyncNamingMismatch(atom = {}) {

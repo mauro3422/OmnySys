@@ -167,6 +167,12 @@ const INTEGRITY_ANALYSIS_HELPER_NAMES = new Set([
     'normalizeunusedinputname',
     'islikelyparsernoiseunusedinput',
     'getactionableunusedinputs',
+    'getboundaryatomcontext',
+    'hasboundarycontainername',
+    'hasboundarycontainerpath',
+    'hasboundarycontainerfingerprint',
+    'hasorchestratorcontainerpath',
+    'hasorchestratorcontainerfingerprint',
     'islikelytoolwrapperatom',
     'islikelyboundarycontaineratom',
     'hasasyncnamingmismatch'
@@ -174,6 +180,10 @@ const INTEGRITY_ANALYSIS_HELPER_NAMES = new Set([
 
 const INTEGRITY_ANALYSIS_FINGERPRINTS = new Set([
     'normalize:core:name',
+    'get:core:context',
+    'process:core:name',
+    'process:core:path',
+    'process:core:fingerprint',
     'process:core:input',
     'get:core:inputs',
     'process:core:atom',
