@@ -229,7 +229,11 @@ export {
 export {
   generateAlternativeNames,
   isLowSignalGeneratedAtom,
+  isLowSignalConceptualFingerprint,
   isRepositoryContractSurface,
+  isGuardUtilityConceptualFingerprint,
+  isCanonicalMcpToolRouter,
+  isLowSignalGuardStructuralHelper,
   shouldIgnoreConceptualDuplicateFinding,
   shouldIgnoreStructuralDuplicateFinding,
   loadPreviousFindings,
