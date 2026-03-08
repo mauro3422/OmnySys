@@ -97,6 +97,31 @@ function buildLegacyView(rows = []) {
   };
 }
 
+export function summarizeSemanticCanonicality(semanticSurfaceGranularity = null) {
+  if (!semanticSurfaceGranularity) {
+    return null;
+  }
+
+  const contract = semanticSurfaceGranularity.contract || {};
+  return {
+    status: contract.status || 'unknown',
+    trustworthy: contract.trustworthy !== false,
+    recommendedSourceOfTruth: contract.recommendedSourceOfTruth || 'atom_relations',
+    summarySurfaceAdvisory: contract.summarySurfaceAdvisory !== false,
+    requiresCanonicalAdapter: contract.requiresCanonicalAdapter !== false,
+    unsafeForTotalsComparison: contract.unsafeForTotalsComparison !== false,
+    materialIssueCount: semanticSurfaceGranularity.materialIssues?.length || 0,
+    advisoryCount: semanticSurfaceGranularity.advisories?.length || 0,
+    materialIssues: semanticSurfaceGranularity.materialIssues || [],
+    advisories: semanticSurfaceGranularity.advisories || [],
+    summary: semanticSurfaceGranularity.materiallyDrifting
+      ? 'Semantic file-level summary is materially drifting; use atom_relations until repaired.'
+      : contract.status === 'advisory_only'
+        ? 'Semantic file-level summary is healthy as an advisory surface, but atom_relations remains the source of truth.'
+        : 'Semantic summary and canonical adapter are aligned.'
+  };
+}
+
 export function getSemanticSurfaceGranularity(db) {
   const persistedSemanticRows = db.prepare(`
     SELECT connection_type, source_path, target_path, connection_key, weight, context_json

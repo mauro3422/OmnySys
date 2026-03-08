@@ -119,7 +119,8 @@ export {
 } from './metadata-surface-parity.js';
 
 export {
-  getSemanticSurfaceGranularity
+  getSemanticSurfaceGranularity,
+  summarizeSemanticCanonicality
 } from './semantic-surface-granularity.js';
 
 export {

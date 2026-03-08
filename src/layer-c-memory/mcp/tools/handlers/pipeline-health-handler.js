@@ -20,6 +20,7 @@ import {
     getLiveFileTotal,
     getMetadataSurfaceParity,
     getSemanticSurfaceGranularity,
+    summarizeSemanticCanonicality,
     getSystemMapPersistenceCoverage,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
@@ -264,6 +265,7 @@ export async function handlePipelineHealth(tool) {
         tableCounts.metadata_surface_parity_issues = metadataSurfaceParity.issues.length;
     }
     const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
     if (semanticSurfaceGranularity.healthy === false) {
         warnings.push({
             field: 'semantic_surface_granularity',
@@ -271,6 +273,13 @@ export async function handlePipelineHealth(tool) {
             issue: 'Semantic summary/detail surfaces are drifting or incomplete; do not compare file-level semantic_connections as if they were atom-level semantic relations'
         });
         tableCounts.semantic_surface_granularity_issues = semanticSurfaceGranularity.issues.length;
+    }
+    if (semanticCanonicality?.status === 'advisory_only') {
+        warnings.push({
+            field: 'semantic_surface_canonicality',
+            coverage: `${semanticSurfaceGranularity.fileLevel.total} summary rows backed by ${semanticSurfaceGranularity.canonicalAdapterView.total} canonical file-level pairs`,
+            issue: semanticCanonicality.summary
+        });
     }
     tableCounts.runtime_table_health_issues = runtimeTableHealth.activeIssues.length;
     const compilerRemediation = buildCompilerRemediationBacklog([
@@ -321,6 +330,7 @@ export async function handlePipelineHealth(tool) {
         persistedFileCoverage,
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
+        semanticCanonicality,
         semanticSurfaceGranularity,
         fileUniverseGranularity: {
             scannedFileTotal: persistedFileCoverage.scannedFileTotal,
@@ -354,6 +364,7 @@ export async function handlePipelineHealth(tool) {
         systemMapPersistenceCoverage,
         standardizationReport,
         runtimeTableHealth,
+        semanticCanonicality,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,

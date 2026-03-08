@@ -17,6 +17,7 @@ import {
   getFileImportEvidenceCoverage,
   getFileUniverseGranularity,
   getSemanticSurfaceGranularity,
+  summarizeSemanticCanonicality,
   summarizePersistedScannedFileCoverage,
   syncPersistedScannedFileManifest,
   summarizeSignalConfidence,
@@ -260,6 +261,7 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     const systemMapPersistenceCoverage = repo?.db ? getSystemMapPersistenceCoverage(repo.db) : null;
     const metadataSurfaceParity = repo?.db ? getMetadataSurfaceParity(repo.db) : null;
     const semanticSurfaceGranularity = repo?.db ? getSemanticSurfaceGranularity(repo.db) : null;
+    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
     const fileUniverseGranularity = getFileUniverseGranularity({
       scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
       manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
@@ -289,6 +291,7 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
       fileImportEvidenceCoverage,
       systemMapPersistenceCoverage,
       metadataSurfaceParity,
+      semanticCanonicality,
       semanticSurfaceGranularity,
       fileUniverseGranularity
     };
