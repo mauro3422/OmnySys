@@ -12,7 +12,8 @@ import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { createStandardContext } from './guard-standards.js';
 import { safeArray } from '../../../shared/compiler/core-utils.js';
-import { normalizePath, classifyCircularCycle } from '../../../shared/compiler/index.js';
+import { classifyCircularCycle } from '../../../shared/compiler/index.js';
+import { normalizePath } from '../../../shared/utils/path-utils.js';
 import { persistCircularIssue, clearCircularIssues } from './circular-issue-service.js';
 import {
     getCircularCallRelations,
