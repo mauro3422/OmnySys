@@ -40,6 +40,10 @@ export {
 } from './standardization-report.js';
 
 export {
+  buildCompilerContractLayer
+} from './compiler-contract-layer.js';
+
+export {
   classifyAtomOperationalRole,
   classifyFileOperationalRole
 } from './atom-role-classification.js';

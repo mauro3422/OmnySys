@@ -4,6 +4,7 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
+    buildCompilerContractLayer,
     buildCompilerRemediationBacklog,
     buildCompilerStandardizationReport,
     summarizeCentralityCoverageRow,
@@ -18,6 +19,7 @@ import {
     ensureLiveRowSync,
     getFileImportEvidenceCoverage,
     getLiveFileTotal,
+    getFileUniverseGranularity,
     getMetadataSurfaceParity,
     getPipelineFieldCoverageContext,
     getSemanticSurfaceGranularity,
@@ -330,6 +332,37 @@ export async function handlePipelineHealth(tool) {
             scannedFileManifest: persistedFileCoverage.synchronized
         }
     });
+    const fileUniverseGranularity = getFileUniverseGranularity({
+        scannedFileTotal: persistedFileCoverage.scannedFileTotal,
+        manifestFileTotal: persistedFileCoverage.manifestFileTotal,
+        liveFileCount: getLiveFileTotal(db)
+    });
+    const compilerContractLayer = buildCompilerContractLayer({
+        persistedFileCoverage,
+        fileUniverseGranularity,
+        metadataSurfaceParity,
+        semanticSurfaceGranularity,
+        semanticCanonicality,
+        systemMapPersistenceCoverage,
+        standardization: standardizationReport,
+        tableCounts
+    });
+
+    if (compilerContractLayer.summary.healthy === false) {
+        warnings.push({
+            field: 'compiler_contract_layer',
+            coverage: `${compilerContractLayer.summary.failedInvariantCount} invariant(s) failed`,
+            issue: 'The explicit compiler contract layer reports truth-surface violations; block new wrappers until the contract is healthy.'
+        });
+    }
+
+    if (compilerContractLayer.apiGovernance.shouldCreateCanonicalApi === true) {
+        warnings.push({
+            field: 'compiler_api_governance',
+            coverage: `${compilerContractLayer.apiGovernance.currentCreationCandidates.length} candidate(s)`,
+            issue: 'The contract layer recommends creating or consolidating canonical APIs before adding more local wrappers.'
+        });
+    }
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
@@ -350,6 +383,7 @@ export async function handlePipelineHealth(tool) {
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
         standardizationReport,
+        compilerContractLayer,
         runtimeTableHealth,
         semanticCanonicality,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
