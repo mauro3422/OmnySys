@@ -72,6 +72,15 @@ export function safeArray(value) {
 }
 
 /**
+ * Convierte un valor a array y elimina entradas falsy.
+ * @param {*} value
+ * @returns {Array}
+ */
+export function compactArray(value) {
+    return safeArray(value).filter(Boolean);
+}
+
+/**
  * Convierte un valor a número de forma segura.
  * @param {*} value 
  * @returns {number}

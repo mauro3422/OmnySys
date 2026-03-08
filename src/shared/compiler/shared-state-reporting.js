@@ -8,12 +8,10 @@
  * @module shared/compiler/shared-state-reporting
  */
 
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
+import { compactArray } from './core-utils.js';
 
 function normalizeTopContentionKeys(sharedState = {}) {
-  return toArray(sharedState.topContentionKeys)
+  return compactArray(sharedState.topContentionKeys)
     .map((item) => ({
       key: item?.key || item?.name || null,
       count: Number(item?.count) || 0
@@ -22,11 +20,11 @@ function normalizeTopContentionKeys(sharedState = {}) {
 }
 
 function normalizeReads(sharedState = {}) {
-  return toArray(sharedState.reads).map((entry) => entry?.key || entry).filter(Boolean);
+  return compactArray(sharedState.reads).map((entry) => entry?.key || entry).filter(Boolean);
 }
 
 function normalizeWrites(sharedState = {}) {
-  return toArray(sharedState.writes).map((entry) => entry?.key || entry).filter(Boolean);
+  return compactArray(sharedState.writes).map((entry) => entry?.key || entry).filter(Boolean);
 }
 
 function buildContentionStatus(maxContention, mediumThreshold, highThreshold) {

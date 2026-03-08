@@ -8,10 +8,7 @@
  */
 
 import { evaluateAtomSemanticPurity } from './atom-evaluation.js';
-
-function toArray(atoms = []) {
-  return Array.isArray(atoms) ? atoms.filter(Boolean) : [];
-}
+import { compactArray } from './core-utils.js';
 
 function buildReasonFrequency(evaluations = []) {
   const counts = new Map();
@@ -28,7 +25,7 @@ function buildReasonFrequency(evaluations = []) {
 
 export function summarizeAtomSemanticPurity(atoms = [], options = {}) {
   const { highThreshold = 34, mediumThreshold = 69 } = options;
-  const normalizedAtoms = toArray(atoms);
+  const normalizedAtoms = compactArray(atoms);
   const evaluations = normalizedAtoms.map((atom) => ({
     atomId: atom.id,
     atomName: atom.name,
