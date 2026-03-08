@@ -1,6 +1,10 @@
 import { createLogger } from '../../utils/logger.js';
 import { getWatcherIssueDb } from '../file-watcher/watcher-issue-repository.js';
 import {
+  clearWatcherIssueRecord,
+  upsertWatcherIssueRecord
+} from '../file-watcher/watcher-issue-persistence.js';
+import {
   getSemanticSurfaceGranularity,
   ensureLiveRowSync,
   getLiveFileTotal,
@@ -12,7 +16,6 @@ import {
   summarizePersistedScannedFileCoverage,
   syncPersistedScannedFileManifest
 } from '../../shared/compiler/index.js';
-import { createWatcherIssueRecord, WATCHER_MESSAGE_PREFIX } from '../../shared/compiler/watcher-issues.js';
 
 const logger = createLogger('OmnySys:runtime:table-health');
 
@@ -84,108 +87,6 @@ function loadTableCount(db, table) {
   const whereClause = hasSoftDelete ? 'WHERE (is_removed IS NULL OR is_removed = 0)' : '';
   const row = db.prepare(`SELECT COUNT(*) as total FROM "${table}" ${whereClause}`).get();
   return Number(row?.total || 0);
-}
-
-function loadActiveRuntimeIssue(db, issueType) {
-  return db.prepare(`
-    SELECT id, severity, message, context_json
-    FROM semantic_issues
-    WHERE file_path = ?
-      AND issue_type = ?
-      AND message LIKE ?
-      AND (is_removed IS NULL OR is_removed = 0)
-    ORDER BY detected_at DESC, id DESC
-    LIMIT 1
-  `).get(PROJECT_WIDE_FILE, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
-}
-
-function normalizeWatcherMessage(message = '') {
-  return String(message || '').trim().replace(/^\[watcher\]\s*/i, '').trim();
-}
-
-function stableJson(value) {
-  if (value == null) return 'null';
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return '{}';
-  }
-}
-
-function safeJsonParse(value, fallback = {}) {
-  try {
-    return JSON.parse(value || '{}');
-  } catch {
-    return fallback;
-  }
-}
-
-function deactivateRuntimeIssue(db, issueType, lifecycleStatus) {
-  return db.prepare(`
-    UPDATE semantic_issues
-    SET is_removed = 1,
-        lifecycle_status = ?,
-        updated_at = datetime('now')
-    WHERE file_path = ?
-      AND issue_type = ?
-      AND message LIKE ?
-      AND (is_removed IS NULL OR is_removed = 0)
-  `).run(lifecycleStatus, PROJECT_WIDE_FILE, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
-}
-
-function upsertRuntimeIssue(db, issue) {
-  const existing = loadActiveRuntimeIssue(db, issue.issueType);
-  const nextMessage = normalizeWatcherMessage(issue.message);
-  const nextContextJson = stableJson(issue.context);
-
-  if (existing) {
-    const existingMessage = normalizeWatcherMessage(existing.message);
-    const existingContextJson = stableJson(safeJsonParse(existing.context_json, {}));
-    if (existing.severity === issue.severity && existingMessage === nextMessage && existingContextJson === nextContextJson) {
-      return false;
-    }
-
-    deactivateRuntimeIssue(db, issue.issueType, 'superseded');
-  }
-
-  const record = createWatcherIssueRecord({
-    filePath: PROJECT_WIDE_FILE,
-    issueType: issue.issueType,
-    severity: issue.severity,
-    message: issue.message,
-    context: issue.context
-  });
-
-  db.prepare(`
-    INSERT INTO semantic_issues (
-      file_path,
-      issue_type,
-      severity,
-      message,
-      line_number,
-      context_json,
-      lifecycle_status,
-      detected_at,
-      updated_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, 'active', ?, datetime('now'))
-  `).run(
-    record.filePath,
-    record.issueType,
-    record.severity,
-    record.message,
-    record.lineNumber,
-    record.contextJson,
-    record.detectedAt
-  );
-
-  logger.warn(`[RUNTIME TABLE HEALTH] ${record.issueType}: ${nextMessage}`);
-  return true;
-}
-
-function clearResolvedRuntimeIssue(db, issueType) {
-  const result = deactivateRuntimeIssue(db, issueType, 'expired');
-  return Number(result?.changes || 0) > 0;
 }
 
 async function buildDeepRuntimeHealthIssues(projectPath, db) {
@@ -350,14 +251,23 @@ export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
     let cleared = 0;
 
     for (const issue of runtimeHealth.issues) {
-      if (upsertRuntimeIssue(db, issue)) {
+      if (upsertWatcherIssueRecord(db, {
+        filePath: PROJECT_WIDE_FILE,
+        issueType: issue.issueType,
+        severity: issue.severity,
+        message: issue.message,
+        context: issue.context
+      }, {
+        logPrefix: '[RUNTIME TABLE HEALTH]'
+      })) {
         persisted += 1;
       }
     }
 
     for (const issueType of buildKnownIssueTypes()) {
       if (desiredIssueTypes.has(issueType)) continue;
-      if (clearResolvedRuntimeIssue(db, issueType)) {
+      const result = clearWatcherIssueRecord(db, PROJECT_WIDE_FILE, issueType, 'expired');
+      if (Number(result?.changes || 0) > 0) {
         cleared += 1;
       }
     }

@@ -26,6 +26,98 @@ import { getWatcherIssueDb } from './watcher-issue-repository.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
 
+function normalizeWatcherMessage(message = '') {
+  return String(message || '').trim().replace(/^\[watcher\]\s*/i, '').trim();
+}
+
+function stableJson(value) {
+  if (value == null) return 'null';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '{}';
+  }
+}
+
+function safeJsonParse(value, fallback = {}) {
+  try {
+    return JSON.parse(value || '{}');
+  } catch {
+    return fallback;
+  }
+}
+
+export function loadActiveWatcherIssue(db, filePath, issueType) {
+  return db.prepare(`
+    SELECT id, severity, message, context_json
+    FROM semantic_issues
+    WHERE file_path = ?
+      AND issue_type = ?
+      AND message LIKE ?
+      AND (is_removed IS NULL OR is_removed = 0)
+    ORDER BY detected_at DESC, id DESC
+    LIMIT 1
+  `).get(filePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+}
+
+export function clearWatcherIssueRecord(db, filePath, issueType, lifecycleStatus = 'expired') {
+  return db.prepare(`
+    UPDATE semantic_issues
+    SET is_removed = 1,
+        lifecycle_status = ?,
+        updated_at = datetime('now')
+    WHERE file_path = ?
+      AND issue_type = ?
+      AND message LIKE ?
+      AND (is_removed IS NULL OR is_removed = 0)
+  `).run(lifecycleStatus, filePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+}
+
+export function upsertWatcherIssueRecord(db, issue, options = {}) {
+  const {
+    logPrefix = '[WATCHER ISSUE]',
+    skipIfUnchanged = true,
+    supersedeLifecycleStatus = 'superseded'
+  } = options;
+
+  const existing = loadActiveWatcherIssue(db, issue.filePath, issue.issueType);
+  const nextMessage = normalizeWatcherMessage(issue.message);
+  const nextContextJson = stableJson(issue.context);
+
+  if (existing && skipIfUnchanged) {
+    const existingMessage = normalizeWatcherMessage(existing.message);
+    const existingContextJson = stableJson(safeJsonParse(existing.context_json, {}));
+    if (
+      existing.severity === issue.severity &&
+      existingMessage === nextMessage &&
+      existingContextJson === nextContextJson
+    ) {
+      return false;
+    }
+  }
+
+  if (existing) {
+    clearWatcherIssueRecord(db, issue.filePath, issue.issueType, supersedeLifecycleStatus);
+  }
+
+  const record = createWatcherIssueRecord(issue);
+  db.prepare(`
+    INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    record.filePath,
+    record.issueType,
+    record.severity,
+    record.message,
+    record.lineNumber,
+    record.contextJson,
+    record.detectedAt
+  );
+
+  logger.info(`${logPrefix}[${record.severity.toUpperCase()}] ${record.filePath} -> ${record.issueType}: ${nextMessage}`);
+  return true;
+}
+
 /**
  * Persiste un issue del watcher en semantic_issues (SQLite).
  * Sobreescribe el issue previo del mismo tipo para el mismo archivo.
@@ -44,35 +136,15 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
     if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    const record = createWatcherIssueRecord({
+    return upsertWatcherIssueRecord(db, {
       filePath: normalizedFilePath,
       issueType,
       severity,
       message,
       context
+    }, {
+      logPrefix: '[WATCHER ISSUE]'
     });
-
-    db.prepare(`
-      UPDATE semantic_issues
-      SET is_removed = 1, updated_at = datetime('now')
-      WHERE file_path = ? AND issue_type = ? AND message LIKE ? AND is_removed = 0
-    `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
-
-    db.prepare(`
-      INSERT INTO semantic_issues (file_path, issue_type, severity, message, line_number, context_json, detected_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      record.filePath,
-      record.issueType,
-      record.severity,
-      record.message,
-      record.lineNumber,
-      record.contextJson,
-      record.detectedAt
-    );
-
-    logger.info(`[WATCHER ISSUE][${record.severity.toUpperCase()}] ${record.filePath} -> ${record.issueType}: ${message}`);
-    return true;
   } catch (error) {
     logger.debug(`[WATCHER ISSUE PERSIST SKIP] ${filePath}:${issueType} -> ${error.message}`);
     return false;
@@ -95,11 +167,7 @@ export async function clearWatcherIssue(projectPath, filePath, issueType) {
     if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    const result = db.prepare(`
-      UPDATE semantic_issues
-      SET is_removed = 1, updated_at = datetime('now')
-      WHERE file_path = ? AND issue_type = ? AND message LIKE ? AND is_removed = 0
-    `).run(normalizedFilePath, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+    const result = clearWatcherIssueRecord(db, normalizedFilePath, issueType);
 
     if ((result?.changes || 0) > 0) {
       logger.info(`[WATCHER ISSUE CLEARED] ${normalizedFilePath} -> ${issueType}`);
