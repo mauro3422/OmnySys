@@ -124,6 +124,24 @@ const COMPILER_CONFORMANCE_LOW_SIGNAL_FINGERPRINTS = new Set([
     'process:core:path'
 ]);
 
+const COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS = [
+    '/shared/compiler/duplicate-utils.js',
+    '/shared/compiler/duplicate-debt.js',
+    '/shared/compiler/duplicate-remediation.js',
+    '/shared/compiler/compiler-diagnostics-snapshot.js',
+    '/shared/compiler/compiler-contract-layer.js'
+];
+
+const COMPILER_POLICY_ORCHESTRATION_NAME_REGEX = /^(?:coordinate[A-Z]\w+|build[A-Z]\w*Plan|build[A-Z]\w*Details|resolve[A-Z]\w*Priority)$/i;
+
+const COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS = new Set([
+    'process:core:findings',
+    'build:core:plan',
+    'build:core:details',
+    'build:core:context',
+    'process:core:summary'
+]);
+
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
@@ -224,6 +242,22 @@ export function isCompilerConformancePolicyHelper(filePath, atomName, semanticFi
     return COMPILER_CONFORMANCE_LOW_SIGNAL_FINGERPRINTS.has(fingerprint);
 }
 
+export function isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    const isPolicyFile = COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS.some((marker) => normalizedPath.endsWith(marker));
+    if (!isPolicyFile) return false;
+
+    if (!COMPILER_POLICY_ORCHESTRATION_NAME_REGEX.test(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS.has(fingerprint);
+}
+
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
     const normalizedPath = normalizeFilePath(filePath).toLowerCase();
     const normalizedName = String(atomName || '').toLowerCase();
@@ -237,6 +271,7 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
 
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) ||
         isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
         isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) ||
         isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint) ||
@@ -247,6 +282,7 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
 
 export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isCompilerPolicyOrchestrationHelper(filePath, atomName, null) ||
         isRepositoryContractSurface(filePath, atomName, null) ||
         isCompilerConformancePolicyHelper(filePath, atomName, null) ||
         isLowSignalGuardStructuralHelper(filePath, atomName);

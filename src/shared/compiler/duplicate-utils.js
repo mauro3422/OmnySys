@@ -76,50 +76,44 @@ export function generateAlternativeNames(originalName, existingName = null) {
 }
 
 /**
- * Combina findings de duplicados estructurales y conceptuales.
+ * Construye detalles de overlap entre findings estructurales y conceptuales.
  *
  * @param {Array<Object>} structuralFindings
  * @param {Array<Object>} conceptualFindings
- * @returns {Object}
+ * @returns {Array<Object>}
  */
-export function coordinateDuplicateFindings(structuralFindings = [], conceptualFindings = []) {
-    const coordinated = {
-        structural: structuralFindings,
-        conceptual: conceptualFindings,
-        hasOverlap: false,
-        overlapDetails: [],
-        totalFindings: structuralFindings.length + conceptualFindings.length,
-        priority: 'structural',
-        combinedRemediation: []
-    };
+function buildDuplicateOverlapDetails(structuralFindings, conceptualFindings) {
+    const structuralSymbols = new Set(structuralFindings.map((finding) => finding.symbol));
+    const conceptualSymbols = new Set(conceptualFindings.map((finding) => finding.symbol));
+    const overlap = [...structuralSymbols].filter((symbol) => conceptualSymbols.has(symbol));
 
-    if (structuralFindings.length > 0 && conceptualFindings.length > 0) {
-        const structuralSymbols = new Set(structuralFindings.map((finding) => finding.symbol));
-        const conceptualSymbols = new Set(conceptualFindings.map((finding) => finding.symbol));
-        const overlap = [...structuralSymbols].filter((symbol) => conceptualSymbols.has(symbol));
+    return overlap.map((symbol) => {
+        const structuralCount = structuralFindings.filter((finding) => finding.symbol === symbol).length;
+        const conceptualCount = conceptualFindings.filter((finding) => finding.symbol === symbol).length;
 
-        if (overlap.length > 0) {
-            coordinated.hasOverlap = true;
-            coordinated.overlapDetails = overlap.map((symbol) => {
-                const structuralCount = structuralFindings.filter((finding) => finding.symbol === symbol).length;
-                const conceptualCount = conceptualFindings.filter((finding) => finding.symbol === symbol).length;
+        return {
+            symbol,
+            structuralCount,
+            conceptualCount,
+            totalInstances: structuralCount + conceptualCount,
+            recommendation: 'CRITICAL: Same symbol has both structural (DNA) and conceptual (semantic) duplicates. Resolve structural first.',
+            suggestedAction: `Consolidate all ${structuralCount + conceptualCount} variants into a single canonical implementation`
+        };
+    });
+}
 
-                return {
-                    symbol,
-                    structuralCount,
-                    conceptualCount,
-                    totalInstances: structuralCount + conceptualCount,
-                    recommendation: 'CRITICAL: Same symbol has both structural (DNA) and conceptual (semantic) duplicates. Resolve structural first.',
-                    suggestedAction: `Consolidate all ${structuralCount + conceptualCount} variants into a single canonical implementation`
-                };
-            });
-
-            coordinated.priority = 'structural-critical';
-        }
-    }
+/**
+ * Construye el plan de remediación combinado para findings coordinados.
+ *
+ * @param {Array<Object>} structuralFindings
+ * @param {Array<Object>} conceptualFindings
+ * @returns {Array<Object>}
+ */
+function buildDuplicateRemediationPlan(structuralFindings, conceptualFindings) {
+    const plan = [];
 
     if (structuralFindings.length > 0) {
-        coordinated.combinedRemediation.push({
+        plan.push({
             phase: 1,
             type: 'structural',
             action: 'Resolve DNA/structural duplicates first (identical implementation)',
@@ -128,7 +122,7 @@ export function coordinateDuplicateFindings(structuralFindings = [], conceptualF
     }
 
     if (conceptualFindings.length > 0) {
-        coordinated.combinedRemediation.push({
+        plan.push({
             phase: 2,
             type: 'conceptual',
             action: 'Review conceptual duplicates (same purpose, different implementation)',
@@ -136,7 +130,40 @@ export function coordinateDuplicateFindings(structuralFindings = [], conceptualF
         });
     }
 
-    return coordinated;
+    return plan;
+}
+
+/**
+ * Determina la prioridad general de un grupo coordinado de findings.
+ *
+ * @param {Array<Object>} overlapDetails
+ * @returns {string}
+ */
+function resolveDuplicatePriority(overlapDetails) {
+    return overlapDetails.length > 0 ? 'structural-critical' : 'structural';
+}
+
+/**
+ * Combina findings de duplicados estructurales y conceptuales.
+ *
+ * @param {Array<Object>} structuralFindings
+ * @param {Array<Object>} conceptualFindings
+ * @returns {Object}
+ */
+export function coordinateDuplicateFindings(structuralFindings = [], conceptualFindings = []) {
+    const overlapDetails = (
+        structuralFindings.length > 0 && conceptualFindings.length > 0
+    ) ? buildDuplicateOverlapDetails(structuralFindings, conceptualFindings) : [];
+
+    return {
+        structural: structuralFindings,
+        conceptual: conceptualFindings,
+        hasOverlap: overlapDetails.length > 0,
+        overlapDetails,
+        totalFindings: structuralFindings.length + conceptualFindings.length,
+        priority: resolveDuplicatePriority(overlapDetails),
+        combinedRemediation: buildDuplicateRemediationPlan(structuralFindings, conceptualFindings)
+    };
 }
 
 /**

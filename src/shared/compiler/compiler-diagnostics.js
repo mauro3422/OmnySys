@@ -10,6 +10,17 @@ function isCompilerHelperPath(filePath = '') {
   return String(filePath || '').startsWith('src/shared/compiler/');
 }
 
+const CANONICAL_COMPILER_POLICY_SURFACES = new Set([
+  'src/shared/compiler/duplicate-signal-policy.js',
+  'src/shared/compiler/duplicate-utils.js',
+  'src/shared/compiler/compiler-contract-layer.js',
+  'src/shared/compiler/compiler-diagnostics-snapshot.js'
+]);
+
+function isCanonicalCompilerPolicySurface(filePath = '') {
+  return CANONICAL_COMPILER_POLICY_SURFACES.has(String(filePath || ''));
+}
+
 function normalizeUnusedInputFragment(value = '') {
   return String(value || '').trim();
 }
@@ -49,7 +60,18 @@ export function isLowSignalDataFlowAlert(alert = {}) {
 }
 
 export function shouldSuppressWatcherAlert(alert = {}) {
-  return isLowSignalDataFlowAlert(alert);
+  const issueType = String(alert?.issueType || '');
+  const filePath = String(alert?.filePath || '');
+
+  if (isLowSignalDataFlowAlert(alert)) {
+    return true;
+  }
+
+  if (isCanonicalCompilerPolicySurface(filePath) && issueType.startsWith('code_duplicate')) {
+    return true;
+  }
+
+  return false;
 }
 
 export function classifyCompilerDiagnosticSignal(alert = {}) {
