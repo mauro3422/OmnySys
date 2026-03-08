@@ -168,6 +168,7 @@ const INTEGRITY_ANALYSIS_HELPER_NAMES = new Set([
     'islikelyparsernoiseunusedinput',
     'getactionableunusedinputs',
     'islikelytoolwrapperatom',
+    'islikelyboundarycontaineratom',
     'hasasyncnamingmismatch'
 ]);
 

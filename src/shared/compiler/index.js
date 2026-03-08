@@ -119,6 +119,7 @@ export {
   isLikelyParserNoiseUnusedInput,
   getActionableUnusedInputs,
   isLikelyToolWrapperAtom,
+  isLikelyBoundaryContainerAtom,
   hasAsyncNamingMismatch
 } from './integrity-analysis.js';
 

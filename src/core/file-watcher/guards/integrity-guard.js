@@ -21,6 +21,7 @@ import {
 import {
     getActionableUnusedInputs,
     isLikelyToolWrapperAtom,
+    isLikelyBoundaryContainerAtom,
     hasAsyncNamingMismatch
 } from '../../../shared/compiler/index.js';
 
@@ -109,7 +110,12 @@ function analyzeAtomDataFlow(atom) {
     const analysis = analyzer.analyze();
     const violations = [];
 
-    if (analysis.coherence < StandardThresholds.COHERENCE_MIN) {
+    const skipLowCoherenceViolation = isLikelyBoundaryContainerAtom(atom) &&
+        (analysis.inputs?.length || 0) === 0 &&
+        (analysis.outputs?.length || 0) === 0 &&
+        (analysis.transformations?.length || 0) === 0;
+
+    if (!skipLowCoherenceViolation && analysis.coherence < StandardThresholds.COHERENCE_MIN) {
         violations.push(buildLowCoherenceViolation(atom, analysis));
     }
 
