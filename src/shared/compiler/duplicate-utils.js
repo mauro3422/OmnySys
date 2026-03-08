@@ -15,6 +15,7 @@ export {
 export { normalizeFilePath } from './path-normalization.js';
 
 export {
+    isCanonicalDuplicateSignalPolicyFile,
     isLowSignalGeneratedAtom,
     isLowSignalConceptualFingerprint,
     isRepositoryContractSurface,

@@ -9,16 +9,10 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createPositionalFinding as createFinding,
   stripComments
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 
 function usesLegacySystemMapTables(source = '') {
@@ -40,46 +34,40 @@ function mixesParallelMetadataUniverses(source = '') {
 }
 
 export function detectMetadataPropagationConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'metadata_propagation'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'metadata_propagation' },
+    ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      if (
+        mixesParallelMetadataUniverses(currentSource) &&
+        !importsCanonicalPropagationApi(currentSource) &&
+        !normalizedPath.endsWith('/system-map-persistence.js')
+      ) {
+        findings.push(createFinding(
+          'parallel_metadata_universes',
+          severity,
+          policyArea,
+          'Module reads parallel metadata universes (files vs system-map tables) without a propagation/coverage contract',
+          'Use the canonical metadata propagation coverage API before mixing `files`, `system_files`, or `file_dependencies` in the same runtime path.'
+        ));
+      }
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
-
-  const findings = [];
-
-  if (
-    mixesParallelMetadataUniverses(source) &&
-    !importsCanonicalPropagationApi(source) &&
-    !normalizedPath.endsWith('/system-map-persistence.js')
-  ) {
-    findings.push(createFinding(
-      'parallel_metadata_universes',
-      severity,
-      policyArea,
-      'Module reads parallel metadata universes (files vs system-map tables) without a propagation/coverage contract',
-      'Use the canonical metadata propagation coverage API before mixing `files`, `system_files`, or `file_dependencies` in the same runtime path.'
-    ));
-  }
-
-  if (
-    usesLegacySystemMapTables(source) &&
-    !importsCanonicalPropagationApi(source) &&
-    !normalizedPath.endsWith('/system-map-persistence.js') &&
-    !normalizedPath.includes('/storage/repository/adapters/helpers/system-map/')
-  ) {
-    findings.push(createFinding(
-      'legacy_system_map_without_coverage',
-      severity,
-      policyArea,
-      'Module consumes legacy system-map tables without checking whether metadata propagation is healthy',
-      'Call getSystemMapPersistenceCoverage before trusting `system_files` or `file_dependencies` in MCP/runtime code.'
-    ));
-  }
-
-  return findings;
+      if (
+        usesLegacySystemMapTables(currentSource) &&
+        !importsCanonicalPropagationApi(currentSource) &&
+        !normalizedPath.endsWith('/system-map-persistence.js') &&
+        !normalizedPath.includes('/storage/repository/adapters/helpers/system-map/')
+      ) {
+        findings.push(createFinding(
+          'legacy_system_map_without_coverage',
+          severity,
+          policyArea,
+          'Module consumes legacy system-map tables without checking whether metadata propagation is healthy',
+          'Call getSystemMapPersistenceCoverage before trusting `system_files` or `file_dependencies` in MCP/runtime code.'
+        ));
+      }
+    }
+  );
 }

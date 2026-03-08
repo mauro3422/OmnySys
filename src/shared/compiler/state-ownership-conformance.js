@@ -9,15 +9,9 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createPositionalFinding as createFinding
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 function importsStateOwnershipApi(source = '') {
   return /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|buildCompilerReadinessStatus|buildRestartLifecycleGuidance/.test(source);
@@ -46,48 +40,43 @@ function looksLikeManualRegistryOwnership(source = '') {
 }
 
 export function detectStateOwnershipConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'state_ownership'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'state_ownership' },
+    ({ source: currentSource, severity, policyArea, findings }) => {
+      const usesCanonicalApi = importsStateOwnershipApi(currentSource);
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
+      if (looksLikeManualSingletonLifecycle(currentSource) && !usesCanonicalApi) {
+        findings.push(createFinding(
+          'manual_singleton_lifecycle',
+          severity,
+          policyArea,
+          'Manual singleton/instance lifecycle detected',
+          'Prefer canonical state ownership APIs or a dedicated ownership helper instead of introducing inline singleton state.'
+        ));
+      }
 
-  const findings = [];
-  const usesCanonicalApi = importsStateOwnershipApi(source);
+      if (looksLikeManualGlobalState(currentSource) && !usesCanonicalApi) {
+        findings.push(createFinding(
+          'manual_global_state',
+          severity,
+          policyArea,
+          'Manual global/shared mutable state detected',
+          'Route shared mutable state through canonical ownership APIs instead of ad-hoc globals or process-level bags.'
+        ));
+      }
 
-  if (looksLikeManualSingletonLifecycle(source) && !usesCanonicalApi) {
-    findings.push(createFinding(
-      'manual_singleton_lifecycle',
-      severity,
-      policyArea,
-      'Manual singleton/instance lifecycle detected',
-      'Prefer canonical state ownership APIs or a dedicated ownership helper instead of introducing inline singleton state.'
-    ));
-  }
-
-  if (looksLikeManualGlobalState(source) && !usesCanonicalApi) {
-    findings.push(createFinding(
-      'manual_global_state',
-      severity,
-      policyArea,
-      'Manual global/shared mutable state detected',
-      'Route shared mutable state through canonical ownership APIs instead of ad-hoc globals or process-level bags.'
-    ));
-  }
-
-  if (looksLikeManualRegistryOwnership(source) && !usesCanonicalApi) {
-    findings.push(createFinding(
-      'manual_registry_ownership',
-      severity,
-      policyArea,
-      'Manual registry/cache ownership detected',
-      'Promote shared registries/caches to a canonical ownership layer before more modules start mutating them directly.'
-    ));
-  }
-
-  return findings;
+      if (looksLikeManualRegistryOwnership(currentSource) && !usesCanonicalApi) {
+        findings.push(createFinding(
+          'manual_registry_ownership',
+          severity,
+          policyArea,
+          'Manual registry/cache ownership detected',
+          'Promote shared registries/caches to a canonical ownership layer before more modules start mutating them directly.'
+        ));
+      }
+    }
+  );
 }

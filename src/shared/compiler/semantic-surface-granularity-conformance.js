@@ -9,16 +9,10 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createPositionalFinding as createFinding,
   stripComments
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 
 function usesSemanticConnectionsTable(source = '') {
@@ -36,46 +30,40 @@ function importsCanonicalGranularityApi(source = '') {
 }
 
 export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'semantic_surface_granularity'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'semantic_surface_granularity' },
+    ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      if (
+        usesSemanticConnectionsTable(currentSource) &&
+        !importsCanonicalGranularityApi(currentSource) &&
+        !normalizedPath.endsWith('/semantic-surface-granularity.js')
+      ) {
+        findings.push(createFinding(
+          'raw_semantic_connections_summary',
+          severity,
+          policyArea,
+          'Module reads semantic_connections directly without the canonical granularity contract',
+          'Use getSemanticSurfaceGranularity before exposing file-level semantic summaries so callers know this is a coarse surface.'
+        ));
+      }
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
-
-  const findings = [];
-
-  if (
-    usesSemanticConnectionsTable(source) &&
-    !importsCanonicalGranularityApi(source) &&
-    !normalizedPath.endsWith('/semantic-surface-granularity.js')
-  ) {
-    findings.push(createFinding(
-      'raw_semantic_connections_summary',
-      severity,
-      policyArea,
-      'Module reads semantic_connections directly without the canonical granularity contract',
-      'Use getSemanticSurfaceGranularity before exposing file-level semantic summaries so callers know this is a coarse surface.'
-    ));
-  }
-
-  if (
-    usesSemanticConnectionsTable(source) &&
-    usesAtomSemanticRelations(source) &&
-    !importsCanonicalGranularityApi(source) &&
-    !normalizedPath.endsWith('/semantic-surface-granularity.js')
-  ) {
-    findings.push(createFinding(
-      'mixed_semantic_granularity',
-      severity,
-      policyArea,
-      'Module mixes file-level semantic summaries with atom-level semantic relations without a canonical bridge',
-      'Route semantic summary/detail comparisons through getSemanticSurfaceGranularity so file-level and atom-level telemetry are not treated as equivalent.'
-    ));
-  }
-
-  return findings;
+      if (
+        usesSemanticConnectionsTable(currentSource) &&
+        usesAtomSemanticRelations(currentSource) &&
+        !importsCanonicalGranularityApi(currentSource) &&
+        !normalizedPath.endsWith('/semantic-surface-granularity.js')
+      ) {
+        findings.push(createFinding(
+          'mixed_semantic_granularity',
+          severity,
+          policyArea,
+          'Module mixes file-level semantic summaries with atom-level semantic relations without a canonical bridge',
+          'Route semantic summary/detail comparisons through getSemanticSurfaceGranularity so file-level and atom-level telemetry are not treated as equivalent.'
+        ));
+      }
+    }
+  );
 }

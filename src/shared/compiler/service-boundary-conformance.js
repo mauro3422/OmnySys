@@ -8,17 +8,11 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createPositionalFinding as createFinding,
   stripComments,
   stripStrings
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 
 function importsCompilerApi(source = '') {
@@ -50,50 +44,45 @@ function isLegitimateOrchestratorPath(normalizedPath = '') {
 }
 
 export function detectServiceBoundaryConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'service_boundary'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'service_boundary' },
+    ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      const boundaries = getBoundaryHits(currentSource);
+      const isLegitimateOrchestrator = isLegitimateOrchestratorPath(normalizedPath);
+      const isBoundarySensitivePath =
+        normalizedPath.includes('/mcp/tools/') ||
+        normalizedPath.includes('/mcp/core/') ||
+        normalizedPath.includes('/core/file-watcher/') ||
+        normalizedPath.includes('/shared/compiler/');
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
+      if (isBoundarySensitivePath && boundaries.length >= (isLegitimateOrchestrator ? 5 : 4)) {
+        findings.push(createFinding(
+          'overloaded_service_boundary',
+          severity,
+          policyArea,
+          `Module mixes ${boundaries.length} service boundaries (${boundaries.join(', ')})`,
+          'Split the module across canonical services/helpers so runtime, watcher, repository and compiler concerns stop accumulating in one file.'
+        ));
+      }
 
-  const findings = [];
-  const boundaries = getBoundaryHits(source);
-  const isLegitimateOrchestrator = isLegitimateOrchestratorPath(normalizedPath);
-  const isBoundarySensitivePath =
-    normalizedPath.includes('/mcp/tools/') ||
-    normalizedPath.includes('/mcp/core/') ||
-    normalizedPath.includes('/core/file-watcher/') ||
-    normalizedPath.includes('/shared/compiler/');
-
-  if (isBoundarySensitivePath && boundaries.length >= (isLegitimateOrchestrator ? 5 : 4)) {
-    findings.push(createFinding(
-      'overloaded_service_boundary',
-      severity,
-      policyArea,
-      `Module mixes ${boundaries.length} service boundaries (${boundaries.join(', ')})`,
-      'Split the module across canonical services/helpers so runtime, watcher, repository and compiler concerns stop accumulating in one file.'
-    ));
-  }
-
-  if (
-    isBoundarySensitivePath &&
-    boundaries.includes('database') &&
-    boundaries.includes('filesystem') &&
-    !boundaries.includes('compiler') &&
-    !isLegitimateOrchestrator
-  ) {
-    findings.push(createFinding(
-      'missing_compiler_service_bridge',
-      severity,
-      policyArea,
-      'Module mixes filesystem and database concerns without going through compiler services',
-      'Introduce or consume a canonical compiler service instead of coupling filesystem discovery directly to persistence logic.'
-    ));
-  }
-
-  return findings;
+      if (
+        isBoundarySensitivePath &&
+        boundaries.includes('database') &&
+        boundaries.includes('filesystem') &&
+        !boundaries.includes('compiler') &&
+        !isLegitimateOrchestrator
+      ) {
+        findings.push(createFinding(
+          'missing_compiler_service_bridge',
+          severity,
+          policyArea,
+          'Module mixes filesystem and database concerns without going through compiler services',
+          'Introduce or consume a canonical compiler service instead of coupling filesystem discovery directly to persistence logic.'
+        ));
+      }
+    }
+  );
 }

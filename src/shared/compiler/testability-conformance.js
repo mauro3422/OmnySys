@@ -9,17 +9,11 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createPositionalFinding as createFinding,
   stripComments,
   stripStrings
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 
 function importsCanonicalTestabilityApi(source = '') {
@@ -51,38 +45,33 @@ function looksLikeExportedComplexityHeuristic(source = '') {
 }
 
 export function detectTestabilityConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'testability'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'testability' },
+    ({ source: currentSource, severity, policyArea, findings }) => {
+      const usesCanonicalLayer = importsCanonicalTestabilityApi(currentSource);
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
+      if (looksLikeManualTestabilityScan(currentSource) && !usesCanonicalLayer) {
+        findings.push(createFinding(
+          'manual_testability_scan',
+          severity,
+          policyArea,
+          'Manual testability heuristic detected',
+          'Promote testability checks to a canonical compiler API before watcher/MCP tools keep reimplementing low-testability logic inline.'
+        ));
+      }
 
-  const findings = [];
-  const usesCanonicalLayer = importsCanonicalTestabilityApi(source);
-
-  if (looksLikeManualTestabilityScan(source) && !usesCanonicalLayer) {
-    findings.push(createFinding(
-      'manual_testability_scan',
-      severity,
-      policyArea,
-      'Manual testability heuristic detected',
-      'Promote testability checks to a canonical compiler API before watcher/MCP tools keep reimplementing low-testability logic inline.'
-    ));
-  }
-
-  if (looksLikeExportedComplexityHeuristic(source) && !usesCanonicalLayer) {
-    findings.push(createFinding(
-      'manual_exported_complexity_testability',
-      severity,
-      policyArea,
-      'Module mixes exported-API and complexity heuristics without a canonical testability policy',
-      'Use a shared testability/reporting API instead of hardcoding exported complexity heuristics per consumer.'
-    ));
-  }
-
-  return findings;
+      if (looksLikeExportedComplexityHeuristic(currentSource) && !usesCanonicalLayer) {
+        findings.push(createFinding(
+          'manual_exported_complexity_testability',
+          severity,
+          policyArea,
+          'Module mixes exported-API and complexity heuristics without a canonical testability policy',
+          'Use a shared testability/reporting API instead of hardcoding exported complexity heuristics per consumer.'
+        ));
+      }
+    }
+  );
 }

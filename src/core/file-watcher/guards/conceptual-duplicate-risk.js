@@ -21,6 +21,7 @@ import {
 import {
     generateAlternativeNames,
     normalizeFilePath,
+    isCanonicalDuplicateSignalPolicyFile,
     shouldIgnoreConceptualDuplicateFinding,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
@@ -48,6 +49,12 @@ function debugLog(msg) {
 export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
     // Normalizar filePath a forward slashes (la DB almacena con forward slashes)
     const normalizedFilePath = normalizeFilePath(filePath);
+
+    if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_high');
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_medium');
+        return [];
+    }
 
     debugLog(`ENTRY: ${normalizedFilePath}`);
 

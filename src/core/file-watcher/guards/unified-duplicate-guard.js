@@ -24,6 +24,7 @@ import {
 import {
     buildDuplicateRemediationPlan,
     generateAlternativeNames,
+    isCanonicalDuplicateSignalPolicyFile,
     normalizeFilePath,
     shouldIgnoreConceptualDuplicateFinding,
     shouldIgnoreStructuralDuplicateFinding,
@@ -55,6 +56,13 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
 
     // Normalizar filePath
     const normalizedFilePath = normalizeFilePath(filePath);
+
+    if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_medium');
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_critical_high');
+        return { structural: [], conceptual: [], coordinated: null };
+    }
 
     logger.warn(`[UNIFIED DUPLICATE GUARD] STARTING for ${normalizedFilePath}`);
 

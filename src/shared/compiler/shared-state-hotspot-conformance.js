@@ -9,16 +9,10 @@
  */
 
 import {
-  COMPILER_TARGET_DIRS,
-  isCompilerRuntimeFile
-} from './file-discovery.js';
-
-import {
-  normalizePath,
-  shouldScanCompilerFile,
   createFinding,
   countMatches
 } from './conformance-utils.js';
+import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 function countSharedStateSignals(source = '') {
   return countMatches(
@@ -42,49 +36,44 @@ function isRuntimeEnvConfigurationOnly(source = '') {
 }
 
 export function detectSharedStateHotspotConformanceFromSource(filePath, source = '', options = {}) {
-  const {
-    severity = 'medium',
-    policyArea = 'shared_state_hotspots'
-  } = options;
+  return scanCompilerConformanceSource(
+    filePath,
+    source,
+    options,
+    { severity: 'medium', policyArea: 'shared_state_hotspots' },
+    ({ source: currentSource, severity, policyArea, findings }) => {
+      const sharedStateSignals = countSharedStateSignals(currentSource);
+      const usesCanonicalLayer = importsCanonicalSharedStateLayer(currentSource);
+      const runtimeEnvConfigurationOnly = isRuntimeEnvConfigurationOnly(currentSource);
 
-  const normalizedPath = normalizePath(filePath);
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
-    return [];
-  }
-
-  const findings = [];
-  const sharedStateSignals = countSharedStateSignals(source);
-  const usesCanonicalLayer = importsCanonicalSharedStateLayer(source);
-  const runtimeEnvConfigurationOnly = isRuntimeEnvConfigurationOnly(source);
-
-  if (referencesHotspotKeys(source) && !usesCanonicalLayer) {
-    findings.push(createFinding(
-      {
-        rule: 'manual_shared_state_hotspot_key',
-        severity,
-        policyArea,
-        message: 'Module references known shared-state hotspot keys directly',
-        recommendation: 'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.'
+      if (referencesHotspotKeys(currentSource) && !usesCanonicalLayer) {
+        findings.push(createFinding(
+          {
+            rule: 'manual_shared_state_hotspot_key',
+            severity,
+            policyArea,
+            message: 'Module references known shared-state hotspot keys directly',
+            recommendation: 'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.'
+          }
+        ));
       }
-    ));
-  }
 
-  if (
-    sharedStateSignals >= 4 &&
-    /sharedState|contention|global|window\.|process\.env/.test(source) &&
-    !usesCanonicalLayer &&
-    !runtimeEnvConfigurationOnly
-  ) {
-    findings.push(createFinding(
-      {
-        rule: 'manual_shared_state_hotspot_scan',
-        severity,
-        policyArea,
-        message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
-        recommendation: 'Promote shared-state hotspot analysis to a canonical compiler API before more runtime modules consume shared state ad hoc.'
+      if (
+        sharedStateSignals >= 4 &&
+        /sharedState|contention|global|window\.|process\.env/.test(currentSource) &&
+        !usesCanonicalLayer &&
+        !runtimeEnvConfigurationOnly
+      ) {
+        findings.push(createFinding(
+          {
+            rule: 'manual_shared_state_hotspot_scan',
+            severity,
+            policyArea,
+            message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
+            recommendation: 'Promote shared-state hotspot analysis to a canonical compiler API before more runtime modules consume shared state ad hoc.'
+          }
+        ));
       }
-    ));
-  }
-
-  return findings;
+    }
+  );
 }

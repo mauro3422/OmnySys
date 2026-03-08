@@ -27,6 +27,7 @@ import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js
 import {
     generateAlternativeNames,
     normalizeFilePath,
+    isCanonicalDuplicateSignalPolicyFile,
     shouldIgnoreStructuralDuplicateFinding,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
@@ -69,6 +70,12 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
 
     // Normalizar filePath
     const normalizedFilePath = normalizeFilePath(filePath);
+
+    if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+        return [];
+    }
 
     try {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
