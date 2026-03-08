@@ -101,9 +101,9 @@ function buildCallGraph(relations = []) {
 
     for (const relation of relations) {
         if (!callGraph.has(relation.source_id)) {
-            callGraph.set(relation.source_id, []);
+            callGraph.set(relation.source_id, new Set());
         }
-        callGraph.get(relation.source_id).push(relation.target_id);
+        callGraph.get(relation.source_id).add(relation.target_id);
     }
 
     return callGraph;
@@ -122,15 +122,23 @@ function mergeLocalCalls(callGraph, localAtoms = []) {
             if (resolvedCalls.length === 0) continue;
 
             if (!callGraph.has(atom.id)) {
-                callGraph.set(atom.id, []);
+                callGraph.set(atom.id, new Set());
             }
-            callGraph.get(atom.id).push(...resolvedCalls);
+            const targets = callGraph.get(atom.id);
+            for (const targetId of resolvedCalls) {
+                targets.add(targetId);
+            }
         } catch {
             // Ignore malformed incremental payloads.
         }
     }
 
     return callGraph;
+}
+
+function getCallGraphChildren(callGraph, atomId) {
+    const targets = callGraph.get(atomId);
+    return targets ? [...targets] : [];
 }
 
 async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
@@ -208,11 +216,12 @@ async function persistFunctionalCycleIssue(rootPath, filePath, atom, atomCycle, 
 
 async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, fileCycle) {
     try {
-        const relations = getCircularCallRelations(repo?.db);
+        const atomIdPattern = `${relPath}::%`;
+        const relations = getCircularCallRelations(repo?.db, atomIdPattern);
         const callGraph = mergeLocalCalls(buildCallGraph(relations), localAtoms);
 
         for (const atom of localAtoms) {
-            const atomCycle = findCycleDFS(atom.id, (id) => callGraph.get(id));
+            const atomCycle = findCycleDFS(atom.id, (id) => getCallGraphChildren(callGraph, id));
             if (!atomCycle || atomCycle.length <= 2) {
                 continue;
             }

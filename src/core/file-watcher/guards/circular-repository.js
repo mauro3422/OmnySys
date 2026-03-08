@@ -15,17 +15,21 @@ export function getCircularFileImports(db) {
   return db.prepare(`
     SELECT path, imports_json
     FROM files
+    WHERE COALESCE(is_removed, 0) = 0
   `).all();
 }
 
-export function getCircularCallRelations(db) {
+export function getCircularCallRelations(db, atomIdPattern) {
   if (!db) return [];
 
   return db.prepare(`
     SELECT source_id, target_id
     FROM atom_relations
     WHERE relation_type = 'calls'
-  `).all();
+      AND COALESCE(is_removed, 0) = 0
+      AND source_id LIKE ?
+      AND target_id LIKE ?
+  `).all(atomIdPattern, atomIdPattern);
 }
 
 export function getCircularLocalAtoms(db, filePath) {
@@ -35,6 +39,7 @@ export function getCircularLocalAtoms(db, filePath) {
     SELECT id, calls_json
     FROM atoms
     WHERE file_path = ?
+      AND COALESCE(is_removed, 0) = 0
   `).all(filePath);
 }
 
@@ -51,6 +56,7 @@ export function prepareFileDependencyLookup(db) {
       SELECT DISTINCT target_path
       FROM file_dependencies
       WHERE source_path = ?
+        AND COALESCE(is_removed, 0) = 0
     `);
   } catch {
     return null;
