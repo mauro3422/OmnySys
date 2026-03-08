@@ -157,6 +157,53 @@ function matchesAnyPrefix(value, prefixes) {
     return prefixes.some(prefix => value.startsWith(prefix));
 }
 
+const REPOSITORY_SURFACE_PATH_MARKERS = [
+    '/storage/repository/',
+    '/query/queries/file-query/',
+    '/mcp/tools/semantic/'
+];
+
+const REPOSITORY_SURFACE_NAMES = new Set([
+    'query',
+    'getall',
+    'findbyname',
+    'findbyarchetype',
+    'findbypurpose',
+    'findsimilar',
+    'updatevectors'
+]);
+
+const REPOSITORY_SURFACE_FINGERPRINTS = new Set([
+    'process:core:query',
+    'get:core:all',
+    'find:core:name',
+    'find:core:archetype',
+    'find:core:purpose',
+    'find:core:similar',
+    'update:core:vectors'
+]);
+
+/**
+ * Identifica métodos de superficie contractual de repositorio. Estos métodos
+ * se repiten intencionalmente entre contratos base, adapters y query facades.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function isRepositoryContractSurface(filePath, atomName, semanticFingerprint) {
+    const normalizedPath = normalizeFilePath(filePath).toLowerCase();
+    const normalizedName = String(atomName || '').toLowerCase();
+    const fingerprint = String(semanticFingerprint || '').toLowerCase();
+
+    const isRepositoryPath = REPOSITORY_SURFACE_PATH_MARKERS.some((marker) => normalizedPath.includes(marker));
+    if (!isRepositoryPath) return false;
+
+    return REPOSITORY_SURFACE_NAMES.has(normalizedName) ||
+        REPOSITORY_SURFACE_FINGERPRINTS.has(fingerprint);
+}
+
 /**
  * Clasifica fingerprints conceptuales con demasiado solapamiento semántico para guards,
  * logging y utilidades internas. La meta es no tratarlos como "API pública duplicada".
@@ -180,6 +227,8 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
 
     const lowSignalFingerprints = new Set([
         'detect:core:risk',
+        'load:core:atoms',
+        'load:core:rows',
         'process:core:log',
         'generate:core:recommendations',
         'build:core:context',
@@ -207,6 +256,30 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
 }
 
 /**
+ * Helpers internos de guards con formas muy genéricas. Su repetición entre
+ * detectores/guards es frecuente y no representa deuda estructural prioritaria.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @returns {boolean}
+ */
+export function isLowSignalGuardStructuralHelper(filePath, atomName) {
+    const normalizedPath = normalizeFilePath(filePath).toLowerCase();
+    const normalizedName = String(atomName || '').toLowerCase();
+
+    const guardPathMarkers = [
+        '/file-watcher/guards/',
+        '/shared/compiler/'
+    ];
+
+    const isGuardPath = guardPathMarkers.some((marker) => normalizedPath.includes(marker));
+    if (!isGuardPath) return false;
+
+    return /^detect[a-z0-9]+risk$/i.test(normalizedName) ||
+        /^load[a-z0-9]+(rows|atoms)$/i.test(normalizedName);
+}
+
+/**
  * Filtro canónico para decidir si un finding conceptual debe ignorarse por baja señal.
  *
  * @param {string} filePath
@@ -216,8 +289,21 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
  */
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
+        isRepositoryContractSurface(filePath, atomName, semanticFingerprint) ||
         isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
         isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint);
+}
+
+/**
+ * Filtro canónico para duplicados estructurales de baja señal.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @returns {boolean}
+ */
+export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
+    return isRepositoryContractSurface(filePath, atomName, null) ||
+        isLowSignalGuardStructuralHelper(filePath, atomName);
 }
 
 /**

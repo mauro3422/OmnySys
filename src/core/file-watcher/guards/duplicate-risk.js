@@ -27,6 +27,7 @@ import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js
 import {
     generateAlternativeNames,
     normalizeFilePath,
+    shouldIgnoreStructuralDuplicateFinding,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext,
@@ -100,7 +101,9 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         }
 
         const candidateDnas = localAtoms
-            .filter(a => a.name && !isLowSignalName(a.name))
+            .filter(a => a.name &&
+                !isLowSignalName(a.name) &&
+                !shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, a.name))
             .map(a => a.duplicate_key)
             .filter(Boolean);
 
@@ -142,6 +145,9 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         const findings = [];
         for (const [dna, remoteAtoms] of byDna) {
             const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
+            if (shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, symbolName)) {
+                continue;
+            }
             const localAtomId = localDnaToId.get(dna);
             const uniqueFiles = [...new Set(remoteAtoms.map(a => a.file_path))];
             const totalInstances = remoteAtoms.length + 1;

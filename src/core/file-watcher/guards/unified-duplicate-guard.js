@@ -22,15 +22,17 @@ import {
     StandardSuggestions
 } from './guard-standards.js';
 import {
+    buildDuplicateRemediationPlan,
     generateAlternativeNames,
     normalizeFilePath,
     shouldIgnoreConceptualDuplicateFinding,
+    shouldIgnoreStructuralDuplicateFinding,
+    summarizeAtomTestability,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext,
     coordinateDuplicateFindings
-} from '../../../shared/compiler/duplicate-utils.js';
-import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
@@ -138,90 +140,28 @@ async function runStructuralDuplicateGuard(repo, normalizedFilePath, providedAto
         const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
         const DUPLICATE_KEY_SQL = getDuplicateKeySqlForMode(DUPLICATE_MODE, 'a.dna_json');
 
-        let localAtoms = [];
-
-        if (providedAtoms && Array.isArray(providedAtoms)) {
-            localAtoms = providedAtoms
-                .map((atom) => normalizeDuplicateCandidateAtom(atom, {
-                    mode: DUPLICATE_MODE,
-                    minLines: minLinesOfCode,
-                    requireDna: true
-                }))
-                .filter(Boolean);
-        }
-
-        if (localAtoms.length === 0) {
-            const rows = repo.db.prepare(`
-                SELECT id, name, dna_json, lines_of_code,
-                       ${DUPLICATE_KEY_SQL} AS duplicate_key
-                FROM atoms a
-                WHERE a.file_path = ?
-                  AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-                  AND (a.is_removed IS NULL OR a.is_removed = 0)
-                  AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
-                  AND a.lines_of_code >= ?
-                  AND a.dna_json IS NOT NULL
-                LIMIT ?
-            `).all(normalizedFilePath, minLinesOfCode, maxFindings * 4);
-
-            localAtoms = rows;
-        }
+        const localAtoms = loadStructuralLocalAtoms(
+            repo,
+            normalizedFilePath,
+            providedAtoms,
+            minLinesOfCode,
+            maxFindings,
+            normalizeDuplicateCandidateAtom,
+            DUPLICATE_MODE,
+            DUPLICATE_KEY_SQL
+        );
 
         if (localAtoms.length === 0) return [];
 
         const { isLowSignalName } = await import('./guard-standards.js');
-        const candidateDnas = localAtoms
-            .filter(a => a.name && !isLowSignalName(a.name))
-            .map(a => a.duplicate_key)
-            .filter(Boolean);
+        const candidateDnas = collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName);
 
         if (candidateDnas.length === 0) return [];
 
-        const placeholders = candidateDnas.map(() => '?').join(',');
-        const duplicateRows = repo.db.prepare(`
-            SELECT a.name, a.file_path, a.dna_json, a.line_start,
-                   ${DUPLICATE_KEY_SQL} AS duplicate_key
-            FROM atoms a
-            WHERE (${DUPLICATE_KEY_SQL}) IN (${placeholders})
-                AND a.file_path != ?
-                AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-                AND (a.is_removed IS NULL OR a.is_removed = 0)
-            ORDER BY a.dna_json, a.file_path
-        `).all(...candidateDnas, normalizedFilePath);
+        const duplicateRows = loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, DUPLICATE_KEY_SQL);
 
         if (duplicateRows.length === 0) return [];
-
-        const byDna = new Map();
-        for (const row of duplicateRows) {
-            if (!byDna.has(row.duplicate_key)) byDna.set(row.duplicate_key, []);
-            byDna.get(row.duplicate_key).push(row);
-        }
-
-        const localDnaToName = new Map(localAtoms.map(a => [a.duplicate_key, a.name]));
-        const localDnaToId = new Map(localAtoms.map(a => [a.duplicate_key, a.id]));
-
-        const findings = [];
-        for (const [dna, remoteAtoms] of byDna) {
-            const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
-            const localAtomId = localDnaToId.get(dna);
-            const uniqueFiles = [...new Set(remoteAtoms.map(a => a.file_path))];
-            const totalInstances = remoteAtoms.length + 1;
-
-            findings.push({
-                symbol: symbolName,
-                atomId: localAtomId,
-                duplicateType: 'LOGIC_DUPLICATE',
-                totalInstances,
-                duplicateFiles: uniqueFiles,
-                sample: uniqueFiles.slice(0, 3),
-                dnaSimilarity: 'structural',
-                suggestedAlternatives: generateAlternativeNames(symbolName)
-            });
-
-            if (findings.length >= maxFindings) break;
-        }
-
-        return findings;
+        return buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings);
     } catch (error) {
         logger.debug(`[STRUCTURAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
         return [];
@@ -260,6 +200,7 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
 
         if (localAtoms.length === 0) return [];
 
+        const testabilitySummary = summarizeAtomTestability(localAtoms);
         const findings = [];
 
         for (const localAtom of localAtoms) {
@@ -312,6 +253,7 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
                 sample: uniqueFiles.slice(0, 3),
                 isExported: localAtom.isExported,
                 existingExports: structuralVariants.filter(d => d.is_exported).length,
+                testabilitySeverity: testabilitySummary.severity,
                 suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
             });
 
@@ -323,6 +265,104 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
         logger.debug(`[CONCEPTUAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
         return [];
     }
+}
+
+function loadStructuralLocalAtoms(
+    repo,
+    normalizedFilePath,
+    providedAtoms,
+    minLinesOfCode,
+    maxFindings,
+    normalizeDuplicateCandidateAtom,
+    duplicateMode,
+    duplicateKeySql
+) {
+    if (providedAtoms && Array.isArray(providedAtoms)) {
+        const normalizedAtoms = providedAtoms
+            .map((atom) => normalizeDuplicateCandidateAtom(atom, {
+                mode: duplicateMode,
+                minLines: minLinesOfCode,
+                requireDna: true
+            }))
+            .filter(Boolean);
+
+        if (normalizedAtoms.length > 0) {
+            return normalizedAtoms;
+        }
+    }
+
+    return repo.db.prepare(`
+        SELECT id, name, dna_json, lines_of_code,
+               ${duplicateKeySql} AS duplicate_key
+        FROM atoms a
+        WHERE a.file_path = ?
+          AND a.atom_type IN ('function', 'method', 'arrow', 'class')
+          AND (a.is_removed IS NULL OR a.is_removed = 0)
+          AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
+          AND a.lines_of_code >= ?
+          AND a.dna_json IS NOT NULL
+        LIMIT ?
+    `).all(normalizedFilePath, minLinesOfCode, maxFindings * 4);
+}
+
+function collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName) {
+    return localAtoms
+        .filter((atom) => atom.name &&
+            !isLowSignalName(atom.name) &&
+            !shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, atom.name))
+        .map((atom) => atom.duplicate_key)
+        .filter(Boolean);
+}
+
+function loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, duplicateKeySql) {
+    const placeholders = candidateDnas.map(() => '?').join(',');
+    return repo.db.prepare(`
+        SELECT a.name, a.file_path, a.dna_json, a.line_start,
+               ${duplicateKeySql} AS duplicate_key
+        FROM atoms a
+        WHERE (${duplicateKeySql}) IN (${placeholders})
+            AND a.file_path != ?
+            AND a.atom_type IN ('function', 'method', 'arrow', 'class')
+            AND (a.is_removed IS NULL OR a.is_removed = 0)
+        ORDER BY a.dna_json, a.file_path
+    `).all(...candidateDnas, normalizedFilePath);
+}
+
+function buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings) {
+    const byDna = new Map();
+    for (const row of duplicateRows) {
+        if (!byDna.has(row.duplicate_key)) byDna.set(row.duplicate_key, []);
+        byDna.get(row.duplicate_key).push(row);
+    }
+
+    const localDnaToName = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.name]));
+    const localDnaToId = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.id]));
+    const findings = [];
+
+    for (const [dna, remoteAtoms] of byDna) {
+        const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
+        if (shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, symbolName)) {
+            continue;
+        }
+
+        const uniqueFiles = [...new Set(remoteAtoms.map((atom) => atom.file_path))];
+        findings.push({
+            symbol: symbolName,
+            atomId: localDnaToId.get(dna),
+            duplicateType: 'LOGIC_DUPLICATE',
+            totalInstances: remoteAtoms.length + 1,
+            duplicateFiles: uniqueFiles,
+            sample: uniqueFiles.slice(0, 3),
+            dnaSimilarity: 'structural',
+            suggestedAlternatives: generateAlternativeNames(symbolName)
+        });
+
+        if (findings.length >= maxFindings) {
+            break;
+        }
+    }
+
+    return findings;
 }
 
 /**
