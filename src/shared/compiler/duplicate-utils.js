@@ -82,6 +82,59 @@ export function normalizeFilePath(filePath) {
 }
 
 /**
+ * Determina si un semantic fingerprint es demasiado genérico para reportarse como
+ * duplicado conceptual de alto valor. Esto reduce ruido en helpers de acceso a datos.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) {
+    const normalizedPath = normalizeFilePath(filePath).toLowerCase();
+    const normalizedName = String(atomName || '').toLowerCase();
+    const fingerprint = String(semanticFingerprint || '').toLowerCase();
+
+    const lowSignalFingerprints = new Set([
+        'get:core:atoms',
+        'get:core:relations',
+        'get:core:imports',
+        'get:core:context',
+        'get:core:count',
+        'get:core:rows',
+        'get:core:issue',
+        'get:core:issues',
+        'load:core:rows',
+        'load:core:issue',
+        'load:core:issues',
+        'load:core:connections',
+        'normalize:core:message'
+    ]);
+
+    const dataAccessPathMarkers = [
+        '/repository/',
+        '/query/',
+        '/storage/',
+        '/guards/'
+    ];
+
+    const dataAccessNamePrefixes = [
+        'get',
+        'load',
+        'fetch',
+        'list',
+        'find',
+        'select',
+        'normalize'
+    ];
+
+    const isDataAccessPath = dataAccessPathMarkers.some(marker => normalizedPath.includes(marker));
+    const isDataAccessName = dataAccessNamePrefixes.some(prefix => normalizedName.startsWith(prefix));
+
+    return isDataAccessPath && isDataAccessName && lowSignalFingerprints.has(fingerprint);
+}
+
+/**
  * Combina findings de duplicados estructurales y conceptuales
  * Detecta solapamiento y prioriza resolución
  *

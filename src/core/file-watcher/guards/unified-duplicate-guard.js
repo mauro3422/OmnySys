@@ -24,6 +24,7 @@ import {
 import {
     generateAlternativeNames,
     normalizeFilePath,
+    isLowSignalConceptualFingerprint,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext,
@@ -266,6 +267,9 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
 
             const fp = localAtom.semanticFingerprint;
             if (fp.includes(':unknown') || fp.includes(':_callback') || fp.includes(':constructor')) {
+                continue;
+            }
+            if (isLowSignalConceptualFingerprint(normalizedFilePath, localAtom.name, fp)) {
                 continue;
             }
 
