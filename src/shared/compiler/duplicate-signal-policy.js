@@ -190,6 +190,24 @@ const INTEGRITY_ANALYSIS_FINGERPRINTS = new Set([
     'process:core:mismatch'
 ]);
 
+const CANONICAL_GUIDANCE_FILE_MARKERS = [
+    '/shared/compiler/canonical-reuse-guidance.js',
+    '/shared/compiler/session-restart-lifecycle.js'
+];
+
+const CANONICAL_GUIDANCE_HELPER_NAMES = new Set([
+    'createimporthint',
+    'buildcanonicalreuseguidance',
+    'buildcompilerreadinessstatus',
+    'buildrestartlifecycleguidance'
+]);
+
+const CANONICAL_GUIDANCE_FINGERPRINTS = new Set([
+    'create:core:hint',
+    'build:core:guidance',
+    'build:core:status'
+]);
+
 const RUNTIME_PORT_PROBE_FILE_MARKER = '/shared/utils/port-probe.js';
 const RUNTIME_PORT_PROBE_NAMES = new Set([
     'isportbound',
@@ -419,6 +437,15 @@ export function isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint
     });
 }
 
+export function isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: CANONICAL_GUIDANCE_FILE_MARKERS,
+        pathMode: 'endsWith',
+        names: CANONICAL_GUIDANCE_HELPER_NAMES,
+        fingerprints: CANONICAL_GUIDANCE_FINGERPRINTS
+    });
+}
+
 export function isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: [MCP_HTTP_PROXY_FILE_MARKER],
@@ -470,33 +497,51 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
         /^load[a-z0-9]+(rows|atoms)$/i.test(normalizedName);
 }
 
+function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) {
+    const checks = [
+        () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
+        () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
+        () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
+        () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint),
+        () => isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint),
+        () => isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint),
+        () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint),
+        () => isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint),
+        () => isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint),
+        () => isLowSignalGeneratedAtom(atomName, semanticFingerprint),
+        () => isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint),
+        () => isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint),
+        () => isRepositoryContractSurface(filePath, atomName, semanticFingerprint),
+        () => isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint),
+        () => isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint)
+    ];
+
+    return checks.some((check) => check());
+}
+
+function matchesStructuralIgnorePolicy(filePath, atomName) {
+    const checks = [
+        () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
+        () => isCanonicalGuidanceHelper(filePath, atomName, null),
+        () => isStorageQueryPolicyHelper(filePath, atomName, null),
+        () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, null),
+        () => isRuntimePortProbeHelper(filePath, atomName, null),
+        () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),
+        () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null),
+        () => isStandaloneScriptEntryHelper(filePath, atomName, null),
+        () => isCompilerPolicyOrchestrationHelper(filePath, atomName, null),
+        () => isRepositoryContractSurface(filePath, atomName, null),
+        () => isCompilerConformancePolicyHelper(filePath, atomName, null),
+        () => isLowSignalGuardStructuralHelper(filePath, atomName)
+    ];
+
+    return checks.some((check) => check());
+}
+
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
-    return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
-        isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint) ||
-        isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) ||
-        isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) ||
-        isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) ||
-        isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint) ||
-        isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) ||
-        isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) ||
-        isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
-        isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) ||
-        isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint) ||
-        isRepositoryContractSurface(filePath, atomName, semanticFingerprint) ||
-        isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
-        isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint);
+    return matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint);
 }
 
 export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
-    return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
-        isStorageQueryPolicyHelper(filePath, atomName, null) ||
-        isIntegrityAnalysisCanonicalHelper(filePath, atomName, null) ||
-        isRuntimePortProbeHelper(filePath, atomName, null) ||
-        isMcpHttpProxyLifecycleHelper(filePath, atomName, null) ||
-        isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null) ||
-        isStandaloneScriptEntryHelper(filePath, atomName, null) ||
-        isCompilerPolicyOrchestrationHelper(filePath, atomName, null) ||
-        isRepositoryContractSurface(filePath, atomName, null) ||
-        isCompilerConformancePolicyHelper(filePath, atomName, null) ||
-        isLowSignalGuardStructuralHelper(filePath, atomName);
+    return matchesStructuralIgnorePolicy(filePath, atomName);
 }

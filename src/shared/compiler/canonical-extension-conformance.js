@@ -24,6 +24,39 @@ function importsSharedCompilerBarrel(source = '') {
   return /from\s+['"][^'"]*shared\/compiler\/index\.js['"]/.test(source);
 }
 
+function extractsCanonicalImportNames(source = '') {
+  const importMatch = source.match(/import\s*\{([\s\S]*?)\}\s*from\s+['"][^'"]*shared\/compiler\/index\.js['"]/);
+  if (!importMatch) {
+    return [];
+  }
+
+  return importMatch[1]
+    .split(',')
+    .map((name) => name.trim().replace(/\s+as\s+\w+$/i, ''))
+    .filter(Boolean);
+}
+
+function definesLocalCanonicalWrapper(source = '') {
+  const importedNames = extractsCanonicalImportNames(source);
+  if (importedNames.length === 0) {
+    return false;
+  }
+
+  return importedNames.some((importedName) => {
+    const escapedName = importedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wrapperRegex = new RegExp(
+      String.raw`\b(?:export\s+)?(?:async\s+)?function\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*\([^)]*\)\s*\{[\s\S]{0,240}?\breturn\s+${escapedName}\(`,
+      'm'
+    );
+    const constWrapperRegex = new RegExp(
+      String.raw`\b(?:const|let|var)\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,240}?\breturn\s+${escapedName}\(|${escapedName}\()`,
+      'm'
+    );
+
+    return wrapperRegex.test(source) || constWrapperRegex.test(source);
+  });
+}
+
 export function detectCanonicalExtensionConformanceFromSource(filePath, source = '', options = {}) {
   return scanCompilerConformanceSource(
     filePath,
@@ -52,6 +85,20 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
           policyArea,
           'Module defines canonical-style helper logic without consuming the shared compiler barrel',
           'Promote the helper into shared/compiler or consume the existing barrel before growing another parallel canonical surface.'
+        ));
+      }
+
+      if (
+        !normalizedPath.startsWith('src/shared/compiler/') &&
+        importsSharedCompilerBarrel(currentSource) &&
+        definesLocalCanonicalWrapper(currentSource)
+      ) {
+        findings.push(createFinding(
+          'local_canonical_wrapper',
+          severity,
+          policyArea,
+          'Module defines a local wrapper around a canonical shared/compiler API',
+          'Call the canonical entrypoint directly, or promote the wrapper into shared/compiler only if multiple callers need a new stable contract.'
         ));
       }
     }

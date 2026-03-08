@@ -120,6 +120,11 @@ const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'loadCompilerDiagnosticsSnapshot'),
     recommendedReplacement: 'Reuse the canonical compiler diagnostics snapshot instead of recomposing persisted coverage, semantic canonicality, standardization, and contract-layer fields inline.'
   },
+  local_canonical_wrapper: {
+    existingCanonicalEntryPoint: 'shared/compiler canonical barrel',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js'),
+    recommendedReplacement: 'Call the canonical shared/compiler entrypoint directly. Only introduce a new wrapper if you are simultaneously promoting it into the canonical layer and migrating parallel call sites.'
+  },
   file_universe_granularity: {
     existingCanonicalEntryPoint: 'getFileUniverseGranularity',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getFileUniverseGranularity'),
