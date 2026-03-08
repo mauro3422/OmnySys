@@ -142,6 +142,23 @@ const COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS = new Set([
     'process:core:summary'
 ]);
 
+const INTEGRITY_ANALYSIS_FILE_MARKER = '/shared/compiler/integrity-analysis.js';
+const INTEGRITY_ANALYSIS_HELPER_NAMES = new Set([
+    'normalizeunusedinputname',
+    'islikelyparsernoiseunusedinput',
+    'getactionableunusedinputs',
+    'islikelytoolwrapperatom',
+    'hasasyncnamingmismatch'
+]);
+
+const INTEGRITY_ANALYSIS_FINGERPRINTS = new Set([
+    'normalize:core:name',
+    'process:core:input',
+    'get:core:inputs',
+    'process:core:atom',
+    'process:core:mismatch'
+]);
+
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
@@ -258,6 +275,20 @@ export function isCompilerPolicyOrchestrationHelper(filePath, atomName, semantic
     return COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS.has(fingerprint);
 }
 
+export function isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (!normalizedPath.endsWith(INTEGRITY_ANALYSIS_FILE_MARKER)) return false;
+    if (!INTEGRITY_ANALYSIS_HELPER_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return INTEGRITY_ANALYSIS_FINGERPRINTS.has(fingerprint);
+}
+
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
     const normalizedPath = normalizeFilePath(filePath).toLowerCase();
     const normalizedName = String(atomName || '').toLowerCase();
@@ -271,6 +302,7 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
 
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) ||
         isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
         isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) ||
@@ -282,6 +314,7 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
 
 export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
+        isIntegrityAnalysisCanonicalHelper(filePath, atomName, null) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, null) ||
         isRepositoryContractSurface(filePath, atomName, null) ||
         isCompilerConformancePolicyHelper(filePath, atomName, null) ||

@@ -8,7 +8,7 @@
  * @version 2.0.0 - Estandarizado
  */
 
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
 import { DataFlowAnalyzer } from '../../../layer-a-static/extractors/data-flow/core/data-flow-analyzer.js';
 import {
@@ -18,49 +18,17 @@ import {
     StandardThresholds,
     isValidGuardTarget
 } from './guard-standards.js';
+import {
+    getActionableUnusedInputs,
+    isLikelyToolWrapperAtom,
+    hasAsyncNamingMismatch
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
 
-const INTEGRITY_ISSUE_TYPES = [
-    'sem_data_flow_high',
-    'sem_data_flow_medium',
-    'sem_data_flow_low'
-];
-
-function normalizeUnusedInputName(input) {
-    if (typeof input === 'object' && input !== null) {
-        return String(input.name || '').trim();
-    }
-
-    return String(input || '').trim();
-}
-
-function isLikelyParserNoiseUnusedInput(name = '') {
-    if (!name) return true;
-    if (name === '__destructured_0') return true;
-    if (/\s/.test(name)) return true;
-    if (/['"`]/.test(name)) return true;
-    if (/[;(){}]/.test(name)) return true;
-    if (name.length < 2) return true;
-    return false;
-}
-
-function getActionableUnusedInputs(analysis = {}) {
-    const inputCount = analysis.inputs?.length || 0;
-    if (inputCount === 0) {
-        return [];
-    }
-
-    return (analysis.unusedInputs || [])
-        .map(normalizeUnusedInputName)
-        .filter((name) => !isLikelyParserNoiseUnusedInput(name));
-}
-
 async function clearIntegrityIssues(rootPath, filePath) {
     try {
-        await Promise.all(
-            INTEGRITY_ISSUE_TYPES.map((issueType) => clearWatcherIssue(rootPath, filePath, issueType))
-        );
+        await clearWatcherIssueFamily(rootPath, filePath, 'sem_data_flow_');
     } catch (error) {
         logger.debug(`[INTEGRITY CLEAR SKIP] ${filePath}: ${error.message}`);
     }
@@ -125,6 +93,10 @@ function buildUnusedInputsViolation(atom, analysis, inputNames) {
 }
 
 function analyzeAtomDataFlow(atom) {
+    if (isLikelyToolWrapperAtom(atom)) {
+        return [];
+    }
+
     if (!atom.dataFlow) {
         return [];
     }
@@ -150,7 +122,7 @@ function analyzeAtomDataFlow(atom) {
 }
 
 function analyzeAtomNaming(atom) {
-    if (atom.is_async !== 0 || !atom.name.toLowerCase().includes('async')) {
+    if (!hasAsyncNamingMismatch(atom)) {
         return [];
     }
 

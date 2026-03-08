@@ -115,6 +115,14 @@ export {
 } from './shared-state-reporting.js';
 
 export {
+  normalizeUnusedInputName,
+  isLikelyParserNoiseUnusedInput,
+  getActionableUnusedInputs,
+  isLikelyToolWrapperAtom,
+  hasAsyncNamingMismatch
+} from './integrity-analysis.js';
+
+export {
   getFileImportEvidenceCoverage
 } from './file-import-evidence.js';
 
