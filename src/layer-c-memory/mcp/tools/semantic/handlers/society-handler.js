@@ -55,53 +55,53 @@ export class SocietyHandler {
             hasMore: offset + limit < queryResult.total,
             granularity: semanticSurface.contract,
             semanticByType: semanticSurface.fileLevel.byType,
+            advisorySummary: semanticSurface.persistedLegacyView,
+            derivedFrom: 'atom_relations',
             connections: this.mapConnections(queryResult.rows)
-        };
-    }
-
-    /**
-     * Build the where clause for society queries.
-     */
-    buildQuery(options = {}) {
-        const { connectionType, filePath } = options;
-        const clauses = ['WHERE (is_removed IS NULL OR is_removed = 0)'];
-        const params = [];
-
-        if (connectionType && connectionType !== 'all') {
-            clauses.push('AND connection_type = ?');
-            params.push(connectionType);
-        }
-
-        if (filePath) {
-            clauses.push('AND (source_path = ? OR target_path = ?)');
-            params.push(filePath, filePath);
-        }
-
-        return {
-            whereClause: clauses.join(' '),
-            params
         };
     }
 
     /**
      * Load rows for atom society.
      */
-    loadRows(db, options = {}) {
+    loadRows(semanticSurface, options = {}) {
         const { offset = 0, limit = 20 } = options;
-        const { whereClause, params } = this.buildQuery(options);
+        const { connectionType, filePath } = options;
+        const canonicalRows = (semanticSurface.canonicalAdapterView?.rows || [])
+            .filter((row) => {
+                if (connectionType && connectionType !== 'all' && row.semanticType !== connectionType) {
+                    return false;
+                }
 
-        const rows = db.prepare(`
-            SELECT COUNT(*) OVER() as total_count,
-                   id, connection_type, source_path, target_path,
-                   connection_key, context_json, weight, created_at
-            FROM semantic_connections
-            ${whereClause}
-            ORDER BY weight DESC, created_at DESC
-            LIMIT ? OFFSET ?
-        `).all(...params, limit, offset);
+                if (filePath && row.sourceFile !== filePath && row.targetFile !== filePath) {
+                    return false;
+                }
+
+                return true;
+            })
+            .sort((left, right) => {
+                const weightDelta = (Number(right.weight) || 0) - (Number(left.weight) || 0);
+                if (weightDelta !== 0) {
+                    return weightDelta;
+                }
+
+                return String(left.key || '').localeCompare(String(right.key || ''));
+            })
+            .map((row, index) => ({
+                id: `${row.sourceFile}->${row.targetFile}:${row.semanticType}:${row.key || index}`,
+                connection_type: row.semanticType,
+                source_path: row.sourceFile,
+                target_path: row.targetFile,
+                connection_key: row.key,
+                context_json: JSON.stringify(row.context || {}),
+                weight: row.weight,
+                created_at: null
+            }));
+
+        const rows = canonicalRows.slice(offset, offset + limit);
 
         return {
-            total: rows[0]?.total_count || 0,
+            total: canonicalRows.length,
             rows
         };
     }

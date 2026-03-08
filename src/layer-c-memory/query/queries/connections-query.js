@@ -24,24 +24,27 @@ export async function getAllConnections(rootPath) {
   }
   
   const semanticSurface = getSemanticSurfaceGranularity(repo.db);
+  const canonicalView = semanticSurface.canonicalAdapterView || semanticSurface.legacyView;
 
-  if (semanticSurface.legacyView.total === 0) {
+  if (canonicalView.total === 0) {
     return {
       sharedState: [],
       eventListeners: [],
       total: 0,
-      granularity: semanticSurface.contract
+      granularity: semanticSurface.contract,
+      semanticByType: semanticSurface.fileLevel.byType,
+      advisorySummary: semanticSurface.persistedLegacyView || { sharedState: [], eventListeners: [], total: 0 },
+      derivedFrom: 'atom_relations'
     };
   }
 
   return {
-    sharedState: semanticSurface.legacyView.sharedState,
-    eventListeners: semanticSurface.legacyView.eventListeners,
-    total: semanticSurface.legacyView.total,
+    sharedState: canonicalView.sharedState,
+    eventListeners: canonicalView.eventListeners,
+    total: canonicalView.total,
     granularity: semanticSurface.contract,
     semanticByType: semanticSurface.fileLevel.byType,
-    derivedFrom: semanticSurface.fileLevel.total === 0 && semanticSurface.legacyView.total > 0
-      ? 'atom_relations'
-      : 'semantic_connections'
+    advisorySummary: semanticSurface.persistedLegacyView,
+    derivedFrom: 'atom_relations'
   };
 }

@@ -87,6 +87,16 @@ function summarizeConnectionTypes(rows = []) {
   }, {});
 }
 
+function buildLegacyView(rows = []) {
+  const legacyConnections = rows.map(normalizeSemanticConnectionRow);
+  return {
+    rows: legacyConnections,
+    sharedState: legacyConnections.filter((row) => row.type === 'sharedState'),
+    eventListeners: legacyConnections.filter((row) => row.type === 'eventListeners'),
+    total: legacyConnections.length
+  };
+}
+
 export function getSemanticSurfaceGranularity(db) {
   const persistedSemanticRows = db.prepare(`
     SELECT connection_type, source_path, target_path, connection_key, weight, context_json
@@ -106,16 +116,13 @@ export function getSemanticSurfaceGranularity(db) {
     return acc;
   }, {});
 
-  const semanticRows = persistedSemanticRows.length > 0
-    ? persistedSemanticRows
-    : loadDerivedLegacyConnections(db);
+  const derivedSemanticRows = loadDerivedLegacyConnections(db);
+  const persistedLegacyView = buildLegacyView(persistedSemanticRows);
+  const canonicalLegacyView = buildLegacyView(derivedSemanticRows);
 
-  const semanticByType = summarizeConnectionTypes(semanticRows);
-  const legacyConnections = semanticRows.map(normalizeSemanticConnectionRow);
-  const sharedState = legacyConnections.filter((row) => row.type === 'sharedState');
-  const eventListeners = legacyConnections.filter((row) => row.type === 'eventListeners');
+  const semanticByType = summarizeConnectionTypes(persistedSemanticRows);
 
-  const fileLevelTotal = semanticRows.length;
+  const fileLevelTotal = persistedSemanticRows.length;
   const atomLevelSharedStateTotal = toNumber(relationByType.shares_state);
   const atomLevelEventTotal = toNumber(relationByType.emits) + toNumber(relationByType.listens);
   const atomLevelTotal = atomLevelSharedStateTotal + atomLevelEventTotal;
@@ -127,6 +134,9 @@ export function getSemanticSurfaceGranularity(db) {
   }
   if (persistedSemanticRows.length > 0 && (semanticByType.sharedState || semanticByType.eventListeners)) {
     issues.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
+  }
+  if (persistedLegacyView.total !== canonicalLegacyView.total) {
+    issues.push('semantic_connections summary count is drifting from the canonical adapter derived from atom_relations');
   }
 
   return {
@@ -140,10 +150,11 @@ export function getSemanticSurfaceGranularity(db) {
       emits: toNumber(relationByType.emits),
       listens: toNumber(relationByType.listens)
     },
-    legacyView: {
-      sharedState,
-      eventListeners,
-      total: legacyConnections.length
+    legacyView: canonicalLegacyView,
+    persistedLegacyView,
+    canonicalAdapterView: {
+      ...canonicalLegacyView,
+      derivedFrom: 'atom_relations'
     },
     contract: {
       fileLevelSurface: 'semantic_connections',

@@ -191,7 +191,7 @@ export class SemanticQueryTool extends GraphQueryTool {
     async getAtomSociety(options = {}) {
         const repo = requireSemanticRepo(this.repo);
         const semanticSurface = getSemanticSurfaceGranularity(repo.db);
-        const queryResult = this.societyHandler.loadRows(repo.db, options);
+        const queryResult = this.societyHandler.loadRows(semanticSurface, options);
         return this.societyHandler.buildResult(queryResult, semanticSurface, options);
     }
 
