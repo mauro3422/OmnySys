@@ -3,10 +3,11 @@
  * @module mcp/core/analysis-checker/change-detector
  */
 
-import { scanCurrentFiles, getIndexedFilePaths } from './file-scanner.js';
+import { scanCurrentFiles } from './file-scanner.js';
 import { detectRealChanges } from '../../../../layer-c-memory/storage/cache/hash-cache.js';
 import { createLogger } from '../../../../utils/logger.js';
 import {
+  getPersistedKnownFilePaths,
   summarizePersistedScannedFileCoverage,
   syncPersistedScannedFileManifest
 } from '../../../../shared/compiler/index.js';
@@ -24,7 +25,7 @@ export async function detectCacheChanges(projectPath, metadata) {
     const currentFiles = await scanCurrentFiles(projectPath);
     const filePaths = currentFiles.map(f => f.path);
     await syncPersistedScannedFileManifest(projectPath, filePaths);
-    const indexedFiles = await getIndexedFilePaths(projectPath);
+    const indexedFiles = await getPersistedKnownFilePaths(projectPath);
     
     // Usar sistema de hash cache persistente
     const changes = await detectRealChanges(projectPath, filePaths, true);

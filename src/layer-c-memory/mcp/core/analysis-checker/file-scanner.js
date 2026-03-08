@@ -7,7 +7,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import {
   discoverProjectSourceFiles,
-  getPersistedKnownFilePaths,
   hasPersistedCompilerAnalysis
 } from '../../../../shared/compiler/index.js';
 
@@ -51,6 +50,3 @@ export async function scanCurrentFiles(projectPath) {
  * @param {string} projectPath - Project root path
  * @returns {Promise<Set<string>>}
  */
-export async function getIndexedFilePaths(projectPath) {
-  return getPersistedKnownFilePaths(projectPath);
-}
