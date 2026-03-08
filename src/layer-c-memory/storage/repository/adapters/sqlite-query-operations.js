@@ -9,6 +9,7 @@
 
 import { SQLiteCrudOperations } from './sqlite-crud-operations.js';
 import { rowToAtom } from './helpers/converters.js';
+import { shouldIgnoreConceptualDuplicateFinding } from '../../../../shared/compiler/index.js';
 
 /**
  * Mixin/Clase base para operaciones de query
@@ -175,7 +176,9 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
       ORDER BY fingerprint, file_path
     `);
 
-    const rows = stmt.all(minEntitySpecificity + 10);
+    const rows = stmt
+      .all(minEntitySpecificity + 10)
+      .filter((row) => !shouldIgnoreConceptualDuplicateFinding(row.file_path, row.name, row.fingerprint));
 
     // Group by fingerprint in memory (faster than GROUP_CONCAT + N+1 queries)
     const groups = new Map();

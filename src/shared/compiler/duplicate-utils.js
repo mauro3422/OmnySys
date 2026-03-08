@@ -81,6 +81,25 @@ export function normalizeFilePath(filePath) {
     return String(filePath || '').replace(/\\/g, '/');
 }
 
+const LOW_SIGNAL_GENERATED_ATOM_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|sort_callback|get_arg\d+)$/i;
+const LOW_SIGNAL_GENERATED_FINGERPRINT_ENTITY_REGEX = /:(anonymous(?:_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|sort_callback|get_arg\d+)$/i;
+
+/**
+ * Detecta nombres/huellas generadas por callbacks de runtime o test DSLs. Estos
+ * artefactos inflan la deuda conceptual del proyecto pero no representan APIs reales.
+ *
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function isLowSignalGeneratedAtom(atomName, semanticFingerprint) {
+    const normalizedName = String(atomName || '').toLowerCase();
+    const fingerprint = String(semanticFingerprint || '').toLowerCase();
+
+    return LOW_SIGNAL_GENERATED_ATOM_NAME_REGEX.test(normalizedName) ||
+        LOW_SIGNAL_GENERATED_FINGERPRINT_ENTITY_REGEX.test(fingerprint);
+}
+
 /**
  * Determina si un semantic fingerprint es demasiado genérico para reportarse como
  * duplicado conceptual de alto valor. Esto reduce ruido en helpers de acceso a datos.
@@ -196,7 +215,8 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
  * @returns {boolean}
  */
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
-    return isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
+    return isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
+        isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
         isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint);
 }
 

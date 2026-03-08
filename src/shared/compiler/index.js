@@ -220,6 +220,8 @@ export {
 export {
   generateAlternativeNames,
   normalizeFilePath,
+  isLowSignalGeneratedAtom,
+  shouldIgnoreConceptualDuplicateFinding,
   loadPreviousFindings,
   buildDuplicateDebtHistory,
   buildDuplicateContext,
