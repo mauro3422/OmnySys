@@ -43,6 +43,16 @@ function collectReferencedAtomIds(alert = {}) {
   )];
 }
 
+function collectReferencedSymbols(alert = {}) {
+  const context = (alert?.context && typeof alert.context === 'object') ? alert.context : {};
+  const findings = Array.isArray(context.findings) ? context.findings : [];
+  const symbols = findings
+    .map((finding) => String(finding?.symbol || '').trim())
+    .filter(Boolean);
+
+  return [...new Set(symbols)];
+}
+
 export function findOrphanedWatcherAlertIds(db, alerts = []) {
   if (!db) return [];
 
@@ -78,6 +88,7 @@ export function findOrphanedWatcherAlertIds(db, alerts = []) {
 export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
   const outdatedIds = [];
   const runtimeDependencyMtimes = new Map();
+  const fileContentsCache = new Map();
 
   const getMaxMtimeRecursively = async (absolutePath) => {
     try {
@@ -116,6 +127,21 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
     return mtimeMs;
   };
 
+  const getFileContents = async (absolutePath) => {
+    if (fileContentsCache.has(absolutePath)) {
+      return fileContentsCache.get(absolutePath);
+    }
+
+    try {
+      const contents = await fs.readFile(absolutePath, 'utf8');
+      fileContentsCache.set(absolutePath, contents);
+      return contents;
+    } catch {
+      fileContentsCache.set(absolutePath, '');
+      return '';
+    }
+  };
+
   for (const alert of alerts) {
     const id = alert?.id;
     if (!Number.isInteger(id)) continue;
@@ -132,6 +158,16 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
       if (stat.mtimeMs > (detectedAtMs + 1000)) {
         outdatedIds.push(id);
         continue;
+      }
+
+      const referencedSymbols = collectReferencedSymbols(alert);
+      if (referencedSymbols.length > 0) {
+        const contents = await getFileContents(absolutePath);
+        const missingSymbols = referencedSymbols.filter((symbol) => !contents.includes(symbol));
+        if (missingSymbols.length > 0) {
+          outdatedIds.push(id);
+          continue;
+        }
       }
     } catch {
       // If the file no longer exists, regular lifecycle cleanup will handle it.
