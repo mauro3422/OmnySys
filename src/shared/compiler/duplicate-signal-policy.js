@@ -121,7 +121,23 @@ const COMPILER_CONFORMANCE_LOW_SIGNAL_FINGERPRINTS = new Set([
     'process:core:signals',
     'process:core:keys',
     'process:core:only',
-    'process:core:path'
+    'process:core:path',
+    'process:core:finding',
+    'process:core:ownership',
+    'process:core:bypass',
+    'process:core:drift'
+]);
+
+const POLICY_CONFORMANCE_FILE_MARKER = '/shared/compiler/policy-conformance.js';
+const POLICY_CONFORMANCE_HELPER_NAMES = new Set([
+    'maybefinding',
+    'buildpolicyimportmap',
+    'collectmanualreusefindings',
+    'collectmanualdriftfindings',
+    'collectmanualpolicyfindings',
+    'collectconformancefindings',
+    'buildcompilerpolicyissuesummary',
+    'summarizecompilerpolicydrift'
 ]);
 
 const COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS = [
@@ -166,6 +182,26 @@ const DUPLICATE_STRUCTURAL_CORE_FINGERPRINTS = new Set([
     'load:core:rows',
     'build:core:findings',
     'process:core:issues'
+]);
+
+const DUPLICATE_CONCEPTUAL_CORE_FILE_MARKER = '/core/file-watcher/guards/duplicate-conceptual-core.js';
+const DUPLICATE_CONCEPTUAL_CORE_HELPER_NAMES = new Set([
+    'clearconceptualduplicateissues',
+    'loadconceptuallocalatoms',
+    'shouldskipconceptualatom',
+    'loadconceptualduplicaterows',
+    'loadlocalstructuralhash',
+    'buildconceptualfinding',
+    'detectconceptualfindings'
+]);
+const DUPLICATE_CONCEPTUAL_CORE_FINGERPRINTS = new Set([
+    'process:core:issues',
+    'load:core:atoms',
+    'process:core:atom',
+    'load:core:rows',
+    'load:core:hash',
+    'build:core:finding',
+    'detect:core:findings'
 ]);
 
 const COMPILER_POLICY_ORCHESTRATION_NAME_REGEX = /^(?:coordinate[A-Z]\w+|build[A-Z]\w*Plan|build[A-Z]\w*Details|resolve[A-Z]\w*Priority)$/i;
@@ -421,6 +457,15 @@ export function isCompilerConformancePolicyHelper(filePath, atomName, semanticFi
     return COMPILER_CONFORMANCE_LOW_SIGNAL_FINGERPRINTS.has(fingerprint);
 }
 
+export function isPolicyConformanceCanonicalHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [POLICY_CONFORMANCE_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: POLICY_CONFORMANCE_HELPER_NAMES,
+        fingerprints: COMPILER_CONFORMANCE_LOW_SIGNAL_FINGERPRINTS
+    });
+}
+
 export function isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) {
     const { normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
         filePath,
@@ -461,6 +506,23 @@ export function isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanti
         pathMatchers: ['/core/file-watcher/guards/'],
         names: DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES,
         fingerprints: DUPLICATE_STRUCTURAL_CORE_FINGERPRINTS
+    });
+}
+
+export function isDuplicateConceptualCoreHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [DUPLICATE_CONCEPTUAL_CORE_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: DUPLICATE_CONCEPTUAL_CORE_HELPER_NAMES,
+        fingerprints: DUPLICATE_CONCEPTUAL_CORE_FINGERPRINTS
+    });
+}
+
+export function isDuplicateConceptualCoreReuseHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: ['/core/file-watcher/guards/'],
+        names: DUPLICATE_CONCEPTUAL_CORE_HELPER_NAMES,
+        fingerprints: DUPLICATE_CONCEPTUAL_CORE_FINGERPRINTS
     });
 }
 
@@ -559,12 +621,15 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanticFingerprint),
+        () => isDuplicateConceptualCoreHelper(filePath, atomName, semanticFingerprint),
+        () => isDuplicateConceptualCoreReuseHelper(filePath, atomName, semanticFingerprint),
         () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint),
         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint),
         () => isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint),
         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint),
+        () => isPolicyConformanceCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isLowSignalGeneratedAtom(atomName, semanticFingerprint),
         () => isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint),
         () => isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint),
@@ -584,12 +649,15 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isStorageQueryPolicyHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, null),
+        () => isDuplicateConceptualCoreHelper(filePath, atomName, null),
+        () => isDuplicateConceptualCoreReuseHelper(filePath, atomName, null),
         () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, null),
         () => isRuntimePortProbeHelper(filePath, atomName, null),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),
         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null),
         () => isStandaloneScriptEntryHelper(filePath, atomName, null),
         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, null),
+        () => isPolicyConformanceCanonicalHelper(filePath, atomName, null),
         () => isRepositoryContractSurface(filePath, atomName, null),
         () => isCompilerConformancePolicyHelper(filePath, atomName, null),
         () => isLowSignalGuardStructuralHelper(filePath, atomName)

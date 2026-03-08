@@ -1,9 +1,9 @@
 /**
  * @fileoverview policy-conformance.js
  *
- * Reglas compartidas para detectar deriva de políticas del compilador.
- * La idea es detectar cuándo un módulo del watcher/MCP vuelve a implementar
- * a mano señales que ya tienen una API canónica.
+ * Reglas compartidas para detectar deriva de politicas del compilador.
+ * La idea es detectar cuando un modulo del watcher/MCP vuelve a implementar
+ * a mano senales que ya tienen una API canonica.
  *
  * @module shared/compiler/policy-conformance
  */
@@ -28,11 +28,17 @@ import { detectSignalCoverageDrift } from './signal-coverage.js';
 import { detectPipelineOrphanDrift } from './pipeline-orphans.js';
 import { detectDeadCodeDrift } from './dead-code-utils.js';
 import { detectLiveRowDrift } from './live-row-utils.js';
-import { buildCanonicalReuseGuidance } from './canonical-reuse-guidance.js';
+import {
+  normalizePath,
+  shouldScanCompilerFile,
+  createGuidedFinding
+} from './conformance-utils.js';
+
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
   MEDIUM: 'medium'
 };
+
 export const COMPILER_POLICY_AREA = {
   DUPLICATES: 'duplicates',
   IMPACT: 'impact',
@@ -54,19 +60,8 @@ export const COMPILER_POLICY_AREA = {
   CANONICAL_BYPASS: 'canonical_bypass'
 };
 
-import {
-  normalizePath,
-  shouldScanCompilerFile,
-  createFinding as baseCreateFinding
-} from './conformance-utils.js';
-
-function createFinding(rule, severity, policyArea, message, recommendation) {
-  const finding = baseCreateFinding({ rule, severity, policyArea, message, recommendation });
-  const reuseGuidance = buildCanonicalReuseGuidance(finding);
-  if (reuseGuidance) {
-    finding.reuseGuidance = reuseGuidance;
-  }
-  return finding;
+function maybeFinding(when, params) {
+  return when ? [createGuidedFinding(params)] : [];
 }
 
 function looksLikeManualTopologyScan(source = '') {
@@ -81,9 +76,6 @@ function looksLikeManualTopologyScan(source = '') {
 
   return manualGraphWalk && !topologyReportingOnly;
 }
-
-
-
 
 function looksLikeManualRuntimeOwnership(source = '') {
   return /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source);
@@ -101,8 +93,7 @@ function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
     return false;
   }
 
-  const importsSnapshot = /loadCompilerDiagnosticsSnapshot/.test(source);
-  if (importsSnapshot) {
+  if (/loadCompilerDiagnosticsSnapshot/.test(source)) {
     return false;
   }
 
@@ -119,8 +110,7 @@ function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
     /getFileUniverseGranularity/
   ];
 
-  const matchedSignals = canonicalSignals.filter((pattern) => pattern.test(source)).length;
-  return matchedSignals >= 3;
+  return canonicalSignals.filter((pattern) => pattern.test(source)).length >= 3;
 }
 
 function buildPolicyImportMap(source = '') {
@@ -129,129 +119,113 @@ function buildPolicyImportMap(source = '') {
     importsImpactApis: /getFileDependents|getTransitiveDependents|getFileImpactSummary|classifyImpactSeverity/.test(source),
     importsDuplicateApi: /getDuplicateKeySqlForMode|getDuplicateKeySql|getStructuralDuplicateKeySql|buildDuplicateWhereSql|normalizeDuplicateCandidateAtom|getValidDnaPredicate|DUPLICATE_MODES/.test(source),
     importsFileDiscoveryApi: /discoverCompilerFiles|discoverProjectSourceFiles|isCompilerRuntimeFile/.test(source),
-    importsSignalCoverageApi: /summarizeDerivedScoreCoverage|summarizeSemanticCoverage|classifyFieldCoverage/.test(source),
     importsLiveRowDriftApi: /getLiveRowDriftSummary|getStaleTableRowCount|getLiveFileTotal|getLiveFileSetSql/.test(source),
     importsLiveRowSyncApi: /ensureLiveRowSync/.test(source),
-    importsPipelineOrphansApi: /classifyPipelineOrphans|getPipelineOrphanSummary|getPipelineNamePatternSqlCondition|isLikelyDisconnectedPipelineAtom|normalizePipelineOrphan|buildPipelineOrphanRemediationPlan/.test(source),
-    importsDeadCodeApi: /getSuspiciousDeadCodeCount|getDeadCodePlausibilitySummary|getDeadCodeSqlPredicate|loadSuspiciousDeadCodeCandidates|buildDeadCodeRemediationPlan/.test(source),
     importsRuntimeOwnershipApi: /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source)
   };
 }
 
-function collectManualPolicyFindings(normalizedPath, source, imports) {
-  const checks = [
-    {
-      when: imports.importsGetAllAtoms &&
-        /atom\.name\s*===\s*symbolName|instance\.name\s*===\s*symbolName/.test(source),
-      finding: createFinding(
-        'manual_symbol_duplicate_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.DUPLICATES,
-        'Manual symbol duplicate scan detected',
-        'Use repository-backed duplicate/symbol APIs instead of scanning getAllAtoms() in memory.'
-      )
-    },
-    {
-      when: imports.importsGetAllAtoms && looksLikeManualTopologyScan(source) && !imports.importsImpactApis,
-      finding: createFinding(
-        'manual_topology_scan',
-        COMPILER_POLICY_SEVERITY.HIGH,
-        COMPILER_POLICY_AREA.IMPACT,
-        'Manual topology/impact scan detected',
-        'Use the canonical impact APIs (getFileImpactSummary / getFileDependents / getTransitiveDependents) instead of rebuilding impact from getAllAtoms().'
-      )
-    },
-    {
-      when: /json_extract\([^)]*dna_json/.test(source) &&
-        /duplicate_key|DuplicateGroups/.test(source) &&
-        !imports.importsDuplicateApi &&
-        !normalizedPath.endsWith('/duplicate-dna.js'),
-      finding: createFinding(
-        'manual_duplicate_sql',
-        COMPILER_POLICY_SEVERITY.HIGH,
-        COMPILER_POLICY_AREA.DUPLICATES,
-        'Manual duplicate DNA SQL detected',
-        'Build duplicate keys through duplicate-dna.js / repository utils barrel instead of embedding SQL fragments.'
-      )
-    },
-    {
-      when: /fs\.readdir|fs\.readFile/.test(source) &&
-        /collectFilesRecursively|readdirSync|walkDir|walkDirectory/.test(source) &&
-        (normalizedPath.includes('/mcp/') || normalizedPath.includes('/shared/compiler/')) &&
-        !imports.importsFileDiscoveryApi,
-      finding: createFinding(
-        'manual_file_discovery_scan',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.FILE_DISCOVERY,
-        'Manual file discovery scan detected inside MCP/compiler runtime',
-        'Prefer canonical query/storage APIs before walking the filesystem manually inside MCP/runtime code.'
-      )
-    },
-    {
-      when: true, // Siempre evaluamos la deriva de señales ahora via el nuevo detector
-      findings: (normalizedPath, source) => detectSignalCoverageDrift(source, normalizedPath)
-    },
-    {
-      when: true,
-      findings: (normalizedPath, source) => detectLiveRowDrift(source, normalizedPath)
-    },
-    {
-      when:
-        imports.importsLiveRowDriftApi &&
-        !imports.importsLiveRowSyncApi &&
-        (normalizedPath.includes('/mcp/') || normalizedPath.includes('/query/')) &&
-        !normalizedPath.endsWith('/live-row-utils.js'),
-      finding: createFinding(
-        'live_row_sync_missing',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
-        'Module reads live/stale row drift without the canonical synchronization entrypoint',
-        'Use ensureLiveRowSync in MCP/query runtime modules so support-table drift is reconciled before reporting.'
-      )
-    },
-    {
-      when: true,
-      findings: (normalizedPath, source) => detectPipelineOrphanDrift(source, normalizedPath)
-    },
-    {
-      when: true,
-      findings: (normalizedPath, source) => detectDeadCodeDrift(source, normalizedPath)
-    },
-    {
-      when: looksLikeManualRuntimeOwnership(source) &&
-        !imports.importsRuntimeOwnershipApi &&
-        !normalizedPath.endsWith('/runtime-ownership.js'),
-      finding: createFinding(
-        'manual_runtime_ownership',
-        COMPILER_POLICY_SEVERITY.MEDIUM,
-        COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
-        'Manual daemon ownership/lock logic detected',
-        'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
-      )
-    },
-    {
-      when: looksLikeCanonicalDiagnosticsBypass(normalizedPath, source),
-      finding: createFinding(
-        'canonical_diagnostics_bypass',
-        COMPILER_POLICY_SEVERITY.HIGH,
-        COMPILER_POLICY_AREA.CANONICAL_BYPASS,
-        'Module recomposes canonical compiler diagnostics instead of using the shared snapshot entrypoint',
-        'Use loadCompilerDiagnosticsSnapshot from shared/compiler/index.js before creating another local diagnostics wrapper.'
-      )
-    }
+function collectManualReuseFindings(normalizedPath, source, imports) {
+  return [
+    ...maybeFinding(
+      imports.importsGetAllAtoms &&
+      /atom\.name\s*===\s*symbolName|instance\.name\s*===\s*symbolName/.test(source),
+      {
+        rule: 'manual_symbol_duplicate_scan',
+        severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+        policyArea: COMPILER_POLICY_AREA.DUPLICATES,
+        message: 'Manual symbol duplicate scan detected',
+        recommendation: 'Use repository-backed duplicate/symbol APIs instead of scanning getAllAtoms() in memory.'
+      }
+    ),
+    ...maybeFinding(
+      imports.importsGetAllAtoms && looksLikeManualTopologyScan(source) && !imports.importsImpactApis,
+      {
+        rule: 'manual_topology_scan',
+        severity: COMPILER_POLICY_SEVERITY.HIGH,
+        policyArea: COMPILER_POLICY_AREA.IMPACT,
+        message: 'Manual topology/impact scan detected',
+        recommendation: 'Use the canonical impact APIs (getFileImpactSummary / getFileDependents / getTransitiveDependents) instead of rebuilding impact from getAllAtoms().'
+      }
+    ),
+    ...maybeFinding(
+      /json_extract\([^)]*dna_json/.test(source) &&
+      /duplicate_key|DuplicateGroups/.test(source) &&
+      !imports.importsDuplicateApi &&
+      !normalizedPath.endsWith('/duplicate-dna.js'),
+      {
+        rule: 'manual_duplicate_sql',
+        severity: COMPILER_POLICY_SEVERITY.HIGH,
+        policyArea: COMPILER_POLICY_AREA.DUPLICATES,
+        message: 'Manual duplicate DNA SQL detected',
+        recommendation: 'Build duplicate keys through duplicate-dna.js / repository utils barrel instead of embedding SQL fragments.'
+      }
+    ),
+    ...maybeFinding(
+      /fs\.readdir|fs\.readFile/.test(source) &&
+      /collectFilesRecursively|readdirSync|walkDir|walkDirectory/.test(source) &&
+      (normalizedPath.includes('/mcp/') || normalizedPath.includes('/shared/compiler/')) &&
+      !imports.importsFileDiscoveryApi,
+      {
+        rule: 'manual_file_discovery_scan',
+        severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+        policyArea: COMPILER_POLICY_AREA.FILE_DISCOVERY,
+        message: 'Manual file discovery scan detected inside MCP/compiler runtime',
+        recommendation: 'Prefer canonical query/storage APIs before walking the filesystem manually inside MCP/runtime code.'
+      }
+    ),
+    ...maybeFinding(
+      imports.importsLiveRowDriftApi &&
+      !imports.importsLiveRowSyncApi &&
+      (normalizedPath.includes('/mcp/') || normalizedPath.includes('/query/')) &&
+      !normalizedPath.endsWith('/live-row-utils.js'),
+      {
+        rule: 'live_row_sync_missing',
+        severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+        policyArea: COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
+        message: 'Module reads live/stale row drift without the canonical synchronization entrypoint',
+        recommendation: 'Use ensureLiveRowSync in MCP/query runtime modules so support-table drift is reconciled before reporting.'
+      }
+    ),
+    ...maybeFinding(
+      looksLikeManualRuntimeOwnership(source) &&
+      !imports.importsRuntimeOwnershipApi &&
+      !normalizedPath.endsWith('/runtime-ownership.js'),
+      {
+        rule: 'manual_runtime_ownership',
+        severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+        policyArea: COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
+        message: 'Manual daemon ownership/lock logic detected',
+        recommendation: 'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
+      }
+    ),
+    ...maybeFinding(
+      looksLikeCanonicalDiagnosticsBypass(normalizedPath, source),
+      {
+        rule: 'canonical_diagnostics_bypass',
+        severity: COMPILER_POLICY_SEVERITY.HIGH,
+        policyArea: COMPILER_POLICY_AREA.CANONICAL_BYPASS,
+        message: 'Module recomposes canonical compiler diagnostics instead of using the shared snapshot entrypoint',
+        recommendation: 'Use loadCompilerDiagnosticsSnapshot from shared/compiler/index.js before creating another local diagnostics wrapper.'
+      }
+    )
   ];
+}
 
-  return checks.flatMap((check) => {
-    if (!check.when) {
-      return [];
-    }
+function collectManualDriftFindings(normalizedPath, source) {
+  return [
+    ...detectSignalCoverageDrift(source, normalizedPath).filter(Boolean),
+    ...detectLiveRowDrift(source, normalizedPath).filter(Boolean),
+    ...detectPipelineOrphanDrift(source, normalizedPath).filter(Boolean),
+    ...detectDeadCodeDrift(source, normalizedPath).filter(Boolean)
+  ];
+}
 
-    if (typeof check.findings === 'function') {
-      return check.findings(normalizedPath, source).filter(Boolean);
-    }
-
-    return check.finding ? [check.finding] : [];
-  });
+function collectManualPolicyFindings(normalizedPath, source, imports) {
+  return [
+    ...collectManualReuseFindings(normalizedPath, source, imports),
+    ...collectManualDriftFindings(normalizedPath, source)
+  ];
 }
 
 function collectConformanceFindings(normalizedPath, source) {
@@ -282,7 +256,8 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
 
   if (
     normalizedPath.endsWith('/guard-standards.js') ||
-    normalizedPath.endsWith('/shared-state-guard.js')
+    normalizedPath.endsWith('/shared-state-guard.js') ||
+    normalizedPath.endsWith('/duplicate-conceptual-core.js')
   ) {
     return [];
   }

@@ -12,6 +12,7 @@ import {
     COMPILER_TARGET_DIRS,
     isCompilerRuntimeFile
 } from './file-discovery.js';
+import { buildCanonicalReuseGuidance } from './canonical-reuse-guidance.js';
 
 /**
  * Normalizes a file path for consistent OS-agnostic comparison.
@@ -51,6 +52,20 @@ export function createFinding({ rule, severity, policyArea, message, recommendat
  */
 export function createPositionalFinding(rule, severity, policyArea, message, recommendation) {
     return createFinding({ rule, severity, policyArea, message, recommendation });
+}
+
+/**
+ * Creates a standard finding object and enriches it with reuse guidance
+ * when the rule maps to a known canonical surface.
+ * @param {Object} params
+ */
+export function createGuidedFinding(params) {
+    const finding = createFinding(params);
+    const reuseGuidance = buildCanonicalReuseGuidance(finding);
+    if (reuseGuidance) {
+        finding.reuseGuidance = reuseGuidance;
+    }
+    return finding;
 }
 
 /**
