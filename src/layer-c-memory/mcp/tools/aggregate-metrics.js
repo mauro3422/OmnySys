@@ -1,12 +1,11 @@
 import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
-
 import { getProjectMetadata } from '../../query/apis/project-api.js';
 import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getRiskAssessment } from '../../query/queries/risk-query.js';
 
 // Nuevos manejadores modulares
 import { handleHealthMetrics } from './handlers/health-handler.js';
-import { handlePipelineHealth } from './handlers/pipeline-health-handler.js';
+import { aggregatePipelineHealth } from './handlers/pipeline-health-handler.js';
 import { handleWatcherAlerts } from './handlers/watcher-handler.js';
 import { handlePatterns, handleAsyncAnalysis } from './handlers/patterns-handler.js';
 import { handlePrioritizedBacklog } from './handlers/prioritized-backlog-handler.js';
@@ -25,40 +24,37 @@ export class AggregateMetricsTool extends SemanticQueryTool {
     async performAction(args) {
         const { aggregationType, filePath, options = {} } = args;
 
-        if (!aggregationType) {
-            return this.formatError('MISSING_PARAMS', 'aggregationType is required');
-        }
+        return this.runRoutedAction({
+            routeKey: 'aggregationType',
+            routeValue: aggregationType,
+            handlers: this._buildAggregationHandlers(filePath, options),
+            debugMessage: `Executing aggregate:metrics -> ${aggregationType}`,
+            debugContext: { filePath, options },
+            executionErrorMessage: (error) =>
+                `Error executing aggregation ${aggregationType}: ${error.message}`
+        });
+    }
 
-        this.logger.debug(`Executing aggregate:metrics -> ${aggregationType}`, { filePath, options });
-
-        try {
-            switch (aggregationType) {
-                case 'health': return this.formatSuccess(await handleHealthMetrics(this, this.projectPath));
-                case 'pipeline_health': return this.formatSuccess({ aggregationType: 'pipeline_health', ...(await handlePipelineHealth(this)) });
-                case 'modules': return this.formatSuccess(await this._handleModules());
-                case 'molecule': return await this._handleMolecule(filePath);
-                case 'risk': return this.formatSuccess({ ...(await getRiskAssessment(this.projectPath)) });
-                case 'race_conditions': return this.formatSuccess(await this._handleRaceConditions(options));
-                case 'patterns': return this.formatSuccess(await handlePatterns(this, options));
-                case 'async_analysis': return this.formatSuccess(await handleAsyncAnalysis(this, options));
-                case 'society': return this.formatSuccess(await this._handleSociety(options));
-                case 'duplicates': return this.formatSuccess({ aggregationType: 'duplicates', ...(await this.getDuplicates(this._getPaginationOpts(options))) });
-                case 'isomorphism': return this.formatSuccess({ aggregationType: 'isomorphism', ...(await this.getIsomorphicDuplicates(this._getPaginationOpts(options))) });
-                case 'conceptual_duplicates': return this.formatSuccess(await this.getConceptualDuplicates(options));
-                case 'watcher_alerts': {
-                    const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
-                    return result.error ? result : this.formatSuccess(result);
-                }
-                case 'prioritized_backlog': {
-                    const result = await handlePrioritizedBacklog(this, this.projectPath, options);
-                    return this.formatSuccess(result);
-                }
-                default: return this.formatError('INVALID_PARAM', `Unknown aggregationType: ${aggregationType}`);
-            }
-        } catch (error) {
-            this.logger.error(`[AggregateMetrics] Error: ${error.message}`);
-            return this.formatError('EXECUTION_ERROR', `Error executing aggregation ${aggregationType}: ${error.message}`);
-        }
+    _buildAggregationHandlers(filePath, options) {
+        return {
+            health: async () => this.formatSuccess(await handleHealthMetrics(this, this.projectPath)),
+            pipeline_health: async () => this.formatSuccess({ aggregationType: 'pipeline_health', ...(await aggregatePipelineHealth(this)) }),
+            modules: async () => this._handleModules(),
+            molecule: async () => this._handleMolecule(filePath),
+            risk: async () => this.formatSuccess({ ...(await getRiskAssessment(this.projectPath)) }),
+            race_conditions: async () => this.formatSuccess(await this._handleRaceConditions(options)),
+            patterns: async () => this.formatSuccess(await handlePatterns(this, options)),
+            async_analysis: async () => this.formatSuccess(await handleAsyncAnalysis(this, options)),
+            society: async () => this.formatSuccess(await this._handleSociety(options)),
+            duplicates: async () => this.formatSuccess({ aggregationType: 'duplicates', ...(await this.getDuplicates(this._getPaginationOpts(options))) }),
+            isomorphism: async () => this.formatSuccess({ aggregationType: 'isomorphism', ...(await this.getIsomorphicDuplicates(this._getPaginationOpts(options))) }),
+            conceptual_duplicates: async () => this.formatSuccess(await this.getConceptualDuplicates(options)),
+            watcher_alerts: async () => {
+                const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
+                return result.error ? result : this.formatSuccess(result);
+            },
+            prioritized_backlog: async () => this.formatSuccess(await handlePrioritizedBacklog(this, this.projectPath, options))
+        };
     }
 
     _getPaginationOpts(options) {
@@ -71,9 +67,15 @@ export class AggregateMetricsTool extends SemanticQueryTool {
     }
 
     async _handleMolecule(filePath) {
-        if (!filePath) return this.formatError('MISSING_PARAMS', 'filePath required');
+        if (!filePath) {
+            return this.formatError('MISSING_PARAMS', 'filePath required');
+        }
+
         const fileData = await getFileAnalysis(this.projectPath, filePath);
-        if (!fileData) return this.formatError('NOT_FOUND', `File ${filePath} not found`);
+        if (!fileData) {
+            return this.formatError('NOT_FOUND', `File ${filePath} not found`);
+        }
+
         return this.formatSuccess({
             file: filePath,
             atomsCount: (fileData.atoms || []).length,
@@ -82,8 +84,13 @@ export class AggregateMetricsTool extends SemanticQueryTool {
     }
 
     async _handleRaceConditions(options) {
-        const opts = { ...this._getPaginationOpts(options), scopeType: options.scopeType, asyncOnly: options.asyncOnly !== false, minSeverity: options.minSeverity || 0 };
-        const result = await this.getRaceConditions(opts);
+        const result = await this.getRaceConditions({
+            ...this._getPaginationOpts(options),
+            scopeType: options.scopeType,
+            asyncOnly: options.asyncOnly !== false,
+            minSeverity: options.minSeverity || 0
+        });
+
         return {
             aggregationType: 'race_conditions',
             ...result,
@@ -97,7 +104,11 @@ export class AggregateMetricsTool extends SemanticQueryTool {
     }
 
     async _handleSociety(options) {
-        const result = await this.getSocieties({ ...this._getPaginationOpts(options), type: options.societyType });
+        const result = await this.getSocieties({
+            ...this._getPaginationOpts(options),
+            type: options.societyType
+        });
+
         return {
             aggregationType: 'societies',
             ...result,

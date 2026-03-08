@@ -86,4 +86,54 @@ export class BaseMCPTool {
             ...data
         };
     }
+
+    async dispatchByKey({
+        key,
+        value,
+        handlers,
+        missingParamCode = 'MISSING_PARAMS',
+        missingParamMessage,
+        invalidParamCode = 'INVALID_PARAM',
+        invalidParamMessage
+    }) {
+        if (!value) {
+            return this.formatError(missingParamCode, missingParamMessage || `${key} is required`, {
+                allowedValues: Object.keys(handlers)
+            });
+        }
+
+        const handler = handlers[value];
+        if (!handler) {
+            return this.formatError(invalidParamCode, invalidParamMessage || `Unknown ${key}: ${value}`);
+        }
+
+        return await handler();
+    }
+
+    async runRoutedAction({
+        routeKey,
+        routeValue,
+        handlers,
+        debugMessage,
+        debugContext,
+        executionErrorCode = 'EXECUTION_ERROR',
+        executionErrorMessage
+    }) {
+        if (debugMessage) {
+            this.logger.debug(debugMessage, debugContext);
+        }
+
+        try {
+            return await this.dispatchByKey({
+                key: routeKey,
+                value: routeValue,
+                handlers
+            });
+        } catch (error) {
+            const message = executionErrorMessage
+                ? executionErrorMessage(error)
+                : `Error executing ${routeKey} ${routeValue}: ${error.message}`;
+            return this.formatError(executionErrorCode, message);
+        }
+    }
 }

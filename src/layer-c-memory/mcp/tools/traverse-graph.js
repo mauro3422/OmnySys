@@ -27,31 +27,23 @@ export class TraverseGraphTool extends SemanticQueryTool {
             options = {}
         } = args;
 
-        if (!traverseType) {
-            return this.formatError('MISSING_PARAMS', 'traverseType is required', {
-                allowedValues: ['impact_map', 'call_graph', 'trace_data_flow']
-            });
-        }
-
-        this.logger.debug(`Executing traverse:graph -> ${traverseType}`, { filePath, symbolName, options });
-
-        try {
-            switch (traverseType) {
-                case 'impact_map': {
+        return this.runRoutedAction({
+            routeKey: 'traverseType',
+            routeValue: traverseType,
+            handlers: {
+                impact_map: async () => {
                     const result = await this.impactStrategy.execute(this.projectPath, filePath, options);
                     return this.formatSuccess(result);
-                }
+                },
 
-                case 'call_graph': {
+                call_graph: async () => {
                     // Re-inject safe repo if needed
                     this.callGraphStrategy.repo = this.repo;
                     const result = await this.callGraphStrategy.execute(this.projectPath, filePath, options);
                     return this.formatSuccess(result);
-                }
+                },
 
-                case 'trace_data_flow':
-                case 'simulate_data_journey':
-                case 'trace_variable': {
+                trace_data_flow: async () => {
                     // Update repo if needed
                     this.dataJourneyStrategy.repo = this.repo;
                     const result = await this.dataJourneyStrategy.execute(this.projectPath, filePath, {
@@ -59,23 +51,44 @@ export class TraverseGraphTool extends SemanticQueryTool {
                         ...options
                     });
                     return this.formatSuccess(result);
-                }
+                },
+                simulate_data_journey: async () => {
+                    this.dataJourneyStrategy.repo = this.repo;
+                    const result = await this.dataJourneyStrategy.execute(this.projectPath, filePath, {
+                        ...args,
+                        ...options
+                    });
+                    return this.formatSuccess(result);
+                },
+                trace_variable: async () => {
+                    this.dataJourneyStrategy.repo = this.repo;
+                    const result = await this.dataJourneyStrategy.execute(this.projectPath, filePath, {
+                        ...args,
+                        ...options
+                    });
+                    return this.formatSuccess(result);
+                },
 
-                case 'analyze_change':
-                case 'explain_connection':
-                case 'signature_change':
-                    return this.formatError('DEPRECATED_ROUTING',
-                        `The traversal '${traverseType}' is deprecated. ` +
-                        `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
-                        `or query_graph(details, includeSemantic:true) for deep per-atom analysis.`
-                    );
-
-                default:
-                    return this.formatError('INVALID_PARAM', `Unknown traverseType: ${traverseType}`);
-            }
-        } catch (error) {
-            return this.formatError('EXECUTION_ERROR', `Error executing traversal ${traverseType}: ${error.message}`);
-        }
+                analyze_change: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The traversal '${traverseType}' is deprecated. ` +
+                    `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
+                    `or query_graph(details, includeSemantic:true) for deep per-atom analysis.`
+                ),
+                explain_connection: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The traversal '${traverseType}' is deprecated. ` +
+                    `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
+                    `or query_graph(details, includeSemantic:true) for deep per-atom analysis.`
+                ),
+                signature_change: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The traversal '${traverseType}' is deprecated. ` +
+                    `Use traverse_graph(impact_map) for dependency boundaries, traverse_graph(call_graph) for tree view, ` +
+                    `or query_graph(details, includeSemantic:true) for deep per-atom analysis.`
+                )
+            },
+            debugMessage: `Executing traverse:graph -> ${traverseType}`,
+            debugContext: { filePath, symbolName, options },
+            executionErrorMessage: (error) => `Error executing traversal ${traverseType}: ${error.message}`
+        });
     }
 }
 

@@ -253,6 +253,29 @@ export function isGuardUtilityConceptualFingerprint(filePath, atomName, semantic
 }
 
 /**
+ * Routers MCP que ya delegan al contrato canónico BaseMCPTool.runRoutedAction.
+ * Una vez consolidado ese patrón, seguir reportando performAction como clon
+ * conceptual sólo agrega ruido y empuja wrappers innecesarios.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint) {
+    const normalizedPath = normalizeFilePath(filePath).toLowerCase();
+    const normalizedName = String(atomName || '').toLowerCase();
+    const fingerprint = String(semanticFingerprint || '').toLowerCase();
+
+    const isMcpToolPath = normalizedPath.includes('/layer-c-memory/mcp/tools/') ||
+        normalizedPath.includes('/layer-c-memory/mcp/core/shared/base-tools/');
+
+    return isMcpToolPath &&
+        normalizedName === 'performaction' &&
+        fingerprint === 'process:core:action';
+}
+
+/**
  * Helpers internos de guards con formas muy genéricas. Su repetición entre
  * detectores/guards es frecuente y no representa deuda estructural prioritaria.
  *
@@ -286,6 +309,7 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
  */
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
+        isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint) ||
         isRepositoryContractSurface(filePath, atomName, semanticFingerprint) ||
         isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
         isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint);

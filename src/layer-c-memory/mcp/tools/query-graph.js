@@ -23,17 +23,11 @@ export class QueryGraphTool extends SemanticQueryTool {
             options = {}
         } = args;
 
-        if (!queryType) {
-            return this.formatError('MISSING_PARAMS', 'queryType is required', {
-                allowedValues: ['instances', 'details', 'history', 'value_flow', 'search', 'removed']
-            });
-        }
-
-        this.logger.debug(`[Graph] Querying ${queryType}`, { symbolName, filePath });
-
-        try {
-            switch (queryType) {
-                case 'instances': {
+        return this.runRoutedAction({
+            routeKey: 'queryType',
+            routeValue: queryType,
+            handlers: {
+                instances: async () => {
                     if (!this.repo) return this.formatError('REPO_UNAVAILABLE', 'Repository not initialized');
 
                     if (autoDetect || !symbolName) {
@@ -51,9 +45,9 @@ export class QueryGraphTool extends SemanticQueryTool {
                         instances,
                         semanticIncluded: !!options.includeSemantic
                     });
-                }
+                },
 
-                case 'details': {
+                details: async () => {
                     if (!filePath || !symbolName) {
                         return this.formatError('MISSING_PARAMS', 'filePath and symbolName are required for details query');
                     }
@@ -75,9 +69,9 @@ export class QueryGraphTool extends SemanticQueryTool {
                         details,
                         semanticIncluded: !!options.includeSemantic
                     });
-                }
+                },
 
-                case 'history': {
+                history: async () => {
                     if (!symbolName && !options.dnaHash) {
                         return this.formatError('MISSING_PARAMS', 'symbolName or options.dnaHash is required for history');
                     }
@@ -99,22 +93,25 @@ export class QueryGraphTool extends SemanticQueryTool {
                             dna: JSON.parse(v.dna_json || '{}')
                         }))
                     });
-                }
+                },
 
-                case 'value_flow':
-                case 'removed':
-                case 'search':
-                    return this.formatError('DEPRECATED_ROUTING',
-                        `The complex query '${queryType}' has been deprecated. ` +
-                        `Use 'instances' or 'details' for structural info.`
-                    );
-
-                default:
-                    return this.formatError('INVALID_PARAM', `Unknown queryType: ${queryType}`);
-            }
-        } catch (error) {
-            return this.formatError('EXECUTION_ERROR', `Error executing query ${queryType}: ${error.message}`);
-        }
+                value_flow: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The complex query '${queryType}' has been deprecated. ` +
+                    `Use 'instances' or 'details' for structural info.`
+                ),
+                removed: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The complex query '${queryType}' has been deprecated. ` +
+                    `Use 'instances' or 'details' for structural info.`
+                ),
+                search: async () => this.formatError('DEPRECATED_ROUTING',
+                    `The complex query '${queryType}' has been deprecated. ` +
+                    `Use 'instances' or 'details' for structural info.`
+                )
+            },
+            debugMessage: `[Graph] Querying ${queryType}`,
+            debugContext: { symbolName, filePath },
+            executionErrorMessage: (error) => `Error executing query ${queryType}: ${error.message}`
+        });
     }
 
     /**
