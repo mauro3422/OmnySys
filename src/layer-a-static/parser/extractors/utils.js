@@ -82,6 +82,69 @@ export function walk(node, types, cb) {
     if (typeof cursor.delete === 'function') cursor.delete();
 }
 
+function buildCallEntry(name, type, line, isNew) {
+    return {
+        name,
+        type,
+        line,
+        ...(isNew ? { isNew: true } : {})
+    };
+}
+
+function addSeenCall(calls, seen, key, entry) {
+    if (seen.has(key)) return;
+    seen.add(key);
+    calls.push(entry);
+}
+
+function readMemberCall(fnNameNode, code) {
+    const obj = fnNameNode.childForFieldName('object');
+    const prop = fnNameNode.childForFieldName('property');
+    if (!obj || !prop) return null;
+
+    const objectName = text(obj, code);
+    const propertyName = text(prop, code);
+    return {
+        objectName,
+        propertyName,
+        fullName: `${objectName}.${propertyName}`
+    };
+}
+
+function collectMemberCall(calls, seen, memberCall, line, isNewExpression) {
+    addSeenCall(
+        calls,
+        seen,
+        memberCall.objectName,
+        buildCallEntry(memberCall.objectName, 'namespace_access', line, false)
+    );
+    addSeenCall(
+        calls,
+        seen,
+        `${memberCall.fullName}:${line}`,
+        buildCallEntry(
+            memberCall.fullName,
+            isNewExpression ? 'constructor_call' : 'member_call',
+            line,
+            isNewExpression
+        )
+    );
+}
+
+function collectDirectCall(calls, seen, name, line, isNewExpression) {
+    addSeenCall(
+        calls,
+        seen,
+        `${name}:${line}`,
+        buildCallEntry(
+            name,
+            isNewExpression ? 'constructor_call' : 'direct_call',
+            line,
+            isNewExpression
+        )
+    );
+}
+
 export function findCallsInScope(fnNode, code) {
     const calls = [];
     const seen = new Set();
@@ -92,44 +155,17 @@ export function findCallsInScope(fnNode, code) {
         const fnNameNode = callNode.childForFieldName(targetField);
         if (!fnNameNode) return;
 
-        let name = null;
+        const line = startLine(callNode);
         if (fnNameNode.type === 'identifier') {
-            name = text(fnNameNode, code);
-        } else if (fnNameNode.type === 'member_expression') {
-            const obj = fnNameNode.childForFieldName('object');
-            const prop = fnNameNode.childForFieldName('property');
-            if (obj && prop) {
-                const objName = text(obj, code);
-                const propName = text(prop, code);
-                const key = `${objName}.${propName}:${startLine(callNode)}`;
-                if (!seen.has(objName)) {
-                    seen.add(objName);
-                    calls.push({ name: objName, type: 'namespace_access', line: startLine(callNode) });
-                }
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    calls.push({
-                        name: `${objName}.${propName}`,
-                        type: isNewExpression ? 'constructor_call' : 'member_call',
-                        line: startLine(callNode),
-                        ...(isNewExpression ? { isNew: true } : {})
-                    });
-                }
-                return;
-            }
+            collectDirectCall(calls, seen, text(fnNameNode, code), line, isNewExpression);
+            return;
         }
 
-        if (name) {
-            const key = `${name}:${startLine(callNode)}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                calls.push({
-                    name,
-                    type: isNewExpression ? 'constructor_call' : 'direct_call',
-                    line: startLine(callNode),
-                    ...(isNewExpression ? { isNew: true } : {})
-                });
-            }
+        if (fnNameNode.type !== 'member_expression') return;
+
+        const memberCall = readMemberCall(fnNameNode, code);
+        if (memberCall) {
+            collectMemberCall(calls, seen, memberCall, line, isNewExpression);
         }
     });
 
