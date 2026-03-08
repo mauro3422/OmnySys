@@ -4,9 +4,7 @@
  * @returns {Promise<Object>} Resultado del diagnóstico
  */
 import {
-    buildCompilerContractLayer,
     buildCompilerRemediationBacklog,
-    buildCompilerStandardizationReport,
     summarizeCentralityCoverageRow,
     buildDeadCodeRemediationPlan,
     buildLiveRowRemediationPlan,
@@ -15,26 +13,21 @@ import {
     PIPELINE_FIELD_COVERAGE_SIGNALS,
     buildLiveRowReconciliationPlan,
     classifyFieldCoverage,
-    discoverProjectSourceFiles,
     ensureLiveRowSync,
-    getFileImportEvidenceCoverage,
     getLiveFileTotal,
-    getFileUniverseGranularity,
     getMetadataSurfaceParity,
     getPipelineFieldCoverageContext,
     getSemanticSurfaceGranularity,
     summarizeSemanticCanonicality,
-    getSystemMapPersistenceCoverage,
+    loadCompilerDiagnosticsSnapshot,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
-    syncPersistedScannedFileManifest,
-    summarizeCompilerPolicyDrift,
-    summarizePersistedScannedFileCoverage
+    summarizeCompilerPolicyDrift
 } from '../../../../shared/compiler/index.js';
 import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
 
-export async function handlePipelineHealth(tool) {
+export async function aggregatePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
     const projectPath = tool.projectPath;
@@ -306,47 +299,29 @@ export async function handlePipelineHealth(tool) {
         }
     ]);
     const recentWatcherAlerts = tool.recentNotifications?.watcherAlerts || tool.latestRecentErrors?.watcherAlerts || [];
-    const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
-    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
-    const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
-    const fileImportEvidenceCoverage = getFileImportEvidenceCoverage(db);
-    const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
-    const standardizationReport = buildCompilerStandardizationReport({
+    const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
+        projectPath,
+        db,
         policySummary,
         watcherAlerts: recentWatcherAlerts,
         sharedState: tool.server?.sharedCache?.metadata?.sharedState || tool.server?.sharedState || {},
         compilerRemediation,
-        persistedFileCoverage,
-        fileImportEvidenceCoverage,
-        systemMapPersistenceCoverage,
-        semanticCanonicality,
-        semanticSurfaceGranularity,
-        fileUniverseGranularity: {
-            scannedFileTotal: persistedFileCoverage.scannedFileTotal,
-            manifestFileTotal: persistedFileCoverage.manifestFileTotal,
-            liveFileCount: getLiveFileTotal(db)
-        },
         canonicalAdoptions: {
             centralityCoverage: true,
             sharedStateContention: true,
-            scannedFileManifest: persistedFileCoverage.synchronized
-        }
-    });
-    const fileUniverseGranularity = getFileUniverseGranularity({
-        scannedFileTotal: persistedFileCoverage.scannedFileTotal,
-        manifestFileTotal: persistedFileCoverage.manifestFileTotal,
-        liveFileCount: getLiveFileTotal(db)
-    });
-    const compilerContractLayer = buildCompilerContractLayer({
-        persistedFileCoverage,
-        fileUniverseGranularity,
-        metadataSurfaceParity,
-        semanticSurfaceGranularity,
-        semanticCanonicality,
-        systemMapPersistenceCoverage,
-        standardization: standardizationReport,
+            scannedFileManifest: true
+        },
         tableCounts
     });
+    const {
+        persistedFileCoverage,
+        fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage,
+        semanticCanonicality: canonicalSemanticSurface,
+        fileUniverseGranularity,
+        standardizationReport,
+        compilerContractLayer
+    } = compilerDiagnostics;
 
     if (compilerContractLayer.summary.healthy === false) {
         warnings.push({
@@ -385,7 +360,7 @@ export async function handlePipelineHealth(tool) {
         standardizationReport,
         compilerContractLayer,
         runtimeTableHealth,
-        semanticCanonicality,
+        semanticCanonicality: canonicalSemanticSurface,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,

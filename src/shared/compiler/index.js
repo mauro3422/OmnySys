@@ -44,6 +44,10 @@ export {
 } from './compiler-contract-layer.js';
 
 export {
+  loadCompilerDiagnosticsSnapshot
+} from './compiler-diagnostics-snapshot.js';
+
+export {
   classifyAtomOperationalRole,
   classifyFileOperationalRole
 } from './atom-role-classification.js';

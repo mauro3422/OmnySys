@@ -9,44 +9,20 @@ import { collectRecentNotifications, normalizeRecentNotifications } from '../cor
 import {
   buildCompilerContractLayer,
   buildCompilerReadinessStatus,
-  buildCompilerStandardizationReport,
-  discoverProjectSourceFiles,
-  getSystemMapPersistenceCoverage,
-  getMetadataSurfaceParity,
+  getCachedCounts,
+  getCachedMetadata,
+  getLastAnalyzed,
+  getPhase2Status,
+  loadCompilerDiagnosticsSnapshot,
   getSharedStateContentionSummary,
   buildTelemetryProvenance,
-  getFileImportEvidenceCoverage,
-  getFileUniverseGranularity,
-  getSemanticSurfaceGranularity,
-  summarizeSemanticCanonicality,
-  summarizePersistedScannedFileCoverage,
-  syncPersistedScannedFileManifest,
   summarizeSignalConfidence,
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:status');
 
-function getCachedMetadata(server, cache) {
-  return server?.metadata || cache?.get?.('metadata') || {};
-}
-
-function getCachedCounts(cache, fallbackMetadata) {
-  return {
-    totalFiles: cache?.index?.metadata?.totalFiles || fallbackMetadata?.stats?.totalFiles || fallbackMetadata?.totalFiles || 0,
-    totalAtoms: cache?.index?.metadata?.totalAtoms || fallbackMetadata?.stats?.totalAtoms || fallbackMetadata?.totalFunctions || fallbackMetadata?.totalAtoms || 0
-  };
-}
-
-function getLastAnalyzed(metadata) {
-  return metadata?.system_map_metadata?.analyzedAt || metadata?.core_metadata?.enhancedAt || metadata?.indexedAt || null;
-}
-
-function getPhase2Status(orchestrator) {
-  return orchestrator?.phase2Status || null;
-}
-
-function buildBaseStatus(server, projectPath, phase2InProgress) {
+function buildServerStatusEnvelope(server, projectPath, phase2InProgress) {
   return {
     initialized: server?.initialized || false,
     initializing: !!server && !server.initialized,
@@ -80,7 +56,7 @@ function attachOrchestratorStatus(status, orchestrator) {
   status.orchestrator = { status: 'not_ready', message: 'Orchestrator is initializing' };
 }
 
-function buildHotReloadStatus(server) {
+function buildRuntimeHotReloadStatus(server) {
   return server?.hotReloadManager?.getStats?.() || {
     isWatching: false,
     isReloading: false,
@@ -252,45 +228,14 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
-    const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
-    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
-    const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
-    const fileImportEvidenceCoverage = repo?.db ? getFileImportEvidenceCoverage(repo.db) : null;
-    const systemMapPersistenceCoverage = repo?.db ? getSystemMapPersistenceCoverage(repo.db) : null;
-    const metadataSurfaceParity = repo?.db ? getMetadataSurfaceParity(repo.db) : null;
-    const semanticSurfaceGranularity = repo?.db ? getSemanticSurfaceGranularity(repo.db) : null;
-    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
-    const fileUniverseGranularity = getFileUniverseGranularity({
-      scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
-      manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
-      liveFileCount: repo?.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0
-    });
-    const standardization = buildCompilerStandardizationReport({
+    const snapshot = await loadCompilerDiagnosticsSnapshot({
+      projectPath,
+      db: repo?.db,
       policySummary,
       watcherAlerts,
       sharedState,
-      persistedFileCoverage,
-      fileImportEvidenceCoverage,
-      systemMapPersistenceCoverage,
-      metadataSurfaceParity,
-      semanticSurfaceGranularity,
-      fileUniverseGranularity,
-      canonicalAdoptions: {
-        centralityCoverage: true,
-        sharedStateContention: true,
-        scannedFileManifest: persistedFileCoverage.synchronized
-      }
-    });
-    const compilerContractLayer = buildCompilerContractLayer({
-      persistedFileCoverage,
-      fileUniverseGranularity,
-      metadataSurfaceParity,
-      semanticSurfaceGranularity,
-      semanticCanonicality,
-      systemMapPersistenceCoverage,
-      standardization,
       tableCounts: {
         atoms: repo?.db.prepare('SELECT COUNT(*) as n FROM atoms WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0,
         files: repo?.db.prepare('SELECT COUNT(*) as n FROM files WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0,
@@ -301,15 +246,15 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
 
     return {
       policySummary,
-      standardization,
-      compilerContractLayer,
-      persistedFileCoverage,
-      fileImportEvidenceCoverage,
-      systemMapPersistenceCoverage,
-      metadataSurfaceParity,
-      semanticCanonicality,
-      semanticSurfaceGranularity,
-      fileUniverseGranularity
+      standardization: snapshot.standardizationReport,
+      compilerContractLayer: snapshot.compilerContractLayer,
+      persistedFileCoverage: snapshot.persistedFileCoverage,
+      fileImportEvidenceCoverage: snapshot.fileImportEvidenceCoverage,
+      systemMapPersistenceCoverage: snapshot.systemMapPersistenceCoverage,
+      metadataSurfaceParity: snapshot.metadataSurfaceParity,
+      semanticCanonicality: snapshot.semanticCanonicality,
+      semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity,
+      fileUniverseGranularity: snapshot.fileUniverseGranularity
     };
   } catch (error) {
     return {
@@ -327,9 +272,9 @@ export async function get_server_status(args, context) {
 
   logger.info('[Tool] get_server_status()');
 
-  const status = buildBaseStatus(server, projectPath, phase2InProgress);
+  const status = buildServerStatusEnvelope(server, projectPath, phase2InProgress);
   attachOrchestratorStatus(status, orchestrator);
-  status.hotReload = buildHotReloadStatus(server);
+  status.hotReload = buildRuntimeHotReloadStatus(server);
   const notifications = await loadNotifications(projectPath);
   attachNotificationSignals(status, notifications);
 
