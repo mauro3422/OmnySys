@@ -53,6 +53,110 @@ function collectReferencedSymbols(alert = {}) {
   return [...new Set(symbols)];
 }
 
+async function getMaxMtimeRecursively(absolutePath) {
+  try {
+    let maxMtimeMs = 0;
+    const pendingPaths = [absolutePath];
+
+    while (pendingPaths.length > 0) {
+      const currentPath = pendingPaths.pop();
+      const stat = await fs.stat(currentPath);
+      if (stat.mtimeMs > maxMtimeMs) {
+        maxMtimeMs = stat.mtimeMs;
+      }
+
+      if (!stat.isDirectory()) {
+        continue;
+      }
+
+      const entries = await fs.readdir(currentPath, { withFileTypes: true });
+      for (const entry of entries) {
+        pendingPaths.push(path.join(currentPath, entry.name));
+      }
+    }
+
+    return maxMtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+async function getCachedRuntimeDependencyMtime(projectPath, relativePath, runtimeDependencyMtimes) {
+  if (!relativePath) return 0;
+  if (runtimeDependencyMtimes.has(relativePath)) {
+    return runtimeDependencyMtimes.get(relativePath);
+  }
+
+  let mtimeMs = 0;
+  try {
+    const absolutePath = path.resolve(projectPath, relativePath);
+    mtimeMs = await getMaxMtimeRecursively(absolutePath);
+  } catch {
+    mtimeMs = 0;
+  }
+
+  runtimeDependencyMtimes.set(relativePath, mtimeMs);
+  return mtimeMs;
+}
+
+async function getCachedFileContents(absolutePath, fileContentsCache) {
+  if (fileContentsCache.has(absolutePath)) {
+    return fileContentsCache.get(absolutePath);
+  }
+
+  try {
+    const contents = await fs.readFile(absolutePath, 'utf8');
+    fileContentsCache.set(absolutePath, contents);
+    return contents;
+  } catch {
+    fileContentsCache.set(absolutePath, '');
+    return '';
+  }
+}
+
+function getAlertFileSnapshot(projectPath, alert) {
+  const id = alert?.id;
+  if (!Number.isInteger(id)) return null;
+
+  const detectedAtMs = Date.parse(alert?.detectedAt || '');
+  if (!Number.isFinite(detectedAtMs)) return null;
+
+  const relativePath = String(alert?.filePath || '');
+  if (!relativePath) return null;
+
+  return {
+    id,
+    detectedAtMs,
+    relativePath,
+    absolutePath: path.resolve(projectPath, relativePath)
+  };
+}
+
+async function isAlertOutdatedByMissingSymbols(alert, absolutePath, fileContentsCache) {
+  const referencedSymbols = collectReferencedSymbols(alert);
+  if (referencedSymbols.length === 0) {
+    return false;
+  }
+
+  const contents = await getCachedFileContents(absolutePath, fileContentsCache);
+  return referencedSymbols.some((symbol) => !contents.includes(symbol));
+}
+
+async function isAlertOutdatedByRuntimeDependencies(projectPath, detectedAtMs, runtimeDependencyMtimes) {
+  for (const dependencyPath of WATCHER_RUNTIME_DEPENDENCY_PATHS) {
+    const dependencyMtimeMs = await getCachedRuntimeDependencyMtime(
+      projectPath,
+      dependencyPath,
+      runtimeDependencyMtimes
+    );
+    if (dependencyMtimeMs > (detectedAtMs + 1000)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function findOrphanedWatcherAlertIds(db, alerts = []) {
   if (!db) return [];
 
@@ -90,69 +194,14 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
   const runtimeDependencyMtimes = new Map();
   const fileContentsCache = new Map();
 
-  const getMaxMtimeRecursively = async (absolutePath) => {
-    try {
-      const stat = await fs.stat(absolutePath);
-      if (!stat.isDirectory()) {
-        return stat.mtimeMs;
-      }
-
-      let maxMtimeMs = stat.mtimeMs;
-      const entries = await fs.readdir(absolutePath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const entryPath = path.join(absolutePath, entry.name);
-        const entryMtimeMs = await getMaxMtimeRecursively(entryPath);
-        if (entryMtimeMs > maxMtimeMs) {
-          maxMtimeMs = entryMtimeMs;
-        }
-      }
-
-      return maxMtimeMs;
-    } catch {
-      return 0;
-    }
-  };
-
-  const getRuntimeDependencyMtime = async (relativePath) => {
-    if (!relativePath) return 0;
-    if (runtimeDependencyMtimes.has(relativePath)) {
-      return runtimeDependencyMtimes.get(relativePath);
-    }
-
-    const absolutePath = path.resolve(projectPath, relativePath);
-    const mtimeMs = await getMaxMtimeRecursively(absolutePath);
-
-    runtimeDependencyMtimes.set(relativePath, mtimeMs);
-    return mtimeMs;
-  };
-
-  const getFileContents = async (absolutePath) => {
-    if (fileContentsCache.has(absolutePath)) {
-      return fileContentsCache.get(absolutePath);
-    }
-
-    try {
-      const contents = await fs.readFile(absolutePath, 'utf8');
-      fileContentsCache.set(absolutePath, contents);
-      return contents;
-    } catch {
-      fileContentsCache.set(absolutePath, '');
-      return '';
-    }
-  };
-
   for (const alert of alerts) {
-    const id = alert?.id;
-    if (!Number.isInteger(id)) continue;
+    const snapshot = getAlertFileSnapshot(projectPath, {
+      ...alert,
+      filePath: normalizeWatcherIssueFilePath(projectPath, alert?.filePath)
+    });
+    if (!snapshot) continue;
 
-    const detectedAtMs = Date.parse(alert?.detectedAt || '');
-    if (!Number.isFinite(detectedAtMs)) continue;
-
-    const relativePath = String(alert?.filePath || '');
-    if (!relativePath) continue;
-
-    const absolutePath = path.resolve(projectPath, relativePath);
+    const { id, detectedAtMs, absolutePath } = snapshot;
     try {
       const stat = await fs.stat(absolutePath);
       if (stat.mtimeMs > (detectedAtMs + 1000)) {
@@ -160,25 +209,16 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
         continue;
       }
 
-      const referencedSymbols = collectReferencedSymbols(alert);
-      if (referencedSymbols.length > 0) {
-        const contents = await getFileContents(absolutePath);
-        const missingSymbols = referencedSymbols.filter((symbol) => !contents.includes(symbol));
-        if (missingSymbols.length > 0) {
-          outdatedIds.push(id);
-          continue;
-        }
+      if (await isAlertOutdatedByMissingSymbols(alert, absolutePath, fileContentsCache)) {
+        outdatedIds.push(id);
+        continue;
       }
     } catch {
       // If the file no longer exists, regular lifecycle cleanup will handle it.
     }
 
-    for (const dependencyPath of WATCHER_RUNTIME_DEPENDENCY_PATHS) {
-      const dependencyMtimeMs = await getRuntimeDependencyMtime(dependencyPath);
-      if (dependencyMtimeMs > (detectedAtMs + 1000)) {
-        outdatedIds.push(id);
-        break;
-      }
+    if (await isAlertOutdatedByRuntimeDependencies(projectPath, detectedAtMs, runtimeDependencyMtimes)) {
+      outdatedIds.push(id);
     }
   }
 
