@@ -202,38 +202,26 @@ function buildFilesystemOnlyValidation(projectPath, filePath) {
     };
 }
 
-function addBrokenImportEntry(entries, entry) {
-    const fingerprint = [
-        entry?.source || '',
-        entry?.reason || '',
-        entry?.missingExport || ''
-    ].join('::');
-    if (entries.some((candidate) => [
-        candidate?.source || '',
-        candidate?.reason || '',
-        candidate?.missingExport || ''
-    ].join('::') === fingerprint)) {
-        return;
-    }
-    entries.push(entry);
-}
-
-function readSourceImportCount(projectPath, filePath) {
-    const absoluteFilePath = path.resolve(projectPath, filePath);
-    if (!fs.existsSync(absoluteFilePath)) {
-        return 0;
-    }
-
-    return extractRelativeModuleSpecifiers(fs.readFileSync(absoluteFilePath, 'utf8')).length;
-}
-
 function collectBrokenImports(fileData, projectPath, filePath, checkBroken) {
     const broken = [];
+    const fingerprints = new Set();
     const imports = fileData?.imports || [];
+    const pushUniqueBrokenImport = (entry) => {
+        const fingerprint = [
+            entry?.source || '',
+            entry?.reason || '',
+            entry?.missingExport || ''
+        ].join('::');
+        if (fingerprints.has(fingerprint)) {
+            return;
+        }
+        fingerprints.add(fingerprint);
+        broken.push(entry);
+    };
 
     for (const imp of imports) {
         if (checkBroken && !imp.resolved && imp.type === 'local') {
-            addBrokenImportEntry(broken, imp);
+            pushUniqueBrokenImport(imp);
         }
     }
 
@@ -243,18 +231,10 @@ function collectBrokenImports(fileData, projectPath, filePath, checkBroken) {
 
     const filesystemBrokenImports = detectFilesystemBrokenImports(projectPath, filePath);
     for (const missingImport of filesystemBrokenImports) {
-        addBrokenImportEntry(broken, missingImport);
+        pushUniqueBrokenImport(missingImport);
     }
 
     return broken;
-}
-
-function collectUnusedImports(fileData, checkUnused) {
-    if (!checkUnused) {
-        return [];
-    }
-
-    return (fileData?.imports || []).filter((entry) => entry?.unused === true);
 }
 
 function computeCircularDependencies(repo, filePath, checkCircular) {
@@ -306,7 +286,10 @@ function computeCircularDependencies(repo, filePath, checkCircular) {
 
 function buildIndexedValidationResult(filePath, fileData, broken, unused, circularPaths, projectPath) {
     const indexedImportCount = Array.isArray(fileData?.imports) ? fileData.imports.length : 0;
-    const sourceImportCount = readSourceImportCount(projectPath, filePath);
+    const absoluteFilePath = path.resolve(projectPath, filePath);
+    const sourceImportCount = fs.existsSync(absoluteFilePath)
+        ? extractRelativeModuleSpecifiers(fs.readFileSync(absoluteFilePath, 'utf8')).length
+        : 0;
     return {
         file: filePath,
         totalImports: Math.max(indexedImportCount, sourceImportCount),
@@ -343,7 +326,9 @@ export class ValidateImportsTool extends GraphQueryTool {
             }
 
             const broken = collectBrokenImports(fileData, this.projectPath, filePath, checkBroken);
-            const unused = collectUnusedImports(fileData, checkUnused);
+            const unused = checkUnused
+                ? (fileData?.imports || []).filter((entry) => entry?.unused === true)
+                : [];
             const circularPaths = computeCircularDependencies(this.repo, filePath, checkCircular);
 
             return this.formatSuccess(
