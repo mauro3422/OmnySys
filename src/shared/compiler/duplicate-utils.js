@@ -15,15 +15,18 @@ export {
 export { normalizeFilePath } from './path-normalization.js';
 
 export {
-    isCanonicalDuplicateSignalPolicyFile,
-    isLowSignalGeneratedAtom,
-    isLowSignalConceptualFingerprint,
-    isRepositoryContractSurface,
-    isGuardUtilityConceptualFingerprint,
-    isCanonicalMcpToolRouter,
-    isLowSignalGuardStructuralHelper,
-    shouldIgnoreConceptualDuplicateFinding,
-    shouldIgnoreStructuralDuplicateFinding
+  isCanonicalDuplicateSignalPolicyFile,
+  isLowSignalGeneratedAtom,
+  isLowSignalConceptualFingerprint,
+  isRepositoryContractSurface,
+  isGuardUtilityConceptualFingerprint,
+  isCanonicalMcpToolRouter,
+  isRuntimePortProbeHelper,
+  isMcpHttpProxyLifecycleHelper,
+  isLegacyLlmBootstrapCompatibilityHelper,
+  isLowSignalGuardStructuralHelper,
+  shouldIgnoreConceptualDuplicateFinding,
+  shouldIgnoreStructuralDuplicateFinding
 } from './duplicate-signal-policy.js';
 
 import { normalizeFilePath } from './path-normalization.js';

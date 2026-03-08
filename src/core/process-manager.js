@@ -7,59 +7,13 @@
 
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
-import net from 'net';
 
 const execAsync = promisify(exec);
 import { createLogger } from '../utils/logger.js';
+import { isPortBound as isPortInUse } from '../shared/utils/port-probe.js';
 
 const logger = createLogger('OmnySys:process:manager');
 
-function safelyClosePortProbe(server) {
-  if (!server?.listening) {
-    return;
-  }
-
-  server.close((closeError) => {
-    if (closeError) {
-      logger.debug(`[PORT_PROBE_CLOSE_SKIP] ${closeError.message}`);
-    }
-  });
-}
-
-
-/**
- * Verifica si un puerto está en uso
- */
-export async function isPortInUse(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-
-    const resolveWith = (inUse) => {
-      safelyClosePortProbe(server);
-      resolve(inUse);
-    };
-
-    server.once('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        resolveWith(true);
-      } else {
-        logger.debug(`[PORT_PROBE_ERROR] port=${port} code=${err.code || 'unknown'} message=${err.message}`);
-        resolveWith(false);
-      }
-    });
-
-    server.once('listening', () => {
-      resolveWith(false);
-    });
-
-    try {
-      server.listen(port);
-    } catch (error) {
-      logger.debug(`[PORT_PROBE_LISTEN_SKIP] port=${port} message=${error.message}`);
-      resolve(false);
-    }
-  });
-}
 
 /**
  * Encuentra proceso por puerto

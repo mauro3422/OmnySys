@@ -29,7 +29,6 @@
 import path from 'path';
 import fs from 'fs';
 import http from 'http';
-import net from 'net';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import {
@@ -37,6 +36,7 @@ import {
     removeDaemonOwnerLockSync,
     writeDaemonOwnerLockSync
 } from '../shared/compiler/index.js';
+import { isPortAcceptingConnections } from '../shared/utils/port-probe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -132,20 +132,9 @@ async function detectHealthyDaemon() {
     });
 }
 
-async function isPortInUse(portToCheck) {
-    return await new Promise((resolve) => {
-        const socket = net.connect({ host: '127.0.0.1', port: Number(portToCheck) });
-        socket.once('connect', () => {
-            socket.destroy();
-            resolve(true);
-        });
-        socket.once('error', () => resolve(false));
-    });
-}
-
 async function waitForPortRelease(portToCheck, attempts = 10, delayMs = 750) {
     for (let attempt = 0; attempt < attempts; attempt++) {
-        if (!(await isPortInUse(portToCheck))) {
+        if (!(await isPortAcceptingConnections(portToCheck))) {
             return true;
         }
         await new Promise((resolve) => setTimeout(resolve, delayMs));

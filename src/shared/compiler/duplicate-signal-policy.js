@@ -159,6 +159,44 @@ const INTEGRITY_ANALYSIS_FINGERPRINTS = new Set([
     'process:core:mismatch'
 ]);
 
+const RUNTIME_PORT_PROBE_FILE_MARKER = '/shared/utils/port-probe.js';
+const RUNTIME_PORT_PROBE_NAMES = new Set([
+    'isportbound',
+    'isportacceptingconnections'
+]);
+const RUNTIME_PORT_PROBE_FINGERPRINTS = new Set([
+    'process:core:connections',
+    'process:core:port'
+]);
+
+const MCP_HTTP_PROXY_FILE_MARKER = '/layer-c-memory/mcp-http-proxy.js';
+const MCP_HTTP_PROXY_LIFECYCLE_NAMES = new Set([
+    'log',
+    'clearrespawntimer',
+    'schedulerespawn',
+    'detecthealthydaemon',
+    'waitforportrelease',
+    'spawnworker',
+    'shutdown'
+]);
+const MCP_HTTP_PROXY_LIFECYCLE_FINGERPRINTS = new Set([
+    'process:core:shutdown',
+    'process:core:worker',
+    'process:core:timer',
+    'process:core:release',
+    'process:core:log'
+]);
+
+const LEGACY_LLM_BOOTSTRAP_FILE_MARKER = '/cli/utils/llm.js';
+const LEGACY_LLM_BOOTSTRAP_NAMES = new Set([
+    'ensurellmavailable',
+    'isbrainserverstarting'
+]);
+const LEGACY_LLM_BOOTSTRAP_FINGERPRINTS = new Set([
+    'process:core:available',
+    'process:core:starting'
+]);
+
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
@@ -289,6 +327,50 @@ export function isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticF
     return INTEGRITY_ANALYSIS_FINGERPRINTS.has(fingerprint);
 }
 
+export function isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (!normalizedPath.endsWith(RUNTIME_PORT_PROBE_FILE_MARKER)) return false;
+    if (!RUNTIME_PORT_PROBE_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return RUNTIME_PORT_PROBE_FINGERPRINTS.has(fingerprint);
+}
+
+export function isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (!normalizedPath.endsWith(MCP_HTTP_PROXY_FILE_MARKER)) return false;
+    if (!MCP_HTTP_PROXY_LIFECYCLE_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return MCP_HTTP_PROXY_LIFECYCLE_FINGERPRINTS.has(fingerprint) ||
+        normalizedName === 'schedulerespawn' ||
+        normalizedName === 'detecthealthydaemon';
+}
+
+export function isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (!normalizedPath.endsWith(LEGACY_LLM_BOOTSTRAP_FILE_MARKER)) return false;
+    if (!LEGACY_LLM_BOOTSTRAP_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return LEGACY_LLM_BOOTSTRAP_FINGERPRINTS.has(fingerprint);
+}
+
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
     const normalizedPath = normalizeFilePath(filePath).toLowerCase();
     const normalizedName = String(atomName || '').toLowerCase();
@@ -303,6 +385,9 @@ export function isLowSignalGuardStructuralHelper(filePath, atomName) {
 export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
         isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) ||
+        isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) ||
+        isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) ||
+        isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) ||
         isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
         isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) ||
@@ -315,6 +400,9 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
 export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
     return isCanonicalDuplicateSignalPolicyHelper(filePath, atomName) ||
         isIntegrityAnalysisCanonicalHelper(filePath, atomName, null) ||
+        isRuntimePortProbeHelper(filePath, atomName, null) ||
+        isMcpHttpProxyLifecycleHelper(filePath, atomName, null) ||
+        isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, null) ||
         isRepositoryContractSurface(filePath, atomName, null) ||
         isCompilerConformancePolicyHelper(filePath, atomName, null) ||
