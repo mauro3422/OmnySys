@@ -50,7 +50,8 @@ export const COMPILER_POLICY_AREA = {
   TESTABILITY: 'testability',
   SEMANTIC_PURITY: 'semantic_purity',
   METADATA_PROPAGATION: 'metadata_propagation',
-  SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity'
+  SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity',
+  CANONICAL_BYPASS: 'canonical_bypass'
 };
 
 import {
@@ -86,6 +87,40 @@ function looksLikeManualTopologyScan(source = '') {
 
 function looksLikeManualRuntimeOwnership(source = '') {
   return /getDaemonOwnerLockPath|writeDaemonOwnerLockSync|removeDaemonOwnerLockSync|readDaemonOwnerLock|waitForDaemonOwner|isCompilerProcessAlive/.test(source);
+}
+
+function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
+  if (!source) {
+    return false;
+  }
+
+  if (
+    normalizedPath.endsWith('/compiler-diagnostics-snapshot.js') ||
+    normalizedPath.startsWith('src/shared/compiler/')
+  ) {
+    return false;
+  }
+
+  const importsSnapshot = /loadCompilerDiagnosticsSnapshot/.test(source);
+  if (importsSnapshot) {
+    return false;
+  }
+
+  const canonicalSignals = [
+    /buildCompilerStandardizationReport/,
+    /buildCompilerContractLayer/,
+    /summarizePersistedScannedFileCoverage/,
+    /syncPersistedScannedFileManifest/,
+    /getFileImportEvidenceCoverage/,
+    /getSystemMapPersistenceCoverage/,
+    /getMetadataSurfaceParity/,
+    /getSemanticSurfaceGranularity/,
+    /summarizeSemanticCanonicality/,
+    /getFileUniverseGranularity/
+  ];
+
+  const matchedSignals = canonicalSignals.filter((pattern) => pattern.test(source)).length;
+  return matchedSignals >= 3;
 }
 
 function buildPolicyImportMap(source = '') {
@@ -192,6 +227,16 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
         COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
         'Manual daemon ownership/lock logic detected',
         'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
+      )
+    },
+    {
+      when: looksLikeCanonicalDiagnosticsBypass(normalizedPath, source),
+      finding: createFinding(
+        'canonical_diagnostics_bypass',
+        COMPILER_POLICY_SEVERITY.HIGH,
+        COMPILER_POLICY_AREA.CANONICAL_BYPASS,
+        'Module recomposes canonical compiler diagnostics instead of using the shared snapshot entrypoint',
+        'Use loadCompilerDiagnosticsSnapshot from shared/compiler/index.js before creating another local diagnostics wrapper.'
       )
     }
   ];

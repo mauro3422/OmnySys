@@ -1,6 +1,87 @@
 import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
+import fs from 'fs';
+import path from 'path';
 import { getFileAnalysis } from '../../query/apis/file-api.js';
 import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
+
+function extractRelativeModuleSpecifiers(source = '') {
+    const specifiers = new Set();
+    const patterns = [
+        /\bimport\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/g,
+        /\bexport\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/g,
+        /\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g
+    ];
+
+    for (const pattern of patterns) {
+        for (const match of String(source || '').matchAll(pattern)) {
+            if (match?.[1]) {
+                specifiers.add(match[1]);
+            }
+        }
+    }
+
+    return [...specifiers];
+}
+
+function resolveExistingModulePath(baseDir, specifier) {
+    const candidateBase = path.resolve(baseDir, specifier);
+    const candidates = [
+        candidateBase,
+        `${candidateBase}.js`,
+        `${candidateBase}.mjs`,
+        `${candidateBase}.cjs`,
+        `${candidateBase}.ts`,
+        `${candidateBase}.mts`,
+        `${candidateBase}.cts`,
+        path.join(candidateBase, 'index.js'),
+        path.join(candidateBase, 'index.mjs'),
+        path.join(candidateBase, 'index.ts')
+    ];
+
+    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+}
+
+function detectFilesystemBrokenImports(projectPath, filePath) {
+    const absoluteFilePath = path.resolve(projectPath, filePath);
+    if (!fs.existsSync(absoluteFilePath)) {
+        return [];
+    }
+
+    const source = fs.readFileSync(absoluteFilePath, 'utf8');
+    const baseDir = path.dirname(absoluteFilePath);
+    const broken = [];
+
+    for (const specifier of extractRelativeModuleSpecifiers(source)) {
+        if (!resolveExistingModulePath(baseDir, specifier)) {
+            broken.push({
+                source: specifier,
+                type: 'local',
+                resolved: false,
+                reason: 'filesystem_missing'
+            });
+        }
+    }
+
+    return broken;
+}
+
+function buildFilesystemOnlyValidation(projectPath, filePath) {
+    const absoluteFilePath = path.resolve(projectPath, filePath);
+    if (!fs.existsSync(absoluteFilePath)) {
+        return null;
+    }
+
+    const broken = detectFilesystemBrokenImports(projectPath, filePath);
+    return {
+        file: filePath,
+        totalImports: extractRelativeModuleSpecifiers(fs.readFileSync(absoluteFilePath, 'utf8')).length,
+        brokenPaths: broken.map((entry) => entry.source),
+        unusedImports: [],
+        circularDependencies: [],
+        status: broken.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
+        validationMode: 'filesystem_fallback'
+    };
+}
 
 export class ValidateImportsTool extends GraphQueryTool {
     constructor() {
@@ -17,7 +98,12 @@ export class ValidateImportsTool extends GraphQueryTool {
         const fileData = await getFileAnalysis(this.projectPath, filePath);
 
         if (!fileData) {
-            return this.formatError('NOT_FOUND', `File ${filePath} not found in the index. Run 'omny up' or analysis.`);
+            const filesystemValidation = buildFilesystemOnlyValidation(this.projectPath, filePath);
+            if (filesystemValidation) {
+                return this.formatSuccess(filesystemValidation);
+            }
+
+            return this.formatError('NOT_FOUND', `File ${filePath} not found in the index or filesystem. Run 'omny up' or analysis.`);
         }
 
         const imports = fileData.imports || [];
@@ -32,6 +118,15 @@ export class ValidateImportsTool extends GraphQueryTool {
             }
             if (checkUnused && imp.unused === true) {
                 unused.push(imp);
+            }
+        }
+
+        if (checkBroken) {
+            const filesystemBrokenImports = detectFilesystemBrokenImports(this.projectPath, filePath);
+            for (const missingImport of filesystemBrokenImports) {
+                if (!broken.some((entry) => entry.source === missingImport.source)) {
+                    broken.push(missingImport);
+                }
             }
         }
 

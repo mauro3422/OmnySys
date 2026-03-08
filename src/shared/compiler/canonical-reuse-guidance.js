@@ -104,6 +104,11 @@ const RULE_GUIDANCE = {
     recommendedImport: "import { getSemanticSurfaceGranularity } from '../../../shared/compiler/index.js'",
     recommendedReplacement: 'Read semantic summary/detail contracts through the canonical granularity API before mixing `semantic_connections` with `atom_relations`.'
   },
+  canonical_diagnostics_bypass: {
+    existingCanonicalEntryPoint: 'loadCompilerDiagnosticsSnapshot',
+    recommendedImport: "import { loadCompilerDiagnosticsSnapshot } from '../../../shared/compiler/index.js'",
+    recommendedReplacement: 'Reuse the canonical compiler diagnostics snapshot instead of recomposing persisted coverage, semantic canonicality, standardization, and contract-layer fields inline.'
+  },
   file_universe_granularity: {
     existingCanonicalEntryPoint: 'getFileUniverseGranularity',
     recommendedImport: "import { getFileUniverseGranularity } from '../../../shared/compiler/index.js'",
@@ -129,6 +134,7 @@ const AREA_FALLBACK_GUIDANCE = {
   metadata_surface_parity: RULE_GUIDANCE.metadata_surface_parity,
   metadata_propagation: RULE_GUIDANCE.metadata_propagation,
   semantic_surface_granularity: RULE_GUIDANCE.semantic_surface_granularity,
+  canonical_bypass: RULE_GUIDANCE.canonical_diagnostics_bypass,
   file_universe_granularity: RULE_GUIDANCE.file_universe_granularity
 };
 

@@ -7,10 +7,10 @@
  * @module shared/compiler/compiler-diagnostics-snapshot
  */
 
-import { discoverProjectSourceFiles } from './source-file-discovery.js';
+import { discoverProjectSourceFiles } from './file-discovery.js';
 import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
-import { getFileImportEvidenceCoverage } from './import-evidence-coverage.js';
-import { getSystemMapPersistenceCoverage } from './system-map-persistence-coverage.js';
+import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
+import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
 import { getMetadataSurfaceParity } from './metadata-surface-parity.js';
 import { getSemanticSurfaceGranularity, summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
