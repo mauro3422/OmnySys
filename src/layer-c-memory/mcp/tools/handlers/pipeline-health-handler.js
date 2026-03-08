@@ -26,6 +26,7 @@ import {
     summarizeCompilerPolicyDrift,
     summarizePersistedScannedFileCoverage
 } from '../../../../shared/compiler/index.js';
+import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
 
 function getFieldCoverageContext(field) {
     if (field === 'has_network_calls') {
@@ -45,6 +46,7 @@ export async function handlePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
     const projectPath = tool.projectPath;
+    const runtimeTableHealth = await syncRuntimeTableHealthIssues(projectPath, { db, deep: true });
     let policyFindings = [];
     let policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} };
     const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
@@ -263,6 +265,7 @@ export async function handlePipelineHealth(tool) {
         });
         tableCounts.semantic_surface_granularity_issues = semanticSurfaceGranularity.issues.length;
     }
+    tableCounts.runtime_table_health_issues = runtimeTableHealth.activeIssues.length;
     const compilerRemediation = buildCompilerRemediationBacklog([
         {
             id: 'live_rows',
@@ -337,6 +340,7 @@ export async function handlePipelineHealth(tool) {
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
         standardizationReport,
+        runtimeTableHealth,
         orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
         summary: {
             totalIssues: issues.length,

@@ -1,0 +1,365 @@
+import { createLogger } from '../../utils/logger.js';
+import { getWatcherIssueDb } from '../file-watcher/watcher-issue-repository.js';
+import {
+  getSemanticSurfaceGranularity,
+  ensureLiveRowSync,
+  getMetadataSurfaceParity,
+  getSystemMapPersistenceCoverage,
+  getFileUniverseGranularity,
+  discoverProjectSourceFiles,
+  summarizePersistedScannedFileCoverage
+} from '../../shared/compiler/index.js';
+import { createWatcherIssueRecord, WATCHER_MESSAGE_PREFIX } from '../../shared/compiler/watcher-issues.js';
+
+const logger = createLogger('OmnySys:runtime:table-health');
+
+const PROJECT_WIDE_FILE = 'project-wide';
+const ISSUE_TYPE_PREFIX = 'runtime_table_health';
+const TABLE_HEALTH_CHECKS = [
+  {
+    table: 'atoms',
+    minRows: 100,
+    severity: 'high',
+    message: 'atoms is below minimum expected rows; the indexing pipeline likely did not complete.'
+  },
+  {
+    table: 'atom_relations',
+    minRows: 1,
+    severity: 'high',
+    message: 'atom_relations is empty; the graph/linking pipeline is not persisting dependencies.'
+  },
+  {
+    table: 'files',
+    minRows: 1,
+    severity: 'high',
+    message: 'files is empty; file-level metadata is missing.'
+  },
+  {
+    table: 'atom_versions',
+    minRows: 1,
+    severity: 'medium',
+    message: 'atom_versions is empty; version tracking is not being written.'
+  },
+  {
+    table: 'atom_events',
+    minRows: 1,
+    severity: 'medium',
+    message: 'atom_events is empty; event sourcing is not being written.'
+  },
+  {
+    table: 'societies',
+    minRows: 1,
+    severity: 'medium',
+    message: 'societies is empty; society clustering is not being persisted.'
+  },
+  {
+    table: 'risk_assessments',
+    minRows: 1,
+    severity: 'medium',
+    message: 'risk_assessments is empty; risk telemetry is advisory only until persistence resumes.'
+  }
+];
+
+function buildTableIssueType(table) {
+  return `${ISSUE_TYPE_PREFIX}_${table}_empty`;
+}
+
+function buildKnownIssueTypes() {
+  return [
+    ...TABLE_HEALTH_CHECKS.map((check) => buildTableIssueType(check.table)),
+    `${ISSUE_TYPE_PREFIX}_semantic_surface_drift`,
+    `${ISSUE_TYPE_PREFIX}_live_row_drift`,
+    `${ISSUE_TYPE_PREFIX}_metadata_surface_parity`,
+    `${ISSUE_TYPE_PREFIX}_system_map_persistence`,
+    `${ISSUE_TYPE_PREFIX}_file_universe_drift`
+  ];
+}
+
+function loadTableCount(db, table) {
+  const row = db.prepare(`SELECT COUNT(*) as total FROM "${table}"`).get();
+  return Number(row?.total || 0);
+}
+
+function loadActiveRuntimeIssue(db, issueType) {
+  return db.prepare(`
+    SELECT id, severity, message, context_json
+    FROM semantic_issues
+    WHERE file_path = ?
+      AND issue_type = ?
+      AND message LIKE ?
+      AND (is_removed IS NULL OR is_removed = 0)
+    ORDER BY detected_at DESC, id DESC
+    LIMIT 1
+  `).get(PROJECT_WIDE_FILE, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+}
+
+function normalizeWatcherMessage(message = '') {
+  return String(message || '').trim().replace(/^\[watcher\]\s*/i, '').trim();
+}
+
+function stableJson(value) {
+  if (value == null) return 'null';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '{}';
+  }
+}
+
+function safeJsonParse(value, fallback = {}) {
+  try {
+    return JSON.parse(value || '{}');
+  } catch {
+    return fallback;
+  }
+}
+
+function deactivateRuntimeIssue(db, issueType, lifecycleStatus) {
+  return db.prepare(`
+    UPDATE semantic_issues
+    SET is_removed = 1,
+        lifecycle_status = ?,
+        updated_at = datetime('now')
+    WHERE file_path = ?
+      AND issue_type = ?
+      AND message LIKE ?
+      AND (is_removed IS NULL OR is_removed = 0)
+  `).run(lifecycleStatus, PROJECT_WIDE_FILE, issueType, `${WATCHER_MESSAGE_PREFIX}%`);
+}
+
+function upsertRuntimeIssue(db, issue) {
+  const existing = loadActiveRuntimeIssue(db, issue.issueType);
+  const nextMessage = normalizeWatcherMessage(issue.message);
+  const nextContextJson = stableJson(issue.context);
+
+  if (existing) {
+    const existingMessage = normalizeWatcherMessage(existing.message);
+    const existingContextJson = stableJson(safeJsonParse(existing.context_json, {}));
+    if (existing.severity === issue.severity && existingMessage === nextMessage && existingContextJson === nextContextJson) {
+      return false;
+    }
+
+    deactivateRuntimeIssue(db, issue.issueType, 'superseded');
+  }
+
+  const record = createWatcherIssueRecord({
+    filePath: PROJECT_WIDE_FILE,
+    issueType: issue.issueType,
+    severity: issue.severity,
+    message: issue.message,
+    context: issue.context
+  });
+
+  db.prepare(`
+    INSERT INTO semantic_issues (
+      file_path,
+      issue_type,
+      severity,
+      message,
+      line_number,
+      context_json,
+      lifecycle_status,
+      detected_at,
+      updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, 'active', ?, datetime('now'))
+  `).run(
+    record.filePath,
+    record.issueType,
+    record.severity,
+    record.message,
+    record.lineNumber,
+    record.contextJson,
+    record.detectedAt
+  );
+
+  logger.warn(`[RUNTIME TABLE HEALTH] ${record.issueType}: ${nextMessage}`);
+  return true;
+}
+
+function clearResolvedRuntimeIssue(db, issueType) {
+  const result = deactivateRuntimeIssue(db, issueType, 'expired');
+  return Number(result?.changes || 0) > 0;
+}
+
+async function buildDeepRuntimeHealthIssues(projectPath, db) {
+  const issues = [];
+
+  const metadataSurfaceParity = getMetadataSurfaceParity(db);
+  if (metadataSurfaceParity.healthy === false) {
+    issues.push({
+      issueType: `${ISSUE_TYPE_PREFIX}_metadata_surface_parity`,
+      severity: 'medium',
+      message: `Primary and mirrored file metadata surfaces are drifting (imports parity ${Math.round(metadataSurfaceParity.importsParityRatio * 100)}%, exports parity ${Math.round(metadataSurfaceParity.exportsParityRatio * 100)}%).`,
+      context: {
+        source: 'runtime_table_health',
+        category: 'metadata_surface_parity',
+        parity: metadataSurfaceParity
+      }
+    });
+  }
+
+  const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
+  if (systemMapPersistenceCoverage.healthy === false) {
+    issues.push({
+      issueType: `${ISSUE_TYPE_PREFIX}_system_map_persistence`,
+      severity: 'medium',
+      message: 'system_files/file_dependencies are disconnected from the primary file metadata surface.',
+      context: {
+        source: 'runtime_table_health',
+        category: 'system_map_persistence',
+        coverage: systemMapPersistenceCoverage
+      }
+    });
+  }
+
+  if (projectPath) {
+    const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
+    const liveFileCount = loadTableCount(db, 'files');
+    const fileUniverseGranularity = getFileUniverseGranularity({
+      scannedFileTotal: persistedFileCoverage.scannedFileTotal,
+      manifestFileTotal: persistedFileCoverage.manifestFileTotal,
+      liveFileCount
+    });
+
+    if (fileUniverseGranularity.healthy === false || persistedFileCoverage.synchronized === false) {
+      issues.push({
+        issueType: `${ISSUE_TYPE_PREFIX}_file_universe_drift`,
+        severity: 'high',
+        message: `Scanner, manifest and live file universes are not aligned (${persistedFileCoverage.missingFileCount} missing manifest rows, ${fileUniverseGranularity.zeroAtomFileCount} zero-atom file rows).`,
+        context: {
+          source: 'runtime_table_health',
+          category: 'file_universe_granularity',
+          persistedFileCoverage,
+          fileUniverseGranularity
+        }
+      });
+    }
+  }
+
+  return issues;
+}
+
+function buildRuntimeHealthIssues(db) {
+  const tableCounts = {};
+  const issues = [];
+
+  for (const check of TABLE_HEALTH_CHECKS) {
+    const total = loadTableCount(db, check.table);
+    tableCounts[check.table] = total;
+    if (total >= check.minRows) continue;
+
+    issues.push({
+      issueType: buildTableIssueType(check.table),
+      severity: check.severity,
+      message: check.message,
+      context: {
+        source: 'runtime_table_health',
+        category: 'table_health',
+        table: check.table,
+        rows: total,
+        minRows: check.minRows
+      }
+    });
+  }
+
+  const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+  if (semanticSurfaceGranularity.healthy === false) {
+    issues.push({
+      issueType: `${ISSUE_TYPE_PREFIX}_semantic_surface_drift`,
+      severity: 'medium',
+      message: `semantic_connections (${semanticSurfaceGranularity.fileLevel.total}) is drifting from atom_relations (${semanticSurfaceGranularity.atomLevel.total}); do not treat both semantic surfaces as equivalent.`,
+      context: {
+        source: 'runtime_table_health',
+        category: 'semantic_surface_granularity',
+        fileLevel: semanticSurfaceGranularity.fileLevel,
+        atomLevel: semanticSurfaceGranularity.atomLevel,
+        contract: semanticSurfaceGranularity.contract,
+        issues: semanticSurfaceGranularity.issues
+      }
+    });
+  }
+
+  const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+  const staleFileRows = Number(liveRowSync?.summary?.staleFileRows || 0);
+  const staleRiskRows = Number(liveRowSync?.summary?.staleRiskRows || 0);
+  if (staleFileRows > 0 || staleRiskRows > 0) {
+    issues.push({
+      issueType: `${ISSUE_TYPE_PREFIX}_live_row_drift`,
+      severity: staleFileRows > 0 ? 'high' : 'medium',
+      message: `Live support tables are drifting from the atom graph (${staleFileRows} stale file rows, ${staleRiskRows} stale risk rows).`,
+      context: {
+        source: 'runtime_table_health',
+        category: 'live_row_sync',
+        summary: liveRowSync.summary,
+        recommendedActions: liveRowSync.before?.recommendedActions || []
+      }
+    });
+  }
+
+  return {
+    issues,
+    tableCounts,
+    semanticSurfaceGranularity,
+    liveRowSync
+  };
+}
+
+export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
+  try {
+    const db = options.db || await getWatcherIssueDb(projectPath);
+    if (!db) {
+      return {
+        activeIssues: [],
+        persisted: 0,
+        cleared: 0,
+        tableCounts: {},
+        semanticSurfaceGranularity: null,
+        liveRowSync: null
+      };
+    }
+
+    const runtimeHealth = buildRuntimeHealthIssues(db);
+    if (options.deep === true) {
+      const deepIssues = await buildDeepRuntimeHealthIssues(projectPath, db);
+      runtimeHealth.issues.push(...deepIssues);
+    }
+    const desiredIssueTypes = new Set(runtimeHealth.issues.map((issue) => issue.issueType));
+    let persisted = 0;
+    let cleared = 0;
+
+    for (const issue of runtimeHealth.issues) {
+      if (upsertRuntimeIssue(db, issue)) {
+        persisted += 1;
+      }
+    }
+
+    for (const issueType of buildKnownIssueTypes()) {
+      if (desiredIssueTypes.has(issueType)) continue;
+      if (clearResolvedRuntimeIssue(db, issueType)) {
+        cleared += 1;
+      }
+    }
+
+    return {
+      activeIssues: runtimeHealth.issues,
+      persisted,
+      cleared,
+      tableCounts: runtimeHealth.tableCounts,
+      semanticSurfaceGranularity: runtimeHealth.semanticSurfaceGranularity,
+      liveRowSync: runtimeHealth.liveRowSync
+    };
+  } catch (error) {
+    logger.error('Failed to sync runtime table health issues:', error.message);
+    return {
+      activeIssues: [],
+      persisted: 0,
+      cleared: 0,
+      tableCounts: {},
+      semanticSurfaceGranularity: null,
+      liveRowSync: null,
+      error: error.message
+    };
+  }
+}

@@ -1,4 +1,5 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
+import { syncRuntimeTableHealthIssues } from '../../../core/diagnostics/runtime-table-health.js';
 import {
   buildRestartLifecycleGuidance,
   buildTelemetryProvenance,
@@ -55,6 +56,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   }
 
   const loggerEntries = rawLogs.map(mapLoggerEntry);
+  await syncRuntimeTableHealthIssues(projectPath);
   const watcherResult = await loadWatcherIssues(projectPath, {
     limit: watcherLimit,
     offset: 0,
