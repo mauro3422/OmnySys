@@ -6,6 +6,7 @@ import Database from 'better-sqlite3';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
 import {
+    getDeadCodePlausibilitySummary,
     evaluateAtomTestability,
     getPipelineOrphanSummary
 } from '../../../shared/compiler/index.js';
@@ -64,19 +65,30 @@ function hasPipelineShape(atom) {
     return PIPELINE_NAME_PATTERN.test(atom?.name || '');
 }
 
-function loadDisconnectedPipelineAtoms(rootPath, filePath) {
+function loadPipelineOrphanEvidence(rootPath, filePath) {
     let db;
     try {
         db = new Database(`${rootPath}/.omnysysdata/omnysys.db`, { readonly: true });
-        const summary = getPipelineOrphanSummary(db, {
+        const orphanSummary = getPipelineOrphanSummary(db, {
             candidateLimit: 200,
             orphanLimit: 100,
             minComplexity: 0
         });
+        const deadCodeSummary = getDeadCodePlausibilitySummary(db, {
+            minLines: 0,
+            allowExported: true,
+            suspiciousThreshold: 0
+        });
 
-        return summary.orphans.filter((atom) => atom.file_path === filePath);
+        return {
+            deadCodeSummary,
+            orphanAtoms: orphanSummary.orphans.filter((atom) => atom.file_path === filePath)
+        };
     } catch {
-        return [];
+        return {
+            deadCodeSummary: null,
+            orphanAtoms: []
+        };
     } finally {
         db?.close();
     }
@@ -94,7 +106,10 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
             return [];
         }
 
-        const canonicalOrphans = loadDisconnectedPipelineAtoms(rootPath, filePath);
+        const {
+            orphanAtoms: canonicalOrphans,
+            deadCodeSummary
+        } = loadPipelineOrphanEvidence(rootPath, filePath);
         const canonicalNames = new Set(canonicalOrphans.map((atom) => atom.name));
         const disconnected = candidates.filter((atom) =>
             canonicalNames.has(atom.name) &&
@@ -137,6 +152,11 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
                 ],
                 extraData: {
                     fileImporterCount,
+                    deadCodePlausibility: deadCodeSummary ? {
+                        flaggedDeadCode: deadCodeSummary.flaggedDeadCode,
+                        suspiciousDeadCandidates: deadCodeSummary.suspiciousDeadCandidates,
+                        hasCoverageGap: deadCodeSummary.hasCoverageGap
+                    } : null,
                     disconnectedAtoms: disconnected.slice(0, 10).map((atom) => ({
                         name: atom.name,
                         complexity: atom.complexity || 0,
