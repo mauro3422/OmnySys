@@ -58,7 +58,8 @@ export function getStaleTableRowCount(db, tableName, fileColumn = 'file_path') {
         db.prepare(`
       SELECT COUNT(*) as total
       FROM ${tableName}
-      WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()})
+      WHERE (is_removed IS NULL OR is_removed = 0)
+        AND ${fileColumn} NOT IN (${getLiveFileSetSql()})
     `).get()
     );
 }
@@ -116,7 +117,8 @@ export function loadStaleTableRows(db, options = {}) {
     return db.prepare(`
     SELECT ${columns}
     FROM ${tableName}
-    WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()})
+    WHERE (is_removed IS NULL OR is_removed = 0)
+      AND ${fileColumn} NOT IN (${getLiveFileSetSql()})
     LIMIT ?
   `).all(normalizeLimit(limit));
 }

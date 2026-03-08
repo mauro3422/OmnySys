@@ -17,12 +17,14 @@ import {
     discoverProjectSourceFiles,
     ensureLiveRowSync,
     getFileImportEvidenceCoverage,
+    getLiveFileTotal,
     getMetadataSurfaceParity,
     getSemanticSurfaceGranularity,
     getSystemMapPersistenceCoverage,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
     scanCompilerPolicyDrift,
+    syncPersistedScannedFileManifest,
     summarizeCompilerPolicyDrift,
     summarizePersistedScannedFileCoverage
 } from '../../../../shared/compiler/index.js';
@@ -91,7 +93,12 @@ export async function handlePipelineHealth(tool) {
     tableCounts.live_atom_files = liveAtomFiles;
     tableCounts.stale_file_rows = staleFileRows;
     tableCounts.stale_risk_rows = staleRiskRows;
-    tableCounts.live_row_sync_deleted = liveRowSync.deleted.total;
+    tableCounts.live_row_sync_deleted =
+        (liveRowSync.deleted?.files || 0) +
+        (liveRowSync.deleted?.riskAssessments || 0) +
+        (liveRowSync.deleted?.relations || 0) +
+        (liveRowSync.deleted?.issues || 0) +
+        (liveRowSync.deleted?.connections || 0);
 
     if (staleFileRows > 0) {
         warnings.push({
@@ -302,6 +309,7 @@ export async function handlePipelineHealth(tool) {
     ]);
     const recentWatcherAlerts = tool.recentNotifications?.watcherAlerts || tool.latestRecentErrors?.watcherAlerts || [];
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const fileImportEvidenceCoverage = getFileImportEvidenceCoverage(db);
     const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
@@ -314,6 +322,11 @@ export async function handlePipelineHealth(tool) {
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
         semanticSurfaceGranularity,
+        fileUniverseGranularity: {
+            scannedFileTotal: persistedFileCoverage.scannedFileTotal,
+            manifestFileTotal: persistedFileCoverage.manifestFileTotal,
+            liveFileCount: getLiveFileTotal(db)
+        },
         canonicalAdoptions: {
             centralityCoverage: true,
             sharedStateContention: true,

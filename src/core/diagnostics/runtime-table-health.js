@@ -3,11 +3,13 @@ import { getWatcherIssueDb } from '../file-watcher/watcher-issue-repository.js';
 import {
   getSemanticSurfaceGranularity,
   ensureLiveRowSync,
+  getLiveFileTotal,
   getMetadataSurfaceParity,
   getSystemMapPersistenceCoverage,
   getFileUniverseGranularity,
   discoverProjectSourceFiles,
-  summarizePersistedScannedFileCoverage
+  summarizePersistedScannedFileCoverage,
+  syncPersistedScannedFileManifest
 } from '../../shared/compiler/index.js';
 import { createWatcherIssueRecord, WATCHER_MESSAGE_PREFIX } from '../../shared/compiler/watcher-issues.js';
 
@@ -76,7 +78,10 @@ function buildKnownIssueTypes() {
 }
 
 function loadTableCount(db, table) {
-  const row = db.prepare(`SELECT COUNT(*) as total FROM "${table}"`).get();
+  const columns = db.prepare(`PRAGMA table_info("${table}")`).all();
+  const hasSoftDelete = Array.isArray(columns) && columns.some((column) => column?.name === 'is_removed');
+  const whereClause = hasSoftDelete ? 'WHERE (is_removed IS NULL OR is_removed = 0)' : '';
+  const row = db.prepare(`SELECT COUNT(*) as total FROM "${table}" ${whereClause}`).get();
   return Number(row?.total || 0);
 }
 
@@ -215,8 +220,9 @@ async function buildDeepRuntimeHealthIssues(projectPath, db) {
 
   if (projectPath) {
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
-    const liveFileCount = loadTableCount(db, 'files');
+    const liveFileCount = getLiveFileTotal(db);
     const fileUniverseGranularity = getFileUniverseGranularity({
       scannedFileTotal: persistedFileCoverage.scannedFileTotal,
       manifestFileTotal: persistedFileCoverage.manifestFileTotal,

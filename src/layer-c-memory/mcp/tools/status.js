@@ -18,6 +18,7 @@ import {
   getFileUniverseGranularity,
   getSemanticSurfaceGranularity,
   summarizePersistedScannedFileCoverage,
+  syncPersistedScannedFileManifest,
   summarizeSignalConfidence,
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
@@ -251,6 +252,7 @@ async function loadCompilerExplainability(projectPath, watcherAlerts = [], share
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
