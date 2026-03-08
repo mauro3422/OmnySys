@@ -18,40 +18,28 @@ import {
     isLowSignalName
 } from './guard-standards.js';
 import {
-    buildDuplicateWhereSql,
     getDuplicateKeySqlForMode,
-    normalizeDuplicateCandidateAtom,
     DUPLICATE_MODES
 } from '#layer-c/storage/repository/utils/index.js';
 import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js';
 import {
-    generateAlternativeNames,
     normalizeFilePath,
     isCanonicalDuplicateSignalPolicyFile,
-    shouldIgnoreStructuralDuplicateFinding,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
-    buildDuplicateContext,
-    coordinateDuplicateFindings
+    buildDuplicateContext
 } from '../../../shared/compiler/index.js';
+import {
+    clearStructuralDuplicateIssues,
+    loadStructuralLocalAtoms,
+    collectCandidateDnas,
+    loadStructuralDuplicateRows,
+    buildStructuralFindings
+} from './duplicate-structural-core.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
 const DUPLICATE_KEY_SQL = getDuplicateKeySqlForMode(DUPLICATE_MODE, 'a.dna_json');
-
-function loadPersistedLocalAtoms(repo, filePath, minLinesOfCode, maxFindings) {
-    return repo.db.prepare(`
-        SELECT id, name, dna_json, lines_of_code,
-               ${DUPLICATE_KEY_SQL} AS duplicate_key
-        FROM atoms
-        ${buildDuplicateWhereSql({
-            alias: 'a',
-            minLines: minLinesOfCode,
-            requireValidDna: true
-        })} AND a.file_path = ?
-        LIMIT ?
-    `.replaceAll('FROM atoms', 'FROM atoms a')).all(filePath, maxFindings * 4);
-}
 
 /**
  * Detecta riesgo de duplicados por DNA hash
@@ -72,8 +60,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
     const normalizedFilePath = normalizeFilePath(filePath);
 
     if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+        await clearStructuralDuplicateIssues(rootPath, normalizedFilePath);
         return [];
     }
 
@@ -85,93 +72,36 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
         // Cargar findings previos para tracking de historial
         const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_duplicate');
 
-        let localAtoms = [];
-
-        if (providedAtoms && Array.isArray(providedAtoms)) {
-            localAtoms = providedAtoms
-                .map((atom) => normalizeDuplicateCandidateAtom(atom, {
-                    mode: DUPLICATE_MODE,
-                    minLines: minLinesOfCode,
-                    requireDna: true
-                }))
-                .filter(Boolean);
-        }
+        const localAtoms = loadStructuralLocalAtoms({
+            repo,
+            normalizedFilePath,
+            providedAtoms,
+            minLinesOfCode,
+            maxFindings,
+            duplicateMode: DUPLICATE_MODE,
+            duplicateKeySql: DUPLICATE_KEY_SQL
+        });
 
         if (localAtoms.length === 0) {
-            localAtoms = loadPersistedLocalAtoms(repo, normalizedFilePath, minLinesOfCode, maxFindings);
-        }
-
-        if (localAtoms.length === 0) {
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+            await clearStructuralDuplicateIssues(rootPath, normalizedFilePath);
             return [];
         }
 
-        const candidateDnas = localAtoms
-            .filter(a => a.name &&
-                !isLowSignalName(a.name) &&
-                !shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, a.name))
-            .map(a => a.duplicate_key)
-            .filter(Boolean);
+        const candidateDnas = collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName);
 
         if (candidateDnas.length === 0) {
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+            await clearStructuralDuplicateIssues(rootPath, normalizedFilePath);
             return [];
         }
 
-        const placeholders = candidateDnas.map(() => '?').join(',');
-        const duplicateRows = repo.db.prepare(`
-            SELECT a.name, a.file_path, a.dna_json, a.line_start,
-                   ${DUPLICATE_KEY_SQL} AS duplicate_key
-            FROM atoms a
-            WHERE (${DUPLICATE_KEY_SQL}) IN (${placeholders})
-                AND a.file_path != ?
-                AND ${buildDuplicateWhereSql({
-                    alias: 'a',
-                    requireValidDna: false
-                }).replace(/^WHERE /, '').replace(/\n/g, '\n                AND ')}
-            ORDER BY a.dna_json, a.file_path
-        `).all(...candidateDnas, filePath);
+        const duplicateRows = loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, DUPLICATE_KEY_SQL);
 
         if (duplicateRows.length === 0) {
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+            await clearStructuralDuplicateIssues(rootPath, normalizedFilePath);
             return [];
         }
 
-        const byDna = new Map();
-        for (const row of duplicateRows) {
-            if (!byDna.has(row.duplicate_key)) byDna.set(row.duplicate_key, []);
-            byDna.get(row.duplicate_key).push(row);
-        }
-
-        const localDnaToName = new Map(localAtoms.map(a => [a.duplicate_key, a.name]));
-        const localDnaToId = new Map(localAtoms.map(a => [a.duplicate_key, a.id]));
-
-        const findings = [];
-        for (const [dna, remoteAtoms] of byDna) {
-            const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
-            if (shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, symbolName)) {
-                continue;
-            }
-            const localAtomId = localDnaToId.get(dna);
-            const uniqueFiles = [...new Set(remoteAtoms.map(a => a.file_path))];
-            const totalInstances = remoteAtoms.length + 1;
-            
-            findings.push({
-                symbol: symbolName,
-                atomId: localAtomId,
-                duplicateType: 'LOGIC_DUPLICATE',
-                totalInstances,
-                duplicateFiles: uniqueFiles,
-                sample: uniqueFiles.slice(0, 3),
-                dnaSimilarity: 'structural',
-                suggestedAlternatives: generateAlternativeNames(symbolName)
-            });
-
-            if (findings.length >= maxFindings) break;
-        }
+        const findings = buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings);
 
         if (findings.length > 0) {
             const remediationPlan = buildDuplicateRemediationPlan(findings.map((finding) => ({
@@ -251,8 +181,7 @@ export async function detectDuplicateRisk(rootPath, filePath, EventEmitterContex
                 }))
             });
         } else {
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
-            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+            await clearStructuralDuplicateIssues(rootPath, normalizedFilePath);
         }
 
         return findings;
