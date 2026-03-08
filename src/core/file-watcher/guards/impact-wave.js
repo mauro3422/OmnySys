@@ -9,29 +9,9 @@ import {
     severityFromImpact
 } from './guard-standards.js';
 import { safeArray } from '../../../shared/compiler/index.js';
+import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:impact');
-
-
-function getRequiredParamsCount(atom) {
-    return safeArray(atom?.signature?.params).filter(p => !p?.optional).length;
-}
-
-function getFileFromRelationEntry(entry) {
-    if (!entry) return null;
-    if (typeof entry === 'string') {
-        if (entry.includes('::')) return entry.split('::')[0];
-        return null;
-    }
-
-    const direct = entry.filePath || entry.file || entry.targetFile || entry.sourcePath || entry.targetPath;
-    if (direct && typeof direct === 'string') return direct;
-
-    const id = entry.id || entry.atomId || entry.targetId || entry.sourceId;
-    if (id && typeof id === 'string' && id.includes('::')) return id.split('::')[0];
-
-    return null;
-}
 
 /**
  * Detecta ola de impacto de cambios
@@ -48,8 +28,13 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
         fullPath = null,
         maxAtoms = 30,
         maxRelatedFiles = 25,
-        maxBrokenSamples = 5
+        maxBrokenSamples = 5,
+        relationHelpers = {}
     } = options;
+    const {
+        countRequiredSignatureParams: countRequiredParams = countRequiredSignatureParams,
+        extractRelatedFilePath: extractRelationFile = extractRelatedFilePath
+    } = relationHelpers;
 
     try {
         const currentAtoms = options.atoms || await getAtomsFn(filePath);
@@ -73,8 +58,8 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
                 continue;
             }
 
-            const prevRequired = getRequiredParamsCount(prev);
-            const currRequired = getRequiredParamsCount(atom);
+            const prevRequired = countRequiredParams(prev);
+            const currRequired = countRequiredParams(atom);
             if (prevRequired !== currRequired) {
                 changedAtoms.push({ id: atom.id, name: atom.name, type: 'signature' });
             }
@@ -96,11 +81,11 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
             if (!focusedAtomNames.has(atom.name)) continue;
 
             for (const rel of safeArray(atom.calledBy)) {
-                const relFile = getFileFromRelationEntry(rel);
+                const relFile = extractRelationFile(rel);
                 if (relFile && relFile !== filePath) relatedFiles.add(relFile);
             }
             for (const rel of safeArray(atom.calls)) {
-                const relFile = getFileFromRelationEntry(rel);
+                const relFile = extractRelationFile(rel);
                 if (relFile && relFile !== filePath) relatedFiles.add(relFile);
             }
         }

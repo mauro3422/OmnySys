@@ -4,36 +4,10 @@ import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
 import { analyzeAndIndex } from '../analyze.js';
-import { safeArray } from '../../../shared/compiler/index.js';
+import { isLowSignalName } from '../guards/guard-standards.js';
+import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
-const LOW_SIGNAL_NAME_REGEX = /^(anonymous(_\d+)?|.*_callback|describe_arg\d+|it_arg\d+|on_arg\d+|then_callback|catch_callback|map_callback|filter_callback|some_callback|get_arg\d+)$/i;
-
-function isLowSignalAtomName(name) {
-  return LOW_SIGNAL_NAME_REGEX.test(name);
-}
-
-
-
-function getRequiredParamsCount(atom) {
-  return safeArray(atom?.signature?.params).filter(p => !p?.optional).length;
-}
-
-function getFileFromRelationEntry(entry) {
-  if (!entry) return null;
-  if (typeof entry === 'string') {
-    if (entry.includes('::')) return entry.split('::')[0];
-    return null;
-  }
-
-  const direct = entry.filePath || entry.file || entry.targetFile || entry.sourcePath || entry.targetPath;
-  if (direct && typeof direct === 'string') return direct;
-
-  const id = entry.id || entry.atomId || entry.targetId || entry.sourceId;
-  if (id && typeof id === 'string' && id.includes('::')) return id.split('::')[0];
-
-  return null;
-}
 
 /**
  * Maneja creacion de archivo
@@ -42,15 +16,17 @@ export async function handleFileCreated(filePath, fullPath) {
   logger.info(`[FILE CREATED] ${filePath}`);
 
   const analysis = await analyzeAndIndex.call(this, filePath, fullPath, false);
+  const atoms = analysis.moleculeAtoms || analysis.atoms || [];
 
   await guardRegistry.initializeDefaultGuards();
   await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
     fullPath,
-    atoms: analysis.moleculeAtoms || analysis.atoms || [],
+    atoms,
     analysis
   });
 
-  logger.info(`[FILE COMPILED] ${filePath} -> ${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0} atoms`);
+  const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
+  logger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
 
   this.emit('file:created', { filePath, analysis });
 }
@@ -143,7 +119,20 @@ export async function handleFileModified(filePath, fullPath) {
  * Delegado a guards/impact-wave.js para mantenibilidad.
  */
 export async function detectImpactWaveForFile(filePath, previousAtoms = [], options = {}) {
-  return await detectImpactWaveGuard(this.rootPath, filePath, previousAtoms, this, async (fp) => await this.getAtomsForFile(fp), options);
+  return await detectImpactWaveGuard(
+    this.rootPath,
+    filePath,
+    previousAtoms,
+    this,
+    async fp => await this.getAtomsForFile(fp),
+    {
+      ...options,
+      relationHelpers: {
+        countRequiredSignatureParams,
+        extractRelatedFilePath
+      }
+    }
+  );
 }
 
 /**
