@@ -36,9 +36,17 @@ function looksLikeManualTestabilityScan(source = '') {
 
 function looksLikeExportedComplexityHeuristic(source = '') {
   const sanitized = stripStrings(stripComments(source));
+  const hasTestabilitySignal =
+    /(testability|testabilityScore|untestable|hard to test|test helper|test-hostile)/i.test(sanitized);
+  const hasDecisionSignal =
+    /(severity|threshold|recommendation|warning|issue|score|rank|classify|evaluate|untestable|hard to test)/i.test(sanitized) ||
+    /(complexity|linesOfCode)\s*(>=|<=|>|<|===|!==)/.test(sanitized);
+
   return (
+    hasTestabilitySignal &&
     /(isExported|exported)/.test(sanitized) &&
-    /(complexity|linesOfCode|god-function|untestable|test helper)/i.test(sanitized)
+    /(complexity|linesOfCode|god-function|untestable|test helper)/i.test(sanitized) &&
+    hasDecisionSignal
   );
 }
 
