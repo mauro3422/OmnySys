@@ -24,6 +24,7 @@ export {
   isRuntimePortProbeHelper,
   isMcpHttpProxyLifecycleHelper,
   isLegacyLlmBootstrapCompatibilityHelper,
+  isStandaloneScriptEntryHelper,
   isLowSignalGuardStructuralHelper,
   shouldIgnoreConceptualDuplicateFinding,
   shouldIgnoreStructuralDuplicateFinding

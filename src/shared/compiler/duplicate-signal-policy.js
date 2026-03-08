@@ -197,6 +197,20 @@ const LEGACY_LLM_BOOTSTRAP_FINGERPRINTS = new Set([
     'process:core:starting'
 ]);
 
+const STANDALONE_SCRIPT_FILE_REGEX = /(?:^|\/)(?:scripts\/.+|install|run-layer-a)\.js$/;
+const STANDALONE_SCRIPT_HELPER_NAMES = new Set([
+    'main',
+    'buildissue',
+    'getscalar',
+    'extractfunctionblock',
+    'extractlatestreleaseversion',
+    'readtext'
+]);
+const STANDALONE_SCRIPT_HELPER_FINGERPRINTS = new Set([
+    'process:core:main',
+    'build:core:issue'
+]);
+
 function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
     return {
         normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
@@ -371,6 +385,24 @@ export function isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, sema
     return LEGACY_LLM_BOOTSTRAP_FINGERPRINTS.has(fingerprint);
 }
 
+export function isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    if (!STANDALONE_SCRIPT_FILE_REGEX.test(normalizedPath)) return false;
+    if (!STANDALONE_SCRIPT_HELPER_NAMES.has(normalizedName)) return false;
+    if (!fingerprint) return true;
+
+    return STANDALONE_SCRIPT_HELPER_FINGERPRINTS.has(fingerprint) ||
+        normalizedName === 'getscalar' ||
+        normalizedName === 'extractfunctionblock' ||
+        normalizedName === 'extractlatestreleaseversion' ||
+        normalizedName === 'readtext';
+}
+
 export function isLowSignalGuardStructuralHelper(filePath, atomName) {
     const normalizedPath = normalizeFilePath(filePath).toLowerCase();
     const normalizedName = String(atomName || '').toLowerCase();
@@ -388,6 +420,7 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
         isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint) ||
         isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint) ||
         isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint) ||
+        isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint) ||
         isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
         isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) ||
@@ -403,6 +436,7 @@ export function shouldIgnoreStructuralDuplicateFinding(filePath, atomName) {
         isRuntimePortProbeHelper(filePath, atomName, null) ||
         isMcpHttpProxyLifecycleHelper(filePath, atomName, null) ||
         isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null) ||
+        isStandaloneScriptEntryHelper(filePath, atomName, null) ||
         isCompilerPolicyOrchestrationHelper(filePath, atomName, null) ||
         isRepositoryContractSurface(filePath, atomName, null) ||
         isCompilerConformancePolicyHelper(filePath, atomName, null) ||
