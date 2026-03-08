@@ -79,7 +79,9 @@ async function _fetchExtendedMetrics(projectPath, db, repo) {
         issueSummary: '0 items',
         relations: 0,
         physicsCoverage: 0,
-        hotspots: 0
+        hotspots: 0,
+        phase2PendingFiles: 0,
+        hasPhase2DebtSnapshot: false
     };
 
     try {
@@ -121,6 +123,20 @@ async function _fetchExtendedMetrics(projectPath, db, repo) {
         `).all();
         metrics.issueCount = issues.reduce((sum, i) => sum + i.count, 0);
         metrics.issueSummary = issues.map(i => `${i.count} ${i.severity}`).join(', ') || '0 items';
+        metrics.phase2PendingFiles = db.prepare(`
+            SELECT COUNT(DISTINCT file_path) as count
+            FROM atoms
+            WHERE is_phase2_complete = 0
+        `).get()?.count || 0;
+        metrics.hasPhase2DebtSnapshot = Boolean(db.prepare(`
+            SELECT 1
+            FROM semantic_issues
+            WHERE file_path = 'project-wide'
+              AND issue_type = 'arch_technical_debt_high'
+              AND (is_removed = 0 OR is_removed IS NULL)
+              AND (lifecycle_status = 'active' OR lifecycle_status IS NULL)
+            LIMIT 1
+        `).get());
 
         // E. Relations & Physics
         metrics.relations = db.prepare(`SELECT COUNT(*) as count FROM atom_relations WHERE (is_removed = 0 OR is_removed IS NULL)`).get()?.count || 0;
@@ -148,17 +164,24 @@ async function _fetchExtendedMetrics(projectPath, db, repo) {
 function _formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal) {
     const lines = integrityConsoleSummary.split('\n');
     const headerPattern = 'OMNYSYS PIPELINE INTEGRITY REPORT';
+    const isPreliminary = !isFinal;
+    const isSettling = extendedMetrics.phase2PendingFiles > 0 || (!isFinal && !extendedMetrics.hasPhase2DebtSnapshot);
 
     // 1. Update Header
     const headerIdx = lines.findIndex(l => l.includes(headerPattern));
     if (headerIdx !== -1) {
         lines[headerIdx] = isFinal
             ? '║           --- FINAL SYSTEM SUMMARY ---               ║'
-            : '║             --- SYSTEM SUMMARY ---                   ║';
+            : isSettling
+                ? '║          --- PRELIMINARY SYSTEM SUMMARY ---          ║'
+                : '║             --- SYSTEM SUMMARY ---                   ║';
     }
 
     // 2. Prepare Detailed Lines
     const detailLines = [
+        ...(isPreliminary && isSettling
+            ? [`  ℹ️  Preliminary snapshot: Phase 2 telemetry is still settling; final post-completion debt/issue counts may change.`, '']
+            : []),
         `  📦  Project: ${extendedMetrics.totalAtoms} atoms (${extendedMetrics.typeSummary})`,
         `  🔗  Semantic Density: ${extendedMetrics.relations} cross-links (Impact Map active)`,
         `  👥  Duplicates: ${extendedMetrics.structuralGroups} structural, ${extendedMetrics.conceptualGroups} conceptual`,
