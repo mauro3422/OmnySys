@@ -270,6 +270,12 @@ export {
 } from './pipeline-health-context.js';
 
 export {
+  collectDiscoveredFilePaths,
+  reconcilePersistedManifestCoverage,
+  summarizePersistedManifestDrift
+} from './analysis-change-reconciliation.js';
+
+export {
   WATCHER_MESSAGE_PREFIX,
   WATCHER_ALERT_SOURCE,
   WATCHER_CONTRACT_VERSION,

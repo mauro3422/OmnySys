@@ -7,8 +7,10 @@ import { scanCurrentFiles } from './file-scanner.js';
 import { detectRealChanges } from '../../../../layer-c-memory/storage/cache/hash-cache.js';
 import { createLogger } from '../../../../utils/logger.js';
 import {
+  collectDiscoveredFilePaths,
   getPersistedKnownFilePaths,
-  summarizePersistedScannedFileCoverage,
+  reconcilePersistedManifestCoverage,
+  summarizePersistedManifestDrift,
   syncPersistedScannedFileManifest
 } from '../../../../shared/compiler/index.js';
 
@@ -23,39 +25,26 @@ const logger = createLogger('OmnySys:analysis:checker');
 export async function detectCacheChanges(projectPath, metadata) {
   try {
     const currentFiles = await scanCurrentFiles(projectPath);
-    const filePaths = currentFiles.map(f => f.path);
+    const filePaths = collectDiscoveredFilePaths(currentFiles);
+
     await syncPersistedScannedFileManifest(projectPath, filePaths);
+
     const indexedFiles = await getPersistedKnownFilePaths(projectPath);
-    
-    // Usar sistema de hash cache persistente
     const changes = await detectRealChanges(projectPath, filePaths, true);
 
-    // Si un archivo ya tiene hash pero nunca llegó a persistirse en files/atoms,
-    // debe tratarse como "new" para evitar que quede invisibilizado para siempre.
-    const orphanedByIndex = filePaths.filter((filePath) => !indexedFiles.has(filePath));
-    if (orphanedByIndex.length > 0) {
-      const orphanedSet = new Set(orphanedByIndex);
-
-      changes.unchangedFiles = changes.unchangedFiles.filter((filePath) => !orphanedSet.has(filePath));
-      changes.modifiedFiles = changes.modifiedFiles.filter((filePath) => !orphanedSet.has(filePath));
-
-      for (const filePath of orphanedByIndex) {
-        if (!changes.newFiles.includes(filePath)) {
-          changes.newFiles.push(filePath);
-        }
-      }
-
-      logger.warn(`   ⚠️  Recovered ${orphanedByIndex.length} file(s) present in hash cache but missing from the persisted manifest`);
+    const manifestRecovery = reconcilePersistedManifestCoverage(changes, filePaths, indexedFiles);
+    if (manifestRecovery.recoveredCount > 0) {
+      logger.warn(`   Warning: recovered ${manifestRecovery.recoveredCount} file(s) present in hash cache but missing from the persisted manifest`);
     }
 
-    const fileCoverage = await summarizePersistedScannedFileCoverage(projectPath, filePaths);
-    if (fileCoverage.missingFileCount > 0) {
-      logger.warn(`   ⚠️  Persisted scanned-file manifest is missing ${fileCoverage.missingFileCount} file(s) after sync`);
+    const manifestDrift = await summarizePersistedManifestDrift(projectPath, filePaths);
+    if (manifestDrift.missingFileCount > 0) {
+      logger.warn(`   Warning: persisted scanned-file manifest is missing ${manifestDrift.missingFileCount} file(s) after sync`);
     }
-    
+
     return changes;
   } catch (error) {
-    logger.warn('   ⚠️  Failed to detect cache changes:', error.message);
+    logger.warn('   Warning: failed to detect cache changes:', error.message);
     return { newFiles: [], modifiedFiles: [], deletedFiles: [], unchangedFiles: [], error: true };
   }
 }
