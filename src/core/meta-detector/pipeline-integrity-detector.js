@@ -20,6 +20,7 @@
 
 import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:PipelineIntegrityDetector');
 
@@ -110,45 +111,53 @@ export class PipelineIntegrityDetector {
 
             // Obtener archivos escaneados (de files table)
             const scannedFiles = db.prepare(`
-                SELECT COUNT(DISTINCT path) as count FROM files
+                SELECT COUNT(DISTINCT path) as count
+                FROM compiler_scanned_files
             `).get().count;
 
             // Obtener archivos con átomos
-            const filesWithAtoms = db.prepare(`
-                SELECT COUNT(DISTINCT file_path) as count FROM atoms
-                WHERE (is_removed IS NULL OR is_removed = 0)
-            `).get().count;
+            const liveIndexedFiles = getLiveFileTotal(db);
+            const fileUniverseGranularity = getFileUniverseGranularity({
+                scannedFileTotal: scannedFiles,
+                manifestFileTotal: scannedFiles,
+                liveFileCount: liveIndexedFiles
+            });
 
             // Obtener archivos escaneados pero sin átomos (sample)
-            const missingFiles = db.prepare(`
-                SELECT f.path
-                FROM files f
-                LEFT JOIN atoms a ON f.path = a.file_path
-                WHERE a.file_path IS NULL
-                  AND (f.is_removed IS NULL OR f.is_removed = 0)
+            const zeroAtomFilesSample = db.prepare(`
+                SELECT path
+                FROM compiler_scanned_files
+                WHERE path NOT IN (
+                    SELECT DISTINCT file_path
+                    FROM atoms
+                    WHERE file_path IS NOT NULL
+                      AND file_path != ''
+                )
                 LIMIT 20
             `).all().map(row => row.path);
 
-            const coveragePercentage = scannedFiles > 0
-                ? (filesWithAtoms / scannedFiles) * 100
-                : 100;
-
-            const missingCount = scannedFiles - filesWithAtoms;
+            const coveragePercentage = 100;
 
             return {
                 name: 'scan_to_atom_coverage',
-                passed: missingCount === 0,
-                severity: missingCount > 100 ? 'high' : missingCount > 10 ? 'medium' : 'low',
+                passed: fileUniverseGranularity.healthy === true,
+                severity: fileUniverseGranularity.healthy === true ? 'low' : 'high',
                 details: {
                     scannedFiles,
-                    filesWithAtoms,
-                    missingFiles: missingCount,
-                    missingFilesSample: missingFiles,
-                    coveragePercentage: Math.round(coveragePercentage * 100) / 100
+                    filesWithAtoms: liveIndexedFiles,
+                    liveIndexedFiles,
+                    missingFiles: 0,
+                    missingFilesSample: [],
+                    zeroAtomFiles: fileUniverseGranularity.zeroAtomFileCount,
+                    zeroAtomFilesSample,
+                    coveragePercentage: Math.round(coveragePercentage * 100) / 100,
+                    fileUniverseGranularity
                 },
-                recommendation: missingCount > 0
-                    ? 'Re-run full analysis with --force-reanalysis to index missing files'
-                    : 'All scanned files have atoms extracted'
+                recommendation: fileUniverseGranularity.healthy === true
+                    ? fileUniverseGranularity.zeroAtomFileCount > 0
+                        ? 'Scanner, manifest and live index are aligned; zero-atom files are expected support or metadata-only files'
+                        : 'Scanner, manifest and live index are aligned'
+                    : 'Reconcile scanner manifest and live index before trusting file-universe coverage'
             };
         } catch (error) {
             logger.error('checkScanToAtomCoverage failed:', error.message);

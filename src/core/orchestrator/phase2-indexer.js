@@ -105,17 +105,19 @@ export class Phase2Indexer {
 
                 if (missingFiles.length > 0) {
                     const hrMissing = new BaseSqlRepository(repo.db, 'Indexer:Missing');
-                    hrMissing.transaction((paths) => {
+                    const persistMissingFiles = hrMissing.db.transaction((paths) => {
                         const stmt = repo.db.prepare(`UPDATE atoms SET is_removed = 1, is_phase2_complete = 1, purpose_type = 'DEAD_CODE' WHERE file_path = ?`);
                         for (const p of paths) stmt.run(p);
-                    })(missingFiles);
+                    });
+                    persistMissingFiles(missingFiles);
                 }
 
                 if (filesToProcess.length > 0) {
                     const hr = new BaseSqlRepository(repo.db, 'Indexer:Batch');
-                    hr.transaction((paths) => {
+                    const clearPendingAtoms = hr.db.transaction((paths) => {
                         for (const p of paths) hr.delete('atoms', 'file_path', p);
-                    })(filesToProcess);
+                    });
+                    clearPendingAtoms(filesToProcess);
 
                     const absoluteFiles = filesToProcess.map(f => path.join(this.projectPath, f));
                     await analyzeProjectFilesUnified(absoluteFiles, this.projectPath, false, 'deep');
