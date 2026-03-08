@@ -134,6 +134,72 @@ export function isLowSignalConceptualFingerprint(filePath, atomName, semanticFin
     return isDataAccessPath && isDataAccessName && lowSignalFingerprints.has(fingerprint);
 }
 
+function matchesAnyPrefix(value, prefixes) {
+    return prefixes.some(prefix => value.startsWith(prefix));
+}
+
+/**
+ * Clasifica fingerprints conceptuales con demasiado solapamiento semántico para guards,
+ * logging y utilidades internas. La meta es no tratarlos como "API pública duplicada".
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint) {
+    const normalizedPath = normalizeFilePath(filePath).toLowerCase();
+    const normalizedName = String(atomName || '').toLowerCase();
+    const fingerprint = String(semanticFingerprint || '').toLowerCase();
+
+    const guardPathMarkers = [
+        '/file-watcher/guards/',
+        '/shared/compiler/',
+        '/logger',
+        '/logging/'
+    ];
+
+    const lowSignalFingerprints = new Set([
+        'detect:core:risk',
+        'process:core:log',
+        'generate:core:recommendations',
+        'build:core:context',
+        'process:core:findings',
+        'process:core:finding',
+        'run:core:guard'
+    ]);
+
+    const lowSignalNamePrefixes = [
+        'detect',
+        'debug',
+        'log',
+        'generate',
+        'build',
+        'collect',
+        'coordinate',
+        'persist',
+        'run'
+    ];
+
+    const isGuardUtilityPath = guardPathMarkers.some(marker => normalizedPath.includes(marker));
+    const isGuardUtilityName = matchesAnyPrefix(normalizedName, lowSignalNamePrefixes);
+
+    return isGuardUtilityPath && isGuardUtilityName && lowSignalFingerprints.has(fingerprint);
+}
+
+/**
+ * Filtro canónico para decidir si un finding conceptual debe ignorarse por baja señal.
+ *
+ * @param {string} filePath
+ * @param {string} atomName
+ * @param {string} semanticFingerprint
+ * @returns {boolean}
+ */
+export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, semanticFingerprint) {
+    return isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
+        isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint);
+}
+
 /**
  * Combina findings de duplicados estructurales y conceptuales
  * Detecta solapamiento y prioriza resolución

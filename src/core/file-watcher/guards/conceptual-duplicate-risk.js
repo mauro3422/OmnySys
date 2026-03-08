@@ -21,7 +21,7 @@ import {
 import {
     generateAlternativeNames,
     normalizeFilePath,
-    isLowSignalConceptualFingerprint,
+    shouldIgnoreConceptualDuplicateFinding,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext
@@ -116,7 +116,7 @@ export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmi
             if (fp.includes(':unknown') || fp.includes(':_callback') || fp.includes(':constructor')) {
                 continue;
             }
-            if (isLowSignalConceptualFingerprint(normalizedFilePath, localAtom.name, fp)) {
+            if (shouldIgnoreConceptualDuplicateFinding(normalizedFilePath, localAtom.name, fp)) {
                 continue;
             }
 
