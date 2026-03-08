@@ -196,7 +196,17 @@ function collectManualPolicyFindings(normalizedPath, source, imports) {
     }
   ];
 
-  return checks.filter((check) => check.when).map((check) => check.finding);
+  return checks.flatMap((check) => {
+    if (!check.when) {
+      return [];
+    }
+
+    if (typeof check.findings === 'function') {
+      return check.findings(normalizedPath, source).filter(Boolean);
+    }
+
+    return check.finding ? [check.finding] : [];
+  });
 }
 
 function collectConformanceFindings(normalizedPath, source) {
@@ -240,29 +250,33 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
 }
 
 export function summarizeCompilerPolicyDrift(findings = []) {
+  const normalizedFindings = findings.filter(Boolean);
   const summary = {
-    total: findings.length,
+    total: normalizedFindings.length,
     high: 0,
     medium: 0,
     byPolicyArea: {},
     byRule: {}
   };
 
-  for (const finding of findings) {
+  for (const finding of normalizedFindings) {
     if (finding?.severity === COMPILER_POLICY_SEVERITY.HIGH) summary.high += 1;
     if (finding?.severity === COMPILER_POLICY_SEVERITY.MEDIUM) summary.medium += 1;
-    summary.byPolicyArea[finding.policyArea] = (summary.byPolicyArea[finding.policyArea] || 0) + 1;
-    summary.byRule[finding.rule] = (summary.byRule[finding.rule] || 0) + 1;
+    const policyArea = finding?.policyArea || 'unknown';
+    const rule = finding?.rule || 'unknown';
+    summary.byPolicyArea[policyArea] = (summary.byPolicyArea[policyArea] || 0) + 1;
+    summary.byRule[rule] = (summary.byRule[rule] || 0) + 1;
   }
 
   return summary;
 }
 
 export function buildCompilerPolicyIssueSummary(findings = []) {
-  const summary = summarizeCompilerPolicyDrift(findings);
+  const normalizedFindings = findings.filter(Boolean);
+  const summary = summarizeCompilerPolicyDrift(normalizedFindings);
   const severity = summary.high > 0 ? COMPILER_POLICY_SEVERITY.HIGH : COMPILER_POLICY_SEVERITY.MEDIUM;
-  const sampleRules = findings.map((finding) => finding.rule).slice(0, 3).join(', ');
-  const reuseGuidance = findings
+  const sampleRules = normalizedFindings.map((finding) => finding?.rule || 'unknown').slice(0, 3).join(', ');
+  const reuseGuidance = normalizedFindings
     .map((finding) => finding.reuseGuidance)
     .filter(Boolean);
 
@@ -271,7 +285,7 @@ export function buildCompilerPolicyIssueSummary(findings = []) {
     summary,
     sampleRules,
     reuseGuidance,
-    message: `${summary.total} compiler policy drift finding(s): ${sampleRules}`.trim()
+    message: `${summary.total} compiler policy drift finding(s): ${sampleRules || 'unspecified'}`.trim()
   };
 }
 

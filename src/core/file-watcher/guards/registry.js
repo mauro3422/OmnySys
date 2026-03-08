@@ -11,6 +11,7 @@
 import { createLogger } from '../../../utils/logger.js';
 import { validateGuard } from './guard-standards.js';
 import { getMetadataFromMap, listMetadataItems } from '../../../shared/compiler/metadata-utils.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 
 const logger = createLogger('OmnySys:guards:registry');
 
@@ -21,6 +22,30 @@ class GuardRegistry {
         this.metadata = new Map(); // Metadata de cada guard
         this.initialized = false;
         this.initializationPromise = null;
+    }
+
+    async #persistGuardCrash(rootPath, filePath, name, type, error) {
+        const issueType = `runtime_${type}_guard_crash_${name}_high`;
+        await persistWatcherIssue(
+            rootPath,
+            filePath,
+            issueType,
+            'high',
+            `${type} guard '${name}' crashed: ${error.message}`,
+            {
+                source: 'guard_registry',
+                guardName: name,
+                guardType: type,
+                errorName: error.name || 'Error',
+                errorMessage: error.message,
+                stack: error.stack || null
+            }
+        );
+    }
+
+    async #clearGuardCrash(rootPath, filePath, name, type) {
+        const issueType = `runtime_${type}_guard_crash_${name}_high`;
+        await clearWatcherIssue(rootPath, filePath, issueType);
     }
 
     /**
@@ -108,6 +133,7 @@ class GuardRegistry {
             const startTime = Date.now();
             try {
                 results[name] = await guardFn(rootPath, filePath, context, atoms, options);
+                await this.#clearGuardCrash(rootPath, filePath, name, 'semantic');
                 const duration = Date.now() - startTime;
                 
                 if (duration > 100) {
@@ -115,6 +141,7 @@ class GuardRegistry {
                 }
             } catch (error) {
                 logger.error(`Error in semantic guard '${name}' for ${filePath}: ${error.message}`);
+                await this.#persistGuardCrash(rootPath, filePath, name, 'semantic', error);
                 results[name] = { error: error.message };
             }
         }
@@ -132,6 +159,7 @@ class GuardRegistry {
             const startTime = Date.now();
             try {
                 results[name] = await guardFn(rootPath, filePath, context, options);
+                await this.#clearGuardCrash(rootPath, filePath, name, 'impact');
                 const duration = Date.now() - startTime;
                 
                 if (duration > 100) {
@@ -139,6 +167,7 @@ class GuardRegistry {
                 }
             } catch (error) {
                 logger.error(`Error in impact guard '${name}' for ${filePath}: ${error.message}`);
+                await this.#persistGuardCrash(rootPath, filePath, name, 'impact', error);
                 results[name] = { error: error.message };
             }
         }
