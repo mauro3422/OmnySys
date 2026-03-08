@@ -31,8 +31,10 @@ function buildSuggestedAlternatives(findings = [], reuseGuidance = []) {
     if (guidance?.recommendedReplacement) {
       alternatives.add(guidance.recommendedReplacement);
     }
-    if (guidance?.recommendedImport) {
-      alternatives.add(`Import sugerido: ${guidance.recommendedImport}`);
+    if (guidance?.recommendedImport?.from && guidance?.recommendedImport?.symbols?.length) {
+      alternatives.add(
+        `Import sugerido: { ${guidance.recommendedImport.symbols.join(', ')} } desde ${guidance.recommendedImport.from}`
+      );
     }
   }
 

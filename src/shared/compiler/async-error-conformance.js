@@ -28,6 +28,9 @@ import {
 function hasDelegatedRecoveryContract(source = '') {
   return (
     /extends\s+BaseStrategy/.test(source) ||
+    /this\.runRoutedAction\s*\(/.test(source) ||
+    /this\.dispatchByKey\s*\(/.test(source) ||
+    /runRoutedAction\s*\(\s*\{/.test(source) ||
     /_requestWorkerRestart\s*\(/.test(source) ||
     /reloadHandler\.reload\s*\(/.test(source) ||
     /stateHandler\.(preserve|restore)\s*\(/.test(source)
