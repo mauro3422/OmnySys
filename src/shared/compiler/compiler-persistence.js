@@ -10,64 +10,20 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { normalizeFilePath } from './path-normalization.js';
-
-const DATA_DIR = '.omnysysdata';
-const SCANNED_FILE_MANIFEST_TABLE = 'compiler_scanned_files';
-
-function getDataDir(rootPath) {
-  return path.join(rootPath, DATA_DIR);
-}
-
-function getMetadataJsonPath(dataPath, filePath) {
-  const normalizedPath = normalizeFilePath(filePath);
-  const fileName = path.basename(normalizedPath);
-  const fileDir = path.dirname(normalizedPath);
-  return path.join(dataPath, 'files', fileDir, `${fileName}.json`);
-}
-
-async function readPersistedMetadataJson(dataPath, filePath) {
-  const metadataPath = getMetadataJsonPath(dataPath, filePath);
-  const content = await fs.readFile(metadataPath, 'utf-8');
-  return JSON.parse(content);
-}
-
-async function withRepository(rootPath, operation) {
-  const { getRepository } = await import('#layer-c/storage/repository/index.js');
-  const repo = getRepository(rootPath);
-  if (!repo?.db) {
-    return null;
-  }
-  return operation(repo);
-}
-
-function createScannedFileManifestSummary({
-  scannedFileTotal = 0,
-  manifestFileTotal = 0,
-  missingFromManifest = []
-} = {}) {
-  const missingCount = missingFromManifest.length;
-
-  return {
-    scannedFileTotal,
-    manifestFileTotal,
-    missingFileCount: missingCount,
-    synchronized: missingCount === 0 && manifestFileTotal >= scannedFileTotal,
-    missingSample: missingFromManifest.slice(0, 10)
-  };
-}
-
-async function ensureScannedFileManifestTable(projectPath) {
-  return withRepository(projectPath, (repo) => repo.db.prepare(`
-    CREATE TABLE IF NOT EXISTS ${SCANNED_FILE_MANIFEST_TABLE} (
-      path TEXT PRIMARY KEY,
-      first_seen TEXT NOT NULL,
-      last_seen TEXT NOT NULL
-    )
-  `).run());
-}
+import {
+  SCANNED_FILE_MANIFEST_TABLE,
+  createScannedFileManifestSummary,
+  ensureScannedFileManifestTable,
+  getCompilerDataDir,
+  loadPersistedCompilerPathSets,
+  loadPersistedIndexedFilePaths,
+  loadPersistedScannedFilePaths,
+  readPersistedMetadataJson,
+  withCompilerRepository
+} from './compiler-persistence-paths.js';
 
 export async function hasPersistedCompilerAnalysis(projectPath) {
-  const dataDir = getDataDir(projectPath);
+  const dataDir = getCompilerDataDir(projectPath);
   const dbPath = path.join(dataDir, 'omnysys.db');
   const indexPath = path.join(dataDir, 'index.json');
 
@@ -83,7 +39,7 @@ export async function hasPersistedCompilerAnalysis(projectPath) {
   } catch {
     try {
       await fs.access(dbPath);
-      const count = await withRepository(projectPath, (repo) =>
+      const count = await withCompilerRepository(projectPath, (repo) =>
         repo.db.prepare('SELECT COUNT(*) as count FROM atoms').get()?.count || 0
       );
       return count > 0;
@@ -94,42 +50,11 @@ export async function hasPersistedCompilerAnalysis(projectPath) {
 }
 
 export async function getPersistedIndexedFilePaths(projectPath) {
-  try {
-    const rows = await withRepository(projectPath, (repo) => repo.db.prepare(`
-      SELECT path AS file_path FROM files
-      UNION
-      SELECT DISTINCT file_path FROM atoms
-      WHERE file_path IS NOT NULL AND file_path != ''
-    `).all());
-
-    return new Set(
-      (rows || [])
-        .map((row) => row?.file_path)
-        .filter(Boolean)
-        .map(normalizeFilePath)
-    );
-  } catch {
-    return new Set();
-  }
+  return loadPersistedIndexedFilePaths(projectPath);
 }
 
 export async function getPersistedScannedFilePaths(projectPath) {
-  try {
-    await ensureScannedFileManifestTable(projectPath);
-    const rows = await withRepository(projectPath, (repo) => repo.db.prepare(`
-      SELECT path AS file_path
-      FROM ${SCANNED_FILE_MANIFEST_TABLE}
-    `).all());
-
-    return new Set(
-      (rows || [])
-        .map((row) => row?.file_path)
-        .filter(Boolean)
-        .map(normalizeFilePath)
-    );
-  } catch {
-    return new Set();
-  }
+  return loadPersistedScannedFilePaths(projectPath);
 }
 
 export async function syncPersistedScannedFileManifest(projectPath, scannedFilePaths = [], options = {}) {
@@ -144,7 +69,7 @@ export async function syncPersistedScannedFileManifest(projectPath, scannedFileP
 
   try {
     await ensureScannedFileManifestTable(projectPath);
-    await withRepository(projectPath, (repo) => {
+    await withCompilerRepository(projectPath, (repo) => {
       const insertStmt = repo.db.prepare(`
         INSERT INTO ${SCANNED_FILE_MANIFEST_TABLE} (path, first_seen, last_seen)
         VALUES (?, ?, ?)
@@ -206,12 +131,12 @@ export async function summarizePersistedScannedFileCoverage(projectPath, scanned
 }
 
 export async function getPersistedKnownFilePaths(projectPath) {
-  const [indexedPaths, manifestPaths] = await Promise.all([
-    getPersistedIndexedFilePaths(projectPath),
-    getPersistedScannedFilePaths(projectPath)
-  ]);
-
-  return new Set([...indexedPaths, ...manifestPaths]);
+  try {
+    const { indexedPaths, manifestPaths } = await loadPersistedCompilerPathSets(projectPath);
+    return new Set([...indexedPaths, ...manifestPaths]);
+  } catch {
+    return new Set();
+  }
 }
 
 export async function findIndexedFileCandidate(rootPath, importPath) {
@@ -222,7 +147,7 @@ export async function findIndexedFileCandidate(rootPath, importPath) {
   const fileBaseName = baseName.split('/').pop().replace(/\.[^/.]+$/, '');
 
   try {
-    const row = await withRepository(rootPath, (repo) => repo.db.prepare(`
+    const row = await withCompilerRepository(rootPath, (repo) => repo.db.prepare(`
       SELECT file_path as path FROM atoms WHERE name = ? OR name LIKE ?
       UNION ALL
       SELECT path FROM files WHERE path LIKE ?
@@ -236,7 +161,7 @@ export async function findIndexedFileCandidate(rootPath, importPath) {
 }
 
 export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, validAtomNames = new Set()) {
-  const dataDir = getDataDir(rootPath);
+  const dataDir = getCompilerDataDir(rootPath);
   const normalizedPath = normalizeFilePath(filePath);
   const fileDir = path.dirname(normalizedPath);
   const fileName = path.basename(normalizedPath, path.extname(normalizedPath));
@@ -262,7 +187,7 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
   }
 
   try {
-    const existingAtoms = await withRepository(rootPath, (repo) => repo.db.prepare(`
+    const existingAtoms = await withCompilerRepository(rootPath, (repo) => repo.db.prepare(`
       SELECT id, name, purpose_type as purpose
       FROM atoms
       WHERE file_path = ?
@@ -270,7 +195,7 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
 
     for (const atom of existingAtoms || []) {
       if (atom.purpose !== 'REMOVED' && !validAtomNames.has(atom.name)) {
-        await withRepository(rootPath, (repo) => repo.db.prepare(`
+        await withCompilerRepository(rootPath, (repo) => repo.db.prepare(`
           UPDATE atoms
           SET purpose_type = 'REMOVED',
               is_dead_code = 1,
@@ -292,11 +217,11 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
 }
 
 export async function removePersistedFileMetadata(rootPath, filePath) {
-  return withRepository(rootPath, async (repo) => repo.deleteFile(normalizeFilePath(filePath)));
+  return withCompilerRepository(rootPath, async (repo) => repo.deleteFile(normalizeFilePath(filePath)));
 }
 
 export async function removePersistedAtomMetadata(rootPath, filePath) {
-  return withRepository(rootPath, async (repo) => repo.deleteByFile(normalizeFilePath(filePath)));
+  return withCompilerRepository(rootPath, async (repo) => repo.deleteByFile(normalizeFilePath(filePath)));
 }
 
 export async function emitOrphanedImportsFromPersistedMetadata(dataPath, filePath, emitImportOrphaned) {
