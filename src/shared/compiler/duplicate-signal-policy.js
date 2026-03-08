@@ -152,6 +152,22 @@ const STORAGE_QUERY_POLICY_FINGERPRINTS = new Set([
     'process:core:query'
 ]);
 
+const DUPLICATE_STRUCTURAL_CORE_FILE_MARKER = '/core/file-watcher/guards/duplicate-structural-core.js';
+const DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES = new Set([
+    'loadstructurallocalatoms',
+    'collectcandidatednas',
+    'loadstructuralduplicaterows',
+    'buildstructuralfindings',
+    'clearstructuralduplicateissues'
+]);
+const DUPLICATE_STRUCTURAL_CORE_FINGERPRINTS = new Set([
+    'load:core:atoms',
+    'process:core:dnas',
+    'load:core:rows',
+    'build:core:findings',
+    'process:core:issues'
+]);
+
 const COMPILER_POLICY_ORCHESTRATION_NAME_REGEX = /^(?:coordinate[A-Z]\w+|build[A-Z]\w*Plan|build[A-Z]\w*Details|resolve[A-Z]\w*Priority)$/i;
 
 const COMPILER_POLICY_ORCHESTRATION_FINGERPRINTS = new Set([
@@ -419,6 +435,23 @@ export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerpri
     });
 }
 
+export function isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [DUPLICATE_STRUCTURAL_CORE_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES,
+        fingerprints: DUPLICATE_STRUCTURAL_CORE_FINGERPRINTS
+    });
+}
+
+export function isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: ['/core/file-watcher/guards/'],
+        names: DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES,
+        fingerprints: DUPLICATE_STRUCTURAL_CORE_FINGERPRINTS
+    });
+}
+
 export function isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: [INTEGRITY_ANALYSIS_FILE_MARKER],
@@ -502,6 +535,8 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
         () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
         () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
+        () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
+        () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, semanticFingerprint),
         () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint),
@@ -524,6 +559,8 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isCanonicalDuplicateSignalPolicyHelper(filePath, atomName),
         () => isCanonicalGuidanceHelper(filePath, atomName, null),
         () => isStorageQueryPolicyHelper(filePath, atomName, null),
+        () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
+        () => isDuplicateStructuralCoreReuseHelper(filePath, atomName, null),
         () => isIntegrityAnalysisCanonicalHelper(filePath, atomName, null),
         () => isRuntimePortProbeHelper(filePath, atomName, null),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),

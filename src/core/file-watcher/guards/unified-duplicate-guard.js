@@ -1,13 +1,13 @@
 /**
  * @fileoverview unified-duplicate-guard.js
  *
- * Guard unificado que coordina detección de duplicados estructurales (DNA)
- * y conceptuales (semantic fingerprint) en una sola ejecución.
+ * Guard unificado que coordina deteccion de duplicados estructurales (DNA)
+ * y conceptuales (semantic fingerprint) en una sola ejecucion.
  *
  * Proporciona:
- * - Detección coordinada de ambos tipos de duplicados
- * - Priorización inteligente (structural primero)
- * - Tracking unificado de deuda técnica
+ * - Deteccion coordinada de ambos tipos de duplicados
+ * - Priorizacion inteligente (structural primero)
+ * - Tracking unificado de deuda tecnica
  * - Remediation plan combinado
  *
  * @module core/file-watcher/guards/unified-duplicate-guard
@@ -27,22 +27,27 @@ import {
     isCanonicalDuplicateSignalPolicyFile,
     normalizeFilePath,
     shouldIgnoreConceptualDuplicateFinding,
-    shouldIgnoreStructuralDuplicateFinding,
     summarizeAtomTestability,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     buildDuplicateContext,
     coordinateDuplicateFindings
 } from '../../../shared/compiler/index.js';
+import {
+    buildStructuralFindings,
+    collectCandidateDnas,
+    loadStructuralDuplicateRows,
+    loadStructuralLocalAtoms
+} from './duplicate-structural-core.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
 /**
  * Ejecuta ambos guards (structural + conceptual) y coordina resultados
- * @param {string} rootPath - Ruta raíz del proyecto
+ * @param {string} rootPath - Ruta raiz del proyecto
  * @param {string} filePath - Archivo analizado
  * @param {Object} EventEmitterContext - Contexto para emitir eventos
- * @param {Object} options - Opciones de configuración
+ * @param {Object} options - Opciones de configuracion
  * @returns {Promise<Object>} Resultados coordinados de ambos guards
  */
 export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
@@ -54,7 +59,6 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         enableConceptual = true
     } = options;
 
-    // Normalizar filePath
     const normalizedFilePath = normalizeFilePath(filePath);
 
     if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
@@ -71,14 +75,12 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         const repo = getRepository(rootPath);
 
         if (!repo?.db) {
-            logger.warn(`[UNIFIED DUPLICATE GUARD] No repo/db, returning empty`);
+            logger.warn('[UNIFIED DUPLICATE GUARD] No repo/db, returning empty');
             return { structural: [], conceptual: [], coordinated: null };
         }
 
-        // Cargar findings previos para tracking de historial
         const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_%duplicate');
 
-        // Ejecutar guards en paralelo si ambos están habilitados
         const structuralPromise = enableStructural
             ? runStructuralDuplicateGuard(repo, normalizedFilePath, providedAtoms, { maxFindings, minLinesOfCode })
             : Promise.resolve([]);
@@ -92,16 +94,14 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             conceptualPromise
         ]);
 
-        logger.warn(`[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: structural=${structuralFindings.length}, conceptual=${conceptualFindings.length}`);
+        logger.warn(
+            `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: structural=${structuralFindings.length}, conceptual=${conceptualFindings.length}`
+        );
 
-        // Coordinar resultados
         const coordinated = coordinateDuplicateFindings(structuralFindings, conceptualFindings);
-
-        // Calcular deuda técnica combinada
         const allFindings = [...structuralFindings, ...conceptualFindings];
         const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, allFindings, previousFindings);
 
-        // Persistir issue unificado si hay findings
         if (allFindings.length > 0) {
             await persistUnifiedFinding(
                 rootPath,
@@ -111,7 +111,6 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
                 EventEmitterContext
             );
         } else {
-            // Limpiar issues previos
             await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');
             await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_medium');
         }
@@ -123,7 +122,6 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             debtHistory,
             totalFindings: allFindings.length
         };
-
     } catch (error) {
         logger.error(`[UNIFIED DUPLICATE GUARD ERROR] ${normalizedFilePath}: ${error.message}`);
         console.error('[UNIFIED DUPLICATE GUARD ERROR]', error);
@@ -131,44 +129,41 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
     }
 }
 
-/**
- * Ejecuta guard de duplicados estructurales (DNA hash)
- */
 async function runStructuralDuplicateGuard(repo, normalizedFilePath, providedAtoms, options) {
     const { maxFindings, minLinesOfCode } = options;
 
     try {
-        const {
-            buildDuplicateWhereSql,
-            getDuplicateKeySqlForMode,
-            normalizeDuplicateCandidateAtom,
-            DUPLICATE_MODES
-        } = await import('#layer-c/storage/repository/utils/index.js');
+        const { getDuplicateKeySqlForMode, DUPLICATE_MODES } = await import('#layer-c/storage/repository/utils/index.js');
 
-        const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;
-        const DUPLICATE_KEY_SQL = getDuplicateKeySqlForMode(DUPLICATE_MODE, 'a.dna_json');
+        const duplicateMode = DUPLICATE_MODES.STRUCTURAL;
+        const duplicateKeySql = getDuplicateKeySqlForMode(duplicateMode, 'a.dna_json');
 
-        const localAtoms = loadStructuralLocalAtoms(
+        const localAtoms = loadStructuralLocalAtoms({
             repo,
             normalizedFilePath,
             providedAtoms,
             minLinesOfCode,
             maxFindings,
-            normalizeDuplicateCandidateAtom,
-            DUPLICATE_MODE,
-            DUPLICATE_KEY_SQL
-        );
+            duplicateMode,
+            duplicateKeySql
+        });
 
-        if (localAtoms.length === 0) return [];
+        if (localAtoms.length === 0) {
+            return [];
+        }
 
         const { isLowSignalName } = await import('./guard-standards.js');
         const candidateDnas = collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName);
 
-        if (candidateDnas.length === 0) return [];
+        if (candidateDnas.length === 0) {
+            return [];
+        }
 
-        const duplicateRows = loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, DUPLICATE_KEY_SQL);
+        const duplicateRows = loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, duplicateKeySql);
+        if (duplicateRows.length === 0) {
+            return [];
+        }
 
-        if (duplicateRows.length === 0) return [];
         return buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings);
     } catch (error) {
         logger.debug(`[STRUCTURAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
@@ -176,16 +171,12 @@ async function runStructuralDuplicateGuard(repo, normalizedFilePath, providedAto
     }
 }
 
-/**
- * Ejecuta guard de duplicados conceptuales (semantic fingerprint)
- */
 async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
     const { maxFindings, minLinesOfCode } = options;
 
     try {
         const { isLowSignalName } = await import('./guard-standards.js');
 
-        // Obtener átomos locales con semanticFingerprint
         const rows = repo.db.prepare(`
             SELECT id, name, atom_type, lines_of_code, is_exported,
                    json_extract(dna_json, '$.semanticFingerprint') as semanticFingerprint
@@ -198,31 +189,38 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
               AND json_extract(dna_json, '$.semanticFingerprint') != 'unknown:unknown:unknown'
         `).all(normalizedFilePath, minLinesOfCode);
 
-        const localAtoms = rows.map(r => ({
-            id: r.id,
-            name: r.name,
-            semanticFingerprint: r.semanticFingerprint,
-            linesOfCode: r.lines_of_code,
-            isExported: r.is_exported === 1
+        const localAtoms = rows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            semanticFingerprint: row.semanticFingerprint,
+            linesOfCode: row.lines_of_code,
+            isExported: row.is_exported === 1
         }));
 
-        if (localAtoms.length === 0) return [];
+        if (localAtoms.length === 0) {
+            return [];
+        }
 
         const testabilitySummary = summarizeAtomTestability(localAtoms);
         const findings = [];
 
         for (const localAtom of localAtoms) {
-            if (isLowSignalName(localAtom.name)) continue;
-
-            const fp = localAtom.semanticFingerprint;
-            if (fp.includes(':unknown') || fp.includes(':_callback') || fp.includes(':constructor')) {
-                continue;
-            }
-            if (shouldIgnoreConceptualDuplicateFinding(normalizedFilePath, localAtom.name, fp)) {
+            if (isLowSignalName(localAtom.name)) {
                 continue;
             }
 
-            // Buscar otras funciones con mismo fingerprint
+            const fingerprint = localAtom.semanticFingerprint;
+            if (
+                fingerprint.includes(':unknown') ||
+                fingerprint.includes(':_callback') ||
+                fingerprint.includes(':constructor')
+            ) {
+                continue;
+            }
+            if (shouldIgnoreConceptualDuplicateFinding(normalizedFilePath, localAtom.name, fingerprint)) {
+                continue;
+            }
+
             const duplicates = repo.db.prepare(`
                 SELECT a.name, a.file_path, a.lines_of_code, a.is_exported,
                        json_extract(a.dna_json, '$.structuralHash') as structuralHash
@@ -234,38 +232,41 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
                   AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
                 ORDER BY a.file_path
                 LIMIT 10
-            `).all(normalizedFilePath, fp);
+            `).all(normalizedFilePath, fingerprint);
 
-            if (duplicates.length === 0) continue;
+            if (duplicates.length === 0) {
+                continue;
+            }
 
-            // Verificar variación estructural
             const localStructuralHash = repo.db.prepare(`
                 SELECT json_extract(dna_json, '$.structuralHash') as sh
                 FROM atoms WHERE id = ?
             `).get(localAtom.id)?.sh;
 
-            const structuralVariants = duplicates.filter(d => d.structuralHash !== localStructuralHash);
+            const structuralVariants = duplicates.filter((duplicate) => duplicate.structuralHash !== localStructuralHash);
+            if (structuralVariants.length === 0) {
+                continue;
+            }
 
-            if (structuralVariants.length === 0) continue;
-
-            const uniqueFiles = [...new Set(structuralVariants.map(d => d.file_path))];
-
+            const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];
             findings.push({
                 symbol: localAtom.name,
                 atomId: localAtom.id,
-                semanticFingerprint: fp,
+                semanticFingerprint: fingerprint,
                 duplicateType: 'CONCEPTUAL_DUPLICATE',
                 totalInstances: structuralVariants.length + 1,
                 duplicateFiles: uniqueFiles,
-                duplicateNames: [...new Set(structuralVariants.map(d => d.name))],
+                duplicateNames: [...new Set(structuralVariants.map((duplicate) => duplicate.name))],
                 sample: uniqueFiles.slice(0, 3),
                 isExported: localAtom.isExported,
-                existingExports: structuralVariants.filter(d => d.is_exported).length,
+                existingExports: structuralVariants.filter((duplicate) => duplicate.is_exported).length,
                 testabilitySeverity: testabilitySummary.severity,
                 suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
             });
 
-            if (findings.length >= maxFindings) break;
+            if (findings.length >= maxFindings) {
+                break;
+            }
         }
 
         return findings;
@@ -275,111 +276,9 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
     }
 }
 
-function loadStructuralLocalAtoms(
-    repo,
-    normalizedFilePath,
-    providedAtoms,
-    minLinesOfCode,
-    maxFindings,
-    normalizeDuplicateCandidateAtom,
-    duplicateMode,
-    duplicateKeySql
-) {
-    if (providedAtoms && Array.isArray(providedAtoms)) {
-        const normalizedAtoms = providedAtoms
-            .map((atom) => normalizeDuplicateCandidateAtom(atom, {
-                mode: duplicateMode,
-                minLines: minLinesOfCode,
-                requireDna: true
-            }))
-            .filter(Boolean);
-
-        if (normalizedAtoms.length > 0) {
-            return normalizedAtoms;
-        }
-    }
-
-    return repo.db.prepare(`
-        SELECT id, name, dna_json, lines_of_code,
-               ${duplicateKeySql} AS duplicate_key
-        FROM atoms a
-        WHERE a.file_path = ?
-          AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-          AND (a.is_removed IS NULL OR a.is_removed = 0)
-          AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
-          AND a.lines_of_code >= ?
-          AND a.dna_json IS NOT NULL
-        LIMIT ?
-    `).all(normalizedFilePath, minLinesOfCode, maxFindings * 4);
-}
-
-function collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName) {
-    return localAtoms
-        .filter((atom) => atom.name &&
-            !isLowSignalName(atom.name) &&
-            !shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, atom.name))
-        .map((atom) => atom.duplicate_key)
-        .filter(Boolean);
-}
-
-function loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, duplicateKeySql) {
-    const placeholders = candidateDnas.map(() => '?').join(',');
-    return repo.db.prepare(`
-        SELECT a.name, a.file_path, a.dna_json, a.line_start,
-               ${duplicateKeySql} AS duplicate_key
-        FROM atoms a
-        WHERE (${duplicateKeySql}) IN (${placeholders})
-            AND a.file_path != ?
-            AND a.atom_type IN ('function', 'method', 'arrow', 'class')
-            AND (a.is_removed IS NULL OR a.is_removed = 0)
-        ORDER BY a.dna_json, a.file_path
-    `).all(...candidateDnas, normalizedFilePath);
-}
-
-function buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings) {
-    const byDna = new Map();
-    for (const row of duplicateRows) {
-        if (!byDna.has(row.duplicate_key)) byDna.set(row.duplicate_key, []);
-        byDna.get(row.duplicate_key).push(row);
-    }
-
-    const localDnaToName = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.name]));
-    const localDnaToId = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.id]));
-    const findings = [];
-
-    for (const [dna, remoteAtoms] of byDna) {
-        const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
-        if (shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, symbolName)) {
-            continue;
-        }
-
-        const uniqueFiles = [...new Set(remoteAtoms.map((atom) => atom.file_path))];
-        findings.push({
-            symbol: symbolName,
-            atomId: localDnaToId.get(dna),
-            duplicateType: 'LOGIC_DUPLICATE',
-            totalInstances: remoteAtoms.length + 1,
-            duplicateFiles: uniqueFiles,
-            sample: uniqueFiles.slice(0, 3),
-            dnaSimilarity: 'structural',
-            suggestedAlternatives: generateAlternativeNames(symbolName)
-        });
-
-        if (findings.length >= maxFindings) {
-            break;
-        }
-    }
-
-    return findings;
-}
-
-/**
- * Persiste finding unificado con coordenación y deuda técnica
- */
 async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, debtHistory, EventEmitterContext) {
     const allFindings = [...coordinated.structural, ...coordinated.conceptual];
 
-    // Determinar severidad basada en coordinación
     let severity = 'medium';
     let issueTypeLabel = 'duplicate_unified';
 
@@ -391,20 +290,18 @@ async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, 
     }
 
     const issueType = createIssueType(IssueDomains.CODE, issueTypeLabel, severity);
-
-    // Generar remediation plan combinado
-    const remediationPlan = buildDuplicateRemediationPlan(allFindings.map(f => ({
-        groupSize: f.totalInstances,
-        urgencyScore: f.totalInstances,
+    const remediationPlan = buildDuplicateRemediationPlan(allFindings.map((finding) => ({
+        groupSize: finding.totalInstances,
+        urgencyScore: finding.totalInstances,
         instances: [{
-            name: f.symbol,
+            name: finding.symbol,
             file: normalizedFilePath,
             importanceScore: 0,
             callerCount: 0,
             changeFrequency: 0
-        }, ...f.duplicateFiles.map(dupFile => ({
-            name: f.symbol,
-            file: dupFile,
+        }, ...finding.duplicateFiles.map((duplicateFile) => ({
+            name: finding.symbol,
+            file: duplicateFile,
             importanceScore: 0,
             callerCount: 0,
             changeFrequency: 0
@@ -412,14 +309,13 @@ async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, 
     })));
 
     const preview = allFindings
-        .map(f => `${f.symbol}(${f.duplicateType}:${f.totalInstances})`)
+        .map((finding) => `${finding.symbol}(${finding.duplicateType}:${finding.totalInstances})`)
         .join(', ');
 
     logger.warn(
         `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: ${allFindings.length} total -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
     );
 
-    // Crear contexto enriquecido
     const enrichedContext = buildDuplicateContext(allFindings, debtHistory);
     const context = createStandardContext({
         guardName: 'unified-duplicate-risk-guard',
@@ -427,10 +323,10 @@ async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, 
         suggestedAction: coordinated.hasOverlap
             ? 'CRITICAL: Same symbols have both structural and conceptual duplicates. Immediate refactoring required.'
             : coordinated.structural.length > 0
-                ? StandardSuggestions.DUPLICATE_REUSE + ' (structural duplicates detected)'
-                : StandardSuggestions.DUPLICATE_REUSE + ' (conceptual duplicates detected)',
-        suggestedAlternatives: remediationPlan.items.flatMap(item => item.recommendedActions).slice(0, 8),
-        relatedFiles: allFindings.flatMap(f => f.duplicateFiles).filter((v, i, a) => a.indexOf(v) === i),
+                ? `${StandardSuggestions.DUPLICATE_REUSE} (structural duplicates detected)`
+                : `${StandardSuggestions.DUPLICATE_REUSE} (conceptual duplicates detected)`,
+        suggestedAlternatives: remediationPlan.items.flatMap((item) => item.recommendedActions).slice(0, 8),
+        relatedFiles: allFindings.flatMap((finding) => finding.duplicateFiles).filter((value, index, all) => all.indexOf(value) === index),
         extraData: {
             totalDuplicateCount: allFindings.length,
             structuralCount: coordinated.structural.length,
@@ -455,14 +351,12 @@ async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, 
         context
     );
 
-    // Limpiar severidad opuesta
     if (severity === 'high') {
         await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_medium');
     } else {
         await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');
     }
 
-    // Emitir evento
     EventEmitterContext.emit('code:duplicate_unified', {
         filePath: normalizedFilePath,
         severity,
@@ -472,11 +366,11 @@ async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, 
         hasOverlap: coordinated.hasOverlap,
         debtScore: debtHistory.debt.score,
         debtTrend: debtHistory.debt.trend,
-        findings: allFindings.map(f => ({
-            symbol: f.symbol,
-            type: f.duplicateType,
-            instances: f.totalInstances,
-            files: f.duplicateFiles.length
+        findings: allFindings.map((finding) => ({
+            symbol: finding.symbol,
+            type: finding.duplicateType,
+            instances: finding.totalInstances,
+            files: finding.duplicateFiles.length
         }))
     });
 }
