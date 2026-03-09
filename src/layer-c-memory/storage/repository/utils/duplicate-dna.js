@@ -68,6 +68,26 @@ const TEST_FILE_EXCLUSION_PATTERNS = Object.freeze([
   "%/tests/%"
 ]);
 
+const NORMALIZED_TEST_FILE_EXCLUSION_FRAGMENTS = Object.freeze(
+  TEST_FILE_EXCLUSION_PATTERNS
+    .map((pattern) => pattern.replace(/%/g, '').replace(/^\//, '').replace(/\/$/, ''))
+    .filter(Boolean)
+);
+
+const EXCLUDED_DUPLICATE_NAME_PATTERNS = Object.freeze([
+  /_callback$/,
+  /^anonymous/,
+  /^describe_arg/,
+  /^it_arg/,
+  /^on_arg/,
+  /^then_callback$/,
+  /^catch_callback$/,
+  /^map_callback$/,
+  /^filter_callback$/,
+  /^some_callback$/,
+  /^sort_callback$/
+]);
+
 function qualifyColumn(columnName = '', alias = '') {
   return alias ? `${alias}.${columnName}` : columnName;
 }
@@ -206,34 +226,20 @@ export function isDuplicateEligibleAtom(atom = {}, {
   const isRemoved = Boolean(atom.isRemoved || atom.is_removed);
   const isDeadCode = Boolean(atom.isDeadCode || atom.is_dead_code);
   const dnaValue = normalizeDnaValue(atom);
-
-  if (requireDna && !dnaValue) return false;
-  if (isRemoved || isDeadCode) return false;
-  if (atomTypes && atomTypes.length > 0 && !atomTypes.includes(atomType)) return false;
-  if (minLines > 0 && linesOfCode < minLines) return false;
-  if (filePath && !filePath.startsWith('src/')) return false;
-  if (filePath && filePath.startsWith('tests/')) return false;
-  if (excludeTests && TEST_FILE_EXCLUSION_PATTERNS.some((pattern) => {
-    const normalizedPattern = pattern.replace(/%/g, '');
-    return normalizedPattern && filePath.includes(normalizedPattern.replace(/^\//, '').replace(/\/$/, ''));
-  })) {
-    return false;
-  }
-
   const name = atom.name || '';
-  return ![
-    /_callback$/,
-    /^anonymous/,
-    /^describe_arg/,
-    /^it_arg/,
-    /^on_arg/,
-    /^then_callback$/,
-    /^catch_callback$/,
-    /^map_callback$/,
-    /^filter_callback$/,
-    /^some_callback$/,
-    /^sort_callback$/
-  ].some((pattern) => pattern.test(name));
+  const checks = [
+    !requireDna || Boolean(dnaValue),
+    !isRemoved,
+    !isDeadCode,
+    !atomTypes || atomTypes.length === 0 || atomTypes.includes(atomType),
+    minLines <= 0 || linesOfCode >= minLines,
+    !filePath || filePath.startsWith('src/'),
+    !filePath || !filePath.startsWith('tests/'),
+    !excludeTests || !NORMALIZED_TEST_FILE_EXCLUSION_FRAGMENTS.some((fragment) => filePath.includes(fragment)),
+    !EXCLUDED_DUPLICATE_NAME_PATTERNS.some((pattern) => pattern.test(name))
+  ];
+
+  return checks.every(Boolean);
 }
 
 export function normalizeDuplicateCandidateAtom(atom = {}, {
