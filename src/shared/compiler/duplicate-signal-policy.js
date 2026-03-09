@@ -168,6 +168,20 @@ const STORAGE_QUERY_POLICY_FINGERPRINTS = new Set([
     'process:core:query'
 ]);
 
+const SYSTEM_MAP_DEPENDENCY_HANDLER_FILE_MARKER = '/storage/repository/adapters/helpers/system-map/handlers/dependency-handler.js';
+const SYSTEM_MAP_DEPENDENCY_HANDLER_NAMES = new Set([
+    'loadfiledependencies',
+    'grouploadeddependencies',
+    'normalizeloadeddependency',
+    'parsejsonlist'
+]);
+const SYSTEM_MAP_DEPENDENCY_HANDLER_FINGERPRINTS = new Set([
+    'load:core:dependencies',
+    'process:core:dependencies',
+    'normalize:core:row',
+    'parse:core:array'
+]);
+
 const LAYER_A_PIPELINE_CANONICAL_FILE_MARKERS = [
     '/layer-a-static/pipeline/incremental-analysis-utils.js',
     '/layer-a-static/pipeline/file-summary-storage.js'
@@ -574,6 +588,15 @@ export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerpri
     });
 }
 
+export function isSystemMapDependencyPersistenceHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: [SYSTEM_MAP_DEPENDENCY_HANDLER_FILE_MARKER],
+        pathMode: 'endsWith',
+        names: SYSTEM_MAP_DEPENDENCY_HANDLER_NAMES,
+        fingerprints: SYSTEM_MAP_DEPENDENCY_HANDLER_FINGERPRINTS
+    });
+}
+
 export function isLayerAPipelineCanonicalHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: LAYER_A_PIPELINE_CANONICAL_FILE_MARKERS,
@@ -727,6 +750,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
         () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
         () => isCanonicalPipelineHealthHelper(filePath, atomName, semanticFingerprint),
         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
+        () => isSystemMapDependencyPersistenceHelper(filePath, atomName, semanticFingerprint),
         () => isLayerAPipelineCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isWatcherIssueCanonicalHelper(filePath, atomName, semanticFingerprint),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
@@ -757,6 +781,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isCanonicalGuidanceHelper(filePath, atomName, null),
         () => isCanonicalPipelineHealthHelper(filePath, atomName, null),
         () => isStorageQueryPolicyHelper(filePath, atomName, null),
+        () => isSystemMapDependencyPersistenceHelper(filePath, atomName, null),
         () => isLayerAPipelineCanonicalHelper(filePath, atomName, null),
         () => isWatcherIssueCanonicalHelper(filePath, atomName, null),
         () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
