@@ -114,6 +114,44 @@ async function scanCompilerPolicyHealth(projectPath) {
     }
 }
 
+function buildLiveRowTableCounts(liveRowSync) {
+    const {
+        liveFileTotal: liveAtomFiles = 0,
+        staleFileRows = 0,
+        staleRiskRows = 0
+    } = liveRowSync.summary || {};
+
+    return {
+        liveAtomFiles,
+        staleFileRows,
+        staleRiskRows,
+        deletedCount:
+            (liveRowSync.deleted?.files || 0) +
+            (liveRowSync.deleted?.riskAssessments || 0) +
+            (liveRowSync.deleted?.relations || 0) +
+            (liveRowSync.deleted?.issues || 0) +
+            (liveRowSync.deleted?.connections || 0)
+    };
+}
+
+function loadDuplicateGroups(db) {
+    return db.prepare(`
+        SELECT dna_json as duplicate_key, COUNT(*) as group_size
+        FROM atoms
+        WHERE dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
+          AND atom_type IN ('function', 'arrow')
+          AND file_path LIKE 'src/%'
+        GROUP BY dna_json
+        HAVING COUNT(*) > 1
+        ORDER BY COUNT(*) DESC
+        LIMIT 10
+    `).all().map((row) => ({
+        groupSize: row.group_size,
+        urgencyScore: row.group_size,
+        instances: []
+    }));
+}
+
 export async function aggregatePipelineHealth(tool) {
     const db = tool.repo?.db;
     if (!db) throw new Error('Repository (DB) not available');
@@ -127,11 +165,7 @@ export async function aggregatePipelineHealth(tool) {
 
     const issues = [];
     const warnings = [];
-    const {
-        liveFileTotal: liveAtomFiles = 0,
-        staleFileRows = 0,
-        staleRiskRows = 0
-    } = liveRowSync.summary || {};
+    const { liveAtomFiles, staleFileRows, staleRiskRows, deletedCount } = buildLiveRowTableCounts(liveRowSync);
 
     const tableHealth = loadExpectedPipelineTableCounts(db);
     const tableCounts = { ...tableHealth.tableCounts };
@@ -141,12 +175,7 @@ export async function aggregatePipelineHealth(tool) {
     tableCounts.live_atom_files = liveAtomFiles;
     tableCounts.stale_file_rows = staleFileRows;
     tableCounts.stale_risk_rows = staleRiskRows;
-    tableCounts.live_row_sync_deleted =
-        (liveRowSync.deleted?.files || 0) +
-        (liveRowSync.deleted?.riskAssessments || 0) +
-        (liveRowSync.deleted?.relations || 0) +
-        (liveRowSync.deleted?.issues || 0) +
-        (liveRowSync.deleted?.connections || 0);
+    tableCounts.live_row_sync_deleted = deletedCount;
 
     if (staleFileRows > 0) {
         warnings.push({
@@ -194,14 +223,10 @@ export async function aggregatePipelineHealth(tool) {
             ).get();
             const nonZeroCount = row?.nonzero || 0;
             const coverage = field === 'centrality_score'
-                ? summarizeCentralityCoverageRow({
-                    total: scopedTotal,
-                    centrality_nonzero: nonZeroCount
-                }, {
-                    minWarningCoverage,
-                    description,
-                    descriptionSuffix
-                })?.classification
+                ? summarizeCentralityCoverageRow(
+                    { total: scopedTotal, centrality_nonzero: nonZeroCount },
+                    { minWarningCoverage, description, descriptionSuffix }
+                )?.classification
                 : classifyFieldCoverage({
                     total: scopedTotal,
                     nonZeroCount,
@@ -227,7 +252,9 @@ export async function aggregatePipelineHealth(tool) {
             } else if (coverage.level === 'warning') {
                 warnings.push({ field, coverage: `${coverage.coveragePct}%`, nonZeroCount, issue: coverage.issue });
             }
-        } catch (e) { /* field missing */ }
+        } catch {
+            // Missing or incompatible field surfaces are handled as absent coverage.
+        }
     }
 
     // --- CHECK 3: Pipeline orphans ---
@@ -257,23 +284,12 @@ export async function aggregatePipelineHealth(tool) {
 
     const liveRowReconciliation = buildLiveRowReconciliationPlan(db, { sampleLimit: 5 });
     const liveRowRemediation = buildLiveRowRemediationPlan(db, { sampleLimit: 5 });
-    const duplicateGroups = db.prepare(`
-        SELECT dna_json as duplicate_key, COUNT(*) as group_size
-        FROM atoms
-        WHERE dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-          AND atom_type IN ('function', 'arrow')
-          AND file_path LIKE 'src/%'
-        GROUP BY dna_json
-        HAVING COUNT(*) > 1
-        ORDER BY COUNT(*) DESC
-        LIMIT 10
-    `).all().map((row) => ({
-        groupSize: row.group_size,
-        urgencyScore: row.group_size,
-        instances: []
-    }));
+    const duplicateGroups = loadDuplicateGroups(db);
     const duplicateRemediation = buildDuplicateRemediationPlan(duplicateGroups);
     const metadataSurfaceParity = getMetadataSurfaceParity(db);
+    const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
+
     if (metadataSurfaceParity.healthy === false) {
         warnings.push({
             field: 'metadata_surface_parity',
@@ -282,8 +298,7 @@ export async function aggregatePipelineHealth(tool) {
         });
         tableCounts.metadata_surface_parity_issues = metadataSurfaceParity.issues.length;
     }
-    const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
-    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
+
     if (semanticSurfaceGranularity.healthy === false) {
         warnings.push({
             field: 'semantic_surface_granularity',
@@ -292,6 +307,7 @@ export async function aggregatePipelineHealth(tool) {
         });
         tableCounts.semantic_surface_granularity_issues = semanticSurfaceGranularity.issues.length;
     }
+
     if (semanticCanonicality?.status === 'advisory_only') {
         warnings.push({
             field: 'semantic_surface_canonicality',
@@ -299,6 +315,7 @@ export async function aggregatePipelineHealth(tool) {
             issue: semanticCanonicality.summary
         });
     }
+
     tableCounts.runtime_table_health_issues = runtimeTableHealth.activeIssues.length;
     const compilerRemediation = buildCompilerRemediationBacklog([
         {
@@ -374,6 +391,7 @@ export async function aggregatePipelineHealth(tool) {
             issue: 'The contract layer recommends creating or consolidating canonical APIs before adding more local wrappers.'
         });
     }
+
     const governanceMetrics = compilerContractLayer.apiGovernance.governanceMetrics || {};
     tableCounts.compiler_canonical_wrapper_findings = governanceMetrics.canonicalWrapperFindings || 0;
     tableCounts.compiler_canonical_bypass_findings = governanceMetrics.canonicalBypassFindings || 0;
@@ -402,6 +420,7 @@ export async function aggregatePipelineHealth(tool) {
             issue: 'The compiler still sees local policy/helper surfaces that should be consolidated into the canonical layer.'
         });
     }
+
     const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
