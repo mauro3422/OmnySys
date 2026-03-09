@@ -383,6 +383,25 @@ const LEGACY_LLM_BOOTSTRAP_FINGERPRINTS = new Set([
     'process:core:starting'
 ]);
 
+const LEGACY_TUNNEL_VISION_COMPATIBILITY_FILE_MARKERS = [
+    '/core/tunnel-vision-logger/stats/calculator.js',
+    '/core/tunnel-vision-logger/stats/analyzer.js'
+];
+
+const LEGACY_TUNNEL_VISION_COMPATIBILITY_NAMES = new Set([
+    'loadstats',
+    'updatestats',
+    'getstats',
+    'analyzepatterns'
+]);
+
+const LEGACY_TUNNEL_VISION_COMPATIBILITY_FINGERPRINTS = new Set([
+    'load:core:stats',
+    'update:core:stats',
+    'get:core:stats',
+    'analyze:core:patterns'
+]);
+
 const STANDALONE_SCRIPT_FILE_REGEX = /(?:^|\/)(?:scripts\/.+|install|run-layer-a)\.js$/;
 const STANDALONE_SCRIPT_HELPER_NAMES = new Set([
     'main',
@@ -706,6 +725,15 @@ export function isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, sema
     });
 }
 
+export function isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, semanticFingerprint) {
+    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+        pathMatchers: LEGACY_TUNNEL_VISION_COMPATIBILITY_FILE_MARKERS,
+        pathMode: 'endsWith',
+        names: LEGACY_TUNNEL_VISION_COMPATIBILITY_NAMES,
+        fingerprints: LEGACY_TUNNEL_VISION_COMPATIBILITY_FINGERPRINTS
+    });
+}
+
 export function isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) {
     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
         pathMatchers: [],
@@ -761,6 +789,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint) 
         () => isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint),
         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint),
+        () => isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, semanticFingerprint),
         () => isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint),
         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint),
         () => isPolicyConformanceCanonicalHelper(filePath, atomName, semanticFingerprint),
@@ -792,6 +821,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
         () => isRuntimePortProbeHelper(filePath, atomName, null),
         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),
         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null),
+        () => isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, null),
         () => isStandaloneScriptEntryHelper(filePath, atomName, null),
         () => isOrchestrationLifecycleBoundaryHelper(filePath, atomName, null),
         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, null),

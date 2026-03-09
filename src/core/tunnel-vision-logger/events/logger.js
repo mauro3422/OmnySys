@@ -10,7 +10,7 @@ import fs from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 import { generateSessionId } from '../utils/session.js';
 import { TUNNEL_VISION_LOG } from '../storage/paths.js';
-import { updateStats } from '../stats/calculator.js';
+import { loadStats, saveStats, updateStatsWithEvent } from '../stats/stats-manager.js';
 
 const logger = createLogger('OmnySys:tunnel:vision:logger');
 
@@ -40,7 +40,9 @@ export async function logTunnelVisionEvent(alert, context = {}) {
     await fs.appendFile(TUNNEL_VISION_LOG, line, 'utf-8');
 
     // Actualizar estadísticas
-    await updateStats(event);
+    const stats = await loadStats();
+    const updatedStats = updateStatsWithEvent(stats, event);
+    await saveStats(updatedStats);
 
     return event;
   } catch (error) {
