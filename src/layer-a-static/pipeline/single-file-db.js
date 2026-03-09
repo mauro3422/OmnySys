@@ -1,5 +1,6 @@
 import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { createLogger } from '../../utils/logger.js';
+import { saveFileSummariesBatch } from './file-summary-storage.js';
 
 const logger = createLogger('OmnySys:single:file:db');
 
@@ -65,19 +66,13 @@ export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis,
         const repo = getRepository(absoluteRootPath);
 
         if (repo.db) {
-            const now = new Date().toISOString();
-
-            repo.db.prepare(`
-        INSERT OR REPLACE INTO files (path, imports_json, exports_json, module_name, atom_count, last_analyzed)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-                singleFile,
-                JSON.stringify(fileAnalysis.imports || []),
-                JSON.stringify(fileAnalysis.exports || []),
-                null,
-                fileAnalysis.totalAtoms || 0,
-                now
-            );
+            saveFileSummariesBatch(repo, [[singleFile, {
+                imports: fileAnalysis.imports || [],
+                exports: fileAnalysis.exports || [],
+                moduleName: null,
+                atomCount: fileAnalysis.totalAtoms || 0,
+                totalLines: fileAnalysis.totalLines || 0
+            }]]);
 
             if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);
         }

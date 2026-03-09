@@ -17,19 +17,11 @@ import { analyzeFileCore } from './core-analyzer.js';
 import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
+import { saveFileSummariesBatch } from './file-summary-storage.js';
+import { calculateContentHash, toProjectRelativePath } from './incremental-analysis-utils.js';
 import fs from 'fs/promises';
-import crypto from 'crypto';
-import path from 'path';
 
 const logger = createLogger('OmnySys:Worker:Analysis');
-
-function calculateHash(content) {
-    return crypto.createHash('md5').update(content).digest('hex');
-}
-
-function toRelativeFilePath(absoluteRootPath, absoluteFilePath) {
-    return path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
-}
 
 function createSkippedLiteResult(dbAtoms, persistedSummary) {
     return {
@@ -119,40 +111,6 @@ function flushProgress(processedSinceLastPing, skipped = false) {
     return 0;
 }
 
-function persistFileSummaries(repo, allFileSummariesToSave) {
-    if (allFileSummariesToSave.size === 0 || !repo?.db) {
-        return;
-    }
-
-    const upsertFileSummary = repo.db.prepare(`
-        INSERT INTO files (path, imports_json, exports_json, atom_count, total_lines, last_analyzed)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(path) DO UPDATE SET
-            imports_json = excluded.imports_json,
-            exports_json = excluded.exports_json,
-            atom_count = excluded.atom_count,
-            total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
-            last_analyzed = excluded.last_analyzed,
-            is_removed = 0,
-            updated_at = datetime('now')
-    `);
-    const now = new Date().toISOString();
-    const saveFileSummariesTx = repo.db.transaction((entries) => {
-        for (const [filePath, summary] of entries) {
-            upsertFileSummary.run(
-                filePath,
-                JSON.stringify(summary.imports || []),
-                JSON.stringify(summary.exports || []),
-                Number(summary.atomCount || 0),
-                Number(summary.totalLines || 0),
-                now
-            );
-        }
-    });
-
-    saveFileSummariesTx(Array.from(allFileSummariesToSave.entries()));
-}
-
 async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const repo = getRepository(absoluteRootPath);
@@ -183,11 +141,11 @@ async function runWorker() {
             const stat = await fs.stat(absoluteFilePath).catch(() => null);
             if (!stat || stat.isDirectory()) return { skipped: true };
 
-            const relativeFilePath = toRelativeFilePath(absoluteRootPath, absoluteFilePath);
+            const relativeFilePath = toProjectRelativePath(absoluteRootPath, absoluteFilePath);
 
             // 1. Incremental Check
             const content = await fs.readFile(absoluteFilePath, 'utf8');
-            const currentHash = calculateHash(content);
+            const currentHash = calculateContentHash(content);
             state.allFileHashesToSave.set(relativeFilePath, currentHash);
 
             const skippedResult = tryReusePersistedAnalysis(
@@ -237,7 +195,7 @@ async function runWorker() {
     if (state.globalWorkerBuffer.length > 0) {
         repo.saveManyBulk(state.globalWorkerBuffer);
     }
-    persistFileSummaries(repo, state.allFileSummariesToSave);
+    saveFileSummariesBatch(repo, Array.from(state.allFileSummariesToSave.entries()));
 
     // Final Report
     parentPort.postMessage({

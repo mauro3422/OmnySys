@@ -15,21 +15,15 @@ import { createLogger } from '../../utils/logger.js';
 import { logMemoryUsage } from '../../utils/memory-telemetry.js';
 import { BatchTimer } from '../../utils/performance-tracker.js';
 import path from 'path';
-import crypto from 'crypto';
 import fs from 'fs/promises';
 import os from 'os';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import { getGitStats } from '../../utils/git-analyzer.js';
+import { calculateContentHash } from './incremental-analysis-utils.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
 
-/**
- * Calculates a quick hash of the file content.
- */
-function calculateHash(content) {
-    return crypto.createHash('md5').update(content).digest('hex');
-}
 
 function createFileHashBatchWriter(repo) {
     const upsertFileHash = repo.db.prepare(`
@@ -148,7 +142,12 @@ async function executeWorkerPool(files, workerCount, workerContext) {
         workerPromises.push(createWorkerPromise(i, chunk, workerContext));
     }
 
-    await Promise.all(workerPromises);
+    try {
+        await Promise.all(workerPromises);
+    } catch (error) {
+        logger.error(`Worker pool failed: ${error.message}`);
+        throw error;
+    }
 }
 
 /**
