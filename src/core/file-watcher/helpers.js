@@ -27,17 +27,7 @@ export function shouldIgnore(filePath) {
 /**
  * Obtiene estadísticas del watcher
  */
-export function getStats() {
-  return {
-    ...this.stats,
-    pendingChanges: this.pendingChanges.size,
-    processingFiles: this.processingFiles.size,
-    trackedFiles: this.fileHashes.size,
-    isRunning: this.isRunning
-  };
-}
-
-/**
+export const getStats = (...args) => getStats(...args);/**
  * Registra un evento de tunnel vision detectado
  */
 export async function logTunnelVisionEvent(alert) {

@@ -1,3 +1,4 @@
+import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Tunnel Vision Detector - Modular Architecture
  * 
@@ -102,16 +103,9 @@ export class TunnelVisionDetector {
    * Gets current statistics
    * @returns {Object}
    */
-  getStats() {
-    return {
-      ...this.tracker.getStats(),
-      minThreshold: MIN_UNMODIFIED_DEPENDENTS,
-      version: '3.0',
-      architecture: 'molecular'
-    };
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('index');
+  }  /**
    * Gets modification history
    * @returns {Array}
    */
@@ -164,10 +158,7 @@ export function formatAlert(alert) {
  * Gets statistics (convenience function)
  * @returns {Object}
  */
-export function getStats() {
-  return detector.getStats();
-}
-
+export const getStats = (...args) => getStats(...args);
 /**
  * Gets modification history (convenience function)
  * @returns {Array}
@@ -201,3 +192,4 @@ export {
 };
 
 export default TunnelVisionDetector;
+

@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Data Loader
  * 
@@ -201,13 +202,9 @@ export class DataLoader {
    * Obtiene estadísticas de datos cargados
    * @returns {Object} - Estadísticas
    */
-  getStats() {
-    return {
-      atoms: this.cache.atoms.size,
-      files: this.cache.files.size,
-      connections: this.cache.connections.length
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('data-loader');
+  }}
 
 export default DataLoader;
+

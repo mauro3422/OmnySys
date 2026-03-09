@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(__dirname, '../../..');
 
@@ -21,6 +22,4 @@ export function resolveProjectPath(projectPath) {
     : path.resolve(process.cwd(), projectPath);
 }
 
-export function normalizePath(p) {
-  return p.replace(/\\/g, '/');
-}
+

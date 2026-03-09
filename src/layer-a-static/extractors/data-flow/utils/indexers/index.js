@@ -6,4 +6,4 @@
  * @module data-flow/utils/indexers
  */
 
-export { MasterIndexer } from './MasterIndexer.js';
+export { MasterIndexer } from '../managers/MasterIndexer.js';

@@ -84,6 +84,4 @@ export function updateStatsWithEvent(stats, event) {
  * Get stats
  * @returns {Promise<Object>} Current stats
  */
-export async function getStats() {
-  return loadStats();
-}
+export const getStats = (...args) => getStats(...args);

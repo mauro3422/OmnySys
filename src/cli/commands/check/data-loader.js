@@ -6,7 +6,7 @@
 
 import { hasExistingAnalysis } from '#layer-c/storage/setup/index.js';
 import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
-import { normalizePath } from '../../utils/paths.js';
+import { normalizePath } from '../../../shared/utils/path-utils.js';
 
 /**
  * Loads file data from SQLite
@@ -27,15 +27,15 @@ export async function loadFileData(projectPath, filePath) {
 
   try {
     const repo = getRepository(projectPath);
-    
+
     const normalizedFilePath = normalizePath(filePath);
-    
+
     const atoms = repo.query({ filePath: normalizedFilePath, limit: 100 });
-    
+
     if (!atoms || atoms.length === 0) {
       const allAtoms = repo.query({ limit: 1000 });
       const availableFiles = [...new Set(allAtoms.map(a => a.file_path))].slice(0, 10);
-      
+
       return {
         success: false,
         error: `File not found in analysis: ${filePath}`,
@@ -43,7 +43,7 @@ export async function loadFileData(projectPath, filePath) {
         availableFiles
       };
     }
-    
+
     const fileData = {
       filePath: normalizedFilePath,
       atoms: atoms,
@@ -51,12 +51,12 @@ export async function loadFileData(projectPath, filePath) {
       imports: atoms.flatMap(a => a.imports || []),
       exports: atoms.filter(a => a.isExported).map(a => a.name)
     };
-    
-    return { 
-      success: true, 
-      fileData, 
-      matchedPath: normalizedFilePath, 
-      atoms 
+
+    return {
+      success: true,
+      fileData,
+      matchedPath: normalizedFilePath,
+      atoms
     };
   } catch (error) {
     return {

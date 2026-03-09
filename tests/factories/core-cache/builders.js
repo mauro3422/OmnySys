@@ -124,9 +124,9 @@ export class MockCacheManagerBuilder {
       ramCacheGet: (key) => store.get(key) ?? null,
 
       // Async methods (stubs)
-      initialize: async () => {},
+      initialize: async () => { },
       clear: async () => { store.clear(); index.entries = {}; },
-      saveIndex: async () => {},
+      saveIndex: async () => { },
       registerFile: async (filePath, content) => ({
         changeType: 'NONE',
         needsStatic: false,
@@ -134,15 +134,21 @@ export class MockCacheManagerBuilder {
         isNew: false,
         entry: index.entries[filePath] || {}
       }),
-      saveStaticAnalysis: async () => {},
-      saveLLMInsights: async () => {},
-      getStats: () => ({
-        totalFiles: Object.keys(index.entries).length,
-        staticAnalyzed: 0,
-        llmAnalyzed: 0,
-        byChangeType: {}
-      }),
-      cleanupDeletedFiles: async () => {},
+      saveStaticAnalysis: async () => { },
+      saveLLMInsights: async () => { },
+      getStats: () => {
+        // En tests, devolvemos un objeto compatible con el esquema de statsPool
+        return {
+          source: 'mock_cache_manager',
+          stats: {
+            totalFiles: Object.keys(index.entries).length,
+            staticAnalyzed: 0,
+            llmAnalyzed: 0,
+            byChangeType: {}
+          }
+        };
+      },
+      cleanupDeletedFiles: async () => { },
       // Compat methods
       'get': (key) => store.get(key) ?? null,
       'set': (key, value) => { store.set(key, value); }

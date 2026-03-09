@@ -23,6 +23,4 @@ export async function updateStats(event) {
   await saveStats(updatedStats);
 }
 
-export async function getStats() {
-  return loadCanonicalStats();
-}
+export const getStats = (...args) => getStats(...args);

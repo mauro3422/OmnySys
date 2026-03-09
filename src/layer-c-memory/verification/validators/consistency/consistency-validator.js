@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Consistency Validator
  * 
@@ -151,14 +152,9 @@ export class ConsistencyValidator {
    * Obtiene estadísticas de validación
    * @returns {Object} - Estadísticas
    */
-  getStats() {
-    return {
-      data: this.dataLoader.getStats(),
-      issues: this.issueManager.calculateStats()
-    };
-  }
-  
-  /**
+getStats() {
+    return statsPool.getStats('consistency-validator');
+  }  /**
    * Obtiene issues encontrados
    * @returns {Array} - Lista de issues
    */
@@ -178,3 +174,4 @@ export class ConsistencyValidator {
 
 // Export legacy para compatibilidad
 export default ConsistencyValidator;
+

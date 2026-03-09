@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview sqlite-adapter-core.js
  *
@@ -83,11 +84,9 @@ export class SQLiteAdapterCore extends AtomRepository {
     };
   }
 
-  getStats() {
-    return connectionManager.getStats();
-  }
-
-  close() {
+getStats() {
+    return statsPool.getStats('sqlite-adapter-core');
+  }  close() {
     connectionManager.close();
     this.initialized = false;
     this.db = null;
@@ -109,3 +108,4 @@ export class SQLiteAdapterCore extends AtomRepository {
 }
 
 export { connectionManager, atomToRow, rowToAtom, logger };
+

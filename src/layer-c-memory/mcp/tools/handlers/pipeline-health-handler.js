@@ -26,131 +26,15 @@ import {
     summarizeCompilerPolicyDrift
 } from '../../../../shared/compiler/index.js';
 import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
+import {
+    loadExpectedPipelineTableCounts,
+    buildLiveRowTableCounts,
+    scanCompilerPolicyHealth,
+    loadDuplicateGroups
+} from './pipeline-health-domain/index.js';
+import { checkMetadataParity } from './pipeline-health-domain/metadata-health.js';
 
-function loadExpectedPipelineTableCounts(db) {
-    const expectedNonEmpty = [
-        { table: 'atoms', minRows: 100, description: 'No atoms indexed — pipeline never ran?' },
-        { table: 'atom_relations', minRows: 1, description: 'No relations — call graph not built' },
-        { table: 'files', minRows: 1, description: 'No files indexed' },
-        { table: 'atom_versions', minRows: 1, description: 'atom_versions empty — AtomVersionManager.trackAtomVersion() not called' },
-        { table: 'atom_events', minRows: 1, description: 'atom_events empty — no activity tracked' },
-        { table: 'societies', minRows: 1, description: 'societies empty — analyzeSocieties() not running' },
-        { table: 'risk_assessments', minRows: 0, description: 'risk_assessments empty — risk pipeline missing', severity: 'warning' },
-        { table: 'semantic_issues', minRows: 0, description: 'semantic_issues empty — semantic analysis missing', severity: 'warning' }
-    ];
-    const tableCounts = {};
-    const issues = [];
-    const warnings = [];
 
-    for (const check of expectedNonEmpty) {
-        try {
-            const row = db.prepare(`SELECT COUNT(*) as c FROM "${check.table}"`).get();
-            tableCounts[check.table] = row?.c || 0;
-            if (row?.c < check.minRows) {
-                const entry = { table: check.table, rows: row?.c || 0, issue: check.description };
-                if (check.severity === 'warning') warnings.push(entry);
-                else issues.push(entry);
-            }
-        } catch (e) {
-            issues.push({ table: check.table, rows: null, issue: `Table missing or inaccessible: ${e.message}` });
-        }
-    }
-
-    return { tableCounts, issues, warnings };
-}
-
-async function scanCompilerPolicyHealth(projectPath) {
-    if (!projectPath) {
-        return {
-            policyFindings: [],
-            policySummary: { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
-            issues: [],
-            warnings: [],
-            tableCounts: {}
-        };
-    }
-
-    try {
-        const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
-        const policySummary = summarizeCompilerPolicyDrift(policyFindings);
-        const issues = [];
-        const warnings = [];
-        const tableCounts = {
-            compiler_policy_areas: Object.keys(policySummary.byPolicyArea || {}).length
-        };
-
-        if (policySummary.total > 0) {
-            warnings.push({
-                field: 'compiler_policy',
-                coverage: `${policySummary.total} findings`,
-                issue: 'Compiler policy drift detected — some MCP/watcher paths still recompute canonical signals manually'
-            });
-
-            if (policySummary.high > 0) {
-                issues.push({
-                    field: 'compiler_policy_high',
-                    coverage: `${policySummary.high} high`,
-                    issue: 'High-severity compiler policy drift found in core runtime modules'
-                });
-            }
-
-            tableCounts.compiler_policy_findings = policySummary.total;
-            tableCounts.compiler_policy_high = policySummary.high;
-        }
-
-        return { policyFindings, policySummary, issues, warnings, tableCounts };
-    } catch (error) {
-        return {
-            policyFindings: [],
-            policySummary: { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
-            issues: [],
-            warnings: [{
-                field: 'compiler_policy',
-                coverage: 'unknown',
-                issue: `Could not scan compiler policy drift: ${error.message}`
-            }],
-            tableCounts: {}
-        };
-    }
-}
-
-function buildLiveRowTableCounts(liveRowSync) {
-    const {
-        liveFileTotal: liveAtomFiles = 0,
-        staleFileRows = 0,
-        staleRiskRows = 0
-    } = liveRowSync.summary || {};
-
-    return {
-        liveAtomFiles,
-        staleFileRows,
-        staleRiskRows,
-        deletedCount:
-            (liveRowSync.deleted?.files || 0) +
-            (liveRowSync.deleted?.riskAssessments || 0) +
-            (liveRowSync.deleted?.relations || 0) +
-            (liveRowSync.deleted?.issues || 0) +
-            (liveRowSync.deleted?.connections || 0)
-    };
-}
-
-function loadDuplicateGroups(db) {
-    return db.prepare(`
-        SELECT dna_json as duplicate_key, COUNT(*) as group_size
-        FROM atoms
-        WHERE dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-          AND atom_type IN ('function', 'arrow')
-          AND file_path LIKE 'src/%'
-        GROUP BY dna_json
-        HAVING COUNT(*) > 1
-        ORDER BY COUNT(*) DESC
-        LIMIT 10
-    `).all().map((row) => ({
-        groupSize: row.group_size,
-        urgencyScore: row.group_size,
-        instances: []
-    }));
-}
 
 export async function aggregatePipelineHealth(tool) {
     const db = tool.repo?.db;
@@ -290,31 +174,7 @@ export async function aggregatePipelineHealth(tool) {
     const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
     const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
 
-    if (metadataSurfaceParity.healthy === false) {
-        warnings.push({
-            field: 'metadata_surface_parity',
-            coverage: `${Math.round(Number(metadataSurfaceParity.importsParityRatio || 0) * 100)}% import parity`,
-            issue: 'Mirrored system-map metadata is much sparser than the primary files table'
-        });
-        tableCounts.metadata_surface_parity_issues = metadataSurfaceParity.issues.length;
-    }
-
-    if (semanticSurfaceGranularity.healthy === false) {
-        warnings.push({
-            field: 'semantic_surface_granularity',
-            coverage: `${semanticSurfaceGranularity.fileLevel.total} file-level vs ${semanticSurfaceGranularity.atomLevel.total} atom-level semantic links`,
-            issue: 'Semantic summary/detail surfaces are drifting or incomplete; do not compare file-level semantic_connections as if they were atom-level semantic relations'
-        });
-        tableCounts.semantic_surface_granularity_issues = semanticSurfaceGranularity.issues.length;
-    }
-
-    if (semanticCanonicality?.status === 'advisory_only') {
-        warnings.push({
-            field: 'semantic_surface_canonicality',
-            coverage: `${semanticSurfaceGranularity.fileLevel.total} summary rows backed by ${semanticSurfaceGranularity.canonicalAdapterView.total} canonical file-level pairs`,
-            issue: semanticCanonicality.summary
-        });
-    }
+    checkMetadataParity(metadataSurfaceParity, semanticSurfaceGranularity, semanticCanonicality, warnings, tableCounts);
 
     tableCounts.runtime_table_health_issues = runtimeTableHealth.activeIssues.length;
     const compilerRemediation = buildCompilerRemediationBacklog([
@@ -421,7 +281,21 @@ export async function aggregatePipelineHealth(tool) {
         });
     }
 
-    const healthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
+    const compilerHealthScore = Math.max(0, 100 - (issues.length * 15) - (warnings.length * 5));
+
+    // Calcula Gobernanza: Basado en las auditorías de políticas, de guardias canónicos, etc.
+    const expectedGovernanceFindings =
+        (governanceMetrics.canonicalWrapperFindings || 0) +
+        (governanceMetrics.canonicalBypassFindings || 0) +
+        (governanceMetrics.parallelCanonicalSurfaceFindings || 0) +
+        (compilerContractLayer.summary.failedInvariantCount || 0) +
+        (tableCounts.compiler_policy_high || 0) * 2;
+
+    // Un simple penalty de gobernanza (5 puntos por cada hallazgo arquitectónico base)
+    const governancePenalty = expectedGovernanceFindings * 5;
+    const governanceScore = Math.max(0, 100 - governancePenalty);
+
+    const healthScore = Math.max(0, Math.floor((compilerHealthScore * 0.7) + (governanceScore * 0.3))); // Weighted average
     const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
 
     return {

@@ -7,7 +7,7 @@
  * @module graph/resolvers/function-resolver
  */
 
-import { normalizePath } from '../utils/path-utils.js';
+import { normalizePath } from '../../shared/utils/path-utils.js';
 
 /**
  * Busca una función en los imports resueltos

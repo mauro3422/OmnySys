@@ -423,7 +423,19 @@ export const TABLE_DEFINITIONS = {
     indexes: [
       { name: 'idx_mcp_sessions_updated', columns: ['updated_at'] },
       { name: 'idx_mcp_sessions_active', columns: ['is_active'] },
-      { name: 'idx_mcp_sessions_client', columns: ['client_id'] }
+    ]
+  },
+
+  compiler_scanned_files: {
+    description: 'Registro de archivos escaneados por el compilador para validación de cobertura',
+    addedIn: 'v0.9.110',
+    columns: [
+      { name: 'path', type: 'TEXT', pk: true, nullable: false, description: 'Ruta del archivo' },
+      { name: 'first_seen', type: 'TEXT', nullable: false, description: 'First seen timestamp' },
+      { name: 'last_seen', type: 'TEXT', nullable: false, description: 'Last seen timestamp' }
+    ],
+    indexes: [
+      { name: 'idx_compiler_scanned_files_path', columns: ['path'] }
     ]
   }
 };

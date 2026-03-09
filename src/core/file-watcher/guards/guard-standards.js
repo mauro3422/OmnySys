@@ -77,30 +77,34 @@ export const StandardThresholds = {
     COMPLEXITY_HIGH: 20,
     COMPLEXITY_MEDIUM: 15,
     COMPLEXITY_LOW: 10,
-    
-    // Tamaño
+
+    // Tamaño de Funciones
     LINES_HIGH: 150,
     LINES_MEDIUM: 100,
-    
+
+    // Tamaño de Archivos (Governance)
+    FILE_LINES_CRITICAL: 400,
+    FILE_LINES_HIGH: 300,
+
     // Impacto
     IMPACT_HIGH: 18,
     IMPACT_MEDIUM: 10,
     IMPACT_LOW: 4,
-    
+
     // Estado compartido
     SHARED_STATE_HIGH: 10,   // Radioactive atom
     SHARED_STATE_MEDIUM: 5,  // High contention
-    
+
     // Hotspot (frecuencia de cambio)
     HOTSPOT_HIGH: 5,         // >5 cambios en 30 días
     HOTSPOT_MEDIUM: 3,
-    
+
     // Async safety
     ASYNC_MAX_LINES: 50,     // Funciones async largas sin error handling
-    
+
     // Data flow
     COHERENCE_MIN: 0.3,      // Coherencia mínima aceptable
-    
+
     // Event leaks
     LISTENERS_PER_EMITTER: 5 // Listeners sospechosos por emisor
 };
@@ -134,30 +138,30 @@ export function createStandardContext({
         source: 'file_watcher',
         guardName,
         timestamp: new Date().toISOString(),
-        
+
         // Átomo afectado (si aplica)
         ...(atomId && { atomId }),
         ...(atomName && { atomName }),
-        
+
         // Métricas cuantitativas
         ...(metricValue !== null && { metricValue }),
         ...(threshold !== null && { threshold }),
-        
+
         // Severidad calculada (si aplica)
         ...(severity && { severity }),
-        
+
         // Acciones sugeridas
         suggestedAction,
         ...(suggestedAlternatives.length > 0 && { suggestedAlternatives }),
-        
+
         // Relaciones
         ...(relatedAtomIds.length > 0 && { relatedAtomIds }),
         ...(relatedFiles.length > 0 && { relatedFiles }),
-        
+
         // Datos extras específicos del guard
         ...extraData
     };
-    
+
     return context;
 }
 
@@ -180,13 +184,24 @@ export function severityFromComplexity(complexity) {
 }
 
 /**
- * Calcula severidad basada en cantidad de líneas
+ * Calcula severidad basada en cantidad de líneas por función
  * @param {number} lines - Líneas de código
  * @returns {string} Severidad (high/medium/low)
  */
 export function severityFromLines(lines) {
     if (lines >= StandardThresholds.LINES_HIGH) return IssueSeverity.HIGH;
     if (lines >= StandardThresholds.LINES_MEDIUM) return IssueSeverity.MEDIUM;
+    return null;
+}
+
+/**
+ * Calcula severidad basada en cantidad de líneas por archivo
+ * @param {number} lines - Líneas de código del archivo
+ * @returns {string} Severidad (high/medium/low)
+ */
+export function severityFromFileLines(lines) {
+    if (lines >= StandardThresholds.FILE_LINES_CRITICAL) return IssueSeverity.HIGH;
+    if (lines >= StandardThresholds.FILE_LINES_HIGH) return IssueSeverity.MEDIUM;
     return null;
 }
 
@@ -226,17 +241,17 @@ export function severityFromSharedState(connectionCount) {
  */
 export function isValidGuardTarget(atom) {
     if (!atom) return false;
-    
+
     // Solo funciones, métodos, arrows, clases
     const validTypes = ['function', 'method', 'arrow', 'class'];
     if (!validTypes.includes(atom.type)) return false;
-    
+
     // Ignorar código muerto o removido
     if (atom.isDeadCode || atom.isRemoved) return false;
-    
+
     // Ignorar nombres de baja señal
     if (isLowSignalName(atom.name)) return false;
-    
+
     return true;
 }
 
@@ -247,14 +262,14 @@ export function isValidGuardTarget(atom) {
  */
 export function isLowSignalName(name) {
     if (!name) return true;
-    
+
     const lowSignalPatterns = [
         /^anonymous(_\d+)?$/i,
         /^.*_callback$/i,
         /_arg\d+$/i,
         /^(then|catch|map|filter|some|reduce)_callback$/i
     ];
-    
+
     return lowSignalPatterns.some(pattern => pattern.test(name));
 }
 
@@ -384,31 +399,34 @@ export const StandardSuggestions = {
     // Duplicados
     DUPLICATE_REUSE: 'Use atomic_edit to extend the existing function instead of duplicating',
     DUPLICATE_RENAME: 'Rename using one of the suggested alternatives to avoid collision',
-    
+
     // Impacto
     IMPACT_REVIEW: 'Review all related files before committing this change',
     IMPACT_BREAKING: 'This change may break callers. Consider backward compatibility',
-    
+
     // Async
     ASYNC_ADD_TRY_CATCH: 'Add try/catch block to handle network errors gracefully',
     ASYNC_ADD_ERROR_PARAM: 'Add error handling to the callback or use async/await with try/catch',
-    
+
     // Event leaks
     EVENT_ADD_CLEANUP: 'Add cleanup logic in a return function or component unmount',
     EVENT_USE_ONCE: 'Consider using .once() instead of .on() for one-time listeners',
-    
+
     // Complejidad
     COMPLEXITY_SPLIT: 'Split this function into smaller, focused functions',
     COMPLEXITY_REFACTOR: 'Refactor to reduce nesting and improve readability',
-    
+
+    // File Size Governance
+    FILE_SIZE_SPLIT: 'File is dangerously large and affects AI editing capability. Split into smaller, cohesive modules',
+
     // Shared state
     SHARED_STATE_LOCAL: 'Convert shared state to local state or parameters',
     SHARED_STATE_EXTRACT: 'Extract state management into a dedicated store/module',
-    
+
     // Hotspots
     HOTSPOT_STABILIZE: 'This code changes frequently. Consider stabilizing the interface',
     HOTSPOT_DOCUMENT: 'Add comprehensive documentation due to high change frequency',
-    
+
     // Dead code
     DEAD_CODE_REMOVE: 'Remove dead code or mark with @deprecated if needed for migration',
     DEAD_CODE_REVIVE: 'If temporarily disabled, add a TODO with revival conditions',
@@ -432,12 +450,12 @@ export const StandardSuggestions = {
  */
 export function validateGuard(guard) {
     const errors = [];
-    
+
     if (!guard.name) errors.push('Guard must have a name');
     if (!guard.version) errors.push('Guard should have a version');
     if (!guard.domain) errors.push('Guard should specify a domain (use IssueDomains)');
     if (typeof guard.detect !== 'function') errors.push('Guard must have a detect function');
-    
+
     return {
         valid: errors.length === 0,
         errors
@@ -459,6 +477,7 @@ export default {
     createStandardContext,
     severityFromComplexity,
     severityFromLines,
+    severityFromFileLines,
     severityFromImpact,
     severityFromSharedState,
     isValidGuardTarget,

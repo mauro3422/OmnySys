@@ -13,6 +13,7 @@ import { generatePromptConfig } from './prompt-generator.js';
 import { resolveSchema } from './schema-resolver.js';
 import { validatePrompt } from '../validators/prompt-validator.js';
 import { createLogger } from '#utils/logger.js';
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 
 const logger = createLogger('prompt-engine');
 
@@ -35,10 +36,13 @@ export class PromptEngine {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.selector = promptSelector;
     this.schemaCache = new Map();
-    
+
+    // Registrar proveedor de estadísticas
+    statsPool.registerProvider('prompt-engine', () => this.getStats());
+
     logger.debug('PromptEngine initialized');
   }
-  
+
   /**
    * Genera el prompt completo basado en metadatos del archivo
    * @param {Object} metadata - Metadatos del archivo analizado
@@ -49,16 +53,16 @@ export class PromptEngine {
     // 1. Detectar tipo de análisis
     const analysisType = this.selector.selectAnalysisType(metadata);
     logger.debug(`Selected analysis type: ${analysisType}`);
-    
+
     // 2. Obtener template
     const template = this.selector.getTemplate(analysisType);
     if (!template) {
       throw new Error(`Template not found for analysis type: ${analysisType}`);
     }
-    
+
     // 3. Resolver schema
     const schema = await this.resolveSchema(analysisType);
-    
+
     // 4. Generar configuración
     const promptConfig = generatePromptConfig(
       template,
@@ -67,19 +71,19 @@ export class PromptEngine {
       analysisType,
       schema
     );
-    
+
     // 5. Validar si está habilitado
     if (this.config.validatePrompts) {
       const validation = validatePrompt(promptConfig);
-      
+
       if (!validation.valid && this.config.throwOnValidationError) {
         throw new Error(`Prompt validation failed: ${validation.errors.join(', ')}`);
       }
     }
-    
+
     return promptConfig;
   }
-  
+
   /**
    * Resuelve el schema con cache
    * @param {string} analysisType - Tipo de análisis
@@ -90,14 +94,14 @@ export class PromptEngine {
     if (this.schemaCache.has(analysisType)) {
       return this.schemaCache.get(analysisType);
     }
-    
+
     // Resolver y cachear
     const schema = await resolveSchema(analysisType);
     this.schemaCache.set(analysisType, schema);
-    
+
     return schema;
   }
-  
+
   /**
    * Genera solo el system prompt
    * @param {Object} metadata - Metadatos
@@ -106,11 +110,11 @@ export class PromptEngine {
   async generateSystemPromptOnly(metadata) {
     const analysisType = this.selector.selectAnalysisType(metadata);
     const template = this.selector.getTemplate(analysisType);
-    
+
     const { generateSystemPrompt } = await import('./prompt-generator.js');
     return generateSystemPrompt(template, analysisType);
   }
-  
+
   /**
    * Genera solo el user prompt
    * @param {Object} metadata - Metadatos
@@ -120,11 +124,11 @@ export class PromptEngine {
   async generateUserPromptOnly(metadata, fileContent) {
     const analysisType = this.selector.selectAnalysisType(metadata);
     const template = this.selector.getTemplate(analysisType);
-    
+
     const { generateUserPrompt } = await import('./prompt-generator.js');
     return generateUserPrompt(template, fileContent, metadata);
   }
-  
+
   /**
    * Limpia el cache de schemas
    */
@@ -132,7 +136,7 @@ export class PromptEngine {
     this.schemaCache.clear();
     logger.debug('Schema cache cleared');
   }
-  
+
   /**
    * Precarga schemas comunes
    * @param {Array<string>} types - Tipos a precargar
@@ -141,7 +145,7 @@ export class PromptEngine {
     const { preloadSchemas } = await import('./schema-resolver.js');
     await preloadSchemas(types, this.schemaCache);
   }
-  
+
   /**
    * Obtiene estadísticas del engine
    * @returns {Object} - Estadísticas

@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Path Validator
  * 
@@ -57,29 +58,9 @@ export class PathValidator {
    * Obtiene estadísticas de formatos
    * @returns {Promise<Object>} - Estadísticas
    */
-  async getStats() {
-    const { detectPathFormat } = await import('../utils/path-utils.js');
-    const formats = new Map();
-    
-    // Contar formatos en átomos
-    for (const atom of this.cache.atoms.values()) {
-      const format = detectPathFormat(atom.filePath);
-      formats.set(format, (formats.get(format) || 0) + 1);
-    }
-    
-    // Contar formatos en archivos
-    for (const [filePath, fileData] of this.cache.files) {
-      const path = fileData.path || filePath;
-      const format = detectPathFormat(path);
-      formats.set(format, (formats.get(format) || 0) + 1);
-    }
-    
-    return {
-      formatCounts: Object.fromEntries(formats),
-      uniqueFormats: formats.size,
-      isConsistent: formats.size === 1
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('path-validator');
+  }}
 
 export default PathValidator;
+

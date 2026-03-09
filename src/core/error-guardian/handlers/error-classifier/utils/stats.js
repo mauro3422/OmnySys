@@ -11,23 +11,7 @@
  * @param {Array} history - Classification history
  * @returns {Object} - Statistics by type and severity
  */
-export function getStats(history) {
-  const stats = {
-    byType: {},
-    bySeverity: {},
-    byCategory: {},
-    total: history.length
-  };
-
-  for (const entry of history) {
-    stats.byType[entry.type] = (stats.byType[entry.type] || 0) + 1;
-    stats.bySeverity[entry.severity] = (stats.bySeverity[entry.severity] || 0) + 1;
-    stats.byCategory[entry.category] = (stats.byCategory[entry.category] || 0) + 1;
-  }
-
-  return stats;
-}
-
+export const getStats = (...args) => getStats(...args);
 /**
  * Check if error should be logged loudly or quietly
  * @param {Object} classification

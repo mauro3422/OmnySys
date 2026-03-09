@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview ws-client.js
  * 
@@ -155,14 +156,7 @@ export class WSClient {
    * Obtiene estadísticas del cliente
    * @returns {Object}
    */
-  getStats() {
-    return {
-      id: this.id,
-      state: this.state,
-      subscriptions: this.subscriptions.count,
-      projectPath: this.subscriptions.getProject(),
-      lastPing: this.lastPing,
-      isAlive: this.isAlive()
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('ws-client');
+  }}
+

@@ -11,6 +11,7 @@ import { PipelineIntegrityDetector } from '#core/meta-detector/pipeline-integrit
 import { IntegrityDashboard } from '#core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '#utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
 const logger = createLogger('OmnySys:DashboardReporter');
 
@@ -98,11 +99,13 @@ async function _fetchExtendedMetrics(projectPath, db, repo) {
             .join(', ');
 
         // B. Duplicates (Structural via DNA)
+        const validDna = getValidDnaPredicate();
+        const eligible = getDuplicateEligiblePredicate();
         const dupStats = db.prepare(`
             SELECT COUNT(*) as group_count FROM (
                 SELECT dna_json FROM atoms
-                WHERE dna_json IS NOT NULL AND dna_json != '' AND dna_json != 'null'
-                  AND atom_type IN ('function', 'arrow') AND (is_removed = 0 OR is_removed IS NULL)
+                WHERE ${validDna}
+                  AND ${eligible}
                 GROUP BY dna_json HAVING COUNT(*) > 1
             )
         `).get();
@@ -110,7 +113,7 @@ async function _fetchExtendedMetrics(projectPath, db, repo) {
 
         // C. Conceptual Duplicates & Orphans (If available)
         try {
-            metrics.conceptualGroups = repo.findConceptualDuplicates ? (repo.findConceptualDuplicates({ limit: 100 })).length : 0;
+            metrics.conceptualGroups = repo.findConceptualDuplicates ? (repo.findConceptualDuplicates({ limit: 5000 })).length : 0;
             const { getPipelineOrphanSummary } = await import('#shared/compiler/index.js');
             metrics.orphans = getPipelineOrphanSummary(db)?.total || 0;
         } catch (e) { /* Optional components missing */ }

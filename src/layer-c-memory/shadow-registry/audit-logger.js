@@ -1,3 +1,4 @@
+import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Decision Audit Logger - Sistema de auditoría de decisiones arquitectónicas
  *
@@ -127,11 +128,9 @@ export class DecisionAuditLogger {
     return getDecisionsForFile(this.decisions, filePath);
   }
 
-  getStats() {
-    return calculateStats(this.decisions);
-  }
-
-  async overrideDecision(decisionId, overriddenBy, reason) {
+getStats() {
+    return statsPool.getStats('audit-logger');
+  }  async overrideDecision(decisionId, overriddenBy, reason) {
     const decision = this.decisions.get(decisionId);
     if (!decision) {
       throw new Error(`Decision not found: ${decisionId}`);
@@ -161,3 +160,4 @@ export function getDecisionAuditLogger(projectPath) {
 }
 
 export default DecisionAuditLogger;
+

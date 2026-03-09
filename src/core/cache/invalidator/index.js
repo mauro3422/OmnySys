@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Cache Invalidator - Main Entry Point (Refactored)
  * 
@@ -151,13 +152,9 @@ export class CacheInvalidator extends EventEmitter {
    * Get statistics
    * @returns {Object} Stats
    */
-  getStats() {
-    return {
-      pendingOperations: this.pendingOperations.size,
-      config: this.config
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('index');
+  }}
 
 // Singleton
 let invalidator = null;
@@ -174,3 +171,4 @@ export function resetCacheInvalidator() {
 }
 
 export default CacheInvalidator;
+

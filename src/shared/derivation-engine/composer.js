@@ -76,13 +76,23 @@ export function composeMolecularMetadata(moleculeId, atoms, cache = null) {
   };
 }
 
+import { statsPool } from '../../shared/utils/stats-pool.js';
+
+/**
+ * molecular_composer:get_stats
+ * Canonical delegation to statsPool
+ */
+export function getStats() {
+  return statsPool.getStats('molecular_composer');
+}
+
 /**
  * Crea una instancia de composer con cache
  * @returns {Object} - Composer con cache
  */
 export function createComposer() {
   const cache = new DerivationCache();
-  
+
   return {
     compose: (moleculeId, atoms) => composeMolecularMetadata(moleculeId, atoms, cache),
     getStats: () => cache.getStats(),

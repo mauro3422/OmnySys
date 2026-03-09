@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview connection.js
  *
@@ -254,29 +255,9 @@ class ConnectionManager {
    * Obtiene estadisticas de la base de datos
    * @returns {Object} Estadisticas
    */
-  getStats() {
-    if (!this.db) {
-      return null;
-    }
-
-    // Combine 4 SELECT COUNT(*) into a single query to reduce DB roundtrips
-    const stats = this.db.prepare(`
-      SELECT
-        (SELECT COUNT(*) FROM atoms) as atoms,
-        (SELECT COUNT(*) FROM atom_relations) as relations,
-        (SELECT COUNT(*) FROM files) as files,
-        (SELECT COUNT(*) FROM atom_events) as events
-    `).get();
-
-    return {
-      atoms: stats.atoms,
-      relations: stats.relations,
-      files: stats.files,
-      events: stats.events
-    };
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('connection');
+  }  /**
    * Fuerza checkpoint WAL para persistir datos
    * Util despues de bulk operations
    */
@@ -307,3 +288,4 @@ export function closeStorage() {
 }
 
 export default connectionManager;
+

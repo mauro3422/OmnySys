@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview atom-version-manager.js
  *
@@ -245,34 +246,9 @@ export class AtomVersionManager {
    * 
    * @returns {Promise<Object>} Estadísticas
    */
-  async getStats() {
-    try {
-      await this._ensureDb();
-      const stats = this.db.prepare(`
-        SELECT 
-          COUNT(*) as totalTracked,
-          MAX(last_modified) as newestVersion,
-          MIN(last_modified) as oldestVersion
-        FROM atom_versions
-      `).get();
-
-      return {
-        totalTracked: stats.totalTracked || 0,
-        lastUpdated: stats.newestVersion,
-        oldestVersion: stats.oldestVersion,
-        newestVersion: stats.newestVersion
-      };
-    } catch (error) {
-      logger.error(`Failed to get stats: ${error.message}`);
-      return {
-        totalTracked: 0,
-        lastUpdated: null,
-        oldestVersion: null,
-        newestVersion: null
-      };
-    }
-  }
-}
+getStats() {
+    return statsPool.getStats('atom-version-manager');
+  }}
 
 /**
  * Función helper para crear instancia del gestor
@@ -282,3 +258,4 @@ export class AtomVersionManager {
 export function createVersionManager(rootPath) {
   return new AtomVersionManager(rootPath);
 }
+

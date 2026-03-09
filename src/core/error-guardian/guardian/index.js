@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview ErrorGuardian - Main Entry Point (Refactored)
  * 
@@ -105,17 +106,9 @@ export class ErrorGuardian {
     return this.classifier.classify(error);
   }
 
-  getStats() {
-    return aggregateStats(this.stats, {
-      classifier: this.classifier,
-      recovery: this.recovery,
-      circuitBreaker: this.circuitBreaker,
-      errorLog: this.errorLog,
-      health: calculateHealth(this.stats)
-    });
-  }
-
-  getCircuitState(operationId) {
+getStats() {
+    return statsPool.getStats('index');
+  }  getCircuitState(operationId) {
     return this.circuitBreaker.getState(operationId);
   }
 
@@ -144,3 +137,4 @@ export class ErrorGuardian {
 }
 
 export default ErrorGuardian;
+

@@ -9,6 +9,8 @@
 
 import path from 'path';
 
+import { normalizePath as canonicalNormalize } from '../../shared/utils/path-utils.js';
+
 /**
  * Normaliza un path (Windows -> Unix)
  * SSOT: TODA normalización de paths en el grafo usa esta función.
@@ -18,7 +20,7 @@ import path from 'path';
  */
 export function normalizePath(filePath) {
   if (filePath == null) return '';
-  return path.normalize(filePath).replace(/\\/g, '/');
+  return canonicalNormalize(path.normalize(filePath));
 }
 
 /**
@@ -49,12 +51,12 @@ export function getDisplayPath(normalizedPath) {
 export function resolveImportPath(fromFile, importSource, extension = '.js') {
   const currentDir = path.dirname(fromFile);
   let resolvedPath = path.join(currentDir, importSource);
-  
+
   // Si no tiene extensión, agregarla
   if (!path.extname(resolvedPath)) {
     resolvedPath += extension;
   }
-  
+
   return normalizePath(resolvedPath);
 }
 

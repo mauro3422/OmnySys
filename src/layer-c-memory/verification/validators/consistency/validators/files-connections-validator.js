@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Files-Connections Validator
  * 
@@ -116,20 +117,9 @@ export class FilesConnectionsValidator {
    * Obtiene estadísticas de validación
    * @returns {Object} - Estadísticas
    */
-  getStats() {
-    const issues = this.issues.getIssues();
-    return {
-      missingSourceFiles: issues.filter(i => 
-        i.message?.includes('non-existent source file')
-      ).length,
-      missingTargetFiles: issues.filter(i => 
-        i.message?.includes('non-existent target file')
-      ).length,
-      bidirectionalityIssues: issues.filter(i =>
-        i.message?.includes('not reflected in usedBy')
-      ).length
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('files-connections-validator');
+  }}
 
 export default FilesConnectionsValidator;
+

@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview websocket-server.js
  * 
@@ -195,19 +196,9 @@ export class WebSocketManager extends EventEmitter {
    * Obtiene estadísticas
    * @returns {Object}
    */
-  getStats() {
-    return {
-      isRunning: this.isRunning,
-      totalClients: this.clients.size,
-      maxClients: this.options.maxClients,
-      port: this.options.port,
-      subscriptions: Array.from(this.clients.values()).reduce(
-        (sum, c) => sum + c.subscriptions.count, 0
-      )
-    };
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('websocket-server');
+  }  /**
    * Detiene el servidor WebSocket
    * @returns {Promise<void>}
    */
@@ -237,3 +228,4 @@ export class WebSocketManager extends EventEmitter {
     });
   }
 }
+

@@ -9,7 +9,7 @@
 
 import { SharedStateAnalyzer } from '../detectors/SharedStateAnalyzer.js';
 import { TimingAnalyzer } from '../detectors/TimingAnalyzer.js';
-import { LockAnalyzer } from '../detectors/LockAnalyzer.js';
+import { LockAnalyzer } from '../analyzers/lock/LockAnalyzer.js'; // Updated path
 import { PatternMatcher } from '../detectors/PatternMatcher.js';
 import { RaceFactory } from './RaceFactory.js';
 

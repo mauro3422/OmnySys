@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Atoms-Files Validator
  * 
@@ -141,20 +142,9 @@ export class AtomsFilesValidator {
    * Obtiene estadísticas de validación
    * @returns {Object} - Estadísticas
    */
-  getStats() {
-    const issues = this.issues.getIssues();
-    return {
-      orphanedAtoms: issues.filter(i => 
-        i.message?.includes('non-existent file')
-      ).length,
-      orphanedFiles: issues.filter(i =>
-        i.message?.includes('no atoms')
-      ).length,
-      exportMismatches: issues.filter(i =>
-        i.message?.includes('Export status mismatch')
-      ).length
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('atoms-files-validator');
+  }}
 
 export default AtomsFilesValidator;
+

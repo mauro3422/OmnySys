@@ -1,3 +1,4 @@
+import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Duplication Detector
  * 
@@ -142,20 +143,9 @@ export class DuplicationDetector {
    * Obtiene estadísticas de duplicación
    * @returns {Object} - Estadísticas
    */
-  getStats() {
-    const issues = this.issues.getIssues();
-    return {
-      exportInconsistencies: issues.filter(i => 
-        i.message?.includes('Export information duplicated')
-      ).length,
-      duplicateAtoms: issues.filter(i =>
-        i.message?.includes('Duplicate atom ID')
-      ).length,
-      duplicateFiles: issues.filter(i =>
-        i.message?.includes('Duplicate file entry')
-      ).length
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('duplication-detector');
+  }}
 
 export default DuplicationDetector;
+

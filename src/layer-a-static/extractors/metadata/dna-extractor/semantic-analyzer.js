@@ -81,15 +81,18 @@ export function deriveDomain(atom) {
  */
 export function deriveEntity(name, verb) {
   if (!name || !verb) return 'unknown';
-  
+
   // Remove verb from start and take remaining in camelCase
   const rest = name.startsWith(verb)
     ? name.slice(verb.length)
     : name;
-    
+
   if (!rest) return 'unknown';
-  
-  // Split camelCase into tokens and take last (the entity)
+
+  // Split camelCase into tokens
   const tokens = rest.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
-  return tokens[tokens.length - 1].toLowerCase() || 'unknown';
+  if (tokens.length === 0 || (tokens.length === 1 && tokens[0] === '')) return 'unknown';
+
+  // Join all tokens with underscores to retain full semantic context
+  return tokens.map(t => t.toLowerCase()).join('_');
 }

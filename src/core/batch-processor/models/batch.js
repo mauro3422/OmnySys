@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview batch.js
  * 
@@ -132,29 +133,7 @@ export class Batch {
    * Obtiene estadísticas del batch
    * @returns {Object}
    */
-  getStats() {
-    const changes = Array.from(this.changes.values());
-    
-    const countByPriority = (p) => changes.filter(c => c.priority === p).length;
-    const countByType = (t) => changes.filter(c => c.changeType === t).length;
+getStats() {
+    return statsPool.getStats('batch');
+  }}
 
-    return {
-      id: this.id,
-      state: this.state,
-      totalChanges: changes.length,
-      byPriority: {
-        critical: countByPriority(Priority.CRITICAL),
-        high: countByPriority(Priority.HIGH),
-        medium: countByPriority(Priority.MEDIUM),
-        low: countByPriority(Priority.LOW)
-      },
-      byType: {
-        created: countByType('created'),
-        modified: countByType('modified'),
-        deleted: countByType('deleted')
-      },
-      duration: this.completedAt ? this.completedAt - this.startedAt : null,
-      errorCount: this.errors.length
-    };
-  }
-}

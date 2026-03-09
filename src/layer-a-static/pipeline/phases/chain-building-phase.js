@@ -9,6 +9,7 @@
 
 import { ExtractionPhase } from './base-phase.js';
 import { logger } from '../../../utils/logger.js';
+import { ChainBuilder } from '../molecular-chains/index.js';
 
 /**
  * Phase 2: Build molecular chains
@@ -36,9 +37,6 @@ export class ChainBuildingPhase extends ExtractionPhase {
     logger.debug('Phase 2: Building molecular chains');
 
     try {
-      // Dynamically import chain builders
-      const { ChainBuilder } = await import('../molecular-chains/index.js');
-
       // Build chains
       const chainData = new ChainBuilder(atoms).build();
 

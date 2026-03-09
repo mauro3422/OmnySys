@@ -60,7 +60,8 @@ export function isPipelineProductionFile(filePath = '') {
 export function hasFileLevelImportEvidence(atomRow = {}) {
   return Math.max(
     Number(atomRow?.dependency_importer_count) || 0,
-    Number(atomRow?.file_importer_count) || 0
+    Number(atomRow?.file_importer_count) || 0,
+    Number(atomRow?.barrel_exporter_count) || 0
   ) > 0;
 }
 
@@ -150,7 +151,13 @@ export function getPipelineOrphanCandidates(db, options = {}) {
           FROM file_dependencies fd
           WHERE fd.target_path = a.file_path
             AND fd.source_path != a.file_path
-        ) AS dependency_importer_count
+        ) AS dependency_importer_count,
+        (
+          SELECT COUNT(*)
+          FROM files f
+          WHERE f.path != a.file_path
+            AND f.exports_json LIKE '%"name":"' || a.name || '"%'
+        ) AS barrel_exporter_count
     FROM atoms a
     WHERE a.is_exported = 1
       AND a.atom_type IN ('function', 'arrow', 'method', 'class')
@@ -232,7 +239,8 @@ function getRemediationActions(orphan = {}) {
 export function buildPipelineOrphanRemediation(orphan = {}) {
   const importerCount = Math.max(
     Number(orphan?.dependency_importer_count) || 0,
-    Number(orphan?.file_importer_count) || 0
+    Number(orphan?.file_importer_count) || 0,
+    Number(orphan?.barrel_exporter_count) || 0
   );
   return buildStandardItem({
     name: orphan.name,

@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview atom-repository.js
  * 
@@ -208,11 +209,9 @@ export class AtomRepository {
    * Obtiene estadisticas de la base de datos
    * @returns {Promise<Object>} Estadisticas
    */
-  async getStats() {
-    throw new Error('Method getStats() must be implemented');
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('atom-repository');
+  }  /**
    * Verifica si existe un atomo
    * @param {string} id - ID a verificar
    * @returns {Promise<boolean>}

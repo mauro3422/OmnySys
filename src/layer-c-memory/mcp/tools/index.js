@@ -49,6 +49,7 @@ import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
 import { technical_debt_report } from './technical-debt-report.js';
 import { get_atom_history } from './get-atom-history.js';
+import { consolidate_conceptual_cluster } from './consolidate-conceptual-cluster.js';
 
 export const toolDefinitions = [
   // ── SUPER TOOLS (LECTURA) ────────────────────────────────────────────────
@@ -255,6 +256,19 @@ export const toolDefinitions = [
       }
     }
   },
+  {
+    name: 'mcp_omnysystem_consolidate_conceptual_cluster',
+    description: 'Automatiza la consolidación de un cluster de duplicados conceptuales. Redirige los átomos hacia un SSOT (Source of Truth) de forma atómica.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        semanticFingerprint: { type: 'string', description: 'Fingerprint del cluster (ej: get:core:stats)' },
+        ssotFilePath: { type: 'string', description: 'Ruta del archivo que será la fuente de Verdad' },
+        execute: { type: 'boolean', default: false, description: 'Si es true, aplica los cambios. Si es false, solo previsualiza.' }
+      },
+      required: ['semanticFingerprint', 'ssotFilePath']
+    }
+  },
 
   // ── ADMIN & DEBUG ────────────────────────────────────────────────────────
   {
@@ -391,7 +405,8 @@ export const toolHandlers = {
   mcp_omnysystem_restart_server: restart_server,
   mcp_omnysystem_detect_performance_hotspots: detect_performance_hotspots,
   mcp_omnysystem_execute_sql: execute_sql,
-  mcp_omnysystem_get_atom_history: get_atom_history
+  mcp_omnysystem_get_atom_history: get_atom_history,
+  mcp_omnysystem_consolidate_conceptual_cluster: consolidate_conceptual_cluster
 };
 
 // Export default para compatibilidad

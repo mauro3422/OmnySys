@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Modification Tracker
  * 
@@ -92,14 +93,9 @@ export class ModificationTracker {
    * 
    * @returns {Object}
    */
-  getStats() {
-    return {
-      recentlyModifiedCount: this.modifications.size,
-      windowMs: this.windowMs
-    };
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('modification-tracker');
+  }  /**
    * Clears all tracked modifications
    */
   clear() {
@@ -126,3 +122,4 @@ export class ModificationTracker {
 }
 
 export default ModificationTracker;
+

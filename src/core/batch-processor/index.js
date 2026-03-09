@@ -1,3 +1,4 @@
+import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview index.js
  * 
@@ -190,17 +191,9 @@ export class BatchProcessor extends EventEmitter {
    * Obtiene estadísticas del procesador
    * @returns {Object}
    */
-  getStats() {
-    return {
-      isRunning: this.isRunning,
-      pendingChanges: this.pendingChanges.size,
-      queuedBatches: this.processingQueue.length,
-      processingBatches: this.processingBatches.size,
-      activeProcesses: this.activeProcesses,
-      completedBatches: this.completedBatches.length
-    };
-  }
-}
+getStats() {
+    return statsPool.getStats('index');
+  }}
 
 // Re-exportar API pública
 export { Priority, BatchState } from './constants.js';
@@ -210,3 +203,4 @@ export { calculatePriority } from './priority-calculator.js';
 export { loadDependencies } from './dependency-loader.js';
 export { BatchScheduler } from './batch-scheduler.js';
 export { processBatch, processChange } from './change-processor.js';
+

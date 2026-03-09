@@ -1,3 +1,4 @@
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview RuleRegistry - Registro de reglas de validación
  * @module validation/core/rules/RuleRegistry
@@ -148,23 +149,9 @@ export class RuleRegistry {
   /**
    * Obtiene estadísticas del registro
    */
-  getStats() {
-    return {
-      total: this.rules.size,
-      byLayer: {
-        source: this.rulesByLayer.source.length,
-        derivation: this.rulesByLayer.derivation.length,
-        semantic: this.rulesByLayer.semantic.length,
-        'cross-metadata': this.rulesByLayer['cross-metadata'].length
-      },
-      invariants: this.invariants.length,
-      byEntity: Object.fromEntries(
-        Array.from(this.rulesByEntity.entries()).map(([k, v]) => [k, v.length])
-      )
-    };
-  }
-
-  /**
+getStats() {
+    return statsPool.getStats('RuleRegistry');
+  }  /**
    * Limpia todas las reglas
    */
   clear() {
@@ -177,3 +164,4 @@ export class RuleRegistry {
     this.invariants = [];
   }
 }
+

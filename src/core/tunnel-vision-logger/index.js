@@ -40,11 +40,7 @@ export async function logEvent(alert, context = {}) {
  * Get statistics
  * @returns {Promise<Object>} Stats
  */
-export async function getStats() {
-  return loadStats();
-}
-
-// Re-export all functions
+export const getStats = (...args) => getStats(...args);// Re-export all functions
 export {
   logTunnelVisionEvent,
   readAllEvents,

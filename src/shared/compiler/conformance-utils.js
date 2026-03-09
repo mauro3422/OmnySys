@@ -12,17 +12,9 @@ import {
     COMPILER_TARGET_DIRS,
     isCompilerRuntimeFile
 } from './file-discovery.js';
+import { normalizePath } from '../utils/path-utils.js';
+export { normalizePath };
 import { buildCanonicalReuseGuidance } from './canonical-reuse-guidance.js';
-
-/**
- * Normalizes a file path for consistent OS-agnostic comparison.
- * @param {string} filePath 
- * @returns {string}
- */
-export function normalizePath(filePath = '') {
-    return String(filePath || '').replace(/\\/g, '/');
-}
-
 /**
  * Determines if a file belongs to the compiler/runtime target directories.
  * @param {string} filePath 

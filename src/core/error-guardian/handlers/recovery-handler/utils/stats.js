@@ -11,10 +11,7 @@
  * @param {Object} stats - Estadísticas internas
  * @returns {Object} Copia de estadísticas
  */
-export function getStats(stats) {
-  return { ...stats };
-}
-
+export const getStats = (...args) => getStats(...args);
 /**
  * Reset statistics
  * @returns {Object} Estadísticas reseteadas

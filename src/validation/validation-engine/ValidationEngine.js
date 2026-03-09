@@ -1,3 +1,4 @@
+import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview ValidationEngine - Motor de validación modular
  * 
@@ -104,16 +105,9 @@ export class ValidationEngine {
     logger.info('Cache cleared');
   }
 
-  getStats() {
-    return {
-      cacheSize: this.cache.size,
-      strategies: Array.from(this.strategies.keys()),
-      runner: this.runner?.name,
-      options: this.options
-    };
-  }
-
-  logStart(projectPath) {
+getStats() {
+    return statsPool.getStats('ValidationEngine');
+  }  logStart(projectPath) {
     logger.info('='.repeat(70));
     logger.info('STARTING VALIDATION');
     logger.info(`Project: ${projectPath}`);
@@ -130,3 +124,4 @@ export class ValidationEngine {
 }
 
 export default { ValidationEngine };
+

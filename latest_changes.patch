@@ -1,0 +1,612 @@
+﻿commit ff341e1f12bb5369330fb5d992fd416d7a4152d8
+Author: Mauro Ramirez <mauroamaya58@gmail.com>
+Date:   Sun Mar 8 23:38:41 2026 -0300
+
+    Stabilize compiler governance and diagnostics
+
+diff --git a/src/core/file-watcher/guards/duplicate-conceptual-core.js b/src/core/file-watcher/guards/duplicate-conceptual-core.js
+new file mode 100644
+index 0000000..1d2a218
+--- /dev/null
++++ b/src/core/file-watcher/guards/duplicate-conceptual-core.js
+@@ -0,0 +1,139 @@
++import { clearWatcherIssue } from '../watcher-issue-persistence.js';
++import {
++    generateAlternativeNames,
++    shouldIgnoreConceptualDuplicateFinding
++} from '../../../shared/compiler/index.js';
++
++export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
++    return Promise.all([
++        clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_high'),
++        clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_medium')
++    ]);
++}
++
++export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode) {
++    const rows = repo.db.prepare(`
++        SELECT id, name, atom_type, lines_of_code, is_exported,
++               json_extract(dna_json, '$.semanticFingerprint') as semanticFingerprint
++        FROM atoms
++        WHERE file_path = ?
++          AND atom_type IN ('function', 'method', 'arrow')
++          AND (is_removed IS NULL OR is_removed = 0)
++          AND lines_of_code >= ?
++          AND json_extract(dna_json, '$.semanticFingerprint') IS NOT NULL
++          AND json_extract(dna_json, '$.semanticFingerprint') != 'unknown:unknown:unknown'
++    `).all(normalizedFilePath, minLinesOfCode);
++
++    return rows.map((row) => ({
++        id: row.id,
++        name: row.name,
++        semanticFingerprint: row.semanticFingerprint,
++        linesOfCode: row.lines_of_code,
++        isExported: row.is_exported === 1
++    }));
++}
++
++export function shouldSkipConceptualAtom(
++    normalizedFilePath,
++    localAtom,
++    isLowSignalNameFn
++) {
++    if (isLowSignalNameFn(localAtom.name)) {
++        return true;
++    }
++
++    const fingerprint = localAtom.semanticFingerprint;
++    if (
++        fingerprint.includes(':unknown') ||
++        fingerprint.includes(':_callback') ||
++        fingerprint.includes(':constructor')
++    ) {
++        return true;
++    }
++
++    return shouldIgnoreConceptualDuplicateFinding(normalizedFilePath, localAtom.name, fingerprint);
++}
++
++export function loadConceptualDuplicateRows(repo, normalizedFilePath, fingerprint) {
++    return repo.db.prepare(`
++        SELECT a.name, a.file_path, a.lines_of_code, a.is_exported,
++               json_extract(a.dna_json, '$.structuralHash') as structuralHash
++        FROM atoms a
++        WHERE a.file_path != ?
++          AND json_extract(a.dna_json, '$.semanticFingerprint') = ?
++          AND a.atom_type IN ('function', 'method', 'arrow')
++          AND (a.is_removed IS NULL OR a.is_removed = 0)
++          AND (a.is_dead_code IS NULL OR a.is_dead_code = 0)
++        ORDER BY a.file_path
++        LIMIT 10
++    `).all(normalizedFilePath, fingerprint);
++}
++
++export function loadLocalStructuralHash(repo, atomId) {
++    return repo.db.prepare(`
++        SELECT json_extract(dna_json, '$.structuralHash') as sh
++        FROM atoms WHERE id = ?
++    `).get(atomId)?.sh;
++}
++
++export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low') {
++    const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];
++
++    return {
++        symbol: localAtom.name,
++        atomId: localAtom.id,
++        semanticFingerprint: localAtom.semanticFingerprint,
++        duplicateType: 'CONCEPTUAL_DUPLICATE',
++        totalInstances: structuralVariants.length + 1,
++        duplicateFiles: uniqueFiles,
++        duplicateNames: [...new Set(structuralVariants.map((duplicate) => duplicate.name))],
++        sample: uniqueFiles.slice(0, 3),
++        isExported: localAtom.isExported,
++        existingExports: structuralVariants.filter((duplicate) => duplicate.is_exported).length,
++        testabilitySeverity,
++        suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
++    };
++}
++
++export function detectConceptualFindings(
++    repo,
++    normalizedFilePath,
++    localAtoms,
++    maxFindings,
++    isLowSignalNameFn,
++    testabilitySeverity = 'low'
++) {
++    const findings = [];
++
++    for (const localAtom of localAtoms) {
++        if (shouldSkipConceptualAtom(normalizedFilePath, localAtom, isLowSignalNameFn)) {
++            continue;
++        }
++
++        const duplicates = loadConceptualDuplicateRows(
++            repo,
++            normalizedFilePath,
++            localAtom.semanticFingerprint
++        );
++
++        if (duplicates.length === 0) {
++            continue;
++        }
++
++        const localStructuralHash = loadLocalStructuralHash(repo, localAtom.id);
++        const structuralVariants = duplicates.filter(
++            (duplicate) => duplicate.structuralHash !== localStructuralHash
++        );
++
++        if (structuralVariants.length === 0) {
++            continue;
++        }
++
++        findings.push(buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity));
++        if (findings.length >= maxFindings) {
++            break;
++        }
++    }
++
++    return findings;
++}
+diff --git a/src/layer-c-memory/storage/repository/adapters/helpers/atom-schema.js b/src/layer-c-memory/storage/repository/adapters/helpers/atom-schema.js
+new file mode 100644
+index 0000000..91b76c9
+--- /dev/null
++++ b/src/layer-c-memory/storage/repository/adapters/helpers/atom-schema.js
+@@ -0,0 +1,21 @@
++import { TABLE_DEFINITIONS } from '../../../database/schema-registry.js';
++
++export function getAtomInsertColumns() {
++  return TABLE_DEFINITIONS.atoms.columns.map((column) => column.name);
++}
++
++export function buildAtomInsertSql() {
++  const columns = getAtomInsertColumns();
++  const placeholders = columns.map(() => '?').join(', ');
++  return `INSERT OR REPLACE INTO atoms (${columns.join(', ')}) VALUES (${placeholders})`;
++}
++
++export function buildAtomInsertValues(row, updatedAt) {
++  return getAtomInsertColumns().map((column) => {
++    if (column === 'updated_at' && updatedAt) {
++      return updatedAt;
++    }
++
++    return row[column] !== undefined ? row[column] : null;
++  });
++}
+diff --git a/src/layer-c-memory/storage/repository/adapters/helpers/storage-predicate.js b/src/layer-c-memory/storage/repository/adapters/helpers/storage-predicate.js
+new file mode 100644
+index 0000000..7231f32
+--- /dev/null
++++ b/src/layer-c-memory/storage/repository/adapters/helpers/storage-predicate.js
+@@ -0,0 +1,8 @@
++export function buildSoftDeletePredicate(tableAlias = '', includeRemoved = false) {
++  if (includeRemoved) {
++    return '1=1';
++  }
++
++  const prefix = tableAlias ? `${tableAlias}.` : '';
++  return `(${prefix}is_removed IS NULL OR ${prefix}is_removed = 0)`;
++}
+diff --git a/src/shared/compiler/compiler-conformance-scan.js b/src/shared/compiler/compiler-conformance-scan.js
+new file mode 100644
+index 0000000..189513c
+--- /dev/null
++++ b/src/shared/compiler/compiler-conformance-scan.js
+@@ -0,0 +1,31 @@
++/**
++ * @fileoverview Shared scaffold for compiler conformance source detectors.
++ *
++ * Keeps policy detectors focused on their heuristics while centralizing
++ * path normalization, compiler-file filtering and default option handling.
++ *
++ * @module shared/compiler/compiler-conformance-scan
++ */
++
++import {
++  normalizePath,
++  shouldScanCompilerFile
++} from './conformance-utils.js';
++
++export function scanCompilerConformanceSource(filePath, source = '', options = {}, defaults = {}, evaluate) {
++  const normalizedPath = normalizePath(filePath);
++  if (!shouldScanCompilerFile(normalizedPath) || !source) {
++    return [];
++  }
++
++  const context = {
++    normalizedPath,
++    source,
++    severity: options.severity ?? defaults.severity ?? 'medium',
++    policyArea: options.policyArea ?? defaults.policyArea ?? 'compiler_conformance',
++    findings: []
++  };
++
++  evaluate?.(context);
++  return context.findings;
++}
+
+commit 1544613dbb682a98f49243dba6999c38d40d9521
+Author: Mauro Ramirez <mauroamaya58@gmail.com>
+Date:   Sun Mar 8 23:31:56 2026 -0300
+
+    Canonicalize tunnel vision stats compatibility
+
+diff --git a/src/core/tunnel-vision-logger/events/logger.js b/src/core/tunnel-vision-logger/events/logger.js
+index fb6dd9a..8ea5fc4 100644
+--- a/src/core/tunnel-vision-logger/events/logger.js
++++ b/src/core/tunnel-vision-logger/events/logger.js
+@@ -10,7 +10,7 @@ import fs from 'fs/promises';
+ import { createLogger } from '../../../utils/logger.js';
+ import { generateSessionId } from '../utils/session.js';
+ import { TUNNEL_VISION_LOG } from '../storage/paths.js';
+-import { updateStats } from '../stats/calculator.js';
++import { loadStats, saveStats, updateStatsWithEvent } from '../stats/stats-manager.js';
+ 
+ const logger = createLogger('OmnySys:tunnel:vision:logger');
+ 
+@@ -40,7 +40,9 @@ export async function logTunnelVisionEvent(alert, context = {}) {
+     await fs.appendFile(TUNNEL_VISION_LOG, line, 'utf-8');
+ 
+     // Actualizar estad├¡sticas
+-    await updateStats(event);
++    const stats = await loadStats();
++    const updatedStats = updateStatsWithEvent(stats, event);
++    await saveStats(updatedStats);
+ 
+     return event;
+   } catch (error) {
+diff --git a/src/core/tunnel-vision-logger/stats/analyzer.js b/src/core/tunnel-vision-logger/stats/analyzer.js
+index 99ee2cd..b5ba28c 100644
+--- a/src/core/tunnel-vision-logger/stats/analyzer.js
++++ b/src/core/tunnel-vision-logger/stats/analyzer.js
+@@ -1,116 +1,10 @@
+ /**
+- * @fileoverview analyzer.js
+- * 
+- * Pattern analysis and recommendations
+- * 
++ * @fileoverview Legacy compatibility wrapper for tunnel vision pattern analysis
++ *
++ * Canonical pattern analysis now lives in `../analysis/pattern-analyzer.js`.
++ * Keep this file as a thin shim for older imports.
++ *
+  * @module core/tunnel-vision-logger/stats/analyzer
+  */
+ 
+-import path from 'path';
+-import { readAllEvents } from '../events/logger.js';
+-import { loadStats } from './calculator.js';
+-
+-/**
+- * Analiza eventos para encontrar patrones
+- * (├║til para Artificial Intuition)
+- */
+-export async function analyzePatterns() {
+-  const events = await readAllEvents();
+-
+-  if (events.length === 0) {
+-    return {
+-      patterns: [],
+-      insights: 'No hay suficientes datos para an├ílisis'
+-    };
+-  }
+-
+-  // An├ílisis 1: Qu├® tipos de cambios causan m├ís tunnel vision
+-  const changeTypeFrequency = {};
+-  events.forEach(event => {
+-    const file = event.modifiedFile;
+-    const ext = path.extname(file);
+-    changeTypeFrequency[ext] = (changeTypeFrequency[ext] || 0) + 1;
+-  });
+-
+-  // An├ílisis 2: Qu├® severidades son m├ís comunes
+-  const stats = await loadStats();
+-
+-  // An├ílisis 3: Archivos m├ís problem├íticos
+-  const problematicFiles = Object.entries(stats.mostFrequentFiles)
+-    .sort((a, b) => b[1] - a[1])
+-    .slice(0, 10)
+-    .map(([file, count]) => ({ file, count }));
+-
+-  // An├ílisis 4: Tasa de false positives
+-  const eventsWithAction = events.filter(e => e.context?.userAction !== 'unknown');
+-  const ignoredCount = eventsWithAction.filter(e => e.context?.userAction === 'ignored').length;
+-  const eventsWithActionLength = eventsWithAction.length;
+-  const falsePositiveRate = eventsWithActionLength > 0
+-    ? (ignoredCount / eventsWithActionLength * 100).toFixed(2)
+-    : 'N/A';
+-
+-  // An├ílisis 5: Impacto (bugs prevenidos)
+-  const preventedBugs = events.filter(e => e.context?.preventedBug === true).length;
+-
+-  return {
+-    summary: {
+-      totalEvents: events.length,
+-      avgAffectedFiles: stats.avgAffectedFiles.toFixed(1),
+-      falsePositiveRate: falsePositiveRate + '%',
+-      bugsPrevent: preventedBugs
+-    },
+-    patterns: {
+-      byExtension: changeTypeFrequency,
+-      bySeverity: stats.eventsBySeverity,
+-      problematicFiles
+-    },
+-    insights: [
+-      `Detectados ${events.length} casos de tunnel vision`,
+-      `Promedio de ${stats.avgAffectedFiles.toFixed(1)} archivos afectados por caso`,
+-      preventedBugs > 0
+-        ? `Prevenidos ${preventedBugs} bugs potenciales`
+-        : 'No hay datos de bugs prevenidos a├║n'
+-    ],
+-    recommendations: generateRecommendations(stats, events)
+-  };
+-}
+-
+-/**
+- * Genera recomendaciones basadas en patrones detectados
+- */
+-function generateRecommendations(stats, events) {
+-  const recommendations = [];
+-
+-  // Si hay archivos muy frecuentes, sugerir refactor
+-  const topFiles = Object.entries(stats.mostFrequentFiles)
+-    .sort((a, b) => b[1] - a[1])
+-    .slice(0, 3);
+-
+-  if (topFiles.length > 0 && topFiles[0][1] > 5) {
+-    recommendations.push({
+-      type: 'refactor',
+-      priority: 'high',
+-      message: `Archivo ${topFiles[0][0]} tiene ${topFiles[0][1]} casos de tunnel vision - considerar refactoring para reducir acoplamiento`
+-    });
+-  }
+-
+-  // Si hay muchos CRITICAL, sugerir review process
+-  if (stats.eventsBySeverity.CRITICAL > stats.totalEvents * 0.3) {
+-    recommendations.push({
+-      type: 'process',
+-      priority: 'high',
+-      message: 'Alto porcentaje de casos CRITICAL - considerar agregar code review obligatorio'
+-    });
+-  }
+-
+-  // Si avgAffectedFiles es muy alto, sugerir modularizaci├│n
+-  if (stats.avgAffectedFiles > 7) {
+-    recommendations.push({
+-      type: 'architecture',
+-      priority: 'medium',
+-      message: `Promedio de ${stats.avgAffectedFiles.toFixed(1)} archivos afectados - considerar mejor separaci├│n de responsabilidades`
+-    });
+-  }
+-
+-  return recommendations;
+-}
++export { analyzePatterns } from '../analysis/pattern-analyzer.js';
+diff --git a/src/core/tunnel-vision-logger/stats/calculator.js b/src/core/tunnel-vision-logger/stats/calculator.js
+index ee884cc..2aeefbc 100644
+--- a/src/core/tunnel-vision-logger/stats/calculator.js
++++ b/src/core/tunnel-vision-logger/stats/calculator.js
+@@ -1,79 +1,28 @@
+ /**
+- * @fileoverview calculator.js
+- * 
+- * Statistics calculation and management
+- * 
++ * @fileoverview Legacy compatibility wrapper for tunnel vision stats
++ *
++ * Canonical stats persistence now lives in `stats-manager.js`.
++ * Keep this file as a thin shim for older imports.
++ *
+  * @module core/tunnel-vision-logger/stats/calculator
+  */
+ 
+-import fs from 'fs/promises';
+-import path from 'path';
+-import { createLogger } from '../../../utils/logger.js';
+-import { TUNNEL_VISION_STATS } from '../storage/paths.js';
++import {
++  loadStats as loadCanonicalStats,
++  saveStats,
++  updateStatsWithEvent
++} from './stats-manager.js';
+ 
+-const logger = createLogger('OmnySys:tunnel:vision:logger');
+-
+-/**
+- * Carga estad├¡sticas o crea nuevas si no existen
+- */
+ export async function loadStats() {
+-  try {
+-    const content = await fs.readFile(TUNNEL_VISION_STATS, 'utf-8');
+-    return JSON.parse(content);
+-  } catch {
+-    return {
+-      totalEvents: 0,
+-      eventsBySeverity: {
+-        CRITICAL: 0,
+-        HIGH: 0,
+-        MEDIUM: 0,
+-        LOW: 0
+-      },
+-      avgAffectedFiles: 0,
+-      mostFrequentFiles: {},
+-      lastUpdated: new Date().toISOString(),
+-      version: '1.0.0'
+-    };
+-  }
++  return loadCanonicalStats();
+ }
+ 
+-/**
+- * Actualiza las estad├¡sticas agregadas
+- */
+ export async function updateStats(event) {
+-  try {
+-    let stats = await loadStats();
+-
+-    // Incrementar contadores
+-    stats.totalEvents++;
+-    stats.eventsBySeverity[event.severity] =
+-      (stats.eventsBySeverity[event.severity] || 0) + 1;
+-
+-    // Promedios
+-    stats.avgAffectedFiles =
+-      (stats.avgAffectedFiles * (stats.totalEvents - 1) +
+-        event.affectedFiles.unmodified) /
+-      stats.totalEvents;
+-
+-    // Archivos m├ís frecuentes
+-    if (!stats.mostFrequentFiles[event.modifiedFile]) {
+-      stats.mostFrequentFiles[event.modifiedFile] = 0;
+-    }
+-    stats.mostFrequentFiles[event.modifiedFile]++;
+-
+-    // ├Ültima actualizaci├│n
+-    stats.lastUpdated = new Date().toISOString();
+-
+-    // Guardar
+-    await fs.writeFile(TUNNEL_VISION_STATS, JSON.stringify(stats, null, 2), 'utf-8');
+-  } catch (error) {
+-    logger.error('[TunnelVisionLogger] Error updating stats:', error.message);
+-  }
++  const stats = await loadCanonicalStats();
++  const updatedStats = updateStatsWithEvent(stats, event);
++  await saveStats(updatedStats);
+ }
+ 
+-/**
+- * Obtiene estad├¡sticas de tunnel vision
+- */
+ export async function getStats() {
+-  return await loadStats();
++  return loadCanonicalStats();
+ }
+diff --git a/src/shared/compiler/duplicate-signal-policy.js b/src/shared/compiler/duplicate-signal-policy.js
+index c7fc4f7..4ad91c3 100644
+--- a/src/shared/compiler/duplicate-signal-policy.js
++++ b/src/shared/compiler/duplicate-signal-policy.js
+@@ -383,6 +383,25 @@ const LEGACY_LLM_BOOTSTRAP_FINGERPRINTS = new Set([
+     'process:core:starting'
+ ]);
+ 
++const LEGACY_TUNNEL_VISION_COMPATIBILITY_FILE_MARKERS = [
++    '/core/tunnel-vision-logger/stats/calculator.js',
++    '/core/tunnel-vision-logger/stats/analyzer.js'
++];
++
++const LEGACY_TUNNEL_VISION_COMPATIBILITY_NAMES = new Set([
++    'loadstats',
++    'updatestats',
++    'getstats',
++    'analyzepatterns'
++]);
++
++const LEGACY_TUNNEL_VISION_COMPATIBILITY_FINGERPRINTS = new Set([
++    'load:core:stats',
++    'update:core:stats',
++    'get:core:stats',
++    'analyze:core:patterns'
++]);
++
+ const STANDALONE_SCRIPT_FILE_REGEX = /(?:^|\/)(?:scripts\/.+|install|run-layer-a)\.js$/;
+ const STANDALONE_SCRIPT_HELPER_NAMES = new Set([
+     'main',
+@@ -706,6 +725,15 @@ export function isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, sema
+     });
+ }
+ 
++export function isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, semanticFingerprint) {
++    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
++        pathMatchers: LEGACY_TUNNEL_VISION_COMPATIBILITY_FILE_MARKERS,
++        pathMode: 'endsWith',
++        names: LEGACY_TUNNEL_VISION_COMPATIBILITY_NAMES,
++        fingerprints: LEGACY_TUNNEL_VISION_COMPATIBILITY_FINGERPRINTS
++    });
++}
++
+ export function isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint) {
+     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+         pathMatchers: [],
+@@ -761,6 +789,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint)
+         () => isRuntimePortProbeHelper(filePath, atomName, semanticFingerprint),
+         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, semanticFingerprint),
+         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, semanticFingerprint),
++        () => isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, semanticFingerprint),
+         () => isStandaloneScriptEntryHelper(filePath, atomName, semanticFingerprint),
+         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, semanticFingerprint),
+         () => isPolicyConformanceCanonicalHelper(filePath, atomName, semanticFingerprint),
+@@ -792,6 +821,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
+         () => isRuntimePortProbeHelper(filePath, atomName, null),
+         () => isMcpHttpProxyLifecycleHelper(filePath, atomName, null),
+         () => isLegacyLlmBootstrapCompatibilityHelper(filePath, atomName, null),
++        () => isLegacyTunnelVisionCompatibilityHelper(filePath, atomName, null),
+         () => isStandaloneScriptEntryHelper(filePath, atomName, null),
+         () => isOrchestrationLifecycleBoundaryHelper(filePath, atomName, null),
+         () => isCompilerPolicyOrchestrationHelper(filePath, atomName, null),
+
+commit 11e425e17957617c2649e49ed1a8a44d4b585195
+Author: Mauro Ramirez <mauroamaya58@gmail.com>
+Date:   Sun Mar 8 23:27:15 2026 -0300
+
+    Classify dependency handler persistence helpers
+
+diff --git a/src/shared/compiler/duplicate-signal-policy.js b/src/shared/compiler/duplicate-signal-policy.js
+index 6f5d534..c7fc4f7 100644
+--- a/src/shared/compiler/duplicate-signal-policy.js
++++ b/src/shared/compiler/duplicate-signal-policy.js
+@@ -168,6 +168,20 @@ const STORAGE_QUERY_POLICY_FINGERPRINTS = new Set([
+     'process:core:query'
+ ]);
+ 
++const SYSTEM_MAP_DEPENDENCY_HANDLER_FILE_MARKER = '/storage/repository/adapters/helpers/system-map/handlers/dependency-handler.js';
++const SYSTEM_MAP_DEPENDENCY_HANDLER_NAMES = new Set([
++    'loadfiledependencies',
++    'grouploadeddependencies',
++    'normalizeloadeddependency',
++    'parsejsonlist'
++]);
++const SYSTEM_MAP_DEPENDENCY_HANDLER_FINGERPRINTS = new Set([
++    'load:core:dependencies',
++    'process:core:dependencies',
++    'normalize:core:row',
++    'parse:core:array'
++]);
++
+ const LAYER_A_PIPELINE_CANONICAL_FILE_MARKERS = [
+     '/layer-a-static/pipeline/incremental-analysis-utils.js',
+     '/layer-a-static/pipeline/file-summary-storage.js'
+@@ -574,6 +588,15 @@ export function isStorageQueryPolicyHelper(filePath, atomName, semanticFingerpri
+     });
+ }
+ 
++export function isSystemMapDependencyPersistenceHelper(filePath, atomName, semanticFingerprint) {
++    return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
++        pathMatchers: [SYSTEM_MAP_DEPENDENCY_HANDLER_FILE_MARKER],
++        pathMode: 'endsWith',
++        names: SYSTEM_MAP_DEPENDENCY_HANDLER_NAMES,
++        fingerprints: SYSTEM_MAP_DEPENDENCY_HANDLER_FINGERPRINTS
++    });
++}
++
+ export function isLayerAPipelineCanonicalHelper(filePath, atomName, semanticFingerprint) {
+     return matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, {
+         pathMatchers: LAYER_A_PIPELINE_CANONICAL_FILE_MARKERS,
+@@ -727,6 +750,7 @@ function matchesConceptualIgnorePolicy(filePath, atomName, semanticFingerprint)
+         () => isCanonicalGuidanceHelper(filePath, atomName, semanticFingerprint),
+         () => isCanonicalPipelineHealthHelper(filePath, atomName, semanticFingerprint),
+         () => isStorageQueryPolicyHelper(filePath, atomName, semanticFingerprint),
++        () => isSystemMapDependencyPersistenceHelper(filePath, atomName, semanticFingerprint),
+         () => isLayerAPipelineCanonicalHelper(filePath, atomName, semanticFingerprint),
+         () => isWatcherIssueCanonicalHelper(filePath, atomName, semanticFingerprint),
+         () => isDuplicateStructuralCoreHelper(filePath, atomName, semanticFingerprint),
+@@ -757,6 +781,7 @@ function matchesStructuralIgnorePolicy(filePath, atomName) {
+         () => isCanonicalGuidanceHelper(filePath, atomName, null),
+         () => isCanonicalPipelineHealthHelper(filePath, atomName, null),
+         () => isStorageQueryPolicyHelper(filePath, atomName, null),
++        () => isSystemMapDependencyPersistenceHelper(filePath, atomName, null),
+         () => isLayerAPipelineCanonicalHelper(filePath, atomName, null),
+         () => isWatcherIssueCanonicalHelper(filePath, atomName, null),
+         () => isDuplicateStructuralCoreHelper(filePath, atomName, null),
