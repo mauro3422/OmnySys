@@ -23,4 +23,5 @@ export async function updateStats(event) {
   await saveStats(updatedStats);
 }
 
-export const getStats = (...args) => getStats(...args);
+import { statsPool } from '../../../shared/utils/stats-pool.js';
+export const getStats = (...args) => statsPool.getStats('calculator', ...args);

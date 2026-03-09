@@ -46,8 +46,8 @@ export async function getTechnicalDebtReport(args, context) {
                 totalGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
                 totalInstances: duplicatesResult.duplicates?.summary?.totalDuplicateInstances || 0,
                 topIssues: (duplicatesResult.remediation?.items || []).slice(0, 5).map(item => ({
-                    name: item.canonical?.name || 'Unknown',
-                    file: item.canonical?.file || 'Unknown',
+                    name: item.name || 'Unknown',
+                    file: item.canonical?.file || item.file || 'Unknown',
                     groupSize: item.groupSize,
                     urgencyScore: item.urgencyScore,
                     duplicateFiles: item.duplicateFiles?.length || 0
@@ -151,7 +151,7 @@ function generatePriorityActions(data) {
         actions.push({
             priority: 'high',
             type: 'structural_duplicate',
-            action: `Consolidar ${top.groupSize} duplicados de '${top.name}' en ${top.file}`,
+            action: `Consolidar ${top.groupSize} duplicados de '${top.name}' en ${top.canonical?.file || top.file}`,
             impact: `Reducir ${top.duplicateFiles} archivos duplicados`,
             urgencyScore: top.urgencyScore
         });
@@ -163,7 +163,7 @@ function generatePriorityActions(data) {
         actions.push({
             priority: 'high',
             type: 'conceptual_duplicate',
-            action: `Estandarizar ${group.implementationCount} implementaciones de '${group.concept.verb}:${group.concept.domain}:${group.concept.entity}'`,
+            action: `Estandarizar ${group.implementationCount} implementaciones de '${group.concept.verb}:${group.concept.chest}:${group.concept.domain}:${group.concept.entity}'`,
             impact: `Reducir ${group.fileCount} archivos con lógica similar`,
             urgencyScore: group.implementationCount
         });

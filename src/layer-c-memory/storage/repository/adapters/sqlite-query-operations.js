@@ -125,15 +125,11 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
         AND (is_dead_code IS NULL OR is_dead_code = 0)
         AND fingerprint IS NOT NULL
         AND fingerprint != 'unknown:unknown:unknown'
-        AND fingerprint NOT LIKE '%:unknown'
-        AND fingerprint NOT LIKE '%:_callback'
-        AND fingerprint NOT LIKE '%:constructor'
-        AND length(fingerprint) > ?
+        AND fingerprint != 'unknown:unknown:unknown:unknown'
       ORDER BY fingerprint, file_path
     `);
 
-    const rows = stmt
-      .all(minEntitySpecificity + 10)
+    const rows = stmt.all()
       .filter((row) => !shouldIgnoreConceptualDuplicateFinding(row.file_path, row.name, row.fingerprint));
 
     const groups = new Map();
@@ -161,18 +157,28 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
       .slice(0, limit)
       .map(([fingerprint, atoms]) => {
         const filePaths = [...new Set(atoms.map((atom) => atom.filePath))];
-        const [verb, domain, entity] = fingerprint.split(':');
+        const parts = fingerprint.split(':');
+        const [verb, chest, domain, entity] = parts.length === 4 ? parts : [parts[0], 'legacy', parts[1], parts[2]];
+
+        // Centralized Risk Policy by Chest
+        let risk = 'medium';
+        if (chest === 'lifecycle' || chest === 'telemetry') {
+          risk = 'low';
+        } else if (chest === 'logic' || chest === 'orchestration') {
+          risk = atoms.length >= 3 ? 'high' : 'medium';
+        }
 
         return {
           semanticFingerprint: fingerprint,
-          concept: { verb, domain, entity },
+          chest,
+          concept: { verb, chest, domain, entity },
           implementationCount: atoms.length,
           fileCount: filePaths.length,
           files: filePaths,
           implementations: atoms,
           hasStructuralVariations: new Set(atoms.map((atom) => atom.structuralHash)).size > 1,
           allExported: atoms.every((atom) => atom.isExported),
-          risk: atoms.length >= 3 ? 'high' : atoms.length >= 2 ? 'medium' : 'low'
+          risk
         };
       });
   }

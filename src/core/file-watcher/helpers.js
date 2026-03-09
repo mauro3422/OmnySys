@@ -1,4 +1,5 @@
 ﻿import { generateSessionId } from '../tunnel-vision-logger/utils/session.js';
+import { statsPool } from '../../shared/utils/stats-pool.js';
 
 /**
  * Verifica si un archivo es relevante para análisis
@@ -27,7 +28,8 @@ export function shouldIgnore(filePath) {
 /**
  * Obtiene estadísticas del watcher
  */
-export const getStats = (...args) => getStats(...args);/**
+export const getStats = (...args) => statsPool.getStats('watcher', ...args);
+/**
  * Registra un evento de tunnel vision detectado
  */
 export async function logTunnelVisionEvent(alert) {

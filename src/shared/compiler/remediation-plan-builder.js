@@ -41,12 +41,13 @@ export function buildStandardPlan({ total, items, recommendation, ...extra }) {
  * @param {Object} params
  * @returns {RemediationItem}
  */
-export function buildStandardItem({ id, name, file, diagnosis, actions }) {
+export function buildStandardItem({ id, name, file, diagnosis, actions, ...extra }) {
     return {
         id,
         name,
         file,
         diagnosis,
-        recommendedActions: Array.isArray(actions) ? actions : [actions]
+        recommendedActions: Array.isArray(actions) ? actions : [actions],
+        ...extra
     };
 }

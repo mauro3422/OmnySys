@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
+
 - [v0.9.108 - Compiler Stabilization & Integrity](changelogs/v0.9.108.md)
 - [v0.9.105 - SOLID Standardization & Git Unification](changelogs/v0.9.105.md)
 - [v0.9.104 - Core Consolidation & Genetic Lineage](changelogs/v0.9.104.md)
@@ -11,6 +13,8 @@ All notable changes to this project are documented here as a release index. Deta
 - [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
 
 ## Quick Links
+
+- [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
 
 - [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
 - [v0.9.102 - Pipeline Integrity Detector & Auto-Audit System](changelogs/v0.9.102.md)
@@ -29,8 +33,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
-| Version | Date | Summary |
-|---------|------|---------|
+| **0.9.110** | 2026-03-09 | Semantic Chests architecture, V4 fingerprinting, chest-based severity policy, and reporting refinements. |
 | **0.9.108** | 2026-03-07 | Compiler stabilization, utility canonization, SOLID persistence handlers, and Grade A structural integrity. |
 | **0.9.107** | 2026-03-07 | Fix missing imports in conformance layer and repository regressions. |
 | **0.9.105** | 2026-03-07 | SOLID standardization of tool handlers, Git bridge unification, event-sourcing prototype, and database health cleanup. |
@@ -52,28 +55,29 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.108 (2026-03-07)
+## Latest Release: v0.9.110 (2026-03-09)
 
-**Compiler Stabilization & Integrity**
+**Semantic Chests & V4 Fingerprinting**
 
 ### Key Achievements
 
-1. **Compiler Stabilization**: Consolidated compiler explainability and reporting surfaces so runtime health and standardization diagnostics share the same canonical helpers.
-2. **Utility Canonization**: Continued centralizing cross-cutting helpers and reducing fragmented implementations that were drifting across MCP/reporting paths.
-3. **Persistence Handler Hardening**: Extended the SOLID handler migration around repository and persistence flows to reduce coupling and make failures easier to isolate.
-4. **Integrity Reporting Focus**: Added clearer reporting around pipeline and compiler drift so structural contradictions surface earlier during startup and audit flows.
-5. **Release Alignment**: Promoted the compiler integrity work as the current release authority instead of leaving the release index pinned to an older version.
+1. **Semantic Chests Architecture**: Implemented functional categorization into `lifecycle`, `telemetry`, `storage`, `orchestration`, and `logic` to reduce conceptual noise.
+2. **V4 Fingerprint Implementation**: Migrated the entire codebase (2,219 files) to the `verb:chest:domain:entity` format.
+3. **Smart Severity Policy**: Automated risk assessment where infrastructure concerns (`lifecycle`, `telemetry`) are correctly prioritized as low-risk architectural patterns.
+4. **Reporting Refinements**: Standardized the `technical-debt-report` to provide high-fidelity visibility into functional clusters and high-risk business logic.
+5. **Project-Wide Re-indexing**: Successfully executed a full system re-analysis to propagate the new semantic metadata across the 20k+ function graph.
 
 ### New & Refactored Files
 
-- `src/shared/compiler/` (Canonical compiler and integrity helpers)
-- `src/layer-c-memory/mcp/tools/handlers/` (Reporting and health handlers)
-- `src/layer-c-memory/storage/repository/adapters/` (Persistence hardening)
-- `changelogs/v0.9.108.md` (Detailed release notes)
+- `src/layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer.js` (V4 Fingerprinting)
+- `src/core/file-watcher/guards/conceptual-duplicate-risk.js` (Smart Severity)
+- `src/layer-c-memory/mcp/tools/technical-debt-report.js` (High-fidelity reporting)
+- `src/layer-c-memory/storage/repository/adapters/sqlite-query-operations.js` (V4 handling)
+- `changelogs/v0.9.110.md` (Detailed release notes)
 
 ---
 
-## Previous Release: v0.9.103 (2026-03-07)
+## Previous Release: v0.9.108 (2026-03-07)
 
 ## Previous Release: v0.9.102 (2026-03-07)
 

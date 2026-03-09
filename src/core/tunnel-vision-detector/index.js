@@ -75,7 +75,7 @@ export class TunnelVisionDetector {
         filePath,
         (atom, count) => this.severityAnalyzer.calculate(atom, count)
       );
-      
+
       return alertData ? this.alertBuilder.buildFileAlert(alertData) : null;
     }
 
@@ -103,7 +103,7 @@ export class TunnelVisionDetector {
    * Gets current statistics
    * @returns {Object}
    */
-getStats() {
+  getStats() {
     return statsPool.getStats('index');
   }  /**
    * Gets modification history
@@ -158,7 +158,8 @@ export function formatAlert(alert) {
  * Gets statistics (convenience function)
  * @returns {Object}
  */
-export const getStats = (...args) => getStats(...args);
+import { statsPool } from '../../shared/utils/stats-pool.js';
+export const getStats = (...args) => statsPool.getStats('tunnel-vision', ...args);
 /**
  * Gets modification history (convenience function)
  * @returns {Array}

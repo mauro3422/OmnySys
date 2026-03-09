@@ -74,10 +74,22 @@ async function persistConceptualDuplicateFinding(
     const preview = findings
         .map((finding) => `${finding.symbol}(${finding.semanticFingerprint})`)
         .join(', ');
+
+    // Chest-based severity logic (V4: verb:chest:domain:entity)
+    const chests = findings.map(f => f.semanticFingerprint.split(':')[1] || 'logic');
     const hasPublicApiIssue = findings.some(
         (finding) => finding.isExported && finding.existingExports > 0
     );
-    const severity = hasPublicApiIssue ? 'high' : 'medium';
+
+    let severity = 'medium';
+    if (chests.includes('logic') || chests.includes('orchestration')) {
+        severity = hasPublicApiIssue ? 'high' : 'medium';
+    } else if (chests.every(c => c === 'lifecycle')) {
+        severity = 'low';
+    } else if (chests.includes('telemetry') || chests.includes('storage')) {
+        severity = 'medium';
+    }
+
     const issueType = createIssueType(IssueDomains.CODE, 'conceptual_duplicate', severity);
     const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
 

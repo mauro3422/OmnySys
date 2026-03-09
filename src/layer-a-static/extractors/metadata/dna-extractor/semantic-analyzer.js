@@ -20,23 +20,50 @@ const VERB_PREFIXES = [
 
 /**
  * Computes semantic fingerprint for approximate matching.
- * If LLM semantic analysis exists, uses it directly.
- * Otherwise, derives verb/domain/entity from name + static metadata.
+ * format: "verb:chest:domain:entity" (V4)
  * @param {Object} atom - Atom object
- * @returns {string} Semantic fingerprint in format "verb:domain:entity"
+ * @returns {string} Semantic fingerprint
  */
 export function computeSemanticFingerprint(atom) {
-  if (atom.semantic?.verb && atom.semantic.verb !== 'unknown') {
-    return [atom.semantic.verb, atom.semantic.domain || 'unknown', atom.semantic.entity || 'unknown'].join(':');
-  }
-
-  // Derive from atom name
   const name = atom.name || '';
   const verb = deriveVerb(name);
   const domain = deriveDomain(atom);
+  const chest = deriveChest(name, verb);
   const entity = deriveEntity(name, verb);
 
-  return `${verb}:${domain}:${entity}`;
+  return `${verb}:${chest}:${domain}:${entity}`;
+}
+
+/**
+ * Categorizes an atom into a functional "Chest"
+ * @param {string} name - Function name
+ * @param {string} verb - Detected verb
+ * @returns {string} Functional category (chest)
+ */
+export function deriveChest(name, verb) {
+  const lower = name.toLowerCase();
+
+  // Lifecycle Chest
+  const lifecycleTerms = [
+    'init', 'start', 'stop', 'shutdown', 'clear', 'reset', 'setup', 'teardown',
+    'cleanup', 'dispose', 'constructor', 'callback', 'listener', 'handler',
+    'it_arg1', 'describe_arg1'
+  ];
+  if (lifecycleTerms.some(term => lower.includes(term))) return 'lifecycle';
+
+  // Telemetry Chest
+  const telemetryTerms = ['stats', 'status', 'health', 'log', 'trace', 'monitor', 'report', 'audit', 'metric', 'telemetry', 'check', 'verify'];
+  if (telemetryTerms.some(term => lower.includes(term))) return 'telemetry';
+
+  // Storage Chest
+  const storageTerms = ['save', 'load', 'fetch', 'persist', 'read', 'write', 'delete', 'remove', 'db', 'store', 'cache', 'repository'];
+  if (storageTerms.some(term => lower.includes(term))) return 'storage';
+
+  // Orchestration Chest
+  const orchestrationTerms = ['handle', 'process', 'execute', 'run', 'dispatch', 'route', 'orchestrate', 'coordinator', 'main', 'start'];
+  if (orchestrationTerms.some(term => lower.includes(term))) return 'orchestration';
+
+  return 'logic';
 }
 
 /**

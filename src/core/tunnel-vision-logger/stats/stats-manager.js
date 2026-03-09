@@ -58,7 +58,7 @@ export async function saveStats(stats) {
  */
 export function updateStatsWithEvent(stats, event) {
   const newStats = { ...stats };
-  
+
   // Increment counters
   newStats.totalEvents++;
   newStats.eventsBySeverity[event.severity] =
@@ -84,4 +84,4 @@ export function updateStatsWithEvent(stats, event) {
  * Get stats
  * @returns {Promise<Object>} Current stats
  */
-export const getStats = (...args) => getStats(...args);
+export const getStats = (...args) => statsPool.getStats('stats-manager', ...args);

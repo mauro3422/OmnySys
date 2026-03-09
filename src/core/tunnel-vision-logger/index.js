@@ -26,13 +26,13 @@ import { generateSessionId } from './utils/session.js';
  */
 export async function logEvent(alert, context = {}) {
   const event = await logTunnelVisionEvent(alert, context);
-  
+
   if (event) {
     const stats = await loadStats();
     const updatedStats = updateStatsWithEvent(stats, event);
     await saveStats(updatedStats);
   }
-  
+
   return event;
 }
 
@@ -40,7 +40,9 @@ export async function logEvent(alert, context = {}) {
  * Get statistics
  * @returns {Promise<Object>} Stats
  */
-export const getStats = (...args) => getStats(...args);// Re-export all functions
+import { statsPool } from './utils/stats-pool-proxy.js'; // Assuming a proxy exists or just import shared
+import { statsPool as sharedStatsPool } from '../../shared/utils/stats-pool.js';
+export const getStats = (...args) => sharedStatsPool.getStats('tunnel-vision-logger', ...args);
 export {
   logTunnelVisionEvent,
   readAllEvents,

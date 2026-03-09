@@ -130,9 +130,38 @@ export class SemanticQueryTool extends GraphQueryTool {
 
     async getConceptualDuplicates(options = {}) {
         const repo = requireSemanticRepo(this.repo);
-        const groups = repo.findConceptualDuplicates ?
+        const rows = repo.findConceptualDuplicates ?
             repo.findConceptualDuplicates(options) :
             this._queryConceptualDuplicates(repo.db, options);
+
+        // Map rows to group objects with chest info
+        const groups = rows.map(row => {
+            // If the repo already returned a grouped object, use it
+            if (row.concept && row.chest) return row;
+
+            const fp = row.fingerprint || row.semanticFingerprint || '';
+            const parts = fp.split(':');
+            const chest = parts.length === 4 ? parts[1] : 'legacy';
+
+            // Derive risk based on chest
+            let risk = 'medium';
+            if (chest === 'lifecycle') risk = 'low';
+            if (chest === 'telemetry') risk = 'low';
+            if (chest === 'logic' || chest === 'orchestration') risk = (row.count || row.implementationCount) > 5 ? 'high' : 'medium';
+
+            return {
+                semanticFingerprint: fp,
+                chest,
+                implementationCount: row.count || row.implementationCount,
+                risk,
+                concept: {
+                    verb: parts[0] || 'unknown',
+                    chest: chest,
+                    domain: parts[2] || 'unknown',
+                    entity: parts[3] || 'unknown'
+                }
+            };
+        });
 
         const summary = this._buildConceptualSummary(groups);
 
@@ -148,14 +177,21 @@ export class SemanticQueryTool extends GraphQueryTool {
     _buildConceptualSummary(groups) {
         const totalGroups = groups.length;
         const highRisk = groups.filter(g => g.risk === 'high').length;
+        const chests = {};
+
+        groups.forEach(g => {
+            chests[g.chest] = (chests[g.chest] || 0) + g.implementationCount;
+        });
+
         return {
             totalGroups,
             totalImplementations: groups.reduce((sum, g) => sum + g.implementationCount, 0),
             highRisk,
             mediumRisk: groups.filter(g => g.risk === 'medium').length,
             lowRisk: groups.filter(g => g.risk === 'low').length,
+            chests,
             message: totalGroups > 0
-                ? `Found ${totalGroups} conceptual duplicate groups`
+                ? `Found ${totalGroups} conceptual duplicate groups across ${Object.keys(chests).length} chests`
                 : 'No conceptual duplicates found'
         };
     }

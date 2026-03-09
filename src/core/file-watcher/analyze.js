@@ -109,7 +109,7 @@ export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
   // 2. Ejecutar Guardias Semánticos
   if (analysis.moleculeAtoms && analysis.moleculeAtoms.length > 0) {
     try {
-      const { guardRegistry } = await import('./guards/registry.js');
+      const { guardRegistry } = await import(`./guards/registry.js?bust=${Date.now()}`);
       await guardRegistry.initializeDefaultGuards();
 
       await guardRegistry.runSemanticGuards(this.rootPath, filePath, this, analysis.moleculeAtoms, { verbose: true });

@@ -23,7 +23,35 @@ class GuardRegistry {
         this.metadata = new Map(); // Metadata de cada guard
         this.initialized = false;
         this.initializationPromise = null;
+
+        // Registrar en StatsPool
+        statsPool.registerProvider('registry', () => this.getLocalStats());
     }
+
+    /**
+     * Obtiene estadísticas locales del registro
+     * @returns {Object} Estadísticas formateadas
+     */
+    getLocalStats() {
+        const byType = {
+            semantic: this.semanticGuards.size,
+            impact: this.impactGuards.size
+        };
+
+        const byDomain = {};
+        for (const meta of this.metadata.values()) {
+            const domain = meta.domain || 'unknown';
+            byDomain[domain] = (byDomain[domain] || 0) + 1;
+        }
+
+        return {
+            total: this.semanticGuards.size + this.impactGuards.size,
+            byType,
+            byDomain,
+            initialized: this.initialized
+        };
+    }
+
 
     async #persistGuardCrash(rootPath, filePath, name, type, error) {
         const issueType = `runtime_${type}_guard_crash_${name}_high`;
@@ -179,11 +207,13 @@ class GuardRegistry {
      * Obtiene estadísticas de los guards
      * @returns {Object} Estadísticas
      */
-getStats() {
-    return statsPool.getStats('registry');
-  }}
+    getStats() {
+        const stats = statsPool.getStats('registry') || this.getLocalStats();
+        console.log(`[GuardRegistry] getStats returning:`, JSON.stringify(stats).substring(0, 100));
+        return stats;
+    }
+}
 
 // Exportar singleton
 export const guardRegistry = new GuardRegistry();
-export default guardRegistry;
 

@@ -102,7 +102,8 @@ export class PipelineIntegrityDetector {
                     passed: false,
                     severity: 'high',
                     error: result.reason.message,
-                    details: { error: result.reason.message }
+                    details: { error: result.reason.message },
+                    recommendation: 'Restart MCP server and verify files on disk'
                 };
             }
         });
@@ -339,7 +340,7 @@ export class PipelineIntegrityDetector {
      */
     async checkGuardExecution() {
         try {
-            const { guardRegistry } = await import('../file-watcher/guards/registry.js');
+            const { guardRegistry } = await import(`../file-watcher/guards/registry.js?bust=${Date.now()}`);
             await guardRegistry.initializeDefaultGuards();
 
             const stats = guardRegistry.getStats();
@@ -349,6 +350,10 @@ export class PipelineIntegrityDetector {
             };
 
             const missingGuards = [];
+
+            if (!stats || !stats.byType) {
+                throw new Error('Guard metrics unavailable (missing byType)');
+            }
 
             if (stats.byType.semantic < expectedGuards.semantic) {
                 missingGuards.push(`semantic: ${stats.byType.semantic}/${expectedGuards.semantic}`);

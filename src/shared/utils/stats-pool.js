@@ -39,11 +39,23 @@ class StatsPool {
         this.staticStats.set(key, value);
     }
 
-    /**
-     * Recolecta todas las estadísticas registradas
-     * @returns {Object} Unificado de estadísticas
-     */
-    getAllStats() {
+    getStats(moduleName) {
+        logger.info(`[StatsPool] Requested stats for module: ${moduleName || 'ALL'}`);
+        if (moduleName && !this.providers.has(moduleName)) {
+
+            logger.warn(`[StatsPool] No provider registered for module: ${moduleName}`);
+            return { total: 0, byType: { semantic: 0, impact: 0 }, byDomain: {} };
+        }
+
+        if (moduleName && this.providers.has(moduleName)) {
+            try {
+                return this.providers.get(moduleName)();
+            } catch (err) {
+                logger.warn(`[StatsPool] Failed to get stats from ${moduleName}: ${err.message}`);
+                return { error: 'PROVIDER_FAILED', total: 0, byType: { semantic: 0, impact: 0 }, byDomain: {} };
+            }
+        }
+
         const stats = {
             timestamp: new Date().toISOString(),
             modules: {},
@@ -59,7 +71,9 @@ class StatsPool {
             }
         }
 
-        return stats;
+        const result = stats;
+        logger.info(`[StatsPool] Returning stats: ${JSON.stringify(result).substring(0, 100)}...`);
+        return result;
     }
 }
 
