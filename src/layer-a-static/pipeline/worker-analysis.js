@@ -27,16 +27,144 @@ function calculateHash(content) {
     return crypto.createHash('md5').update(content).digest('hex');
 }
 
+function toRelativeFilePath(absoluteRootPath, absoluteFilePath) {
+    return path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+}
+
+function createSkippedLiteResult(dbAtoms, persistedSummary) {
+    return {
+        atoms: dbAtoms.map((atom) => ({ ...atom, skipped: true })),
+        atomCount: dbAtoms.length,
+        imports: JSON.parse(persistedSummary.imports_json || '[]'),
+        exports: JSON.parse(persistedSummary.exports_json || '[]'),
+        skipped: true
+    };
+}
+
+function createLiteAtom(atom, relativeFilePath, globalWorkerBuffer) {
+    const lite = { ...atom };
+    globalWorkerBuffer.push({ ...lite, filePath: relativeFilePath });
+
+    delete lite.dna;
+    delete lite.dataFlow;
+    delete lite.temporal;
+    delete lite.errorFlow;
+    delete lite.performance;
+
+    if (lite._meta) {
+        const meta = { ...lite._meta };
+        delete meta.identifierRefs;
+        lite._meta = meta;
+    }
+
+    if (lite.node) delete lite.node;
+
+    return lite;
+}
+
+function createAnalyzedResult(result, liteAtoms) {
+    return {
+        atoms: liteAtoms,
+        atomCount: liteAtoms.length,
+        metadata: result.metadata,
+        imports: result.parsed?.imports || [],
+        exports: result.parsed?.exports || [],
+        skipped: false
+    };
+}
+
+function tryReusePersistedAnalysis(repo, relativeFilePath, currentHash, knownHashes, extractionDepth, getPersistedFileSummary) {
+    const existingHash = knownHashes.get(relativeFilePath);
+    if (!existingHash || existingHash !== currentHash || extractionDepth === 'deep') {
+        return null;
+    }
+
+    const dbAtoms = repo.getByFile(relativeFilePath);
+    if (!dbAtoms || dbAtoms.length === 0) {
+        return null;
+    }
+
+    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
+    return createSkippedLiteResult(dbAtoms, persistedSummary);
+}
+
+function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result) {
+    const liteAtoms = result.atoms.map((atom) => createLiteAtom(
+        atom,
+        relativeFilePath,
+        state.globalWorkerBuffer
+    ));
+
+    state.totalExtractedCount += liteAtoms.length;
+    state.allFileSummariesToSave.set(relativeFilePath, {
+        imports: result.parsed?.imports || [],
+        exports: result.parsed?.exports || [],
+        atomCount: liteAtoms.length,
+        totalLines: content.split(/\r?\n/).length
+    });
+    state.allLiteResults[absoluteFilePath] = createAnalyzedResult(result, liteAtoms);
+}
+
+function flushProgress(processedSinceLastPing, skipped = false) {
+    if (processedSinceLastPing <= 0) {
+        return 0;
+    }
+
+    parentPort.postMessage({
+        type: 'PROGRESS',
+        count: processedSinceLastPing,
+        skipped
+    });
+
+    return 0;
+}
+
+function persistFileSummaries(repo, allFileSummariesToSave) {
+    if (allFileSummariesToSave.size === 0 || !repo?.db) {
+        return;
+    }
+
+    const upsertFileSummary = repo.db.prepare(`
+        INSERT INTO files (path, imports_json, exports_json, atom_count, total_lines, last_analyzed)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+            imports_json = excluded.imports_json,
+            exports_json = excluded.exports_json,
+            atom_count = excluded.atom_count,
+            total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
+            last_analyzed = excluded.last_analyzed,
+            is_removed = 0,
+            updated_at = datetime('now')
+    `);
+    const now = new Date().toISOString();
+    const saveFileSummariesTx = repo.db.transaction((entries) => {
+        for (const [filePath, summary] of entries) {
+            upsertFileSummary.run(
+                filePath,
+                JSON.stringify(summary.imports || []),
+                JSON.stringify(summary.exports || []),
+                Number(summary.atomCount || 0),
+                Number(summary.totalLines || 0),
+                now
+            );
+        }
+    });
+
+    saveFileSummariesTx(Array.from(allFileSummariesToSave.entries()));
+}
+
 async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const repo = getRepository(absoluteRootPath);
 
-    let totalExtractedCount = 0;
+    const state = {
+        totalExtractedCount: 0,
+        allLiteResults: {},
+        allFileHashesToSave: new Map(),
+        allFileSummariesToSave: new Map(),
+        globalWorkerBuffer: []
+    };
     let processedSinceLastPing = 0;
-    const allLiteResults = {};
-    const allFileHashesToSave = new Map();
-    const allFileSummariesToSave = new Map();
-    const globalWorkerBuffer = [];
 
     // Pre-warm extractors
     await warmExtractorCache();
@@ -55,27 +183,24 @@ async function runWorker() {
             const stat = await fs.stat(absoluteFilePath).catch(() => null);
             if (!stat || stat.isDirectory()) return { skipped: true };
 
-            const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+            const relativeFilePath = toRelativeFilePath(absoluteRootPath, absoluteFilePath);
 
             // 1. Incremental Check
             const content = await fs.readFile(absoluteFilePath, 'utf8');
             const currentHash = calculateHash(content);
-            allFileHashesToSave.set(relativeFilePath, currentHash);
+            state.allFileHashesToSave.set(relativeFilePath, currentHash);
 
-            const existingHash = knownHashes.get(relativeFilePath);
-            if (existingHash && existingHash === currentHash && extractionDepth !== 'deep') {
-                const dbAtoms = repo.getByFile(relativeFilePath);
-                if (dbAtoms && dbAtoms.length > 0) {
-                    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
-                    allLiteResults[absoluteFilePath] = {
-                        atoms: dbAtoms.map(a => ({ ...a, skipped: true })),
-                        atomCount: dbAtoms.length,
-                        imports: JSON.parse(persistedSummary.imports_json || '[]'),
-                        exports: JSON.parse(persistedSummary.exports_json || '[]'),
-                        skipped: true
-                    };
-                    return { skipped: true };
-                }
+            const skippedResult = tryReusePersistedAnalysis(
+                repo,
+                relativeFilePath,
+                currentHash,
+                knownHashes,
+                extractionDepth,
+                getPersistedFileSummary
+            );
+            if (skippedResult) {
+                state.allLiteResults[absoluteFilePath] = skippedResult;
+                return { skipped: true };
             }
 
             // 2. Unified Analysis
@@ -87,43 +212,7 @@ async function runWorker() {
             });
 
             // 3. Lite Optimization & Buffer
-            const liteAtoms = result.atoms.map(atom => {
-                const lite = { ...atom };
-
-                // Buffer to RAM for bulk save
-                globalWorkerBuffer.push({ ...lite, filePath: relativeFilePath });
-
-                // Prune for IPC (Inter-Process Communication) memory efficiency
-                delete lite.dna;
-                delete lite.dataFlow;
-                delete lite.temporal;
-                delete lite.errorFlow;
-                delete lite.performance;
-                if (lite._meta) {
-                    const meta = { ...lite._meta };
-                    delete meta.identifierRefs;
-                    lite._meta = meta;
-                }
-                if (lite.node) delete lite.node;
-
-                return lite;
-            });
-
-            totalExtractedCount += liteAtoms.length;
-            allFileSummariesToSave.set(relativeFilePath, {
-                imports: result.parsed?.imports || [],
-                exports: result.parsed?.exports || [],
-                atomCount: liteAtoms.length,
-                totalLines: content.split(/\r?\n/).length
-            });
-            allLiteResults[absoluteFilePath] = {
-                atoms: liteAtoms,
-                atomCount: liteAtoms.length,
-                metadata: result.metadata,
-                imports: result.parsed?.imports || [],
-                exports: result.parsed?.exports || [],
-                skipped: false
-            };
+            saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result);
 
             return { skipped: false };
 
@@ -138,56 +227,24 @@ async function runWorker() {
         const result = await processFile(absoluteFilePath);
         processedSinceLastPing++;
         if (processedSinceLastPing >= 20) {
-            parentPort.postMessage({
-                type: 'PROGRESS',
-                count: processedSinceLastPing,
-                skipped: result?.skipped || false
-            });
-            processedSinceLastPing = 0;
+            processedSinceLastPing = flushProgress(processedSinceLastPing, result?.skipped || false);
         }
     }
 
-    if (processedSinceLastPing > 0) {
-        parentPort.postMessage({ type: 'PROGRESS', count: processedSinceLastPing, skipped: false });
-    }
+    processedSinceLastPing = flushProgress(processedSinceLastPing, false);
 
     // Bulk Save
-    if (globalWorkerBuffer.length > 0) {
-        repo.saveManyBulk(globalWorkerBuffer);
+    if (state.globalWorkerBuffer.length > 0) {
+        repo.saveManyBulk(state.globalWorkerBuffer);
     }
-    if (allFileSummariesToSave.size > 0 && repo?.db) {
-        const upsertFileSummary = repo.db.prepare(`
-            INSERT INTO files (path, imports_json, exports_json, atom_count, total_lines, last_analyzed)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(path) DO UPDATE SET
-                imports_json = excluded.imports_json,
-                exports_json = excluded.exports_json,
-                atom_count = excluded.atom_count,
-                total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
-                last_analyzed = excluded.last_analyzed
-        `);
-        const now = new Date().toISOString();
-        const saveFileSummaries = repo.db.transaction((entries) => {
-            for (const [filePath, summary] of entries) {
-                upsertFileSummary.run(
-                    filePath,
-                    JSON.stringify(summary.imports || []),
-                    JSON.stringify(summary.exports || []),
-                    Number(summary.atomCount || 0),
-                    Number(summary.totalLines || 0),
-                    now
-                );
-            }
-        });
-        saveFileSummaries(Array.from(allFileSummariesToSave.entries()));
-    }
+    persistFileSummaries(repo, state.allFileSummariesToSave);
 
     // Final Report
     parentPort.postMessage({
         type: 'DONE',
-        liteResults: allLiteResults,
-        hashes: Array.from(allFileHashesToSave.entries()),
-        extractedCount: totalExtractedCount
+        liteResults: state.allLiteResults,
+        hashes: Array.from(state.allFileHashesToSave.entries()),
+        extractedCount: state.totalExtractedCount
     });
 }
 

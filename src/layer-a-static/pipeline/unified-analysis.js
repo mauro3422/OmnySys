@@ -56,7 +56,9 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
         INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
         ON CONFLICT(path) DO UPDATE SET
             last_analyzed = excluded.last_analyzed,
-            hash = excluded.hash
+            hash = excluded.hash,
+            is_removed = 0,
+            updated_at = datetime('now')
     `);
     const writeFileHashesBatch = repo.db.transaction((hashMap) => {
         const now = new Date().toISOString();
