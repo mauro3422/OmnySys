@@ -101,6 +101,14 @@ function groupLoadedDependencies(rows) {
 }
 
 export async function loadFileDependencies(db) {
-  const rows = db.prepare('SELECT * FROM file_dependencies WHERE (is_removed IS NULL OR is_removed = 0)').all();
-  return groupLoadedDependencies(rows);
+  try {
+    const statement = db.prepare(
+      'SELECT * FROM file_dependencies WHERE (is_removed IS NULL OR is_removed = 0)'
+    );
+    const rows = statement.all();
+    return groupLoadedDependencies(rows);
+  } catch (error) {
+    console.warn('[DependencyHandler] Failed to load file dependencies:', error?.message || error);
+    return {};
+  }
 }
