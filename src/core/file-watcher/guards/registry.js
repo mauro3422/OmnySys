@@ -48,6 +48,51 @@ class GuardRegistry {
         await clearWatcherIssue(rootPath, filePath, issueType);
     }
 
+    #registerGuard(guardMap, type, name, guardFn, metadata = {}) {
+        if (guardMap.has(name)) {
+            logger.debug(`${type === 'semantic' ? 'Semantic' : 'Impact'} guard already registered: ${name}`);
+            return false;
+        }
+
+        const validation = validateGuard({ name, detect: guardFn, ...metadata });
+        if (!validation.valid) {
+            logger.warn(`Guard '${name}' validation warnings:`, validation.errors);
+        }
+
+        guardMap.set(name, guardFn);
+        this.metadata.set(name, {
+            type,
+            ...metadata,
+            registeredAt: new Date().toISOString()
+        });
+
+        logger.debug(`Registered ${type} guard: ${name} (${metadata.domain || 'unknown'})`);
+        return true;
+    }
+
+    async #runGuardMap(guardMap, type, rootPath, filePath, runner) {
+        const results = {};
+
+        for (const [name, guardFn] of guardMap.entries()) {
+            const startTime = Date.now();
+            try {
+                results[name] = await runner(guardFn);
+                await this.#clearGuardCrash(rootPath, filePath, name, type);
+                const duration = Date.now() - startTime;
+
+                if (duration > 100) {
+                    logger.warn(`${type === 'semantic' ? 'Semantic' : 'Impact'} guard '${name}' took ${duration}ms (slow)`);
+                }
+            } catch (error) {
+                logger.error(`Error in ${type} guard '${name}' for ${filePath}: ${error.message}`);
+                await this.#persistGuardCrash(rootPath, filePath, name, type, error);
+                results[name] = { error: error.message };
+            }
+        }
+
+        return results;
+    }
+
     /**
      * Registra un guardia semántico (se ejecuta durante analyzeAndIndex)
      * @param {string} name - Nombre único del guardia
