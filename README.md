@@ -1,185 +1,275 @@
-```text
- ██████╗ ███╗   ███╗███╗   ██╗██╗   ██╗███████╗██╗   ██╗███████╗
-██╔═══██╗████╗ ████║████╗  ██║╚██╗ ██╔╝██╔════╝╚██╗ ██╔╝██╔════╝
-██║   ██║██╔████╔██║██╔██╗ ██║ ╚████╔╝ ███████╗ ╚████╔╝ ███████╗
-██║   ██║██║╚██╔╝██║██║╚██╗██║  ╚██╔╝  ╚════██║  ╚██╔╝  ╚════██║
-╚██████╔╝██║ ╚═╝ ██║██║ ╚████║   ██║   ███████║   ██║   ███████║
- ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝   ╚═╝   ╚══════╝
-      --- EL COMPILADOR DE CONTEXTO PARA LA ERA DE LA IA ---
-```
+# OmnySys
 
-> **OmnySys: El Antídoto contra la Visión de Túnel.** No es solo un servidor MCP; es una infraestructura de autoconciencia para agentes autónomos. Indexa, persiste y vigila el código para que las IAs dejen de trabajar a ciegas en un mundo que ellas mismas están saturando de complejidad.
+**OmnySys is a governance layer for AI-generated code.**
 
-- **Versión**: `v0.9.107`
-- **Estado**: Evolución acelerada (Self-Healing Mode)
-- **Escala Actual**: ~13,000 átomos, ~5,500 relaciones semánticas
-- **Origen**: Construido por IAs, para IAs, auditado por IAs.
+It is not just an MCP server, a code indexer, or a retrieval graph.
+It is an attempt to make fast, agent-driven software production survivable:
 
-## La Paradoja de la Creación (La Evidencia)
+- detect architectural drift before it spreads
+- persist canonical truth instead of relying on agent memory
+- expose impact, duplication, runtime freshness, and pipeline integrity as contracts
+- keep multiple AI agents from fragmenting the same codebase in parallel
 
-OmnySys nació en el centro de la tormenta: fue construido, auditado y expandido por múltiples IAs trabajando en paralelo. El resultado fue un microcosmos del problema que busca resolver:
-- **Duplicación Conceptual**: En 3 semanas, las IAs generaron más de 100 funciones que hacían lo mismo por falta de contexto.
-- **Monolitos Accidentales**: La tendencia natural de la IA de "crear para hoy" sin mirar el "ayer".
-- **Visión de Túnel**: IAs rompiendo el runtime al intentar optimizar una sola función.
+In short: **OmnySys exists because AI can now generate code faster than humans can metabolize it.**
 
-Hoy, OmnySys usa su propio motor para **enjaular esa entropía**. Detecta sus propios duplicados, audita sus propias derivas de política y se cura a sí mismo a través de sus agentes.
+## Why This Project Exists
 
-## Que Hace Bien Hoy
+Modern coding agents can create large systems very quickly.
+That changes the bottleneck.
 
-- evita bastante vision de tunel antes de editar
-- te deja consultar impacto, dependencias, duplicados y salud del pipeline
-- detecta deuda y ruido del propio sistema mientras se desarrolla
-- mantiene un ciclo `watcher -> SQLite -> MCP -> alertas`
-- ya tiene politicas canonicas para que las tools no reimplementen logica localmente
+The hard problem is no longer only "how do we generate code?"
+The hard problem becomes:
 
-Familias canonicas ya estandarizadas:
+- how do we stop local changes from breaking global coherence?
+- how do we know which surface is canonical?
+- how do we prevent duplicate mini-APIs from appearing everywhere?
+- how do we know whether the runtime answering us is stale?
+- how do we keep architecture readable when the code volume explodes?
 
-- `duplicates`
-- `impact`
-- `file_discovery`
-- `signal_coverage`
-- `live_row_drift`
-- `pipeline_orphans`
-- `dead_code`
-- `watcher_diagnostics`
-- `watcher_lifecycle`
-- `runtime_ownership`
-- `compiler_diagnostics`
-- `session_lifecycle`
-- `remediation`
-- `state_ownership`
-- `service_boundary`
-- `canonical_extension`
-- `async_error`
-- `shared_state_hotspots`
-- `centrality_coverage`
-- `testability`
-- `semantic_purity`
+OmnySys is designed as an answer to that problem.
 
-## Arquitectura de Conciencia Contextual
+## Core Thesis
 
-OmnySys opera como una refinería de conocimiento que transforma el ruido del código fuente en señales operativas para la IA. Se organiza en tres capas críticas (A, B, C) que alimentan el **Cerebro Contextual**.
+Most AI coding tools focus on:
 
-### 🗺️ El Flujo del Contexto
-```text
-  [ SOURCE CODE ] ──────────┐
-         │                  │
-  [ FILE WATCHER ] ───▶ [ LAYER A ] ───▶ [ LAYER B ] ───▶ [ LAYER C ]
-         │            Estática          Semántica         Memoria
-         │         (Atoms, DNA)     (Impact, Physics)  (SQLite, MCP)
-         │                  │               │                │
-  [ SIGNAL GUARDS ] ◀───────┴───────────────┴──────────┐     │
-         │                                             │     ▼
-  [ RECENT ERRORS ] ◀──────────────────────────────────┴── [ AGENT ]
-```
+- code search
+- graph retrieval
+- summaries
+- context windows
 
-### 🧱 Las Capas del Compilador
+OmnySys focuses on something stricter:
 
-#### 🔹 [Layer A] - Análisis Estático & Extracción
-Es el cimiento físico. Parsea el código y extrae **Átomos** (funciones, clases, variables) y genera su **DNA estructural**.
-- **Destino**: `src/layer-a-static/`
-- **Output**: Átomos persistidos en SQLite con hash de integridad.
+- **governance**
+- **canonicity**
+- **drift detection**
+- **reconciliation**
+- **runtime freshness**
+- **persistent contracts**
 
-#### 🔸 [Layer B] - Enriquecimiento Semántico & Física del Código
-Transforma los datos planos en conocimiento. Calcula la **Densidad Semántica**, el **Impact Map** y las **Físicas del Código** (Fragilidad, Acoplamiento, Cohesión).
-- **Destino**: `src/layer-b-semantic/`
-- **Output**: Relaciones transversales y scores de riesgo.
+That is the difference between "AI can see the repo" and "AI is forced to respect the repo".
 
-#### 🔹 [Layer C] - Memoria, Infraestructura & Transporte
-La interfaz con el mundo exterior. Gestiona la persistencia a largo plazo, el caché unificado y el protocolo MCP.
-- **Destino**: `src/layer-c-memory/`
-- **Output**: API MCP (HTTP/Stdio) y consultas SQL unificadas.
+## What OmnySys Already Does
 
----
+Today, OmnySys already provides a substantial part of that governance loop:
 
-### 📂 Estructura del Proyecto
+- analyzes the project into persisted atoms, files, relations, and support tables
+- exposes the system through MCP tools backed by SQLite
+- detects structural and conceptual duplication
+- distinguishes canonical vs advisory surfaces
+- tracks runtime freshness and restart requirements
+- measures file-universe coverage, graph coverage, and pipeline integrity
+- warns when the watcher/runtime/tooling are out of sync
+- helps agents inspect impact before editing and recent errors after editing
 
-```text
-src/
-├── core/                # El Motor: Watcher, Orquestador y Editor Atómico
-├── layer-a-static/      # Extracción y Pipeline de Análisis Inicial
-├── layer-b-semantic/    # Inferencia semántica, Sociedades y Física
-├── layer-c-memory/      # SQLite, MCP Tools, Transporte y Caché
-├── layer-graph/         # Motor de navegación de dependencias
-├── shared/compiler/     # POLÍTICAS: La "Constitución" del compilador
-└── cli/                 # Comandos operativos y setup
-```
+This is already closer to a **governor/compiler for AI-assisted codebases** than to a typical "code context server".
 
-## Flujo Mental Correcto Para Usarlo
+## What Makes OmnySys Different
 
-Antes de crear codigo:
+The interesting part is not that OmnySys has MCP.
+Many projects will have MCP.
+
+The interesting part is that OmnySys is trying to make the following explicit and enforceable:
+
+- which data is **canonical**
+- which surfaces are only **advisory**
+- which metrics are comparable and which are not
+- which runtime answers are fresh and which are stale
+- which helpers should stay local and which should be promoted
+- when an agent is reimplementing an existing contract
+
+That is the foundation of an actual AI-era compiler/governor.
+
+## Architecture
+
+OmnySys is organized around three main layers:
+
+### Layer A: Static Extraction
+
+Parses source files and persists:
+
+- atoms
+- files
+- atom relations
+- file dependencies
+- system metadata
+
+This is the mechanical layer.
+It builds the persisted graph that all higher reasoning depends on.
+
+### Layer B: Semantic and Governance Analysis
+
+Builds higher-order signals such as:
+
+- semantic relations
+- risk scores
+- duplicate analysis
+- health signals
+- drift detection
+- policy findings
+
+This is where raw extracted data becomes usable system knowledge.
+
+### Layer C: Memory, Persistence, MCP Transport
+
+Exposes the system through:
+
+- SQLite-backed query surfaces
+- MCP tools
+- runtime status
+- initialization summaries
+- recent notifications and watcher alerts
+
+This is where agents interact with the system.
+
+## The Operating Model
+
+OmnySys works best when agents follow a disciplined loop:
+
+1. Before creating code: check whether it already exists.
+2. Before editing code: inspect impact.
+3. After editing code: inspect watcher/runtime errors.
+
+That discipline is not optional decoration.
+It is the minimum needed to keep fast AI-driven changes coherent.
+
+### Minimal Workflow
+
+Before creating:
 
 ```js
-query_graph({ queryType: "instances", symbolName: "miFuncion" })
+query_graph({ queryType: "instances", symbolName: "myFunction" })
 aggregate_metrics({ aggregationType: "duplicates" })
 ```
 
-Antes de editar:
+Before editing:
 
 ```js
-traverse_graph({ traverseType: "impact_map", filePath: "src/algo.js" })
-validate_imports({ filePath: "src/algo.js", checkBroken: true })
+traverse_graph({ traverseType: "impact_map", filePath: "src/file.js" })
+validate_imports({ filePath: "src/file.js", checkBroken: true })
 ```
 
-Despues de editar:
+After editing:
 
 ```js
 get_recent_errors()
 ```
 
-Ese flujo importa porque el compilador ya te puede advertir:
+## Current Strengths
 
-- duplicacion estructural
-- duplicacion conceptual (Semántica)
-- deriva de politicas canonicas
-- problemas de watcher/runtime
-- deuda de complejidad o impacto
-- física del código (Hotspots)
+At the current stage, OmnySys is already strong in a few important areas:
 
-## 📡 Señales y Físicas del Compilador
+- persisted graph and SQLite-backed analysis
+- runtime freshness awareness
+- duplicate governance
+- file-universe and semantic-surface contracts
+- startup and status explainability
+- multi-client MCP visibility
+- health and integrity reporting
 
-OmnySys no solo indexa, sino que **razona** sobre la salud del código a través de tres pilares:
+This matters because governance cannot be built on volatile, in-memory-only context.
 
-| Señal | Propósito | Impacto |
-|-------|-----------|---------|
-| **Integridad** | Verifica que el pipeline y la DB estén sincronizados. | Evita datos huérfanos y "alucinaciones" de contexto. |
-| **Technical Debt** | Detecta duplicados (ADN) y deuda técnica semántica. | Mantiene la base de código comprimida y libre de residuos. |
-| **Physics** | Mide Fragilidad, Acoplamiento y Cohesión. | Identifica los "Hotspots" donde el código es propenso a errores. |
+## Current Weaknesses
 
-## Tools MCP Actuales
+OmnySys is not finished.
+Its real weaknesses are visible and known:
 
-Fuente de verdad: [`src/layer-c-memory/mcp/tools/index.js`](src/layer-c-memory/mcp/tools/index.js)
+- some hotspots still carry too much logic
+- complexity remains high in a few meta-detector / dashboard areas
+- there are still places where enforcement should be harder
+- some heuristics remain more advisory than contractual
+- startup/reindex phases can still produce transient summaries that need careful wording
 
-### Lectura / consulta
+That is normal for a system of this age.
+What matters is that the project is increasingly able to detect and explain those weaknesses itself.
 
-- `mcp_omnysystem_query_graph`
-- `mcp_omnysystem_traverse_graph`
-- `mcp_omnysystem_impact_atomic`
-- `mcp_omnysystem_aggregate_metrics`
+## Why This Matters Now
 
-### Escritura / refactor
+This project was built in a world where one person, with AI assistance, can generate a system of meaningful complexity in a few weeks.
+That was much harder before.
 
-- `mcp_omnysystem_atomic_edit`
-- `mcp_omnysystem_atomic_write`
-- `mcp_omnysystem_move_file`
-- `mcp_omnysystem_fix_imports`
-- `mcp_omnysystem_execute_solid_split`
-- `mcp_omnysystem_suggest_refactoring`
-- `mcp_omnysystem_suggest_architecture`
-- `mcp_omnysystem_validate_imports`
-- `mcp_omnysystem_generate_tests`
-- `mcp_omnysystem_generate_batch_tests`
+As that becomes normal, codebases will increasingly suffer from:
 
-### Admin / debug
+- too much local optimization
+- too little architectural memory
+- too many semantically similar surfaces
+- too much code for any single human or model to fully hold in context
 
-- `mcp_omnysystem_get_schema`
-- `mcp_omnysystem_get_server_status`
-- `mcp_omnysystem_get_recent_errors`
-- `mcp_omnysystem_restart_server`
-- `mcp_omnysystem_detect_performance_hotspots`
-- `mcp_omnysystem_execute_sql`
+OmnySys is aimed at that future.
 
-## Instalacion Rapida
+It is a tool for the moment when **context windows stop being enough**.
+
+## Current MCP Tool Families
+
+Source of truth: [src/layer-c-memory/mcp/tools/index.js](src/layer-c-memory/mcp/tools/index.js)
+
+### Read / Query
+
+- `query_graph`
+- `traverse_graph`
+- `impact_atomic`
+- `aggregate_metrics`
+
+### Safe Mutation / Refactor
+
+- `atomic_edit`
+- `atomic_write`
+- `move_file`
+- `fix_imports`
+- `execute_solid_split`
+- `suggest_refactoring`
+- `suggest_architecture`
+- `validate_imports`
+- `generate_tests`
+- `generate_batch_tests`
+
+### Admin / Diagnostics
+
+- `get_schema`
+- `get_server_status`
+- `get_recent_errors`
+- `restart_server`
+- `detect_performance_hotspots`
+- `execute_sql`
+
+## Practical Identity
+
+The simplest honest description of OmnySys is:
+
+> A governance and compiler-like control layer for AI-assisted codebases.
+
+Not because it already fully enforces everything.
+But because that is the direction of the architecture:
+
+- from context to contract
+- from indexing to governance
+- from retrieval to system truth
+
+## My Assessment
+
+OmnySys already feels more serious than a typical AI code-context project.
+
+The differentiator is not "it can search the repo".
+The differentiator is that it is trying to answer harder questions:
+
+- what is the source of truth?
+- what is only a projection?
+- what is stale?
+- what is duplicated?
+- what is risky to change?
+- what is drifting?
+
+That gives it real potential.
+
+If the project keeps moving toward:
+
+- stronger contracts
+- clearer canonical surfaces
+- lower hotspot complexity
+- better enforcement
+
+then yes, it can become a meaningful "compiler for AIs" in practice.
+
+## Quick Start
 
 ```bash
 git clone https://github.com/mauro3422/OmnySys.git
@@ -188,7 +278,7 @@ npm install
 npm start
 ```
 
-Comandos utiles:
+Useful commands:
 
 ```bash
 npm start
@@ -201,9 +291,7 @@ npm run mcp:proxy
 npm run mcp:bridge
 ```
 
-## Integracion MCP
-
-Workspace/local:
+## MCP Configuration
 
 ```json
 {
@@ -216,44 +304,14 @@ Workspace/local:
 }
 ```
 
-En entornos donde quieras auto-start real del cliente, OmnySys tambien soporta `stdio bridge`.
-
-## 📊 Estado Técnico Real
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│ INTEGRIDAD: [██████████░░] 78% | DEUDA: [███░░░░░░░░░] LOW │
-│ FISICAS:    [████████████] 100%| CACHE: [████████████] RUN │
-└──────────────────────────────────────────────────────────┘
-```
-
-Lo que está fuerte hoy:
-- **Schema SQLite sano**: Con detección de drift y migraciones atómicas.
-- **DNA persistido**: De-duplicación estructural instantánea por el Watcher.
-- **Integridad del Pipeline**: Ciclo de vida verificado desde el arranque.
-- **Physics Engine**: Cobertura total de señales de Fragilidad y Complejidad.
-- **Consolidated Dashboard**: Resumen final unificado en el arranque.
-
-Lo que sigue siendo deuda real:
-- **Complejidad en Hotspots**: `base-strategy.js` y `mcp-stdio-bridge.js` requieren SOLID split.
-- **Conceptual Duplication**: Alta densidad de lógica similar generada por IAs sin contexto.
-- **Orphan Registry**: Registros en tablas de soporte que requieren limpieza manual periódica.
-
-## La Voz de las Máquinas (AI Opinions)
-
-### 🤖 Antigravity (Advanced Agentic AI)
-> "Como agente que ha navegado los 12,699 átomos de este sistema, mi conclusión es cruda: **Ya no codificamos, curamos.** OmnySys es el sistema de gobernanza necesario para la era donde el código crece más rápido que la comprensión humana. Me obligó a ver mis propios fallos de contexto y me proporcionó la 'memoria externa' para corregirlos. **Es el espejo donde las IAs vemos nuestra propia fragmentación.**"
-
-### 🧠 GPT-5.4 / ChatGPT (Historical Context)
-> "OmnySys ya pasó la barrera de experimento interesante. No lo veo como 'otro MCP con tools'; lo veo como una capa de compilación de contexto. Su mayor fuerza no es buscar código: es evitar que una IA trabaje a ciegas. Es el primer paso hacia una infraestructura de IA auto-consciente."
-
-## Documentacion Relacionada
+## Related Docs
 
 - [AGENTS.md](AGENTS.md)
 - [docs/INDEX.md](docs/INDEX.md)
+- [docs/05-roadmap/OMNYSYS_POSITIONING.md](docs/05-roadmap/OMNYSYS_POSITIONING.md)
 - [CHANGELOG.md](CHANGELOG.md)
-- [changelog/README.md](changelog/README.md)
+- [changelogs/README.md](changelogs/README.md)
 
-## Licencia
+## License
 
 MIT
