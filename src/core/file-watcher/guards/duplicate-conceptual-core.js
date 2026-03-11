@@ -2,7 +2,9 @@ import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     generateAlternativeNames,
     shouldIgnoreConceptualDuplicateFinding,
-    classifyConceptualNoise
+    classifyConceptualNoise,
+    classifyContractSurface,
+    evaluateContractCompatibility
 } from '../../../shared/compiler/index.js';
 
 export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
@@ -28,6 +30,7 @@ export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCod
     return rows.map((row) => ({
         id: row.id,
         name: row.name,
+        filePath: normalizedFilePath,
         semanticFingerprint: row.semanticFingerprint,
         purposeType: row.purpose_type,
         linesOfCode: row.lines_of_code,
@@ -84,6 +87,14 @@ export function loadConceptualDuplicateRows(repo, normalizedFilePath, fingerprin
     `).all(normalizedFilePath, fingerprint);
 }
 
+function loadContractSurface(atomLike) {
+    return classifyContractSurface({
+        filePath: atomLike.filePath || atomLike.file_path,
+        purposeType: atomLike.purposeType || atomLike.purpose_type,
+        isExported: atomLike.isExported ?? atomLike.is_exported
+    });
+}
+
 function isNonCompetingLocalRole(purposeType) {
     return (
         purposeType === 'TEST_HELPER' ||
@@ -97,6 +108,15 @@ function isProductionApiRole(atom) {
 
 function isActionableConceptualPeer(localAtom, duplicate) {
     if (!duplicate) {
+        return false;
+    }
+
+    const compatibility = evaluateContractCompatibility(
+        loadContractSurface(localAtom),
+        loadContractSurface(duplicate)
+    );
+
+    if (!compatibility.compatible) {
         return false;
     }
 

@@ -157,6 +157,11 @@ export {
 } from './conceptual-noise-policy.js';
 
 export {
+  classifyContractSurface,
+  evaluateContractCompatibility
+} from './contract-taxonomy.js';
+
+export {
   COMPILER_TARGET_DIRS,
   discoverProjectSourceFiles,
   discoverCompilerFiles,
