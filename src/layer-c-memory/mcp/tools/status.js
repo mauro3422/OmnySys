@@ -16,6 +16,7 @@ import {
   loadCompilerDiagnosticsSnapshot,
   getSharedStateContentionSummary,
   buildTelemetryProvenance,
+  buildRuntimeCodeFreshness,
   summarizeSignalConfidence,
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
@@ -68,10 +69,11 @@ function buildRuntimeHotReloadStatus(server) {
   };
 }
 
-async function loadNotifications(projectPath) {
+async function loadNotifications(projectPath, server) {
   return normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
     clearLoggerBuffer: false,
-    watcherLimit: 20
+    watcherLimit: 20,
+    server
   }));
 }
 
@@ -275,7 +277,11 @@ export async function get_server_status(args, context) {
   const status = buildServerStatusEnvelope(server, projectPath, phase2InProgress);
   attachOrchestratorStatus(status, orchestrator);
   status.hotReload = buildRuntimeHotReloadStatus(server);
-  const notifications = await loadNotifications(projectPath);
+  status.runtimeCodeFreshness = buildRuntimeCodeFreshness({
+    runtimeRestartMode: status.hotReload.runtimeRestartMode,
+    pendingRuntimeRestartFiles: status.hotReload.pendingRuntimeRestart?.files || []
+  });
+  const notifications = await loadNotifications(projectPath, server);
   attachNotificationSignals(status, notifications);
 
   if (phase2InProgress) {
@@ -312,7 +318,8 @@ export async function get_recent_errors(args, context) {
   logger.info('[Tool] get_recent_errors()');
   const notifications = normalizeRecentNotifications(await collectRecentNotifications(context.projectPath, {
     clearLoggerBuffer: true,
-    watcherLimit: 20
+    watcherLimit: 20,
+    server: context.server
   }));
   const logs = notifications.logs || [];
   const watcherAlerts = notifications.watcherAlerts || [];
@@ -342,6 +349,7 @@ export async function get_recent_errors(args, context) {
       time: new Date(entry.time).toISOString()
     })),
     watcherAlerts,
+    runtimeCodeFreshness: notifications.provenance?.runtimeCodeFreshness || buildRuntimeCodeFreshness(),
     signalConfidence: notifications.signalConfidence,
     provenance: notifications.provenance
   };

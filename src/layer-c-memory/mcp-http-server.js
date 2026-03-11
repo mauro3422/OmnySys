@@ -205,7 +205,8 @@ async function executeMcpToolCall(request) {
     const { collectRecentNotifications, normalizeRecentNotifications } = await import('./mcp/core/recent-notifications.js');
     recentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
       clearLoggerBuffer: true,
-      watcherLimit: 10
+      watcherLimit: 10,
+      server: core
     }));
   } catch {
     // Optional logger extensions not available in all environments.

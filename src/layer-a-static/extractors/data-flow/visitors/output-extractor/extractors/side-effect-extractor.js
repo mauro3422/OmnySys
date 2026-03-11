@@ -8,27 +8,14 @@
  */
 
 import { extractSources } from './source-extractor.js';
-import { getMemberPath, text, startLine } from '../../../utils/ts-ast-utils.js';
+import {
+  getAssignmentTarget,
+  getCalleeName,
+  getMemberPath,
+  startLine,
+  text
+} from '../../../utils/ts-ast-utils.js';
 import { isSideEffectCall, classifySideEffect } from '../classifiers/side-effect-classifier.js';
-
-/**
- * Get callee name from function node
- * @param {Object} node - Tree-sitter node
- * @param {string} code - Source code
- * @returns {string|null}
- */
-function getCalleeName(node, code) {
-    if (!node) return null;
-    if (node.type === 'identifier') return text(node, code);
-    if (node.type === 'member_expression') return getMemberPath(node, code);
-    return null;
-}
-
-function getAssignmentTarget(node, code) {
-  if (node.type === 'identifier') return text(node, code);
-  if (node.type === 'member_expression') return getMemberPath(node, code);
-  return null;
-}
 
 /**
  * Extrae side effects de una expresión

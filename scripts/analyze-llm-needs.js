@@ -22,7 +22,7 @@ const { needsLLMAnalysis, computeMetadataCompleteness } = await import(
 /**
  * Simula el análisis de metadata completeness para un archivo
  */
-function analyzeFile(filePath, fileContent) {
+function analyzeFileMetadataSnapshot(filePath, fileContent) {
   // Simplificar: extraer info básica del archivo
   const imports = (fileContent.match(/import.*from\s+['"]([^'"]+)['"]/g) || [])
     .map(m => ({ source: m.match(/['"]([^'"]+)['"]/)?.[1] || '' }));
@@ -100,7 +100,7 @@ async function main() {
     
     try {
       const content = await fs.readFile(fullPath, 'utf-8');
-      const analysis = analyzeFile(filePath, content);
+      const analysis = analyzeFileMetadataSnapshot(filePath, content);
       
       // Clasificar por tipo
       if (analysis.isType) {

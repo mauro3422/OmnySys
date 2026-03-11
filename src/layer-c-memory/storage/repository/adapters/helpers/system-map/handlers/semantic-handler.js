@@ -44,25 +44,65 @@ function buildDerivedSemanticRows(db, now) {
   }));
 }
 
+function normalizeLegacyConnectionType(connectionType = '') {
+  if (/^eventListener|^eventListeners$/i.test(connectionType)) {
+    return 'eventListeners';
+  }
+
+  return 'sharedState';
+}
+
+function buildFallbackSemanticRows(connections, now) {
+  const grouped = new Map();
+
+  for (const conn of connections || []) {
+    const sourcePath = conn?.from || conn?.source_path || conn?.sourceFile || null;
+    const targetPath = conn?.to || conn?.target_path || conn?.targetFile || null;
+
+    if (!sourcePath || !targetPath) {
+      continue;
+    }
+
+    const connectionType = normalizeLegacyConnectionType(conn?.type || conn?.connection_type || 'sharedState');
+    const connectionKey = conn?.key || conn?.connectionKey || conn?.connection_key || null;
+    const groupKey = `${sourcePath}::${targetPath}::${connectionType}::${connectionKey || ''}`;
+    const existing = grouped.get(groupKey);
+
+    if (existing) {
+      existing.weight += typeof conn?.weight === 'number' ? conn.weight : 1.0;
+      continue;
+    }
+
+    grouped.set(groupKey, {
+      source_path: sourcePath,
+      target_path: targetPath,
+      connection_type: connectionType,
+      connection_key: connectionKey,
+      weight: typeof conn?.weight === 'number' ? conn.weight : 1.0,
+      context_json: safeJson({
+        derivedFrom: 'legacy_semantic_connections',
+        originalType: conn?.type || conn?.connection_type || 'unknown',
+        key: connectionKey
+      }),
+      created_at: now,
+      is_removed: 0,
+      updated_at: now,
+      lifecycle_status: 'active'
+    });
+  }
+
+  return [...grouped.values()];
+}
+
 export function saveSemanticData(db, connections, issues, now) {
   const repo = new BaseSqlRepository(db, 'SemanticHandler');
 
   // Connections
   repo.clearTable('semantic_connections');
-  const connRows = connections?.length
-    ? connections.map(conn => ({
-      source_path: conn.from,
-      target_path: conn.to,
-      connection_type: conn.type || 'unknown',
-      connection_key: conn.key || conn.connectionKey || null,
-      weight: typeof conn.weight === 'number' ? conn.weight : 1.0,
-      context_json: safeJson(conn.metadata),
-      created_at: now,
-      is_removed: 0,
-      updated_at: now,
-      lifecycle_status: 'active'
-    }))
-    : buildDerivedSemanticRows(db, now);
+  const derivedRows = buildDerivedSemanticRows(db, now);
+  const connRows = derivedRows.length > 0
+    ? derivedRows
+    : buildFallbackSemanticRows(connections, now);
 
   if (connRows.length) {
     repo.saveTableRows('semantic_connections',
@@ -89,6 +129,25 @@ export function saveSemanticData(db, connections, issues, now) {
       issueRows
     );
   }
+}
+
+export function syncSemanticConnectionsFromRelations(db, now = Date.now()) {
+  const repo = new BaseSqlRepository(db, 'SemanticHandler');
+  const connRows = buildDerivedSemanticRows(db, now);
+
+  repo.clearTable('semantic_connections');
+
+  if (connRows.length > 0) {
+    repo.saveTableRows('semantic_connections',
+      ['source_path', 'target_path', 'connection_type', 'connection_key', 'weight', 'context_json', 'created_at', 'is_removed', 'updated_at', 'lifecycle_status'],
+      connRows
+    );
+  }
+
+  return {
+    total: connRows.length,
+    derivedFrom: 'atom_relations'
+  };
 }
 
 export function loadSemanticConnections(db) {

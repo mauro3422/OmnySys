@@ -167,18 +167,20 @@ function estimateEffort(item) {
  * Handler principal para prioritized_backlog
  */
 export async function handlePrioritizedBacklog(tool, projectPath, options = {}) {
-    const { 
+  const { 
         limit = 20, 
         minScore = 0.3, 
         severity = ['high', 'medium', 'low'],
-        includePredicted = true 
+        includePredicted = true,
+        server = null
     } = options;
 
     // 1. Recolectar fuentes de datos
     const [notifications, riskData] = await Promise.all([
         normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
             clearLoggerBuffer: false,
-            watcherLimit: 100
+            watcherLimit: 100,
+            server
         })),
         getRiskAssessment(projectPath).catch(() => ({ hotspots: [] }))
     ]);

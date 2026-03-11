@@ -80,7 +80,7 @@ export async function analyzeFileLogic(filePath, options = {}) {
   }
 }
 
-export async function analyzeFile(filePath) {
+export async function runAnalyzeFileCommand(filePath) {
   const result = await analyzeFileLogic(filePath);
   process.exit(result.exitCode);
 }

@@ -59,7 +59,8 @@ export {
 } from './signal-confidence.js';
 
 export {
-  buildTelemetryProvenance
+  buildTelemetryProvenance,
+  buildRuntimeCodeFreshness
 } from './telemetry-provenance.js';
 
 export {
@@ -149,6 +150,11 @@ export {
 export {
   buildCanonicalReuseGuidance
 } from './canonical-reuse-guidance.js';
+
+export {
+  parseSemanticFingerprint,
+  classifyConceptualNoise
+} from './conceptual-noise-policy.js';
 
 export {
   COMPILER_TARGET_DIRS,

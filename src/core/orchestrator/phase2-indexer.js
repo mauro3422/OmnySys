@@ -202,6 +202,7 @@ export class Phase2Indexer {
 
                         // Conceptual duplicates
                         const conceptualGroups = debtRepo.findConceptualDuplicates ? debtRepo.findConceptualDuplicates({ limit: 50 }) : [];
+                        const conceptualSummary = conceptualGroups?.summary || null;
 
                         // Pipeline orphans
                         const orphanSummary = getPipelineOrphanSummary(debtRepo.db);
@@ -212,7 +213,10 @@ export class Phase2Indexer {
 
                         await clearWatcherIssue(this.projectPath, 'project-wide', 'technical_debt_report');
 
-                        const totalDebtItems = (structuralRemediation?.totalGroups || 0) + (conceptualGroups?.length || 0) + (orphanSummary?.total || 0);
+                        const totalDebtItems =
+                            (structuralRemediation?.totalGroups || 0) +
+                            (conceptualSummary?.actionable?.groupCount || conceptualGroups?.length || 0) +
+                            (orphanSummary?.total || 0);
                         if (totalDebtItems > 0) {
                             await persistWatcherIssue(
                                 this.projectPath,
@@ -229,7 +233,9 @@ export class Phase2Indexer {
                                         topIssues: structuralRemediation?.items?.slice(0, 5) || []
                                     },
                                     conceptual: {
-                                        groups: conceptualGroups.length,
+                                        groups: conceptualSummary?.actionable?.groupCount || conceptualGroups.length,
+                                        rawGroups: conceptualSummary?.raw?.groupCount || conceptualGroups.length,
+                                        noiseByClass: conceptualSummary?.noiseByClass || {},
                                         topIssues: conceptualGroups.slice(0, 5).map(g => ({
                                             fingerprint: g.semanticFingerprint,
                                             implementationCount: g.implementationCount

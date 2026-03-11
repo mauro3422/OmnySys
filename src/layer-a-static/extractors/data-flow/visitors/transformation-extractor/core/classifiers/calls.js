@@ -1,10 +1,5 @@
-import { getMemberPath, text } from '../../../../utils/ts-ast-utils.js';
+import { getCalleeName } from '../../../../utils/ts-ast-utils.js';
 import { OPERATION_TYPES } from '../operation-types.js';
-
-function getCalleeName(node, code) {
-    if (!node) return '<anonymous>';
-    return getMemberPath(node, code) || text(node, code) || '<anonymous>';
-}
 
 export function classifyCall(node, code) {
     if (node.type !== 'call_expression') return null;

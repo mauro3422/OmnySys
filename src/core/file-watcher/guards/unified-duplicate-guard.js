@@ -70,7 +70,7 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         return { structural: [], conceptual: [], coordinated: null };
     }
 
-    logger.warn(`[UNIFIED DUPLICATE GUARD] STARTING for ${normalizedFilePath}`);
+    logger.debug(`[UNIFIED DUPLICATE GUARD] STARTING for ${normalizedFilePath}`);
 
     try {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -96,9 +96,12 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             conceptualPromise
         ]);
 
-        logger.warn(
-            `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: structural=${structuralFindings.length}, conceptual=${conceptualFindings.length}`
-        );
+        const resultMessage = `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: structural=${structuralFindings.length}, conceptual=${conceptualFindings.length}`;
+        if (structuralFindings.length > 0 || conceptualFindings.length > 0) {
+            logger.warn(resultMessage);
+        } else {
+            logger.debug(resultMessage);
+        }
 
         const coordinated = coordinateDuplicateFindings(structuralFindings, conceptualFindings);
         const allFindings = [...structuralFindings, ...conceptualFindings];

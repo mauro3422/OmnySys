@@ -1,4 +1,3 @@
-﻿import { generateSessionId } from '../tunnel-vision-logger/utils/session.js';
 import { statsPool } from '../../shared/utils/stats-pool.js';
 
 /**
@@ -29,12 +28,3 @@ export function shouldIgnore(filePath) {
  * Obtiene estadísticas del watcher
  */
 export const getStats = (...args) => statsPool.getStats('watcher', ...args);
-/**
- * Registra un evento de tunnel vision detectado
- */
-export async function logTunnelVisionEvent(alert) {
-  const { logTunnelVisionEvent } = await import('../tunnel-vision-logger/index.js');
-  return await logTunnelVisionEvent(alert, {
-    sessionId: this._sessionId || generateSessionId()
-  });
-}

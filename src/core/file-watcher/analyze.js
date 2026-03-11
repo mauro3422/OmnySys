@@ -85,6 +85,18 @@ export async function analyzeFile(filePath, fullPath) {
       extractedAt: new Date().toISOString()
     });
 
+    try {
+      const [{ saveSharedStateRelationsIncrementally }, { persistGraphMetrics }] = await Promise.all([
+        import('#layer-a/pipeline/link.js'),
+        import('#layer-c/storage/enrichment/index.js')
+      ]);
+
+      await saveSharedStateRelationsIncrementally(moleculeAtoms, this.rootPath, false);
+      await persistGraphMetrics(this.rootPath, moleculeAtoms.map((atom) => atom.id));
+    } catch (relationError) {
+      logger.warn(`⚠️ Incremental semantic sync failed for ${filePath}: ${relationError.message}`);
+    }
+
     const contentHash = await _calculateContentHash(fullPath);
     const result = buildFileResult(filePath, parsed, result_core.parsed.imports || [], [], [], metadata, moleculeAtoms, contentHash);
 

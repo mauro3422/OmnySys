@@ -1,4 +1,3 @@
-import { statsPool } from '../shared/utils/stats-pool.js';
 /**
  * @fileoverview atomic-cache.js
  *
@@ -151,9 +150,22 @@ export class AtomicCache {
   /**
    * Obtiene estadísticas del caché
    */
-getStats() {
-    return statsPool.getStats('atomic-cache');
-  }  /**
+  getStats() {
+    let memoryBytes = 0;
+    for (const item of this.atoms.values()) {
+      memoryBytes += JSON.stringify(item.data).length;
+    }
+
+    return {
+      atomsCached: this.atoms.size,
+      derivationsCached: this.derivations.cache.size,
+      filesTracked: this.fileToAtoms.size,
+      memoryUsageKB: Math.round(memoryBytes / 1024),
+      derivationStats: this.derivations.getStats()
+    };
+  }
+
+  /**
    * Limpia todo el caché
    */
   clear() {

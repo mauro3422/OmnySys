@@ -75,17 +75,23 @@ export function nodeToString(node) {
   return `<${node.type}>`;
 }
 
+export function isFunctionNode(node) {
+  return !!(node && (
+    node.type === 'FunctionDeclaration' ||
+    node.type === 'FunctionExpression' ||
+    node.type === 'ArrowFunctionExpression' ||
+    node.type === 'ClassMethod' ||
+    node.type === 'ObjectMethod'
+  ));
+}
+
 /**
  * Encuentra el nodo de función en el AST
  * @param {Object} ast - AST completo
  * @returns {Object|null}
  */
 export function findFunctionNode(ast) {
-  if (ast && (ast.type === 'FunctionDeclaration' ||
-              ast.type === 'FunctionExpression' ||
-              ast.type === 'ArrowFunctionExpression' ||
-              ast.type === 'ClassMethod' ||
-              ast.type === 'ObjectMethod')) {
+  if (isFunctionNode(ast)) {
     return ast;
   }
 
@@ -96,8 +102,7 @@ export function findFunctionNode(ast) {
       // const fn = () => {} or const fn = function() {}
       if (node.type === 'VariableDeclaration') {
         for (const decl of node.declarations) {
-          if (decl.init?.type === 'ArrowFunctionExpression' ||
-              decl.init?.type === 'FunctionExpression') {
+          if (isFunctionNode(decl.init)) {
             return decl.init;
           }
         }
@@ -109,8 +114,7 @@ export function findFunctionNode(ast) {
         // export const fn = () => {}
         if (node.declaration?.type === 'VariableDeclaration') {
           for (const decl of node.declaration.declarations) {
-            if (decl.init?.type === 'ArrowFunctionExpression' ||
-                decl.init?.type === 'FunctionExpression') {
+            if (isFunctionNode(decl.init)) {
               return decl.init;
             }
           }
@@ -118,9 +122,7 @@ export function findFunctionNode(ast) {
       }
       if (node.type === 'ExportDefaultDeclaration') {
         const decl = node.declaration;
-        if (decl?.type === 'FunctionDeclaration' ||
-            decl?.type === 'FunctionExpression' ||
-            decl?.type === 'ArrowFunctionExpression') {
+        if (isFunctionNode(decl)) {
           return decl;
         }
       }
@@ -134,6 +136,7 @@ export default {
   getMemberPath,
   getCalleeName,
   getIdentifierName,
+  isFunctionNode,
   getAssignmentTarget,
   nodeToString,
   findFunctionNode

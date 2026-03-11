@@ -119,9 +119,42 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
   // Métodos antiguos mantenidos por compatibilidad pero delegando a handlers
   saveManyBulk(atoms) {
-    return connectionManager.transaction(() =>
-      this.atomHandler.handle(atoms, new Date().toISOString(), (p) => this._normalize(p))
-    );
+    if (!atoms || atoms.length === 0) return atoms;
+
+    const now = new Date().toISOString();
+    const msNow = Date.now();
+    const normalizePath = (value) => this._normalize(value);
+    const groupedByFile = new Map();
+
+    for (const atom of atoms) {
+      const rawFilePath = atom.file_path || atom.file || atom.filePath || 'unknown';
+      const filePath = normalizePath(rawFilePath);
+      if (!groupedByFile.has(filePath)) {
+        groupedByFile.set(filePath, []);
+      }
+      groupedByFile.get(filePath).push(atom);
+    }
+
+    const existingIds = new Set();
+    const selectExistingStmt = this.db.prepare('SELECT id FROM atoms WHERE file_path = ?');
+
+    for (const filePath of groupedByFile.keys()) {
+      const rows = selectExistingStmt.all(filePath);
+      for (const row of rows) {
+        existingIds.add(row.id);
+      }
+    }
+
+    connectionManager.transaction(() => {
+      this.atomHandler.handle(atoms, now, normalizePath);
+
+      for (const [filePath, fileAtoms] of groupedByFile.entries()) {
+        this._updateFileMetadata(filePath, fileAtoms, null, now);
+      }
+    });
+
+    this.eventHandler.handle(atoms, existingIds, now, msNow, normalizePath);
+    return atoms;
   }
 
   saveRelationsBulk(relations) {

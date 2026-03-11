@@ -17,7 +17,11 @@ export function buildTelemetryProvenance({
 } = {}) {
   const pendingFiles = Array.isArray(pendingRuntimeRestartFiles) ? pendingRuntimeRestartFiles : [];
   const settling = Number(phase2PendingFiles || 0) > 0;
-  const restartPending = pendingFiles.length > 0;
+  const runtimeCodeFreshness = buildRuntimeCodeFreshness({
+    runtimeRestartMode,
+    pendingRuntimeRestartFiles: pendingFiles
+  });
+  const restartPending = runtimeCodeFreshness.restartRequired;
   const liveRowSummary = liveRowSync?.summary || null;
 
   return {
@@ -27,12 +31,15 @@ export function buildTelemetryProvenance({
       runtimeRestartMode,
       restartPending,
       pendingRuntimeRestartFiles: pendingFiles.slice(0, 10),
+      runtimeCodeFresh: runtimeCodeFreshness.runtimeCodeFresh,
+      staleToolModules: runtimeCodeFreshness.staleToolModules,
       liveRowSynchronized: Boolean(liveRowSummary) ? ((liveRowSummary.staleFileRows || 0) === 0 && (liveRowSummary.staleRiskRows || 0) === 0) : null,
       watcherLifecycle: watcherLifecycle || null
     },
+    runtimeCodeFreshness,
     trustHints: [
       settling ? 'Global telemetry is still settling because Phase 2 work is pending.' : 'Phase 2 telemetry is settled.',
-      restartPending ? 'Runtime code changed and a manual restart is still pending.' : 'No runtime restart is pending.',
+      runtimeCodeFreshness.summary,
       liveRowSummary
         ? ((liveRowSummary.staleFileRows || 0) === 0 && (liveRowSummary.staleRiskRows || 0) === 0
           ? 'Support tables are synchronized with live atoms.'
@@ -42,3 +49,21 @@ export function buildTelemetryProvenance({
   };
 }
 
+export function buildRuntimeCodeFreshness({
+  runtimeRestartMode = 'manual',
+  pendingRuntimeRestartFiles = []
+} = {}) {
+  const pendingFiles = Array.isArray(pendingRuntimeRestartFiles) ? pendingRuntimeRestartFiles : [];
+  const staleToolModules = pendingFiles.slice(0, 20);
+  const restartRequired = staleToolModules.length > 0;
+
+  return {
+    runtimeRestartMode,
+    runtimeCodeFresh: !restartRequired,
+    restartRequired,
+    staleToolModules,
+    summary: restartRequired
+      ? `Runtime code is stale for ${staleToolModules.length} module(s); restart is required to load the latest tool/runtime code.`
+      : 'Runtime code is fresh for the currently loaded tool/runtime modules.'
+  };
+}

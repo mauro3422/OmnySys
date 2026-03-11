@@ -144,7 +144,8 @@ export class McpSetupStep extends InitializationStep {
     try {
       recentErrors = normalizeRecentNotifications(await collectRecentNotifications(server.projectPath, {
         clearLoggerBuffer: true,
-        watcherLimit: 10
+        watcherLimit: 10,
+        server
       }));
     } catch (e) {
       // Ignore - logger may not have these functions yet

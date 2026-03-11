@@ -7,12 +7,7 @@
  * @version 1.0.0
  */
 
-import { startLine, text, getMemberPath } from '../../../utils/ts-ast-utils.js';
-
-function getCalleeName(node, code) {
-  if (!node) return '<anonymous>';
-  return getMemberPath(node, code) || text(node, code) || '<anonymous>';
-}
+import { startLine, text, getCalleeName } from '../../../utils/ts-ast-utils.js';
 
 function nodeToString(node, code) {
   if (!node) return 'undefined';

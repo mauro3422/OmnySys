@@ -1,4 +1,3 @@
-import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Tunnel Vision Detector - Modular Architecture
  * 
@@ -104,8 +103,16 @@ export class TunnelVisionDetector {
    * @returns {Object}
    */
   getStats() {
-    return statsPool.getStats('index');
-  }  /**
+    return {
+      tracker: this.tracker.getStats(),
+      atomicDetector: this.detectors.atomic.getStats?.() || null,
+      fileDetector: this.detectors.file.getStats?.() || null,
+      minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS,
+      recentWindowMs: RECENT_WINDOW_MS
+    };
+  }
+
+  /**
    * Gets modification history
    * @returns {Array}
    */
@@ -158,8 +165,9 @@ export function formatAlert(alert) {
  * Gets statistics (convenience function)
  * @returns {Object}
  */
-import { statsPool } from '../../shared/utils/stats-pool.js';
-export const getStats = (...args) => statsPool.getStats('tunnel-vision', ...args);
+export function getStats() {
+  return detector.getStats();
+}
 /**
  * Gets modification history (convenience function)
  * @returns {Array}
@@ -193,4 +201,3 @@ export {
 };
 
 export default TunnelVisionDetector;
-

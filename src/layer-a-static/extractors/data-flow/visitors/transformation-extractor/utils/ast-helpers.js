@@ -7,26 +7,22 @@
  * @version 1.0.0
  */
 
+import {
+  getAssignmentTarget as getSharedAssignmentTarget,
+  getCalleeName as getSharedCalleeName,
+  findFunctionNode as getSharedFunctionNode,
+  getIdentifierName as getSharedIdentifierName,
+  isFunctionNode as isSharedFunctionNode,
+  getMemberPath as getSharedMemberPath
+} from '../../output-extractor/helpers/ast-helpers.js';
+
 /**
  * Obtiene el path de un member expression
  * @param {Object} node - Nodo AST
  * @returns {string|null} - Path en formato "obj.prop" o null
  */
 export function getMemberPath(node) {
-  if (node.type === 'Identifier') {
-    return node.name;
-  }
-  if (node.type === 'ThisExpression') {
-    return 'this';
-  }
-  if (node.type === 'MemberExpression') {
-    const object = getMemberPath(node.object);
-    const property = node.computed 
-      ? getIdentifierName(node.property) || '[computed]'
-      : (node.property.name || node.property.value);
-    return object ? `${object}.${property}` : null;
-  }
-  return null;
+  return getSharedMemberPath(node);
 }
 
 /**
@@ -35,13 +31,7 @@ export function getMemberPath(node) {
  * @returns {string} - Nombre de la función o '<anonymous>'
  */
 export function getCalleeName(node) {
-  if (node.type === 'Identifier') {
-    return node.name;
-  }
-  if (node.type === 'MemberExpression') {
-    return getMemberPath(node);
-  }
-  return '<anonymous>';
+  return getSharedCalleeName(node);
 }
 
 /**
@@ -50,9 +40,7 @@ export function getCalleeName(node) {
  * @returns {string|null} - Nombre o null
  */
 export function getIdentifierName(node) {
-  if (node.type === 'Identifier') return node.name;
-  if (node.type === 'ThisExpression') return 'this';
-  return null;
+  return getSharedIdentifierName(node);
 }
 
 /**
@@ -61,13 +49,7 @@ export function getIdentifierName(node) {
  * @returns {string|null} - Nombre del target o null
  */
 export function getAssignmentTarget(node) {
-  if (node.type === 'Identifier') {
-    return node.name;
-  }
-  if (node.type === 'MemberExpression') {
-    return getMemberPath(node);
-  }
-  return null;
+  return getSharedAssignmentTarget(node);
 }
 
 /**
@@ -76,12 +58,7 @@ export function getAssignmentTarget(node) {
  * @returns {boolean} - True si es función
  */
 export function isFunctionNode(node) {
-  if (!node) return false;
-  return node.type === 'FunctionDeclaration' ||
-         node.type === 'FunctionExpression' ||
-         node.type === 'ArrowFunctionExpression' ||
-         node.type === 'ClassMethod' ||
-         node.type === 'ObjectMethod';
+  return isSharedFunctionNode(node);
 }
 
 /**
@@ -94,35 +71,7 @@ export function findFunctionNode(ast) {
     return ast;
   }
 
-  if (ast?.type === 'File' && ast.program) {
-    const body = ast.program.body || [];
-    for (const node of body) {
-      if (node.type === 'FunctionDeclaration') return node;
-      // const fn = () => {} or const fn = function() {}
-      if (node.type === 'VariableDeclaration') {
-        for (const decl of node.declarations) {
-          if (isFunctionNode(decl.init)) return decl.init;
-        }
-      }
-      if (node.type === 'ExportNamedDeclaration') {
-        if (node.declaration?.type === 'FunctionDeclaration') {
-          return node.declaration;
-        }
-        // export const fn = () => {}
-        if (node.declaration?.type === 'VariableDeclaration') {
-          for (const decl of node.declaration.declarations) {
-            if (isFunctionNode(decl.init)) return decl.init;
-          }
-        }
-      }
-      if (node.type === 'ExportDefaultDeclaration') {
-        const decl = node.declaration;
-        if (isFunctionNode(decl)) return decl;
-      }
-    }
-  }
-
-  return null;
+  return getSharedFunctionNode(ast);
 }
 
 /**

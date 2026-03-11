@@ -133,6 +133,7 @@ export class SemanticQueryTool extends GraphQueryTool {
         const rows = repo.findConceptualDuplicates ?
             repo.findConceptualDuplicates(options) :
             this._queryConceptualDuplicates(repo.db, options);
+        const repoSummary = rows?.summary || null;
 
         // Map rows to group objects with chest info
         const groups = rows.map(row => {
@@ -167,7 +168,15 @@ export class SemanticQueryTool extends GraphQueryTool {
 
         return {
             aggregationType: 'conceptual_duplicates',
-            summary,
+            summary: {
+                ...summary,
+                rawGroups: repoSummary?.raw?.groupCount ?? summary.totalGroups,
+                rawImplementations: repoSummary?.raw?.implementationCount ?? summary.totalImplementations,
+                actionableGroups: repoSummary?.actionable?.groupCount ?? summary.totalGroups,
+                actionableImplementations: repoSummary?.actionable?.implementationCount ?? summary.totalImplementations,
+                noiseByClass: repoSummary?.noiseByClass || {},
+                chestDistribution: repoSummary?.chestDistribution || {}
+            },
             total: groups.length,
             groups,
             remediation: groups.length > 0 ? this._buildConceptualRemediation(summary) : null

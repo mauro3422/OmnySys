@@ -7,6 +7,16 @@
  */
 
 import fs from 'fs/promises';
+import { fileExists as resolverFileExists } from '../../../layer-a-static/resolver/resolver-fs.js';
+
+/**
+ * Verifica si un archivo existe
+ * @param {string} filePath - Ruta del archivo
+ * @returns {Promise<boolean>} - true si existe
+ */
+export async function fileExists(filePath) {
+  return resolverFileExists(filePath);
+}
 
 /**
  * Lee un archivo JSON de forma segura
@@ -34,19 +44,9 @@ export async function readJSON(filePath) {
  * @returns {Promise<object[]>} - Array de contenidos
  */
 export async function readMultipleJSON(filePaths) {
-  return Promise.all(filePaths.map(readJSON));
-}
-
-/**
- * Verifica si un archivo existe antes de leer
- * @param {string} filePath - Ruta del archivo
- * @returns {Promise<boolean>}
- */
-export async function fileExists(filePath) {
   try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
+    return await Promise.all(filePaths.map(readJSON));
+  } catch (error) {
+    throw new Error(`Failed to read multiple JSON files: ${error.message}`);
   }
 }

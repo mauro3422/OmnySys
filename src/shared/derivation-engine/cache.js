@@ -1,4 +1,3 @@
-import { statsPool } from '../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Derivation Cache
  * 
@@ -105,9 +104,19 @@ export class DerivationCache {
    * Obtiene estadísticas de la cache
    * @returns {Object} - Cache stats
    */
-getStats() {
-    return statsPool.getStats('cache');
-  }  /**
+  getStats() {
+    const total = this.stats.hits + this.stats.misses;
+
+    return {
+      size: this.cache.size,
+      dependencyNodes: this.dependencyGraph.size,
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      hitRate: total === 0 ? 0 : this.stats.hits / total
+    };
+  }
+
+  /**
    * Verifica si una key está en cache
    * @param {string} cacheKey - Key a verificar
    * @returns {boolean} - True si está cacheada

@@ -65,6 +65,17 @@ export function getMemberPath(node, code) {
     return null;
 }
 
+/**
+ * Get callee name from a call/new target
+ * @param {Object} node - Tree-sitter node
+ * @param {string} code - Source code
+ * @returns {string}
+ */
+export function getCalleeName(node, code) {
+    if (!node) return '<anonymous>';
+    return getMemberPath(node, code) || text(node, code) || '<anonymous>';
+}
+
 export const FUNCTION_NODE_TYPES = [
     'function_declaration',
     'function_expression',
@@ -121,6 +132,7 @@ export default {
     endLine,
     getIdentifierName,
     getMemberPath,
+    getCalleeName,
     getAssignmentTarget,
     findFunctionNode,
     FUNCTION_NODE_TYPES,

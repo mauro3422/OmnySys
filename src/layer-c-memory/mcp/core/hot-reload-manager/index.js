@@ -1,4 +1,3 @@
-import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview File Change Watcher Manager
  *
@@ -125,9 +124,22 @@ export class HotReloadManager {
    * Gets hot-reload statistics
    * @returns {Object}
    */
-getStats() {
-    return statsPool.getStats('index');
-  }}
+  getStats() {
+    const status = this.reloadHandler.getStatus();
+
+    return {
+      isWatching: this.fileWatcher?.isWatching() || false,
+      isReloading: status.isReloading,
+      runtimeRestartMode: this.server?.runtimeRestartMode || 'manual',
+      pendingRuntimeRestart: {
+        scheduled: !!this.server?._hotReloadRestartScheduled,
+        files: Array.from(this.server?._pendingHotReloadRestartFiles || [])
+      },
+      criticalModules: this.classifier.getCriticalModules().length,
+      reloadablePatterns: this.classifier.getPatterns().length
+    };
+  }
+}
 
 // Export all components for advanced usage
 export {

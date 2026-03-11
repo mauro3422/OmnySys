@@ -6,19 +6,14 @@
  * @module layer-a-static/resolver/resolver-fs
  */
 
-import fs from 'fs/promises';
 import path from 'path';
+import fs from 'fs/promises';
 
 const SUPPORTED_EXTENSIONS = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.json'];
 
-/**
- * Verifica si un archivo existe
- * @param {string} filePath - Ruta del archivo
- * @returns {Promise<boolean>}
- */
 export async function fileExists(filePath) {
   try {
-    await fs.stat(filePath);
+    await fs.access(filePath);
     return true;
   } catch {
     return false;

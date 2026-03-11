@@ -85,23 +85,21 @@ export async function consolidate_conceptual_cluster(args, context) {
                 // Lógica de reemplazo básica para Prototipo
                 let replacement;
                 if (duplicate.atom_type === 'method') {
-                    // Si el nombre es idéntico, la delegación por nombre falla (recursión)
-                    // En el caso especial de getStats, usamos statsPool si es detectado
                     if (duplicate.name === ssotAtom.name) {
-                        replacement = `${duplicate.name}() {\n    // Delegación segura vía SSOT global\n    return statsPool.getStats('${duplicate.file_path.split('/').pop().replace('.js', '')}');\n  }`;
-                    } else {
-                        replacement = `${duplicate.name}() {\n    return ${ssotAtom.name}.apply(this, arguments);\n  }`;
+                        action.status = 'error';
+                        action.error = `Unsafe auto-consolidation: method '${duplicate.name}' matches the SSOT symbol name. Manual refactor required.`;
+                        results.actions.push(action);
+                        continue;
                     }
+                    replacement = `${duplicate.name}() {\n    return ${ssotAtom.name}.apply(this, arguments);\n  }`;
                 } else {
-                    replacement = `export const ${duplicate.name} = (...args) => ${ssotAtom.name}(...args);`;
+                    replacement = `import { ${ssotAtom.name} } from '${relPath}';\n\nexport const ${duplicate.name} = (...args) => ${ssotAtom.name}(...args);`;
                 }
 
                 action.type = duplicate.atom_type;
                 action.suggestion = replacement;
 
                 if (execute) {
-                    const content = await fs.readFile(path.join(projectPath, duplicate.file_path), 'utf-8');
-
                     // Estrategia de reemplazo por símbolo:
                     // Buscamos la definición del símbolo original y la reemplazamos por la sugerencia
                     // NOTA: En un sistema productivo usaríamos un parser AST, 

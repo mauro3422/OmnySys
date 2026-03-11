@@ -18,7 +18,7 @@ vi.mock('#cli/commands/analyze.js', () => ({
 const { hasExistingAnalysis } = await import('#layer-c/storage/setup/index.js');
 const { indexProject } = await import('#layer-a/indexer.js');
 const { analyzeLogic } = await import('#cli/commands/analyze.js');
-const { analyzeFileLogic, analyzeFile } = await import('#cli/commands/analyze-file.js');
+const { analyzeFileLogic, runAnalyzeFileCommand } = await import('#cli/commands/analyze-file.js');
 
 describe('analyzeFileLogic', () => {
   let tempDir;
@@ -111,15 +111,15 @@ describe('analyzeFileLogic', () => {
   });
 });
 
-describe('analyzeFile', () => {
-  it('exports analyzeFile function', () => {
-    expect(typeof analyzeFile).toBe('function');
+describe('runAnalyzeFileCommand', () => {
+  it('exports runAnalyzeFileCommand function', () => {
+    expect(typeof runAnalyzeFileCommand).toBe('function');
   });
 
   it('calls process.exit with exitCode from logic', async () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {});
     
-    await analyzeFile(null);
+    await runAnalyzeFileCommand(null);
     
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();

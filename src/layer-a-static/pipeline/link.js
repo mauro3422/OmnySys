@@ -1,5 +1,6 @@
 import { startTimer } from '../../utils/performance-tracker.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { syncSemanticConnectionsFromRelations } from '#layer-c/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js';
 import { resolveClassInstantiationCalledBy } from './phases/calledby/class-instantiation-tracker.js';
 import { enrichWithCallerPattern } from './phases/atom-extraction/metadata/caller-pattern.js';
 import { buildAtomIndex, linkFunctionCalledBy } from './phases/calledby/function-linker.js';
@@ -236,6 +237,8 @@ export async function saveSharedStateRelations(allAtoms, absoluteRootPath, verbo
     }
 
     await _processSharedStateLinkage(db, allAtoms, verbose);
+    const syncResult = syncSemanticConnectionsFromRelations(db);
+    if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
 }
 
 /**
@@ -278,6 +281,8 @@ export async function saveSharedStateRelationsIncrementally(targetAtoms, absolut
 
     // 4. Procesar vinculación (aprovechando la lógica común)
     await _processSharedStateLinkage(db, allRelevantAtoms, verbose);
+    const syncResult = syncSemanticConnectionsFromRelations(db);
+    if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
 }
 
 /**

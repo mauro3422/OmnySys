@@ -6,23 +6,8 @@
  * @module function-cycle-classifier/utils/metadata
  */
 
-/**
- * Extrae metadatos SOLO de campos confirmados que existen
- */
-export function extractFunctionMetadata(atom) {
-  return {
-    name: atom.name,
-    complexity: atom.complexity || 0,
-    hasSideEffects: atom.hasSideEffects || false,
-    hasNetworkCalls: atom.hasNetworkCalls || false,
-    hasStorageAccess: atom.hasStorageAccess || false,
-    hasErrorHandling: atom.hasErrorHandling || false,
-    isAsync: atom.isAsync || false,
-    hasLifecycleHooks: atom.hasLifecycleHooks || false,
-    temporal: atom.temporal || {},
-    calls: atom.calls || []
-  };
-}
+export { extractFunctionMetadata } from '../extractors/metadata-extractor.js';
+import { extractFunctionMetadata } from '../extractors/metadata-extractor.js';
 
 /**
  * Build metadata index for cycle functions

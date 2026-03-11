@@ -2,7 +2,7 @@
  * @fileoverview conceptual-duplicate-risk.js
  *
  * Detecta duplicados conceptuales: funciones con mismo proposito semantico
- * pero diferentes implementaciones. Usa semanticFingerprint (verb:domain:entity)
+ * pero diferentes implementaciones. Usa semanticFingerprint (verb:chest:domain:entity)
  * para detectar "mirror atoms".
  *
  * @module core/file-watcher/guards/conceptual-duplicate-risk
@@ -109,7 +109,7 @@ async function persistConceptualDuplicateFinding(
         extraData: {
             conceptualDuplicateCount: findings.length,
             findings: findings.slice(0, maxFindings),
-            fingerprintFormat: 'verb:domain:entity',
+            fingerprintFormat: 'verb:chest:domain:entity',
             debtHistory: enrichedContext.debtHistory,
             recommendations: enrichedContext.recommendations
         }

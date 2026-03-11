@@ -9,7 +9,11 @@
 
 import { SQLiteCrudOperations } from './sqlite-crud-operations.js';
 import { rowToAtom } from './helpers/converters.js';
-import { shouldIgnoreConceptualDuplicateFinding } from '../../../../shared/compiler/index.js';
+import {
+  shouldIgnoreConceptualDuplicateFinding,
+  classifyConceptualNoise,
+  parseSemanticFingerprint
+} from '../../../../shared/compiler/index.js';
 import { buildSoftDeletePredicate } from './helpers/storage-predicate.js';
 import { appendAtomQueryFilters } from './helpers/query-filter-builder.js';
 import { isValidAtomVectorField, validateAtomSortField } from './helpers/query-field-policy.js';
@@ -19,6 +23,122 @@ import { isValidAtomVectorField, validateAtomSortField } from './helpers/query-f
  * Extiende CRUD con capacidades de busqueda
  */
 export class SQLiteQueryOperations extends SQLiteCrudOperations {
+  _loadConceptualDuplicateCandidateRows() {
+    const stmt = this.db.prepare(`
+      SELECT
+        id, name, file_path, atom_type, complexity, is_exported,
+        json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
+        json_extract(dna_json, '$.semanticHash') as semanticHash,
+        json_extract(dna_json, '$.structuralHash') as structuralHash
+      FROM atoms
+      WHERE atom_type IN ('function', 'method', 'arrow')
+        AND (is_removed IS NULL OR is_removed = 0)
+        AND (is_dead_code IS NULL OR is_dead_code = 0)
+        AND fingerprint IS NOT NULL
+        AND fingerprint != 'unknown:unknown:unknown'
+        AND fingerprint != 'unknown:unknown:unknown:unknown'
+      ORDER BY fingerprint, file_path
+    `);
+
+    return stmt.all()
+      .filter((row) => !shouldIgnoreConceptualDuplicateFinding(row.file_path, row.name, row.fingerprint))
+      .map((row) => ({
+        ...row,
+        noiseClass: classifyConceptualNoise(row.fingerprint, row.name)
+      }));
+  }
+
+  _buildConceptualDuplicateGroups(rows, minCount, limit) {
+    const groups = new Map();
+
+    for (const row of rows) {
+      const fingerprint = row.fingerprint;
+      if (!groups.has(fingerprint)) {
+        groups.set(fingerprint, []);
+      }
+
+      groups.get(fingerprint).push({
+        id: row.id,
+        name: row.name,
+        filePath: row.file_path,
+        atomType: row.atom_type,
+        complexity: row.complexity,
+        isExported: row.is_exported === 1,
+        semanticHash: row.semanticHash,
+        structuralHash: row.structuralHash
+      });
+    }
+
+    return Array.from(groups.entries())
+      .filter(([, atoms]) => atoms.length >= minCount)
+      .sort((left, right) => right[1].length - left[1].length)
+      .slice(0, limit)
+      .map(([fingerprint, atoms]) => {
+        const filePaths = [...new Set(atoms.map((atom) => atom.filePath))];
+        const { verb, chest, domain, entity } = parseSemanticFingerprint(fingerprint);
+
+        let risk = 'medium';
+        if (chest === 'lifecycle' || chest === 'telemetry') {
+          risk = 'low';
+        } else if (chest === 'logic' || chest === 'orchestration') {
+          risk = atoms.length >= 3 ? 'high' : 'medium';
+        }
+
+        return {
+          semanticFingerprint: fingerprint,
+          chest,
+          concept: { verb, chest, domain, entity },
+          implementationCount: atoms.length,
+          fileCount: filePaths.length,
+          files: filePaths,
+          implementations: atoms,
+          hasStructuralVariations: new Set(atoms.map((atom) => atom.structuralHash)).size > 1,
+          allExported: atoms.every((atom) => atom.isExported),
+          risk
+        };
+      });
+  }
+
+  getConceptualDuplicateStats(options = {}) {
+    const minCount = options.minCount || 2;
+    const limit = options.limit || 50;
+    const candidateRows = this._loadConceptualDuplicateCandidateRows();
+    const actionableRows = candidateRows.filter((row) => row.noiseClass === 'actionable');
+    const actionableGroups = this._buildConceptualDuplicateGroups(actionableRows, minCount, limit);
+
+    const rawGroups = new Map();
+    const noiseByClass = {};
+    const chestDistribution = {};
+
+    for (const row of candidateRows) {
+      const noiseClass = row.noiseClass || 'unknown';
+      const { chest } = parseSemanticFingerprint(row.fingerprint);
+
+      noiseByClass[noiseClass] = (noiseByClass[noiseClass] || 0) + 1;
+      chestDistribution[chest] = (chestDistribution[chest] || 0) + 1;
+
+      if (!rawGroups.has(row.fingerprint)) {
+        rawGroups.set(row.fingerprint, 0);
+      }
+      rawGroups.set(row.fingerprint, rawGroups.get(row.fingerprint) + 1);
+    }
+
+    const rawGroupCount = Array.from(rawGroups.values()).filter((count) => count >= minCount).length;
+    const actionableImplementations = actionableGroups.reduce((sum, group) => sum + group.implementationCount, 0);
+
+    return {
+      raw: {
+        implementationCount: candidateRows.length,
+        groupCount: rawGroupCount
+      },
+      actionable: {
+        implementationCount: actionableImplementations,
+        groupCount: actionableGroups.length
+      },
+      noiseByClass,
+      chestDistribution
+    };
+  }
 
   query(filter = {}, options = {}) {
     const whereClauses = [buildSoftDeletePredicate('', options.includeRemoved)];
@@ -101,7 +221,7 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
 
   /**
    * Find conceptual duplicates - functions with same semantic purpose but different implementations
-   * Groups by semanticFingerprint (format: verb:domain:entity)
+   * Groups by semanticFingerprint (format: verb:chest:domain:entity)
    * Optimized: Single query with in-memory grouping
    * @param {Object} options - Query options
    * @param {number} options.minCount - Minimum number of implementations to report (default: 2)
@@ -111,76 +231,12 @@ export class SQLiteQueryOperations extends SQLiteCrudOperations {
   findConceptualDuplicates(options = {}) {
     const minCount = options.minCount || 2;
     const limit = options.limit || 50;
-    const minEntitySpecificity = options.minEntitySpecificity || 3;
+    const candidateRows = this._loadConceptualDuplicateCandidateRows();
+    const actionableRows = candidateRows.filter((row) => row.noiseClass === 'actionable');
+    const groups = this._buildConceptualDuplicateGroups(actionableRows, minCount, limit);
+    const stats = this.getConceptualDuplicateStats(options);
 
-    const stmt = this.db.prepare(`
-      SELECT
-        id, name, file_path, atom_type, complexity, is_exported,
-        json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
-        json_extract(dna_json, '$.semanticHash') as semanticHash,
-        json_extract(dna_json, '$.structuralHash') as structuralHash
-      FROM atoms
-      WHERE atom_type IN ('function', 'method', 'arrow')
-        AND (is_removed IS NULL OR is_removed = 0)
-        AND (is_dead_code IS NULL OR is_dead_code = 0)
-        AND fingerprint IS NOT NULL
-        AND fingerprint != 'unknown:unknown:unknown'
-        AND fingerprint != 'unknown:unknown:unknown:unknown'
-      ORDER BY fingerprint, file_path
-    `);
-
-    const rows = stmt.all()
-      .filter((row) => !shouldIgnoreConceptualDuplicateFinding(row.file_path, row.name, row.fingerprint));
-
-    const groups = new Map();
-    for (const row of rows) {
-      const fingerprint = row.fingerprint;
-      if (!groups.has(fingerprint)) {
-        groups.set(fingerprint, []);
-      }
-
-      groups.get(fingerprint).push({
-        id: row.id,
-        name: row.name,
-        filePath: row.file_path,
-        atomType: row.atom_type,
-        complexity: row.complexity,
-        isExported: row.is_exported === 1,
-        semanticHash: row.semanticHash,
-        structuralHash: row.structuralHash
-      });
-    }
-
-    return Array.from(groups.entries())
-      .filter(([, atoms]) => atoms.length >= minCount)
-      .sort((left, right) => right[1].length - left[1].length)
-      .slice(0, limit)
-      .map(([fingerprint, atoms]) => {
-        const filePaths = [...new Set(atoms.map((atom) => atom.filePath))];
-        const parts = fingerprint.split(':');
-        const [verb, chest, domain, entity] = parts.length === 4 ? parts : [parts[0], 'legacy', parts[1], parts[2]];
-
-        // Centralized Risk Policy by Chest
-        let risk = 'medium';
-        if (chest === 'lifecycle' || chest === 'telemetry') {
-          risk = 'low';
-        } else if (chest === 'logic' || chest === 'orchestration') {
-          risk = atoms.length >= 3 ? 'high' : 'medium';
-        }
-
-        return {
-          semanticFingerprint: fingerprint,
-          chest,
-          concept: { verb, chest, domain, entity },
-          implementationCount: atoms.length,
-          fileCount: filePaths.length,
-          files: filePaths,
-          implementations: atoms,
-          hasStructuralVariations: new Set(atoms.map((atom) => atom.structuralHash)).size > 1,
-          allExported: atoms.every((atom) => atom.isExported),
-          risk
-        };
-      });
+    return Object.assign(groups, { summary: stats });
   }
 
   updateVectors(id, vectors) {

@@ -35,7 +35,15 @@ export async function getTechnicalDebtReport(args, context) {
         const report = {
             summary: {
                 structuralDuplicates: duplicatesResult.duplicates?.summary || {},
-                conceptualDuplicates: conceptualResult.summary || {},
+                conceptualDuplicates: {
+                    ...(conceptualResult.summary || {}),
+                    actionableGroups: conceptualResult.summary?.actionableGroups ?? conceptualResult.summary?.totalGroups ?? 0,
+                    actionableImplementations: conceptualResult.summary?.actionableImplementations ?? conceptualResult.summary?.totalImplementations ?? 0,
+                    rawGroups: conceptualResult.summary?.rawGroups ?? conceptualResult.summary?.totalGroups ?? 0,
+                    rawImplementations: conceptualResult.summary?.rawImplementations ?? conceptualResult.summary?.totalImplementations ?? 0,
+                    noiseByClass: conceptualResult.summary?.noiseByClass || {},
+                    chestDistribution: conceptualResult.summary?.chestDistribution || {}
+                },
                 pipelineHealth: {
                     score: pipelineHealthResult.healthScore || 0,
                     grade: pipelineHealthResult.grade || 'F',
@@ -54,9 +62,15 @@ export async function getTechnicalDebtReport(args, context) {
                 }))
             },
             conceptual: {
-                totalGroups: conceptualResult.summary?.totalGroups || 0,
-                totalImplementations: conceptualResult.summary?.totalImplementations || 0,
+                totalGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
+                actionableGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
+                rawGroups: conceptualResult.summary?.rawGroups || conceptualResult.summary?.totalGroups || 0,
+                totalImplementations: conceptualResult.summary?.actionableImplementations || conceptualResult.summary?.totalImplementations || 0,
+                actionableImplementations: conceptualResult.summary?.actionableImplementations || conceptualResult.summary?.totalImplementations || 0,
+                rawImplementations: conceptualResult.summary?.rawImplementations || conceptualResult.summary?.totalImplementations || 0,
                 highRiskGroups: conceptualResult.summary?.highRisk || 0,
+                noiseByClass: conceptualResult.summary?.noiseByClass || {},
+                chestDistribution: conceptualResult.summary?.chestDistribution || {},
                 topIssues: (conceptualResult.groups || []).slice(0, 5).map(group => ({
                     fingerprint: group.semanticFingerprint,
                     concept: group.concept,
@@ -76,7 +90,7 @@ export async function getTechnicalDebtReport(args, context) {
             },
             debtScore: calculateDebtScore({
                 structuralGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
-                conceptualGroups: conceptualResult.summary?.totalGroups || 0,
+                conceptualGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
                 highRiskConceptual: conceptualResult.summary?.highRisk || 0,
                 pipelineOrphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
             }),

@@ -1,8 +1,8 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
 import { syncRuntimeTableHealthIssues } from '../../../core/diagnostics/runtime-table-health.js';
 import {
-  buildRestartLifecycleGuidance,
   buildTelemetryProvenance,
+  buildRuntimeCodeFreshness,
   classifySignalConfidence,
   summarizeCompilerDiagnostics,
   summarizeSignalConfidence,
@@ -24,30 +24,73 @@ function mapLoggerEntry(entry) {
   };
 }
 
-function buildNotificationsProvenance(watcherLifecycle, watcherEntries = []) {
-  // Note: This function shares semantic fingerprint with buildTelemetryProvenance
-  // Both implement 'build:core:provenance' - consider consolidation
-  const restartGuidance = buildRestartLifecycleGuidance({
-    proxyManaged: true,
-    trueRestart: false,
-    inProcessOnly: true
+function getRuntimeRestartState(server) {
+  return {
+    runtimeRestartMode: server?.runtimeRestartMode || 'manual',
+    pendingRuntimeRestartFiles: Array.from(server?._pendingHotReloadRestartFiles || [])
+  };
+}
+
+function inferRuntimeRestartStateFromLogs(loggerEntries = []) {
+  const pendingFiles = new Set();
+
+  for (const entry of loggerEntries) {
+    const message = String(entry?.message || '');
+    const match = message.match(/queued manual runtime restart:\s*(.+)$/i);
+    if (!match) {
+      continue;
+    }
+
+    for (const rawFile of match[1].split(',')) {
+      const file = rawFile.trim();
+      if (file) {
+        pendingFiles.add(file);
+      }
+    }
+  }
+
+  return {
+    runtimeRestartMode: 'manual',
+    pendingRuntimeRestartFiles: Array.from(pendingFiles)
+  };
+}
+
+function buildNotificationsProvenance(watcherLifecycle, watcherEntries = [], server = null, loggerEntries = []) {
+  const runtimeRestartState = getRuntimeRestartState(server);
+  const inferredRestartState = inferRuntimeRestartStateFromLogs(loggerEntries);
+  const pendingRuntimeRestartFiles = runtimeRestartState.pendingRuntimeRestartFiles.length > 0
+    ? runtimeRestartState.pendingRuntimeRestartFiles
+    : inferredRestartState.pendingRuntimeRestartFiles;
+  const runtimeRestartMode = runtimeRestartState.runtimeRestartMode || inferredRestartState.runtimeRestartMode;
+  const runtimeCodeFreshness = buildRuntimeCodeFreshness({
+    pendingRuntimeRestartFiles,
+    runtimeRestartMode
   });
 
   return {
     ...buildTelemetryProvenance({
       source: 'watcher+logger',
       watcherLifecycle,
-      pendingRuntimeRestartFiles: [],
-      runtimeRestartMode: 'manual'
+      pendingRuntimeRestartFiles,
+      runtimeRestartMode
     }),
-    restartLifecycle: restartGuidance
+    restartLifecycle: {
+      restartType: 'observational',
+      proxyManaged: false,
+      requiresClientPatience: false,
+      recommendedActions: runtimeCodeFreshness.restartRequired
+        ? ['Restart the MCP runtime so tool/runtime modules are reloaded.']
+        : [],
+      summary: runtimeCodeFreshness.summary
+    }
   };
 }
 
 export async function collectRecentNotifications(projectPath, options = {}) {
   const {
     clearLoggerBuffer = true,
-    watcherLimit = 10
+    watcherLimit = 10,
+    server = null
   } = options;
 
   const rawLogs = typeof getRecentLogs === 'function' ? getRecentLogs() : [];
@@ -92,7 +135,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     signalConfidence,
     watcherLifecycle,
     watcherReconciliation: watcherResult.reconciliation,
-    provenance: buildNotificationsProvenance(watcherLifecycle, watcherEntriesWithConfidence)
+    provenance: buildNotificationsProvenance(watcherLifecycle, watcherEntriesWithConfidence, server, loggerEntries)
   };
 }
 
@@ -113,7 +156,9 @@ export function normalizeRecentNotifications(notifications = {}) {
     watcherReconciliation: notifications.watcherReconciliation || { deletedExpired: 0, summary: { total: watcherAlerts.length, byStatus: {} } },
     provenance: notifications.provenance || buildNotificationsProvenance(
       notifications.watcherLifecycle || summarizeWatcherAlertLifecycle(watcherAlerts),
-      watcherAlerts
+      watcherAlerts,
+      notifications.server || null,
+      logs
     )
   };
 }

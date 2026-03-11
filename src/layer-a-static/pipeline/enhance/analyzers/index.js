@@ -1,5 +1,5 @@
 export {
-  analyzeFile,
+  analyzeFileSemantics,
   analyzeAllFiles
 } from './file-analyzer.js';
 

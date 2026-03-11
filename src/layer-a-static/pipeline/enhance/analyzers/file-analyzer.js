@@ -4,7 +4,7 @@
  * @module pipeline/enhance/analyzers
  */
 
-import { detectSharedState } from '../../../analyses/tier3/shared-state-detector.js';
+import { parseGlobalState } from '../../../analyses/tier3/shared-state-detector.js';
 import { detectEventPatterns } from '../../../analyses/tier3/event-pattern-detector.js';
 import { detectSideEffects } from '../../../analyses/tier3/side-effects-detector.js';
 import { createLogger } from '../../../../utils/logger.js';
@@ -18,10 +18,10 @@ const logger = createLogger('OmnySys:enhance:file-analyzer');
  * @param {Object} fileInfo - Información del archivo
  * @returns {Object} Análisis del archivo
  */
-export async function analyzeFile(filePath, code, fileInfo) {
+export async function analyzeFileSemantics(filePath, code, fileInfo) {
   try {
     // Detectar shared state
-    const sharedState = await detectSharedState(code, filePath);
+    const sharedState = await parseGlobalState(code, filePath);
 
     // Detectar event patterns
     const eventPatterns = await detectEventPatterns(code, filePath);
@@ -65,7 +65,7 @@ export async function analyzeAllFiles(parsedFiles, absoluteRootPath) {
       fileSourceCode[projectRelative] = code;
 
       // Analizar archivo
-      const analysis = await analyzeFile(projectRelative, code, fileInfo);
+      const analysis = await analyzeFileSemantics(projectRelative, code, fileInfo);
       enhancedFiles[projectRelative] = analysis;
       allSideEffects[projectRelative] = analysis.sideEffects;
     } catch (error) {
