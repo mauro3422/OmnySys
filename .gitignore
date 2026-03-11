@@ -16,6 +16,9 @@ omnysysdata/
 .aver/
 .OmnySystemData/
 .OmnySysData/
+.omnysys.db
+.omnysys.db-wal
+.omnysys.db-shm
 
 # Untracked files
 .averignore
