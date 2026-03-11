@@ -20,6 +20,7 @@
 
 import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { buildIntegrityRecommendation } from './integrity-contract.js';
 import {
     executeLiveRowCleanup,
     getFileUniverseGranularity,
@@ -187,7 +188,10 @@ export class PipelineIntegrityDetector {
                     ? fileUniverseGranularity.zeroAtomFileCount > 0
                         ? 'Scanner, manifest and live index are aligned; zero-atom files are expected support or metadata-only files'
                         : 'Scanner, manifest and live index are aligned'
-                    : 'Reconcile scanner manifest and live index before trusting file-universe coverage'
+                    : buildIntegrityRecommendation({
+                        name: 'scan_to_atom_coverage',
+                        details: { zeroAtomFiles: fileUniverseGranularity.zeroAtomFileCount, missingFiles: 0 }
+                    }).summary
             };
         } catch (error) {
             logger.error('checkScanToAtomCoverage failed:', error.message);
@@ -263,7 +267,7 @@ export class PipelineIntegrityDetector {
                     optionalButImportant
                 },
                 recommendation: missingRequired > 0
-                    ? `Fix extractors to populate ${missingRequired} atoms with missing required fields`
+                    ? buildIntegrityRecommendation({ name: 'atom_metadata_completeness', details: { missingRequired } }).summary
                     : 'All atoms have complete metadata'
             };
         } catch (error) {
@@ -325,7 +329,7 @@ export class PipelineIntegrityDetector {
                     affectedAtoms: unresolvedCalledBy
                 },
                 recommendation: unresolvedLinks > 0
-                    ? 'Enable Class Instantiation Tracker and improve import resolution'
+                    ? buildIntegrityRecommendation({ name: 'calledBy_resolution', details: { unresolvedLinks } }).summary
                     : 'All calledBy links are resolved'
             };
         } catch (error) {
@@ -375,7 +379,10 @@ export class PipelineIntegrityDetector {
                     expectedGuards
                 },
                 recommendation: missingGuards.length > 0
-                    ? `Register missing guards: ${missingGuards.join(', ')}`
+                    ? buildIntegrityRecommendation({
+                        name: 'guard_execution',
+                        details: { missingGuards, byType: stats.byType, expectedGuards }
+                    }).summary
                     : 'All guards are registered and operational'
             };
         } catch (error) {
@@ -454,11 +461,12 @@ export class PipelineIntegrityDetector {
                     orphanedIssues,
                     lifecycleDistribution
                 },
-                recommendation: orphanedIssues > 0
-                    ? `Run lifecycle cleanup to remove ${orphanedIssues} orphaned issues`
-                    : issuesWithoutLifecycle > 0
-                        ? `Fix guards to include lifecycle in context (${issuesWithoutLifecycle} issues missing)`
-                        : 'All issues are properly persisted with lifecycle'
+                recommendation: orphanedIssues > 0 || issuesWithoutLifecycle > 0
+                    ? buildIntegrityRecommendation({
+                        name: 'issue_persistence',
+                        details: { orphanedIssues, withoutLifecycle: issuesWithoutLifecycle }
+                    }).summary
+                    : 'All issues are properly persisted with lifecycle'
             };
         } catch (error) {
             logger.error('checkIssuePersistence failed:', error.message);
@@ -525,7 +533,10 @@ export class PipelineIntegrityDetector {
                     results
                 },
                 recommendation: failedTools.length > 0
-                    ? `Fix database access for tools: ${failedTools.map(t => t.tool).join(', ')}`
+                    ? buildIntegrityRecommendation({
+                        name: 'mcp_data_access',
+                        details: { failedTools: failedTools.map(t => t.tool) }
+                    }).summary
                     : 'All MCP tools can access data correctly'
             };
         } catch (error) {
@@ -590,7 +601,7 @@ export class PipelineIntegrityDetector {
                     )
                 },
                 recommendation: totalOrphans > 0
-                    ? `Run database cleanup to remove ${totalOrphans} orphaned records`
+                    ? buildIntegrityRecommendation({ name: 'orphaned_data', details: { totalOrphans } }).summary
                     : 'No orphaned data found'
             };
         } catch (error) {
@@ -667,7 +678,7 @@ export class PipelineIntegrityDetector {
                     inconsistencyRate: Math.round(inconsistencyRate * 100) / 100
                 },
                 recommendation: inconsistencies > 0
-                    ? `Fix ${inconsistencies} inconsistent relations in calledBy/usedBy links`
+                    ? buildIntegrityRecommendation({ name: 'relation_consistency', details: { inconsistencies } }).summary
                     : 'All checked relations are consistent'
             };
         } catch (error) {

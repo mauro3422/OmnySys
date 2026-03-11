@@ -287,6 +287,17 @@ export {
 } from './metadata-utils.js';
 
 export {
+  getAtomCountSummary,
+  getPhase2FileCounts,
+  getGraphCoverageSummary,
+  getIssueSummary,
+  getConceptualDuplicateSummary,
+  getFileUniverseSummary,
+  getMcpSessionSummary,
+  summarizeWatcherNoise
+} from './compiler-runtime-metrics.js';
+
+export {
   PIPELINE_ORPHAN_NAME_PATTERNS,
   getEffectiveCallerCount,
   isPipelineProductionFile,

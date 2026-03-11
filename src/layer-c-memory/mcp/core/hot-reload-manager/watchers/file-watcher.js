@@ -32,6 +32,8 @@ export class FileWatcher {
     this.debounceMs = options.debounceMs || 500;
     this.fsWatcher = null;
     this._debounceTimeout = null;
+    this._startedAt = 0;
+    this._startupNoiseSuppressed = 0;
   }
 
   /**
@@ -46,6 +48,7 @@ export class FileWatcher {
 
     try {
       const srcPath = path.resolve(this.projectPath, 'src');
+      this._startedAt = Date.now();
 
       this.fsWatcher = watch(
         srcPath,
@@ -88,11 +91,22 @@ export class FileWatcher {
       return;
     }
 
+    // Windows fs.watch can emit a burst of stale "change" events when the
+    // watcher first attaches. Ignore that startup noise so runtime freshness
+    // is driven by real edits, not by watcher bootstrap churn.
+    if (Date.now() - this._startedAt < 1500) {
+      this._startupNoiseSuppressed += 1;
+      logger.debug(`Ignoring startup watcher noise: ${filename}`);
+      return;
+    }
+
     this._clearDebounce();
 
     this._debounceTimeout = setTimeout(() => {
-      // Prepend 'src/' to the filename since fs.watch returns paths relative to the watched directory
-      const fullPath = path.join('src', filename);
+      // fs.watch returns paths relative to the watched directory. Normalize to
+      // a stable project-relative path so downstream reload logic and metrics
+      // do not depend on platform-specific separators.
+      const fullPath = path.normalize(path.join('src', filename)).replace(/\\/g, '/');
       this.onChange(eventType, fullPath);
     }, this.debounceMs);
 
@@ -118,6 +132,14 @@ export class FileWatcher {
    */
   isWatching() {
     return !!this.fsWatcher;
+  }
+
+  getStats() {
+    return {
+      startupNoiseSuppressed: this._startupNoiseSuppressed,
+      startupSuppressionWindowMs: 1500,
+      isWatching: this.isWatching()
+    };
   }
 }
 

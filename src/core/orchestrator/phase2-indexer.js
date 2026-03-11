@@ -1,6 +1,7 @@
 import path from 'path';
 import { createLogger } from '../../utils/logger.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { getPhase2FileCounts } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:Phase2Indexer');
 
@@ -41,8 +42,7 @@ export class Phase2Indexer {
             const { getRepository } = await import('#layer-c/storage/repository/index.js');
             const repo = getRepository(this.projectPath);
             if (repo && repo.db) {
-                const countResult = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
-                const initialPending = countResult?.count || 0;
+                const initialPending = getPhase2FileCounts(repo.db).pendingFiles;
                 this.orchestrator.totalPhase2Files = initialPending;
                 this._updateStatus(initialPending);
 
@@ -133,8 +133,7 @@ export class Phase2Indexer {
                     this.globalTimer.onItemProcessed(countProcessedGroup);
                 }
 
-                const remainingQuery = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as count FROM atoms WHERE is_phase2_complete = 0').get();
-                const remainingCount = remainingQuery?.count || 0;
+                const remainingCount = getPhase2FileCounts(repo.db).pendingFiles;
                 const nextTotal = this._syncPhase2Totals(remainingCount, countProcessedGroup);
                 await this._ensureGlobalTimer(nextTotal);
 
@@ -193,7 +192,10 @@ export class Phase2Indexer {
                     const debtRepo = getRepo(this.projectPath);
                     if (debtRepo?.db) {
                         const { queryDuplicates } = await import('#layer-c/mcp/tools/semantic/semantic-queries.js');
-                        const { buildDuplicateRemediationPlan, getPipelineOrphanSummary } = await import('#shared/compiler/index.js');
+                        const {
+                            buildDuplicateRemediationPlan,
+                            getPipelineOrphanSummary
+                        } = await import('#shared/compiler/index.js');
 
                         // Structural duplicates
                         const { rows: dupRows, stats: dupStats } = queryDuplicates(debtRepo.db, { limit: 50 });
@@ -213,6 +215,7 @@ export class Phase2Indexer {
 
                         await clearWatcherIssue(this.projectPath, 'project-wide', 'technical_debt_report');
 
+                        const phase2Counts = getPhase2FileCounts(debtRepo.db);
                         const totalDebtItems =
                             (structuralRemediation?.totalGroups || 0) +
                             (conceptualSummary?.actionable?.groupCount || conceptualGroups?.length || 0) +
@@ -244,6 +247,11 @@ export class Phase2Indexer {
                                     pipelineOrphans: {
                                         total: orphanSummary?.total || 0,
                                         items: orphanSummary?.items?.slice(0, 5) || []
+                                    },
+                                    phase2: {
+                                        pendingFiles: phase2Counts.pendingFiles,
+                                        completedFiles: phase2Counts.completedFiles,
+                                        liveFileCount: phase2Counts.liveFileCount
                                     },
                                     remediation: {
                                         nextAction: structuralRemediation?.recommendation || orphanSummary?.recommendation || 'No immediate action required'

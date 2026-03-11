@@ -126,6 +126,7 @@ export class HotReloadManager {
    */
   getStats() {
     const status = this.reloadHandler.getStatus();
+    const watcherStats = this.fileWatcher?.getStats?.() || {};
 
     return {
       isWatching: this.fileWatcher?.isWatching() || false,
@@ -136,7 +137,11 @@ export class HotReloadManager {
         files: Array.from(this.server?._pendingHotReloadRestartFiles || [])
       },
       criticalModules: this.classifier.getCriticalModules().length,
-      reloadablePatterns: this.classifier.getPatterns().length
+      reloadablePatterns: this.classifier.getPatterns().length,
+      watcherNoise: {
+        startupNoiseSuppressed: watcherStats.startupNoiseSuppressed || 0,
+        startupSuppressionWindowMs: watcherStats.startupSuppressionWindowMs || 0
+      }
     };
   }
 }

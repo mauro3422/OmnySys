@@ -11,6 +11,7 @@ import path from 'path';
 import { createLogger } from '../../utils/logger.js';
 import { safeReadJson } from '#utils/json-safe.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { getPhase2FileCounts } from '#shared/compiler/index.js';
 
 // Nuevos módulos extraídos
 import { deriveFileInsights as _deriveInsights } from './insight-derivator.js';
@@ -50,7 +51,7 @@ export async function _deriveStaticInsights() {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
         const repo = getRepository(this.projectPath);
         if (repo?.db) {
-          totalFiles = repo.db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms').get()?.n || 0;
+          totalFiles = getPhase2FileCounts(repo.db).liveFileCount;
         }
       } catch {
         // Best effort fallback only.
