@@ -17,6 +17,7 @@ import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
 import { getLiveFileTotal } from './live-row-utils.js';
+import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 
 export async function loadCompilerDiagnosticsSnapshot({
     projectPath,
@@ -37,6 +38,7 @@ export async function loadCompilerDiagnosticsSnapshot({
     const metadataSurfaceParity = db ? getMetadataSurfaceParity(db) : null;
     const semanticSurfaceGranularity = db ? getSemanticSurfaceGranularity(db) : null;
     const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
+    const contractTaxonomy = db ? summarizeContractTaxonomy(db) : null;
     const fileUniverseGranularity = getFileUniverseGranularity({
         scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
         manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
@@ -54,6 +56,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         metadataSurfaceParity,
         semanticSurfaceGranularity,
         semanticCanonicality,
+        contractTaxonomy,
         fileUniverseGranularity,
         canonicalAdoptions: canonicalAdoptions || {
             centralityCoverage: true,
@@ -68,6 +71,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         metadataSurfaceParity,
         semanticSurfaceGranularity,
         semanticCanonicality,
+        contractTaxonomy,
         systemMapPersistenceCoverage,
         standardization: standardizationReport,
         policySummary,
@@ -81,6 +85,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         metadataSurfaceParity,
         semanticSurfaceGranularity,
         semanticCanonicality,
+        contractTaxonomy,
         fileUniverseGranularity,
         standardizationReport,
         compilerContractLayer

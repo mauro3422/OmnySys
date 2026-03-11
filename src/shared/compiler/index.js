@@ -158,7 +158,8 @@ export {
 
 export {
   classifyContractSurface,
-  evaluateContractCompatibility
+  evaluateContractCompatibility,
+  summarizeContractTaxonomy
 } from './contract-taxonomy.js';
 
 export {

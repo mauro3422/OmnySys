@@ -173,7 +173,8 @@ export function buildCompilerStandardizationReport({
   ,
   metadataSurfaceParity = null,
   semanticSurfaceGranularity = null,
-  fileUniverseGranularity = null
+  fileUniverseGranularity = null,
+  contractTaxonomy = null
 } = {}) {
   const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
     .map(([area, count]) => normalizeDriftArea(area, count))
@@ -294,6 +295,7 @@ export function buildCompilerStandardizationReport({
   const missingCanonicalSurfaces = buildMissingCanonicalSurfaceReport(adoptionGaps);
 
   const totalRemediationItems = compilerRemediation?.totalItems || 0;
+  const contractTaxonomyHealthy = Number(contractTaxonomy?.coverage?.coverageRatio || 0) >= 1;
   const nextAction = missingCanonicalApis[0]?.recommendation
     || missingCanonicalSurfaces[0]?.recommendation
     || (adoptionGaps.length > 0
@@ -305,6 +307,7 @@ export function buildCompilerStandardizationReport({
     stableCanonicalFamilies,
     adoptionGaps,
     adoptionCoverage,
+    contractTaxonomy,
     missingCanonicalApis,
     missingCanonicalSurfaces,
     summary: {
@@ -312,6 +315,7 @@ export function buildCompilerStandardizationReport({
       adoptionGapCount: adoptionGaps.length,
       missingCanonicalApiCount: missingCanonicalApis.length,
       missingCanonicalSurfaceCount: missingCanonicalSurfaces.length,
+      contractTaxonomyHealthy,
       totalRemediationItems,
       nextAction
     }

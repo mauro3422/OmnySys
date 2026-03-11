@@ -374,6 +374,7 @@ function buildApiGovernance(standardization = null, invariants = [], policySumma
   return {
     shouldCreateCanonicalApi,
     shouldBlockNewWrappers,
+    contractTaxonomy: standardization?.contractTaxonomy || null,
     currentCreationCandidates: missingCanonicalApis,
     missingCanonicalSurfaces,
     governanceMetrics,
@@ -441,6 +442,7 @@ export function buildCompilerContractLayer({
       canonicalWrapperFindings: apiGovernance.governanceMetrics.canonicalWrapperFindings,
       canonicalBypassFindings: apiGovernance.governanceMetrics.canonicalBypassFindings,
       parallelCanonicalSurfaceFindings: apiGovernance.governanceMetrics.parallelCanonicalSurfaceFindings,
+      contractTaxonomyCoverage: standardization?.contractTaxonomy?.coverage?.coverageRatio ?? 0,
       healthy: failedInvariantCount === 0,
       mode: failedInvariantCount === 0 ? 'explicit_contract' : 'contract_violation',
       nextAction: apiGovernance.nextAction
