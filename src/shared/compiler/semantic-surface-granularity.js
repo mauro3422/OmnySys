@@ -79,6 +79,20 @@ function normalizeSemanticConnectionRow(row = {}) {
   };
 }
 
+function usesLegacySemanticBucket(connectionType = '') {
+  if (!connectionType) {
+    return true;
+  }
+
+  return !/^(sharedState|eventListeners)$/i.test(connectionType);
+}
+
+function requiresCanonicalSemanticNormalization(row = {}) {
+  const context = safeParseJson(row.context_json, {});
+  const derivedFrom = context?.derivedFrom || null;
+  return usesLegacySemanticBucket(row.connection_type) || derivedFrom === 'legacy_semantic_connections';
+}
+
 function summarizeConnectionTypes(rows = []) {
   return rows.reduce((acc, row) => {
     const key = row.connection_type || 'unknown';
@@ -158,7 +172,7 @@ export function getSemanticSurfaceGranularity(db) {
   if (fileLevelTotal === 0 && atomLevelTotal > 0) {
     materialIssues.push('file-level semantic summary is empty while atom-level semantic relations exist');
   }
-  if (persistedSemanticRows.length > 0 && (semanticByType.sharedState || semanticByType.eventListeners)) {
+  if (persistedSemanticRows.some(requiresCanonicalSemanticNormalization)) {
     advisories.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
   }
   if (persistedLegacyView.total !== canonicalLegacyView.total) {
