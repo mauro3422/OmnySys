@@ -34,7 +34,7 @@ function hasDelegatedRecoveryContract(source = '') {
 
 
 function hasTimeoutOrRestartPressure(source = '') {
-  return /(timeout|deadline|restart|reconnect|respawn|retry|bridge recovering|DAEMON_RESTARTING)/i.test(source);
+  return /(\bsetTimeout\s*\(|\bclearTimeout\s*\(|\bdeadline\b|\btimeoutMs\b|\breconnect\b|\brespawn\b|\bretry\b|_requestWorkerRestart\s*\(|reloadHandler\.reload\s*\(|process\.send\s*\(|bridge recovering|DAEMON_RESTARTING)/i.test(source);
 }
 
 export function detectAsyncErrorConformanceFromSource(filePath, source = '', options = {}) {

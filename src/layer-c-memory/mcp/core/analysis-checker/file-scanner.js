@@ -10,14 +10,7 @@ import {
   hasPersistedCompilerAnalysis
 } from '../../../../shared/compiler/index.js';
 
-/**
- * Verifica si existe analisis previo en .omnysysdata/
- * @param {string} projectPath - Project root path
- * @returns {Promise<boolean>} - True if analysis exists
- */
-export async function hasExistingAnalysis(projectPath) {
-  return hasPersistedCompilerAnalysis(projectPath);
-}
+export { hasPersistedCompilerAnalysis as hasExistingAnalysis };
 
 /**
  * Escanear archivos actuales del proyecto

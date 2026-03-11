@@ -25,15 +25,19 @@ function importsSharedCompilerBarrel(source = '') {
 }
 
 function extractsCanonicalImportNames(source = '') {
-  const importMatch = source.match(/import\s*\{([\s\S]*?)\}\s*from\s+['"][^'"]*shared\/compiler\/index\.js['"]/);
-  if (!importMatch) {
+  const matches = Array.from(source.matchAll(
+    /(?:^|\n)\s*import\s*\{([^}]*)\}\s*from\s+['"][^'"]*shared\/compiler\/index\.js['"]/g
+  ));
+
+  if (matches.length === 0) {
     return [];
   }
 
-  return importMatch[1]
+  return matches.flatMap((match) => match[1]
     .split(',')
     .map((name) => name.trim().replace(/\s+as\s+\w+$/i, ''))
-    .filter(Boolean);
+    .filter(Boolean)
+  );
 }
 
 function definesLocalCanonicalWrapper(source = '') {
@@ -45,11 +49,11 @@ function definesLocalCanonicalWrapper(source = '') {
   return importedNames.some((importedName) => {
     const escapedName = importedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const wrapperRegex = new RegExp(
-      String.raw`\b(?:export\s+)?(?:async\s+)?function\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*\([^)]*\)\s*\{[\s\S]{0,240}?\breturn\s+${escapedName}\(`,
+      String.raw`\b(?:export\s+)?(?:async\s+)?function\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*\([^)]*\)\s*\{[\s\S]{0,240}?\breturn\s+${escapedName}\([^)]*\)\s*;?\s*\}`,
       'm'
     );
     const constWrapperRegex = new RegExp(
-      String.raw`\b(?:const|let|var)\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[\s\S]{0,240}?\breturn\s+${escapedName}\(|${escapedName}\()`,
+      String.raw`\b(?:const|let|var)\s+(?!${escapedName}\b)[A-Za-z_$]\w*\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+${escapedName}\([^)]*\)\s*;?\s*\}|${escapedName}\([^)]*\)\s*;?)`,
       'm'
     );
 
