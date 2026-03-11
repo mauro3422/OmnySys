@@ -65,11 +65,11 @@ const RECOMMENDATION_BUILDERS = {
         const orphanedIssues = asCount(details.orphanedIssues);
         const withoutLifecycle = asCount(details.withoutLifecycle);
         return {
-            action: 'Allow lifecycle reconciliation to expire orphaned issues automatically',
+            action: 'Observe lifecycle reconciliation status; no manual cleanup should be required',
             reason: `${orphanedIssues} orphaned issue(s) and ${withoutLifecycle} issue(s) without lifecycle metadata remain active`,
-            impact: orphanedIssues > 100 ? 'high' : 'medium',
-            estimatedEffort: 'System-managed reconciliation',
-            summary: 'Issue persistence is drifting; let lifecycle reconciliation expire orphaned issues and restore lifecycle metadata'
+            impact: orphanedIssues > 100 ? 'high' : 'low',
+            estimatedEffort: 'No manual action expected',
+            summary: 'Issue persistence is drifting; lifecycle reconciliation should self-heal orphaned issues and restore lifecycle metadata'
         };
     },
     mcp_data_access: ({ details = {} }) => {

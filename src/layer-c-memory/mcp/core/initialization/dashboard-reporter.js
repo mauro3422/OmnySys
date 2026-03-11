@@ -195,6 +195,7 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
   const headerPattern = 'OMNYSYS PIPELINE INTEGRITY REPORT';
   const isPreliminary = !isFinal;
   const isSettling = extendedMetrics.phase2PendingFiles > 0 || (!isFinal && !extendedMetrics.hasPhase2DebtSnapshot);
+  const fileUniverseSettling = isSettling && extendedMetrics.liveCoverageRatio === 0;
 
   const headerIdx = lines.findIndex((line) => line.includes(headerPattern));
   if (headerIdx !== -1) {
@@ -211,7 +212,9 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
       : []),
     `  Project: ${extendedMetrics.totalAtoms} atoms (${extendedMetrics.typeSummary})`,
     `  Callable Atoms: ${extendedMetrics.callableSummary}`,
-    `  File Universe: ${Math.round(extendedMetrics.liveCoverageRatio * 100)}% live coverage (${extendedMetrics.zeroAtomFileCount} zero-atom files expected)`,
+    fileUniverseSettling
+      ? '  File Universe: settling during bootstrap; live coverage will appear after manifest/live index converge'
+      : `  File Universe: ${Math.round(extendedMetrics.liveCoverageRatio * 100)}% live coverage (${extendedMetrics.zeroAtomFileCount} zero-atom files expected)`,
     `  MCP Sessions: ${extendedMetrics.mcpSessionSummary.summary}`,
     `  Graph Coverage: call graph=${extendedMetrics.callLinks} links, semantic layer=${extendedMetrics.semanticLinks} high-level links`,
     `  Duplicates: ${extendedMetrics.structuralGroups} structural groups, ${extendedMetrics.conceptualGroups} conceptual actionable groups (${extendedMetrics.conceptualRawGroups} raw groups)` +
@@ -226,6 +229,9 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
       : null,
     `  Technical Debt: ${extendedMetrics.issueSummary}${extendedMetrics.orphans > 0 ? ` (+${extendedMetrics.orphans} orphans)` : ''}`,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
+    ...(isSettling
+      ? ['  Snapshot Advisory: startup/bootstrap metrics may still be reconciling; prefer get_server_status() for the final live view']
+      : []),
     ''
   ].filter(Boolean);
 
