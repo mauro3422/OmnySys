@@ -2,12 +2,13 @@ import {
     IssueDomains,
     createIssueType,
     createStandardContext,
-    StandardSuggestions,
     severityFromComplexity,
     severityFromLines,
     isValidGuardTarget,
     extractAtomMetrics
 } from '../guard-standards.js';
+import { StandardSuggestions } from '../guard-standards/suggestions.js';
+import { resolveArchitecturalRecommendation } from '../../../../shared/compiler/index.js';
 
 const RELEVANT_PURPOSES = [
     'API_EXPORT',
@@ -33,8 +34,8 @@ export function collectComplexityIssues(filePath, atoms, thresholds) {
         }
 
         const metrics = extractAtomMetrics(atom);
-        addComplexityIssue(issues, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole);
-        addFunctionLengthIssue(issues, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole);
+        addComplexityIssue(issues, filePath, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole);
+        addFunctionLengthIssue(issues, filePath, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole);
     });
 
     return issues;
@@ -49,15 +50,28 @@ function shouldAnalyzeAtom(atom) {
     return RELEVANT_PURPOSES.includes(purpose);
 }
 
-function addComplexityIssue(issues, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole) {
+function addComplexityIssue(issues, filePath, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole) {
     const severity = severityFromComplexity(metrics.complexity);
     if (!severity) {
         return;
     }
 
-    const suggestedAction = metrics.complexity >= thresholds.complexityHigh
-        ? `${coordinatorRefactorSuggestion} (consider extracting helper functions)`
-        : StandardSuggestions.COMPLEXITY_REFACTOR;
+    const recommendation = resolveArchitecturalRecommendation({
+        issueType: createIssueType(IssueDomains.CODE, 'complexity', severity),
+        filePath,
+        operationalRole
+    });
+    const suggestedAction = recommendation?.action
+        || (metrics.complexity >= thresholds.complexityHigh
+            ? `${coordinatorRefactorSuggestion} (consider extracting helper functions)`
+            : StandardSuggestions.COMPLEXITY_REFACTOR);
+    const suggestedAlternatives = recommendation?.alternatives || [
+        'Extract nested conditions into separate functions',
+        'Use early returns to reduce nesting',
+        'Leave a thin coordinator and move branches into dedicated modules',
+        'Consider using a strategy pattern for complex conditionals',
+        'Add unit tests for each branch'
+    ];
 
     issues.push({
         atomId: metrics.id,
@@ -74,13 +88,7 @@ function addComplexityIssue(issues, metrics, thresholds, coordinatorRefactorSugg
             threshold: severity === 'high' ? thresholds.complexityHigh : thresholds.complexityMedium,
             severity,
             suggestedAction,
-            suggestedAlternatives: [
-                'Extract nested conditions into separate functions',
-                'Use early returns to reduce nesting',
-                'Leave a thin coordinator and move branches into dedicated modules',
-                'Consider using a strategy pattern for complex conditionals',
-                'Add unit tests for each branch'
-            ],
+            suggestedAlternatives,
             extraData: {
                 metricType: 'cyclomatic_complexity',
                 linesOfCode: metrics.linesOfCode,
@@ -92,11 +100,25 @@ function addComplexityIssue(issues, metrics, thresholds, coordinatorRefactorSugg
     });
 }
 
-function addFunctionLengthIssue(issues, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole) {
+function addFunctionLengthIssue(issues, filePath, metrics, thresholds, coordinatorRefactorSuggestion, operationalRole) {
     const severity = severityFromLines(metrics.linesOfCode);
     if (!severity || alreadyReported(issues, metrics.id, severity)) {
         return;
     }
+
+    const recommendation = resolveArchitecturalRecommendation({
+        issueType: createIssueType(IssueDomains.CODE, 'function_length', severity),
+        filePath,
+        operationalRole
+    });
+    const suggestedAction = recommendation?.action || coordinatorRefactorSuggestion;
+    const suggestedAlternatives = recommendation?.alternatives || [
+        'Extract logical sections into private methods',
+        'Keep a thin coordinator and move workflows into handlers or strategies',
+        'Use the Extract Method refactoring pattern',
+        'Consider creating a class to hold related functionality',
+        'Document why the function is long if it cannot be split'
+    ];
 
     issues.push({
         atomId: metrics.id,
@@ -112,14 +134,8 @@ function addFunctionLengthIssue(issues, metrics, thresholds, coordinatorRefactor
             metricValue: metrics.linesOfCode,
             threshold: severity === 'high' ? thresholds.linesHigh : thresholds.linesMedium,
             severity,
-            suggestedAction: coordinatorRefactorSuggestion,
-            suggestedAlternatives: [
-                'Extract logical sections into private methods',
-                'Keep a thin coordinator and move workflows into handlers or strategies',
-                'Use the Extract Method refactoring pattern',
-                'Consider creating a class to hold related functionality',
-                'Document why the function is long if it cannot be split'
-            ],
+            suggestedAction,
+            suggestedAlternatives,
             extraData: {
                 metricType: 'lines_of_code',
                 complexity: metrics.complexity,

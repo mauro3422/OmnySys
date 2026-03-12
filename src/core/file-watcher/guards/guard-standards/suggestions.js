@@ -11,6 +11,8 @@ export const StandardSuggestions = {
     COMPLEXITY_REFACTOR: 'Refactor to reduce nesting and improve readability',
     FILE_SIZE_SPLIT: 'File is dangerously large and affects AI editing capability. Split into smaller, cohesive modules',
     COORDINATOR_EXTRACTION: 'Keep a thin coordinator/orchestrator and move checks, handlers or strategies into dedicated cohesive modules',
+    REEXPORT_ALIAS: 'Prefer direct canonical calls or re-export with alias instead of a pass-through wrapper',
+    CANONICAL_SURFACE_REUSE: 'Stop recomposing an existing canonical surface locally; consume the canonical API instead',
     SHARED_STATE_LOCAL: 'Convert shared state to local state or parameters',
     SHARED_STATE_EXTRACT: 'Extract state management into a dedicated store/module',
     HOTSPOT_STABILIZE: 'This code changes frequently. Consider stabilizing the interface',

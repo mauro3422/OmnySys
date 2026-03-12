@@ -157,6 +157,10 @@ export {
 } from './canonical-reuse-guidance.js';
 
 export {
+  resolveArchitecturalRecommendation
+} from './architectural-recommendations.js';
+
+export {
   parseSemanticFingerprint,
   classifyConceptualNoise
 } from './conceptual-noise-policy.js';

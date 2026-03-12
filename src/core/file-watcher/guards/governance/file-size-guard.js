@@ -11,7 +11,7 @@
 
 import { BaseGovernanceGuard } from './base-governance-guard.js';
 import { StandardThresholds, StandardSuggestions, severityFromFileLines, IssueDomains, IssueSeverity } from '../guard-standards.js';
-import { classifyFileOperationalRole } from '../../../../shared/compiler/index.js';
+import { classifyFileOperationalRole, resolveArchitecturalRecommendation } from '../../../../shared/compiler/index.js';
 import fs from 'fs';
 
 const guardParams = new BaseGovernanceGuard('file-size-guard', IssueDomains.CODE);
@@ -53,10 +53,15 @@ export async function detectFileSizeLimits(rootPath, filePath, context, atoms = 
             // Si el archivo ya existía y está gigante, es deuda técnica (Medium).
             // Si es un archivo *nuevo* o un refactor donde queremos ser estrictos, es High.
             const adjustedSeverity = isNewFile ? IssueSeverity.HIGH : IssueSeverity.MEDIUM;
-            const isCoordinator = operationalRole.role === 'orchestrator';
-            const splitSuggestion = isCoordinator
-                ? StandardSuggestions.COORDINATOR_EXTRACTION
-                : StandardSuggestions.FILE_SIZE_SPLIT;
+            const recommendation = resolveArchitecturalRecommendation({
+                issueType: `code_file_size_${adjustedSeverity}`,
+                filePath,
+                operationalRole
+            });
+            const splitSuggestion = recommendation?.action
+                || (operationalRole.role === 'orchestrator'
+                    ? StandardSuggestions.COORDINATOR_EXTRACTION
+                    : StandardSuggestions.FILE_SIZE_SPLIT);
             const contextData = {
                 metricValue: linesCount,
                 threshold: severity === IssueSeverity.HIGH ? fileLinesCritical : fileLinesHigh,
@@ -66,7 +71,9 @@ export async function detectFileSizeLimits(rootPath, filePath, context, atoms = 
                 extraData: {
                     linesOfCode: linesCount,
                     isNewFile,
-                    operationalRole
+                    operationalRole,
+                    architecturalRecommendation: recommendation?.strategy || null,
+                    recommendationAlternatives: recommendation?.alternatives || []
                 }
             };
 

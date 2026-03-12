@@ -1,4 +1,12 @@
-import { calculateCausalScore, estimateEffort, generateSuggestedAction } from './scoring.js';
+import {
+    calculateCausalScore,
+    estimateEffort,
+    generateSuggestedAction
+} from './scoring.js';
+import {
+    classifyFileOperationalRole,
+    resolveArchitecturalRecommendation
+} from '#shared/compiler/index.js';
 
 export function buildPrioritizedItems(notifications, riskData, severity, minScore) {
     const recurrenceData = buildRecurrenceData(notifications.watcherAlerts);
@@ -33,6 +41,13 @@ function appendWatcherItems(target, watcherAlerts = [], severity, recurrenceData
         }
 
         const scoring = calculateCausalScore(alert, recurrenceData);
+        const operationalRole = classifyFileOperationalRole(alert.filePath || '');
+        const architecturalRecommendation = resolveArchitecturalRecommendation({
+            issueType: alert.issueType,
+            filePath: alert.filePath,
+            context: alert.context,
+            operationalRole
+        });
         target.push({
             id: alert.id,
             source: 'watcher',
@@ -43,6 +58,10 @@ function appendWatcherItems(target, watcherAlerts = [], severity, recurrenceData
             score: scoring.score,
             scoring,
             suggestedAction: generateSuggestedAction(alert),
+            suggestedAlternatives: architecturalRecommendation?.alternatives
+                || alert.context?.suggestedAlternatives
+                || [],
+            architecturalRecommendation: architecturalRecommendation?.strategy || null,
             estimatedEffort: estimateEffort(alert),
             lifecycle: alert.lifecycle,
             confidence: alert.confidence,
@@ -56,6 +75,13 @@ function appendRiskItems(target, hotspots = [], severity, minScore, recurrenceDa
     hotspots.forEach((hotspot) => {
         const mockAlert = createRiskAlert(hotspot);
         const scoring = calculateCausalScore(mockAlert, recurrenceData);
+        const operationalRole = classifyFileOperationalRole(mockAlert.filePath || '');
+        const architecturalRecommendation = resolveArchitecturalRecommendation({
+            issueType: mockAlert.issueType,
+            filePath: mockAlert.filePath,
+            context: mockAlert.context,
+            operationalRole
+        });
 
         if (scoring.score < minScore || !severity.includes(mockAlert.severity)) {
             return;
@@ -70,7 +96,9 @@ function appendRiskItems(target, hotspots = [], severity, minScore, recurrenceDa
             message: `Risk hotspot: ${hotspot.type}`,
             score: scoring.score,
             scoring,
-            suggestedAction: 'Review and mitigate risk factors',
+            suggestedAction: architecturalRecommendation?.action || 'Review and mitigate risk factors',
+            suggestedAlternatives: architecturalRecommendation?.alternatives || [],
+            architecturalRecommendation: architecturalRecommendation?.strategy || null,
             estimatedEffort: estimateEffort(mockAlert),
             lifecycle: { status: 'active' },
             confidence: mockAlert.confidence,

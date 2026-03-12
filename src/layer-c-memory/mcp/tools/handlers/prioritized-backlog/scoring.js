@@ -1,4 +1,7 @@
-import { classifyFileOperationalRole } from '#shared/compiler/index.js';
+import {
+    classifyFileOperationalRole,
+    resolveArchitecturalRecommendation
+} from '#shared/compiler/index.js';
 
 const DOMAIN_WEIGHTS = {
     arch: 1.0,
@@ -109,17 +112,15 @@ export function calculateCausalScore(item, recurrenceData) {
 
 export function generateSuggestedAction(item) {
     const operationalRole = classifyFileOperationalRole(item.filePath || '');
-    const isCoordinator = operationalRole.role === 'orchestrator';
+    const architecturalRecommendation = resolveArchitecturalRecommendation({
+        issueType: item.issueType,
+        filePath: item.filePath,
+        context: item.context,
+        operationalRole
+    });
 
-    if (
-        isCoordinator
-        && (
-            item.issueType?.includes('code_complexity')
-            || item.issueType?.includes('code_function_length')
-            || item.issueType?.includes('code_file_size')
-        )
-    ) {
-        return 'Extract a thin coordinator and move checks, handlers or strategies into dedicated cohesive modules';
+    if (architecturalRecommendation?.action) {
+        return architecturalRecommendation.action;
     }
 
     for (const [pattern, action] of Object.entries(SUGGESTED_ACTIONS)) {

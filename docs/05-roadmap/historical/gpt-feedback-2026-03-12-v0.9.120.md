@@ -89,6 +89,14 @@ Pero a veces todavia no dice con suficiente claridad la recomendacion correcta:
 
 La senal existe. Falta seguir canonizando la interpretacion.
 
+Y esto ya no deberia quedar solo como observacion informal. Deberia convertirse en una regla mas explicita del sistema para proteger futuras sesiones de otras IAs:
+
+- si un archivo cruza tamano + complejidad + baja cohesion, el sistema deberia recomendar coordinador fino
+- si una surface publica solo pasa llamadas, el sistema deberia recomendar re-export con alias en vez de wrapper
+- si un modulo recompone datos que ya salen de una API canonica, el sistema deberia marcar recomposicion local de surface existente
+
+En otras palabras: OmnySys ya detecta los sintomas. La siguiente mejora es canonizar la traduccion de esos sintomas en la accion arquitectonica correcta, para que no dependa de que el usuario lo recuerde manualmente en cada chat.
+
 ### 3. Faltan mas benchmarks y pruebas de regresion del propio runtime
 
 Especialmente para:
