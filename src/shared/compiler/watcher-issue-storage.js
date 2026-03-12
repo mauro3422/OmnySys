@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { normalizePath } from '#shared/utils/path-utils.js';
+import { isAlertOutdatedByDuplicatePolicy } from './watcher-issue-duplicate-policy.js';
 
 const WATCHER_RUNTIME_DEPENDENCY_PATHS = [
   'src/core/file-watcher',
@@ -51,6 +52,23 @@ function collectReferencedSymbols(alert = {}) {
     .filter(Boolean);
 
   return [...new Set(symbols)];
+}
+
+function loadLiveFileSymbols(db, relativePath) {
+  if (!db || !relativePath) {
+    return [];
+  }
+
+  const rows = db.prepare(`
+    SELECT DISTINCT name
+    FROM atoms
+    WHERE file_path = ?
+      AND (is_removed IS NULL OR is_removed = 0)
+  `).all(relativePath);
+
+  return rows
+    .map((row) => String(row?.name || '').trim())
+    .filter(Boolean);
 }
 
 async function getMaxMtimeRecursively(absolutePath) {
@@ -142,6 +160,20 @@ async function isAlertOutdatedByMissingSymbols(alert, absolutePath, fileContents
   return referencedSymbols.some((symbol) => !contents.includes(symbol));
 }
 
+function isAlertOutdatedByCanonicalSymbols(alert, relativePath, db, fileSymbolCache) {
+  const referencedSymbols = collectReferencedSymbols(alert);
+  if (referencedSymbols.length === 0 || !db || !relativePath) {
+    return false;
+  }
+
+  if (!fileSymbolCache.has(relativePath)) {
+    fileSymbolCache.set(relativePath, new Set(loadLiveFileSymbols(db, relativePath)));
+  }
+
+  const liveSymbols = fileSymbolCache.get(relativePath);
+  return referencedSymbols.some((symbol) => !liveSymbols.has(symbol));
+}
+
 async function isAlertOutdatedByRuntimeDependencies(projectPath, detectedAtMs, runtimeDependencyMtimes) {
   for (const dependencyPath of WATCHER_RUNTIME_DEPENDENCY_PATHS) {
     const dependencyMtimeMs = await getCachedRuntimeDependencyMtime(
@@ -189,10 +221,12 @@ export function findOrphanedWatcherAlertIds(db, alerts = []) {
   return orphanedIds;
 }
 
-export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
+export async function findOutdatedWatcherAlertIds(projectPath, alerts = [], options = {}) {
   const outdatedIds = [];
   const runtimeDependencyMtimes = new Map();
   const fileContentsCache = new Map();
+  const fileSymbolCache = new Map();
+  const { db = null } = options;
 
   for (const alert of alerts) {
     const snapshot = getAlertFileSnapshot(projectPath, {
@@ -201,10 +235,20 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = []) {
     });
     if (!snapshot) continue;
 
-    const { id, detectedAtMs, absolutePath } = snapshot;
+    const { id, detectedAtMs, absolutePath, relativePath } = snapshot;
     try {
       const stat = await fs.stat(absolutePath);
       if (stat.mtimeMs > (detectedAtMs + 1000)) {
+        outdatedIds.push(id);
+        continue;
+      }
+
+      if (isAlertOutdatedByCanonicalSymbols(alert, relativePath, db, fileSymbolCache)) {
+        outdatedIds.push(id);
+        continue;
+      }
+
+      if (isAlertOutdatedByDuplicatePolicy(alert, relativePath)) {
         outdatedIds.push(id);
         continue;
       }

@@ -20,6 +20,12 @@ export {
 } from './core-utils.js';
 
 export {
+  LANGUAGE_ADAPTER_CONTRACT,
+  createLanguageAdapterContract,
+  assertLanguageAdapterContract
+} from './language-contract.js';
+
+export {
   COMPILER_POLICY_SEVERITY,
   COMPILER_POLICY_AREA,
   detectCompilerPolicyDriftFromSource,

@@ -70,6 +70,8 @@ export async function attachDeepVitals(status, projectPath, server) {
       totalPersistentActive: sessionSummary.totalPersistentActive,
       uniqueClients: sessionSummary.uniqueClients,
       clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
+      actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
+      toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
       health: sessionSummary.multiClientChurn
         ? 'MULTI_CLIENT_CHURN'
         : sessionSummary.runtimeSessions > 20
@@ -82,7 +84,9 @@ export async function attachDeepVitals(status, projectPath, server) {
       societiesCount: status.metadata?.societiesCount ?? 0,
       runtimeSessions: sessionSummary.runtimeSessions,
       persistentActive: sessionSummary.totalPersistentActive,
-      clientsWithDuplicates: sessionSummary.clientsWithDuplicates
+      clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
+      actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
+      toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients
     });
   } catch (error) {
     status.deepVitalsError = error.message;

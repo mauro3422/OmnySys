@@ -40,6 +40,39 @@ function hasTimeoutOrRestartPressure(source = '') {
   return /(\bsetTimeout\s*\(|\bclearTimeout\s*\(|\bdeadline\b|\btimeoutMs\b|\breconnect\b|\brespawn\b|\bretry\b|_requestWorkerRestart\s*\(|reloadHandler\.reload\s*\(|process\.send\s*\(|bridge recovering|DAEMON_RESTARTING)/i.test(source);
 }
 
+function isAsyncRuntimePath(normalizedPath = '') {
+  return (
+    normalizedPath.includes('/mcp/') ||
+    normalizedPath.includes('/file-watcher/') ||
+    normalizedPath.includes('/orchestrator/') ||
+    normalizedPath.includes('/shared/compiler/')
+  );
+}
+
+function shouldReportAsyncFlowWithoutBoundary(runtimeSource, asyncRuntimePath, asyncPressureSignals, hasErrorHandling, hasRecoveryContract) {
+  return (
+    asyncRuntimePath &&
+    looksLikeAsyncRuntimeFlow(runtimeSource) &&
+    asyncPressureSignals >= 4 &&
+    !hasErrorHandling &&
+    !hasRecoveryContract
+  );
+}
+
+function shouldReportRestartOrTimeoutWithoutContract(runtimeSource, asyncRuntimePath, hasErrorHandling, hasRecoveryContract) {
+  const hasRestartSignals =
+    looksLikeAsyncRuntimeFlow(runtimeSource) ||
+    /_requestWorkerRestart\s*\(|reloadHandler\.reload\s*\(|setTimeout\(|process\.send\s*\(/.test(runtimeSource);
+
+  return (
+    asyncRuntimePath &&
+    hasRestartSignals &&
+    hasTimeoutOrRestartPressure(runtimeSource) &&
+    !hasErrorHandling &&
+    !hasRecoveryContract
+  );
+}
+
 export function detectAsyncErrorConformanceFromSource(filePath, source = '', options = {}) {
   return scanCompilerConformanceSource(
     filePath,
@@ -51,19 +84,15 @@ export function detectAsyncErrorConformanceFromSource(filePath, source = '', opt
       const asyncPressureSignals = countAsyncPressureSignals(runtimeSource);
       const hasErrorHandling = hasExplicitErrorBoundary(runtimeSource);
       const hasRecoveryContract = hasDelegatedRecoveryContract(runtimeSource);
-      const asyncRuntimePath =
-        normalizedPath.includes('/mcp/') ||
-        normalizedPath.includes('/file-watcher/') ||
-        normalizedPath.includes('/orchestrator/') ||
-        normalizedPath.includes('/shared/compiler/');
+      const asyncRuntimePath = isAsyncRuntimePath(normalizedPath);
 
-      if (
-        asyncRuntimePath &&
-        looksLikeAsyncRuntimeFlow(runtimeSource) &&
-        asyncPressureSignals >= 4 &&
-        !hasErrorHandling &&
-        !hasRecoveryContract
-      ) {
+      if (shouldReportAsyncFlowWithoutBoundary(
+        runtimeSource,
+        asyncRuntimePath,
+        asyncPressureSignals,
+        hasErrorHandling,
+        hasRecoveryContract
+      )) {
         findings.push(createFinding(
           'async_flow_without_error_boundary',
           severity,
@@ -73,13 +102,12 @@ export function detectAsyncErrorConformanceFromSource(filePath, source = '', opt
         ));
       }
 
-      if (
-        asyncRuntimePath &&
-        (looksLikeAsyncRuntimeFlow(runtimeSource) || /_requestWorkerRestart\s*\(|reloadHandler\.reload\s*\(|setTimeout\(|process\.send\s*\(/.test(runtimeSource)) &&
-        hasTimeoutOrRestartPressure(runtimeSource) &&
-        !hasErrorHandling &&
-        !hasRecoveryContract
-      ) {
+      if (shouldReportRestartOrTimeoutWithoutContract(
+        runtimeSource,
+        asyncRuntimePath,
+        hasErrorHandling,
+        hasRecoveryContract
+      )) {
         findings.push(createFinding(
           'restart_or_timeout_without_recovery_contract',
           severity,

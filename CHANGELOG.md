@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
 - [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
 - [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
@@ -16,6 +17,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
 - [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
 - [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
@@ -37,6 +39,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.121** | 2026-03-12 | MCP runtime false-positive reduction, watcher canonical reconciliation, Layer A language contract scaffolding, and benchmark baselines. |
 | **0.9.120** | 2026-03-12 | Coordinator decomposition, hotspot removal, role-taxonomy alignment, and continued debt reduction across analysis/runtime surfaces. |
 | **0.9.119** | 2026-03-12 | Watcher hardening, canonical adoption cleanup, and coordinator decomposition across core debt hotspots. |
 | **0.9.110** | 2026-03-09 | Semantic Chests architecture, V4 fingerprinting, chest-based severity policy, and reporting refinements. |
@@ -61,23 +64,33 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.120 (2026-03-12)
+## Latest Release: v0.9.121 (2026-03-12)
 
-**Debt Reduction & Performance Cleanup**
+**MCP Runtime & Watcher Canonicalization**
 
 ### Key Achievements
 
-1. Reduced multiple real `O(n^2)` and repeated-scan hotspots across layer A analyzers, race detection, molecular chains, and MCP tooling.
-2. Continued converting monolithic files into thin coordinators plus focused helper modules, improving edit safety for humans and coding agents.
-3. Extended canonical role taxonomy to include `resolver`, reducing false-positive integrity noise for resolver-style classes.
-4. Cleaned semantic-query, import-analysis, and test-generation surfaces so wrapper churn and duplicate naming pressure dropped.
-5. Kept pipeline integrity and pipeline health stable at `100` while refactoring OmnySys against itself.
+1. Reduced false-positive MCP health noise by separating legitimate multi-client activity from actionable duplicate-session churn.
+2. Aligned watcher stale-alert cleanup with canonical `atoms` and duplicate policy so resolved duplicate alerts stop persisting.
+3. Fixed `atomic_edit` runtime regressions and hardened cycle validation to require direct-import evidence.
+4. Added baseline MCP performance benchmarks and the first Layer A language-adapter contract surface.
+5. Kept runtime freshness and watcher reconciliation verifiable through MCP restart/reload cycles.
 
 ### New & Refactored Files
 
-- `src/layer-c-memory/mcp/tools/atomic-edit/atomic-write-helpers.js`
-- `src/layer-b-semantic/inference-engine/relationship-analyzer/helpers.js`
-- `src/layer-a-static/analyses/tier2/unused-imports/helpers.js`
+- `src/layer-c-memory/mcp-http-listener.js`
+- `src/layer-c-memory/mcp/restart-runtime.js`
+- `src/layer-c-memory/mcp/tool-registry-runtime.js`
+- `src/layer-c-memory/mcp/tools/atomic-edit/atomic-editor-helpers.js`
+- `src/shared/compiler/compiler-runtime-metrics-graph.js`
+- `src/shared/compiler/compiler-runtime-metrics-sessions.js`
+- `src/shared/compiler/compiler-runtime-metrics-support.js`
+- `src/shared/compiler/language-contract.js`
+- `src/shared/compiler/watcher-issue-duplicate-policy.js`
+- `tests/contracts/layer-a-language-adapter.contract.test.js`
+- `tests/performance/mcp-startup.benchmark.test.js`
+- `tests/performance/mcp-incremental-reindex.benchmark.test.js`
+- `tests/performance/mcp-post-edit-guards.benchmark.test.js`
 - multiple split/optimized files across `layer-a-static`, `layer-b-semantic`, and `layer-c-memory`
 - `changelogs/v0.9.120.md`
 

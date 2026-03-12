@@ -4,10 +4,14 @@
  * @module shared/compiler/compiler-runtime-metrics
  */
 
-import { getPipelineOrphanSummary } from './pipeline-orphans.js';
-import { getDeadCodePlausibilitySummary } from './dead-code-utils.js';
-import { getFileUniverseGranularity } from './file-universe-granularity.js';
-import { getLiveFileTotal } from './live-row-utils.js';
+import { computeGraphCoverageMetrics } from './compiler-runtime-metrics-graph.js';
+import { collectMcpSessionMetrics } from './compiler-runtime-metrics-sessions.js';
+import {
+  collectIssueMetrics,
+  collectConceptualDuplicateMetrics,
+  collectFileUniverseMetrics,
+  collectWatcherNoiseMetrics
+} from './compiler-runtime-metrics-support.js';
 
 export function getAtomCountSummary(db) {
   if (!db) {
@@ -74,223 +78,25 @@ export function getPhase2FileCounts(db) {
 }
 
 export function getGraphCoverageSummary(db) {
-  if (!db) {
-    return {
-      callLinks: 0,
-      semanticLinks: 0
-    };
-  }
-
-  const calledByRows = db.prepare(`
-    SELECT called_by_json
-    FROM atoms
-    WHERE (is_removed = 0 OR is_removed IS NULL)
-      AND called_by_json IS NOT NULL
-      AND called_by_json != '[]'
-  `).all();
-
-  return {
-    callLinks: calledByRows.reduce((sum, row) => {
-      try {
-        return sum + (JSON.parse(row.called_by_json)?.length || 0);
-      } catch {
-        return sum;
-      }
-    }, 0),
-    semanticLinks: db.prepare(`
-      SELECT COUNT(*) as n
-      FROM atom_relations
-      WHERE (is_removed = 0 OR is_removed IS NULL)
-        AND relation_type IN ('shares_state', 'emits', 'listens')
-    `).get()?.n || 0
-  };
-}
-
-export function getIssueSummary(db, options = {}) {
-  if (!db) {
-    return {
-      total: 0,
-      bySeverity: [],
-      display: '0 items',
-      orphanCount: 0,
-      suspiciousDeadCandidates: 0
-    };
-  }
-
-  const { minDeadCodeLines = 5 } = options;
-  const rows = db.prepare(`
-    SELECT severity, COUNT(*) as count
-    FROM semantic_issues
-    WHERE (is_removed = 0 OR is_removed IS NULL)
-      AND (lifecycle_status = 'active' OR lifecycle_status IS NULL)
-    GROUP BY severity
-    ORDER BY severity
-  `).all();
-
-  const orphanSummary = getPipelineOrphanSummary(db);
-  const deadCodeSummary = getDeadCodePlausibilitySummary(db, { minLines: minDeadCodeLines });
-
-  return {
-    total: rows.reduce((sum, row) => sum + row.count, 0),
-    bySeverity: rows,
-    display: rows.map((row) => `${row.count} ${row.severity}`).join(', ') || '0 items',
-    orphanCount: orphanSummary?.total || 0,
-    suspiciousDeadCandidates: deadCodeSummary?.suspiciousDeadCandidates || 0,
-    deadCodeWarning: deadCodeSummary?.warning || null
-  };
-}
-
-export function getConceptualDuplicateSummary(repo, options = {}) {
-  const empty = {
-    actionableGroups: 0,
-    actionableImplementations: 0,
-    rawGroups: 0,
-    rawImplementations: 0,
-    actionableRatio: 0,
-    noiseByClass: {}
-  };
-
-  if (!repo) {
-    return empty;
-  }
-
-  try {
-    const conceptualSummary = repo.getConceptualDuplicateStats
-      ? repo.getConceptualDuplicateStats(options)
-      : repo.findConceptualDuplicates?.(options)?.summary || null;
-
-    if (!conceptualSummary) {
-      return empty;
-    }
-
-    const actionableGroups = conceptualSummary.actionable?.groupCount || 0;
-    const rawGroups = conceptualSummary.raw?.groupCount || 0;
-
-    return {
-      actionableGroups,
-      actionableImplementations: conceptualSummary.actionable?.implementationCount || 0,
-      rawGroups,
-      rawImplementations: conceptualSummary.raw?.implementationCount || 0,
-      actionableRatio: rawGroups > 0
-        ? Number((actionableGroups / rawGroups).toFixed(3))
-        : 0,
-      noiseByClass: conceptualSummary.noiseByClass || {}
-    };
-  } catch {
-    return empty;
-  }
-}
-
-export function getFileUniverseSummary(db) {
-  if (!db) {
-    return {
-      scannedFileTotal: 0,
-      manifestFileTotal: 0,
-      liveFileCount: 0,
-      zeroAtomFileCount: 0,
-      liveCoverageRatio: 0,
-      contract: null
-    };
-  }
-
-  const scannedFileTotal = db.prepare('SELECT COUNT(*) as n FROM compiler_scanned_files').get()?.n || 0;
-  const liveFileCount = getLiveFileTotal(db);
-
-  const summary = getFileUniverseGranularity({
-    scannedFileTotal,
-    manifestFileTotal: scannedFileTotal,
-    liveFileCount
-  });
-
-  return {
-    scannedFileTotal: summary?.scannedFileTotal || 0,
-    manifestFileTotal: summary?.manifestFileTotal || 0,
-    liveFileCount: summary?.liveFileCount || 0,
-    zeroAtomFileCount: summary?.zeroAtomFileCount || 0,
-    liveCoverageRatio: summary?.liveCoverageRatio || 0,
-    contract: summary?.contract || null
-  };
-}
-
-export function summarizeWatcherNoise(stats = {}) {
-  const startupNoiseSuppressed = stats?.startupNoiseSuppressed || 0;
-  const startupSuppressionWindowMs = stats?.startupSuppressionWindowMs || 0;
-
-  return {
-    startupNoiseSuppressed,
-    startupSuppressionWindowMs,
-    summary: startupNoiseSuppressed > 0
-      ? `${startupNoiseSuppressed} startup watcher event(s) suppressed`
-      : 'No startup watcher noise suppressed'
-  };
-}
-
-function buildMcpSessionSummaryText({
-  hasRuntimeSessionCount,
-  runtimeSessionCount,
-  totalPersistentActive,
-  uniqueClients,
-  clientsWithDuplicates
-}) {
-  return [
-    hasRuntimeSessionCount ? `${runtimeSessionCount} runtime` : null,
-    `${totalPersistentActive} persistent active`,
-    `${uniqueClients} client${uniqueClients === 1 ? '' : 's'}`,
-    clientsWithDuplicates > 0
-      ? `${clientsWithDuplicates} duplicate client bucket${clientsWithDuplicates === 1 ? '' : 's'}`
-      : 'no duplicate client buckets'
-  ].filter(Boolean).join(', ');
+  return computeGraphCoverageMetrics(db);
 }
 
 export function getMcpSessionSummary(sessionManager, options = {}) {
-  const hasRuntimeSessionCount = Number.isFinite(options.runtimeSessionCount);
-  const runtimeSessionCount = hasRuntimeSessionCount ? options.runtimeSessionCount : null;
-  const empty = {
-    runtimeSessions: runtimeSessionCount,
-    totalPersistent: 0,
-    totalPersistentActive: 0,
-    uniqueClients: 0,
-    clientsWithDuplicates: 0,
-    duplicateDetails: [],
-    multiClientChurn: false,
-    summary: runtimeSessionCount > 0
-      ? `${runtimeSessionCount} runtime session(s), session persistence unavailable`
-      : 'No active MCP sessions'
-  };
+  return collectMcpSessionMetrics(sessionManager, options);
+}
 
-  if (!sessionManager?.getDedupStats || !sessionManager?.getAllSessions) {
-    return empty;
-  }
+export function getIssueSummary(db, options = {}) {
+  return collectIssueMetrics(db, options);
+}
 
-  const dedupStats = sessionManager.getDedupStats();
-  if (!dedupStats || dedupStats.error) {
-    return {
-      ...empty,
-      error: dedupStats?.error || 'session summary unavailable'
-    };
-  }
+export function getConceptualDuplicateSummary(repo, options = {}) {
+  return collectConceptualDuplicateMetrics(repo, options);
+}
 
-  const totalPersistent = sessionManager.getAllSessions(false).length;
-  const totalPersistentActive = sessionManager.getAllSessions(true).length;
-  const uniqueClients = dedupStats.uniqueClients || 0;
-  const clientsWithDuplicates = dedupStats.clientsWithDuplicates || 0;
-  const duplicateDetails = dedupStats.duplicateDetails || [];
-  const multiClientChurn = uniqueClients > 1 || clientsWithDuplicates > 0 || runtimeSessionCount > uniqueClients;
+export function getFileUniverseSummary(db) {
+  return collectFileUniverseMetrics(db);
+}
 
-  return {
-    runtimeSessions: runtimeSessionCount,
-    totalPersistent,
-    totalPersistentActive,
-    uniqueClients,
-    clientsWithDuplicates,
-    duplicateDetails,
-    multiClientChurn,
-    summary: buildMcpSessionSummaryText({
-      hasRuntimeSessionCount,
-      runtimeSessionCount,
-      totalPersistentActive,
-      uniqueClients,
-      clientsWithDuplicates
-    })
-  };
+export function summarizeWatcherNoise(stats = {}) {
+  return collectWatcherNoiseMetrics(stats);
 }

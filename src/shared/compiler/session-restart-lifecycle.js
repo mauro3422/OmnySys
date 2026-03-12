@@ -11,23 +11,31 @@ export function buildCompilerReadinessStatus({
   persistentActive = 0,
   clientsWithDuplicates = 0
 } = {}) {
+  const input = arguments[0] || {};
+  const actionableDuplicateClients = input.actionableDuplicateClients ?? clientsWithDuplicates;
+  const toleratedDuplicateClients = input.toleratedDuplicateClients ?? 0;
   const checks = {
     phase2Complete: phase2PendingFiles === 0,
     societiesReady: societiesCount > 0,
-    dedupHealthy: clientsWithDuplicates === 0,
+    dedupHealthy: actionableDuplicateClients === 0,
     sessionCountsAligned: persistentActive >= runtimeSessions
   };
 
   const warnings = [];
   if (!checks.phase2Complete) warnings.push(`Phase 2 still pending for ${phase2PendingFiles} files`);
   if (!checks.societiesReady) warnings.push('Society extraction has not produced persisted rows yet');
-  if (!checks.dedupHealthy) warnings.push(`${clientsWithDuplicates} clients still have duplicated active sessions`);
+  if (!checks.dedupHealthy) {
+    warnings.push(`${actionableDuplicateClients} clients still have duplicated active sessions`);
+  }
   if (!checks.sessionCountsAligned) {
     warnings.push(`Runtime sessions (${runtimeSessions}) exceed persistent active rows (${persistentActive})`);
   }
+  if (toleratedDuplicateClients > 0) {
+    warnings.push(`${toleratedDuplicateClients} duplicate client buckets are tolerated for known IDE bridges`);
+  }
 
   return {
-    ready: warnings.length === 0,
+    ready: checks.phase2Complete && checks.societiesReady && checks.dedupHealthy && checks.sessionCountsAligned,
     checks,
     warnings
   };

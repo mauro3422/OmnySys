@@ -554,7 +554,7 @@ export function isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint
 
     return isMcpToolPath &&
         normalizedName === 'performaction' &&
-        fingerprint === 'process:core:action';
+        (fingerprint === 'process:core:action' || fingerprint === 'process:logic:core:perform_action');
 }
 
 export function isCompilerConformancePolicyHelper(filePath, atomName, semanticFingerprint) {

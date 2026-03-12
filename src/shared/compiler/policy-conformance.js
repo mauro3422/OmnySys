@@ -57,6 +57,8 @@ export const COMPILER_POLICY_AREA = {
   SEMANTIC_PURITY: 'semantic_purity',
   METADATA_PROPAGATION: 'metadata_propagation',
   SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity',
+  WATCHER_DIAGNOSTICS: 'watcher_diagnostics',
+  WATCHER_LIFECYCLE: 'watcher_lifecycle',
   CANONICAL_BYPASS: 'canonical_bypass'
 };
 
@@ -111,6 +113,21 @@ function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
   ];
 
   return canonicalSignals.filter((pattern) => pattern.test(source)).length >= 3;
+}
+
+function looksLikeWatcherDiagnosticsDrift(normalizedPath, source = '') {
+  if (!source || normalizedPath.startsWith('src/shared/compiler/')) {
+    return false;
+  }
+
+  const touchesWatcherPersistence =
+    /semantic_issues|persistWatcherIssue|clearWatcherIssue|reconcileWatcherIssues|findOutdatedWatcherAlertIds|findSupersededWatcherAlertIds/.test(source);
+  const touchesCanonicalWatcherSurface =
+    /mapSemanticIssueRowToWatcherAlert|attachWatcherAlertLifecycle|filterWatcherAlertsByLifecycle|partitionWatcherAlertsByLifecycle/.test(source);
+  const touchesCanonicalAtomSurface =
+    /FROM\s+atoms|SELECT[\s\S]{0,120}FROM\s+atoms|ensureLiveRowSync|loadCompilerDiagnosticsSnapshot/.test(source);
+
+  return touchesWatcherPersistence && touchesCanonicalWatcherSurface && touchesCanonicalAtomSurface;
 }
 
 function buildPolicyImportMap(source = '') {
@@ -197,6 +214,16 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         policyArea: COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
         message: 'Manual daemon ownership/lock logic detected',
         recommendation: 'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
+      }
+    ),
+    ...maybeFinding(
+      looksLikeWatcherDiagnosticsDrift(normalizedPath, source),
+      {
+        rule: 'manual_watcher_diagnostics_reconciliation',
+        severity: COMPILER_POLICY_SEVERITY.MEDIUM,
+        policyArea: COMPILER_POLICY_AREA.WATCHER_DIAGNOSTICS,
+        message: 'Module mixes watcher persistence, lifecycle and canonical atom/diagnostics reads without a dedicated canonical watcher reconciliation API',
+        recommendation: 'Route watcher reconciliation through shared/compiler watcher diagnostics helpers instead of composing semantic_issues, lifecycle and atoms heuristics inline.'
       }
     ),
     ...maybeFinding(

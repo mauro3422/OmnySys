@@ -23,29 +23,9 @@ import {
   shouldSuppressWatcherAlert
 } from '../../shared/compiler/index.js';
 import { getWatcherIssueDb } from './watcher-issue-repository.js';
+import { createEmptyWatcherIssueLoadResult, createWatcherIssueReconciliationSummary, normalizeWatcherMessage, safeJsonParse, stableJson } from './watcher-issue-persistence-support.js';
 
 const logger = createLogger('OmnySys:file-watcher:persistence');
-
-function normalizeWatcherMessage(message = '') {
-  return String(message || '').trim().replace(/^\[watcher\]\s*/i, '').trim();
-}
-
-function stableJson(value) {
-  if (value == null) return 'null';
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return '{}';
-  }
-}
-
-function safeJsonParse(value, fallback = {}) {
-  try {
-    return JSON.parse(value || '{}');
-  } catch {
-    return fallback;
-  }
-}
 
 export function loadActiveWatcherIssue(db, filePath, issueType) {
   return db.prepare(`
@@ -136,15 +116,7 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
     if (!db) return false;
 
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    return upsertWatcherIssueRecord(db, {
-      filePath: normalizedFilePath,
-      issueType,
-      severity,
-      message,
-      context
-    }, {
-      logPrefix: '[WATCHER ISSUE]'
-    });
+    return upsertWatcherIssueRecord(db, { filePath: normalizedFilePath, issueType, severity, message, context }, { logPrefix: '[WATCHER ISSUE]' });
   } catch (error) {
     logger.debug(`[WATCHER ISSUE PERSIST SKIP] ${filePath}:${issueType} -> ${error.message}`);
     return false;
@@ -208,36 +180,19 @@ export async function clearWatcherIssueFamily(projectPath, filePath, issueTypePr
 
 export async function loadWatcherIssues(projectPath, options = {}) {
   try {
-    const {
-      limit = 10,
-      offset = 0,
-      filePath,
-      issueType = 'all',
-      lifecycle = 'all',
-      pruneExpired = true
-    } = options;
+    const { limit = 10, offset = 0, filePath, issueType = 'all', lifecycle = 'all', pruneExpired = true } = options;
 
     const db = await getWatcherIssueDb(projectPath);
-    if (!db) {
-      return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } } };
-    }
+    if (!db) return createEmptyWatcherIssueLoadResult();
 
-    const reconciliation = pruneExpired
-      ? await reconcileWatcherIssues(projectPath, { db })
-      : { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, summary: { total: 0, byStatus: {} } };
+    const reconciliation = pruneExpired ? await reconcileWatcherIssues(projectPath, { db }) : createWatcherIssueReconciliationSummary();
 
     let whereClause = 'WHERE message LIKE ?';
     const params = [`${WATCHER_MESSAGE_PREFIX}%`];
 
-    if (filePath) {
-      whereClause += ' AND file_path = ?';
-      params.push(filePath);
-    }
+    if (filePath) { whereClause += ' AND file_path = ?'; params.push(filePath); }
 
-    if (issueType !== 'all') {
-      whereClause += ' AND issue_type = ?';
-      params.push(issueType);
-    }
+    if (issueType !== 'all') { whereClause += ' AND issue_type = ?'; params.push(issueType); }
 
     const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
@@ -252,14 +207,10 @@ export async function loadWatcherIssues(projectPath, options = {}) {
       .map((alert) => attachWatcherAlertLifecycle(alert));
     const filtered = filterWatcherAlertsByLifecycle(alerts, lifecycle);
 
-    return {
-      total: filtered.length,
-      alerts: filtered.slice(offset, offset + limit),
-      reconciliation
-    };
+    return { total: filtered.length, alerts: filtered.slice(offset, offset + limit), reconciliation };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE LOAD SKIP] ${error.message}`);
-    return { total: 0, alerts: [], reconciliation: { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } } };
+    return createEmptyWatcherIssueLoadResult();
   }
 }
 
@@ -267,9 +218,7 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
   try {
     const { db: existingDb = null, maxDelete = 500 } = options;
     const db = existingDb || await getWatcherIssueDb(projectPath);
-    if (!db) {
-      return { deletedExpired: 0, summary: { total: 0, byStatus: {} } };
-    }
+    if (!db) return createWatcherIssueReconciliationSummary();
 
     const rows = db.prepare(`
       SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
@@ -280,19 +229,12 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
 
     const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
     const partitioned = partitionWatcherAlertsByLifecycle(alerts);
-    const expiredIds = partitioned.expired
-      .map((alert) => alert.id)
-      .filter((id) => Number.isInteger(id))
-      .slice(0, maxDelete);
+    const expiredIds = partitioned.expired.map((alert) => alert.id).filter((id) => Number.isInteger(id)).slice(0, maxDelete);
     const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
 
-    const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts)).slice(0, maxDelete);
+    const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts, { db })).slice(0, maxDelete);
     const orphanedIds = findOrphanedWatcherAlertIds(db, alerts).slice(0, maxDelete);
-    const lowSignalIds = alerts
-      .filter((alert) => shouldSuppressWatcherAlert(alert))
-      .map((alert) => alert.id)
-      .filter((id) => Number.isInteger(id))
-      .slice(0, maxDelete);
+    const lowSignalIds = alerts.filter((alert) => shouldSuppressWatcherAlert(alert)).map((alert) => alert.id).filter((id) => Number.isInteger(id)).slice(0, maxDelete);
 
     const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...orphanedIds, ...lowSignalIds])].slice(0, maxDelete);
 
@@ -319,6 +261,6 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     };
   } catch (error) {
     logger.debug(`[WATCHER ISSUE RECONCILE SKIP] ${error.message}`);
-    return { deletedExpired: 0, deletedSuperseded: 0, deletedOutdated: 0, deletedOrphaned: 0, deletedLowSignal: 0, summary: { total: 0, byStatus: {} } };
+    return createWatcherIssueReconciliationSummary();
   }
 }

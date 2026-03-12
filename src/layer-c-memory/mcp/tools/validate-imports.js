@@ -7,7 +7,54 @@ import {
     collectBrokenImports
 } from './validate-imports/filesystem-validation.js';
 
-function computeCircularDependencies(repo, filePath, checkCircular) {
+function normalizeComparablePath(filePath = '') {
+    return String(filePath || '').replace(/\\/g, '/');
+}
+
+function hasDirectImportEvidence(fileData, targetPath) {
+    const normalizedTarget = normalizeComparablePath(targetPath);
+    return (fileData?.imports || []).some((entry) => {
+        const resolved = normalizeComparablePath(entry?.resolvedPath || entry?.resolved || '');
+        const source = normalizeComparablePath(entry?.source || '');
+        return resolved === normalizedTarget || source === normalizedTarget;
+    });
+}
+
+async function filterCyclesByDirectImportEvidence(projectPath, cycles = []) {
+    const fileCache = new Map();
+
+    async function getCachedFileAnalysis(filePath) {
+        if (!fileCache.has(filePath)) {
+            fileCache.set(filePath, await getFileAnalysis(projectPath, filePath));
+        }
+        return fileCache.get(filePath);
+    }
+
+    const verifiedCycles = [];
+
+    for (const cycle of cycles) {
+        let hasUnsupportedEdge = false;
+
+        for (let index = 0; index < cycle.length - 1; index += 1) {
+            const sourcePath = cycle[index];
+            const targetPath = cycle[index + 1];
+            const sourceFileData = await getCachedFileAnalysis(sourcePath);
+
+            if (!hasDirectImportEvidence(sourceFileData, targetPath)) {
+                hasUnsupportedEdge = true;
+                break;
+            }
+        }
+
+        if (!hasUnsupportedEdge) {
+            verifiedCycles.push(cycle);
+        }
+    }
+
+    return verifiedCycles;
+}
+
+async function computeCircularDependencies(repo, projectPath, filePath, checkCircular) {
     if (!checkCircular || !repo?.db) {
         return [];
     }
@@ -51,7 +98,8 @@ function computeCircularDependencies(repo, filePath, checkCircular) {
         dfs(filePath);
     }
 
-    return Array.from(new Set(cycles.map((cycle) => cycle.join(' -> '))));
+    const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles);
+    return Array.from(new Set(verifiedCycles.map((cycle) => cycle.join(' -> '))));
 }
 
 export class ValidateImportsTool extends GraphQueryTool {
@@ -82,7 +130,7 @@ export class ValidateImportsTool extends GraphQueryTool {
             const unused = checkUnused
                 ? (fileData?.imports || []).filter((entry) => entry?.unused === true)
                 : [];
-            const circularPaths = computeCircularDependencies(this.repo, filePath, checkCircular);
+            const circularPaths = await computeCircularDependencies(this.repo, this.projectPath, filePath, checkCircular);
 
             return this.formatSuccess(
                 await buildIndexedValidationResult(filePath, fileData, broken, unused, circularPaths, this.projectPath)

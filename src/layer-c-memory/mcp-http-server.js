@@ -67,50 +67,34 @@ import {
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { pathToFileURL } from 'url';
 import { applyPagination } from './mcp/core/pagination.js';
 import { createLogger } from '../utils/logger.js';
+import { handleRuntimeRestart } from './mcp/restart-runtime.js';
+import { startHttpServer } from './mcp-http-listener.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
-// ── Mutable tool registry ────────────────────────────────────────────────────
-// Tools are loaded dynamically so that hot-reload and component restart
-// can refresh handlers without killing the process.
-const TOOLS_INDEX_PATH = new URL('./mcp/tools/index.js', import.meta.url).pathname
-  .replace(/^\/([A-Za-z]:)/, '$1'); // strip leading / on Windows paths
-
-function toFileUrl(p) {
-  return pathToFileURL(p).href;
+async function loadToolRegistryRuntime() {
+  return import('./mcp/tool-registry-runtime.js');
 }
 
-const toolRegistry = { definitions: [], handlers: {} };
+async function refreshLiveToolRegistry(activeLogger = logger) {
+  const { refreshToolRegistry } = await loadToolRegistryRuntime();
+  return refreshToolRegistry(activeLogger);
+}
 
-/**
- * Returns the live toolHandlers map. Always use this instead of the
- * static import so hot-reloads are reflected immediately.
- */
-export function getLiveHandlers() { return toolRegistry.handlers; }
-export function getLiveDefinitions() { return toolRegistry.definitions; }
+async function getLiveToolDefinitions() {
+  const { getLiveDefinitions } = await loadToolRegistryRuntime();
+  return getLiveDefinitions();
+}
 
-/**
- * Re-imports tools/index.js with a cache-busting query param,
- * then updates the mutable registry in-place.
- * @returns {Promise<void>}
- */
-export async function refreshToolRegistry() {
-  try {
-    const url = `${toFileUrl(TOOLS_INDEX_PATH)}?bust=${Date.now()}`;
-    const mod = await import(url);
-    toolRegistry.definitions = mod.toolDefinitions || [];
-    toolRegistry.handlers = mod.toolHandlers || {};
-    logger.info(`🔄 Tool registry refreshed (${toolRegistry.definitions.length} tools)`);
-  } catch (err) {
-    logger.error(`❌ Failed to refresh tool registry: ${err.message}`);
-  }
+async function getLiveToolHandler(name) {
+  const { getLiveHandlers } = await loadToolRegistryRuntime();
+  return getLiveHandlers()[name];
 }
 
 // Initial load (after logger is ready)
-await refreshToolRegistry();
+await refreshLiveToolRegistry(logger);
 
 
 const arg1 = process.argv[2];
@@ -148,7 +132,7 @@ function buildServerForSession() {
   );
 
   sessionServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: getLiveDefinitions()
+    tools: await getLiveToolDefinitions()
   }));
 
   // Codex/Cline may probe these even if OmnySys does not expose resources.
@@ -185,7 +169,7 @@ async function executeMcpToolCall(request) {
   }
 
   const { name, arguments: args } = request.params;
-  const handler = getLiveHandlers()[name];
+  const handler = await getLiveToolHandler(name);
 
   if (!handler) {
     throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -195,7 +179,8 @@ async function executeMcpToolCall(request) {
     orchestrator: core.orchestrator,
     cache: core.cache,
     projectPath: core.projectPath,
-    server: core
+    server: core,
+    refreshToolRegistry: refreshLiveToolRegistry
   };
 
   const rawResult = await handler(args, context);
@@ -421,12 +406,11 @@ app.get('/tools', (req, res) => {
 // We mount json manually inside the route to not interfere with MCP streams which need raw req object
 app.post('/restart', express.json(), async (req, res) => {
   try {
-    const { restart_server } = await import('./mcp/tools/restart-server.js');
-    const params = req.body || {};
-    const result = await restart_server(params, {
+    const result = await handleRuntimeRestart(req.body || {}, {
       server: core,
       cache: core.cache,
-      orchestrator: core.orchestrator
+      orchestrator: core.orchestrator,
+      refreshToolRegistry: refreshLiveToolRegistry
     });
     res.json(result);
   } catch (err) {
@@ -435,91 +419,10 @@ app.post('/restart', express.json(), async (req, res) => {
   }
 });
 
-const isProxyMode = process.env.OMNYSYS_PROXY_MODE === '1';
-const bindRetryDelayMs = process.platform === 'win32' ? 1000 : 300;
-const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 8 : 3) : 0;
 let httpServer = null;
 
-function closeBindAttempt(server) {
-  if (!server) {
-    return;
-  }
-
-  server.close(() => { });
-}
-
-function handlePortInUse(server, attempt) {
-  closeBindAttempt(server);
-
-  if (isProxyMode && attempt < bindRetryLimit) {
-    const nextAttempt = attempt + 1;
-    logger.warn(`Port ${port} still busy after restart. Retrying bind in ${bindRetryDelayMs}ms (${nextAttempt}/${bindRetryLimit})...`);
-    return { action: 'retry', nextAttempt };
-  }
-
-  logger.warn(`Port ${port} already in use, assuming MCP daemon is already running.`);
-  if (isProxyMode) {
-    logger.error('Proxy Mode active. Port remained locked after bind retries. Exiting with code 1 to let proxy retry cleanly.');
-    process.exit(1);
-  }
-
-  process.exit(0);
-}
-
-function handleHttpStartupFailure(error) {
-  logger.error(`HTTP daemon startup failed: ${error.message}`);
-  process.exit(1);
-}
-
-function waitForBindRetry() {
-  return new Promise((resolve) => {
-    setTimeout(resolve, bindRetryDelayMs);
-  });
-}
-
-function tryListen(attempt) {
-  return new Promise((resolve, reject) => {
-    const server = app.listen(port, host, () => {
-      httpServer = server;
-      logger.info(`🌐 OmnySys MCP HTTP daemon listening on http://${host}:${port}/mcp`);
-      logger.info(`📂 Project: ${projectPath}`);
-      resolve({ status: 'listening', server });
-    });
-
-    server.once('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        const outcome = handlePortInUse(server, attempt);
-        resolve(outcome || { action: 'exit' });
-        return;
-      }
-
-      reject(error);
-    });
-  });
-}
-
-async function startHttpServer() {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      const outcome = await tryListen(attempt);
-      if (outcome?.status === 'listening') {
-        return outcome.server;
-      }
-
-      if (outcome?.action === 'retry') {
-        await waitForBindRetry();
-        continue;
-      }
-
-      return null;
-    } catch (error) {
-      handleHttpStartupFailure(error);
-      return null;
-    }
-  }
-}
-
-await startHttpServer();
+httpServer = await startHttpServer({ app, host, port, logger });
+logger.info(`📂 Project: ${projectPath}`);
 
 core.initialize().then(async () => {
   try {
