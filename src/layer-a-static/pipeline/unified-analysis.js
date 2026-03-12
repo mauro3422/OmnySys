@@ -6,21 +6,14 @@
  * Optimized for systems with high RAM (16GB+).
  */
 
-import { parseFileFromDisk } from '../parser/index.js';
-import { AtomExtractionPhase } from './phases/atom-extraction/index.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { enrichAtom as enrichAtomPurpose } from './phases/atom-extraction/metadata/purpose-enricher.js';
-import { enrichAtom as enrichAtomVectors } from '#layer-c/storage/enrichers/atom-enricher.js';
 import { createLogger } from '../../utils/logger.js';
 import { logMemoryUsage } from '../../utils/memory-telemetry.js';
 import { BatchTimer } from '../../utils/performance-tracker.js';
-import path from 'path';
-import fs from 'fs/promises';
 import os from 'os';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import { getGitStats } from '../../utils/git-analyzer.js';
-import { calculateContentHash } from './incremental-analysis-utils.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
 

@@ -9,10 +9,25 @@
 
 import path from 'path';
 import { pathToFileURL } from 'url';
+import { execFileSync } from 'child_process';
 import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:hot-reload:strategy');
 const RUNTIME_RESTART_DEBOUNCE_MS = 900;
+
+function hasRealGitChange(projectPath, filename) {
+  try {
+    const output = execFileSync(
+      'git',
+      ['status', '--porcelain', '--untracked-files=no', '--', filename],
+      { cwd: projectPath, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    );
+    return String(output || '').trim().length > 0;
+  } catch {
+    // If git is unavailable, prefer safety and keep current behavior.
+    return true;
+  }
+}
 
 /**
  * Abstract base class for reload strategies
@@ -121,6 +136,11 @@ export class BaseStrategy {
    * @returns {boolean}
    */
   _queueManualRuntimeRestart(filename, reason) {
+    if (!hasRealGitChange(this.server?.projectPath, filename)) {
+      logger.info(`${reason} change ignored (no real git diff): ${filename}`);
+      return false;
+    }
+
     if (!this.server._pendingHotReloadRestartFiles) {
       this.server._pendingHotReloadRestartFiles = new Set();
     }

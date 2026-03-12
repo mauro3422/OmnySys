@@ -15,13 +15,14 @@ import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/st
 import {
   getAtomCountSummary,
   getConceptualDuplicateSummary,
-  getFileUniverseSummary,
   getGraphCoverageSummary,
   getIssueSummary,
   getMcpSessionSummary,
   getPhase2FileCounts,
   getPipelineOrphanSummary,
-  getDeadCodePlausibilitySummary
+  getDeadCodePlausibilitySummary,
+  ensureLiveRowSync,
+  loadCompilerDiagnosticsSnapshot
 } from '#shared/compiler/index.js';
 import { sessionManager } from '../session-manager.js';
 
@@ -64,6 +65,11 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
 }
 
 async function fetchExtendedMetrics(projectPath, db, repo) {
+  const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+  const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
+    projectPath,
+    db
+  });
   const metrics = {
     totalAtoms: 0,
     typeSummary: '',
@@ -86,6 +92,8 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     hasPhase2DebtSnapshot: false,
     zeroAtomFileCount: 0,
     liveCoverageRatio: 0,
+    liveRowSyncSummary: liveRowSync.summary,
+    compilerDiagnostics,
     mcpSessionSummary: getMcpSessionSummary(sessionManager)
   };
 
@@ -96,7 +104,9 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     loadIssueMetrics(metrics, db);
     loadPhase2Metrics(metrics, db);
     loadGraphMetrics(metrics, db);
-    loadFileUniverseMetrics(metrics, db);
+    const fileUniverseSummary = metrics.compilerDiagnostics?.fileUniverseGranularity || {};
+    metrics.zeroAtomFileCount = fileUniverseSummary.zeroAtomFileCount;
+    metrics.liveCoverageRatio = fileUniverseSummary.liveCoverageRatio;
     loadPhysicsMetrics(metrics, db);
   } catch (error) {
     logger.debug('Extended metrics fetch partially failed:', error.message);
@@ -167,12 +177,6 @@ function loadGraphMetrics(metrics, db) {
   const graphCoverage = getGraphCoverageSummary(db);
   metrics.semanticLinks = graphCoverage.semanticLinks;
   metrics.callLinks = graphCoverage.callLinks;
-}
-
-function loadFileUniverseMetrics(metrics, db) {
-  const fileUniverseSummary = getFileUniverseSummary(db);
-  metrics.zeroAtomFileCount = fileUniverseSummary.zeroAtomFileCount;
-  metrics.liveCoverageRatio = fileUniverseSummary.liveCoverageRatio;
 }
 
 function loadPhysicsMetrics(metrics, db) {

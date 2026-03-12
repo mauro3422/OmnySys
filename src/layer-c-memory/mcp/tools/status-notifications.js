@@ -4,6 +4,7 @@ import {
   buildRuntimeCodeFreshness,
   buildTelemetryProvenance,
   getLastAnalyzed,
+  isBreakingWatcherAlert,
   getMcpSessionSummary,
   summarizeSignalConfidence
 } from '../../../shared/compiler/index.js';
@@ -81,8 +82,8 @@ export function buildRecentErrorsResponse(notifications) {
   const watcherAlerts = notifications.watcherAlerts || [];
   const warnings = logs.filter((entry) => entry.level === 'warn');
   const errors = logs.filter((entry) => entry.level === 'error');
-  const watcherHigh = watcherAlerts.filter((entry) => entry.severity === 'high').length;
-  const watcherWarn = watcherAlerts.filter((entry) => entry.severity !== 'high').length;
+  const watcherHigh = watcherAlerts.filter((entry) => isBreakingWatcherAlert(entry) || entry.severity === 'high').length;
+  const watcherWarn = watcherAlerts.filter((entry) => !isBreakingWatcherAlert(entry) && entry.severity !== 'high').length;
 
   const incidents = {
     atomic: errors.filter((entry) => entry.message.includes('atomic') || entry.message.includes('AutoFix')).length,

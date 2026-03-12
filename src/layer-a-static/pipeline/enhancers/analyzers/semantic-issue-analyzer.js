@@ -24,6 +24,48 @@
  * @param {Object} semanticResults - Resultados del análisis semántico
  * @returns {Object} Issues y estadísticas
  */
+function normalizePath(filePath = '') {
+  return String(filePath || '')
+    .toLowerCase()
+    .replace(/\\/g, '/')
+    .replace(/^\.?\//, '');
+}
+
+function isTestOrFactoryFile(filePath = '') {
+  const normalized = normalizePath(filePath);
+  return (
+    normalized.startsWith('tests/') ||
+    normalized.startsWith('test/') ||
+    normalized.includes('/tests/') ||
+    normalized.includes('/test/') ||
+    normalized.includes('/__tests__/') ||
+    normalized.includes('/factories/') ||
+    normalized.includes('.test.')
+  );
+}
+
+function isLoggingInfrastructureFile(filePath = '') {
+  const normalized = normalizePath(filePath);
+  return (
+    normalized.endsWith('src/utils/logger.js') ||
+    normalized.endsWith('src/shared/logger-config.js')
+  );
+}
+
+function getCouplingSeverity(filePath, connCount, highThreshold) {
+  if (connCount < 4) return null;
+
+  const nonProductionSurface =
+    isTestOrFactoryFile(filePath) ||
+    isLoggingInfrastructureFile(filePath);
+
+  if (connCount >= highThreshold) {
+    return nonProductionSurface ? 'medium' : 'high';
+  }
+
+  return 'medium';
+}
+
 export function collectSemanticIssues(enhanced, semanticResults) {
   const issues = [];
 
@@ -32,19 +74,21 @@ export function collectSemanticIssues(enhanced, semanticResults) {
     const connCount = fileData.semanticConnections?.length || 0;
     const riskScore = fileData.riskScore?.total || 0;
 
-    if (connCount >= 8) {
+    const couplingSeverity = getCouplingSeverity(filePath, connCount, 8);
+
+    if (couplingSeverity === 'high') {
       issues.push({
         filePath: filePath,
         type: 'high-semantic-coupling',
-        severity: 'high',
+        severity: couplingSeverity,
         message: `File has ${connCount} semantic connections`,
         details: { connectionCount: connCount, riskScore }
       });
-    } else if (connCount >= 4) {
+    } else if (couplingSeverity === 'medium') {
       issues.push({
         filePath: filePath,
         type: 'medium-semantic-coupling',
-        severity: 'medium',
+        severity: couplingSeverity,
         message: `File has ${connCount} semantic connections`,
         details: { connectionCount: connCount, riskScore }
       });
@@ -98,11 +142,13 @@ export function detectHighCoupling(files, threshold = 8) {
   for (const [filePath, fileData] of Object.entries(files || {})) {
     const connCount = fileData.semanticConnections?.length || 0;
 
-    if (connCount >= threshold) {
+    const couplingSeverity = getCouplingSeverity(filePath, connCount, threshold);
+
+    if (couplingSeverity) {
       issues.push({
         filePath: filePath,
         type: 'high-semantic-coupling',
-        severity: connCount >= threshold * 2 ? 'high' : 'medium',
+        severity: couplingSeverity === 'high' && connCount >= threshold * 2 ? 'high' : 'medium',
         message: `File has ${connCount} semantic connections (potential god object)`,
         details: {
           connectionCount: connCount,

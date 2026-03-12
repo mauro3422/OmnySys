@@ -21,6 +21,17 @@ function isCanonicalCompilerPolicySurface(filePath = '') {
   return CANONICAL_COMPILER_POLICY_SURFACES.has(String(filePath || ''));
 }
 
+function toCount(value) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function normalizeBreakageCount(sample = [], explicitCount = 0) {
+  const count = toCount(explicitCount);
+  if (count > 0) return count;
+  return Array.isArray(sample) ? sample.length : 0;
+}
+
 function normalizeUnusedInputFragment(value = '') {
   return String(value || '').trim();
 }
@@ -74,12 +85,48 @@ export function shouldSuppressWatcherAlert(alert = {}) {
   return false;
 }
 
+export function getWatcherAlertBreakageSummary(alert = {}) {
+  const context = alert?.context || {};
+  const sample = context?.sample || {};
+  const brokenImports = normalizeBreakageCount(sample?.brokenImports, context?.brokenImports);
+  const brokenCallers = normalizeBreakageCount(sample?.brokenCallers, context?.brokenCallers);
+
+  return {
+    brokenImports,
+    brokenCallers,
+    hasBreakage: brokenImports > 0 || brokenCallers > 0
+  };
+}
+
+export function isBreakingWatcherAlert(alert = {}) {
+  return getWatcherAlertBreakageSummary(alert).hasBreakage;
+}
+
+export function compareWatcherAlertPriority(a = {}, b = {}) {
+  const breakageDelta = Number(isBreakingWatcherAlert(b)) - Number(isBreakingWatcherAlert(a));
+  if (breakageDelta !== 0) return breakageDelta;
+
+  const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
+  const severityDelta =
+    (severityRank[String(b?.severity || 'low').toLowerCase()] || 0) -
+    (severityRank[String(a?.severity || 'low').toLowerCase()] || 0);
+  if (severityDelta !== 0) return severityDelta;
+
+  const timeA = Date.parse(a?.detectedAt || a?.time || 0) || 0;
+  const timeB = Date.parse(b?.detectedAt || b?.time || 0) || 0;
+  return timeB - timeA;
+}
+
 export function classifyCompilerDiagnosticSignal(alert = {}) {
   const issueType = String(alert?.issueType || '');
   const severity = String(alert?.severity || 'low');
   const filePath = String(alert?.filePath || '');
 
   if (severity === 'high') {
+    return 'high_signal';
+  }
+
+  if (isBreakingWatcherAlert(alert)) {
     return 'high_signal';
   }
 

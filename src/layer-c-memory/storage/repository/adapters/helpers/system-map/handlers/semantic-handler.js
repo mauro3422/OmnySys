@@ -5,6 +5,37 @@
 import { safeJson, safeParseJson } from '../../converters.js';
 import { BaseSqlRepository } from '../../../../core/BaseSqlRepository.js';
 
+function isNonProductionSemanticSurface(filePath = '') {
+  const normalized = String(filePath || '')
+    .toLowerCase()
+    .replace(/\\/g, '/')
+    .replace(/^\.?\//, '');
+  return (
+    normalized.startsWith('tests/') ||
+    normalized.startsWith('test/') ||
+    normalized.includes('/tests/') ||
+    normalized.includes('/test/') ||
+    normalized.includes('/__tests__/') ||
+    normalized.includes('/factories/') ||
+    normalized.includes('/fixtures/') ||
+    normalized.includes('.test.') ||
+    normalized.endsWith('src/utils/logger.js') ||
+    normalized.endsWith('src/shared/logger-config.js')
+  );
+}
+
+function normalizeSemanticIssueSeverity(issue = {}) {
+  const issueType = String(issue.type || issue.issue_type || '').toLowerCase();
+  const filePath = issue.filePath || issue.file_path || '';
+  const severity = String(issue.severity || 'low').toLowerCase();
+
+  if (issueType === 'high-semantic-coupling' && severity === 'high' && isNonProductionSemanticSurface(filePath)) {
+    return 'medium';
+  }
+
+  return severity;
+}
+
 function buildDerivedSemanticRows(db, now) {
   return db.prepare(`
     SELECT
@@ -118,7 +149,7 @@ export function saveSemanticData(db, connections, issues, now) {
     const issueRows = validIssues.map(issue => ({
       file_path: issue.filePath || issue.file_path,
       issue_type: issue.type || 'unknown',
-      severity: issue.severity || 'low',
+      severity: normalizeSemanticIssueSeverity(issue),
       message: issue.description || issue.message || '',
       context_json: safeJson({ symbol: issue.symbol }),
       detected_at: now

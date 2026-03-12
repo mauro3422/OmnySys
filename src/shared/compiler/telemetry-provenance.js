@@ -7,6 +7,39 @@
  * @module shared/compiler/telemetry-provenance
  */
 
+import fs from 'fs';
+import path from 'path';
+
+function getProcessStartMs() {
+  const uptimeMs = Number(process.uptime?.() || 0) * 1000;
+  return Date.now() - uptimeMs;
+}
+
+function shouldKeepPendingRuntimeFile(filePath, processStartMs) {
+  try {
+    if (!filePath || typeof filePath !== 'string') {
+      return false;
+    }
+
+    const absolute = path.resolve(process.cwd(), filePath);
+    const stats = fs.statSync(absolute, { throwIfNoEntry: false });
+    if (!stats) {
+      return true;
+    }
+
+    // Ghost queue entries can survive after runtime reloads.
+    // If file wasn't touched during this process lifetime, don't block freshness.
+    return Number(stats.mtimeMs || 0) > processStartMs;
+  } catch {
+    return true;
+  }
+}
+
+function filterStalePendingRuntimeFiles(pendingFiles = []) {
+  const processStartMs = getProcessStartMs();
+  return pendingFiles.filter((filePath) => shouldKeepPendingRuntimeFile(filePath, processStartMs));
+}
+
 export function buildTelemetryProvenance({
   source = 'unknown',
   phase2PendingFiles = 0,
@@ -54,7 +87,7 @@ export function buildRuntimeCodeFreshness({
   pendingRuntimeRestartFiles = []
 } = {}) {
   const pendingFiles = Array.isArray(pendingRuntimeRestartFiles) ? pendingRuntimeRestartFiles : [];
-  const staleToolModules = pendingFiles.slice(0, 20);
+  const staleToolModules = filterStalePendingRuntimeFiles(pendingFiles).slice(0, 20);
   const restartRequired = staleToolModules.length > 0;
 
   return {

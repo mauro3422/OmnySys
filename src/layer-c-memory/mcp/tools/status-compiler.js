@@ -1,12 +1,13 @@
 import {
   buildCompilerReadinessStatus,
   getConceptualDuplicateSummary,
-  getFileUniverseSummary,
   getGraphCoverageSummary,
   getIssueSummary,
   getMcpSessionSummary,
   getPhase2FileCounts,
-  getSharedStateContentionSummary
+  getSharedStateContentionSummary,
+  ensureLiveRowSync,
+  loadCompilerDiagnosticsSnapshot
 } from '../../../shared/compiler/index.js';
 
 export async function attachDeepVitals(status, projectPath, server) {
@@ -19,6 +20,12 @@ export async function attachDeepVitals(status, projectPath, server) {
     }
 
     const sharedStateSummary = getSharedStateContentionSummary(repo.db);
+    const liveRowSync = ensureLiveRowSync(repo.db, { autoSync: true, sampleLimit: 5 });
+    const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
+      projectPath,
+      db: repo.db,
+      sharedState: sharedStateSummary
+    });
     status.sharedState = {
       activeSocietiesBadge: sharedStateSummary.actorCount > 0 ? 'RADIOACTIVE' : 'CLEAN',
       actorCount: sharedStateSummary.actorCount,
@@ -31,7 +38,7 @@ export async function attachDeepVitals(status, projectPath, server) {
     const phase2Counts = getPhase2FileCounts(repo.db);
     const graphCoverage = getGraphCoverageSummary(repo.db);
     const issueSummary = getIssueSummary(repo.db);
-    const fileUniverseSummary = getFileUniverseSummary(repo.db);
+    const fileUniverseSummary = compilerDiagnostics.fileUniverseGranularity;
     const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
     const sessionSummary = getMcpSessionSummary(sessionManager, {
       runtimeSessionCount: server.sessions?.size || 0
@@ -46,7 +53,8 @@ export async function attachDeepVitals(status, projectPath, server) {
         scannedFileTotal: fileUniverseSummary.scannedFileTotal,
         liveFileCount: fileUniverseSummary.liveFileCount,
         zeroAtomFileCount: fileUniverseSummary.zeroAtomFileCount,
-        liveCoverageRatio: fileUniverseSummary.liveCoverageRatio
+        liveCoverageRatio: fileUniverseSummary.liveCoverageRatio,
+        liveRowSync: liveRowSync.summary
       },
       conceptualDuplicates: {
         actionableGroups: conceptualSummary.actionableGroups,

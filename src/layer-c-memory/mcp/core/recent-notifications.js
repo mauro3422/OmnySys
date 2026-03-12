@@ -3,7 +3,9 @@ import { syncRuntimeTableHealthIssues } from '../../../core/diagnostics/runtime-
 import {
   buildTelemetryProvenance,
   buildRuntimeCodeFreshness,
+  compareWatcherAlertPriority,
   classifySignalConfidence,
+  isBreakingWatcherAlert,
   summarizeCompilerDiagnostics,
   summarizeSignalConfidence,
   summarizeWatcherAlerts,
@@ -116,7 +118,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
     lifecycle: 'all',
     pruneExpired: true
   });
-  const watcherEntries = watcherResult.alerts;
+  const watcherEntries = watcherResult.alerts.sort(compareWatcherAlertPriority);
   const watcherEntriesWithConfidence = watcherEntries.map((entry) => ({
     ...entry,
     confidence: classifySignalConfidence(entry)
@@ -128,11 +130,11 @@ export async function collectRecentNotifications(projectPath, options = {}) {
 
   const warnings =
     loggerEntries.filter((entry) => severityToLevel(entry.severity) === 'warn').length +
-    watcherEntriesWithConfidence.filter((entry) => severityToLevel(entry.severity) === 'warn').length;
+    watcherEntriesWithConfidence.filter((entry) => !isBreakingWatcherAlert(entry) && severityToLevel(entry.severity) === 'warn').length;
 
   const errors =
     loggerEntries.filter((entry) => severityToLevel(entry.severity) === 'error').length +
-    watcherEntriesWithConfidence.filter((entry) => severityToLevel(entry.severity) === 'error').length;
+    watcherEntriesWithConfidence.filter((entry) => isBreakingWatcherAlert(entry) || severityToLevel(entry.severity) === 'error').length;
 
   return {
     count: loggerEntries.length + watcherEntriesWithConfidence.length,
@@ -151,7 +153,7 @@ export async function collectRecentNotifications(projectPath, options = {}) {
 
 export function normalizeRecentNotifications(notifications = {}) {
   const logs = Array.isArray(notifications.logs) ? notifications.logs : [];
-  const watcherAlerts = Array.isArray(notifications.watcherAlerts) ? notifications.watcherAlerts : [];
+  const watcherAlerts = (Array.isArray(notifications.watcherAlerts) ? notifications.watcherAlerts : []).sort(compareWatcherAlertPriority);
 
   return {
     count: notifications.count || (logs.length + watcherAlerts.length),

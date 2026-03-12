@@ -106,6 +106,14 @@ function computeImpactWaveScore(focusedAtoms, relatedFiles, brokenImports, broke
     return score;
 }
 
+function resolveImpactWaveSeverity(score, brokenImports, brokenCallers, severityFromImpactFn) {
+    if (brokenImports.length > 0 || brokenCallers.length > 0) {
+        return 'high';
+    }
+
+    return severityFromImpactFn(score);
+}
+
 function summarizeImpactWave(focusedAtoms, relatedFiles, brokenImports, brokenCallers, score) {
     return {
         changedAtoms: focusedAtoms.length,
@@ -113,7 +121,7 @@ function summarizeImpactWave(focusedAtoms, relatedFiles, brokenImports, brokenCa
         brokenImports: brokenImports.length,
         brokenCallers: brokenCallers.length,
         score,
-        severity: severityFromImpact(score)
+        severity: resolveImpactWaveSeverity(score, brokenImports, brokenCallers, severityFromImpact)
     };
 }
 

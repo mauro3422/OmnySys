@@ -37,6 +37,9 @@ export {
 export {
   isLowSignalDataFlowAlert,
   shouldSuppressWatcherAlert,
+  getWatcherAlertBreakageSummary,
+  isBreakingWatcherAlert,
+  compareWatcherAlertPriority,
   classifyCompilerDiagnosticSignal,
   summarizeCompilerDiagnostics
 } from './compiler-diagnostics.js';

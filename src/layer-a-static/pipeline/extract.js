@@ -1,5 +1,5 @@
 import path from 'path';
-import { BatchTimer, startTimer } from '../../utils/performance-tracker.js';
+import { BatchTimer } from '../../utils/performance-tracker.js';
 import { AtomExtractionPhase } from './phases/atom-extraction/index.js';
 import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
@@ -9,23 +9,107 @@ import { createLogger } from '../../utils/logger.js';
 import { getGitStats } from '../../utils/git-analyzer.js';
 
 const logger = createLogger('OmnySys:extract');
+const BATCH_SIZE = 50;
+
+function enrichAtomsWithFileMetadata(atoms, fileGitStats) {
+    const purposeEnriched = atoms.map((atom) => enrichAtomPurpose(atom));
+
+    return purposeEnriched.map((atom) => {
+        const enriched = enrichAtomVectors(atom);
+        enriched.ageDays = fileGitStats.ageDays;
+        enriched.changeFrequency = fileGitStats.changeFrequency;
+        return enriched;
+    });
+}
+
+function buildLiteAtoms(enrichedAtoms) {
+    return enrichedAtoms.map((atom) => {
+        const lite = { ...atom };
+
+        delete lite.dna;
+        delete lite.dataFlow;
+        delete lite.temporal;
+        delete lite.errorFlow;
+        delete lite.performance;
+
+        if (lite._meta) {
+            const meta = { ...lite._meta };
+            delete meta.identifierRefs;
+            lite._meta = meta;
+        }
+
+        return lite;
+    });
+}
+
+function pruneParsedFileMemory(parsedFile) {
+    delete parsedFile.source;
+    delete parsedFile.identifierRefs;
+}
+
+async function persistBatchAtoms(repo, absoluteRootPath, atoms) {
+    if (atoms.length === 0) return;
+
+    if (repo.saveManyBulk) {
+        repo.saveManyBulk(atoms, 50);
+        return;
+    }
+
+    await Promise.allSettled(
+        atoms.map((atom) => saveAtom(absoluteRootPath, atom.filePath || '', atom.name, atom))
+    );
+}
+
+async function processFileAtoms({
+    absoluteFilePath,
+    parsedFile,
+    absoluteRootPath,
+    atomPhase,
+    gitStats,
+    allExtractedAtoms
+}) {
+    const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+    const context = {
+        filePath: relativeFilePath,
+        code: parsedFile.source || '',
+        fullFileCode: parsedFile.source || '',
+        fileInfo: parsedFile,
+        fileMetadata: parsedFile.metadata || {}
+    };
+
+    await atomPhase.execute(context);
+
+    parsedFile.atoms = context.atoms || [];
+    parsedFile.atomCount = context.atomCount || 0;
+
+    if (context.atoms?.length > 0) {
+        const fileGitStats = gitStats[relativeFilePath] || { ageDays: 0, changeFrequency: 0 };
+        const enrichedAtoms = enrichAtomsWithFileMetadata(context.atoms, fileGitStats);
+        const liteAtoms = buildLiteAtoms(enrichedAtoms);
+
+        parsedFile.atoms = liteAtoms;
+        pruneParsedFileMemory(parsedFile);
+
+        allExtractedAtoms.push(...enrichedAtoms.filter((atom) => atom.name));
+    }
+
+    return context.atomCount || 0;
+}
 
 /**
- * Extrae y guarda átomos de todos los archivos parseados (paralelizado).
- * @returns {Promise<number>} Total de átomos extraídos
+ * Extract rich atom metadata from parsed files and persist in batches.
+ * @returns {Promise<number>} Total extracted atoms
  */
 export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose) {
-    if (verbose) logger.info('\n⚛️  Extracting rich atomic metadata...');
+    if (verbose) logger.info('\nExtracting rich atomic metadata...');
 
-    // Pre-load Git metrics for all files in memory before batch extraction
     const gitStats = await getGitStats(absoluteRootPath);
-
     const atomPhase = new AtomExtractionPhase();
     let totalAtomsExtracted = 0;
 
-    const BATCH_SIZE = 50;
     const entries = Object.entries(parsedFiles);
     const totalFiles = entries.length;
+    const totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
     const batchTimer = new BatchTimer('Atom extraction', totalFiles);
     const repo = getRepository(absoluteRootPath);
 
@@ -33,106 +117,44 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
         const batch = entries.slice(i, i + BATCH_SIZE);
         const allExtractedAtoms = [];
         const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
-        const totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
 
         if (verbose && batchIndex % 5 === 0) {
-            logger.debug(`  📦 Processing batch ${batchIndex}/${totalBatches}...`);
+            logger.debug(`  Processing batch ${batchIndex}/${totalBatches}...`);
         }
 
         await Promise.allSettled(batch.map(async ([absoluteFilePath, parsedFile]) => {
-            let relativeFilePath;
             try {
-                relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
-                const context = {
-                    filePath: relativeFilePath,
-                    code: parsedFile.source || '',
-                    fullFileCode: parsedFile.source || '',
-                    fileInfo: parsedFile,
-                    fileMetadata: parsedFile.metadata || {}
-                };
-
-                await atomPhase.execute(context);
-
-                parsedFile.atoms = context.atoms || [];
-                parsedFile.atomCount = context.atomCount || 0;
-                totalAtomsExtracted += context.atomCount || 0;
-
-                if (context.atoms && context.atoms.length > 0) {
-                    const purposeEnriched = context.atoms.map(atom => enrichAtomPurpose(atom));
-                    const fileGitStats = gitStats[relativeFilePath] || { ageDays: 0, changeFrequency: 0 };
-
-                    const enrichedAtoms = purposeEnriched.map(atom => {
-                        const enriched = enrichAtomVectors(atom);
-                        enriched.ageDays = fileGitStats.ageDays;
-                        enriched.changeFrequency = fileGitStats.changeFrequency;
-                        return enriched;
-                    });
-
-                    // 🚀 ULTRA-LITE ATOMS: Prune EVERYTHING not needed for Graph/Links
-                    const liteAtoms = enrichedAtoms.map(atom => {
-                        const lite = { ...atom };
-
-                        // Remove heavy fields (saved to DB but not needed for Graph/Links)
-                        delete lite.dna;
-                        delete lite.dataFlow;
-                        delete lite.temporal;
-                        delete lite.errorFlow;
-                        delete lite.performance;
-
-                        // NEW: Prune identifier refs from RAM (huge memory sink)
-                        if (lite._meta) {
-                            const meta = { ...lite._meta };
-                            delete meta.identifierRefs;
-                            lite._meta = meta;
-                        }
-
-                        return lite;
-                    });
-
-                    parsedFile.atoms = liteAtoms;
-                    // NEW: Prune File-level memory bombs
-                    delete parsedFile.source;
-                    delete parsedFile.identifierRefs;
-
-                    allExtractedAtoms.push(...enrichedAtoms.filter(atom => atom.name));
-                }
-
+                totalAtomsExtracted += await processFileAtoms({
+                    absoluteFilePath,
+                    parsedFile,
+                    absoluteRootPath,
+                    atomPhase,
+                    gitStats,
+                    allExtractedAtoms
+                });
                 batchTimer.onItemProcessed(1);
             } catch (error) {
-                logger.warn(`  ⚠️ Failed to extract atoms from ${relativeFilePath}: ${error.message}`);
+                const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
+                logger.warn(`  Failed to extract atoms from ${relativeFilePath}: ${error.message}`);
                 parsedFile.atoms = [];
                 parsedFile.atomCount = 0;
-                // Cleanup even on error
-                delete parsedFile.source;
-                delete parsedFile.identifierRefs;
+                pruneParsedFileMemory(parsedFile);
             }
         }));
 
-        // 🚀 BULK INSERT: Guardar los átomos de este batch
-        if (allExtractedAtoms.length > 0) {
-            if (repo.saveManyBulk) {
-                // FIXED: Use 50 instead of 500 for SQLite parameter safety
-                repo.saveManyBulk(allExtractedAtoms, 50);
-            } else {
-                await Promise.allSettled(
-                    allExtractedAtoms.map(atom => saveAtom(absoluteRootPath, atom.filePath || '', atom.name, atom))
-                );
-            }
-        }
+        await persistBatchAtoms(repo, absoluteRootPath, allExtractedAtoms);
 
-        // ✅ Log memory after each batch to see leaks in real-time
         const { logMemoryUsage } = await import('../../utils/memory-telemetry.js');
         logMemoryUsage(`Extract Batch ${batchIndex}/${totalBatches}`);
 
-        // ✅ Forzar GC si es posible para ver si ayuda
         if (global.gc) {
             global.gc();
         }
     }
 
     if (verbose) {
-        logger.info(`  ✓ ${totalAtomsExtracted} rich atoms extracted and saved`);
-        logger.info(`  ✓ Individual atoms saved to .omnysysdata/atoms/\n`);
+        logger.info(`  ${totalAtomsExtracted} rich atoms extracted and saved`);
+        logger.info('  Individual atoms saved to .omnysysdata/atoms/\n');
     }
 
     return totalAtomsExtracted;
