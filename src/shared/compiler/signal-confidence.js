@@ -11,10 +11,7 @@
 import { classifyCompilerDiagnosticSignal } from './compiler-diagnostics.js';
 import { classifyWatcherAlertLifecycle, WATCHER_ALERT_LIFECYCLE } from './watcher-issue-lifecycle.js';
 import { classifyFileOperationalRole } from './atom-role-classification.js';
-
-function clampScore(score) {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
+import { clampScore } from './score-utils.js';
 
 function pushReason(reasons, code, message) {
   reasons.push({ code, message });

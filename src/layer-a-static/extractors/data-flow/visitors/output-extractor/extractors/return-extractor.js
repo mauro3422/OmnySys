@@ -8,13 +8,8 @@
  */
 
 import { extractSources } from './source-extractor.js';
-import { inferShape, extractProperties } from './shape-inferer.js';
+import { inferShape, extractProperties, nodeToString } from './shape-inferer.js';
 import { startLine, text } from '../../../utils/ts-ast-utils.js';
-
-function nodeToString(node, code) {
-  if (!node) return 'undefined';
-  return text(node, code);
-}
 
 export function extractReturn(returnStmt, code) {
   const arg = returnStmt.childForFieldName('argument');

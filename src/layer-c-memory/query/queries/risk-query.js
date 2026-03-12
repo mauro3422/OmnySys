@@ -11,14 +11,8 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
   ensureLiveRowSync,
   getLiveFileSetSql,
+  normalizeDerivedRiskLevel,
 } from '../../../shared/compiler/index.js';
-
-function normalizeDerivedRiskLevel(score) {
-  if (score >= 0.85) return 'critical';
-  if (score >= 0.65) return 'high';
-  if (score >= 0.4) return 'medium';
-  return 'low';
-}
 
 function buildDerivedRiskRows(repo) {
   return repo.db.prepare(`
@@ -75,6 +69,152 @@ function buildDerivedRiskRows(repo) {
   });
 }
 
+function loadPersistedRiskRows(repo) {
+  return repo.db.prepare(`
+    SELECT ra.file_path, ra.risk_score, ra.risk_level, ra.factors_json,
+           ra.shared_state_count, ra.external_deps_count, ra.complexity_score,
+           ra.propagation_score, ra.assessed_at
+    FROM risk_assessments ra
+    JOIN (${getLiveFileSetSql()}) live ON live.file_path = ra.file_path
+    WHERE ra.risk_level IS NOT NULL
+    ORDER BY ra.risk_score DESC
+  `).all();
+}
+
+function parseRiskFactors(row) {
+  try {
+    const parsed = JSON.parse(row.factors_json || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildFileRisk(row) {
+  const factors = parseRiskFactors(row);
+  return {
+    file: row.file_path,
+    severity: String(row.risk_level || 'low').toUpperCase(),
+    score: row.risk_score,
+    reason: factors.slice(0, 3).map((factor) => factor.type || 'unknown').join(', ') || 'Multiple risk factors',
+    factors,
+    source: 'sqlite'
+  };
+}
+
+function categorizeRiskRows(rows) {
+  const buckets = {
+    criticalRiskFiles: [],
+    highRiskFiles: [],
+    mediumRiskFiles: [],
+    lowRiskFiles: [],
+    criticalCount: 0,
+    highCount: 0,
+    mediumCount: 0,
+    lowCount: 0
+  };
+
+  for (const row of rows) {
+    const fileRisk = buildFileRisk(row);
+
+    if (row.risk_level === 'critical') {
+      buckets.criticalRiskFiles.push(fileRisk);
+      buckets.criticalCount++;
+      continue;
+    }
+
+    if (row.risk_level === 'high') {
+      buckets.highRiskFiles.push(fileRisk);
+      buckets.highCount++;
+      continue;
+    }
+
+    if (row.risk_level === 'medium') {
+      buckets.mediumRiskFiles.push(fileRisk);
+      buckets.mediumCount++;
+      continue;
+    }
+
+    buckets.lowRiskFiles.push(fileRisk);
+    buckets.lowCount++;
+  }
+
+  return buckets;
+}
+
+function buildRiskSummary({
+  resolvedRiskRows,
+  usedFallback,
+  liveFileTotal,
+  totalRiskRows,
+  staleRiskRows,
+  deletedRiskAssessments
+}) {
+  return {
+    totalFiles: resolvedRiskRows.length,
+    liveFilesTotal: liveFileTotal,
+    unassessedLiveFiles: Math.max(0, liveFileTotal - resolvedRiskRows.length),
+    staleRowsDropped: Math.max(
+      0,
+      deletedRiskAssessments || staleRiskRows || (totalRiskRows - resolvedRiskRows.length)
+    ),
+    source: usedFallback ? 'derived_from_atoms' : 'risk_assessments',
+    note: usedFallback
+      ? 'Risk assessment derived from live atom metrics because risk_assessments is empty.'
+      : undefined
+  };
+}
+
+function getTotalRiskRows(repo) {
+  return repo.db.prepare(`
+    SELECT COUNT(*) as total
+    FROM risk_assessments
+    WHERE risk_level IS NOT NULL
+  `).get()?.total || 0;
+}
+
+function resolveRiskRows(repo) {
+  const persistedRiskRows = loadPersistedRiskRows(repo);
+  const hasPersistedRows = Array.isArray(persistedRiskRows) && persistedRiskRows.length > 0;
+
+  return {
+    rows: hasPersistedRows ? persistedRiskRows : buildDerivedRiskRows(repo),
+    usedFallback: !hasPersistedRows
+  };
+}
+
+function buildRiskAssessmentReport({
+  resolvedRiskRows,
+  usedFallback,
+  liveRowSync,
+  totalRiskRows
+}) {
+  const { liveFileTotal = 0, staleRiskRows = 0 } = liveRowSync.summary || {};
+  const categorized = categorizeRiskRows(resolvedRiskRows);
+  const summary = buildRiskSummary({
+    resolvedRiskRows,
+    usedFallback,
+    liveFileTotal,
+    totalRiskRows,
+    staleRiskRows,
+    deletedRiskAssessments: liveRowSync.deleted.riskAssessments
+  });
+
+  return {
+    summary: {
+      criticalCount: categorized.criticalCount,
+      highCount: categorized.highCount,
+      mediumCount: categorized.mediumCount,
+      lowCount: categorized.lowCount,
+      ...summary
+    },
+    criticalRiskFiles: categorized.criticalRiskFiles,
+    highRiskFiles: categorized.highRiskFiles,
+    mediumRiskFiles: categorized.mediumRiskFiles,
+    lowRiskFiles: categorized.lowRiskFiles
+  };
+}
+
 /**
  * Obtiene el assessment de riesgos completo
  * @param {string} rootPath - Raíz del proyecto
@@ -88,100 +228,22 @@ export async function getRiskAssessment(rootPath) {
     throw new Error('SQLite not available. Run analysis first.');
   }
 
-  const liveRowSync = ensureLiveRowSync(repo.db, { autoSync: true, sampleLimit: 5 });
+  try {
+    const liveRowSync = ensureLiveRowSync(repo.db, { autoSync: true, sampleLimit: 5 });
+    const totalRiskRows = getTotalRiskRows(repo);
+    const { rows: resolvedRiskRows, usedFallback } = resolveRiskRows(repo);
 
-  const totalRiskRows = repo.db.prepare(`
-    SELECT COUNT(*) as total
-    FROM risk_assessments
-    WHERE risk_level IS NOT NULL
-  `).get()?.total || 0;
-
-  const {
-    liveFileTotal = 0,
-    staleRiskRows = 0
-  } = liveRowSync.summary || {};
-
-  const riskRows = repo.db.prepare(`
-    SELECT ra.file_path, ra.risk_score, ra.risk_level, ra.factors_json,
-           ra.shared_state_count, ra.external_deps_count, ra.complexity_score,
-           ra.propagation_score, ra.assessed_at
-    FROM risk_assessments ra
-    JOIN (${getLiveFileSetSql()}) live ON live.file_path = ra.file_path
-    WHERE ra.risk_level IS NOT NULL
-    ORDER BY ra.risk_score DESC
-  `).all();
-
-  const resolvedRiskRows = riskRows?.length > 0 ? riskRows : buildDerivedRiskRows(repo);
-  const usedFallback = (!riskRows || riskRows.length === 0) && resolvedRiskRows.length > 0;
-
-  const criticalRiskFiles = [];
-  const highRiskFiles = [];
-  const mediumRiskFiles = [];
-  const lowRiskFiles = [];
-
-  let criticalCount = 0;
-  let highCount = 0;
-  let mediumCount = 0;
-  let lowCount = 0;
-
-  for (const row of resolvedRiskRows) {
-    const rawFactors = (() => {
-      try {
-        const parsed = JSON.parse(row.factors_json || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    })();
-
-    const fileRisk = {
-      file: row.file_path,
-      severity: String(row.risk_level || 'low').toUpperCase(),
-      score: row.risk_score,
-      reason: rawFactors.slice(0, 3).map(f => f.type || 'unknown').join(', ') || 'Multiple risk factors',
-      factors: rawFactors,
-      source: 'sqlite'
+    return {
+      report: buildRiskAssessmentReport({
+        resolvedRiskRows,
+        usedFallback,
+        liveRowSync,
+        totalRiskRows
+      }),
+      scores: {}
     };
-
-    if (row.risk_level === 'critical') {
-      criticalRiskFiles.push(fileRisk);
-      criticalCount++;
-    } else if (row.risk_level === 'high') {
-      highRiskFiles.push(fileRisk);
-      highCount++;
-    } else if (row.risk_level === 'medium') {
-      mediumRiskFiles.push(fileRisk);
-      mediumCount++;
-    } else {
-      lowRiskFiles.push(fileRisk);
-      lowCount++;
-    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to build risk assessment: ${message}`);
   }
-
-  return {
-    report: {
-      summary: {
-        criticalCount,
-        highCount,
-        mediumCount,
-        lowCount,
-        totalFiles: resolvedRiskRows.length,
-        liveFilesTotal: liveFileTotal,
-        unassessedLiveFiles: Math.max(0, liveFileTotal - resolvedRiskRows.length),
-        staleRowsDropped: Math.max(
-          0,
-          liveRowSync.deleted.riskAssessments || staleRiskRows || (totalRiskRows - resolvedRiskRows.length)
-        ),
-        source: usedFallback ? 'derived_from_atoms' : 'risk_assessments',
-        note: usedFallback
-          ? 'Risk assessment derived from live atom metrics because risk_assessments is empty.'
-          : undefined
-      },
-      criticalRiskFiles,
-      highRiskFiles,
-      mediumRiskFiles,
-      lowRiskFiles
-    },
-    scores: {}
-  };
 }

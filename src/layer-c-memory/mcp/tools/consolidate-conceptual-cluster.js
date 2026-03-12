@@ -1,5 +1,3 @@
-import path from 'path';
-import fs from 'fs/promises';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { getAtomicEditor } from '../../../core/atomic-editor/index.js';
 import { createLogger } from '../../../utils/logger.js';
@@ -7,12 +5,53 @@ import { calculateRelativeImport } from '../../../utils/path-utils.js';
 
 const logger = createLogger('OmnySys:mcp:consolidate_cluster');
 
+function buildCanonicalAlias(symbolName) {
+    return `canonical${symbolName[0].toUpperCase()}${symbolName.slice(1)}`;
+}
+
+function buildSafeConsolidationSuggestion(duplicate, ssotAtom, relPath) {
+    const sameSymbolName = duplicate.name === ssotAtom.name;
+
+    if (duplicate.atom_type === 'method') {
+        if (sameSymbolName) {
+            return {
+                status: 'error',
+                error: `Unsafe auto-consolidation: method '${duplicate.name}' matches the SSOT symbol name. Extract a coordinator/API helper first and migrate callers manually.`
+            };
+        }
+
+        return {
+            status: 'preview',
+            type: duplicate.atom_type,
+            strategy: 'method-wrapper',
+            suggestion: `${duplicate.name}(...args) {\n    return ${ssotAtom.name}.call(this, ...args);\n  }`
+        };
+    }
+
+    if (sameSymbolName) {
+        return {
+            status: 'preview',
+            type: duplicate.atom_type,
+            strategy: 're-export',
+            suggestion: `export { ${ssotAtom.name} } from '${relPath}';`
+        };
+    }
+
+    const canonicalAlias = buildCanonicalAlias(ssotAtom.name);
+    return {
+        status: 'preview',
+        type: duplicate.atom_type,
+        strategy: 'alias-wrapper',
+        suggestion: `import { ${ssotAtom.name} as ${canonicalAlias} } from '${relPath}';\n\nexport const ${duplicate.name} = (...args) => ${canonicalAlias}(...args);`
+    };
+}
+
 /**
  * mcp_omnysystem_consolidate_conceptual_cluster
- * 
- * Automatiza la eliminación de deuda técnica por duplicidad conceptual.
- * Redirige múltiples implementaciones hacia un SSOT (Source of Truth).
- * 
+ *
+ * Automatiza la eliminacion de deuda tecnica por duplicidad conceptual.
+ * Redirige multiples implementaciones hacia un SSOT (Source of Truth).
+ *
  * @param {Object} args - { semanticFingerprint, ssotFilePath, execute }
  * @param {Object} context - Contexto MCP
  */
@@ -21,7 +60,7 @@ export async function consolidate_conceptual_cluster(args, context) {
     const { projectPath, orchestrator } = context;
 
     if (!semanticFingerprint || !ssotFilePath) {
-        return { success: false, error: 'Parámetros obligatorios: semanticFingerprint, ssotFilePath' };
+        return { success: false, error: 'Parametros obligatorios: semanticFingerprint, ssotFilePath' };
     }
 
     logger.info(`[Tool] consolidating cluster: ${semanticFingerprint} -> ${ssotFilePath}`);
@@ -30,8 +69,6 @@ export async function consolidate_conceptual_cluster(args, context) {
         const repository = getRepository(projectPath);
         const atomicEditor = getAtomicEditor(projectPath, orchestrator);
 
-        // 1. Obtener todos los átomos del cluster
-        // Usamos SQL crudo para tener acceso directo a dna_json
         const query = `
             SELECT id, name, file_path, atom_type, is_exported,
                    json_extract(dna_json, '$.structuralHash') as structuralHash
@@ -42,19 +79,18 @@ export async function consolidate_conceptual_cluster(args, context) {
         `;
 
         const allAtoms = repository.db.prepare(query).all(semanticFingerprint);
-
-        const ssotAtom = allAtoms.find(a => a.file_path.includes(ssotFilePath.replace(/\\/g, '/')));
+        const normalizedSsotPath = ssotFilePath.replace(/\\/g, '/');
+        const ssotAtom = allAtoms.find((atom) => atom.file_path.includes(normalizedSsotPath));
 
         if (!ssotAtom) {
             return {
                 success: false,
-                error: `No se encontró el átomo SSOT en ${ssotFilePath} para el fingerprint ${semanticFingerprint}.`,
-                foundPaths: allAtoms.map(a => a.file_path)
+                error: `No se encontro el atomo SSOT en ${ssotFilePath} para el fingerprint ${semanticFingerprint}.`,
+                foundPaths: allAtoms.map((atom) => atom.file_path)
             };
         }
 
-        const duplicates = allAtoms.filter(a => a.id !== ssotAtom.id);
-
+        const duplicates = allAtoms.filter((atom) => atom.id !== ssotAtom.id);
         const results = {
             success: true,
             fingerprint: semanticFingerprint,
@@ -68,7 +104,6 @@ export async function consolidate_conceptual_cluster(args, context) {
             return { ...results, message: 'No hay duplicados para consolidar.' };
         }
 
-        // 2. Procesar duplicados
         for (const duplicate of duplicates) {
             const action = {
                 targetFile: duplicate.file_path,
@@ -77,34 +112,22 @@ export async function consolidate_conceptual_cluster(args, context) {
             };
 
             try {
-                // TODO: Mejorar lógica de detección de "body" para reemplazo quirúrgico
-                // Por ahora, si es una función/método idéntico, sugerimos el cambio
-
                 const relPath = calculateRelativeImport(duplicate.file_path, ssotAtom.file_path, projectPath);
+                const plan = buildSafeConsolidationSuggestion(duplicate, ssotAtom, relPath);
 
-                // Lógica de reemplazo básica para Prototipo
-                let replacement;
-                if (duplicate.atom_type === 'method') {
-                    if (duplicate.name === ssotAtom.name) {
-                        action.status = 'error';
-                        action.error = `Unsafe auto-consolidation: method '${duplicate.name}' matches the SSOT symbol name. Manual refactor required.`;
-                        results.actions.push(action);
-                        continue;
-                    }
-                    replacement = `${duplicate.name}() {\n    return ${ssotAtom.name}.apply(this, arguments);\n  }`;
-                } else {
-                    replacement = `import { ${ssotAtom.name} } from '${relPath}';\n\nexport const ${duplicate.name} = (...args) => ${ssotAtom.name}(...args);`;
+                action.status = plan.status;
+
+                if (plan.error) {
+                    action.error = plan.error;
+                    results.actions.push(action);
+                    continue;
                 }
 
-                action.type = duplicate.atom_type;
-                action.suggestion = replacement;
+                action.type = plan.type;
+                action.strategy = plan.strategy;
+                action.suggestion = plan.suggestion;
 
                 if (execute) {
-                    // Estrategia de reemplazo por símbolo:
-                    // Buscamos la definición del símbolo original y la reemplazamos por la sugerencia
-                    // NOTA: En un sistema productivo usaríamos un parser AST, 
-                    // aquí usamos una aproximación segura con AtomicEditor.
-
                     try {
                         const result = await atomicEditor.edit(
                             duplicate.file_path,
@@ -117,7 +140,9 @@ export async function consolidate_conceptual_cluster(args, context) {
                         );
 
                         action.status = result.success ? 'consolidated' : 'failed';
-                        if (!result.success) action.error = result.error;
+                        if (!result.success) {
+                            action.error = result.error;
+                        }
                     } catch (err) {
                         logger.error(`[ConsolidateTool] AtomicEditor error for ${duplicate.file_path}: ${err.message}`);
                         action.status = 'failed';
@@ -136,7 +161,6 @@ export async function consolidate_conceptual_cluster(args, context) {
         }
 
         return results;
-
     } catch (error) {
         logger.error(`[ConsolidateTool] Error: ${error.message}`);
         return { success: false, error: error.message };

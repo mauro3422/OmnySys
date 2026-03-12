@@ -23,7 +23,8 @@ import {
     isLikelyToolWrapperAtom,
     isLikelyBoundaryContainerAtom,
     hasAsyncNamingMismatch,
-    classifyAtomOperationalRole
+    classifyAtomOperationalRole,
+    classifyFileOperationalRole
 } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
@@ -110,7 +111,10 @@ function analyzeAtomDataFlow(atom) {
     );
     const analysis = analyzer.analyze();
     const violations = [];
-    const role = classifyAtomOperationalRole(atom, { filePath: atom.file_path || atom.filePath });
+    const filePath = atom.file_path || atom.filePath || '';
+    const role = classifyAtomOperationalRole(atom, { filePath });
+    const fileRole = classifyFileOperationalRole(filePath);
+    const resolvedRole = role.role === 'standard' ? fileRole : role;
     const inputsCount = analysis.inputs?.length || 0;
     const outputsCount = analysis.outputs?.length || 0;
     const transformationCount = analysis.transformations?.length || 0;
@@ -121,12 +125,12 @@ function analyzeAtomDataFlow(atom) {
         transformationCount === 0;
 
     const skipCoordinatorBiasViolation = (
-        role.role === 'orchestrator' ||
-        role.role === 'resolver' ||
-        role.role === 'builder' ||
-        role.role === 'analyzer' ||
-        role.role === 'bridge' ||
-        role.role === 'policy'
+        resolvedRole.role === 'orchestrator' ||
+        resolvedRole.role === 'resolver' ||
+        resolvedRole.role === 'builder' ||
+        resolvedRole.role === 'analyzer' ||
+        resolvedRole.role === 'bridge' ||
+        resolvedRole.role === 'policy'
     ) &&
         inputsCount === 0 &&
         outputsCount === 0 &&

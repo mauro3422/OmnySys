@@ -2,15 +2,7 @@
  * @fileoverview Data Flow Test Factory - Helpers
  */
 
-export function createMockLogger() {
-  return {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    trace: vi.fn()
-  };
-}
+export { createMockLogger } from '../pipeline-test/helpers.js';
 
 export function createMockOutputExtractor(outputs = []) {
   return {
@@ -39,5 +31,4 @@ export function createMockTypeRules() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Test Fixtures
 // ═══════════════════════════════════════════════════════════════════════════════
-
 

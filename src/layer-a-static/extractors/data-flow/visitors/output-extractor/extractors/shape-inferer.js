@@ -9,7 +9,7 @@
 
 import { startLine, text, getCalleeName } from '../../../utils/ts-ast-utils.js';
 
-function nodeToString(node, code) {
+export function nodeToString(node, code) {
   if (!node) return 'undefined';
   return text(node, code);
 }

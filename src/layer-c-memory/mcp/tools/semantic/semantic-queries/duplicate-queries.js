@@ -26,6 +26,15 @@ function buildTypeFilter(alias = '', atomTypes = []) {
     return `AND ${prefix}atom_type IN (${atomTypes.map((type) => `'${type}'`).join(',')})`;
 }
 
+function buildLiveAtomPredicate(alias = '', includeRemoved = false) {
+    if (includeRemoved) {
+        return '1=1';
+    }
+
+    const prefix = alias ? `${alias}.` : '';
+    return `(${prefix}is_removed IS NULL OR ${prefix}is_removed = 0) AND COALESCE(${prefix}purpose_type, '') != 'REMOVED'`;
+}
+
 function buildAtomDependenciesCte() {
     return `
             WITH AtomDependencies AS (
@@ -124,9 +133,9 @@ export function runDuplicatesQuery(db, {
         const typeFilterCte = buildTypeFilter('', atomTypes);
         const typeFilterMain = buildTypeFilter('a', atomTypes);
         const typeFilterStats = buildTypeFilter('a_stats', atomTypes);
-        const removedPredicate = includeRemoved ? '1=1' : '(is_removed IS NULL OR is_removed = 0)';
-        const removedPredicateMain = includeRemoved ? '1=1' : '(a.is_removed IS NULL OR a.is_removed = 0)';
-        const removedPredicateStats = includeRemoved ? '1=1' : '(a_stats.is_removed IS NULL OR a_stats.is_removed = 0)';
+        const removedPredicate = buildLiveAtomPredicate('', includeRemoved);
+        const removedPredicateMain = buildLiveAtomPredicate('a', includeRemoved);
+        const removedPredicateStats = buildLiveAtomPredicate('a_stats', includeRemoved);
 
         const rows = db.prepare(`
             WITH DuplicateGroups AS (
@@ -196,7 +205,7 @@ export function runIsomorphicDuplicatesQuery(db, {
     includeRemoved = false
 } = {}) {
     return runSemanticQuerySafely(() => {
-        const removedPredicate = includeRemoved ? '1=1' : 'a.is_removed IS NULL OR a.is_removed = 0';
+        const removedPredicate = buildLiveAtomPredicate('a', includeRemoved);
         const rows = loadIsomorphicDuplicateRows(db, { offset, limit, excludeTests, atomTypes, minLines, removedPredicate });
         const stats = loadIsomorphicDuplicateStats(db, { excludeTests, atomTypes, minLines, removedPredicate });
 

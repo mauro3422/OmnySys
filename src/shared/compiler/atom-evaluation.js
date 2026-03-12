@@ -8,9 +8,7 @@
  * @module shared/compiler/atom-evaluation
  */
 
-function clampScore(score) {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
+import { clampScore } from './score-utils.js';
 
 function buildSeverity(score) {
   if (score <= 34) return 'high';

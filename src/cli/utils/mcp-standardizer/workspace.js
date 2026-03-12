@@ -8,10 +8,7 @@ import {
 } from './constants.js';
 import { readJsonSafe, writeJsonNoBom, getMcpUrl, getHealthUrl, normalizeSlashes } from './utils.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath } from './paths.js';
-
-function getNodeCommand() {
-    return normalizeSlashes(process.execPath);
-}
+import { getNodeCommand } from './node-command.js';
 
 function buildWorkspaceBridgeServer(projectPath, includeDescription = false) {
     const bridgePath = normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));

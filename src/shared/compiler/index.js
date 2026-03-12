@@ -166,6 +166,14 @@ export {
 } from './canonical-reuse-guidance.js';
 
 export {
+  normalizeDerivedRiskLevel
+} from './risk-level.js';
+
+export {
+  clampScore
+} from './score-utils.js';
+
+export {
   resolveArchitecturalRecommendation
 } from './architectural-recommendations.js';
 
@@ -271,6 +279,10 @@ export {
 export {
   normalizeFilePath
 } from './path-normalization.js';
+
+export {
+  normalizeDerivedRiskLevel
+} from './risk-level.js';
 
 export {
   generateAlternativeNames,

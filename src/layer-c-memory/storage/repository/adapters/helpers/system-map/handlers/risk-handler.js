@@ -1,12 +1,6 @@
-﻿import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { normalizeDerivedRiskLevel } from '../../../../../../../shared/compiler/risk-level.js';
 import { safeJson, safeParseJson } from '../../converters.js';
-
-function normalizeDerivedRiskLevel(score) {
-  if (score >= 0.85) return 'critical';
-  if (score >= 0.65) return 'high';
-  if (score >= 0.4) return 'medium';
-  return 'low';
-}
 
 function normalizeRiskFactors(riskEntry, fallbackLevel = 'low') {
   if (Array.isArray(riskEntry?.factors)) {
@@ -139,7 +133,6 @@ export async function saveRiskAssessments(db, riskAssessment, now) {
 
   if (extractedRisks.length === 0) return;
 
-  // Usamos el repository para asegurar que el archivo existe (como hacía la lógica original)
   const insertFile = db.prepare(`
     INSERT OR IGNORE INTO files (path, last_analyzed, total_lines)
     VALUES (?, ?, 0)
@@ -165,7 +158,8 @@ export async function saveRiskAssessments(db, riskAssessment, now) {
     updated_at: isoNow
   }));
 
-  repo.saveTableRows('risk_assessments',
+  repo.saveTableRows(
+    'risk_assessments',
     ['file_path', 'risk_score', 'risk_level', 'factors_json', 'shared_state_count', 'external_deps_count', 'complexity_score', 'propagation_score', 'is_removed', 'assessed_at', 'updated_at'],
     riskRows,
     'file_path'

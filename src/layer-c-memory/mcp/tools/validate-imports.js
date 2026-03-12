@@ -20,14 +20,26 @@ function hasDirectImportEvidence(fileData, targetPath) {
     });
 }
 
+async function loadFileAnalysis(projectPath, filePath) {
+    try {
+        return await getFileAnalysis(projectPath, filePath);
+    } catch (error) {
+        throw new Error(`Failed to analyze ${filePath}: ${error?.message || error}`);
+    }
+}
+
 async function filterCyclesByDirectImportEvidence(projectPath, cycles = []) {
-    const fileCache = new Map();
+    const fileMemo = new Map();
 
     async function getCachedFileAnalysis(filePath) {
-        if (!fileCache.has(filePath)) {
-            fileCache.set(filePath, await getFileAnalysis(projectPath, filePath));
+        try {
+            if (!fileMemo.has(filePath)) {
+                fileMemo.set(filePath, await loadFileAnalysis(projectPath, filePath));
+            }
+            return fileMemo.get(filePath);
+        } catch (error) {
+            throw new Error(`Failed to verify cycle evidence for ${filePath}: ${error?.message || error}`);
         }
-        return fileCache.get(filePath);
     }
 
     const verifiedCycles = [];
@@ -55,51 +67,55 @@ async function filterCyclesByDirectImportEvidence(projectPath, cycles = []) {
 }
 
 async function computeCircularDependencies(repo, projectPath, filePath, checkCircular) {
-    if (!checkCircular || !repo?.db) {
-        return [];
-    }
-
-    const coverage = getSystemMapPersistenceCoverage(repo.db);
-    if (!shouldTrustSystemMapDependencies(coverage)) {
-        return [];
-    }
-
-    const graph = {};
-    const rows = repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
-    for (const row of rows) {
-        if (!graph[row.source_path]) graph[row.source_path] = [];
-        graph[row.source_path].push(row.target_path);
-    }
-
-    const visited = new Set();
-    const pathStack = [];
-    const cycles = [];
-
-    const dfs = (current) => {
-        visited.add(current);
-        pathStack.push(current);
-
-        const neighbors = graph[current] || [];
-        for (const neighbor of neighbors) {
-            const idx = pathStack.indexOf(neighbor);
-            if (idx !== -1) {
-                const cycle = pathStack.slice(idx);
-                if (cycle.includes(filePath)) {
-                    cycles.push([...cycle, neighbor]);
-                }
-            } else if (!visited.has(neighbor)) {
-                dfs(neighbor);
-            }
+    try {
+        if (!checkCircular || !repo?.db) {
+            return [];
         }
-        pathStack.pop();
-    };
 
-    if (graph[filePath]) {
-        dfs(filePath);
+        const coverage = getSystemMapPersistenceCoverage(repo.db);
+        if (!shouldTrustSystemMapDependencies(coverage)) {
+            return [];
+        }
+
+        const graph = {};
+        const rows = repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
+        for (const row of rows) {
+            if (!graph[row.source_path]) graph[row.source_path] = [];
+            graph[row.source_path].push(row.target_path);
+        }
+
+        const visited = new Set();
+        const pathStack = [];
+        const cycles = [];
+
+        const dfs = (current) => {
+            visited.add(current);
+            pathStack.push(current);
+
+            const neighbors = graph[current] || [];
+            for (const neighbor of neighbors) {
+                const idx = pathStack.indexOf(neighbor);
+                if (idx !== -1) {
+                    const cycle = pathStack.slice(idx);
+                    if (cycle.includes(filePath)) {
+                        cycles.push([...cycle, neighbor]);
+                    }
+                } else if (!visited.has(neighbor)) {
+                    dfs(neighbor);
+                }
+            }
+            pathStack.pop();
+        };
+
+        if (graph[filePath]) {
+            dfs(filePath);
+        }
+
+        const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles);
+        return Array.from(new Set(verifiedCycles.map((cycle) => cycle.join(' -> '))));
+    } catch (error) {
+        throw new Error(`Failed to compute circular dependencies for ${filePath}: ${error?.message || error}`);
     }
-
-    const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles);
-    return Array.from(new Set(verifiedCycles.map((cycle) => cycle.join(' -> '))));
 }
 
 export class ValidateImportsTool extends GraphQueryTool {
@@ -115,7 +131,7 @@ export class ValidateImportsTool extends GraphQueryTool {
         }
 
         try {
-            const fileData = await getFileAnalysis(this.projectPath, filePath);
+            const fileData = await loadFileAnalysis(this.projectPath, filePath);
 
             if (!fileData) {
                 const filesystemValidation = await buildFilesystemOnlyValidation(this.projectPath, filePath);

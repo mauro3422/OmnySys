@@ -1,15 +1,14 @@
-import { statsPool } from '../../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Duplication Detector
- * 
- * Detecta duplicación de datos entre sistemas.
- * Verifica consistencia de información duplicada.
- * 
+ *
+ * Detecta duplicacion de datos entre sistemas.
+ * Verifica consistencia de informacion duplicada.
+ *
  * @module consistency/validators/duplication-detector
  * @version 1.0.0
  */
 
-import { IssueManager } from '../issue-manager/index.js';
+import { BaseConsistencyValidator } from './base-consistency-validator.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:consistency:duplication');
@@ -17,54 +16,48 @@ const logger = createLogger('OmnySys:consistency:duplication');
 /**
  * Duplication Detector
  */
-export class DuplicationDetector {
+export class DuplicationDetector extends BaseConsistencyValidator {
   constructor(cache, issueManager) {
-    this.cache = cache;
-    this.issues = issueManager || new IssueManager();
+    super(cache, issueManager, 'duplication-detector');
   }
-  
+
   /**
-   * Detecta duplicación de datos
+   * Detecta duplicacion de datos
    * @returns {Array} - Issues encontrados
    */
   detect() {
     logger.debug('Detecting data duplication...');
-    
-    // Verificar duplicación de información de exports
+
     this.detectExportDuplication();
-    
-    // Verificar duplicación de metadata
     this.detectMetadataDuplication();
-    
+
     return this.issues.getIssues();
   }
-  
+
   /**
-   * Detecta duplicación de información de exports
+   * Detecta duplicacion de informacion de exports
    * @private
    */
   detectExportDuplication() {
     for (const [filePath, fileData] of this.cache.files) {
       const exportsInFile = fileData.exports || [];
-      
+
       for (const exp of exportsInFile) {
-        // Buscar átomo correspondiente
         const atomId = `${filePath}::${exp.name}`;
         const atom = this.cache.atoms.get(atomId);
-        
+
         if (atom) {
           this.validateExportConsistency(atom, atomId, exp);
         }
       }
     }
   }
-  
+
   /**
    * Valida consistencia de datos de export
    * @private
    */
   validateExportConsistency(atom, atomId, exportDef) {
-    // Verificar duplicación de datos básicos
     if (atom.isExported !== true) {
       this.issues.addIssue({
         category: 'CONSISTENCY',
@@ -74,14 +67,13 @@ export class DuplicationDetector {
         message: 'Export information duplicated but inconsistent',
         expected: true,
         actual: atom.isExported,
-        metadata: { 
-          atomHas: atom.isExported, 
-          fileHas: true 
+        metadata: {
+          atomHas: atom.isExported,
+          fileHas: true
         }
       });
     }
-    
-    // Verificar nombre coincida
+
     if (atom.name !== exportDef.name) {
       this.issues.addIssue({
         category: 'CONSISTENCY',
@@ -94,15 +86,14 @@ export class DuplicationDetector {
       });
     }
   }
-  
+
   /**
-   * Detecta duplicación de metadata
+   * Detecta duplicacion de metadata
    * @private
    */
   detectMetadataDuplication() {
-    // Detectar átomos duplicados (mismo ID)
     const atomIds = new Map();
-    
+
     for (const [atomId, atom] of this.cache.atoms) {
       if (atomIds.has(atomId)) {
         this.issues.addIssue({
@@ -117,13 +108,12 @@ export class DuplicationDetector {
         atomIds.set(atomId, atom);
       }
     }
-    
-    // Detectar archivos duplicados (mismo path)
+
     const filePaths = new Map();
-    
+
     for (const [filePath, fileData] of this.cache.files) {
       const normalizedPath = (fileData.path || filePath).toLowerCase();
-      
+
       if (filePaths.has(normalizedPath)) {
         this.issues.addIssue({
           category: 'CONSISTENCY',
@@ -138,14 +128,6 @@ export class DuplicationDetector {
       }
     }
   }
-  
-  /**
-   * Obtiene estadísticas de duplicación
-   * @returns {Object} - Estadísticas
-   */
-getStats() {
-    return statsPool.getStats('duplication-detector');
-  }}
+}
 
 export default DuplicationDetector;
-

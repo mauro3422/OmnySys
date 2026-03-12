@@ -119,7 +119,3 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     })
   };
 }
-
-export function getMcpSessionSummary(sessionManager, options = {}) {
-  return collectMcpSessionMetrics(sessionManager, options);
-}

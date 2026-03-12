@@ -12,10 +12,7 @@ import {
     stripBom,
     normalizeSlashes
 } from './utils.js';
-
-function getNodeCommand() {
-    return normalizeSlashes(process.execPath);
-}
+import { getNodeCommand } from './node-command.js';
 
 function buildBridgePath() {
     return normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));

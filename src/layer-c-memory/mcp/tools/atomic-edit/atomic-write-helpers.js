@@ -1,7 +1,9 @@
 import path from 'path';
 import { loadAtoms } from '#layer-c/storage/index.js';
 import { extractExportsFromCode } from './exports.js';
-import { query_graph } from '../query-graph.js';
+import {
+    findCrossFileDuplicateExports,
+} from './cross-file-duplicate-helpers.js';
 
 export async function loadPreviousAtomsForWrite(projectPath, filePath) {
     try {
@@ -33,54 +35,6 @@ export function buildDuplicateRiskError(tool, duplicateCandidates, failOnDuplica
     });
 }
 
-function isLowSignalExportName(name) {
-    return name.length < 3 || /^[a-z]$/.test(name);
-}
-
-async function findCrossFileDuplicates(newExports, filePath, context, logger) {
-    const duplicates = [];
-
-    for (const exportItem of newExports) {
-        if (isLowSignalExportName(exportItem.name)) {
-            continue;
-        }
-
-        try {
-            const existing = await query_graph(
-                { queryType: 'instances', symbolName: exportItem.name },
-                context
-            );
-
-            if (!existing?.success || existing?.data?.totalInstances <= 0) {
-                continue;
-            }
-
-            const otherFiles = existing.data.instances.filter(
-                (instance) => !instance.file_path.endsWith(filePath)
-            );
-
-            if (otherFiles.length === 0) {
-                continue;
-            }
-
-            duplicates.push({
-                symbol: exportItem.name,
-                type: exportItem.type,
-                existingInstances: otherFiles.length,
-                existingFiles: otherFiles.map((item) => item.file_path),
-                existingLocations: otherFiles.map((item) => ({
-                    file: item.file_path,
-                    line: item.line_start
-                }))
-            });
-        } catch (error) {
-            logger.debug(`[CrossFileGuard] Skip ${exportItem.name}: ${error.message}`);
-        }
-    }
-
-    return duplicates;
-}
-
 export async function enforceCrossFileDuplicateGuard({
     content,
     filePath,
@@ -94,7 +48,12 @@ export async function enforceCrossFileDuplicateGuard({
         return null;
     }
 
-    const crossFileDuplicates = await findCrossFileDuplicates(newExports, filePath, context, logger);
+    const crossFileDuplicates = await findCrossFileDuplicateExports(
+        newExports,
+        filePath,
+        context,
+        logger
+    );
     if (crossFileDuplicates.length === 0) {
         return null;
     }

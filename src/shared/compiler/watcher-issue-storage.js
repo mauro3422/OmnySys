@@ -248,7 +248,7 @@ export async function findOutdatedWatcherAlertIds(projectPath, alerts = [], opti
         continue;
       }
 
-      if (isAlertOutdatedByDuplicatePolicy(alert, relativePath)) {
+      if (isAlertOutdatedByDuplicatePolicy(alert, relativePath, db)) {
         outdatedIds.push(id);
         continue;
       }

@@ -91,6 +91,15 @@ function classifyRoleFromSignals(signals) {
     confidence = 0.84;
     reasons.push('builder_structure_path');
   } else if (
+    /(verification|validation)\/.*validator/.test(signals.normalizedPath) ||
+    /\/validators?\//.test(signals.normalizedPath) ||
+    /validator/.test(signals.normalizedName) ||
+    /validator/.test(signals.archetype)
+  ) {
+    role = 'analyzer';
+    confidence = 0.86;
+    reasons.push('validator_analysis_path');
+  } else if (
     /(^|\/)analyses?\//.test(signals.normalizedPath) ||
     /analyzer/.test(signals.normalizedPath) ||
     /analyzer/.test(signals.archetype) ||
