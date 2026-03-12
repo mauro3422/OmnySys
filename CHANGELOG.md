@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.122 - MCP Registry And Guard Catalog Decomposition](changelogs/v0.9.122.md)
 - [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
 - [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
@@ -17,6 +18,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.122 - MCP Registry And Guard Catalog Decomposition](changelogs/v0.9.122.md)
 - [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
 - [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
@@ -39,6 +41,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.122** | 2026-03-12 | MCP registry decomposition, watcher guard catalog splits, and continued debt reduction across runtime surfaces. |
 | **0.9.121** | 2026-03-12 | MCP runtime false-positive reduction, watcher canonical reconciliation, Layer A language contract scaffolding, and benchmark baselines. |
 | **0.9.120** | 2026-03-12 | Coordinator decomposition, hotspot removal, role-taxonomy alignment, and continued debt reduction across analysis/runtime surfaces. |
 | **0.9.119** | 2026-03-12 | Watcher hardening, canonical adoption cleanup, and coordinator decomposition across core debt hotspots. |
@@ -64,17 +67,16 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.121 (2026-03-12)
+## Latest Release: v0.9.122 (2026-03-12)
 
-**MCP Runtime & Watcher Canonicalization**
+**MCP Registry And Guard Catalog Decomposition**
 
 ### Key Achievements
 
-1. Reduced false-positive MCP health noise by separating legitimate multi-client activity from actionable duplicate-session churn.
-2. Aligned watcher stale-alert cleanup with canonical `atoms` and duplicate policy so resolved duplicate alerts stop persisting.
-3. Fixed `atomic_edit` runtime regressions and hardened cycle validation to require direct-import evidence.
-4. Added baseline MCP performance benchmarks and the first Layer A language-adapter contract surface.
-5. Kept runtime freshness and watcher reconciliation verifiable through MCP restart/reload cycles.
+1. Removed the last `HIGH` MCP hotspot by splitting HTTP session routing out of `mcp-http-server`.
+2. Split watcher guard catalogs into semantic and impact definition modules while keeping the runtime clean.
+3. Decomposed the MCP tools registry into thin facades and family-scoped definition/handler catalogs.
+4. Kept MCP runtime freshness and watcher noise at zero through repeated reindex and validation cycles.
 
 ### New & Refactored Files
 
