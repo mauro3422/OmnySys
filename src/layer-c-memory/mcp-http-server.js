@@ -8,35 +8,31 @@
  * - Health endpoint: GET /health
  * - Legacy tools:    GET /tools
  *//* =========================================================================
-* 🚨 CRITICAL AI AGENT WARNING 🚨
-* DO NOT ATTEMPT TO RUN `npm run mcp` OR `omny up` USING TERMINAL COMMANDS 
+* CRITICAL AI AGENT WARNING
+* DO NOT ATTEMPT TO RUN `npm run mcp` OR `omny up` USING TERMINAL COMMANDS
 * (run_command) IN THE BACKGROUND.
 *
 * This server is managed exclusively by the VSCode MCP client / IDE plugin.
 * If an agent spawns this via a detached process or terminal, it will hijack
 * port 9999 and the IDE will lose the socket connection permanently (EOF).
-* 
-* 
-* 💡 CORRECT WAY TO RESTART: Use the `mcp_omnysystem_restart_server` MCP tool. 
-* This safely refreshes the internal components and RAM without killing the 
+*
+* CORRECT WAY TO RESTART: Use the `mcp_omnysystem_restart_server` MCP tool.
+* This safely refreshes the internal components and RAM without killing the
 * underlying process or dropping the IDE sockets.
 * ========================================================================= */
 
 import v8 from 'v8';
 import { spawn } from 'child_process';
 
-// ------------------------------------------------------------------------------------------------
-// AUTO-MEMORY PROVISIONING: Detect if V8 Heap is too small for heavy AST parsing
-// ------------------------------------------------------------------------------------------------
 const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
 const hasMaxOldSpace = process.env.NODE_OPTIONS && process.env.NODE_OPTIONS.includes('max-old-space-size');
 
 if (!hasMaxOldSpace && heapLimitMB < 7000) {
-  console.log(`\n[OmnySys:Boot] Detección de límite de RAM estricto (Current Heap: ${Math.round(heapLimitMB)} MB).`);
-  console.log(`[OmnySys:Boot] Auto-configurando entorno a 8GB RAM para Turbo Parser...`);
+  console.log(`\n[OmnySys:Boot] Deteccion de limite de RAM estricto (Current Heap: ${Math.round(heapLimitMB)} MB).`);
+  console.log('[OmnySys:Boot] Auto-configurando entorno a 8GB RAM para Turbo Parser...');
 
   const env = { ...process.env };
-  env.NODE_OPTIONS = (env.NODE_OPTIONS || '') + ' --max-old-space-size=8192';
+  env.NODE_OPTIONS = `${env.NODE_OPTIONS || ''} --max-old-space-size=8192`.trim();
 
   const child = spawn(process.execPath, process.argv.slice(1), {
     stdio: 'inherit',
@@ -47,30 +43,21 @@ if (!hasMaxOldSpace && heapLimitMB < 7000) {
     process.exit(code || 0);
   });
 
-  // Detener la ejecución en el hilo principal (padre limitante)
-  await new Promise(() => { }); // Espera infinita sin bloquear CPU mientras el worker hace el trabajo
+  await new Promise(() => { });
 }
-// ------------------------------------------------------------------------------------------------
 
 import path from 'path';
-import { randomUUID } from 'crypto';
 import express from 'express';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ErrorCode,
-  McpError,
-  isInitializeRequest
-} from '@modelcontextprotocol/sdk/types.js';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { applyPagination } from './mcp/core/pagination.js';
 import { createLogger } from '../utils/logger.js';
 import { handleRuntimeRestart } from './mcp/restart-runtime.js';
 import { startHttpServer } from './mcp-http-listener.js';
+import {
+  buildServerForSession,
+  createConditionalJsonMiddleware,
+  executeMcpToolCall,
+  handleMcpRequest
+} from './mcp-http-session-routing.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
@@ -93,13 +80,10 @@ async function getLiveToolHandler(name) {
   return getLiveHandlers()[name];
 }
 
-// Initial load (after logger is ready)
 await refreshLiveToolRegistry(logger);
-
 
 const arg1 = process.argv[2];
 const arg2 = process.argv[3];
-
 const parsedArg1AsPort = Number(arg1);
 const arg1IsPort = Number.isFinite(parsedArg1AsPort) && parsedArg1AsPort > 0;
 
@@ -108,11 +92,9 @@ const port = Number(process.env.OMNYSYS_MCP_PORT || (arg1IsPort ? arg1 : arg2) |
 const host = process.env.OMNYSYS_MCP_HOST || '127.0.0.1';
 
 const app = express();
-
-// Force UTF-8 charset on all JSON responses to prevent Windows cp1252 issues
 app.use((req, res, next) => {
   const originalJson = res.json.bind(res);
-  res.json = function(body) {
+  res.json = function sendUtf8Json(body) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return originalJson(body);
   };
@@ -120,252 +102,40 @@ app.use((req, res, next) => {
 });
 
 const sessions = new Map();
-
 const core = new OmnySysMCPServer(projectPath);
 core.sessions = sessions;
 let initError = null;
 
-function buildServerForSession() {
-  const sessionServer = new Server(
-    { name: 'omnysys', version: '3.0.0' },
-    { capabilities: { tools: {}, resources: {} } }
-  );
+const executeLiveMcpToolCall = (request) => executeMcpToolCall(request, {
+  initError: () => initError,
+  core,
+  projectPath,
+  getLiveToolHandler,
+  refreshToolRegistry: refreshLiveToolRegistry
+});
 
-  sessionServer.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: await getLiveToolDefinitions()
-  }));
+const buildSessionServer = () => buildServerForSession({
+  logger,
+  getLiveToolDefinitions,
+  executeMcpToolCall: executeLiveMcpToolCall
+});
 
-  // Codex/Cline may probe these even if OmnySys does not expose resources.
-  sessionServer.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: []
-  }));
-
-  sessionServer.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
-    resourceTemplates: []
-  }));
-
-  sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-    return executeMcpToolCall(request);
-  });
-
-  sessionServer.onerror = (error) => {
-    logger.error(`[MCP Error] ${error?.message || error}`);
-  };
-
-  return sessionServer;
-}
-
-async function executeMcpToolCall(request) {
-  if (initError) {
-    return {
-      content: [{ type: 'text', text: `❌ OmnySys initialization failed: ${initError.message}` }]
-    };
-  }
-
-  if (!core.initialized) {
-    return {
-      content: [{ type: 'text', text: '⏳ OmnySys is initializing. Retry in a few seconds.' }]
-    };
-  }
-
-  const { name, arguments: args } = request.params;
-  const handler = await getLiveToolHandler(name);
-
-  if (!handler) {
-    throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
-  }
-
-  const context = {
-    orchestrator: core.orchestrator,
-    cache: core.cache,
-    projectPath: core.projectPath,
-    server: core,
-    refreshToolRegistry: refreshLiveToolRegistry
-  };
-
-  const rawResult = await handler(args, context);
-
-  let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
-  try {
-    const { collectRecentNotifications, normalizeRecentNotifications } = await import('./mcp/core/recent-notifications.js');
-    recentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
-      clearLoggerBuffer: true,
-      watcherLimit: 10,
-      server: core
-    }));
-  } catch {
-    // Optional logger extensions not available in all environments.
-  }
-
-  const resultWithErrors = recentErrors.count > 0
-    ? { _recentErrors: recentErrors, ...rawResult }
-    : rawResult;
-
-  const paginatedResult = applyPagination(resultWithErrors, args || {});
-
-  return {
-    content: [{ type: 'text', text: JSON.stringify(paginatedResult, null, 2) }]
-  };
-}
-
-async function handleMcpRequest(req, res) {
-  let transport;
-  try {
-    const rawSessionId = req.headers['mcp-session-id'];
-    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
-
-    if (sessionId && sessions.has(sessionId)) {
-      transport = sessions.get(sessionId).transport;
-    } else if (sessionId && !sessions.has(sessionId)) {
-      // ── POST-RESTART RECOVERY ──────────────────────────────────────────────
-      // El worker se reinició y perdió el sessions Map. 
-      // Intentamos recuperar la sesión desde SQLite.
-      const { sessionManager } = await import('./mcp/core/session-manager.js');
-      sessionManager.ensureInitialized();
-      const persistedSession = sessionManager.getSession(sessionId);
-
-      if (persistedSession) {
-        logger.debug(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
-
-        let sessionServer = null;
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
-          onsessioninitialized: (recoveredId) => {
-            sessions.set(recoveredId, { transport, server: sessionServer });
-            logger.info(`MCP HTTP session recovered: ${recoveredId}`);
-          }
-        });
-
-        transport.onclose = async () => {
-          const sid = transport.sessionId;
-          if (!sid) return;
-          sessions.delete(sid);
-          sessionManager.deleteSession(sid);
-        };
-
-        sessionServer = buildServerForSession();
-        await sessionServer.connect(transport);
-
-        // Importante: No retornamos aquí, dejamos que fluya a transport.handleRequest al final.
-      } else {
-        logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
-        res.status(404)
-          .set('Mcp-Session-Expired', 'true')
-          .json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32001,
-              message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
-              data: { reason: 'session_not_found' }
-            },
-            id: req.body?.id ?? null
-          });
-        return;
-      }
-    } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
-      const { sessionManager } = await import('./mcp/core/session-manager.js');
-      sessionManager.ensureInitialized();
-      let sessionServer = null;
-
-      // 🔄 DEDUPLICATION: Check if this client already has an active session
-      const clientInfo = req.body.params?.clientInfo;
-      const clientId = clientInfo?.name || clientInfo?.client_id || 'unknown';
-      const reservation = sessionManager.reserveSession(clientInfo, randomUUID());
-      const sessionIdToUse = reservation.sessionId;
-      const isNewSession = !reservation.reused;
-
-      if (reservation.reused) {
-        logger.debug(`[DEDUP] Reusing ${reservation.source} session ${sessionIdToUse} for client ${clientId}`);
-      } else {
-        logger.info(`[DEDUP] Creating new session ${sessionIdToUse} for client ${clientId}`);
-      }
-
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => sessionIdToUse,
-        onsessioninitialized: (newSessionId) => {
-          sessions.set(newSessionId, { transport, server: sessionServer });
-          const savedId = sessionManager.saveSession(newSessionId, clientInfo, {});
-          if (savedId !== newSessionId) {
-            // Session was deduped - update our local map
-            sessions.delete(newSessionId);
-            sessions.set(savedId, { transport, server: sessionServer });
-            logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${savedId}`);
-          }
-          if (isNewSession) {
-            logger.info(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
-          } else {
-            logger.debug(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
-          }
-        }
-      });
-
-      transport.onclose = async () => {
-        const sid = transport.sessionId;
-        if (!sid) return;
-        sessions.delete(sid);
-        sessionManager.deleteSession(sid);
-      };
-
-      sessionServer = buildServerForSession();
-      try {
-        await sessionServer.connect(transport);
-      } catch (error) {
-        sessionManager.releasePendingSession(sessionIdToUse, clientInfo);
-        throw error;
-      }
-    } else {
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: invalid or missing MCP session'
-        },
-        id: null
-      });
-      return;
-    }
-
-    await transport.handleRequest(req, res, req.body);
-  } catch (error) {
-    logger.error(`Error handling MCP request: ${error.message}`);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Internal server error'
-        },
-        id: null
-      });
-    }
-  }
-}
-
-// Middleware condicional para parsear el body solo si NO hay una sesión activa.
-// Esto permite que el handshake inicial (que no trae ID) funcione,
-// pero no interfiere con el stream de datos crudo de una sesión ya establecida.
-const conditionalJson = (req, res, next) => {
-  if (req.headers['mcp-session-id']) {
-    return next();
-  }
-  express.json()(req, res, (err) => {
-    if (!err) return next();
-
-    // Keep malformed JSON visible in OmnySys logs instead of Express HTML stack traces.
-    logger.warn(`[MCP JSON PARSE] ${req.method} ${req.path}: ${err.message}`);
-    res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32700,
-        message: 'Parse error: invalid JSON payload'
-      },
-      id: null
-    });
-  });
+const getSessionManager = async () => {
+  const { sessionManager } = await import('./mcp/core/session-manager.js');
+  sessionManager.ensureInitialized();
+  return sessionManager;
 };
 
-app.all('/mcp', conditionalJson, handleMcpRequest);
-app.all('/', conditionalJson, handleMcpRequest);
+const conditionalJson = createConditionalJsonMiddleware(logger);
+const handleHttpMcpRequest = (req, res) => handleMcpRequest(req, res, {
+  logger,
+  sessions,
+  buildSessionServer,
+  getSessionManager
+});
+
+app.all('/mcp', conditionalJson, handleHttpMcpRequest);
+app.all('/', conditionalJson, handleHttpMcpRequest);
 
 app.get('/health', async (req, res) => {
   let background = null;
@@ -396,14 +166,19 @@ app.get('/health', async (req, res) => {
   });
 });
 
-app.get('/tools', (req, res) => {
-  const defs = getLiveDefinitions();
-  res.json({
-    count: defs.length,
-    tools: defs.map(t => ({ name: t.name, description: t.description }))
-  });
+app.get('/tools', async (req, res) => {
+  try {
+    const definitions = await getLiveToolDefinitions();
+    res.json({
+      count: definitions.length,
+      tools: definitions.map((tool) => ({ name: tool.name, description: tool.description }))
+    });
+  } catch (error) {
+    logger.error(`Error loading tool definitions: ${error.message}`);
+    res.status(500).json({ error: 'Unable to load tool definitions' });
+  }
 });
-// We mount json manually inside the route to not interfere with MCP streams which need raw req object
+
 app.post('/restart', express.json(), async (req, res) => {
   try {
     const result = await handleRuntimeRestart(req.body || {}, {
@@ -413,24 +188,21 @@ app.post('/restart', express.json(), async (req, res) => {
       refreshToolRegistry: refreshLiveToolRegistry
     });
     res.json(result);
-  } catch (err) {
-    logger.error(`Error in /restart endpoint: ${err.message}`);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    logger.error(`Error in /restart endpoint: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 });
 
-let httpServer = null;
-
-httpServer = await startHttpServer({ app, host, port, logger });
-logger.info(`📂 Project: ${projectPath}`);
+const httpServer = await startHttpServer({ app, host, port, logger });
+logger.info(`Project: ${projectPath}`);
 
 core.initialize().then(async () => {
   try {
-    const { sessionManager } = await import('./mcp/core/session-manager.js');
-    sessionManager.ensureInitialized();
-    sessionManager.cleanup(48); // Cleanup sessions older than 48h
-  } catch (err) {
-    logger.warn(`SessionManager initialization failed: ${err.message}`);
+    const sessionManager = await getSessionManager();
+    sessionManager.cleanup(48);
+  } catch (error) {
+    logger.warn(`SessionManager initialization failed: ${error.message}`);
   }
 }).catch((error) => {
   initError = error;
