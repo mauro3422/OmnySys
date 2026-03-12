@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.123 - Runtime Freshness & Watcher Signal Hardening](changelogs/v0.9.123.md)
 - [v0.9.122 - MCP Registry And Guard Catalog Decomposition](changelogs/v0.9.122.md)
 - [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
@@ -18,6 +19,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.123 - Runtime Freshness & Watcher Signal Hardening](changelogs/v0.9.123.md)
 - [v0.9.122 - MCP Registry And Guard Catalog Decomposition](changelogs/v0.9.122.md)
 - [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
@@ -41,6 +43,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.123** | 2026-03-12 | Runtime freshness false-positive reduction, watcher restart-queue hardening, and semantic-coupling severity normalization for non-production surfaces. |
 | **0.9.122** | 2026-03-12 | MCP registry decomposition, watcher guard catalog splits, and continued debt reduction across runtime surfaces. |
 | **0.9.121** | 2026-03-12 | MCP runtime false-positive reduction, watcher canonical reconciliation, Layer A language contract scaffolding, and benchmark baselines. |
 | **0.9.120** | 2026-03-12 | Coordinator decomposition, hotspot removal, role-taxonomy alignment, and continued debt reduction across analysis/runtime surfaces. |
@@ -67,7 +70,28 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.122 (2026-03-12)
+## Latest Release: v0.9.123 (2026-03-12)
+
+**Runtime Freshness & Watcher Signal Hardening**
+
+### Key Achievements
+
+1. Reduced runtime freshness false positives by filtering stale pending-restart queue entries.
+2. Hardened manual restart queueing to ignore watcher-triggered runtime changes without real git-diff evidence.
+3. Reduced semantic-debt noise by downgrading non-production `high-semantic-coupling` findings to `medium` at persistence time.
+4. Kept MCP status telemetry and watcher reconciliation coherent through repeated live MCP validations.
+
+### New & Refactored Files
+
+- `src/shared/compiler/telemetry-provenance.js`
+- `src/layer-c-memory/mcp/core/hot-reload-manager/strategies/base-strategy.js`
+- `src/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js`
+- `src/layer-a-static/pipeline/enhancers/analyzers/semantic-issue-analyzer.js`
+- `changelogs/v0.9.123.md`
+
+---
+
+## Previous Release: v0.9.122 (2026-03-12)
 
 **MCP Registry And Guard Catalog Decomposition**
 
