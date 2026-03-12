@@ -1,44 +1,53 @@
 /**
  * @fileoverview Main Export Detector
- * 
- * Detecta exports principales de módulos
- * 
+ *
+ * Detects the primary exports of modules.
+ *
  * @module module-system/detectors/export-detector
  * @phase 3
  */
 
 import path from 'path';
 
-/**
- * Encuentra exports principales
- * @param {Array} modules - Módulos del proyecto
- * @returns {Array} - Exports encontrados
- */
+const MAIN_EXPORT_FILES = new Set(['index.js', 'main.js']);
+
+function findMainExportFileNames(files = []) {
+  const fileNames = new Set();
+
+  for (const file of files) {
+    const fileName = path.basename(file.path);
+    if (MAIN_EXPORT_FILES.has(fileName)) {
+      fileNames.add(fileName);
+    }
+  }
+
+  return fileNames;
+}
+
+function buildLibraryExport(moduleName, exportEntry) {
+  return {
+    type: 'library',
+    name: exportEntry.name,
+    module: moduleName,
+    exportedFrom: exportEntry.file
+  };
+}
+
 export function findMainExports(modules) {
   const exports = [];
-  
-  // Buscar index.js o main.js
+
   for (const module of modules) {
-    const mainFile = module.files.find(f =>
-      f.path.endsWith('index.js') ||
-      f.path.endsWith('main.js')
-    );
-    
-    if (mainFile) {
-      const mainExports = module.exports?.filter(e =>
-        e.file === path.basename(mainFile.path)
-      ) || [];
-      
-      for (const exp of mainExports) {
-        exports.push({
-          type: 'library',
-          name: exp.name,
-          module: module.moduleName,
-          exportedFrom: exp.file
-        });
+    const mainFileNames = findMainExportFileNames(module.files);
+    if (mainFileNames.size === 0) {
+      continue;
+    }
+
+    for (const exportEntry of module.exports || []) {
+      if (mainFileNames.has(exportEntry.file)) {
+        exports.push(buildLibraryExport(module.moduleName, exportEntry));
       }
     }
   }
-  
+
   return exports;
 }

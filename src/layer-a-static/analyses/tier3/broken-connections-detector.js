@@ -1,8 +1,8 @@
 /**
  * @fileoverview broken-connections-detector.js
  *
- * Detecta conexiones rotas entre módulos:
- * - Named imports cuyo símbolo no está exportado por el archivo fuente
+ * Detecta conexiones rotas entre modulos:
+ * - Named imports cuyo simbolo no esta exportado por el archivo fuente
  * - Default imports de archivos sin default export
  * - Broken workers, dynamic imports, duplicates, dead functions, suspicious URLs
  *   (delegado a BrokenConnectionsDetector class)
@@ -27,7 +27,6 @@ function buildFileExportMap(systemMap) {
     const names = new Set();
     let hasDefault = false;
 
-    // 1. Exports declarados en el nodo del archivo (parsed exports)
     for (const exp of (fileNode.exports || [])) {
       if (exp.type === 'default') {
         hasDefault = true;
@@ -36,14 +35,12 @@ function buildFileExportMap(systemMap) {
       }
     }
 
-    // 2. Funciones marcadas como exportadas en el functions index
     for (const func of (systemMap.functions?.[filePath] || [])) {
       if (func.isExported && func.name) {
         names.add(func.name);
       }
     }
 
-    // 3. Barrel exports: re-exports visibles desde este archivo
     for (const exportName of Object.keys(systemMap.exportIndex?.[filePath] || {})) {
       names.add(exportName);
     }
@@ -52,6 +49,94 @@ function buildFileExportMap(systemMap) {
   }
 
   return fileExports;
+}
+
+function createMissingDefaultExportIssue(dep) {
+  return {
+    sourceFile: dep.from,
+    targetFile: dep.to,
+    importedName: 'default',
+    type: 'MISSING_DEFAULT_EXPORT',
+    severity: 'critical',
+    reason: `'${dep.to}' has no default export`,
+    suggestion: 'Add a default export or change to a named import'
+  };
+}
+
+function createMissingNamedExportIssue(dep, importedName) {
+  return {
+    sourceFile: dep.from,
+    targetFile: dep.to,
+    importedName,
+    type: 'MISSING_NAMED_EXPORT',
+    severity: 'warning',
+    reason: `'${importedName}' is not exported by '${dep.to}'`,
+    suggestion: `Check if '${importedName}' was renamed, removed, or moved to another module`
+  };
+}
+
+function analyzeDependencySymbols(dep, targetExports) {
+  const issues = [];
+
+  for (const sym of (dep.symbols || [])) {
+    if (!sym || typeof sym !== 'object' || !sym.type || sym.type === 'namespace') {
+      continue;
+    }
+
+    if (sym.type === 'default') {
+      if (!targetExports.hasDefault) {
+        issues.push(createMissingDefaultExportIssue(dep));
+      }
+      continue;
+    }
+
+    if (sym.type === 'named' && sym.imported && !targetExports.names.has(sym.imported)) {
+      issues.push(createMissingNamedExportIssue(dep, sym.imported));
+    }
+  }
+
+  return issues;
+}
+
+function collectBrokenImportIssues(systemMap, fileExports) {
+  const broken = [];
+
+  for (const dep of (systemMap.dependencies || [])) {
+    const targetExports = fileExports.get(dep.to);
+    if (!targetExports) continue;
+
+    broken.push(...analyzeDependencySymbols(dep, targetExports));
+  }
+
+  return broken;
+}
+
+function normalizeStructuralIssue(issue) {
+  return {
+    sourceFile: issue.sourceFile || issue.file,
+    targetFile: issue.workerPath || issue.importPath || null,
+    importedName: issue.functionName || null,
+    type: issue.type,
+    severity: issue.severity === 'HIGH' ? 'critical' : 'warning',
+    reason: issue.reason,
+    suggestion: issue.suggestion
+  };
+}
+
+function summarizeBrokenIssues(broken, structural) {
+  const critical = broken.filter((issue) => issue.severity === 'critical').length;
+  const warnings = broken.filter((issue) => issue.severity === 'warning').length;
+  const missingExports = broken.filter(
+    (issue) => issue.type === 'MISSING_NAMED_EXPORT' || issue.type === 'MISSING_DEFAULT_EXPORT'
+  ).length;
+
+  return {
+    total: broken.length,
+    critical,
+    warnings,
+    missingExports,
+    structuralIssues: structural.summary.total
+  };
 }
 
 /**
@@ -70,89 +155,18 @@ export function analyzeBrokenConnections(systemMap, advancedConnections) {
     };
   }
 
-  const broken = [];
-
-  // ─────────────────────────────────────────────
-  // 1. Symbol-level: cross imports vs exports
-  // ─────────────────────────────────────────────
   const fileExports = buildFileExportMap(systemMap);
+  const broken = collectBrokenImportIssues(systemMap, fileExports);
 
-  for (const dep of (systemMap.dependencies || [])) {
-    const targetExports = fileExports.get(dep.to);
-    if (!targetExports) continue; // archivo destino fuera del grafo — tier2 lo maneja
-
-    for (const sym of (dep.symbols || [])) {
-      // Aceptar solo objetos con campo 'type' (specifier objects)
-      if (!sym || typeof sym !== 'object' || !sym.type) continue;
-
-      if (sym.type === 'namespace') {
-        // import * as X — importa todo, no se puede validar símbolo a símbolo
-        continue;
-      }
-
-      if (sym.type === 'default') {
-        if (!targetExports.hasDefault) {
-          broken.push({
-            sourceFile: dep.from,
-            targetFile: dep.to,
-            importedName: 'default',
-            type: 'MISSING_DEFAULT_EXPORT',
-            severity: 'critical',
-            reason: `'${dep.to}' has no default export`,
-            suggestion: 'Add a default export or change to a named import'
-          });
-        }
-      } else if (sym.type === 'named' && sym.imported) {
-        if (!targetExports.names.has(sym.imported)) {
-          broken.push({
-            sourceFile: dep.from,
-            targetFile: dep.to,
-            importedName: sym.imported,
-            type: 'MISSING_NAMED_EXPORT',
-            severity: 'warning',
-            reason: `'${sym.imported}' is not exported by '${dep.to}'`,
-            suggestion: `Check if '${sym.imported}' was renamed, removed, or moved to another module`
-          });
-        }
-      }
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // 2. Structural: workers, dynamic imports,
-  //    duplicate functions, dead code, suspicious URLs
-  // ─────────────────────────────────────────────
   const detector = new BrokenConnectionsDetector();
   const structural = detector.analyze(systemMap, advancedConnections);
 
   for (const issue of (structural.all || [])) {
-    broken.push({
-      sourceFile: issue.sourceFile || issue.file,
-      targetFile: issue.workerPath || issue.importPath || null,
-      importedName: issue.functionName || null,
-      type: issue.type,
-      severity: issue.severity === 'HIGH' ? 'critical' : 'warning',
-      reason: issue.reason,
-      suggestion: issue.suggestion
-    });
+    broken.push(normalizeStructuralIssue(issue));
   }
 
-  // ─────────────────────────────────────────────
-  // 3. Summary
-  // ─────────────────────────────────────────────
-  const critical = broken.filter(b => b.severity === 'critical').length;
-  const warnings = broken.filter(b => b.severity === 'warning').length;
-
   return {
-    summary: {
-      total: broken.length,
-      critical,
-      warnings,
-      missingExports: broken.filter(
-        b => b.type === 'MISSING_NAMED_EXPORT' || b.type === 'MISSING_DEFAULT_EXPORT'
-      ).length,
-      structuralIssues: structural.summary.total
-    },
+    summary: summarizeBrokenIssues(broken, structural),
     broken,
     metadata: {
       analyzedAt: new Date().toISOString(),

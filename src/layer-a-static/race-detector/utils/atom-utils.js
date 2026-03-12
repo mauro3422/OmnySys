@@ -8,6 +8,51 @@
  * @version 1.0.0
  */
 
+const atomLookupCache = new WeakMap();
+
+function buildAtomLookup(project) {
+  const byId = new Map();
+  const byName = new Map();
+  const byFilePath = new Map();
+
+  for (const module of project.modules || []) {
+    for (const molecule of module.files || []) {
+      const moleculePath = molecule.filePath || '';
+
+      for (const atom of molecule.atoms || []) {
+        byId.set(atom.id, atom);
+
+        if (!byName.has(atom.name)) {
+          byName.set(atom.name, atom);
+        }
+
+        if (moleculePath) {
+          byFilePath.set(moleculePath, molecule.atoms || []);
+        }
+      }
+    }
+  }
+
+  return { byId, byName, byFilePath };
+}
+
+function getAtomLookup(project) {
+  if (!atomLookupCache.has(project)) {
+    atomLookupCache.set(project, buildAtomLookup(project));
+  }
+
+  return atomLookupCache.get(project);
+}
+
+function findAtomInFileAtoms(atomId, functionName, fileAtoms) {
+  for (const atom of fileAtoms || []) {
+    if (atom.id === atomId) return atom;
+    if (functionName && atom.name === functionName) return atom;
+  }
+
+  return null;
+}
+
 /**
  * Find atom by its ID
  * @param {string} atomId - Atom ID in format "filePath::functionName"
@@ -16,30 +61,30 @@
  */
 export function findAtomById(atomId, project) {
   if (!atomId || !project) return null;
-  
+
   const parts = atomId.split('::');
   const filePath = parts.length > 1 ? parts[0] : null;
   const functionName = parts.length > 1 ? parts[1] : null;
-  
-  for (const module of project.modules || []) {
-    for (const molecule of module.files || []) {
-      // If we have a file path, check if molecule matches
-      const fileMatches = !filePath || molecule.filePath?.endsWith(filePath);
-      
-      if (!filePath || fileMatches) {
-        for (const atom of molecule.atoms || []) {
-          // Match by exact ID, or by function name if we have one
-          if (atom.id === atomId || 
-              (functionName && atom.name === functionName) ||
-              (!functionName && atom.id === atomId)) {
-            return atom;
-          }
-        }
-      }
+
+  const { byId, byName, byFilePath } = getAtomLookup(project);
+  const exactMatch = byId.get(atomId);
+  if (exactMatch) return exactMatch;
+
+  if (filePath) {
+    const directFileAtoms = byFilePath.get(filePath);
+    if (directFileAtoms) {
+      return findAtomInFileAtoms(atomId, functionName, directFileAtoms);
+    }
+
+    for (const [indexedFilePath, fileAtoms] of byFilePath) {
+      if (!indexedFilePath.endsWith(filePath)) continue;
+
+      const matchedAtom = findAtomInFileAtoms(atomId, functionName, fileAtoms);
+      if (matchedAtom) return matchedAtom;
     }
   }
-  
-  return null;
+
+  return functionName ? byName.get(functionName) || null : null;
 }
 
 /**

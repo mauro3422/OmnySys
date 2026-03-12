@@ -8,6 +8,24 @@
 
 import { RaceDetectionStrategy } from './race-detection-strategy/index.js';
 
+function collectInitializationAccesses(accesses, isInitialization) {
+  const initAccesses = [];
+
+  for (const access of accesses) {
+    if (isInitialization(access)) {
+      initAccesses.push(access);
+    }
+  }
+
+  return initAccesses;
+}
+
+function buildInitRaceDescription(stateKey, access1, access2) {
+  return `Double initialization race on ${stateKey}: ` +
+    `${access1.atomName} and ${access2.atomName} ` +
+    `may initialize concurrently`;
+}
+
 /**
  * Strategy for detecting initialization races
  */
@@ -26,23 +44,20 @@ export class InitErrorStrategy extends RaceDetectionStrategy {
     const races = [];
 
     for (const [stateKey, accesses] of sharedState) {
-      // Find initialization accesses
-      const initAccesses = accesses.filter(a => this.isInitialization(a));
-      
+      const initAccesses = collectInitializationAccesses(accesses, (access) =>
+        this.isInitialization(access)
+      );
+
       if (initAccesses.length < 2) continue;
 
-      // Multiple initializations = potential race
       for (let i = 0; i < initAccesses.length; i++) {
         for (let j = i + 1; j < initAccesses.length; j++) {
           const access1 = initAccesses[i];
           const access2 = initAccesses[j];
 
-          // Check if they can run concurrently
           if (this.canRunConcurrently(access1, access2, project)) {
             const race = this.createRace(stateKey, access1, access2, 'IE');
-            race.description = `Double initialization race on ${stateKey}: ` +
-                             `${access1.atomName} and ${access2.atomName} ` +
-                             `may initialize concurrently`;
+            race.description = buildInitRaceDescription(stateKey, access1, access2);
             races.push(race);
           }
         }

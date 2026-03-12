@@ -4,18 +4,18 @@
 
 import { calculateSeverity } from '../utils/index.js';
 
-/**
- * Genera conexiones semánticas de estado compartido
- * @param {Object} fileAnalysisMap - Mapa de filePath -> análisis
- * @returns {Array} - Array de conexiones semánticas
- */
-export function generateSharedStateConnections(fileAnalysisMap) {
-  const connections = [];
+function isEventProperty(propName) {
+  const lowerName = propName.toLowerCase();
+  return lowerName.includes('bus') || lowerName.includes('emitter') || lowerName.includes('event');
+}
+
+function buildPropertyIndex(fileAnalysisMap) {
   const propertyIndex = new Map();
 
-  // Indexar todas las propiedades globales
   for (const [filePath, analysis] of Object.entries(fileAnalysisMap)) {
-    if (!analysis || !analysis.globalAccess || analysis.globalAccess.length === 0) continue;
+    if (!analysis?.globalAccess?.length) {
+      continue;
+    }
 
     for (const access of analysis.globalAccess) {
       const { propName, type } = access;
@@ -32,57 +32,118 @@ export function generateSharedStateConnections(fileAnalysisMap) {
     }
   }
 
-  // Generar conexiones para propiedades que tienen acceso en diferentes archivos
-  for (const [propName, accesses] of propertyIndex.entries()) {
-    // Skip event-related properties
-    if (propName.toLowerCase().includes('bus') || propName.toLowerCase().includes('emitter') || propName.toLowerCase().includes('event')) {
-      continue;
+  return propertyIndex;
+}
+
+function buildAccessMetadata(accesses) {
+  const accessByFile = new Map();
+  const writerFileSet = new Set();
+
+  for (const accessEntry of accesses) {
+    if (!accessByFile.has(accessEntry.file)) {
+      accessByFile.set(accessEntry.file, accessEntry);
     }
 
-    const allAccessors = [...new Set(accesses.map(a => a.file))];
-    if (allAccessors.length < 2) continue;
+    if (accessEntry.type === 'write') {
+      writerFileSet.add(accessEntry.file);
+    }
+  }
 
-    const uniqueWriters = [...new Set(accesses.filter(a => a.type === 'write').map(a => a.file))];
-    const allFileAccessors = [...new Set(accesses.map(a => a.file))];
+  return {
+    accessByFile,
+    allFileAccessors: [...accessByFile.keys()],
+    writerFiles: [...writerFileSet]
+  };
+}
 
-    // Patrón: accessor → writer
-    for (const sourceFile of allFileAccessors) {
-      for (const writerFile of uniqueWriters) {
-        if (sourceFile !== writerFile) {
-          const forwardConnId = `shared_state_${propName}_${writerFile}_to_${sourceFile}`;
-          const backwardConnId = `shared_state_${propName}_${sourceFile}_to_${writerFile}`;
+function buildConnectionReason(sourceFile, sourceAccess, propName, writerFile) {
+  if (sourceAccess?.type === 'read') {
+    return `${sourceFile} reads ${propName} modified by ${writerFile}.`;
+  }
 
-          if (!connections.some(c => c.id === forwardConnId) && !connections.some(c => c.id === backwardConnId)) {
-            const sourceAccess = accesses.find(a => a.file === sourceFile);
-            const writerAccess = accesses.find(a => a.file === writerFile && a.type === 'write');
-            let reason = '';
+  if (sourceAccess?.type === 'write') {
+    return `Both files access ${propName}. ${sourceFile} writes, ${writerFile} writes.`;
+  }
 
-            if (sourceAccess?.type === 'read') {
-              reason = `${sourceFile} reads ${propName} modified by ${writerFile}.`;
-            } else if (sourceAccess?.type === 'write') {
-              reason = `Both files access ${propName}. ${sourceFile} writes, ${writerFile} writes.`;
-            }
+  return '';
+}
 
-            if (reason) {
-              connections.push({
-                id: backwardConnId,
-                type: 'shared_state',
-                sourceFile: sourceFile,
-                targetFile: writerFile,
-                globalProperty: propName,
-                reason,
-                confidence: sourceAccess?.type === 'read' ? 0.95 : 1.0,
-                severity: calculateSeverity(sourceFile, writerFile, accesses, propName),
-                evidence: {
-                  sourceAccess: sourceAccess?.access,
-                  writerAccess: writerAccess?.access
-                }
-              });
-            }
-          }
-        }
+function createSharedStateConnection({ propName, sourceFile, writerFile, accesses, sourceAccess, writerAccess }) {
+  return {
+    id: `shared_state_${propName}_${sourceFile}_to_${writerFile}`,
+    type: 'shared_state',
+    sourceFile,
+    targetFile: writerFile,
+    globalProperty: propName,
+    reason: buildConnectionReason(sourceFile, sourceAccess, propName, writerFile),
+    confidence: sourceAccess?.type === 'read' ? 0.95 : 1.0,
+    severity: calculateSeverity(sourceFile, writerFile, accesses, propName),
+    evidence: {
+      sourceAccess: sourceAccess?.access,
+      writerAccess: writerAccess?.access
+    }
+  };
+}
+
+function collectPropertyConnections(propName, accesses, seenConnectionIds) {
+  if (isEventProperty(propName)) {
+    return [];
+  }
+
+  const { accessByFile, allFileAccessors, writerFiles } = buildAccessMetadata(accesses);
+  if (allFileAccessors.length < 2 || writerFiles.length === 0) {
+    return [];
+  }
+
+  const propertyConnections = [];
+
+  for (const sourceFile of allFileAccessors) {
+    const sourceAccess = accessByFile.get(sourceFile);
+
+    for (const writerFile of writerFiles) {
+      if (sourceFile === writerFile) {
+        continue;
       }
+
+      const forwardConnId = `shared_state_${propName}_${writerFile}_to_${sourceFile}`;
+      if (seenConnectionIds.has(forwardConnId)) {
+        continue;
+      }
+
+      const writerAccess = accessByFile.get(writerFile);
+      const connection = createSharedStateConnection({
+        propName,
+        sourceFile,
+        writerFile,
+        accesses,
+        sourceAccess,
+        writerAccess
+      });
+
+      if (!connection.reason) {
+        continue;
+      }
+
+      propertyConnections.push(connection);
+      seenConnectionIds.add(connection.id);
     }
+  }
+
+  return propertyConnections;
+}
+
+/**
+ * Genera conexiones semánticas de estado compartido
+ * @param {Object} fileAnalysisMap - Mapa de filePath -> análisis
+ * @returns {Array} - Array de conexiones semánticas
+ */
+export function generateSharedStateConnections(fileAnalysisMap) {
+  const connections = [];
+  const propertyIndex = buildPropertyIndex(fileAnalysisMap);
+  const seenConnectionIds = new Set();
+
+  for (const [propName, accesses] of propertyIndex.entries()) {
+    connections.push(...collectPropertyConnections(propName, accesses, seenConnectionIds));
   }
 
   return connections;

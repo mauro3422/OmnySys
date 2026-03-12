@@ -11,6 +11,7 @@ import {
     StandardSuggestions,
     isValidGuardTarget
 } from './guard-standards.js';
+import { classifyFileOperationalRole } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:topology-regression');
 
@@ -38,6 +39,66 @@ function getTopologySignal(atom) {
     );
 }
 
+function buildMatchedTopologyAtoms(previousAtoms = [], atoms = []) {
+    const previousMap = new Map(
+        previousAtoms
+            .filter(isValidGuardTarget)
+            .map((atom) => [atomKey(atom), atom])
+    );
+
+    return atoms
+        .filter(isValidGuardTarget)
+        .map((atom) => ({ current: atom, previous: previousMap.get(atomKey(atom)) }))
+        .filter((pair) => pair.previous);
+}
+
+function summarizeTopologySignals(matched = []) {
+    const previousSignal = matched.reduce((sum, pair) => sum + getTopologySignal(pair.previous), 0);
+    const currentSignal = matched.reduce((sum, pair) => sum + getTopologySignal(pair.current), 0);
+
+    const regressedAtoms = matched
+        .filter((pair) => getTopologySignal(pair.previous) > 0 && getTopologySignal(pair.current) === 0)
+        .map((pair) => ({
+            name: pair.current.name,
+            previousSignal: getTopologySignal(pair.previous),
+            currentSignal: 0
+        }));
+
+    return {
+        previousSignal,
+        currentSignal,
+        regressedAtoms
+    };
+}
+
+function shouldSkipTopologyRegression(filePath, matched, regressedAtoms) {
+    const fileRole = classifyFileOperationalRole(filePath);
+    return (
+        (
+            fileRole.role === 'analyzer' ||
+            fileRole.role === 'orchestrator' ||
+            fileRole.role === 'builder' ||
+            fileRole.role === 'bridge' ||
+            fileRole.role === 'policy'
+        ) &&
+        regressedAtoms.length === 0 &&
+        matched.length <= 2
+    );
+}
+
+function getTopologyRegressionSeverity(previousSignal, currentSignal) {
+    if (currentSignal === 0 && previousSignal >= 3) {
+        return 'high';
+    }
+
+    const ratio = currentSignal / previousSignal;
+    if (ratio < 0.2 && (previousSignal - currentSignal) >= 3) {
+        return 'medium';
+    }
+
+    return null;
+}
+
 export async function detectTopologyRegression(rootPath, filePath, EventEmitterContext, options = {}) {
     const { previousAtoms = [], atoms = [], verbose = true } = options;
 
@@ -49,41 +110,24 @@ export async function detectTopologyRegression(rootPath, filePath, EventEmitterC
             return [];
         }
 
-        const previousMap = new Map(
-            previousAtoms
-                .filter(isValidGuardTarget)
-                .map((atom) => [atomKey(atom), atom])
-        );
-
-        const matched = atoms
-            .filter(isValidGuardTarget)
-            .map((atom) => ({ current: atom, previous: previousMap.get(atomKey(atom)) }))
-            .filter((pair) => pair.previous);
+        const matched = buildMatchedTopologyAtoms(previousAtoms, atoms);
 
         if (matched.length === 0) {
             return [];
         }
 
-        const previousSignal = matched.reduce((sum, pair) => sum + getTopologySignal(pair.previous), 0);
-        const currentSignal = matched.reduce((sum, pair) => sum + getTopologySignal(pair.current), 0);
+        const { previousSignal, currentSignal, regressedAtoms } = summarizeTopologySignals(matched);
 
         if (previousSignal === 0) {
             return [];
         }
 
-        const regressedAtoms = matched
-            .filter((pair) => getTopologySignal(pair.previous) > 0 && getTopologySignal(pair.current) === 0)
-            .map((pair) => ({
-                name: pair.current.name,
-                previousSignal: getTopologySignal(pair.previous),
-                currentSignal: 0
-            }));
+        if (shouldSkipTopologyRegression(filePath, matched, regressedAtoms)) {
+            return [];
+        }
 
         const ratio = currentSignal / previousSignal;
-        let severity = null;
-
-        if (currentSignal === 0 && previousSignal >= 3) severity = 'high';
-        else if (ratio < 0.2 && (previousSignal - currentSignal) >= 3) severity = 'medium';
+        const severity = getTopologyRegressionSeverity(previousSignal, currentSignal);
 
         if (!severity) {
             return [];

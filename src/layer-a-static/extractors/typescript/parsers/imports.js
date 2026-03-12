@@ -13,7 +13,7 @@ const TYPE_IMPORT_PATTERN = /import\s+type\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['
  * @param {string} code - Source code
  * @returns {Array} - Array of import definitions
  */
-export function extractImports(code) {
+export function extractTypeImports(code) {
   const imports = [];
   let match;
 

@@ -8,6 +8,48 @@
 
 import { BaseTracker } from './base-tracker.js';
 
+const VARIABLE_DECLARATION_PATTERN = /(?:let|const|var)\s+(\w+)/g;
+const IDENTIFIER_PATTERN = /\b[A-Za-z_$][A-Za-z0-9_$]*\b/g;
+const NESTED_FUNCTION_PATTERN = /function\s*\w*\s*\([^)]*\)\s*\{/g;
+const CALLBACK_PATTERN = /(?:setTimeout|setInterval|then|catch|finally)\s*\(\s*\(\)\s*=>\s*\{([^}]+)\}/g;
+const MODIFICATION_PATTERN = /(\w+)\s*(?:\+\+|--|\+\s*=|-\s*=|\*\s*=|\/\s*=)/g;
+
+function collectDeclaredVariableNames(code) {
+  const names = new Set();
+  let match;
+
+  while ((match = VARIABLE_DECLARATION_PATTERN.exec(code)) !== null) {
+    names.add(match[1]);
+  }
+
+  VARIABLE_DECLARATION_PATTERN.lastIndex = 0;
+  return names;
+}
+
+function collectUsedVariableNames(code) {
+  const names = new Set();
+  let match;
+
+  while ((match = IDENTIFIER_PATTERN.exec(code)) !== null) {
+    names.add(match[0]);
+  }
+
+  IDENTIFIER_PATTERN.lastIndex = 0;
+  return names;
+}
+
+function collectModifiedVariableNames(code) {
+  const names = [];
+  let match;
+
+  while ((match = MODIFICATION_PATTERN.exec(code)) !== null) {
+    names.push(match[1]);
+  }
+
+  MODIFICATION_PATTERN.lastIndex = 0;
+  return names;
+}
+
 /**
  * Tracker for closure state
  */
@@ -130,30 +172,25 @@ export class ClosureTracker extends BaseTracker {
   findNestedFunctionUses(code) {
     const vars = [];
 
-    // Find variable declarations at function level
-    const declarations = this.findVariableDeclarations(code);
+    const declarationNames = collectDeclaredVariableNames(code);
 
-    // Find nested functions
-    const nestedFuncPattern = /function\s*\w*\s*\([^)]*\)\s*\{/g;
     let match;
 
-    while ((match = nestedFuncPattern.exec(code)) !== null) {
+    while ((match = NESTED_FUNCTION_PATTERN.exec(code)) !== null) {
       const startIdx = match.index;
       const endIdx = this.findMatchingBrace(code, startIdx + match[0].length - 1);
       const nestedCode = code.substring(startIdx, endIdx);
 
-      // Check which outer variables are used in nested function
-      for (const decl of declarations) {
-        // Variable is used but not redeclared in nested scope
-        if (nestedCode.includes(decl.name) &&
-          !nestedCode.includes(`let ${decl.name}`) &&
-          !nestedCode.includes(`const ${decl.name}`) &&
-          !nestedCode.includes(`var ${decl.name}`)) {
-          vars.push(decl.name);
-        }
+      const nestedDeclarations = collectDeclaredVariableNames(nestedCode);
+      const usedNames = collectUsedVariableNames(nestedCode);
+
+      for (const name of declarationNames) {
+        if (!usedNames.has(name) || nestedDeclarations.has(name)) continue;
+        vars.push(name);
       }
     }
 
+    NESTED_FUNCTION_PATTERN.lastIndex = 0;
     return vars;
   }
 
@@ -163,24 +200,14 @@ export class ClosureTracker extends BaseTracker {
    */
   findCallbackCaptures(code) {
     const vars = [];
-
-    // Pattern: setTimeout(() => { modify variable }, ...)
-    // Pattern: .then(() => { modify variable })
-    const callbackPattern = /(?:setTimeout|setInterval|then|catch|finally)\s*\(\s*\(\)\s*=>\s*\{([^}]+)\}/g;
     let match;
 
-    while ((match = callbackPattern.exec(code)) !== null) {
+    while ((match = CALLBACK_PATTERN.exec(code)) !== null) {
       const callbackBody = match[1];
-
-      // Find variable modifications in callback
-      const modificationPattern = /(\w+)\s*(?:\+\+|--|\+\s*=|-\s*=|\*\s*=|\/\s*=)/g;
-      let modMatch;
-
-      while ((modMatch = modificationPattern.exec(callbackBody)) !== null) {
-        vars.push(modMatch[1]);
-      }
+      vars.push(...collectModifiedVariableNames(callbackBody));
     }
 
+    CALLBACK_PATTERN.lastIndex = 0;
     return vars;
   }
 
@@ -190,16 +217,16 @@ export class ClosureTracker extends BaseTracker {
    */
   findVariableDeclarations(code) {
     const declarations = [];
-    const pattern = /(?:let|const|var)\s+(\w+)/g;
     let match;
 
-    while ((match = pattern.exec(code)) !== null) {
+    while ((match = VARIABLE_DECLARATION_PATTERN.exec(code)) !== null) {
       declarations.push({
         name: match[1],
         position: match.index
       });
     }
 
+    VARIABLE_DECLARATION_PATTERN.lastIndex = 0;
     return declarations;
   }
 

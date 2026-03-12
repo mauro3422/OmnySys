@@ -13,6 +13,53 @@ import { LockAnalyzer } from '../../analyzers/lock-analyzer.js';
 import { buildContext } from '../utils/context.js';
 import { findAtom, severityRank } from '../utils/helpers.js';
 
+function canEvaluateMatch(config, matchContext) {
+  if (config.checkConcurrency && !matchContext.canRunConcurrently) {
+    return false;
+  }
+
+  if (config.checkLocks && matchContext.hasCommonLock) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildPatternMatch(pattern, matchContext) {
+  return {
+    matches: true,
+    type: pattern.type,
+    name: pattern.name,
+    severity: pattern.severity,
+    context: matchContext
+  };
+}
+
+function getPairKey(access1, access2) {
+  return `${access1.atom}:${access2.atom}:${access1.type}:${access2.type}`;
+}
+
+function findBestMatch(matches) {
+  let bestMatch = null;
+
+  for (const match of matches) {
+    if (!bestMatch || severityRank(match.severity) > severityRank(bestMatch.severity)) {
+      bestMatch = match;
+    }
+  }
+
+  return bestMatch;
+}
+
+function buildRaceRecord(access1, access2, matches) {
+  return {
+    access1,
+    access2,
+    pattern: findBestMatch(matches),
+    allMatches: matches
+  };
+}
+
 /**
  * Pattern matcher that coordinates analyzers and registry
  */
@@ -46,11 +93,7 @@ export class PatternMatcher {
       this.timingAnalyzer, this.lockAnalyzer, this.config
     );
     
-    if (this.config.checkConcurrency && !matchContext.canRunConcurrently) {
-      return results;
-    }
-    
-    if (this.config.checkLocks && matchContext.hasCommonLock) {
+    if (!canEvaluateMatch(this.config, matchContext)) {
       return results;
     }
     
@@ -59,13 +102,7 @@ export class PatternMatcher {
     for (const pattern of patterns) {
       try {
         if (pattern.matcher(access1, access2, matchContext)) {
-          results.push({
-            matches: true,
-            type: pattern.type,
-            name: pattern.name,
-            severity: pattern.severity,
-            context: matchContext
-          });
+          results.push(buildPatternMatch(pattern, matchContext));
         }
       } catch (err) {
         // Silently ignore matcher errors
@@ -90,23 +127,13 @@ export class PatternMatcher {
       this.timingAnalyzer, this.lockAnalyzer, this.config
     );
     
-    if (this.config.checkConcurrency && !matchContext.canRunConcurrently) {
-      return { matches: false };
-    }
-    
-    if (this.config.checkLocks && matchContext.hasCommonLock) {
+    if (!canEvaluateMatch(this.config, matchContext)) {
       return { matches: false };
     }
     
     try {
       if (pattern.matcher(access1, access2, matchContext)) {
-        return {
-          matches: true,
-          type: pattern.type,
-          name: pattern.name,
-          severity: pattern.severity,
-          context: matchContext
-        };
+        return buildPatternMatch(pattern, matchContext);
       }
     } catch (err) {
       // Ignore matcher errors
@@ -127,23 +154,14 @@ export class PatternMatcher {
         const access1 = accesses[i];
         const access2 = accesses[j];
         
-        const pairKey = `${access1.atom}:${access2.atom}:${access1.type}:${access2.type}`;
+        const pairKey = getPairKey(access1, access2);
         if (matched.has(pairKey)) continue;
         matched.add(pairKey);
         
         const matches = this.match(access1, access2, project, options);
         
         if (matches.length > 0) {
-          const bestMatch = matches.sort((a, b) => 
-            severityRank(b.severity) - severityRank(a.severity)
-          )[0];
-          
-          races.push({
-            access1,
-            access2,
-            pattern: bestMatch,
-            allMatches: matches
-          });
+          races.push(buildRaceRecord(access1, access2, matches));
         }
       }
     }

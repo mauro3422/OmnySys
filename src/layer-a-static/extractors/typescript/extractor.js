@@ -16,7 +16,7 @@ import {
   extractClasses,
   extractEnums,
   extractGenerics,
-  extractImports,
+  extractTypeImports,
   extractExports
 } from './parsers/index.js';
 
@@ -31,7 +31,7 @@ export function extractTypeScriptDefinitions(code) {
   const classes = extractClasses(code);
   const enums = extractEnums(code);
   const generics = extractGenerics(code);
-  const imports = extractImports(code);
+  const imports = extractTypeImports(code);
   const exports = extractExports(code);
 
   return {

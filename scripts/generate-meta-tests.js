@@ -7,25 +7,25 @@
  * Example: node scripts/generate-meta-tests.js "tests/unit/layer-a-analysis/parser/*.test.js"
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { readdir, readFile, stat, writeFile } from 'fs/promises';
 import { join, resolve } from 'path';
 
 /**
  * Simple glob implementation using fs
  */
-function globSync(pattern, cwd = process.cwd()) {
+async function glob(pattern, cwd = process.cwd()) {
   const files = [];
   const basePath = pattern.replace(/\/\*\*\/\*\.test\.js$/, '').replace(/\/\*\.test\.js$/, '');
   const fullBasePath = resolve(cwd, basePath);
   
-  function traverseDir(dir) {
-    const items = readdirSync(dir);
+  async function traverseDir(dir) {
+    const items = await readdir(dir);
     for (const item of items) {
       const fullPath = join(dir, item);
-      const stat = statSync(fullPath);
+      const itemStats = await stat(fullPath);
       
-      if (stat.isDirectory()) {
-        traverseDir(fullPath);
+      if (itemStats.isDirectory()) {
+        await traverseDir(fullPath);
       } else if (item.endsWith('.test.js')) {
         files.push(fullPath);
       }
@@ -33,7 +33,7 @@ function globSync(pattern, cwd = process.cwd()) {
   }
   
   try {
-    traverseDir(fullBasePath);
+    await traverseDir(fullBasePath);
   } catch (e) {
     // Directory doesn't exist
   }
@@ -44,8 +44,8 @@ function globSync(pattern, cwd = process.cwd()) {
 /**
  * Analyzes a test file and extracts test cases
  */
-function analyzeTestFile(testPath, preloadedContent = null) {
-  const content = preloadedContent ?? readFileSync(testPath, 'utf-8');
+async function analyzeTestFile(testPath, preloadedContent = null) {
+  const content = preloadedContent ?? await readFile(testPath, 'utf-8');
   
   // Extract imports
   const importMatches = content.matchAll(/import\s+(?:{([^}]+)}|(\w+))\s+from\s+['"]([^'"]+)['"]/g);
@@ -176,10 +176,10 @@ ${limitedTests.map(t => `    {
 /**
  * Main migration function
  */
-function migrateBatch(pattern) {
+async function migrateBatch(pattern) {
   console.log('🔍 Searching for test files...\n');
   
-  const files = globSync(pattern);
+  const files = await glob(pattern);
   console.log(`Found ${files.length} files to analyze\n`);
   
   let migrated = 0;
@@ -187,7 +187,7 @@ function migrateBatch(pattern) {
   
   for (const file of files) {
     // Skip already migrated files
-    const content = readFileSync(file, 'utf-8');
+    const content = await readFile(file, 'utf-8');
     if (content.includes('createAnalysisTestSuite') || 
         content.includes('createUtilityTestSuite') ||
         content.includes('createDetectorTestSuite')) {
@@ -199,14 +199,14 @@ function migrateBatch(pattern) {
     console.log(`🔄 Migrating: ${file}`);
     
     try {
-      const analysis = analyzeTestFile(file, content);
+      const analysis = await analyzeTestFile(file, content);
       const newContent = generateMetaFactoryTest(file, analysis);
       
       // Backup old file
-      writeFileSync(`${file}.backup`, content);
+      await writeFile(`${file}.backup`, content);
       
       // Write new content
-      writeFileSync(file, newContent);
+      await writeFile(file, newContent);
       
       console.log(`✅ Migrated: ${file}\n`);
       migrated++;
@@ -229,4 +229,4 @@ if (!pattern) {
   process.exit(1);
 }
 
-migrateBatch(pattern);
+await migrateBatch(pattern);

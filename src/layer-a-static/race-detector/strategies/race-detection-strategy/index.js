@@ -17,7 +17,6 @@ export { SharedStateAnalyzer } from './detectors/SharedStateAnalyzer.js';
 export { TimingAnalyzer } from './detectors/TimingAnalyzer.js';
 export { LockAnalyzer } from './analyzers/lock/LockAnalyzer.js';
 export { PatternMatcher } from './detectors/PatternMatcher.js';
-export { DependencyAnalyzer } from './detectors/DependencyAnalyzer.js';
 
 // Default export
 export { RaceDetectionStrategy as default } from './strategy/RaceDetectionStrategy.js';

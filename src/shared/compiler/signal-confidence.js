@@ -20,6 +20,17 @@ function pushReason(reasons, code, message) {
   reasons.push({ code, message });
 }
 
+function isCoordinatorBiasRole(role) {
+  return (
+    role.role === 'orchestrator' ||
+    role.role === 'resolver' ||
+    role.role === 'builder' ||
+    role.role === 'analyzer' ||
+    role.role === 'bridge' ||
+    role.role === 'policy'
+  );
+}
+
 export function classifySignalConfidence(alert = {}) {
   const reasons = [];
   let score = 75;
@@ -49,10 +60,7 @@ export function classifySignalConfidence(alert = {}) {
     pushReason(reasons, 'expired', 'The alert has exceeded its expiry window and should be treated as historical noise.');
   }
 
-  if (
-    issueType.startsWith('sem_data_flow_') &&
-    (role.role === 'orchestrator' || role.role === 'bridge' || role.role === 'policy')
-  ) {
+  if (issueType.startsWith('sem_data_flow_') && isCoordinatorBiasRole(role)) {
     score -= 18;
     pushReason(reasons, 'class_orchestrator_bias', 'Coordinator-heavy classes often under-report data flow coherence despite valid orchestration logic.');
   }
@@ -90,4 +98,3 @@ export function summarizeSignalConfidence(alerts = []) {
     byRole: {}
   });
 }
-

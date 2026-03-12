@@ -15,11 +15,32 @@
  * @param {Object} analyzer - TimingAnalyzer instance
  * @returns {boolean} - True if same await context
  */
+function collectSharedCallerIds(callers1, callers2) {
+  const callerSet = new Set(callers2);
+  return callers1.filter(callerId => callerSet.has(callerId));
+}
+
+function hasSequentialAwaitPattern(code) {
+  const lines = code.split('\n');
+  let lastAwaitIndex = -Infinity;
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    if (!lines[idx].includes('await')) continue;
+
+    if (idx - lastAwaitIndex <= 4) {
+      return true;
+    }
+
+    lastAwaitIndex = idx;
+  }
+
+  return false;
+}
+
 export function haveSameAwaitContext(access1, access2, project, analyzer) {
   const callers1 = analyzer.getAtomCallers(access1.atom, project);
   const callers2 = analyzer.getAtomCallers(access2.atom, project);
-  
-  const sharedCallers = callers1.filter(c => callers2.includes(c));
+  const sharedCallers = collectSharedCallerIds(callers1, callers2);
   
   for (const callerId of sharedCallers) {
     const caller = analyzer.findAtomById(callerId, project);
@@ -32,19 +53,7 @@ export function haveSameAwaitContext(access1, access2, project, analyzer) {
     }
     
     // Check for sequential await pattern
-    const lines = caller.code.split('\n');
-    const hasSequentialAwait = lines.some((line, idx) => {
-      if (line.includes('await')) {
-        for (let i = idx + 1; i < Math.min(idx + 5, lines.length); i++) {
-          if (lines[i].includes('await')) {
-            return true;
-          }
-        }
-      }
-      return false;
-    });
-    
-    if (hasSequentialAwait) return true;
+    if (hasSequentialAwaitPattern(caller.code)) return true;
   }
   
   return false;

@@ -8,6 +8,6 @@ export { extractTypes } from './types.js';
 export { extractClasses } from './classes.js';
 export { extractEnums } from './enums.js';
 export { extractGenerics } from './generics.js';
-export { extractImports } from './imports.js';
+export { extractTypeImports } from './imports.js';
 export { extractExports } from './exports.js';
 

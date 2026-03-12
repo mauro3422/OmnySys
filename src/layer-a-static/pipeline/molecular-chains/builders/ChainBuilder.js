@@ -9,6 +9,12 @@
 import { ChainIdGenerator } from './ChainIdGenerator.js';
 import { ChainSummaryBuilder } from './ChainSummaryBuilder.js';
 import { ChainStepBuilder } from './ChainStepBuilder.js';
+import {
+  createBaseChain,
+  extendChainWithCallee,
+  groupChainsByEntry,
+  mergeUniqueChainSteps
+} from './ChainBuilderHelpers.js';
 
 /**
  * Builds molecular chains between functions
@@ -115,36 +121,15 @@ export class ChainBuilder {
    */
   buildChainFromAtom(atom, visited) {
     visited.add(atom.id);
-    const chain = {
-      id: this.idGenerator.generate(),
-      entryFunction: atom.name,
-      exitFunction: atom.name,
-      steps: [],
-      totalFunctions: 0,
-      totalTransforms: 0,
-      hasSideEffects: false,
-      complexity: 0
-    };
-
-    const step = this.stepBuilder.create(atom);
-    chain.steps.push(step);
-    chain.totalFunctions = 1;
-    chain.totalTransforms = atom.dataFlow?.transformations?.length || 0;
-    chain.hasSideEffects = atom.hasSideEffects || false;
-    chain.complexity = atom.complexity || 0;
+    const chain = createBaseChain(this.idGenerator, atom, this.stepBuilder);
 
     for (const call of atom.calls || []) {
       if (call.type === 'internal') {
         const calleeAtom = this.atomByName.get(call.name);
         if (calleeAtom && !visited.has(calleeAtom.id)) {
           const calleeChain = this.buildChainFromAtom(calleeAtom, visited);
-          
-          chain.steps.push(...calleeChain.steps.slice(1));
-          chain.exitFunction = calleeChain.exitFunction;
-          chain.totalFunctions += calleeChain.totalFunctions;
-          chain.totalTransforms += calleeChain.totalTransforms;
-          chain.hasSideEffects = chain.hasSideEffects || calleeChain.hasSideEffects;
-          chain.complexity += calleeChain.complexity;
+
+          extendChainWithCallee(chain, calleeChain);
         }
       }
     }
@@ -157,15 +142,7 @@ export class ChainBuilder {
    * @private
    */
   mergeRelatedChains() {
-    const byEntry = new Map();
-    
-    for (const chain of this.chains) {
-      if (!byEntry.has(chain.entryFunction)) {
-        byEntry.set(chain.entryFunction, []);
-      }
-      byEntry.get(chain.entryFunction).push(chain);
-    }
-    
+    const byEntry = groupChainsByEntry(this.chains);
     const mergedChains = [];
     
     for (const [entryFn, chains] of byEntry) {
@@ -189,17 +166,8 @@ export class ChainBuilder {
     const base = chains.reduce((longest, current) => 
       current.steps.length > longest.steps.length ? current : longest
     );
-    
-    for (const chain of chains) {
-      if (chain === base) continue;
-      
-      for (const step of chain.steps) {
-        if (!base.steps.find(s => s.atomId === step.atomId)) {
-          base.steps.push(step);
-        }
-      }
-    }
-    
+
+    mergeUniqueChainSteps(base, chains);
     this.summaryBuilder.recalculateMetrics(base);
     return base;
   }

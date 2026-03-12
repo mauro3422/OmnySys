@@ -122,6 +122,9 @@ function analyzeAtomDataFlow(atom) {
 
     const skipCoordinatorBiasViolation = (
         role.role === 'orchestrator' ||
+        role.role === 'resolver' ||
+        role.role === 'builder' ||
+        role.role === 'analyzer' ||
         role.role === 'bridge' ||
         role.role === 'policy'
     ) &&

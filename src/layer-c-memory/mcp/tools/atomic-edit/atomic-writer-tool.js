@@ -1,6 +1,6 @@
 /**
- * @fileoverview Refactorización OOP de atomic_write
- * Hereda de AtomicMutationTool para control transaccional estricto.
+ * @fileoverview OOP implementation of atomic_write.
+ * Inherits from AtomicMutationTool for strict transactional control.
  */
 
 import path from 'path';
@@ -8,8 +8,6 @@ import fs from 'fs';
 import { AtomicMutationTool } from '#layer-c/mcp/core/shared/base-tools/atomic-mutation-tool.js';
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
 import { reindexFile } from './reindex.js';
-import { loadAtoms } from '#layer-c/storage/index.js';
-
 import {
     normalizeAtomicPath,
     performPreWriteValidation,
@@ -17,8 +15,12 @@ import {
     computeWriteImpact
 } from './write-orchestrator.js';
 import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
-import { extractExportsFromCode } from './exports.js';
-import { query_graph } from '../query-graph.js';
+import {
+    loadPreviousAtomsForWrite,
+    buildDuplicateRiskError,
+    enforceCrossFileDuplicateGuard,
+    buildAtomicWriteWarnings
+} from './atomic-write-helpers.js';
 
 export class AtomicWriterTool extends AtomicMutationTool {
     constructor() {
@@ -34,115 +36,50 @@ export class AtomicWriterTool extends AtomicMutationTool {
         }
 
         filePath = normalizeAtomicPath(filePath, projectPath);
+        const previousAtoms = await loadPreviousAtomsForWrite(projectPath, filePath);
 
-        // Estado previo
-        let previousAtoms = [];
-        try {
-            const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(projectPath, filePath);
-            previousAtoms = await loadAtoms(projectPath, path.relative(projectPath, absolutePath));
-        } catch (e) { }
-
-        // Validación pre-escritura
         const preRes = await performPreWriteValidation(filePath, content, projectPath);
         if (!preRes.valid) {
-            if (preRes.error === 'VALIDATION_FAILED') return this.formatError('VALIDATION_FAILED', 'Pre-analysis check failed', { errors: preRes.validation.errors });
-            if (preRes.error === 'BROKEN_IMPORTS') return this.formatError('BROKEN_IMPORTS', 'Broken imports in new content', { brokenImports: preRes.brokenImports });
-            if (preRes.error === 'SYNTAX_ERROR') return this.formatError('SYNTAX_ERROR', preRes.syntaxCheck.error);
+            if (preRes.error === 'VALIDATION_FAILED') {
+                return this.formatError('VALIDATION_FAILED', 'Pre-analysis check failed', { errors: preRes.validation.errors });
+            }
+            if (preRes.error === 'BROKEN_IMPORTS') {
+                return this.formatError('BROKEN_IMPORTS', 'Broken imports in new content', { brokenImports: preRes.brokenImports });
+            }
+            if (preRes.error === 'SYNTAX_ERROR') {
+                return this.formatError('SYNTAX_ERROR', preRes.syntaxCheck.error);
+            }
         }
 
-        // Análisis estático del código nuevo (Exports y Namespace Risk)
         const analysis = await analyzeExports(content, filePath, projectPath);
         const duplicateCandidates = analysis?.refactoring?.duplicates || [];
-        if (duplicateCandidates.length > 0) {
-            const duplicatedSymbols = duplicateCandidates.map(d => d.name);
-            const duplicateOccurrences = duplicateCandidates.reduce((sum, d) => sum + (d.occurrenceCount || 0), 0);
-            const msg = `[DuplicateGuard] ${duplicateCandidates.length} symbols with duplication risk (${duplicateOccurrences} occurrences): ${duplicatedSymbols.join(', ')}`;
 
-            this.logger.warn(msg);
-
-            if (failOnDuplicate) {
-                return this.formatError('DUPLICATE_SYMBOL_RISK', msg, {
-                    suggestion: 'Refactor/unify duplicated symbols or rerun with failOnDuplicate: false',
-                    duplicates: duplicateCandidates
-                });
-            }
+        const duplicateRiskError = buildDuplicateRiskError(this, duplicateCandidates, failOnDuplicate);
+        if (duplicateRiskError) {
+            return duplicateRiskError;
         }
 
-        // ============================================================
-        // DUPLICATE GUARD CROSS-FILE (NUEVO - FASE 17)
-        // Valida que los símbolos NO existan en OTROS archivos
-        // ============================================================
-        const newExports = extractExportsFromCode(content);
-        if (newExports.length > 0) {
-            const crossFileDuplicates = [];
-
-            for (const exportItem of newExports) {
-                // Skip low-signal names
-                if (exportItem.name.length < 3 || /^[a-z]$/.test(exportItem.name)) {
-                    continue;
-                }
-
-                try {
-                    const existing = await query_graph(
-                        { queryType: 'instances', symbolName: exportItem.name },
-                        this.context
-                    );
-
-                    if (existing?.success && existing?.data?.totalInstances > 0) {
-                        // Filtrar el mismo archivo (es válido re-escribir en el mismo lugar)
-                        const otherFiles = existing.data.instances.filter(
-                            inst => !inst.file_path.endsWith(filePath)
-                        );
-
-                        if (otherFiles.length > 0) {
-                            crossFileDuplicates.push({
-                                symbol: exportItem.name,
-                                type: exportItem.type,
-                                existingInstances: otherFiles.length,
-                                existingFiles: otherFiles.map(f => f.file_path),
-                                existingLocations: otherFiles.map(f => ({
-                                    file: f.file_path,
-                                    line: f.line_start
-                                }))
-                            });
-                        }
-                    }
-                } catch (error) {
-                    // Silencioso: si query_graph falla, continuamos
-                    this.logger.debug(`[CrossFileGuard] Skip ${exportItem.name}: ${error.message}`);
-                }
-            }
-
-            if (crossFileDuplicates.length > 0) {
-                const msg = `[CrossFileDuplicateGuard] ${crossFileDuplicates.length} symbol(s) already exist in other file(s)`;
-                this.logger.warn(msg);
-
-                if (failOnDuplicate) {
-                    return this.formatError('DUPLICATE_SYMBOL_CROSS_FILE', msg, {
-                        suggestion: 'Consider reusing existing implementation or rename symbol',
-                        duplicates: crossFileDuplicates,
-                        canonicalLocations: crossFileDuplicates.map(d => ({
-                            symbol: d.symbol,
-                            recommendedFile: d.existingFiles[0],
-                            reason: 'First existing instance (canonical candidate)'
-                        }))
-                    });
-                } else {
-                    // Warning no bloqueante
-                    this.logger.warn(`${msg}: ${crossFileDuplicates.map(d => d.symbol).join(', ')}`);
-                }
-            }
+        const crossFileDuplicateError = await enforceCrossFileDuplicateGuard({
+            content,
+            filePath,
+            failOnDuplicate,
+            context: this.context,
+            logger: this.logger,
+            formatError: this.formatError.bind(this)
+        });
+        if (crossFileDuplicateError) {
+            return crossFileDuplicateError;
         }
+
         if (analysis.critical.length > 0) {
             if (autoFix) {
                 this.logger.warn(`[AutoFix] Export conflict detected for ${filePath}. Downgrading to atomic_edit override...`);
-                // Idealmente importaríamos atomic_edit herramienta, pero para evitar dependencias circulares:
-                // devolvemos un error indicando que debe ejecutarse un edit en cadena
                 return this.formatError('EXPORT_CONFLICT', `Found ${analysis.critical.length} extremely critical export conflicts`, {
                     suggestion: 'Use atomic_edit with autoFix: true to override the existing symbol.',
                     conflicts: analysis.critical
                 });
             }
+
             return this.formatError('EXPORT_CONFLICT', `Found ${analysis.critical.length} critical export conflicts.`, {
                 severity: 'critical',
                 conflicts: analysis.critical
@@ -153,17 +90,15 @@ export class AtomicWriterTool extends AtomicMutationTool {
             return this.formatError('HIGH_NAMESPACE_RISK', 'High namespace risk detected', { risk: analysis.namespaceRisk });
         }
 
-        // ==========================================================
-        // EJECUCIÓN TRANSACCIONAL
-        // ==========================================================
-        const mutationLogic = async (txId) => {
+        const mutationLogic = async () => {
             const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
             const dirPath = path.dirname(preRes.absoluteFilePath);
 
-            if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+            }
 
             await atomicEditor.write(filePath, content);
-
             return { success: true };
         };
 
@@ -173,9 +108,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
                 return { valid: false, error: 'Reindex failed' };
             }
 
-            // TODO: Ensure proper circular dependency check in FASE 17
             const circularCheck = { summary: { totalCircular: 0 } };
-
             const impact = await computeWriteImpact(filePath, projectPath, previousAtoms, reindexResult);
 
             return {
@@ -185,10 +118,10 @@ export class AtomicWriterTool extends AtomicMutationTool {
         };
 
         const txResult = await this.runInTransaction(args, mutationLogic, customValidator);
+        if (!txResult.success) {
+            return txResult;
+        }
 
-        if (!txResult.success) return txResult; // Propagar rollback
-
-        // Mapeo Final de Respuesta MCP
         const { impact, circularCheck, reindexResult } = txResult.analysisContext;
         const semanticPurity = summarizeAtomSemanticPurity(reindexResult?.atoms || []);
         const response = this.formatSuccess({
@@ -197,7 +130,11 @@ export class AtomicWriterTool extends AtomicMutationTool {
                 level: impact.level,
                 score: impact.score,
                 affectedFiles: impact.affectedFiles?.size || 0,
-                changes: impact.dependencyTree?.map(tree => ({ function: tree.name, changes: tree.changes, dependentsCount: tree.dependents?.length || 0 })) || []
+                changes: impact.dependencyTree?.map((tree) => ({
+                    function: tree.name,
+                    changes: tree.changes,
+                    dependentsCount: tree.dependents?.length || 0
+                })) || []
             } : undefined,
             validation: {
                 syntax: true,
@@ -209,19 +146,15 @@ export class AtomicWriterTool extends AtomicMutationTool {
             refactoring: analysis.refactoring.duplicates.length > 0 ? analysis.refactoring : undefined
         }, 'Atomic write successful');
 
-        if (analysis.conflicts.length > 0 || analysis.namespaceRisk.warnings.length > 0 || duplicateCandidates.length > 0) {
-            response.warnings = [
-                ...(analysis.conflicts.length > 0 ? [`WARNING: ${analysis.conflicts.length} export name(s) already exist`] : []),
-                ...(duplicateCandidates.length > 0 ? [`WARNING: ${duplicateCandidates.length} duplicated symbol candidate(s) detected. Review response.refactoring.`] : []),
-                ...analysis.namespaceRisk.warnings.map(w => w.message)
-            ];
+        const warnings = buildAtomicWriteWarnings(analysis, duplicateCandidates);
+        if (warnings.length > 0) {
+            response.warnings = warnings;
         }
 
         return response;
     }
 }
 
-// Wrapper para MCP
 export const atomic_write = async (args, context) => {
     const tool = new AtomicWriterTool();
     return tool.execute(args, context);

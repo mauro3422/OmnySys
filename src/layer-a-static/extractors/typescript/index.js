@@ -32,7 +32,7 @@ export {
   extractClasses,
   extractEnums,
   extractGenerics,
-  extractImports,
+  extractTypeImports,
   extractExports
 } from './parsers/index.js';
 

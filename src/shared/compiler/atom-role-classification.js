@@ -2,7 +2,7 @@
  * @fileoverview Canonical role classification for atoms and runtime files.
  *
  * Helps the compiler explain whether a symbol behaves like an orchestrator,
- * adapter, bridge, policy or transformer so downstream diagnostics can lower
+ * builder, adapter, bridge, policy or transformer so downstream diagnostics can lower
  * confidence for coordinator-heavy classes and distinguish business logic from
  * plumbing.
  *
@@ -19,7 +19,7 @@ function getCalls(atom = {}) {
     : [];
 }
 
-function getArchetype(atom = {}) {
+function getAtomArchetype(atom = {}) {
   return String(atom.archetype || atom.archetype_type || '').toLowerCase();
 }
 
@@ -31,7 +31,7 @@ function collectRoleSignals(atom = {}, filePath = '') {
   const normalizedPath = String(filePath || atom.filePath || atom.file_path || '').replace(/\\/g, '/').toLowerCase();
   const normalizedName = String(atom.name || '').toLowerCase();
   const calls = getCalls(atom);
-  const archetype = getArchetype(atom);
+  const archetype = getAtomArchetype(atom);
   const purpose = getPurpose(atom);
   const callNames = calls.map((call) => String(call?.name || '').toLowerCase());
 
@@ -74,6 +74,31 @@ function classifyRoleFromSignals(signals) {
     role = 'policy';
     confidence = 0.88;
     reasons.push('compiler_policy_path');
+  } else if (
+    /resolver/.test(signals.normalizedPath) ||
+    /resolver/.test(signals.archetype) ||
+    /resolve/.test(signals.normalizedName)
+  ) {
+    role = 'resolver';
+    confidence = 0.84;
+    reasons.push('resolver_structure_path');
+  } else if (
+    /builder/.test(signals.normalizedPath) ||
+    /builder/.test(signals.archetype) ||
+    /builder/.test(signals.normalizedName)
+  ) {
+    role = 'builder';
+    confidence = 0.84;
+    reasons.push('builder_structure_path');
+  } else if (
+    /(^|\/)analyses?\//.test(signals.normalizedPath) ||
+    /analyzer/.test(signals.normalizedPath) ||
+    /analyzer/.test(signals.archetype) ||
+    /analy(z|s)e|analysis/.test(signals.normalizedName)
+  ) {
+    role = 'analyzer';
+    confidence = 0.84;
+    reasons.push('analysis_structure_path');
   } else if (
     /storage|repository|sqlite|cache/.test(signals.normalizedPath) ||
     /storage|repository|cache/.test(signals.purpose)
@@ -119,4 +144,3 @@ export function classifyFileOperationalRole(filePath = '') {
   const signals = collectRoleSignals({}, filePath);
   return classifyRoleFromSignals(signals);
 }
-

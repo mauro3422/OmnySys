@@ -6,6 +6,12 @@
  * @module race-detector/strategies/race-detection-strategy/detectors/TimingAnalyzer
  */
 
+import {
+  findAtomById as findAtomByIdInProject,
+  findEntryPoints as findEntryPointsInProject,
+  getAtomCallers as getAtomCallersInProject
+} from '../analyzers/timing-analyzer/detectors/atom-finder.js';
+
 /**
  * Analyzes timing and concurrency patterns
  */
@@ -74,17 +80,7 @@ export class TimingAnalyzer {
       return this.cache.get(cacheKey);
     }
 
-    const callers = [];
-    const modules = project.modules || {};
-
-    for (const module of Object.values(modules)) {
-      for (const atom of module.atoms || []) {
-        if (atom.calls?.includes(atomId) || atom.calls?.some(c => c.target === atomId)) {
-          callers.push(atom.id);
-        }
-      }
-    }
-
+    const callers = getAtomCallersInProject(atomId, project);
     this.cache.set(cacheKey, callers);
     return callers;
   }
@@ -101,24 +97,7 @@ export class TimingAnalyzer {
       return this.cache.get(cacheKey);
     }
 
-    const entries = [];
-    const visited = new Set();
-    const queue = [atomId];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (visited.has(current)) continue;
-      visited.add(current);
-
-      const callers = this.getAtomCallers(current, project);
-      
-      if (callers.length === 0) {
-        entries.push(current);
-      } else {
-        queue.push(...callers);
-      }
-    }
-
+    const entries = findEntryPointsInProject(atomId, project);
     this.cache.set(cacheKey, entries);
     return entries;
   }
@@ -130,14 +109,7 @@ export class TimingAnalyzer {
    * @returns {Object|null} - Atom data or null
    */
   findAtomById(atomId, project) {
-    const modules = project.modules || {};
-    
-    for (const module of Object.values(modules)) {
-      const atom = module.atoms?.find(a => a.id === atomId);
-      if (atom) return atom;
-    }
-    
-    return null;
+    return findAtomByIdInProject(atomId, project);
   }
 
   /**

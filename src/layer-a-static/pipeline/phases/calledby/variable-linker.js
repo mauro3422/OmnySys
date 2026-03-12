@@ -10,6 +10,95 @@
 import path from 'path';
 import { getSourceCode } from './calledby-linker-utils.js';
 
+function buildExportedVariableIndex(allAtoms) {
+  const exportedVarAtoms = new Map();
+
+  for (const atom of allAtoms) {
+    if (!atom.isExported || (atom.type !== 'variable' && atom.functionType !== 'variable')) {
+      continue;
+    }
+
+    if (!exportedVarAtoms.has(atom.name)) {
+      exportedVarAtoms.set(atom.name, []);
+    }
+
+    exportedVarAtoms.get(atom.name).push(atom);
+  }
+
+  return exportedVarAtoms;
+}
+
+function collectImportedVariableNames(imports, exportedVarAtoms) {
+  const importedNames = new Set();
+
+  for (const imp of imports) {
+    for (const spec of (imp.specifiers || [])) {
+      const importedName = spec.local || spec.imported || spec.name;
+      if (importedName && exportedVarAtoms.has(importedName)) {
+        importedNames.add(importedName);
+      }
+    }
+  }
+
+  return importedNames;
+}
+
+function findReferencedImportedNames(lines, importedNames, regexCache) {
+  const referencedNames = [];
+
+  for (const importedName of importedNames) {
+    if (findReferenceInLines(lines, importedName, regexCache)) {
+      referencedNames.push(importedName);
+    }
+  }
+
+  return referencedNames;
+}
+
+function linkReferencedVariables(exportedVarAtoms, referencedNames, filePath) {
+  let variableLinks = 0;
+
+  for (const importedName of referencedNames) {
+    const varAtoms = exportedVarAtoms.get(importedName);
+    if (!varAtoms || varAtoms.length === 0) continue;
+
+    const targetAtom = varAtoms.find((atom) => atom.filePath !== filePath);
+    if (!targetAtom) continue;
+
+    if (!targetAtom.calledBy) targetAtom.calledBy = [];
+    if (!targetAtom.calledBy.includes(filePath)) {
+      targetAtom.calledBy.push(filePath);
+      variableLinks++;
+    }
+  }
+
+  return variableLinks;
+}
+
+async function processParsedFileForVariableLinks(
+  absPath,
+  parsedFile,
+  absoluteRootPath,
+  exportedVarAtoms
+) {
+  const source = await getSourceCode(absPath, parsedFile);
+  if (!source) return 0;
+
+  const imports = parsedFile.imports || [];
+  if (imports.length === 0) return 0;
+
+  const filePath = path.relative(absoluteRootPath, absPath).replace(/\\/g, '/');
+  const importedNames = collectImportedVariableNames(imports, exportedVarAtoms);
+  if (importedNames.size === 0) return 0;
+
+  const lines = source.split('\n');
+  const regexCache = {};
+  const referencedNames = findReferencedImportedNames(lines, importedNames, regexCache);
+  if (referencedNames.length === 0) return 0;
+
+  return linkReferencedVariables(exportedVarAtoms, referencedNames, filePath);
+}
+
 /**
  * Links calledBy for exported variable/constant atoms.
  * Mutates atoms in place. Los cambios se persisten en bulk al final.
@@ -25,50 +114,23 @@ export async function linkVariableCalledBy(allAtoms, parsedFiles, absoluteRootPa
     ? (await import('#utils/logger.js')).createLogger('OmnySys:indexer')
     : null;
 
-  // Index exported variable atoms by name
-  const exportedVarAtoms = new Map();
-  for (const atom of allAtoms) {
-    if (atom.isExported && (atom.type === 'variable' || atom.functionType === 'variable')) {
-      if (!exportedVarAtoms.has(atom.name)) exportedVarAtoms.set(atom.name, []);
-      exportedVarAtoms.get(atom.name).push(atom);
-    }
-  }
+  const exportedVarAtoms = buildExportedVariableIndex(allAtoms);
 
   if (verbose) logger.info(`  📊 Found ${exportedVarAtoms.size} exported variable names`);
 
   let variableLinks = 0;
 
   for (const [absPath, parsedFile] of Object.entries(parsedFiles)) {
-    const source = await getSourceCode(absPath, parsedFile);
-    if (!source) continue;
-
-    const filePath = path.relative(absoluteRootPath, absPath).replace(/\\/g, '/');
-    const imports = parsedFile.imports || [];
-    if (imports.length === 0) continue;
-
-    const lines = source.split('\n');
-
-    for (const imp of imports) {
-      for (const spec of (imp.specifiers || [])) {
-        const importedName = spec.local || spec.imported || spec.name;
-        if (!importedName) continue;
-
-        const varAtoms = exportedVarAtoms.get(importedName);
-        if (!varAtoms || varAtoms.length === 0) continue;
-
-        const targetAtom = varAtoms.find(a => a.filePath !== filePath);
-        if (!targetAtom) continue;
-
-        const regexCache = {};
-
-        const found = findReferenceInLines(lines, importedName, regexCache);
-        if (found) {
-          if (!targetAtom.calledBy) targetAtom.calledBy = [];
-          if (!targetAtom.calledBy.includes(filePath)) {
-            targetAtom.calledBy.push(filePath);
-            variableLinks++;
-          }
-        }
+    try {
+      variableLinks += await processParsedFileForVariableLinks(
+        absPath,
+        parsedFile,
+        absoluteRootPath,
+        exportedVarAtoms
+      );
+    } catch (error) {
+      if (verbose) {
+        logger.warn(`  [variable-linker] skipped ${absPath}: ${error.message}`);
       }
     }
   }
