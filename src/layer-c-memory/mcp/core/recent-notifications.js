@@ -55,13 +55,23 @@ function inferRuntimeRestartStateFromLogs(loggerEntries = []) {
   };
 }
 
-function buildNotificationsProvenance(watcherLifecycle, watcherEntries = [], server = null, loggerEntries = []) {
+function resolveRuntimeRestartState(server = null, loggerEntries = []) {
   const runtimeRestartState = getRuntimeRestartState(server);
-  const inferredRestartState = inferRuntimeRestartStateFromLogs(loggerEntries);
-  const pendingRuntimeRestartFiles = runtimeRestartState.pendingRuntimeRestartFiles.length > 0
-    ? runtimeRestartState.pendingRuntimeRestartFiles
-    : inferredRestartState.pendingRuntimeRestartFiles;
-  const runtimeRestartMode = runtimeRestartState.runtimeRestartMode || inferredRestartState.runtimeRestartMode;
+
+  // If we have a live server instance, trust its in-memory restart queue over
+  // historical logger messages. Old "queued manual runtime restart" lines can
+  // otherwise make freshness look stale after the runtime already reconciled.
+  if (server) {
+    return runtimeRestartState;
+  }
+
+  return inferRuntimeRestartStateFromLogs(loggerEntries);
+}
+
+function buildNotificationsProvenance(watcherLifecycle, watcherEntries = [], server = null, loggerEntries = []) {
+  const runtimeRestartState = resolveRuntimeRestartState(server, loggerEntries);
+  const pendingRuntimeRestartFiles = runtimeRestartState.pendingRuntimeRestartFiles;
+  const runtimeRestartMode = runtimeRestartState.runtimeRestartMode;
   const runtimeCodeFreshness = buildRuntimeCodeFreshness({
     pendingRuntimeRestartFiles,
     runtimeRestartMode

@@ -1,5 +1,8 @@
 import path from 'path';
-import { getProjectMetadata } from '../../../layer-c-memory/query/apis/project-api.js';
+import {
+  getPersistedKnownFilePaths,
+  loadPersistedScannedFilePaths
+} from '../../../shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { SmartBatchProcessor } from '../batch-processor/index.js';
 
@@ -52,17 +55,35 @@ export async function initialize() {
  */
 export async function loadCurrentState() {
   try {
-    const metadata = await getProjectMetadata(this.rootPath);
+    const [knownPaths, manifestPaths] = await Promise.all([
+      getPersistedKnownFilePaths(this.rootPath),
+      loadPersistedScannedFilePaths(this.rootPath)
+    ]);
 
-    // Cargar hashes de archivos existentes con yield cada 50 archivos
-    const entries = Object.entries(metadata.fileIndex || {});
+    const trackedPaths = manifestPaths?.size
+      ? Array.from(manifestPaths)
+      : Array.from(knownPaths || []);
+
+    // Cargar hashes/snapshots del universo escaneado. Si solo usamos el live
+    // index, los zero-atom/barrels quedan sin baseline y cualquier burst del
+    // runtime path puede promoverse falsamente a "modified".
     let count = 0;
 
-    for (const [filePath, fileInfo] of entries) {
+    for (const filePath of trackedPaths) {
       const fullPath = path.join(this.rootPath, filePath);
       const hash = await this._calculateContentHash(fullPath);
       if (hash) {
         this.fileHashes.set(filePath, hash);
+      }
+      try {
+        const fs = await import('fs/promises');
+        const stats = await fs.stat(fullPath);
+        this.fileStats.set(filePath, {
+          mtimeMs: stats.mtimeMs,
+          size: stats.size
+        });
+      } catch {
+        // Ignore missing/unreadable files during bootstrap.
       }
 
       // Yield al event loop cada 50 archivos para no bloquear
@@ -72,7 +93,7 @@ export async function loadCurrentState() {
     }
 
     if (this.options.verbose) {
-      logger.info(`Tracking ${this.fileHashes.size} files`);
+      logger.info(`Tracking ${trackedPaths.length} files (${this.fileHashes.size} with content hash)`);
     }
   } catch (error) {
     if (this.options.verbose) {

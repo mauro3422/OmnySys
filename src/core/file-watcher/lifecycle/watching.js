@@ -1,13 +1,14 @@
 import path from 'path';
 import { watch } from 'fs';
-import { access } from 'fs/promises';
+import { access, stat } from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
+const STARTUP_NOISE_WINDOW_MS = 1500;
 
 /**
  * Inicia el watching del filesystem usando fs.watch
- * Detecta cambios automáticamente sin depender de notificaciones externas
+ * Detecta cambios automaticamente sin depender de notificaciones externas
  */
 export function startWatching() {
   if (this.fsWatcher) {
@@ -16,46 +17,55 @@ export function startWatching() {
   }
 
   try {
+    this.watcherStartedAt = Date.now();
+
     // Usar fs.watch para monitorear recursivamente
     this.fsWatcher = watch(
       this.rootPath,
       { recursive: true },
       async (eventType, filename) => {
-        // Ignorar si no hay filename o está vacío
+        // Ignorar si no hay filename o esta vacio
         if (!filename) return;
-        
+
+        // Windows puede emitir bursts espurios al adjuntar el watcher.
+        if (Date.now() - this.watcherStartedAt < STARTUP_NOISE_WINDOW_MS) {
+          this.startupNoiseSuppressed = (this.startupNoiseSuppressed || 0) + 1;
+          if (this.options.verbose) {
+            logger.debug(`Ignoring startup watcher noise: ${filename}`);
+          }
+          return;
+        }
+
         // Convertir a path relativo
         const fullPath = path.join(this.rootPath, filename);
-        
+
         // Determinar tipo de cambio
         // 'rename' = archivo creado o eliminado (hay que verificar si existe)
         // 'change' = archivo modificado
         let changeType;
         if (eventType === 'rename') {
-          // fs.watch reporta 'rename' tanto para crear como eliminar
-          // Verificamos si el archivo existe para determinar cuál ocurrió
           try {
             await access(fullPath);
-            changeType = 'created';  // Archivo existe → fue creado
+            changeType = 'created';
           } catch {
-            changeType = 'deleted';  // Archivo no existe → fue eliminado
+            changeType = 'deleted';
           }
-          
-          // Para archivos creados, verificar si es modificación (ya existía)
+
+          // Para archivos creados, verificar si es modificacion (ya existia)
           if (changeType === 'created' && this.fileHashes.has(filename)) {
             changeType = 'modified';
           }
         } else {
           changeType = 'modified';
         }
-        
+
         // Notificar el cambio
         await this.notifyChange(fullPath, changeType);
       }
     );
 
     if (this.options.verbose) {
-      logger.info('🔍 Watching filesystem for changes...');
+      logger.info('Watching filesystem for changes...');
     }
 
     // Manejar errores del watcher
@@ -65,7 +75,6 @@ export function startWatching() {
     });
 
     this.emit('watching:start');
-
   } catch (error) {
     logger.error('Failed to start file watching:', error);
     this.emit('error', error);
@@ -74,7 +83,7 @@ export function startWatching() {
 
 /**
  * Notifica un cambio en un archivo
- * Llama a esta función cuando detectes un cambio (fs.watch, etc.)
+ * Llama a esta funcion cuando detectes un cambio (fs.watch, etc.)
  */
 export async function notifyChange(filePath, changeType = 'modified') {
   const relativePath = path.relative(this.rootPath, filePath).replace(/\\/g, '/');
@@ -89,6 +98,40 @@ export async function notifyChange(filePath, changeType = 'modified') {
     return;
   }
 
+  if (changeType === 'modified') {
+    try {
+      const currentStats = await stat(filePath);
+      const previousStats = this.fileStats?.get(relativePath);
+
+      if (
+        previousStats &&
+        previousStats.mtimeMs === currentStats.mtimeMs &&
+        previousStats.size === currentStats.size
+      ) {
+        if (this.options.verbose) {
+          logger.debug(`[SKIP] ${relativePath} - file stats unchanged`);
+        }
+        return;
+      }
+
+      const nextHash = await this._calculateContentHash(filePath);
+      const previousHash = this.fileHashes?.get(relativePath);
+
+      if (nextHash && previousHash && nextHash === previousHash) {
+        this.fileStats?.set(relativePath, {
+          mtimeMs: currentStats.mtimeMs,
+          size: currentStats.size
+        });
+        if (this.options.verbose) {
+          logger.debug(`[SKIP] ${relativePath} - content unchanged before queue`);
+        }
+        return;
+      }
+    } catch {
+      // Si el archivo desaparece en medio del evento, el lifecycle lo resolvera.
+    }
+  }
+
   // Agregar a pendientes con timestamp
   const timestamp = Date.now();
   const changeInfo = {
@@ -96,10 +139,10 @@ export async function notifyChange(filePath, changeType = 'modified') {
     timestamp,
     fullPath: filePath
   };
-  
+
   this.pendingChanges.set(relativePath, changeInfo);
-  
-  // También registrar en SmartBatchProcessor si está activo
+
+  // Tambien registrar en SmartBatchProcessor si esta activo
   if (this.batchProcessor && this.options.useSmartBatch) {
     this.batchProcessor.addChange(relativePath, changeInfo);
   }

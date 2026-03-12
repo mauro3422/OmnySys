@@ -17,7 +17,7 @@ import {
   getCompilerDataDir,
   loadPersistedCompilerPathSets,
   loadPersistedIndexedFilePaths,
-  loadPersistedScannedFilePaths,
+  loadPersistedScannedFilePaths as loadPersistedScannedFilePathsFromStore,
   readPersistedMetadataJson,
   withCompilerRepository
 } from './compiler-persistence-paths.js';
@@ -54,7 +54,11 @@ export async function getPersistedIndexedFilePaths(projectPath) {
 }
 
 export async function getPersistedScannedFilePaths(projectPath) {
-  return loadPersistedScannedFilePaths(projectPath);
+  return loadPersistedScannedFilePathsFromStore(projectPath);
+}
+
+export async function loadPersistedScannedFilePaths(projectPath) {
+  return getPersistedScannedFilePaths(projectPath);
 }
 
 export async function syncPersistedScannedFileManifest(projectPath, scannedFilePaths = [], options = {}) {

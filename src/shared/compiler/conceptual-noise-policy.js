@@ -14,12 +14,16 @@ export function classifyConceptualNoise(fingerprint = '', atomName = '') {
   const normalizedEntity = String(entity || '').toLowerCase();
   const normalizedName = String(atomName || '').toLowerCase();
   const callbackArtifact = /(^|_)(callback|arg\d+)$/.test(normalizedEntity) || normalizedName.endsWith('callback');
+  const genericLifecycleInitializer =
+    /^(init|initialize)$/.test(normalizedName) ||
+    /^(init|initialize|ialize)$/.test(normalizedEntity);
 
   if (chest === 'lifecycle' && (
     normalizedEntity === 'constructor' ||
     normalizedEntity === 'describe_arg1' ||
     normalizedEntity === 'it_arg1' ||
-    callbackArtifact
+    callbackArtifact ||
+    genericLifecycleInitializer
   )) {
     return 'expected_repeat';
   }

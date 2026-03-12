@@ -6,7 +6,8 @@ import {
     createStandardContext,
     StandardThresholds,
     StandardSuggestions,
-    severityFromImpact
+    severityFromImpact,
+    isLowSignalName
 } from './guard-standards.js';
 import { safeArray } from '../../../shared/compiler/index.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
@@ -20,10 +21,14 @@ async function clearPersistedImpactWaveIssues(rootPath, filePath) {
 }
 
 function collectImpactWaveAtomChanges(previousAtoms, currentAtoms, countRequiredParams) {
+    const shouldTrackAtom = (atom) => atom?.name && !isLowSignalName(atom.name);
     const previousByName = new Map(previousAtoms.map(atom => [atom.name, atom]));
+    const currentNames = new Set(currentAtoms.map(atom => atom.name));
     const changedAtoms = [];
 
     for (const atom of currentAtoms) {
+        if (!shouldTrackAtom(atom)) continue;
+
         const previousAtom = previousByName.get(atom.name);
         if (!previousAtom) {
             changedAtoms.push({ id: atom.id, name: atom.name, type: 'added' });
@@ -36,7 +41,8 @@ function collectImpactWaveAtomChanges(previousAtoms, currentAtoms, countRequired
     }
 
     for (const previousAtom of previousAtoms) {
-        if (!currentAtoms.some(atom => atom.name === previousAtom.name)) {
+        if (!shouldTrackAtom(previousAtom)) continue;
+        if (!currentNames.has(previousAtom.name)) {
             changedAtoms.push({ id: previousAtom.id, name: previousAtom.name, type: 'removed' });
         }
     }
@@ -74,6 +80,21 @@ async function loadImpactWaveBrokenImports(fullPath, filePath, rootPath, validat
     } catch {
         return [];
     }
+}
+
+async function loadImpactWaveBrokenCallers({
+    filePath,
+    rootPath,
+    previousAtoms,
+    currentAtoms,
+    changedAtoms,
+    validatePostEditOptimized
+}) {
+    const hasSignatureChanges = changedAtoms.some((atom) => atom.type === 'signature');
+    if (!hasSignatureChanges) return [];
+
+    const postValidation = await validatePostEditOptimized(filePath, rootPath, previousAtoms, currentAtoms);
+    return safeArray(postValidation?.brokenCallers);
 }
 
 function computeImpactWaveScore(focusedAtoms, relatedFiles, brokenImports, brokenCallers) {
@@ -188,8 +209,14 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
         const relatedFiles = collectImpactWaveRelatedFiles(currentAtoms, focusedAtomNames, filePath, extractRelationFile);
         const brokenImports = await loadImpactWaveBrokenImports(fullPath, filePath, rootPath, validateImportsInEdit);
 
-        const postValidation = await validatePostEditOptimized(filePath, rootPath, previousAtoms, currentAtoms);
-        const brokenCallers = safeArray(postValidation?.brokenCallers);
+        const brokenCallers = await loadImpactWaveBrokenCallers({
+            filePath,
+            rootPath,
+            previousAtoms,
+            currentAtoms,
+            changedAtoms,
+            validatePostEditOptimized
+        });
         const score = computeImpactWaveScore(focusedAtoms, relatedFiles, brokenImports, brokenCallers);
         const summary = summarizeImpactWave(
             focusedAtoms,

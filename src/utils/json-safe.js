@@ -1,9 +1,10 @@
 /**
  * @fileoverview json-safe.js
- * 
- * Safe JSON operations with error handling
- * Prevents crashes from corrupted JSON files
- * 
+ *
+ * Safe JSON operations with error handling.
+ * Prevents crashes from corrupted JSON files and normalizes persisted
+ * structured-field access without binding to any domain model.
+ *
  * @module utils/json-safe
  */
 
@@ -13,10 +14,10 @@ import { createLogger } from './logger.js';
 const logger = createLogger('OmnySys:json:safe');
 
 /**
- * Safely read and parse a JSON file
- * @param {string} filePath - Path to JSON file
- * @param {*} defaultValue - Value to return if file doesn't exist or is invalid
- * @returns {Promise<*>} - Parsed JSON or defaultValue
+ * Safely read and parse a JSON file.
+ * @param {string} filePath
+ * @param {*} defaultValue
+ * @returns {Promise<*>}
  */
 export async function safeReadJson(filePath, defaultValue = null) {
   try {
@@ -24,31 +25,27 @@ export async function safeReadJson(filePath, defaultValue = null) {
     return JSON.parse(content);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      // File doesn't exist - not an error, just return default
       return defaultValue;
     }
     if (error instanceof SyntaxError) {
-      // Invalid JSON - log and return default
       logger.warn(`[safeReadJson] Invalid JSON in ${filePath}: ${error.message}`);
       return defaultValue;
     }
     if (error.code === 'EACCES' || error.code === 'EPERM') {
-      // Permission denied
       logger.error(`[safeReadJson] Permission denied reading ${filePath}`);
       return defaultValue;
     }
-    // Other errors
     logger.error(`[safeReadJson] Error reading ${filePath}: ${error.message}`);
     return defaultValue;
   }
 }
 
 /**
- * Safely write data to a JSON file
- * @param {string} filePath - Path to JSON file
- * @param {*} data - Data to write
- * @param {number} indent - JSON indentation (default: 2)
- * @returns {Promise<boolean>} - True if successful, false otherwise
+ * Safely write data to a JSON file.
+ * @param {string} filePath
+ * @param {*} data
+ * @param {number} indent
+ * @returns {Promise<boolean>}
  */
 export async function safeWriteJson(filePath, data, indent = 2) {
   try {
@@ -62,10 +59,10 @@ export async function safeWriteJson(filePath, data, indent = 2) {
 }
 
 /**
- * Safely parse JSON string
- * @param {string} jsonString - JSON string to parse
- * @param {*} defaultValue - Value to return if parsing fails
- * @returns {*} - Parsed JSON or defaultValue
+ * Safely parse JSON text.
+ * @param {string} jsonString
+ * @param {*} defaultValue
+ * @returns {*}
  */
 export function safeParseJson(jsonString, defaultValue = null) {
   try {
@@ -79,10 +76,49 @@ export function safeParseJson(jsonString, defaultValue = null) {
 }
 
 /**
- * Safely stringify data to JSON
- * @param {*} data - Data to stringify
- * @param {number} indent - JSON indentation (default: 2)
- * @returns {string} - JSON string or empty object
+ * Detects whether a persisted value contains meaningful structured content.
+ * This is storage-oriented and domain-agnostic.
+ * @param {*} value
+ * @returns {boolean}
+ */
+export function hasPersistedStructuredValue(value) {
+  if (value == null) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+
+  const normalized = String(value).trim();
+  return normalized !== '' && normalized !== '[]' && normalized !== '{}';
+}
+
+/**
+ * Safely materializes a persisted structured field that may already be parsed.
+ * @param {*} value
+ * @param {*} defaultValue
+ * @returns {*}
+ */
+export function parsePersistedField(value, defaultValue = null) {
+  if (value == null) return defaultValue;
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return value;
+  return safeParseJson(value, defaultValue);
+}
+
+/**
+ * Safely materializes a persisted collection field.
+ * @param {*} value
+ * @param {Array} defaultValue
+ * @returns {Array}
+ */
+export function parsePersistedArray(value, defaultValue = []) {
+  const parsed = parsePersistedField(value, defaultValue);
+  return Array.isArray(parsed) ? parsed : defaultValue;
+}
+
+/**
+ * Safely stringify data to JSON.
+ * @param {*} data
+ * @param {number} indent
+ * @returns {string}
  */
 export function safeStringifyJson(data, indent = 2) {
   try {
@@ -94,8 +130,8 @@ export function safeStringifyJson(data, indent = 2) {
 }
 
 /**
- * Check if a string is valid JSON
- * @param {string} str - String to check
+ * Check if a string is valid JSON.
+ * @param {string} str
  * @returns {boolean}
  */
 export function isValidJson(str) {

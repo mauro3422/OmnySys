@@ -22,7 +22,8 @@ import {
     getActionableUnusedInputs,
     isLikelyToolWrapperAtom,
     isLikelyBoundaryContainerAtom,
-    hasAsyncNamingMismatch
+    hasAsyncNamingMismatch,
+    classifyAtomOperationalRole
 } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
@@ -109,13 +110,26 @@ function analyzeAtomDataFlow(atom) {
     );
     const analysis = analyzer.analyze();
     const violations = [];
+    const role = classifyAtomOperationalRole(atom, { filePath: atom.file_path || atom.filePath });
+    const inputsCount = analysis.inputs?.length || 0;
+    const outputsCount = analysis.outputs?.length || 0;
+    const transformationCount = analysis.transformations?.length || 0;
 
     const skipLowCoherenceViolation = isLikelyBoundaryContainerAtom(atom) &&
-        (analysis.inputs?.length || 0) === 0 &&
-        (analysis.outputs?.length || 0) === 0 &&
-        (analysis.transformations?.length || 0) === 0;
+        inputsCount === 0 &&
+        outputsCount === 0 &&
+        transformationCount === 0;
 
-    if (!skipLowCoherenceViolation && analysis.coherence < StandardThresholds.COHERENCE_MIN) {
+    const skipCoordinatorBiasViolation = (
+        role.role === 'orchestrator' ||
+        role.role === 'bridge' ||
+        role.role === 'policy'
+    ) &&
+        inputsCount === 0 &&
+        outputsCount === 0 &&
+        transformationCount === 0;
+
+    if (!skipLowCoherenceViolation && !skipCoordinatorBiasViolation && analysis.coherence < StandardThresholds.COHERENCE_MIN) {
         violations.push(buildLowCoherenceViolation(atom, analysis));
     }
 

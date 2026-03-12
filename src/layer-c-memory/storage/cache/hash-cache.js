@@ -58,7 +58,7 @@ function isAbsoluteLikePath(filePath) {
 /**
  * Calcula el hash SHA-256 del contenido de un archivo
  */
-export async function calculateFileHash(filePath) {
+export async function calculateFileContentHash(filePath) {
   try {
     const content = await readFile(filePath, 'utf8');
     return createHash('sha256').update(content).digest('hex');
@@ -134,7 +134,7 @@ export function deleteHashes(projectPath, filePaths) {
     const hr = getHashRepo(projectPath);
     const db = hr.db;
 
-    const transaction = hr.transaction((paths) => {
+    const transaction = db.transaction((paths) => {
       for (const filePath of paths) {
         hr.delete('file_hashes', 'file_path', filePath);
       }
@@ -147,12 +147,7 @@ export function deleteHashes(projectPath, filePaths) {
   }
 }
 
-/**
- * Detecta cambios reales comparando hashes
- */
-export async function detectRealChanges(projectPath, currentFiles, verbose = false) {
-  const timer = verbose ? Date.now() : 0;
-
+function collectStoredHashState(projectPath) {
   const storedHashesRaw = getStoredHashes(projectPath);
   const storedHashes = {};
   const staleStoredKeys = [];
@@ -164,14 +159,12 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
       continue;
     }
 
-    // Entradas absolutas heredadas (o fuera del proyecto) se consideran stale.
     if (isAbsoluteLikePath(normalizedStoredPath)) {
       staleStoredKeys.push(storedPath);
       continue;
     }
 
     if (normalizedStoredPath !== storedPath) {
-      // Migrar claves viejas (absolutas, con backslash, etc.) a formato canonico.
       staleStoredKeys.push(storedPath);
     }
 
@@ -180,6 +173,10 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
     }
   }
 
+  return { storedHashes, staleStoredKeys };
+}
+
+function buildInitialChangeSet(storedHashes, currentFiles, projectPath) {
   const normalizedCurrentFiles = currentFiles
     .map((filePath) => normalizeHashCachePath(filePath, projectPath))
     .filter(Boolean);
@@ -187,45 +184,54 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
   const currentFileSet = new Set(normalizedCurrentFiles);
   const deletedFiles = Object.keys(storedHashes).filter((filePath) => !currentFileSet.has(filePath));
 
-  const changes = {
-    newFiles: [],
-    modifiedFiles: [],
-    unchangedFiles: [],
+  return {
+    changes: {
+      newFiles: [],
+      modifiedFiles: [],
+      unchangedFiles: [],
+      deletedFiles
+    },
     deletedFiles
   };
+}
 
-  const newHashes = {};
+async function collectCurrentHashes(projectPath, currentFiles, storedHashes, changes) {
+  try {
+    const newHashes = {};
+    const batchSize = 50;
 
-  // Calcular hashes de archivos actuales
-  const BATCH_SIZE = 50;
-  for (let i = 0; i < currentFiles.length; i += BATCH_SIZE) {
-    const batch = currentFiles.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < currentFiles.length; i += batchSize) {
+      const batch = currentFiles.slice(i, i + batchSize);
 
-    await Promise.all(
-      batch.map(async (filePath) => {
-        const currentHash = await calculateFileHash(filePath);
-        if (!currentHash) return;
+      await Promise.all(
+        batch.map(async (filePath) => {
+          const currentHash = await calculateFileContentHash(filePath);
+          if (!currentHash) return;
 
-        const normalizedPath = normalizeHashCachePath(filePath, projectPath);
-        if (!normalizedPath) return;
+          const normalizedPath = normalizeHashCachePath(filePath, projectPath);
+          if (!normalizedPath) return;
 
-        newHashes[normalizedPath] = currentHash;
+          newHashes[normalizedPath] = currentHash;
 
-        if (!storedHashes[normalizedPath]) {
-          changes.newFiles.push(normalizedPath);
-        } else if (storedHashes[normalizedPath] !== currentHash) {
-          changes.modifiedFiles.push(normalizedPath);
-        } else {
-          changes.unchangedFiles.push(normalizedPath);
-        }
-      })
-    );
+          if (!storedHashes[normalizedPath]) {
+            changes.newFiles.push(normalizedPath);
+          } else if (storedHashes[normalizedPath] !== currentHash) {
+            changes.modifiedFiles.push(normalizedPath);
+          } else {
+            changes.unchangedFiles.push(normalizedPath);
+          }
+        })
+      );
+    }
+
+    return newHashes;
+  } catch (error) {
+    logger.warn(`[HashCache] Failed to collect current hashes: ${error.message}`);
+    return {};
   }
+}
 
-  // Guardar nuevos hashes
-  saveHashes(projectPath, newHashes);
-
-  // Limpiar entradas obsoletas del cache para evitar reindexaciones repetidas.
+function cleanupStaleHashEntries(projectPath, staleStoredKeys, deletedFiles) {
   const staleKeysToDelete = [
     ...staleStoredKeys,
     ...deletedFiles
@@ -234,11 +240,35 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
   if (staleKeysToDelete.length > 0) {
     deleteHashes(projectPath, [...new Set(staleKeysToDelete)]);
   }
+}
 
-  if (verbose) {
-    const duration = Date.now() - timer;
-    logger.info(`[HashCache] Change detection: ${changes.newFiles.length} new, ${changes.modifiedFiles.length} modified, ${changes.unchangedFiles.length} unchanged, ${changes.deletedFiles.length} deleted (${duration}ms)`);
+/**
+ * Detecta cambios reales comparando hashes
+ */
+export async function detectRealChanges(projectPath, currentFiles, verbose = false) {
+  const timer = verbose ? Date.now() : 0;
+
+  try {
+    const { storedHashes, staleStoredKeys } = collectStoredHashState(projectPath);
+    const { changes, deletedFiles } = buildInitialChangeSet(storedHashes, currentFiles, projectPath);
+    const newHashes = await collectCurrentHashes(projectPath, currentFiles, storedHashes, changes);
+
+    saveHashes(projectPath, newHashes);
+    cleanupStaleHashEntries(projectPath, staleStoredKeys, deletedFiles);
+
+    if (verbose) {
+      const duration = Date.now() - timer;
+      logger.info(`[HashCache] Change detection: ${changes.newFiles.length} new, ${changes.modifiedFiles.length} modified, ${changes.unchangedFiles.length} unchanged, ${changes.deletedFiles.length} deleted (${duration}ms)`);
+    }
+
+    return changes;
+  } catch (error) {
+    logger.warn(`[HashCache] Failed during change detection: ${error.message}`);
+    return {
+      newFiles: [],
+      modifiedFiles: [],
+      unchangedFiles: [],
+      deletedFiles: []
+    };
   }
-
-  return changes;
 }

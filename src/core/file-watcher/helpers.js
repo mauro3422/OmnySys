@@ -27,4 +27,14 @@ export function shouldIgnore(filePath) {
 /**
  * Obtiene estadísticas del watcher
  */
-export const getStats = (...args) => statsPool.getStats('watcher', ...args);
+export function getStats(...args) {
+  const pooled = statsPool.getStats('watcher', ...args) || {};
+  return {
+    ...pooled,
+    isRunning: this.isRunning,
+    pendingChanges: this.pendingChanges?.size || 0,
+    trackedFiles: this.fileHashes?.size || 0,
+    startupNoiseSuppressed: this.startupNoiseSuppressed || 0,
+    startupSuppressionWindowMs: 1500
+  };
+}

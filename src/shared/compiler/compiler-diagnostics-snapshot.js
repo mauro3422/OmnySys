@@ -7,7 +7,9 @@
  * @module shared/compiler/compiler-diagnostics-snapshot
  */
 
-import { discoverProjectSourceFiles } from './file-discovery.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { discoverCompilerFiles, discoverProjectSourceFiles } from './file-discovery.js';
 import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
 import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
@@ -18,6 +20,47 @@ import { buildCompilerStandardizationReport } from './standardization-report.js'
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
 import { getLiveFileTotal } from './live-row-utils.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy.js';
+
+const CANONICAL_ADOPTION_PATTERNS = {
+    centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
+    sharedStateContention: /\bgetSharedStateContentionSummary\b|\bsummarizeSharedStateHotspots\b/,
+    scannedFileManifest: /\bsyncPersistedScannedFileManifest\b|\bsummarizePersistedScannedFileCoverage\b|\bgetPersistedScannedFilePaths\b|\bloadPersistedScannedFilePaths\b/
+};
+
+async function collectCanonicalAdoptionEvidence(projectPath) {
+    const compilerFiles = await discoverCompilerFiles(projectPath, { readAverIgnore: false });
+    const evidence = Object.fromEntries(
+        Object.keys(CANONICAL_ADOPTION_PATTERNS).map((key) => [key, {
+            adopted: false,
+            consumerCount: 0,
+            sampleFiles: []
+        }])
+    );
+
+    await Promise.all(compilerFiles.map(async (filePath) => {
+        let source = '';
+        try {
+            source = await fs.readFile(path.join(projectPath, filePath), 'utf8');
+        } catch {
+            return;
+        }
+
+        for (const [key, pattern] of Object.entries(CANONICAL_ADOPTION_PATTERNS)) {
+            if (!pattern.test(source)) {
+                continue;
+            }
+
+            const entry = evidence[key];
+            entry.adopted = true;
+            entry.consumerCount += 1;
+            if (entry.sampleFiles.length < 5) {
+                entry.sampleFiles.push(filePath);
+            }
+        }
+    }));
+
+    return evidence;
+}
 
 export async function loadCompilerDiagnosticsSnapshot({
     projectPath,
@@ -30,6 +73,7 @@ export async function loadCompilerDiagnosticsSnapshot({
     tableCounts = {}
 } = {}) {
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
+    const canonicalAdoptionEvidence = await collectCanonicalAdoptionEvidence(projectPath);
     await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
 
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
@@ -44,6 +88,15 @@ export async function loadCompilerDiagnosticsSnapshot({
         manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
         liveFileCount: db ? getLiveFileTotal(db) : (persistedFileCoverage?.liveIndexedFiles || 0)
     });
+    const resolvedCanonicalAdoptions = {
+        // Prefer measured compiler/runtime consumer evidence over optimistic defaults.
+        centralityCoverage: canonicalAdoptionEvidence.centralityCoverage.adopted,
+        sharedStateContention: canonicalAdoptionEvidence.sharedStateContention.adopted,
+        scannedFileManifest:
+            canonicalAdoptionEvidence.scannedFileManifest.adopted &&
+            persistedFileCoverage?.synchronized === true,
+        ...(canonicalAdoptions || {})
+    };
 
     const standardizationReport = buildCompilerStandardizationReport({
         policySummary,
@@ -58,11 +111,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         contractTaxonomy,
         fileUniverseGranularity,
-        canonicalAdoptions: canonicalAdoptions || {
-            centralityCoverage: true,
-            sharedStateContention: true,
-            scannedFileManifest: persistedFileCoverage?.synchronized === true
-        }
+        canonicalAdoptions: resolvedCanonicalAdoptions
     });
 
     const compilerContractLayer = buildCompilerContractLayer({
@@ -87,6 +136,8 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         contractTaxonomy,
         fileUniverseGranularity,
+        canonicalAdoptionEvidence,
+        canonicalAdoptions: resolvedCanonicalAdoptions,
         standardizationReport,
         compilerContractLayer
     };

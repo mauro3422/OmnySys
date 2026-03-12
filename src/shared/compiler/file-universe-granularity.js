@@ -1,3 +1,5 @@
+import { toNumber, toRatio } from './core-utils.js';
+
 /**
  * @fileoverview Canonical file-universe granularity contract.
  *
@@ -8,16 +10,7 @@
  */
 
 function toCount(value) {
-  const count = Number(value || 0);
-  return Number.isFinite(count) && count >= 0 ? count : 0;
-}
-
-function toRatio(numerator, denominator) {
-  if (!denominator || denominator <= 0) {
-    return 0;
-  }
-
-  return Number((numerator / denominator).toFixed(3));
+  return Math.max(0, toNumber(value));
 }
 
 function buildIssue(code, severity, message) {

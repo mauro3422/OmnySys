@@ -78,6 +78,18 @@ export async function handleFileModified(filePath, fullPath) {
   if (newHash && this.fileHashes) {
     this.fileHashes.set(filePath, newHash);
   }
+  try {
+    const fs = await import('fs/promises');
+    const stats = await fs.stat(fullPath);
+    if (this.fileStats) {
+      this.fileStats.set(filePath, {
+        mtimeMs: stats.mtimeMs,
+        size: stats.size
+      });
+    }
+  } catch {
+    // Ignore races where the file disappears between detection and processing.
+  }
 
   logger.info(`[FILE MODIFIED] ${filePath}`);
   const previousAtoms = await this.getAtomsForFile(filePath);
@@ -169,6 +181,7 @@ export async function handleFileDeleted(filePath) {
     await this.removeFileMetadata(filePath);
     await this.removeAtomMetadata(filePath);
     if (this.fileHashes) this.fileHashes.delete(filePath);
+    if (this.fileStats) this.fileStats.delete(filePath);
     this.emit('file:deleted', { filePath });
     return;
   }
@@ -179,6 +192,7 @@ export async function handleFileDeleted(filePath) {
     await this.removeFileMetadata(filePath);
     await this.removeAtomMetadata(filePath);
     if (this.fileHashes) this.fileHashes.delete(filePath);
+    if (this.fileStats) this.fileStats.delete(filePath);
     await this.notifyDependents(filePath, 'file_deleted');
 
     this.emit('file:deleted', { filePath });

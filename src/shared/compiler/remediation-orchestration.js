@@ -49,3 +49,49 @@ export function buildCompilerRemediationBacklog(sections = []) {
     nextAction: prioritized[0]?.recommendation || 'No compiler remediation backlog pending.'
   };
 }
+
+export function buildPipelineHealthCompilerRemediationItems({
+  liveRowRemediation,
+  staleFileRows = 0,
+  staleRiskRows = 0,
+  pipelineOrphanRemediation,
+  orphanFunctions = [],
+  deadCodeRemediation,
+  suspiciousDeadCandidates = 0,
+  duplicateRemediation
+} = {}) {
+  return [
+    {
+      id: 'live_rows',
+      label: 'Live/stale row cleanup',
+      severity: staleFileRows > 0 || staleRiskRows > 0 ? 'high' : 'low',
+      totalItems: staleFileRows + staleRiskRows,
+      recommendation: liveRowRemediation?.recommendation,
+      items: liveRowRemediation?.items || []
+    },
+    {
+      id: 'pipeline_orphans',
+      label: 'Pipeline orphan remediation',
+      severity: orphanFunctions.length > 0 ? 'high' : 'low',
+      totalItems: pipelineOrphanRemediation?.totalCandidates || orphanFunctions.length,
+      recommendation: pipelineOrphanRemediation?.recommendation,
+      items: pipelineOrphanRemediation?.items || []
+    },
+    {
+      id: 'dead_code',
+      label: 'Dead code remediation',
+      severity: suspiciousDeadCandidates > 0 ? 'medium' : 'low',
+      totalItems: deadCodeRemediation?.totalCandidates || suspiciousDeadCandidates,
+      recommendation: deadCodeRemediation?.recommendation,
+      items: deadCodeRemediation?.items || []
+    },
+    {
+      id: 'duplicates',
+      label: 'Duplicate remediation',
+      severity: duplicateRemediation?.totalGroups > 0 ? 'medium' : 'low',
+      totalItems: duplicateRemediation?.totalGroups || 0,
+      recommendation: duplicateRemediation?.recommendation,
+      items: duplicateRemediation?.items || []
+    }
+  ];
+}

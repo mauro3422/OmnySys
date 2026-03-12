@@ -12,7 +12,11 @@ export {
   severityToLevel,
   scoreToSeverity,
   stripPrefix,
-  safeArray
+  safeArray,
+  safeParseJson,
+  hasPersistedStructuredValue,
+  parsePersistedField,
+  parsePersistedArray
 } from './core-utils.js';
 
 export {
@@ -33,7 +37,8 @@ export {
 
 export {
   normalizeRemediationSection,
-  buildCompilerRemediationBacklog
+  buildCompilerRemediationBacklog,
+  buildPipelineHealthCompilerRemediationItems
 } from './remediation-orchestration.js';
 
 export {
@@ -171,6 +176,7 @@ export {
 
 export {
   hasPersistedCompilerAnalysis,
+  loadPersistedScannedFilePaths,
   getPersistedIndexedFilePaths,
   getPersistedScannedFilePaths,
   getPersistedKnownFilePaths,
@@ -227,7 +233,8 @@ export {
   summarizeFieldCoverageRow,
   summarizeCentralityCoverageRow,
   summarizePhysicsCoverageRow,
-  classifyFieldCoverage
+  classifyFieldCoverage,
+  collectPipelineFieldCoverageFindings
 } from './signal-coverage.js';
 
 export {

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
 - [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
 
 - [v0.9.108 - Compiler Stabilization & Integrity](changelogs/v0.9.108.md)
@@ -14,6 +15,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.119 - Watcher Hardening & Coordinator Decomposition](changelogs/v0.9.119.md)
 - [v0.9.110 - Semantic Chests & V4 Fingerprinting](changelogs/v0.9.110.md)
 
 - [v0.9.103 - Genetic Preservation Policy & Stabilization](changelogs/v0.9.103.md)
@@ -33,6 +35,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.119** | 2026-03-12 | Watcher hardening, canonical adoption cleanup, and coordinator decomposition across core debt hotspots. |
 | **0.9.110** | 2026-03-09 | Semantic Chests architecture, V4 fingerprinting, chest-based severity policy, and reporting refinements. |
 | **0.9.108** | 2026-03-07 | Compiler stabilization, utility canonization, SOLID persistence handlers, and Grade A structural integrity. |
 | **0.9.107** | 2026-03-07 | Fix missing imports in conformance layer and repository regressions. |
@@ -55,7 +58,29 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.110 (2026-03-09)
+## Latest Release: v0.9.119 (2026-03-12)
+
+**Watcher Hardening & Coordinator Decomposition**
+
+### Key Achievements
+
+1. Hardened watcher/runtime lifecycle handling so innocent MCP usage no longer dirties the repo state with false file-modified bursts.
+2. Reconnected runtime freshness, compiler diagnostics, and canonical adoption surfaces so telemetry reflects live state instead of stale log history.
+3. Split multiple monolithic files into thin coordinators plus focused modules, reducing edit fragility for humans and agents.
+4. Fixed the `HashCache` stale-delete transaction bug and removed duplicate/ambiguous hash semantics in the storage cache layer.
+5. Reduced low-value `impact-wave` churn by filtering callback noise and teaching integrity heuristics about orchestrator bias.
+
+### New & Refactored Files
+
+- `src/core/orchestrator/phase2-indexer/*`
+- `src/core/meta-detector/pipeline-integrity-detector/*`
+- `src/shared/compiler/standardization-report/recommendations.js`
+- `src/layer-c-memory/mcp/tools/handlers/pipeline-health-handler/foundation.js`
+- `changelogs/v0.9.119.md`
+
+---
+
+## Previous Release: v0.9.110 (2026-03-09)
 
 **Semantic Chests & V4 Fingerprinting**
 

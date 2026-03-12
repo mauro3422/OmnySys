@@ -9,16 +9,7 @@
  * @module shared/compiler/system-map-persistence
  */
 
-import { toNumber } from './core-utils.js';
-
-function parseJsonArray(value) {
-  try {
-    const parsed = JSON.parse(value || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
+import { toNumber, parsePersistedArray } from './core-utils.js';
 
 export function repairSystemMapPersistenceCoverage(db) {
   const rows = db.prepare(`
@@ -41,7 +32,7 @@ export function repairSystemMapPersistenceCoverage(db) {
     const sourcePath = String(row?.path || '').trim();
     if (!sourcePath) continue;
 
-    for (const targetPath of parseJsonArray(row?.depends_on_json)) {
+    for (const targetPath of parsePersistedArray(row?.depends_on_json)) {
       const normalizedTargetPath = String(targetPath || '').trim();
       if (!normalizedTargetPath) continue;
       dependencies.push({

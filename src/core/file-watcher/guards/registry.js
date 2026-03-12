@@ -13,6 +13,10 @@ import { createLogger } from '../../../utils/logger.js';
 import { validateGuard } from './guard-standards.js';
 import { getMetadataFromMap, listMetadataItems } from '../../../shared/compiler/index.js';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { buildRegistryStats } from './registry/stats.js';
+import { registerGuard } from './registry/registration.js';
+import { runGuardMap } from './registry/execution.js';
+import { initializeDefaultGuards } from './registry/initialization.js';
 
 const logger = createLogger('OmnySys:guards:registry');
 
@@ -33,93 +37,27 @@ class GuardRegistry {
      * @returns {Object} Estadísticas formateadas
      */
     getLocalStats() {
-        const byType = {
-            semantic: this.semanticGuards.size,
-            impact: this.impactGuards.size
-        };
-
-        const byDomain = {};
-        for (const meta of this.metadata.values()) {
-            const domain = meta.domain || 'unknown';
-            byDomain[domain] = (byDomain[domain] || 0) + 1;
-        }
-
         return {
-            total: this.semanticGuards.size + this.impactGuards.size,
-            byType,
-            byDomain,
+            ...buildRegistryStats(this.semanticGuards, this.impactGuards, this.metadata),
             initialized: this.initialized
         };
     }
 
-
-    async #persistGuardCrash(rootPath, filePath, name, type, error) {
-        const issueType = `runtime_${type}_guard_crash_${name}_high`;
-        await persistWatcherIssue(
-            rootPath,
-            filePath,
-            issueType,
-            'high',
-            `${type} guard '${name}' crashed: ${error.message}`,
-            {
-                source: 'guard_registry',
-                guardName: name,
-                guardType: type,
-                errorName: error.name || 'Error',
-                errorMessage: error.message,
-                stack: error.stack || null
-            }
-        );
-    }
-
-    async #clearGuardCrash(rootPath, filePath, name, type) {
-        const issueType = `runtime_${type}_guard_crash_${name}_high`;
-        await clearWatcherIssue(rootPath, filePath, issueType);
-    }
-
     #registerGuard(guardMap, type, name, guardFn, metadata = {}) {
-        if (guardMap.has(name)) {
-            logger.debug(`${type === 'semantic' ? 'Semantic' : 'Impact'} guard already registered: ${name}`);
-            return false;
-        }
-
-        const validation = validateGuard({ name, detect: guardFn, ...metadata });
-        if (!validation.valid) {
-            logger.warn(`Guard '${name}' validation warnings:`, validation.errors);
-        }
-
-        guardMap.set(name, guardFn);
-        this.metadata.set(name, {
-            type,
-            ...metadata,
-            registeredAt: new Date().toISOString()
-        });
-
-        logger.debug(`Registered ${type} guard: ${name} (${metadata.domain || 'unknown'})`);
-        return true;
+        return registerGuard(guardMap, this.metadata, validateGuard, logger, type, name, guardFn, metadata);
     }
 
     async #runGuardMap(guardMap, type, rootPath, filePath, runner) {
-        const results = {};
-
-        for (const [name, guardFn] of guardMap.entries()) {
-            const startTime = Date.now();
-            try {
-                results[name] = await runner(guardFn);
-                await this.#clearGuardCrash(rootPath, filePath, name, type);
-                const duration = Date.now() - startTime;
-
-                if (duration > 100) {
-                    logger.warn(`${type === 'semantic' ? 'Semantic' : 'Impact'} guard '${name}' took ${duration}ms (slow)`);
-                }
-            } catch (error) {
-                logger.error(`Error in ${type} guard '${name}' for ${filePath}: ${error.message}`);
-                await this.#persistGuardCrash(rootPath, filePath, name, type, error);
-                results[name] = { error: error.message };
-            }
-        }
-
-        return results;
+        return runGuardMap({
+            guardMap,
+            type,
+            rootPath,
+            filePath,
+            runner,
+            logger,
+            persistWatcherIssue,
+            clearWatcherIssue
+        });
     }
 
     /**
@@ -181,23 +119,28 @@ class GuardRegistry {
      * Inicializa los guardias por defecto del sistema
      */
     async initializeDefaultGuards() {
-        if (this.initialized) return;
+        if (this.initialized) {
+            return;
+        }
+
         if (this.initializationPromise) {
             await this.initializationPromise;
             return;
         }
 
-        this.initializationPromise = (async () => {
-            const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('./default-guards.js');
-            await registerAllDefaultSemanticGuards(this);
-            await registerAllDefaultImpactGuards(this);
-
-            this.initialized = true;
-            logger.info(`Guard registry initialized with ${this.semanticGuards.size} semantic and ${this.impactGuards.size} impact guards`);
-        })();
+        const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('./default-guards.js');
+        this.initializationPromise = initializeDefaultGuards({
+            semanticGuards: this.semanticGuards,
+            impactGuards: this.impactGuards,
+            logger,
+            registerAllDefaultSemanticGuards,
+            registerAllDefaultImpactGuards,
+            registry: this
+        });
 
         try {
             await this.initializationPromise;
+            this.initialized = true;
         } finally {
             this.initializationPromise = null;
         }
@@ -207,13 +150,16 @@ class GuardRegistry {
      * Obtiene estadísticas de los guards
      * @returns {Object} Estadísticas
      */
-    getStats() {
+    getRegistryStats() {
         const stats = statsPool.getStats('registry') || this.getLocalStats();
-        console.log(`[GuardRegistry] getStats returning:`, JSON.stringify(stats).substring(0, 100));
+        logger.debug(`[GuardRegistry] getRegistryStats returning: ${JSON.stringify(stats).substring(0, 100)}`);
         return stats;
+    }
+
+    getStats() {
+        return this.getRegistryStats();
     }
 }
 
 // Exportar singleton
 export const guardRegistry = new GuardRegistry();
-

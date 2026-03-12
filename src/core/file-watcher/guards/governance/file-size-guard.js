@@ -11,6 +11,7 @@
 
 import { BaseGovernanceGuard } from './base-governance-guard.js';
 import { StandardThresholds, StandardSuggestions, severityFromFileLines, IssueDomains, IssueSeverity } from '../guard-standards.js';
+import { classifyFileOperationalRole } from '../../../../shared/compiler/index.js';
 import fs from 'fs';
 
 const guardParams = new BaseGovernanceGuard('file-size-guard', IssueDomains.CODE);
@@ -44,6 +45,7 @@ export async function detectFileSizeLimits(rootPath, filePath, context, atoms = 
 
         const content = await fs.promises.readFile(filePath, 'utf-8');
         const linesCount = content.split('\n').length;
+        const operationalRole = classifyFileOperationalRole(filePath);
 
         const severity = severityFromFileLines(linesCount);
 
@@ -51,13 +53,21 @@ export async function detectFileSizeLimits(rootPath, filePath, context, atoms = 
             // Si el archivo ya existía y está gigante, es deuda técnica (Medium).
             // Si es un archivo *nuevo* o un refactor donde queremos ser estrictos, es High.
             const adjustedSeverity = isNewFile ? IssueSeverity.HIGH : IssueSeverity.MEDIUM;
+            const isCoordinator = operationalRole.role === 'orchestrator';
+            const splitSuggestion = isCoordinator
+                ? StandardSuggestions.COORDINATOR_EXTRACTION
+                : StandardSuggestions.FILE_SIZE_SPLIT;
             const contextData = {
                 metricValue: linesCount,
                 threshold: severity === IssueSeverity.HIGH ? fileLinesCritical : fileLinesHigh,
                 suggestedAction: isNewFile
-                    ? 'Rejecting new file: ' + StandardSuggestions.FILE_SIZE_SPLIT
-                    : 'Technical Debt: ' + StandardSuggestions.FILE_SIZE_SPLIT,
-                extraData: { linesOfCode: linesCount, isNewFile }
+                    ? 'Rejecting new file: ' + splitSuggestion
+                    : 'Technical Debt: ' + splitSuggestion,
+                extraData: {
+                    linesOfCode: linesCount,
+                    isNewFile,
+                    operationalRole
+                }
             };
 
             const issue = await guardParams.reportIssue(
