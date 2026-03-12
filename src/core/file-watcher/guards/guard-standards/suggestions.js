@@ -1,0 +1,23 @@
+export const StandardSuggestions = {
+    DUPLICATE_REUSE: 'Use atomic_edit to extend the existing function instead of duplicating',
+    DUPLICATE_RENAME: 'Rename using one of the suggested alternatives to avoid collision',
+    IMPACT_REVIEW: 'Review all related files before committing this change',
+    IMPACT_BREAKING: 'This change may break callers. Consider backward compatibility',
+    ASYNC_ADD_TRY_CATCH: 'Add try/catch block to handle network errors gracefully',
+    ASYNC_ADD_ERROR_PARAM: 'Add error handling to the callback or use async/await with try/catch',
+    EVENT_ADD_CLEANUP: 'Add cleanup logic in a return function or component unmount',
+    EVENT_USE_ONCE: 'Consider using .once() instead of .on() for one-time listeners',
+    COMPLEXITY_SPLIT: 'Split this function into smaller, focused functions',
+    COMPLEXITY_REFACTOR: 'Refactor to reduce nesting and improve readability',
+    FILE_SIZE_SPLIT: 'File is dangerously large and affects AI editing capability. Split into smaller, cohesive modules',
+    COORDINATOR_EXTRACTION: 'Keep a thin coordinator/orchestrator and move checks, handlers or strategies into dedicated cohesive modules',
+    SHARED_STATE_LOCAL: 'Convert shared state to local state or parameters',
+    SHARED_STATE_EXTRACT: 'Extract state management into a dedicated store/module',
+    HOTSPOT_STABILIZE: 'This code changes frequently. Consider stabilizing the interface',
+    HOTSPOT_DOCUMENT: 'Add comprehensive documentation due to high change frequency',
+    DEAD_CODE_REMOVE: 'Remove dead code or mark with @deprecated if needed for migration',
+    DEAD_CODE_REVIVE: 'If temporarily disabled, add a TODO with revival conditions',
+    METADATA_REINDEX: 'Trigger a reindex and inspect graph/semantic enrichment for missing derived fields',
+    TOPOLOGY_VERIFY: 'Verify caller/callee extraction and relation persistence before trusting this topology',
+    SEMANTIC_REFRESH: 'Re-run semantic extraction for this file and inspect missing flags or relations'
+};
