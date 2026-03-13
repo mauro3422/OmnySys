@@ -281,10 +281,6 @@ export {
 } from './path-normalization.js';
 
 export {
-  normalizeDerivedRiskLevel
-} from './risk-level.js';
-
-export {
   generateAlternativeNames,
   isCanonicalDuplicateSignalPolicyFile,
   isLowSignalGeneratedAtom,
