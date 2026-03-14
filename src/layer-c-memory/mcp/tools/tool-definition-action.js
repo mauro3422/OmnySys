@@ -145,5 +145,65 @@ export const actionToolDefinitions = [
       },
       required: ['semanticFingerprint', 'ssotFilePath']
     }
+  },
+  {
+    name: 'mcp_omnysystem_safe_edit',
+    description: 'Editor de alto nivel con contexto automático, backup y validación extendida. Usa atomic_edit internamente pero obtiene el contexto exacto automáticamente. Ideal cuando no sabés el oldString exacto.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Ruta del archivo a editar (relativa al proyecto)' },
+        lineNumber: { type: 'number', description: 'Línea objetivo para editar (opcional, usar con pattern o solo)' },
+        pattern: { type: 'string', description: 'Patrón a buscar para reemplazar (opcional, usar con lineNumber o solo)' },
+        newContent: { type: 'string', description: 'Nuevo contenido a insertar' },
+        autoBackup: { type: 'boolean', default: true, description: 'Crear backup automático antes de editar' },
+        dryRun: { type: 'boolean', default: false, description: 'Solo mostrar qué haría (no ejecutar)' },
+        linesBefore: { type: 'number', default: 3, description: 'Líneas de contexto antes de la línea objetivo' },
+        linesAfter: { type: 'number', default: 3, description: 'Líneas de contexto después de la línea objetivo' }
+      },
+      required: ['filePath', 'newContent'],
+      oneOf: [
+        { required: ['lineNumber'] },
+        { required: ['pattern'] }
+      ]
+    }
+  },
+  {
+    name: 'mcp_omnysystem_get_edit_context',
+    description: 'Obtiene contexto exacto de edición para una línea específica. Útil para debugging o para obtener el oldString antes de usar atomic_edit.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Ruta del archivo (relativa al proyecto)' },
+        lineNumber: { type: 'number', default: 1, description: 'Línea objetivo (1-based)' },
+        linesBefore: { type: 'number', default: 3, description: 'Líneas de contexto antes' },
+        linesAfter: { type: 'number', default: 3, description: 'Líneas de contexto después' }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'mcp_omnysystem_suggest_canonical_api',
+    description: 'Detecta acceso directo a DB en un archivo y sugiere APIs canónicas de query/apis/. Útil para refactorizar código que usa storage/repository directamente.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Ruta del archivo a analizar (relativa al proyecto)' }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'mcp_omnysystem_validate_exports',
+    description: 'Valida que los imports de un archivo existen en la cadena de exports. Detecta errores "module does not provide an export named X" antes del runtime.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Ruta del archivo a validar (relativa al proyecto)' },
+        importName: { type: 'string', description: 'Nombre específico a validar (opcional, usar con fromModule)' },
+        fromModule: { type: 'string', description: 'Módulo del import (opcional, usar con importName)' }
+      },
+      required: ['filePath']
+    }
   }
 ];
