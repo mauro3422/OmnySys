@@ -332,6 +332,11 @@ export {
 } from './architectural-pattern-detector.js';
 
 export {
+  calculateArchitecturalDebtScore,
+  getSeverityLevel
+} from './architectural-debt-score.js';
+
+export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
 } from './duplicate-debt.js';
