@@ -1,97 +1,119 @@
+/**
+ * @fileoverview filesystem-validation.js
+ *
+ * Validates imports using ONLY OmnySys DB.
+ * No filesystem fallback - single source of truth.
+ */
+
 import path from 'path';
-import { access, readFile } from 'fs/promises';
 
 import {
-    extractModuleNamedExports,
     extractRelativeImportContracts,
     extractRelativeModuleSpecifiers
 } from './source-analysis.js';
 
-async function pathExists(filePath) {
-    try {
-        await access(filePath);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function readSourceIfExists(filePath) {
-    if (!(await pathExists(filePath))) {
-        return null;
+/**
+ * Loads named exports from OmnySys DB for a given file path.
+ * @param {Object} repo - Repository with DB connection
+ * @param {string} filePath - File path to query
+ * @returns {Promise<Set<string>>} Set of exported names
+ */
+async function loadExportsFromDb(repo, filePath) {
+    if (!repo?.db) {
+        throw new Error('Repository DB not available - cannot validate imports without DB');
     }
 
-    return readFile(filePath, 'utf8');
-}
-
-async function resolveExistingModulePath(baseDir, specifier, resolutionCache) {
-    const cacheKey = `${baseDir}::${specifier}`;
-    if (resolutionCache.has(cacheKey)) {
-        return resolutionCache.get(cacheKey);
+    // Normalize path for query (handle Windows/Unix paths)
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // Query atoms table for exports
+    const stmt = repo.db.prepare(`
+        SELECT name, exports_json
+        FROM atoms
+        WHERE file_path = ?
+        AND exports_json IS NOT NULL
+        LIMIT 1
+    `);
+    
+    const row = stmt.get(normalizedPath);
+    if (!row) {
+        // File not in DB - this is a real issue, not a fallback case
+        throw new Error(`File ${filePath} not found in OmnySys DB. Run analysis first.`);
     }
 
-    try {
-        const candidateBase = path.resolve(baseDir, specifier);
-        const candidates = [
-            candidateBase,
-            `${candidateBase}.js`,
-            `${candidateBase}.mjs`,
-            `${candidateBase}.cjs`,
-            `${candidateBase}.ts`,
-            `${candidateBase}.mts`,
-            `${candidateBase}.cts`,
-            path.join(candidateBase, 'index.js'),
-            path.join(candidateBase, 'index.mjs'),
-            path.join(candidateBase, 'index.ts')
-        ];
+    // Parse exports_json and extract names
+    const exports = JSON.parse(row.exports_json);
+    if (!Array.isArray(exports)) return new Set();
 
-        for (const candidate of candidates) {
-            if (await pathExists(candidate)) {
-                resolutionCache.set(cacheKey, candidate);
-                return candidate;
+    const exportNames = new Set();
+    for (const exp of exports) {
+        if (exp?.name) exportNames.add(exp.name);
+        // Handle re-exports (export * from)
+        if (exp?.type === 'reexport' && exp?.exports) {
+            for (const reexport of exp.exports) {
+                if (reexport?.name) exportNames.add(reexport.name);
             }
         }
-    } catch {
-        resolutionCache.set(cacheKey, null);
-        return null;
     }
-
-    resolutionCache.set(cacheKey, null);
-    return null;
+    return exportNames;
 }
 
-async function loadModuleExports(modulePath, exportsByModule) {
+/**
+ * Collects all exports from DB only.
+ * @param {Object} repo - Repository with DB connection
+ * @param {string} projectPath - Project root path
+ * @param {string} filePath - File path to analyze
+ * @param {Map} exportsByModule - Cache of exports by module path
+ * @returns {Promise<Set<string>>}
+ */
+async function collectAllExports(repo, projectPath, filePath, exportsByModule) {
+    const cacheKey = `${projectPath}::${filePath}`;
+    if (exportsByModule.has(cacheKey)) {
+        return exportsByModule.get(cacheKey);
+    }
+
+    // DB ONLY - no filesystem fallback
+    const dbExports = await loadExportsFromDb(repo, filePath);
+    exportsByModule.set(cacheKey, dbExports);
+    return dbExports;
+}
+
+/**
+ * Loads module exports from DB only.
+ * @param {Object} repo - Repository with DB connection
+ * @param {string} projectPath - Project root path
+ * @param {string} modulePath - Module path to load
+ * @param {Map} exportsByModule - Cache of exports by module
+ * @returns {Promise<Set<string>>}
+ */
+async function loadModuleExports(repo, projectPath, modulePath, exportsByModule) {
     if (!modulePath) {
         return new Set();
     }
 
-    if (exportsByModule.has(modulePath)) {
-        return exportsByModule.get(modulePath);
+    const cacheKey = `${projectPath}::${modulePath}`;
+    if (exportsByModule.has(cacheKey)) {
+        return exportsByModule.get(cacheKey);
     }
 
-    try {
-        const source = await readSourceIfExists(modulePath);
-        const namedExports = extractModuleNamedExports(source || '');
-        exportsByModule.set(modulePath, namedExports);
-        return namedExports;
-    } catch {
-        const emptyExports = new Set();
-        exportsByModule.set(modulePath, emptyExports);
-        return emptyExports;
-    }
+    // DB ONLY
+    return collectAllExports(repo, projectPath, modulePath, exportsByModule);
 }
 
-export async function collectFilesystemImportState(projectPath, filePath) {
+export async function collectFilesystemImportState(repo, projectPath, filePath) {
+    // Read source file to extract import contracts (still need filesystem for this)
     const absoluteFilePath = path.resolve(projectPath, filePath);
-    const source = await readSourceIfExists(absoluteFilePath);
-    if (source == null) {
-        return null;
+    let source;
+    try {
+        const { readFile } = await import('fs/promises');
+        source = await readFile(absoluteFilePath, 'utf8');
+    } catch (error) {
+        throw new Error(`Cannot read source file ${filePath}: ${error.message}`);
     }
 
     const baseDir = path.dirname(absoluteFilePath);
     const specifiers = extractRelativeModuleSpecifiers(source);
     const contracts = extractRelativeImportContracts(source);
-    const resolutions = new Map();
     const exportsByModule = new Map();
 
     const broken = [];
@@ -109,36 +131,51 @@ export async function collectFilesystemImportState(projectPath, filePath) {
         broken.push(entry);
     };
 
+    // Validate specifiers exist in DB
     for (const specifier of specifiers) {
-        const resolvedModulePath = await resolveExistingModulePath(baseDir, specifier, resolutions);
-        if (!resolvedModulePath) {
+        const resolvedPath = path.resolve(baseDir, specifier).replace(/\\/g, '/');
+        const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
+        
+        try {
+            await loadModuleExports(repo, projectPath, normalizedResolved, exportsByModule);
+        } catch (error) {
             pushBroken({
                 source: specifier,
                 type: 'local',
                 resolved: false,
-                reason: 'filesystem_missing'
+                reason: 'db_missing',
+                missingExport: error.message
             });
         }
     }
 
+    // Validate named exports from DB
     for (const contract of contracts) {
         if (contract.namedImports.length === 0 || contract.namespaceImport) {
             continue;
         }
 
-        const resolvedModulePath = await resolveExistingModulePath(baseDir, contract.specifier, resolutions);
-        if (!resolvedModulePath) {
-            continue;
-        }
+        const resolvedPath = path.resolve(baseDir, contract.specifier).replace(/\\/g, '/');
+        const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
 
-        const moduleExports = await loadModuleExports(resolvedModulePath, exportsByModule);
-        for (const missingName of contract.namedImports.filter((name) => !moduleExports.has(name))) {
+        try {
+            const moduleExports = await loadModuleExports(repo, projectPath, normalizedResolved, exportsByModule);
+            for (const missingName of contract.namedImports.filter((name) => !moduleExports.has(name))) {
+                pushBroken({
+                    source: contract.specifier,
+                    type: 'local',
+                    resolved: true,
+                    reason: 'missing_named_export',
+                    missingExport: missingName
+                });
+            }
+        } catch (error) {
             pushBroken({
                 source: contract.specifier,
                 type: 'local',
                 resolved: false,
-                reason: 'missing_named_export',
-                missingExport: missingName
+                reason: 'db_missing',
+                missingExport: error.message
             });
         }
     }
@@ -150,25 +187,45 @@ export async function collectFilesystemImportState(projectPath, filePath) {
     };
 }
 
-export async function buildFilesystemOnlyValidation(projectPath, filePath) {
-    const state = await collectFilesystemImportState(projectPath, filePath);
-    if (!state) {
-        return null;
-    }
+export async function buildFilesystemOnlyValidation(repo, projectPath, filePath) {
+    try {
+        const state = await collectFilesystemImportState(repo, projectPath, filePath);
+        if (!state) {
+            return null;
+        }
 
-    return {
-        file: filePath,
-        totalImports: state.specifierCount,
-        brokenPaths: state.broken.map((entry) => entry.source),
-        brokenImports: state.broken,
-        unusedImports: [],
-        circularDependencies: [],
-        status: state.broken.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
-        validationMode: 'filesystem_fallback'
-    };
+        return {
+            file: filePath,
+            totalImports: state.specifierCount,
+            brokenPaths: state.broken.map((entry) => entry.source),
+            brokenImports: state.broken,
+            unusedImports: [],
+            circularDependencies: [],
+            status: state.broken.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
+            validationMode: 'db_only'
+        };
+    } catch (error) {
+        // DB error - return as issue
+        return {
+            file: filePath,
+            totalImports: 0,
+            brokenPaths: [],
+            brokenImports: [{
+                source: '*',
+                type: 'db_error',
+                resolved: false,
+                reason: 'db_unavailable',
+                missingExport: error.message
+            }],
+            unusedImports: [],
+            circularDependencies: [],
+            status: 'HAS_ISSUES',
+            validationMode: 'db_only'
+        };
+    }
 }
 
-export async function collectBrokenImports(fileData, projectPath, filePath, checkBroken) {
+export async function collectBrokenImports(fileData, repo, projectPath, filePath, checkBroken) {
     const broken = [];
     const fingerprints = new Set();
     const imports = fileData?.imports || [];
@@ -195,7 +252,8 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
         return broken;
     }
 
-    const state = await collectFilesystemImportState(projectPath, filePath);
+    // Use DB + filesystem hybrid approach
+    const state = await collectFilesystemImportState(repo, projectPath, filePath);
     for (const missingImport of state?.broken || []) {
         pushUniqueBrokenImport(missingImport);
     }
@@ -203,18 +261,17 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
     return broken;
 }
 
-export async function buildIndexedValidationResult(filePath, fileData, broken, unused, circularPaths, projectPath) {
+export async function buildIndexedValidationResult(repo, filePath, fileData, broken, unused, circularPaths, projectPath) {
     const indexedImportCount = Array.isArray(fileData?.imports) ? fileData.imports.length : 0;
-    const state = await collectFilesystemImportState(projectPath, filePath);
-    const sourceImportCount = state?.specifierCount || 0;
-
+    
     return {
         file: filePath,
-        totalImports: Math.max(indexedImportCount, sourceImportCount),
+        totalImports: indexedImportCount,
         brokenPaths: broken.map((entry) => entry.source),
         brokenImports: broken,
         unusedImports: unused.map((entry) => entry.name),
         circularDependencies: circularPaths,
-        status: broken.length === 0 && unused.length === 0 && circularPaths.length === 0 ? 'CLEAN' : 'HAS_ISSUES'
+        status: broken.length === 0 && unused.length === 0 && circularPaths.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
+        validationMode: 'db_only'
     };
 }

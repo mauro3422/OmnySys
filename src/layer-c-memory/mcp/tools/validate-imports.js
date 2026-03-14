@@ -134,7 +134,7 @@ export class ValidateImportsTool extends GraphQueryTool {
             const fileData = await loadFileAnalysis(this.projectPath, filePath);
 
             if (!fileData) {
-                const filesystemValidation = await buildFilesystemOnlyValidation(this.projectPath, filePath);
+                const filesystemValidation = await buildFilesystemOnlyValidation(this.repo, this.projectPath, filePath);
                 if (filesystemValidation) {
                     return this.formatSuccess(filesystemValidation);
                 }
@@ -142,14 +142,14 @@ export class ValidateImportsTool extends GraphQueryTool {
                 return this.formatError('NOT_FOUND', `File ${filePath} not found in the index or filesystem. Run 'omny up' or analysis.`);
             }
 
-            const broken = await collectBrokenImports(fileData, this.projectPath, filePath, checkBroken);
+            const broken = await collectBrokenImports(fileData, this.repo, this.projectPath, filePath, checkBroken);
             const unused = checkUnused
                 ? (fileData?.imports || []).filter((entry) => entry?.unused === true)
                 : [];
             const circularPaths = await computeCircularDependencies(this.repo, this.projectPath, filePath, checkCircular);
 
             return this.formatSuccess(
-                await buildIndexedValidationResult(filePath, fileData, broken, unused, circularPaths, this.projectPath)
+                await buildIndexedValidationResult(this.repo, filePath, fileData, broken, unused, circularPaths, this.projectPath)
             );
         } catch (error) {
             return this.formatError(
