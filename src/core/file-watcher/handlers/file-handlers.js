@@ -119,6 +119,19 @@ export async function handleFileModified(filePath, fullPath) {
     analysis
   });
 
+  // Reconcile watcher issues - clean up resolved issues automatically
+  try {
+    const { reconcileWatcherIssues } = await import('../watcher-issue-persistence.js');
+    const reconciliation = await reconcileWatcherIssues(this.rootPath, { maxDelete: 100 });
+    if (reconciliation.deletedExpired || reconciliation.deletedSuperseded || reconciliation.deletedOutdated) {
+      logger.info(
+        `[ISSUE RECONCILE] Cleaned up ${reconciliation.deletedExpired + reconciliation.deletedSuperseded + reconciliation.deletedOutdated} resolved issue(s) after processing ${filePath}`
+      );
+    }
+  } catch (error) {
+    logger.warn(`[ISSUE RECONCILE SKIP] Failed to reconcile issues after ${filePath}: ${error.message}`);
+  }
+
   logger.info(
     `[FILE PROCESSED] ${filePath} -> atoms=${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0}, previous=${previousAtoms.length}`
   );
