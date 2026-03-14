@@ -1,0 +1,7 @@
+[mcp_servers.omnysystem]
+type = "stdio"
+command = "C:/Program Files/nodejs/node.exe"
+args = ["C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js"]
+cwd = "C:/Dev/OmnySystem/fix-compiler-files"
+startup_timeout_sec = 120
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "1", OMNYSYS_PROJECT_PATH = "C:/Dev/OmnySystem/fix-compiler-files" }

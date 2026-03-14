@@ -17,7 +17,9 @@ export {
   getFileAnalysisWithAtoms,
   getAtomDetails,
   findAtomsByArchetype,
-  findAtomByLine
+  findAtomByLine,
+  getFileExports,
+  hasExport
 } from '../queries/file-query/index.js';
 
 // Re-exports de readers (comúnmente usados juntos con file queries)

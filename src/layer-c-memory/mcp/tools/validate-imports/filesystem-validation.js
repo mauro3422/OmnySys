@@ -6,6 +6,7 @@
  */
 
 import path from 'path';
+import { getFileExports } from '#layer-c/query/apis/file-api.js';
 
 import {
     extractRelativeImportContracts,
@@ -14,79 +15,44 @@ import {
 
 /**
  * Loads named exports from OmnySys DB for a given file path.
- * @param {Object} repo - Repository with DB connection
+ * Uses canonical API getFileExports instead of direct DB access.
+ * @param {string} projectPath - Project root path
  * @param {string} filePath - File path to query
  * @returns {Promise<Set<string>>} Set of exported names
  */
-async function loadExportsFromDb(repo, filePath) {
-    if (!repo?.db) {
-        throw new Error('Repository DB not available - cannot validate imports without DB');
-    }
-
-    // Normalize path for query (handle Windows/Unix paths)
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    
-    // Query atoms table for exports
-    const stmt = repo.db.prepare(`
-        SELECT name, exports_json
-        FROM atoms
-        WHERE file_path = ?
-        AND exports_json IS NOT NULL
-        LIMIT 1
-    `);
-    
-    const row = stmt.get(normalizedPath);
-    if (!row) {
-        // File not in DB - this is a real issue, not a fallback case
-        throw new Error(`File ${filePath} not found in OmnySys DB. Run analysis first.`);
-    }
-
-    // Parse exports_json and extract names
-    const exports = JSON.parse(row.exports_json);
-    if (!Array.isArray(exports)) return new Set();
-
-    const exportNames = new Set();
-    for (const exp of exports) {
-        if (exp?.name) exportNames.add(exp.name);
-        // Handle re-exports (export * from)
-        if (exp?.type === 'reexport' && exp?.exports) {
-            for (const reexport of exp.exports) {
-                if (reexport?.name) exportNames.add(reexport.name);
-            }
-        }
-    }
-    return exportNames;
+async function loadExportsFromDb(projectPath, filePath) {
+    // Use canonical API instead of direct DB access
+    const exports = await getFileExports(projectPath, filePath);
+    return exports;
 }
 
 /**
  * Collects all exports from DB only.
- * @param {Object} repo - Repository with DB connection
  * @param {string} projectPath - Project root path
  * @param {string} filePath - File path to analyze
  * @param {Map} exportsByModule - Cache of exports by module path
  * @returns {Promise<Set<string>>}
  */
-async function collectAllExports(repo, projectPath, filePath, exportsByModule) {
+async function collectAllExports(projectPath, filePath, exportsByModule) {
     const cacheKey = `${projectPath}::${filePath}`;
     if (exportsByModule.has(cacheKey)) {
         return exportsByModule.get(cacheKey);
     }
 
     // DB ONLY - no filesystem fallback
-    const dbExports = await loadExportsFromDb(repo, filePath);
+    const dbExports = await loadExportsFromDb(projectPath, filePath);
     exportsByModule.set(cacheKey, dbExports);
     return dbExports;
 }
 
 /**
  * Loads module exports from DB only.
- * @param {Object} repo - Repository with DB connection
  * @param {string} projectPath - Project root path
  * @param {string} modulePath - Module path to load
  * @param {Map} exportsByModule - Cache of exports by module
  * @returns {Promise<Set<string>>}
  */
-async function loadModuleExports(repo, projectPath, modulePath, exportsByModule) {
+async function loadModuleExports(projectPath, modulePath, exportsByModule) {
     if (!modulePath) {
         return new Set();
     }
@@ -97,10 +63,10 @@ async function loadModuleExports(repo, projectPath, modulePath, exportsByModule)
     }
 
     // DB ONLY
-    return collectAllExports(repo, projectPath, modulePath, exportsByModule);
+    return collectAllExports(projectPath, modulePath, exportsByModule);
 }
 
-export async function collectFilesystemImportState(repo, projectPath, filePath) {
+export async function collectFilesystemImportState(projectPath, filePath) {
     // Read source file to extract import contracts (still need filesystem for this)
     const absoluteFilePath = path.resolve(projectPath, filePath);
     let source;
@@ -135,9 +101,9 @@ export async function collectFilesystemImportState(repo, projectPath, filePath) 
     for (const specifier of specifiers) {
         const resolvedPath = path.resolve(baseDir, specifier).replace(/\\/g, '/');
         const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
-        
+
         try {
-            await loadModuleExports(repo, projectPath, normalizedResolved, exportsByModule);
+            await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
         } catch (error) {
             pushBroken({
                 source: specifier,
@@ -159,7 +125,7 @@ export async function collectFilesystemImportState(repo, projectPath, filePath) 
         const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
 
         try {
-            const moduleExports = await loadModuleExports(repo, projectPath, normalizedResolved, exportsByModule);
+            const moduleExports = await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
             for (const missingName of contract.namedImports.filter((name) => !moduleExports.has(name))) {
                 pushBroken({
                     source: contract.specifier,
@@ -187,9 +153,9 @@ export async function collectFilesystemImportState(repo, projectPath, filePath) 
     };
 }
 
-export async function buildFilesystemOnlyValidation(repo, projectPath, filePath) {
+export async function buildFilesystemOnlyValidation(projectPath, filePath) {
     try {
-        const state = await collectFilesystemImportState(repo, projectPath, filePath);
+        const state = await collectFilesystemImportState(projectPath, filePath);
         if (!state) {
             return null;
         }
@@ -225,7 +191,7 @@ export async function buildFilesystemOnlyValidation(repo, projectPath, filePath)
     }
 }
 
-export async function collectBrokenImports(fileData, repo, projectPath, filePath, checkBroken) {
+export async function collectBrokenImports(fileData, projectPath, filePath, checkBroken) {
     const broken = [];
     const fingerprints = new Set();
     const imports = fileData?.imports || [];
@@ -253,7 +219,7 @@ export async function collectBrokenImports(fileData, repo, projectPath, filePath
     }
 
     // Use DB + filesystem hybrid approach
-    const state = await collectFilesystemImportState(repo, projectPath, filePath);
+    const state = await collectFilesystemImportState(projectPath, filePath);
     for (const missingImport of state?.broken || []) {
         pushUniqueBrokenImport(missingImport);
     }

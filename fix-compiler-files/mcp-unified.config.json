@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "server": {
+    "name": "omnysystem",
+    "transport": "stdio-bridge",
+    "entry": "C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js",
+    "url": "http://127.0.0.1:9999/mcp",
+    "health": "http://127.0.0.1:9999/health"
+  },
+  "targets": {
+    "codex": "C:\\Users\\mauro\\.codex\\config.toml",
+    "clineVsCode": "C:\\Users\\mauro\\AppData\\Roaming\\Code\\User\\globalStorage\\saoudrizwan.claude-dev\\settings\\cline_mcp_settings.json",
+    "clineCursor": "C:\\Users\\mauro\\AppData\\Roaming\\Cursor\\User\\globalStorage\\saoudrizwan.claude-dev\\settings\\cline_mcp_settings.json",
+    "claude": "C:\\Users\\mauro\\.claude.json",
+    "opencode": "C:\\Users\\mauro\\.config\\opencode\\opencode.json",
+    "qwen": "C:\\Users\\mauro\\.qwen\\settings.json",
+    "antigravity": "C:\\Users\\mauro\\.gemini\\antigravity\\mcp_config.json",
+    "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json"
+  },
+  "workspace": {
+    "dotMcp": "C:\\Dev\\OmnySystem\\fix-compiler-files\\.mcp.json",
+    "mcpServers": "C:\\Dev\\OmnySystem\\fix-compiler-files\\mcp-servers.json",
+    "mcpServersSchema": "C:\\Dev\\OmnySystem\\fix-compiler-files\\mcp-servers.schema.json"
+  },
+  "vscode": {
+    "tasks": "C:\\Dev\\OmnySystem\\fix-compiler-files\\.vscode\\tasks.json",
+    "settings": "C:\\Dev\\OmnySystem\\fix-compiler-files\\.vscode\\settings.json"
+  }
+}

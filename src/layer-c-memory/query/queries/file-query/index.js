@@ -20,3 +20,4 @@ export { getFileAnalysisWithAtoms } from './enriched/index.js';
 
 // Atom-level queries
 export { getAtomDetails, findAtomsByArchetype, findAtomByLine } from './atoms/index.js';
+export { getFileExports, hasExport } from './atoms/index.js';
