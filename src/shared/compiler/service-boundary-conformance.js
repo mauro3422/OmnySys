@@ -43,6 +43,19 @@ function isLegitimateOrchestratorPath(normalizedPath = '') {
     || normalizedPath.endsWith('/recent-notifications.js');
 }
 
+/**
+ * Detecta si un archivo es parte de la capa de implementación de queries (Layer C)
+ * Estos archivos DEBEN usar DB directamente - son la API canónica
+ * 
+ * @param {string} normalizedPath - Ruta normalizada del archivo
+ * @returns {boolean} True si es capa de implementación de queries
+ */
+function isCanonicalQueryImplementation(normalizedPath = '') {
+  return normalizedPath.includes('/query/queries/')
+    || normalizedPath.includes('/query/apis/')
+    || normalizedPath.includes('/storage/repository/');
+}
+
 export function detectServiceBoundaryConformanceFromSource(filePath, source = '', options = {}) {
   return scanCompilerConformanceSource(
     filePath,
@@ -73,7 +86,8 @@ export function detectServiceBoundaryConformanceFromSource(filePath, source = ''
         boundaries.includes('database') &&
         boundaries.includes('filesystem') &&
         !boundaries.includes('compiler') &&
-        !isLegitimateOrchestrator
+        !isLegitimateOrchestrator &&
+        !isCanonicalQueryImplementation(normalizedPath)  // Exclusión: Layer C - Data Access
       ) {
         findings.push(createFinding(
           'missing_compiler_service_bridge',
