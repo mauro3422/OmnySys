@@ -273,9 +273,23 @@ export async function detectConceptualFindings(
         // Construir finding con soporte para projectPath
         const finding = buildConceptualFinding(localAtom, actionableVariants, testabilitySeverity, projectPath);
         
-        // TODO: Integración asíncrona completa de helper reuse detection
-        // Esto requiere refactorizar el flujo para hacer la búsqueda asíncrona aquí
-        // y agregar finding.helperReuseSuggestion con el resultado
+        // Integración asíncrona de helper reuse detection
+        if (projectPath) {
+            try {
+                const reuseOpportunities = await detectHelperReuseOpportunities(
+                    projectPath,
+                    normalizedFilePath,
+                    [finding]
+                );
+
+                if (reuseOpportunities.length > 0 && reuseOpportunities[0].existingHelper) {
+                    finding.helperReuseSuggestion = reuseOpportunities[0].existingHelper;
+                    finding.hasReuseOpportunity = true;
+                }
+            } catch (error) {
+                logger.debug(`[HelperReuseDetection] Skip for ${localAtom.name}: ${error.message}`);
+            }
+        }
         
         findings.push(finding);
         if (findings.length >= maxFindings) {
