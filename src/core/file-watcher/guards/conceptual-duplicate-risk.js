@@ -53,13 +53,15 @@ function loadConceptualDuplicateContext(repo, normalizedFilePath, minLinesOfCode
     };
 }
 
-function detectConceptualDuplicateFindings(repo, normalizedFilePath, localAtoms, maxFindings) {
+async function detectConceptualDuplicateFindings(repo, normalizedFilePath, localAtoms, maxFindings, projectPath = null) {
     return detectConceptualFindings(
         repo,
         normalizedFilePath,
         localAtoms,
         maxFindings,
-        isLowSignalName
+        isLowSignalName,
+        'low',
+        projectPath
     );
 }
 
@@ -183,11 +185,12 @@ export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmi
             return [];
         }
 
-        const findings = detectConceptualDuplicateFindings(
+        const findings = await detectConceptualDuplicateFindings(
             repo,
             normalizedFilePath,
             localAtoms,
-            maxFindings
+            maxFindings,
+            rootPath
         );
 
         if (findings.length === 0) {

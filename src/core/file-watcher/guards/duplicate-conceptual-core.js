@@ -216,13 +216,25 @@ export function buildConceptualFinding(localAtom, structuralVariants, testabilit
     return finding;
 }
 
-export function detectConceptualFindings(
+/**
+ * Detecta duplicados conceptuales y oportunidades de reutilización
+ * @param {Object} repo - Repositorio con DB
+ * @param {string} normalizedFilePath - Archivo normalizado
+ * @param {Array} localAtoms - Átomos locales
+ * @param {number} maxFindings - Máximo de findings
+ * @param {Function} isLowSignalNameFn - Función para filtrar nombres de bajo valor
+ * @param {string} testabilitySeverity - Severidad de testabilidad
+ * @param {string} projectPath - Ruta del proyecto (para helper reuse detection)
+ * @returns {Promise<Array>} Findings de duplicados con sugerencias de reutilización
+ */
+export async function detectConceptualFindings(
     repo,
     normalizedFilePath,
     localAtoms,
     maxFindings,
     isLowSignalNameFn,
-    testabilitySeverity = 'low'
+    testabilitySeverity = 'low',
+    projectPath = null
 ) {
     const findings = [];
 
@@ -258,7 +270,14 @@ export function detectConceptualFindings(
             continue;
         }
 
-        findings.push(buildConceptualFinding(localAtom, actionableVariants, testabilitySeverity));
+        // Construir finding con soporte para projectPath
+        const finding = buildConceptualFinding(localAtom, actionableVariants, testabilitySeverity, projectPath);
+        
+        // TODO: Integración asíncrona completa de helper reuse detection
+        // Esto requiere refactorizar el flujo para hacer la búsqueda asíncrona aquí
+        // y agregar finding.helperReuseSuggestion con el resultado
+        
+        findings.push(finding);
         if (findings.length >= maxFindings) {
             break;
         }

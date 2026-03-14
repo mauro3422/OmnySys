@@ -188,13 +188,14 @@ async function runConceptualDuplicateGuard(repo, normalizedFilePath, options) {
         }
 
         const testabilitySummary = summarizeAtomTestability(localAtoms);
-        return detectConceptualFindings(
+        return await detectConceptualFindings(
             repo,
             normalizedFilePath,
             localAtoms,
             maxFindings,
             isLowSignalName,
-            testabilitySummary.severity
+            testabilitySummary.severity,
+            rootPath
         );
     } catch (error) {
         logger.debug(`[CONCEPTUAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
