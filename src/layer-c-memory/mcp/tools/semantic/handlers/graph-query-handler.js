@@ -16,12 +16,13 @@ export class GraphQueryHandler {
     handleInstances(atoms, options = {}) {
         return atoms.filter(Boolean).map(a => {
             const file = a.file_path || a.filePath || a.file;
+            // is_exported viene de la DB como isExported (camelCase por rowToAtom)
             const base = {
                 file,
                 type: a.atom_type || a.type,
                 id: a.id,
                 params: a.params || [],
-                exports: !!(a.is_exported || a.exports || false)
+                exports: !!(a.isExported || a.is_exported || a.exports || false)
             };
 
             if (options.includeSemantic) {
