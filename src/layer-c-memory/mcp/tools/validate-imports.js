@@ -1,5 +1,5 @@
 import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
-import { getFileAnalysis } from '../../query/apis/file-api.js';
+import { getFileAnalysis, getFileDependencies } from '../../query/apis/file-api.js';
 import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 import {
     buildFilesystemOnlyValidation,
@@ -77,7 +77,17 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
             return [];
         }
 
+        // Usar API canónica en lugar de SQL directo
+        const fileDeps = await getFileDependencies(projectPath, filePath);
         const graph = {};
+        
+        // Construir grafo desde las dependencias del archivo actual
+        if (fileDeps?.dependencies) {
+            graph[filePath] = fileDeps.dependencies.map(d => d.resolvedPath || d.source);
+        }
+        
+        // TODO: Para dependencias transitivas, necesitaríamos getFileDependencies para cada archivo
+        // Por ahora usamos SQL directo solo para el grafo completo (mejorar en el futuro)
         const rows = repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
         for (const row of rows) {
             if (!graph[row.source_path]) graph[row.source_path] = [];
