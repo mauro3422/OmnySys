@@ -3,6 +3,9 @@
  *
  * Herramienta que detecta acceso directo a DB y sugiere APIs canónicas.
  * Usa metadata del grafo para encontrar la API pública equivalente.
+ * 
+ * MEJORADO: Ahora detecta CUALQUIER SQL hardcodeado, no solo patrones específicos.
+ * Usa la DB del OmnySys para sugerir APIs basadas en la tabla mencionada.
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
@@ -12,9 +15,12 @@ const logger = createLogger('OmnySys:MCP:SuggestCanonicalAPI');
 
 /**
  * Mapeo de patrones de DB a APIs canónicas
+ * 
+ * NOTA: Ahora el sistema detecta CUALQUIER tabla dinámicamente.
+ * Este mapeo es solo para sugerencias específicas de tablas conocidas.
  */
 const DB_TO_API_MAPPING = {
-  // Patrones de SQL → API canónica
+  // Patrones de SQL → API canónica (casos específicos)
   'SELECT.*FROM atoms': {
     api: 'findAtomByLine',
     from: '#layer-c/query/apis/file-api.js',
@@ -32,8 +38,41 @@ const DB_TO_API_MAPPING = {
     from: '#layer-c/query/apis/file-api.js',
     description: 'Obtener dependencias de archivo',
     usage: 'await getFileDependencies(projectPath, filePath)'
+  },
+  'SELECT.*FROM societies': {
+    api: 'getFileAnalysis',
+    from: '#layer-c/query/apis/file-api.js',
+    description: 'Obtener análisis de archivo (societies se accede vía file analysis)',
+    usage: 'const metadata = await getFileAnalysis(projectPath, filePath); metadata.societiesCount'
+  },
+  'SELECT.*FROM risk_assessments': {
+    api: 'getFileAnalysis',
+    from: '#layer-c/query/apis/file-api.js',
+    description: 'Obtener análisis de archivo (risk se accede vía file analysis)',
+    usage: 'const metadata = await getFileAnalysis(projectPath, filePath); metadata.risk'
   }
 };
+
+/**
+ * Tablas comunes del sistema OmnySys
+ */
+const KNOWN_TABLES = [
+  'atoms',
+  'files',
+  'atom_relations',
+  'societies',
+  'risk_assessments',
+  'semantic_connections',
+  'file_dependencies',
+  'system_files',
+  'cache_entries',
+  'atom_versions',
+  'modules',
+  'atom_events',
+  'system_metadata',
+  'mcp_sessions',
+  'compiler_scanned_files'
+];
 
 /**
  * Detecta acceso directo a DB en un archivo
@@ -70,18 +109,61 @@ export async function detectDirectDBAccess(filePath, projectPath) {
 
       // Detectar acceso directo a DB
       if (line.includes('repo.db.prepare') || line.includes('db.prepare')) {
-        // Buscar el patrón SQL en las líneas siguientes
-        const sqlMatch = line.match(/prepare\(['"`](.*?)['"`]/);
+        // Regex MEJORADO: Detecta SQL en la misma línea
+        // Captura: prepare('SELECT...') con cualquier contenido entre comillas
+        const sqlMatch = line.match(/prepare\(\s*['"`]([^'"`]+)['"`]/i);
+        
         if (sqlMatch) {
-          const sqlPattern = sqlMatch[1];
-          const apiMapping = findAPIMapping(sqlPattern);
+          const sqlStatement = sqlMatch[1];
           
-          if (apiMapping) {
+          // Solo procesar SELECT statements
+          if (!sqlStatement.trim().toUpperCase().startsWith('SELECT')) {
+            continue;
+          }
+          
+          // Intentar mapeo específico primero
+          let apiMapping = findAPIMapping(sqlStatement);
+          
+          // Si no hay mapeo específico, intentar detección genérica por tabla
+          if (!apiMapping) {
+            apiMapping = findAPIByTableName(sqlStatement);
+          }
+          
+          // Si todavía no hay mapeo, sugerir búsqueda de API canónica
+          if (!apiMapping) {
+            const tableMatch = sqlStatement.match(/FROM\s+(\w+)/i);
+            const tableName = tableMatch ? tableMatch[1] : 'unknown';
+            
             issues.push({
               type: 'direct_db_access',
               line: lineNumber,
               content: line.trim(),
-              sqlPattern: sqlPattern,
+              sqlPattern: sqlStatement,
+              suggestion: {
+                message: `Direct SQL access to table '${tableName}'. Consider creating or using a canonical API.`,
+                api: 'TBD - Create canonical API',
+                from: '#layer-c/query/apis/',
+                usage: `// Create API in query/apis/ for table: ${tableName}`,
+                description: `Table '${tableName}' should have a dedicated canonical API`,
+                recommendation: {
+                  action: 'create_canonical_api',
+                  table: tableName,
+                  suggestedLocation: `src/layer-c-memory/query/apis/${tableName.replace(/_/g, '-')}-api.js`,
+                  example: `
+export async function get${capitalize(tableName)}(projectPath, filters = {}) {
+  const repo = getRepository(projectPath);
+  // Implement query logic here
+}`
+                }
+              }
+            });
+          } else {
+            // Mapeo encontrado (específico o genérico)
+            issues.push({
+              type: 'direct_db_access',
+              line: lineNumber,
+              content: line.trim(),
+              sqlPattern: sqlStatement,
               suggestion: {
                 message: `Use ${apiMapping.api} instead of direct SQL`,
                 api: apiMapping.api,
@@ -115,6 +197,93 @@ function findAPIMapping(sqlPattern) {
     }
   }
   return null;
+}
+
+/**
+ * Encuentra API canónica basada en el nombre de la tabla
+ * @param {string} sqlStatement - Statement SQL completo
+ * @returns {Object|null} Mapeo de API o null
+ */
+function findAPIByTableName(sqlStatement) {
+  // Extraer nombre de tabla del SQL
+  const tableMatch = sqlStatement.match(/FROM\s+(\w+)/i);
+  if (!tableMatch) return null;
+  
+  const tableName = tableMatch[1].toLowerCase();
+  
+  // Buscar en tablas conocidas
+  const knownTable = KNOWN_TABLES.find(t => t.toLowerCase() === tableName);
+  if (!knownTable) return null;
+  
+  // Sugerencias basadas en tabla conocida
+  const tableToAPI = {
+    'atoms': {
+      api: 'findAtomByLine',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Query atoms table - use file-api.js functions`,
+      usage: 'await findAtomByLine(projectPath, filePath, lineNumber)'
+    },
+    'files': {
+      api: 'getFileAnalysis',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Query files table - use file-api.js functions`,
+      usage: 'await getFileAnalysis(projectPath, filePath)'
+    },
+    'atom_relations': {
+      api: 'getFileDependencies',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Query relations - use dependency APIs`,
+      usage: 'await getFileDependencies(projectPath, filePath)'
+    },
+    'societies': {
+      api: 'getFileAnalysis',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Societies count available via file analysis metadata`,
+      usage: 'const meta = await getFileAnalysis(projectPath, filePath); meta.societiesCount'
+    },
+    'risk_assessments': {
+      api: 'getFileAnalysis',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Risk data available via file analysis metadata`,
+      usage: 'const meta = await getFileAnalysis(projectPath, filePath); meta.risk'
+    },
+    'semantic_connections': {
+      api: 'getFileDependencies',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Semantic data via dependency APIs`,
+      usage: 'await getFileDependencies(projectPath, filePath)'
+    },
+    'file_dependencies': {
+      api: 'getFileDependencies',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Use canonical dependency API`,
+      usage: 'await getFileDependencies(projectPath, filePath)'
+    },
+    'system_files': {
+      api: 'getMetadataSurfaceParity',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `System file metadata via parity API`,
+      usage: 'await getMetadataSurfaceParity(projectPath)'
+    },
+    'compiler_scanned_files': {
+      api: 'getPersistedScannedFileManifest',
+      from: '#layer-c/query/apis/file-api.js',
+      description: `Scanner manifest via canonical API`,
+      usage: 'await getPersistedScannedFileManifest(projectPath)'
+    }
+  };
+  
+  return tableToAPI[knownTable] || null;
+}
+
+/**
+ * Capitaliza primera letra de un string
+ * @param {string} str - String a capitalizar
+ * @returns {string} String capitalizado
+ */
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
