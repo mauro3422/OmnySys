@@ -295,9 +295,10 @@ export {
   isLowSignalGuardStructuralHelper,
   shouldIgnoreConceptualDuplicateFinding,
   shouldIgnoreStructuralDuplicateFinding,
+  classifyUtilityHelperDuplicate,
   loadPreviousFindings,
   coordinateDuplicateFindings
-} from './duplicate-utils.js';
+} from './duplicate-signal-policy.js';
 
 export {
   buildDuplicateDebtHistory,

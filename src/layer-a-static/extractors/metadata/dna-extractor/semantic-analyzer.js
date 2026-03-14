@@ -1,9 +1,11 @@
 /**
  * @fileoverview Semantic Analyzer
  * Computes semantic fingerprint and derives verb/domain/entity
- * 
+ *
  * @module layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer
  */
+
+import { extractClassNameFromAtomId, camelToUnderscore, removeClassSuffixes } from '../../utils/class-name-extractor.js';
 
 /**
  * List of common verb prefixes for deriving semantic verb
@@ -29,7 +31,7 @@ export function computeSemanticFingerprint(atom) {
   const verb = deriveVerb(name);
   const domain = deriveDomain(atom);
   const chest = deriveChest(name, verb);
-  const entity = deriveEntity(name, verb);
+  const entity = deriveEntity(atom, verb); // Pass atom instead of name
 
   return `${verb}:${chest}:${domain}:${entity}`;
 }
@@ -101,25 +103,56 @@ export function deriveDomain(atom) {
 }
 
 /**
- * Derives main entity from name (what comes after the verb)
- * @param {string} name - Function name
+ * Derives main entity from name, class context, and file path
+ * 
+ * Strategy:
+ * 1. Try to extract entity from compound name (buildTestName → test_name)
+ * 2. For pure verbs (build, create), use class name context (GraphBuilder.build → graph)
+ * 3. Fallback to file path context (chain-builder.js → chain)
+ * 
+ * @param {Object} atom - Atom object with name, filePath, id, archetype
  * @param {string} verb - Detected verb
  * @returns {string} Entity
  */
-export function deriveEntity(name, verb) {
+export function deriveEntity(atom, verb) {
+  const name = atom.name || '';
+  
   if (!name || !verb) return 'unknown';
 
-  // Remove verb from start and take remaining in camelCase
+  // Strategy 1: Compound name (buildTestName → test_name)
   const rest = name.startsWith(verb)
     ? name.slice(verb.length)
     : name;
 
-  if (!rest) return 'unknown';
+  if (rest) {
+    const tokens = rest.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
+    if (tokens.length > 0 && !(tokens.length === 1 && tokens[0] === '')) {
+      return tokens.map(t => t.toLowerCase()).join('_');
+    }
+  }
 
-  // Split camelCase into tokens
-  const tokens = rest.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
-  if (tokens.length === 0 || (tokens.length === 1 && tokens[0] === '')) return 'unknown';
+  // Strategy 2: Pure verb (build, create, validate) → use class context
+  // Example: GraphBuilder.build → entity = "graph"
+  if (atom.archetype?.type === 'class-method' || atom.filePath?.includes('/builders/')) {
+    const className = extractClassNameFromAtomId(atom.id);
+    if (className) {
+      // Remove "Builder" suffix from class name
+      const entityFromClass = removeClassSuffixes(className, ['Builder']);
+      if (entityFromClass && entityFromClass !== className) {
+        return camelToUnderscore(entityFromClass);
+      }
+    }
+  }
 
-  // Join all tokens with underscores to retain full semantic context
-  return tokens.map(t => t.toLowerCase()).join('_');
+  // Strategy 3: Fallback to file path
+  // Example: chain-builder.js → chain
+  if (atom.filePath) {
+    const fileName = atom.filePath.split('/').pop().replace('.js', '');
+    const entityFromFile = fileName.replace(/-builder$/, '').replace(/_builder$/, '');
+    if (entityFromFile && entityFromFile !== fileName) {
+      return camelToUnderscore(entityFromFile);
+    }
+  }
+
+  return 'unknown';
 }

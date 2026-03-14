@@ -4,6 +4,7 @@
  */
 
 import { text, startLine } from '../utils.js';
+import { extractClassName as extractClassNameHelper } from '../../../extractors/utils/class-name-extractor.js';
 
 // ─── Helpers por tipo de nodo ────────────────────────────────────────────────
 
@@ -17,8 +18,7 @@ function detectFunctionType(nodeType) {
 
 /** Extrae el nombre de una class_declaration o class */
 function extractClassName(node, code) {
-  const nameNode = node.childForFieldName('name');
-  return nameNode ? text(nameNode, code) : 'anonymous';
+  return extractClassNameHelper(node, code);
 }
 
 /** Extrae el nombre de una function_declaration o generator */

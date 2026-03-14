@@ -4,7 +4,8 @@ import {
     shouldIgnoreConceptualDuplicateFinding,
     classifyConceptualNoise,
     classifyContractSurface,
-    evaluateContractCompatibility
+    evaluateContractCompatibility,
+    classifyUtilityHelperDuplicate
 } from '../../../shared/compiler/index.js';
 
 export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
@@ -175,8 +176,15 @@ export function loadLocalStructuralHash(repo, atomId) {
 
 export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low') {
     const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];
+    
+    // Clasificar si es helper utilitario para sugerir ubicación de consolidación
+    const utilityHelperInfo = classifyUtilityHelperDuplicate(
+        localAtom.filePath,
+        localAtom.name,
+        localAtom.semanticFingerprint
+    );
 
-    return {
+    const finding = {
         symbol: localAtom.name,
         atomId: localAtom.id,
         semanticFingerprint: localAtom.semanticFingerprint,
@@ -190,6 +198,17 @@ export function buildConceptualFinding(localAtom, structuralVariants, testabilit
         testabilitySeverity,
         suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
     };
+
+    // Agregar información de helper utilitario si corresponde
+    if (utilityHelperInfo.isUtilityHelper) {
+        finding.isUtilityHelper = true;
+        finding.utilityHelperReason = utilityHelperInfo.reason;
+        if (utilityHelperInfo.suggestedLocation) {
+            finding.suggestedConsolidationLocation = utilityHelperInfo.suggestedLocation;
+        }
+    }
+
+    return finding;
 }
 
 export function detectConceptualFindings(
