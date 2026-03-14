@@ -307,6 +307,14 @@ export {
 } from './helper-reuse-detector.js';
 
 export {
+  analyzeDirectoryStructure,
+  suggestDirectoryForFile,
+  validateFileLocation,
+  detectArchitecturalDrift,
+  calculateArchitectureOrganizationScore
+} from './directory-structure-analyzer.js';
+
+export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
 } from './duplicate-debt.js';
