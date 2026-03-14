@@ -178,6 +178,13 @@ export {
 } from './architectural-recommendations.js';
 
 export {
+  detectGodObject,
+  detectOrphanModule,
+  detectArchitecturalPatterns,
+  getPatternDescriptions
+} from '../architecture-utils.js';
+
+export {
   parseSemanticFingerprint,
   classifyConceptualNoise
 } from './conceptual-noise-policy.js';
