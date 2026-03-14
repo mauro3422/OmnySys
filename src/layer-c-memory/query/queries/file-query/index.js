@@ -19,4 +19,4 @@ export { getFileDependencies, getFileDependents } from './dependencies/index.js'
 export { getFileAnalysisWithAtoms } from './enriched/index.js';
 
 // Atom-level queries
-export { getAtomDetails, findAtomsByArchetype } from './atoms/index.js';
+export { getAtomDetails, findAtomsByArchetype, findAtomByLine } from './atoms/index.js';

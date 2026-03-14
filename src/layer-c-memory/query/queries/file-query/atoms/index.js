@@ -3,4 +3,4 @@
  * @module query/queries/file-query/atoms
  */
 
-export { getAtomDetails, findAtomsByArchetype } from './atom-query.js';
+export { getAtomDetails, findAtomsByArchetype, findAtomByLine } from './atom-query.js';

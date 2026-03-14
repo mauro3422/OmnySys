@@ -6,7 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { loadAtoms } from '#layer-c/storage/index.js';
-import { getFileAnalysis } from '../core/single-file.js';
+import { getFileAnalysis } from '../core/index.js';
 
 const DATA_DIR = '.omnysysdata';
 
@@ -119,4 +119,22 @@ export async function findAtomsByArchetype(rootPath, archetypeType) {
   }
 
   return matches;
+}
+
+/**
+ * Busca un átomo por número de línea en un archivo específico
+ * @param {string} rootPath - Raíz del proyecto
+ * @param {string} filePath - Ruta del archivo
+ * @param {number} lineNumber - Número de línea (1-based)
+ * @returns {Promise<object|null>} - Átomo que contiene esa línea o null
+ */
+export async function findAtomByLine(rootPath, filePath, lineNumber) {
+  const atoms = await loadAtoms(rootPath, filePath);
+  
+  // Buscar el átomo que contiene esa línea
+  const atom = atoms.find(a => 
+    a.lineStart <= lineNumber && a.lineEnd >= lineNumber
+  ) || null;
+
+  return atom;
 }
