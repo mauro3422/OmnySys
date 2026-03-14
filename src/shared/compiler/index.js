@@ -301,6 +301,12 @@ export {
 } from './duplicate-signal-policy.js';
 
 export {
+  findExistingHelpers,
+  buildReuseSuggestion,
+  detectHelperReuseOpportunities
+} from './helper-reuse-detector.js';
+
+export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
 } from './duplicate-debt.js';

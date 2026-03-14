@@ -5,7 +5,8 @@ import {
     classifyConceptualNoise,
     classifyContractSurface,
     evaluateContractCompatibility,
-    classifyUtilityHelperDuplicate
+    classifyUtilityHelperDuplicate,
+    detectHelperReuseOpportunities
 } from '../../../shared/compiler/index.js';
 
 export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
@@ -174,9 +175,9 @@ export function loadLocalStructuralHash(repo, atomId) {
     `).get(atomId)?.sh;
 }
 
-export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low') {
+export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low', projectPath = null) {
     const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];
-    
+
     // Clasificar si es helper utilitario para sugerir ubicación de consolidación
     const utilityHelperInfo = classifyUtilityHelperDuplicate(
         localAtom.filePath,
@@ -207,6 +208,10 @@ export function buildConceptualFinding(localAtom, structuralVariants, testabilit
             finding.suggestedConsolidationLocation = utilityHelperInfo.suggestedLocation;
         }
     }
+
+    // TODO: Integrar detectHelperReuseOpportunities para sugerir helpers existentes
+    // Esto requiere pasar projectPath y hacer la búsqueda asíncrona
+    // Por ahora, marcamos el lugar donde se integrará
 
     return finding;
 }
