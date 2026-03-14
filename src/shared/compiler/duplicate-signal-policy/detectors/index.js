@@ -9,3 +9,10 @@ export * from './core-policy.js';
 
 // Subsystem detectors (repository, storage, compiler, pipeline, etc.)
 export * from './subsystems.js';
+
+// Policy decision functions (explicit re-export for clarity)
+export {
+    shouldIgnoreConceptualDuplicateFinding,
+    shouldIgnoreStructuralDuplicateFinding,
+    classifyUtilityHelperDuplicate
+} from './core-policy.js';

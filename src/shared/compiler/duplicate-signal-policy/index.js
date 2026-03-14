@@ -19,3 +19,19 @@ export {
 
 // Detectors (all is* functions)
 export * from './detectors/index.js';
+
+// Policy decision functions (explicit re-export for clarity)
+export {
+    shouldIgnoreConceptualDuplicateFinding,
+    shouldIgnoreStructuralDuplicateFinding,
+    classifyUtilityHelperDuplicate
+} from './detectors/core-policy.js';
+
+// Utility functions (re-export from duplicate-utils for backward compatibility)
+export {
+    generateAlternativeNames,
+    buildDuplicateDebtHistory,
+    buildDuplicateContext,
+    loadPreviousFindings,
+    coordinateDuplicateFindings
+} from '../duplicate-utils.js';

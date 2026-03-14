@@ -32,6 +32,7 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'runtime_ownership', label: 'Runtime ownership/daemon lock', status: 'canonical' },
   { id: 'state_ownership', label: 'State ownership/singleton policy', status: 'canonical' },
   { id: 'service_boundary', label: 'Service boundary policy', status: 'canonical' },
+  { id: 'runtime_boundary_surfaces', label: 'Runtime boundary surfaces', status: 'canonical' },
   { id: 'canonical_extension', label: 'Canonical extension policy', status: 'canonical' },
   { id: 'async_error', label: 'Async error/recovery policy', status: 'canonical' },
   { id: 'shared_state_hotspots', label: 'Shared-state hotspot policy', status: 'canonical' },

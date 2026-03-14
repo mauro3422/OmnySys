@@ -7,7 +7,7 @@
  * @module shared/compiler/duplicate-signal-policy.transformer
  */
 
-import { normalizeFilePath } from './path-normalization.js';
+import { normalizeFilePath } from '../path-normalization.js';
 
 /**
  * Normalizes input parameters for duplicate signal policy checks.

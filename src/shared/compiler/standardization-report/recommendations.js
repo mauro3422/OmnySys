@@ -34,6 +34,10 @@ function hasCanonicalSharedStateContentionAdoption(canonicalAdoptions = {}) {
   return canonicalAdoptions.sharedStateContention === true;
 }
 
+function hasCanonicalRuntimeBoundarySurfacesAdoption(canonicalAdoptions = {}) {
+  return canonicalAdoptions.runtimeBoundarySurfaces === true;
+}
+
 function hasCanonicalScannedFileManifestAdoption(canonicalAdoptions = {}) {
   return canonicalAdoptions.scannedFileManifest === true;
 }

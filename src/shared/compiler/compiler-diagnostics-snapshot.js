@@ -24,7 +24,8 @@ import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 const CANONICAL_ADOPTION_PATTERNS = {
     centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
     sharedStateContention: /\bgetSharedStateContentionSummary\b|\bsummarizeSharedStateHotspots\b/,
-    scannedFileManifest: /\bsyncPersistedScannedFileManifest\b|\bsummarizePersistedScannedFileCoverage\b|\bgetPersistedScannedFilePaths\b|\bloadPersistedScannedFilePaths\b/
+    scannedFileManifest: /\bsyncPersistedScannedFileManifest\b|\bsummarizePersistedScannedFileCoverage\b|\bgetPersistedScannedFilePaths\b|\bloadPersistedScannedFilePaths\b/,
+    runtimeBoundarySurfaces: /\bexecuteWithBoundary\b|\bexecuteWithNetworkBoundary\b|\bclassifyBoundaryError\b/
 };
 
 async function collectCanonicalAdoptionEvidence(projectPath) {
