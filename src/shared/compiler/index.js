@@ -322,6 +322,16 @@ export {
 } from './directory-structure-analyzer.js';
 
 export {
+  detectArchitecturalPattern,
+  detectHelperUtilityPattern,
+  detectPolicyModulePattern,
+  detectServiceLayerPattern,
+  detectAllArchitecturalPatterns,
+  summarizeArchitecturalPatterns,
+  ARCHITECTURAL_PATTERNS
+} from './architectural-pattern-detector.js';
+
+export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
 } from './duplicate-debt.js';
