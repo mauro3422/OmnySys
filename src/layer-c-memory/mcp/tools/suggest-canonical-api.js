@@ -6,6 +6,48 @@
  * 
  * MEJORADO: Ahora detecta CUALQUIER SQL hardcodeado, no solo patrones específicos.
  * Usa la DB del OmnySys para sugerir APIs basadas en la tabla mencionada.
+ * 
+ * ============================================================================
+ * MEJORAS PENDIENTES (TODO):
+ * ============================================================================
+ * 
+ * TODO #1: Detectar SQL multilinea
+ * --------------------------------
+ * Problema: El regex actual solo captura SQL en una línea
+ * Ejemplo que NO detecta:
+ *   const stmt = repo.db.prepare(`
+ *     SELECT COUNT(*) FROM atoms
+ *     WHERE file_path = ?
+ *   `);
+ * Solución: Usar Tree-sitter para parsear el AST y encontrar calls a prepare()
+ * 
+ * TODO #2: Detectar INSERT/UPDATE/DELETE
+ * --------------------------------------
+ * Problema: Solo detecta SELECT statements
+ * Ejemplo que NO detecta:
+ *   repo.db.prepare('INSERT INTO atoms ...').run(...)
+ * Solución: Agregar patrones para INSERT, UPDATE, DELETE y sugerir APIs de mutación
+ * 
+ * TODO #3: Sugerir APIs basadas en patrones de JOIN
+ * --------------------------------------------------
+ * Problema: No detecta queries complejos con JOINs
+ * Ejemplo:
+ *   SELECT a.*, f.* FROM atoms a JOIN files f ON a.file_id = f.id
+ * Solución: Analizar tablas en JOIN y sugerir APIs compuestas o crear nueva API
+ * 
+ * TODO #4: Integrar con DB del OmnySys para sugerencias dinámicas
+ * --------------------------------------------------------------
+ * Problema: KNOWN_TABLES es hardcodeado
+ * Solución: Consultar `PRAGMA table_list` para obtener tablas existentes
+ * y buscar en el grafo qué APIs las usan
+ * 
+ * TODO #5: Detectar acceso directo a otras DBs (no SQLite)
+ * --------------------------------------------------------
+ * Problema: Solo detecta repo.db.prepare()
+ * Ejemplo que NO detecta:
+ *   await mongoose.Model.find()
+ *   await sequelize.query()
+ * Solución: Agregar patrones para ORMs populares
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
@@ -55,6 +97,10 @@ const DB_TO_API_MAPPING = {
 
 /**
  * Tablas comunes del sistema OmnySys
+ * 
+ * TODO #4: Esto es hardcodeado - debería consultar la DB dinámicamente
+ * Solución: Usar `PRAGMA table_list` para obtener tablas existentes
+ * y buscar en el grafo qué APIs las usan
  */
 const KNOWN_TABLES = [
   'atoms',
@@ -94,7 +140,8 @@ export async function detectDirectDBAccess(filePath, projectPath) {
       const lineNumber = i + 1;
 
       // Detectar imports de repository
-      if (line.includes("from '#layer-c/storage/repository'") || 
+      // TODO #5: Solo detecta SQLite - agregar patrones para ORMs (mongoose, sequelize, etc.)
+      if (line.includes("from '#layer-c/storage/repository'") ||
           line.includes("from '#layer-c/storage/index'")) {
         issues.push({
           type: 'direct_repository_import',
@@ -111,11 +158,13 @@ export async function detectDirectDBAccess(filePath, projectPath) {
       if (line.includes('repo.db.prepare') || line.includes('db.prepare')) {
         // Regex MEJORADO: Detecta SQL en la misma línea
         // Captura: prepare('SELECT...') con cualquier contenido entre comillas
+        // TODO #1: Esto NO detecta SQL multilinea - requiere Tree-sitter
         const sqlMatch = line.match(/prepare\(\s*['"`]([^'"`]+)['"`]/i);
         
         if (sqlMatch) {
           const sqlStatement = sqlMatch[1];
           
+          // TODO #2: Solo detecta SELECT - agregar INSERT/UPDATE/DELETE
           // Solo procesar SELECT statements
           if (!sqlStatement.trim().toUpperCase().startsWith('SELECT')) {
             continue;
@@ -129,6 +178,7 @@ export async function detectDirectDBAccess(filePath, projectPath) {
             apiMapping = findAPIByTableName(sqlStatement);
           }
           
+          // TODO #3: No detecta JOINs complejos - solo extrae primera tabla
           // Si todavía no hay mapeo, sugerir búsqueda de API canónica
           if (!apiMapping) {
             const tableMatch = sqlStatement.match(/FROM\s+(\w+)/i);
