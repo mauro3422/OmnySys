@@ -22,8 +22,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.126 - MCP Export Chain Validation & Runtime Crash Prevention](changelogs/v0.9.126.md)
+- [v0.9.125 - Architectural Intelligence & Modular Policy Structure](changelogs/v0.9.125.md)
 - [v0.9.124 - Policy Gap Closure & Duplicate Debt Reduction](changelogs/v0.9.124.md)
-- [v0.9.123 - Runtime Freshness & Watcher Signal Hardening](changelogs/v0.9.123.md)
 - [v0.9.122 - MCP Registry And Guard Catalog Decomposition](changelogs/v0.9.122.md)
 - [v0.9.121 - MCP Runtime & Watcher Canonicalization](changelogs/v0.9.121.md)
 - [v0.9.120 - Debt Reduction & Performance Cleanup](changelogs/v0.9.120.md)
