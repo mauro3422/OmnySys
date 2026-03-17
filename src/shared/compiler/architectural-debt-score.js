@@ -373,7 +373,7 @@ function detectFileType(fileName) {
 /**
  * Obtiene nivel de severidad basado en score
  */
-function getSeverityLevel(score) {
+export function getSeverityLevel(score) {
     if (score <= SEVERITY_THRESHOLDS.low.max) return 'low';
     if (score <= SEVERITY_THRESHOLDS.moderate.max) return 'moderate';
     if (score <= SEVERITY_THRESHOLDS.high.max) return 'high';
