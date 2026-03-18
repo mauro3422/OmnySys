@@ -13,6 +13,7 @@ import {
     stripComments,
     stripStrings
 } from './conformance-utils.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 const LOW_SIGNAL_PATTERNS = [
     /^anonymous(_\d+)?$/i,
@@ -177,8 +178,9 @@ export function detectDeadCodeDrift(source = '', filePath = '') {
             severity: 'medium',
             policyArea: 'dead_code',
             message: 'Manual dead-code candidate scan detected',
-            recommendation: 'Use getSuspiciousDeadCodeCount / getDeadCodePlausibilitySummary from shared/compiler instead of rebuilding dead-code heuristics inline.'
+            recommendation: getRecommendation({ type: 'dead_code' }).message
         });
+
     }
 
     return findings;
@@ -320,7 +322,7 @@ export function buildDeadCodeRemediationPlan(db, options = {}) {
             allowExported
         }),
         items,
-        recommendation: 'Review suspicious dead-code atoms before deleting or rewiring them.',
+        recommendation: getRecommendation({ type: 'dead_code' }).message,
         emptyRecommendation: 'No suspicious dead-code atoms detected.'
     });
 }

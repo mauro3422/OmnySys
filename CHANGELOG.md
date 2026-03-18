@@ -55,6 +55,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.141** | 2026-03-18 | Sprint 14: Unified Action API with ActionEngine, consolidated telemetry in StatsPool, filtered test noise, and achieved 100/100 health score. |
 | **0.9.130** | 2026-03-18 | Sprint 13: Consolidated structural debt to 0, hardened critical daemons (SocietyPersistor, scoring) with try/catch, and updated duplicate policies to ignore strategic patterns. |
 
 | **0.9.128** | 2026-03-18 | Fixed a critical SQLite memory leak in FileWatcher causing false positive duplicate alerts due to zombie atoms. Completed triage on orchestration scripts yielding 0 new DDD module boundaries. |
@@ -86,28 +87,28 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.123 (2026-03-12)
+## Latest Release: v0.9.141 (2026-03-18)
 
-**Runtime Freshness & Watcher Signal Hardening**
+**Action API Standardization & Telemetry Unification**
 
 ### Key Achievements
 
-1. Reduced runtime freshness false positives by filtering stale pending-restart queue entries.
-2. Hardened manual restart queueing to ignore watcher-triggered runtime changes without real git-diff evidence.
-3. Reduced semantic-debt noise by downgrading non-production `high-semantic-coupling` findings to `medium` at persistence time.
-4. Kept MCP status telemetry and watcher reconciliation coherent through repeated live MCP validations.
+1.  **Action API SSOT**: Created `ActionEngine.js` to centralize all system mutations and tool actions.
+2.  **Universal Telemetry**: Successfully migrated all core modules to `StatsPool` for a unified metrics view.
+3.  **100/100 Health Score**: Eliminated noise from generated tests and stabilized the pipeline integrity.
+4.  **Architectural Hardening**: Fixed critical regressions in relative paths and legacy API support.
 
 ### New & Refactored Files
 
-- `src/shared/compiler/telemetry-provenance.js`
-- `src/layer-c-memory/mcp/core/hot-reload-manager/strategies/base-strategy.js`
-- `src/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js`
-- `src/layer-a-static/pipeline/enhancers/analyzers/semantic-issue-analyzer.js`
-- `changelogs/v0.9.123.md`
+- `src/shared/compiler/actions/ActionEngine.js`
+- `src/layer-c-memory/mcp/tools/tool-handler-action.js`
+- `src/validation/validation-engine/ValidationEngine.js`
+- `src/core/file-watcher/guards/registry.js`
+- `changelogs/v0.9.141.md`
 
 ---
 
-## Previous Release: v0.9.122 (2026-03-12)
+## Previous Release: v0.9.123 (2026-03-12)
 
 **MCP Registry And Guard Catalog Decomposition**
 

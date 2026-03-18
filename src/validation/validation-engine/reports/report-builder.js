@@ -84,6 +84,14 @@ export class ReportBuilder {
   }
 
   /**
+   * Obtiene estadísticas del reporte actual
+   * @returns {Object}
+   */
+  getStats() {
+    return this.report.stats || { passed: 0, failed: 0, critical: 0, total: 0 };
+  }
+
+  /**
    * Verifica si hay violaciones críticas
    * @returns {boolean}
    */

@@ -10,6 +10,7 @@ import {
   buildStandardPlan,
   buildStandardItem
 } from './remediation-plan-builder.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 const MANUAL_ORPHAN_PATTERNS = [
   /(called_by_json|calls_json|callers_count|callees_count)/,
@@ -114,7 +115,7 @@ export function detectPipelineOrphanDrift(source = '', filePath = '') {
       severity: 'medium',
       policyArea: 'pipeline_orphans',
       message: 'Manual pipeline orphan classification detected',
-      recommendation: 'Use classifyPipelineOrphans / getPipelineOrphanSummary from shared/compiler instead of rebuilding orphan heuristics inline.'
+      recommendation: getRecommendation({ type: 'pipeline_orphan' }).message
     });
   }
 
@@ -258,7 +259,7 @@ export function buildPipelineOrphanRemediationPlan(orphans = []) {
   return buildStandardPlan({
     total: orphans.length,
     items: orphans.map(buildPipelineOrphanRemediation),
-    recommendation: 'Review pipeline orphan candidates before deleting or rewiring them.',
+    recommendation: getRecommendation({ type: 'pipeline_orphan' }).message,
     emptyRecommendation: 'No disconnected pipeline atoms detected.'
   });
 }

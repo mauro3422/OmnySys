@@ -78,12 +78,12 @@ export function composeMolecularMetadata(moleculeId, atoms, cache = null) {
 
 import { statsPool } from '../../shared/utils/stats-pool.js';
 
-/**
- * molecular_composer:get_stats
- * Canonical delegation to statsPool
- */
-export function getStats() {
-  return statsPool.getStats('molecular_composer');
+// Registrar en StatsPool si no está registrado
+if (!statsPool.providers.has('molecular_composer')) {
+  statsPool.registerProvider('molecular_composer', () => ({
+    type: 'derivation-engine',
+    version: '1.0.0'
+  }));
 }
 
 /**

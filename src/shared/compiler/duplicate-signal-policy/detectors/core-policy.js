@@ -160,7 +160,8 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
         normalizedFingerprint === 'execute:orchestration:core:execute' ||
         normalizedFingerprint === 'run:orchestration:core:run' ||
         normalizedFingerprint === 'process:logic:core:score' ||
-        normalizedFingerprint === 'validate:logic:core:validate'
+        normalizedFingerprint === 'validate:logic:core:validate' ||
+        normalizedFingerprint.startsWith('test_framework:')
     ) {
         return true;
     }

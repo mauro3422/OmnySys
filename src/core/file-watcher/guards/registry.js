@@ -157,7 +157,7 @@ class GuardRegistry {
     }
 
     getStats() {
-        return this.getRegistryStats();
+        return this.getLocalStats();
     }
 }
 

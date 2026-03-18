@@ -36,6 +36,8 @@ export class ValidationEngine {
     this.strategies = initializeStrategies(this.options.enabledStrategies);
     this.runner = initializeRunner(this.options);
     this.reportBuilder = new ReportBuilder();
+
+    statsPool.registerProvider('ValidationEngine', () => this.reportBuilder.getStats());
   }
 
   async validate(projectPath, omnysysPath) {
@@ -105,9 +107,12 @@ export class ValidationEngine {
     logger.info('Cache cleared');
   }
 
-getStats() {
-    return statsPool.getStats('ValidationEngine');
-  }  logStart(projectPath) {
+  clearCache() {
+    this.cache.clear();
+    logger.info('Cache cleared');
+  }
+
+  logStart(projectPath) {
     logger.info('='.repeat(70));
     logger.info('STARTING VALIDATION');
     logger.info(`Project: ${projectPath}`);

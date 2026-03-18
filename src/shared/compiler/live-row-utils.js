@@ -6,6 +6,7 @@
  */
 
 import { buildStandardPlan, buildStandardItem } from './remediation-plan-builder.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 const MANUAL_LIVE_ROW_PATTERNS = [
     /(LEFT JOIN|NOT IN)\s+live_files/,
@@ -91,7 +92,7 @@ export function detectLiveRowDrift(source = '', filePath = '') {
             severity: 'medium',
             policyArea: 'live_row_drift',
             message: 'Manual live/stale row drift logic detected',
-            recommendation: 'Use getLiveRowDriftSummary / ensureLiveRowSync from shared/compiler instead of hand-rolling stale row SQL.'
+            recommendation: getRecommendation({ type: 'live_row_drift' }).message
         });
     }
 
@@ -216,7 +217,7 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
     return buildStandardPlan({
         total: staleFileRows + staleRiskRows,
         items: [],
-        recommendation: 'Reconcile support tables with the live atom graph.',
+        recommendation: getRecommendation({ type: 'live_row_drift' }).message,
         severity,
         summary: reconciliationPlan.summary,
         staleFileSamples: reconciliationPlan.staleFileSamples,

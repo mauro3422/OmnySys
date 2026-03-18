@@ -24,6 +24,7 @@ import {
     detectFileType
 } from './directory-structure-analyzer.js';
 import { detectHelperReuseOpportunities } from './helper-reuse-detector.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 
@@ -158,7 +159,11 @@ async function calculateDirectoryStructureScore(projectPath, repo, conventions) 
                             severity: 'low',
                             expectedDirectory: validation.expectedDirectory,
                             actualDirectory: validation.actualDirectory,
-                            recommendation: `Move to ${validation.expectedDirectory}`
+                            recommendation: getRecommendation({
+                                type: 'file_in_wrong_directory',
+                                filePath,
+                                context: { expectedDirectory: validation.expectedDirectory }
+                            }).message
                         });
                     }
                 }
@@ -282,7 +287,11 @@ async function calculateCouplingScore(projectPath, repo) {
                     file: file.file_path,
                     severity: 'medium',
                     importCount: file.importCount,
-                    recommendation: 'Consider splitting into smaller modules or using dependency injection'
+                    recommendation: getRecommendation({
+                        type: 'high_coupling',
+                        filePath: file.file_path,
+                        context: { importCount: file.importCount }
+                    }).message
                 });
             }
         }
@@ -338,7 +347,11 @@ async function calculateDuplicationScore(projectPath, repo) {
                     instanceCount: dup.instanceCount,
                     files: dup.files.split(','),
                     severity: dup.instanceCount > 5 ? 'high' : 'medium',
-                    recommendation: `Consolidate ${dup.instanceCount} duplicate implementations`
+                    recommendation: getRecommendation({
+                        type: 'conceptual_duplicate',
+                        filePath: dup.files.split(',')[0],
+                        context: { instanceCount: dup.instanceCount }
+                    }).message
                 });
             }
         }

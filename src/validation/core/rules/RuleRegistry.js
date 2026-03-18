@@ -21,6 +21,15 @@ export class RuleRegistry {
     };
     this.rulesByEntity = new Map();
     this.invariants = [];
+
+    statsPool.registerProvider('RuleRegistry', () => ({
+      totalRules: this.rules.size,
+      byLayer: Object.fromEntries(
+        Object.entries(this.rulesByLayer).map(([k, v]) => [k, v.length])
+      ),
+      totalEntities: this.rulesByEntity.size,
+      invariants: this.invariants.length
+    }));
   }
 
   /**
@@ -147,11 +156,6 @@ export class RuleRegistry {
   }
 
   /**
-   * Obtiene estadísticas del registro
-   */
-getStats() {
-    return statsPool.getStats('RuleRegistry');
-  }  /**
    * Limpia todas las reglas
    */
   clear() {
@@ -164,4 +168,3 @@ getStats() {
     this.invariants = [];
   }
 }
-
