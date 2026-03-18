@@ -4,6 +4,7 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
+import { seedHashBaseline } from '../../../../layer-c-memory/storage/cache/hash-cache.js';
 
 const logger = createLogger('OmnySys:analysis:checker');
 
@@ -25,7 +26,15 @@ export async function runFullIndexing(projectPath) {
       outputPath: 'system-map.json'
     });
 
-    logger.info(`\n   📊 Layer A: ${Object.keys(result.files || {}).length} files analyzed`);
+    const analyzedFiles = Object.keys(result.files || {});
+    if (analyzedFiles.length > 0) {
+      const seeded = await seedHashBaseline(projectPath, analyzedFiles, true);
+      if (seeded?.seeded > 0) {
+        logger.info(`   🧾 Persisted file hash baseline for ${seeded.seeded} file(s)`);
+      }
+    }
+
+    logger.info(`\n   📊 Layer A: ${analyzedFiles.length} files analyzed`);
 
     const hasLLM = Object.values(result.files || {}).some(
       f => f.aiEnhancement || f.llmInsights

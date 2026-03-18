@@ -6,6 +6,8 @@
  * @module storage/repository/adapters/handlers/relation-bulk-handler
  */
 
+import { primeActiveAtomCache } from '../helpers/call-target-resolver.js';
+
 export class RelationBulkHandler {
     constructor(db, logger) {
         this.db = db;
@@ -25,15 +27,22 @@ export class RelationBulkHandler {
         const batchSize = 500;
         const totalBatches = Math.ceil(relationsToSave.length / batchSize);
         let totalSaved = 0;
+        const resolverCache = {
+            importsBySourcePath: new Map(),
+            resolvedTargets: new Map()
+        };
+
+        primeActiveAtomCache(this.db, resolverCache);
 
         for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
             const batch = relationsToSave.slice(batchNum * batchSize, (batchNum + 1) * batchSize);
             const validRelations = [];
+            const relationFingerprints = new Set();
 
             for (const { atomId, call } of batch) {
                 const normalizedSourceId = normalizeIdFn(atomId);
                 const targetId = resolveCallTargetIdFn
-                    ? resolveCallTargetIdFn(normalizedSourceId, call)
+                    ? resolveCallTargetIdFn(normalizedSourceId, call, resolverCache)
                     : null;
                 if (!targetId) {
                     continue;
@@ -49,6 +58,12 @@ export class RelationBulkHandler {
                     contextJson = '{}';
                 }
 
+                const relationFingerprint = `${normalizedSourceId}::${targetId}::calls::${lineNumber ?? ''}`;
+                if (relationFingerprints.has(relationFingerprint)) {
+                    continue;
+                }
+                relationFingerprints.add(relationFingerprint);
+
                 validRelations.push({
                     atomId: normalizedSourceId,
                     targetId,
@@ -61,15 +76,21 @@ export class RelationBulkHandler {
 
             if (validRelations.length === 0) continue;
 
-            const placeholders = validRelations.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+            const placeholders = validRelations.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
             const sql = `
-        INSERT OR IGNORE INTO atom_relations 
-        (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
+        INSERT INTO atom_relations 
+        (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
         VALUES ${placeholders}
+        ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
+          weight = excluded.weight,
+          context_json = excluded.context_json,
+          is_removed = 0,
+          lifecycle_status = 'active',
+          updated_at = excluded.created_at
       `;
 
             const flatValues = validRelations.flatMap(r => [
-                r.atomId, r.targetId, 'calls', r.weight, r.lineNumber, r.contextJson, r.now
+                r.atomId, r.targetId, 'calls', r.weight, r.lineNumber, r.contextJson, r.now, 0, 'active', r.now
             ]);
 
             this.db.prepare(sql).run(...flatValues);

@@ -262,6 +262,19 @@ export const TABLE_DEFINITIONS = {
     ]
   },
 
+  file_hashes: {
+    description: 'Hashes persistidos para detección incremental de cambios',
+    addedIn: 'v3.0.1',
+    columns: [
+      { name: 'file_path', type: 'TEXT', pk: true, nullable: false, description: 'Ruta normalizada del archivo' },
+      { name: 'content_hash', type: 'TEXT', nullable: false, description: 'Hash SHA-256 del contenido' },
+      { name: 'last_updated', type: 'INTEGER', nullable: false, description: 'Timestamp de última actualización' }
+    ],
+    indexes: [
+      { name: 'idx_file_hashes_path', columns: ['file_path'] }
+    ]
+  },
+
   modules: {
     description: 'Metadatos por módulo (agrupación de archivos)',
     columns: [

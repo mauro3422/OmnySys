@@ -8,7 +8,7 @@
 
 import { safeNumber, safeJson } from './converters.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
-import { resolveCallTargetId } from './call-target-resolver.js';
+import { primeActiveAtomCache, resolveCallTargetId } from './call-target-resolver.js';
 
 /**
  * Guarda las llamadas (calls) de un átomo
@@ -33,13 +33,25 @@ export function saveCalls(db, atomId, calls, logger) {
   // Insertar nuevas relaciones
   const insertStmt = db.prepare(`
     INSERT INTO atom_relations 
-    (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-    VALUES (?, ?, 'calls', ?, ?, ?, ?)
+    (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
+    VALUES (?, ?, 'calls', ?, ?, ?, ?, 0, 'active', ?)
+    ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
+      weight = excluded.weight,
+      line_number = excluded.line_number,
+      context_json = excluded.context_json,
+      is_removed = 0,
+      lifecycle_status = 'active',
+      updated_at = excluded.created_at
   `);
+  const resolverCache = {
+    importsBySourcePath: new Map(),
+    resolvedTargets: new Map()
+  };
+  primeActiveAtomCache(db, resolverCache);
 
   for (const call of calls) {
     const normalizedSourceId = normalizeIdFn(atomId);
-    const targetId = resolveCallTargetId(db, normalizedSourceId, call, normalizeIdFn);
+    const targetId = resolveCallTargetId(db, normalizedSourceId, call, normalizeIdFn, resolverCache);
     if (!targetId) {
       continue;
     }
@@ -57,7 +69,7 @@ export function saveCalls(db, atomId, calls, logger) {
       contextJson = '{}';
     }
 
-    insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now);
+    insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
   }
 }
 
@@ -80,10 +92,22 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
   }
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO atom_relations 
-    (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-    VALUES (?, ?, 'calls', ?, ?, ?, ?)
+    INSERT INTO atom_relations 
+    (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
+    VALUES (?, ?, 'calls', ?, ?, ?, ?, 0, 'active', ?)
+    ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
+      weight = excluded.weight,
+      line_number = excluded.line_number,
+      context_json = excluded.context_json,
+      is_removed = 0,
+      lifecycle_status = 'active',
+      updated_at = excluded.created_at
   `);
+  const resolverCache = {
+    importsBySourcePath: new Map(),
+    resolvedTargets: new Map()
+  };
+  primeActiveAtomCache(db, resolverCache);
 
   // Usar transaccion para todo el batch
   connectionManager.transaction(() => {
@@ -103,7 +127,7 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
           }
           const [pathPart, namePart] = id.split('::');
           return `${String(pathPart || '').replace(/\\/g, '/')}::${namePart}`;
-        });
+        }, resolverCache);
         if (!targetId) {
           continue;
         }
@@ -118,8 +142,7 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
           contextJson = '{}';
         }
 
-        // OR IGNORE para evitar errores si la relacion ya existe
-        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now);
+        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
       }
     }
   });

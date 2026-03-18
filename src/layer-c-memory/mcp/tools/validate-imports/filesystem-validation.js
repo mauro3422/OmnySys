@@ -6,6 +6,7 @@
  */
 
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { getFileExports } from '#layer-c/query/apis/file-api.js';
 
 import {
@@ -66,6 +67,24 @@ async function loadModuleExports(projectPath, modulePath, exportsByModule) {
     return collectAllExports(projectPath, modulePath, exportsByModule);
 }
 
+async function loadRuntimeModuleExports(projectPath, modulePath) {
+    try {
+        const absolutePath = path.resolve(projectPath, modulePath);
+        const moduleUrl = `${pathToFileURL(absolutePath).href}?v=${Date.now()}`;
+        const runtimeModule = await import(moduleUrl);
+        return {
+            ok: true,
+            exports: new Set(Object.keys(runtimeModule))
+        };
+    } catch (error) {
+        return {
+            ok: false,
+            error: error?.message || String(error),
+            exports: new Set()
+        };
+    }
+}
+
 export async function collectFilesystemImportState(projectPath, filePath) {
     // Read source file to extract import contracts (still need filesystem for this)
     const absoluteFilePath = path.resolve(projectPath, filePath);
@@ -105,13 +124,17 @@ export async function collectFilesystemImportState(projectPath, filePath) {
         try {
             await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
         } catch (error) {
-            pushBroken({
-                source: specifier,
-                type: 'local',
-                resolved: false,
-                reason: 'db_missing',
-                missingExport: error.message
-            });
+            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
+            if (!runtimeModule.ok) {
+                pushBroken({
+                    source: specifier,
+                    type: 'local',
+                    resolved: false,
+                    reason: 'module_unavailable',
+                    missingExport: error.message,
+                    runtimeError: runtimeModule.error
+                });
+            }
         }
     }
 
@@ -126,23 +149,34 @@ export async function collectFilesystemImportState(projectPath, filePath) {
 
         try {
             const moduleExports = await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
+            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
             for (const missingName of contract.namedImports.filter((name) => !moduleExports.has(name))) {
+                if (runtimeModule.ok && runtimeModule.exports.has(missingName)) {
+                    continue;
+                }
+
                 pushBroken({
                     source: contract.specifier,
                     type: 'local',
                     resolved: true,
                     reason: 'missing_named_export',
-                    missingExport: missingName
+                    missingExport: missingName,
+                    runtimeAvailable: runtimeModule.ok,
+                    runtimeError: runtimeModule.error || null
                 });
             }
         } catch (error) {
-            pushBroken({
-                source: contract.specifier,
-                type: 'local',
-                resolved: false,
-                reason: 'db_missing',
-                missingExport: error.message
-            });
+            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
+            if (!runtimeModule.ok) {
+                pushBroken({
+                    source: contract.specifier,
+                    type: 'local',
+                    resolved: false,
+                    reason: 'module_unavailable',
+                    missingExport: error.message,
+                    runtimeError: runtimeModule.error
+                });
+            }
         }
     }
 
@@ -194,7 +228,6 @@ export async function buildFilesystemOnlyValidation(projectPath, filePath) {
 export async function collectBrokenImports(fileData, projectPath, filePath, checkBroken) {
     const broken = [];
     const fingerprints = new Set();
-    const imports = fileData?.imports || [];
     const pushUniqueBrokenImport = (entry) => {
         const fingerprint = [
             entry?.source || '',
@@ -208,17 +241,12 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
         broken.push(entry);
     };
 
-    for (const imp of imports) {
-        if (checkBroken && !imp.resolved && imp.type === 'local') {
-            pushUniqueBrokenImport(imp);
-        }
-    }
-
     if (!checkBroken) {
         return broken;
     }
 
-    // Use DB + filesystem hybrid approach
+    // The indexed import flags can be stale, so validate broken imports from the
+    // source file + runtime module state instead of trusting fileData.imports.
     const state = await collectFilesystemImportState(projectPath, filePath);
     for (const missingImport of state?.broken || []) {
         pushUniqueBrokenImport(missingImport);

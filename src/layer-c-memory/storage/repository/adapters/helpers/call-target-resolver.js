@@ -173,9 +173,44 @@ function buildImportedPathCandidates(sourcePath, importEntry) {
   return candidates;
 }
 
-function resolveByName(db, sourcePath, nameCandidates) {
+function resolveByName(db, sourcePath, nameCandidates, cache = null) {
   if (nameCandidates.length === 0) {
     return null;
+  }
+
+  const sourceComparablePath = normalizeComparablePath(sourcePath);
+
+  const pickBestCandidate = (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+
+    const sortedRows = [...rows].sort((left, right) => {
+      const leftSameFile = normalizeComparablePath(left.file_path || '') === sourceComparablePath ? 0 : 1;
+      const rightSameFile = normalizeComparablePath(right.file_path || '') === sourceComparablePath ? 0 : 1;
+      if (leftSameFile !== rightSameFile) return leftSameFile - rightSameFile;
+
+      const leftExported = left.is_exported ? 0 : 1;
+      const rightExported = right.is_exported ? 0 : 1;
+      if (leftExported !== rightExported) return leftExported - rightExported;
+
+      return String(left.file_path || '').localeCompare(String(right.file_path || ''));
+    });
+
+    return sortedRows[0]?.id || null;
+  };
+
+  const cachedRowsByName = cache?.activeAtomsByName instanceof Map
+    ? cache.activeAtomsByName
+    : null;
+  if (cachedRowsByName instanceof Map) {
+    for (const nameCandidate of nameCandidates) {
+      const cachedRows = cachedRowsByName.get(nameCandidate);
+      const bestId = pickBestCandidate(cachedRows);
+      if (bestId) {
+        return bestId;
+      }
+    }
   }
 
   const stmt = db.prepare(`
@@ -200,17 +235,58 @@ function resolveByName(db, sourcePath, nameCandidates) {
   return null;
 }
 
-export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) => value) {
-  if (!db || !sourceId) {
-    return null;
+export function primeActiveAtomCache(db, cache = null) {
+  if (!db || !cache) {
+    return cache;
   }
 
-  const normalizedSourceId = normalizeIdFn(sourceId);
-  const sourcePath = normalizedSourceId.split('::')[0];
-  const calleeName = extractCalleeName(call);
+  if (cache.activeAtomIds && cache.activeAtomsByName) {
+    return cache;
+  }
 
-  if (!calleeName) {
-    return null;
+  try {
+    const rows = db.prepare(`
+      SELECT id, name, file_path, is_exported
+      FROM atoms
+      WHERE is_removed IS NULL OR is_removed = 0
+    `).all();
+
+    cache.activeAtomIds = new Set();
+    cache.activeAtomsByName = new Map();
+
+    for (const row of rows || []) {
+      if (!row?.id) continue;
+
+      cache.activeAtomIds.add(row.id);
+
+      const nameKey = String(row.name || '').trim();
+      if (!nameKey) continue;
+
+      const normalizedFilePath = normalizeComparablePath(row.file_path || '');
+      const bucket = cache.activeAtomsByName.get(nameKey) || [];
+      bucket.push({
+        id: row.id,
+        file_path: normalizedFilePath,
+        is_exported: row.is_exported === 1 || row.is_exported === true
+      });
+      cache.activeAtomsByName.set(nameKey, bucket);
+    }
+
+  } catch {
+    cache.activeAtomIds = new Set();
+    cache.activeAtomsByName = new Map();
+  }
+
+  return cache;
+}
+
+function hasActiveAtomId(db, candidateId, cache = null) {
+  if (!candidateId) {
+    return false;
+  }
+
+  if (cache?.activeAtomIds instanceof Set) {
+    return cache.activeAtomIds.has(candidateId);
   }
 
   const activeAtomStmt = db.prepare(`
@@ -221,15 +297,44 @@ export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) 
     LIMIT 1
   `);
 
+  return !!activeAtomStmt.get(candidateId);
+}
+
+export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) => value, cache = null) {
+  if (!db || !sourceId) {
+    return null;
+  }
+
+  const normalizedSourceId = normalizeIdFn(sourceId);
+  const sourcePath = normalizedSourceId.split('::')[0];
+  const calleeName = extractCalleeName(call);
+  const sourceHint = extractSourceHint(call);
+
+  if (!calleeName) {
+    return null;
+  }
+
+  const cacheKey = cache
+    ? `${normalizedSourceId}::${calleeName}::${sourceHint}`
+    : null;
+  if (cacheKey && cache.resolvedTargets?.has(cacheKey)) {
+    return cache.resolvedTargets.get(cacheKey);
+  }
+
+  primeActiveAtomCache(db, cache);
+
   const candidateIds = buildIdCandidates(sourcePath, calleeName, call, normalizeIdFn);
   for (const candidateId of candidateIds) {
-    if (activeAtomStmt.get(candidateId)) {
+    if (hasActiveAtomId(db, candidateId, cache)) {
+      if (cacheKey && cache.resolvedTargets) {
+        cache.resolvedTargets.set(cacheKey, candidateId);
+      }
       return candidateId;
     }
   }
 
   const nameCandidates = buildNameCandidates(calleeName);
-  const importsCache = new Map();
+  const importsCache = cache?.importsBySourcePath || new Map();
   const imports = loadImportsForSource(db, importsCache, sourcePath);
 
   for (const importEntry of imports) {
@@ -255,14 +360,21 @@ export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) 
     for (const importedPath of importedPaths) {
       for (const nameCandidate of nameCandidates) {
         const targetId = normalizeIdFn(`${importedPath}::${nameCandidate}`);
-        if (activeAtomStmt.get(targetId)) {
+        if (hasActiveAtomId(db, targetId, cache)) {
+          if (cacheKey && cache.resolvedTargets) {
+            cache.resolvedTargets.set(cacheKey, targetId);
+          }
           return targetId;
         }
       }
     }
   }
 
-  return resolveByName(db, sourcePath, nameCandidates);
+  const resolvedByName = resolveByName(db, sourcePath, nameCandidates, cache);
+  if (cacheKey && cache.resolvedTargets) {
+    cache.resolvedTargets.set(cacheKey, resolvedByName);
+  }
+  return resolvedByName;
 }
 
 export default resolveCallTargetId;

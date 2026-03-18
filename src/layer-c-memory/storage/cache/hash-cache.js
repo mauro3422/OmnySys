@@ -5,6 +5,7 @@
  * cambios reales vs modificaciones de timestamp.
  */
 
+import path from 'path';
 import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { getRepository } from '../repository/index.js';
@@ -53,6 +54,25 @@ export function normalizeHashCachePath(filePath, projectPath) {
 
 function isAbsoluteLikePath(filePath) {
   return /^[a-zA-Z]:\//.test(filePath) || filePath.startsWith('/');
+}
+
+function resolveProjectFilePath(projectPath, filePath) {
+  if (typeof filePath !== 'string' || filePath.length === 0) return '';
+
+  const normalizedPath = filePath.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+  if (isAbsoluteLikePath(normalizedPath)) {
+    return normalizedPath;
+  }
+
+  const normalizedProject = String(projectPath || '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+
+  if (!normalizedProject) {
+    return normalizedPath.replace(/^\.\//, '');
+  }
+
+  return path.posix.join(normalizedProject, normalizedPath.replace(/^\.\//, ''));
 }
 
 /**
@@ -121,6 +141,62 @@ export function saveHashes(projectPath, fileHashes) {
     logger.debug(`[HashCache] Saved ${Object.keys(fileHashes).length} hashes`);
   } catch (error) {
     logger.warn(`[HashCache] Failed to save hashes: ${error.message}`);
+  }
+}
+
+/**
+ * Siembra el baseline persistente de hashes al terminar un reindex completo.
+ * Esto deja la siguiente corrida caliente con una baseline real aunque no haya
+ * existido una tabla `file_hashes` previa.
+ */
+export async function seedHashBaseline(projectPath, currentFiles, verbose = false) {
+  const timer = verbose ? Date.now() : 0;
+
+  try {
+    if (!Array.isArray(currentFiles) || currentFiles.length === 0) {
+      return { seeded: 0, skipped: true };
+    }
+
+    const resolvedFiles = currentFiles
+      .map((entry) => {
+        if (typeof entry === 'string') {
+          return resolveProjectFilePath(projectPath, entry);
+        }
+
+        if (entry && typeof entry === 'object') {
+          return resolveProjectFilePath(projectPath, entry.fullPath || entry.path || entry.filePath || '');
+        }
+
+        return '';
+      })
+      .filter(Boolean);
+
+    if (resolvedFiles.length === 0) {
+      return { seeded: 0, skipped: true };
+    }
+
+    const newHashes = await collectCurrentHashes(
+      projectPath,
+      resolvedFiles,
+      {},
+      {
+        newFiles: [],
+        modifiedFiles: [],
+        unchangedFiles: [],
+        deletedFiles: []
+      }
+    );
+
+    saveHashes(projectPath, newHashes);
+
+    if (verbose) {
+      logger.info(`[HashCache] Seeded baseline for ${Object.keys(newHashes).length} file(s) (${Date.now() - timer}ms)`);
+    }
+
+    return { seeded: Object.keys(newHashes).length, skipped: false };
+  } catch (error) {
+    logger.warn(`[HashCache] Failed to seed baseline: ${error.message}`);
+    return { seeded: 0, skipped: true, error: error.message };
   }
 }
 
@@ -250,11 +326,21 @@ export async function detectRealChanges(projectPath, currentFiles, verbose = fal
 
   try {
     const { storedHashes, staleStoredKeys } = collectStoredHashState(projectPath);
+    const baselineMissing = Object.keys(storedHashes).length === 0 && Array.isArray(currentFiles) && currentFiles.length > 0;
     const { changes, deletedFiles } = buildInitialChangeSet(storedHashes, currentFiles, projectPath);
     const newHashes = await collectCurrentHashes(projectPath, currentFiles, storedHashes, changes);
 
     saveHashes(projectPath, newHashes);
     cleanupStaleHashEntries(projectPath, staleStoredKeys, deletedFiles);
+
+    if (baselineMissing) {
+      changes.newFiles = [];
+      changes.modifiedFiles = [];
+      changes.unchangedFiles = currentFiles
+        .map((filePath) => normalizeHashCachePath(filePath, projectPath))
+        .filter(Boolean);
+      changes.deletedFiles = [];
+    }
 
     if (verbose) {
       const duration = Date.now() - timer;

@@ -1,5 +1,8 @@
+import path from 'path';
+
 import { startTimer } from '../../utils/performance-tracker.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { calculateFieldHashes } from '#layer-c/storage/atoms/atom-version-manager.js';
 import { syncSemanticConnectionsFromRelations } from '#layer-c/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js';
 import { resolveClassInstantiationCalledBy } from './phases/calledby/class-instantiation-tracker.js';
 import { enrichWithCallerPattern } from './phases/atom-extraction/metadata/caller-pattern.js';
@@ -10,6 +13,86 @@ import { linkExportObjectReferences } from './phases/calledby/export-object-refe
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:link');
+
+function normalizeCanonicalAtomId(id, projectPath = '') {
+    if (!id || !String(id).includes('::')) {
+        return id;
+    }
+
+    const [pathPart, ...rest] = String(id).split('::');
+    const absolutePath = path.resolve(projectPath || '', String(pathPart || '').replace(/\\/g, '/')).replace(/\\/g, '/');
+    return `${absolutePath}::${rest.join('::')}`;
+}
+
+function chunkArray(values, size = 500) {
+    const chunks = [];
+    for (let index = 0; index < values.length; index += size) {
+        chunks.push(values.slice(index, index + size));
+    }
+    return chunks;
+}
+
+function readStoredCallsHash(row) {
+    if (!row?.field_hashes_json) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(row.field_hashes_json);
+        return parsed?.calls ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function collectCallRelationSyncAtoms(repo, allAtoms, absoluteRootPath) {
+    try {
+        if (!repo?.db || !Array.isArray(allAtoms) || allAtoms.length === 0) {
+            return [];
+        }
+
+        const candidates = [];
+        for (const atom of allAtoms) {
+            if (!atom?.id) {
+                continue;
+            }
+
+            const normalizedId = normalizeCanonicalAtomId(atom.id, absoluteRootPath);
+            const fieldHashes = calculateFieldHashes(atom);
+            candidates.push({
+                atom: { ...atom, id: normalizedId },
+                atomId: normalizedId,
+                callsHash: fieldHashes?.calls ?? null
+            });
+        }
+
+        if (candidates.length === 0) {
+            return [];
+        }
+
+        const storedCallsHashes = new Map();
+        const atomIds = candidates.map((candidate) => candidate.atomId);
+
+        for (const chunk of chunkArray(atomIds, 500)) {
+            const placeholders = chunk.map(() => '?').join(', ');
+            const rows = repo.db.prepare(`
+                SELECT atom_id, field_hashes_json
+                FROM atom_versions
+                WHERE atom_id IN (${placeholders})
+            `).all(...chunk);
+
+            for (const row of rows || []) {
+                storedCallsHashes.set(row.atom_id, readStoredCallsHash(row));
+            }
+        }
+
+        return candidates
+            .filter(({ atomId, callsHash }) => storedCallsHashes.get(atomId) !== callsHash)
+            .map(({ atom }) => atom);
+    } catch {
+        return [];
+    }
+}
 
 /**
  * Orquesta los 4 pasos de calledBy linkage delegando a módulos especializados.
@@ -119,8 +202,9 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
 
     // 🚀 BULK SAVE: Guardar TODOS los átomos modificados de una vez
     const timerBulkUpdate = startTimer('6f-bulk. Bulk update modified atoms');
+    const repo = getRepository(absoluteRootPath);
+    const callRelationSyncAtoms = collectCallRelationSyncAtoms(repo, allAtoms, absoluteRootPath);
     if (modifiedAtoms.size > 0) {
-        const repo = getRepository(absoluteRootPath);
         if (repo.saveManyBulk) {
             const uniqueAtoms = Array.from(modifiedAtoms);
             repo.saveManyBulk(uniqueAtoms, 500);
@@ -134,7 +218,7 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     // 3.9: Guardar relaciones entre átomos en atom_relations
     const timerRelations = startTimer('6g. Save atom relations');
     if (verbose) logger.info('🔗 Saving atom relations to database...');
-    await saveAtomRelations(allAtoms, absoluteRootPath, verbose);
+    await saveAtomRelations(allAtoms, absoluteRootPath, verbose, callRelationSyncAtoms);
     timerRelations.end(verbose);
 
     // 🚀 NEW: 3.10: Guardar relaciones de estado compartido (Sprint 10)
@@ -149,16 +233,40 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
 /**
  * Guarda las relaciones calls de todos los átomos en la tabla atom_relations
  */
-export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose) {
+export async function saveAtomRelations(allAtoms, absoluteRootPath, verbose, relationSyncAtoms = null) {
     const repo = getRepository(absoluteRootPath);
     if (!repo.saveCalls) {
         if (verbose) logger.warn('  ⚠️ Repository does not support saveCalls');
         return;
     }
 
+    const atomsToSync = Array.isArray(relationSyncAtoms) && relationSyncAtoms.length > 0
+        ? relationSyncAtoms
+        : allAtoms;
+
+    const sourceIds = [...new Set(
+        atomsToSync
+            .map((atom) => normalizeCanonicalAtomId(atom?.id, absoluteRootPath))
+            .filter(Boolean)
+    )];
+
+    if (sourceIds.length > 0) {
+        for (const chunk of chunkArray(sourceIds, 500)) {
+            const clearStmt = repo.db.prepare(`
+                UPDATE atom_relations
+                SET is_removed = 1,
+                    lifecycle_status = 'removed',
+                    updated_at = ?
+                WHERE relation_type = 'calls'
+                  AND source_id IN (${chunk.map(() => '?').join(', ')})
+            `);
+            clearStmt.run(new Date().toISOString(), ...chunk);
+        }
+    }
+
     // 🚀 BULK INSERT: Preparar todas las relaciones y guardar en batch
     const relationsToSave = [];
-    for (const atom of allAtoms) {
+    for (const atom of atomsToSync) {
         if (atom.calls && atom.calls.length > 0) {
             for (const call of atom.calls) {
                 relationsToSave.push({ atomId: atom.id, call });

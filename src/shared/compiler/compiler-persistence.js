@@ -210,6 +210,15 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
               )
           WHERE id = ?
         `).run(atom.id));
+        await withCompilerRepository(rootPath, (repo) => repo.db.prepare(`
+          UPDATE atom_relations
+          SET is_removed = 1,
+              lifecycle_status = 'removed',
+              updated_at = datetime('now')
+          WHERE relation_type = 'calls'
+            AND (source_id = ? OR target_id = ?)
+            AND (is_removed IS NULL OR is_removed = 0)
+        `).run(atom.id, atom.id));
         summary.markedRemovedAtoms += 1;
       }
     }

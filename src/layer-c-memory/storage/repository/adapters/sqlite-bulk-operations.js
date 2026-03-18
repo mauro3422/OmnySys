@@ -8,6 +8,8 @@
  * @module storage/repository/adapters/sqlite-bulk-operations
  */
 
+import path from 'path';
+
 import { SQLiteRelationOperations } from './sqlite-relation-operations.js';
 import { connectionManager } from '../../database/connection.js';
 
@@ -16,6 +18,16 @@ import { AtomBulkHandler } from './handlers/atom-bulk-handler.js';
 import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
 import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 import { resolveCallTargetId } from './helpers/call-target-resolver.js';
+
+function normalizeCanonicalAtomId(id, projectPath = '') {
+  if (!id || !String(id).includes('::')) {
+    return id;
+  }
+
+  const [pathPart, ...rest] = String(id).split('::');
+  const absolutePath = path.resolve(projectPath || '', String(pathPart || '').replace(/\\/g, '/')).replace(/\\/g, '/');
+  return `${absolutePath}::${rest.join('::')}`;
+}
 
 /**
  * Clase para operaciones bulk
@@ -86,8 +98,14 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
         this.relationHandler.handle(
           relationsToSave,
           now,
-          (id) => this._normalizeId(id),
-          (sourceId, call) => resolveCallTargetId(this.db, sourceId, call, (id) => this._normalizeId(id))
+          (id) => normalizeCanonicalAtomId(id, this.projectPath),
+          (sourceId, call, cache) => resolveCallTargetId(
+            this.db,
+            sourceId,
+            call,
+            (id) => normalizeCanonicalAtomId(id, this.projectPath),
+            cache
+          )
         );
       }
 
@@ -168,8 +186,14 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       this.relationHandler.handle(
         relations,
         new Date().toISOString(),
-        (id) => this._normalizeId(id),
-        (sourceId, call) => resolveCallTargetId(this.db, sourceId, call, (id) => this._normalizeId(id))
+        (id) => normalizeCanonicalAtomId(id, this.projectPath),
+        (sourceId, call, cache) => resolveCallTargetId(
+          this.db,
+          sourceId,
+          call,
+          (id) => normalizeCanonicalAtomId(id, this.projectPath),
+          cache
+        )
       )
     );
   }

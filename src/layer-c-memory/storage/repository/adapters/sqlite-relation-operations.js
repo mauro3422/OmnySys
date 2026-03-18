@@ -7,8 +7,20 @@
  * @module storage/repository/adapters/sqlite-relation-operations
  */
 
+import path from 'path';
+
 import { SQLiteQueryOperations } from './sqlite-query-operations.js';
-import { resolveCallTargetId } from './helpers/call-target-resolver.js';
+import { primeActiveAtomCache, resolveCallTargetId } from './helpers/call-target-resolver.js';
+
+function normalizeCanonicalAtomId(id, projectPath = '') {
+  if (!id || !String(id).includes('::')) {
+    return id;
+  }
+
+  const [pathPart, ...rest] = String(id).split('::');
+  const absolutePath = path.resolve(projectPath || '', String(pathPart || '').replace(/\\/g, '/')).replace(/\\/g, '/');
+  return `${absolutePath}::${rest.join('::')}`;
+}
 
 /**
  * Clase para operaciones de relaciones
@@ -73,9 +85,16 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
     const now = new Date().toISOString();
     
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO atom_relations 
-      (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO atom_relations 
+      (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'active', ?)
+      ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
+        weight = excluded.weight,
+        line_number = excluded.line_number,
+        context_json = excluded.context_json,
+        is_removed = 0,
+        lifecycle_status = 'active',
+        updated_at = excluded.created_at
     `);
     
     stmt.run(
@@ -85,6 +104,7 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
       metadata.weight || 1.0,
       metadata.line || null,
       JSON.stringify(metadata.context || {}),
+      now,
       now
     );
   }
@@ -102,26 +122,34 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
     const now = new Date().toISOString();
     let savedCount = 0;
     
-    // Preparar statement para verificar existencia del target
-    const normalizeIdFn = (id) => {
-      if (!id || !id.includes('::')) {
-        return id;
-      }
-
-      const [pathPart, ...rest] = id.split('::');
-      return `${String(pathPart || '').replace(/\\/g, '/')}::${rest.join('::')}`;
-    };
-
     // Preparar statement para insertar
     const insertStmt = this.db.prepare(`
       INSERT INTO atom_relations 
-      (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-      VALUES (?, ?, 'calls', ?, ?, ?, ?)
+      (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
+      VALUES (?, ?, 'calls', ?, ?, ?, ?, 0, 'active', ?)
+      ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
+        weight = excluded.weight,
+        line_number = excluded.line_number,
+        context_json = excluded.context_json,
+        is_removed = 0,
+        lifecycle_status = 'active',
+        updated_at = excluded.created_at
     `);
-    const normalizedSourceId = normalizeIdFn(atomId);
+    const normalizedSourceId = normalizeCanonicalAtomId(atomId, this.projectPath);
+    const resolverCache = {
+      importsBySourcePath: new Map(),
+      resolvedTargets: new Map()
+    };
+    primeActiveAtomCache(this.db, resolverCache);
 
     for (const call of calls) {
-      const targetId = resolveCallTargetId(this.db, normalizedSourceId, call, normalizeIdFn);
+      const targetId = resolveCallTargetId(
+        this.db,
+        normalizedSourceId,
+        call,
+        (id) => normalizeCanonicalAtomId(id, this.projectPath),
+        resolverCache
+      );
       if (!targetId) continue;
       
       const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
@@ -135,7 +163,7 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
       }
       
       try {
-        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now);
+        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
         savedCount++;
       } catch (err) {
         // Ignorar errores de duplicados u otros
