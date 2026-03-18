@@ -8,6 +8,7 @@ import {
   buildStandardPlan,
   buildStandardItem
 } from './remediation-plan-builder.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 function pickCanonicalInstance(instances = []) {
   return [...instances]
@@ -58,7 +59,7 @@ export function buildDuplicateRemediationPlan(groups = []) {
   return buildStandardPlan({
     total: items.length,
     items,
-    recommendation: 'Consolidate duplicate DNA groups around a canonical implementation before the cluster grows.',
+    recommendation: getRecommendation({ type: 'dna_cluster' }).message,
     emptyRecommendation: 'No duplicate groups require remediation.'
   });
 }

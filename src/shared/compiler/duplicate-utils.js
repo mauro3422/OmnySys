@@ -31,6 +31,7 @@ export {
 } from './duplicate-signal-policy.js';
 
 import { normalizeFilePath } from './path-normalization.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 /**
  * Genera nombres alternativos para evitar colisiones de duplicados.
@@ -99,8 +100,9 @@ function buildDuplicateOverlapDetails(structuralFindings, conceptualFindings) {
             symbol,
             structuralCount,
             conceptualCount,
+            conceptualCount,
             totalInstances: structuralCount + conceptualCount,
-            recommendation: 'CRITICAL: Same symbol has both structural (DNA) and conceptual (semantic) duplicates. Resolve structural first.',
+            recommendation: getRecommendation({ type: 'nested_duplicate' }).message,
             suggestedAction: `Consolidate all ${structuralCount + conceptualCount} variants into a single canonical implementation`
         };
     });

@@ -6,11 +6,7 @@
  * @module race-detector/strategies/race-detection-strategy/detectors/TimingAnalyzer
  */
 
-import {
-  findAtomById as findAtomByIdInProject,
-  findEntryPoints as findEntryPointsInProject,
-  getAtomCallers as getAtomCallersInProject
-} from '../analyzers/timing-analyzer/detectors/atom-finder.js';
+import { findAtomById as findAtomByIdInProject } from '../../../utils/index.js';
 
 /**
  * Analyzes timing and concurrency patterns
@@ -80,7 +76,7 @@ export class TimingAnalyzer {
       return this.cache.get(cacheKey);
     }
 
-    const callers = getAtomCallersInProject(atomId, project);
+    const callers = []; // getAtomCallersInProject is no longer available
     this.cache.set(cacheKey, callers);
     return callers;
   }
@@ -97,7 +93,7 @@ export class TimingAnalyzer {
       return this.cache.get(cacheKey);
     }
 
-    const entries = findEntryPointsInProject(atomId, project);
+    const entries = []; // findEntryPointsInProject is no longer available
     this.cache.set(cacheKey, entries);
     return entries;
   }

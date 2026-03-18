@@ -34,22 +34,24 @@ function addNamedImportSpecifiers(specifiers, child, code) {
 function extractImportSpecifiers(node, code) {
     const specifiers = [];
 
-    for (const child of node.children) {
-        if (child.type === 'identifier') {
-            addDefaultImportSpecifier(specifiers, child, code);
-            continue;
+    const visit = (n) => {
+        for (const child of n.children) {
+            if (child.type === 'identifier') {
+                addDefaultImportSpecifier(specifiers, child, code);
+            }
+            else if (child.type === 'namespace_import') {
+                addNamespaceImportSpecifier(specifiers, child, code);
+            }
+            else if (child.type === 'named_imports') {
+                addNamedImportSpecifiers(specifiers, child, code);
+            }
+            else if (child.type === 'import_clause') {
+                visit(child);
+            }
         }
+    };
 
-        if (child.type === 'namespace_import') {
-            addNamespaceImportSpecifier(specifiers, child, code);
-            continue;
-        }
-
-        if (child.type === 'named_imports') {
-            addNamedImportSpecifiers(specifiers, child, code);
-        }
-    }
-
+    visit(node);
     return specifiers;
 }
 

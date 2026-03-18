@@ -27,23 +27,28 @@ export function collectSharedState(trackers) {
     return sharedState;
   }
   
-  for (const tracker of trackers) {
+  for (let i = 0; i < trackers.length; i++) {
+    const tracker = trackers[i];
     if (!tracker || typeof tracker.track !== 'function') {
       continue;
     }
     
     const trackedState = tracker.track();
-    
     if (!trackedState || !(trackedState instanceof Map)) {
       continue;
     }
     
-    // Merge into shared state map
+    // Merge into shared state map (using for...of for Map is efficient)
     for (const [key, accesses] of trackedState) {
-      if (!sharedState.has(key)) {
-        sharedState.set(key, []);
+      const existing = sharedState.get(key);
+      if (existing) {
+        // Use a faster way to merge arrays if they are large
+        for (let j = 0; j < accesses.length; j++) {
+          existing.push(accesses[j]);
+        }
+      } else {
+        sharedState.set(key, [...accesses]);
       }
-      sharedState.get(key).push(...accesses);
     }
   }
   

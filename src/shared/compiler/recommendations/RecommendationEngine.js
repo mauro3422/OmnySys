@@ -42,6 +42,31 @@ const CANONICAL_TEMPLATES = {
         message: 'Use getLiveRowDriftSummary / ensureLiveRowSync from shared/compiler instead of hand-rolling stale row SQL.',
         action: 'Reconcile table data with the live atom graph',
         strategy: 'data_sync'
+    }),
+    policy_conformance: (ctx) => ({
+        message: ctx.message || 'Replace ad-hoc policy logic with the canonical compiler API entrypoint.',
+        action: 'Align with compiler architecture policy',
+        strategy: 'governance'
+    }),
+    signal_coverage: () => ({
+        message: 'Use the canonical signal coverage APIs for centrality/physics coverage instead of rebuilding coverage heuristics inline.',
+        action: 'Unify signal reporting',
+        strategy: 'telemetry'
+    }),
+    shared_state_hotspot: () => ({
+        message: 'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.',
+        action: 'Consolidate hotspot reporting',
+        strategy: 'performance'
+    }),
+    nested_duplicate: () => ({
+        message: 'CRITICAL: Same symbol has both structural (DNA) and conceptual (semantic) duplicates. Resolve structural first.',
+        action: 'Perform multi-stage consolidation',
+        strategy: 'logic_consolidation'
+    }),
+    dna_cluster: () => ({
+        message: 'Consolidate duplicate DNA groups around a canonical implementation before the cluster grows.',
+        action: 'Initialize SSOT for DNA cluster',
+        strategy: 'logic_consolidation'
     })
 };
 

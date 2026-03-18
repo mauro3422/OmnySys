@@ -16,6 +16,9 @@
  */
 
 import path from 'path';
+import Parser from 'tree-sitter';
+import JavaScript from 'tree-sitter-javascript';
+import TypeScript from 'tree-sitter-typescript';
 import { parseFile, getTree } from '../../parser/index.js';
 import { createLogger } from '#utils/logger.js';
 import { InputExtractor } from './visitors/input-extractor/index.js';
@@ -54,9 +57,25 @@ export function extractDataFlow(codeOrNode, options = {}) {
     const filePath = options.filePath || 'snippet.js';
 
     if (!node && code) {
-      // En el pipeline de workers, siempre se pasa functionInfo.node (ya parseado)
-      // y este branch no se ejecuta. Para callers legacy sin nodo, retornamos vacío.
-      logger.debug(`extractDataFlow called without a pre-parsed node for ${options.filePath || 'unknown'} - data flow will be empty. Use extractDataFlow(functionInfo.node, ...) instead.`);
+      // For standalone/test usage where code is a string and no node is provided,
+      // we must parse it to get the rootNode.
+      try {
+        const parser = new Parser();
+        // Use TSX as default to support JS, JSX, TS and TSX in one go
+        parser.setLanguage(TypeScript.tsx);
+        const tree = parser.parse(code);
+        node = tree.rootNode;
+        if (node.hasError) {
+          throw new Error('Syntax error: invalid or unsupported JavaScript syntax');
+        }
+      } catch (parseErr) {
+        logger.warn(`Synchronous parse failed in extractDataFlow: ${parseErr.message}`);
+        return { error: parseErr.message };
+      }
+    }
+
+    if (!node) {
+      logger.debug(`extractDataFlow called without a valid node for ${options.filePath || 'unknown'} - data flow will be empty.`);
       return { inputs: [], outputs: [], transformations: [], graph: null, analysis: { invariants: [], inferredTypes: {} } };
     }
 

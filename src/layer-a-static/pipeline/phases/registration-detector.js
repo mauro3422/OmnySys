@@ -61,6 +61,12 @@ const REGISTRATION_PATTERNS = [
   }
 ];
 
+// Pre-compile regular expressions for performance
+const COMPILED_PATTERNS = REGISTRATION_PATTERNS.map(p => ({
+  ...p,
+  regex: new RegExp(p.pattern)
+}));
+
 /**
  * Detecta todos los registros dinámicos en un archivo
  * @param {string} filePath - Ruta del archivo
@@ -68,28 +74,30 @@ const REGISTRATION_PATTERNS = [
  * @returns {Array<Object>} Lista de registros detectados
  */
 export function detectRegistrations(filePath, code) {
-  if (!code || typeof code !== 'string') {
+  if (!code || typeof code !== 'string' || code.length === 0) {
     return [];
   }
 
   const registrations = [];
 
-  for (const patternDef of REGISTRATION_PATTERNS) {
-    const regex = new RegExp(patternDef.pattern);
+  for (let i = 0; i < COMPILED_PATTERNS.length; i++) {
+    const patternDef = COMPILED_PATTERNS[i];
+    const regex = patternDef.regex;
+    
+    // Reset regex lastIndex because of 'g' flag
+    regex.lastIndex = 0;
+    
     let match;
-
     while ((match = regex.exec(code)) !== null) {
-      const registration = {
+      registrations.push({
         type: patternDef.type,
         pattern: patternDef.name,
-        name: match[1], // El nombre capturado (ej: 'async-safety')
+        name: match[1],
         line: getLineNumber(code, match.index),
         impact: patternDef.impact,
         description: patternDef.description,
         filePath
-      };
-
-      registrations.push(registration);
+      });
     }
   }
 

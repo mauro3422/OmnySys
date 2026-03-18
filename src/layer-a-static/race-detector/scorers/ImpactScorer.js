@@ -37,14 +37,16 @@ export class ImpactScorer {
 
   getAffectedBusinessFlows(race, projectData) {
     const system = projectData?.system;
-    if (!system?.businessFlows) return [];
+    if (!system?.businessFlows || system.businessFlows.length === 0) return [];
 
     const affected = [];
     const accessAtoms = new Set(race.accesses.map(a => a.atom));
 
+    // Optimize: only iterate once
     for (const flow of system.businessFlows) {
-      for (const step of flow.steps || []) {
-        if (step.function && accessAtoms.has(step.function)) {
+      const steps = flow.steps || [];
+      for (let i = 0; i < steps.length; i++) {
+        if (steps[i].function && accessAtoms.has(steps[i].function)) {
           affected.push(flow.name);
           break;
         }
@@ -56,7 +58,7 @@ export class ImpactScorer {
 
   getAffectedEntryPoints(race, projectData) {
     const system = projectData?.system;
-    if (!system?.entryPoints) return [];
+    if (!system?.entryPoints || system.entryPoints.length === 0) return [];
 
     const affected = [];
     const accessModules = new Set(race.accesses.map(a => a.module));

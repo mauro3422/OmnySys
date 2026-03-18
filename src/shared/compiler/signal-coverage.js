@@ -15,6 +15,7 @@ import {
   hasNetworkCalls,
   matchesAny
 } from './atom-utils.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;
 const EXCLUDED_PURPOSES = new Set(['TEST_HELPER', 'ANALYSIS_SCRIPT']);
@@ -211,7 +212,7 @@ export function detectSignalCoverageDrift(source = '', filePath = '') {
       severity: 'medium',
       policyArea: 'signal_coverage',
       message: 'Manual centrality coverage/physics scan detected',
-      recommendation: 'Use the canonical signal coverage APIs for centrality/physics coverage instead of rebuilding coverage heuristics inline.'
+      recommendation: getRecommendation({ type: 'signal_coverage' }).message
     });
   }
 

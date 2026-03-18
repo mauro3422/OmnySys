@@ -27,7 +27,7 @@ export const ATOM_PURPOSES = {
   ENTRY_POINT: { name: 'Entry Point', description: 'Application entry point (main, start, etc)', isDead: false, icon: '🚪' },
   WORKER_ENTRY: { name: 'Worker Entry', description: 'Worker or process entry point', isDead: false, icon: '👷' },
   SERVER_HANDLER: { name: 'Server Handler', description: 'HTTP/WebSocket handler', isDead: false, icon: '🌐' },
-  POTENTIALLY_UNUSED: { name: 'Potentially Unused', description: 'No evidence of use - may be dead code or dynamically called', isDead: false, icon: '❓' }
+  DEAD_CODE: { name: 'Dead Code', description: 'No evidence of use found - may be dead code or dynamically called', isDead: true, icon: '💀' }
 };
 
 // ── Private check helpers ─────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ export function detectAtomPurpose(atom, filePath = '') {
     checkDom(atom) ||
     checkArchetype(atom) ||
     checkCalledBy(atom) ||
-    { purpose: 'POTENTIALLY_UNUSED', purposeReason: 'No evidence of use found - may be dynamically called or dead code', purposeConfidence: 0.3, isDeadCode: false }
+    { purpose: 'DEAD_CODE', purposeReason: 'No evidence of use found - may be dynamically called or dead code', purposeConfidence: 0.5, isDeadCode: true }
   );
 }
 

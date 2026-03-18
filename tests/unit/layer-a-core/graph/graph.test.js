@@ -35,12 +35,12 @@ describe('Layer A - Graph', () => {
 
   describe('createFileNode() - Node creation', () => {
     it('should create file node with correct structure', () => {
-      const node = createFileNode('/src/test.js', 'src/test.js', {
+      const node = createFileNode('src/test.js', 'src/test.js', {
         exports: [{ name: 'foo' }],
         imports: [{ source: './bar.js' }]
       });
       
-      expect(node.path).toBe('/src/test.js');
+      expect(node.path).toBe('src/test.js');
       expect(node.displayPath).toBe('src/test.js');
       expect(node.exports).toEqual([{ name: 'foo' }]);
       expect(node.imports).toEqual([{ source: './bar.js' }]);
@@ -53,13 +53,13 @@ describe('Layer A - Graph', () => {
     it('should build graph from parsed files object', () => {
       // API expects an object, not array
       const parsedFiles = {
-        '/src/utils.js': {
+        'src/utils.js': {
           fileName: 'utils.js',
           imports: [],
           exports: [{ name: 'helper', type: 'function' }],
           definitions: [{ name: 'helper', type: 'function', line: 1 }]
         },
-        '/src/main.js': {
+        'src/main.js': {
           fileName: 'main.js',
           imports: [{ source: './utils.js', specifiers: ['helper'] }],
           exports: [{ name: 'default', type: 'default' }],
@@ -68,21 +68,21 @@ describe('Layer A - Graph', () => {
       };
 
       const resolvedImports = {
-        '/src/main.js': [
-          { source: './utils.js', resolved: '/src/utils.js', type: 'esm' }
+        'src/main.js': [
+          { source: './utils.js', resolved: 'src/utils.js', type: 'esm' }
         ]
       };
 
       const systemMap = buildSystemMap(parsedFiles, resolvedImports);
       
       expect(Object.keys(systemMap.files)).toHaveLength(2);
-      expect(systemMap.files['/src/utils.js']).toBeDefined();
-      expect(systemMap.files['/src/main.js']).toBeDefined();
+      expect(systemMap.files['src/utils.js']).toBeDefined();
+      expect(systemMap.files['src/main.js']).toBeDefined();
     });
 
     it('should create export index', () => {
       const parsedFiles = {
-        '/src/math.js': {
+        'src/math.js': {
           fileName: 'math.js',
           imports: [],
           exports: [
@@ -100,13 +100,13 @@ describe('Layer A - Graph', () => {
 
     it('should create dependency links between files', () => {
       const parsedFiles = {
-        '/src/a.js': {
+        'src/a.js': {
           fileName: 'a.js',
           imports: [],
           exports: [{ name: 'foo', type: 'function' }],
           definitions: []
         },
-        '/src/b.js': {
+        'src/b.js': {
           fileName: 'b.js',
           imports: [{ source: './a.js', specifiers: ['foo'] }],
           exports: [],
@@ -115,8 +115,8 @@ describe('Layer A - Graph', () => {
       };
 
       const resolvedImports = {
-        '/src/b.js': [
-          { source: './a.js', resolved: '/src/a.js', type: 'esm' }
+        'src/b.js': [
+          { source: './a.js', resolved: 'src/a.js', type: 'esm' }
         ]
       };
 
@@ -126,8 +126,8 @@ describe('Layer A - Graph', () => {
       expect(systemMap.dependencies.length).toBeGreaterThan(0);
       
       // Check bidirectional linking
-      expect(systemMap.files['/src/b.js'].dependsOn).toContain('/src/a.js');
-      expect(systemMap.files['/src/a.js'].usedBy).toContain('/src/b.js');
+      expect(systemMap.files['src/b.js'].dependsOn).toContain('src/a.js');
+      expect(systemMap.files['src/a.js'].usedBy).toContain('src/b.js');
     });
   });
 
@@ -135,79 +135,79 @@ describe('Layer A - Graph', () => {
     it('should calculate impact correctly', () => {
       // Create mock file structure
       const files = {
-        '/src/utils.js': {
-          path: '/src/utils.js',
+        'src/utils.js': {
+          path: 'src/utils.js',
           displayPath: 'src/utils.js',
           imports: [],
           exports: ['helper'],
-          usedBy: ['/src/main.js', '/src/app.js'],
+          usedBy: ['src/main.js', 'src/app.js'],
           dependsOn: [],
           transitiveDependents: []
         },
-        '/src/main.js': {
-          path: '/src/main.js',
+        'src/main.js': {
+          path: 'src/main.js',
           displayPath: 'src/main.js',
           imports: [{ source: './utils.js' }],
           exports: [],
           usedBy: [],
-          dependsOn: ['/src/utils.js'],
+          dependsOn: ['src/utils.js'],
           transitiveDependents: []
         },
-        '/src/app.js': {
-          path: '/src/app.js',
+        'src/app.js': {
+          path: 'src/app.js',
           displayPath: 'src/app.js',
           imports: [{ source: './utils.js' }],
           exports: [],
           usedBy: [],
-          dependsOn: ['/src/utils.js'],
+          dependsOn: ['src/utils.js'],
           transitiveDependents: []
         }
       };
 
-      const impact = getImpactMap('/src/utils.js', files);
+      const impact = getImpactMap('src/utils.js', files);
       
       expect(impact.filePath).toBe('src/utils.js');
-      expect(impact.directDependents).toContain('/src/main.js');
-      expect(impact.directDependents).toContain('/src/app.js');
+      expect(impact.directDependents).toContain('src/main.js');
+      expect(impact.directDependents).toContain('src/app.js');
       expect(impact.totalFilesAffected).toBe(2);
     });
 
     it('should calculate transitive impact', () => {
       const files = {
-        '/src/core.js': {
-          path: '/src/core.js',
-          usedBy: ['/src/middleware.js'],
-          transitiveDependents: ['/src/app.js']
+        'src/core.js': {
+          path: 'src/core.js',
+          usedBy: ['src/middleware.js'],
+          transitiveDependents: ['src/app.js']
         },
-        '/src/middleware.js': {
-          path: '/src/middleware.js',
-          usedBy: ['/src/app.js'],
+        'src/middleware.js': {
+          path: 'src/middleware.js',
+          usedBy: ['src/app.js'],
           transitiveDependents: []
         },
-        '/src/app.js': {
-          path: '/src/app.js',
+        'src/app.js': {
+          path: 'src/app.js',
           usedBy: [],
           transitiveDependents: []
         }
       };
 
-      const impact = getImpactMap('/src/core.js', files);
+      const impact = getImpactMap('src/core.js', files);
       
-      expect(impact.directDependents).toContain('/src/middleware.js');
-      expect(impact.indirectDependents).toContain('/src/app.js');
+      expect(impact.directDependents).toContain('src/middleware.js');
+      expect(impact.indirectDependents).toContain('src/app.js');
     });
   });
 
   describe('detectCycles() - Cycle detection', () => {
     it('should detect simple cycle', () => {
       const files = {
-        '/src/a.js': {
-          path: '/src/a.js',
-          dependsOn: ['/src/b.js']
+        'src/a.js': {
+          path: 'src/a.js',
+          dependsOn: ['src/b.js']
         },
-        '/src/b.js': {
-          path: '/src/b.js',
-          dependsOn: ['/src/a.js']
+        'src/b.js': {
+          path: 'src/b.js',
+          dependsOn: ['src/a.js']
         }
       };
 
@@ -219,13 +219,13 @@ describe('Layer A - Graph', () => {
 
     it('should return empty array when no cycles', () => {
       const files = {
-        '/src/a.js': {
-          path: '/src/a.js',
+        'src/a.js': {
+          path: 'src/a.js',
           dependsOn: []
         },
-        '/src/b.js': {
-          path: '/src/b.js',
-          dependsOn: ['/src/a.js']
+        'src/b.js': {
+          path: 'src/b.js',
+          dependsOn: ['src/a.js']
         }
       };
 
@@ -237,17 +237,17 @@ describe('Layer A - Graph', () => {
 
     it('should detect complex cycle chain', () => {
       const files = {
-        '/src/a.js': {
-          path: '/src/a.js',
-          dependsOn: ['/src/b.js']
+        'src/a.js': {
+          path: 'src/a.js',
+          dependsOn: ['src/b.js']
         },
-        '/src/b.js': {
-          path: '/src/b.js',
-          dependsOn: ['/src/c.js']
+        'src/b.js': {
+          path: 'src/b.js',
+          dependsOn: ['src/c.js']
         },
-        '/src/c.js': {
-          path: '/src/c.js',
-          dependsOn: ['/src/a.js']
+        'src/c.js': {
+          path: 'src/c.js',
+          dependsOn: ['src/a.js']
         }
       };
 
@@ -261,41 +261,41 @@ describe('Layer A - Graph', () => {
   describe('calculateTransitiveDependencies()', () => {
     it('should calculate all dependencies transitively', () => {
       const files = {
-        '/src/app.js': {
-          path: '/src/app.js',
-          dependsOn: ['/src/routes.js']
+        'src/app.js': {
+          path: 'src/app.js',
+          dependsOn: ['src/routes.js']
         },
-        '/src/routes.js': {
-          path: '/src/routes.js',
-          dependsOn: ['/src/controllers.js']
+        'src/routes.js': {
+          path: 'src/routes.js',
+          dependsOn: ['src/controllers.js']
         },
-        '/src/controllers.js': {
-          path: '/src/controllers.js',
-          dependsOn: ['/src/models.js']
+        'src/controllers.js': {
+          path: 'src/controllers.js',
+          dependsOn: ['src/models.js']
         },
-        '/src/models.js': {
-          path: '/src/models.js',
+        'src/models.js': {
+          path: 'src/models.js',
           dependsOn: []
         }
       };
 
-      const deps = calculateTransitiveDependencies('/src/app.js', files);
+      const deps = calculateTransitiveDependencies('src/app.js', files);
       
       // app depends on routes, controllers and models (transitively)
-      expect(deps).toContain('/src/routes.js');
-      expect(deps).toContain('/src/controllers.js');
-      expect(deps).toContain('/src/models.js');
+      expect(deps).toContain('src/routes.js');
+      expect(deps).toContain('src/controllers.js');
+      expect(deps).toContain('src/models.js');
     });
 
     it('should return empty set for file with no dependencies', () => {
       const files = {
-        '/src/utils.js': {
-          path: '/src/utils.js',
+        'src/utils.js': {
+          path: 'src/utils.js',
           dependsOn: []
         }
       };
 
-      const deps = calculateTransitiveDependencies('/src/utils.js', files);
+      const deps = calculateTransitiveDependencies('src/utils.js', files);
       
       expect(deps.size).toBe(0);
     });
@@ -304,30 +304,30 @@ describe('Layer A - Graph', () => {
   describe('calculateTransitiveDependents()', () => {
     it('should calculate all dependents transitively', () => {
       const files = {
-        '/src/utils.js': {
-          path: '/src/utils.js',
-          usedBy: ['/src/helpers.js']
+        'src/utils.js': {
+          path: 'src/utils.js',
+          usedBy: ['src/helpers.js']
         },
-        '/src/helpers.js': {
-          path: '/src/helpers.js',
-          usedBy: ['/src/services.js']
+        'src/helpers.js': {
+          path: 'src/helpers.js',
+          usedBy: ['src/services.js']
         },
-        '/src/services.js': {
-          path: '/src/services.js',
-          usedBy: ['/src/app.js']
+        'src/services.js': {
+          path: 'src/services.js',
+          usedBy: ['src/app.js']
         },
-        '/src/app.js': {
-          path: '/src/app.js',
+        'src/app.js': {
+          path: 'src/app.js',
           usedBy: []
         }
       };
 
-      const dependents = calculateTransitiveDependents('/src/utils.js', files);
+      const dependents = calculateTransitiveDependents('src/utils.js', files);
       
       // utils is used by helpers, services and app (transitively)
-      expect(dependents).toContain('/src/helpers.js');
-      expect(dependents).toContain('/src/services.js');
-      expect(dependents).toContain('/src/app.js');
+      expect(dependents).toContain('src/helpers.js');
+      expect(dependents).toContain('src/services.js');
+      expect(dependents).toContain('src/app.js');
     });
   });
 });

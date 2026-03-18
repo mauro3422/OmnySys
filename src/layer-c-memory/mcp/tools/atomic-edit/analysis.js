@@ -133,48 +133,56 @@ export async function analyzeFullImpact(filePath, projectPath, previousAtoms, cu
     dependencyTree: []
   };
 
-  const currentIds = new Set(currentAtoms.map(a => a.id));
-  const previousIds = new Set(previousAtoms.map(a => a.id));
+  try {
+    const currentIds = new Set(currentAtoms.map(a => a.id));
+    const previousIds = new Set(previousAtoms.map(a => a.id));
 
-  const removedAtoms = previousAtoms.filter(a => !currentIds.has(a.id));
-  const newAtoms = currentAtoms.filter(a => !previousIds.has(a.id));
+    const removedAtoms = previousAtoms.filter(a => !currentIds.has(a.id));
+    const newAtoms = currentAtoms.filter(a => !previousIds.has(a.id));
 
-  // Analizar renombrados
-  const renamePairs = detectRenamedAtoms(removedAtoms, newAtoms);
-  for (const pair of renamePairs) {
-    const atomImpact = await analyzeRenameImpact(pair, projectPath);
-    impact.score += atomImpact.score;
-    impact.breakingChanges.push(...atomImpact.breakingChanges);
-    for (const file of atomImpact.affectedFiles) {
-      impact.affectedFiles.add(file);
+    // Analizar renombrados
+    const renamePairs = detectRenamedAtoms(removedAtoms, newAtoms);
+    for (const pair of renamePairs) {
+      const atomImpact = await analyzeRenameImpact(pair, projectPath);
+      impact.score += atomImpact.score;
+      impact.breakingChanges.push(...atomImpact.breakingChanges);
+      for (const file of atomImpact.affectedFiles) {
+        impact.affectedFiles.add(file);
+      }
+      if (atomImpact.dependents.length > 0) {
+        impact.dependencyTree.push({
+          name: atomImpact.name,
+          changes: atomImpact.changes,
+          dependents: atomImpact.dependents
+        });
+      }
     }
-    if (atomImpact.dependents.length > 0) {
-      impact.dependencyTree.push({
-        name: atomImpact.name,
-        changes: atomImpact.changes,
-        dependents: atomImpact.dependents
-      });
-    }
-  }
 
-  // Analizar modificados
-  const modifiedAtoms = currentAtoms.filter(a => previousIds.has(a.id));
-  for (const currentAtom of modifiedAtoms) {
-    const previousAtom = previousAtoms.find(a => a.id === currentAtom.id);
-    if (!previousAtom) continue;
+    // Analizar modificados
+    const modifiedAtoms = currentAtoms.filter(a => previousIds.has(a.id));
+    for (const currentAtom of modifiedAtoms) {
+      const previousAtom = previousAtoms.find(a => a.id === currentAtom.id);
+      if (!previousAtom) continue;
 
-    const atomImpact = await analyzeSignatureImpact(currentAtom, previousAtom, projectPath);
-    impact.score += atomImpact.score;
-    for (const file of atomImpact.affectedFiles) {
-      impact.affectedFiles.add(file);
+      const atomImpact = await analyzeSignatureImpact(currentAtom, previousAtom, projectPath);
+      impact.score += atomImpact.score;
+      for (const file of atomImpact.affectedFiles) {
+        impact.affectedFiles.add(file);
+      }
+      if (atomImpact.changes.length > 0 || atomImpact.dependents.length > 0) {
+        impact.dependencyTree.push({
+          name: atomImpact.name,
+          changes: atomImpact.changes,
+          dependents: atomImpact.dependents
+        });
+      }
     }
-    if (atomImpact.changes.length > 0 || atomImpact.dependents.length > 0) {
-      impact.dependencyTree.push({
-        name: atomImpact.name,
-        changes: atomImpact.changes,
-        dependents: atomImpact.dependents
-      });
-    }
+  } catch (error) {
+    logger.error(`[AtomicAnalysis] Error analyzing full impact for ${filePath}: ${error.message}`);
+    impact.warnings.push({
+      type: 'analysis_error',
+      message: `Failed to completely analyze impact due to internal error: ${error.message}`
+    });
   }
 
   impact.level = determineImpactLevel(impact.score);

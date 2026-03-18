@@ -9,10 +9,10 @@
  */
 
 import {
-  createFinding,
   countMatches
 } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 function countSharedStateSignals(source = '') {
   return countMatches(
@@ -53,7 +53,7 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
             severity,
             policyArea,
             message: 'Module references known shared-state hotspot keys directly',
-            recommendation: 'Read hotspot/shared-state contention through a canonical reporting API instead of hardcoding hot keys inline.'
+            recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
           }
         ));
       }
@@ -70,7 +70,7 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
             severity,
             policyArea,
             message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
-            recommendation: 'Promote shared-state hotspot analysis to a canonical compiler API before more runtime modules consume shared state ad hoc.'
+            recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
           }
         ));
       }

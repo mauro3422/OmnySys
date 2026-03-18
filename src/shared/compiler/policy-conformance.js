@@ -29,10 +29,9 @@ import { detectPipelineOrphanDrift } from './pipeline-orphans.js';
 import { detectDeadCodeDrift } from './dead-code-utils.js';
 import { detectLiveRowDrift } from './live-row-utils.js';
 import {
-  normalizePath,
-  shouldScanCompilerFile,
   createGuidedFinding
 } from './conformance-utils.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 
 export const COMPILER_POLICY_SEVERITY = {
   HIGH: 'high',
@@ -152,7 +151,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.MEDIUM,
         policyArea: COMPILER_POLICY_AREA.DUPLICATES,
         message: 'Manual symbol duplicate scan detected',
-        recommendation: 'Use repository-backed duplicate/symbol APIs instead of scanning getAllAtoms() in memory.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Use repository-backed duplicate/symbol APIs instead of scanning getAllAtoms() in memory.' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -162,7 +164,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.HIGH,
         policyArea: COMPILER_POLICY_AREA.IMPACT,
         message: 'Manual topology/impact scan detected',
-        recommendation: 'Use the canonical impact APIs (getFileImpactSummary / getFileDependents / getTransitiveDependents) instead of rebuilding impact from getAllAtoms().'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Use the canonical impact APIs (getFileImpactSummary / getFileDependents / getTransitiveDependents) instead of rebuilding impact from getAllAtoms().' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -175,7 +180,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.HIGH,
         policyArea: COMPILER_POLICY_AREA.DUPLICATES,
         message: 'Manual duplicate DNA SQL detected',
-        recommendation: 'Build duplicate keys through duplicate-dna.js / repository utils barrel instead of embedding SQL fragments.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Build duplicate keys through duplicate-dna.js / repository utils barrel instead of embedding SQL fragments.' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -188,7 +196,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.MEDIUM,
         policyArea: COMPILER_POLICY_AREA.FILE_DISCOVERY,
         message: 'Manual file discovery scan detected inside MCP/compiler runtime',
-        recommendation: 'Prefer canonical query/storage APIs before walking the filesystem manually inside MCP/runtime code.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Prefer canonical query/storage APIs before walking the filesystem manually inside MCP/runtime code.' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -201,7 +212,7 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.MEDIUM,
         policyArea: COMPILER_POLICY_AREA.LIVE_ROW_DRIFT,
         message: 'Module reads live/stale row drift without the canonical synchronization entrypoint',
-        recommendation: 'Use ensureLiveRowSync in MCP/query runtime modules so support-table drift is reconciled before reporting.'
+        recommendation: getRecommendation({ type: 'live_row_drift' }).message
       }
     ),
     ...maybeFinding(
@@ -213,7 +224,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.MEDIUM,
         policyArea: COMPILER_POLICY_AREA.RUNTIME_OWNERSHIP,
         message: 'Manual daemon ownership/lock logic detected',
-        recommendation: 'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Use runtime-ownership.js from shared/compiler instead of reimplementing daemon owner lock handling inline.' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -223,7 +237,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.MEDIUM,
         policyArea: COMPILER_POLICY_AREA.WATCHER_DIAGNOSTICS,
         message: 'Module mixes watcher persistence, lifecycle and canonical atom/diagnostics reads without a dedicated canonical watcher reconciliation API',
-        recommendation: 'Route watcher reconciliation through shared/compiler watcher diagnostics helpers instead of composing semantic_issues, lifecycle and atoms heuristics inline.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Route watcher reconciliation through shared/compiler watcher diagnostics helpers instead of composing semantic_issues, lifecycle and atoms heuristics inline.' }
+        }).message
       }
     ),
     ...maybeFinding(
@@ -233,7 +250,10 @@ function collectManualReuseFindings(normalizedPath, source, imports) {
         severity: COMPILER_POLICY_SEVERITY.HIGH,
         policyArea: COMPILER_POLICY_AREA.CANONICAL_BYPASS,
         message: 'Module recomposes canonical compiler diagnostics instead of using the shared snapshot entrypoint',
-        recommendation: 'Use loadCompilerDiagnosticsSnapshot from shared/compiler/index.js before creating another local diagnostics wrapper.'
+        recommendation: getRecommendation({ 
+          type: 'policy_conformance', 
+          context: { message: 'Use loadCompilerDiagnosticsSnapshot from shared/compiler/index.js before creating another local diagnostics wrapper.' }
+        }).message
       }
     )
   ];

@@ -88,15 +88,29 @@ export function extractFileInfo(tree, code, filePath) {
         }
         if (inFn) return;
 
-        const fnNameNode = callNode.childForFieldName('function');
-        if (!fnNameNode) return;
-        let name = fnNameNode.type === 'identifier' ? text(fnNameNode, code) : null;
+        const fnNode = callNode.childForFieldName('function');
+        if (!fnNode) return;
+        
+        // Handle both simple identifiers and member expressions (e.g., console.log, foo.bar)
+        let name = null;
+        if (fnNode.type === 'identifier') {
+            name = text(fnNode, code);
+        } else if (fnNode.type === 'member_expression') {
+            name = text(fnNode, code);
+        }
+        
         if (name && !seen.has(name)) {
             seen.add(name);
             topLevelCalls.push({ name, type: 'function' });
         }
     });
     fileInfo.calls = topLevelCalls;
+
+    // 9. Error detection
+    if (root.hasError) {
+        fileInfo._error = 'Syntax error detected in file';
+        fileInfo.parseError = true;
+    }
 
     return fileInfo;
 }

@@ -17,78 +17,83 @@ export class SOLIDNormalizer {
     static async proposeSplit(filePath, symbolName, projectPath) {
         logger.info(`[SOLIDNormalizer] Generating proposal for ${symbolName} in ${filePath}`);
 
-        const atoms = await loadAtoms(projectPath, filePath);
-        const atom = atoms.find(a => a.name === symbolName);
+        try {
+            const atoms = await loadAtoms(projectPath, filePath);
+            const atom = atoms.find(a => a.name === symbolName);
 
-        if (!atom) {
-            throw new Error(`Atom ${symbolName} not found in ${filePath}`);
-        }
+            if (!atom) {
+                throw new Error(`Atom ${symbolName} not found in ${filePath}`);
+            }
 
-        // 1. Análisis de Salud Previa
-        const healthBefore = await AnalysisEngine.auditHealth(filePath, projectPath, [atom]);
+            // 1. Análisis de Salud Previa
+            const healthBefore = await AnalysisEngine.auditHealth(filePath, projectPath, [atom]);
 
-        // 2. Identificar bloques lógicos (Inspirado en extract-analyzer.js)
-        const code = await fs.readFile(filePath, 'utf-8');
-        const lines = code.split('\n');
+            // 2. Identificar bloques lógicos (Inspirado en extract-analyzer.js)
+            const code = await fs.readFile(filePath, 'utf-8');
+            const lines = code.split('\n');
 
-        const blocks = this._identifyBlocks(atom);
+            const blocks = this._identifyBlocks(atom);
 
-        if (blocks.length < 2) {
+            if (blocks.length < 2) {
+                return {
+                    canSplit: false,
+                    reason: 'Function is already cohesive or too small for meaningful split.'
+                };
+            }
+
+            const proposal = {
+                success: true,
+                filePath,
+                originalSymbol: symbolName,
+                healthImpact: {
+                    before: healthBefore.healthScore,
+                    after: Math.min(100, healthBefore.healthScore + 20), // Proyección
+                    complexityReduction: `${atom.complexity} -> ~${Math.ceil(atom.complexity / blocks.length)} per function`
+                },
+                newFunctions: [],
+                modifiedOriginal: ''
+            };
+
+            // 3. Generar nuevas funciones y mapear reemplazos
+            let refactoredLines = [...lines.slice(atom.line - 1, atom.endLine)];
+            const originalStartLine = atom.line;
+
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
+                const name = `extract${symbolName}_${block.suggestedName}_${i}`;
+
+                // Extraer el código del bloque
+                const blockContent = lines.slice(block.lineRange[0] - 1, block.lineRange[1]).join('\n');
+
+                const newFuncCode = `\n/**\n * Extracted from ${symbolName}\n */\nfunction ${name}() {\n${blockContent}\n}\n`;
+
+                proposal.newFunctions.push({
+                    name,
+                    code: newFuncCode,
+                    reason: `Encapsulates operations: ${block.operations.join(', ')}`
+                });
+
+                // Reemplazar en el original
+                const startRel = block.lineRange[0] - originalStartLine;
+                const endRel = block.lineRange[1] - originalStartLine;
+
+                refactoredLines[startRel] = `    ${name}(); // Extracted code block`;
+                for (let j = startRel + 1; j <= endRel; j++) {
+                    refactoredLines[j] = null; // Marcar para eliminación
+                }
+            }
+
+            proposal.modifiedOriginal = refactoredLines.filter(l => l !== null).join('\n');
+
+            return proposal;
+        } catch (error) {
+            logger.error(`[SOLIDNormalizer] Failed to propose split for ${symbolName}: ${error.message}`, error);
             return {
+                success: false,
                 canSplit: false,
-                reason: 'Function is already cohesive or too small for meaningful split.'
+                reason: `Internal analysis error: ${error.message}`
             };
         }
-
-        const proposal = {
-            success: true,
-            filePath,
-            originalSymbol: symbolName,
-            healthImpact: {
-                before: healthBefore.healthScore,
-                after: Math.min(100, healthBefore.healthScore + 20), // Proyección
-                complexityReduction: `${atom.complexity} -> ~${Math.ceil(atom.complexity / blocks.length)} per function`
-            },
-            newFunctions: [],
-            modifiedOriginal: ''
-        };
-
-        // 3. Generar nuevas funciones y mapear reemplazos
-        let refactoredLines = [...lines.slice(atom.line - 1, atom.endLine)];
-        const originalStartLine = atom.line;
-
-        for (let i = 0; i < blocks.length; i++) {
-            const block = blocks[i];
-            const name = `extract${symbolName}_${block.suggestedName}_${i}`;
-
-            // Extraer el código del bloque
-            // Nota: El índice en lines es line-1
-            const blockContent = lines.slice(block.lineRange[0] - 1, block.lineRange[1]).join('\n');
-
-            // TODO: Analizar qué variables necesita (parámetros) y qué devuelve
-            // Por ahora simplificamos a una función sin parámetros para el MVP del diseño
-            const newFuncCode = `\n/**\n * Extracted from ${symbolName}\n */\nfunction ${name}() {\n${blockContent}\n}\n`;
-
-            proposal.newFunctions.push({
-                name,
-                code: newFuncCode,
-                reason: `Encapsulates operations: ${block.operations.join(', ')}`
-            });
-
-            // Reemplazar en el original (ajustando índices relativos al inicio del átomo)
-            const startRel = block.lineRange[0] - originalStartLine;
-            const endRel = block.lineRange[1] - originalStartLine;
-
-            // Reemplazamos el primer renglón del bloque por la llamada y vaciamos el resto
-            refactoredLines[startRel] = `    ${name}(); // Extracted code block`;
-            for (let j = startRel + 1; j <= endRel; j++) {
-                refactoredLines[j] = null; // Marcar para eliminación
-            }
-        }
-
-        proposal.modifiedOriginal = refactoredLines.filter(l => l !== null).join('\n');
-
-        return proposal;
     }
 
     /**

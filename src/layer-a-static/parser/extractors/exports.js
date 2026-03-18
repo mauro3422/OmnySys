@@ -20,7 +20,27 @@ export function extractExports(root, code) {
         // Detectar export default
         const defaultKw = node.children.find(c => c.type === 'default');
         if (defaultKw) {
-            exports.push({ name: 'default', type: 'default', line: startLine(node) });
+            const declaration = node.children.find(c => 
+                c.type === 'function_declaration' || 
+                c.type === 'class_declaration' || 
+                c.type === 'expression_statement' ||
+                c.type === 'call_expression'
+            );
+            
+            const exportObj = { name: 'default', type: 'default', line: startLine(node) };
+            if (declaration) {
+                // Mapear tipos de tree-sitter a tipos de OmnySys (PascalCase)
+                const kindMap = {
+                    'function_declaration': 'FunctionDeclaration',
+                    'class_declaration': 'ClassDeclaration'
+                };
+                exportObj.kind = kindMap[declaration.type] || declaration.type;
+                
+                const nameNode = declaration.childForFieldName('name');
+                if (nameNode) exportObj.name = text(nameNode, code);
+            }
+            
+            exports.push(exportObj);
             return;
         }
 

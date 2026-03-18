@@ -8,7 +8,7 @@
  * @module race-detector/strategies/race-detection-strategy/patterns/builtin-patterns
  */
 
-import * as PatternDetectors from '../../../../patterns/PatternDetectors.js';
+import * as PatternDetectors from '../../../patterns/PatternDetectors.js';
 
 /**
  * @typedef {Object} RacePattern

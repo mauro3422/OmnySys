@@ -11,20 +11,26 @@ import path from 'path';
  * @returns {Map<string, Map<string, string>>}
  */
 export function buildNamespaceMap(parsedFiles, rootPath) {
-    const fileNamespaceMap = new Map(); // absPath → Map(alias → resolvedAbsPath)
+    const fileNamespaceMap = new Map();
 
     for (const [absPath, parsedFile] of Object.entries(parsedFiles)) {
-        const nsMap = new Map();
         const imports = parsedFile.imports || [];
+        if (imports.length === 0) continue;
 
-        for (const imp of imports) {
-            // Detectar namespace import: import * as alias from './source'
+        const nsMap = new Map();
+        const dir = path.dirname(absPath);
+
+        for (let i = 0; i < imports.length; i++) {
+            const imp = imports[i];
+            const source = imp.source;
+
+            if (!source) continue;
+
             const isNamespace = imp.type === 'namespace' ||
-                (imp.specifiers || []).some(s => s.type === 'namespace' || s.imported === '*') ||
                 imp.namespace === true ||
+                (imp.specifiers || []).some(s => s.type === 'namespace' || s.imported === '*') ||
                 (imp.specifiers?.length === 1 && imp.specifiers[0]?.local && !imp.specifiers[0]?.imported);
 
-            // También detectar por la presencia de un alias sin specifiers nombrados
             const hasNamespaceAlias = imp.alias || (imp.specifiers?.length === 1 && imp.specifiers[0]?.type === 'namespace');
 
             if (!isNamespace && !hasNamespaceAlias) continue;
@@ -32,22 +38,25 @@ export function buildNamespaceMap(parsedFiles, rootPath) {
             const alias = imp.alias ||
                 imp.specifiers?.[0]?.local ||
                 imp.specifiers?.[0]?.name;
+            
             if (!alias) continue;
 
-            const source = imp.source;
-            if (!source || source.startsWith('node:') || !source.startsWith('.')) continue;
-
-            // Resolver el path relativo al archivo actual
-            const dir = path.dirname(absPath);
-            let resolved = path.resolve(dir, source);
-            // Agregar .js si no tiene extensión
+            let resolved;
+            if (source[0] === '.') {
+                resolved = path.resolve(dir, source);
+            } else {
+                // For non-relative imports, we try to resolve relative to rootPath if provided
+                resolved = rootPath ? path.resolve(rootPath, source) : source;
+            }
+            
             if (!path.extname(resolved)) resolved += '.js';
 
-            nsMap.set(alias, resolved);
+            // Ensure normalized path (forward slashes) for graph consistency
+            nsMap.set(alias, resolved.replace(/\\/g, '/'));
         }
 
         if (nsMap.size > 0) {
-            fileNamespaceMap.set(absPath, nsMap);
+            fileNamespaceMap.set(absPath.replace(/\\/g, '/'), nsMap);
         }
     }
 

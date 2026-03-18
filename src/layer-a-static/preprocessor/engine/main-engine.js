@@ -104,6 +104,13 @@ export class PreprocessorEngine {
   validate() {
     return validateTransformations(this.transformations);
   }
+
+  /**
+   * Alias for validate() for backward compatibility with tests
+   */
+  validateTransformations() {
+    return this.validate();
+  }
   
   /**
    * Creates snapshot of current preprocessor state
