@@ -10,6 +10,8 @@
 import { SQLiteAdapterCore } from './sqlite-adapter-core.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
 import { buildAtomInsertValues } from './helpers/atom-schema.js';
+import { getAllFileHashes } from './helpers/file-hash-lookup.js';
+import { markRelatedTestAtoms } from './helpers/test-atom-orphaning.js';
 
 /**
  * Mixin/Clase base para operaciones CRUD
@@ -53,12 +55,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
    * @returns {Map<string, string>} Map<relativePath, hash>
    */
   getAllFileHashes() {
-    const rows = this.db.prepare('SELECT path, hash FROM files WHERE hash IS NOT NULL').all();
-    const map = new Map();
-    for (const row of rows) {
-      map.set(row.path, row.hash);
-    }
-    return map;
+    return getAllFileHashes(this.db);
   }
 
   save(atom) {
@@ -126,50 +123,16 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
           VALUES (?, 'deleted', ?, ?, ?, 'system_cleanup')
         `).run(id, JSON.stringify(atomBefore), 0.5, now);
       } catch (e) {
-        this._logger.warn(`[SQLiteAdapter] Failed to log delete event: ${e.message}`);
-      }
+          this._logger.warn(`[SQLiteAdapter] Failed to log delete event: ${e.message}`);
+        }
 
       // 3. Buscar y marcar átomos espejo (tests relacionados)
-      this._markRelatedTestAtoms(id, atomBefore.file_path);
+      markRelatedTestAtoms(this.db, normalizedId, atomBefore.file_path, this._logger);
     }
 
     // 4. Borrar el átomo (las FK con CASCADE borran relaciones automáticamente)
     const result = this.statements.deleteById.run(normalizedId);
     return result.changes > 0;
-  }
-
-  /**
-   * Marca átomos de test relacionados como huérfanos cuando se borra el átomo fuente
-   * @private
-   */
-  _markRelatedTestAtoms(sourceId, sourceFilePath) {
-    try {
-      // Buscar átomos de test que mencionen el átomo fuente en su nombre o dependencias canónicas
-      const testAtoms = this.db.prepare(`
-        SELECT id FROM atoms 
-        WHERE is_test_callback = 1 
-        AND id LIKE ?
-      `).all(`%${sourceFilePath}%`);
-
-      for (const testAtom of testAtoms) {
-        // Marcar como huérfano actualizando derived_json
-        const currentData = this.statements.getById.get(testAtom.id);
-        if (currentData) {
-          let derived = currentData.derived_json ? JSON.parse(currentData.derived_json) : {};
-          derived.orphaned = true;
-          derived.orphanedFrom = sourceId;
-          derived.orphanedAt = new Date().toISOString();
-
-          this.db.prepare(`
-            UPDATE atoms SET derived_json = ? WHERE id = ?
-          `).run(JSON.stringify(derived), testAtom.id);
-
-          this._logger.debug(`[SQLiteAdapter] Marked test atom as orphaned: ${testAtom.id}`);
-        }
-      }
-    } catch (e) {
-      this._logger.warn(`[SQLiteAdapter] Failed to mark related tests: ${e.message}`);
-    }
   }
 
   deleteByFile(filePath) {
