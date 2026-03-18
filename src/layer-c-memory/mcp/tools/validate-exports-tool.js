@@ -7,6 +7,7 @@
 
 import { validateAllExports, traceExportChain, getFileExports } from './validate-exports-chain.js';
 import { createLogger } from '#utils/logger.js';
+import { formatError } from '../core/shared/utils/error-formatter.js';
 
 const logger = createLogger('OmnySys:MCP:ValidateExports');
 
@@ -74,14 +75,4 @@ export async function validate_exports(args, context) {
   }
 }
 
-/**
- * Formatea error estándar
- */
-function formatError(code, message, details = {}) {
-  return {
-    success: false,
-    error: { code, message },
-    ...details,
-    severity: details.severity || 'high'
-  };
-}
+

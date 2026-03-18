@@ -20,7 +20,8 @@ import {
 import {
     analyzeDirectoryStructure,
     validateFileLocation,
-    calculateArchitectureOrganizationScore
+    calculateArchitectureOrganizationScore,
+    detectFileType
 } from './directory-structure-analyzer.js';
 import { detectHelperReuseOpportunities } from './helper-reuse-detector.js';
 
@@ -342,33 +343,7 @@ async function calculateDuplicationScore(projectPath, repo) {
     };
 }
 
-/**
- * Detecta tipo de archivo por nombre
- */
-function detectFileType(fileName) {
-    const name = fileName.toLowerCase();
 
-    if (name.includes('util') || name.includes('helper') || name.includes('common')) {
-        return 'helper';
-    }
-    if (name.includes('policy') || name.includes('guard') || name.includes('rule') || name.includes('validator')) {
-        return 'policy';
-    }
-    if (name.includes('service') || name.includes('manager') || name.includes('orchestrator')) {
-        return 'service';
-    }
-    if (name.includes('controller') || name.includes('handler') || name.includes('route')) {
-        return 'controller';
-    }
-    if (name.includes('model') || name.includes('entity') || name.includes('schema')) {
-        return 'model';
-    }
-    if (name.includes('test') || name.includes('spec')) {
-        return 'test';
-    }
-
-    return 'other';
-}
 
 /**
  * Obtiene nivel de severidad basado en score

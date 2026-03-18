@@ -16,6 +16,7 @@ import {
     readDaemonOwnerLock,
     waitForDaemonOwner
 } from '../shared/compiler/index.js';
+import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';

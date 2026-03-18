@@ -18,6 +18,7 @@ import { getEditContext, findInContext, getFileAtoms } from './context-resolver.
 import { createBackup, restoreBackup, cleanupOldBackups } from './backup-manager.js';
 import { validateEditIntent } from './validation-ext.js';
 import { createLogger } from '#utils/logger.js';
+import { formatError } from '../../core/shared/utils/error-formatter.js';
 
 const logger = createLogger('OmnySys:MCP:SafeEdit');
 
@@ -49,16 +50,9 @@ export async function safe_edit(args, context) {
 
   const { projectPath } = context;
 
-  if (!projectPath) {
-    return formatError('MISSING_PROJECT_PATH', 'projectPath not provided in context');
-  }
-
-  if (!filePath || !newContent) {
-    return formatError('INVALID_PARAMS', 'Missing required parameters: filePath, newContent');
-  }
-
-  if (!lineNumber && !pattern) {
-    return formatError('INVALID_PARAMS', 'Either lineNumber OR pattern must be provided');
+  const validationResult = validateSafeEditParams(args, context);
+  if (validationResult.error) {
+    return validationResult.error;
   }
 
   logger.info(`[safe_edit] Starting edit for ${filePath}:${lineNumber || 'pattern'}`);
@@ -73,25 +67,17 @@ export async function safe_edit(args, context) {
       linesAfter
     });
 
-    // 2. Si hay pattern, buscarlo dentro del contexto
-    let oldString = editContext.suggestedOldString;
-    if (pattern) {
-      const foundInContext = findInContext(editContext.fullContext, pattern);
-      if (foundInContext) {
-        oldString = foundInContext;
-      } else {
-        // Buscar en todo el archivo
-        const fs = await import('fs/promises');
-        const fullPath = path.join(projectPath, filePath);
-        const fileContent = await fs.readFile(fullPath, 'utf8');
-        const foundInFile = findInContext(fileContent, pattern);
-        if (foundInFile) {
-          oldString = foundInFile;
-        } else {
-          return formatError('PATTERN_NOT_FOUND', `Pattern not found: ${pattern}`);
-        }
-      }
+    // 2. Resolver oldString (con o sin pattern)
+    const resolved = await resolveOldStringWithPattern({
+      pattern,
+      editContext,
+      projectPath,
+      filePath
+    });
+    if (resolved.error) {
+      return resolved.error;
     }
+    const oldString = resolved.oldString;
 
     // 3. Validación extendida del intent de edición
     const validation = await validateEditIntent({
@@ -123,70 +109,17 @@ export async function safe_edit(args, context) {
       };
     }
 
-    // 5. Crear backup si se solicita
-    let backupPath = null;
-    if (autoBackup) {
-      backupPath = await createBackup(filePath, projectPath);
-      logger.debug(`[safe_edit] Backup created: ${backupPath}`);
-    }
-
-    // 6. Ejecutar atomic_edit
-    let editResult;
-    try {
-      editResult = await atomic_edit(
-        {
-          filePath,
-          oldString,
-          newString: newContent,
-          autoFix: false  // safe_edit maneja sus propios errores
-        },
-        context
-      );
-
-      if (!editResult.success) {
-        throw new Error(editResult.message || 'atomic_edit failed');
-      }
-
-      logger.info(`[safe_edit] Edit successful for ${filePath}`);
-
-      // 7. Limpieza de backups viejos (opcional)
-      if (autoBackup) {
-        await cleanupOldBackups(projectPath, filePath);
-      }
-
-      return {
-        success: true,
-        message: 'Edit completed successfully',
-        filePath,
-        backupPath,
-        context: {
-          atomId: editContext.atomId,
-          atomName: editContext.atomName,
-          lineRange: editContext.lineRange
-        },
-        warnings: validation.warnings || [],
-        editResult
-      };
-
-    } catch (editError) {
-      // 8. Rollback si falla
-      logger.error(`[safe_edit] Edit failed: ${editError.message}`);
-      
-      if (autoBackup && backupPath) {
-        try {
-          await restoreBackup(filePath, projectPath, backupPath);
-          logger.warn(`[safe_edit] Rollback completed from backup: ${backupPath}`);
-        } catch (rollbackError) {
-          logger.error(`[safe_edit] Rollback failed: ${rollbackError.message}`);
-        }
-      }
-
-      return formatError('EDIT_FAILED', `Edit operation failed: ${editError.message}`, {
-        originalError: editError.message,
-        backupPath,
-        canRestore: autoBackup && !!backupPath
-      });
-    }
+    // 5-8. Ejecutar con backup y rollback automático
+    return await executeWithBackup({
+      filePath,
+      projectPath,
+      oldString,
+      newContent,
+      autoBackup,
+      context,
+      editContext,
+      validationWarnings: validation.warnings || []
+    });
 
   } catch (error) {
     logger.error(`[safe_edit] Unexpected error: ${error.message}`);
@@ -194,17 +127,7 @@ export async function safe_edit(args, context) {
   }
 }
 
-/**
- * Formatea error estándar
- */
-function formatError(code, message, details = {}) {
-  return {
-    success: false,
-    error: { code, message },
-    ...details,
-    severity: details.severity || 'high'
-  };
-}
+
 
 /**
  * Helper para obtener contexto sin editar (útil para debugging)
@@ -241,4 +164,125 @@ export async function get_safe_edit_context(args, context) {
   } catch (error) {
     return { error: error.message };
   }
+}
+
+/**
+ * Resuelve el oldString usando el patrón suministrado.
+ */
+async function resolveOldStringWithPattern({ pattern, editContext, projectPath, filePath }) {
+  let oldString = editContext.suggestedOldString;
+  if (!pattern) return { oldString };
+
+  const foundInContext = findInContext(editContext.fullContext, pattern);
+  if (foundInContext) {
+    return { oldString: foundInContext };
+  }
+
+  // Buscar en todo el archivo si no se encuentra en el contexto
+  const fs = await import('fs/promises');
+  const fullPath = path.join(projectPath, filePath);
+  const fileContent = await fs.readFile(fullPath, 'utf8');
+  const foundInFile = findInContext(fileContent, pattern);
+  if (foundInFile) {
+    return { oldString: foundInFile };
+  }
+
+  return { error: formatError('PATTERN_NOT_FOUND', `Pattern not found: ${pattern}`) };
+}
+
+/**
+ * Ejecuta la edición con soporte para backup y rollback
+ */
+async function executeWithBackup({
+  filePath,
+  projectPath,
+  oldString,
+  newContent,
+  autoBackup,
+  context,
+  editContext,
+  validationWarnings
+}) {
+  let backupPath = null;
+  if (autoBackup) {
+    backupPath = await createBackup(filePath, projectPath);
+    logger.debug(`[safe_edit] Backup created: ${backupPath}`);
+  }
+
+  let editResult;
+  try {
+    editResult = await atomic_edit(
+      {
+        filePath,
+        oldString,
+        newString: newContent,
+        autoFix: false  // safe_edit maneja sus propios errores
+      },
+      context
+    );
+
+    if (!editResult.success) {
+      throw new Error(editResult.message || 'atomic_edit failed');
+    }
+
+    logger.info(`[safe_edit] Edit successful for ${filePath}`);
+
+    if (autoBackup) {
+      await cleanupOldBackups(projectPath, filePath);
+    }
+
+    return {
+      success: true,
+      message: 'Edit completed successfully',
+      filePath,
+      backupPath,
+      context: {
+        atomId: editContext.atomId,
+        atomName: editContext.atomName,
+        lineRange: editContext.lineRange
+      },
+      warnings: validationWarnings,
+      editResult
+    };
+
+  } catch (editError) {
+    logger.error(`[safe_edit] Edit failed: ${editError.message}`);
+    
+    if (autoBackup && backupPath) {
+      try {
+        await restoreBackup(filePath, projectPath, backupPath);
+        logger.warn(`[safe_edit] Rollback completed from backup: ${backupPath}`);
+      } catch (rollbackError) {
+        logger.error(`[safe_edit] Rollback failed: ${rollbackError.message}`);
+      }
+    }
+
+    return formatError('EDIT_FAILED', `Edit operation failed: ${editError.message}`, {
+      originalError: editError.message,
+      backupPath,
+      canRestore: autoBackup && !!backupPath
+    });
+  }
+}
+
+/**
+ * Valida los parámetros iniciales de la herramienta safe_edit.
+ */
+function validateSafeEditParams(args, context) {
+  const { filePath, newContent, lineNumber, pattern } = args;
+  const { projectPath } = context;
+
+  if (!projectPath) {
+    return { error: formatError('MISSING_PROJECT_PATH', 'projectPath not provided in context') };
+  }
+
+  if (!filePath || !newContent) {
+    return { error: formatError('INVALID_PARAMS', 'Missing required parameters: filePath, newContent') };
+  }
+
+  if (!lineNumber && !pattern) {
+    return { error: formatError('INVALID_PARAMS', 'Either lineNumber OR pattern must be provided') };
+  }
+
+  return { valid: true };
 }

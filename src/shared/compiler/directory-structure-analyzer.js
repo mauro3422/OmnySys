@@ -140,7 +140,7 @@ function getDefaultConventions() {
 /**
  * Detecta tipo de archivo por nombre
  */
-function detectFileType(fileName) {
+export function detectFileType(fileName) {
   const name = fileName.toLowerCase();
   
   if (name.includes('util') || name.includes('helper') || name.includes('common')) {
