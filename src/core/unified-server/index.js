@@ -11,6 +11,7 @@ import * as tools from './tools/index.js';
 import { printStatus } from './status.js';
 import { shutdown } from './lifecycle.js';
 import { createLogger } from '../../utils/logger.js';
+import { createCliOrchestrator } from '../../shared/cli/base-orchestrator.js';
 
 const logger = createLogger('OmnySys:index');
 
@@ -69,24 +70,20 @@ Object.assign(
   { printStatus, shutdown }
 );
 
-async function main() {
-  const projectPath = process.argv[2] || process.cwd();
-  const server = new OmnySysUnifiedServer(projectPath);
+let globalServerInstance = null;
 
-  // Handle graceful shutdown
-  process.on('SIGTERM', () => server.shutdown());
-  process.on('SIGINT', () => server.shutdown());
-
-  try {
-    await server.initialize();
-
-    // Keep alive
-    await new Promise(() => {});
-  } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
+const main = createCliOrchestrator({
+  name: 'unified-server',
+  logger: createLogger,
+  keepAlive: true,
+  onInterrupt: async () => {
+    if (globalServerInstance) await globalServerInstance.shutdown();
+  },
+  run: async ({ absolutePath }) => {
+    globalServerInstance = new OmnySysUnifiedServer(absolutePath);
+    await globalServerInstance.initialize();
   }
-}
+});
 
 export { OmnySysUnifiedServer, main };
 

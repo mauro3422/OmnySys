@@ -1,0 +1,1705 @@
+﻿
+> omnysys@0.9.127 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Dev/OmnySystem[39m
+
+ [31mÔØ»[39m tests/examples/real-factory-example.test.js [2m([22m[2m12 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[32m 161[2mms[22m[39m
+       [32mÔ£ô[39m should create real files[32m 15[2mms[22m[39m
+       [32mÔ£ô[39m should create projects[32m 9[2mms[22m[39m
+       [32mÔ£ô[39m should create multiple files at once[32m 12[2mms[22m[39m
+       [32mÔ£ô[39m should auto-cleanup after test[32m 11[2mms[22m[39m
+[31m       [31m├ù[31m should create simple project[39m[32m 22[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should create project with imports[39m[32m 16[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should create complex project[39m[32m 23[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should auto-cleanup project[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should handle errors and still cleanup[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should allow custom files[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m example of mock-based test (not recommended)[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should test real behavior[32m 5[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/validation/engine/validation-engine.test.js [2m([22m[2m34 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 283[2mms[22m[39m
+       [32mÔ£ô[39m creates engine with default options[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m merges custom options[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m accepts custom registry[32m 17[2mms[22m[39m
+       [32mÔ£ô[39m initializes empty cache[32m 10[2mms[22m[39m
+       [32mÔ£ô[39m returns ValidationReport[32m 16[2mms[22m[39m
+       [32mÔ£ô[39m sets context projectPath[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m returns empty report for empty project[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m validates with files[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m throws without context[32m 10[2mms[22m[39m
+       [32mÔ£ô[39m throws for unknown entity[32m 10[2mms[22m[39m
+       [32mÔ£ô[39m adds custom strategy[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m sets custom runner[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m clears cache[32m 8[2mms[22m[39m
+[31m       [31m├ù[31m returns engine stats[39m[32m 47[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m initializes empty maps[32m 6[2mms[22m[39m
+       [32mÔ£ô[39m sets paths[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m loads files from omnysysdata[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m handles missing files directory[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m loads index.json[32m 9[2mms[22m[39m
+       [32mÔ£ô[39m reads source file[32m 6[2mms[22m[39m
+       [32mÔ£ô[39m caches source code[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m returns null for missing file[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m finds entity in files[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m finds entity in atoms[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m finds entity in molecules[32m 10[2mms[22m[39m
+       [32mÔ£ô[39m finds entity in modules[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m returns undefined for unknown entity[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m returns files for file type[32m 7[2mms[22m[39m
+       [32mÔ£ô[39m returns atoms for atom type[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m returns empty array for unknown type[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m returns true for existing entity[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m returns false for missing entity[32m 5[2mms[22m[39m
+     [32mÔ£ô[39m creates engine and validates[32m 4[2mms[22m[39m
+     [32mÔ£ô[39m uses default omnysysPath[32m 4[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-c-memory/verification/consistency-validator.test.js [2m([22m[2m26 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 519[2mms[22m[39m
+       [32mÔ£ô[39m creates instance with projectPath[32m 23[2mms[22m[39m
+       [32mÔ£ô[39m sets dataDir correctly[32m 9[2mms[22m[39m
+       [32mÔ£ô[39m initializes with default config[32m 12[2mms[22m[39m
+       [32mÔ£ô[39m accepts custom config options[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m initializes DataLoader[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m initializes IssueManager[32m 15[2mms[22m[39m
+       [32mÔ£ô[39m initializes null cache[32m 19[2mms[22m[39m
+       [32mÔ£ô[39m returns validation result structure[32m 16[2mms[22m[39m
+       [32mÔ£ô[39m returns PASSED status when no issues[32m 15[2mms[22m[39m
+       [32mÔ£ô[39m loads all data before validation[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m returns issues array[32m 55[2mms[22m[39m
+       [32mÔ£ô[39m returns summary[32m 19[2mms[22m[39m
+       [32mÔ£ô[39m runs PathValidator when enabled[32m 31[2mms[22m[39m
+       [32mÔ£ô[39m runs AtomsFilesValidator when enabled[32m 33[2mms[22m[39m
+       [32mÔ£ô[39m runs FilesConnectionsValidator when enabled[32m 41[2mms[22m[39m
+       [32mÔ£ô[39m runs DuplicationDetector when enabled[32m 16[2mms[22m[39m
+       [32mÔ£ô[39m skips PathValidator when disabled[32m 12[2mms[22m[39m
+       [32mÔ£ô[39m skips AtomsFilesValidator when disabled[32m 12[2mms[22m[39m
+       [32mÔ£ô[39m skips DuplicationDetector when disabled[32m 16[2mms[22m[39m
+       [32mÔ£ô[39m detects atom referencing missing file[32m 21[2mms[22m[39m
+       [32mÔ£ô[39m returns PASSED for no issues[32m 12[2mms[22m[39m
+[31m       [31m├ù[31m returns data and issue stats[39m[32m 39[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m returns issues from IssueManager[32m 19[2mms[22m[39m
+       [32mÔ£ô[39m resets cache to null[32m 16[2mms[22m[39m
+       [32mÔ£ô[39m runs complete validation flow[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m validates with all options disabled[32m 16[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/core/atomic-editor/operations.test.js [2m([22m[2m38 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 391[2mms[22m[39m
+       [32mÔ£ô[39m stores filePath and options[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m sets type to modify[32m 2[2mms[22m[39m
+[31m       [31m├ù[31m requires oldString[39m[32m 19[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m requires newString[32m 13[2mms[22m[39m
+       [32mÔ£ô[39m validates oldString exists in file[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m detects multiple matches without all flag[32m 7[2mms[22m[39m
+       [32mÔ£ô[39m allows multiple matches with all flag[32m 11[2mms[22m[39m
+[31m       [31m├ù[31m handles file read errors[39m[32m 7[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m replaces oldString with newString[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m returns position of modification[32m 12[2mms[22m[39m
+       [32mÔ£ô[39m replaces all when all flag is set[32m 21[2mms[22m[39m
+       [32mÔ£ô[39m handles execution errors for non-existent file[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m restores original content after modify[32m 7[2mms[22m[39m
+       [32mÔ£ô[39m handles undo errors gracefully[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m stores filePath and options[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m sets type to insert[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m requires content[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m allows only one position option[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m validates after pattern exists[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m passes when after pattern exists[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m inserts at specific line[32m 18[2mms[22m[39m
+       [32mÔ£ô[39m inserts after pattern[32m 22[2mms[22m[39m
+       [32mÔ£ô[39m inserts before pattern[32m 25[2mms[22m[39m
+       [32mÔ£ô[39m inserts at end by default[32m 18[2mms[22m[39m
+       [32mÔ£ô[39m restores original content after insert[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m stores filePath and options[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m sets type to delete[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m requires exactly one deletion method[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m rejects multiple deletion methods[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m validates content exists[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m validates line range[32m 17[2mms[22m[39m
+       [32mÔ£ô[39m validates pattern regex[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m deletes exact content[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m deletes line range[32m 21[2mms[22m[39m
+       [32mÔ£ô[39m deletes single line[32m 15[2mms[22m[39m
+       [32mÔ£ô[39m deletes by pattern[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m returns deleted content length[32m 18[2mms[22m[39m
+       [32mÔ£ô[39m restores original content after delete[32m 20[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns success when MCP already running
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+ [31mÔØ»[39m tests/unit/shared/derivation-engine.test.js [2m([22m[2m47 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 65[2mms[22m[39m
+     [32mÔ£ô[39m derives and caches result[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m invalidates by atom ID[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m invalidates molecule[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m clears all cache[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m tracks dependencies[32m 1[2mms[22m[39m
+[31m     [31m├ù[31m getStats returns correct information[39m[32m 17[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m has and get methods work[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m getAvailableRules returns all rules[32m 5[2mms[22m[39m
+     [32mÔ£ô[39m hasRule checks rule existence[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m DerivationRules contains all expected rules[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns standard for empty atoms[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m detects network-hub archetype[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m detects internal-module archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects critical-module archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects god-object archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects validation-module archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m sums atom complexities[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles zero complexity[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles empty atoms[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles missing complexity[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m calculates risk from atoms[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns list of exported atom names[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns empty array for no exports[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m counts exported atoms[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m counts all atoms[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles empty array[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns true when any atom has side effects[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns false when no atoms have side effects[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects network calls[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns false without network calls[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects DOM manipulation[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects storage access[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m detects error handling[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects async patterns[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m sums external calls[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m collects network endpoints[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects lifecycle hooks[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects cleanup patterns[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m composes complete molecular metadata[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m includes all derived fields[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles empty atoms array[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m creates composer with cache[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m composer caches derivations[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m composer.invalidate clears by atom[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m composer.clear resets everything[39m[32m 4[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m derives metadata from real JS file structure[32m 8[2mms[22m[39m
+     [32mÔ£ô[39m composes metadata for complex module[32m 3[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns success when MCP already running
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns success when MCP already running
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns success when MCP already running
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns error when MCP fails to start
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreturns error when MCP fails to start
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreports OpenCode configuration status
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreports OpenCode configuration status
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreports OpenCode configuration failure
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mreports OpenCode configuration failure
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mworks without silent option
+[22m[39mÔä╣´©Å 
+ÔÖ╗´©Å  The MCP HTTP Daemon is ALREADY RUNNING.
+Ôä╣´©Å ­ƒôí Sending graceful restart signal to Daemon instead of killing it (clearCache=false)...
+
+[90mstdout[2m | tests/unit/cli/commands/up.test.js[2m > [22m[2mupLogic[2m > [22m[2mworks without silent option
+[22m[39mÔ£à Ô£à Daemon graceful restart triggered: ================================================================================
+CRITICAL WARNING FOR AI AGENT (ANTIGRAVITY BUG PRE-EMPTION)
+You just triggered a true process restart. Because of a known bug in the
+Antigravity IDE client, your current MCP session is now orphaned.
+Any subsequent MCP tool calls you make right now will silently hang forever.
+
+-> WHAT YOU MUST DO IMMEDIATELY:
+1. DO NOT call any other MCP tool.
+2. Call the `notify_user` tool right now.
+3. Tell the user: "I restarted the server. Please manually restart/reload
+   Antigravity so the MCP session reconnects, then tell me to continue."
+================================================================================
+
+ [31mÔØ»[39m tests/unit/cli/commands/up.test.js [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 189[2mms[22m[39m
+[31m     [31m├ù[31m returns success when MCP already running[39m[32m 150[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m starts MCP when not running[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns error when MCP fails to start[32m 10[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m reports OpenCode configuration status[32m 7[2mms[22m[39m
+     [32mÔ£ô[39m reports OpenCode configuration failure[32m 7[2mms[22m[39m
+     [32mÔ£ô[39m handles exceptions[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m works without silent option[32m 11[2mms[22m[39m
+     [32mÔ£ô[39m exports execute function[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m exports aliases[32m 0[2mms[22m[39m
+[90mstdout[2m | tests/cache-invalidator.test.js
+[22m[39m­ƒº¬ Running Cache Invalidator Tests...
+Total test suites: 7
+Total tests: 20+
+
+Ô£à Tests should verify:
+   ÔÇó Invalidaci├│n < 50ms
+   ÔÇó Atomicidad (rollback)
+   ÔÇó M├║ltiples archivos
+   ÔÇó Retry autom├ítico
+   ÔÇó Concurrencia segura
+   ÔÇó Estado consistente
+   ÔÇó Integraci├│n completa
+
+ [31mÔØ»[39m tests/unit/cli/commands/check.test.js [2m([22m[2m11 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[33m 315[2mms[22m[39m
+     [32mÔ£ô[39m returns error when no filePath provided[32m 4[2mms[22m[39m
+     [32mÔ£ô[39m returns error when filePath is empty string[32m 4[2mms[22m[39m
+     [32mÔ£ô[39m returns error when no analysis data exists[32m 7[2mms[22m[39m
+     [32mÔ£ô[39m returns error when file not found in system map[32m 120[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m returns file data when file exists in system map[39m[32m 50[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m includes semantic connections in output[39m[32m 64[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m includes side effects in output[39m[32m 36[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m handles path normalization[39m[32m 11[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m handles errors gracefully[32m 5[2mms[22m[39m
+     [32mÔ£ô[39m exports check function[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m calls process.exit with exitCode from logic[32m 10[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/validation/core/rule-registry.test.js [2m([22m[2m52 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 51[2mms[22m[39m
+       [32mÔ£ô[39m creates rule with config[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m sets defaults for optional fields[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns true when entity type matches[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns false when entity type does not match[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m handles missing entity type[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns true when all required fields exist[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns false when required field is missing[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m checks nested fields with dot notation[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m finds fields in context if not in entity[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m gets direct field from entity[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m gets nested field with dot notation[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns undefined for missing nested field[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m falls back to context[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m executes validate function and returns result[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m returns valid result when validate returns true[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns invalid result when validate returns false[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns critical for invariant failure[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m handles object result from validate[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m handles errors in validate function[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m sets layer on result[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns null when not fixable[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m executes fix function when fixable[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns null on fix error[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m registers a rule[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m registers rule config as ValidationRule[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m adds rule to layer index[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m adds rule to entity type index[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m tracks invariants[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m throws on duplicate id[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns this for chaining[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m registers multiple rules[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns rule by id[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns undefined for unknown id[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns rules for layer[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns empty array for unknown layer[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns rules for entity type[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns empty array for unknown type[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns only invariant rules[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m finds rules applicable to entity with required fields[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns all rules[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns true for existing rule[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns false for missing rule[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m removes rule from registry[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m removes from layer index[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m removes from entity index[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m removes from invariants[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns false for unknown rule[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m returns registry statistics[39m[32m 7[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m removes all rules[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m creates a ValidationRule from config[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns singleton registry[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m creates new registry[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-a-core/parser/parser.test.js [2m([22m[2m15 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 164[2mms[22m[39m
+       [32mÔ£ô[39m should parse an empty file[32m 15[2mms[22m[39m
+[31m       [31m├ù[31m should parse ESM imports[39m[32m 22[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should parse CommonJS requires[32m 10[2mms[22m[39m
+       [32mÔ£ô[39m should parse named exports[32m 6[2mms[22m[39m
+[31m       [31m├ù[31m should parse default export[39m[32m 5[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should parse function declarations[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m should parse arrow functions[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m should parse class declarations[32m 2[2mms[22m[39m
+[31m       [31m├ù[31m should extract function calls[39m[32m 8[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should handle parse errors gracefully[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should parse an existing file[32m 49[2mms[22m[39m
+       [32mÔ£ô[39m should handle non-existent files[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m should parse TypeScript interfaces[32m 21[2mms[22m[39m
+       [32mÔ£ô[39m should parse TypeScript type aliases[32m 9[2mms[22m[39m
+       [32mÔ£ô[39m should detect dynamic imports[32m 2[2mms[22m[39m
+ [31mÔØ»[39m tests/integration/layer-a/layer-a-workflows.integration.test.js [2m([22m[2m9 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 212[2mms[22m[39m
+       [32mÔ£ô[39m scans project and finds all files[32m 47[2mms[22m[39m
+       [32mÔ£ô[39m parses files and extracts structure[32m 28[2mms[22m[39m
+       [32mÔ£ô[39m executes complete analysis pipeline[32m 11[2mms[22m[39m
+       [32mÔ£ô[39m detects unused exports in real project[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m detects circular dependencies[32m 2[2mms[22m[39m
+[31m       [31m├ù[31m saves analysis results successfully[39m[32m 12[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m end-to-end workflow: scan ÔåÆ analyze ÔåÆ save[39m[32m 53[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m handles project with multiple issues[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m handles empty project gracefully[32m 16[2mms[22m[39m
+ [31mÔØ»[39m tests/integration/layer-a/extended-workflows.integration.test.js [2m([22m[2m7 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 120[2mms[22m[39m
+       [32mÔ£ô[39m runs complete analysis: tier1 + tier2[32m 30[2mms[22m[39m
+[31m       [31m├ù[31m saves various analysis results[39m[32m 12[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m queries project stats after analysis[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m detects coupling and circular dependencies[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m handles null/undefined gracefully[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m handles empty project gracefully[32m 15[2mms[22m[39m
+       [32mÔ£ô[39m parses multiple real files correctly[32m 30[2mms[22m[39m
+ [31mÔØ»[39m tests/cache-invalidator.test.js [2m([22m[2m17 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 615[2mms[22m[39m
+[31m       [31m├ù[31m should invalidate cache in less than 50ms[39m[32m 101[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should return error for non-existent file gracefully[32m 14[2mms[22m[39m
+       [32mÔ£ô[39m should emit events on success[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m should emit events on failure[32m 9[2mms[22m[39m
+       [32mÔ£ô[39m should rollback all operations if one fails[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m should maintain consistency after failed invalidation[32m 9[2mms[22m[39m
+[31m       [31m├ù[31m should invalidate multiple files efficiently[39m[32m 47[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should handle partial failures[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m should retry on transient failures[32m 221[2mms[22m[39m
+       [32mÔ£ô[39m should fail after max retries exhausted[32m 114[2mms[22m[39m
+[31m       [31m├ù[31m should handle concurrent invalidations of different files[39m[32m 27[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should handle concurrent invalidations of same file gracefully[39m[32m 9[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should report correct status for cached file[39m[32m 12[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should report correct status for non-cached file[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m should track statistics correctly[32m 4[2mms[22m[39m
+[31m       [31m├ù[31m should invalidate and allow re-analysis[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should handle file deletion scenario[32m 4[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-a-static/pipeline/purpose.test.js [2m([22m[2m34 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 44[2mms[22m[39m
+[31m     [31m├ù[31m contains all expected purpose keys[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m DEAD_CODE is the only purpose with isDead: true[39m[32m 11[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m PRIVATE_HELPER has isDead: false[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns API_EXPORT for exported atoms[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns TEST_HELPER for src/foo.test.js[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TEST_HELPER for src/foo.spec.js[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TEST_HELPER for tests/unit/foo.js[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TEST_HELPER for src/__tests__/foo.js[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TEST_HELPER for test-cases/foo.js[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns ANALYSIS_SCRIPT for audit script[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns SCRIPT_MAIN for non-audit script[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detects analysis by function name even in generic script[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns CONFIG_SETUP for /config/ path[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns CLASS_METHOD for method functionType[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns CLASS_METHOD when className is set[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns EVENT_HANDLER when lifecycleHooks present[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns EVENT_HANDLER when temporal events present[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TIMER_ASYNC when temporal timers present[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns TIMER_ASYNC when async + hasSideEffects[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m does NOT return TIMER_ASYNC for async without side effects[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns NETWORK_HANDLER when hasNetworkCalls[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns NETWORK_HANDLER when networkEndpoints present[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns EVENT_HANDLER when hasDomManipulation[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns API_EXPORT for hot-path archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns INTERNAL_HELPER for validator archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns INTERNAL_HELPER for transformer archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns CLASS_METHOD for class-method archetype[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns INTERNAL_HELPER when calledBy has entries[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m returns DEAD_CODE when no evidence of use[39m[32m 5[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m upgrades DEAD_CODE atoms with calledBy to PRIVATE_HELPER[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m leaves DEAD_CODE atoms without calledBy unchanged[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m does not touch atoms already classified as non-DEAD_CODE[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles mixed array of dead and live atoms[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles empty array[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/pattern-detection/detectors/hotspots-detector.test.js [2m([22m[2m17 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 38[2mms[22m[39m
+       [32mÔ£ô[39m should detect function with high usage as hotspot[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m should NOT detect function below threshold[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should calculate risk score based on usage[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should filter out utility functions like formatDate[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should flag business logic functions[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return findings with required fields[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should include recommendation[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return overall score[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m should return detector metadata[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should handle empty system map[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should handle missing function_links[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m should handle null/undefined config gracefully[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should provide correct detector ID[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should provide detector name[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m should provide description[39m[32m 9[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should identify format as utility[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should identify get/set as utilities[32m 0[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/analyze.test.js[2m > [22m[2manalyzeLogic[2m > [22m[2mdefaults verbose to true when not silent
+[22m[39m
+OmniSystem Analysis
+
+Project: /my/project
+
+
+[90mstdout[2m | tests/unit/cli/commands/analyze.test.js[2m > [22m[2manalyzeLogic[2m > [22m[2mdefaults verbose to true when not silent
+[22m[39m
+Analysis complete!
+
+Next steps:
+  omnysystem status <project>  # Check analysis status
+  omnysystem serve <project>   # Start MCP server
+
+
+ [31mÔØ»[39m tests/unit/cli/commands/analyze.test.js [2m([22m[2m12 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 31[2mms[22m[39m
+     [32mÔ£ô[39m returns success when analysis completes[32m 3[2mms[22m[39m
+     [32mÔ£ô[39m calls indexProject with correct options[32m 3[2mms[22m[39m
+     [32mÔ£ô[39m defaults verbose to true when not silent[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m sets verbose to false when silent[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m returns error when analysis fails[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m resolves project path[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m uses default path when no project provided[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m handles single file mode[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m exports analyze function[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m calls process.exit with exitCode from logic[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m returns result when exitOnComplete is false[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m throws error when analysis fails and exitOnComplete is false[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+ [31mÔØ»[39m tests/contracts/pattern-detection.contract.test.js [2m([22m[2m13 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 31[2mms[22m[39m
+     [32mÔ£ô[39m must extend PatternDetector base class[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m must implement getId() method[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m must implement getName() method[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m must implement getDescription() method[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m must return DetectionResult from detect()[39m[32m 19[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m must return array of findings[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m must return score between 0 and 100[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m must not throw on empty system map[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m must not throw on null/undefined input[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m must return valid result even when no patterns found[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m hotspot findings must have required fields[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m should complete in under 100ms for small inputs[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m all detectors should use consistent severity levels[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-c-memory/mcp/validation-utils-comprehensive.test.js [2m([22m[2m20 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 1254[2mms[22m[39m
+[31m       [31m├ù[31m debe retornar error estructurado sin romper el proceso[39m[32m 19[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m debe permitir editar archivos v├ílidos[32m 229[2mms[22m[39m
+       [32mÔ£ô[39m debe completarse en menos de 1 segundo[32m 36[2mms[22m[39m
+       [32mÔ£ô[39m validaci├│n es obligatoria (por dise├▒o)[32m 38[2mms[22m[39m
+       [32mÔ£ô[39m debe manejar errores gracefully con try-catch[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m usa imports est├íticos del storage[32m 254[2mms[22m[39m
+       [32mÔ£ô[39m debe manejar errores de permisos[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m debe manejar paths relativos correctamente[32m 8[2mms[22m[39m
+       [32mÔ£ô[39m debe manejar m├║ltiples validaciones concurrentes[32m 130[2mms[22m[39m
+       [32mÔ£ô[39m funciona independientemente del estado del MCP server[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m no debe tener dependencias circulares[32m 42[2mms[22m[39m
+       [32mÔ£ô[39m debe ser eficiente incluso con m├║ltiples validaciones[32m 235[2mms[22m[39m
+[31m       [31m├ù[31m debe incluir mensajes de error claros[39m[32m 4[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m debe loggear el progreso de validaci├│n[39m[32m 120[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m no debe acumular memoria en validaciones repetidas[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m validaci├│n es solo lectura, no modifica nada[32m 48[2mms[22m[39m
+       [32mÔ£ô[39m debe funcionar sin symbolName[32m 45[2mms[22m[39m
+       [32mÔ£ô[39m debe fallar graceful con archivo que no existe[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m debe manejar archivos grandes eficientemente[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m no valida sintaxis del c├│digo (eso es trabajo del atomic editor)[32m 23[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-a-static/preprocessor/preprocessor.test.js [2m([22m[2m45 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 47[2mms[22m[39m
+       [32mÔ£ô[39m inicia en TOP_LEVEL[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m enter() agrega contexto al stack[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m exit() remueve el ├║ltimo contexto[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m exit() en stack vac├¡o retorna null[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m m├║ltiples contextos se apilan correctamente[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m isIn() detecta contexto en cualquier posici├│n del stack[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m isCurrent() solo detecta contexto en el top[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m isInAny() detecta cualquier contexto del array[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m incrementa y decrementa profundidad[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m no decrementa bajo 0[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m pushToken() agrega tokens al historial[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m historial tiene l├¡mite de tama├▒o[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m matchPattern() detecta patrones[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m snapshot() y restore() preservan estado[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m addRule() agrega reglas[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m validateRules() detecta reglas mal formadas[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m crea reglas v├ílidas[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m lanza error si falta name[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m retorna LITERAL si no hay reglas[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m tiene 4 reglas para #[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m nombres de reglas son descriptivos[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m detecta shebang[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m detecta private fields[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m detecta pipeline operator[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m detecta m├║ltiples features[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m sin features problem├íticas[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m crea componentes correctamente[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m lanza error para lenguaje no soportado[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m retorna c├│digo sin cambios si no hay features[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m procesa shebang[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m mantiene pipeline operator sin cambios[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m crea placeholders ├║nicos para private fields[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m validateTransformations() detecta problemas[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m needsPreprocessing() funciona[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m getFeatures() retorna informaci├│n[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m archivo con shebang + private fields + pipeline[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m c├│digo con solo private fields[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m c├│digo con solo pipeline operators[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m archivo vac├¡o[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m solo shebang[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m private field sin class body no causa error[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m extiende JavaScript handler[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detecta interfaces[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m detecta type aliases[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m detecta type annotations[32m 0[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/ai.test.js[2m > [22m[2mai[2m > [22m[2mcalls process.exit with exitCode from logic
+[22m[39mValid subcommands: start, stop, status
+
+
+OmniSystem - Intelligent Codebase Analysis
+
+USAGE:
+  omnysystem <command> [project]
+  omnysystem ai <subcommand> [mode]
+
+COMMANDS:
+  analyze [project]    Run static analysis (generates .omnysysdata/)
+  check <file>         Show impact analysis for a specific file
+  consolidate [project] Iterative AI consolidation to 100% coverage
+  serve [project]      Start local MCP server for Claude Code
+  clean [project]      Remove analysis data (.omnysysdata/)
+  status [project]     Show analysis status and statistics
+  export [project]     Export complete system map (debug)
+  ai <subcommand>      Manage AI servers (see below)
+  help                 Show this message
+
+AI SUBCOMMANDS:
+  ai start [mode]      Start AI server(s) - modes: gpu (default), cpu, both
+  ai stop              Stop all AI servers
+  ai status            Check AI server status
+
+ARGUMENTS:
+  [project]            Path to project (default: current directory)
+
+EXAMPLES:
+  omnysystem analyze /my-project
+  omnysystem serve .
+  omnysystem status ../another-project
+  omnysystem clean
+  omnysystem ai start gpu
+  omnysystem ai status
+
+All data stays local - no internet connection required
+  
+
+ [31mÔØ»[39m tests/unit/cli/commands/ai.test.js [2m([22m[2m14 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 33[2mms[22m[39m
+       [32mÔ£ô[39m returns error when subcommand is null[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m returns error when subcommand is invalid[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns error when mode is invalid for start[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m starts gpu server when not running[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m detects already running gpu server[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m detects server already starting[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m starts cpu server when script exists[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns error when script not found[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m starts both servers in both mode[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns success when servers stopped[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m returns status with health info[39m[32m 12[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m handles status check failure[39m[32m 5[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m exports ai function[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m calls process.exit with exitCode from logic[32m 4[2mms[22m[39m
+ [31mÔØ»[39m tests/functional/storage-manager.functional.test.js [2m([22m[2m15 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 31[2mms[22m[39m
+[31m     [31m├ù[31m all expected functions are exported[39m[32m 16[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m calculateFileHash generates consistent hash[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m calculateFileHash returns same hash for same content[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m calculateFileHash handles empty string[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m createDataDirectory is exported[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m getDataDirectory is exported[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m hasExistingAnalysis is exported[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m saveMetadata is exported[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m saveFileAnalysis is exported[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m saveConnections is exported[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m saveRiskAssessment is exported[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m saveMolecule is exported[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m loadMolecule is exported[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m saveAtom is exported[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m loadAtoms is exported[32m 0[2mms[22m[39m
+ [31mÔØ»[39m src/core/__tests__/tunnel-vision-detector.test.js [2m([22m[2m12 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 28[2mms[22m[39m
+       [32mÔ£ô[39m should detect tunnel vision for modified atom with unmodified callers[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m should return null when no unmodified callers[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return null when atom not found[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate CRITICAL severity for god-functions[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should detect tunnel vision for all exported atoms in file[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m should return null for file without atoms[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return null when file data not found[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should format atomic alert correctly[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should format file alert correctly[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should return empty string for null alert[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m should return correct stats[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should remove old modifications[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-a-static/extractors/data-flow-parser-plugins.test.js [2m([22m[2m17 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 37[2mms[22m[39m
+     [32mÔ£ô[39m parsea archivos con shebang sin error[32m 2[2mms[22m[39m
+[31m     [31m├ù[31m retorna error para c├│digo con pipeline operator[39m[32m 12[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m parsea TypeScript b├ísico[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m parsea optional chaining (?.)[32m 2[2mms[22m[39m
+     [32mÔ£ô[39m parsea nullish coalescing (??)[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m parsea dynamic imports[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m parsea JSX[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m parsea top-level await[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m parsea class properties[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m parsea exports nombrados e imports ESM[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m retorna { error } en lugar de lanzar cuando el c├│digo es inv├ílido[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m retorna { error } para c├│digo vac├¡o malformado[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m no lanza excepci├│n para c├│digo vac├¡o[32m 3[2mms[22m[39m
+     [32mÔ£ô[39m no lanza excepci├│n con undefined como c├│digo[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m resultado tiene las propiedades esperadas[39m[32m 3[2mms[22m[39m[33m (retry x1)[39m
+[31m     [31m├ù[31m _meta tiene extractedAt y version[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+     [32mÔ£ô[39m an├ílisis sin opciones retorna invariants y inferredTypes vac├¡os[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/functional/race-detector.functional.test.js [2m([22m[2m31 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 28[2mms[22m[39m
+       [32mÔ£ô[39m calculates severity string for race conditions[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m returns low for null/undefined race[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m score() is alias for calculate()[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m scoreToSeverity converts numeric score to severity[39m[32m 10[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m explainScore returns array of factors[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m suggestTestingLevel returns advice for severity[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m setWeights updates weights[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m score method returns a number[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m returns 0.5 for null race[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns 0.5 for unknown type[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m scores init-error (IE) high[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns a number score[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m handles null input gracefully[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns a number score[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns 0.5 for null race[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns a number score[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns 0.5 for null race[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m scores based on project data[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m scores based on race frequency[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides advice for critical severity[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m provides advice for high severity[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides advice for medium severity[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides advice for low severity[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns low advice for unknown severity[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides type weights[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides async weights[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides data integrity weights[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m provides scope weights[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m returns 0.5 for unknown weight types[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m update merges new weights[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m update handles null/undefined gracefully[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/services/index.test.js [2m([22m[2m5 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 16[2mms[22m[39m
+[31m       [31m├ù[31m should export LLMService[39m[32m 11[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should export analyzeWithLLM (convenience function)[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should export isLLMAvailable (convenience function)[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should export waitForLLM (convenience function)[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m should have default export[39m[32m 1[2mms[22m[39m[33m (retry x1)[39m
+ [31mÔØ»[39m tests/unit/layer-graph/layer-graph.test.js [2m([22m[2m21 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 31[2mms[22m[39m
+       [32mÔ£ô[39m should create empty system map with all required fields[32m 4[2mms[22m[39m
+       [32mÔ£ô[39m should create file node with correct structure[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m should build graph from parsed files[39m[32m 14[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should create bidirectional links[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should detect cycles during build[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should detect simple cycle[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should detect chain cycle[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return empty array for acyclic graph[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return true for file in cycle[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return false for file not in cycle[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return all files in cycles[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate direct impact[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should calculate transitive impact[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate risk level[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate all transitive dependencies[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate all transitive dependents[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should serialize and deserialize graph correctly[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should detect added files[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should detect removed files[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should normalize Windows paths to Unix format[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should handle null/undefined[32m 0[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-b-semantic/validators/lineage-validator/checks/coherence-checks.test.js [2m([22m[2m12 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 28[2mms[22m[39m
+       [32mÔ£ô[39m should validate coherent atom[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m should detect missing validation operation[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m should accept validation with validation operation[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should accept validation with check operation[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should accept validation with verify operation[32m 0[2mms[22m[39m
+[31m       [31m├ù[31m should detect missing read operation for read flowType[39m[32m 15[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should accept read with read operation[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should accept read with fetch operation[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m should detect missing side effect for persist flowType[39m[32m 2[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should handle atom without semantic[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should handle atom without DNA[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should handle atom without dataFlow[32m 0[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/layer-a-core/graph/graph.test.js [2m([22m[2m13 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 42[2mms[22m[39m
+       [32mÔ£ô[39m should create empty system map with correct structure[32m 3[2mms[22m[39m
+       [32mÔ£ô[39m should create file node with correct structure[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m should build graph from parsed files object[39m[32m 14[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should create export index[32m 1[2mms[22m[39m
+[31m       [31m├ù[31m should create dependency links between files[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+       [32mÔ£ô[39m should calculate impact correctly[32m 2[2mms[22m[39m
+       [32mÔ£ô[39m should calculate transitive impact[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should detect simple cycle[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should return empty array when no cycles[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should detect complex cycle chain[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate all dependencies transitively[32m 1[2mms[22m[39m
+       [32mÔ£ô[39m should return empty set for file with no dependencies[32m 0[2mms[22m[39m
+       [32mÔ£ô[39m should calculate all dependents transitively[32m 1[2mms[22m[39m
+ [31mÔØ»[39m tests/functional/comprehensive-extractor.functional.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-a-analysis/extractors/extractors-atomic.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-a-analysis/extractors/extractors-group1.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-a-static/parser/parser-config.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/integration/layer-a/analyzer-flow.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/integration/layer-a/integration-contracts.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-c-memory/mcp/impact-map.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-c-memory/mcp/risk-assessment.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/cli/commands/index.test.js [2m([22m[2m25 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 27[2mms[22m[39m
+     [32mÔ£ô[39m finds command by primary name[32m 3[2mms[22m[39m
+     [32mÔ£ô[39m finds command by alias[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m finds down command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds down command by alias[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m finds status command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds tools command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds call command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds setup command[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m finds help command[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m finds help command by --help alias[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds help command by -h alias[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns null for unknown command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns null for empty string[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns null for null[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m is case sensitive[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for up command[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for help command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m returns null for unknown command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for status command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for tools command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for call command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for setup command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m finds logic function for down command[32m 0[2mms[22m[39m
+     [32mÔ£ô[39m exports all commands[32m 0[2mms[22m[39m
+[31m     [31m├ù[31m has correct number of commands[39m[32m 13[2mms[22m[39m[33m (retry x1)[39m
+ [31mÔØ»[39m tests/unit/layer-c-memory/mcp/search-files.test.js [2m([22m[2m0 test[22m[2m)[22m
+ [31mÔØ»[39m tests/unit/layer-c-memory/storage/repository/adapters/sqlite-bulk-operations.test.js [2m([22m[2m0 test[22m[2m)[22m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould create complete analysis artifacts
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould analyze empty project
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould create complete analysis artifacts
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 188ms
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould analyze empty project
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 130ms
+
+ [32mÔ£ô[39m tests/unit/core/atomic-editor/syntax-validator.test.js [2m([22m[2m17 tests[22m[2m)[22m[33m 4227[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m returns valid for correct JavaScript syntax [33m 312[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m returns invalid for syntax errors [33m 491[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m extracts column from error when available [33m 326[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m handles multi-line invalid code [33m 398[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m cleans up temporary file after validation [33m 382[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m cleans up temporary file even on error [33m 558[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/atomic-editor/atomic-editor.test.js [2m([22m[2m23 tests[22m[2m)[22m[33m 4738[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m edits file successfully [33m 1316[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m preserves other content when editing [33m 384[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m fails for invalid syntax [33m 327[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m undoes edit successfully [33m 388[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m redoes edit successfully [33m 398[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m shows canUndo after edit [33m 651[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould create complete analysis artifacts
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould create complete analysis artifacts
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 4ms
+
+ [32mÔ£ô[39m tests/integration/pipeline/full-analysis-pipeline.test.js [2m([22m[2m3 tests[22m[2m)[22m[33m 5039[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should run full pipeline on simple project [33m 2571[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle syntax errors gracefully [33m 1643[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should preserve data integrity across layers [33m 819[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould analyze simple project
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould analyze simple project
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 8ms
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould create non-existent directory
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mBasic Analysis[2m > [22m[2mshould create non-existent directory
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/integration/pipeline/layer-a-pipeline.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 3916[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should analyze single file [33m 1370[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should detect localStorage usage [33m 901[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should run complete pipeline on multi-file project [33m 1589[2mms[22m[39m
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mruns all registered validators
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mruns all registered validators
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mruns all registered validators
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 4ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mallows custom validator registration
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mallows custom validator registration
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mallows custom validator registration
+[22m[39m[32m[INFO][0m [validator:engine] Running custom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mallows custom validator registration
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 1ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mhandles validator errors gracefully
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mhandles validator errors gracefully
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mhandles validator errors gracefully
+[22m[39m[32m[INFO][0m [validator:engine] Running failing-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mhandles validator errors gracefully
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: ÔØî MISMATCHES FOUND
+Duration: 2ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+Mismatches:
+  1. [VALIDATOR_ERROR] unknown
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mtracks duration
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mtracks duration
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mValidationEngine - Integration[2m > [22m[2mtracks duration
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 1ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mreturns ValidationResult
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mreturns ValidationResult
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mreturns ValidationResult
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 1ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mvalidates with paths
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mvalidates with paths
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mvalidateGroundTruth - Convenience Function[2m > [22m[2mvalidates with paths
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 34ms
+
+Statistics:
+  Files checked: 0
+  Atoms verified: 0
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould analyze interconnected modules
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mLayer A ÔåÆ Layer C Flow[2m > [22m[2mshould analyze interconnected modules
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 3ms
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates real project with atoms
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates real project with atoms
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates real project with atoms
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 16ms
+
+Statistics:
+  Files checked: 1
+  Atoms verified: 2
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mdetects mismatch when function removed
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mdetects mismatch when function removed
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mdetects mismatch when function removed
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: ÔØî MISMATCHES FOUND
+Duration: 12ms
+
+Statistics:
+  Files checked: 1
+  Atoms verified: 1
+  Calls verified: 0
+  Errors: 1
+  Warnings: 0
+
+Mismatches:
+  1. [FUNCTION_NOT_FOUND] src_module.js
+      Function: removedFunction
+
+======================================================================
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates complex nested structure
+[22m[39m[32m[INFO][0m [validator:engine] Starting Ground Truth Validation...
+[32m[INFO][0m [validator:engine] Running atom-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates complex nested structure
+[22m[39m[32m[INFO][0m [validator:engine] Running call-graph-validator...
+
+[90mstdout[2m | tests/unit/shared/ground-truth-validator.test.js[2m > [22m[2mGround Truth Validator - Real File Scenarios[2m > [22m[2mvalidates complex nested structure
+[22m[39m[32m[INFO][0m [validator:report] ======================================================================
+GROUND TRUTH VALIDATION REPORT
+======================================================================
+Status: Ô£à VALID
+Duration: 11ms
+
+Statistics:
+  Files checked: 1
+  Atoms verified: 2
+  Calls verified: 0
+  Errors: 0
+  Warnings: 0
+
+======================================================================
+
+ [32mÔ£ô[39m tests/unit/shared/ground-truth-validator.test.js [2m([22m[2m36 tests[22m[2m)[22m[33m 1248[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mImport/Export Detection[2m > [22m[2mshould detect all imports and exports
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mImport/Export Detection[2m > [22m[2mshould detect all imports and exports
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+ [32mÔ£ô[39m tests/integration/import-health.test.js [2m([22m[2m27 tests[22m[2m)[22m[33m 7698[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m index.js carga con exports esperados [33m 572[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m indexer.js carga correctamente [33m 558[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m mcp/core/server-class.js carga correctamente [33m 5649[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/shadow-registry/similarity-search.test.js [2m([22m[2m21 tests[22m[2m)[22m[33m 1951[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m returns matches above threshold [33m 1027[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m sorts results by similarity descending [33m 358[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/layer-c/layer-c-exports.contract.test.js [2m([22m[2m56 tests[22m[2m)[22m[33m 3373[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/mcp/atomic-edit.test.js [2m([22m[2m16 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m[33m 7053[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m validates and edits successfully [33m 2883[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m writes new content to file [33m 836[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m writes new file successfully [33m 995[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m actually creates the file [33m 966[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m BUG: overwrites existing file with new content [33m 1266[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle syntax errors gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle syntax errors gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 3ms
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mImport/Export Detection[2m > [22m[2mshould detect all imports and exports
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mImport/Export Detection[2m > [22m[2mshould detect all imports and exports
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+ [32mÔ£ô[39m tests/contracts/layer-c/mcp-tools.contract.test.js [2m([22m[2m66 tests[22m[2m)[22m[33m 1916[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle syntax errors gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle syntax errors gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 5ms
+
+ [32mÔ£ô[39m tests/unit/layer-c-memory/verification/verification-orchestrator.test.js [2m([22m[2m24 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 1649[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m processes results array [33m 443[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m executes all registered validators [33m 397[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/orchestrator/orchestrator.test.js [2m([22m[2m19 tests[22m[2m)[22m[33m 2304[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m edits file successfully [33m 923[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m returns file info on success [33m 544[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m creates new file [33m 431[2mms[22m[39m
+ [32mÔ£ô[39m tests/performance/mcp-incremental-reindex.benchmark.test.js [2m([22m[2m1 test[22m[2m)[22m[33m 2465[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m re-analyzes a small changed set within a bounded budget [33m 2462[2mms[22m[39m[33m (retry x1)[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect localStorage usage
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect localStorage usage
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle missing imports gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mError Handling[2m > [22m[2mshould handle missing imports gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+ [31mÔØ»[39m tests/integration/full-stack.integration.test.js [2m([22m[2m11 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 17477[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should build dependency graph from parsed files [33m 2447[2mms[22m[39m
+       [32mÔ£ô[39m should detect cycles in dependency graph[32m 38[2mms[22m[39m
+       [32mÔ£ô[39m should calculate impact map for changes[32m 66[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should scan, parse and analyze files [33m 2217[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should extract atoms from functions [33m 379[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should build metadata contracts [33m 412[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should detect shared state patterns [33m 518[2mms[22m[39m
+[31m       [31m├ù[31m should save and load analysis from storage[39m[33m 1269[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should query analysis results[39m[33m 1040[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should run complete pipeline on realistic project[39m[33m 6999[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m should handle errors gracefully across layers [33m 2088[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/orchestrator/lifecycle.test.js [2m([22m[2m36 tests[22m[2m)[22m[33m 466[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/shadow-registry/shadow-registry.test.js [2m([22m[2m25 tests[22m[2m)[22m[33m 1773[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m creates proper shadow from atom [33m 855[2mms[22m[39m[33m (retry x1)[39m
+ [32mÔ£ô[39m tests/unit/core/unified-server/api.test.js [2m([22m[2m40 tests[22m[2m)[22m[33m 1180[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should return 400 when filePath is missing [33m 1124[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/cross-layer.contract.test.js [2m([22m[2m40 tests[22m[2m)[22m[33m 456[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/module-system/module-system.test.js [2m([22m[2m2 tests[22m[2m)[22m[33m 1127[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m module system exports are available [33m 1123[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect localStorage usage
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect localStorage usage
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/unit/layer-c-memory/verification/integrity-validator.test.js [2m([22m[2m23 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[33m 1328[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m detects invalid JSON in connections [33m 329[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle re-analysis of same project
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle re-analysis of same project
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 3ms
+
+ [32mÔ£ô[39m tests/contracts/core/graph.contract.test.js [2m([22m[2m51 tests[22m[2m)[22m[33m 760[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c/mcp/tool-handlers.test.js [2m([22m[2m11 tests[22m[2m)[22m[33m 741[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/layer-graph/layer-graph.contract.test.js [2m([22m[2m54 tests[22m[2m)[22m[33m 709[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-group5.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 341[2mms[22m[39m
+         [33m[2mÔ£ô[22m[39m metadata extractor available [33m 333[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/unified-server/tools.test.js [2m([22m[2m32 tests[22m[2m)[22m[33m 644[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should return server status structure [33m 562[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/audit/index.test.js [2m([22m[2m18 tests[22m[2m)[22m[32m 274[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect sessionStorage usage
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mShared State Detection[2m > [22m[2mshould detect sessionStorage usage
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/unit/layer-c-memory/shadow-registry/shadow-storage.test.js [2m([22m[2m27 tests[22m[2m)[22m[33m 1806[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m saves shadow to disk [33m 529[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m combines filters [33m 359[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/core/storage.contract.test.js [2m([22m[2m32 tests[22m[2m)[22m[33m 633[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle re-analysis of same project
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/storage/storage.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 422[2mms[22m[39m
+         [33m[2mÔ£ô[22m[39m storage module available [33m 412[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle re-analysis of same project
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 3ms
+
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/query/query.test.js [2m([22m[2m1 test[22m[2m)[22m[33m 499[2mms[22m[39m
+     [33m[2mÔ£ô[22m[39m query APIs are available [33m 497[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/layer-a-extractor.contract.test.js [2m([22m[2m52 tests[22m[2m)[22m[32m 256[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/race-detector/race-detector.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 417[2mms[22m[39m
+         [33m[2mÔ£ô[22m[39m race detector module available [33m 409[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/shared/atomic-cache.test.js [2m([22m[2m27 tests[22m[2m)[22m[32m 300[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mEvent Pattern Detection[2m > [22m[2mshould detect event listeners
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mEvent Pattern Detection[2m > [22m[2mshould detect event listeners
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 3ms
+
+ [32mÔ£ô[39m tests/unit/layer-a-core/scanner/scanner.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 164[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/patterns/extraction.functional.test.js [2m([22m[2m18 tests[22m[2m)[22m[33m 318[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/rules/source-rules.test.js [2m([22m[2m24 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m[32m 186[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/shared/data-integrity-validator.test.js [2m([22m[2m29 tests[22m[2m)[22m[33m 458[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle modified files
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle modified files
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-group4.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 284[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/verification/report-generator.test.js [2m([22m[2m29 tests[22m[2m)[22m[32m 271[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/server-manager.test.js [2m([22m[2m36 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[32m 63[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/layer-c/verification.contract.test.js [2m([22m[2m75 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mEvent Pattern Detection[2m > [22m[2mshould detect event emissions
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mEvent Pattern Detection[2m > [22m[2mshould detect event emissions
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/contracts/layer-c/shadow-registry.contract.test.js [2m([22m[2m65 tests[22m[2m)[22m[32m 225[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/orchestrator/file-handling.test.js [2m([22m[2m20 tests[22m[2m)[22m[32m 145[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/consolidate.test.js[2m > [22m[2mconsolidate[2m > [22m[2mcalls process.exit with exitCode from logic
+[22m[39m
+OmniSystem Iterative Consolidation (Orchestrator)
+
+Project: /nonexistent
+
+
+ [32mÔ£ô[39m tests/unit/cli/commands/consolidate.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 779[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle modified files
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/full-workflow.scenario.test.js[2m > [22m[2mE2E: Full Analysis Workflow[2m > [22m[2mIncremental Analysis[2m > [22m[2mshould handle modified files
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+ [31mÔØ»[39m tests/e2e/scenarios/full-workflow.scenario.test.js [2m([22m[2m6 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 18959[2mms[22m[39m
+[31m       [31m├ù[31m should create complete analysis artifacts[39m[33m 6930[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should analyze interconnected modules[39m[33m 1677[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should handle syntax errors gracefully[39m[33m 3649[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m should handle missing imports gracefully [33m 1199[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle re-analysis of same project [33m 2944[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle modified files [33m 2556[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/pipeline/pipeline.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 193[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/load-config.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 177[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/cache/singleton.test.js [2m([22m[2m27 tests[22m[2m)[22m[32m 276[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/index.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 120[2mms[22m[39m
+[90mstdout[2m | tests/unit/shared/logger-system.test.js[2m > [22m[2mLogger - Time Tracking[2m > [22m[2mreturns done function for manual timing
+[22m[39m[36m[DEBUG][0m [TestTimer] Starting: operation
+[36m[DEBUG][0m [TestTimer] Completed: operation {duration=1}
+
+[90mstdout[2m | tests/unit/shared/logger-system.test.js[2m > [22m[2mLogger - Time Tracking[2m > [22m[2mtimes synchronous function
+[22m[39m[36m[DEBUG][0m [TestTimer] Starting: sync-op
+[36m[DEBUG][0m [TestTimer] Completed: sync-op {duration=0}
+
+[90mstdout[2m | tests/unit/shared/logger-system.test.js[2m > [22m[2mLogger - Time Tracking[2m > [22m[2mtimes async function
+[22m[39m[36m[DEBUG][0m [TestTimer] Starting: async-op
+
+[90mstdout[2m | tests/unit/shared/logger-system.test.js[2m > [22m[2mLogger - Time Tracking[2m > [22m[2mtimes async function
+[22m[39m[36m[DEBUG][0m [TestTimer] Completed: async-op {duration=27}
+
+[90mstdout[2m | tests/unit/shared/logger-system.test.js[2m > [22m[2mLogger - Time Tracking[2m > [22m[2mpropagates errors from timed function
+[22m[39m[36m[DEBUG][0m [TestTimer] Starting: failing-op
+[36m[DEBUG][0m [TestTimer] Completed: failing-op {duration=0}
+
+ [32mÔ£ô[39m tests/unit/shared/logger-system.test.js [2m([22m[2m31 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 91[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/integration.test.js [2m([22m[2m7 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[32m 169[2mms[22m[39m
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConstruction[2m > [22m[2mshould create engine with default config
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConstruction[2m > [22m[2mshould create engine with custom config
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConstruction[2m > [22m[2mshould register default detectors on construction
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould run analysis and return results
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould run analysis and return results
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 51ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould return quality score with score and grade
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould return quality score with score and grade
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould include metadata with duration and timestamp
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould include metadata with duration and timestamp
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould handle empty system map gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould handle empty system map gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould handle null/undefined system map gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mAnalysis[2m > [22m[2mshould handle null/undefined system map gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mCustom Detectors[2m > [22m[2mshould allow adding custom detector
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mCustom Detectors[2m > [22m[2mshould store results for specific detector
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mCustom Detectors[2m > [22m[2mshould store results for specific detector
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mError Handling[2m > [22m[2mshould handle detector failures gracefully
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mError Handling[2m > [22m[2mshould handle detector failures gracefully
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 5ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mError Handling[2m > [22m[2mshould continue with other detectors if one fails
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mError Handling[2m > [22m[2mshould continue with other detectors if one fails
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConfiguration[2m > [22m[2mshould detect project type from system map
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConfiguration[2m > [22m[2mshould detect project type from system map
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 2ms
+
+[90mstdout[2m | tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js[2m > [22m[2mPattern Detection Engine[2m > [22m[2mConfiguration[2m > [22m[2mshould apply custom thresholds
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+ [32mÔ£ô[39m tests/unit/pattern-detection/engine/PatternDetectionEngine.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 144[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/verification/certificate-generator.test.js [2m([22m[2m33 tests[22m[2m)[22m[33m 556[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-group3.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/unified-server/lifecycle.test.js [2m([22m[2m19 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mengine is created with registry and aggregator
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2maddDetector() registers a detector via addDetector method
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() runs async detection on systemMap
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() runs async detection on systemMap
+[22m[39m[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() runs async detection on systemMap
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 53ms
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() returns results with metadata
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() returns results with metadata
+[22m[39m[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2manalyze() returns results with metadata
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mrunDetector() executes specific detector async
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mgetResults() returns results for a detector after analysis
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mgetResults() returns results for a detector after analysis
+[22m[39m[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mgetResults() returns results for a detector after analysis
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles empty systemMap
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles empty systemMap
+[22m[39m[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles empty systemMap
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles systemMap with multiple files
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles systemMap with multiple files
+[22m[39m[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/functional/pattern-detection.functional.test.js[2m > [22m[2mPattern Detection - Detailed Tests[2m > [22m[2mPatternDetectionEngine Real Methods[2m > [22m[2mhandles systemMap with multiple files
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/functional/pattern-detection.functional.test.js [2m([22m[2m29 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mReact Component Analysis[2m > [22m[2mshould detect React hooks
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mReact Component Analysis[2m > [22m[2mshould detect React hooks
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 1ms
+
+ [32mÔ£ô[39m tests/contracts/layer-b-metadata.contract.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/cross-layer/full-pipeline.test.js [2m([22m[2m13 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/layer-c/verification-flow.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/shared/architecture-utils.test.js [2m([22m[2m28 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/cycles/classifier.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 32[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/clean.test.js[2m > [22m[2mclean[2m > [22m[2mcalls process.exit with exitCode from logic
+[22m[39m
+Cleaning OmniSystem data
+
+Project: /some/path
+
+
+[90mstdout[2m | tests/unit/cli/commands/clean.test.js[2m > [22m[2mclean[2m > [22m[2mcalls process.exit with exitCode from logic
+[22m[39m  No analysis data found
+
+Cleanup complete!
+
+
+ [32mÔ£ô[39m tests/unit/cli/commands/clean.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/engine/reports.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/analyze-file.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/llm-analyzer/llm-analyzer-core.test.js [2m([22m[2m14 tests[22m[2m)[22m[33m 18330[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle empty code [33m 6091[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle network errors gracefully [33m 6063[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should handle timeout errors [33m 6084[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/atomic-editor/safety-validator.test.js [2m([22m[2m15 tests[22m[2m)[22m[33m 1365[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m warns about empty replacement [33m 532[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/layer-b/semantic-flow.test.js [2m([22m[2m12 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-group6.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/prompt-engine/core/schema-resolver.test.js [2m([22m[2m27 tests[22m[2m)[22m[33m 2232[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/utils/timeout-calculator.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/checks/shadow-checks.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/engine/runners.test.js [2m([22m[2m18 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/prompt-engine/core/prompt-engine.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/state-management-extractor.functional.test.js [2m([22m[2m30 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/cross-layer/full-pipeline-layer-c.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m tests/performance/mcp-post-edit-guards.benchmark.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/mcp/atomic-edit-comprehensive.test.js [2m([22m[2m25 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/static-extractors.functional.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/config.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/audit/field-checker.test.js [2m([22m[2m23 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/analysis-schema.test.js [2m([22m[2m27 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/engine/strategies.test.js [2m([22m[2m20 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/cross-layer/a-to-b-flow.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 73[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/analyzer.test.js [2m([22m[2m19 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/core/validation-result.test.js [2m([22m[2m39 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/llm-analyzer/analysis-decider.test.js [2m([22m[2m28 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c/mcp/pipeline.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+[90mstdout[2m | tests/unit/cli/commands/export.test.js[2m > [22m[2mexportMap[2m > [22m[2mcalls process.exit with exitCode from logic
+[22m[39m
+Exporting System Map
+
+Project: /nonexistent
+
+
+ [32mÔ£ô[39m tests/unit/cli/commands/export.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c/mcp/tools-registry.test.js [2m([22m[2m138 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/atomic-editor/history-manager.test.js [2m([22m[2m43 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/pattern-detection/pattern-detection.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/response-cleaner.test.js [2m([22m[2m39 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/layer-c/shadow-registry-flow.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/shadow-registry/lineage-tracker.test.js [2m([22m[2m29 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/shadow-registry/lru-cache.test.js [2m([22m[2m33 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/llm-analyzer/response-normalizer.test.js [2m([22m[2m31 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/metadata-contract/constants.test.js [2m([22m[2m40 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/extractors/typescript.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/metrics.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/mcp/tools-registry.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/duplicate-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/metadata-contract/detectors/architectural-patterns.test.js [2m([22m[2m40 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mPerformance[2m > [22m[2mshould analyze 100 files in reasonable time
+[22m[39m[PatternDetection] Registered 7 pattern detectors
+[PatternDetection] ­ƒöì Starting pattern detection analysis...
+
+[90mstdout[2m | tests/e2e/scenarios/cli-analyze.scenario.test.js[2m > [22m[2mE2E: CLI Analyze Command[2m > [22m[2mPerformance[2m > [22m[2mshould analyze 100 files in reasonable time
+[22m[39m[PatternDetection] Ô£à Pattern detection complete in 42ms
+
+ [32mÔ£ô[39m tests/unit/ai/llm-client.test.js [2m([22m[2m29 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/static-extractors-connections.functional.test.js [2m([22m[2m24 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/extractors/metadata-extractor.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/validators/event-validator.test.js [2m([22m[2m23 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [31mÔØ»[39m tests/e2e/scenarios/cli-analyze.scenario.test.js [2m([22m[2m10 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 26691[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should analyze empty project [33m 5280[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should analyze simple project [33m 2147[2mms[22m[39m
+       [32mÔ£ô[39m should create non-existent directory[32m 102[2mms[22m[39m
+[31m       [31m├ù[31m should detect all imports and exports[39m[33m 4293[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m should detect localStorage usage[39m[33m 2931[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m should detect sessionStorage usage [33m 1255[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should detect event listeners [33m 1170[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should detect event emissions [33m 1280[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should detect React hooks [33m 1720[2mms[22m[39m
+       [33m[2mÔ£ô[22m[39m should analyze 100 files in reasonable time [33m 6509[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/call.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/orchestrator/queue.test.js [2m([22m[2m33 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/invariants/system-invariants.test.js [2m([22m[2m21 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/extractors/calls.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/utils/cluster-detector.test.js [2m([22m[2m22 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-group2.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/extractors/metadata/archetype.test.js [2m([22m[2m31 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/metadata-contract/validators/metadata-validator.test.js [2m([22m[2m21 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/orchestrator/llm-trigger.test.js [2m([22m[2m19 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/analyses/tier3/issue-detectors/shared-state.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c/mcp/mcp-setup-step.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/tools.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/checks/dataflow-checks.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/audit/audit-reporter.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/constants.test.js [2m([22m[2m22 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/rules/index.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/validators/storage-validator.test.js [2m([22m[2m19 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/rules/derivation-rules.test.js [2m([22m[2m23 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/analyses/tier3/issue-detectors/global-state-builder.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/utils/matrix-builder.test.js [2m([22m[2m20 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/metadata-contract/builders/standard-builder.test.js [2m([22m[2m18 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m src/layer-a-static/module-system/__tests__/utils.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/unified-server/unified-server.test.js [2m([22m[2m23 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/utils/orphan-detector.test.js [2m([22m[2m24 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/audit/constants.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/extractors/event-extractor.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/prompt-builder.test.js [2m([22m[2m23 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/validators-index.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m src/shared/analysis/__tests__/function-analyzer.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/analyses/tier3/issue-detectors/orphaned-files.test.js [2m([22m[2m13 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/json-cleaners.test.js [2m([22m[2m34 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-group3.test.js [2m([22m[2m22 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/patterns/file-grouped.functional.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/patterns/cycle-classification.functional.test.js [2m([22m[2m15 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/extractors/imports.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/extractors/storage-extractor.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/index.test.js [2m([22m[2m26 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/extractors/metadata/dna-extractor.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/worker-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/llm-analyzer/prompt-builder.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/smoke.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/help.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/factories/test-suite-generator/test/meta-factory.validation.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/integration/cross-layer/b-to-c-metadata-flow.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/sanitizers/response-sanitizer.test.js [2m([22m[2m20 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/status.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/functional-tests.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/validators/main-validator.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/schema-validator/validators/connection.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-group1.test.js [2m([22m[2m17 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/prompt-engine/prompt-engine-index.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-tier1.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/schema-validator/validators/side-effects.test.js [2m([22m[2m12 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/race-detector/race-detector-group.test.js [2m([22m[2m18 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/mcp/validation-utils.test.js [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/metadata-contract/schemas/layer-a-metadata.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/patterns/list-results.functional.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/utils/name-utils.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/utils/metadata-extractor.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-state-management.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/project-analyzer-index.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/recommendations.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/validation/rules/semantic-rules.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/query/query-group.test.js [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/extractors/definitions.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/layer-a-integration.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/core/batch-processor/priority-calculator.test.js [2m([22m[2m22 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/parallel-analyzer.test.js [2m([22m[2m13 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m[32m 15[2mms[22m[39m
+ [32mÔ£ô[39m tests/performance/mcp-startup.benchmark.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/schema-validator/validators/risk-score.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-graph/builders/cluster-builder.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/checks/semantic-checks.test.js [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-graph/builders/event-graph.test.js [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/analyses/tier3/issue-detectors/issue-detectors-index.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/utils/confidence.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier2/coupling.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/down.test.js [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/rules/recursion-rules.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/indexer.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/extractors/exports.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/project-analyzer/utils/cohesion-calculator.test.js [2m([22m[2m13 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/factors/static-complexity.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/inference-engine/risk-scorer.test.js [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/calculators/score-calculator.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/utils.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/setup.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/architecture-utils.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-static/analyses/tier3/issue-detectors/unhandled-events.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/factors/semantic-score.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/contract/tier3-contract.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/rules/async-rules.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/event-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/parser-contract.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/factors/hotspot-score.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-typescript.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/schema-validator/schema-validator-index.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/cli/commands/serve.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-static.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/utils/issue-utils.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/utils/metadata.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier1/hotspots.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/pipeline/pipeline-group.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/factors/coupling-score.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/ai/batch-analyzer.test.js [2m([22m[2m10 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/contracts/layer-a-language-adapter.contract.test.js [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/factors/side-effect-score.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/config.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/helpers.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/import-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/broken-connections-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/validators/url-validator.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/V2_ALGORITHMS_PROPOSAL.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/side-effects-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-data-flow.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-contract.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/comprehensive-extractor.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/helpers.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-css-in-js.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/scorers/RiskScorer.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/shared-state-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/rules/complexity-rules.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-comprehensive.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/tier1/function-cycle-classifier/classifiers/rules.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/layer-a-contracts.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-b-semantic/validators/lineage-validator/lineage-validator-index.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-c-memory/mcp/atomic-edit-post-validation.test.js [2m([22m[2m8 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/resolver.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/storage/storage-group.test.js [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/functional/validators.functional.test.js [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/calculators/severity-calculator.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyzer.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-metadata.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/calculators/report-generator.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/scanner.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/tier3/detectors/dead-code-detector.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-group2.test.js [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-tier2.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/parser/parser.test.js [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/extractors/extractors-communication.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/graph/graph-system.test.js [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/unit/layer-a-analysis/analyses/analyses-tier3.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [31mÔØ»[39m tests/unit/cli/commands/check.real.test.js [2m([22m[2m11 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 45822[2mms[22m[39m
+       [32mÔ£ô[39m returns error when no filePath provided[32m 5[2mms[22m[39m
+       [32mÔ£ô[39m returns error when filePath is empty string[32m 5[2mms[22m[39m
+[31m       [31m├ù[31m returns error when no analysis data exists[39m[33m 9374[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m returns error when file not found in system map [33m 5130[2mms[22m[39m
+[31m       [31m├ù[31m returns file data when file exists in system map[39m[33m 10316[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m includes semantic connections in output[39m[33m 8085[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m includes side effects in output[39m[33m 6509[2mms[22m[39m[33m (retry x1)[39m
+[31m       [31m├ù[31m handles path normalization[39m[33m 4244[2mms[22m[39m[33m (retry x1)[39m
+       [33m[2mÔ£ô[22m[39m handles errors gracefully [33m 2094[2mms[22m[39m
+     [32mÔ£ô[39m exports check function[32m 1[2mms[22m[39m
+     [32mÔ£ô[39m calls process.exit with exitCode from logic[32m 32[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m42 failed[39m[22m[2m | [22m[1m[32m245 passed[39m[22m[90m (287)[39m
+[2m      Tests [22m [1m[31m83 failed[39m[22m[2m | [22m[1m[32m4015 passed[39m[22m[2m | [22m[33m37 skipped[39m[90m (4135)[39m
+[2m   Start at [22m 22:38:14
+[2m   Duration [22m 48.22s[2m (transform 32.88s, setup 0ms, import 75.22s, tests 205.43s, environment 78ms)[22m
+

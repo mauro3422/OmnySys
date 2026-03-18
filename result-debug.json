@@ -10,6 +10,69 @@
     "reindexedAtoms": 2
   },
   "changes": [],
+  "semanticPurity": {
+    "totalAtoms": 2,
+    "averageScore": 92,
+    "severity": "low",
+    "impureCount": 0,
+    "highImpactCount": 0,
+    "topReasons": [
+      {
+        "reason": "missing_return_contract",
+        "count": 2
+      }
+    ],
+    "atoms": [
+      {
+        "atomId": "src/utils.js::x",
+        "atomName": "x",
+        "filePath": "src/utils.js",
+        "evaluation": {
+          "score": 92,
+          "severity": "low",
+          "reasons": [
+            "missing_return_contract"
+          ],
+          "semantic": {
+            "isPure": false,
+            "mutatesParams": [],
+            "usesThisContext": false,
+            "hasReturnValue": false
+          },
+          "signals": {
+            "hasNetworkCalls": false,
+            "sharedStateAccessCount": 0,
+            "eventEmitterCount": 0,
+            "eventListenerCount": 0
+          }
+        }
+      },
+      {
+        "atomId": "src/utils.js::y",
+        "atomName": "y",
+        "filePath": "src/utils.js",
+        "evaluation": {
+          "score": 92,
+          "severity": "low",
+          "reasons": [
+            "missing_return_contract"
+          ],
+          "semantic": {
+            "isPure": false,
+            "mutatesParams": [],
+            "usesThisContext": false,
+            "hasReturnValue": false
+          },
+          "signals": {
+            "hasNetworkCalls": false,
+            "sharedStateAccessCount": 0,
+            "eventEmitterCount": 0,
+            "eventListenerCount": 0
+          }
+        }
+      }
+    ]
+  },
   "blastRadius": {
     "level": "safe",
     "score": 0,

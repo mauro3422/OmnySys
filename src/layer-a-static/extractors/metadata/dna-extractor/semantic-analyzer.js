@@ -162,24 +162,42 @@ export function deriveEntity(atom, verb) {
   }
 
   // Strategy 2: Pure verb (build, create, validate) → use class context
-  // Example: GraphBuilder.build → entity = "graph"
-  if (atom.archetype?.type === 'class-method' || atom.filePath?.includes('/builders/')) {
+  // Example: GraphBuilder.build → entity = "graph", UserService.create → entity = "user"
+  const commonSuffixes = [
+    'Builder', 'Manager', 'Service', 'Controller', 'Handler',
+    'Factory', 'Adapter', 'Repository', 'Validator', 'Extractor',
+    'Provider', 'Client', 'Generator', 'Analyzer', 'Operation'
+  ];
+
+  if (atom.archetype?.type === 'class-method' || atom.id?.includes('::')) {
     const className = extractClassNameFromAtomId(atom.id);
     if (className) {
-      // Remove "Builder" suffix from class name
-      const entityFromClass = removeClassSuffixes(className, ['Builder']);
-      if (entityFromClass && entityFromClass !== className) {
+      const entityFromClass = removeClassSuffixes(className, commonSuffixes);
+      if (entityFromClass) {
         return camelToUnderscore(entityFromClass);
       }
     }
   }
 
   // Strategy 3: Fallback to file path
-  // Example: chain-builder.js → chain
+  // Example: chain-builder.js → chain, user-service.js → user
   if (atom.filePath) {
-    const fileName = atom.filePath.split('/').pop().replace('.js', '');
-    const entityFromFile = fileName.replace(/-builder$/, '').replace(/_builder$/, '');
-    if (entityFromFile && entityFromFile !== fileName) {
+    let fileName = atom.filePath.split('/').pop().replace('.js', '');
+
+    // Remove common file name suffixes (kebab-case or snake_case)
+    const fileSuffixes = commonSuffixes.map(s => `-${s.toLowerCase()}`).concat(
+      commonSuffixes.map(s => `_${s.toLowerCase()}`)
+    );
+
+    let entityFromFile = fileName;
+    for (const suffix of fileSuffixes) {
+      if (entityFromFile.endsWith(suffix)) {
+        entityFromFile = entityFromFile.slice(0, -suffix.length);
+        break;
+      }
+    }
+
+    if (entityFromFile) {
       return camelToUnderscore(entityFromFile);
     }
   }

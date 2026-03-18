@@ -23,17 +23,9 @@ import {
     DUPLICATE_SIGNAL_POLICY_FILE_MARKER
 } from '../constants/index.js';
 
-// ============================================================================
-// INTERNAL HELPERS
-// ============================================================================
-
-function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
-    return {
-        normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
-        normalizedName: String(atomName || '').toLowerCase(),
-        fingerprint: String(semanticFingerprint || '').toLowerCase()
-    };
-}
+import {
+    normalizeDuplicateSignalInputs
+} from '../transformers.js';
 
 // ============================================================================
 // CORE POLICY DETECTORS

@@ -17,33 +17,37 @@
  */
 
 import { findCommand } from './commands/index.js';
-import { log, showHelp } from './utils/logger.js';
+import { log as cliLog, showHelp } from './utils/logger.js';
+import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
 
 /**
  * Main CLI entry point
  */
-async function main() {
-  const command = process.argv[2] || 'help';
-  const arg1 = process.argv[3];
-  const arg2 = process.argv[4];
-  
-  const cmd = findCommand(command);
-  
-  if (!cmd) {
-    log(`Comando desconocido: ${command}`, 'error');
-    showHelp();
-    process.exit(1);
-  }
-  
-  try {
+const main = createCliOrchestrator({
+  name: 'cli',
+  logger: console,
+  run: async ({ logger }) => {
+    const command = process.argv[2] || 'help';
+    const arg1 = process.argv[3];
+    const arg2 = process.argv[4];
+    
+    const cmd = findCommand(command);
+    
+    if (!cmd) {
+      cliLog(`Comando desconocido: ${command}`, 'error');
+      showHelp();
+      throw new Error(`Comando desconocido: ${command}`);
+    }
+    
     await cmd.execute(arg1, arg2);
-  } catch (error) {
-    log(`Error: ${error.message}`, 'error');
-    process.exit(1);
   }
-}
+});
 
-main().catch(console.error);
+import { fileURLToPath } from 'url';
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
 
 export { findCommand };
 export * from './commands/index.js';

@@ -526,33 +526,39 @@ function handleBridgeStdioClose(state) {
     process.exit(0);
 }
 
-async function main() {
-    log(`Starting bridge for ${PROJECT_PATH} - checking daemon...`);
-    await waitForDaemonReady();
+let sharedState = null;
 
-    log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
+const main = createCliOrchestrator({
+    name: 'mcp:stdio-bridge',
+    logger: {
+        info: log,
+        error: (msg, err) => log(`FATAL: ${msg} ${err?.message || err || ''}`),
+        debug: () => {}
+    },
+    keepAlive: true,
+    run: async () => {
+        log(`Starting bridge for ${PROJECT_PATH} - checking daemon...`);
+        await waitForDaemonReady();
 
-    const stdioTransport = new StdioServerTransport();
-    const state = createBridgeState(stdioTransport);
+        log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
 
-    await connectBridgeTransport(state);
+        const stdioTransport = new StdioServerTransport();
+        sharedState = createBridgeState(stdioTransport);
 
-    stdioTransport.onmessage = async (message) => {
-        await handleBridgeStdioMessage(state, message);
-    };
+        await connectBridgeTransport(sharedState);
 
-    stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
-    stdioTransport.onclose = () => {
-        handleBridgeStdioClose(state);
-    };
+        stdioTransport.onmessage = async (message) => {
+            await handleBridgeStdioMessage(sharedState, message);
+        };
 
-    await stdioTransport.start();
-    log('Bridge active.');
-}
+        stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
+        stdioTransport.onclose = () => {
+            handleBridgeStdioClose(sharedState);
+        };
 
-main().catch((err) => {
-    process.stderr.write(`[mcp-stdio-bridge] FATAL: ${err.message}\n`);
-    process.exit(1);
+        await stdioTransport.start();
+        log('Bridge active.');
+    }
 });
 
-
+main();

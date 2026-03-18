@@ -40,7 +40,6 @@ export async function logEvent(alert, context = {}) {
  * Get statistics
  * @returns {Promise<Object>} Stats
  */
-import { statsPool } from './utils/stats-pool-proxy.js'; // Assuming a proxy exists or just import shared
 import { statsPool as sharedStatsPool } from '../../shared/utils/stats-pool.js';
 export const getStats = (...args) => sharedStatsPool.getStats('tunnel-vision-logger', ...args);
 export {

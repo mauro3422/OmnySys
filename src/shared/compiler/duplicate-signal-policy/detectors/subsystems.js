@@ -74,50 +74,11 @@ import {
     ORCHESTRATION_LIFECYCLE_FINGERPRINTS
 } from '../constants/index.js';
 
-// ============================================================================
-// INTERNAL HELPERS
-// ============================================================================
-
-function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
-    return {
-        normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
-        normalizedName: String(atomName || '').toLowerCase(),
-        fingerprint: String(semanticFingerprint || '').toLowerCase()
-    };
-}
-
-function matchesPolicyPath(normalizedPath, pathMatchers = [], mode = 'includes') {
-    return pathMatchers.some((marker) => (
-        mode === 'endsWith' ? normalizedPath.endsWith(marker) : normalizedPath.includes(marker)
-    ));
-}
-
-function matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, options = {}) {
-    const {
-        pathMatchers = [],
-        pathMode = 'includes',
-        names = null,
-        nameRegex = null,
-        fingerprints = null,
-        extraFingerprintMatchers = []
-    } = options;
-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
-        filePath,
-        atomName,
-        semanticFingerprint
-    );
-
-    if (pathMatchers.length > 0 && !matchesPolicyPath(normalizedPath, pathMatchers, pathMode)) {
-        return false;
-    }
-
-    const hasNameMatch = names ? names.has(normalizedName) : nameRegex?.test(normalizedName);
-    if (!hasNameMatch) return false;
-    if (!fingerprint) return true;
-    if (fingerprints?.has(fingerprint)) return true;
-
-    return extraFingerprintMatchers.some((matcher) => matcher(normalizedName, fingerprint));
-}
+import {
+    normalizeDuplicateSignalInputs,
+    matchesPolicyPath,
+    matchesNamedPolicySurface
+} from '../transformers.js';
 
 // ============================================================================
 // REPOSITORY & STORAGE DETECTORS

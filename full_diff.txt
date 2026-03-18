@@ -1,0 +1,894 @@
+diff --git a/.gitignore b/.gitignore
+index 6961b6b..ce67c3b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,4 +1,4 @@
+-﻿# Node.js
++# Node.js
+ node_modules/
+ npm-debug.log*
+ yarn-debug.log*
+@@ -72,6 +72,13 @@ temp/
+ test-cases/*-run/
+ test-cases/*-run*/
+ 
++# Test Analyze E2E modules
++test-analyze-e2e/
++test-analize-e2e/
++test-analize/
++e2e/modules/
++test-analyze/modules/
++
+ # Vitest test outputs
+ .vitest-*.json
+ .vitest-focus-*.json
+diff --git a/result-debug.json b/result-debug.json
+index 867c6e4..a8f6672 100644
+--- a/result-debug.json
++++ b/result-debug.json
+@@ -10,6 +10,69 @@
+     "reindexedAtoms": 2
+   },
+   "changes": [],
++  "semanticPurity": {
++    "totalAtoms": 2,
++    "averageScore": 92,
++    "severity": "low",
++    "impureCount": 0,
++    "highImpactCount": 0,
++    "topReasons": [
++      {
++        "reason": "missing_return_contract",
++        "count": 2
++      }
++    ],
++    "atoms": [
++      {
++        "atomId": "src/utils.js::x",
++        "atomName": "x",
++        "filePath": "src/utils.js",
++        "evaluation": {
++          "score": 92,
++          "severity": "low",
++          "reasons": [
++            "missing_return_contract"
++          ],
++          "semantic": {
++            "isPure": false,
++            "mutatesParams": [],
++            "usesThisContext": false,
++            "hasReturnValue": false
++          },
++          "signals": {
++            "hasNetworkCalls": false,
++            "sharedStateAccessCount": 0,
++            "eventEmitterCount": 0,
++            "eventListenerCount": 0
++          }
++        }
++      },
++      {
++        "atomId": "src/utils.js::y",
++        "atomName": "y",
++        "filePath": "src/utils.js",
++        "evaluation": {
++          "score": 92,
++          "severity": "low",
++          "reasons": [
++            "missing_return_contract"
++          ],
++          "semantic": {
++            "isPure": false,
++            "mutatesParams": [],
++            "usesThisContext": false,
++            "hasReturnValue": false
++          },
++          "signals": {
++            "hasNetworkCalls": false,
++            "sharedStateAccessCount": 0,
++            "eventEmitterCount": 0,
++            "eventListenerCount": 0
++          }
++        }
++      }
++    ]
++  },
+   "blastRadius": {
+     "level": "safe",
+     "score": 0,
+diff --git a/run-layer-a.js b/run-layer-a.js
+index c932dfe..6872b3a 100644
+--- a/run-layer-a.js
++++ b/run-layer-a.js
+@@ -9,29 +9,31 @@ import { indexProject } from './src/layer-a-static/indexer.js';
+ import path from 'path';
+ import { fileURLToPath } from 'url';
+ import v8 from 'v8';
++import { createCliOrchestrator } from './src/shared/cli/base-orchestrator.js';
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
+ const projectPath = __dirname;
+ 
+-async function main() {
+-  const heapLimit = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
+-  console.log(`🚀 Iniciando Layer A Static Analysis...\n`);
+-  console.log(`📊 Heap disponible: ${Math.round(heapLimit)} MB`);
+-  console.log(`💡 Si hay "Aborted()", reiniciar con: node --max-old-space-size=8192 run-layer-a.js\n`);
+-  
+-  try {
++const main = createCliOrchestrator({
++  name: 'run-layer-a',
++  logger: console,
++  run: async ({ logger }) => {
++    const heapLimit = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
++    logger.info(`🚀 Iniciando Layer A Static Analysis...`);
++    logger.info(`📊 Heap disponible: ${Math.round(heapLimit)} MB`);
++    logger.info(`💡 Si hay "Aborted()", reiniciar con: node --max-old-space-size=8192 run-layer-a.js`);
++    
+     await indexProject(projectPath, {
+       verbose: true,
+       skipLLM: true // Solo análisis estático, sin LLM
+     });
+     
+-    console.log('\n✅ Análisis completado exitosamente!');
+-    console.log('📊 Los datos semánticos ahora están en .omnysysdata/omnysys.db');
+-  } catch (error) {
+-    console.error('❌ Error durante el análisis:', error);
+-    process.exit(1);
++    logger.info('✅ Análisis completado exitosamente!');
++    logger.info('📊 Los datos semánticos ahora están en .omnysysdata/omnysys.db');
+   }
+-}
++});
+ 
+-main();
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  main();
++}
+diff --git a/src/audit/cli.js b/src/audit/cli.js
+index cf33de1..6fcea6b 100644
+--- a/src/audit/cli.js
++++ b/src/audit/cli.js
+@@ -9,28 +9,35 @@
+  */
+ 
+ import { runAudit } from './index.js';
++import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
+ 
+ const projectPath = process.argv[2] || process.cwd();
+ 
+-async function main() {
+-  console.log('🔍 Auditing OmnySys context data...\n');
+-  
+-  const results = await runAudit(projectPath);
+-  
+-  console.log('📊 Summary:');
+-  console.log(`  Total files: ${results.summary.total}`);
+-  console.log(`  Complete: ${results.summary.complete}`);
+-  console.log(`  Incomplete: ${results.summary.incomplete}`);
+-  console.log(`  Average score: ${results.summary.averageScore}%`);
+-  console.log(`  Overall completeness: ${results.summary.completeness}%\n`);
++import { fileURLToPath } from 'url';
+ 
+-  if (results.summary.incomplete > 0) {
+-    console.log('⚠️  Some files have incomplete context');
+-    process.exit(1);
+-  } else {
+-    console.log('✅ All files have complete context');
+-    process.exit(0);
++const main = createCliOrchestrator({
++  name: 'audit',
++  logger: console,
++  run: async ({ logger }) => {
++    logger.info('🔍 Auditing OmnySys context data...');
++    
++    const results = await runAudit(projectPath);
++    
++    logger.info('📊 Summary:');
++    logger.info(`  Total files: ${results.summary.total}`);
++    logger.info(`  Complete: ${results.summary.complete}`);
++    logger.info(`  Incomplete: ${results.summary.incomplete}`);
++    logger.info(`  Average score: ${results.summary.averageScore}%`);
++    logger.info(`  Overall completeness: ${results.summary.completeness}%`);
++
++    if (results.summary.incomplete > 0) {
++      throw new Error('Some files have incomplete context');
++    } else {
++      logger.info('✅ All files have complete context');
++    }
+   }
+-}
++});
+ 
+-main().catch(console.error);
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  main();
++}
+diff --git a/src/cli/index.js b/src/cli/index.js
+index 870ce98..dcbf35d 100644
+--- a/src/cli/index.js
++++ b/src/cli/index.js
+@@ -17,33 +17,37 @@
+  */
+ 
+ import { findCommand } from './commands/index.js';
+-import { log, showHelp } from './utils/logger.js';
++import { log as cliLog, showHelp } from './utils/logger.js';
++import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
+ 
+ /**
+  * Main CLI entry point
+  */
+-async function main() {
+-  const command = process.argv[2] || 'help';
+-  const arg1 = process.argv[3];
+-  const arg2 = process.argv[4];
+-  
+-  const cmd = findCommand(command);
+-  
+-  if (!cmd) {
+-    log(`Comando desconocido: ${command}`, 'error');
+-    showHelp();
+-    process.exit(1);
+-  }
+-  
+-  try {
++const main = createCliOrchestrator({
++  name: 'cli',
++  logger: console,
++  run: async ({ logger }) => {
++    const command = process.argv[2] || 'help';
++    const arg1 = process.argv[3];
++    const arg2 = process.argv[4];
++    
++    const cmd = findCommand(command);
++    
++    if (!cmd) {
++      cliLog(`Comando desconocido: ${command}`, 'error');
++      showHelp();
++      throw new Error(`Comando desconocido: ${command}`);
++    }
++    
+     await cmd.execute(arg1, arg2);
+-  } catch (error) {
+-    log(`Error: ${error.message}`, 'error');
+-    process.exit(1);
+   }
+-}
++});
+ 
+-main().catch(console.error);
++import { fileURLToPath } from 'url';
++
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  main();
++}
+ 
+ export { findCommand };
+ export * from './commands/index.js';
+diff --git a/src/core/unified-server/index.js b/src/core/unified-server/index.js
+index 7b61d8f..d2f07d9 100644
+--- a/src/core/unified-server/index.js
++++ b/src/core/unified-server/index.js
+@@ -11,6 +11,7 @@ import * as tools from './tools/index.js';
+ import { printStatus } from './status.js';
+ import { shutdown } from './lifecycle.js';
+ import { createLogger } from '../../utils/logger.js';
++import { createCliOrchestrator } from '../../shared/cli/base-orchestrator.js';
+ 
+ const logger = createLogger('OmnySys:index');
+ 
+@@ -69,24 +70,20 @@ Object.assign(
+   { printStatus, shutdown }
+ );
+ 
+-async function main() {
+-  const projectPath = process.argv[2] || process.cwd();
+-  const server = new OmnySysUnifiedServer(projectPath);
+-
+-  // Handle graceful shutdown
+-  process.on('SIGTERM', () => server.shutdown());
+-  process.on('SIGINT', () => server.shutdown());
+-
+-  try {
+-    await server.initialize();
+-
+-    // Keep alive
+-    await new Promise(() => {});
+-  } catch (error) {
+-    logger.error('Failed to start server:', error);
+-    process.exit(1);
++let globalServerInstance = null;
++
++const main = createCliOrchestrator({
++  name: 'unified-server',
++  logger: createLogger,
++  keepAlive: true,
++  onInterrupt: async () => {
++    if (globalServerInstance) await globalServerInstance.shutdown();
++  },
++  run: async ({ absolutePath }) => {
++    globalServerInstance = new OmnySysUnifiedServer(absolutePath);
++    await globalServerInstance.initialize();
+   }
+-}
++});
+ 
+ export { OmnySysUnifiedServer, main };
+ 
+diff --git a/src/layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer.js b/src/layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer.js
+index c3d154d..9f2f9cc 100644
+--- a/src/layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer.js
++++ b/src/layer-a-static/extractors/metadata/dna-extractor/semantic-analyzer.js
+@@ -162,24 +162,42 @@ export function deriveEntity(atom, verb) {
+   }
+ 
+   // Strategy 2: Pure verb (build, create, validate) → use class context
+-  // Example: GraphBuilder.build → entity = "graph"
+-  if (atom.archetype?.type === 'class-method' || atom.filePath?.includes('/builders/')) {
++  // Example: GraphBuilder.build → entity = "graph", UserService.create → entity = "user"
++  const commonSuffixes = [
++    'Builder', 'Manager', 'Service', 'Controller', 'Handler',
++    'Factory', 'Adapter', 'Repository', 'Validator', 'Extractor',
++    'Provider', 'Client', 'Generator', 'Analyzer', 'Operation'
++  ];
++
++  if (atom.archetype?.type === 'class-method' || atom.id?.includes('::')) {
+     const className = extractClassNameFromAtomId(atom.id);
+     if (className) {
+-      // Remove "Builder" suffix from class name
+-      const entityFromClass = removeClassSuffixes(className, ['Builder']);
+-      if (entityFromClass && entityFromClass !== className) {
++      const entityFromClass = removeClassSuffixes(className, commonSuffixes);
++      if (entityFromClass) {
+         return camelToUnderscore(entityFromClass);
+       }
+     }
+   }
+ 
+   // Strategy 3: Fallback to file path
+-  // Example: chain-builder.js → chain
++  // Example: chain-builder.js → chain, user-service.js → user
+   if (atom.filePath) {
+-    const fileName = atom.filePath.split('/').pop().replace('.js', '');
+-    const entityFromFile = fileName.replace(/-builder$/, '').replace(/_builder$/, '');
+-    if (entityFromFile && entityFromFile !== fileName) {
++    let fileName = atom.filePath.split('/').pop().replace('.js', '');
++
++    // Remove common file name suffixes (kebab-case or snake_case)
++    const fileSuffixes = commonSuffixes.map(s => `-${s.toLowerCase()}`).concat(
++      commonSuffixes.map(s => `_${s.toLowerCase()}`)
++    );
++
++    let entityFromFile = fileName;
++    for (const suffix of fileSuffixes) {
++      if (entityFromFile.endsWith(suffix)) {
++        entityFromFile = entityFromFile.slice(0, -suffix.length);
++        break;
++      }
++    }
++
++    if (entityFromFile) {
+       return camelToUnderscore(entityFromFile);
+     }
+   }
+diff --git a/src/layer-c-memory/export-system-map.js b/src/layer-c-memory/export-system-map.js
+index e896e92..44abe4b 100644
+--- a/src/layer-c-memory/export-system-map.js
++++ b/src/layer-c-memory/export-system-map.js
+@@ -16,18 +16,13 @@ import path from 'path';
+ import { fileURLToPath } from 'url';
+ import { exportFullSystemMapToFile } from '../layer-c-memory/query/apis/export-api.js';
+ 
+-const __dirname = path.dirname(fileURLToPath(import.meta.url));
++import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
+ import { createLogger } from '../utils/logger.js';
+ 
+-const logger = createLogger('OmnySys:export:system:map');
+-
+-
+-
+-async function main() {
+-  try {
+-    // Parsear argumentos
+-    const args = process.argv.slice(2);
+-    const projectPath = args[0] ? path.resolve(args[0]) : process.cwd();
++const main = createCliOrchestrator({
++  name: 'export:system:map',
++  logger: createLogger,
++  run: async ({ projectPath, args, logger }) => {
+     const outputPath = args[1] ? path.resolve(args[1]) : null;
+ 
+     logger.info('📊 OmnySys - Export Full System Map (Debug)');
+@@ -43,42 +38,42 @@ async function main() {
+ 
+     const startTime = Date.now();
+ 
+-    // Exportar
+-    const result = await exportFullSystemMapToFile(projectPath, outputPath);
+-
+-    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
++    try {
++      // Exportar
++      const result = await exportFullSystemMapToFile(projectPath, outputPath);
+ 
+-    logger.info('\n' + '='.repeat(50));
+-    logger.info('✅ Export completed successfully!');
+-    logger.info('='.repeat(50));
+-    logger.info(`✓ File: ${result.filePath}`);
+-    logger.info(`✓ Size: ${result.sizeKB} KB`);
+-    logger.info(`✓ Files exported: ${result.filesExported}`);
+-    logger.info(`✓ Duration: ${duration}s`);
+-    logger.info('');
+-    logger.info('📝 This is a DEBUG FILE - contains the complete system map.');
+-    logger.info('   Use it for debugging, comparison, or full analysis.');
+-    logger.info('');
+-    logger.info('💡 For normal queries, use the partitioned API instead:');
+-    logger.info('   - getProjectMetadata()');
+-    logger.info('   - getFileAnalysis(filePath)');
+-    logger.info('   - getSemanticConnections()');
+-    logger.info('   - getRiskAssessment()');
++      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+ 
+-    process.exit(0);
+-  } catch (error) {
+-    logger.error('❌ Export failed:');
+-    logger.error(error.message);
+-    logger.error('');
+-    logger.error('Usage:');
+-    logger.error('  node export-system-map.js [projectPath] [outputPath]');
+-    logger.error('');
+-    logger.error('Examples:');
+-    logger.error('  node export-system-map.js');
+-    logger.error('  node export-system-map.js /path/to/project');
+-    logger.error('  node export-system-map.js . custom-output.json');
+-    process.exit(1);
++      logger.info('\n' + '='.repeat(50));
++      logger.info('✅ Export completed successfully!');
++      logger.info('='.repeat(50));
++      logger.info(`✓ File: ${result.filePath}`);
++      logger.info(`✓ Size: ${result.sizeKB} KB`);
++      logger.info(`✓ Files exported: ${result.filesExported}`);
++      logger.info(`✓ Duration: ${duration}s`);
++      logger.info('');
++      logger.info('📝 This is a DEBUG FILE - contains the complete system map.');
++      logger.info('   Use it for debugging, comparison, or full analysis.');
++      logger.info('');
++      logger.info('💡 For normal queries, use the partitioned API instead:');
++      logger.info('   - getProjectMetadata()');
++      logger.info('   - getFileAnalysis(filePath)');
++      logger.info('   - getSemanticConnections()');
++      logger.info('   - getRiskAssessment()');
++    } catch (error) {
++      logger.error('❌ Export failed:');
++      logger.error(error.message);
++      logger.error('');
++      logger.error('Usage:');
++      logger.error('  node export-system-map.js [projectPath] [outputPath]');
++      logger.error('');
++      logger.error('Examples:');
++      logger.error('  node export-system-map.js');
++      logger.error('  node export-system-map.js /path/to/project');
++      logger.error('  node export-system-map.js . custom-output.json');
++      process.exit(1);
++    }
+   }
+-}
++});
+ 
+ main();
+diff --git a/src/layer-c-memory/mcp-server-worker.js b/src/layer-c-memory/mcp-server-worker.js
+index 9f07c2b..8650910 100644
+--- a/src/layer-c-memory/mcp-server-worker.js
++++ b/src/layer-c-memory/mcp-server-worker.js
+@@ -28,88 +28,66 @@ import { createLogger } from '../utils/logger.js';
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+ const projectRoot = path.resolve(__dirname, '../..');
+ 
+-const logger = createLogger('OmnySys:mcp:worker');
+-
+-async function main() {
+-  const projectPath = process.argv[2] || process.cwd();
+-  const absolutePath = path.isAbsolute(projectPath)
+-    ? path.normalize(projectPath)
+-    : path.resolve(projectPath);
+-
+-  // --- Spawn MCP logs terminal (solo si no fue lanzado ya por el proxy) ---
+-  // El proxy pasa OMNYSYS_LOGS_SPAWNED=1 para evitar duplicar la terminal
+-  if (!process.env.OMNYSYS_LOGS_SPAWNED) {
+-    const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
+-    if (fs.existsSync(batPath)) {
+-      let logsTerminal;
+-      const platform = os.platform();
+-
+-      if (platform === 'win32') {
+-        logsTerminal = spawn('cmd.exe', ['/c', 'start', batPath], {
+-          detached: true,
+-          stdio: 'ignore',
+-          windowsHide: true
+-        });
+-      } else if (platform === 'darwin') {
+-        logsTerminal = spawn('osascript', ['-e', `tell application "Terminal" to do script "cd '${projectRoot}' && tail -f logs/mcp-server.log"`], {
+-          detached: true,
+-          stdio: 'ignore'
+-        });
+-      } else {
+-        const terminalCmd = fs.existsSync('/usr/bin/gnome-terminal') ? 'gnome-terminal' : 'xterm';
+-        logsTerminal = spawn(terminalCmd, ['--', 'tail', '-f', path.join(projectRoot, 'logs/mcp-server.log')], {
+-          detached: true,
+-          stdio: 'ignore',
+-          windowsHide: true
+-        });
+-      }
+-
+-      if (logsTerminal) {
+-        logsTerminal.unref();
+-        logger.info('📺 MCP Logs terminal spawned');
++import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
++
++let serverInstance = null;
++
++const main = createCliOrchestrator({
++  name: 'mcp:worker',
++  logger: createLogger,
++  keepAlive: true,
++  onInterrupt: async () => {
++    if (serverInstance) await serverInstance.shutdown();
++  },
++  run: async ({ absolutePath, logger }) => {
++    // --- Spawn MCP logs terminal (solo si no fue lanzado ya por el proxy) ---
++    // El proxy pasa OMNYSYS_LOGS_SPAWNED=1 para evitar duplicar la terminal
++    if (!process.env.OMNYSYS_LOGS_SPAWNED) {
++      const batPath = path.join(projectRoot, 'src', 'ai', 'scripts', 'mcp-logs.bat');
++      if (fs.existsSync(batPath)) {
++        let logsTerminal;
++        const platform = os.platform();
++
++        if (platform === 'win32') {
++          logsTerminal = spawn('cmd.exe', ['/c', 'start', batPath], {
++            detached: true,
++            stdio: 'ignore',
++            windowsHide: true
++          });
++        } else if (platform === 'darwin') {
++          logsTerminal = spawn('osascript', ['-e', `tell application "Terminal" to do script "cd '${projectRoot}' && tail -f logs/mcp-server.log"`], {
++            detached: true,
++            stdio: 'ignore'
++          });
++        } else {
++          const terminalCmd = fs.existsSync('/usr/bin/gnome-terminal') ? 'gnome-terminal' : 'xterm';
++          logsTerminal = spawn(terminalCmd, ['--', 'tail', '-f', path.join(projectRoot, 'logs/mcp-server.log')], {
++            detached: true,
++            stdio: 'ignore',
++            windowsHide: true
++          });
++        }
++
++        if (logsTerminal) {
++          logsTerminal.unref();
++          logger.info('📺 MCP Logs terminal spawned');
++        }
+       }
+     }
+-  }
+ 
+-  logger.info(`📂 Project: ${absolutePath}`);
+-  logger.info('🚀 Starting OmnySys MCP Server (worker)...\n');
++    logger.info(`📂 Project: ${absolutePath}`);
++    logger.info('🚀 Starting OmnySys MCP Server (worker)...\n');
+ 
+-  const server = new OmnySysMCPServer(absolutePath);
++    serverInstance = new OmnySysMCPServer(absolutePath);
+ 
+-  process.on('SIGINT', async () => {
+-    logger.info('\n👋 Worker SIGINT, shutting down...');
+-    await server.shutdown();
+-    process.exit(0);
+-  });
+-
+-  process.on('SIGTERM', async () => {
+-    logger.info('\n👋 Worker SIGTERM, shutting down...');
+-    await server.shutdown();
+-    process.exit(0);
+-  });
+-
+-  process.on('uncaughtException', async (error) => {
+-    const isEpipe = error.code === 'EPIPE' ||
+-      (error.message && error.message.includes('EPIPE')) ||
+-      (error.message && error.message.includes('broken pipe'));
+-
+-    if (isEpipe) {
+-      logger.debug('⚠️  EPIPE ignored (client disconnected)');
+-      return;
++    try {
++      await serverInstance.run();
++    } catch (error) {
++      logger.error('Fatal error:', error);
++      await serverInstance.shutdown();
++      throw error;
+     }
+-
+-    logger.error('\n❌ Uncaught exception:', error);
+-    await server.shutdown();
+-    process.exit(1);
+-  });
+-
+-  try {
+-    await server.run();
+-  } catch (error) {
+-    logger.error('Fatal error:', error);
+-    await server.shutdown();
+-    process.exit(1);
+   }
+-}
++});
+ 
+ main();
+diff --git a/src/layer-c-memory/mcp-stdio-bridge.js b/src/layer-c-memory/mcp-stdio-bridge.js
+index 2b290ef..09dfa4f 100644
+--- a/src/layer-c-memory/mcp-stdio-bridge.js
++++ b/src/layer-c-memory/mcp-stdio-bridge.js
+@@ -526,33 +526,39 @@ function handleBridgeStdioClose(state) {
+     process.exit(0);
+ }
+ 
+-async function main() {
+-    log(`Starting bridge for ${PROJECT_PATH} - checking daemon...`);
+-    await waitForDaemonReady();
+-
+-    log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
+-
+-    const stdioTransport = new StdioServerTransport();
+-    const state = createBridgeState(stdioTransport);
+-
+-    await connectBridgeTransport(state);
+-
+-    stdioTransport.onmessage = async (message) => {
+-        await handleBridgeStdioMessage(state, message);
+-    };
+-
+-    stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
+-    stdioTransport.onclose = () => {
+-        handleBridgeStdioClose(state);
+-    };
+-
+-    await stdioTransport.start();
+-    log('Bridge active.');
+-}
+-
+-main().catch((err) => {
+-    process.stderr.write(`[mcp-stdio-bridge] FATAL: ${err.message}\n`);
+-    process.exit(1);
++let sharedState = null;
++
++const main = createCliOrchestrator({
++    name: 'mcp:stdio-bridge',
++    logger: {
++        info: log,
++        error: (msg, err) => log(`FATAL: ${msg} ${err?.message || err || ''}`),
++        debug: () => {}
++    },
++    keepAlive: true,
++    run: async () => {
++        log(`Starting bridge for ${PROJECT_PATH} - checking daemon...`);
++        await waitForDaemonReady();
++
++        log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
++
++        const stdioTransport = new StdioServerTransport();
++        sharedState = createBridgeState(stdioTransport);
++
++        await connectBridgeTransport(sharedState);
++
++        stdioTransport.onmessage = async (message) => {
++            await handleBridgeStdioMessage(sharedState, message);
++        };
++
++        stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
++        stdioTransport.onclose = () => {
++            handleBridgeStdioClose(sharedState);
++        };
++
++        await stdioTransport.start();
++        log('Bridge active.');
++    }
+ });
+ 
+-
++main();
+diff --git a/src/layer-c-memory/verification/cli/verify.js b/src/layer-c-memory/verification/cli/verify.js
+index 9015109..b2688d3 100644
+--- a/src/layer-c-memory/verification/cli/verify.js
++++ b/src/layer-c-memory/verification/cli/verify.js
+@@ -10,45 +10,42 @@
+ import path from 'path';
+ import { VerificationOrchestrator } from '../orchestrator/index.js';
+ import { createLogger } from '../../../utils/logger.js';
++import { createCliOrchestrator } from '../../../shared/cli/base-orchestrator.js';
+ 
+-const logger = createLogger('OmnySys:verification:cli');
++const main = createCliOrchestrator({
++  name: 'verification:cli',
++  logger: createLogger,
++  run: async ({ absolutePath }) => {
++    console.log('\n🔍 OmnySys Data Verification\n');
++    console.log(`Project: ${absolutePath}\n`);
+ 
+-async function main() {
+-  // Obtener path del proyecto
+-  const projectPath = process.argv[2] || process.cwd();
+-  const absolutePath = path.resolve(projectPath);
+-  
+-  console.log('\n🔍 OmnySys Data Verification\n');
+-  console.log(`Project: ${absolutePath}\n`);
+-  
+-  try {
+     // Crear orquestador
+     const orchestrator = new VerificationOrchestrator(absolutePath, {
+       checkIntegrity: true,
+       checkConsistency: true,
+       generateCertificate: true
+     });
+-    
++
+     // Ejecutar verificación
+     const { report, certificate, passed } = await orchestrator.verify();
+-    
++
+     // Mostrar resultados
+     console.log('\n📊 Results:\n');
+     console.log(`Status: ${report.status.toUpperCase()}`);
+     console.log(`Duration: ${report.duration}ms`);
+     console.log(`Issues found: ${report.stats.totalIssues}`);
+-    
++
+     if (report.stats.totalIssues > 0) {
+       console.log('\n🚨 Issues by Severity:');
+       Object.entries(report.stats.bySeverity).forEach(([sev, count]) => {
+         if (count > 0) {
+-          const emoji = sev === 'critical' ? '🔴' : 
++          const emoji = sev === 'critical' ? '🔴' :
+                        sev === 'high' ? '🟠' :
+                        sev === 'medium' ? '🟡' : '⚪';
+           console.log(`  ${emoji} ${sev}: ${count}`);
+         }
+       });
+-      
++
+       console.log('\n📋 Top Issues:');
+       report.issues.slice(0, 10).forEach((issue, idx) => {
+         const emoji = issue.severity === 'critical' ? '🔴' :
+@@ -63,10 +60,10 @@ async function main() {
+         }
+       });
+     }
+-    
++
+     // Mostrar resumen
+     console.log(`\n📝 ${report.summary.message}`);
+-    
++
+     if (report.summary.recommendations.length > 0) {
+       console.log('\n💡 Recommendations:');
+       report.summary.recommendations.forEach((rec, idx) => {
+@@ -76,7 +73,7 @@ async function main() {
+         console.log(`   ${rec.reason}`);
+       });
+     }
+-    
++
+     // Mostrar certificado si se generó
+     if (certificate) {
+       console.log('\n📜 Certificate Generated:');
+@@ -84,23 +81,17 @@ async function main() {
+       console.log(`  Valid until: ${certificate.validUntil}`);
+       console.log(`  Hash: ${certificate.hash.substring(0, 16)}...`);
+     }
+-    
++
+     // Resumen final
+     console.log('\n' + '='.repeat(60));
+     if (passed) {
+       console.log('✅ VERIFICATION PASSED - System is healthy');
+-      process.exit(0);
+     } else {
+       console.log('❌ VERIFICATION FAILED - Issues need attention');
+       process.exit(1);
+     }
+-    
+-  } catch (error) {
+-    logger.error('Verification failed:', error);
+-    console.error('\n❌ Error:', error.message);
+-    process.exit(1);
+   }
+-}
++});
+ 
+ // Ejecutar si es llamado directamente
+ if (import.meta.url === `file://${process.argv[1]}`) {
+diff --git a/src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js b/src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js
+index ff28815..932a501 100644
+--- a/src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js
++++ b/src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js
+@@ -23,17 +23,9 @@ import {
+     DUPLICATE_SIGNAL_POLICY_FILE_MARKER
+ } from '../constants/index.js';
+ 
+-// ============================================================================
+-// INTERNAL HELPERS
+-// ============================================================================
+-
+-function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
+-    return {
+-        normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
+-        normalizedName: String(atomName || '').toLowerCase(),
+-        fingerprint: String(semanticFingerprint || '').toLowerCase()
+-    };
+-}
++import {
++    normalizeDuplicateSignalInputs
++} from '../transformers.js';
+ 
+ // ============================================================================
+ // CORE POLICY DETECTORS
+diff --git a/src/shared/compiler/duplicate-signal-policy/detectors/subsystems.js b/src/shared/compiler/duplicate-signal-policy/detectors/subsystems.js
+index b6a19b1..4b0f179 100644
+--- a/src/shared/compiler/duplicate-signal-policy/detectors/subsystems.js
++++ b/src/shared/compiler/duplicate-signal-policy/detectors/subsystems.js
+@@ -74,50 +74,11 @@ import {
+     ORCHESTRATION_LIFECYCLE_FINGERPRINTS
+ } from '../constants/index.js';
+ 
+-// ============================================================================
+-// INTERNAL HELPERS
+-// ============================================================================
+-
+-function normalizeDuplicateSignalInputs(filePath, atomName, semanticFingerprint) {
+-    return {
+-        normalizedPath: normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase(),
+-        normalizedName: String(atomName || '').toLowerCase(),
+-        fingerprint: String(semanticFingerprint || '').toLowerCase()
+-    };
+-}
+-
+-function matchesPolicyPath(normalizedPath, pathMatchers = [], mode = 'includes') {
+-    return pathMatchers.some((marker) => (
+-        mode === 'endsWith' ? normalizedPath.endsWith(marker) : normalizedPath.includes(marker)
+-    ));
+-}
+-
+-function matchesNamedPolicySurface(filePath, atomName, semanticFingerprint, options = {}) {
+-    const {
+-        pathMatchers = [],
+-        pathMode = 'includes',
+-        names = null,
+-        nameRegex = null,
+-        fingerprints = null,
+-        extraFingerprintMatchers = []
+-    } = options;
+-    const { normalizedPath, normalizedName, fingerprint } = normalizeDuplicateSignalInputs(
+-        filePath,
+-        atomName,
+-        semanticFingerprint
+-    );
+-
+-    if (pathMatchers.length > 0 && !matchesPolicyPath(normalizedPath, pathMatchers, pathMode)) {
+-        return false;
+-    }
+-
+-    const hasNameMatch = names ? names.has(normalizedName) : nameRegex?.test(normalizedName);
+-    if (!hasNameMatch) return false;
+-    if (!fingerprint) return true;
+-    if (fingerprints?.has(fingerprint)) return true;
+-
+-    return extraFingerprintMatchers.some((matcher) => matcher(normalizedName, fingerprint));
+-}
++import {
++    normalizeDuplicateSignalInputs,
++    matchesPolicyPath,
++    matchesNamedPolicySurface
++} from '../transformers.js';
+ 
+ // ============================================================================
+ // REPOSITORY & STORAGE DETECTORS
