@@ -13,6 +13,7 @@ import { createLogger } from '../../../utils/logger.js';
 import { createStandardContext } from './guard-standards.js';
 import { safeArray, classifyCircularCycle } from '../../../shared/compiler/index.js';
 import { normalizePath } from '../../../shared/utils/path-utils.js';
+import { detectCycles } from '../../../layer-graph/algorithms/cycle-detector.js';
 import { persistCircularIssue, clearCircularIssues } from './circular-issue-service.js';
 import {
     getCircularCallRelations,
@@ -22,38 +23,6 @@ import {
 } from './circular-repository.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
-
-function findCycleDFS(startId, getChildrenFn) {
-    const visited = new Set();
-    const recursionStack = new Set();
-    const pathStack = [];
-    let foundCycle = null;
-
-    function dfs(currentId) {
-        if (foundCycle) return;
-
-        visited.add(currentId);
-        recursionStack.add(currentId);
-        pathStack.push(currentId);
-
-        const children = getChildrenFn(currentId) || [];
-        for (const child of children) {
-            if (!visited.has(child)) {
-                dfs(child);
-            } else if (recursionStack.has(child)) {
-                const cycleStartIndex = pathStack.indexOf(child);
-                foundCycle = pathStack.slice(cycleStartIndex).concat([child]);
-                return;
-            }
-        }
-
-        recursionStack.delete(currentId);
-        pathStack.pop();
-    }
-
-    dfs(startId);
-    return foundCycle;
-}
 
 
 function buildCircularContext({
@@ -76,7 +45,7 @@ function buildCircularContext({
 }
 
 function buildFileGraph(allFiles = []) {
-    const fileGraph = new Map();
+    const fileGraph = {};
 
     for (const file of allFiles) {
         if (!file.imports_json) continue;
@@ -86,31 +55,13 @@ function buildFileGraph(allFiles = []) {
             const targets = safeArray(parsed)
                 .filter((entry) => entry && entry.type === 'local' && entry.resolved)
                 .map((entry) => entry.resolved);
-            fileGraph.set(file.path, targets);
+            fileGraph[file.path] = { dependsOn: targets };
         } catch {
             // Ignore malformed cached payloads in incremental mode.
         }
     }
 
     return fileGraph;
-}
-
-function buildCallGraph(relations = []) {
-    const callGraph = new Map();
-
-    for (const relation of relations) {
-        if (!callGraph.has(relation.source_id)) {
-            callGraph.set(relation.source_id, new Set());
-        }
-        callGraph.get(relation.source_id).add(relation.target_id);
-    }
-
-    return callGraph;
-}
-
-function getCallGraphChildren(callGraph, atomId) {
-    const targets = callGraph.get(atomId);
-    return targets ? [...targets] : [];
 }
 
 async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
@@ -190,13 +141,20 @@ async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, f
     try {
         const atomIdPattern = `${relPath}::%`;
         const relations = getCircularCallRelations(repo?.db, atomIdPattern);
-        const callGraph = buildCallGraph(relations);
+        const callGraph = {};
+
+        for (const relation of relations) {
+            if (!callGraph[relation.source_id]) {
+                callGraph[relation.source_id] = { dependsOn: [] };
+            }
+            callGraph[relation.source_id].dependsOn.push(relation.target_id);
+        }
+
+        const cycles = detectCycles(callGraph);
 
         for (const atom of localAtoms) {
-            const atomCycle = findCycleDFS(atom.id, (id) => getCallGraphChildren(callGraph, id));
-            if (!atomCycle || atomCycle.length <= 2) {
-                continue;
-            }
+            const atomCycle = cycles.find((cycle) => cycle.includes(atom.id));
+            if (!atomCycle || atomCycle.length <= 2) continue;
 
             const atomNames = atomCycle.map((atomId) => atomId.split('::')[1] || atomId);
             const cycleClassification = classifyCircularCycle(relPath, atomCycle, atomNames);
@@ -235,7 +193,8 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
     try {
         const allFiles = getCircularFileImports(repo.db);
         const fileGraph = buildFileGraph(allFiles);
-        const fileCycle = findCycleDFS(relPath, (id) => fileGraph.get(id));
+        const cycles = detectCycles(fileGraph);
+        const fileCycle = cycles.find((cycle) => cycle.includes(relPath)) || null;
 
         if (fileCycle) {
             await persistModuleCycleIssue(rootPath, filePath, fileCycle);
