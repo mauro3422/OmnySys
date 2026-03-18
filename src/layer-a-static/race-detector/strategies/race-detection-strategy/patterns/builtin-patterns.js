@@ -8,6 +8,8 @@
  * @module race-detector/strategies/race-detection-strategy/patterns/builtin-patterns
  */
 
+import * as PatternDetectors from '../../../../patterns/PatternDetectors.js';
+
 /**
  * @typedef {Object} RacePattern
  * @property {string} type - Pattern type code (e.g., 'RW', 'WW')
@@ -183,6 +185,88 @@ export const BUILTIN_PATTERNS = [
       ]
     },
     category: 'general'
+  },
+
+  // Logical Patterns (from consolidated matcher registry)
+  {
+    type: 'SINGLETON',
+    pattern: {
+      name: 'Singleton Initialization',
+      description: 'Race during singleton initialization of shared state',
+      matcher: (a1, a2, ctx) => PatternDetectors.isSingletonPattern(ctx?.race || { accesses: [a1, a2], type: ctx?.type || 'IE' }),
+      severity: 'high'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'COUNTER',
+    pattern: {
+      name: 'Counter Increment',
+      description: 'Atomic violation during counter/total increment',
+      matcher: (a1, a2, ctx) => PatternDetectors.isCounterPattern(ctx?.race || { accesses: [a1, a2], type: ctx?.type || 'WW' }),
+      severity: 'medium'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'ARRAY',
+    pattern: {
+      name: 'Array Modification',
+      description: 'Concurrent modification of shared array',
+      matcher: (a1, a2, ctx) => PatternDetectors.isArrayPattern(ctx?.race || { accesses: [a1, a2], type: ctx?.type || 'WW' }),
+      severity: 'medium'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'CACHE',
+    pattern: {
+      name: 'Cache Population',
+      description: 'Race during cache/memoization population',
+      matcher: (a1, a2, ctx) => PatternDetectors.isCachePattern(ctx?.race || { accesses: [a1, a2], stateKey: ctx?.race?.stateKey || '' }),
+      severity: 'low'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'LAZY_INIT',
+    pattern: {
+      name: 'Lazy Initialization',
+      description: 'Race during lazy initialization of state',
+      matcher: (a1, a2, ctx) => PatternDetectors.isLazyInitPattern(ctx?.race || { accesses: [a1, a2], type: ctx?.type || 'IE' }),
+      severity: 'high'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'EVENT_SUB',
+    pattern: {
+      name: 'Event Subscription',
+      description: 'Race between event subscription and emission',
+      matcher: (a1, a2, ctx) => PatternDetectors.isEventPattern(ctx?.race || { accesses: [a1, a2], type: ctx?.type || 'EH' }),
+      severity: 'medium'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'DB_UPDATE',
+    pattern: {
+      name: 'Database Update',
+      description: 'Race during database update/query execution',
+      matcher: (a1, a2, ctx) => PatternDetectors.isDbUpdatePattern(ctx?.race || { accesses: [a1, a2], stateKey: ctx?.race?.stateKey || '' }),
+      severity: 'critical'
+    },
+    category: 'logical'
+  },
+  {
+    type: 'FILE_WRITE',
+    pattern: {
+      name: 'File Write',
+      description: 'Concurrent write/append to shared file',
+      matcher: (a1, a2, ctx) => PatternDetectors.isFileWritePattern(ctx?.race || { accesses: [a1, a2], stateKey: ctx?.race?.stateKey || '' }),
+      severity: 'critical'
+    },
+    category: 'logical'
   }
 ];
 

@@ -157,7 +157,10 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
     const normalizedFingerprint = String(semanticFingerprint || '').trim();
     if (
         normalizedFingerprint === 'process:orchestration:core:main' || 
-        normalizedFingerprint === 'execute:orchestration:core:execute'
+        normalizedFingerprint === 'execute:orchestration:core:execute' ||
+        normalizedFingerprint === 'run:orchestration:core:run' ||
+        normalizedFingerprint === 'process:logic:core:score' ||
+        normalizedFingerprint === 'validate:logic:core:validate'
     ) {
         return true;
     }

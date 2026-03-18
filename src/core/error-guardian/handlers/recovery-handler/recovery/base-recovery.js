@@ -7,6 +7,17 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
+import { 
+  handleCritical, 
+  handleHigh, 
+  handleMedium, 
+  handleLow, 
+  handleUnknown 
+} from '../strategies/severity-handlers.js';
+import { attemptAutoFix } from '../actions/auto-fix.js';
+import { saveSystemState } from '../actions/state-manager.js';
+import { registerCallback, executeCallback } from '../utils/callbacks.js';
+import { getStats, resetStats } from '../utils/stats.js';
 
 const logger = createLogger('OmnySys:error:recovery');
 
@@ -33,6 +44,57 @@ export class RecoveryHandler {
       failedRecoveries: 0
     };
     this.recoveryCallbacks = new Map();
+  }
+
+  /**
+   * Get recovery statistics
+   * @returns {Object} - Statistics
+   */
+  getStats() {
+    return getStats(this.stats);
+  }
+
+  /**
+   * Reset recovery statistics
+   */
+  resetStats() {
+    this.stats = resetStats();
+  }
+
+  handleCritical(analysis) {
+    return handleCritical(this, analysis);
+  }
+
+  handleHigh(analysis) {
+    return handleHigh(this, analysis);
+  }
+
+  handleMedium(analysis) {
+    return handleMedium(this, analysis);
+  }
+
+  handleLow(analysis) {
+    return handleLow(this, analysis);
+  }
+
+  handleUnknown(analysis) {
+    return handleUnknown(this, analysis);
+  }
+
+  attemptAutoFix(analysis) {
+    return attemptAutoFix(analysis, this.projectPath, this.stats);
+  }
+
+  saveSystemState() {
+    return saveSystemState(this.projectPath, this.stats);
+  }
+
+  registerCallback(severity, callback) {
+    registerCallback(this.recoveryCallbacks, severity, callback);
+  }
+
+  executeCallback(severity, analysis) {
+    return executeCallback(this.recoveryCallbacks, severity, analysis);
   }
 
   /**

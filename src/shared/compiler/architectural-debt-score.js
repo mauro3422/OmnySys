@@ -130,38 +130,43 @@ async function calculateDirectoryStructureScore(projectPath, repo, conventions) 
     let totalFiles = 0;
     let filesInWrongPlace = 0;
 
-    if (repo?.db) {
-        // Obtener todos los archivos
-        const files = repo.db.prepare(`
-            SELECT DISTINCT file_path
-            FROM atoms
-            WHERE file_path IS NOT NULL
-        `).all();
+    try {
+        if (repo?.db) {
+            // Obtener todos los archivos
+            const files = repo.db.prepare(`
+                SELECT DISTINCT file_path
+                FROM atoms
+                WHERE file_path IS NOT NULL
+            `).all();
 
-        totalFiles = files.length;
+            totalFiles = files.length;
 
-        // Verificar cada archivo
-        for (const file of files) {
-            const filePath = file.file_path.replace(/\\/g, '/');
-            const fileName = filePath.split('/').pop();
-            const fileType = detectFileType(fileName);
+            // Verificar cada archivo
+            for (const file of files) {
+                const filePath = file.file_path.replace(/\\/g, '/');
+                const fileName = filePath.split('/').pop();
+                const fileType = detectFileType(fileName);
 
-            if (fileType && fileType !== 'other') {
-                const validation = validateFileLocation(filePath, fileType, conventions);
+                if (fileType && fileType !== 'other') {
+                    const validation = validateFileLocation(filePath, fileType, conventions);
 
-                if (!validation.isCorrect) {
-                    filesInWrongPlace++;
-                    issues.push({
-                        type: 'file_in_wrong_directory',
-                        file: filePath,
-                        severity: 'low',
-                        expectedDirectory: validation.expectedDirectory,
-                        actualDirectory: validation.actualDirectory,
-                        recommendation: `Move to ${validation.expectedDirectory}`
-                    });
+                    if (!validation.isCorrect) {
+                        filesInWrongPlace++;
+                        issues.push({
+                            type: 'file_in_wrong_directory',
+                            file: filePath,
+                            severity: 'low',
+                            expectedDirectory: validation.expectedDirectory,
+                            actualDirectory: validation.actualDirectory,
+                            recommendation: `Move to ${validation.expectedDirectory}`
+                        });
+                    }
                 }
             }
         }
+    } catch (err) {
+        logger.error(`[calculateDirectoryStructureScore] Error analyzing directory structure: ${err.message}`);
+        // Return baseline if error occurs
     }
 
     // Calcular score (0 = todos en lugar correcto, 100 = todos mal ubicados)
@@ -187,45 +192,49 @@ async function calculatePatternScore(projectPath, repo) {
     let totalAtoms = 0;
     let problematicAtoms = 0;
 
-    if (repo?.db) {
-        // Obtener átomos con metadata arquitectónica
-        const atoms = repo.db.prepare(`
-            SELECT id, name, file_path, complexity, is_exported,
-                   json_extract(dna_json, '$.semanticFingerprint') as fingerprint
-            FROM atoms
-            WHERE atom_type IN ('function', 'method', 'arrow', 'class')
-              AND (is_removed IS NULL OR is_removed = 0)
-        `).all();
+    try {
+        if (repo?.db) {
+            // Obtener átomos con metadata arquitectónica
+            const atoms = repo.db.prepare(`
+                SELECT id, name, file_path, complexity, is_exported,
+                       json_extract(dna_json, '$.semanticFingerprint') as fingerprint
+                FROM atoms
+                WHERE atom_type IN ('function', 'method', 'arrow', 'class')
+                  AND (is_removed IS NULL OR is_removed = 0)
+            `).all();
 
-        totalAtoms = atoms.length;
+            totalAtoms = atoms.length;
 
-        // Analizar cada átomo
-        for (const atom of atoms) {
-            const metadata = {
-                filePath: atom.file_path,
-                name: atom.name,
-                complexity: atom.complexity,
-                isExported: atom.is_exported === 1,
-                semanticFingerprint: atom.fingerprint
-            };
+            // Analizar cada átomo
+            for (const atom of atoms) {
+                const metadata = {
+                    filePath: atom.file_path,
+                    name: atom.name,
+                    complexity: atom.complexity,
+                    isExported: atom.is_exported === 1,
+                    semanticFingerprint: atom.fingerprint
+                };
 
-            const pattern = detectArchitecturalPattern(metadata);
+                const pattern = detectArchitecturalPattern(metadata);
 
-            if (pattern.patterns.length > 0 && pattern.severity !== 'low') {
-                problematicAtoms++;
+                if (pattern.patterns.length > 0 && pattern.severity !== 'low') {
+                    problematicAtoms++;
 
-                for (const rec of pattern.recommendations) {
-                    issues.push({
-                        type: pattern.primaryPattern || 'architectural_issue',
-                        file: metadata.filePath,
-                        symbol: metadata.name,
-                        severity: pattern.severity,
-                        recommendation: rec.message,
-                        suggestedStructure: rec.suggestedStructure
-                    });
+                    for (const rec of pattern.recommendations) {
+                        issues.push({
+                            type: pattern.primaryPattern || 'architectural_issue',
+                            file: metadata.filePath,
+                            symbol: metadata.name,
+                            severity: pattern.severity,
+                            recommendation: rec.message,
+                            suggestedStructure: rec.suggestedStructure
+                        });
+                    }
                 }
             }
         }
+    } catch (err) {
+        logger.error(`[calculatePatternScore] Error analyzing architectural patterns: ${err.message}`);
     }
 
     // Calcular score
@@ -251,30 +260,34 @@ async function calculateCouplingScore(projectPath, repo) {
     let totalFiles = 0;
     let highCouplingFiles = 0;
 
-    if (repo?.db) {
-        // Obtener archivos con alto acoplamiento (muchos imports/dependencias)
-        const files = repo.db.prepare(`
-            SELECT file_path,
-                   COUNT(DISTINCT json_extract(imports_json, '$[*].source')) as importCount
-            FROM atoms
-            WHERE imports_json IS NOT NULL
-              AND (is_removed IS NULL OR is_removed = 0)
-            GROUP BY file_path
-            HAVING importCount > 10  // Threshold: más de 10 imports
-        `).all();
+    try {
+        if (repo?.db) {
+            // Obtener archivos con alto acoplamiento (muchos imports/dependencias)
+            const files = repo.db.prepare(`
+                SELECT file_path,
+                       COUNT(DISTINCT json_extract(imports_json, '$[*].source')) as importCount
+                FROM atoms
+                WHERE imports_json IS NOT NULL
+                  AND (is_removed IS NULL OR is_removed = 0)
+                GROUP BY file_path
+                HAVING importCount > 10  // Threshold: más de 10 imports
+            `).all();
 
-        totalFiles = files.length;
-        highCouplingFiles = files.length;
+            totalFiles = files.length;
+            highCouplingFiles = files.length;
 
-        for (const file of files) {
-            issues.push({
-                type: 'high_coupling',
-                file: file.file_path,
-                severity: 'medium',
-                importCount: file.importCount,
-                recommendation: 'Consider splitting into smaller modules or using dependency injection'
-            });
+            for (const file of files) {
+                issues.push({
+                    type: 'high_coupling',
+                    file: file.file_path,
+                    severity: 'medium',
+                    importCount: file.importCount,
+                    recommendation: 'Consider splitting into smaller modules or using dependency injection'
+                });
+            }
         }
+    } catch (err) {
+        logger.error(`[calculateCouplingScore] Error analyzing coupling: ${err.message}`);
     }
 
     // Calcular score
@@ -300,33 +313,37 @@ async function calculateDuplicationScore(projectPath, repo) {
     let duplicateGroups = 0;
     let duplicateImplementations = 0;
 
-    if (repo?.db) {
-        // Obtener duplicados conceptuales
-        const duplicates = repo.db.prepare(`
-            SELECT json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
-                   COUNT(*) as instanceCount,
-                   GROUP_CONCAT(file_path) as files
-            FROM atoms
-            WHERE json_extract(dna_json, '$.semanticFingerprint') IS NOT NULL
-              AND json_extract(dna_json, '$.semanticFingerprint') != 'unknown:unknown:unknown'
-              AND (is_removed IS NULL OR is_removed = 0)
-            GROUP BY fingerprint
-            HAVING instanceCount > 1
-        `).all();
+    try {
+        if (repo?.db) {
+            // Obtener duplicados conceptuales
+            const duplicates = repo.db.prepare(`
+                SELECT json_extract(dna_json, '$.semanticFingerprint') as fingerprint,
+                       COUNT(*) as instanceCount,
+                       GROUP_CONCAT(file_path) as files
+                FROM atoms
+                WHERE json_extract(dna_json, '$.semanticFingerprint') IS NOT NULL
+                  AND json_extract(dna_json, '$.semanticFingerprint') != 'unknown:unknown:unknown'
+                  AND (is_removed IS NULL OR is_removed = 0)
+                GROUP BY fingerprint
+                HAVING instanceCount > 1
+            `).all();
 
-        duplicateGroups = duplicates.length;
-        duplicateImplementations = duplicates.reduce((sum, d) => sum + d.instanceCount, 0);
+            duplicateGroups = duplicates.length;
+            duplicateImplementations = duplicates.reduce((sum, d) => sum + d.instanceCount, 0);
 
-        for (const dup of duplicates.slice(0, 20)) { // Top 20
-            issues.push({
-                type: 'conceptual_duplicate',
-                semanticFingerprint: dup.fingerprint,
-                instanceCount: dup.instanceCount,
-                files: dup.files.split(','),
-                severity: dup.instanceCount > 5 ? 'high' : 'medium',
-                recommendation: `Consolidate ${dup.instanceCount} duplicate implementations`
-            });
+            for (const dup of duplicates.slice(0, 20)) { // Top 20
+                issues.push({
+                    type: 'conceptual_duplicate',
+                    semanticFingerprint: dup.fingerprint,
+                    instanceCount: dup.instanceCount,
+                    files: dup.files.split(','),
+                    severity: dup.instanceCount > 5 ? 'high' : 'medium',
+                    recommendation: `Consolidate ${dup.instanceCount} duplicate implementations`
+                });
+            }
         }
+    } catch (err) {
+        logger.error(`[calculateDuplicationScore] Error analyzing duplication: ${err.message}`);
     }
 
     // Calcular score (basado en grupos de duplicados)

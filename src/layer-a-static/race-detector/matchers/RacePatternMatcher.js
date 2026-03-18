@@ -6,7 +6,7 @@
  * @module race-detector/matchers/RacePatternMatcher
  */
 
-import { PatternRegistry } from './PatternRegistry.js';
+import { PatternRegistry } from '../strategies/race-detection-strategy/patterns/PatternRegistry.js';
 
 /**
  * Detects specific race condition patterns
@@ -14,6 +14,7 @@ import { PatternRegistry } from './PatternRegistry.js';
 export class RacePatternMatcher {
   constructor() {
     this.registry = new PatternRegistry();
+    // The unified registry returns an array of pattern objects
     this.patterns = this.registry.getAllPatterns();
   }
 
@@ -24,11 +25,16 @@ export class RacePatternMatcher {
    */
   detectPatterns(race) {
     const detected = [];
+    const [a1, a2] = race.accesses || [];
+    const ctx = { race, type: race.type };
 
-    for (const [key, pattern] of this.patterns) {
-      if (pattern.detect(race)) {
+    for (const pattern of this.patterns) {
+      // Compatibility check: either use the original 'detect' or the unified 'matcher'
+      const isMatch = pattern.detect ? pattern.detect(race) : pattern.matcher(a1, a2, ctx);
+      
+      if (isMatch) {
         detected.push({
-          key,
+          key: pattern.type,
           name: pattern.name,
           race: race.id
         });
@@ -43,7 +49,10 @@ export class RacePatternMatcher {
    * @returns {Array} - Pattern metadata
    */
   getPatterns() {
-    return this.registry.getPatternList();
+    return this.patterns.map(p => ({
+      key: p.type,
+      name: p.name
+    }));
   }
 
   /**
@@ -53,7 +62,7 @@ export class RacePatternMatcher {
    * @param {Function} detectFn - Detection function
    */
   addPattern(key, name, detectFn) {
-    this.registry.register(key, name, detectFn);
+    this.registry.register(key, { name, detect: detectFn, matcher: (a1, a2, ctx) => detectFn(ctx.race) });
     this.patterns = this.registry.getAllPatterns();
   }
 }

@@ -8,6 +8,7 @@
 
 import { createLogger } from '../../../../utils/logger.js';
 import { SEVERITY, ERROR_PATTERNS } from '../patterns/constants.js';
+import { getStats } from '../utils/stats.js';
 
 const logger = createLogger('OmnySys:error:classifier');
 
@@ -30,6 +31,44 @@ const logger = createLogger('OmnySys:error:classifier');
 export class ErrorClassifier {
   constructor(customPatterns = {}) {
     this.patterns = { ...ERROR_PATTERNS, ...customPatterns };
+    this.classificationHistory = [];
+  }
+
+  /**
+   * Get classification statistics
+   * @returns {Object} - Statistics
+   */
+  getStats() {
+    return getStats(this.classificationHistory);
+  }
+
+  /**
+   * Check if error is quiet
+   * @param {Object} classification
+   * @returns {boolean}
+   */
+  isQuietError(classification) {
+    return classification.severity === SEVERITY.LOW;
+  }
+
+  /**
+   * Get patterns by category
+   * @param {string} category
+   * @returns {Object}
+   */
+  getPatternsByCategory(category) {
+    return Object.entries(this.patterns)
+      .filter(([_, config]) => config.category === category)
+      .reduce((acc, [type, config]) => {
+        acc[type] = config;
+        return acc;
+      }, {});
+  }
+
+  /**
+   * Clear classification history
+   */
+  clearHistory() {
     this.classificationHistory = [];
   }
 

@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.130 - Sprint 13: Zero Structural Debt & Reliability Hardening](changelogs/v0.9.130.md)
+
 - [v0.9.128 - File Watcher Memory Leak Fix & Orchestration Triage](changelogs/v0.9.128.md)
 - [v0.9.127 - Conceptual Duplicate Eradication & Test Configuration](changelogs/v0.9.127.md)
 - [v0.9.126 - MCP Export Chain Validation & Runtime Crash Prevention](changelogs/v0.9.126.md)
@@ -24,6 +26,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.130 - Sprint 13: Zero Structural Debt & Reliability Hardening](changelogs/v0.9.130.md)
 - [v0.9.128 - File Watcher Memory Leak Fix & Orchestration Triage](changelogs/v0.9.128.md)
 - [v0.9.127 - Conceptual Duplicate Eradication & Test Configuration](changelogs/v0.9.127.md)
 - [v0.9.126 - MCP Export Chain Validation & Runtime Crash Prevention](changelogs/v0.9.126.md)
@@ -51,6 +54,8 @@ All notable changes to this project are documented here as a release index. Deta
 - [Changelog Directory](changelog/README.md)
 
 ## Version Index
+
+| **0.9.130** | 2026-03-18 | Sprint 13: Consolidated structural debt to 0, hardened critical daemons (SocietyPersistor, scoring) with try/catch, and updated duplicate policies to ignore strategic patterns. |
 
 | **0.9.128** | 2026-03-18 | Fixed a critical SQLite memory leak in FileWatcher causing false positive duplicate alerts due to zombie atoms. Completed triage on orchestration scripts yielding 0 new DDD module boundaries. |
 | **0.9.127** | 2026-03-18 | Eradicated 35 structural duplicates across builders, pattern registries, and error utilities, reaching Grade A+ health score. |
