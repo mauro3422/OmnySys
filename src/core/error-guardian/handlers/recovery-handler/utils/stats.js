@@ -11,8 +11,8 @@
  * @param {Object} stats - Estadísticas internas
  * @returns {Object} Copia de estadísticas
  */
-import { statsPool } from '../../../../../shared/utils/stats-pool.js';
-export const getStats = (...args) => statsPool.getStats('recovery-handler', ...args);
+import { getGuardianStats } from '../../../utils/shared-stats.js';
+export const getStats = (...args) => getGuardianStats('recovery-handler', ...args);
 /**
  * Reset statistics
  * @returns {Object} Estadísticas reseteadas

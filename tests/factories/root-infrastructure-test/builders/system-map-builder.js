@@ -2,9 +2,11 @@
  * @fileoverview System Map Builder - Constructor de mapas del sistema
  */
 
-export class SystemMapBuilder {
+import { BaseBuilder } from '../../shared/base-builder.js';
+
+export class SystemMapBuilder extends BaseBuilder {
   constructor() {
-    this.files = {};
+    super();
     this.functions = {};
     this.function_links = [];
     this.imports = {};
@@ -34,16 +36,7 @@ export class SystemMapBuilder {
   }
 
   withFile(path, options = {}) {
-    this.files[path] = {
-      path,
-      imports: options.imports || [],
-      exports: options.exports || [],
-      usedBy: options.usedBy || [],
-      dependsOn: options.dependsOn || [],
-      calls: options.calls || [],
-      identifierRefs: options.identifierRefs || [],
-      ...options
-    };
+    super.withFile(path, options);
     this.metadata.totalFiles = Object.keys(this.files).length;
     return this;
   }

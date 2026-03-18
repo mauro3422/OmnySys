@@ -11,8 +11,8 @@
  * @param {Array} history - Classification history
  * @returns {Object} - Statistics by type and severity
  */
-import { statsPool } from '../../../../../shared/utils/stats-pool.js';
-export const getStats = (...args) => statsPool.getStats('error-classifier', ...args);
+import { getGuardianStats } from '../../../utils/shared-stats.js';
+export const getStats = (...args) => getGuardianStats('error-classifier', ...args);
 /**
  * Check if error should be logged loudly or quietly
  * @param {Object} classification

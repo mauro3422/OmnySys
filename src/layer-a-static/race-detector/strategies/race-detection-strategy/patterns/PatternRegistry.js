@@ -169,7 +169,19 @@ export class PatternRegistry {
    * @returns {string} - Severity level
    */
   getSeverity(type) {
-    return this._patterns.get(type)?.severity || 'medium';
+    if (this._patterns.has(type)) {
+      return this._patterns.get(type).severity || 'medium';
+    }
+    // Fallback for old strategy registry
+    return this._severityFallback?.get(type) || null;
+  }
+
+  /**
+   * Set severity for a race type (legacy support)
+   */
+  setSeverity(type, severity) {
+    if (!this._severityFallback) this._severityFallback = new Map();
+    this._severityFallback.set(type, severity);
   }
 
   /**
@@ -178,13 +190,24 @@ export class PatternRegistry {
    * @returns {Array<string>} - Mitigation strategies
    */
   getMitigationStrategies(type) {
-    return this._patterns.get(type)?.mitigationStrategies || [];
+    if (this._patterns.has(type)) {
+      return this._patterns.get(type).mitigationStrategies || [];
+    }
+    // Fallback for old strategy registry
+    return this._mitigationFallback?.get(type) || [];
+  }
+
+  registerMitigations(type, strategies) {
+    if (!this._mitigationFallback) this._mitigationFallback = new Map();
+    this._mitigationFallback.set(type, strategies);
   }
 
   /** Clear all registered patterns */
   clear() {
     this._patterns.clear();
     this._categories.clear();
+    if (this._severityFallback) this._severityFallback.clear();
+    if (this._mitigationFallback) this._mitigationFallback.clear();
   }
 
   /** Register built-in race condition patterns @private */

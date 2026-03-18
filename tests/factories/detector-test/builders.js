@@ -2,19 +2,21 @@
  * @fileoverview Detector Test Factory - Builders
  */
 
-export class SystemMapBuilder {
+import { BaseBuilder } from '../shared/base-builder.js';
+
+export class SystemMapBuilder extends BaseBuilder {
   constructor() {
-    this.files = {};
+    super();
     this.functions = {};
     this.resolutions = {};
   }
 
   withFile(path, content = {}) {
-    this.files[path] = {
+    super.withFile(path, {
       imports: [],
       exports: [],
       ...content
-    };
+    });
     return this;
   }
 
@@ -95,18 +97,28 @@ export class SystemMapBuilder {
 /**
  * Builder for creating advanced analysis mock data
  */
-export class AdvancedAnalysisBuilder {
+export class AdvancedAnalysisBuilder extends BaseBuilder {
   constructor() {
-    this.fileResults = {};
+    super();
+    // In this specific builder it expects 'fileResults' instead of 'files'.
+    // We'll map 'this.files' to 'this.fileResults' using a getter for backward compatibility.
+  }
+
+  get fileResults() {
+    return this.files;
+  }
+  
+  set fileResults(val) {
+    this.files = val;
   }
 
   withFile(path, analysis = {}) {
-    this.fileResults[path] = {
+    super.withFile(path, {
       webWorkers: { outgoing: [], incoming: [] },
       networkCalls: { urls: [] },
       webSocket: { urls: [] },
       ...analysis
-    };
+    });
     return this;
   }
 

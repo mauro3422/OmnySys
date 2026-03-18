@@ -6,8 +6,11 @@
  * @module tests/factories/module-system-test/builders/module-builder
  */
 
-export class ModuleBuilder {
+import { BaseBuilder } from '../../shared/base-builder.js';
+
+export class ModuleBuilder extends BaseBuilder {
   constructor(name) {
+    super();
     this.moduleName = name;
     this.modulePath = `/project/src/${name}`;
     this.files = [];
@@ -31,14 +34,12 @@ export class ModuleBuilder {
   }
 
   withFile(filePath, options = {}) {
-    const file = {
-      path: filePath,
+    super.withFile(filePath, {
       atomCount: options.atomCount || 0,
       exports: options.exports || [],
       hasSideEffects: options.hasSideEffects || false,
       ...options
-    };
-    this.files.push(file);
+    });
     this.metrics.totalFiles = this.files.length;
     return this;
   }
