@@ -13,7 +13,8 @@ import path from 'path';
 import {
   COMPILER_TARGET_DIRS,
   discoverCompilerFiles,
-  isCompilerRuntimeFile
+  isCompilerRuntimeFile,
+  shouldScanCompilerFile
 } from './file-discovery.js';
 import { detectStateOwnershipConformanceFromSource } from './state-ownership-conformance.js';
 import { detectServiceBoundaryConformanceFromSource } from './service-boundary-conformance.js';
@@ -294,8 +295,10 @@ function collectConformanceFindings(normalizedPath, source) {
   }));
 }
 
+function normalizePathLocal(p) { return p ? p.replace(/\\/g, '/') : p; }
+
 export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
-  const normalizedPath = normalizePath(filePath);
+  const normalizedPath = normalizePathLocal(filePath);
 
   if (!shouldScanCompilerFile(normalizedPath) || !source) {
     return [];

@@ -36,20 +36,20 @@ function normalizeLimit(limit, fallback = 10) {
 
 export function getLiveFileSetSql() {
     return `
-    SELECT DISTINCT file_path
-    FROM atoms
-    WHERE file_path IS NOT NULL
-      AND file_path != ''
+    SELECT DISTINCT path AS file_path
+    FROM compiler_scanned_files
+    WHERE path IS NOT NULL
+      AND path != ''
   `;
 }
 
 export function getLiveFileTotal(db) {
     return toCount(
         db.prepare(`
-      SELECT COUNT(DISTINCT file_path) as total
-      FROM atoms
-      WHERE file_path IS NOT NULL
-        AND file_path != ''
+      SELECT COUNT(DISTINCT path) as total
+      FROM compiler_scanned_files
+      WHERE path IS NOT NULL
+        AND path != ''
     `).get()
     );
 }

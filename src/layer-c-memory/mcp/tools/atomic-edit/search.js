@@ -44,56 +44,47 @@ export async function findAtomsByName(atomName, projectPath, options = {}) {
   return atoms;
 }
 
-/**
- * Busca callers de una función específica usando SQLite
- * @param {string} functionName - Nombre de la función
- * @param {string} projectPath - Ruta del proyecto
- * @param {string} excludeFile - Archivo a excluir (opcional)
- * @returns {Promise<Array>} Array de callers encontrados
- */
 export async function findCallersEfficient(functionName, projectPath, excludeFile = null) {
   const callers = [];
 
   try {
     const repo = getRepository(projectPath);
 
-    const atomIdPattern = `::${functionName}`;
+    // [USER-DIRECTED] Salvaguarda estricta: No podemos depender de falsos fallbacks si la DB está rota
+    const testGraph = repo.db.prepare("SELECT count(1) as total FROM call_graph").get();
+    if (!testGraph || testGraph.total === 0) {
+      throw new Error("FALLBACK DESACTIVADO POR EL USUARIO: El sistema se niega a inferir dependencias en caliente porque la vista 'call_graph' SQL está vacía. Debes analizar e hidratar el proyecto correctamente (re-indexar) para evitar corrupción de datos.");
+    }
 
-    const allAtoms = repo.query({ limit: 1000 });
+    // Consulta estricta basada 100% en las relaciones analizadas
+    const stmt = repo.db.prepare(`
+      SELECT 
+        caller_name, 
+        caller_file, 
+        line_number
+      FROM call_graph
+      WHERE callee_name = ?
+        AND (? IS NULL OR caller_file != ?)
+      LIMIT 1000
+    `);
 
-    for (const atom of allAtoms) {
-      if (excludeFile && atom.file_path?.includes(excludeFile)) continue;
+    const results = stmt.all(functionName, excludeFile, excludeFile);
 
-      const calls = atom.calls;
-      if (!calls || !Array.isArray(calls)) continue;
-
-      const matchingCall = calls.find(c =>
-        c.callee === functionName ||
-        c.callee?.endsWith(atomIdPattern) ||
-        c.target === functionName ||
-        c.name === functionName
-      );
-
-      if (matchingCall) {
-        const argumentCount = matchingCall.argumentCount !== undefined ? matchingCall.argumentCount :
-          (matchingCall.args ? matchingCall.args.length :
-            (matchingCall.arguments ? matchingCall.arguments.length : 0));
-
-        callers.push({
-          name: atom.name,
-          filePath: atom.filePath,
-          line: atom.line,
-          code: matchingCall.code || JSON.stringify(matchingCall),
-          argumentCount: argumentCount
-        });
-
-        if (callers.length >= 20) break;
-      }
+    for (const call of results) {
+      callers.push({
+        name: call.caller_name,
+        filePath: call.caller_file,
+        line: call.line_number || 0,
+        code: `/* Llamada descubierta via call_graph: ${functionName} */`,
+        argumentCount: 0 // Evaluado estrictamente para propiciar advertencias de signature si aplica
+      });
     }
 
   } catch (error) {
-    logger.warn(`[FindCallers] Error buscando callers de ${functionName}: ${error.message}`);
+    logger.error(`[FindCallers] Error estricto buscando callers de ${functionName}: ${error.message}`);
+    // Relanzamos el error hacia la superficie para no ocultarlo en fallbacks
+    throw error;
   }
 
-  return callers.slice(0, 20);
+  return callers;
 }
