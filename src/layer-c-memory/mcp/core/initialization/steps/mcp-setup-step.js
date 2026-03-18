@@ -17,10 +17,44 @@ import {
 import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
-import { collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
-import { buildTelemetryProvenance } from '../../../../../shared/compiler/index.js';
+import {
+  buildToolExecutionContext,
+  collectToolRecentErrors,
+  buildToolCallProvenance,
+  buildToolCallResult
+} from './mcp-tool-call-helpers.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
+
+async function syncClaudePermissions(projectPath, toolDefinitions) {
+  const { readFile, writeFile } = await import('fs/promises');
+  const { join } = await import('path');
+
+  const settingsPath = join(projectPath, '.claude', 'settings.local.json');
+  let settings;
+
+  try {
+    const raw = await readFile(settingsPath, 'utf-8');
+    settings = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  if (!settings.permissions?.allow || !Array.isArray(settings.permissions.allow)) return;
+
+  const currentToolNames = toolDefinitions.map(t => t.name);
+  const nonMcpEntries = settings.permissions.allow.filter(
+    entry => typeof entry !== 'string' || !entry.startsWith('mcp__')
+  );
+
+  const serverName = 'omnysys';
+  const newMcpEntries = currentToolNames.map(name => `mcp__${serverName}__${name}`);
+
+  settings.permissions.allow = [...nonMcpEntries, ...newMcpEntries];
+
+  await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+  logger.info(`  🔄 settings.local.json synced (${newMcpEntries.length} MCP tools registered)`);
+}
 
 
 
@@ -59,54 +93,12 @@ export class McpSetupStep extends InitializationStep {
     logger.info(`  ✅ MCP server configured (${toolDefinitions.length} tools)`);
 
     // Auto-sync: keep .claude/settings.local.json in sync with registered tools
-    this.syncClaudePermissions(server.projectPath).catch(err =>
+    syncClaudePermissions(server.projectPath, toolDefinitions).catch(err =>
       logger.warn(`[McpSetup] settings.local.json sync skipped: ${err.message}`)
     );
 
     return true;
   }
-
-  /**
-   * Keeps .claude/settings.local.json in sync with currently registered MCP tools.
-   * Removes stale mcp__omnysys__ entries and adds entries for all active tools.
-   * Runs after every server start — safe to call multiple times (idempotent).
-   */
-  async syncClaudePermissions(projectPath) {
-    const { readFile, writeFile } = await import('fs/promises');
-    const { join } = await import('path');
-
-    const settingsPath = join(projectPath, '.claude', 'settings.local.json');
-    let settings;
-
-    try {
-      const raw = await readFile(settingsPath, 'utf-8');
-      settings = JSON.parse(raw);
-    } catch {
-      // File doesn't exist or is malformed — skip silently
-      return;
-    }
-
-    if (!settings.permissions?.allow || !Array.isArray(settings.permissions.allow)) return;
-
-    // Current active tool names from registry (e.g. "mcp_omnysystem_query_graph")
-    const currentToolNames = toolDefinitions.map(t => t.name);
-
-    // Remove ALL existing mcp__ tool permission entries (any server name, any tool)
-    const nonMcpEntries = settings.permissions.allow.filter(
-      entry => typeof entry !== 'string' || !entry.startsWith('mcp__')
-    );
-
-    // Add refreshed entries for all currently registered tools
-    // Format: mcp__[serverName]__[toolName] (Claude Code permission convention)
-    const serverName = 'omnysys';
-    const newMcpEntries = currentToolNames.map(name => `mcp__${serverName}__${name}`);
-
-    settings.permissions.allow = [...nonMcpEntries, ...newMcpEntries];
-
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-    logger.info(`  🔄 settings.local.json synced (${newMcpEntries.length} MCP tools registered)`);
-  }
-
 
   async handleToolCall(request, server) {
     // Si el servidor todavía está inicializando (Layer A, cache, etc.), avisar y esperar.
@@ -130,52 +122,17 @@ export class McpSetupStep extends InitializationStep {
 
     const startTime = performance.now();
 
-    const context = {
-      orchestrator: server.orchestrator,
-      cache: server.cache,
-      projectPath: server.projectPath,
-      server
-    };
+    const rawResult = await handler(args, buildToolExecutionContext(server));
 
-    const rawResult = await handler(args, context);
-
-    // Get recent errors/warnings AFTER the tool runs (not before)
     let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
     try {
-      recentErrors = normalizeRecentNotifications(await collectRecentNotifications(server.projectPath, {
-        clearLoggerBuffer: true,
-        watcherLimit: 10,
-        server
-      }));
+      recentErrors = await collectToolRecentErrors(server);
     } catch (e) {
       // Ignore - logger may not have these functions yet
     }
 
-    // Add recent errors to result if there are any (BEFORE pagination)
-    const resultWithErrors = recentErrors.count > 0
-      ? { _recentErrors: recentErrors, ...rawResult }
-      : rawResult;
-
-    // Add canonical telemetry provenance to all responses
-    const provenance = buildTelemetryProvenance({
-      source: name,
-      phase2PendingFiles: server.orchestrator?.phase2Pending || 0,
-      runtimeRestartMode: server.runtimeRestartMode || 'manual',
-      pendingRuntimeRestartFiles: Array.from(server._pendingHotReloadRestartFiles || []),
-      watcherLifecycle: {
-        total: recentErrors.watcherAlerts?.length || 0,
-        byStatus: {
-          active: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'active').length || 0,
-          stale: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'stale').length || 0,
-          expired: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'expired').length || 0
-        }
-      }
-    });
-
-    const resultWithProvenance = {
-      ...resultWithErrors,
-      _provenance: provenance
-    };
+    const provenance = buildToolCallProvenance(name, server, recentErrors);
+    const resultWithProvenance = buildToolCallResult(rawResult, recentErrors, provenance);
 
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.

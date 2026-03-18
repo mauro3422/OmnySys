@@ -92,8 +92,8 @@ export function isLowSignalDeadCodeName(name = '') {
 }
 
 export function normalizeDeadCodeAtom(atom = {}) {
-    const calledBy = parseArray(atom.calledBy ?? atom.called_by_json);
-    const calls = parseArray(atom.calls ?? atom.calls_json);
+    const calledBy = Array.isArray(atom.calledBy) ? atom.calledBy : [];
+    const calls = Array.isArray(atom.calls) ? atom.calls : [];
 
     return {
         id: atom.id || null,
@@ -106,8 +106,8 @@ export function normalizeDeadCodeAtom(atom = {}) {
         isRemoved: asBool(atom.isRemoved ?? atom.is_removed),
         isDeadCode: asBool(atom.isDeadCode ?? atom.is_dead_code),
         isTestCallback: asBool(atom.isTestCallback ?? atom.is_test_callback),
-        callersCount: atom.callersCount ?? atom.callers_count ?? calledBy.length ?? 0,
-        calleesCount: atom.calleesCount ?? atom.callees_count ?? calls.length ?? 0,
+        callersCount: atom.callersCount ?? atom.callers_count ?? 0,
+        calleesCount: atom.calleesCount ?? atom.callees_count ?? 0,
         calledBy,
         calls
     };
@@ -157,8 +157,6 @@ export function getDeadCodeSqlPredicate(alias = 'a', { minLines = 0, allowExport
       AND ${lowSignalClause}
       AND COALESCE(${prefix}callers_count, 0) = 0
       AND COALESCE(${prefix}callees_count, 0) = 0
-      AND (${prefix}called_by_json IS NULL OR ${prefix}called_by_json = '' OR ${prefix}called_by_json = '[]')
-      AND (${prefix}calls_json IS NULL OR ${prefix}calls_json = '' OR ${prefix}calls_json = '[]')
   `;
 }
 
@@ -259,8 +257,6 @@ export function loadSuspiciousDeadCodeCandidates(db, options = {}) {
       a.is_test_callback,
       a.callers_count,
       a.callees_count,
-      a.called_by_json,
-      a.calls_json
     FROM atoms a
     WHERE ${getDeadCodeSqlPredicate('a', { minLines, allowExported })}
     ORDER BY a.lines_of_code DESC, a.name ASC

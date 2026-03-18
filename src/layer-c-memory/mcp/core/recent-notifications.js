@@ -151,6 +151,83 @@ export async function collectRecentNotifications(projectPath, options = {}) {
   };
 }
 
+function compactLogEntry(entry) {
+  return {
+    level: entry.level,
+    message: entry.message,
+    time: entry.time
+  };
+}
+
+function compactWatcherAlert(alert) {
+  const context = alert.context || {};
+  const compactContext = {};
+
+  if (typeof context.suggestedAction === 'string') {
+    compactContext.suggestedAction = context.suggestedAction;
+  }
+  if (Array.isArray(context.suggestedAlternatives) && context.suggestedAlternatives.length > 0) {
+    compactContext.suggestedAlternatives = context.suggestedAlternatives.slice(0, 3);
+  }
+  if (typeof context.conceptualDuplicateCount === 'number') {
+    compactContext.conceptualDuplicateCount = context.conceptualDuplicateCount;
+  }
+  if (Array.isArray(context.findings) && context.findings.length > 0) {
+    compactContext.findings = context.findings.slice(0, 1).map((finding) => ({
+      symbol: finding.symbol,
+      semanticFingerprint: finding.semanticFingerprint,
+      duplicateType: finding.duplicateType,
+      totalInstances: finding.totalInstances,
+      duplicateFiles: Array.isArray(finding.duplicateFiles) ? finding.duplicateFiles.slice(0, 3) : []
+    }));
+  }
+
+  return {
+    id: alert.id,
+    source: alert.source,
+    level: alert.level,
+    severity: alert.severity,
+    issueType: alert.issueType,
+    filePath: alert.filePath,
+    message: alert.message,
+    detectedAt: alert.detectedAt,
+    lifecycle: alert.lifecycle ? {
+      status: alert.lifecycle.status,
+      stale: alert.lifecycle.stale
+    } : undefined,
+    confidence: alert.confidence ? {
+      level: alert.confidence.level,
+      score: alert.confidence.score,
+      signal: alert.confidence.signal,
+      role: alert.confidence.role?.role
+    } : undefined,
+    context: Object.keys(compactContext).length > 0 ? compactContext : undefined
+  };
+}
+
+export function compactRecentNotifications(notifications = {}, options = {}) {
+  const {
+    maxLogs = 5,
+    maxWatcherAlerts = 5
+  } = options;
+
+  const logs = Array.isArray(notifications.logs) ? notifications.logs : [];
+  const watcherAlerts = Array.isArray(notifications.watcherAlerts) ? notifications.watcherAlerts : [];
+
+  const compactedLogs = logs.slice(0, maxLogs).map(compactLogEntry);
+  const compactedAlerts = watcherAlerts.slice(0, maxWatcherAlerts).map(compactWatcherAlert);
+
+  return {
+    ...notifications,
+    logs: compactedLogs,
+    watcherAlerts: compactedAlerts,
+    truncated: {
+      logs: Math.max(0, logs.length - compactedLogs.length),
+      watcherAlerts: Math.max(0, watcherAlerts.length - compactedAlerts.length)
+    }
+  };
+}
+
 export function normalizeRecentNotifications(notifications = {}) {
   const logs = Array.isArray(notifications.logs) ? notifications.logs : [];
   const watcherAlerts = (Array.isArray(notifications.watcherAlerts) ? notifications.watcherAlerts : []).sort(compareWatcherAlertPriority);

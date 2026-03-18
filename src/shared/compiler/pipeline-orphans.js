@@ -39,16 +39,7 @@ export function getEffectiveCallerCount(atomRow = {}) {
     return atomRow.callers_count;
   }
 
-  if (!atomRow?.called_by_json || atomRow.called_by_json === '[]') {
-    return 0;
-  }
-
-  try {
-    const parsed = JSON.parse(atomRow.called_by_json);
-    return Array.isArray(parsed) ? parsed.length : 0;
-  } catch {
-    return 0;
-  }
+  return 0;
 }
 
 export function isPipelineProductionFile(filePath = '') {
@@ -138,7 +129,6 @@ export function getPipelineOrphanCandidates(db, options = {}) {
         a.atom_type,
         a.callers_count,
         a.callees_count,
-        a.called_by_json,
         a.complexity,
         a.is_phase2_complete,
         (

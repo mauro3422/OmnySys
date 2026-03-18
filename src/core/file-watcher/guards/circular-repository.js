@@ -36,7 +36,7 @@ export function getCircularLocalAtoms(db, filePath) {
   if (!db) return [];
 
   return db.prepare(`
-    SELECT id, calls_json
+    SELECT id
     FROM atoms
     WHERE file_path = ?
       AND COALESCE(is_removed, 0) = 0

@@ -12,6 +12,7 @@ import {
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { applyPagination } from './mcp/core/pagination.js';
+import { compactRecentNotifications } from './mcp/core/recent-notifications.js';
 
 export function buildServerForSession({ logger, getLiveToolDefinitions, executeMcpToolCall }) {
   const sessionServer = new Server(
@@ -84,11 +85,15 @@ export async function executeMcpToolCall(request, dependencies) {
   let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
   try {
     const { collectRecentNotifications, normalizeRecentNotifications } = await import('./mcp/core/recent-notifications.js');
-    recentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
+    const collectedRecentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
       clearLoggerBuffer: true,
       watcherLimit: 10,
       server: core
     }));
+    recentErrors = compactRecentNotifications(collectedRecentErrors, {
+      maxLogs: 3,
+      maxWatcherAlerts: 3
+    });
   } catch {
     // Optional logger extensions not available in all environments.
   }

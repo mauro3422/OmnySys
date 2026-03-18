@@ -68,8 +68,8 @@ function mapAtom(atom, atomExports) {
     complexity: atom.complexity || 0,
     isExported: !!atom.isExported,
     isAsync: !!atom.isAsync,
-    calls: parseJsonArray(atom.calls_json, Array.isArray(atom.calls) ? atom.calls : []),
-    calledBy: parseJsonArray(atom.called_by_json, Array.isArray(atom.calledBy) ? atom.calledBy : []),
+    calls: Array.isArray(atom.calls) ? atom.calls : parseJsonArray(atom.calls_json, []),
+    calledBy: Array.isArray(atom.calledBy) ? atom.calledBy : parseJsonArray(atom.called_by_json, []),
     archetype: atom.archetype_type || atom.archetype || 'unknown',
     purpose: atom.purpose_type || atom.purpose || 'unknown',
     compilerEvaluation: evaluateAtomRefactoringSignals(atom)

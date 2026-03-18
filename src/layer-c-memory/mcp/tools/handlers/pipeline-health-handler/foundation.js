@@ -61,10 +61,14 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
     const desyncedCallerCounts = db.prepare(`
         SELECT COUNT(*) as total
         FROM atoms a
-        WHERE callers_count = 0
-          AND called_by_json IS NOT NULL
-          AND called_by_json != ''
-          AND called_by_json != '[]'
+        WHERE COALESCE(a.callers_count, 0) = 0
+          AND EXISTS (
+              SELECT 1
+              FROM atom_relations ar
+              WHERE ar.relation_type = 'calls'
+                AND COALESCE(ar.is_removed, 0) = 0
+                AND ar.target_id = a.id
+          )
     `).get()?.total || 0;
 
     if (staleFileRows > 0) {
@@ -87,7 +91,7 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
         warnings.push({
             field: 'callers_count',
             coverage: `${desyncedCallerCounts} atoms`,
-            issue: 'callers_count is out of sync with called_by_json - reindex recommended'
+            issue: 'callers_count is out of sync with canonical call relations - reindex recommended'
         });
     }
 

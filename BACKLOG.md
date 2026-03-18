@@ -11,6 +11,10 @@
 - The active-atom cache for relation saving still needs a real benchmark after restart. We have reduced per-call DB lookups, but the save path must be measured again on a cold startup before declaring victory.
 - `cleanupOrphanedCompilerArtifacts` / atom removal paths do not currently deactivate `calls` relations for atoms that disappear from a file, so orphan call relations can survive even after the atom is marked removed.
 - Phase 2 deep scan re-reads source files for semantic enrichment after Layer A already built the atom graph. Confirm whether the second pass can be narrowed or reused to avoid the extra startup cost.
+- `src/layer-c-memory/mcp/tools/status.js` was split into a smaller helper module, but the next runtime restart still needs to confirm the live payload stayed compact and did not reintroduce deep nested blobs.
+- `src/layer-c-memory/mcp/core/initialization/steps/mcp-setup-step.js` still trips a low data-flow coherence warning. The tool wrapper is compact enough for now, but the call path should be decomposed if more bootstrap logic lands there.
+- The `_recentErrors` wrapper in MCP responses is compacted, but direct and bootstrap paths should keep using the smallest practical log/watcher sample size so status responses stay readable without losing signal.
+- Some legacy readers still accept `calls_json` / `called_by_json` fallbacks even though the canonical path is `atom_relations` + `call_graph`. Audit those consumers next so the old surface cannot silently win again.
 - `src/shared/compiler/live-row-utils.js` still carries a complexity warning and a small conceptual duplicate warning around `toCount`. It is correct, but it is a refactor candidate.
 
 ## Notes

@@ -2,7 +2,6 @@ import { buildIntegrityRecommendation } from '../integrity-contract.js';
 import {
     checkRelationSample,
     loadRelationSample,
-    summarizeCalledByLinks,
     sumMissingOptionalFields
 } from '../pipeline-integrity-detector-helpers.js';
 import { getDatabaseHealthSummary, getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
@@ -72,7 +71,7 @@ export async function checkAtomMetadataCompleteness(detector) {
         const db = detector.repo.db;
         const requiredFields = ['id', 'name', 'file_path', 'atom_type', 'lines_of_code', 'complexity'];
         const optionalButImportant = [
-            'imports_json', 'exports_json', 'called_by_json', 'uses_json',
+            'imports_json', 'exports_json', 'uses_json',
             'shared_state_json', 'event_emitters_json', 'event_listeners_json',
             'data_flow_json', 'side_effects_json', 'scope_type', 'purpose_type', 'archetype_type'
         ];
@@ -121,22 +120,33 @@ export async function checkAtomMetadataCompleteness(detector) {
 export async function checkCalledByResolution(detector) {
     try {
         const db = detector.repo.db;
-        const unresolvedCalledBy = db.prepare(`
-            SELECT COUNT(*) as count FROM atoms
-            WHERE (is_removed IS NULL OR is_removed = 0)
-              AND called_by_json IS NOT NULL
-              AND called_by_json != '[]'
-              AND called_by_json LIKE '%"unresolved":true%'
+        const totalLinks = db.prepare(`
+            SELECT COUNT(*) as count
+            FROM atom_relations
+            WHERE relation_type = 'calls'
+              AND COALESCE(is_removed, 0) = 0
         `).get().count;
 
-        const totalLinksQuery = db.prepare(`
-            SELECT called_by_json FROM atoms
-            WHERE (is_removed IS NULL OR is_removed = 0)
-              AND called_by_json IS NOT NULL
-              AND called_by_json != '[]'
-        `).all();
+        const unresolvedLinks = db.prepare(`
+            SELECT COUNT(*) as count
+            FROM atom_relations ar
+            LEFT JOIN atoms src ON ar.source_id = src.id AND COALESCE(src.is_removed, 0) = 0
+            LEFT JOIN atoms tgt ON ar.target_id = tgt.id AND COALESCE(tgt.is_removed, 0) = 0
+            WHERE ar.relation_type = 'calls'
+              AND COALESCE(ar.is_removed, 0) = 0
+              AND (src.id IS NULL OR tgt.id IS NULL)
+        `).get().count;
 
-        const { totalLinks, unresolvedLinks } = summarizeCalledByLinks(totalLinksQuery);
+        const unresolvedCalledBy = db.prepare(`
+            SELECT COUNT(DISTINCT source_id) as count
+            FROM atom_relations ar
+            LEFT JOIN atoms src ON ar.source_id = src.id AND COALESCE(src.is_removed, 0) = 0
+            LEFT JOIN atoms tgt ON ar.target_id = tgt.id AND COALESCE(tgt.is_removed, 0) = 0
+            WHERE ar.relation_type = 'calls'
+              AND COALESCE(ar.is_removed, 0) = 0
+              AND (src.id IS NULL OR tgt.id IS NULL)
+        `).get().count;
+
         const resolutionPercentage = totalLinks > 0
             ? ((totalLinks - unresolvedLinks) / totalLinks) * 100
             : 100;

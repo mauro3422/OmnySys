@@ -85,7 +85,7 @@ export async function loadSystemFiles(db) {
       imports: JSON.parse(row.imports_json || '[]'),
       definitions: JSON.parse(row.definitions_json || '[]'),
       usedBy: JSON.parse(row.used_by_json || '[]'),
-      calls: JSON.parse(row.calls_json || '[]'),
+      calls: [],
       identifierRefs: JSON.parse(row.identifier_refs_json || '[]'),
       dependsOn: JSON.parse(row.depends_on_json || '[]'),
       transitiveDepends: JSON.parse(row.transitive_depends_json || '[]'),

@@ -1,4 +1,8 @@
-import { collectRecentNotifications, normalizeRecentNotifications } from '../core/recent-notifications.js';
+import {
+  collectRecentNotifications,
+  compactRecentNotifications,
+  normalizeRecentNotifications
+} from '../core/recent-notifications.js';
 import {
   buildCompilerReadinessStatus,
   buildRuntimeCodeFreshness,
@@ -78,8 +82,9 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
 }
 
 export function buildRecentErrorsResponse(notifications) {
-  const logs = notifications.logs || [];
-  const watcherAlerts = notifications.watcherAlerts || [];
+  const compacted = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 5 });
+  const logs = compacted.logs || [];
+  const watcherAlerts = compacted.watcherAlerts || [];
   const warnings = logs.filter((entry) => entry.level === 'warn');
   const errors = logs.filter((entry) => entry.level === 'error');
   const watcherHigh = watcherAlerts.filter((entry) => isBreakingWatcherAlert(entry) || entry.severity === 'high').length;
@@ -95,7 +100,7 @@ export function buildRecentErrorsResponse(notifications) {
 
   return {
     summary: {
-      total: notifications.count,
+      total: compacted.count,
       warnings: warnings.length + watcherWarn,
       errors: errors.length + watcherHigh,
       incidents
@@ -106,6 +111,7 @@ export function buildRecentErrorsResponse(notifications) {
       time: new Date(entry.time).toISOString()
     })),
     watcherAlerts,
+    truncated: compacted.truncated,
     runtimeCodeFreshness: notifications.provenance?.runtimeCodeFreshness || buildRuntimeCodeFreshness(),
     signalConfidence: notifications.signalConfidence,
     provenance: notifications.provenance

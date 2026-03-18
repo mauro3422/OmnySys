@@ -16,9 +16,9 @@ export function analyzeResourceLifecycle(atoms) {
     ];
 
     for (const atom of atoms) {
-        if (!atom.dataFlowJson && !atom.calls_json) continue;
+        if (!atom.dataFlowJson) continue;
 
-        const code = (atom.dataFlowJson || '') + (atom.calls_json || '');
+        const code = atom.dataFlowJson || '';
 
         for (const creator of RESOURCE_CREATORS) {
             if (code.includes(creator.name)) {

@@ -1,6 +1,4 @@
 import {
-    hasPersistedStructuredValue,
-    parsePersistedArray,
     parsePersistedField
 } from '#shared/compiler/index.js';
 
@@ -13,19 +11,6 @@ export function sumMissingOptionalFields(db, fields) {
         `).get().count;
         return total + count;
     }, 0);
-}
-
-export function summarizeCalledByLinks(rows) {
-    return rows.reduce((summary, row) => {
-        try {
-            const calledBy = parsePersistedArray(row.called_by_json);
-            summary.totalLinks += calledBy.length;
-            summary.unresolvedLinks += calledBy.filter(link => link.unresolved === true).length;
-        } catch {
-            // Ignore malformed persisted payloads in aggregate calculations
-        }
-        return summary;
-    }, { totalLinks: 0, unresolvedLinks: 0 });
 }
 
 export function auditWatcherIssues(recentIssues) {
@@ -113,11 +98,12 @@ export function collectOrphanCounts(db) {
 
 export function loadRelationSample(db, sampleSize) {
     return db.prepare(`
-        SELECT id, file_path, called_by_json
-        FROM atoms
-        WHERE (is_removed IS NULL OR is_removed = 0)
-          AND called_by_json IS NOT NULL
-          AND called_by_json != '[]'
+        SELECT ar.id, ar.source_id, ar.target_id
+        FROM atom_relations ar
+        INNER JOIN atoms src ON ar.source_id = src.id AND COALESCE(src.is_removed, 0) = 0
+        INNER JOIN atoms tgt ON ar.target_id = tgt.id AND COALESCE(tgt.is_removed, 0) = 0
+        WHERE ar.relation_type = 'calls'
+          AND COALESCE(ar.is_removed, 0) = 0
         LIMIT ?
     `).all(sampleSize);
 }
@@ -126,33 +112,21 @@ export function checkRelationSample(db, sampleAtoms) {
     let inconsistencies = 0;
     let checked = 0;
 
-    const callerLookup = db.prepare(`
-        SELECT id, uses_json
+    const atomLookup = db.prepare(`
+        SELECT id
         FROM atoms
         WHERE id = ?
+          AND COALESCE(is_removed, 0) = 0
     `);
 
-    for (const atom of sampleAtoms) {
-        try {
-            const calledBy = parsePersistedArray(atom.called_by_json);
+    for (const relation of sampleAtoms) {
+        const sourceAtom = atomLookup.get(relation.source_id);
+        const targetAtom = atomLookup.get(relation.target_id);
 
-            for (const caller of calledBy) {
-                if (!caller.id) continue;
+        checked++;
 
-                const callerAtom = callerLookup.get(caller.id);
-                if (!callerAtom) {
-                    inconsistencies++;
-                    continue;
-                }
-
-                checked++;
-
-                if (hasPersistedStructuredValue(callerAtom.uses_json)) {
-                    parsePersistedArray(callerAtom.uses_json);
-                }
-            }
-        } catch {
-            // Ignore malformed persisted payloads in sampled relations
+        if (!sourceAtom || !targetAtom) {
+            inconsistencies++;
         }
     }
 

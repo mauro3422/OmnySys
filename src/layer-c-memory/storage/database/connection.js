@@ -121,6 +121,8 @@ class ConnectionManager {
    */
   initializeSchema() {
     try {
+      this.refreshCanonicalViews();
+
       // Step 1: Apply base schema.sql
       if (_schemaSql) {
         this.db.exec(_schemaSql);
@@ -177,6 +179,15 @@ class ConnectionManager {
     } catch (error) {
       logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
       throw error;
+    }
+  }
+
+  refreshCanonicalViews() {
+    try {
+      this.db.exec('DROP VIEW IF EXISTS call_graph;');
+      logger.debug('[Connection] Refreshed canonical call_graph view');
+    } catch (error) {
+      logger.warn(`[Connection] Failed to refresh canonical views: ${error.message}`);
     }
   }
 

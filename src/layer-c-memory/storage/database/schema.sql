@@ -215,7 +215,8 @@ SELECT
 FROM atom_relations r
 JOIN atoms a1 ON r.source_id = a1.id
 JOIN atoms a2 ON r.target_id = a2.id
-WHERE r.relation_type = 'calls';
+WHERE r.relation_type = 'calls'
+  AND (r.is_removed IS NULL OR r.is_removed = 0);
 
 -- Trigger para actualizar timestamps
 CREATE TRIGGER IF NOT EXISTS update_atom_timestamp 

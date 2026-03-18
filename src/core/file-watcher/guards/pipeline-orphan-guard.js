@@ -26,18 +26,6 @@ function getEffectiveCallerCount(atom) {
         return atom.callersCount || atom.callerCount || atom.callers_count || 0;
     }
 
-    const calledBy = atom?.calledBy || atom?.called_by_json;
-    if (Array.isArray(calledBy)) return calledBy.length;
-
-    if (typeof calledBy === 'string' && calledBy && calledBy !== '[]') {
-        try {
-            const parsed = JSON.parse(calledBy);
-            return Array.isArray(parsed) ? parsed.length : 0;
-        } catch {
-            return 0;
-        }
-    }
-
     return 0;
 }
 

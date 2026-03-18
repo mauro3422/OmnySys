@@ -85,9 +85,11 @@ function loadIsomorphicDuplicateRows(db, { offset, limit, excludeTests, atomType
             a.complexity,
             ig.isomorphic_hash,
             ig.group_size,
-            (SELECT COUNT(*) FROM atoms ca
-             WHERE ca.calls_json LIKE '%' || a.name || '%'
-               AND ca.file_path != a.file_path) AS caller_count
+            (SELECT COUNT(*)
+             FROM atom_relations ar
+             WHERE ar.relation_type = 'calls'
+               AND COALESCE(ar.is_removed, 0) = 0
+               AND ar.target_id = a.id) AS caller_count
         FROM atoms a
         LEFT JOIN AtomDependencies ad ON a.id = ad.source_id
         JOIN IsomorphicGroups ig ON
@@ -157,9 +159,11 @@ export function runDuplicatesQuery(db, {
                 a.change_frequency, a.importance_score,
                 a.complexity,
                 dg.group_size,
-                (SELECT COUNT(*) FROM atoms ca
-                 WHERE ca.calls_json LIKE '%' || a.name || '%'
-                   AND ca.file_path != a.file_path) AS caller_count
+                (SELECT COUNT(*)
+                 FROM atom_relations ar
+                 WHERE ar.relation_type = 'calls'
+                   AND COALESCE(ar.is_removed, 0) = 0
+                   AND ar.target_id = a.id) AS caller_count
             FROM atoms a
             JOIN DuplicateGroups dg ON (${duplicateKeySqlForAlias('a')}) = dg.duplicate_key
             WHERE ${removedPredicateMain}

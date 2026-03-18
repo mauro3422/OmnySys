@@ -144,12 +144,12 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
    */
   _markRelatedTestAtoms(sourceId, sourceFilePath) {
     try {
-      // Buscar átomos de test que mencionen el átomo fuente en su nombre o calls
+      // Buscar átomos de test que mencionen el átomo fuente en su nombre o dependencias canónicas
       const testAtoms = this.db.prepare(`
-        SELECT id, calls_json FROM atoms 
+        SELECT id FROM atoms 
         WHERE is_test_callback = 1 
-        AND (id LIKE ? OR calls_json LIKE ?)
-      `).all(`%${sourceFilePath}%`, `%${sourceId}%`);
+        AND id LIKE ?
+      `).all(`%${sourceFilePath}%`);
 
       for (const testAtom of testAtoms) {
         // Marcar como huérfano actualizando derived_json

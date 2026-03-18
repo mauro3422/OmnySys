@@ -4,13 +4,8 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import {
-  getCachedCounts,
-  getCachedMetadata,
-  getPhase2Status,
-  getDatabaseHealthSummary,
-  buildTelemetryProvenance
-} from '../../../shared/compiler/index.js';
+import { getCachedCounts, getCachedMetadata, getPhase2Status, getDatabaseHealthSummary, buildTelemetryProvenance } from '../../../shared/compiler/index.js';
+import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
   attachCacheStatus,
@@ -30,6 +25,12 @@ import {
   buildRecentErrorsResponse,
   loadNotifications
 } from './status-notifications.js';
+import {
+  compactDatabaseHealth,
+  compactCompilerExplainabilitySummary,
+  summarizeNodeVitals,
+  summarizeStatus
+} from './status-summary.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -53,7 +54,8 @@ export async function get_server_status(args, context) {
     attachRuntimeHotReload(status, server);
 
     const notifications = await loadNotifications(projectPath, server);
-    attachNotificationSignals(status, notifications);
+    const compactNotifications = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 5 });
+    attachNotificationSignals(status, compactNotifications);
 
     if (phase2InProgress) {
       attachPhase2Status(
@@ -81,16 +83,19 @@ export async function get_server_status(args, context) {
       watcherLifecycle: notifications.watcherLifecycle
     });
 
-    status.compilerExplainability = await loadCompilerExplainability(
+    status.compilerExplainability = compactCompilerExplainabilitySummary(await loadCompilerExplainability(
       projectPath,
       notifications.watcherAlerts || [],
       status.sharedState || {}
-    );
+    ));
     if (!status.databaseHealth) {
       status.databaseHealth = status.compilerExplainability?.databaseHealth || null;
+    } else {
+      status.databaseHealth = compactDatabaseHealth(status.databaseHealth);
     }
 
-    return status;
+    const recentErrors = buildRecentErrorsResponse(compactNotifications);
+    return summarizeStatus(status, recentErrors);
   } catch (error) {
     logger.warn(`[Tool] get_server_status degraded: ${error.message}`);
     return {

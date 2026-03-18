@@ -108,33 +108,6 @@ function buildCallGraph(relations = []) {
     return callGraph;
 }
 
-function mergeLocalCalls(callGraph, localAtoms = []) {
-    for (const atom of localAtoms) {
-        if (!atom.calls_json) continue;
-
-        try {
-            const parsed = JSON.parse(atom.calls_json);
-            const resolvedCalls = safeArray(parsed)
-                .filter((call) => call && call.resolved && call.targetId)
-                .map((call) => call.targetId);
-
-            if (resolvedCalls.length === 0) continue;
-
-            if (!callGraph.has(atom.id)) {
-                callGraph.set(atom.id, new Set());
-            }
-            const targets = callGraph.get(atom.id);
-            for (const targetId of resolvedCalls) {
-                targets.add(targetId);
-            }
-        } catch {
-            // Ignore malformed incremental payloads.
-        }
-    }
-
-    return callGraph;
-}
-
 function getCallGraphChildren(callGraph, atomId) {
     const targets = callGraph.get(atomId);
     return targets ? [...targets] : [];
@@ -217,7 +190,7 @@ async function detectAtomCycles(rootPath, filePath, relPath, repo, localAtoms, f
     try {
         const atomIdPattern = `${relPath}::%`;
         const relations = getCircularCallRelations(repo?.db, atomIdPattern);
-        const callGraph = mergeLocalCalls(buildCallGraph(relations), localAtoms);
+        const callGraph = buildCallGraph(relations);
 
         for (const atom of localAtoms) {
             const atomCycle = findCycleDFS(atom.id, (id) => getCallGraphChildren(callGraph, id));
