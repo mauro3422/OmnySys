@@ -46,10 +46,16 @@ export function severityToLevel(severity = 'medium') {
  */
 export function scoreToSeverity(score) {
     const val = Number(score || 0);
-    let normalized = val;
 
-    if (val > 10) normalized = val / 100;
-    else if (val > 1) normalized = val / 10;
+    // Detección robusta de escala
+    let normalized = val;
+    if (val > 10) {
+        normalized = val / 100; // Asume escala 0-100
+    } else if (val > 0 && val < 1) {
+        normalized = val;       // Asume escala 0-1
+    } else if (val >= 1 && val <= 10) {
+        normalized = val / 10;  // Asume escala 0-10 (corrige la anomalía de val=1)
+    }
 
     if (normalized >= 0.8) return 'critical';
     if (normalized >= 0.6) return 'high';

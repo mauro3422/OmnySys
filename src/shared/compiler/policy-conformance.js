@@ -13,8 +13,7 @@ import path from 'path';
 import {
   COMPILER_TARGET_DIRS,
   discoverCompilerFiles,
-  isCompilerRuntimeFile,
-  shouldScanCompilerFile
+  isCompilerRuntimeFile
 } from './file-discovery.js';
 import { detectStateOwnershipConformanceFromSource } from './state-ownership-conformance.js';
 import { detectServiceBoundaryConformanceFromSource } from './service-boundary-conformance.js';
@@ -300,7 +299,7 @@ function normalizePathLocal(p) { return p ? p.replace(/\\/g, '/') : p; }
 export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   const normalizedPath = normalizePathLocal(filePath);
 
-  if (!shouldScanCompilerFile(normalizedPath) || !source) {
+  if (!isCompilerRuntimeFile(normalizedPath) || !source) {
     return [];
   }
 

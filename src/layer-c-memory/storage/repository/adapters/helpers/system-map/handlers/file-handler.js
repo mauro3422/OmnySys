@@ -11,6 +11,8 @@ export async function saveSystemFiles(db, files, now) {
       display_path,
       culture,
       culture_role,
+      semantic_analysis_json,
+      semantic_connections_json,
       exports_json,
       imports_json,
       definitions_json,
@@ -23,11 +25,13 @@ export async function saveSystemFiles(db, files, now) {
       is_removed,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
       display_path = excluded.display_path,
       culture = excluded.culture,
       culture_role = excluded.culture_role,
+      semantic_analysis_json = excluded.semantic_analysis_json,
+      semantic_connections_json = excluded.semantic_connections_json,
       exports_json = excluded.exports_json,
       imports_json = excluded.imports_json,
       definitions_json = excluded.definitions_json,
@@ -49,6 +53,8 @@ export async function saveSystemFiles(db, files, now) {
       safeString(data.displayPath, safeString(path)),
       safeString(data.culture),
       safeString(data.cultureRole),
+      safeJson(data.semanticAnalysis || {}),
+      safeJson(data.semanticConnections || []),
       safeJson(data.exports || []),
       safeJson(data.imports || []),
       safeJson(data.definitions || []),
@@ -73,6 +79,8 @@ export async function loadSystemFiles(db) {
       displayPath: row.display_path,
       culture: row.culture,
       cultureRole: row.culture_role,
+      semanticAnalysis: JSON.parse(row.semantic_analysis_json || '{}'),
+      semanticConnections: JSON.parse(row.semantic_connections_json || '[]'),
       exports: JSON.parse(row.exports_json || '[]'),
       imports: JSON.parse(row.imports_json || '[]'),
       definitions: JSON.parse(row.definitions_json || '[]'),

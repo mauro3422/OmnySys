@@ -99,11 +99,11 @@ function extractDerivedRiskRows(db) {
       (Math.min(Number(row.network_atoms) || 0, 5) / 5) * 0.05 +
       (Math.min(Number(row.high_risk_atoms) || 0, 5) / 5) * 0.05;
 
-    const riskScore = Number(Math.max(0, Math.min(1, rawScore)).toFixed(4));
+    const riskScore = Number(Math.max(0, Math.min(5, rawScore * 5)).toFixed(4));
     return {
       file_path: row.file_path,
       risk_score: riskScore,
-      risk_level: normalizeDerivedRiskLevel(riskScore),
+      risk_level: normalizeDerivedRiskLevel(rawScore),
       factors: [
         { type: 'derived_from_atoms', atomCount: Number(row.atom_count) || 0 },
         { type: 'propagation_score', score: Number(row.propagation_score) || 0 },

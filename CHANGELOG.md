@@ -59,7 +59,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
-| **0.9.143** | 2026-03-18 | Sprint 15: Call Graph Integrity & Fallback Deprecation, fixed zero-atom file deletion, populated SQL call graph, removed raw JSON memory search fallbacks. |
+| **0.9.143** | 2026-03-18 | Sprint 15: Call Graph Integrity & Fallback Deprecation, fixed zero-atom file deletion, populated SQL call graph, removed raw JSON memory search fallbacks, fixed Tier3 Critical Risk Math Paradox. |
 | **0.9.142** | 2026-03-18 | Sprint 15: Deep Stabilization & Optimization, O(n^2) bottlenecks fixed, 100% tests passing, async hardening. |
 | **0.9.141** | 2026-03-18 | Sprint 14: Unified Action API with ActionEngine, consolidated telemetry in StatsPool, filtered test noise, and achieved 100/100 health score. |
 | **0.9.130** | 2026-03-18 | Sprint 13: Consolidated structural debt to 0, hardened critical daemons (SocietyPersistor, scoring) with try/catch, and updated duplicate policies to ignore strategic patterns. |

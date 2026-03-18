@@ -134,7 +134,22 @@ export async function getFileAnalysis(rootPath, filePath) {
 
       if (row) {
         const atoms = repo.getByFile ? await repo.getByFile(normalizedPath) : [];
-        return buildSQLiteFileAnalysis(normalizedPath, row, atoms);
+        const fileAnalysis = buildSQLiteFileAnalysis(normalizedPath, row, atoms);
+        
+        // Enrich from system_files for semantic data
+        if (repo.db) {
+          try {
+            const sysRow = repo.db.prepare('SELECT semantic_analysis_json, semantic_connections_json FROM system_files WHERE path = ?').get(normalizedPath);
+            if (sysRow) {
+              fileAnalysis.semanticAnalysis = parseJsonArray(sysRow.semantic_analysis_json, {});
+              fileAnalysis.semanticConnections = parseJsonArray(sysRow.semantic_connections_json, []);
+            }
+          } catch (e) {
+            // Ignore system_files absence gracefully
+          }
+        }
+        
+        return fileAnalysis;
       }
     }
   } catch (err) {
