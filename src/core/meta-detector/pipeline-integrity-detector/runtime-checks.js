@@ -16,7 +16,8 @@ export function reconcileLiveRows(detector) {
         const cleanup = executeLiveRowCleanup(detector.repo.db, { dryRun: false });
         detector.lastCleanupResult = cleanup;
 
-        const totalDeleted = (cleanup?.deleted?.files || 0)
+        const totalDeleted = (cleanup?.deleted?.atoms || 0)
+            + (cleanup?.deleted?.files || 0)
             + (cleanup?.deleted?.riskAssessments || 0)
             + (cleanup?.deleted?.relations || 0)
             + (cleanup?.deleted?.issues || 0)
@@ -25,7 +26,7 @@ export function reconcileLiveRows(detector) {
         if (totalDeleted > 0) {
             logger.info(
                 `Pipeline integrity reconciled ${totalDeleted} stale rows `
-                + `(${cleanup.deleted.relations || 0} relations, ${cleanup.deleted.issues || 0} issues)`
+                + `(${cleanup.deleted.atoms || 0} atoms, ${cleanup.deleted.relations || 0} relations, ${cleanup.deleted.issues || 0} issues)`
             );
         }
     } catch (error) {

@@ -158,6 +158,10 @@ export {
 } from './semantic-surface-granularity.js';
 
 export {
+  getDatabaseHealthSummary
+} from './database-health.js';
+
+export {
   getFileUniverseGranularity
 } from './file-universe-granularity.js';
 

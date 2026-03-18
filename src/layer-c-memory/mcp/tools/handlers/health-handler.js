@@ -1,5 +1,6 @@
 import { getProjectStats } from '../../../query/apis/project-api.js';
 import {
+    getDatabaseHealthSummary,
     summarizeCentralityCoverageRow,
     summarizePhysicsCoverageRow
 } from '../../../../shared/compiler/index.js';
@@ -13,6 +14,7 @@ import {
 export async function handleHealthMetrics(tool, projectPath) {
     try {
         const stats = await getProjectStats(projectPath);
+        const databaseHealth = tool.repo?.db ? getDatabaseHealthSummary(tool.repo.db) : null;
 
         // Compute real physics vectors from SQLite atoms
         let physics = {
@@ -79,6 +81,7 @@ export async function handleHealthMetrics(tool, projectPath) {
             project: projectPath,
             globalHealth: stats.health,
             quality: stats.quality,
+            databaseHealth,
             physics
         };
     } catch (error) {
@@ -86,6 +89,7 @@ export async function handleHealthMetrics(tool, projectPath) {
             project: projectPath,
             globalHealth: null,
             quality: null,
+            databaseHealth: null,
             physics: null,
             error: {
                 code: 'health_metrics_unavailable',

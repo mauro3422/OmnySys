@@ -5,7 +5,7 @@ import {
     summarizeCalledByLinks,
     sumMissingOptionalFields
 } from '../pipeline-integrity-detector-helpers.js';
-import { getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
+import { getDatabaseHealthSummary, getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:PipelineIntegrityDetector');
@@ -183,6 +183,35 @@ export async function checkRelationConsistency(detector) {
         );
     } catch (error) {
         logger.error('checkRelationConsistency failed:', error.message);
+        throw error;
+    }
+}
+
+export async function checkDatabaseHealth(detector) {
+    try {
+        const db = detector.repo.db;
+        const databaseHealth = getDatabaseHealthSummary(db);
+        const passed = databaseHealth.healthy === true;
+        const severity = databaseHealth.criticalFindings.length > 0 ? 'high' : 'medium';
+
+        return detector._buildResult(
+            'database_health',
+            passed,
+            severity,
+            {
+                healthScore: databaseHealth.healthScore,
+                grade: databaseHealth.grade,
+                summary: databaseHealth.summary,
+                metrics: databaseHealth.metrics,
+                criticalFindings: databaseHealth.criticalFindings,
+                warnings: databaseHealth.warnings
+            },
+            passed
+                ? 'Database projections are aligned'
+                : (databaseHealth.recommendations[0] || 'Reconcile the canonical database projections')
+        );
+    } catch (error) {
+        logger.error('checkDatabaseHealth failed:', error.message);
         throw error;
     }
 }

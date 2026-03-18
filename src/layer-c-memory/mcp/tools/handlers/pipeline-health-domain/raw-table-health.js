@@ -33,15 +33,18 @@ export function loadExpectedPipelineTableCounts(db) {
 export function buildLiveRowTableCounts(liveRowSync) {
     const {
         liveFileTotal: liveAtomFiles = 0,
+        staleAtomRows = 0,
         staleFileRows = 0,
         staleRiskRows = 0
     } = liveRowSync.summary || {};
 
     return {
         liveAtomFiles,
+        staleAtomRows,
         staleFileRows,
         staleRiskRows,
         deletedCount:
+            (liveRowSync.deleted?.atoms || 0) +
             (liveRowSync.deleted?.files || 0) +
             (liveRowSync.deleted?.riskAssessments || 0) +
             (liveRowSync.deleted?.relations || 0) +

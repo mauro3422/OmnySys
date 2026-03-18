@@ -16,6 +16,7 @@ import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
 import { getMetadataSurfaceParity } from './metadata-surface-parity.js';
 import { getSemanticSurfaceGranularity, summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
+import { getDatabaseHealthSummary } from './database-health.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
 import { getLiveFileTotal } from './live-row-utils.js';
@@ -84,6 +85,7 @@ export async function loadCompilerDiagnosticsSnapshot({
     const semanticSurfaceGranularity = db ? getSemanticSurfaceGranularity(db) : null;
     const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
     const contractTaxonomy = db ? summarizeContractTaxonomy(db) : null;
+    const databaseHealth = db ? getDatabaseHealthSummary(db) : null;
     const fileUniverseGranularity = getFileUniverseGranularity({
         scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
         manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
@@ -140,6 +142,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         canonicalAdoptionEvidence,
         canonicalAdoptions: resolvedCanonicalAdoptions,
         standardizationReport,
-        compilerContractLayer
+        compilerContractLayer,
+        databaseHealth
     };
 }

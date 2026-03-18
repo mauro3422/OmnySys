@@ -11,6 +11,7 @@ import { createLogger } from '../../utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
     checkAtomMetadataCompleteness,
+    checkDatabaseHealth,
     checkCalledByResolution,
     checkRelationConsistency,
     checkScanToAtomCoverage
@@ -28,6 +29,7 @@ const logger = createLogger('OmnySys:PipelineIntegrityDetector');
 const INTEGRITY_CHECKS = [
     checkScanToAtomCoverage,
     checkAtomMetadataCompleteness,
+    checkDatabaseHealth,
     checkCalledByResolution,
     checkGuardExecution,
     checkIssuePersistence,

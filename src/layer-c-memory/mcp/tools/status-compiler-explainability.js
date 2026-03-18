@@ -34,7 +34,8 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       metadataSurfaceParity: snapshot.metadataSurfaceParity,
       semanticCanonicality: snapshot.semanticCanonicality,
       semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity,
-      fileUniverseGranularity: snapshot.fileUniverseGranularity
+      fileUniverseGranularity: snapshot.fileUniverseGranularity,
+      databaseHealth: snapshot.databaseHealth
     };
   } catch (error) {
     return {

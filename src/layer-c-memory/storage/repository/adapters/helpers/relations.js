@@ -8,16 +8,25 @@
 
 import { safeNumber, safeJson } from './converters.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { resolveCallTargetId } from './call-target-resolver.js';
 
 /**
  * Guarda las llamadas (calls) de un átomo
  */
 export function saveCalls(db, atomId, calls, logger) {
   const now = new Date().toISOString();
+  const normalizeIdFn = (id) => {
+    if (!id || !id.includes('::')) {
+      return id;
+    }
+
+    const [pathPart, namePart] = id.split('::');
+    return `${String(pathPart || '').replace(/\\/g, '/')}::${namePart}`;
+  };
 
   // Primero borrar relaciones existentes
   const hr = new BaseSqlRepository(db, 'Relations');
-  hr.delete('atom_relations', 'source_id', atomId); // Reemplaza prepared stmt manual duplicado
+  hr.delete('atom_relations', 'source_id', normalizeIdFn(atomId)); // Reemplaza prepared stmt manual duplicado
 
   if (!calls || calls.length === 0) return;
 
@@ -29,19 +38,11 @@ export function saveCalls(db, atomId, calls, logger) {
   `);
 
   for (const call of calls) {
-    // Extraer el nombre del callee de forma segura
-    let calleeName;
-    if (typeof call === 'string') {
-      calleeName = call;
-    } else if (call && typeof call === 'object') {
-      calleeName = call.callee || call.name || call.id || 'unknown';
-    } else {
-      calleeName = 'unknown';
+    const normalizedSourceId = normalizeIdFn(atomId);
+    const targetId = resolveCallTargetId(db, normalizedSourceId, call, normalizeIdFn);
+    if (!targetId) {
+      continue;
     }
-
-    // Construir targetId basado en el file_path del atom actual
-    const filePath = atomId.split('::')[0];
-    const targetId = `${filePath}::${calleeName}`;
 
     // Asegurar que los valores son del tipo correcto para SQLite
     const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
@@ -56,7 +57,7 @@ export function saveCalls(db, atomId, calls, logger) {
       contextJson = '{}';
     }
 
-    insertStmt.run(atomId, targetId, weight, lineNumber, contextJson, now);
+    insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now);
   }
 }
 
@@ -89,21 +90,23 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
     for (const [atomId, calls] of atomsWithCalls) {
       // Borrar relaciones existentes para este atom usando el helper central
       const hr = new BaseSqlRepository(db, 'RelationsBatch');
-      hr.delete('atom_relations', 'source_id', atomId);
+      const normalizedSourceId = atomId.includes('::')
+        ? `${atomId.split('::')[0].replace(/\\/g, '/')}::${atomId.split('::').slice(1).join('::')}`
+        : atomId;
+      hr.delete('atom_relations', 'source_id', normalizedSourceId);
 
       // Insertar nuevas relaciones
       for (const call of calls) {
-        let calleeName;
-        if (typeof call === 'string') {
-          calleeName = call;
-        } else if (call && typeof call === 'object') {
-          calleeName = call.callee || call.name || call.id || 'unknown';
-        } else {
-          calleeName = 'unknown';
+        const targetId = resolveCallTargetId(db, normalizedSourceId, call, (id) => {
+          if (!id || !id.includes('::')) {
+            return id;
+          }
+          const [pathPart, namePart] = id.split('::');
+          return `${String(pathPart || '').replace(/\\/g, '/')}::${namePart}`;
+        });
+        if (!targetId) {
+          continue;
         }
-
-        const filePath = atomId.split('::')[0];
-        const targetId = `${filePath}::${calleeName}`;
 
         const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
         const lineNumber = typeof call?.line === 'number' ? call.line : null;
@@ -116,7 +119,7 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
         }
 
         // OR IGNORE para evitar errores si la relacion ya existe
-        insertStmt.run(atomId, targetId, weight, lineNumber, contextJson, now);
+        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now);
       }
     }
   });

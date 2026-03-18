@@ -17,8 +17,9 @@ export class RelationBulkHandler {
      * @param {Array} relationsToSave - Array de { atomId, call }
      * @param {string} now - Timestamp actual
      * @param {Function} normalizeIdFn - Función para normalizar IDs
+     * @param {Function} resolveCallTargetIdFn - Resolver canónico para targets
      */
-    handle(relationsToSave, now, normalizeIdFn) {
+    handle(relationsToSave, now, normalizeIdFn, resolveCallTargetIdFn = null) {
         if (!relationsToSave || relationsToSave.length === 0) return 0;
 
         const batchSize = 500;
@@ -31,22 +32,11 @@ export class RelationBulkHandler {
 
             for (const { atomId, call } of batch) {
                 const normalizedSourceId = normalizeIdFn(atomId);
-
-                let calleeName;
-                if (typeof call === 'string') {
-                    calleeName = call;
-                } else if (call && typeof call === 'object') {
-                    calleeName = call.callee || call.name || call.id || 'unknown';
-                } else {
-                    calleeName = 'unknown';
-                }
-
-                let targetId;
-                if (calleeName.includes('::')) {
-                    targetId = normalizeIdFn(calleeName);
-                } else {
-                    const filePath = normalizedSourceId.split('::')[0];
-                    targetId = `${filePath}::${calleeName}`;
+                const targetId = resolveCallTargetIdFn
+                    ? resolveCallTargetIdFn(normalizedSourceId, call)
+                    : null;
+                if (!targetId) {
+                    continue;
                 }
 
                 const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
@@ -60,7 +50,12 @@ export class RelationBulkHandler {
                 }
 
                 validRelations.push({
-                    atomId: normalizedSourceId, targetId, weight, lineNumber, contextJson, now
+                    atomId: normalizedSourceId,
+                    targetId,
+                    weight,
+                    lineNumber,
+                    contextJson,
+                    now
                 });
             }
 

@@ -8,8 +8,10 @@ import {
   getCachedCounts,
   getCachedMetadata,
   getPhase2Status,
+  getDatabaseHealthSummary,
   buildTelemetryProvenance
 } from '../../../shared/compiler/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
   attachCacheStatus,
   attachOrchestratorStatus,
@@ -41,6 +43,12 @@ export async function get_server_status(args, context) {
     const cachedCounts = getCachedCounts(cache, cachedMetadata);
 
     const status = buildServerStatusEnvelope(server, projectPath, phase2InProgress);
+    try {
+      const repo = getRepository(projectPath);
+      status.databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
+    } catch {
+      status.databaseHealth = null;
+    }
     attachOrchestratorStatus(status, orchestrator);
     attachRuntimeHotReload(status, server);
 
@@ -78,6 +86,9 @@ export async function get_server_status(args, context) {
       notifications.watcherAlerts || [],
       status.sharedState || {}
     );
+    if (!status.databaseHealth) {
+      status.databaseHealth = status.compilerExplainability?.databaseHealth || null;
+    }
 
     return status;
   } catch (error) {

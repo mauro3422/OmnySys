@@ -19,6 +19,7 @@ import {
     scanCompilerPolicyHealth,
     loadDuplicateGroups
 } from '../pipeline-health-domain/index.js';
+import { getDatabaseHealthSummary } from '../../../../../shared/compiler/index.js';
 
 export async function collectPipelineHealthFoundation({ db, projectPath }) {
     const runtimeTableHealth = await syncRuntimeTableHealthIssues(projectPath, { db, deep: true });
@@ -30,9 +31,29 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
     warnings.push(...tableHealth.warnings);
 
     const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+    const databaseHealth = getDatabaseHealthSummary(db);
+    tableCounts.database_health_score = databaseHealth.healthScore;
+    tableCounts.database_call_relations = databaseHealth.metrics.activeCallRelations || 0;
+    tableCounts.database_call_graph_rows = databaseHealth.metrics.callGraphRows || 0;
+    tableCounts.database_risk_contradictions = databaseHealth.metrics.contradictoryRiskRows || 0;
+
+    if (databaseHealth.healthy === false) {
+        const finding = {
+            field: 'database_health',
+            coverage: `${databaseHealth.healthScore}/100 (${databaseHealth.grade})`,
+            issue: databaseHealth.summary
+        };
+        if ((databaseHealth.criticalFindings || []).length > 0) {
+            issues.push(finding);
+        } else {
+            warnings.push(finding);
+        }
+    }
+
     const phase2PendingFiles = db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
-    const { liveAtomFiles, staleFileRows, staleRiskRows, deletedCount } = buildLiveRowTableCounts(liveRowSync);
+    const { liveAtomFiles, staleAtomRows, staleFileRows, staleRiskRows, deletedCount } = buildLiveRowTableCounts(liveRowSync);
     tableCounts.live_atom_files = liveAtomFiles;
+    tableCounts.stale_atom_rows = staleAtomRows;
     tableCounts.stale_file_rows = staleFileRows;
     tableCounts.stale_risk_rows = staleRiskRows;
     tableCounts.live_row_sync_deleted = deletedCount;
@@ -120,6 +141,7 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
         pipelineOrphanRemediation,
         compilerRemediation,
         runtimeTableHealth,
+        databaseHealth,
         orphanFunctions,
         pipelineOrphanSummary,
         zeroFields: fieldCoverage.zeroFields,

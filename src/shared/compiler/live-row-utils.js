@@ -65,13 +65,27 @@ export function getStaleTableRowCount(db, tableName, fileColumn = 'file_path') {
     );
 }
 
+export function getStaleAtomRowCount(db) {
+    return toCount(
+        db.prepare(`
+      SELECT COUNT(*) as total
+      FROM atoms a
+      LEFT JOIN files f ON a.file_path = f.path
+      WHERE (a.is_removed IS NULL OR a.is_removed = 0)
+        AND (f.path IS NULL OR f.is_removed = 1)
+    `).get()
+    );
+}
+
 export function getLiveRowDriftSummary(db) {
     const liveFileTotal = getLiveFileTotal(db);
+    const staleAtomRows = getStaleAtomRowCount(db);
     const staleFileRows = getStaleTableRowCount(db, 'files', 'path');
     const staleRiskRows = getStaleTableRowCount(db, 'risk_assessments', 'file_path');
 
     return {
         liveFileTotal,
+        staleAtomRows,
         staleFileRows,
         staleRiskRows
     };
@@ -129,7 +143,15 @@ export function buildLiveRowReconciliationPlan(db, options = {}) {
     const driftSummary = getLiveRowDriftSummary(db);
 
     return {
-        summary: driftSummary,
+      summary: driftSummary,
+        staleAtomSamples: db.prepare(`
+      SELECT a.id, a.name, a.file_path, a.purpose_type, a.updated_at
+      FROM atoms a
+      LEFT JOIN files f ON a.file_path = f.path
+      WHERE (a.is_removed IS NULL OR a.is_removed = 0)
+        AND (f.path IS NULL OR f.is_removed = 1)
+      LIMIT ?
+    `).all(normalizeLimit(sampleLimit)),
         staleFileSamples: loadStaleTableRows(db, {
             tableName: 'files',
             fileColumn: 'path',
@@ -163,6 +185,7 @@ export function buildLiveRowCleanupPlan(db, options = {}) {
         summary: reconciliation.summary,
         dryRun: true,
         statements: {
+            atoms: `UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE (is_removed IS NULL OR is_removed = 0) AND file_path IS NOT NULL AND file_path != '' AND NOT EXISTS (SELECT 1 FROM files WHERE path = atoms.file_path AND (is_removed IS NULL OR is_removed = 0))`,
             files: buildDeleteStatement('files', 'path'),
             riskAssessments: buildDeleteStatement('risk_assessments', 'file_path'),
             relations: `UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (NOT EXISTS (SELECT 1 FROM atoms WHERE id = source_id AND (is_removed IS NULL OR is_removed = 0)) OR NOT EXISTS (SELECT 1 FROM atoms WHERE id = target_id AND (is_removed IS NULL OR is_removed = 0)))`,
@@ -182,12 +205,13 @@ export function executeLiveRowCleanup(db, options = {}) {
     const plan = buildLiveRowCleanupPlan(db, options);
 
     if (dryRun) {
-        return {
-            ...plan,
-            deleted: { files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 }
-        };
+      return {
+        ...plan,
+        deleted: { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 }
+      };
     }
 
+    const deletedAtoms = db.prepare(plan.statements.atoms).run().changes || 0;
     const deletedFiles = db.prepare(plan.statements.files).run().changes || 0;
     const deletedRiskAssessments = db.prepare(plan.statements.riskAssessments).run().changes || 0;
     const deletedRelations = db.prepare(plan.statements.relations).run().changes || 0;
@@ -198,6 +222,7 @@ export function executeLiveRowCleanup(db, options = {}) {
         ...plan,
         dryRun: false,
         deleted: {
+            atoms: deletedAtoms,
             files: deletedFiles,
             riskAssessments: deletedRiskAssessments,
             relations: deletedRelations,
@@ -211,19 +236,21 @@ export function executeLiveRowCleanup(db, options = {}) {
 
 export function buildLiveRowRemediationPlan(db, options = {}) {
     const reconciliationPlan = buildLiveRowReconciliationPlan(db, options);
-    const { liveFileTotal = 0, staleFileRows = 0, staleRiskRows = 0 } = reconciliationPlan.summary || {};
-    const severity = (staleFileRows + staleRiskRows) > 0 ? 'warning' : 'ok';
+    const { liveFileTotal = 0, staleAtomRows = 0, staleFileRows = 0, staleRiskRows = 0 } = reconciliationPlan.summary || {};
+    const severity = (staleAtomRows + staleFileRows + staleRiskRows) > 0 ? 'warning' : 'ok';
 
     return buildStandardPlan({
-        total: staleFileRows + staleRiskRows,
+        total: staleAtomRows + staleFileRows + staleRiskRows,
         items: [],
         recommendation: getRecommendation({ type: 'live_row_drift' }).message,
         severity,
         summary: reconciliationPlan.summary,
+        staleAtomSamples: reconciliationPlan.staleAtomSamples,
         staleFileSamples: reconciliationPlan.staleFileSamples,
         staleRiskSamples: reconciliationPlan.staleRiskSamples,
         actions: [
             liveFileTotal > 0 ? 'Use atom-backed live file totals as source of truth.' : 'Populate atoms first.',
+            staleAtomRows > 0 ? 'Purge stale atoms that no longer have a canonical file row.' : 'atoms table is aligned.',
             staleFileRows > 0 ? 'Purge stale files rows.' : 'files table is aligned.',
             staleRiskRows > 0 ? 'Purge stale risk rows.' : 'risk_assessments is aligned.'
         ]
@@ -235,9 +262,11 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
 export function ensureLiveRowSync(db, options = {}) {
     const { autoSync = true, sampleLimit = 5 } = options;
     const before = buildLiveRowReconciliationPlan(db, { sampleLimit });
-    const hasDrift = (before.summary?.staleFileRows || 0) > 0 || (before.summary?.staleRiskRows || 0) > 0;
+    const hasDrift = (before.summary?.staleAtomRows || 0) > 0
+        || (before.summary?.staleFileRows || 0) > 0
+        || (before.summary?.staleRiskRows || 0) > 0;
 
-    let cleanup = { dryRun: true, deleted: { files: 0, riskAssessments: 0 } };
+    let cleanup = { dryRun: true, deleted: { atoms: 0, files: 0, riskAssessments: 0 } };
     let cleanupError = null;
 
     if (autoSync && hasDrift) {
@@ -249,7 +278,9 @@ export function ensureLiveRowSync(db, options = {}) {
     }
 
     const after = buildLiveRowReconciliationPlan(db, { sampleLimit });
-    const deletedTotal = (cleanup.deleted?.files || 0) + (cleanup.deleted?.riskAssessments || 0);
+    const deletedTotal = (cleanup.deleted?.atoms || 0)
+        + (cleanup.deleted?.files || 0)
+        + (cleanup.deleted?.riskAssessments || 0);
 
     return {
         autoSync,

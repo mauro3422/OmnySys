@@ -15,6 +15,7 @@ import { connectionManager } from '../../database/connection.js';
 import { AtomBulkHandler } from './handlers/atom-bulk-handler.js';
 import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
 import { EventBulkHandler } from './handlers/event-bulk-handler.js';
+import { resolveCallTargetId } from './helpers/call-target-resolver.js';
 
 /**
  * Clase para operaciones bulk
@@ -82,7 +83,12 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       }
 
       if (relationsToSave.length > 0) {
-        this.relationHandler.handle(relationsToSave, now, (id) => this._normalizeId(id));
+        this.relationHandler.handle(
+          relationsToSave,
+          now,
+          (id) => this._normalizeId(id),
+          (sourceId, call) => resolveCallTargetId(this.db, sourceId, call, (id) => this._normalizeId(id))
+        );
       }
 
       // Fase 3: Actualizar metadatos del archivo
@@ -159,7 +165,12 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
 
   saveRelationsBulk(relations) {
     return connectionManager.transaction(() =>
-      this.relationHandler.handle(relations, new Date().toISOString(), (id) => this._normalizeId(id))
+      this.relationHandler.handle(
+        relations,
+        new Date().toISOString(),
+        (id) => this._normalizeId(id),
+        (sourceId, call) => resolveCallTargetId(this.db, sourceId, call, (id) => this._normalizeId(id))
+      )
     );
   }
 }

@@ -203,13 +203,14 @@ function buildRuntimeHealthIssues(db) {
   }
 
   const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+  const staleAtomRows = Number(liveRowSync?.summary?.staleAtomRows || 0);
   const staleFileRows = Number(liveRowSync?.summary?.staleFileRows || 0);
   const staleRiskRows = Number(liveRowSync?.summary?.staleRiskRows || 0);
-  if (staleFileRows > 0 || staleRiskRows > 0) {
+  if (staleAtomRows > 0 || staleFileRows > 0 || staleRiskRows > 0) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_live_row_drift`,
-      severity: staleFileRows > 0 ? 'high' : 'medium',
-      message: `Live support tables are drifting from the atom graph (${staleFileRows} stale file rows, ${staleRiskRows} stale risk rows).`,
+      severity: (staleAtomRows > 0 || staleFileRows > 0) ? 'high' : 'medium',
+      message: `Live support tables are drifting from the atom graph (${staleAtomRows} stale atom rows, ${staleFileRows} stale file rows, ${staleRiskRows} stale risk rows).`,
       context: {
         source: 'runtime_table_health',
         category: 'live_row_sync',

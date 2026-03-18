@@ -64,12 +64,13 @@ export class StrategyExecutor {
       if (repo && repo.db) {
         logger.info('   🧹 Ejecutando limpieza automática de registros huérfanos...');
         const result = executeLiveRowCleanup(repo.db, { dryRun: false });
-        const total = (result.deleted.files || 0) +
+        const total = (result.deleted.atoms || 0) +
+          (result.deleted.files || 0) +
           (result.deleted.relations || 0) +
           (result.deleted.issues || 0);
 
         if (total > 0) {
-          logger.info(`   ✨ Limpieza completada: ${total} registros purgados (${result.deleted.relations} relaciones, ${result.deleted.issues} issues)`);
+          logger.info(`   ✨ Limpieza completada: ${total} registros purgados (${result.deleted.atoms} atoms, ${result.deleted.relations} relaciones, ${result.deleted.issues} issues)`);
         } else {
           logger.info('   ✅ No se encontraron registros huérfanos');
         }
