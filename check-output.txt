@@ -1,24 +1,0 @@
-
-> omnysys@0.9.127 check
-> node scripts/validate-syntax.js && node scripts/detect-broken-imports.js
-
-🔍 Validating JavaScript syntax...
-
-✅ Checked 1155 files
-
-✨ All files passed syntax validation!
-🔍 Analizando imports en src/ (v2 — sin falsos positivos)...
-
-📁 1680 archivos JavaScript encontrados (solo src/, excluyendo tests/)
-⏳ Procesados: 100/1680⏳ Procesados: 200/1680⏳ Procesados: 300/1680⏳ Procesados: 400/1680⏳ Procesados: 500/1680⏳ Procesados: 600/1680⏳ Procesados: 700/1680⏳ Procesados: 800/1680⏳ Procesados: 900/1680⏳ Procesados: 1000/1680⏳ Procesados: 1100/1680⏳ Procesados: 1200/1680⏳ Procesados: 1300/1680⏳ Procesados: 1400/1680⏳ Procesados: 1500/1680⏳ Procesados: 1600/1680✅ Análisis completo: 1680 archivos procesados
-
-============================================================
-🔴 IMPORTS ROTOS ENCONTRADOS: 1 archivos faltantes
-   Referenciados desde: 1 importaciones
-============================================================
-
-1. 📁 src\core\tunnel-vision-logger\utils\stats-pool-proxy.js
-   Referenciado por 1 archivo(s):
-      - src\core\tunnel-vision-logger\index.js
-
-📄 Reporte guardado en: logs/broken-imports-report.json

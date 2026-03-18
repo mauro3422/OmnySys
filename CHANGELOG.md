@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.128 - File Watcher Memory Leak Fix & Orchestration Triage](changelogs/v0.9.128.md)
 - [v0.9.127 - Conceptual Duplicate Eradication & Test Configuration](changelogs/v0.9.127.md)
 - [v0.9.126 - MCP Export Chain Validation & Runtime Crash Prevention](changelogs/v0.9.126.md)
 - [v0.9.125 - Architectural Intelligence & Modular Policy Structure](changelogs/v0.9.125.md)
@@ -23,6 +24,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.128 - File Watcher Memory Leak Fix & Orchestration Triage](changelogs/v0.9.128.md)
 - [v0.9.127 - Conceptual Duplicate Eradication & Test Configuration](changelogs/v0.9.127.md)
 - [v0.9.126 - MCP Export Chain Validation & Runtime Crash Prevention](changelogs/v0.9.126.md)
 - [v0.9.125 - Architectural Intelligence & Modular Policy Structure](changelogs/v0.9.125.md)
@@ -50,6 +52,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.128** | 2026-03-18 | Fixed a critical SQLite memory leak in FileWatcher causing false positive duplicate alerts due to zombie atoms. Completed triage on orchestration scripts yielding 0 new DDD module boundaries. |
 | **0.9.127** | 2026-03-18 | Eradicated 35 structural duplicates across builders, pattern registries, and error utilities, reaching Grade A+ health score. |
 | **0.9.123** | 2026-03-12 | Runtime freshness false-positive reduction, watcher restart-queue hardening, and semantic-coupling severity normalization for non-production surfaces. |
 | **0.9.122** | 2026-03-12 | MCP registry decomposition, watcher guard catalog splits, and continued debt reduction across runtime surfaces. |

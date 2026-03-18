@@ -24,6 +24,7 @@ export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCod
         WHERE file_path = ?
           AND atom_type IN ('function', 'method', 'arrow')
           AND (is_removed IS NULL OR is_removed = 0)
+          AND (is_dead_code IS NULL OR is_dead_code = 0)
           AND lines_of_code >= ?
           AND json_extract(dna_json, '$.semanticFingerprint') IS NOT NULL
           AND json_extract(dna_json, '$.semanticFingerprint') != 'unknown:unknown:unknown'

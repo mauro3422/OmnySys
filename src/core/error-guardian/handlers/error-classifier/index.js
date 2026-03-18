@@ -11,7 +11,7 @@
 
 import { SEVERITY, ERROR_PATTERNS } from './patterns/constants.js';
 import { ErrorClassifier } from './classifiers/base-classifier.js';
-import { getStats, isQuietError, getPatternsByCategory, clearHistory } from './utils/stats.js';
+import { getStats } from './utils/stats.js';
 
 // Extend ErrorClassifier with utility methods
 ErrorClassifier.prototype.getStats = function() {
@@ -19,15 +19,20 @@ ErrorClassifier.prototype.getStats = function() {
 };
 
 ErrorClassifier.prototype.isQuietError = function(classification) {
-  return isQuietError(classification, SEVERITY);
+  return classification.severity === SEVERITY.LOW;
 };
 
 ErrorClassifier.prototype.getPatternsByCategory = function(category) {
-  return getPatternsByCategory(this.patterns, category);
+  return Object.entries(this.patterns)
+    .filter(([_, config]) => config.category === category)
+    .reduce((acc, [type, config]) => {
+      acc[type] = config;
+      return acc;
+    }, {});
 };
 
 ErrorClassifier.prototype.clearHistory = function() {
-  clearHistory(this);
+  this.classificationHistory = [];
 };
 
 export { SEVERITY, ERROR_PATTERNS, ErrorClassifier };

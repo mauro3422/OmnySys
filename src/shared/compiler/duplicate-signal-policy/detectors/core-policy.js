@@ -153,6 +153,15 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
         return true;
     }
 
+    // Ignore valid framework orchestration entry points (CLI commands, standalone scripts)
+    const normalizedFingerprint = String(semanticFingerprint || '').trim();
+    if (
+        normalizedFingerprint === 'process:orchestration:core:main' || 
+        normalizedFingerprint === 'execute:orchestration:core:execute'
+    ) {
+        return true;
+    }
+
     // Ignore low-signal generated atoms (anonymous, callbacks, etc.)
     if (isLowSignalGeneratedAtom(atomName, semanticFingerprint)) {
         return true;
