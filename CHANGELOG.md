@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.143 - Sprint 15: Call Graph Integrity & Fallback Deprecation](changelogs/v0.9.143.md)
 - [v0.9.142 - Sprint 15: Deep Stabilization & Optimization](changelogs/v0.9.142.md)
 - [v0.9.130 - Sprint 13: Zero Structural Debt & Reliability Hardening](changelogs/v0.9.130.md)
 
@@ -27,6 +28,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.143 - Sprint 15: Call Graph Integrity & Fallback Deprecation](changelogs/v0.9.143.md)
 - [v0.9.142 - Sprint 15: Deep Stabilization & Optimization](changelogs/v0.9.142.md)
 - [v0.9.130 - Sprint 13: Zero Structural Debt & Reliability Hardening](changelogs/v0.9.130.md)
 - [v0.9.128 - File Watcher Memory Leak Fix & Orchestration Triage](changelogs/v0.9.128.md)
@@ -57,6 +59,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.143** | 2026-03-18 | Sprint 15: Call Graph Integrity & Fallback Deprecation, fixed zero-atom file deletion, populated SQL call graph, removed raw JSON memory search fallbacks. |
 | **0.9.142** | 2026-03-18 | Sprint 15: Deep Stabilization & Optimization, O(n^2) bottlenecks fixed, 100% tests passing, async hardening. |
 | **0.9.141** | 2026-03-18 | Sprint 14: Unified Action API with ActionEngine, consolidated telemetry in StatsPool, filtered test noise, and achieved 100/100 health score. |
 | **0.9.130** | 2026-03-18 | Sprint 13: Consolidated structural debt to 0, hardened critical daemons (SocietyPersistor, scoring) with try/catch, and updated duplicate policies to ignore strategic patterns. |
@@ -90,7 +93,29 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.141 (2026-03-18)
+## Latest Release: v0.9.143 (2026-03-18)
+
+**Call Graph Integrity & Fallback Deprecation**
+
+### Key Achievements
+
+1.  **Call Graph Integrity**: Resolved the systemic drift of canonical IDs, guaranteeing 100% `call_graph` view population using a Semantic Resolver for the projection logic.
+2.  **Zero-Atom Reinstatement**: Repaired the indexer logic to recognize empty barrel and runtime files (`omny.js`, etc.) using the scanner manifest instead of atoms metadata, preventing constant cyclic deletions.
+3.  **Fallback Deprecation (Guard Gate)**: Scrapped the legacy, blind memory-search heuristic `findCallersEfficient` (`LIMIT 1000`) within `atomic-edit`. Refactored MCP tools to enforce true SQL relational dependencies or fail-fast with a guard error, fully eliminating blind edits.
+4.  **Guard Refinement**: Patched an undefined function crash in the `compiler-policy-conformance` watcher guard.
+
+### New & Refactored Files
+
+- `src/layer-c-memory/storage/repository/adapters/sqlite-relation-operations.js`
+- `src/shared/compiler/live-row-utils.js`
+- `src/layer-c-memory/mcp/tools/atomic-edit/search.js`
+- `src/shared/compiler/policy-conformance.js`
+- `changelogs/v0.9.143.md`
+- `CHANGELOG.md`
+
+---
+
+## Previous Release: v0.9.141 (2026-03-18)
 
 **Action API Standardization & Telemetry Unification**
 
