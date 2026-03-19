@@ -16,6 +16,7 @@ import {
   summarizePersistedScannedFileCoverage,
   syncPersistedScannedFileManifest
 } from '../../shared/compiler/index.js';
+import { repairRiskAssessmentsIfEmpty } from './risk-assessment-repair.js';
 
 const logger = createLogger('OmnySys:runtime:table-health');
 
@@ -163,6 +164,8 @@ async function buildDeepRuntimeHealthIssues(projectPath, db) {
 function buildRuntimeHealthIssues(db) {
   const tableCounts = {};
   const issues = [];
+
+  repairRiskAssessmentsIfEmpty(db, logger);
 
   for (const check of TABLE_HEALTH_CHECKS) {
     const total = loadTableCount(db, check.table);

@@ -122,16 +122,15 @@ function extractDerivedRiskRows(db) {
   });
 }
 
-export async function saveRiskAssessments(db, riskAssessment, now) {
-  const repo = new BaseSqlRepository(db, 'RiskHandler');
+function persistRiskRows(repo, extractedRisks, now) {
+  if (!Array.isArray(extractedRisks) || extractedRisks.length === 0) {
+    return { persisted: 0, rows: [] };
+  }
+
   repo.clearTable('risk_assessments');
 
   const isoNow = new Date(now).toISOString();
-  const extractedRisks = riskAssessment
-    ? extractRiskRows(riskAssessment)
-    : extractDerivedRiskRows(db);
-
-  if (extractedRisks.length === 0) return;
+  const db = repo.db;
 
   const insertFile = db.prepare(`
     INSERT OR IGNORE INTO files (path, last_analyzed, total_lines)
@@ -158,17 +157,43 @@ export async function saveRiskAssessments(db, riskAssessment, now) {
     updated_at: isoNow
   }));
 
-  repo.saveTableRows(
+  const result = repo.saveTableRows(
     'risk_assessments',
     ['file_path', 'risk_score', 'risk_level', 'factors_json', 'shared_state_count', 'external_deps_count', 'complexity_score', 'propagation_score', 'is_removed', 'assessed_at', 'updated_at'],
     riskRows,
     'file_path'
   );
+
+  return {
+    persisted: result?.changes || riskRows.length,
+    rows: riskRows
+  };
+}
+
+export function rehydrateRiskAssessmentsFromAtoms(db, now = Date.now()) {
+  const repo = new BaseSqlRepository(db, 'RiskHandler');
+  const extractedRisks = extractDerivedRiskRows(db);
+  return persistRiskRows(repo, extractedRisks, now);
+}
+
+export async function saveRiskAssessments(db, riskAssessment, now) {
+  const repo = new BaseSqlRepository(db, 'RiskHandler');
+  const extractedRisks = riskAssessment
+    ? extractRiskRows(riskAssessment)
+    : extractDerivedRiskRows(db);
+
+  persistRiskRows(repo, extractedRisks, now);
 }
 
 export async function loadRiskAssessments(db) {
   const repo = new BaseSqlRepository(db, 'RiskHandler');
-  const rows = repo.loadTableRows('risk_assessments', '(is_removed IS NULL OR is_removed = 0)');
+  let rows = repo.loadTableRows('risk_assessments', '(is_removed IS NULL OR is_removed = 0)');
+  if (rows.length === 0) {
+    const repairResult = rehydrateRiskAssessmentsFromAtoms(db);
+    if (repairResult?.rows?.length > 0) {
+      rows = repo.loadTableRows('risk_assessments', '(is_removed IS NULL OR is_removed = 0)');
+    }
+  }
   const assessment = {};
 
   for (const row of rows) {
