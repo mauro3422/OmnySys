@@ -9,7 +9,7 @@
 
 import { SQLiteAdapterCore } from './sqlite-adapter-core.js';
 import { getAllFileHashes } from './helpers/file-hash-lookup.js';
-import { deleteAtomRecord, saveAtomRecord } from './helpers/sqlite-crud-persistence.js';
+import { deleteAtomRecord, saveAtomRecord, softDeleteRelatedCallRelations } from './helpers/sqlite-crud-persistence.js';
 import { rowToAtom } from './helpers/converters.js';
 
 /**
@@ -67,7 +67,9 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
   deleteByFile(filePath) {
     const normalizedPath = this._normalize(filePath);
+    const relatedAtomIds = this.db.prepare('SELECT id FROM atoms WHERE file_path = ?').all(normalizedPath).map((row) => row.id);
     const result = this.statements.deleteByFile.run(normalizedPath);
+    softDeleteRelatedCallRelations(this, relatedAtomIds);
     return result.changes;
   }
 
