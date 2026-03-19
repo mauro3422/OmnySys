@@ -9,24 +9,50 @@
 import { safeNumber, safeJson } from './converters.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { primeActiveAtomCache, resolveCallTargetId } from './call-target-resolver.js';
+import path from 'path';
+
+function normalizeCanonicalAtomId(id) {
+  if (!id || !String(id).includes('::')) {
+    return String(id || '').replace(/\\/g, '/');
+  }
+
+  const [pathPart, ...rest] = String(id).split('::');
+  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+  return `${canonicalPath}::${rest.join('::')}`;
+}
+
+function buildCanonicalAtomIdVariants(id) {
+  const variants = new Set();
+  const normalizedId = normalizeCanonicalAtomId(id);
+  if (!normalizedId) {
+    return [];
+  }
+
+  variants.add(normalizedId);
+
+  if (normalizedId.includes('::')) {
+    const [pathPart, ...rest] = normalizedId.split('::');
+    if (!path.isAbsolute(pathPart)) {
+      const absolutePath = path.resolve(process.cwd(), pathPart).replace(/\\/g, '/');
+      variants.add(`${absolutePath}::${rest.join('::')}`);
+    }
+  }
+
+  return Array.from(variants);
+}
 
 /**
  * Guarda las llamadas (calls) de un átomo
  */
 export function saveCalls(db, atomId, calls, logger) {
   const now = new Date().toISOString();
-  const normalizeIdFn = (id) => {
-    if (!id || !id.includes('::')) {
-      return id;
-    }
-
-    const [pathPart, namePart] = id.split('::');
-    return `${String(pathPart || '').replace(/\\/g, '/')}::${namePart}`;
-  };
+  const normalizeIdFn = normalizeCanonicalAtomId;
 
   // Primero borrar relaciones existentes
   const hr = new BaseSqlRepository(db, 'Relations');
-  hr.delete('atom_relations', 'source_id', normalizeIdFn(atomId)); // Reemplaza prepared stmt manual duplicado
+  for (const sourceId of buildCanonicalAtomIdVariants(atomId)) {
+    hr.delete('atom_relations', 'source_id', sourceId); // Reemplaza prepared stmt manual duplicado
+  }
 
   if (!calls || calls.length === 0) return;
 
@@ -114,10 +140,10 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
     for (const [atomId, calls] of atomsWithCalls) {
       // Borrar relaciones existentes para este atom usando el helper central
       const hr = new BaseSqlRepository(db, 'RelationsBatch');
-      const normalizedSourceId = atomId.includes('::')
-        ? `${atomId.split('::')[0].replace(/\\/g, '/')}::${atomId.split('::').slice(1).join('::')}`
-        : atomId;
-      hr.delete('atom_relations', 'source_id', normalizedSourceId);
+      const normalizedSourceId = normalizeCanonicalAtomId(atomId);
+      for (const sourceId of buildCanonicalAtomIdVariants(atomId)) {
+        hr.delete('atom_relations', 'source_id', sourceId);
+      }
 
       // Insertar nuevas relaciones
       for (const call of calls) {

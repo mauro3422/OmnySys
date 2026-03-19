@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)
 - [v0.9.148 - Sprint 15: Relation Cascade Fix for File Deletions](changelogs/v0.9.148.md)
 - [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
 - [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
@@ -33,6 +34,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)
 - [v0.9.148 - Sprint 15: Relation Cascade Fix for File Deletions](changelogs/v0.9.148.md)
 - [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
 - [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
@@ -69,6 +71,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.149** | 2026-03-19 | Sprint 15: Canonical Atom-ID Reconciliation, preserved native atom IDs in relation persistence, and migrated mixed-ID call rows back into a joinable canonical projection. |
+| **0.9.148** | 2026-03-19 | Sprint 15: Relation Cascade Fix for File Deletions, cascade-soft-deleted calls on atom/file removal and kept the live DB from accumulating orphan call rows. |
+| **0.9.147** | 2026-03-19 | Sprint 15: Live-Row Hotfix & Helper Hygiene, split runtime-health helpers and rehydrated risk rows from live atoms. |
 | **0.9.146** | 2026-03-19 | Sprint 15: Call Graph Preservation & Bootstrap Hardening, disabled destructive live-row relation cleanup, reactivated valid calls, and fixed the stale file-handler export crash. |
 | **0.9.145** | 2026-03-18 | Sprint 15: Canonical DB Enforcement, removed runtime fallback reads from persisted JSON relation fields, and aligned pipeline health checks with DB relations. |
 | **0.9.144** | 2026-03-18 | Sprint 15: DB health metric, orphan atom reconciliation, canonical cleanup, and Node-verified import validation. |
@@ -106,16 +111,16 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.145 (2026-03-18)
+## Latest Release: v0.9.149 (2026-03-19)
 
-**DB Health & Canonical Reconciliation**
+**Canonical Atom-ID Reconciliation**
 
 ### Key Achievements
 
-1.  **Canonical DB Health**: Added a real database-health metric and surfaced it in status, MCP health, and pipeline integrity surfaces.
-2.  **Orphan Reconciliation**: Extended live-row cleanup to soft-delete orphan `atoms` and their dangling relations, aligning the DB with the canonical `files` truth.
-3.  **Import Cycle Removal**: Broke a runtime import cycle in the SQLite adapter by replacing barrel imports with direct verified imports.
-4.  **Import Tool Warning**: Documented that `validate_imports` can emit false positives on local exports when the tool index is stale; Node runtime import remains the verification source.
+1.  **ID Preservation**: Relation writers now preserve the atom's native ID format instead of forcing every symbol into one path scheme.
+2.  **Mixed-ID Migration**: The live `atom_relations` table was normalized so call rows again match the active `atoms` identifiers.
+3.  **Canonical Health**: Database health returned to `A+` with zero orphan call relations and an aligned `call_graph` view.
+4.  **Legacy Cleanup**: The relation cleanup paths now clear both legacy and current source-ID variants before re-inserting calls.
 
 ### New & Refactored Files
 

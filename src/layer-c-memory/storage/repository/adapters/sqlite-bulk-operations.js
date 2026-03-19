@@ -21,12 +21,12 @@ import { resolveCallTargetId } from './helpers/call-target-resolver.js';
 
 function normalizeCanonicalAtomId(id, projectPath = '') {
   if (!id || !String(id).includes('::')) {
-    return id;
+    return String(id || '').replace(/\\/g, '/');
   }
 
   const [pathPart, ...rest] = String(id).split('::');
-  const absolutePath = path.resolve(projectPath || '', String(pathPart || '').replace(/\\/g, '/')).replace(/\\/g, '/');
-  return `${absolutePath}::${rest.join('::')}`;
+  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+  return `${canonicalPath}::${rest.join('::')}`;
 }
 
 /**

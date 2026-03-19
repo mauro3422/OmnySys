@@ -14,12 +14,30 @@ import { primeActiveAtomCache, resolveCallTargetId } from './helpers/call-target
 
 function normalizeCanonicalAtomId(id, projectPath = '') {
   if (!id || !String(id).includes('::')) {
-    return id;
+    return String(id || '').replace(/\\/g, '/');
   }
 
   const [pathPart, ...rest] = String(id).split('::');
-  const absolutePath = path.resolve(projectPath || '', String(pathPart || '').replace(/\\/g, '/')).replace(/\\/g, '/');
-  return `${absolutePath}::${rest.join('::')}`;
+  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+  return `${canonicalPath}::${rest.join('::')}`;
+}
+
+function buildCanonicalAtomIdVariants(id, projectPath = '') {
+  const variants = new Set();
+  const normalizedId = normalizeCanonicalAtomId(id, projectPath);
+  if (!normalizedId) {
+    return [];
+  }
+
+  variants.add(normalizedId);
+
+  if (!String(normalizedId).startsWith('C:/') && normalizedId.includes('::') && projectPath) {
+    const [pathPart, ...rest] = normalizedId.split('::');
+    const absolutePath = path.resolve(projectPath, pathPart).replace(/\\/g, '/');
+    variants.add(`${absolutePath}::${rest.join('::')}`);
+  }
+
+  return Array.from(variants);
 }
 
 /**
@@ -136,11 +154,22 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
         updated_at = excluded.created_at
     `);
     const normalizedSourceId = normalizeCanonicalAtomId(atomId, this.projectPath);
+    const sourceIdVariants = buildCanonicalAtomIdVariants(atomId, this.projectPath);
     const resolverCache = {
       importsBySourcePath: new Map(),
       resolvedTargets: new Map()
     };
     primeActiveAtomCache(this.db, resolverCache);
+
+    if (sourceIdVariants.length > 0) {
+      const deleteStmt = this.db.prepare(`DELETE FROM atom_relations WHERE source_id = ? AND relation_type = 'calls'`);
+      const deleteBatch = this.db.transaction((ids) => {
+        for (const sourceId of ids) {
+          deleteStmt.run(sourceId);
+        }
+      });
+      deleteBatch(sourceIdVariants);
+    }
 
     for (const call of calls) {
       const targetId = resolveCallTargetId(
