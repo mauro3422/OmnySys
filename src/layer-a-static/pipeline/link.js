@@ -1,9 +1,8 @@
-import path from 'path';
-
 import { startTimer } from '../../utils/performance-tracker.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { calculateFieldHashes } from '#layer-c/storage/atoms/atom-version-manager.js';
 import { syncSemanticConnectionsFromRelations } from '#layer-c/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js';
+import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from '../../layer-c-memory/storage/repository/adapters/helpers/canonical-atom-id.js';
 import { resolveClassInstantiationCalledBy } from './phases/calledby/class-instantiation-tracker.js';
 import { enrichWithCallerPattern } from './phases/atom-extraction/metadata/caller-pattern.js';
 import { buildAtomIndex, linkFunctionCalledBy } from './phases/calledby/function-linker.js';
@@ -13,34 +12,6 @@ import { linkExportObjectReferences } from './phases/calledby/export-object-refe
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:link');
-
-function normalizeCanonicalAtomId(id, projectPath = '') {
-    if (!id || !String(id).includes('::')) {
-        return String(id || '').replace(/\\/g, '/');
-    }
-
-    const [pathPart, ...rest] = String(id).split('::');
-    const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
-    return `${canonicalPath}::${rest.join('::')}`;
-}
-
-function buildCanonicalAtomIdVariants(id, projectPath = '') {
-    const variants = new Set();
-    const normalizedId = normalizeCanonicalAtomId(id, projectPath);
-    if (!normalizedId) {
-        return [];
-    }
-
-    variants.add(normalizedId);
-
-    if (!String(normalizedId).startsWith('C:/') && normalizedId.includes('::') && projectPath) {
-        const [pathPart, ...rest] = normalizedId.split('::');
-        const absolutePath = path.resolve(projectPath, pathPart).replace(/\\/g, '/');
-        variants.add(`${absolutePath}::${rest.join('::')}`);
-    }
-
-    return Array.from(variants);
-}
 
 function chunkArray(values, size = 500) {
     const chunks = [];
@@ -370,43 +341,47 @@ export async function saveSharedStateRelations(allAtoms, absoluteRootPath, verbo
  * Útil para el FileWatcher cuando solo cambia un archivo limitado.
  */
 export async function saveSharedStateRelationsIncrementally(targetAtoms, absoluteRootPath, verbose) {
-    const repo = getRepository(absoluteRootPath);
-    const db = repo.db || repo.getDatabase?.();
-    if (!db) return;
+    try {
+        const repo = getRepository(absoluteRootPath);
+        const db = repo.db || repo.getDatabase?.();
+        if (!db) return;
 
-    const sharedTargetAtoms = targetAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
+        const sharedTargetAtoms = targetAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
 
-    // 1. Marcar relaciones antiguas como removidas para evitar duplicados, preservando la genética
-    const deleteStmt = db.prepare(`UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now') WHERE (source_id = ? OR target_id = ?) AND relation_type = 'shares_state'`);
-    db.transaction(() => {
-        for (const atom of targetAtoms) deleteStmt.run(atom.id, atom.id);
-    })();
+        // 1. Marcar relaciones antiguas como removidas para evitar duplicados, preservando la genética
+        const deleteStmt = db.prepare(`UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now') WHERE (source_id = ? OR target_id = ?) AND relation_type = 'shares_state'`);
+        db.transaction(() => {
+            for (const atom of targetAtoms) deleteStmt.run(atom.id, atom.id);
+        })();
 
-    if (sharedTargetAtoms.length === 0) return;
+        if (sharedTargetAtoms.length === 0) return;
 
-    // 2. Cargar otros átomos que tienen estado compartido desde la DB para cruzar referencias
-    // Filtramos por shared_state_json poblado.
-    const rows = db.prepare(`
-        SELECT * FROM atoms 
-        WHERE shared_state_json IS NOT NULL 
-          AND (shared_state_json != '[]' AND shared_state_json != '')
-          AND is_removed = 0
-    `).all();
+        // 2. Cargar otros átomos que tienen estado compartido desde la DB para cruzar referencias
+        // Filtramos por shared_state_json poblado.
+        const rows = db.prepare(`
+            SELECT * FROM atoms 
+            WHERE shared_state_json IS NOT NULL 
+              AND (shared_state_json != '[]' AND shared_state_json != '')
+              AND is_removed = 0
+        `).all();
 
-    const { rowToAtom } = await import('#layer-c/storage/repository/adapters/helpers/converters.js');
-    const existingSharedAtoms = rows.map(rowToAtom);
+        const { rowToAtom } = await import('#layer-c/storage/repository/adapters/helpers/converters.js');
+        const existingSharedAtoms = rows.map(rowToAtom);
 
-    // 3. Mezclar: Átomos frescos del archivo cambiado + átomos conocidos del resto del proyecto
-    const targetIds = new Set(targetAtoms.map(a => a.id));
-    const allRelevantAtoms = [
-        ...existingSharedAtoms.filter(a => !targetIds.has(a.id)),
-        ...targetAtoms
-    ];
+        // 3. Mezclar: Átomos frescos del archivo cambiado + átomos conocidos del resto del proyecto
+        const targetIds = new Set(targetAtoms.map(a => a.id));
+        const allRelevantAtoms = [
+            ...existingSharedAtoms.filter(a => !targetIds.has(a.id)),
+            ...targetAtoms
+        ];
 
-    // 4. Procesar vinculación (aprovechando la lógica común)
-    await _processSharedStateLinkage(db, allRelevantAtoms, verbose);
-    const syncResult = syncSemanticConnectionsFromRelations(db);
-    if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+        // 4. Procesar vinculación (aprovechando la lógica común)
+        await _processSharedStateLinkage(db, allRelevantAtoms, verbose);
+        const syncResult = syncSemanticConnectionsFromRelations(db);
+        if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+    } catch (error) {
+        logger.warn(`  ⚠️ shared-state incremental linkage failed: ${error.message}`);
+    }
 }
 
 /**
@@ -414,66 +389,70 @@ export async function saveSharedStateRelationsIncrementally(targetAtoms, absolut
  * @private
  */
 async function _processSharedStateLinkage(db, allAtoms, verbose) {
-    const sharedAtoms = allAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
-    const stateMap = new Map();
+    try {
+        const sharedAtoms = allAtoms.filter(a => a.sharedStateAccess && a.sharedStateAccess.length > 0);
+        const stateMap = new Map();
 
-    for (const atom of sharedAtoms) {
-        for (const access of atom.sharedStateAccess) {
-            const key = access.fullReference || `${access.objectName}.${access.propName}`;
-            if (!stateMap.has(key)) stateMap.set(key, []);
-            stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
-        }
-    }
-
-    const relations = [];
-    for (const [key, accesses] of stateMap.entries()) {
-        const writers = accesses.filter(a => a.type === 'write');
-        const readers = accesses.filter(a => a.type === 'read');
-
-        // Link writers to readers
-        for (const writer of writers) {
-            for (const reader of readers) {
-                if (writer.id === reader.id) continue;
-                relations.push({
-                    sourceId: writer.id,
-                    targetId: reader.id,
-                    type: 'shares_state',
-                    weight: 1.0,
-                    line: writer.line,
-                    context: JSON.stringify({ key, direction: 'writer_to_reader' })
-                });
+        for (const atom of sharedAtoms) {
+            for (const access of atom.sharedStateAccess) {
+                const key = access.fullReference || `${access.objectName}.${access.propName}`;
+                if (!stateMap.has(key)) stateMap.set(key, []);
+                stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
             }
         }
 
-        // Link multiple writers together
-        for (let i = 0; i < writers.length; i++) {
-            for (let j = i + 1; j < writers.length; j++) {
-                relations.push({
-                    sourceId: writers[i].id,
-                    targetId: writers[j].id,
-                    type: 'shares_state',
-                    weight: 0.8,
-                    line: writers[i].line,
-                    context: JSON.stringify({ key, direction: 'co_writers' })
-                });
+        const relations = [];
+        for (const [key, accesses] of stateMap.entries()) {
+            const writers = accesses.filter(a => a.type === 'write');
+            const readers = accesses.filter(a => a.type === 'read');
+
+            // Link writers to readers
+            for (const writer of writers) {
+                for (const reader of readers) {
+                    if (writer.id === reader.id) continue;
+                    relations.push({
+                        sourceId: writer.id,
+                        targetId: reader.id,
+                        type: 'shares_state',
+                        weight: 1.0,
+                        line: writer.line,
+                        context: JSON.stringify({ key, direction: 'writer_to_reader' })
+                    });
+                }
+            }
+
+            // Link multiple writers together
+            for (let i = 0; i < writers.length; i++) {
+                for (let j = i + 1; j < writers.length; j++) {
+                    relations.push({
+                        sourceId: writers[i].id,
+                        targetId: writers[j].id,
+                        type: 'shares_state',
+                        weight: 0.8,
+                        line: writers[i].line,
+                        context: JSON.stringify({ key, direction: 'co_writers' })
+                    });
+                }
             }
         }
-    }
 
-    if (relations.length > 0) {
-        const insertRelation = db.prepare(`
-            INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-        `);
+        if (relations.length > 0) {
+            const insertRelation = db.prepare(`
+                INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            `);
 
-        const insertBatch = db.transaction((rels) => {
-            for (const r of rels) {
-                insertRelation.run(r.sourceId, r.targetId, r.type, r.weight, r.line, r.context);
-            }
-        });
+            const insertBatch = db.transaction((rels) => {
+                for (const r of rels) {
+                    insertRelation.run(r.sourceId, r.targetId, r.type, r.weight, r.line, r.context);
+                }
+            });
 
-        insertBatch(relations);
-        if (verbose) logger.info(`  ✓ ${relations.length} shares_state relations saved (AI Impact Map ready)`);
+            insertBatch(relations);
+            if (verbose) logger.info(`  ✓ ${relations.length} shares_state relations saved (AI Impact Map ready)`);
+        }
+    } catch (error) {
+        logger.warn(`  ⚠️ shared-state linkage failed: ${error.message}`);
     }
 }
 

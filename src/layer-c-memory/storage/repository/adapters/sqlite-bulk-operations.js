@@ -8,8 +8,6 @@
  * @module storage/repository/adapters/sqlite-bulk-operations
  */
 
-import path from 'path';
-
 import { SQLiteRelationOperations } from './sqlite-relation-operations.js';
 import { connectionManager } from '../../database/connection.js';
 
@@ -18,16 +16,7 @@ import { AtomBulkHandler } from './handlers/atom-bulk-handler.js';
 import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
 import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 import { resolveCallTargetId } from './helpers/call-target-resolver.js';
-
-function normalizeCanonicalAtomId(id, projectPath = '') {
-  if (!id || !String(id).includes('::')) {
-    return String(id || '').replace(/\\/g, '/');
-  }
-
-  const [pathPart, ...rest] = String(id).split('::');
-  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
-  return `${canonicalPath}::${rest.join('::')}`;
-}
+import { normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
 
 /**
  * Clase para operaciones bulk

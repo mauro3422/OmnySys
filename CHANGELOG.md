@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.150 - Sprint 15: Canonical ID Helper Centralization](changelogs/v0.9.150.md)
 - [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)
 - [v0.9.148 - Sprint 15: Relation Cascade Fix for File Deletions](changelogs/v0.9.148.md)
 - [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
@@ -34,6 +35,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.150 - Sprint 15: Canonical ID Helper Centralization](changelogs/v0.9.150.md)
 - [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)
 - [v0.9.148 - Sprint 15: Relation Cascade Fix for File Deletions](changelogs/v0.9.148.md)
 - [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
@@ -71,6 +73,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.150** | 2026-03-19 | Sprint 15: Canonical ID Helper Centralization, shared the canonical atom-ID helper across relation writers and added async boundaries to shared-state linkage. |
 | **0.9.149** | 2026-03-19 | Sprint 15: Canonical Atom-ID Reconciliation, preserved native atom IDs in relation persistence, and migrated mixed-ID call rows back into a joinable canonical projection. |
 | **0.9.148** | 2026-03-19 | Sprint 15: Relation Cascade Fix for File Deletions, cascade-soft-deleted calls on atom/file removal and kept the live DB from accumulating orphan call rows. |
 | **0.9.147** | 2026-03-19 | Sprint 15: Live-Row Hotfix & Helper Hygiene, split runtime-health helpers and rehydrated risk rows from live atoms. |
@@ -111,16 +114,16 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.149 (2026-03-19)
+## Latest Release: v0.9.150 (2026-03-19)
 
-**Canonical Atom-ID Reconciliation**
+**Canonical ID Helper Centralization**
 
 ### Key Achievements
 
-1.  **ID Preservation**: Relation writers now preserve the atom's native ID format instead of forcing every symbol into one path scheme.
-2.  **Mixed-ID Migration**: The live `atom_relations` table was normalized so call rows again match the active `atoms` identifiers.
-3.  **Canonical Health**: Database health returned to `A+` with zero orphan call relations and an aligned `call_graph` view.
-4.  **Legacy Cleanup**: The relation cleanup paths now clear both legacy and current source-ID variants before re-inserting calls.
+1.  **Shared Canonical IDs**: The canonical atom-ID helper now lives in a shared module instead of being duplicated in every relation writer.
+2.  **Async Safety**: Shared-state linkage paths now catch and log failures rather than bubbling uncaught async errors.
+3.  **Deduplication Cleanup**: The watcher no longer sees the same canonical-ID logic copied across relation adapters.
+4.  **Runtime Hygiene**: The linker module is smaller and easier to reason about after the helper extraction.
 
 ### New & Refactored Files
 

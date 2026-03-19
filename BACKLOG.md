@@ -10,6 +10,7 @@
 - `call-target-resolver` and `SQLiteRelationOperations` now carry fresh complexity/file-size warnings after the cache work. The optimization is correct, but the resolver should be split before more logic lands there.
 - The active-atom cache for relation saving still needs a real benchmark after restart. We have reduced per-call DB lookups, but the save path must be measured again on a cold startup before declaring victory.
 - `atom_relations` must preserve each atom's native ID scheme. Forcing absolute or relative paths in relation writers creates mixed-ID drift and breaks canonical joins on the next reload.
+- Canonical atom-ID normalization now lives in a shared helper, but `SQLiteBulkOperations`, `SQLiteRelationOperations`, and `link.js` still carry structural complexity warnings that should be split if more logic lands there.
 - Phase 2 deep scan re-reads source files for semantic enrichment after Layer A already built the atom graph. Confirm whether the second pass can be narrowed or reused to avoid the extra startup cost.
 - `src/layer-c-memory/mcp/tools/status.js` was split into a smaller helper module, but the next runtime restart still needs to confirm the live payload stayed compact and did not reintroduce deep nested blobs.
 - `src/layer-c-memory/mcp/core/initialization/steps/mcp-setup-step.js` still trips a low data-flow coherence warning. The tool wrapper is compact enough for now, but the call path should be decomposed if more bootstrap logic lands there.

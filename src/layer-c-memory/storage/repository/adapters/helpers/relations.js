@@ -9,37 +9,7 @@
 import { safeNumber, safeJson } from './converters.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { primeActiveAtomCache, resolveCallTargetId } from './call-target-resolver.js';
-import path from 'path';
-
-function normalizeCanonicalAtomId(id) {
-  if (!id || !String(id).includes('::')) {
-    return String(id || '').replace(/\\/g, '/');
-  }
-
-  const [pathPart, ...rest] = String(id).split('::');
-  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
-  return `${canonicalPath}::${rest.join('::')}`;
-}
-
-function buildCanonicalAtomIdVariants(id) {
-  const variants = new Set();
-  const normalizedId = normalizeCanonicalAtomId(id);
-  if (!normalizedId) {
-    return [];
-  }
-
-  variants.add(normalizedId);
-
-  if (normalizedId.includes('::')) {
-    const [pathPart, ...rest] = normalizedId.split('::');
-    if (!path.isAbsolute(pathPart)) {
-      const absolutePath = path.resolve(process.cwd(), pathPart).replace(/\\/g, '/');
-      variants.add(`${absolutePath}::${rest.join('::')}`);
-    }
-  }
-
-  return Array.from(variants);
-}
+import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from './canonical-atom-id.js';
 
 /**
  * Guarda las llamadas (calls) de un átomo

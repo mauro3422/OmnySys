@@ -7,38 +7,9 @@
  * @module storage/repository/adapters/sqlite-relation-operations
  */
 
-import path from 'path';
-
 import { SQLiteQueryOperations } from './sqlite-query-operations.js';
 import { primeActiveAtomCache, resolveCallTargetId } from './helpers/call-target-resolver.js';
-
-function normalizeCanonicalAtomId(id, projectPath = '') {
-  if (!id || !String(id).includes('::')) {
-    return String(id || '').replace(/\\/g, '/');
-  }
-
-  const [pathPart, ...rest] = String(id).split('::');
-  const canonicalPath = String(pathPart || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
-  return `${canonicalPath}::${rest.join('::')}`;
-}
-
-function buildCanonicalAtomIdVariants(id, projectPath = '') {
-  const variants = new Set();
-  const normalizedId = normalizeCanonicalAtomId(id, projectPath);
-  if (!normalizedId) {
-    return [];
-  }
-
-  variants.add(normalizedId);
-
-  if (!String(normalizedId).startsWith('C:/') && normalizedId.includes('::') && projectPath) {
-    const [pathPart, ...rest] = normalizedId.split('::');
-    const absolutePath = path.resolve(projectPath, pathPart).replace(/\\/g, '/');
-    variants.add(`${absolutePath}::${rest.join('::')}`);
-  }
-
-  return Array.from(variants);
-}
+import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
 
 /**
  * Clase para operaciones de relaciones
