@@ -3,8 +3,8 @@
 ## Bugs y observaciones abiertas
 
 - `validate_imports` can report false positives on modules with local exports when the project index is stale. Treat direct Node import loading as the ground truth until the tool is fixed.
-- `atom_relations` can persist `calls` with a source ID format that does not match the active `atoms.id` canonical form. That causes the cleanup step to mark every call relation as removed and leaves `call_graph` empty even when call telemetry exists.
 - `databaseHealth` now reports `A+` with aligned `call_graph` / `atom_relations` rows. Keep watching the projection, but the drift warning is no longer a live blocker.
+- `live-row-utils` must not auto-purge `atom_relations` on bootstrap again. The cleanup is now support-table-only, but any future relation reconciliation should be opt-in and separately audited.
 - `validate_imports` still needs a tighter contract around runtime-vs-indexed evidence so stale DB import flags cannot override a successful Node import check.
 - `buildCalledByLinks` spends most of the full reindex time in per-relation target resolution and `atom_relations` bulk insert. The 140k-relation save path is now functionally correct but still too slow for startup.
 - `call-target-resolver` and `SQLiteRelationOperations` now carry fresh complexity/file-size warnings after the cache work. The optimization is correct, but the resolver should be split before more logic lands there.

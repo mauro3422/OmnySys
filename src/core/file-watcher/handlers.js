@@ -26,8 +26,7 @@ export {
   detectCircularDependencyForFile,
   handleFileDeleted,
   createShadowsForFile,
-  getAtomsForFile,
-  getRecentCommits
+  getAtomsForFile
 } from './handlers/file-handlers.js';
 
 export {

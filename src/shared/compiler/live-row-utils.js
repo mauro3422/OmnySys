@@ -188,13 +188,13 @@ export function buildLiveRowCleanupPlan(db, options = {}) {
             atoms: `UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE (is_removed IS NULL OR is_removed = 0) AND file_path IS NOT NULL AND file_path != '' AND NOT EXISTS (SELECT 1 FROM files WHERE path = atoms.file_path AND (is_removed IS NULL OR is_removed = 0))`,
             files: buildDeleteStatement('files', 'path'),
             riskAssessments: `UPDATE risk_assessments SET is_removed = 1, lifecycle_status = 'removed', updated_at = datetime('now') WHERE file_path NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`,
-            relations: `UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (NOT EXISTS (SELECT 1 FROM atoms WHERE id = source_id AND (is_removed IS NULL OR is_removed = 0)) OR NOT EXISTS (SELECT 1 FROM atoms WHERE id = target_id AND (is_removed IS NULL OR is_removed = 0)))`,
+            relations: null,
             issues: `UPDATE semantic_issues SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (file_path != 'project-wide') AND NOT EXISTS (SELECT 1 FROM files WHERE path = file_path AND (is_removed IS NULL OR is_removed = 0))`,
             connections: `UPDATE semantic_connections SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (NOT EXISTS (SELECT 1 FROM files WHERE path = source_path AND (is_removed IS NULL OR is_removed = 0)) OR NOT EXISTS (SELECT 1 FROM files WHERE path = target_path AND (is_removed IS NULL OR is_removed = 0)))`
         },
         recommendedActions: [
             'Run cleanup only after the live atom graph is up to date.',
-            'This marks orphaned relations and issues as removed (soft-delete).',
+            'This marks orphaned issues and support rows as removed (soft-delete).',
             'Soft-delete preserves history while maintaining pipeline health scores.'
         ]
     };
@@ -214,7 +214,9 @@ export function executeLiveRowCleanup(db, options = {}) {
     const deletedAtoms = db.prepare(plan.statements.atoms).run().changes || 0;
     const deletedFiles = db.prepare(plan.statements.files).run().changes || 0;
     const deletedRiskAssessments = db.prepare(plan.statements.riskAssessments).run().changes || 0;
-    const deletedRelations = db.prepare(plan.statements.relations).run().changes || 0;
+    const deletedRelations = plan.statements.relations
+        ? (db.prepare(plan.statements.relations).run().changes || 0)
+        : 0;
     const deletedIssues = db.prepare(plan.statements.issues).run().changes || 0;
     const deletedConnections = db.prepare(plan.statements.connections).run().changes || 0;
 

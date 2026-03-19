@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
 - [v0.9.145 - Sprint 15: Canonical DB Enforcement](changelogs/v0.9.145.md)
 - [v0.9.144 - Sprint 15: DB Health & Canonical Reconciliation](changelogs/v0.9.144.md)
 - [v0.9.143 - Sprint 15: Call Graph Integrity & Fallback Deprecation](changelogs/v0.9.143.md)
@@ -30,6 +31,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
 - [v0.9.145 - Sprint 15: Canonical DB Enforcement](changelogs/v0.9.145.md)
 - [v0.9.144 - Sprint 15: DB Health & Canonical Reconciliation](changelogs/v0.9.144.md)
 - [v0.9.143 - Sprint 15: Call Graph Integrity & Fallback Deprecation](changelogs/v0.9.143.md)
@@ -63,6 +65,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.146** | 2026-03-19 | Sprint 15: Call Graph Preservation & Bootstrap Hardening, disabled destructive live-row relation cleanup, reactivated valid calls, and fixed the stale file-handler export crash. |
 | **0.9.145** | 2026-03-18 | Sprint 15: Canonical DB Enforcement, removed runtime fallback reads from persisted JSON relation fields, and aligned pipeline health checks with DB relations. |
 | **0.9.144** | 2026-03-18 | Sprint 15: DB health metric, orphan atom reconciliation, canonical cleanup, and Node-verified import validation. |
 | **0.9.143** | 2026-03-18 | Sprint 15: Call Graph Integrity & Fallback Deprecation, fixed zero-atom file deletion, populated SQL call graph, removed raw JSON memory search fallbacks, fixed Tier3 Critical Risk Math Paradox. |

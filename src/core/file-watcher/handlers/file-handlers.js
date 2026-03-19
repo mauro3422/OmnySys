@@ -2,10 +2,11 @@ import { createLogger } from '../../../utils/logger.js';
 import { guardRegistry } from '../guards/registry.js';
 import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave.js';
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
-import { detectCircularDependencies, detectCircularImportsForFile as detectCircularImportsForFileGuard } from '../guards/circular-guard.js';
+import { detectCircularDependencies } from '../guards/circular-guard.js';
 import { analyzeAndIndex } from '../analyze.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
+import { getRecentCommits } from './recent-commits.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -169,14 +170,6 @@ export async function detectDuplicateRiskForFile(filePath, options = {}) {
 }
 
 /**
- * Detecta dependencias circulares introducidas por el archivo modificado/creado
- * Delegado a guards/circular-guard.js para mantenibilidad.
- */
-export async function detectCircularImportsForFile(filePath, options = {}) {
-  return await detectCircularImportsForFileGuard(this.rootPath, filePath, this, options);
-}
-
-/**
  * Maneja borrado de archivo
  */
 export async function handleFileDeleted(filePath) {
@@ -237,7 +230,7 @@ export async function createShadowsForFile(filePath) {
       atom.filePath = filePath;
       const shadow = await registry.createShadow(atom, {
         reason: 'file_deleted',
-        commits: await this.getRecentCommits()
+        commits: await getRecentCommits(this.dataPath)
       });
       logger.debug(`[SHADOW] ${atom.id} -> ${shadow.shadowId}`);
       created++;
@@ -258,34 +251,6 @@ export async function getAtomsForFile(filePath) {
     return await loadAtoms(this.rootPath, filePath);
   } catch (error) {
     logger.debug(`[NO ATOMS] ${filePath}`);
-    return [];
-  }
-}
-
-/**
- * Obtiene commits recientes del repo git
- */
-export async function getRecentCommits() {
-  const { execFile } = await import('child_process');
-  const { promisify } = await import('util');
-  const path = await import('path');
-
-  const execFileAsync = promisify(execFile);
-  const cwd = this.dataPath ? path.dirname(this.dataPath) : process.cwd();
-
-  try {
-    const { stdout } = await execFileAsync(
-      'git', ['log', '--oneline', '-n', '10'],
-      { cwd, timeout: 3000, windowsHide: true }
-    );
-    return stdout.trim().split('\n').filter(Boolean).map(line => {
-      const spaceIdx = line.indexOf(' ');
-      return {
-        hash: line.slice(0, spaceIdx),
-        message: line.slice(spaceIdx + 1)
-      };
-    });
-  } catch {
     return [];
   }
 }
@@ -312,10 +277,8 @@ export default {
   handleFileModified,
   detectImpactWaveForFile,
   detectDuplicateRiskForFile,
-  detectCircularImportsForFile,
   detectCircularDependencyForFile,
   handleFileDeleted,
   createShadowsForFile,
-  getAtomsForFile,
-  getRecentCommits
+  getAtomsForFile
 };
