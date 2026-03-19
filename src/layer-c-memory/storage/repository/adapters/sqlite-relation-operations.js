@@ -8,8 +8,7 @@
  */
 
 import { SQLiteQueryOperations } from './sqlite-query-operations.js';
-import { primeActiveAtomCache, resolveCallTargetId } from './helpers/call-target-resolver.js';
-import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
+import { persistAtomCalls } from '#layer-a-static/pipeline/call-relations-linkage.js';
 
 /**
  * Clase para operaciones de relaciones
@@ -106,70 +105,6 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
    * @returns {number} - Cantidad de relaciones guardadas
    */
   saveCalls(atomId, calls) {
-    if (!calls || calls.length === 0) return 0;
-
-    const now = new Date().toISOString();
-    let savedCount = 0;
-    
-    // Preparar statement para insertar
-    const insertStmt = this.db.prepare(`
-      INSERT INTO atom_relations 
-      (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
-      VALUES (?, ?, 'calls', ?, ?, ?, ?, 0, 'active', ?)
-      ON CONFLICT(source_id, target_id, relation_type, line_number) DO UPDATE SET
-        weight = excluded.weight,
-        line_number = excluded.line_number,
-        context_json = excluded.context_json,
-        is_removed = 0,
-        lifecycle_status = 'active',
-        updated_at = excluded.created_at
-    `);
-    const normalizedSourceId = normalizeCanonicalAtomId(atomId, this.projectPath);
-    const sourceIdVariants = buildCanonicalAtomIdVariants(atomId, this.projectPath);
-    const resolverCache = {
-      importsBySourcePath: new Map(),
-      resolvedTargets: new Map()
-    };
-    primeActiveAtomCache(this.db, resolverCache);
-
-    if (sourceIdVariants.length > 0) {
-      const deleteStmt = this.db.prepare(`DELETE FROM atom_relations WHERE source_id = ? AND relation_type = 'calls'`);
-      const deleteBatch = this.db.transaction((ids) => {
-        for (const sourceId of ids) {
-          deleteStmt.run(sourceId);
-        }
-      });
-      deleteBatch(sourceIdVariants);
-    }
-
-    for (const call of calls) {
-      const targetId = resolveCallTargetId(
-        this.db,
-        normalizedSourceId,
-        call,
-        (id) => normalizeCanonicalAtomId(id, this.projectPath),
-        resolverCache
-      );
-      if (!targetId) continue;
-      
-      const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
-      const lineNumber = typeof call?.line === 'number' ? call.line : null;
-      
-      let contextJson = '{}';
-      try {
-        contextJson = JSON.stringify(call && typeof call === 'object' ? call : {});
-      } catch (e) {
-        contextJson = '{}';
-      }
-      
-      try {
-        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
-        savedCount++;
-      } catch (err) {
-        // Ignorar errores de duplicados u otros
-      }
-    }
-    
-    return savedCount;
+    return persistAtomCalls(this, atomId, calls, this.projectPath);
   }
 }
