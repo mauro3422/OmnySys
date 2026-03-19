@@ -196,24 +196,39 @@ function loadPhysicsMetrics(metrics, db) {
 
 function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal) {
   const lines = integrityConsoleSummary.split('\n');
-  const headerPattern = 'OMNYSYS PIPELINE INTEGRITY REPORT';
   const isPreliminary = !isFinal;
   const isSettling = extendedMetrics.phase2PendingFiles > 0 || (!isFinal && !extendedMetrics.hasPhase2DebtSnapshot);
   const fileUniverseSettling = isSettling && extendedMetrics.liveCoverageRatio === 0;
 
-  const headerIdx = lines.findIndex((line) => line.includes(headerPattern));
+  const headerIdx = lines.findIndex((line) => line.includes('OMNYSYS PIPELINE INTEGRITY REPORT'));
   if (headerIdx !== -1) {
-    lines[headerIdx] = isFinal
-      ? 'FINAL SYSTEM SUMMARY'
-      : isSettling
-        ? 'PRELIMINARY SYSTEM SUMMARY'
-        : 'SYSTEM SUMMARY';
+    lines[headerIdx] = resolveDashboardHeader(isFinal, isSettling);
   }
 
-  const detailLines = [
-    ...(isPreliminary && isSettling
-      ? ['  Preliminary snapshot: Phase 2 telemetry is still settling; final debt counts may change.', '']
-      : []),
+  const detailLines = buildDashboardDetailLines(extendedMetrics, {
+    isFinal,
+    isPreliminary,
+    isSettling,
+    fileUniverseSettling
+  });
+
+  insertDashboardDetailLines(lines, detailLines);
+  return lines.join('\n');
+}
+
+function resolveDashboardHeader(isFinal, isSettling) {
+  if (isFinal) return 'FINAL SYSTEM SUMMARY (bootstrap snapshot)';
+  return isSettling ? 'PRELIMINARY SYSTEM SUMMARY' : 'SYSTEM SUMMARY';
+}
+
+function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling }) {
+  const detailLines = [];
+
+  if (isPreliminary && isSettling) {
+    detailLines.push('  Preliminary snapshot: Phase 2 telemetry is still settling; final debt counts may change.', '');
+  }
+
+  detailLines.push(
     `  Project: ${extendedMetrics.totalAtoms} atoms (${extendedMetrics.typeSummary})`,
     `  Callable Atoms: ${extendedMetrics.callableSummary}`,
     fileUniverseSettling
@@ -233,16 +248,22 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
       : null,
     `  Technical Debt: ${extendedMetrics.issueSummary}${extendedMetrics.orphans > 0 ? ` (+${extendedMetrics.orphans} orphans)` : ''}`,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
+    ...(isFinal
+      ? ['  Final snapshot advisory: this is a bootstrap snapshot; use get_server_status() for the live runtime view.']
+      : []),
     ...(isSettling
       ? ['  Snapshot Advisory: startup/bootstrap metrics may still be reconciling; prefer get_server_status() for the final live view']
       : []),
     ''
-  ].filter(Boolean);
+  );
 
+  return detailLines.filter(Boolean);
+}
+
+function insertDashboardDetailLines(lines, detailLines) {
   let insertIdx = lines.findIndex((line) => line.includes('CRITICAL ISSUES'));
   if (insertIdx === -1) insertIdx = lines.findIndex((line) => line.includes('TOP RECOMMENDATIONS'));
   if (insertIdx === -1) insertIdx = lines.length - 2;
 
   lines.splice(insertIdx, 0, ...detailLines);
-  return lines.join('\n');
 }

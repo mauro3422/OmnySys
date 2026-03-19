@@ -9,6 +9,7 @@ import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { toCount } from './compiler-diagnostics.js';
 import { countLiveRowDeletes, hasLiveRowDrift, runLiveRowCleanup } from './live-row-sync-helpers.js';
+import { buildOrphanCallCleanupStatement } from './live-row-relations-cleanup.js';
 
 const MANUAL_LIVE_ROW_PATTERNS = [
     /(LEFT JOIN|NOT IN)\s+live_files/,
@@ -186,7 +187,7 @@ export function buildLiveRowCleanupPlan(db, options = {}) {
             atoms: `UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE (is_removed IS NULL OR is_removed = 0) AND file_path IS NOT NULL AND file_path != '' AND NOT EXISTS (SELECT 1 FROM files WHERE path = atoms.file_path AND (is_removed IS NULL OR is_removed = 0))`,
             files: buildDeleteStatement('files', 'path'),
             riskAssessments: `UPDATE risk_assessments SET is_removed = 1, lifecycle_status = 'removed', updated_at = datetime('now') WHERE file_path NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`,
-            relations: null,
+            relations: buildOrphanCallCleanupStatement(),
             issues: `UPDATE semantic_issues SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (file_path != 'project-wide') AND NOT EXISTS (SELECT 1 FROM files WHERE path = file_path AND (is_removed IS NULL OR is_removed = 0))`,
             connections: `UPDATE semantic_connections SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (NOT EXISTS (SELECT 1 FROM files WHERE path = source_path AND (is_removed IS NULL OR is_removed = 0)) OR NOT EXISTS (SELECT 1 FROM files WHERE path = target_path AND (is_removed IS NULL OR is_removed = 0)))`
         },
