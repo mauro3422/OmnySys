@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
 - [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
 - [v0.9.145 - Sprint 15: Canonical DB Enforcement](changelogs/v0.9.145.md)
 - [v0.9.144 - Sprint 15: DB Health & Canonical Reconciliation](changelogs/v0.9.144.md)
@@ -31,6 +32,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.147 - Sprint 15: Live-Row Hotfix & Helper Hygiene](changelogs/v0.9.147.md)
 - [v0.9.146 - Sprint 15: Call Graph Preservation & Bootstrap Hardening](changelogs/v0.9.146.md)
 - [v0.9.145 - Sprint 15: Canonical DB Enforcement](changelogs/v0.9.145.md)
 - [v0.9.144 - Sprint 15: DB Health & Canonical Reconciliation](changelogs/v0.9.144.md)

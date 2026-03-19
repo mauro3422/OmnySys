@@ -5,8 +5,10 @@
  * @module shared/compiler/live-row-utils
  */
 
-import { buildStandardPlan, buildStandardItem } from './remediation-plan-builder.js';
+import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { toCount } from './compiler-diagnostics.js';
+import { countLiveRowDeletes, hasLiveRowDrift, runLiveRowCleanup } from './live-row-sync-helpers.js';
 
 const MANUAL_LIVE_ROW_PATTERNS = [
     /(LEFT JOIN|NOT IN)\s+live_files/,
@@ -22,10 +24,6 @@ const CANONICAL_LIVE_ROW_RESOURCES = [
     /ensureLiveRowSync\s*\(/,
     /liveRowSync\.summary/
 ];
-
-function toCount(row = {}, key = 'total') {
-    return Number(row?.[key] || 0);
-}
 
 function normalizeLimit(limit, fallback = 10) {
     const numeric = Number(limit);
@@ -264,32 +262,15 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
 export function ensureLiveRowSync(db, options = {}) {
     const { autoSync = true, sampleLimit = 5 } = options;
     const before = buildLiveRowReconciliationPlan(db, { sampleLimit });
-    const hasDrift = (before.summary?.staleAtomRows || 0) > 0
-        || (before.summary?.staleFileRows || 0) > 0
-        || (before.summary?.staleRiskRows || 0) > 0;
-
-    let cleanup = { dryRun: true, deleted: { atoms: 0, files: 0, riskAssessments: 0 } };
-    let cleanupError = null;
-
-    if (autoSync && hasDrift) {
-        try {
-            cleanup = executeLiveRowCleanup(db, { dryRun: false, sampleLimit });
-        } catch (error) {
-            cleanupError = { message: error?.message || 'Live-row sync failed', code: 'LIVE_ROW_SYNC_FAILED' };
-        }
-    }
-
+    const cleanupOutcome = runLiveRowCleanup(db, before, { autoSync, sampleLimit }, executeLiveRowCleanup);
     const after = buildLiveRowReconciliationPlan(db, { sampleLimit });
-    const deletedTotal = (cleanup.deleted?.atoms || 0)
-        + (cleanup.deleted?.files || 0)
-        + (cleanup.deleted?.riskAssessments || 0);
 
     return {
         autoSync,
-        hadDrift: hasDrift,
-        synchronized: deletedTotal > 0 && !cleanupError,
-        cleanupError,
-        deleted: cleanup.deleted,
+        hadDrift: hasLiveRowDrift(before?.summary),
+        synchronized: countLiveRowDeletes(cleanupOutcome.cleanup?.deleted) > 0 && !cleanupOutcome.cleanupError,
+        cleanupError: cleanupOutcome.cleanupError,
+        deleted: cleanupOutcome.cleanup?.deleted || { atoms: 0, files: 0, riskAssessments: 0 },
         before,
         after,
         summary: after.summary

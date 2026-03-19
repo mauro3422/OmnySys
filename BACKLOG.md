@@ -15,7 +15,7 @@
 - `src/layer-c-memory/mcp/core/initialization/steps/mcp-setup-step.js` still trips a low data-flow coherence warning. The tool wrapper is compact enough for now, but the call path should be decomposed if more bootstrap logic lands there.
 - The `_recentErrors` wrapper in MCP responses is compacted, but direct and bootstrap paths should keep using the smallest practical log/watcher sample size so status responses stay readable without losing signal.
 - Runtime readers no longer depend on `calls_json` / `called_by_json` fallbacks for canonical decisions. Keep the schema/serialization surface as legacy compatibility only.
-- `src/shared/compiler/live-row-utils.js` still carries a complexity warning and a small conceptual duplicate warning around `toCount`. It is correct, but it is a refactor candidate.
+- `src/shared/compiler/live-row-utils.js` still carries a complexity warning. The `toCount` duplicate/helper drift is resolved, but the module is still a refactor candidate.
 
 ## Notes
 

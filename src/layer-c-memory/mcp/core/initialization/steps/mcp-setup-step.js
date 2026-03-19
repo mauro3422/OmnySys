@@ -18,10 +18,7 @@ import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
 import {
-  buildToolExecutionContext,
-  collectToolRecentErrors,
-  buildToolCallProvenance,
-  buildToolCallResult
+  executeToolCall
 } from './mcp-tool-call-helpers.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
@@ -122,17 +119,7 @@ export class McpSetupStep extends InitializationStep {
 
     const startTime = performance.now();
 
-    const rawResult = await handler(args, buildToolExecutionContext(server));
-
-    let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
-    try {
-      recentErrors = await collectToolRecentErrors(server);
-    } catch (e) {
-      // Ignore - logger may not have these functions yet
-    }
-
-    const provenance = buildToolCallProvenance(name, server, recentErrors);
-    const resultWithProvenance = buildToolCallResult(rawResult, recentErrors, provenance);
+    const resultWithProvenance = await executeToolCall(handler, name, server, args);
 
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.

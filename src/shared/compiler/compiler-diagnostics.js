@@ -21,7 +21,7 @@ function isCanonicalCompilerPolicySurface(filePath = '') {
   return CANONICAL_COMPILER_POLICY_SURFACES.has(String(filePath || ''));
 }
 
-function toCount(value) {
+export function toCount(value) {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric) ? numeric : 0;
 }

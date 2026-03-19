@@ -55,3 +55,17 @@ export function buildToolCallResult(rawResult, recentErrors, provenance) {
     _provenance: provenance
   };
 }
+
+export async function executeToolCall(handler, name, server, args = {}) {
+  const rawResult = await handler(args, buildToolExecutionContext(server));
+
+  let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
+  try {
+    recentErrors = await collectToolRecentErrors(server);
+  } catch {
+    // Ignore - logger may not have these functions yet
+  }
+
+  const provenance = buildToolCallProvenance(name, server, recentErrors);
+  return buildToolCallResult(rawResult, recentErrors, provenance);
+}
