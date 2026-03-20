@@ -11,6 +11,60 @@ import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepos
 import { primeActiveAtomCache, resolveCallTargetId } from './call-target-resolver.js';
 import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from './canonical-atom-id.js';
 
+function createResolverCache(db) {
+  const resolverCache = {
+    importsBySourcePath: new Map(),
+    resolvedTargets: new Map()
+  };
+  primeActiveAtomCache(db, resolverCache);
+  return resolverCache;
+}
+
+function deleteCallRelationsForAtom(db, atomId, label) {
+  const hr = new BaseSqlRepository(db, label);
+  for (const sourceId of buildCanonicalAtomIdVariants(atomId)) {
+    hr.delete('atom_relations', 'source_id', sourceId);
+  }
+}
+
+function serializeCallContext(call, atomId, logger) {
+  try {
+    return JSON.stringify(call && typeof call === 'object' ? call : {});
+  } catch (e) {
+    logger.warn(`[SQLiteAdapter] Failed to stringify call context for ${atomId}: ${e.message}`);
+    return '{}';
+  }
+}
+
+function insertResolvedCall(db, insertStmt, normalizedSourceId, call, atomId, logger, now, resolverCache, projectPath = null) {
+  const normalizeIdFn = projectPath
+    ? (id) => normalizeCanonicalAtomId(id, projectPath)
+    : normalizeCanonicalAtomId;
+  const targetId = resolveCallTargetId(db, normalizedSourceId, call, normalizeIdFn, resolverCache);
+  if (!targetId) {
+    return;
+  }
+
+  const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
+  const lineNumber = typeof call?.line === 'number' ? call.line : null;
+  const contextJson = serializeCallContext(call, atomId, logger);
+
+  insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
+}
+
+function groupCallsByAtomId(relations) {
+  const atomsWithCalls = new Map();
+
+  for (const { atomId, call } of relations) {
+    if (!atomsWithCalls.has(atomId)) {
+      atomsWithCalls.set(atomId, []);
+    }
+    atomsWithCalls.get(atomId).push(call);
+  }
+
+  return atomsWithCalls;
+}
+
 /**
  * Guarda las llamadas (calls) de un átomo
  */
@@ -19,10 +73,7 @@ export function saveCalls(db, atomId, calls, logger) {
   const normalizeIdFn = normalizeCanonicalAtomId;
 
   // Primero borrar relaciones existentes
-  const hr = new BaseSqlRepository(db, 'Relations');
-  for (const sourceId of buildCanonicalAtomIdVariants(atomId)) {
-    hr.delete('atom_relations', 'source_id', sourceId); // Reemplaza prepared stmt manual duplicado
-  }
+  deleteCallRelationsForAtom(db, atomId, 'Relations');
 
   if (!calls || calls.length === 0) return;
 
@@ -39,33 +90,11 @@ export function saveCalls(db, atomId, calls, logger) {
       lifecycle_status = 'active',
       updated_at = excluded.created_at
   `);
-  const resolverCache = {
-    importsBySourcePath: new Map(),
-    resolvedTargets: new Map()
-  };
-  primeActiveAtomCache(db, resolverCache);
+  const resolverCache = createResolverCache(db);
 
   for (const call of calls) {
     const normalizedSourceId = normalizeIdFn(atomId);
-    const targetId = resolveCallTargetId(db, normalizedSourceId, call, normalizeIdFn, resolverCache);
-    if (!targetId) {
-      continue;
-    }
-
-    // Asegurar que los valores son del tipo correcto para SQLite
-    const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
-    const lineNumber = typeof call?.line === 'number' ? call.line : null;
-
-    // Serializar el contexto de forma segura
-    let contextJson = '{}';
-    try {
-      contextJson = JSON.stringify(call && typeof call === 'object' ? call : {});
-    } catch (e) {
-      logger.warn(`[SQLiteAdapter] Failed to stringify call context for ${atomId}: ${e.message}`);
-      contextJson = '{}';
-    }
-
-    insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
+    insertResolvedCall(db, insertStmt, normalizedSourceId, call, atomId, logger, now, resolverCache);
   }
 }
 
@@ -77,15 +106,7 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
   if (!relations || relations.length === 0) return;
 
   const now = new Date().toISOString();
-
-  // Agrupar por atomId para hacer DELETE por batch
-  const atomsWithCalls = new Map();
-  for (const { atomId, call } of relations) {
-    if (!atomsWithCalls.has(atomId)) {
-      atomsWithCalls.set(atomId, []);
-    }
-    atomsWithCalls.get(atomId).push(call);
-  }
+  const atomsWithCalls = groupCallsByAtomId(relations);
 
   const insertStmt = db.prepare(`
     INSERT INTO atom_relations 
@@ -99,46 +120,18 @@ export function saveRelationsBatch(db, connectionManager, relations, logger) {
       lifecycle_status = 'active',
       updated_at = excluded.created_at
   `);
-  const resolverCache = {
-    importsBySourcePath: new Map(),
-    resolvedTargets: new Map()
-  };
-  primeActiveAtomCache(db, resolverCache);
+  const resolverCache = createResolverCache(db);
 
   // Usar transaccion para todo el batch
   connectionManager.transaction(() => {
     for (const [atomId, calls] of atomsWithCalls) {
       // Borrar relaciones existentes para este atom usando el helper central
-      const hr = new BaseSqlRepository(db, 'RelationsBatch');
       const normalizedSourceId = normalizeCanonicalAtomId(atomId);
-      for (const sourceId of buildCanonicalAtomIdVariants(atomId)) {
-        hr.delete('atom_relations', 'source_id', sourceId);
-      }
+      deleteCallRelationsForAtom(db, atomId, 'RelationsBatch');
 
       // Insertar nuevas relaciones
       for (const call of calls) {
-        const targetId = resolveCallTargetId(db, normalizedSourceId, call, (id) => {
-          if (!id || !id.includes('::')) {
-            return id;
-          }
-          const [pathPart, namePart] = id.split('::');
-          return `${String(pathPart || '').replace(/\\/g, '/')}::${namePart}`;
-        }, resolverCache);
-        if (!targetId) {
-          continue;
-        }
-
-        const weight = typeof call?.weight === 'number' ? call.weight : 1.0;
-        const lineNumber = typeof call?.line === 'number' ? call.line : null;
-
-        let contextJson = '{}';
-        try {
-          contextJson = JSON.stringify(call && typeof call === 'object' ? call : {});
-        } catch (e) {
-          contextJson = '{}';
-        }
-
-        insertStmt.run(normalizedSourceId, targetId, weight, lineNumber, contextJson, now, now);
+        insertResolvedCall(db, insertStmt, normalizedSourceId, call, atomId, logger, now, resolverCache);
       }
     }
   });
