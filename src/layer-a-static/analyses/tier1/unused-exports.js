@@ -6,21 +6,26 @@ import { classifyFile } from '#shared/utils/path-utils.js';
  */
 function buildUsedExportsIndex(systemMap) {
   const usedExports = new Set();
+  const functionLinks = systemMap.function_links || [];
+  const exportIndex = systemMap.exportIndex || {};
+  const files = systemMap.files || {};
 
-  for (const link of (systemMap.function_links || [])) {
+  for (const link of functionLinks) {
     usedExports.add(link.to);
   }
 
-  for (const [barrelFile, exports] of Object.entries(systemMap.exportIndex || {})) {
-    for (const [exportName, exportInfo] of Object.entries(exports)) {
+  for (const exports of Object.values(exportIndex)) {
+    for (const exportInfo of Object.values(exports)) {
       if (exportInfo.type === 'reexport') {
         usedExports.add(`${exportInfo.sourceFile}:${exportInfo.sourceName}`);
       }
     }
   }
 
-  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
-    for (const importStmt of fileNode.imports) {
+  for (const fileNode of Object.values(files)) {
+    const imports = fileNode.imports || [];
+
+    for (const importStmt of imports) {
       if (!importStmt.specifiers) continue;
 
       for (const spec of importStmt.specifiers) {
@@ -87,22 +92,29 @@ export function findUnusedExports(systemMap) {
 
   const unusedByFile = {};
   const usedExports = buildUsedExportsIndex(systemMap);
+  const files = systemMap.files || {};
+  const functionsByFile = systemMap.functions || {};
+  let totalUnused = 0;
 
-  for (const [filePath, fileNode] of Object.entries(systemMap.files || {})) {
-    const fileFunctions = (systemMap.functions && systemMap.functions[filePath]) || 
-                          (systemMap.files && systemMap.files[filePath] && systemMap.files[filePath].functions) || 
-                          [];
+  for (const [filePath, fileNode] of Object.entries(files)) {
+    const classification = classifyFile(filePath);
+    if (classification.type === 'test' || classification.type === 'documentation') {
+      continue;
+    }
+
+    const fileFunctions = functionsByFile[filePath] || fileNode.functions || [];
 
     const unusedInFile = findUnusedInFile(filePath, fileFunctions, usedExports);
 
     if (unusedInFile.length > 0) {
       unusedByFile[filePath] = unusedInFile;
+      totalUnused += unusedInFile.length;
     }
   }
 
   return {
-    totalUnused: Object.values(unusedByFile).flat().length,
+    totalUnused,
     byFile: unusedByFile,
-    impact: `Removing unused exports could reduce: ${Object.values(unusedByFile).flat().length} functions`
+    impact: `Removing unused exports could reduce: ${totalUnused} functions`
   };
 }

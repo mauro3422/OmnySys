@@ -1,106 +1,81 @@
 /**
  * @fileoverview filesystem-validation.js
  *
- * Validates imports using ONLY OmnySys DB.
- * No filesystem fallback - single source of truth.
+ * Validates imports against canonical DB metadata only.
+ * If the file is not represented in the compiler index, validation fails
+ * explicitly instead of falling back to filesystem/runtime inspection.
  */
 
-import path from 'path';
-import { pathToFileURL } from 'url';
-import { getFileExports } from '#layer-c/query/apis/file-api.js';
+import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
 
-import {
-    extractRelativeImportContracts,
-    extractRelativeModuleSpecifiers
-} from './source-analysis.js';
-
-/**
- * Loads named exports from OmnySys DB for a given file path.
- * Uses canonical API getFileExports instead of direct DB access.
- * @param {string} projectPath - Project root path
- * @param {string} filePath - File path to query
- * @returns {Promise<Set<string>>} Set of exported names
- */
-async function loadExportsFromDb(projectPath, filePath) {
-    // Use canonical API instead of direct DB access
-    const exports = await getFileExports(projectPath, filePath);
-    return exports;
+function normalizeComparablePath(filePath) {
+    return String(filePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
 }
 
-/**
- * Collects all exports from DB only.
- * @param {string} projectPath - Project root path
- * @param {string} filePath - File path to analyze
- * @param {Map} exportsByModule - Cache of exports by module path
- * @returns {Promise<Set<string>>}
- */
-async function collectAllExports(projectPath, filePath, exportsByModule) {
-    const cacheKey = `${projectPath}::${filePath}`;
-    if (exportsByModule.has(cacheKey)) {
-        return exportsByModule.get(cacheKey);
-    }
-
-    // DB ONLY - no filesystem fallback
-    const dbExports = await loadExportsFromDb(projectPath, filePath);
-    exportsByModule.set(cacheKey, dbExports);
-    return dbExports;
+function createCacheKey(projectPath, filePath) {
+    return `${normalizeComparablePath(projectPath)}::${normalizeComparablePath(filePath)}`;
 }
 
-/**
- * Loads module exports from DB only.
- * @param {string} projectPath - Project root path
- * @param {string} modulePath - Module path to load
- * @param {Map} exportsByModule - Cache of exports by module
- * @returns {Promise<Set<string>>}
- */
-async function loadModuleExports(projectPath, modulePath, exportsByModule) {
+async function loadModuleExportsFromDb(projectPath, modulePath, exportsByModule) {
     if (!modulePath) {
         return new Set();
     }
 
-    const cacheKey = `${projectPath}::${modulePath}`;
+    const cacheKey = createCacheKey(projectPath, modulePath);
     if (exportsByModule.has(cacheKey)) {
         return exportsByModule.get(cacheKey);
     }
 
-    // DB ONLY
-    return collectAllExports(projectPath, modulePath, exportsByModule);
+    const moduleExports = await getFileExports(projectPath, normalizeComparablePath(modulePath)).catch(() => new Set());
+    exportsByModule.set(cacheKey, moduleExports);
+    return moduleExports;
 }
 
-async function loadRuntimeModuleExports(projectPath, modulePath) {
-    try {
-        const absolutePath = path.resolve(projectPath, modulePath);
-        const moduleUrl = `${pathToFileURL(absolutePath).href}?v=${Date.now()}`;
-        const runtimeModule = await import(moduleUrl);
-        return {
-            ok: true,
-            exports: new Set(Object.keys(runtimeModule))
-        };
-    } catch (error) {
-        return {
-            ok: false,
-            error: error?.message || String(error),
-            exports: new Set()
-        };
-    }
+function extractImportNames(entry) {
+    const specifiers = Array.isArray(entry?.specifiers) ? entry.specifiers : [];
+    return {
+        specifiers,
+        names: specifiers
+            .map((specifier) => specifier?.local || specifier?.name || specifier?.imported)
+            .filter(Boolean),
+        namespaceImport: specifiers.some((specifier) => specifier?.type === 'namespace')
+    };
 }
 
-export async function collectFilesystemImportState(projectPath, filePath) {
-    // Read source file to extract import contracts (still need filesystem for this)
-    const absoluteFilePath = path.resolve(projectPath, filePath);
-    let source;
-    try {
-        const { readFile } = await import('fs/promises');
-        source = await readFile(absoluteFilePath, 'utf8');
-    } catch (error) {
-        throw new Error(`Cannot read source file ${filePath}: ${error.message}`);
+function createBrokenEntry(source, missingExport, reason = 'missing_named_export') {
+    return {
+        source,
+        type: 'db',
+        resolved: true,
+        reason,
+        missingExport
+    };
+}
+
+async function inspectImportEntryAgainstDb(projectPath, entry, exportsByModule) {
+    const fromModule = entry?.resolvedPath || entry?.resolved || entry?.source || entry?.fromModule;
+    const { names, namespaceImport } = extractImportNames(entry);
+
+    if (!fromModule || namespaceImport || names.length === 0) {
+        return [];
     }
 
-    const baseDir = path.dirname(absoluteFilePath);
-    const specifiers = extractRelativeModuleSpecifiers(source);
-    const contracts = extractRelativeImportContracts(source);
+    const moduleExports = await loadModuleExportsFromDb(projectPath, fromModule, exportsByModule);
+    return names
+        .filter((name) => !moduleExports.has(name))
+        .map((missingName) => createBrokenEntry(fromModule, missingName));
+}
+
+export async function collectDatabaseImportState(projectPath, filePath) {
+    const normalizedFilePath = normalizeComparablePath(filePath);
+    const analysis = await getFileAnalysis(projectPath, normalizedFilePath).catch(() => null);
+
+    if (!analysis) {
+        throw new Error(`DB_MISSING: ${filePath} is not indexed in the canonical compiler DB`);
+    }
+
+    const imports = Array.isArray(analysis.imports) ? analysis.imports : [];
     const exportsByModule = new Map();
-
     const broken = [];
     const brokenFingerprints = new Set();
     const pushBroken = (entry) => {
@@ -116,83 +91,25 @@ export async function collectFilesystemImportState(projectPath, filePath) {
         broken.push(entry);
     };
 
-    // Validate specifiers exist in DB
-    for (const specifier of specifiers) {
-        const resolvedPath = path.resolve(baseDir, specifier).replace(/\\/g, '/');
-        const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
-
-        try {
-            await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
-        } catch (error) {
-            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
-            if (!runtimeModule.ok) {
-                pushBroken({
-                    source: specifier,
-                    type: 'local',
-                    resolved: false,
-                    reason: 'module_unavailable',
-                    missingExport: error.message,
-                    runtimeError: runtimeModule.error
-                });
-            }
-        }
-    }
-
-    // Validate named exports from DB
-    for (const contract of contracts) {
-        if (contract.namedImports.length === 0 || contract.namespaceImport) {
-            continue;
-        }
-
-        const resolvedPath = path.resolve(baseDir, contract.specifier).replace(/\\/g, '/');
-        const normalizedResolved = resolvedPath.replace(projectPath.replace(/\\/g, '/'), '').replace(/^\//, '');
-
-        try {
-            const moduleExports = await loadModuleExports(projectPath, normalizedResolved, exportsByModule);
-            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
-            for (const missingName of contract.namedImports.filter((name) => !moduleExports.has(name))) {
-                if (runtimeModule.ok && runtimeModule.exports.has(missingName)) {
-                    continue;
-                }
-
-                pushBroken({
-                    source: contract.specifier,
-                    type: 'local',
-                    resolved: true,
-                    reason: 'missing_named_export',
-                    missingExport: missingName,
-                    runtimeAvailable: runtimeModule.ok,
-                    runtimeError: runtimeModule.error || null
-                });
-            }
-        } catch (error) {
-            const runtimeModule = await loadRuntimeModuleExports(projectPath, normalizedResolved);
-            if (!runtimeModule.ok) {
-                pushBroken({
-                    source: contract.specifier,
-                    type: 'local',
-                    resolved: false,
-                    reason: 'module_unavailable',
-                    missingExport: error.message,
-                    runtimeError: runtimeModule.error
-                });
-            }
+    for (const entry of imports) {
+        const brokenEntries = await inspectImportEntryAgainstDb(projectPath, entry, exportsByModule);
+        for (const brokenEntry of brokenEntries) {
+            pushBroken(brokenEntry);
         }
     }
 
     return {
-        source,
+        source: analysis,
         broken,
-        specifierCount: specifiers.length
+        specifierCount: imports.length,
+        compilerIndexed: true,
+        sourceOfTruth: 'database'
     };
 }
 
-export async function buildFilesystemOnlyValidation(projectPath, filePath) {
+export async function buildDatabaseOnlyValidation(projectPath, filePath) {
     try {
-        const state = await collectFilesystemImportState(projectPath, filePath);
-        if (!state) {
-            return null;
-        }
+        const state = await collectDatabaseImportState(projectPath, filePath);
 
         return {
             file: filePath,
@@ -202,10 +119,10 @@ export async function buildFilesystemOnlyValidation(projectPath, filePath) {
             unusedImports: [],
             circularDependencies: [],
             status: state.broken.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
-            validationMode: 'db_only'
+            validationMode: 'database_only',
+            compilerIndexed: state.compilerIndexed
         };
     } catch (error) {
-        // DB error - return as issue
         return {
             file: filePath,
             totalImports: 0,
@@ -220,7 +137,8 @@ export async function buildFilesystemOnlyValidation(projectPath, filePath) {
             unusedImports: [],
             circularDependencies: [],
             status: 'HAS_ISSUES',
-            validationMode: 'db_only'
+            validationMode: 'database_only',
+            compilerIndexed: false
         };
     }
 }
@@ -245,9 +163,7 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
         return broken;
     }
 
-    // The indexed import flags can be stale, so validate broken imports from the
-    // source file + runtime module state instead of trusting fileData.imports.
-    const state = await collectFilesystemImportState(projectPath, filePath);
+    const state = await collectDatabaseImportState(projectPath, filePath);
     for (const missingImport of state?.broken || []) {
         pushUniqueBrokenImport(missingImport);
     }
@@ -257,7 +173,7 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
 
 export async function buildIndexedValidationResult(repo, filePath, fileData, broken, unused, circularPaths, projectPath) {
     const indexedImportCount = Array.isArray(fileData?.imports) ? fileData.imports.length : 0;
-    
+
     return {
         file: filePath,
         totalImports: indexedImportCount,
@@ -266,6 +182,10 @@ export async function buildIndexedValidationResult(repo, filePath, fileData, bro
         unusedImports: unused.map((entry) => entry.name),
         circularDependencies: circularPaths,
         status: broken.length === 0 && unused.length === 0 && circularPaths.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
-        validationMode: 'db_only'
+        validationMode: 'database_only',
+        compilerIndexed: true
     };
 }
+
+export const collectFilesystemImportState = collectDatabaseImportState;
+export const buildFilesystemOnlyValidation = buildDatabaseOnlyValidation;

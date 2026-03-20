@@ -14,15 +14,23 @@ const logger = createLogger('OmnySys:atomic:analysis');
  */
 function detectRenamedAtoms(removedAtoms, newAtoms) {
   const renamePairs = [];
+  const newAtomsByLocation = new Map();
+
+  for (const atom of newAtoms) {
+    if (!atom.file) continue;
+    const key = `${path.basename(atom.file)}::${atom.line}`;
+    const bucket = newAtomsByLocation.get(key) || [];
+    bucket.push(atom);
+    newAtomsByLocation.set(key, bucket);
+  }
+
   for (const removed of removedAtoms) {
-    const renamed = newAtoms.find(n => {
-      if (!removed.file || !n.file) return false;
-      const removedFile = path.basename(removed.file);
-      const newFile = path.basename(n.file);
-      return n.line === removed.line &&
-             removedFile === newFile &&
-             n.name !== removed.name;
-    });
+    if (!removed.file) continue;
+
+    const key = `${path.basename(removed.file)}::${removed.line}`;
+    const candidates = newAtomsByLocation.get(key) || [];
+    const renamed = candidates.find((candidate) => candidate.name !== removed.name);
+
     if (renamed) {
       renamePairs.push({ old: removed, new: renamed });
     }
@@ -134,8 +142,9 @@ export async function analyzeFullImpact(filePath, projectPath, previousAtoms, cu
   };
 
   try {
-    const currentIds = new Set(currentAtoms.map(a => a.id));
-    const previousIds = new Set(previousAtoms.map(a => a.id));
+    const currentIds = new Set(currentAtoms.map((atom) => atom.id));
+    const previousIds = new Set(previousAtoms.map((atom) => atom.id));
+    const previousAtomsById = new Map(previousAtoms.map((atom) => [atom.id, atom]));
 
     const removedAtoms = previousAtoms.filter(a => !currentIds.has(a.id));
     const newAtoms = currentAtoms.filter(a => !previousIds.has(a.id));
@@ -161,7 +170,7 @@ export async function analyzeFullImpact(filePath, projectPath, previousAtoms, cu
     // Analizar modificados
     const modifiedAtoms = currentAtoms.filter(a => previousIds.has(a.id));
     for (const currentAtom of modifiedAtoms) {
-      const previousAtom = previousAtoms.find(a => a.id === currentAtom.id);
+      const previousAtom = previousAtomsById.get(currentAtom.id);
       if (!previousAtom) continue;
 
       const atomImpact = await analyzeSignatureImpact(currentAtom, previousAtom, projectPath);

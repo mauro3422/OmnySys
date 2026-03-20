@@ -1,9 +1,9 @@
 export function extractRelativeModuleSpecifiers(source = '') {
     const specifiers = new Set();
     const patterns = [
-        /\bimport\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/g,
-        /\bexport\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/g,
-        /\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g
+        /^\s*import\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/gm,
+        /^\s*export\s+[^'"]*?from\s+['"](\.[^'"]+)['"]/gm,
+        /^\s*import\s*\(\s*['"](\.[^'"]+)['"]\s*\)/gm
     ];
 
     for (const pattern of patterns) {
@@ -38,8 +38,8 @@ export function extractNamedImportsFromClause(clause = '') {
 export function extractRelativeImportContracts(source = '') {
     const contracts = [];
     const patterns = [
-        /\bimport\s+([^'"]*?)\s+from\s+['"](\.[^'"]+)['"]/g,
-        /\bexport\s+\{([^'"]+)\}\s+from\s+['"](\.[^'"]+)['"]/g
+        /^\s*import\s+([^'"]*?)\s+from\s+['"](\.[^'"]+)['"]/gm,
+        /^\s*export\s+\{([^'"]+)\}\s+from\s+['"](\.[^'"]+)['"]/gm
     ];
 
     for (const pattern of patterns) {
@@ -62,9 +62,9 @@ export function extractRelativeImportContracts(source = '') {
 export function extractModuleNamedExports(source = '') {
     const namedExports = new Set();
     const exportPatterns = [
-        { regex: /\bexport\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g, clause: false },
-        { regex: /\bexport\s+(?:const|let|var|class)\s+([A-Za-z_$][\w$]*)/g, clause: false },
-        { regex: /\bexport\s*\{([^}]+)\}/g, clause: true }
+        { regex: /^\s*export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm, clause: false },
+        { regex: /^\s*export\s+(?:const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm, clause: false },
+        { regex: /^\s*export\s*\{([^}]+)\}/gm, clause: true }
     ];
 
     for (const pattern of exportPatterns) {

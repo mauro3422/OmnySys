@@ -10,6 +10,37 @@
 import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
 import { normalizeRoute, isValidRoute } from './route-extractor.js';
 
+function normalizeRouteSummary(routes = {}) {
+  const byNormalized = new Map();
+
+  for (const route of routes.all || []) {
+    if (!isValidRoute(route.route)) continue;
+
+    const normalized = normalizeRoute(route.route);
+    byNormalized.set(normalized, route);
+  }
+
+  return byNormalized;
+}
+
+function buildRouteIndex(fileResults = {}) {
+  const index = new Map();
+
+  for (const [filePath, results] of Object.entries(fileResults)) {
+    const routeMap = normalizeRouteSummary(results?.routes || {});
+
+    for (const [normalizedRoute, route] of routeMap) {
+      if (!index.has(normalizedRoute)) {
+        index.set(normalizedRoute, []);
+      }
+
+      index.get(normalizedRoute).push({ filePath, route });
+    }
+  }
+
+  return index;
+}
+
 /**
  * Detecta conexiones entre archivos basadas en rutas API compartidas
  * @param {Object} fileResults - Mapa de filePath -> {routes, ...}
@@ -17,54 +48,35 @@ import { normalizeRoute, isValidRoute } from './route-extractor.js';
  */
 export function detectRouteConnections(fileResults) {
   const connections = [];
-  const files = Object.entries(fileResults);
+  const index = buildRouteIndex(fileResults);
 
-  for (let i = 0; i < files.length; i++) {
-    const [fileA, resultsA] = files[i];
-    const routesA = resultsA.routes || { all: [] };
+  for (const [normalized, entries] of index) {
+    if (entries.length < 2) continue;
 
-    for (let j = i + 1; j < files.length; j++) {
-      const [fileB, resultsB] = files[j];
-      const routesB = resultsB.routes || { all: [] };
+    for (let i = 0; i < entries.length; i++) {
+      const entryA = entries[i];
 
-      // Normalizar rutas (quitar params): /api/users/:id -> /api/users/:param
-      const routeSetA = new Map();
-      for (const r of routesA.all) {
-        if (isValidRoute(r.route)) {
-          const normalized = normalizeRoute(r.route);
-          routeSetA.set(normalized, r);
-        }
-      }
+      for (let j = i + 1; j < entries.length; j++) {
+        const entryB = entries[j];
 
-      const commonRoutes = routesB.all.filter(r => {
-        if (!isValidRoute(r.route)) return false;
-        const normalized = normalizeRoute(r.route);
-        return routeSetA.has(normalized);
-      });
-
-      for (const routeB of commonRoutes) {
-        const normalized = normalizeRoute(routeB.route);
-        const routeA = routeSetA.get(normalized);
-
-        // Determinar dirección: server->client o ambos
-        const isServerA = routeA.type === 'server';
-        const isServerB = routeB.type === 'server';
+        const isServerA = entryA.route.type === 'server';
+        const isServerB = entryB.route.type === 'server';
         let direction;
         let sourceFile;
         let targetFile;
 
         if (isServerA && !isServerB) {
-          direction = `${fileA} serves, ${fileB} consumes`;
-          sourceFile = fileA;
-          targetFile = fileB;
+          direction = `${entryA.filePath} serves, ${entryB.filePath} consumes`;
+          sourceFile = entryA.filePath;
+          targetFile = entryB.filePath;
         } else if (!isServerA && isServerB) {
-          direction = `${fileB} serves, ${fileA} consumes`;
-          sourceFile = fileB;
-          targetFile = fileA;
+          direction = `${entryB.filePath} serves, ${entryA.filePath} consumes`;
+          sourceFile = entryB.filePath;
+          targetFile = entryA.filePath;
         } else {
           direction = 'both access';
-          sourceFile = fileA;
-          targetFile = fileB;
+          sourceFile = entryA.filePath;
+          targetFile = entryB.filePath;
         }
 
         connections.push({
@@ -73,12 +85,12 @@ export function detectRouteConnections(fileResults) {
           targetFile,
           type: ConnectionType.SHARED_ROUTE,
           via: 'route',
-          route: routeB.route,
+          route: entryA.route.route,
           normalizedRoute: normalized,
           direction,
           confidence: DEFAULT_CONFIDENCE,
           detectedBy: 'route-extractor',
-          reason: `Both files reference route "${routeB.route}"`
+          reason: `Both files reference route "${entryA.route.route}"`
         });
       }
     }
@@ -94,19 +106,16 @@ export function detectRouteConnections(fileResults) {
  * @returns {boolean}
  */
 export function sharesRoutes(routesA, routesB) {
-  if (!routesA?.all?.length || !routesB?.all?.length) return false;
+  const routeMapA = normalizeRouteSummary(routesA || {});
+  const routeMapB = normalizeRouteSummary(routesB || {});
 
-  const routeSetA = new Set(
-    routesA.all
-      .filter(r => isValidRoute(r.route))
-      .map(r => normalizeRoute(r.route))
-  );
+  if (!routeMapA.size || !routeMapB.size) return false;
 
-  return routesB.all.some(r => {
-    if (!isValidRoute(r.route)) return false;
-    const normalized = normalizeRoute(r.route);
-    return routeSetA.has(normalized);
-  });
+  for (const normalized of routeMapB.keys()) {
+    if (routeMapA.has(normalized)) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -116,17 +125,17 @@ export function sharesRoutes(routesA, routesB) {
  * @returns {string[]} - Rutas comunes (normalizadas)
  */
 export function getSharedRoutes(routesA, routesB) {
-  if (!routesA?.all?.length || !routesB?.all?.length) return [];
+  const routeMapA = normalizeRouteSummary(routesA || {});
+  const routeMapB = normalizeRouteSummary(routesB || {});
 
-  const routeSetA = new Set(
-    routesA.all
-      .filter(r => isValidRoute(r.route))
-      .map(r => normalizeRoute(r.route))
-  );
+  if (!routeMapA.size || !routeMapB.size) return [];
 
-  return routesB.all
-    .filter(r => isValidRoute(r.route))
-    .map(r => normalizeRoute(r.route))
-    .filter(normalized => routeSetA.has(normalized));
+  const shared = [];
+  for (const normalized of routeMapB.keys()) {
+    if (routeMapA.has(normalized)) {
+      shared.push(normalized);
+    }
+  }
+
+  return shared;
 }
-

@@ -8,49 +8,61 @@
  * @param {object} systemMap - SystemMap generado por graph-builder
  * @returns {object} - Reporte de posibles side effects
  */
+const SIDE_EFFECT_PATTERNS = [
+  'init',
+  'setup',
+  'start',
+  'configure',
+  'register',
+  'listen',
+  'watch',
+  'subscribe',
+  'connect',
+  'open'
+];
+
+function findSideEffectMarker(functionName) {
+  const funcNameLower = String(functionName || '').toLowerCase();
+
+  for (const pattern of SIDE_EFFECT_PATTERNS) {
+    if (funcNameLower.includes(pattern)) {
+      return pattern;
+    }
+  }
+
+  return null;
+}
+
 export function detectSideEffectMarkers(systemMap) {
   if (!systemMap || !systemMap.files) {
     return { total: 0, markers: [] };
   }
-  
-  const markers = [];
-  const sideEffectPatterns = [
-    'init',
-    'setup',
-    'start',
-    'configure',
-    'register',
-    'listen',
-    'watch',
-    'subscribe',
-    'connect',
-    'open'
-  ];
 
-  for (const [filePath, fileNode] of Object.entries(systemMap.files)) {
-    const fileFunctions = (systemMap.files[filePath] && systemMap.files[filePath].functions) || [];
+  const files = systemMap.files;
+  const markers = [];
+
+  for (const [filePath, fileNode] of Object.entries(files)) {
+    const fileFunctions = fileNode.functions || [];
 
     for (const func of fileFunctions) {
-      const funcNameLower = func.name.toLowerCase();
-      const hasSideEffectMarker = sideEffectPatterns.some(pattern =>
-        funcNameLower.includes(pattern)
-      );
-
-      if (hasSideEffectMarker) {
-        markers.push({
-          file: filePath,
-          function: func.name,
-          suspectedSideEffect: true,
-          marker: sideEffectPatterns.find(p => funcNameLower.includes(p)),
-          recommendation: 'Verify this function has no hidden side effects'
-        });
+      const marker = findSideEffectMarker(func.name);
+      if (!marker) {
+        continue;
       }
+
+      markers.push({
+        file: filePath,
+        function: func.name,
+        suspectedSideEffect: true,
+        marker,
+        recommendation: 'Verify this function has no hidden side effects'
+      });
     }
   }
 
   return {
     total: markers.length,
-    functions: markers.slice(0, 20), // Top 20
+    functions: markers.slice(0, 20),
     note: 'These are pattern-based guesses - verify manually'
   };
 }

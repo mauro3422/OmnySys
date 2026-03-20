@@ -25,22 +25,14 @@ export class CouplingDetector extends PatternDetector {
 
     const findings = [];
     const files = systemMap.files || {};
+    const createFinding = this._createFinding.bind(this);
 
     for (const [filePath, fileNode] of Object.entries(files)) {
       if (this.isIntentionallyCoupled(filePath)) continue;
 
       for (const rule of this.rules) {
         rule.check(findings, filePath, fileNode, {
-          generateFinding: (data) => ({
-            id: `${data.type}-${data.filePath}`,
-            ...data,
-            file: data.filePath,
-            recommendation: this.generateRecommendation(data.metadata.importCount, data.metadata.dependentCount),
-            metadata: {
-              ...data.metadata,
-              factors: this.identifyRiskFactors(fileNode)
-            }
-          })
+          createFinding
         });
       }
     }
@@ -55,6 +47,19 @@ export class CouplingDetector extends PatternDetector {
       recommendation: findings.length > 0
         ? `Found ${findings.length} files with excessive coupling`
         : 'No architectural coupling issues detected'
+    };
+  }
+
+  _createFinding(data, fileNode) {
+    return {
+      id: `${data.type}-${data.filePath}`,
+      ...data,
+      file: data.filePath,
+      recommendation: this.recommendCoupling(data.metadata.importCount, data.metadata.dependentCount),
+      metadata: {
+        ...data.metadata,
+        factors: this.identifyRiskFactors(fileNode)
+      }
     };
   }
 
@@ -76,7 +81,7 @@ export class CouplingDetector extends PatternDetector {
     return false;
   }
 
-  generateRecommendation(imports, dependents) {
+  recommendCoupling(imports, dependents) {
     if (imports > 20 && dependents > 10) return 'Consider splitting this file into smaller, focused modules';
     if (imports > 20) return 'This module depends on too many others. Consider facade pattern';
     if (dependents > 10) return 'Many modules depend on this. Ensure a stable, minimal interface';

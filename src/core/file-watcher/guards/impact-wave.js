@@ -9,6 +9,7 @@ import {
     severityFromImpact,
     isLowSignalName
 } from './guard-standards.js';
+import { isTestFilePath } from './impact-wave-helpers.js';
 import { safeArray } from '../../../shared/compiler/index.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
@@ -125,6 +126,7 @@ function summarizeImpactWave(focusedAtoms, relatedFiles, brokenImports, brokenCa
     };
 }
 
+
 function buildImpactWaveIssueContext({
     severity,
     score,
@@ -235,6 +237,11 @@ export async function detectImpactWave(rootPath, filePath, previousAtoms = [], E
         );
         const { severity } = summary;
         if (!severity) {
+            await clearPersistedImpactWaveIssues(rootPath, filePath);
+            return null;
+        }
+
+        if (isTestFilePath(filePath) && brokenImports.length === 0 && brokenCallers.length === 0 && relatedFiles.size === 0) {
             await clearPersistedImpactWaveIssues(rootPath, filePath);
             return null;
         }

@@ -3,5 +3,5 @@
  * @module graph-builder/edges
  */
 
-export { buildEdges, determineEdgeType } from './builder.js';
-export { buildReturnEdges, findReturnUsage } from './return-flow.js';
+export { assembleEdges as buildEdges, determineEdgeType } from './builder.js';
+export { assembleReturnEdges as buildReturnEdges, findReturnUsage } from './return-flow.js';

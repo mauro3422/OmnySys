@@ -6,6 +6,8 @@
 - `src/layer-c-memory/storage/repository/adapters/sqlite-bulk-operations.js` no longer carries the high complexity alert, but the conceptual duplicate on `saveMany` is still active.
 - `src/layer-a-static/pipeline/call-relations-linkage.js` and `src/layer-c-memory/storage/repository/adapters/helpers/relations.js` are now split further, but the `saveMany` conceptual duplicate remains by contract compatibility.
 - `SQLiteRelationOperations`, `link.js`, and the test-factory surfaces surfaced by watcher traversal should stay under watch for future structural growth, but the current DB/call-graph canonicity is healthy.
+- Import/export validation is now DB-only; the remaining cleanup is runtime reload and any future naming cleanup for the `filesystem-validation` helper alias.
+- Watcher alert lifecycle should reconcile against the current on-disk code immediately after a file fix. Today, tool/runtime module staleness can leave an old alert active until reload, which makes `_recentErrors` lag behind the actual source state. The target is: fixed code on disk should expire the old alert, leave only `stale/restart-required` markers for reload-only modules, and surface only genuinely new issues.
 
 ## Notes
 

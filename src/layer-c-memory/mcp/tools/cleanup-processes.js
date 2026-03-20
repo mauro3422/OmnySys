@@ -5,10 +5,31 @@
  * (GitHub, Context7, etc.) quedan como zombies. Este tool los limpia.
  */
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('mcp:cleanup');
+const execAsync = promisify(exec);
+
+async function runCommand(command, options = {}) {
+  const { stdout } = await execAsync(command, {
+    encoding: 'utf8',
+    timeout: 5000,
+    maxBuffer: 1024 * 1024,
+    ...options
+  });
+
+  return stdout || '';
+}
+
+function normalizeProcessList(output) {
+  const trimmed = output.trim();
+  if (!trimmed) return [];
+
+  const parsed = JSON.parse(trimmed);
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
 
 /**
  * Encuentra y mata procesos node que no sean OmnySys
@@ -24,9 +45,8 @@ export async function cleanup_mcp_zombies(args = {}) {
     
     let processes;
     try {
-      const output = execSync(cmd, { encoding: 'utf8', timeout: 5000 });
-      processes = JSON.parse(output);
-      if (!Array.isArray(processes)) processes = [processes];
+      const output = await runCommand(cmd);
+      processes = normalizeProcessList(output);
     } catch {
       return {
         success: false,
@@ -56,7 +76,7 @@ export async function cleanup_mcp_zombies(args = {}) {
         const pid = proc.ProcessId;
         try {
           if (!dryRun) {
-            execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+            await runCommand(`taskkill /F /PID ${pid}`);
             killed.push({ pid, cmd: proc.CommandLine.substring(0, 100) });
             logger.info(`MCP Zombie killed: PID ${pid}`);
           } else {

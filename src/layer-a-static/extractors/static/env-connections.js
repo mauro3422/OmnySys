@@ -8,6 +8,38 @@
 
 import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
 
+function toEnvNameSet(items = []) {
+  return new Set(
+    items
+      .map(item => item?.name || item)
+      .filter(Boolean)
+  );
+}
+
+function normalizeEnvSummary(envVars = []) {
+  return {
+    names: toEnvNameSet(envVars)
+  };
+}
+
+function buildEnvIndex(fileResults = {}) {
+  const index = new Map();
+
+  for (const [filePath, results] of Object.entries(fileResults)) {
+    const summary = normalizeEnvSummary(results?.envVars || []);
+
+    for (const envName of summary.names) {
+      if (!index.has(envName)) {
+        index.set(envName, []);
+      }
+
+      index.get(envName).push({ filePath, summary });
+    }
+  }
+
+  return index;
+}
+
 /**
  * Detecta conexiones entre archivos basadas en process.env compartido
  * @param {Object} fileResults - Mapa de filePath -> {envVars, ...}
@@ -15,36 +47,28 @@ import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
  */
 export function detectEnvConnections(fileResults) {
   const connections = [];
-  const files = Object.entries(fileResults);
+  const index = buildEnvIndex(fileResults);
 
-  for (let i = 0; i < files.length; i++) {
-    const [fileA, resultsA] = files[i];
-    const envA = resultsA.envVars || [];
+  for (const [envName, entries] of index) {
+    if (entries.length < 2) continue;
 
-    for (let j = i + 1; j < files.length; j++) {
-      const [fileB, resultsB] = files[j];
-      const envB = resultsB.envVars || [];
+    for (let i = 0; i < entries.length; i++) {
+      const entryA = entries[i];
 
-      // Normalizar a arrays de strings
-      const envSetA = new Set(envA.map(e => e.name || e));
-      const envNamesB = envB.map(e => e.name || e);
-      const commonEnv = envNamesB.filter(e => envSetA.has(e));
-
-      if (commonEnv.length > 0) {
-        for (const envName of commonEnv) {
-          connections.push({
-            id: `env_${envName}_${fileA}_to_${fileB}`,
-            sourceFile: fileA,
-            targetFile: fileB,
-            type: ConnectionType.SHARED_ENV,
-            via: 'env-variable',
-            envVar: envName,
-            direction: 'both read',
-            confidence: DEFAULT_CONFIDENCE,
-            detectedBy: 'env-extractor',
-            reason: `Both files read process.env.${envName}`
-          });
-        }
+      for (let j = i + 1; j < entries.length; j++) {
+        const entryB = entries[j];
+        connections.push({
+          id: `env_${envName}_${entryA.filePath}_to_${entryB.filePath}`,
+          sourceFile: entryA.filePath,
+          targetFile: entryB.filePath,
+          type: ConnectionType.SHARED_ENV,
+          via: 'env-variable',
+          envVar: envName,
+          direction: 'both read',
+          confidence: DEFAULT_CONFIDENCE,
+          detectedBy: 'env-extractor',
+          reason: `Both files read process.env.${envName}`
+        });
       }
     }
   }
@@ -59,12 +83,16 @@ export function detectEnvConnections(fileResults) {
  * @returns {boolean}
  */
 export function sharesEnvVars(envA, envB) {
-  if (!envA?.length || !envB?.length) return false;
+  const envSetA = normalizeEnvSummary(envA || []).names;
+  const envSetB = normalizeEnvSummary(envB || []).names;
 
-  const envSetA = new Set(envA.map(e => e.name || e));
-  const envNamesB = envB.map(e => e.name || e);
+  if (!envSetA.size || !envSetB.size) return false;
 
-  return envNamesB.some(e => envSetA.has(e));
+  for (const envName of envSetB) {
+    if (envSetA.has(envName)) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -74,11 +102,18 @@ export function sharesEnvVars(envA, envB) {
  * @returns {string[]} - Variables comunes
  */
 export function getSharedEnvVars(envA, envB) {
-  if (!envA?.length || !envB?.length) return [];
+  const envSetA = normalizeEnvSummary(envA || []).names;
+  const envSetB = normalizeEnvSummary(envB || []).names;
 
-  const envSetA = new Set(envA.map(e => e.name || e));
-  const envNamesB = envB.map(e => e.name || e);
+  if (!envSetA.size || !envSetB.size) return [];
 
-  return envNamesB.filter(e => envSetA.has(e));
+  const shared = [];
+  for (const envName of envSetB) {
+    if (envSetA.has(envName)) {
+      shared.push(envName);
+    }
+  }
+
+  return shared;
 }
 

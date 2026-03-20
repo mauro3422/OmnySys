@@ -14,33 +14,46 @@ export class JoinCandidateRule {
 
         for (const atom of sqlAtoms) {
             if (atom._meta?.sql_operation !== 'SELECT') continue;
-            const pid = atom._meta?.parent_atom_name || atom._meta?.parent_atom_id;
-            if (!pid) continue;
 
-            if (!selectsByParent.has(pid)) selectsByParent.set(pid, []);
-            selectsByParent.get(pid).push(atom);
+            const parentKey = atom._meta?.parent_atom_name || atom._meta?.parent_atom_id;
+            if (!parentKey) continue;
+
+            const summary = selectsByParent.get(parentKey) || {
+                count: 0,
+                tables: new Set(),
+                firstAtom: atom,
+                sqlPurposes: []
+            };
+
+            summary.count++;
+            summary.sqlPurposes.push(atom._meta?.sql_purpose);
+            if (!summary.firstAtom) summary.firstAtom = atom;
+
+            for (const table of atom._meta?.tables_referenced || []) {
+                if (!this.ignoredTables.has(table)) {
+                    summary.tables.add(table);
+                }
+            }
+
+            selectsByParent.set(parentKey, summary);
         }
 
-        for (const [parentName, selects] of selectsByParent.entries()) {
-            if (selects.length < this.multiSelectThreshold) continue;
-
-            const uniqueTables = new Set(selects.flatMap(s => s._meta?.tables_referenced || []));
-            for (const ignored of this.ignoredTables) uniqueTables.delete(ignored);
-
-            if (uniqueTables.size < 2) continue;
+        for (const [parentName, summary] of selectsByParent.entries()) {
+            if (summary.count < this.multiSelectThreshold) continue;
+            if (summary.tables.size < 2) continue;
 
             findings.push({
                 type: this.type,
                 severity: 'medium',
                 filePath,
-                atomId: selects[0].id,
+                atomId: summary.firstAtom?.id,
                 atomName: parentName,
-                line: selects[0].lineStart || 0,
-                message: `${selects.length} separate SELECTs in '${parentName}' on tables [${[...uniqueTables].join(', ')}] — consider JOIN`,
+                line: summary.firstAtom?.lineStart || 0,
+                message: `${summary.count} separate SELECTs in '${parentName}' on tables [${[...summary.tables].join(', ')}] — consider JOIN`,
                 details: {
-                    select_count: selects.length,
-                    tables: [...uniqueTables],
-                    sql_purposes: selects.map(s => s._meta?.sql_purpose)
+                    select_count: summary.count,
+                    tables: [...summary.tables],
+                    sql_purposes: summary.sqlPurposes
                 }
             });
         }

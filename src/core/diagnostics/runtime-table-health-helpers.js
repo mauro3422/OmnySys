@@ -127,11 +127,13 @@ export function buildRuntimeHealthIssues(db) {
   const staleAtomRows = Number(liveRowSync?.summary?.staleAtomRows || 0);
   const staleFileRows = Number(liveRowSync?.summary?.staleFileRows || 0);
   const staleRiskRows = Number(liveRowSync?.summary?.staleRiskRows || 0);
-  if (staleAtomRows > 0 || staleFileRows > 0 || staleRiskRows > 0) {
+  const staleRelationRows = Number(liveRowSync?.summary?.staleRelationRows || 0);
+  const staleConnectionRows = Number(liveRowSync?.summary?.staleConnectionRows || 0);
+  if (staleAtomRows > 0 || staleFileRows > 0 || staleRiskRows > 0 || staleRelationRows > 0 || staleConnectionRows > 0) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_live_row_drift`,
       severity: (staleAtomRows > 0 || staleFileRows > 0) ? 'high' : 'medium',
-      message: `Live support tables are drifting from the atom graph (${staleAtomRows} stale atom rows, ${staleFileRows} stale file rows, ${staleRiskRows} stale risk rows).`,
+      message: `Live support tables are drifting from the atom graph (${staleAtomRows} stale atom rows, ${staleFileRows} stale file rows, ${staleRiskRows} stale risk rows, ${staleRelationRows} stale call rows, ${staleConnectionRows} stale semantic rows).`,
       context: {
         source: 'runtime_table_health',
         category: 'live_row_sync',

@@ -7,7 +7,26 @@
  * @phase 3
  */
 
+import path from 'path';
 import { classifySideEffects, aggregateSideEffects, inferModuleFromCall } from '../utils.js';
+
+function enqueueExternalCall(queue, call, current, moduleByName) {
+  if (call.type !== 'external') {
+    return;
+  }
+
+  const targetModule = inferModuleFromCall(call.name);
+  if (!targetModule || !moduleByName.has(targetModule)) {
+    return;
+  }
+
+  queue.push({
+    module: targetModule,
+    function: call.name,
+    order: current.order + 1,
+    input: call.args?.map((arg) => arg.name || 'arg') || []
+  });
+}
 
 /**
  * Detecta flujos de negocio desde entry points
@@ -38,7 +57,7 @@ export function detectBusinessFlows(entryPoints, context) {
  * @returns {Object} - Flujo trackeado
  */
 function traceBusinessFlow(entry, context) {
-  const { modules, moduleByName, findAtom } = context;
+  const { moduleByName, findAtom } = context;
   const steps = [];
   const visited = new Set();
   const queue = [{
@@ -47,9 +66,10 @@ function traceBusinessFlow(entry, context) {
     order: 1,
     input: ['request']
   }];
+  let cursor = 0;
   
-  while (queue.length > 0 && steps.length < 20) {
-    const current = queue.shift();
+  while (cursor < queue.length && steps.length < 20) {
+    const current = queue[cursor++];
     
     if (visited.has(`${current.module}.${current.function}`)) continue;
     visited.add(`${current.module}.${current.function}`);
@@ -76,17 +96,7 @@ function traceBusinessFlow(entry, context) {
       
       // Agregar calls a la cola
       for (const call of atom.calls || []) {
-        if (call.type === 'external') {
-          const targetModule = inferModuleFromCall(call.name);
-          if (targetModule && moduleByName.has(targetModule)) {
-            queue.push({
-              module: targetModule,
-              function: call.name,
-              order: current.order + 1,
-              input: call.args?.map(a => a.name || 'arg') || []
-            });
-          }
-        }
+        enqueueExternalCall(queue, call, current, moduleByName);
       }
     }
   }
@@ -116,6 +126,3 @@ function inferFlowName(entry) {
   }
   return entry.handler.function;
 }
-
-// Import path para uso interno
-import path from 'path';

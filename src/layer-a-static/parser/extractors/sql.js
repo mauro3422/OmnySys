@@ -18,6 +18,11 @@ const Sql = SqlModule;
 const logger = createLogger('OmnySys:extractor:sql');
 const analyzer = new SqlAnalyzer(logger);
 const DB_METHODS = ['prepare', 'exec', 'query'];
+const IDENTIFIER_PATTERN = /^[a-zA-Z_$][a-zA-Z0-9_.]*$/;
+const USER_INPUT_PATTERN =
+    /(?:req\.body|req\.params|req\.query|req\.headers|request\.body|request\.params|request\.query|ctx\.body|ctx\.params|ctx\.query|ctx\.request|event\.body|input\.|userInput|formData)/;
+const CONSTANT_DECLARATION_PATTERN =
+    /(?:const|let)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*['"]([ a-zA-Z_][a-zA-Z0-9_]*)['"]/g;
 
 // Patrones que indican que una variable viene de input del usuario (riesgo de inyeccion)
 const USER_INPUT_PATTERNS = [
@@ -30,7 +35,7 @@ const USER_INPUT_PATTERNS = [
 /**
  * Analiza las expresiones interpoladas en un template literal SQL.
  */
-function resolveTemplateVars(templateNode, code) {
+function resolveTemplateVars(templateNode, code, constantValues) {
     const templateVars = [];
     const injectionSources = [];
     const resolvedTables = [];
@@ -38,29 +43,39 @@ function resolveTemplateVars(templateNode, code) {
 
     for (const child of templateNode.children) {
         if (child.type !== 'template_substitution') continue;
-        const exprText = code.slice(child.startIndex + 2, child.endIndex - 1).trim();
+        const exprText = typeof code === 'string'
+            ? code.slice(child.startIndex + 2, child.endIndex - 1).trim()
+            : String(child.text || '')
+                .replace(/^\$\{/, '')
+                .replace(/\}$/, '')
+                .trim();
         templateVars.push(exprText);
 
-        // Detectar si viene de user input
-        for (const pattern of USER_INPUT_PATTERNS) {
-            if (exprText.includes(pattern)) {
-                injectionRisk = true;
-                injectionSources.push(exprText);
-                break;
-            }
+        if (USER_INPUT_PATTERN.test(exprText)) {
+            injectionRisk = true;
+            injectionSources.push(exprText);
         }
 
-        // Intentar resolver constantes simples en el scope del archivo
-        if (/^[a-zA-Z_$][a-zA-Z0-9_.]*$/.test(exprText)) {
+        if (IDENTIFIER_PATTERN.test(exprText)) {
             const varName = exprText.split('.').pop();
-            const constMatch = code.match(
-                new RegExp('(?:const|let)\\s+' + varName + '\\s*=\\s*[\'"]([ a-zA-Z_][a-zA-Z0-9_]*)[\'"]')
-            );
-            if (constMatch) resolvedTables.push(constMatch[1]);
+            const resolvedTable = constantValues.get(varName);
+            if (resolvedTable) resolvedTables.push(resolvedTable);
         }
     }
 
     return { templateVars, injectionRisk, injectionSources, resolvedTables };
+}
+
+function buildConstantValues(code) {
+    const constantValues = new Map();
+    if (typeof code !== 'string' || code.length === 0) return constantValues;
+    let match;
+
+    while ((match = CONSTANT_DECLARATION_PATTERN.exec(code)) !== null) {
+        constantValues.set(match[1], match[2]);
+    }
+
+    return constantValues;
 }
 
 /**
@@ -71,8 +86,8 @@ export async function extractSqlQueries(jsTree, code, fileInfo) {
     if (!fileInfo.atoms) fileInfo.atoms = [];
 
     // 1. Encontrar nodos que contienen SQL
-    const finder = new SqlNodeFinder(code);
-    const sqlStrNodes = finder.findNodes(jsTree);
+    const constantValues = buildConstantValues(code);
+    const sqlStrNodes = findSqlNodes(jsTree, code, constantValues);
     if (sqlStrNodes.length === 0) return;
 
     // 2. Parsear y Analizar SQL extraído
@@ -100,55 +115,49 @@ export async function extractSqlQueries(jsTree, code, fileInfo) {
  * @private
  * Localizador de nodos SQL en el AST
  */
-class SqlNodeFinder {
-    constructor(code) {
-        this.code = code;
+function findSqlNodes(jsTree, code, constantValues) {
+    const nodes = [];
+    walk(jsTree.rootNode, ['call_expression'], (callNode) => {
+        const item = extractSqlFromCall(callNode, code, constantValues);
+        if (item) nodes.push(item);
+    });
+    return nodes;
+}
+
+function extractSqlFromCall(callNode, code, constantValues) {
+    const fnNode = callNode.childForFieldName('function');
+    if (!fnNode || fnNode.type !== 'member_expression') return null;
+
+    const methodName = text(fnNode.childForFieldName('property'), code);
+    if (!DB_METHODS.includes(methodName)) return null;
+
+    const firstArg = callNode.childForFieldName('arguments')?.children
+        .find(c => c.type === 'string' || c.type === 'template_string');
+
+    if (!firstArg) return null;
+
+    let rawSql = text(firstArg, code);
+    if (firstArg.type === 'string') {
+        rawSql = rawSql.slice(1, -1);
+    } else if (firstArg.type === 'template_string') {
+        rawSql = rawSql.replace(/\$\{[^}]*\}/g, '_tbl_').slice(1, -1);
     }
 
-    findNodes(jsTree) {
-        const nodes = [];
-        walk(jsTree.rootNode, ['call_expression'], (callNode) => {
-            const item = this._extractFromCall(callNode);
-            if (item) nodes.push(item);
-        });
-        return nodes;
-    }
+    if (rawSql.trim().length <= 5) return null;
 
-    _extractFromCall(callNode) {
-        const fnNode = callNode.childForFieldName('function');
-        if (!fnNode || fnNode.type !== 'member_expression') return null;
+    const isDynamic = firstArg.type === 'template_string';
+    const resolution = isDynamic
+        ? resolveTemplateVars(firstArg, code, constantValues)
+        : { templateVars: [], injectionRisk: false, injectionSources: [], resolvedTables: [] };
 
-        const methodName = text(fnNode.childForFieldName('property'), this.code);
-        if (!DB_METHODS.includes(methodName)) return null;
-
-        const firstArg = callNode.childForFieldName('arguments')?.children
-            .find(c => c.type === 'string' || c.type === 'template_string');
-
-        if (!firstArg) return null;
-
-        let rawSql = text(firstArg, this.code);
-        if (firstArg.type === 'string') {
-            rawSql = rawSql.slice(1, -1);
-        } else if (firstArg.type === 'template_string') {
-            rawSql = rawSql.replace(/\$\{[^}]*\}/g, '_tbl_').slice(1, -1);
-        }
-
-        if (rawSql.trim().length <= 5) return null;
-
-        const isDynamic = firstArg.type === 'template_string';
-        const resolution = isDynamic
-            ? resolveTemplateVars(firstArg, this.code)
-            : { templateVars: [], injectionRisk: false, injectionSources: [], resolvedTables: [] };
-
-        return {
-            sql: rawSql,
-            lineStart: callNode.startPosition.row + 1,
-            lineEnd: callNode.endPosition.row + 1,
-            funcName: methodName,
-            isDynamic,
-            ...resolution
-        };
-    }
+    return {
+        sql: rawSql,
+        lineStart: callNode.startPosition.row + 1,
+        lineEnd: callNode.endPosition.row + 1,
+        funcName: methodName,
+        isDynamic,
+        ...resolution
+    };
 }
 
 /**

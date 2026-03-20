@@ -9,6 +9,33 @@
 /**
  * Scores race by system impact
  */
+function getBusinessFlowFunctionIndex(system) {
+  if (system?._businessFlowFunctionIndex?.source === system.businessFlows) {
+    return system._businessFlowFunctionIndex.index;
+  }
+
+  const index = new Map();
+  for (const flow of system.businessFlows || []) {
+    for (const step of flow.steps || []) {
+      const functionName = step?.function;
+      if (!functionName) {
+        continue;
+      }
+
+      const bucket = index.get(functionName) || [];
+      bucket.push(flow.name);
+      index.set(functionName, bucket);
+    }
+  }
+
+  system._businessFlowFunctionIndex = {
+    source: system.businessFlows,
+    index,
+  };
+
+  return index;
+}
+
 export class ImpactScorer {
   score(race, projectData) {
     if (!race || !race.accesses || !Array.isArray(race.accesses)) {
@@ -39,21 +66,22 @@ export class ImpactScorer {
     const system = projectData?.system;
     if (!system?.businessFlows || system.businessFlows.length === 0) return [];
 
-    const affected = [];
-    const accessAtoms = new Set(race.accesses.map(a => a.atom));
+    const affected = new Set();
+    const accessAtoms = new Set(race.accesses.map((access) => access.atom).filter(Boolean));
+    const flowIndex = getBusinessFlowFunctionIndex(system);
 
-    // Optimize: only iterate once
-    for (const flow of system.businessFlows) {
-      const steps = flow.steps || [];
-      for (let i = 0; i < steps.length; i++) {
-        if (steps[i].function && accessAtoms.has(steps[i].function)) {
-          affected.push(flow.name);
-          break;
-        }
+    for (const atomName of accessAtoms) {
+      const flowNames = flowIndex.get(atomName);
+      if (!flowNames) {
+        continue;
+      }
+
+      for (const flowName of flowNames) {
+        affected.add(flowName);
       }
     }
 
-    return affected;
+    return [...affected];
   }
 
   getAffectedEntryPoints(race, projectData) {

@@ -27,8 +27,8 @@ export class GraphBuilder {
    * @returns {Object} Grafo con nodes, edges y meta
    */
   build() {
-    const nodes = this.buildNodes();
-    const edges = this.buildEdges();
+    const nodes = this.assembleNodes();
+    const edges = this.assembleEdges();
 
     return {
       nodes,
@@ -46,7 +46,7 @@ export class GraphBuilder {
    * Construye nodos del grafo
    * @returns {Array} Nodos
    */
-  buildNodes() {
+  assembleNodes() {
     return buildNodes(this.atoms, this.chains, {
       determineNodeType: (atom) => determineNodeType(atom, this.atoms),
       determinePositionInChains
@@ -57,10 +57,11 @@ export class GraphBuilder {
    * Construye aristas del grafo
    * @returns {Array} Aristas
    */
-  buildEdges() {
+  assembleEdges() {
     return buildEdges(this.mappings, this.atomByName, this.atoms, {
       determineEdgeType,
-      buildReturnEdges: (atoms, atomById) => buildReturnEdges(atoms, this.atomById)
+      buildReturnEdges,
+      atomById: this.atomById
     });
   }
 
@@ -71,16 +72,16 @@ export class GraphBuilder {
    * @returns {Array} Caminos encontrados
    */
   findPaths(fromFunction, toFunction) {
-    return findPaths(fromFunction, toFunction, this.atomByName, () => this.buildEdges());
+    return findPaths(fromFunction, toFunction, this.atomByName, () => this.assembleEdges());
   }
 
   /**
    * Calcula métricas del grafo
    * @returns {Object} Métricas
    */
-  calculateMetrics() {
-    const nodes = this.buildNodes();
-    const edges = this.buildEdges();
+  summarizeGraphMetrics() {
+    const nodes = this.assembleNodes();
+    const edges = this.assembleEdges();
     return calculateMetrics(nodes, edges);
   }
 }

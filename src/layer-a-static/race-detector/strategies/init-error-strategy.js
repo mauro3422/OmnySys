@@ -9,21 +9,27 @@
 import { RaceDetectionStrategy } from './race-detection-strategy/index.js';
 
 function collectInitializationAccesses(accesses, isInitialization) {
-  const initAccesses = [];
-
-  for (const access of accesses) {
-    if (isInitialization(access)) {
-      initAccesses.push(access);
-    }
-  }
-
-  return initAccesses;
+  return (accesses || []).filter(access => isInitialization(access));
 }
 
 function buildInitRaceDescription(stateKey, access1, access2) {
   return `Double initialization race on ${stateKey}: ` +
     `${access1.atomName} and ${access2.atomName} ` +
     `may initialize concurrently`;
+}
+
+function collectConcurrentInitRaces(strategy, stateKey, initAccesses, project) {
+  return initAccesses.flatMap((access1, index) =>
+    initAccesses.slice(index + 1).map(access2 => {
+      if (!strategy.canRunConcurrently(access1, access2, project)) {
+        return null;
+      }
+
+      const race = strategy.createRace(stateKey, access1, access2, 'IE');
+      race.description = buildInitRaceDescription(stateKey, access1, access2);
+      return race;
+    }).filter(Boolean)
+  );
 }
 
 /**
@@ -44,24 +50,13 @@ export class InitErrorStrategy extends RaceDetectionStrategy {
     const races = [];
 
     for (const [stateKey, accesses] of sharedState) {
-      const initAccesses = collectInitializationAccesses(accesses, (access) =>
+      const initAccesses = collectInitializationAccesses(accesses, access =>
         this.isInitialization(access)
       );
 
       if (initAccesses.length < 2) continue;
 
-      for (let i = 0; i < initAccesses.length; i++) {
-        for (let j = i + 1; j < initAccesses.length; j++) {
-          const access1 = initAccesses[i];
-          const access2 = initAccesses[j];
-
-          if (this.canRunConcurrently(access1, access2, project)) {
-            const race = this.createRace(stateKey, access1, access2, 'IE');
-            race.description = buildInitRaceDescription(stateKey, access1, access2);
-            races.push(race);
-          }
-        }
-      }
+      races.push(...collectConcurrentInitRaces(this, stateKey, initAccesses, project));
     }
 
     return races;

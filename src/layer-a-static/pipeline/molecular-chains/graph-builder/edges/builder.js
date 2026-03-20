@@ -8,11 +8,11 @@
  * @param {Array} mappings - Mapeos entre funciones
  * @param {Map} atomByName - Mapa de átomos por nombre
  * @param {Array} atoms - Lista de átomos (para returnEdges)
- * @param {Object} helpers - Helpers (determineEdgeType, buildReturnEdges)
+ * @param {Object} helpers - Helpers (determineEdgeType, buildReturnEdges, atomById)
  * @returns {Array} Aristas del grafo
  */
-export function buildEdges(mappings, atomByName, atoms, helpers) {
-  const { determineEdgeType, buildReturnEdges } = helpers;
+export function assembleEdges(mappings, atomByName, atoms, helpers) {
+  const { determineEdgeType, buildReturnEdges, atomById } = helpers;
   const edges = [];
 
   for (const mapping of mappings) {
@@ -53,7 +53,7 @@ export function buildEdges(mappings, atomByName, atoms, helpers) {
     edges.push(edge);
   }
 
-  const returnEdges = buildReturnEdges(atoms, atomByName);
+  const returnEdges = buildReturnEdges(atoms, atomById || atomByName);
   edges.push(...returnEdges);
 
   return edges;

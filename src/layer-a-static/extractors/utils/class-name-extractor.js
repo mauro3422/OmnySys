@@ -7,6 +7,8 @@
  * @module layer-a-static/extractors/utils/class-name-extractor
  */
 
+import { text } from '../../parser/extractors/utils.js';
+
 /**
  * Extrae el nombre de una class_declaration o class
  * @param {import('tree-sitter').SyntaxNode} node - Nodo del árbol
@@ -60,9 +62,4 @@ export function removeClassSuffixes(className, suffixes = ['Builder']) {
     }
   }
   return result;
-}
-
-// Helper interno
-function text(node, code) {
-  return code.slice(node.startIndex, node.endIndex);
 }

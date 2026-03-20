@@ -2,7 +2,6 @@ import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
 import { getFileAnalysis, getFileDependencies } from '../../query/apis/file-api.js';
 import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 import {
-    buildFilesystemOnlyValidation,
     buildIndexedValidationResult,
     collectBrokenImports
 } from './validate-imports/filesystem-validation.js';
@@ -77,22 +76,30 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
             return [];
         }
 
-        // Usar API canónica en lugar de SQL directo
-        const fileDeps = await getFileDependencies(projectPath, filePath);
-        const graph = {};
-        
-        // Construir grafo desde las dependencias del archivo actual
-        if (fileDeps?.dependencies) {
-            graph[filePath] = fileDeps.dependencies.map(d => d.resolvedPath || d.source);
+        const graph = new Map();
+        const loaded = new Set();
+
+        async function loadNodeDependencies(nodePath) {
+            if (!nodePath || loaded.has(nodePath)) {
+                return;
+            }
+
+            loaded.add(nodePath);
+            const nodeDeps = await getFileDependencies(projectPath, nodePath);
+            const targets = Array.isArray(nodeDeps?.dependencies)
+                ? nodeDeps.dependencies
+                    .map((dependency) => dependency?.resolvedPath || dependency?.source)
+                    .filter(Boolean)
+                : [];
+
+            graph.set(nodePath, targets);
+
+            for (const target of targets) {
+                await loadNodeDependencies(target);
+            }
         }
-        
-        // TODO: Para dependencias transitivas, necesitaríamos getFileDependencies para cada archivo
-        // Por ahora usamos SQL directo solo para el grafo completo (mejorar en el futuro)
-        const rows = repo.db.prepare('SELECT source_path, target_path FROM file_dependencies').all();
-        for (const row of rows) {
-            if (!graph[row.source_path]) graph[row.source_path] = [];
-            graph[row.source_path].push(row.target_path);
-        }
+
+        await loadNodeDependencies(filePath);
 
         const visited = new Set();
         const pathStack = [];
@@ -102,7 +109,7 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
             visited.add(current);
             pathStack.push(current);
 
-            const neighbors = graph[current] || [];
+            const neighbors = graph.get(current) || [];
             for (const neighbor of neighbors) {
                 const idx = pathStack.indexOf(neighbor);
                 if (idx !== -1) {
@@ -117,7 +124,7 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
             pathStack.pop();
         };
 
-        if (graph[filePath]) {
+        if (graph.has(filePath)) {
             dfs(filePath);
         }
 
@@ -144,12 +151,7 @@ export class ValidateImportsTool extends GraphQueryTool {
             const fileData = await loadFileAnalysis(this.projectPath, filePath);
 
             if (!fileData) {
-                const filesystemValidation = await buildFilesystemOnlyValidation(this.projectPath, filePath);
-                if (filesystemValidation) {
-                    return this.formatSuccess(filesystemValidation);
-                }
-
-                return this.formatError('NOT_FOUND', `File ${filePath} not found in the index or filesystem. Run 'omny up' or analysis.`);
+                return this.formatError('NOT_FOUND', `File ${filePath} not found in the canonical DB index. Run 'omny up' or analysis to index it first.`);
             }
 
             const broken = await collectBrokenImports(fileData, this.projectPath, filePath, checkBroken);

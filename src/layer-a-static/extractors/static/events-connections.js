@@ -1,12 +1,46 @@
 /**
  * @fileoverview events-connections.js
- * 
+ *
  * Detecta conexiones entre archivos basadas en eventos compartidos
- * 
+ *
  * @module extractors/static/events-connections
  */
 
 import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
+
+function toEventNameSet(items = []) {
+  return new Set(
+    items
+      .map(item => item?.event || item)
+      .filter(Boolean)
+  );
+}
+
+function normalizeEventSummary(events = {}) {
+  return {
+    events: toEventNameSet(events.all || []),
+    emitters: toEventNameSet(events.emitters || []),
+    listeners: toEventNameSet(events.listeners || [])
+  };
+}
+
+function buildEventIndex(fileResults = {}) {
+  const index = new Map();
+
+  for (const [filePath, results] of Object.entries(fileResults)) {
+    const summary = normalizeEventSummary(results?.events || {});
+
+    for (const eventName of summary.events) {
+      if (!index.has(eventName)) {
+        index.set(eventName, []);
+      }
+
+      index.get(eventName).push({ filePath, summary });
+    }
+  }
+
+  return index;
+}
 
 /**
  * Detecta conexiones entre archivos basadas en eventos compartidos
@@ -15,57 +49,45 @@ import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
  */
 export function detectEventConnections(fileResults) {
   const connections = [];
-  const files = Object.entries(fileResults);
-  
-  for (let i = 0; i < files.length; i++) {
-    const [fileA, resultsA] = files[i];
-    const eventsA = resultsA.events || { all: [] };
-    
-    for (let j = i + 1; j < files.length; j++) {
-      const [fileB, resultsB] = files[j];
-      const eventsB = resultsB.events || { all: [] };
-      
-      // Buscar eventos comunes
-      const eventsA_set = new Set(eventsA.all.map(e => e.event));
-      const eventsB_list = eventsB.all.map(e => e.event);
-      const commonEvents = eventsB_list.filter(e => eventsA_set.has(e));
-      
-      if (commonEvents.length > 0) {
-        for (const eventName of commonEvents) {
-          const emitsA = eventsA.emitters.some(e => e.event === eventName);
-          const listensA = eventsA.listeners.some(e => e.event === eventName);
-          const emitsB = eventsB.emitters.some(e => e.event === eventName);
-          const listensB = eventsB.listeners.some(e => e.event === eventName);
-          
-          // Determinar dirección: emisor -> listener
-          let source = fileA;
-          let target = fileB;
-          
-          if (emitsA && listensB) {
-            source = fileA;
-            target = fileB;
-          } else if (emitsB && listensA) {
-            source = fileB;
-            target = fileA;
-          }
-          
-          connections.push({
-            id: `event_${eventName}_${source}_to_${target}`,
-            sourceFile: source,
-            targetFile: target,
-            type: ConnectionType.EVENT_LISTENER,
-            via: 'event',
-            event: eventName,
-            direction: `${emitsA ? 'emits' : 'listens'} → ${emitsB ? 'emits' : 'listens'}`,
-            confidence: DEFAULT_CONFIDENCE,
-            detectedBy: 'static-extractor',
-            reason: `Both files use event '${eventName}'`
-          });
+  const index = buildEventIndex(fileResults);
+
+  for (const [eventName, entries] of index) {
+    if (entries.length < 2) continue;
+
+    for (let i = 0; i < entries.length; i++) {
+      const entryA = entries[i];
+
+      for (let j = i + 1; j < entries.length; j++) {
+        const entryB = entries[j];
+        const emitsA = entryA.summary.emitters.has(eventName);
+        const listensA = entryA.summary.listeners.has(eventName);
+        const emitsB = entryB.summary.emitters.has(eventName);
+        const listensB = entryB.summary.listeners.has(eventName);
+
+        let source = entryA.filePath;
+        let target = entryB.filePath;
+
+        if (emitsB && listensA) {
+          source = entryB.filePath;
+          target = entryA.filePath;
         }
+
+        connections.push({
+          id: `event_${eventName}_${source}_to_${target}`,
+          sourceFile: source,
+          targetFile: target,
+          type: ConnectionType.EVENT_LISTENER,
+          via: 'event',
+          event: eventName,
+          direction: `${emitsA ? 'emits' : 'listens'} → ${emitsB ? 'emits' : 'listens'}`,
+          confidence: DEFAULT_CONFIDENCE,
+          detectedBy: 'static-extractor',
+          reason: `Both files use event '${eventName}'`
+        });
       }
     }
   }
-  
+
   return connections;
 }
 
@@ -76,12 +98,16 @@ export function detectEventConnections(fileResults) {
  * @returns {boolean}
  */
 export function sharesEvents(eventsA, eventsB) {
-  if (!eventsA?.all?.length || !eventsB?.all?.length) return false;
-  
-  const setA = new Set(eventsA.all.map(e => e.event));
-  const listB = eventsB.all.map(e => e.event);
-  
-  return listB.some(e => setA.has(e));
+  const setA = normalizeEventSummary(eventsA || {}).events;
+  const setB = normalizeEventSummary(eventsB || {}).events;
+
+  if (!setA.size || !setB.size) return false;
+
+  for (const eventName of setB) {
+    if (setA.has(eventName)) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -92,17 +118,18 @@ export function sharesEvents(eventsA, eventsB) {
  * @returns {Object} - { source: string, target: string, flow: string }
  */
 export function getEventFlow(eventsA, eventsB, eventName) {
-  const emitsA = eventsA?.emitters?.some(e => e.event === eventName) ?? false;
-  const listensA = eventsA?.listeners?.some(e => e.event === eventName) ?? false;
-  const emitsB = eventsB?.emitters?.some(e => e.event === eventName) ?? false;
-  const listensB = eventsB?.listeners?.some(e => e.event === eventName) ?? false;
-  
+  const summaryA = normalizeEventSummary(eventsA || {});
+  const summaryB = normalizeEventSummary(eventsB || {});
+  const emitsA = summaryA.emitters.has(eventName);
+  const listensA = summaryA.listeners.has(eventName);
+  const emitsB = summaryB.emitters.has(eventName);
+  const listensB = summaryB.listeners.has(eventName);
+
   if (emitsA && listensB) {
     return { source: 'A', target: 'B', flow: 'A → B' };
   } else if (emitsB && listensA) {
     return { source: 'B', target: 'A', flow: 'B → A' };
   }
-  
+
   return { source: null, target: null, flow: 'bidirectional' };
 }
-

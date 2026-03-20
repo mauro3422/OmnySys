@@ -5,10 +5,14 @@
  * Detecta errores como "module does not provide an export named X" antes del runtime.
  */
 
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getFileAnalysis, getFileExports as getCanonicalFileExports } from '#layer-c/query/apis/file-api.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:ValidateExportsChain');
+
+function normalizeCompilerPath(filePath) {
+  return String(filePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+}
 
 /**
  * Obtiene todos los exports de un archivo desde la DB
@@ -17,23 +21,14 @@ const logger = createLogger('OmnySys:ValidateExportsChain');
  * @returns {Promise<Array>} Lista de nombres exportados
  */
 export async function getFileExports(projectPath, filePath) {
-  const repo = getRepository(projectPath);
-  if (!repo?.db) {
-    throw new Error('Database not available');
+  try {
+    const normalizedFilePath = normalizeCompilerPath(filePath);
+    const exports = await getCanonicalFileExports(projectPath, normalizedFilePath);
+    return Array.from(exports || []);
+  } catch (error) {
+    logger.warn(`[validate-exports] getFileExports failed for ${filePath}: ${error.message}`);
+    return [];
   }
-
-  const normalizedFilePath = filePath.replace(/\\/g, '/');
-
-  // Buscar exports en la tabla atoms
-  const exports = repo.db.prepare(`
-    SELECT name, is_exported
-    FROM atoms
-    WHERE file_path = ?
-      AND is_exported = 1
-      AND (is_removed IS NULL OR is_removed = 0)
-  `).all(normalizedFilePath);
-
-  return exports.map(e => e.name);
 }
 
 /**
@@ -56,37 +51,32 @@ export async function traceExportChain(projectPath, targetFile, importName, from
       exports: await getFileExports(projectPath, currentFile)
     });
 
-    // Verificar si este archivo exporta el nombre
     const exports = chain[chain.length - 1].exports;
     if (exports.includes(importName)) {
-      // Encontrado! Verificar si es re-export
       const reExportSource = await findReExportSource(projectPath, currentFile, importName);
       if (reExportSource) {
         currentFile = reExportSource;
       } else {
-        // Es el origen
         return {
           found: true,
-          chain: chain,
+          chain,
           originFile: currentFile,
           exportName: importName
         };
       }
     } else {
-      // No encontrado en este archivo
       return {
         found: false,
-        chain: chain,
+        chain,
         error: `MISSING_EXPORT: ${importName} not exported from ${currentFile}`,
         lastFile: currentFile
       };
     }
   }
 
-  // Ciclo detectado o camino agotado
   return {
     found: false,
-    chain: chain,
+    chain,
     error: 'EXPORT_CHAIN_BROKEN: Circular dependency or dead end',
     circular: visited.has(currentFile)
   };
@@ -100,45 +90,46 @@ export async function traceExportChain(projectPath, targetFile, importName, from
  * @returns {Promise<string|null>} Ruta del archivo origen o null
  */
 async function findReExportSource(projectPath, filePath, exportName) {
-  const repo = getRepository(projectPath);
-  if (!repo?.db) {
-    return null;
+  return await findReExportSourceFromAnalysis(projectPath, normalizeCompilerPath(filePath), exportName);
+}
+
+function getReExportSourcePath(entry, exportName, projectPath) {
+  const sourcePath = entry?.resolvedPath || entry?.resolved || entry?.source;
+  if (!sourcePath) return null;
+
+  const specifiers = Array.isArray(entry?.specifiers) ? entry.specifiers : [];
+  const matchesExport = specifiers.some((specifier) => (
+    specifier?.name === exportName ||
+    specifier?.local === exportName ||
+    specifier?.imported === exportName
+  )) || entry?.exportName === exportName || entry?.name === exportName;
+
+  if (!matchesExport) return null;
+
+  if (isReExportEntry(entry) || specifiers.length > 0) {
+    return resolveModuleToPath(sourcePath, projectPath);
   }
 
-  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  return null;
+}
 
-  // Buscar en atom_relations de dónde viene este export
-  const relation = repo.db.prepare(`
-    SELECT source_path, target_path
-    FROM atom_relations
-    WHERE target_path = ?
-      AND relation_type = 're_export'
-      AND json_extract(metadata_json, '$.exportName') = ?
-  `).get(normalizedFilePath, exportName);
+function isReExportEntry(entry) {
+  return entry?.type === 'reexport' ||
+    entry?.kind === 'reexport' ||
+    entry?.isReExport === true ||
+    entry?.is_reexport === true ||
+    entry?.exportKind === 'reexport';
+}
 
-  if (relation) {
-    return relation.source_path;
-  }
+async function findReExportSourceFromAnalysis(projectPath, filePath, exportName) {
+  const analysis = await getFileAnalysis(projectPath, filePath).catch(() => null);
+  const imports = Array.isArray(analysis?.imports) ? analysis.imports : [];
 
-  // Fallback: buscar imports en el archivo
-  const fs = await import('fs/promises');
-  try {
-    const content = await fs.readFile(projectPath + '/' + filePath, 'utf8');
-    const exportMatch = content.match(/export\s*\{[^}]*\b(?:\w+\s+as\s+)?(\w+)\s+from\s*['"]([^'"]+)['"]/g);
-    
-    if (exportMatch) {
-      for (const match of exportMatch) {
-        const nameMatch = match.match(/(?:\w+\s+as\s+)?(\w+)/);
-        if (nameMatch && nameMatch[1] === exportName) {
-          const pathMatch = match.match(/from\s*['"]([^'"]+)['"]/);
-          if (pathMatch) {
-            return resolveModuleToPath(pathMatch[1], projectPath);
-          }
-        }
-      }
+  for (const entry of imports) {
+    const source = getReExportSourcePath(entry, exportName, projectPath);
+    if (source) {
+      return source;
     }
-  } catch {
-    // No se pudo leer el archivo
   }
 
   return null;
@@ -153,14 +144,12 @@ async function findReExportSource(projectPath, filePath, exportName) {
 function resolveModuleToPath(modulePath, projectPath) {
   let resolved = modulePath;
 
-  // Resolver aliases
   if (modulePath.startsWith('#layer-c/')) {
     resolved = modulePath.replace('#layer-c/', 'src/layer-c-memory/');
   } else if (modulePath.startsWith('#')) {
     resolved = modulePath.replace('#', 'src/');
   }
 
-  // Normalizar
   return resolved.replace(/\\/g, '/').replace(/^\//, '');
 }
 
@@ -171,28 +160,45 @@ function resolveModuleToPath(modulePath, projectPath) {
  * @returns {Promise<Object>} Resultado de validación
  */
 export async function validateAllExports(projectPath, filePath) {
-  const fs = await import('fs/promises');
-  const content = await fs.readFile(projectPath + '/' + filePath, 'utf8');
+  const normalizedFilePath = normalizeCompilerPath(filePath);
+  const analysis = await getFileAnalysis(projectPath, normalizedFilePath).catch(() => null);
 
-  // Extraer imports
-  const importRegex = /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g;
-  const imports = [];
-  let match;
-
-  while ((match = importRegex.exec(content)) !== null) {
-    const names = match[1].split(',').map(n => n.trim().split(/\s+as\s+/).pop().trim());
-    const fromModule = match[2];
-    imports.push({ names, fromModule, line: content.slice(0, match.index).split('\n').length });
+  if (!analysis) {
+    return {
+      valid: false,
+      totalImports: 0,
+      invalidCount: 1,
+      invalid: [{
+        importName: '*',
+        fromModule: filePath,
+        line: 0,
+        valid: false,
+        error: 'DB_MISSING: file is not indexed in the canonical compiler DB',
+        chain: []
+      }],
+      results: [],
+      validationMode: 'database_only',
+      compilerIndexed: false
+    };
   }
 
+  const imports = Array.isArray(analysis.imports) ? analysis.imports : [];
   const results = [];
+
   for (const imp of imports) {
-    for (const name of imp.names) {
-      const chainResult = await traceExportChain(projectPath, filePath, name, imp.fromModule);
+    const names = Array.isArray(imp?.specifiers) && imp.specifiers.length > 0
+      ? imp.specifiers.map((specifier) => specifier?.local || specifier?.name || specifier?.imported).filter(Boolean)
+      : Array.isArray(imp?.names)
+        ? imp.names
+        : [];
+    const fromModule = imp?.resolvedPath || imp?.resolved || imp?.source || imp?.fromModule;
+
+    for (const name of names) {
+      const chainResult = await traceExportChain(projectPath, filePath, name, fromModule);
       results.push({
         importName: name,
-        fromModule: imp.fromModule,
-        line: imp.line,
+        fromModule,
+        line: imp.line || imp.loc?.start?.line || 0,
         valid: chainResult.found,
         error: chainResult.error,
         chain: chainResult.chain
@@ -200,12 +206,14 @@ export async function validateAllExports(projectPath, filePath) {
     }
   }
 
-  const invalid = results.filter(r => !r.valid);
+  const invalid = results.filter((result) => !result.valid);
   return {
     valid: invalid.length === 0,
     totalImports: results.length,
     invalidCount: invalid.length,
     invalid,
-    results
+    results,
+    validationMode: 'database_only',
+    compilerIndexed: true
   };
 }

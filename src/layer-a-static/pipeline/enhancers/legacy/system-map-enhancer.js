@@ -14,12 +14,32 @@ import { calculateAllRiskScores, generateRiskReport } from '../../../analyses/ti
 import { buildSourceCodeMap } from '../builders/source-code-builder.js';
 import { collectSemanticIssues } from '../analyzers/semantic-issue-analyzer.js';
 import { createLogger } from '../../../../utils/logger.js';
+import { normalizePath } from '#shared/utils/path-utils.js';
 
 const logger = createLogger('OmnySys:pipeline:enhancers:legacy');
+
+function matchesFilePath(candidatePath, filePath) {
+  const candidate = normalizePath(candidatePath).toLowerCase();
+  const target = normalizePath(filePath).toLowerCase();
+
+  if (!candidate || !target) {
+    return false;
+  }
+
+  return (
+    candidate === target ||
+    candidate.endsWith(`/${target}`) ||
+    target.endsWith(`/${candidate}`)
+  );
+}
 
 function attachSemanticDataToFiles(enhancedFiles, semanticResults, allConnections) {
   for (const [filePath, fileData] of Object.entries(enhancedFiles || {})) {
     const fileSemantics = semanticResults.fileResults[filePath];
+    const fileConnections = allConnections.filter(
+      c => matchesFilePath(c.sourceFile || c.from, filePath) || matchesFilePath(c.targetFile || c.to, filePath)
+    );
+
     if (fileSemantics) {
       fileData.semanticAnalysis = {
         localStorage: fileSemantics.localStorage || [],
@@ -29,9 +49,8 @@ function attachSemanticDataToFiles(enhancedFiles, semanticResults, allConnection
         envVars: fileSemantics.envVars || []
       };
     }
-    fileData.semanticConnections = allConnections.filter(
-      c => c.sourceFile === filePath || c.targetFile === filePath
-    );
+
+    fileData.semanticConnections = fileConnections;
   }
 }
 

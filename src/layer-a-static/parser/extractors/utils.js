@@ -50,7 +50,13 @@ export class AtomBuilder {
 }
 
 export function text(node, code) {
-    return code.slice(node.startIndex, node.endIndex);
+    if (!node) return '';
+    if (typeof code === 'string' && Number.isFinite(node.startIndex) && Number.isFinite(node.endIndex)) {
+        return code.slice(node.startIndex, node.endIndex);
+    }
+    if (typeof node.text === 'string') return node.text;
+    if (typeof node.value === 'string') return node.value;
+    return '';
 }
 
 export function startLine(node) {

@@ -1,12 +1,74 @@
 /**
  * @fileoverview WorkerDetector.js
- * 
+ *
  * Detects broken Web Workers.
- * 
+ *
  * @module analyses/tier3/detectors/WorkerDetector
  */
 
 import { groupByFile } from '../utils/issue-utils.js';
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
+
+const PATH_SEPARATORS_REGEX = /[\\/]+/g;
+const RELATIVE_PREFIX_REGEX = /^(\.\/|\.\.\/)+/;
+
+function normalizeLookupPath(value) {
+  return normalizePath(String(value || '')).replace(PATH_SEPARATORS_REGEX, '/').toLowerCase();
+}
+
+function stripRelativePrefix(value) {
+  return normalizeLookupPath(value).replace(RELATIVE_PREFIX_REGEX, '');
+}
+
+function buildProjectFileIndex(systemMap) {
+  const files = Object.keys((systemMap || {}).files || {});
+  const projectFileIndex = [];
+
+  for (const fullPath of files) {
+    const fileName = fullPath.replace(/^.*[\\\/]/, '');
+    const withoutExt = fileName.replace(/\.[^.]+$/, '');
+
+    projectFileIndex.push({
+      fullPath,
+      normalizedFullPath: normalizeLookupPath(fullPath),
+      fileName,
+      normalizedFileName: normalizeLookupPath(fileName),
+      withoutExt,
+      normalizedWithoutExt: normalizeLookupPath(withoutExt)
+    });
+  }
+
+  return projectFileIndex;
+}
+
+function isKnownWorkerPath(projectFileIndex, workerPath) {
+  if (!workerPath) {
+    return false;
+  }
+
+  const normalizedWorkerPath = normalizeLookupPath(workerPath);
+  const strippedWorkerPath = stripRelativePrefix(workerPath);
+  const workerFileName = workerPath.replace(/^.*[\\\/]/, '');
+  const normalizedWorkerFileName = normalizeLookupPath(workerFileName);
+  const workerWithoutExt = workerFileName.replace(/\.[^.]+$/, '');
+  const normalizedWorkerWithoutExt = normalizeLookupPath(workerWithoutExt);
+
+  for (const projectFile of projectFileIndex) {
+    if (
+      projectFile.normalizedFullPath === normalizedWorkerPath ||
+      projectFile.normalizedFileName === normalizedWorkerFileName ||
+      projectFile.normalizedWithoutExt === normalizedWorkerWithoutExt
+    ) {
+      return true;
+    }
+
+    if (strippedWorkerPath && projectFile.normalizedFullPath.endsWith(strippedWorkerPath)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /**
  * Detects broken Web Workers
@@ -16,40 +78,27 @@ export class WorkerDetector {
     const brokenWorkers = [];
     const safeAdvancedAnalysis = advancedAnalysis || {};
     const fileResults = safeAdvancedAnalysis.fileResults || {};
-    const allProjectFiles = Object.keys((systemMap || {}).files || {});
-
-    const projectFileNames = allProjectFiles.map(f => ({
-      fullPath: f,
-      fileName: f.replace(/^.*[\\\/]/, ''),
-      withoutExt: f.replace(/^.*[\\\/]/, '').replace(/\.[^.]+$/, '')
-    }));
+    const projectFileIndex = buildProjectFileIndex(systemMap);
 
     for (const [filePath, analysis] of Object.entries(fileResults)) {
-      const workerCreations = analysis.webWorkers?.outgoing?.filter(
-        w => w.type === 'worker_creation'
-      ) || [];
+      const workerCreations = analysis?.webWorkers?.outgoing || [];
 
       for (const creation of workerCreations) {
-        const workerPath = creation.workerPath;
-        const workerFileName = workerPath.replace(/^.*[\\\/]/, '');
-        const workerWithoutExt = workerFileName.replace(/\.[^.]+$/, '');
+        if (creation.type !== 'worker_creation') {
+          continue;
+        }
 
-        const exists = projectFileNames.some(projFile => 
-          projFile.fileName === workerFileName ||
-          projFile.fileName === workerWithoutExt ||
-          projFile.withoutExt === workerWithoutExt ||
-          projFile.fullPath.includes(workerPath.replace('./', '').replace('../', ''))
-        );
+        const workerPath = creation.workerPath || '';
 
-        if (!exists) {
+        if (!isKnownWorkerPath(projectFileIndex, workerPath)) {
           brokenWorkers.push({
             sourceFile: filePath,
-            workerPath: workerPath,
+            workerPath,
             line: creation.line,
             type: 'WORKER_NOT_FOUND',
             severity: 'HIGH',
             reason: `Worker '${workerPath}' not found in project`,
-            suggestion: `Check if the worker file exists or if the path is correct`
+            suggestion: 'Check if the worker file exists or if the path is correct'
           });
         }
       }

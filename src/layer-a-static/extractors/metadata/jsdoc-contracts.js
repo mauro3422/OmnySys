@@ -6,8 +6,6 @@
  * @module extractors/metadata/jsdoc-contracts
  */
 
-import { getLineNumber, getNextLine } from '../utils.js';
-
 /**
  * Regex patterns para JSDoc
  */
@@ -18,6 +16,52 @@ const JSDOC_PATTERNS = {
   throws: /@throws?\s*(?:\{([^}]+)\})?\s*(.*)/,
   lineCleaner: /^\s*\*\s?/
 };
+
+function buildLineStarts(code) {
+  const lineStarts = [0];
+
+  for (let index = 0; index < code.length; index++) {
+    if (code.charCodeAt(index) === 10) {
+      lineStarts.push(index + 1);
+    }
+  }
+
+  return lineStarts;
+}
+
+function getLineNumberFromIndex(lineStarts, index) {
+  let low = 0;
+  let high = lineStarts.length - 1;
+
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    if (lineStarts[middle] <= index) {
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+
+  return Math.max(1, high + 1);
+}
+
+function getNextNonEmptyLine(code, position) {
+  let start = position;
+
+  while (start < code.length) {
+    let end = code.indexOf('\n', start);
+    if (end === -1) end = code.length;
+
+    const trimmed = code.slice(start, end).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+
+    start = end + 1;
+  }
+
+  return '';
+}
 
 /**
  * Extrae descripción de línea JSDoc
@@ -89,22 +133,50 @@ function extractThrows(cleanLine) {
 function processJSDocLine(line, contract) {
   const cleanLine = line.replace(JSDOC_PATTERNS.lineCleaner, '').trim();
 
-  if (cleanLine.startsWith('@param')) {
-    const param = extractParam(cleanLine);
-    if (param) contract.params.push(param);
-  } else if (cleanLine.startsWith('@returns') || cleanLine.startsWith('@return')) {
-    const returns = extractReturns(cleanLine);
-    if (returns) contract.returns = returns;
-  } else if (cleanLine.startsWith('@throws') || cleanLine.startsWith('@throw')) {
-    const throws = extractThrows(cleanLine);
-    if (throws) contract.throws.push(throws);
-  } else if (cleanLine.startsWith('@deprecated')) {
-    contract.deprecated = true;
-    contract.deprecatedReason = cleanLine.replace('@deprecated', '').trim();
-  } else if (!contract.description) {
-    const desc = extractDescription(cleanLine);
-    if (desc) contract.description = desc;
-  }
+  if (handleJSDocParamLine(cleanLine, contract)) return;
+  if (handleJSDocReturnsLine(cleanLine, contract)) return;
+  if (handleJSDocThrowsLine(cleanLine, contract)) return;
+  if (handleJSDocDeprecatedLine(cleanLine, contract)) return;
+  handleJSDocDescriptionLine(cleanLine, contract);
+}
+
+function handleJSDocParamLine(cleanLine, contract) {
+  if (!cleanLine.startsWith('@param')) return false;
+
+  const param = extractParam(cleanLine);
+  if (param) contract.params.push(param);
+  return true;
+}
+
+function handleJSDocReturnsLine(cleanLine, contract) {
+  if (!(cleanLine.startsWith('@returns') || cleanLine.startsWith('@return'))) return false;
+
+  const returns = extractReturns(cleanLine);
+  if (returns) contract.returns = returns;
+  return true;
+}
+
+function handleJSDocThrowsLine(cleanLine, contract) {
+  if (!(cleanLine.startsWith('@throws') || cleanLine.startsWith('@throw'))) return false;
+
+  const throws = extractThrows(cleanLine);
+  if (throws) contract.throws.push(throws);
+  return true;
+}
+
+function handleJSDocDeprecatedLine(cleanLine, contract) {
+  if (!cleanLine.startsWith('@deprecated')) return false;
+
+  contract.deprecated = true;
+  contract.deprecatedReason = cleanLine.replace('@deprecated', '').trim();
+  return true;
+}
+
+function handleJSDocDescriptionLine(cleanLine, contract) {
+  if (contract.description) return;
+
+  const desc = extractDescription(cleanLine);
+  if (desc) contract.description = desc;
 }
 
 /**
@@ -136,10 +208,17 @@ export function extractJSDocContracts(code) {
     all: []
   };
 
+  if (!code || code.indexOf('/**') === -1) {
+    return contracts;
+  }
+
+  const lineStarts = buildLineStarts(code);
   let match;
+
+  JSDOC_PATTERNS.block.lastIndex = 0;
   while ((match = JSDOC_PATTERNS.block.exec(code)) !== null) {
     const block = match[1];
-    const line = getLineNumber(code, match.index);
+    const line = getLineNumberFromIndex(lineStarts, match.index);
 
     const contract = {
       line,
@@ -160,7 +239,7 @@ export function extractJSDocContracts(code) {
     contracts.all.push(contract);
 
     // Clasificar y agregar a la categoría correspondiente
-    const nextLine = getNextLine(code, match.index + match[0].length);
+    const nextLine = getNextNonEmptyLine(code, match.index + match[0].length);
     const classified = classifyContract(nextLine, contract);
 
     if (classified.isFunction) {

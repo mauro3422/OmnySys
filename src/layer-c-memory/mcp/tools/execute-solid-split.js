@@ -1,5 +1,5 @@
 
-import { SOLIDNormalizer } from '../core/shared/solid-normalizer.js';
+import { proposeSplit } from '../core/shared/solid-normalizer.js';
 import { createLogger } from '../../../utils/logger.js';
 import { atomic_write } from './atomic-edit/index.js';
 
@@ -25,7 +25,7 @@ export async function execute_solid_split(args, context) {
     logger.info(`[Tool] execute_solid_split("${filePath}", "${symbolName}", execute: ${execute})`);
 
     try {
-        const proposal = await SOLIDNormalizer.proposeSplit(filePath, symbolName, projectPath);
+        const proposal = await proposeSplit(filePath, symbolName, projectPath);
 
         if (!proposal.success) {
             return proposal;

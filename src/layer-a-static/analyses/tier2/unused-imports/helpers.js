@@ -15,18 +15,21 @@ function createFileLinksIndex(functionLinks = []) {
 function collectUsedIdentifiers(fileNode = {}) {
   const allCalls = new Set();
   const namespaceRoots = new Set();
+  const functions = fileNode.functions || [];
+  const calls = fileNode.calls || [];
+  const refs = fileNode.identifierRefs || [];
 
-  for (const func of fileNode.functions || []) {
+  for (const func of functions) {
     for (const call of func.calls || []) {
       registerCallName(allCalls, namespaceRoots, call.name);
     }
   }
 
-  for (const call of fileNode.calls || []) {
+  for (const call of calls) {
     registerCallName(allCalls, namespaceRoots, call.name);
   }
 
-  for (const ref of fileNode.identifierRefs || []) {
+  for (const ref of refs) {
     allCalls.add(ref);
   }
 
@@ -37,10 +40,50 @@ function collectUsedIdentifiers(fileNode = {}) {
 }
 
 function collectUnusedImports(fileNode, filePath, fileLinks) {
-  const unusedInFile = [];
-  const usage = collectUsedIdentifiers(fileNode);
+  const imports = fileNode.imports || [];
 
-  for (const importStmt of fileNode.imports || []) {
+  if (imports.length === 0) {
+    return [];
+  }
+
+  if (!hasUsageSources(fileNode)) {
+    return collectAllImportsAsUnused(imports);
+  }
+
+  const usage = collectUsedIdentifiers(fileNode);
+  return collectUnusedImportsWithUsage(imports, filePath, fileLinks, usage);
+}
+
+function hasUsageSources(fileNode = {}) {
+  return Boolean(
+    (fileNode.functions && fileNode.functions.length) ||
+    (fileNode.calls && fileNode.calls.length) ||
+    (fileNode.identifierRefs && fileNode.identifierRefs.length)
+  );
+}
+
+function collectAllImportsAsUnused(imports) {
+  const unusedInFile = [];
+
+  for (const importStmt of imports) {
+    for (const spec of importStmt.specifiers || []) {
+      const importedName = spec.local || spec.imported;
+      unusedInFile.push({
+        name: importedName,
+        source: importStmt.source,
+        type: spec.type,
+        severity: 'warning'
+      });
+    }
+  }
+
+  return unusedInFile;
+}
+
+function collectUnusedImportsWithUsage(imports, filePath, fileLinks, usage) {
+  const unusedInFile = [];
+
+  for (const importStmt of imports) {
     for (const spec of importStmt.specifiers || []) {
       const importedName = spec.local || spec.imported;
       const isUsed = isImportUsed(spec, importedName, filePath, fileLinks, usage);

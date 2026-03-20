@@ -10,6 +10,8 @@
 import path from 'path';
 import { findMolecule, camelToKebab } from '../utils.js';
 
+const ROUTE_FILE_PATTERN = /(?:^|[\\/])(?:routes|router|api|server|app)\.js|(?:^|[\\/])(?:routes|api)[\\/]/i;
+
 /**
  * Busca archivos que contienen rutas API
  * @param {Array} modules - Módulos del proyecto
@@ -17,62 +19,40 @@ import { findMolecule, camelToKebab } from '../utils.js';
  */
 export function findAPIRoutes(modules) {
   const routes = [];
-  
-  // Buscar archivos comunes de routes
-  const routePatterns = [
-    'routes.js', 'router.js', 'api.js',
-    'routes/*.js', 'api/*.js',
-    'server.js', 'app.js'
-  ];
-  
-  for (const module of modules) {
-    for (const file of module.files) {
-      if (routePatterns.some(pattern =>
-        file.path.includes(pattern.replace('*', ''))
-      )) {
-        // Analizar archivo para encontrar rutas
-        const fileRoutes = extractRoutesFromFile(file, modules);
-        routes.push(...fileRoutes);
-      }
-    }
-  }
-  
-  return routes;
-}
 
-/**
- * Extrae rutas de un archivo
- * @param {Object} file - Archivo a analizar
- * @param {Array} modules - Todos los módulos
- * @returns {Array} - Rutas encontradas
- */
-function extractRoutesFromFile(file, modules) {
-  const routes = [];
-  
-  // Buscar molécula correspondiente
-  const module = modules.find(m =>
-    m.files.some(f => f.path === file.path)
-  );
-  
-  if (!module) return routes;
-  
-  const molecule = findMolecule(file.path, modules);
-  if (!molecule) return routes;
-  
-  // Buscar patrones de rutas en el código
-  for (const atom of molecule.atoms || []) {
-    if (atom.isExported) {
-      // Heurística: si está en archivo de routes, probablemente es handler
-      const routePath = inferRoutePath(atom.name, file.path);
-      
-      if (routePath) {
+  for (const module of modules) {
+    for (const file of module.files || []) {
+      if (!ROUTE_FILE_PATTERN.test(file.path)) {
+        continue;
+      }
+
+      const molecule = findMolecule(file.path, modules);
+      if (!molecule) {
+        continue;
+      }
+
+      const moduleName = module.moduleName;
+      const fileName = path.basename(file.path);
+
+      // Buscar patrones de rutas en el código
+      for (const atom of molecule.atoms || []) {
+        if (!atom.isExported) {
+          continue;
+        }
+
+        // Heurística: si está en archivo de routes, probablemente es handler
+        const routePath = inferRoutePath(atom.name, file.path);
+        if (!routePath) {
+          continue;
+        }
+
         routes.push({
           type: 'api',
           method: inferHTTPMethod(atom.name, file.path),
           path: routePath,
           handler: {
-            module: module.moduleName,
-            file: path.basename(file.path),
+            module: moduleName,
+            file: fileName,
             function: atom.name
           },
           middleware: findMiddleware(atom, molecule)
@@ -80,7 +60,7 @@ function extractRoutesFromFile(file, modules) {
       }
     }
   }
-  
+
   return routes;
 }
 
@@ -156,5 +136,3 @@ function findMiddleware(atom, molecule) {
   
   return middleware;
 }
-
-

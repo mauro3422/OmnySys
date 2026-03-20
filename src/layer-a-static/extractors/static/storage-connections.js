@@ -8,6 +8,50 @@
 
 import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
 
+function toKeySet(items = []) {
+  return new Set(
+    items
+      .map(item => item?.key)
+      .filter(Boolean)
+  );
+}
+
+function normalizeStorageSummary(storage = {}) {
+  const allKeys = toKeySet(storage.all || []);
+  const writes = toKeySet(storage.writes || []);
+  const reads = toKeySet(storage.reads || []);
+
+  return { allKeys, writes, reads };
+}
+
+function buildLocalStorageIndex(fileResults = {}) {
+  const index = new Map();
+
+  for (const [filePath, results] of Object.entries(fileResults)) {
+    const summary = normalizeStorageSummary(results?.localStorage || {});
+
+    for (const key of summary.allKeys) {
+      if (!index.has(key)) {
+        index.set(key, []);
+      }
+
+      index.get(key).push({
+        filePath,
+        summary
+      });
+    }
+  }
+
+  return index;
+}
+
+function buildDirectionForKey(entry, key, filePath) {
+  const direction = [];
+  if (entry.summary.writes.has(key)) direction.push(`${filePath} → writes`);
+  if (entry.summary.reads.has(key)) direction.push(`${filePath} → reads`);
+  return direction;
+}
+
 /**
  * Detecta conexiones entre archivos basadas en localStorage/sessionStorage compartido
  * @param {Object} fileResults - Mapa de filePath -> {localStorage, events, globals}
@@ -15,52 +59,37 @@ import { ConnectionType, DEFAULT_CONFIDENCE } from './constants.js';
  */
 export function detectLocalStorageConnections(fileResults) {
   const connections = [];
-  const files = Object.entries(fileResults);
-  
-  for (let i = 0; i < files.length; i++) {
-    const [fileA, resultsA] = files[i];
-    const storageA = resultsA.localStorage || { all: [] };
-    
-    for (let j = i + 1; j < files.length; j++) {
-      const [fileB, resultsB] = files[j];
-      const storageB = resultsB.localStorage || { all: [] };
-      
-      // Buscar keys comunes
-      const keysA = new Set(storageA.all.map(s => s.key));
-      const keysB = storageB.all.map(s => s.key);
-      const commonKeys = keysB.filter(k => keysA.has(k));
-      
-      if (commonKeys.length > 0) {
-        // Determinar dirección de la conexión
-        const writesA = storageA.writes.map(w => w.key);
-        const readsA = storageA.reads.map(r => r.key);
-        const writesB = storageB.writes.map(w => w.key);
-        const readsB = storageB.reads.map(r => r.key);
-        
-        for (const key of commonKeys) {
-          const direction = [];
-          if (writesA.includes(key)) direction.push(`${fileA} → writes`);
-          if (readsA.includes(key)) direction.push(`${fileA} → reads`);
-          if (writesB.includes(key)) direction.push(`${fileB} → writes`);
-          if (readsB.includes(key)) direction.push(`${fileB} → reads`);
-          
-          connections.push({
-            id: `localStorage_${key}_${fileA}_to_${fileB}`,
-            sourceFile: fileA,
-            targetFile: fileB,
-            type: ConnectionType.LOCAL_STORAGE,
-            via: 'localStorage',
-            key: key,
-            direction: direction.join(', '),
-            confidence: DEFAULT_CONFIDENCE,
-            detectedBy: 'static-extractor',
-            reason: `Both files use localStorage key '${key}'`
-          });
-        }
+  const index = buildLocalStorageIndex(fileResults);
+
+  for (const [key, entries] of index) {
+    if (entries.length < 2) continue;
+
+    for (let i = 0; i < entries.length; i++) {
+      const entryA = entries[i];
+
+      for (let j = i + 1; j < entries.length; j++) {
+        const entryB = entries[j];
+        const direction = [
+          ...buildDirectionForKey(entryA, key, entryA.filePath),
+          ...buildDirectionForKey(entryB, key, entryB.filePath)
+        ];
+
+        connections.push({
+          id: `localStorage_${key}_${entryA.filePath}_to_${entryB.filePath}`,
+          sourceFile: entryA.filePath,
+          targetFile: entryB.filePath,
+          type: ConnectionType.LOCAL_STORAGE,
+          via: 'localStorage',
+          key,
+          direction: direction.join(', '),
+          confidence: DEFAULT_CONFIDENCE,
+          detectedBy: 'static-extractor',
+          reason: `Both files use localStorage key '${key}'`
+        });
       }
     }
   }
-  
+
   return connections;
 }
 
@@ -71,12 +100,16 @@ export function detectLocalStorageConnections(fileResults) {
  * @returns {boolean}
  */
 export function sharesStorageKeys(storageA, storageB) {
-  if (!storageA?.all?.length || !storageB?.all?.length) return false;
-  
-  const keysA = new Set(storageA.all.map(s => s.key));
-  const keysB = storageB.all.map(s => s.key);
-  
-  return keysB.some(k => keysA.has(k));
+  const keysA = normalizeStorageSummary(storageA).allKeys;
+  const keysB = normalizeStorageSummary(storageB).allKeys;
+
+  if (!keysA.size || !keysB.size) return false;
+
+  for (const key of keysB) {
+    if (keysA.has(key)) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -86,11 +119,18 @@ export function sharesStorageKeys(storageA, storageB) {
  * @returns {string[]} - Keys comunes
  */
 export function getSharedStorageKeys(storageA, storageB) {
-  if (!storageA?.all?.length || !storageB?.all?.length) return [];
-  
-  const keysA = new Set(storageA.all.map(s => s.key));
-  const keysB = storageB.all.map(s => s.key);
-  
-  return keysB.filter(k => keysA.has(k));
+  const keysA = normalizeStorageSummary(storageA).allKeys;
+  const keysB = normalizeStorageSummary(storageB).allKeys;
+
+  if (!keysA.size || !keysB.size) return [];
+
+  const shared = [];
+  for (const key of keysB) {
+    if (keysA.has(key)) {
+      shared.push(key);
+    }
+  }
+
+  return shared;
 }
 

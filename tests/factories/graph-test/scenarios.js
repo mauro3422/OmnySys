@@ -2,7 +2,7 @@
  * @fileoverview Graph Test Factory - Scenarios
  */
 
-import { GraphBuilder } from './builders.js';
+import { GraphBuilder } from './builders/index.js';
 
 export const GraphScenarios = {
   /**

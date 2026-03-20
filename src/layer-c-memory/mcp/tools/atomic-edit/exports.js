@@ -2,7 +2,6 @@
  * @fileoverview Extracción y validación de exports
  */
 
-import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getAtomsByName } from '#layer-c/storage/index.js';
 import { summarizeAtomTestability } from '../../../../shared/compiler/index.js';
@@ -25,30 +24,43 @@ export function extractImportsFromCode(code) {
 /**
  * Extrae exports de un string de código
  */
+function appendNamedExports(exports, rawNames) {
+  const names = rawNames
+    .split(',')
+    .map((name) => name.trim().split(/\s+as\s+/)[0].trim())
+    .filter(Boolean);
+
+  for (const name of names) {
+    exports.push({ type: 'named', name });
+  }
+}
+
+/**
+ * Extrae exports de un string de código
+ */
 export function extractExportsFromCode(code) {
   const exports = [];
+  const exportRegex = /export\s+(?:async\s+)?function\s+(\w+)|export\s+const\s+(\w+)|export\s+(?:default\s+)?class\s+(\w+)|export\s*{\s*([^}]+)\s*}/g;
 
-  const exportFunctionRegex = /export\s+(?:async\s+)?function\s+(\w+)/g;
   let match;
-  while ((match = exportFunctionRegex.exec(code)) !== null) {
-    exports.push({ type: 'function', name: match[1] });
-  }
+  while ((match = exportRegex.exec(code)) !== null) {
+    if (match[1]) {
+      exports.push({ type: 'function', name: match[1] });
+      continue;
+    }
 
-  const exportConstRegex = /export\s+const\s+(\w+)/g;
-  while ((match = exportConstRegex.exec(code)) !== null) {
-    exports.push({ type: 'const', name: match[1] });
-  }
+    if (match[2]) {
+      exports.push({ type: 'const', name: match[2] });
+      continue;
+    }
 
-  const exportClassRegex = /export\s+(?:default\s+)?class\s+(\w+)/g;
-  while ((match = exportClassRegex.exec(code)) !== null) {
-    exports.push({ type: 'class', name: match[1] });
-  }
+    if (match[3]) {
+      exports.push({ type: 'class', name: match[3] });
+      continue;
+    }
 
-  const exportNamedRegex = /export\s*{\s*([^}]+)\s*}/g;
-  while ((match = exportNamedRegex.exec(code)) !== null) {
-    const names = match[1].split(',').map(n => n.trim().split(/\s+as\s+/)[0].trim());
-    for (const name of names) {
-      if (name) exports.push({ type: 'named', name });
+    if (match[4]) {
+      appendNamedExports(exports, match[4]);
     }
   }
 

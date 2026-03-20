@@ -1,8 +1,8 @@
 /**
  * @fileoverview Chain Builder
- * 
- * Construye chains de ejecución internas del módulo.
- * 
+ *
+ * Builds internal execution chains for modules.
+ *
  * @module module-analyzer/chains/chain-builder
  * @version 1.0.0
  */
@@ -14,50 +14,34 @@ export class ChainBuilder {
     this.molecules = molecules;
     this.connections = connections;
     this.moleculeByFile = new Map(molecules.map(m => [path.basename(m.filePath), m]));
+    this.functionNames = buildFunctionNameIndex(molecules);
   }
 
   build() {
-    const chains = [];
     const visited = new Set();
-    const entries = this.findEntries();
-    
-    for (const entry of entries) {
+
+    return this.findEntries().flatMap(entry => {
       const chain = this.traceChain(entry, visited);
-      if (chain.length > 1) {
-        chains.push({
-          id: `module_chain_${chains.length}`,
-          entryFunction: entry.name,
-          entryFile: path.basename(entry.filePath),
-          steps: chain,
-          totalSteps: chain.length,
-          isAsync: chain.some(s => s.isAsync),
-          hasSideEffects: chain.some(s => s.hasSideEffects)
-        });
+      if (chain.length <= 1) {
+        return [];
       }
-    }
-    
-    return chains;
+
+      return [{
+        id: `module_chain_${visited.size}`,
+        entryFunction: entry.name,
+        entryFile: path.basename(entry.filePath),
+        steps: chain,
+        totalSteps: chain.length,
+        isAsync: chain.some(step => step.isAsync),
+        hasSideEffects: chain.some(step => step.hasSideEffects)
+      }];
+    });
   }
 
   findEntries() {
-    const entries = [];
-    const functionNames = new Set(this.molecules.flatMap(m => 
-      (m.atoms || []).map(a => a.name)
-    ));
-    
-    for (const mol of this.molecules) {
-      for (const atom of mol.atoms || []) {
-        if (atom.isExported) {
-          entries.push({ ...atom, filePath: mol.filePath });
-        } else if (!atom.calledBy?.some(caller => 
-          functionNames.has(caller.split('::').pop())
-        )) {
-          entries.push({ ...atom, filePath: mol.filePath });
-        }
-      }
-    }
-    
-    return entries;
+    return (this.molecules || []).flatMap(molecule =>
+      collectEntriesForMolecule(molecule, this.functionNames)
+    );
   }
 
   traceChain(entry, visited) {
@@ -68,18 +52,18 @@ export class ChainBuilder {
       isAsync: entry.isAsync,
       hasSideEffects: entry.hasSideEffects
     }];
-    
-    const outgoing = this.connections.filter(c =>
-      c.from.function === entry.name &&
-      !visited.has(`${c.from.function}->${c.to.function}`)
+
+    const outgoing = this.connections.filter(connection =>
+      connection.from.function === entry.name &&
+      !visited.has(`${connection.from.function}->${connection.to.function}`)
     );
-    
+
     for (const conn of outgoing) {
       visited.add(`${conn.from.function}->${conn.to.function}`);
-      
+
       const calleeMol = this.moleculeByFile.get(conn.to.file);
-      const calleeAtom = calleeMol?.atoms?.find(a => a.name === conn.to.function);
-      
+      const calleeAtom = calleeMol?.atoms?.find(atom => atom.name === conn.to.function);
+
       if (calleeAtom) {
         const subChain = this.traceChain(
           { ...calleeAtom, filePath: calleeMol.filePath },
@@ -88,9 +72,27 @@ export class ChainBuilder {
         chain.push(...subChain.slice(1));
       }
     }
-    
+
     return chain;
   }
+}
+
+function buildFunctionNameIndex(molecules) {
+  return new Set((molecules || []).flatMap(molecule =>
+    (molecule.atoms || []).map(atom => atom.name)
+  ));
+}
+
+function collectEntriesForMolecule(molecule, functionNames) {
+  return (molecule.atoms || [])
+    .filter(atom => atom.isExported || !isCalledByKnownFunction(atom, functionNames))
+    .map(atom => ({ ...atom, filePath: molecule.filePath }));
+}
+
+function isCalledByKnownFunction(atom, functionNames) {
+  return (atom.calledBy || []).some(caller =>
+    functionNames.has(caller.split('::').pop())
+  );
 }
 
 export default ChainBuilder;

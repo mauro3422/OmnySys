@@ -1,26 +1,39 @@
+import { camelToKebab } from '../utils.js';
+
 /**
  * @fileoverview CLI Command Detector
- * 
- * Detecta comandos de línea de comandos
- * 
+ *
+ * Detects command-line entry points.
+ *
  * @module module-system/detectors/cli-detector
  * @phase 3
  */
 
+const CLI_FILE_PATTERN = /(?:^|[\\/])(?:cli|commands)(?:[\\/]|$)/i;
+
 /**
- * Busca comandos CLI en los módulos
- * @param {Array} modules - Módulos del proyecto
- * @returns {Array} - Comandos encontrados
+ * Search CLI commands in project modules.
+ * @param {Array} modules - Project modules
+ * @returns {Array} - Found commands
  */
 export function findCLICommands(modules) {
   const commands = [];
-  
-  // Buscar archivos de CLI
-  const cliModules = modules.filter(m =>
-    m.moduleName === 'cli' ||
-    m.files.some(f => f.path.includes('cli') || f.path.includes('commands'))
-  );
-  
+  const cliModules = [];
+
+  for (const module of modules) {
+    if (module.moduleName === 'cli') {
+      cliModules.push(module);
+      continue;
+    }
+
+    for (const file of module.files || []) {
+      if (CLI_FILE_PATTERN.test(file.path)) {
+        cliModules.push(module);
+        break;
+      }
+    }
+  }
+
   for (const module of cliModules) {
     for (const exp of module.exports || []) {
       if (exp.type === 'handler' || exp.name.toLowerCase().includes('command')) {
@@ -36,8 +49,6 @@ export function findCLICommands(modules) {
       }
     }
   }
-  
+
   return commands;
 }
-
-import { camelToKebab } from '../utils.js';

@@ -4,6 +4,7 @@
  */
 import { safeJson, safeParseJson } from '../../converters.js';
 import { BaseSqlRepository } from '../../../../core/BaseSqlRepository.js';
+import { normalizePath } from '#shared/utils/path-utils.js';
 
 function isNonProductionSemanticSurface(filePath = '') {
   const normalized = String(filePath || '')
@@ -125,6 +126,90 @@ function buildFallbackSemanticRows(connections, now) {
   return [...grouped.values()];
 }
 
+function sameSystemFilePath(candidatePath, filePath) {
+  const candidate = normalizePath(candidatePath).toLowerCase();
+  const target = normalizePath(filePath).toLowerCase();
+
+  if (!candidate || !target) {
+    return false;
+  }
+
+  return (
+    candidate === target ||
+    candidate.endsWith(`/${target}`) ||
+    target.endsWith(`/${candidate}`)
+  );
+}
+
+export function syncSystemFileSemanticConnections(db, now = Date.now()) {
+  const semanticRows = db.prepare(`
+    SELECT source_path, target_path, connection_type, connection_key, weight, context_json
+    FROM semantic_connections
+    WHERE (is_removed IS NULL OR is_removed = 0)
+  `).all();
+
+  const fileRows = db.prepare(`
+    SELECT path
+    FROM system_files
+    WHERE (is_removed IS NULL OR is_removed = 0)
+  `).all();
+
+  if (fileRows.length === 0) {
+    return 0;
+  }
+
+  const semanticByFile = new Map(fileRows.map((row) => [row.path, []]));
+
+  for (const row of semanticRows) {
+    const connection = {
+      from: row.source_path,
+      to: row.target_path,
+      type: row.connection_type,
+      key: row.connection_key || null,
+      weight: Number(row.weight) || 0,
+      metadata: safeParseJson(row.context_json) || {}
+    };
+
+    for (const { path: filePath } of fileRows) {
+      if (
+        sameSystemFilePath(row.source_path, filePath) ||
+        sameSystemFilePath(row.target_path, filePath)
+      ) {
+        semanticByFile.get(filePath).push(connection);
+      }
+    }
+  }
+
+  const isoNow = new Date(now).toISOString();
+  const columns = db.prepare(`PRAGMA table_info("system_files")`).all();
+  const hasUpdatedAt = Array.isArray(columns) && columns.some((column) => column?.name === 'updated_at');
+  const hasLifecycleStatus = Array.isArray(columns) && columns.some((column) => column?.name === 'lifecycle_status');
+  const assignments = ['semantic_connections_json = ?'];
+  if (hasUpdatedAt) {
+    assignments.push('updated_at = ?');
+  }
+  if (hasLifecycleStatus) {
+    assignments.push("lifecycle_status = 'active'");
+  }
+  const updateStmt = db.prepare(`
+    UPDATE system_files
+    SET ${assignments.join(', ')}
+    WHERE path = ?
+  `);
+
+  let updated = 0;
+  for (const [filePath, connections] of semanticByFile) {
+    if (hasUpdatedAt) {
+      updateStmt.run(safeJson(connections), isoNow, filePath);
+    } else {
+      updateStmt.run(safeJson(connections), filePath);
+    }
+    updated++;
+  }
+
+  return updated;
+}
+
 export function saveSemanticData(db, connections, issues, now) {
   const repo = new BaseSqlRepository(db, 'SemanticHandler');
 
@@ -141,6 +226,8 @@ export function saveSemanticData(db, connections, issues, now) {
       connRows
     );
   }
+
+  syncSystemFileSemanticConnections(db, now);
 
   // Issues — only persist entries with a valid file_path (NOT NULL constraint)
   repo.clearTable('semantic_issues');
@@ -175,8 +262,11 @@ export function syncSemanticConnectionsFromRelations(db, now = Date.now()) {
     );
   }
 
+  const systemFilesUpdated = syncSystemFileSemanticConnections(db, now);
+
   return {
     total: connRows.length,
+    systemFilesUpdated,
     derivedFrom: 'atom_relations'
   };
 }

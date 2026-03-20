@@ -6,7 +6,7 @@ export class GodObjectRule {
         this.criticalImportThreshold = config.criticalImportThreshold || 25;
     }
 
-    check(findings, filePath, fileNode, { generateFinding }) {
+    check(findings, filePath, fileNode, { createFinding }) {
         const importCount = fileNode.imports?.length || 0;
         const dependentCount = fileNode.usedBy?.length || 0;
         const couplingRatio = (importCount + dependentCount) / 2;
@@ -26,7 +26,7 @@ export class GodObjectRule {
         }
 
         if (riskScore > 20) {
-            findings.push(generateFinding({
+            findings.push(createFinding({
                 type: this.type,
                 severity,
                 filePath,

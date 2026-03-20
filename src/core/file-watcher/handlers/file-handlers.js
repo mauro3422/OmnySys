@@ -7,6 +7,7 @@ import { analyzeAndIndex } from '../analyze.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 import { getRecentCommits } from './recent-commits.js';
+import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -110,6 +111,17 @@ export async function handleFileModified(filePath, fullPath) {
   }
 
   const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
+
+  try {
+    const exportValidation = await validateAllExports(this.rootPath, filePath);
+    if (!exportValidation.valid) {
+      logger.warn(
+        `[EXPORT VALIDATION] ${filePath}: ${exportValidation.invalidCount || 0} broken export chain(s)`
+      );
+    }
+  } catch (error) {
+    logger.warn(`[EXPORT VALIDATION SKIP] Failed to validate exports for ${filePath}: ${error.message}`);
+  }
 
   // Execute Impact Guards
   await guardRegistry.initializeDefaultGuards();

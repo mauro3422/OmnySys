@@ -49,6 +49,7 @@ export class OmnysysHealthDetector {
     async detect(systemMap) {
         const findings = [];
         const files = systemMap?.files || {};
+        const createFinding = this._finding.bind(this);
 
         for (const [filePath, fileData] of Object.entries(files)) {
             const allAtoms = fileData?.atoms || [];
@@ -60,7 +61,7 @@ export class OmnysysHealthDetector {
             for (const rule of this.rules) {
                 rule.check(findings, filePath, sqlAtoms, {
                     isStorageLayer,
-                    createFinding: this._finding.bind(this)
+                    createFinding
                 });
             }
         }
@@ -78,8 +79,23 @@ export class OmnysysHealthDetector {
     }
 
     _summarize(findings) {
-        const highCount = findings.filter(f => f.severity === 'high').length;
-        const medCount = findings.filter(f => f.severity === 'medium').length;
+        let highCount = 0;
+        let medCount = 0;
+        let repositoryBypass = 0;
+        let joinCandidates = 0;
+        let schemaDrift = 0;
+        let dynamicInStorage = 0;
+
+        for (const finding of findings) {
+            if (finding.severity === 'high') highCount++;
+            if (finding.severity === 'medium') medCount++;
+
+            if (finding.type === 'sql-repo-bypass') repositoryBypass++;
+            if (finding.type === 'sql-join-candidate') joinCandidates++;
+            if (finding.type === 'sql-schema-drift') schemaDrift++;
+            if (finding.type === 'sql-dynamic-in-storage') dynamicInStorage++;
+        }
+
         const score = Math.max(0, 100 - highCount * 10 - medCount * 4);
 
         return {
@@ -87,10 +103,10 @@ export class OmnysysHealthDetector {
             findings,
             score,
             summary: {
-                repositoryBypass: findings.filter(f => f.type === 'sql-repo-bypass').length,
-                joinCandidates: findings.filter(f => f.type === 'sql-join-candidate').length,
-                schemaDrift: findings.filter(f => f.type === 'sql-schema-drift').length,
-                dynamicInStorage: findings.filter(f => f.type === 'sql-dynamic-in-storage').length,
+                repositoryBypass,
+                joinCandidates,
+                schemaDrift,
+                dynamicInStorage,
                 totalFindings: findings.length
             }
         };

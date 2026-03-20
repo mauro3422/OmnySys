@@ -274,13 +274,16 @@ export {
   getLiveFileTotal,
   getStaleTableRowCount,
   getLiveRowDriftSummary,
-  loadStaleTableRows,
+  loadStaleTableRows
+} from './live-row-utils.js';
+
+export {
   buildLiveRowReconciliationPlan,
-  buildLiveRowRemediationPlan,
   buildLiveRowCleanupPlan,
   executeLiveRowCleanup,
+  buildLiveRowRemediationPlan,
   ensureLiveRowSync
-} from './live-row-utils.js';
+} from './live-row-reconciliation.js';
 
 export {
   buildDuplicateRemediation,

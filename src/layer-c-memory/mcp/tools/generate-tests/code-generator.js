@@ -62,9 +62,9 @@ function renderGroupedTests(atom, groups, useSandbox) {
   if (useNested) {
     for (const [label, groupTests] of groups) {
       code += `  describe('${label}', () => {\n`;
-      for (const test of groupTests) {
-        code += generateTestCase(atom, test, useSandbox, '    ');
-      }
+      code += groupTests
+        .map((test) => generateTestCase(atom, test, useSandbox, '    '))
+        .join('');
       code += '  });\n\n';
     }
     return code;

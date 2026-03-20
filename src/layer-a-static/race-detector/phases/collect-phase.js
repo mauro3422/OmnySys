@@ -27,8 +27,7 @@ export function collectSharedState(trackers) {
     return sharedState;
   }
   
-  for (let i = 0; i < trackers.length; i++) {
-    const tracker = trackers[i];
+  for (const tracker of trackers) {
     if (!tracker || typeof tracker.track !== 'function') {
       continue;
     }
@@ -42,13 +41,13 @@ export function collectSharedState(trackers) {
     for (const [key, accesses] of trackedState) {
       const existing = sharedState.get(key);
       if (existing) {
-        // Use a faster way to merge arrays if they are large
-        for (let j = 0; j < accesses.length; j++) {
-          existing.push(accesses[j]);
+        if (Array.isArray(accesses) && accesses.length > 0) {
+          existing.push(...accesses);
         }
-      } else {
-        sharedState.set(key, [...accesses]);
+        continue;
       }
+
+      sharedState.set(key, Array.isArray(accesses) ? [...accesses] : []);
     }
   }
   

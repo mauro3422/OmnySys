@@ -1,8 +1,8 @@
 /**
  * @fileoverview Connection Analyzer
- * 
- * Analiza conexiones entre archivos de un módulo.
- * 
+ *
+ * Analyze connections between module files.
+ *
  * @module module-analyzer/analyzers/connection-analyzer
  * @version 1.0.0
  */
@@ -12,41 +12,27 @@ import path from 'path';
 export class ConnectionAnalyzer {
   constructor(molecules) {
     this.molecules = molecules;
-    this.moleculeByFile = new Map(molecules.map(m => [path.basename(m.filePath), m]));
+    this.calleeByFunction = buildCalleeIndex(molecules);
   }
 
   analyze() {
-    const connections = [];
-    
-    for (const callerMol of this.molecules) {
-      for (const atom of callerMol.atoms || []) {
-        for (const call of atom.calls || []) {
-          const calleeMol = this.findCalleeInModule(call.name);
-          
-          if (calleeMol && calleeMol.filePath !== callerMol.filePath) {
-            connections.push(this.createConnection(
-              callerMol, atom, calleeMol, call
-            ));
-          }
-        }
-      }
-    }
-    
-    return connections;
+    return (this.molecules || []).flatMap(callerMol =>
+      analyzeMoleculeConnections(this, callerMol)
+    );
   }
 
   findCalleeInModule(functionName) {
-    for (const mol of this.molecules) {
-      if (mol.atoms?.some(a => a.name === functionName)) {
-        return mol;
-      }
-    }
-    return null;
+    return this.calleeByFunction.get(functionName) || null;
   }
 
-  createConnection(callerMol, callerAtom, calleeMol, call) {
+  createConnection(callerMol, callerAtom, call) {
+    const calleeMol = this.findCalleeInModule(call.name);
+    if (!calleeMol || calleeMol.filePath === callerMol.filePath) {
+      return null;
+    }
+
     const calleeAtom = calleeMol.atoms?.find(a => a.name === call.name);
-    
+
     return {
       from: {
         file: path.basename(callerMol.filePath),
@@ -87,6 +73,32 @@ export class ConnectionAnalyzer {
     if (arg.type === 'Identifier') return 'direct_pass';
     return 'expression';
   }
+}
+
+function buildCalleeIndex(molecules) {
+  const index = new Map();
+
+  for (const molecule of molecules || []) {
+    for (const atom of molecule.atoms || []) {
+      if (!index.has(atom.name)) {
+        index.set(atom.name, molecule);
+      }
+    }
+  }
+
+  return index;
+}
+
+function analyzeMoleculeConnections(analyzer, callerMol) {
+  return (callerMol.atoms || []).flatMap(atom =>
+    analyzeAtomConnections(analyzer, callerMol, atom)
+  );
+}
+
+function analyzeAtomConnections(analyzer, callerMol, atom) {
+  return (atom.calls || [])
+    .map(call => analyzer.createConnection(callerMol, atom, call))
+    .filter(Boolean);
 }
 
 export default ConnectionAnalyzer;

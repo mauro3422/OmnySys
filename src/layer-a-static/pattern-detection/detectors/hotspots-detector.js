@@ -25,18 +25,24 @@ export class HotspotsDetector extends PatternDetector {
 
     const findings = [];
     const usageStats = this.calculateUsageStats(systemMap);
+    const generateFinding = data => ({
+      id: `${data.type}-${data.metadata.fullId}`,
+      ...data,
+      recommendation: buildHotspotRecommendation(
+        data.metadata.usageCount,
+        data.metadata.functionName,
+        data.metadata.riskScore
+      )
+    });
+    const ruleContext = {
+      calculateRiskScore: (s) => scoreHotspot(s),
+      isUtilityFunction: (id, data) => this.isUtilityFunction(id, data),
+      generateFinding
+    };
 
     for (const stats of Object.values(usageStats)) {
       for (const rule of this.rules) {
-        rule.check(findings, stats, {
-          calculateRiskScore: (s) => this.calculateRiskScore(s),
-          isUtilityFunction: (id, data) => this.isUtilityFunction(id, data),
-          generateFinding: (data) => ({
-            id: `${data.type}-${data.metadata.fullId}`,
-            ...data,
-            recommendation: this.generateRecommendation(data.metadata.usageCount, data.metadata.functionName, data.metadata.riskScore)
-          })
-        });
+        rule.check(findings, stats, ruleContext);
       }
     }
 
@@ -50,7 +56,7 @@ export class HotspotsDetector extends PatternDetector {
 
   calculateUsageStats(systemMap) {
     const stats = {};
-    (systemMap.function_links || []).forEach(link => {
+    for (const link of systemMap.function_links || []) {
       if (!stats[link.to]) {
         stats[link.to] = {
           funcId: link.to,
@@ -62,18 +68,8 @@ export class HotspotsDetector extends PatternDetector {
       }
       stats[link.to].usageCount++;
       if (!stats[link.to].callers.includes(link.from)) stats[link.to].callers.push(link.from);
-    });
+    }
     return stats;
-  }
-
-  calculateRiskScore(stats) {
-    const { usageCount, callers, functionData } = stats;
-    let score = (usageCount * 1.5);
-    const uniqueFiles = new Set(callers.map(c => c.split('::')[0])).size;
-    score += (uniqueFiles * 2);
-    if (functionData?.complexity) score += Math.min(20, functionData.complexity);
-    if (functionData?.hasSideEffects) score += 10;
-    return score;
   }
 
   isUtilityFunction(funcId, functionData) {
@@ -84,15 +80,25 @@ export class HotspotsDetector extends PatternDetector {
     return utils.test(name) || ((functionData?.complexity || 0) <= 3 && !functionData?.hasSideEffects);
   }
 
-  generateRecommendation(usageCount, funcName, riskScore) {
-    if (usageCount >= 20) return `Function "${funcName}" is used excessively. Consider split.`;
-    if (riskScore >= 40) return `Function "${funcName}" has high complexity. Review responsibilities.`;
-    return `Monitor usage of "${funcName}".`;
-  }
-
   _emptyResult() {
     return { detector: this.getId(), findings: [], score: 100 };
   }
+}
+
+function scoreHotspot(stats) {
+    const { usageCount, callers, functionData } = stats;
+    let score = (usageCount * 1.5);
+    const uniqueFiles = new Set(callers.map(c => c.split('::')[0])).size;
+    score += (uniqueFiles * 2);
+    if (functionData?.complexity) score += Math.min(20, functionData.complexity);
+    if (functionData?.hasSideEffects) score += 10;
+    return score;
+}
+
+function buildHotspotRecommendation(usageCount, funcName, riskScore) {
+  if (usageCount >= 20) return `Function "${funcName}" is used excessively. Consider split.`;
+  if (riskScore >= 40) return `Function "${funcName}" has high complexity. Review responsibilities.`;
+  return `Monitor usage of "${funcName}".`;
 }
 
 export default HotspotsDetector;

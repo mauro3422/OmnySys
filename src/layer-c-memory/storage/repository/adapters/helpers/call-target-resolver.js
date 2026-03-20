@@ -8,121 +8,16 @@
  * @module storage/repository/adapters/helpers/call-target-resolver
  */
 
-import { normalizeFilePath } from '#shared/compiler/path-normalization.js';
-
-function normalizeComparablePath(value = '') {
-  return normalizeFilePath(String(value || ''))
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
-
-function safeParseJsonArray(value) {
-  if (!value || value === 'null' || value === 'undefined') {
-    return [];
-  }
-
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function extractCalleeName(call) {
-  if (typeof call === 'string') {
-    return call.trim();
-  }
-
-  if (!call || typeof call !== 'object') {
-    return '';
-  }
-
-  return String(call.callee || call.name || call.id || call.target || call.targetName || '').trim();
-}
-
-function extractSourceHint(call) {
-  if (!call || typeof call !== 'object') {
-    return '';
-  }
-
-  return normalizeComparablePath(
-    call.resolvedPath ||
-    call.targetPath ||
-    call.filePath ||
-    call.sourcePath ||
-    call.targetFile ||
-    call.sourceFile ||
-    ''
-  );
-}
-
-function uniquePush(candidates, candidate) {
-  if (!candidate) {
-    return;
-  }
-
-  const normalized = String(candidate).trim();
-  if (!normalized) {
-    return;
-  }
-
-  if (!candidates.includes(normalized)) {
-    candidates.push(normalized);
-  }
-}
-
-function buildNameCandidates(calleeName = '') {
-  const candidates = [];
-  const trimmed = String(calleeName || '').trim();
-  if (!trimmed) {
-    return candidates;
-  }
-
-  const shortName = trimmed.split('.').pop();
-  uniquePush(candidates, trimmed);
-  uniquePush(candidates, shortName);
-
-  if (trimmed.includes('::')) {
-    uniquePush(candidates, trimmed.split('::').pop());
-  }
-
-  return candidates;
-}
-
-function buildIdCandidates(sourcePath, calleeName, call = {}, normalizeIdFn = (value) => value) {
-  const candidates = [];
-  const normalizedSourcePath = normalizeComparablePath(sourcePath);
-  const nameCandidates = buildNameCandidates(calleeName);
-  const sourceHint = extractSourceHint(call);
-
-  if (calleeName.includes('::')) {
-    uniquePush(candidates, normalizeIdFn(calleeName));
-  }
-
-  if (sourceHint) {
-    for (const nameCandidate of nameCandidates) {
-      uniquePush(candidates, normalizeIdFn(`${sourceHint}::${nameCandidate}`));
-    }
-  }
-
-  for (const nameCandidate of nameCandidates) {
-    uniquePush(candidates, normalizeIdFn(`${normalizedSourcePath}::${nameCandidate}`));
-  }
-
-  if (call && typeof call === 'object') {
-    const explicitId = String(call.targetId || call.calleeId || call.id || '').trim();
-    if (explicitId) {
-      uniquePush(candidates, normalizeIdFn(explicitId));
-    }
-  }
-
-  return candidates;
-}
+import {
+  buildIdCandidates,
+  buildImportedPathCandidates,
+  buildNameCandidates,
+  extractCalleeName,
+  extractSourceHint,
+  normalizeComparablePath,
+  pickBestAtomCandidate,
+  safeParseJsonArray
+} from './call-target-resolution-helpers.js';
 
 function loadImportsForSource(db, importsCache, sourcePath) {
   if (importsCache.has(sourcePath)) {
@@ -151,68 +46,23 @@ function loadImportsForSource(db, importsCache, sourcePath) {
   return imports;
 }
 
-function buildImportedPathCandidates(sourcePath, importEntry) {
-  const candidates = [];
-  const resolved = normalizeComparablePath(
-    importEntry?.resolvedPath ||
-    importEntry?.resolved ||
-    importEntry?.targetPath ||
-    importEntry?.source ||
-    ''
-  );
-
-  if (!resolved) {
-    return candidates;
-  }
-
-  const sourceDir = sourcePath.includes('/') ? sourcePath.slice(0, sourcePath.lastIndexOf('/')) : '';
-  const imported = resolved.startsWith('.') || resolved.includes('/') ? resolved : `${sourceDir}/${resolved}`;
-  uniquePush(candidates, normalizeComparablePath(imported));
-  uniquePush(candidates, normalizeComparablePath(resolved));
-
-  return candidates;
-}
-
-function resolveByName(db, sourcePath, nameCandidates, cache = null) {
-  if (nameCandidates.length === 0) {
+function resolveFromAtomCache(cache, nameCandidates, sourceComparablePath) {
+  if (!(cache?.activeAtomsByName instanceof Map)) {
     return null;
   }
 
-  const sourceComparablePath = normalizeComparablePath(sourcePath);
-
-  const pickBestCandidate = (rows) => {
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return null;
-    }
-
-    const sortedRows = [...rows].sort((left, right) => {
-      const leftSameFile = normalizeComparablePath(left.file_path || '') === sourceComparablePath ? 0 : 1;
-      const rightSameFile = normalizeComparablePath(right.file_path || '') === sourceComparablePath ? 0 : 1;
-      if (leftSameFile !== rightSameFile) return leftSameFile - rightSameFile;
-
-      const leftExported = left.is_exported ? 0 : 1;
-      const rightExported = right.is_exported ? 0 : 1;
-      if (leftExported !== rightExported) return leftExported - rightExported;
-
-      return String(left.file_path || '').localeCompare(String(right.file_path || ''));
-    });
-
-    return sortedRows[0]?.id || null;
-  };
-
-  const cachedRowsByName = cache?.activeAtomsByName instanceof Map
-    ? cache.activeAtomsByName
-    : null;
-  if (cachedRowsByName instanceof Map) {
-    for (const nameCandidate of nameCandidates) {
-      const cachedRows = cachedRowsByName.get(nameCandidate);
-      const bestId = pickBestCandidate(cachedRows);
-      if (bestId) {
-        return bestId;
-      }
+  for (const nameCandidate of nameCandidates) {
+    const cachedRows = cache.activeAtomsByName.get(nameCandidate);
+    const bestId = pickBestAtomCandidate(cachedRows, sourceComparablePath);
+    if (bestId) {
+      return bestId;
     }
   }
 
+  return null;
+}
+
+function resolveByNameInDatabase(db, nameCandidates, sourcePath) {
   const stmt = db.prepare(`
     SELECT id, file_path, is_exported
     FROM atoms
@@ -233,6 +83,20 @@ function resolveByName(db, sourcePath, nameCandidates, cache = null) {
   }
 
   return null;
+}
+
+function resolveByName(db, sourcePath, nameCandidates, cache = null) {
+  if (nameCandidates.length === 0) {
+    return null;
+  }
+
+  const sourceComparablePath = normalizeComparablePath(sourcePath);
+  const cachedId = resolveFromAtomCache(cache, nameCandidates, sourceComparablePath);
+  if (cachedId) {
+    return cachedId;
+  }
+
+  return resolveByNameInDatabase(db, nameCandidates, sourcePath);
 }
 
 export function primeActiveAtomCache(db, cache = null) {
@@ -300,6 +164,84 @@ function hasActiveAtomId(db, candidateId, cache = null) {
   return !!activeAtomStmt.get(candidateId);
 }
 
+function getResolvedTarget(cache, cacheKey) {
+  if (!cacheKey || !cache?.resolvedTargets) {
+    return null;
+  }
+
+  return cache.resolvedTargets.has(cacheKey)
+    ? cache.resolvedTargets.get(cacheKey)
+    : null;
+}
+
+function storeResolvedTarget(cache, cacheKey, targetId) {
+  if (!cacheKey || !cache?.resolvedTargets) {
+    return targetId;
+  }
+
+  cache.resolvedTargets.set(cacheKey, targetId);
+  return targetId;
+}
+
+function resolveFromCandidateIds(db, cache, candidateIds, cacheKey, normalizeIdFn) {
+  for (const candidateId of candidateIds) {
+    if (!hasActiveAtomId(db, candidateId, cache)) {
+      continue;
+    }
+
+    return storeResolvedTarget(cache, cacheKey, candidateId);
+  }
+
+  return null;
+}
+
+function importEntryMatchesCall(importEntry, importedPaths, nameCandidates, sourceHint) {
+  const importSpecifiers = Array.isArray(importEntry?.specifiers) ? importEntry.specifiers : [];
+  const hasSpecifierMatch = importSpecifiers.some((spec) => {
+    const localName = String(spec?.local || '').trim();
+    const importedName = String(spec?.imported || '').trim();
+    return nameCandidates.includes(localName) || nameCandidates.includes(importedName);
+  });
+
+  if (hasSpecifierMatch) {
+    return true;
+  }
+
+  if (!sourceHint) {
+    return false;
+  }
+
+  return importedPaths.some((importedPath) => normalizeComparablePath(importedPath) === sourceHint);
+}
+
+function resolveFromImports(db, sourcePath, call, nameCandidates, cache, normalizeIdFn, cacheKey) {
+  const importsCache = cache?.importsBySourcePath || new Map();
+  const imports = loadImportsForSource(db, importsCache, sourcePath);
+  const sourceHint = extractSourceHint(call);
+
+  for (const importEntry of imports) {
+    const importedPaths = buildImportedPathCandidates(sourcePath, importEntry);
+    if (importedPaths.length === 0) {
+      continue;
+    }
+
+    if (!importEntryMatchesCall(importEntry, importedPaths, nameCandidates, sourceHint)) {
+      continue;
+    }
+
+    for (const importedPath of importedPaths) {
+      for (const nameCandidate of nameCandidates) {
+        const targetId = normalizeIdFn(`${importedPath}::${nameCandidate}`);
+        if (hasActiveAtomId(db, targetId, cache)) {
+          return storeResolvedTarget(cache, cacheKey, targetId);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) => value, cache = null) {
   if (!db || !sourceId) {
     return null;
@@ -317,64 +259,27 @@ export function resolveCallTargetId(db, sourceId, call, normalizeIdFn = (value) 
   const cacheKey = cache
     ? `${normalizedSourceId}::${calleeName}::${sourceHint}`
     : null;
-  if (cacheKey && cache.resolvedTargets?.has(cacheKey)) {
-    return cache.resolvedTargets.get(cacheKey);
+  const cachedTarget = getResolvedTarget(cache, cacheKey);
+  if (cachedTarget) {
+    return cachedTarget;
   }
 
   primeActiveAtomCache(db, cache);
 
   const candidateIds = buildIdCandidates(sourcePath, calleeName, call, normalizeIdFn);
-  for (const candidateId of candidateIds) {
-    if (hasActiveAtomId(db, candidateId, cache)) {
-      if (cacheKey && cache.resolvedTargets) {
-        cache.resolvedTargets.set(cacheKey, candidateId);
-      }
-      return candidateId;
-    }
+  const resolvedFromId = resolveFromCandidateIds(db, cache, candidateIds, cacheKey, normalizeIdFn);
+  if (resolvedFromId) {
+    return resolvedFromId;
   }
 
   const nameCandidates = buildNameCandidates(calleeName);
-  const importsCache = cache?.importsBySourcePath || new Map();
-  const imports = loadImportsForSource(db, importsCache, sourcePath);
-
-  for (const importEntry of imports) {
-    const importedPaths = buildImportedPathCandidates(sourcePath, importEntry);
-    if (importedPaths.length === 0) {
-      continue;
-    }
-
-    const importSpecifiers = Array.isArray(importEntry?.specifiers) ? importEntry.specifiers : [];
-    const isMatch = importSpecifiers.some((spec) => {
-      const localName = String(spec?.local || '').trim();
-      const importedName = String(spec?.imported || '').trim();
-      return nameCandidates.includes(localName) || nameCandidates.includes(importedName);
-    }) || importedPaths.some((importedPath) => {
-      const explicitHint = extractSourceHint(call);
-      return explicitHint && normalizeComparablePath(importedPath) === explicitHint;
-    });
-
-    if (!isMatch) {
-      continue;
-    }
-
-    for (const importedPath of importedPaths) {
-      for (const nameCandidate of nameCandidates) {
-        const targetId = normalizeIdFn(`${importedPath}::${nameCandidate}`);
-        if (hasActiveAtomId(db, targetId, cache)) {
-          if (cacheKey && cache.resolvedTargets) {
-            cache.resolvedTargets.set(cacheKey, targetId);
-          }
-          return targetId;
-        }
-      }
-    }
+  const resolvedFromImports = resolveFromImports(db, sourcePath, call, nameCandidates, cache, normalizeIdFn, cacheKey);
+  if (resolvedFromImports) {
+    return resolvedFromImports;
   }
 
   const resolvedByName = resolveByName(db, sourcePath, nameCandidates, cache);
-  if (cacheKey && cache.resolvedTargets) {
-    cache.resolvedTargets.set(cacheKey, resolvedByName);
-  }
-  return resolvedByName;
+  return storeResolvedTarget(cache, cacheKey, resolvedByName);
 }
 
 export default resolveCallTargetId;

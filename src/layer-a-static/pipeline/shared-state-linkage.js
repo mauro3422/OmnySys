@@ -9,8 +9,25 @@ function buildSharedStateMap(atoms) {
   for (const atom of sharedAtoms) {
     for (const access of atom.sharedStateAccess) {
       const key = access.fullReference || `${access.objectName}.${access.propName}`;
-      if (!stateMap.has(key)) stateMap.set(key, []);
-      stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
+      if (!stateMap.has(key)) {
+        stateMap.set(key, {
+          writers: [],
+          readers: [],
+          writerIds: new Set(),
+          readerIds: new Set()
+        });
+      }
+
+      const bucket = stateMap.get(key);
+      const targetIds = access.type === 'write' ? bucket.writerIds : bucket.readerIds;
+      const targetList = access.type === 'write' ? bucket.writers : bucket.readers;
+
+      if (targetIds.has(atom.id)) {
+        continue;
+      }
+
+      targetIds.add(atom.id);
+      targetList.push({ id: atom.id, line: access.line });
     }
   }
 
@@ -20,9 +37,9 @@ function buildSharedStateMap(atoms) {
 function buildSharedStateRelations(stateMap) {
   const relations = [];
 
-  for (const [key, accesses] of stateMap.entries()) {
-    const writers = accesses.filter((access) => access.type === 'write');
-    const readers = accesses.filter((access) => access.type === 'read');
+  for (const [key, bucket] of stateMap.entries()) {
+    const writers = bucket.writers;
+    const readers = bucket.readers;
 
     for (const writer of writers) {
       for (const reader of readers) {
@@ -94,6 +111,7 @@ export async function persistSharedStateLinkage(allAtoms, absoluteRootPath, verb
   await processSharedStateLinkage(db, allAtoms, verbose, logger);
   const syncResult = syncSemanticConnectionsFromRelations(db);
   if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+  if (verbose) logger.info(`  ✓ ${syncResult.systemFilesUpdated || 0} system_files semantic summaries synchronized`);
 }
 
 export async function persistSharedStateLinkageIncrementally(targetAtoms, absoluteRootPath, verbose, logger) {
@@ -132,6 +150,7 @@ export async function persistSharedStateLinkageIncrementally(targetAtoms, absolu
     await processSharedStateLinkage(db, allRelevantAtoms, verbose, logger);
     const syncResult = syncSemanticConnectionsFromRelations(db);
     if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+    if (verbose) logger.info(`  ✓ ${syncResult.systemFilesUpdated || 0} system_files semantic summaries synchronized`);
   } catch (error) {
     logger.warn(`  ⚠️ shared-state incremental linkage failed: ${error.message}`);
   }

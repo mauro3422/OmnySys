@@ -7,19 +7,62 @@
  * @version 1.0.0
  */
 
+import { text } from '../../../../../parser/extractors/utils.js';
+
 /**
  * Encuentra el nodo de función en el AST
  * @param {Object} ast - AST completo
  * @returns {Object|null}
  */
-const FUNCTION_NODE_TYPES = [
+const FUNCTION_NODE_TYPES = new Set([
   'function_declaration',
   'function_expression',
   'arrow_function',
   'method_definition',
   'generator_function_declaration',
   'generator_function',
-];
+]);
+
+function isFunctionNodeType(type) {
+  return FUNCTION_NODE_TYPES.has(type);
+}
+
+function findFunctionNodeInExportStatement(node) {
+  return (node.namedChildren || []).find((child) => isFunctionNodeType(child.type)) || null;
+}
+
+function findFunctionNodeInVariableDeclaration(node) {
+  for (const decl of node.namedChildren || []) {
+    if (decl.type !== 'variable_declarator') continue;
+
+    const init = decl.childForFieldName('value');
+    if (init && isFunctionNodeType(init.type)) {
+      return init;
+    }
+  }
+
+  return null;
+}
+
+function findFunctionNodeInProgram(node) {
+  for (const child of node.namedChildren || []) {
+    if (isFunctionNodeType(child.type)) {
+      return child;
+    }
+
+    if (child.type === 'export_statement') {
+      const exported = findFunctionNodeInExportStatement(child);
+      if (exported) return exported;
+    }
+
+    if (child.type === 'lexical_declaration' || child.type === 'variable_declaration') {
+      const declared = findFunctionNodeInVariableDeclaration(child);
+      if (declared) return declared;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Encuentra el nodo de función en el AST (Tree-sitter)
@@ -29,33 +72,13 @@ const FUNCTION_NODE_TYPES = [
 export function findFunctionNode(node) {
   if (!node) return null;
 
-  if (FUNCTION_NODE_TYPES.includes(node.type)) {
+  if (isFunctionNodeType(node.type)) {
     return node;
   }
 
   // Si es un root node (program), buscar la primera función
   if (node.type === 'program') {
-    for (const child of node.namedChildren) {
-      if (FUNCTION_NODE_TYPES.includes(child.type)) {
-        return child;
-      }
-      // Buscar en export statements
-      if (child.type === 'export_statement') {
-        const decl = child.namedChildren.find(c => FUNCTION_NODE_TYPES.includes(c.type));
-        if (decl) return decl;
-      }
-      // Buscar en variable declarations (const fn = ...)
-      if (child.type === 'lexical_declaration' || child.type === 'variable_declaration') {
-        for (const decl of child.namedChildren) {
-          if (decl.type === 'variable_declarator') {
-            const init = decl.childForFieldName('value');
-            if (init && FUNCTION_NODE_TYPES.includes(init.type)) {
-              return init;
-            }
-          }
-        }
-      }
-    }
+    return findFunctionNodeInProgram(node);
   }
 
   return null;
@@ -75,7 +98,7 @@ export function findFunctionNode(node) {
 export function getIdentifierName(node, code) {
   if (!node) return null;
   if (node.type === 'identifier') {
-    return code.slice(node.startIndex, node.endIndex);
+    return text(node, code);
   }
   if (node.type === 'this') {
     return 'this';

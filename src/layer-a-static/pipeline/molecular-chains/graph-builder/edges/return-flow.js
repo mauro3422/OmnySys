@@ -9,12 +9,11 @@
  * @param {Map} atomById - Mapa de átomos por ID
  * @returns {Array} Aristas de retorno
  */
-export function buildReturnEdges(atoms, atomById) {
+export function assembleReturnEdges(atoms, atomById) {
   const edges = [];
 
   for (const atom of atoms) {
-    const returnOutput = atom.dataFlow?.outputs?.find(o => o.type === 'return');
-    
+    const returnOutput = getReturnOutput(atom);
     if (!returnOutput) continue;
 
     for (const callerId of atom.calledBy || []) {
@@ -22,7 +21,7 @@ export function buildReturnEdges(atoms, atomById) {
       if (!caller) continue;
 
       const usage = findReturnUsage(caller, atom, returnOutput);
-      
+
       if (usage) {
         edges.push({
           id: `return_${atom.id}_${caller.id}`,
@@ -57,26 +56,23 @@ export function buildReturnEdges(atoms, atomById) {
 export function findReturnUsage(caller, callee, returnOutput) {
   const callerCode = caller.code || '';
   const calleeName = callee.name;
-  
+  const escapedCalleeName = escapeRegExp(calleeName);
+
   const assignmentPattern = new RegExp(
-    `(const|let|var)\\s+(\\w+)\\s*=\\s*(?:await\\s+)?${calleeName}\\(`,
-    'g'
+    `(const|let|var)\\s+(\\w+)\\s*=\\s*(?:await\\s+)?${escapedCalleeName}\\(`
   );
-  
-  const match = assignmentPattern.exec(callerCode);
-  if (match) {
+
+  const assignmentMatch = assignmentPattern.exec(callerCode);
+  if (assignmentMatch) {
     return {
-      variable: match[2],
-      context: match[0],
+      variable: assignmentMatch[2],
+      context: assignmentMatch[0],
       type: 'assignment'
     };
   }
 
-  const returnPattern = new RegExp(
-    `return\\s+(?:await\\s+)?${calleeName}\\(`,
-    'g'
-  );
-  
+  const returnPattern = new RegExp(`return\\s+(?:await\\s+)?${escapedCalleeName}\\(`);
+
   if (returnPattern.test(callerCode)) {
     return {
       variable: 'return',
@@ -86,4 +82,18 @@ export function findReturnUsage(caller, callee, returnOutput) {
   }
 
   return null;
+}
+
+function getReturnOutput(atom) {
+  for (const output of atom.dataFlow?.outputs || []) {
+    if (output.type === 'return') {
+      return output;
+    }
+  }
+
+  return null;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
