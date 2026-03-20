@@ -2,23 +2,11 @@
 
 ## Bugs y observaciones abiertas
 
-- `validate_imports` can report false positives on modules with local exports when the project index is stale. Treat direct Node import loading as the ground truth until the tool is fixed.
-- `databaseHealth` now reports `A+` with aligned `call_graph` / `atom_relations` rows. Keep watching the projection, but the drift warning is no longer a live blocker.
-- `live-row-utils` must not auto-purge `atom_relations` on bootstrap again. The cleanup is now support-table-only, but any future relation reconciliation should be opt-in and separately audited.
-- `validate_imports` still needs a tighter contract around runtime-vs-indexed evidence so stale DB import flags cannot override a successful Node import check.
-- `buildCalledByLinks` spends most of the full reindex time in per-relation target resolution and `atom_relations` bulk insert. The 140k-relation save path is now functionally correct but still too slow for startup.
-- `call-target-resolver` and `SQLiteRelationOperations` now carry fresh complexity/file-size warnings after the cache work. The optimization is correct, but the resolver should be split before more logic lands there.
-- The active-atom cache for relation saving still needs a real benchmark after restart. We have reduced per-call DB lookups, but the save path must be measured again on a cold startup before declaring victory.
-- `atom_relations` must preserve each atom's native ID scheme. Forcing absolute or relative paths in relation writers creates mixed-ID drift and breaks canonical joins on the next reload.
-- Canonical atom-ID normalization now lives in a shared helper, but `SQLiteBulkOperations`, `SQLiteRelationOperations`, and `link.js` still carry structural complexity warnings that should be split if more logic lands there.
-- Call-relation persistence and shared-state linkage have been split out of `link.js`, but the new helpers still need a runtime restart before the watcher can confirm the reduced complexity and file-size debt.
-- Phase 2 deep scan re-reads source files for semantic enrichment after Layer A already built the atom graph. Confirm whether the second pass can be narrowed or reused to avoid the extra startup cost.
-- `src/layer-c-memory/mcp/tools/status.js` was split into a smaller helper module, but the next runtime restart still needs to confirm the live payload stayed compact and did not reintroduce deep nested blobs.
-- `src/layer-c-memory/mcp/core/initialization/steps/mcp-setup-step.js` still trips a low data-flow coherence warning. The tool wrapper is compact enough for now, but the call path should be decomposed if more bootstrap logic lands there.
-- The `_recentErrors` wrapper in MCP responses is compacted, but direct and bootstrap paths should keep using the smallest practical log/watcher sample size so status responses stay readable without losing signal.
-- Runtime readers no longer depend on `calls_json` / `called_by_json` fallbacks for canonical decisions. Keep the schema/serialization surface as legacy compatibility only.
-- `src/shared/compiler/live-row-utils.js` still carries a complexity warning. The `toCount` duplicate/helper drift is resolved, but the module is still a refactor candidate.
-- `sqlite-crud-operations.deleteByFile()` and `deleteAtomRecord()` now cascade call-relation soft-deletes, but the first live restart after this fix should still be checked for any residual orphan rows from the previous state.
+- `src/layer-c-memory/mcp/tools/atomic-edit/validators.js` still trips a high-complexity warning. The import fix is correct, but the validator should be split before more policy lands there.
+- `src/layer-c-memory/storage/repository/adapters/sqlite-bulk-operations.js` is still the biggest structural hotspot and carries both a high complexity warning and a conceptual duplicate on `saveMany`.
+- `src/layer-a-static/pipeline/call-relations-linkage.js` is now correct and aligned with canonical relation writes, but the persistence path is still right at the medium-complexity threshold.
+- `src/layer-a-static/pipeline/shared-state-linkage.js` remains a medium-complexity follow-up if more semantic linkage logic is added.
+- `SQLiteBulkOperations`, `SQLiteRelationOperations`, and `link.js` should stay under watch for future structural growth, but the current DB/call-graph canonicity is healthy.
 
 ## Notes
 

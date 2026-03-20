@@ -8,7 +8,7 @@
  */
 
 import { SQLiteQueryOperations } from './sqlite-query-operations.js';
-import { persistAtomCalls } from '#layer-a-static/pipeline/call-relations-linkage.js';
+import { saveCalls } from './helpers/relations.js';
 
 /**
  * Clase para operaciones de relaciones
@@ -105,6 +105,6 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
    * @returns {number} - Cantidad de relaciones guardadas
    */
   saveCalls(atomId, calls) {
-    return persistAtomCalls(this, atomId, calls, this.projectPath);
+    return saveCalls(this.db, atomId, calls, this._logger);
   }
 }

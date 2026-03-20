@@ -10,12 +10,99 @@ import { findCallersEfficient } from './search.js';
 
 const logger = createLogger('OmnySys:atomic:validators');
 
+async function loadPackageImports(projectPath) {
+  try {
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    const raw = await fs.readFile(packageJsonPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed?.imports && typeof parsed.imports === 'object' ? parsed.imports : {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeImportTargets(target) {
+  if (!target) {
+    return [];
+  }
+
+  if (Array.isArray(target)) {
+    return target.flatMap(normalizeImportTargets);
+  }
+
+  if (typeof target === 'string') {
+    return [target];
+  }
+
+  if (typeof target === 'object') {
+    return Object.values(target).flatMap(normalizeImportTargets);
+  }
+
+  return [];
+}
+
+function resolvePackageImportTargets(importPath, packageImports) {
+  if (!importPath.startsWith('#')) {
+    return [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(packageImports, importPath)) {
+    return normalizeImportTargets(packageImports[importPath]);
+  }
+
+  for (const [specifier, target] of Object.entries(packageImports)) {
+    if (!specifier.includes('*')) {
+      continue;
+    }
+
+    const [prefix, suffix = ''] = specifier.split('*');
+    if (!importPath.startsWith(prefix) || !importPath.endsWith(suffix)) {
+      continue;
+    }
+
+    const wildcardValue = importPath.slice(prefix.length, importPath.length - suffix.length);
+    return normalizeImportTargets(target).map((entry) => entry.replace('*', wildcardValue));
+  }
+
+  return [];
+}
+
 /**
  * Helper local para verificar existencia de archivos físicos durante edición
  */
 async function checkImportExists(importPath, sourceFile, projectPath) {
   try {
-    if (importPath.startsWith('#') || !importPath.startsWith('.')) {
+    if (importPath.startsWith('#')) {
+      const packageImports = await loadPackageImports(projectPath);
+      const targets = resolvePackageImportTargets(importPath, packageImports);
+      if (targets.length === 0) {
+        return { exists: false, attemptedPaths: [`package.json#imports missing mapping for ${importPath}`] };
+      }
+
+      const attemptedPaths = [];
+      for (const target of targets) {
+        if (!target || typeof target !== 'string') {
+          continue;
+        }
+
+        const resolvedTarget = target.startsWith('.')
+          ? path.resolve(projectPath, target)
+          : path.resolve(projectPath, target.replace(/^\//, ''));
+        const attempts = [resolvedTarget, `${resolvedTarget}.js`, `${resolvedTarget}.ts`, path.join(resolvedTarget, 'index.js')];
+        attemptedPaths.push(...attempts);
+
+        for (const attempt of attempts) {
+          try {
+            await fs.access(attempt);
+            return { exists: true, attemptedPaths };
+          } catch { }
+        }
+      }
+
+      return { exists: false, attemptedPaths };
+    }
+
+    if (!importPath.startsWith('.')) {
       return { exists: true, attemptedPaths: [] };
     }
 
@@ -120,9 +207,9 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
       logger.info(`[PostEditOptimized] ${atom.name}: ${callers.length} callers found (including internal)`);
 
       for (const caller of callers) {
-        console.log(`[Validator] Caller ${caller.name} (${caller.filePath}): args=${caller.argumentCount}, required=${requiredParams}`);
+        logger.warn(`[Validator] Caller ${caller.name} (${caller.filePath}): args=${caller.argumentCount}, required=${requiredParams}`);
         if (caller.argumentCount !== undefined && caller.argumentCount < requiredParams) {
-          console.log(`[Validator] !!! Broken call detected in ${caller.filePath}:${caller.line}`);
+          logger.error(`[Validator] Broken call detected in ${caller.filePath}:${caller.line}`);
           result.valid = false;
 
           const proposal = {
@@ -153,5 +240,3 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
 
   return result;
 }
-
-

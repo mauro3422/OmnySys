@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.152 - Sprint 15: Import Validation & Relation Path Canonicalization](changelogs/v0.9.152.md)
 - [v0.9.151 - Sprint 15: Call Relation Orchestration Split](changelogs/v0.9.151.md)
 - [v0.9.150 - Sprint 15: Canonical ID Helper Centralization](changelogs/v0.9.150.md)
 - [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)
@@ -36,6 +37,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.152 - Sprint 15: Import Validation & Relation Path Canonicalization](changelogs/v0.9.152.md)
 - [v0.9.151 - Sprint 15: Call Relation Orchestration Split](changelogs/v0.9.151.md)
 - [v0.9.150 - Sprint 15: Canonical ID Helper Centralization](changelogs/v0.9.150.md)
 - [v0.9.149 - Sprint 15: Canonical Atom-ID Reconciliation](changelogs/v0.9.149.md)

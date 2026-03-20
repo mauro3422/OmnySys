@@ -45,28 +45,6 @@ function buildRelationRows(atomsToSync) {
   return rows;
 }
 
-function persistBulkRelationRows(repo, relationRows, allAtoms, projectPath, verbose, logger) {
-  if (relationRows.length === 0) return;
-
-  if (repo.saveRelationsBulk) {
-    repo.saveRelationsBulk(relationRows, 500);
-    if (verbose) {
-      logger.info(`  ✓ Saved ${relationRows.length} atom relations via bulk insert`);
-    }
-    return;
-  }
-
-  for (const atom of allAtoms) {
-    if (atom.calls && atom.calls.length > 0) {
-      try {
-        persistAtomCalls(repo, atom.id, atom.calls, projectPath, logger);
-      } catch (err) {
-        logger.warn(`  ⚠️ Failed to save relations for ${atom.id}: ${err.message}`);
-      }
-    }
-  }
-}
-
 function persistSqlQueryRelations(db, allAtoms, verbose, logger) {
   const insertRelation = db.prepare(`
     INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, created_at)
@@ -174,7 +152,24 @@ export async function persistCallRelations(allAtoms, absoluteRootPath, verbose, 
 
   const timerRelationsLog = startTimer('Bulk save relations');
   const relationRows = buildRelationRows(atomsToSync);
-  persistBulkRelationRows(repo, relationRows, allAtoms, absoluteRootPath, verbose, logger);
+  if (relationRows.length > 0) {
+    if (repo.saveRelationsBulk) {
+      repo.saveRelationsBulk(relationRows, 500);
+      if (verbose) {
+        logger.info(`  ✓ Saved ${relationRows.length} atom relations via bulk insert`);
+      }
+    } else {
+      for (const atom of allAtoms) {
+        if (atom.calls && atom.calls.length > 0) {
+          try {
+            persistAtomCalls(repo, atom.id, atom.calls, absoluteRootPath, logger);
+          } catch (err) {
+            logger.warn(`  ⚠️ Failed to save relations for ${atom.id}: ${err.message}`);
+          }
+        }
+      }
+    }
+  }
 
   timerRelationsLog.end(verbose);
 
