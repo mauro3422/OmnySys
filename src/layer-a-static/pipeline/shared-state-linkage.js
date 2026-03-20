@@ -2,67 +2,82 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import { syncSemanticConnectionsFromRelations } from '#layer-c/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js';
 import { rowToAtom } from '#layer-c/storage/repository/adapters/helpers/converters.js';
 
-async function processSharedStateLinkage(db, allAtoms, verbose, logger) {
-  try {
-    const sharedAtoms = allAtoms.filter((atom) => atom.sharedStateAccess && atom.sharedStateAccess.length > 0);
-    const stateMap = new Map();
+function buildSharedStateMap(atoms) {
+  const stateMap = new Map();
+  const sharedAtoms = atoms.filter((atom) => atom.sharedStateAccess && atom.sharedStateAccess.length > 0);
 
-    for (const atom of sharedAtoms) {
-      for (const access of atom.sharedStateAccess) {
-        const key = access.fullReference || `${access.objectName}.${access.propName}`;
-        if (!stateMap.has(key)) stateMap.set(key, []);
-        stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
+  for (const atom of sharedAtoms) {
+    for (const access of atom.sharedStateAccess) {
+      const key = access.fullReference || `${access.objectName}.${access.propName}`;
+      if (!stateMap.has(key)) stateMap.set(key, []);
+      stateMap.get(key).push({ id: atom.id, line: access.line, type: access.type });
+    }
+  }
+
+  return stateMap;
+}
+
+function buildSharedStateRelations(stateMap) {
+  const relations = [];
+
+  for (const [key, accesses] of stateMap.entries()) {
+    const writers = accesses.filter((access) => access.type === 'write');
+    const readers = accesses.filter((access) => access.type === 'read');
+
+    for (const writer of writers) {
+      for (const reader of readers) {
+        if (writer.id === reader.id) continue;
+        relations.push({
+          sourceId: writer.id,
+          targetId: reader.id,
+          type: 'shares_state',
+          weight: 1.0,
+          line: writer.line,
+          context: JSON.stringify({ key, direction: 'writer_to_reader' })
+        });
       }
     }
 
-    const relations = [];
-    for (const [key, accesses] of stateMap.entries()) {
-      const writers = accesses.filter((access) => access.type === 'write');
-      const readers = accesses.filter((access) => access.type === 'read');
-
-      for (const writer of writers) {
-        for (const reader of readers) {
-          if (writer.id === reader.id) continue;
-          relations.push({
-            sourceId: writer.id,
-            targetId: reader.id,
-            type: 'shares_state',
-            weight: 1.0,
-            line: writer.line,
-            context: JSON.stringify({ key, direction: 'writer_to_reader' })
-          });
-        }
-      }
-
-      for (let i = 0; i < writers.length; i++) {
-        for (let j = i + 1; j < writers.length; j++) {
-          relations.push({
-            sourceId: writers[i].id,
-            targetId: writers[j].id,
-            type: 'shares_state',
-            weight: 0.8,
-            line: writers[i].line,
-            context: JSON.stringify({ key, direction: 'co_writers' })
-          });
-        }
+    for (let i = 0; i < writers.length; i++) {
+      for (let j = i + 1; j < writers.length; j++) {
+        relations.push({
+          sourceId: writers[i].id,
+          targetId: writers[j].id,
+          type: 'shares_state',
+          weight: 0.8,
+          line: writers[i].line,
+          context: JSON.stringify({ key, direction: 'co_writers' })
+        });
       }
     }
+  }
 
-    if (relations.length === 0) return;
+  return relations;
+}
 
-    const insertRelation = db.prepare(`
+function writeSharedStateRelations(db, relations, verbose, logger) {
+  if (relations.length === 0) return;
+
+  const insertRelation = db.prepare(`
       INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, context_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `);
 
-    const insertBatch = db.transaction((rels) => {
-      for (const relation of rels) {
-        insertRelation.run(relation.sourceId, relation.targetId, relation.type, relation.weight, relation.line, relation.context);
-      }
-    });
+  const insertBatch = db.transaction((rels) => {
+    for (const relation of rels) {
+      insertRelation.run(relation.sourceId, relation.targetId, relation.type, relation.weight, relation.line, relation.context);
+    }
+  });
 
-    insertBatch(relations);
-    if (verbose) logger.info(`  ✓ ${relations.length} shares_state relations saved (AI Impact Map ready)`);
+  insertBatch(relations);
+  if (verbose) logger.info(`  ✓ ${relations.length} shares_state relations saved (AI Impact Map ready)`);
+}
+
+async function processSharedStateLinkage(db, allAtoms, verbose, logger) {
+  try {
+    const stateMap = buildSharedStateMap(allAtoms);
+    const relations = buildSharedStateRelations(stateMap);
+    writeSharedStateRelations(db, relations, verbose, logger);
   } catch (error) {
     logger.warn(`  ⚠️ shared-state linkage failed: ${error.message}`);
   }

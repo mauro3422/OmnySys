@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.154 - Sprint 15: Shared-State Linkage Helper Split](changelogs/v0.9.154.md)
 - [v0.9.153 - Sprint 15: Validator Split & Bulk Orchestration Simplification](changelogs/v0.9.153.md)
 - [v0.9.152 - Sprint 15: Import Validation & Relation Path Canonicalization](changelogs/v0.9.152.md)
 - [v0.9.151 - Sprint 15: Call Relation Orchestration Split](changelogs/v0.9.151.md)
@@ -38,6 +39,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.154 - Sprint 15: Shared-State Linkage Helper Split](changelogs/v0.9.154.md)
 - [v0.9.153 - Sprint 15: Validator Split & Bulk Orchestration Simplification](changelogs/v0.9.153.md)
 - [v0.9.152 - Sprint 15: Import Validation & Relation Path Canonicalization](changelogs/v0.9.152.md)
 - [v0.9.151 - Sprint 15: Call Relation Orchestration Split](changelogs/v0.9.151.md)
