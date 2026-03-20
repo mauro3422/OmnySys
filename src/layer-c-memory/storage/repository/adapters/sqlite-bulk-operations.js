@@ -1,10 +1,10 @@
 /**
  * @fileoverview sqlite-bulk-operations.js
- * 
+ *
  * Operaciones bulk para SQLite Adapter.
- * CRÍTICO: Mantiene UNA SOLA TRANSACCIÓN para todas las operaciones bulk
+ * CRITICAL: Mantiene UNA SOLA TRANSACCION para todas las operaciones bulk
  * para maximizar performance (de 26s a 2s).
- * 
+ *
  * @module storage/repository/adapters/sqlite-bulk-operations
  */
 
@@ -18,12 +18,84 @@ import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 import { resolveCallTargetId } from './helpers/call-target-resolver.js';
 import { normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
 
+function getAtomFilePath(atom) {
+  return atom.file_path || atom.file || atom.filePath || 'unknown';
+}
+
+function groupAtomsByFilePath(atoms, normalizePath) {
+  const groupedByFile = new Map();
+
+  for (const atom of atoms) {
+    const filePath = normalizePath(getAtomFilePath(atom));
+    if (!groupedByFile.has(filePath)) {
+      groupedByFile.set(filePath, []);
+    }
+    groupedByFile.get(filePath).push(atom);
+  }
+
+  return groupedByFile;
+}
+
+function collectExistingIdsForFile(db, filePath) {
+  return new Set(
+    db.prepare('SELECT id FROM atoms WHERE file_path = ?')
+      .all(filePath)
+      .map((row) => row.id)
+  );
+}
+
+function collectExistingIdsForFiles(db, filePaths) {
+  const existingIds = new Set();
+  const selectExistingStmt = db.prepare('SELECT id FROM atoms WHERE file_path = ?');
+
+  for (const filePath of filePaths) {
+    const rows = selectExistingStmt.all(filePath);
+    for (const row of rows) {
+      existingIds.add(row.id);
+    }
+  }
+
+  return existingIds;
+}
+
+function collectRelationsToSave(atoms) {
+  const relationsToSave = [];
+
+  for (const atom of atoms) {
+    if (atom.calls?.length > 0) {
+      for (const call of atom.calls) {
+        relationsToSave.push({ atomId: atom.id, call });
+      }
+    }
+  }
+
+  return relationsToSave;
+}
+
+function persistFileMetadata(db, filePath, atoms, fileHash, now) {
+  const totalLines = atoms.reduce((max, atom) => Math.max(max, atom.line_end || atom.endLine || 0), 0);
+
+  const sql = fileHash
+    ? `INSERT INTO files (path, last_analyzed, total_lines, hash) VALUES (?, ?, ?, ?)
+       ON CONFLICT(path) DO UPDATE SET
+         last_analyzed = excluded.last_analyzed,
+         total_lines = MAX(total_lines, excluded.total_lines),
+         hash = excluded.hash`
+    : `INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
+       ON CONFLICT(path) DO UPDATE SET
+         last_analyzed = excluded.last_analyzed,
+         total_lines = MAX(total_lines, excluded.total_lines)`;
+
+  const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
+  db.prepare(sql).run(...params);
+}
+
 /**
  * Clase para operaciones bulk
  * Extiende Relations con operaciones de alto volumen
- * 
+ *
  * Orquestador que delega en handlers especializados para reducir complejidad
- * manteniendo una transacción atómica única para performance.
+ * manteniendo una transaccion atomica unica para performance.
  */
 export class SQLiteBulkOperations extends SQLiteRelationOperations {
   constructor(db, logger) {
@@ -47,142 +119,72 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
   }
 
   /**
-   * Guarda múltiples átomos + relaciones en una sola transacción
-   * 
-   * @param {Array} atoms - Array de átomos a guardar
+   * Guarda multiples atomos + relaciones en una sola transaccion
+   *
+   * @param {Array} atoms - Array de atomos a guardar
    * @param {string} fileHash - Hash del archivo para control de cambios
-   * @returns {Array} - Átomos guardados
+   * @returns {Array} - Atomos guardados
    */
   saveMany(atoms, fileHash = null) {
-    if (!atoms || atoms.length === 0) return atoms;
-
-    const firstAtom = atoms[0];
-    const rawFilePath = firstAtom.file_path || firstAtom.file || firstAtom.filePath || 'unknown';
-    const filePath = this._normalize(rawFilePath);
-    const now = new Date().toISOString();
-
-    // Pre-check IDs existentes para detección de eventos (fuera de la transacción de escritura)
-    const existingIds = new Set(
-      this.db.prepare(
-        `SELECT id FROM atoms WHERE file_path = ?`
-      ).all(filePath).map(r => r.id)
-    );
-
-    // UNA SOLA TRANSACCIÓN para átomos, relaciones y metadatos de archivo
-    connectionManager.transaction(() => {
-      // Fase 1: Guardar todos los atomos
-      this.atomHandler.handle(atoms, now, (p) => this._normalize(p));
-
-      // Fase 2: Collect y Guardar todas las relaciones
-      const relationsToSave = [];
-      for (const atom of atoms) {
-        if (atom.calls?.length > 0) {
-          for (const call of atom.calls) {
-            relationsToSave.push({ atomId: atom.id, call });
-          }
-        }
-      }
-
-      if (relationsToSave.length > 0) {
-        this.relationHandler.handle(
-          relationsToSave,
-          now,
-          (id) => normalizeCanonicalAtomId(id, this.projectPath),
-          (sourceId, call, cache) => resolveCallTargetId(
-            this.db,
-            sourceId,
-            call,
-            (id) => normalizeCanonicalAtomId(id, this.projectPath),
-            cache
-          )
-        );
-      }
-
-      // Fase 3: Actualizar metadatos del archivo
-      this._updateFileMetadata(filePath, atoms, fileHash, now);
-    });
-
-    // Fase 4: Registrar eventos y versiones (usando otra transacción interna del handler)
-    this.eventHandler.handle(atoms, existingIds, now, Date.now(), (p) => this._normalize(p));
-
-    this._logger.debug(`[BulkOrchestrator] Processed ${atoms.length} atoms for ${filePath}`);
-    return atoms;
+    return this._saveAtomsBatch(atoms, fileHash, true);
   }
 
   /**
    * @private - Actualiza tabla 'files'
    */
-  _updateFileMetadata(filePath, atoms, fileHash, now) {
-    const totalLines = atoms.reduce((max, a) => Math.max(max, a.line_end || a.endLine || 0), 0);
-
-    const sql = fileHash
-      ? `INSERT INTO files (path, last_analyzed, total_lines, hash) VALUES (?, ?, ?, ?)
-         ON CONFLICT(path) DO UPDATE SET 
-           last_analyzed = excluded.last_analyzed,
-           total_lines = MAX(total_lines, excluded.total_lines),
-           hash = excluded.hash`
-      : `INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
-         ON CONFLICT(path) DO UPDATE SET 
-           last_analyzed = excluded.last_analyzed,
-           total_lines = MAX(total_lines, excluded.total_lines)`;
-
-    const params = fileHash ? [filePath, now, totalLines, fileHash] : [filePath, now, totalLines];
-    this.db.prepare(sql).run(...params);
-  }
-
-  // Métodos antiguos mantenidos por compatibilidad pero delegando a handlers
-  saveManyBulk(atoms) {
+  _saveAtomsBatch(atoms, fileHash, trackSingleFileHash) {
     if (!atoms || atoms.length === 0) return atoms;
 
     const now = new Date().toISOString();
-    const msNow = Date.now();
     const normalizePath = (value) => this._normalize(value);
-    const groupedByFile = new Map();
-
-    for (const atom of atoms) {
-      const rawFilePath = atom.file_path || atom.file || atom.filePath || 'unknown';
-      const filePath = normalizePath(rawFilePath);
-      if (!groupedByFile.has(filePath)) {
-        groupedByFile.set(filePath, []);
-      }
-      groupedByFile.get(filePath).push(atom);
-    }
-
-    const existingIds = new Set();
-    const selectExistingStmt = this.db.prepare('SELECT id FROM atoms WHERE file_path = ?');
-
-    for (const filePath of groupedByFile.keys()) {
-      const rows = selectExistingStmt.all(filePath);
-      for (const row of rows) {
-        existingIds.add(row.id);
-      }
-    }
+    const groupedByFile = groupAtomsByFilePath(atoms, normalizePath);
+    const firstFilePath = normalizePath(getAtomFilePath(atoms[0]));
+    const existingIds = trackSingleFileHash
+      ? collectExistingIdsForFile(this.db, firstFilePath)
+      : collectExistingIdsForFiles(this.db, groupedByFile.keys());
 
     connectionManager.transaction(() => {
       this.atomHandler.handle(atoms, now, normalizePath);
 
-      for (const [filePath, fileAtoms] of groupedByFile.entries()) {
-        this._updateFileMetadata(filePath, fileAtoms, null, now);
+      const relationsToSave = collectRelationsToSave(atoms);
+      if (relationsToSave.length > 0) {
+        this._saveRelationRows(relationsToSave, now);
+      }
+
+      if (trackSingleFileHash) {
+        persistFileMetadata(this.db, firstFilePath, atoms, fileHash, now);
+      } else {
+        for (const [filePath, fileAtoms] of groupedByFile.entries()) {
+          persistFileMetadata(this.db, filePath, fileAtoms, null, now);
+        }
       }
     });
 
-    this.eventHandler.handle(atoms, existingIds, now, msNow, normalizePath);
+    this.eventHandler.handle(atoms, existingIds, now, Date.now(), normalizePath);
+    this._logger.debug(`[BulkOrchestrator] Processed ${atoms.length} atoms`);
     return atoms;
   }
 
+  // Metodos antiguos mantenidos por compatibilidad pero delegando a handlers
+  saveManyBulk(atoms) {
+    return this._saveAtomsBatch(atoms, null, false);
+  }
+
   saveRelationsBulk(relations) {
-    return connectionManager.transaction(() =>
-      this.relationHandler.handle(
-        relations,
-        new Date().toISOString(),
+    return connectionManager.transaction(() => this._saveRelationRows(relations, new Date().toISOString()));
+  }
+
+  _saveRelationRows(relations, now) {
+    return this.relationHandler.handle(
+      relations,
+      now,
+      (id) => normalizeCanonicalAtomId(id, this.projectPath),
+      (sourceId, call, cache) => resolveCallTargetId(
+        this.db,
+        sourceId,
+        call,
         (id) => normalizeCanonicalAtomId(id, this.projectPath),
-        (sourceId, call, cache) => resolveCallTargetId(
-          this.db,
-          sourceId,
-          call,
-          (id) => normalizeCanonicalAtomId(id, this.projectPath),
-          cache
-        )
+        cache
       )
     );
   }

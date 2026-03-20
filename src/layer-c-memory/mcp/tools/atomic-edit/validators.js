@@ -67,6 +67,64 @@ function resolvePackageImportTargets(importPath, packageImports) {
   return [];
 }
 
+function countRequiredParams(signature) {
+  return (signature?.params || []).filter((param) => !param.optional).length;
+}
+
+function describeSignature(signature) {
+  return signature?.params?.map((param) => param.name + (param.optional ? '?' : '')).join(', ') || '';
+}
+
+function detectModifiedSignatureAtoms(previousAtoms, currentAtoms) {
+  return currentAtoms.filter((current) => {
+    const previous = previousAtoms.find((previous) => previous.name === current.name);
+    if (!previous) {
+      return false;
+    }
+
+    return countRequiredParams(current.signature) !== countRequiredParams(previous.signature);
+  });
+}
+
+function collectInternalCallers(atom, currentAtoms, filePath) {
+  const callers = [];
+
+  for (const currentAtom of currentAtoms) {
+    const calls = currentAtom.calls || [];
+    for (const call of calls) {
+      if (call.callee !== atom.name && call.target !== atom.name && call.name !== atom.name) {
+        continue;
+      }
+
+      const argumentCount = call.argumentCount !== undefined
+        ? call.argumentCount
+        : (call.args ? call.args.length : (call.arguments ? call.arguments.length : 0));
+
+      callers.push({
+        name: currentAtom.name,
+        filePath,
+        line: call.line || currentAtom.line,
+        code: call.code || JSON.stringify(call),
+        argumentCount
+      });
+    }
+  }
+
+  return callers;
+}
+
+function buildBrokenCallerProposal(caller, atom, requiredParams, signatureDesc) {
+  return {
+    file: caller.filePath,
+    symbol: caller.name,
+    line: caller.line,
+    reason: `Missing arguments for ${atom.name}(${signatureDesc})`,
+    oldCode: caller.code,
+    // Sugerencia dinámica basada en la diferencia de argumentos
+    newCode: caller.code
+  };
+}
+
 /**
  * Helper local para verificar existencia de archivos físicos durante edición
  */
@@ -163,15 +221,7 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
   };
 
   try {
-    const modifiedAtoms = currentAtoms.filter(current => {
-      const previous = previousAtoms.find(p => p.name === current.name);
-      if (!previous) return false;
-
-      const currentRequired = (current.signature?.params || []).filter(p => !p.optional).length;
-      const previousRequired = (previous.signature?.params || []).filter(p => !p.optional).length;
-
-      return currentRequired !== previousRequired;
-    });
+    const modifiedAtoms = detectModifiedSignatureAtoms(previousAtoms, currentAtoms);
 
     if (modifiedAtoms.length === 0) {
       logger.info('[PostEditOptimized] No signature changes detected');
@@ -181,28 +231,12 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
     logger.info(`[PostEditOptimized] Checking ${modifiedAtoms.length} modified functions`);
 
     for (const atom of modifiedAtoms) {
-      const requiredParams = (atom.signature?.params || []).filter(p => !p.optional).length;
-      const signatureDesc = atom.signature?.params?.map(p => p.name + (p.optional ? '?' : '')).join(', ') || '';
+      const requiredParams = countRequiredParams(atom.signature);
+      const signatureDesc = describeSignature(atom.signature);
 
       const callers = await findCallersEfficient(atom.name, projectPath, filePath);
 
-      // Buscar también llamadas internas dentro del mismo archivo (usando el código nuevo)
-      for (const currentAtom of currentAtoms) {
-        const calls = currentAtom.calls || [];
-        for (const call of calls) {
-          if (call.callee === atom.name || call.target === atom.name || call.name === atom.name) {
-            const argumentCount = call.argumentCount !== undefined ? call.argumentCount :
-              (call.args ? call.args.length : (call.arguments ? call.arguments.length : 0));
-            callers.push({
-              name: currentAtom.name,
-              filePath: filePath,
-              line: call.line || currentAtom.line,
-              code: call.code || JSON.stringify(call),
-              argumentCount: argumentCount
-            });
-          }
-        }
-      }
+      callers.push(...collectInternalCallers(atom, currentAtoms, filePath));
 
       logger.info(`[PostEditOptimized] ${atom.name}: ${callers.length} callers found (including internal)`);
 
@@ -212,18 +246,8 @@ export async function validatePostEditOptimized(filePath, projectPath, previousA
           logger.error(`[Validator] Broken call detected in ${caller.filePath}:${caller.line}`);
           result.valid = false;
 
-          const proposal = {
-            file: caller.filePath,
-            symbol: caller.name,
-            line: caller.line,
-            reason: `Missing arguments for ${atom.name}(${signatureDesc})`,
-            oldCode: caller.code,
-            // Sugerencia dinámica basada en la diferencia de argumentos
-            newCode: caller.code // El agente o usuario puede usar esto como base para el fix
-          };
-
           result.brokenCallers.push({
-            ...proposal,
+            ...buildBrokenCallerProposal(caller, atom, requiredParams, signatureDesc),
             severity: 'critical'
           });
         }
