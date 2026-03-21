@@ -11,10 +11,12 @@ import path from 'path';
 
 export class ChainBuilder {
   constructor(molecules, connections) {
-    this.molecules = molecules;
-    this.connections = connections;
-    this.moleculeByFile = new Map(molecules.map(m => [path.basename(m.filePath), m]));
-    this.functionNames = buildFunctionNameIndex(molecules);
+    this.molecules = molecules || [];
+    this.connections = connections || [];
+    this.moleculeByFile = buildMoleculeIndex(this.molecules);
+    this.atomsByFile = buildAtomIndex(this.molecules);
+    this.connectionsByFunction = buildConnectionIndex(this.connections);
+    this.functionNames = buildFunctionNameIndex(this.molecules);
   }
 
   build() {
@@ -39,7 +41,7 @@ export class ChainBuilder {
   }
 
   findEntries() {
-    return (this.molecules || []).flatMap(molecule =>
+    return this.molecules.flatMap(molecule =>
       collectEntriesForMolecule(molecule, this.functionNames)
     );
   }
@@ -53,18 +55,13 @@ export class ChainBuilder {
       hasSideEffects: entry.hasSideEffects
     }];
 
-    const outgoing = this.connections.filter(connection =>
-      connection.from.function === entry.name &&
-      !visited.has(`${connection.from.function}->${connection.to.function}`)
-    );
-
-    for (const conn of outgoing) {
+    for (const conn of this.getOutgoingConnections(entry.name, visited)) {
       visited.add(`${conn.from.function}->${conn.to.function}`);
 
       const calleeMol = this.moleculeByFile.get(conn.to.file);
-      const calleeAtom = calleeMol?.atoms?.find(atom => atom.name === conn.to.function);
+      const calleeAtom = this.atomsByFile.get(conn.to.file)?.get(conn.to.function);
 
-      if (calleeAtom) {
+      if (calleeMol && calleeAtom) {
         const subChain = this.traceChain(
           { ...calleeAtom, filePath: calleeMol.filePath },
           visited
@@ -75,6 +72,45 @@ export class ChainBuilder {
 
     return chain;
   }
+
+  getOutgoingConnections(functionName, visited) {
+    return (this.connectionsByFunction.get(functionName) || []).filter(connection =>
+      !visited.has(`${connection.from.function}->${connection.to.function}`)
+    );
+  }
+}
+
+function buildMoleculeIndex(molecules) {
+  return new Map((molecules || []).map(molecule => [path.basename(molecule.filePath), molecule]));
+}
+
+function buildAtomIndex(molecules) {
+  const index = new Map();
+
+  for (const molecule of molecules || []) {
+    const atoms = new Map();
+    for (const atom of molecule.atoms || []) {
+      atoms.set(atom.name, atom);
+    }
+    index.set(path.basename(molecule.filePath), atoms);
+  }
+
+  return index;
+}
+
+function buildConnectionIndex(connections) {
+  const index = new Map();
+
+  for (const connection of connections || []) {
+    const functionName = connection.from?.function;
+    if (!functionName) continue;
+
+    const bucket = index.get(functionName) || [];
+    bucket.push(connection);
+    index.set(functionName, bucket);
+  }
+
+  return index;
 }
 
 function buildFunctionNameIndex(molecules) {
