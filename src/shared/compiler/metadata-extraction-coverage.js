@@ -57,57 +57,59 @@ const METADATA_SURFACE_TABLES = [
   }
 ];
 
-export function getMetadataExtractionCoverage(db) {
-  if (!db?.prepare) {
-    return {
-      healthy: false,
-      trustworthy: false,
-      filesTotal: 0,
-      activeFiles: 0,
-      primaryFilesWithImports: 0,
-      liveAtomFiles: 0,
-      systemFilesTotal: 0,
-      systemFilesWithImports: 0,
-      fileDependenciesTotal: 0,
-      dependencySourceFiles: 0,
-      metrics: {
-        activeAtoms: 0,
-        activeCallRelations: 0,
-        activeSemanticConnections: 0
-      },
-      summary: {
-        totalTables: 0,
-        totalRows: 0,
-        totalFields: 0,
-        coveredFields: 0,
-        emptyFields: 0,
-        partialFields: 0,
-        fieldCoverageRatio: 0,
-        rowCoverageRatio: 0,
-        coverageRatio: 0,
-        coveragePct: 0,
-        fieldCoveragePct: 0,
-        nextAction: 'No metadata extraction coverage is available.'
-      },
-      tables: [],
-      fields: [],
-      warnings: [],
-      criticalFindings: [
-        {
-          table: null,
-          field: null,
-          message: 'Repository database is not available for metadata extraction coverage.'
-        }
-      ],
-      primaryIssue: {
-        state: 'blocked',
-        reason: 'Repository database is not available for metadata extraction coverage.'
+function buildNoDatabaseCoverage() {
+  return {
+    healthy: false,
+    trustworthy: false,
+    filesTotal: 0,
+    activeFiles: 0,
+    primaryFilesWithImports: 0,
+    liveAtomFiles: 0,
+    systemFilesTotal: 0,
+    systemFilesWithImports: 0,
+    fileDependenciesTotal: 0,
+    dependencySourceFiles: 0,
+    metrics: {
+      activeAtoms: 0,
+      activeCallRelations: 0,
+      activeSemanticConnections: 0
+    },
+    summary: {
+      totalTables: 0,
+      totalRows: 0,
+      totalFields: 0,
+      coveredFields: 0,
+      emptyFields: 0,
+      partialFields: 0,
+      fieldCoverageRatio: 0,
+      rowCoverageRatio: 0,
+      coverageRatio: 0,
+      coveragePct: 0,
+      fieldCoveragePct: 0,
+      nextAction: 'No metadata extraction coverage is available.'
+    },
+    tables: [],
+    fields: [],
+    warnings: [],
+    criticalFindings: [
+      {
+        table: null,
+        field: null,
+        message: 'Repository database is not available for metadata extraction coverage.'
       }
-    };
-  }
+    ],
+    primaryIssue: {
+      state: 'blocked',
+      reason: 'Repository database is not available for metadata extraction coverage.'
+    }
+  };
+}
 
-  const tables = METADATA_SURFACE_TABLES.map((config) => buildTableCoverage(db, config));
+function collectMetadataCoverageTables(db) {
+  return METADATA_SURFACE_TABLES.map((config) => buildTableCoverage(db, config));
+}
 
+function collectMetadataCoverageCounts(tables = []) {
   const totalTables = tables.length;
   const totalRows = tables.reduce((sum, table) => sum + toNumber(table.totalRows), 0);
   const totalFields = tables.reduce((sum, table) => sum + toNumber(table.totalFields), 0);
@@ -118,53 +120,7 @@ export function getMetadataExtractionCoverage(db) {
   const rowCoverageRatio = totalFields > 0 && totalRows > 0
     ? Number((tables.reduce((sum, table) => sum + (toNumber(table.rowCoverageRatio) * toNumber(table.totalFields)), 0) / totalFields).toFixed(3))
     : 0;
-  const coverageRatio = rowCoverageRatio;
-  const coveragePct = Math.round(coverageRatio * 100);
-  const fieldCoveragePct = Math.round(fieldCoverageRatio * 100);
-  const trustworthy = totalFields > 0 && fieldCoverageRatio >= 0.5 && rowCoverageRatio >= 0.5;
-  const healthy = totalFields > 0 && fieldCoverageRatio >= 0.75 && rowCoverageRatio >= 0.75;
-
-  const flattenedFields = tables.flatMap((table) => table.fields);
-  const applicableFields = flattenedFields.filter((field) => field.eligibleRows > 0 && field.state !== 'not_applicable');
-  const sortedMissingFields = applicableFields
-    .filter((field) => field.populatedRows === 0)
-    .sort((a, b) => a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
-  const sortedCoveredFields = applicableFields
-    .filter((field) => field.populatedRows > 0)
-    .sort((a, b) => b.coverageRatio - a.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
-  const primaryIssue = sortedMissingFields[0] || flattenedFields
-    .filter((field) => field.eligibleRows > 0 && field.state !== 'not_applicable' && field.populatedRows > 0)
-    .sort((a, b) => a.coverageRatio - b.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field))[0] || null;
-
-  const warnings = [];
-  const criticalFindings = [];
-  if (totalRows === 0) {
-    criticalFindings.push({
-      table: null,
-      field: null,
-      message: 'No canonical metadata rows were found in the tracked DB surfaces.'
-    });
-  } else if (totalFields === 0) {
-    criticalFindings.push({
-      table: null,
-      field: null,
-      message: 'No metadata columns were tracked across atoms, files or system_files.'
-    });
-  } else if (coveredFields === 0) {
-    criticalFindings.push({
-      table: null,
-      field: null,
-      message: 'Tracked metadata columns exist, but none are populated.'
-    });
-  } else if (!healthy) {
-    warnings.push({
-      table: null,
-      field: primaryIssue?.field || null,
-      message: `Metadata extraction coverage is partial (${fieldCoveragePct}% fields populated, ${coveragePct}% weighted row coverage).`
-    });
-  }
-
-  const summary = {
+  return {
     totalTables,
     totalRows,
     totalFields,
@@ -173,59 +129,139 @@ export function getMetadataExtractionCoverage(db) {
     partialFields,
     fieldCoverageRatio,
     rowCoverageRatio,
-    coverageRatio,
-    coveragePct,
-    fieldCoveragePct,
+    coverageRatio: rowCoverageRatio,
+    coveragePct: Math.round(rowCoverageRatio * 100),
+    fieldCoveragePct: Math.round(fieldCoverageRatio * 100),
+    trustworthy: totalFields > 0 && fieldCoverageRatio >= 0.5 && rowCoverageRatio >= 0.5,
+    healthy: totalFields > 0 && fieldCoverageRatio >= 0.75 && rowCoverageRatio >= 0.75
+  };
+}
+
+function collectMetadataCoverageFields(tables = []) {
+  const flattenedFields = tables.flatMap((table) => table.fields);
+  const applicableFields = flattenedFields.filter((field) => field.eligibleRows > 0 && field.state !== 'not_applicable');
+  const sortedMissingFields = applicableFields
+    .filter((field) => field.populatedRows === 0)
+    .sort((a, b) => a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
+  const sortedCoveredFields = applicableFields
+    .filter((field) => field.populatedRows > 0)
+    .sort((a, b) => b.coverageRatio - a.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
+  const primaryIssue = sortedMissingFields[0] || applicableFields
+    .filter((field) => field.populatedRows > 0)
+    .sort((a, b) => a.coverageRatio - b.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field))[0] || null;
+
+  return {
+    flattenedFields,
+    sortedMissingFields,
+    sortedCoveredFields,
+    primaryIssue
+  };
+}
+
+function buildMetadataCoverageSummary(counts, primaryIssue) {
+  return {
+    totalTables: counts.totalTables,
+    totalRows: counts.totalRows,
+    totalFields: counts.totalFields,
+    coveredFields: counts.coveredFields,
+    emptyFields: counts.emptyFields,
+    partialFields: counts.partialFields,
+    fieldCoverageRatio: counts.fieldCoverageRatio,
+    rowCoverageRatio: counts.rowCoverageRatio,
+    coverageRatio: counts.coverageRatio,
+    coveragePct: counts.coveragePct,
+    fieldCoveragePct: counts.fieldCoveragePct,
     nextAction: primaryIssue
       ? `Review ${primaryIssue.table}.${primaryIssue.field} before trusting downstream metadata consumers.`
-      : healthy
+      : counts.healthy
         ? 'Metadata extraction coverage is healthy enough to trust downstream consumers.'
         : 'Reconcile the missing metadata surfaces before trusting downstream consumers.'
   };
+}
+
+function buildMetadataCoverageReport(tables) {
+  const counts = collectMetadataCoverageCounts(tables);
+  const fieldLists = collectMetadataCoverageFields(tables);
+  const warnings = [];
+  const criticalFindings = [];
+
+  if (counts.totalRows === 0) {
+    criticalFindings.push({
+      table: null,
+      field: null,
+      message: 'No canonical metadata rows were found in the tracked DB surfaces.'
+    });
+  } else if (counts.totalFields === 0) {
+    criticalFindings.push({
+      table: null,
+      field: null,
+      message: 'No metadata columns were tracked across atoms, files or system_files.'
+    });
+  } else if (counts.coveredFields === 0) {
+    criticalFindings.push({
+      table: null,
+      field: null,
+      message: 'Tracked metadata columns exist, but none are populated.'
+    });
+  } else if (!counts.healthy) {
+    warnings.push({
+      table: null,
+      field: fieldLists.primaryIssue?.field || null,
+      message: `Metadata extraction coverage is partial (${counts.fieldCoveragePct}% fields populated, ${counts.coveragePct}% weighted row coverage).`
+    });
+  }
 
   return {
-    healthy,
-    trustworthy,
-    filesTotal: totalRows,
-    activeFiles: coveredFields,
-    primaryFilesWithImports: coveredFields,
-    liveAtomFiles: totalTables,
-    systemFilesTotal: totalFields,
-    systemFilesWithImports: coveredFields,
-    fileDependenciesTotal: totalFields,
-    dependencySourceFiles: coveredFields,
+    healthy: counts.healthy,
+    trustworthy: counts.trustworthy,
+    filesTotal: counts.totalRows,
+    activeFiles: counts.coveredFields,
+    primaryFilesWithImports: counts.coveredFields,
+    liveAtomFiles: counts.totalTables,
+    systemFilesTotal: counts.totalFields,
+    systemFilesWithImports: counts.coveredFields,
+    fileDependenciesTotal: counts.totalFields,
+    dependencySourceFiles: counts.coveredFields,
     metrics: {
-      activeAtoms: totalRows,
-      activeCallRelations: coveredFields,
-      activeSemanticConnections: emptyFields
+      activeAtoms: counts.totalRows,
+      activeCallRelations: counts.coveredFields,
+      activeSemanticConnections: counts.emptyFields
     },
-    summary,
+    summary: buildMetadataCoverageSummary(counts, fieldLists.primaryIssue),
     tables,
-    fields: flattenedFields,
+    fields: fieldLists.flattenedFields,
     warnings,
     criticalFindings,
-    primaryIssue: primaryIssue ? {
-      table: primaryIssue.table,
-      field: primaryIssue.field,
-      type: primaryIssue.type,
-      coverageRatio: primaryIssue.coverageRatio,
-      coveragePct: primaryIssue.coveragePct,
-      state: primaryIssue.state,
-      reason: primaryIssue.reason
+    primaryIssue: fieldLists.primaryIssue ? {
+      table: fieldLists.primaryIssue.table,
+      field: fieldLists.primaryIssue.field,
+      type: fieldLists.primaryIssue.type,
+      coverageRatio: fieldLists.primaryIssue.coverageRatio,
+      coveragePct: fieldLists.primaryIssue.coveragePct,
+      state: fieldLists.primaryIssue.state,
+      reason: fieldLists.primaryIssue.reason
     } : null,
-    topMissingFields: sortedMissingFields.slice(0, 10).map((field) => ({
+    topMissingFields: fieldLists.sortedMissingFields.slice(0, 10).map((field) => ({
       table: field.table,
       field: field.field,
       coveragePct: field.coveragePct,
       state: field.state
     })),
-    topCoveredFields: sortedCoveredFields.slice(0, 10).map((field) => ({
+    topCoveredFields: fieldLists.sortedCoveredFields.slice(0, 10).map((field) => ({
       table: field.table,
       field: field.field,
       coveragePct: field.coveragePct,
       state: field.state
     }))
   };
+}
+
+export function getMetadataExtractionCoverage(db) {
+  if (!db?.prepare) {
+    return buildNoDatabaseCoverage();
+  }
+
+  return buildMetadataCoverageReport(collectMetadataCoverageTables(db));
 }
 
 export function summarizeMetadataExtractionCoverage(coverage = null) {
