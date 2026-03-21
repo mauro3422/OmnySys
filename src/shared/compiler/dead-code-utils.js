@@ -7,6 +7,7 @@
 export {
     isLowSignalDeadCodeName,
     normalizeDeadCodeAtom,
+    isSuspiciousDeadCodeAtom,
     getDeadCodeSqlPredicate,
     detectDeadCodeDrift
 } from './dead-code-core.js';
