@@ -125,6 +125,11 @@ const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js'),
     recommendedReplacement: 'Call the canonical shared/compiler entrypoint directly. Only introduce a new wrapper if you are simultaneously promoting it into the canonical layer and migrating parallel call sites.'
   },
+  local_barrel_with_logic: {
+    existingCanonicalEntryPoint: 'pure barrel / gatekeeper split',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js'),
+    recommendedReplacement: 'Keep the barrel pure: move local behavior into a dedicated implementation module and leave re-exports in the entrypoint only.'
+  },
   file_universe_granularity: {
     existingCanonicalEntryPoint: 'getFileUniverseGranularity',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getFileUniverseGranularity'),

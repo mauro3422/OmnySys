@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.161 - Sprint 16: Framework Hook Duplicate Policy](changelogs/v0.9.161.md)
 - [v0.9.160 - Sprint 16: Chain Builder Contract Simplification](changelogs/v0.9.160.md)
 - [v0.9.159 - Sprint 16: MCP Zombie Cleanup Alignment](changelogs/v0.9.159.md)
@@ -46,6 +47,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.158 - Sprint 15: Import Validation Error Boundary Hardening](changelogs/v0.9.158.md)
 - [v0.9.157 - Sprint 15: Circular Dependency Split for Import Validation](changelogs/v0.9.157.md)
 - [v0.9.156 - Sprint 15: DB-Only Import and Export Validation](changelogs/v0.9.156.md)
@@ -93,6 +95,7 @@ All notable changes to this project are documented here as a release index. Deta
 ## Version Index
 
 | **0.9.151** | 2026-03-19 | Sprint 15: Call Relation Orchestration Split, delegated call persistence and shared-state linkage into dedicated helpers and slimmed the linker orchestration layer. |
+| **0.9.162** | 2026-03-21 | Sprint 16: Barrel Surface Governance, introduced mixed-barrel policy coverage, split compiler contract helpers, and added regression coverage for pure vs mixed barrels. |
 | **0.9.150** | 2026-03-19 | Sprint 15: Canonical ID Helper Centralization, shared the canonical atom-ID helper across relation writers and added async boundaries to shared-state linkage. |
 | **0.9.149** | 2026-03-19 | Sprint 15: Canonical Atom-ID Reconciliation, preserved native atom IDs in relation persistence, and migrated mixed-ID call rows back into a joinable canonical projection. |
 | **0.9.148** | 2026-03-19 | Sprint 15: Relation Cascade Fix for File Deletions, cascade-soft-deleted calls on atom/file removal and kept the live DB from accumulating orphan call rows. |
@@ -134,29 +137,38 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.151 (2026-03-19)
+## Latest Release: v0.9.162 (2026-03-21)
 
-**Call Relation Orchestration Split**
+**Barrel Surface Governance**
 
 ### Key Achievements
 
-1.  **Call Persistence Split**: The heavy call-relation save path now lives in a dedicated helper module.
-2.  **Shared-State Split**: Shared-state linkage also moved out of the linker into a focused helper module.
-3.  **Linker Slimming**: `link.js` is now an orchestration layer instead of the storage hot path.
-4.  **Runtime Safety**: Shared-state linkage keeps explicit async error boundaries and canonical sync to `atom_relations`.
+1.  **Mixed Barrel Policy**: mixed re-export modules that also define local logic are now flagged as structural drift instead of being treated as clean barrels.
+2.  **Canonical Guidance**: the reuse and recommendation layers now explain how to split a barrel from its implementation surface.
+3.  **Contract Layer Slimming**: compiler contract helpers now live in a dedicated helper module so the orchestrator stays thin.
+4.  **Regression Coverage**: the new barrel policy has a unit regression covering mixed barrels, pure barrels, and governance metrics.
 
 ### New & Refactored Files
 
-- `BACKLOG.md`
-- `src/shared/compiler/database-health.js`
-- `src/shared/compiler/live-row-utils.js`
-- `src/layer-c-memory/storage/repository/adapters/sqlite-query-operations.js`
-- `src/layer-c-memory/storage/repository/adapters/sqlite-relation-operations.js`
-- `src/layer-c-memory/mcp/tools/handlers/pipeline-health-handler/foundation.js`
-- `src/layer-c-memory/mcp/tools/handlers/pipeline-health-domain/raw-table-health.js`
-- `src/layer-c-memory/mcp/tools/status.js`
-- `changelogs/v0.9.144.md`
-- `CHANGELOG.md`
+- `src/shared/compiler/canonical-extension-conformance.js`
+- `src/shared/compiler/canonical-reuse-guidance.js`
+- `src/shared/compiler/architectural-recommendations.js`
+- `src/shared/compiler/compiler-contract-layer.js`
+- `src/shared/compiler/compiler-contract-layer-helpers.js`
+- `tests/unit/shared/compiler/canonical-extension-conformance.test.js`
+- `changelogs/v0.9.162.md`
+
+---
+
+## Previous Release: v0.9.161 (2026-03-21)
+
+**Framework Hook Duplicate Policy**
+
+### Key Achievements
+
+1.  **Framework Hook Policy**: `duplicate-signal-policy` now recognizes canonical MCP tool/base-tool `performAction` hooks as an intentional coordinator surface.
+2.  **Heuristic Boundary**: the new policy is narrow and only exempts the canonical MCP framework paths, not arbitrary `performAction` functions elsewhere.
+3.  **Regression Coverage**: a unit test now verifies that MCP tool hooks are ignored while non-framework `performAction` surfaces remain actionable.
 
 ---
 

@@ -8,7 +8,7 @@
  */
 
 import {
-  createPositionalFinding as createFinding
+  createPositionalFinding
 } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
@@ -61,6 +61,23 @@ function definesLocalCanonicalWrapper(source = '') {
   });
 }
 
+function definesMixedBarrelLogic(source = '') {
+  const hasReexportSurface =
+    /\bexport\s+\*\s+from\s+['"][^'"]+['"]/.test(source) ||
+    /\bexport\s*\{[^}]+\}\s+from\s+['"][^'"]+['"]/.test(source);
+
+  if (!hasReexportSurface) {
+    return false;
+  }
+
+  const hasLocalImplementation =
+    /\b(?:export\s+)?(?:async\s+)?function\s+[A-Za-z_$]\w*\s*\(/.test(source) ||
+    /\b(?:export\s+)?class\s+[A-Za-z_$]\w*\s*/.test(source) ||
+    /\b(?:const|let|var)\s+[A-Za-z_$]\w*\s*=\s*(?:async\s*)?(?:\(|[A-Za-z_$])/.test(source);
+
+  return hasLocalImplementation;
+}
+
 export function detectCanonicalExtensionConformanceFromSource(filePath, source = '', options = {}) {
   return scanCompilerConformanceSource(
     filePath,
@@ -69,7 +86,7 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
     { severity: 'medium', policyArea: 'canonical_extension' },
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
       if (usesPrivateCompilerHelperImport(currentSource)) {
-        findings.push(createFinding(
+        findings.push(createPositionalFinding(
           'private_compiler_helper_import',
           severity,
           policyArea,
@@ -83,7 +100,7 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
         definesCanonicalStyleHelper(currentSource) &&
         !importsSharedCompilerBarrel(currentSource)
       ) {
-        findings.push(createFinding(
+        findings.push(createPositionalFinding(
           'local_canonical_helper_without_barrel',
           severity,
           policyArea,
@@ -97,12 +114,22 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
         importsSharedCompilerBarrel(currentSource) &&
         definesLocalCanonicalWrapper(currentSource)
       ) {
-        findings.push(createFinding(
+        findings.push(createPositionalFinding(
           'local_canonical_wrapper',
           severity,
           policyArea,
           'Module defines a local wrapper around a canonical shared/compiler API',
           'Call the canonical entrypoint directly, or promote the wrapper into shared/compiler only if multiple callers need a new stable contract.'
+        ));
+      }
+
+      if (definesMixedBarrelLogic(currentSource)) {
+        findings.push(createPositionalFinding(
+          'local_barrel_with_logic',
+          severity,
+          policyArea,
+          'Module mixes barrel re-exports with local logic',
+          'Keep the file as a pure barrel/gatekeeper and move local behavior into a dedicated implementation module.'
         ));
       }
     }

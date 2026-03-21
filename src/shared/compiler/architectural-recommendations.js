@@ -71,6 +71,18 @@ function buildReexportRecommendation(guidance = null) {
   };
 }
 
+function buildMixedBarrelRecommendation(guidance = null) {
+  return {
+    action: 'Keep barrel modules pure and move local behavior into a dedicated implementation module',
+    alternatives: [
+      guidance?.recommendedReplacement || 'Split the file into a pure barrel and a behavior module.',
+      'Leave re-exports in the entrypoint only; do not grow local logic inside the barrel.',
+      'If the file needs logic, stop treating it as a barrel and give it a dedicated responsibility.'
+    ],
+    strategy: 'pure_barrel_split'
+  };
+}
+
 function buildCanonicalSurfaceRecommendation(guidance = null) {
   return {
     action: 'Stop recomposing an existing canonical surface locally; consume the canonical API instead',
@@ -112,6 +124,13 @@ export function resolveArchitecturalRecommendation({
     || issueType.includes('canonical_wrapper')
   ) {
     return buildReexportRecommendation(guidance);
+  }
+
+  if (
+    finding?.rule === 'local_barrel_with_logic'
+    || issueType.includes('barrel_with_logic')
+  ) {
+    return buildMixedBarrelRecommendation(guidance);
   }
 
   if (
