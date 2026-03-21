@@ -4,7 +4,14 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { getCachedCounts, getCachedMetadata, getPhase2Status, getDatabaseHealthSummary, buildTelemetryProvenance } from '../../../shared/compiler/index.js';
+import {
+  getCachedCounts,
+  getCachedMetadata,
+  getPhase2Status,
+  getDatabaseHealthSummary,
+  buildTelemetryProvenance,
+  summarizeSurfaceAuditForStatus
+} from '../../../shared/compiler/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
@@ -83,11 +90,13 @@ export async function get_server_status(args, context) {
       watcherLifecycle: notifications.watcherLifecycle
     });
 
-    status.compilerExplainability = compactCompilerExplainabilitySummary(await loadCompilerExplainability(
+    const compilerExplainability = await loadCompilerExplainability(
       projectPath,
       notifications.watcherAlerts || [],
       status.sharedState || {}
-    ));
+    );
+    status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
+    status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);
     if (!status.databaseHealth) {
       status.databaseHealth = status.compilerExplainability?.databaseHealth || null;
     } else {
