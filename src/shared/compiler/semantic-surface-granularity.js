@@ -2,8 +2,9 @@
  * @fileoverview Canonical semantic surface granularity helpers.
  *
  * `semantic_connections` is a file-level semantic summary surface.
- * `atom_relations` keeps fine-grained atom-to-atom semantic relations such as
- * `shares_state`, `emits`, and `listens`. They are related but not equivalent.
+ * The canonical detail surface lives in atom semantic metadata columns such as
+ * `shared_state_json`, `event_emitters_json`, and `event_listeners_json`.
+ * They are related but not equivalent.
  *
  * This helper makes that contract explicit so runtime code stops comparing the
  * totals directly or treating the file-level surface as a 1:1 mirror.
@@ -11,51 +12,29 @@
  * @module shared/compiler/semantic-surface-granularity
  */
 
-import { toNumber, toRatio, safeParseJson } from './core-utils.js';
-
-
-function mapRelationTypeToLegacyType(relationType = '') {
-  if (relationType === 'shares_state') return 'sharedState';
-  if (relationType === 'emits' || relationType === 'listens') return 'eventListeners';
-  return 'unknown';
-}
-
-function loadDerivedLegacyConnections(db) {
-  return db.prepare(`
-    SELECT
-      a1.file_path as source_path,
-      a2.file_path as target_path,
-      ar.relation_type,
-      json_extract(ar.context_json, '$.key') as connection_key,
-      COUNT(*) as weight
-    FROM atom_relations ar
-    JOIN atoms a1 ON a1.id = ar.source_id
-    JOIN atoms a2 ON a2.id = ar.target_id
-    WHERE ar.relation_type IN ('shares_state', 'emits', 'listens')
-      AND (ar.is_removed IS NULL OR ar.is_removed = 0)
-      AND (a1.is_removed IS NULL OR a1.is_removed = 0)
-      AND (a2.is_removed IS NULL OR a2.is_removed = 0)
-      AND a1.file_path IS NOT NULL
-      AND a2.file_path IS NOT NULL
-    GROUP BY a1.file_path, a2.file_path, ar.relation_type, json_extract(ar.context_json, '$.key')
-  `).all().map((row) => ({
-    connection_type: mapRelationTypeToLegacyType(row.relation_type),
-    source_path: row.source_path,
-    target_path: row.target_path,
-    connection_key: row.connection_key,
-    weight: Number(row.weight) || 0,
-    context_json: JSON.stringify({
-      derivedFrom: 'atom_relations',
-      relationType: row.relation_type,
-      key: row.connection_key || null
-    })
-  }));
-}
+import { toRatio, safeParseJson } from './core-utils.js';
+import {
+  deriveSemanticConnectionsFromAtomSurface,
+  loadAtomSemanticSurface,
+  summarizeAtomSemanticSurface
+} from './semantic-surface-derivation.js';
 
 
 function classifyLegacyBucket(connectionType = '') {
+  if (/^envVar$/i.test(connectionType)) {
+    return 'envVar';
+  }
+
   if (/^eventListener|^eventListeners$/i.test(connectionType)) {
     return 'eventListeners';
+  }
+
+  if (/^route$/i.test(connectionType)) {
+    return 'route';
+  }
+
+  if (/^colocation$/i.test(connectionType)) {
+    return 'colocation';
   }
 
   return 'sharedState';
@@ -84,7 +63,7 @@ function usesLegacySemanticBucket(connectionType = '') {
     return true;
   }
 
-  return !/^(sharedState|eventListeners)$/i.test(connectionType);
+  return !/^(sharedState|eventListeners|envVar|route|colocation)$/i.test(connectionType);
 }
 
 function requiresCanonicalSemanticNormalization(row = {}) {
@@ -107,6 +86,7 @@ function buildLegacyView(rows = []) {
     rows: legacyConnections,
     sharedState: legacyConnections.filter((row) => row.type === 'sharedState'),
     eventListeners: legacyConnections.filter((row) => row.type === 'eventListeners'),
+    envVars: legacyConnections.filter((row) => row.type === 'envVar'),
     total: legacyConnections.length
   };
 }
@@ -120,7 +100,7 @@ export function summarizeSemanticCanonicality(semanticSurfaceGranularity = null)
   return {
     status: contract.status || 'unknown',
     trustworthy: contract.trustworthy !== false,
-    recommendedSourceOfTruth: contract.recommendedSourceOfTruth || 'atom_relations',
+    recommendedSourceOfTruth: contract.recommendedSourceOfTruth || 'atoms',
     summarySurfaceAdvisory: contract.summarySurfaceAdvisory !== false,
     requiresCanonicalAdapter: contract.requiresCanonicalAdapter !== false,
     unsafeForTotalsComparison: contract.unsafeForTotalsComparison !== false,
@@ -129,9 +109,9 @@ export function summarizeSemanticCanonicality(semanticSurfaceGranularity = null)
     materialIssues: semanticSurfaceGranularity.materialIssues || [],
     advisories: semanticSurfaceGranularity.advisories || [],
     summary: semanticSurfaceGranularity.materiallyDrifting
-      ? 'Semantic file-level summary is materially drifting; use atom_relations until repaired.'
+      ? 'Semantic file-level summary is materially drifting; use atoms until repaired.'
       : contract.status === 'advisory_only'
-        ? 'Semantic file-level summary is healthy as an advisory surface, but atom_relations remains the source of truth.'
+        ? 'Semantic file-level summary is healthy as an advisory surface, but atoms remain the source of truth.'
         : 'Semantic summary and canonical adapter are aligned.'
   };
 }
@@ -143,40 +123,27 @@ export function getSemanticSurfaceGranularity(db) {
     WHERE is_removed IS NULL OR is_removed = 0
   `).all();
 
-  const relationCounts = db.prepare(`
-    SELECT relation_type, COUNT(*) as count
-    FROM atom_relations
-    WHERE relation_type IN ('shares_state', 'emits', 'listens')
-    GROUP BY relation_type
-  `).all();
-
-  const relationByType = relationCounts.reduce((acc, row) => {
-    acc[row.relation_type] = toNumber(row.count);
-    return acc;
-  }, {});
-
-  const derivedSemanticRows = loadDerivedLegacyConnections(db);
+  const atomSurface = loadAtomSemanticSurface(db);
+  const atomSurfaceSummary = summarizeAtomSemanticSurface(atomSurface);
+  const canonicalSemanticRows = deriveSemanticConnectionsFromAtomSurface(atomSurface);
   const persistedLegacyView = buildLegacyView(persistedSemanticRows);
-  const canonicalLegacyView = buildLegacyView(derivedSemanticRows);
-
+  const canonicalLegacyView = buildLegacyView(canonicalSemanticRows.rows);
   const semanticByType = summarizeConnectionTypes(persistedSemanticRows);
 
   const fileLevelTotal = persistedSemanticRows.length;
-  const atomLevelSharedStateTotal = toNumber(relationByType.shares_state);
-  const atomLevelEventTotal = toNumber(relationByType.emits) + toNumber(relationByType.listens);
-  const atomLevelTotal = atomLevelSharedStateTotal + atomLevelEventTotal;
-  const sharedStateGranularityRatio = toRatio(fileLevelTotal, atomLevelSharedStateTotal);
+  const atomLevelTotal = atomSurfaceSummary.totalSignals;
+  const sharedStateGranularityRatio = toRatio(fileLevelTotal, atomSurfaceSummary.sharedStateSignals);
 
   const materialIssues = [];
   const advisories = [];
   if (fileLevelTotal === 0 && atomLevelTotal > 0) {
-    materialIssues.push('file-level semantic summary is empty while atom-level semantic relations exist');
+    materialIssues.push('file-level semantic summary is empty while atom-level semantic signals exist');
   }
   if (persistedSemanticRows.some(requiresCanonicalSemanticNormalization)) {
     advisories.push('semantic_connections still exposes legacy connection_type buckets that should be normalized through the canonical adapter');
   }
   if (persistedLegacyView.total !== canonicalLegacyView.total) {
-    materialIssues.push('semantic_connections summary count is drifting from the canonical adapter derived from atom_relations');
+    materialIssues.push('semantic_connections summary count is drifting from the canonical adapter derived from atoms');
   }
 
   const issues = [...materialIssues, ...advisories];
@@ -190,25 +157,29 @@ export function getSemanticSurfaceGranularity(db) {
     },
     atomLevel: {
       total: atomLevelTotal,
-      sharesState: atomLevelSharedStateTotal,
-      emits: toNumber(relationByType.emits),
-      listens: toNumber(relationByType.listens)
+      sharedStateSignals: atomSurfaceSummary.sharedStateSignals,
+      eventEmitterSignals: atomSurfaceSummary.eventEmitterSignals,
+      eventListenerSignals: atomSurfaceSummary.eventListenerSignals,
+      envVarSignals: atomSurfaceSummary.envVarSignals,
+      atomsWithSharedState: atomSurfaceSummary.atomsWithSharedState,
+      atomsWithEmitters: atomSurfaceSummary.atomsWithEmitters,
+      atomsWithListeners: atomSurfaceSummary.atomsWithListeners
     },
     legacyView: canonicalLegacyView,
     persistedLegacyView,
     canonicalAdapterView: {
       ...canonicalLegacyView,
-      derivedFrom: 'atom_relations'
+      derivedFrom: 'atoms.semantic_surface'
     },
     contract: {
       fileLevelSurface: 'semantic_connections',
-      atomLevelSurface: 'atom_relations',
+      atomLevelSurface: 'atoms.semantic_metadata',
       summaryVsDetail: true,
       equivalentTotals: false,
       trustworthy: !materiallyDrifting,
       sharedStateGranularityRatio,
       status: materiallyDrifting ? 'drift' : (requiresCanonicalAdapter ? 'advisory_only' : 'stable'),
-      recommendedSourceOfTruth: 'atom_relations',
+      recommendedSourceOfTruth: 'atoms',
       summarySurfaceAdvisory: true,
       unsafeForTotalsComparison: fileLevelTotal !== atomLevelTotal,
       requiresCanonicalAdapter

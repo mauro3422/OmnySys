@@ -104,12 +104,19 @@ export function buildRuntimeHealthIssues(db) {
     });
   }
 
-  const semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+  let semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+  if (semanticSurfaceGranularity.materiallyDrifting === true) {
+    const repairResult = repairSystemMapPersistenceCoverage(db);
+    if (repairResult?.repaired === true) {
+      semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
+    }
+  }
+
   if (semanticSurfaceGranularity.materiallyDrifting === true) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_semantic_surface_drift`,
       severity: 'medium',
-      message: `semantic_connections (${semanticSurfaceGranularity.fileLevel.total}) is drifting from the canonical semantic summary derived from atom_relations (${semanticSurfaceGranularity.legacyView.total}).`,
+      message: `semantic_connections (${semanticSurfaceGranularity.fileLevel.total}) is drifting from the canonical semantic summary derived from atom semantic metadata (${semanticSurfaceGranularity.legacyView.total}).`,
       context: {
         source: 'runtime_table_health',
         category: 'semantic_surface_granularity',

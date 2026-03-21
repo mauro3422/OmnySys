@@ -5,6 +5,7 @@
 import { safeJson, safeParseJson } from '../../converters.js';
 import { BaseSqlRepository } from '../../../../core/BaseSqlRepository.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
+import { deriveSemanticConnectionsFromAtomSurface, loadAtomSemanticSurface } from '#shared/compiler/semantic-surface-derivation.js';
 
 function isNonProductionSemanticSurface(filePath = '') {
   const normalized = String(filePath || '')
@@ -38,42 +39,8 @@ function normalizeSemanticIssueSeverity(issue = {}) {
 }
 
 function buildDerivedSemanticRows(db, now) {
-  return db.prepare(`
-    SELECT
-      a1.file_path as source_path,
-      a2.file_path as target_path,
-      CASE
-        WHEN ar.relation_type = 'shares_state' THEN 'sharedState'
-        WHEN ar.relation_type IN ('emits', 'listens') THEN 'eventListeners'
-        ELSE 'unknown'
-      END as connection_type,
-      json_extract(ar.context_json, '$.key') as connection_key,
-      COUNT(*) as weight
-    FROM atom_relations ar
-    JOIN atoms a1 ON a1.id = ar.source_id
-    JOIN atoms a2 ON a2.id = ar.target_id
-    WHERE ar.relation_type IN ('shares_state', 'emits', 'listens')
-      AND (ar.is_removed IS NULL OR ar.is_removed = 0)
-      AND (a1.is_removed IS NULL OR a1.is_removed = 0)
-      AND (a2.is_removed IS NULL OR a2.is_removed = 0)
-      AND a1.file_path IS NOT NULL
-      AND a2.file_path IS NOT NULL
-    GROUP BY a1.file_path, a2.file_path, ar.relation_type, json_extract(ar.context_json, '$.key')
-  `).all().map((row) => ({
-    source_path: row.source_path,
-    target_path: row.target_path,
-    connection_type: row.connection_type,
-    connection_key: row.connection_key,
-    weight: Number(row.weight) || 0,
-    context_json: safeJson({
-      derivedFrom: 'atom_relations',
-      relationType: row.connection_type === 'sharedState' ? 'shares_state' : 'event_derived'
-    }),
-    created_at: now,
-    is_removed: 0,
-    updated_at: now,
-    lifecycle_status: 'active'
-  }));
+  const atomSurface = loadAtomSemanticSurface(db);
+  return deriveSemanticConnectionsFromAtomSurface(atomSurface, now).rows;
 }
 
 function normalizeLegacyConnectionType(connectionType = '') {
@@ -249,7 +216,7 @@ export function saveSemanticData(db, connections, issues, now) {
   }
 }
 
-export function syncSemanticConnectionsFromRelations(db, now = Date.now()) {
+export function syncSemanticConnectionsFromAtoms(db, now = Date.now()) {
   const repo = new BaseSqlRepository(db, 'SemanticHandler');
   const connRows = buildDerivedSemanticRows(db, now);
 
@@ -267,8 +234,12 @@ export function syncSemanticConnectionsFromRelations(db, now = Date.now()) {
   return {
     total: connRows.length,
     systemFilesUpdated,
-    derivedFrom: 'atom_relations'
+    derivedFrom: 'atoms.semantic_surface'
   };
+}
+
+export function syncSemanticConnectionsFromRelations(db, now = Date.now()) {
+  return syncSemanticConnectionsFromAtoms(db, now);
 }
 
 export function loadSemanticConnections(db) {

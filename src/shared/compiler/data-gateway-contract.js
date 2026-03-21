@@ -9,11 +9,11 @@
  */
 
 import { summarizeAnalysisGeneration } from './analysis-generation.js';
-
-function normalizeCount(value) {
-  const count = Number(value || 0);
-  return Number.isFinite(count) && count >= 0 ? count : 0;
-}
+import {
+  normalizeCount,
+  normalizeFileImportEvidenceSurface,
+  normalizePersistedFileCoverageSurface
+} from './data-gateway-contract-helpers.js';
 
 function normalizeText(value, fallback = '') {
   const text = String(value || '').trim();
@@ -157,6 +157,8 @@ export function buildSurfaceFreshnessLedger({
   databaseHealth = null
 } = {}) {
   const analysisGenerationSummary = summarizeAnalysisGeneration(analysisGeneration);
+  const normalizedPersistedFileCoverage = normalizePersistedFileCoverageSurface(persistedFileCoverage);
+  const normalizedFileImportEvidenceCoverage = normalizeFileImportEvidenceSurface(fileImportEvidenceCoverage);
   const surfaces = [
     buildSurfaceEntry({
       key: 'analysis_generation',
@@ -169,14 +171,14 @@ export function buildSurfaceFreshnessLedger({
       key: 'persisted_file_coverage',
       label: 'Persisted file coverage',
       sourceOfTruth: 'compiler_scanned_files',
-      surface: persistedFileCoverage,
+      surface: normalizedPersistedFileCoverage,
       fallbackReason: 'Persisted scanned-file coverage was not supplied.'
     }),
     buildSurfaceEntry({
       key: 'file_import_evidence',
       label: 'File import evidence',
       sourceOfTruth: 'files.imports_json',
-      surface: fileImportEvidenceCoverage,
+      surface: normalizedFileImportEvidenceCoverage,
       fallbackReason: 'File import evidence coverage was not supplied.'
     }),
     buildSurfaceEntry({
@@ -196,7 +198,7 @@ export function buildSurfaceFreshnessLedger({
     buildSurfaceEntry({
       key: 'semantic_surface_granularity',
       label: 'Semantic surface granularity',
-      sourceOfTruth: 'atom_relations',
+      sourceOfTruth: 'atoms.semantic_metadata',
       surface: semanticSurfaceGranularity,
       fallbackReason: 'Semantic surface granularity was not supplied.'
     }),
@@ -222,10 +224,10 @@ export function buildSurfaceFreshnessLedger({
 
   return {
     contract: {
-      sourceOfTruth: 'atom_relations',
+      sourceOfTruth: 'atoms',
       mirrorSurfaces: ['system_files', 'file_dependencies', 'semantic_connections'],
       policySurface: 'data-gateway-contract',
-      recommendedSourceOfTruth: 'atom_relations'
+      recommendedSourceOfTruth: 'atoms'
     },
     generation: analysisGenerationSummary,
     surfaces,

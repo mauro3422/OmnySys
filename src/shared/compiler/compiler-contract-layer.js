@@ -93,7 +93,7 @@ function buildInvariants({
       status: semanticSurfaceGranularity?.materiallyDrifting === true ? 'fail' : 'pass',
       severity: 'high',
       message: 'File-level semantic summaries must never be treated as equivalent to atom-level semantic relations.',
-      recommendedAction: 'Use atom_relations as source of truth and pass semantic_connections through getSemanticSurfaceGranularity.',
+      recommendedAction: 'Use atoms semantic metadata as source of truth and pass semantic_connections through getSemanticSurfaceGranularity.',
       evidence: {
         semanticCanonicality,
         semanticSurfaceGranularity

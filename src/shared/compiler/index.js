@@ -177,6 +177,12 @@ export {
 } from './semantic-surface-granularity.js';
 
 export {
+  loadAtomSemanticSurface,
+  summarizeAtomSemanticSurface,
+  deriveSemanticConnectionsFromAtomSurface
+} from './semantic-surface-derivation.js';
+
+export {
   getDatabaseHealthSummary
 } from './database-health.js';
 

@@ -113,7 +113,7 @@ const RULE_GUIDANCE = {
   semantic_surface_granularity: {
     existingCanonicalEntryPoint: 'getSemanticSurfaceGranularity',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getSemanticSurfaceGranularity'),
-    recommendedReplacement: 'Read semantic summary/detail contracts through the canonical granularity API before mixing `semantic_connections` with `atom_relations`.'
+    recommendedReplacement: 'Read semantic summary/detail contracts through the canonical granularity API before mixing `semantic_connections` with atom semantic metadata.'
   },
   canonical_diagnostics_bypass: {
     existingCanonicalEntryPoint: 'loadCompilerDiagnosticsSnapshot',

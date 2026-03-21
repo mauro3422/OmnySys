@@ -110,7 +110,7 @@ export async function persistSharedStateLinkage(allAtoms, absoluteRootPath, verb
 
   await processSharedStateLinkage(db, allAtoms, verbose, logger);
   const syncResult = syncSemanticConnectionsFromRelations(db);
-  if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+  if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from ${syncResult.derivedFrom || 'semantic surface'}`);
   if (verbose) logger.info(`  ✓ ${syncResult.systemFilesUpdated || 0} system_files semantic summaries synchronized`);
 }
 
@@ -149,7 +149,7 @@ export async function persistSharedStateLinkageIncrementally(targetAtoms, absolu
 
     await processSharedStateLinkage(db, allRelevantAtoms, verbose, logger);
     const syncResult = syncSemanticConnectionsFromRelations(db);
-    if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from atom_relations`);
+    if (verbose) logger.info(`  ✓ ${syncResult.total} semantic_connections rows synchronized from ${syncResult.derivedFrom || 'semantic surface'}`);
     if (verbose) logger.info(`  ✓ ${syncResult.systemFilesUpdated || 0} system_files semantic summaries synchronized`);
   } catch (error) {
     logger.warn(`  ⚠️ shared-state incremental linkage failed: ${error.message}`);

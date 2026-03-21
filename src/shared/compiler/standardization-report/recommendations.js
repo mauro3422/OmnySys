@@ -91,7 +91,7 @@ export function buildMissingCanonicalSurfaceReport(adoptionGaps = []) {
       'semantic_surface_contracts',
       'medium',
       'Semantic summaries and atom-level semantic relations are being mixed without an explicit granularity contract.',
-      'Expose semantic summary/detail comparisons through a canonical granularity API before MCP/query tools compare file-level semantic_connections with atom_relations.'
+      'Expose semantic summary/detail comparisons through a canonical granularity API before MCP/query tools compare file-level semantic_connections with atom semantic metadata.'
     ));
   }
 
@@ -214,7 +214,7 @@ export function buildMissingCanonicalApis({
       'semantic_surface_granularity',
       'medium',
       'Semantic telemetry mixes file-level summaries and atom-level relations without an explicit contract.',
-      'Adopt the canonical semantic surface granularity API before consumers treat semantic_connections as equivalent to atom_relations.'
+      'Adopt the canonical semantic surface granularity API before consumers treat semantic_connections as equivalent to atom semantic metadata.'
     ));
   }
 

@@ -8,6 +8,12 @@
  */
 
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
+import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
+import { parsePersistedArray, safeParseJson } from './core-utils.js';
+import {
+  deriveSemanticConnectionsFromAtomSurface,
+  loadAtomSemanticSurface
+} from './semantic-surface-derivation.js';
 import {
   buildKnownFilePathIndex,
   dedupeDependencies,
@@ -20,6 +26,73 @@ import {
 } from './system-map-persistence-repair-paths.js';
 import { repairFromSystemFileDependsOn } from './system-map-persistence-repair-dependencies.js';
 import { loadSystemFileSnapshots } from './system-map-persistence-repair-helpers.js';
+
+function normalizeRepairPath(filePath = '') {
+  return String(filePath || '')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\/+/, '');
+}
+
+function sameRepairPath(candidatePath, targetPath) {
+  const candidate = normalizeRepairPath(candidatePath);
+  const target = normalizeRepairPath(targetPath);
+
+  if (!candidate || !target) {
+    return false;
+  }
+
+  return (
+    candidate === target ||
+    candidate.endsWith(`/${target}`) ||
+    target.endsWith(`/${candidate}`)
+  );
+}
+
+function buildSemanticSurfaceFromAtoms(db, fileRows, now) {
+  const atomSurface = loadAtomSemanticSurface(db);
+  const derived = deriveSemanticConnectionsFromAtomSurface(atomSurface, now);
+  const semanticConnectionsByFile = new Map();
+
+  for (const fileRow of fileRows || []) {
+    const sourcePath = normalizeRepairPath(fileRow?.path || '');
+    if (sourcePath) {
+      semanticConnectionsByFile.set(sourcePath, []);
+    }
+  }
+
+  for (const row of derived.rows || []) {
+    const connection = {
+      from: row.source_path,
+      to: row.target_path,
+      type: row.connection_type,
+      key: row.connection_key || null,
+      weight: Number(row.weight) || 0,
+      metadata: safeParseJson(row.context_json, {})
+    };
+
+    for (const fileRow of fileRows || []) {
+      const sourcePath = normalizeRepairPath(fileRow?.path || '');
+      if (!sourcePath) {
+        continue;
+      }
+
+      if (
+        sameRepairPath(row.source_path, sourcePath) ||
+        sameRepairPath(row.target_path, sourcePath)
+      ) {
+        semanticConnectionsByFile.get(sourcePath).push(connection);
+      }
+    }
+  }
+
+  return {
+    semanticRows: derived.rows || [],
+    semanticConnectionsByFile,
+    semanticSummary: derived.summary || { totalRows: 0, sharedStateGroupCount: 0, eventGroupCount: 0 }
+  };
+}
 
 function buildSystemFilesFromPrimaryFiles(db, now) {
   const fileRows = db.prepare(`
@@ -40,6 +113,7 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
     WHERE (is_removed IS NULL OR is_removed = 0)
   `).all();
   const riskByFile = new Map(riskRows.map((row) => [normalizeDbPath(row?.file_path || ''), Number(row?.risk_score) || 0]));
+  const semanticSurface = buildSemanticSurfaceFromAtoms(db, fileRows, now);
 
   const dependencyBySource = new Map();
   const usedByByTarget = new Map();
@@ -121,6 +195,7 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
     const usedBy = [...(usedByByTarget.get(sourcePath) || new Set())];
     const fileImports = parsePersistedArray(fileRow?.imports_json);
     const fileExports = parsePersistedArray(fileRow?.exports_json);
+    const semanticConnections = semanticSurface.semanticConnectionsByFile.get(sourcePath) || [];
 
     return {
       path: sourcePath,
@@ -129,7 +204,7 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
       cultureRole: snapshot.cultureRole || null,
       risk_score: snapshot.riskScore || riskByFile.get(sourcePath) || 0,
       semanticAnalysis: snapshot.semanticAnalysis || {},
-      semanticConnections: snapshot.semanticConnections || [],
+      semanticConnections,
       exports: (snapshot.exports || []).length > 0 ? snapshot.exports : fileExports,
       imports: (snapshot.imports || []).length > 0 ? snapshot.imports : fileImports,
       definitions: (snapshot.definitions || []).length > 0 ? snapshot.definitions : [],
@@ -144,13 +219,13 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
     };
   });
 
-  return { systemFiles, dependencies };
+  return { systemFiles, dependencies, semanticRows: semanticSurface.semanticRows, semanticSummary: semanticSurface.semanticSummary };
 }
 
 function repairFromPrimaryFiles(db, now) {
-  const { systemFiles, dependencies } = buildSystemFilesFromPrimaryFiles(db, now);
+  const { systemFiles, dependencies, semanticRows } = buildSystemFilesFromPrimaryFiles(db, now);
   if (systemFiles.length === 0) {
-    return { repaired: false, inserted: 0, sources: 0, dependencies: 0, rebuiltFrom: 'primary_files' };
+    return { repaired: false, inserted: 0, sources: 0, dependencies: 0, semanticConnections: 0, rebuiltFrom: 'primary_files' };
   }
 
   const uniqueDependencies = dedupeDependencies(dependencies);
@@ -233,6 +308,37 @@ function repairFromPrimaryFiles(db, now) {
         dependency.updatedAt
       );
     }
+
+    db.prepare('DELETE FROM semantic_connections').run();
+    const insertSemanticConnection = db.prepare(`
+      INSERT INTO semantic_connections (
+        source_path,
+        target_path,
+        connection_type,
+        connection_key,
+        weight,
+        context_json,
+        created_at,
+        is_removed,
+        updated_at,
+        lifecycle_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `);
+
+    for (const row of semanticRows || []) {
+      insertSemanticConnection.run(
+        row.source_path,
+        row.target_path,
+        row.connection_type,
+        row.connection_key,
+        row.weight,
+        row.context_json,
+        row.created_at,
+        row.updated_at,
+        row.lifecycle_status
+      );
+    }
   })();
 
   return {
@@ -240,16 +346,99 @@ function repairFromPrimaryFiles(db, now) {
     inserted: systemFiles.length,
     sources: systemFiles.length,
     dependencies: uniqueDependencies.length,
+    semanticConnections: semanticRows.length,
     rebuiltFrom: 'primary_files'
+  };
+}
+
+function repairSemanticConnectionsFromAtoms(db, now) {
+  const fileRows = db.prepare(`
+    SELECT path
+    FROM system_files
+    WHERE (is_removed IS NULL OR is_removed = 0)
+  `).all();
+
+  const semanticSurface = buildSemanticSurfaceFromAtoms(db, fileRows, now);
+  const isoNow = new Date(now).toISOString();
+  const columns = db.prepare('PRAGMA table_info("system_files")').all();
+  const hasUpdatedAt = Array.isArray(columns) && columns.some((column) => column?.name === 'updated_at');
+  const hasLifecycleStatus = Array.isArray(columns) && columns.some((column) => column?.name === 'lifecycle_status');
+  const updateAssignments = ['semantic_connections_json = ?'];
+  if (hasUpdatedAt) {
+    updateAssignments.push('updated_at = ?');
+  }
+  if (hasLifecycleStatus) {
+    updateAssignments.push("lifecycle_status = 'active'");
+  }
+
+  const updateStmt = db.prepare(`
+    UPDATE system_files
+    SET ${updateAssignments.join(', ')}
+    WHERE path = ?
+  `);
+
+  const insertSemanticConnection = db.prepare(`
+    INSERT INTO semantic_connections (
+      source_path,
+      target_path,
+      connection_type,
+      connection_key,
+      weight,
+      context_json,
+      created_at,
+      is_removed,
+      updated_at,
+      lifecycle_status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `);
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM semantic_connections').run();
+
+    for (const fileRow of fileRows) {
+      const sourcePath = normalizeRepairPath(fileRow?.path || '');
+      if (hasUpdatedAt) {
+        updateStmt.run(toJsonText(semanticSurface.semanticConnectionsByFile.get(sourcePath) || [], '[]'), isoNow, sourcePath);
+      } else {
+        updateStmt.run(toJsonText(semanticSurface.semanticConnectionsByFile.get(sourcePath) || [], '[]'), sourcePath);
+      }
+    }
+
+    for (const row of semanticSurface.semanticRows || []) {
+      insertSemanticConnection.run(
+        row.source_path,
+        row.target_path,
+        row.connection_type,
+        row.connection_key,
+        row.weight,
+        row.context_json,
+        row.created_at,
+        row.updated_at,
+        row.lifecycle_status
+      );
+    }
+  })();
+
+  return {
+    repaired: true,
+    inserted: semanticSurface.semanticRows.length,
+    sources: fileRows.length,
+    dependencies: 0,
+    semanticConnections: semanticSurface.semanticRows.length,
+    rebuiltFrom: 'atoms.semantic_surface'
   };
 }
 
 export function repairSystemMapPersistenceCoverage(db) {
   const initialCoverage = getSystemMapPersistenceCoverage(db);
+  const semanticSurface = getSemanticSurfaceGranularity(db);
   const now = Date.now();
 
-  if (initialCoverage.healthy === true) {
-    return { repaired: false, inserted: 0, sources: 0, dependencies: 0 };
+  const shouldRepairSemanticSurface = semanticSurface.materiallyDrifting === true && (semanticSurface.atomLevel?.total || 0) > 0;
+
+  if (initialCoverage.healthy === true && shouldRepairSemanticSurface === false) {
+    return { repaired: false, inserted: 0, sources: 0, dependencies: 0, semanticConnections: 0 };
   }
 
   const shouldRepairFromPrimaryFiles =
@@ -268,12 +457,17 @@ export function repairSystemMapPersistenceCoverage(db) {
           dependencies: dependencyRepair.dependencies,
           inserted: primaryRepair.inserted,
           sources: primaryRepair.sources,
+          semanticConnections: primaryRepair.semanticConnections,
           rebuiltFrom: `${primaryRepair.rebuiltFrom}+${dependencyRepair.rebuiltFrom}`
         };
       }
 
       return primaryRepair;
     }
+  }
+
+  if (shouldRepairSemanticSurface) {
+    return repairSemanticConnectionsFromAtoms(db, now);
   }
 
   return repairFromSystemFileDependsOn(db);

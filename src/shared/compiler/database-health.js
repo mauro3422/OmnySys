@@ -83,6 +83,14 @@ export function getDatabaseHealthSummary(db) {
       (SELECT COUNT(*) FROM call_graph) AS call_graph_rows,
       (SELECT COUNT(*) FROM risk_assessments WHERE (is_removed = 1 AND lifecycle_status = 'active')) AS contradictory_risk_rows,
       (SELECT COUNT(*) FROM risk_assessments WHERE (is_removed IS NULL OR is_removed = 0)) AS active_risk_rows,
+      (SELECT COUNT(*) FROM atoms WHERE (is_removed IS NULL OR is_removed = 0) AND COALESCE(shared_state_json, '') NOT IN ('', 'null', '[]')) AS atoms_with_shared_state,
+      (SELECT COUNT(*) FROM atoms WHERE (is_removed IS NULL OR is_removed = 0) AND COALESCE(event_emitters_json, '') NOT IN ('', 'null', '[]')) AS atoms_with_event_emitters,
+      (SELECT COUNT(*) FROM atoms WHERE (is_removed IS NULL OR is_removed = 0) AND COALESCE(event_listeners_json, '') NOT IN ('', 'null', '[]')) AS atoms_with_event_listeners,
+      (SELECT COUNT(*) FROM atoms WHERE (is_removed IS NULL OR is_removed = 0) AND (
+          COALESCE(shared_state_json, '') NOT IN ('', 'null', '[]') OR
+          COALESCE(event_emitters_json, '') NOT IN ('', 'null', '[]') OR
+          COALESCE(event_listeners_json, '') NOT IN ('', 'null', '[]')
+      )) AS atoms_with_semantic_signals,
       (SELECT COUNT(*) FROM system_files WHERE (is_removed IS NULL OR is_removed = 0)) AS active_system_files,
       (SELECT COUNT(*) FROM system_files WHERE (is_removed IS NULL OR is_removed = 0) AND semantic_connections_json IS NOT NULL AND semantic_connections_json NOT IN ('', 'null', '[]')) AS system_files_with_semantics,
       (SELECT COUNT(*) FROM semantic_connections WHERE (is_removed IS NULL OR is_removed = 0)) AS active_semantic_connections
@@ -101,6 +109,10 @@ export function getDatabaseHealthSummary(db) {
   const callGraphRows = parseCount(counts, 'call_graph_rows');
   const contradictoryRiskRows = parseCount(counts, 'contradictory_risk_rows');
   const activeRiskRows = parseCount(counts, 'active_risk_rows');
+  const atomsWithSharedState = parseCount(counts, 'atoms_with_shared_state');
+  const atomsWithEventEmitters = parseCount(counts, 'atoms_with_event_emitters');
+  const atomsWithEventListeners = parseCount(counts, 'atoms_with_event_listeners');
+  const atomsWithSemanticSignals = parseCount(counts, 'atoms_with_semantic_signals');
   const activeSystemFiles = parseCount(counts, 'active_system_files');
   const systemFilesWithSemantics = parseCount(counts, 'system_files_with_semantics');
   const activeSemanticConnections = parseCount(counts, 'active_semantic_connections');
@@ -192,21 +204,21 @@ export function getDatabaseHealthSummary(db) {
     ));
   }
 
-  if (activeSharesStateRelations > 0 && activeSemanticConnections === 0) {
+  if (atomsWithSemanticSignals > 0 && activeSemanticConnections === 0) {
     score -= 8;
     warnings.push(buildFinding(
       'semantic_projection_lag',
       'medium',
-      'Atom-level semantic relations exist, but the semantic_connections table is empty.'
+      'Atom semantic signals exist, but the semantic_connections table is empty.'
     ));
   }
 
-  if (activeSystemFiles > 0 && systemFilesWithSemantics === 0 && activeSharesStateRelations > 0) {
+  if (activeSystemFiles > 0 && systemFilesWithSemantics === 0 && atomsWithSemanticSignals > 0) {
     score -= 6;
     warnings.push(buildFinding(
       'system_files_semantic_lag',
       'medium',
-      'system_files has no semantic_connections_json rows while atom-level semantic relations exist.'
+      'system_files has no semantic_connections_json rows while atom semantic signals exist.'
     ));
   }
 
@@ -224,7 +236,7 @@ export function getDatabaseHealthSummary(db) {
     recommendations.push('Reconcile risk_assessments lifecycle fields and soft-delete flags before trusting risk telemetry.');
   }
   if (semanticSurface.materiallyDrifting === true) {
-    recommendations.push('Rebuild semantic_connections from the canonical atom_relations surface.');
+    recommendations.push('Rebuild semantic_connections from the canonical atom semantic metadata surface.');
   }
 
   return {
@@ -248,6 +260,10 @@ export function getDatabaseHealthSummary(db) {
       orphanCallRelations,
       contradictoryRiskRows,
       activeRiskRows,
+      atomsWithSharedState,
+      atomsWithEventEmitters,
+      atomsWithEventListeners,
+      atomsWithSemanticSignals,
       activeSystemFiles,
       systemFilesWithSemantics,
       activeSemanticConnections,
