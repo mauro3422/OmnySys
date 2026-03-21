@@ -9,7 +9,7 @@ import { resolveFileImports, detectConnections, buildFileAnalysis } from './sing
 
 const logger = createLogger('OmnySys:single:file');
 
-
+export { deriveModuleName } from './single-file-utils.js';
 
 import { PipelineRunner } from './runner.js';
 

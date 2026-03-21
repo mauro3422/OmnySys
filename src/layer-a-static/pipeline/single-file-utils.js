@@ -49,10 +49,42 @@ export async function detectConnections(parsedFile, targetFilePath, resolvedImpo
         }
     }
 
-    return {
-        staticConnections: detectAllSemanticConnections(fileSourceCode),
-        advancedConnections: detectAllAdvancedConnections(parsedFile.source || '')
-    };
+  return {
+    staticConnections: detectAllSemanticConnections(fileSourceCode),
+    advancedConnections: detectAllAdvancedConnections(parsedFile.source || '')
+  };
+}
+
+/**
+ * Deriva el nombre del módulo a partir de la ruta del archivo.
+ * Mantiene la convención usada por project-query: top-level directory.
+ *
+ * @param {string} filePath - Ruta relativa o absoluta del archivo
+ * @param {string|null} rootPath - Raíz opcional para normalizar rutas absolutas
+ * @returns {string} moduleName
+ */
+export function deriveModuleName(filePath, rootPath = null) {
+    if (!filePath || typeof filePath !== 'string') {
+        return '_root';
+    }
+
+    let normalizedPath = filePath.replace(/\\/g, '/');
+
+    if (rootPath && typeof rootPath === 'string' && path.isAbsolute(filePath)) {
+        const normalizedRoot = rootPath.replace(/\\/g, '/');
+        if (normalizedPath.startsWith(normalizedRoot)) {
+            normalizedPath = path.relative(rootPath, filePath).replace(/\\/g, '/');
+        }
+    }
+
+    normalizedPath = normalizedPath.replace(/^\.?\//, '');
+    const segments = normalizedPath.split('/').filter(Boolean);
+
+    if (segments.length <= 1) {
+        return '_root';
+    }
+
+    return segments[0] || '_root';
 }
 
 /**
@@ -91,6 +123,7 @@ export function buildFileAnalysis(singleFile, parsedFile, resolvedImports, stati
         filePath: singleFile,
         fileName: path.basename(singleFile),
         ext: path.extname(singleFile),
+        moduleName: deriveModuleName(singleFile),
         imports: resolvedImports.map(imp => ({
             source: imp.source,
             resolvedPath: imp.resolved,

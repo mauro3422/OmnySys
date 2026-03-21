@@ -1,6 +1,7 @@
 import { getRepository } from '#layer-c/storage/repository/repository-factory.js';
 import { createLogger } from '../../utils/logger.js';
 import { saveFileSummariesBatch } from './file-summary-storage.js';
+import { deriveModuleName } from './single-file-utils.js';
 
 const logger = createLogger('OmnySys:single:file:db');
 
@@ -69,7 +70,7 @@ export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis,
             saveFileSummariesBatch(repo, [[singleFile, {
                 imports: fileAnalysis.imports || [],
                 exports: fileAnalysis.exports || [],
-                moduleName: null,
+                moduleName: fileAnalysis.moduleName || deriveModuleName(singleFile, absoluteRootPath),
                 atomCount: fileAnalysis.totalAtoms || 0,
                 totalLines: fileAnalysis.totalLines || 0
             }]]);

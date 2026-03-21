@@ -4,11 +4,10 @@
  */
 
 import path from 'path';
-import { getDataDirectory } from '#layer-c/storage/index.js';
-import { readJSON } from '#layer-c/query/readers/json-reader.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
   evaluateAtomRefactoringSignals,
+  getSystemMapPersistenceCoverage,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../../../shared/compiler/index.js';
@@ -113,7 +112,7 @@ function buildSQLiteFileAnalysis(normalizedPath, row, atoms) {
 /**
  * Gets complete analysis for a specific file.
  *
- * Priority: SQLite first, then JSON fallback for backwards compatibility.
+ * Priority: SQLite only.
  *
  * @param {string} rootPath - Project root
  * @param {string} filePath - Relative or absolute file path
@@ -126,37 +125,45 @@ export async function getFileAnalysis(rootPath, filePath) {
     return null;
   }
 
-  try {
-    const repo = getRepository(rootPath);
+  const repo = getRepository(rootPath);
 
-    if (repo) {
-      const row = repo.getFile ? await repo.getFile(normalizedPath) : null;
-
-      if (row) {
-        const atoms = repo.getByFile ? await repo.getByFile(normalizedPath) : [];
-        const fileAnalysis = buildSQLiteFileAnalysis(normalizedPath, row, atoms);
-        
-        // Enrich from system_files for semantic data
-        if (repo.db) {
-          try {
-            const sysRow = repo.db.prepare('SELECT semantic_analysis_json, semantic_connections_json FROM system_files WHERE path = ?').get(normalizedPath);
-            if (sysRow) {
-              fileAnalysis.semanticAnalysis = parseJsonArray(sysRow.semantic_analysis_json, {});
-              fileAnalysis.semanticConnections = parseJsonArray(sysRow.semantic_connections_json, []);
-            }
-          } catch (e) {
-            // Ignore system_files absence gracefully
-          }
-        }
-        
-        return fileAnalysis;
-      }
-    }
-  } catch (err) {
-    console.error(`[getFileAnalysis] SQLite error, falling back to JSON: ${err.message}`);
+  if (!repo || !repo.db) {
+    throw new Error('SQLite not available. Run analysis first.');
   }
 
-  const dataPath = getDataDirectory(rootPath).replace(/\\/g, '/');
-  const filePart = path.posix.join(dataPath, 'files', normalizedPath.replace(/\\/g, '/') + '.json');
-  return readJSON(filePart);
+  try {
+    const row = repo.getFile ? await repo.getFile(normalizedPath) : null;
+
+    if (!row) {
+      return null;
+    }
+
+    const atoms = repo.getByFile ? await repo.getByFile(normalizedPath) : [];
+    const fileAnalysis = buildSQLiteFileAnalysis(normalizedPath, row, atoms);
+
+    // Enrich from system_files for semantic data
+    try {
+      const systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+      fileAnalysis.systemMapCoverage = systemMapCoverage;
+
+      if (systemMapCoverage.healthy) {
+        const sysRow = repo.db.prepare('SELECT semantic_analysis_json, semantic_connections_json FROM system_files WHERE path = ?').get(normalizedPath);
+        if (sysRow) {
+          fileAnalysis.semanticAnalysis = parseJsonArray(sysRow.semantic_analysis_json, {});
+          fileAnalysis.semanticConnections = parseJsonArray(sysRow.semantic_connections_json, []);
+        }
+        fileAnalysis.systemMapTrustworthy = true;
+      } else {
+        fileAnalysis.semanticAnalysis = {};
+        fileAnalysis.semanticConnections = [];
+        fileAnalysis.systemMapTrustworthy = false;
+      }
+    } catch (e) {
+      // Ignore system_files absence gracefully
+    }
+
+    return fileAnalysis;
+  } catch (err) {
+    throw new Error(`[getFileAnalysis] SQLite error: ${err.message}`);
+  }
 }

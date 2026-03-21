@@ -100,9 +100,12 @@ async function buildLegacyExport(dataPath) {
  *
  * @param {string} projectPath - Ruta del proyecto
  * @param {string} [outputPath] - Ruta de salida (opcional)
+ * @param {Object} [options]
+ * @param {boolean} [options.allowLegacyJson=false] - Permite exportar desde JSON legacy si SQLite no está disponible
  * @returns {Promise<{filePath: string, sizeKB: number, filesExported: number}>}
  */
-export async function exportFullSystemMapToFile(projectPath, outputPath = null) {
+export async function exportFullSystemMapToFile(projectPath, outputPath = null, options = {}) {
+  const { allowLegacyJson = false } = options;
   const dataPath = getDataDirectory(projectPath);
   const outputFilePath = outputPath || path.join(dataPath, 'debug', 'system-map-full.json');
 
@@ -120,6 +123,10 @@ export async function exportFullSystemMapToFile(projectPath, outputPath = null) 
   }
 
   if (!fullSystemMap) {
+    if (!allowLegacyJson) {
+      throw new Error('SQLite not available. Run analysis first.');
+    }
+
     fullSystemMap = await buildLegacyExport(dataPath);
   }
 

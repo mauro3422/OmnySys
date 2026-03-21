@@ -16,6 +16,7 @@ import * as molecularChains from '#layer-a/pipeline/molecular-chains/index.js';
 import * as atomExtraction from '#layer-a/pipeline/phases/atom-extraction/index.js';
 import * as atomBuilders from '#layer-a/pipeline/phases/atom-extraction/builders/index.js';
 import * as atomExtractionModule from '#layer-a/pipeline/phases/atom-extraction/extraction/index.js';
+import { deriveModuleName } from '#layer-a/pipeline/single-file.js';
 
 describe('Pipeline - Phases', () => {
   it('exports all phase classes', () => {
@@ -78,12 +79,62 @@ describe('Pipeline - Atom Builders', () => {
       consoleUsage: []
     });
   });
+
+  it('summarizes Tree-Sitter scope types across all accesses', () => {
+    const atom = atomBuilders.buildAtomMetadata({
+      functionInfo: {
+        name: 'scopeDemo',
+        type: 'function',
+        line: 10,
+        isExported: false
+      },
+      filePath: 'src/scope-demo.js',
+      linesOfCode: 8,
+      complexity: 2,
+      sideEffects: { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] },
+      callGraph: { internalCalls: [], externalCalls: [] },
+      temporal: { lifecycleHooks: [], cleanupPatterns: [] },
+      temporalPatterns: {},
+      typeContracts: {},
+      errorFlow: {},
+      performanceHints: { nestedLoops: [], blockingOperations: [] },
+      performanceMetrics: {},
+      semanticDomain: null,
+      dataFlowV2: null,
+      functionCode: 'function scopeDemo() { return 1; }',
+      imports: [],
+      jsdocContracts: null,
+      treeSitter: {
+        sharedStateAccess: [
+          { scopeType: 'module', line: 11 },
+          { scopeType: 'closure', line: 12 },
+          { scopeType: 'closure', line: 13 }
+        ],
+        eventEmitters: [],
+        eventListeners: []
+      }
+    });
+
+    expect(atom.scopeType).toBe('closure');
+    expect(atom._meta.scopeTypes).toEqual(expect.arrayContaining(['module', 'closure']));
+    expect(atom._meta.scopeTypeBreakdown).toEqual({
+      module: 1,
+      closure: 2
+    });
+  });
 });
 
 describe('Pipeline - Atom Extraction Module', () => {
   it('exports atom extraction functions', () => {
     expect(typeof atomExtractionModule.extractAtoms).toBe('function');
     expect(typeof atomExtractionModule.extractAtomMetadata).toBe('function');
+  });
+});
+
+describe('Pipeline - File Utilities', () => {
+  it('derives module names from project-relative paths', () => {
+    expect(deriveModuleName('src/shared/compiler/index.js')).toBe('src');
+    expect(deriveModuleName('single-file.js')).toBe('_root');
   });
 });
 

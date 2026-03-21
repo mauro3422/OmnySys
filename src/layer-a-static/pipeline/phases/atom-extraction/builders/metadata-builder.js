@@ -107,6 +107,44 @@ function buildMeta(dataFlowV2) {
   };
 }
 
+function summarizeScopeTypes(sharedStateAccess = []) {
+  const scopeCounts = new Map();
+
+  for (const access of sharedStateAccess) {
+    const scopeType = access?.scopeType || determineScopeType(access);
+    if (!scopeType) continue;
+    scopeCounts.set(scopeType, (scopeCounts.get(scopeType) || 0) + 1);
+  }
+
+  if (scopeCounts.size === 0) {
+    return {
+      scopeType: null,
+      scopeTypes: [],
+      scopeTypeBreakdown: {}
+    };
+  }
+
+  const priority = ['closure', 'global', 'module', 'local'];
+  let dominantScope = null;
+  let dominantCount = -1;
+
+  for (const [scopeType, count] of scopeCounts.entries()) {
+    if (
+      count > dominantCount ||
+      (count === dominantCount && priority.indexOf(scopeType) < priority.indexOf(dominantScope))
+    ) {
+      dominantScope = scopeType;
+      dominantCount = count;
+    }
+  }
+
+  return {
+    scopeType: dominantScope,
+    scopeTypes: [...scopeCounts.keys()],
+    scopeTypeBreakdown: Object.fromEntries(scopeCounts)
+  };
+}
+
 function buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo) {
   return {
     fragilityScore: computeFragilityScore(complexity, cg, errorFlow, ph),
@@ -148,6 +186,7 @@ export function buildAtomMetadata({
   const cg = callGraph || { internalCalls: [], externalCalls: [] };
   const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
   const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
+  const scopeSummary = summarizeScopeTypes(treeSitter?.sharedStateAccess || []);
 
   // Intentar parear el jsdoc. Usar preferentemente la línea extraída por el parser AST si está disponible
   let jsdocMatch = null;
@@ -238,9 +277,7 @@ export function buildAtomMetadata({
     sharedStateAccess: treeSitter?.sharedStateAccess || [],
     eventEmitters: treeSitter?.eventEmitters || [],
     eventListeners: treeSitter?.eventListeners || [],
-    scopeType: treeSitter?.sharedStateAccess?.length > 0
-      ? determineScopeType(treeSitter.sharedStateAccess[0])
-      : null,
+    scopeType: scopeSummary.scopeType,
 
     // DNA & Lineage (set later)
     dna: null,
@@ -259,7 +296,9 @@ export function buildAtomMetadata({
     _meta: {
       ...buildMeta(dataFlowV2),
       identifierRefs: functionInfo.identifierRefs || [],
-      daemonSideEffects: jsdocMatch?.tags?.filter(t => t.title === 'omny_side_effect').map(t => t.content) || []
+      daemonSideEffects: jsdocMatch?.tags?.filter(t => t.title === 'omny_side_effect').map(t => t.content) || [],
+      scopeTypes: scopeSummary.scopeTypes,
+      scopeTypeBreakdown: scopeSummary.scopeTypeBreakdown
     }
   };
 }

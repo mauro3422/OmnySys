@@ -11,6 +11,7 @@
  * @module extractors/metadata/tree-sitter-integration
  */
 
+import { createHash } from 'crypto';
 import { detectGlobalState } from '../../analyses/tier3/shared-state/parsers/state-parser.js';
 import { detectEventPatterns } from '../../analyses/tier3/event-detector/detector.js';
 
@@ -68,9 +69,16 @@ export async function extractTreeSitterMetadata(functionCode, functionInfo, file
  */
 const fileAnalysisCache = new Map();
 
+function buildCacheKey(code) {
+  return createHash('sha1').update(typeof code === 'string' ? code : '').digest('hex');
+}
+
 async function analyzeFileWithTreeSitter(code, filePath) {
-  if (fileAnalysisCache.has(filePath)) {
-    return fileAnalysisCache.get(filePath);
+  const cacheKey = buildCacheKey(code);
+  const cached = fileAnalysisCache.get(filePath);
+
+  if (cached && cached.cacheKey === cacheKey) {
+    return cached.result;
   }
 
   try {
@@ -88,7 +96,7 @@ async function analyzeFileWithTreeSitter(code, filePath) {
       sideEffects: [] // TODO: integrar side-effects-detector
     };
 
-    fileAnalysisCache.set(filePath, result);
+    fileAnalysisCache.set(filePath, { cacheKey, result });
     return result;
   } catch (error) {
     console.warn(`[TreeSitter] Error analyzing ${filePath}:`, error.message);
