@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.167 - Sprint 16: System Map Coverage and Dependency Repair Heuristics](changelogs/v0.9.167.md)
 - [v0.9.166 - Sprint 16: Dead-Code Barrel Compatibility Fix](changelogs/v0.9.166.md)
 - [v0.9.165 - Sprint 16: Dead-Code Core Split and Taxonomy Extraction](changelogs/v0.9.165.md)
 - [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)
@@ -101,6 +102,7 @@ All notable changes to this project are documented here as a release index. Deta
 ## Version Index
 
 | **0.9.164** | 2026-03-21 | Sprint 16: Framework Lifecycle Hook Policy, classified initialization rollback and extraction-strategy confidence hooks as framework contracts and reduced duplicate-signal noise on the policy surface. |
+| **0.9.167** | 2026-03-21 | Sprint 16: System Map Coverage and Dependency Repair Heuristics, aligned `system_files` coverage checks with active files, split dependency repair into a dedicated helper, and restored DB-only health gating without false lag warnings. |
 | **0.9.163** | 2026-03-21 | Sprint 16: Analysis Generation & System Map Recovery, formalized canonical analysis generations, added derived-feature registry surfaces, and restored support-table persistence from DB canonical data. |
 | **0.9.162** | 2026-03-21 | Sprint 16: Barrel Surface Governance, introduced mixed-barrel policy coverage, split compiler contract helpers, and added regression coverage for pure vs mixed barrels. |
 | **0.9.151** | 2026-03-19 | Sprint 15: Call Relation Orchestration Split, delegated call persistence and shared-state linkage into dedicated helpers and slimmed the linker orchestration layer. |

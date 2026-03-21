@@ -17,6 +17,7 @@ export function getSystemMapPersistenceCoverage(db) {
   const row = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM files) as filesTotal,
+      (SELECT COUNT(*) FROM files WHERE (is_removed IS NULL OR is_removed = 0)) as activeFiles,
       (SELECT COUNT(*) FROM files WHERE imports_json IS NOT NULL AND imports_json != '' AND imports_json != '[]') as primaryFilesWithImports,
       (SELECT COUNT(*) FROM atoms WHERE is_phase2_complete = 0) as phase2PendingAtoms,
       (SELECT COUNT(DISTINCT file_path) FROM atoms) as liveAtomFiles,
@@ -27,6 +28,7 @@ export function getSystemMapPersistenceCoverage(db) {
   `).get() || {};
 
   const filesTotal = toNumber(row.filesTotal);
+  const activeFiles = toNumber(row.activeFiles);
   const primaryFilesWithImports = toNumber(row.primaryFilesWithImports);
   const liveAtomFiles = toNumber(row.liveAtomFiles);
   const phase2PendingAtoms = toNumber(row.phase2PendingAtoms);
@@ -51,7 +53,7 @@ export function getSystemMapPersistenceCoverage(db) {
   if (fileDependenciesTotal === 0 && systemFilesWithImports > 0) {
     issues.push('file_dependencies is empty even though system_files contains import telemetry');
   }
-  if (systemFilesTotal > 0 && liveAtomFiles > 0 && systemFilesTotal < Math.floor(liveAtomFiles * 0.9)) {
+  if (systemFilesTotal > 0 && activeFiles > 0 && systemFilesTotal < Math.floor(activeFiles * 0.9)) {
     issues.push('system_files lags behind the live atom file universe');
   }
   if (primaryFilesWithImports > 0 && mirroredImportCoverageRatio < 0.5) {
@@ -63,6 +65,7 @@ export function getSystemMapPersistenceCoverage(db) {
 
   return {
     filesTotal,
+    activeFiles,
     primaryFilesWithImports,
     liveAtomFiles,
     phase2PendingAtoms,

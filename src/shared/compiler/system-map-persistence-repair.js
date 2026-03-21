@@ -7,158 +7,19 @@
  * @module shared/compiler/system-map-persistence-repair
  */
 
-import path from 'path';
-import { toNumber, parsePersistedArray } from './core-utils.js';
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
-
-const DEFAULT_DEPENDENCY_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.json'];
-
-function normalizeDbPath(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
-
-function toJsonText(value, fallback = '[]') {
-  try {
-    return JSON.stringify(value ?? []);
-  } catch {
-    return fallback;
-  }
-}
-
-function parseImportSource(importEntry) {
-  if (!importEntry) return '';
-
-  if (typeof importEntry === 'string') {
-    return importEntry.trim();
-  }
-
-  return String(
-    importEntry.resolved ||
-    importEntry.resolvedPath ||
-    importEntry.targetPath ||
-    importEntry.target ||
-    importEntry.to ||
-    importEntry.source ||
-    ''
-  ).trim();
-}
-
-function parseImportSymbols(importEntry) {
-  if (!importEntry || typeof importEntry !== 'object') {
-    return [];
-  }
-
-  if (Array.isArray(importEntry.symbols)) {
-    return importEntry.symbols;
-  }
-
-  if (Array.isArray(importEntry.specifiers)) {
-    return importEntry.specifiers;
-  }
-
-  return [];
-}
-
-function buildKnownFilePathIndex(rows = []) {
-  const knownPaths = new Set();
-  const orderedPaths = [];
-
-  for (const row of rows) {
-    const normalized = normalizeDbPath(row?.path || '');
-    if (!normalized || knownPaths.has(normalized)) {
-      continue;
-    }
-
-    knownPaths.add(normalized);
-    orderedPaths.push(normalized);
-  }
-
-  orderedPaths.sort((a, b) => a.length - b.length);
-  return { knownPaths, orderedPaths };
-}
-
-function generateTargetCandidates(sourcePath, importSource) {
-  const source = normalizeDbPath(importSource);
-  const candidates = new Set();
-
-  if (!source) {
-    return [];
-  }
-
-  candidates.add(source);
-
-  if (source.startsWith('.') || source.startsWith('/')) {
-    const basePath = normalizeDbPath(sourcePath);
-    const sourceDir = path.posix.dirname(basePath);
-    const resolved = normalizeDbPath(path.posix.normalize(path.posix.join(sourceDir, source)));
-    candidates.add(resolved);
-
-    const withoutExt = resolved.replace(/\.[^./]+$/, '');
-    candidates.add(withoutExt);
-
-    for (const extension of DEFAULT_DEPENDENCY_EXTENSIONS) {
-      candidates.add(`${withoutExt}${extension}`);
-      candidates.add(path.posix.join(withoutExt, `index${extension}`));
-    }
-
-    return Array.from(candidates).filter(Boolean);
-  }
-
-  const aliasLike = source.replace(/^#/, '').replace(/^@/, '').replace(/^\/+/, '');
-  if (!aliasLike) {
-    return Array.from(candidates).filter(Boolean);
-  }
-
-  const segments = aliasLike.split('/').filter(Boolean);
-  for (let i = 0; i < segments.length; i++) {
-    candidates.add(segments.slice(i).join('/'));
-  }
-
-  const withoutExt = aliasLike.replace(/\.[^./]+$/, '');
-  candidates.add(withoutExt);
-  for (const extension of DEFAULT_DEPENDENCY_EXTENSIONS) {
-    candidates.add(`${withoutExt}${extension}`);
-    candidates.add(path.posix.join(withoutExt, `index${extension}`));
-  }
-
-  return Array.from(candidates).filter(Boolean);
-}
-
-function resolveTargetPathFromKnownFiles(sourcePath, importEntry, knownFileIndex) {
-  const rawSource = parseImportSource(importEntry);
-  if (!rawSource) {
-    return null;
-  }
-
-  const exactCandidates = generateTargetCandidates(sourcePath, rawSource);
-
-  for (const candidate of exactCandidates) {
-    const normalized = normalizeDbPath(candidate);
-    if (knownFileIndex.knownPaths.has(normalized)) {
-      return normalized;
-    }
-  }
-
-  const suffixCandidates = generateTargetCandidates('', rawSource)
-    .map((candidate) => normalizeDbPath(candidate))
-    .filter(Boolean)
-    .sort((a, b) => b.length - a.length);
-
-  for (const suffix of suffixCandidates) {
-    const matchedPath = knownFileIndex.orderedPaths.find((knownPath) =>
-      knownPath === suffix || knownPath.endsWith(`/${suffix}`)
-    );
-    if (matchedPath) {
-      return matchedPath;
-    }
-  }
-
-  return null;
-}
+import {
+  buildKnownFilePathIndex,
+  dedupeDependencies,
+  loadKnownFilePathRows,
+  mergeUniquePathList,
+  normalizeDbPath,
+  parseImportSymbols,
+  resolveTargetPathFromKnownFiles,
+  toJsonText
+} from './system-map-persistence-repair-paths.js';
+import { repairFromSystemFileDependsOn } from './system-map-persistence-repair-dependencies.js';
+import { loadSystemFileSnapshots } from './system-map-persistence-repair-helpers.js';
 
 function buildSystemFilesFromPrimaryFiles(db, now) {
   const fileRows = db.prepare(`
@@ -171,7 +32,8 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
     return { systemFiles: [], dependencies: [] };
   }
 
-  const { knownPaths, orderedPaths } = buildKnownFilePathIndex(fileRows);
+  const { knownPaths, orderedPaths } = buildKnownFilePathIndex(loadKnownFilePathRows(db));
+  const existingSystemFiles = loadSystemFileSnapshots(db);
   const riskRows = db.prepare(`
     SELECT file_path, risk_score
     FROM risk_assessments
@@ -188,32 +50,24 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
     const sourcePath = normalizeDbPath(fileRow?.path || '');
     if (!sourcePath) continue;
 
+    const snapshot = existingSystemFiles.get(sourcePath) || {};
     const imports = parsePersistedArray(fileRow?.imports_json);
     const sourceDependencies = [];
 
-    for (const importEntry of imports) {
-      const targetPath = resolveTargetPathFromKnownFiles(sourcePath, importEntry, { knownPaths, orderedPaths });
-      if (!targetPath || targetPath === sourcePath) {
-        continue;
+    const addDependency = (targetPath, dependencyType, reason, symbolsJson, isDynamic = 0) => {
+      const key = `${sourcePath}::${targetPath}::${dependencyType}`;
+      if (dependencyKeySet.has(key)) {
+        return;
       }
 
-      const dependencyType = String(importEntry?.type || 'import').trim() || 'import';
-      const dependencyKey = `${sourcePath}::${targetPath}::${dependencyType}`;
-      if (dependencyKeySet.has(dependencyKey)) {
-        continue;
-      }
-
-      dependencyKeySet.add(dependencyKey);
-      const symbols = parseImportSymbols(importEntry);
-      const reason = String(importEntry?.reason || 'files.imports_json').trim() || 'files.imports_json';
-
+      dependencyKeySet.add(key);
       dependencies.push({
         sourcePath,
         targetPath,
         dependencyType,
-        symbolsJson: toJsonText(symbols, '[]'),
+        symbolsJson,
         reason,
-        isDynamic: importEntry?.dynamic ? 1 : dependencyType === 'dynamic' ? 1 : 0,
+        isDynamic,
         createdAt: now,
         updatedAt: now
       });
@@ -222,6 +76,38 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
       const dependents = usedByByTarget.get(targetPath) || new Set();
       dependents.add(sourcePath);
       usedByByTarget.set(targetPath, dependents);
+    };
+
+    for (const importEntry of imports) {
+      const targetPath = resolveTargetPathFromKnownFiles(sourcePath, importEntry, { knownPaths, orderedPaths });
+      if (!targetPath || targetPath === sourcePath) {
+        continue;
+      }
+
+      const dependencyType = String(importEntry?.type || 'import').trim() || 'import';
+      const symbols = parseImportSymbols(importEntry);
+      const reason = String(importEntry?.reason || 'files.imports_json').trim() || 'files.imports_json';
+      addDependency(
+        targetPath,
+        dependencyType,
+        reason,
+        toJsonText(symbols, '[]'),
+        importEntry?.dynamic ? 1 : dependencyType === 'dynamic' ? 1 : 0
+      );
+    }
+
+    for (const targetPath of mergeUniquePathList(snapshot.dependsOn || [])) {
+      if (!targetPath || targetPath === sourcePath) {
+        continue;
+      }
+
+      addDependency(
+        targetPath,
+        'import',
+        'system_files.depends_on_json',
+        '[]',
+        0
+      );
     }
 
     dependencyBySource.set(sourcePath, sourceDependencies);
@@ -229,29 +115,32 @@ function buildSystemFilesFromPrimaryFiles(db, now) {
 
   const systemFiles = fileRows.map((fileRow) => {
     const sourcePath = normalizeDbPath(fileRow?.path || '');
+    const snapshot = existingSystemFiles.get(sourcePath) || {};
     const lastAnalyzed = fileRow?.last_analyzed || fileRow?.updated_at || new Date(now).toISOString();
     const dependsOn = dependencyBySource.get(sourcePath) || [];
     const usedBy = [...(usedByByTarget.get(sourcePath) || new Set())];
+    const fileImports = parsePersistedArray(fileRow?.imports_json);
+    const fileExports = parsePersistedArray(fileRow?.exports_json);
 
     return {
       path: sourcePath,
-      displayPath: sourcePath,
-      culture: null,
-      cultureRole: null,
-      risk_score: riskByFile.get(sourcePath) || 0,
-      semanticAnalysis: {},
-      semanticConnections: [],
-      exports: parsePersistedArray(fileRow?.exports_json),
-      imports: parsePersistedArray(fileRow?.imports_json),
-      definitions: [],
+      displayPath: snapshot.displayPath || sourcePath,
+      culture: snapshot.culture || null,
+      cultureRole: snapshot.cultureRole || null,
+      risk_score: snapshot.riskScore || riskByFile.get(sourcePath) || 0,
+      semanticAnalysis: snapshot.semanticAnalysis || {},
+      semanticConnections: snapshot.semanticConnections || [],
+      exports: (snapshot.exports || []).length > 0 ? snapshot.exports : fileExports,
+      imports: (snapshot.imports || []).length > 0 ? snapshot.imports : fileImports,
+      definitions: (snapshot.definitions || []).length > 0 ? snapshot.definitions : [],
       usedBy,
-      calls: [],
-      identifierRefs: [],
+      calls: snapshot.calls || [],
+      identifierRefs: snapshot.identifierRefs || [],
       dependsOn,
-      transitiveDepends: [],
-      transitiveDependents: [],
-      isRemoved: 0,
-      updatedAt: lastAnalyzed || new Date(now).toISOString()
+      transitiveDepends: snapshot.transitiveDepends || [],
+      transitiveDependents: snapshot.transitiveDependents || [],
+      isRemoved: snapshot.isRemoved ? 1 : 0,
+      updatedAt: snapshot.updatedAt || lastAnalyzed || new Date(now).toISOString()
     };
   });
 
@@ -263,6 +152,8 @@ function repairFromPrimaryFiles(db, now) {
   if (systemFiles.length === 0) {
     return { repaired: false, inserted: 0, sources: 0, dependencies: 0, rebuiltFrom: 'primary_files' };
   }
+
+  const uniqueDependencies = dedupeDependencies(dependencies);
 
   db.transaction(() => {
     db.prepare('DELETE FROM system_files').run();
@@ -330,7 +221,7 @@ function repairFromPrimaryFiles(db, now) {
       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
     `);
 
-    for (const dependency of dependencies) {
+    for (const dependency of uniqueDependencies) {
       insertDependency.run(
         dependency.sourcePath,
         dependency.targetPath,
@@ -348,89 +239,8 @@ function repairFromPrimaryFiles(db, now) {
     repaired: true,
     inserted: systemFiles.length,
     sources: systemFiles.length,
-    dependencies: dependencies.length,
+    dependencies: uniqueDependencies.length,
     rebuiltFrom: 'primary_files'
-  };
-}
-
-function repairFromSystemFileDependsOn(db) {
-  const rows = db.prepare(`
-    SELECT path, depends_on_json
-    FROM system_files
-    WHERE (is_removed IS NULL OR is_removed = 0)
-      AND depends_on_json IS NOT NULL
-      AND depends_on_json != ''
-      AND depends_on_json != '[]'
-  `).all();
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return { repaired: false, inserted: 0, sources: 0, dependencies: 0, rebuiltFrom: 'system_files' };
-  }
-
-  const nowIso = new Date().toISOString();
-  const dependencies = [];
-
-  for (const row of rows) {
-    const sourcePath = String(row?.path || '').trim();
-    if (!sourcePath) continue;
-
-    for (const targetPath of parsePersistedArray(row?.depends_on_json)) {
-      const normalizedTargetPath = String(targetPath || '').trim();
-      if (!normalizedTargetPath) continue;
-      dependencies.push({
-        sourcePath,
-        targetPath: normalizedTargetPath,
-        dependencyType: 'import',
-        symbolsJson: '[]',
-        reason: 'system_files.depends_on_json',
-        isDynamic: 0,
-        createdAt: nowIso,
-        updatedAt: nowIso
-      });
-    }
-  }
-
-  if (dependencies.length === 0) {
-    return { repaired: false, inserted: 0, sources: 0, dependencies: 0, rebuiltFrom: 'system_files' };
-  }
-
-  db.prepare('DELETE FROM file_dependencies').run();
-  const insert = db.prepare(`
-    INSERT INTO file_dependencies (
-      source_path,
-      target_path,
-      dependency_type,
-      symbols_json,
-      reason,
-      is_dynamic,
-      is_removed,
-      created_at,
-      updated_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `);
-
-  db.transaction((records) => {
-    for (const record of records) {
-      insert.run(
-        record.sourcePath,
-        record.targetPath,
-        record.dependencyType,
-        record.symbolsJson,
-        record.reason,
-        record.isDynamic,
-        record.createdAt,
-        record.updatedAt
-      );
-    }
-  })(dependencies);
-
-  return {
-    repaired: true,
-    inserted: dependencies.length,
-    sources: new Set(dependencies.map((dependency) => dependency.sourcePath)).size,
-    dependencies: dependencies.length,
-    rebuiltFrom: 'system_files'
   };
 }
 
@@ -450,10 +260,21 @@ export function repairSystemMapPersistenceCoverage(db) {
   if (shouldRepairFromPrimaryFiles) {
     const primaryRepair = repairFromPrimaryFiles(db, now);
     if (primaryRepair.repaired === true) {
+      const dependencyRepair = repairFromSystemFileDependsOn(db);
+      if (dependencyRepair.repaired === true) {
+        return {
+          ...primaryRepair,
+          repaired: true,
+          dependencies: dependencyRepair.dependencies,
+          inserted: primaryRepair.inserted,
+          sources: primaryRepair.sources,
+          rebuiltFrom: `${primaryRepair.rebuiltFrom}+${dependencyRepair.rebuiltFrom}`
+        };
+      }
+
       return primaryRepair;
     }
   }
 
   return repairFromSystemFileDependsOn(db);
 }
-
