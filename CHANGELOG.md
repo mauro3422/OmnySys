@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.165 - Sprint 16: Dead-Code Core Split and Taxonomy Extraction](changelogs/v0.9.165.md)
 - [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)
 - [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)
 - [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
