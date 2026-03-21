@@ -7,8 +7,7 @@
  * @phase 3
  */
 
-import path from 'path';
-import { getAllAtoms } from '../utils.js';
+import { buildHandlerContext, scanModuleAtoms } from './detector-helpers.js';
 
 const JOB_NAME_PATTERN = /^(schedule|cron|job|task)/i;
 
@@ -18,10 +17,10 @@ const JOB_NAME_PATTERN = /^(schedule|cron|job|task)/i;
  * @returns {Array} - Found jobs
  */
 export function findScheduledJobs(modules) {
-  return (modules || []).flatMap(module =>
-    (getAllAtoms(module) || [])
-      .filter(atom => atom?.name && JOB_NAME_PATTERN.test(atom.name))
-      .map(atom => buildScheduledJob(module, atom))
+  return scanModuleAtoms(
+    modules,
+    atom => atom?.name && JOB_NAME_PATTERN.test(atom.name),
+    buildScheduledJob
   );
 }
 
@@ -30,10 +29,6 @@ function buildScheduledJob(module, atom) {
     type: 'scheduled',
     name: atom.name,
     schedule: 'unknown',
-    handler: {
-      module: module.moduleName,
-      file: atom.filePath ? path.basename(atom.filePath) : 'unknown',
-      function: atom.name
-    }
+    handler: buildHandlerContext(module, atom)
   };
 }

@@ -7,8 +7,8 @@
  * @phase 3
  */
 
-import path from 'path';
-import { getAllAtoms, camelToKebab } from '../utils.js';
+import { camelToKebab } from '../utils.js';
+import { buildHandlerContext, scanModuleAtoms } from './detector-helpers.js';
 
 const EVENT_HANDLER_PATTERN = /^(on[A-Z]|handleEvent|processEvent)/i;
 
@@ -18,10 +18,10 @@ const EVENT_HANDLER_PATTERN = /^(on[A-Z]|handleEvent|processEvent)/i;
  * @returns {Array} - Found handlers
  */
 export function findEventHandlers(modules) {
-  return (modules || []).flatMap(module =>
-    (getAllAtoms(module) || [])
-      .filter(atom => atom?.name && isEventHandlerName(atom.name))
-      .map(atom => buildEventHandler(module, atom))
+  return scanModuleAtoms(
+    modules,
+    atom => atom?.name && isEventHandlerName(atom.name),
+    buildEventHandler
   );
 }
 
@@ -33,11 +33,7 @@ function buildEventHandler(module, atom) {
   return {
     type: 'event',
     event: inferEventName(atom.name),
-    handler: {
-      module: module.moduleName,
-      file: atom.filePath ? path.basename(atom.filePath) : 'unknown',
-      function: atom.name
-    }
+    handler: buildHandlerContext(module, atom)
   };
 }
 

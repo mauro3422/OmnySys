@@ -1,6 +1,6 @@
 /**
  * @fileoverview Cleanup Tool - Mata procesos MCP zombie de otros clientes
- * 
+ *
  * Cuando clientes como Kimi hacen reconexiones, los MCP servers STDIO
  * (GitHub, Context7, etc.) quedan como zombies. Este tool los limpia.
  */
@@ -31,6 +31,33 @@ function normalizeProcessList(output) {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
+async function listNodeProcesses() {
+  const cmd = [
+    'powershell.exe',
+    '-NoProfile',
+    '-Command',
+    "\"Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' } |",
+    "Select-Object ProcessId, CommandLine | ConvertTo-Json -Depth 1 -Compress\""
+  ].join(' ');
+
+  const output = await runCommand(cmd);
+  return normalizeProcessList(output);
+}
+
+function shouldKillZombieProcess(proc, protectedPatterns) {
+  const commandLine = proc.CommandLine;
+  if (!commandLine) return false;
+
+  const isOmnySys = protectedPatterns.some(pattern => commandLine.includes(pattern));
+  const isNpxMcp = commandLine.includes('npx') && (
+    commandLine.includes('mcp') ||
+    commandLine.includes('github') ||
+    commandLine.includes('context7')
+  );
+
+  return !isOmnySys && isNpxMcp;
+}
+
 /**
  * Encuentra y mata procesos node que no sean OmnySys
  */
@@ -40,13 +67,9 @@ export async function cleanup_mcp_zombies(args = {}) {
   const errors = [];
 
   try {
-    // En Windows, usamos Get-WmiObject para obtener procesos node
-    const cmd = `powershell.exe -Command "Get-WmiObject Win32_Process | Where-Object { $_.Name -eq 'node.exe' } | Select-Object ProcessId, CommandLine | ConvertTo-Json -Depth 1"`;
-    
     let processes;
     try {
-      const output = await runCommand(cmd);
-      processes = normalizeProcessList(output);
+      processes = await listNodeProcesses();
     } catch {
       return {
         success: false,
@@ -64,27 +87,19 @@ export async function cleanup_mcp_zombies(args = {}) {
     ];
 
     for (const proc of processes) {
-      if (!proc.CommandLine) continue;
+      if (!shouldKillZombieProcess(proc, protectedPatterns)) continue;
 
-      const isOmnySys = protectedPatterns.some(p => proc.CommandLine.includes(p));
-      const isNpxMcp = proc.CommandLine.includes('npx') && 
-                       (proc.CommandLine.includes('mcp') || 
-                        proc.CommandLine.includes('github') ||
-                        proc.CommandLine.includes('context7'));
-
-      if (!isOmnySys && isNpxMcp) {
-        const pid = proc.ProcessId;
-        try {
-          if (!dryRun) {
-            await runCommand(`taskkill /F /PID ${pid}`);
-            killed.push({ pid, cmd: proc.CommandLine.substring(0, 100) });
-            logger.info(`MCP Zombie killed: PID ${pid}`);
-          } else {
-            killed.push({ pid, cmd: proc.CommandLine.substring(0, 100), dryRun: true });
-          }
-        } catch (err) {
-          errors.push({ pid, error: err.message });
+      const pid = proc.ProcessId;
+      try {
+        if (!dryRun) {
+          await runCommand(`taskkill /F /PID ${pid}`);
+          killed.push({ pid, cmd: proc.CommandLine.substring(0, 100) });
+          logger.info(`MCP Zombie killed: PID ${pid}`);
+        } else {
+          killed.push({ pid, cmd: proc.CommandLine.substring(0, 100), dryRun: true });
         }
+      } catch (err) {
+        errors.push({ pid, error: err.message });
       }
     }
 
@@ -94,11 +109,10 @@ export async function cleanup_mcp_zombies(args = {}) {
       killed: killed.length,
       processes: killed,
       errors: errors.length > 0 ? errors : undefined,
-      message: dryRun 
+      message: dryRun
         ? `[DRY RUN] Se encontraron ${killed.length} procesos zombie para matar`
         : `Cleanup completado: ${killed.length} procesos zombie eliminados`
     };
-
   } catch (error) {
     logger.error(`Error en cleanup: ${error.message}`);
     return {

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.159 - Sprint 16: MCP Zombie Cleanup Alignment](changelogs/v0.9.159.md)
 - [v0.9.158 - Sprint 15: Import Validation Error Boundary Hardening](changelogs/v0.9.158.md)
 - [v0.9.157 - Sprint 15: Circular Dependency Split for Import Validation](changelogs/v0.9.157.md)
 - [v0.9.156 - Sprint 15: DB-Only Import and Export Validation](changelogs/v0.9.156.md)
