@@ -13,13 +13,13 @@ export class ChainBuilder {
   constructor(molecules, connections) {
     this.molecules = molecules || [];
     this.connections = connections || [];
-    this.moleculeByFile = buildMoleculeIndex(this.molecules);
-    this.atomsByFile = buildAtomIndex(this.molecules);
-    this.connectionsByFunction = buildConnectionIndex(this.connections);
-    this.functionNames = buildFunctionNameIndex(this.molecules);
+    this.moleculeByFile = indexMoleculesByFile(this.molecules);
+    this.atomsByFile = indexAtomsByFile(this.molecules);
+    this.connectionsByFunction = indexConnectionsByFunction(this.connections);
+    this.functionNames = collectFunctionNames(this.molecules);
   }
 
-  build() {
+  compose() {
     const visited = new Set();
 
     return this.findEntries().flatMap(entry => {
@@ -80,11 +80,11 @@ export class ChainBuilder {
   }
 }
 
-function buildMoleculeIndex(molecules) {
+function indexMoleculesByFile(molecules) {
   return new Map((molecules || []).map(molecule => [path.basename(molecule.filePath), molecule]));
 }
 
-function buildAtomIndex(molecules) {
+function indexAtomsByFile(molecules) {
   const index = new Map();
 
   for (const molecule of molecules || []) {
@@ -98,7 +98,7 @@ function buildAtomIndex(molecules) {
   return index;
 }
 
-function buildConnectionIndex(connections) {
+function indexConnectionsByFunction(connections) {
   const index = new Map();
 
   for (const connection of connections || []) {
@@ -113,7 +113,7 @@ function buildConnectionIndex(connections) {
   return index;
 }
 
-function buildFunctionNameIndex(molecules) {
+function collectFunctionNames(molecules) {
   return new Set((molecules || []).flatMap(molecule =>
     (molecule.atoms || []).map(atom => atom.name)
   ));

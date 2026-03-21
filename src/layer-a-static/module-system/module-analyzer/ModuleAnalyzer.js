@@ -30,7 +30,7 @@ export class ModuleAnalyzer {
     const exports = new ExportAnalyzer(this.molecules).analyze();
     const imports = new ImportAnalyzer(this.molecules, this.moduleName).analyze();
     const metrics = new MetricsCalculator(this.molecules).calculate();
-    const chains = new ChainBuilder(this.molecules, connections).build();
+    const chains = new ChainBuilder(this.molecules, connections).compose();
 
     return {
       modulePath: this.modulePath,
