@@ -92,6 +92,29 @@ function compactCompilerExplainabilitySummary(explainability) {
       total: explainability.fileUniverseGranularity.total,
       healthy: explainability.fileUniverseGranularity.healthy
     } : null,
+    analysisGeneration: explainability.analysisGeneration ? {
+      generationId: explainability.analysisGeneration.generationId,
+      status: explainability.analysisGeneration.status,
+      healthy: explainability.analysisGeneration.healthy,
+      recommendation: explainability.analysisGeneration.recommendation
+    } : null,
+    dataGatewayContract: explainability.dataGatewayContract ? {
+      sourceOfTruth: explainability.dataGatewayContract.contract?.recommendedSourceOfTruth,
+      generation: explainability.dataGatewayContract.generation ? {
+        generationId: explainability.dataGatewayContract.generation.generationId,
+        status: explainability.dataGatewayContract.generation.status,
+        healthy: explainability.dataGatewayContract.generation.healthy,
+        recommendation: explainability.dataGatewayContract.generation.recommendation
+      } : null,
+      total: explainability.dataGatewayContract.summary?.total,
+      fresh: explainability.dataGatewayContract.summary?.fresh,
+      stale: explainability.dataGatewayContract.summary?.stale,
+      missing: explainability.dataGatewayContract.summary?.missing,
+      blocked: explainability.dataGatewayContract.summary?.blocked,
+      trustworthy: explainability.dataGatewayContract.summary?.trustworthy,
+      nextAction: explainability.dataGatewayContract.summary?.nextAction,
+      primaryIssue: explainability.dataGatewayContract.summary?.primaryIssue
+    } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)
   };
 }

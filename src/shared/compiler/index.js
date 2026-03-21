@@ -85,6 +85,13 @@ export {
 } from './analysis-generation.js';
 
 export {
+  buildSurfaceFreshnessLedger,
+  summarizeSurfaceFreshnessLedger,
+  buildDataGatewayContract,
+  summarizeDataGatewayContract
+} from './data-gateway-contract.js';
+
+export {
   buildTelemetryProvenance,
   buildRuntimeCodeFreshness
 } from './telemetry-provenance.js';

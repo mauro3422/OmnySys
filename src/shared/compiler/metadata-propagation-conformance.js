@@ -26,7 +26,7 @@ function usesPrimaryFileTables(source = '') {
 }
 
 function importsCanonicalPropagationApi(source = '') {
-  return /getSystemMapPersistenceCoverage|getMetadataSurfaceParity|summarizePersistedScannedFileCoverage|getFileImportEvidenceCoverage|ensureLiveRowSync/.test(source);
+  return /getSystemMapPersistenceCoverage|getMetadataSurfaceParity|summarizePersistedScannedFileCoverage|getFileImportEvidenceCoverage|ensureLiveRowSync|buildDataGatewayContract|buildSurfaceFreshnessLedger|summarizeDataGatewayContract|summarizeSurfaceFreshnessLedger/.test(source);
 }
 
 function mixesParallelMetadataUniverses(source = '') {

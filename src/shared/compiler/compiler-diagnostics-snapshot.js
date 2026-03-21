@@ -21,6 +21,8 @@ import { buildCompilerStandardizationReport } from './standardization-report.js'
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
 import { getLiveFileTotal } from './live-row-utils.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy.js';
+import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
+import { buildDataGatewayContract } from './data-gateway-contract.js';
 
 const CANONICAL_ADOPTION_PATTERNS = {
     centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
@@ -91,6 +93,25 @@ export async function loadCompilerDiagnosticsSnapshot({
         manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
         liveFileCount: db ? getLiveFileTotal(db) : (persistedFileCoverage?.liveIndexedFiles || 0)
     });
+    const analysisGeneration = buildAnalysisGenerationSnapshot({
+        projectPath,
+        source: 'compiler-diagnostics-snapshot',
+        phase: 'status',
+        totalFiles: persistedFileCoverage?.scannedFileTotal || 0,
+        atomCount: databaseHealth?.metrics?.activeAtoms || 0,
+        relationCount: databaseHealth?.metrics?.activeCallRelations || 0,
+        semanticConnectionCount: databaseHealth?.metrics?.activeSemanticConnections || 0
+    });
+    const dataGatewayContract = buildDataGatewayContract({
+        analysisGeneration,
+        persistedFileCoverage,
+        fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage,
+        metadataSurfaceParity,
+        semanticSurfaceGranularity,
+        fileUniverseGranularity,
+        databaseHealth
+    });
     const resolvedCanonicalAdoptions = {
         // Prefer measured compiler/runtime consumer evidence over optimistic defaults.
         centralityCoverage: canonicalAdoptionEvidence.centralityCoverage.adopted,
@@ -114,6 +135,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         contractTaxonomy,
         fileUniverseGranularity,
+        dataGatewayContract,
         canonicalAdoptions: resolvedCanonicalAdoptions
     });
 
@@ -139,6 +161,8 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         contractTaxonomy,
         fileUniverseGranularity,
+        analysisGeneration,
+        dataGatewayContract,
         canonicalAdoptionEvidence,
         canonicalAdoptions: resolvedCanonicalAdoptions,
         standardizationReport,

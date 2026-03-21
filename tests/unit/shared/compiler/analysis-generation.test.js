@@ -6,7 +6,9 @@ import {
   summarizeAnalysisGeneration,
   buildDerivedFeatureRegistry,
   summarizeDerivedFeatureRegistry,
-  findDerivedFeatureDefinition
+  findDerivedFeatureDefinition,
+  buildDataGatewayContract,
+  summarizeDataGatewayContract
 } from '../../../../src/shared/compiler/index.js';
 import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer.js';
 
@@ -87,5 +89,91 @@ describe('compiler contract layer', () => {
 
     expect(layer.summary.derivedFeatureCount).toBeGreaterThan(0);
     expect(layer.derivedFeatures.total).toBeGreaterThan(0);
+  });
+});
+
+describe('data gateway contract', () => {
+  it('publishes DB-first freshness and flags the first stale surface', () => {
+    const contract = buildDataGatewayContract({
+      analysisGeneration: buildAnalysisGenerationSnapshot({
+        projectPath: '/tmp/project',
+        source: 'test',
+        phase: 'status',
+        totalFiles: 12,
+        atomCount: 10,
+        relationCount: 8,
+        semanticConnectionCount: 4
+      }),
+      persistedFileCoverage: {
+        healthy: true,
+        synchronized: true,
+        scannedFileTotal: 12,
+        manifestFileTotal: 12,
+        liveIndexedFiles: 12,
+        summary: 'Persisted scanned-file coverage is fresh.'
+      },
+      fileImportEvidenceCoverage: {
+        healthy: true,
+        total: 12,
+        filesTotal: 12,
+        activeFiles: 12,
+        primaryFilesWithImports: 12,
+        systemFilesTotal: 12,
+        fileDependenciesTotal: 12,
+        summary: 'File import evidence is fresh.'
+      },
+      systemMapPersistenceCoverage: {
+        healthy: false,
+        systemFilesTotal: 10,
+        activeFiles: 12,
+        fileDependenciesTotal: 9,
+        summary: 'System-map persistence is lagging behind the active file universe.',
+        issues: ['system_files lags behind the live atom file universe']
+      },
+      metadataSurfaceParity: {
+        healthy: true,
+        primaryFilesTotal: 12,
+        primaryFilesWithImports: 12,
+        primaryFilesWithExports: 12,
+        mirroredFilesTotal: 12,
+        mirroredFilesWithImports: 12,
+        mirroredFilesWithExports: 12,
+        summary: 'Mirrored metadata parity is fresh.'
+      },
+      semanticSurfaceGranularity: {
+        healthy: true,
+        fileLevel: { total: 1 },
+        atomLevel: { total: 1 },
+        summary: 'Semantic surface granularity is fresh.'
+      },
+      fileUniverseGranularity: {
+        healthy: true,
+        scannedFileTotal: 12,
+        manifestFileTotal: 12,
+        liveFileCount: 12
+      },
+      databaseHealth: {
+        healthy: true,
+        summary: 'Database projections are aligned',
+        metrics: {
+          activeAtoms: 10,
+          activeCallRelations: 8,
+          activeSemanticConnections: 4
+        }
+      }
+    });
+
+    expect(contract.contract.sourceOfTruth).toBe('atom_relations');
+    expect(contract.summary.total).toBe(8);
+    expect(contract.summary.trustworthy).toBe(false);
+    expect(contract.summary.primaryIssue).toMatchObject({
+      key: 'system_map_persistence',
+      state: 'stale'
+    });
+    expect(summarizeDataGatewayContract(contract)).toMatchObject({
+      total: 8,
+      stale: 1,
+      trustworthy: false
+    });
   });
 });
