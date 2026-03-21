@@ -15,6 +15,11 @@ const METADATA_SURFACE_TABLES = [
     table: 'atoms',
     label: 'Atom metadata surface',
     sourceOfTruth: 'atoms',
+    fieldRules: {
+      deprecated_reason: {
+        eligibleWhen: 'COALESCE(is_deprecated, 0) = 1'
+      }
+    },
     excludedColumns: new Set([
       'id',
       'name',
@@ -120,14 +125,15 @@ export function getMetadataExtractionCoverage(db) {
   const healthy = totalFields > 0 && fieldCoverageRatio >= 0.75 && rowCoverageRatio >= 0.75;
 
   const flattenedFields = tables.flatMap((table) => table.fields);
-  const sortedMissingFields = flattenedFields
-    .filter((field) => field.populatedRows === 0 && field.totalRows > 0)
+  const applicableFields = flattenedFields.filter((field) => field.eligibleRows > 0 && field.state !== 'not_applicable');
+  const sortedMissingFields = applicableFields
+    .filter((field) => field.populatedRows === 0)
     .sort((a, b) => a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
-  const sortedCoveredFields = flattenedFields
+  const sortedCoveredFields = applicableFields
     .filter((field) => field.populatedRows > 0)
     .sort((a, b) => b.coverageRatio - a.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field));
   const primaryIssue = sortedMissingFields[0] || flattenedFields
-    .filter((field) => field.populatedRows > 0)
+    .filter((field) => field.eligibleRows > 0 && field.state !== 'not_applicable' && field.populatedRows > 0)
     .sort((a, b) => a.coverageRatio - b.coverageRatio || a.table.localeCompare(b.table) || a.field.localeCompare(b.field))[0] || null;
 
   const warnings = [];

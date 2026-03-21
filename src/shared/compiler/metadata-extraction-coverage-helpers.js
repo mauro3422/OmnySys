@@ -27,9 +27,23 @@ function isMetadataColumn(config, columnName) {
   return !config.excludedColumns.has(columnName);
 }
 
-function buildPopulatedAggregation(columnName) {
+function getFieldRule(config, columnName) {
+  return config.fieldRules?.[columnName] || null;
+}
+
+function buildEligibleAggregation(rule = null) {
+  if (rule?.eligibleWhen) {
+    return `SUM(CASE WHEN ${rule.eligibleWhen} THEN 1 ELSE 0 END)`;
+  }
+
+  return 'COUNT(*)';
+}
+
+function buildPopulatedAggregation(columnName, rule = null) {
   const quoted = quoteIdentifier(columnName);
+  const eligibleClause = rule?.eligibleWhen ? `WHEN NOT (${rule.eligibleWhen}) THEN 0` : '';
   return `SUM(CASE
+    ${eligibleClause}
     WHEN ${quoted} IS NULL THEN 0
     WHEN typeof(${quoted}) = 'text' AND trim(${quoted}) IN ('', 'null', '[]', '{}') THEN 0
     WHEN typeof(${quoted}) = 'blob' AND length(${quoted}) = 0 THEN 0
@@ -37,9 +51,9 @@ function buildPopulatedAggregation(columnName) {
   END)`;
 }
 
-function formatCoverageRatio(populatedRows, totalRows) {
-  if (totalRows <= 0) return 0;
-  return Number((populatedRows / totalRows).toFixed(3));
+function formatCoverageRatio(populatedRows, eligibleRows) {
+  if (eligibleRows <= 0) return 0;
+  return Number((populatedRows / eligibleRows).toFixed(3));
 }
 
 export function buildFieldCoverageRow({
@@ -47,19 +61,23 @@ export function buildFieldCoverageRow({
   field,
   type,
   totalRows,
+  eligibleRows,
   populatedRows
 }) {
-  const coverageRatio = formatCoverageRatio(populatedRows, totalRows);
+  const coverageRatio = formatCoverageRatio(populatedRows, eligibleRows);
   return {
     table,
     field,
     type,
     totalRows,
+    eligibleRows,
     populatedRows,
-    emptyRows: Math.max(0, totalRows - populatedRows),
+    emptyRows: Math.max(0, eligibleRows - populatedRows),
     coverageRatio,
-    coveragePct: totalRows > 0 ? Math.round(coverageRatio * 100) : 0,
-    state: totalRows === 0
+    coveragePct: eligibleRows > 0 ? Math.round(coverageRatio * 100) : 0,
+    state: eligibleRows === 0
+      ? 'not_applicable'
+      : totalRows === 0
       ? 'missing'
       : populatedRows === 0
         ? 'empty'
@@ -74,24 +92,29 @@ function buildTableFields(config, columns = [], row = {}, totalRows = 0) {
 
   return metadataColumns.map((column) => {
     const name = String(column.name || '');
+    const rule = getFieldRule(config, name);
+    const eligibleRows = toNumber(row[`${name}__eligible`] ?? totalRows);
     const populatedRows = toNumber(row[`${name}__populated`] || 0);
     return buildFieldCoverageRow({
       table: config.table,
       field: name,
       type: String(column.type || '').trim() || 'UNKNOWN',
       totalRows,
+      eligibleRows,
       populatedRows
     });
   });
 }
 
 function summarizeCoverageMetrics(fields = [], totalRows = 0) {
-  const totalFields = fields.length;
-  const coveredFields = fields.filter((field) => field.populatedRows > 0).length;
-  const emptyFields = fields.filter((field) => field.populatedRows === 0).length;
-  const partialFields = fields.filter((field) => field.populatedRows > 0 && field.coverageRatio < 0.9).length;
-  const rowCoverageRatio = totalRows > 0 && totalFields > 0
-    ? Number((fields.reduce((sum, field) => sum + field.populatedRows, 0) / (totalRows * totalFields)).toFixed(3))
+  const applicableFields = fields.filter((field) => field.eligibleRows > 0);
+  const totalFields = applicableFields.length;
+  const coveredFields = applicableFields.filter((field) => field.populatedRows > 0).length;
+  const emptyFields = applicableFields.filter((field) => field.populatedRows === 0).length;
+  const partialFields = applicableFields.filter((field) => field.populatedRows > 0 && field.coverageRatio < 0.9).length;
+  const eligibleRowsTotal = applicableFields.reduce((sum, field) => sum + field.eligibleRows, 0);
+  const rowCoverageRatio = eligibleRowsTotal > 0 && totalFields > 0
+    ? Number((applicableFields.reduce((sum, field) => sum + field.populatedRows, 0) / eligibleRowsTotal).toFixed(3))
     : 0;
   const fieldCoverageRatio = totalFields > 0 ? Number((coveredFields / totalFields).toFixed(3)) : 0;
 
@@ -157,8 +180,9 @@ function buildCoverageIssueSets(config, totalRows, metrics, primaryIssue) {
 }
 
 function summarizeCoverageIssues(config, fields = [], totalRows = 0, metrics = {}) {
-  const sortedMissingFields = collectMissingCoverageFields(fields, totalRows);
-  const sortedCoveredFields = collectCoveredCoverageFields(fields);
+  const applicableFields = fields.filter((field) => field.eligibleRows > 0);
+  const sortedMissingFields = collectMissingCoverageFields(applicableFields, totalRows);
+  const sortedCoveredFields = collectCoveredCoverageFields(applicableFields);
   const primaryIssue = pickPrimaryCoverageIssue(sortedMissingFields, sortedCoveredFields);
   const { warnings, criticalFindings } = buildCoverageIssueSets(config, totalRows, metrics, primaryIssue);
 
@@ -197,7 +221,9 @@ export function buildTableCoverage(db, config) {
   const selectParts = ['COUNT(*) as totalRows'];
   for (const column of metadataColumns) {
     const name = String(column.name || '');
-    selectParts.push(`${buildPopulatedAggregation(name)} AS ${quoteIdentifier(`${name}__populated`)}`);
+    const rule = getFieldRule(config, name);
+    selectParts.push(`${buildEligibleAggregation(rule)} AS ${quoteIdentifier(`${name}__eligible`)}`);
+    selectParts.push(`${buildPopulatedAggregation(name, rule)} AS ${quoteIdentifier(`${name}__populated`)}`);
   }
 
   const row = db.prepare(`
