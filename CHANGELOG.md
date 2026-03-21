@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.169 - Sprint 16: Active Files Parity Alignment](changelogs/v0.9.169.md)
 - [v0.9.168 - Sprint 16: Data Gateway Freshness Contract](changelogs/v0.9.168.md)
 - [v0.9.167 - Sprint 16: System Map Coverage and Dependency Repair Heuristics](changelogs/v0.9.167.md)
 - [v0.9.166 - Sprint 16: Dead-Code Barrel Compatibility Fix](changelogs/v0.9.166.md)
@@ -53,6 +54,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.169 - Sprint 16: Active Files Parity Alignment](changelogs/v0.9.169.md)
 - [v0.9.168 - Sprint 16: Data Gateway Freshness Contract](changelogs/v0.9.168.md)
 - [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)
 - [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)

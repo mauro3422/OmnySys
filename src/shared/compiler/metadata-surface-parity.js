@@ -17,6 +17,7 @@ export function getMetadataSurfaceParity(db) {
   const row = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM files) as primaryFilesTotal,
+      (SELECT COUNT(*) FROM files WHERE (is_removed IS NULL OR is_removed = 0)) as activeFilesTotal,
       (SELECT COUNT(*) FROM files WHERE imports_json IS NOT NULL AND imports_json != '' AND imports_json != '[]') as primaryFilesWithImports,
       (SELECT COUNT(*) FROM files WHERE exports_json IS NOT NULL AND exports_json != '' AND exports_json != '[]') as primaryFilesWithExports,
       (SELECT COUNT(*) FROM system_files) as mirroredFilesTotal,
@@ -25,19 +26,20 @@ export function getMetadataSurfaceParity(db) {
   `).get() || {};
 
   const primaryFilesTotal = toNumber(row.primaryFilesTotal);
+  const activeFilesTotal = toNumber(row.activeFilesTotal);
   const primaryFilesWithImports = toNumber(row.primaryFilesWithImports);
   const primaryFilesWithExports = toNumber(row.primaryFilesWithExports);
   const mirroredFilesTotal = toNumber(row.mirroredFilesTotal);
   const mirroredFilesWithImports = toNumber(row.mirroredFilesWithImports);
   const mirroredFilesWithExports = toNumber(row.mirroredFilesWithExports);
 
-  const fileUniverseParityRatio = toRatio(mirroredFilesTotal, primaryFilesTotal);
+  const fileUniverseParityRatio = toRatio(mirroredFilesTotal, activeFilesTotal || primaryFilesTotal);
   const importsParityRatio = toRatio(mirroredFilesWithImports, primaryFilesWithImports);
   const exportsParityRatio = toRatio(mirroredFilesWithExports, primaryFilesWithExports);
 
   const issues = [];
-  if (primaryFilesTotal > 0 && fileUniverseParityRatio < 0.9) {
-    issues.push('mirrored file universe lags behind the primary files table');
+  if (activeFilesTotal > 0 && fileUniverseParityRatio < 0.9) {
+    issues.push('mirrored file universe lags behind the active files table');
   }
   if (primaryFilesWithImports > 0 && importsParityRatio < 0.5) {
     issues.push('mirrored import telemetry is much sparser than the primary files table');
@@ -48,6 +50,7 @@ export function getMetadataSurfaceParity(db) {
 
   return {
     primaryFilesTotal,
+    activeFilesTotal,
     primaryFilesWithImports,
     primaryFilesWithExports,
     mirroredFilesTotal,

@@ -10,6 +10,7 @@ import {
   buildDataGatewayContract,
   summarizeDataGatewayContract
 } from '../../../../src/shared/compiler/index.js';
+import { getMetadataSurfaceParity } from '../../../../src/shared/compiler/metadata-surface-parity.js';
 import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer.js';
 
 describe('derived feature registry', () => {
@@ -175,5 +176,27 @@ describe('data gateway contract', () => {
       stale: 1,
       trustworthy: false
     });
+  });
+
+  it('treats active files as the mirrored file-universe baseline', () => {
+    const db = {
+      prepare: () => ({
+        get: () => ({
+          primaryFilesTotal: 819,
+          activeFilesTotal: 732,
+          primaryFilesWithImports: 464,
+          primaryFilesWithExports: 700,
+          mirroredFilesTotal: 725,
+          mirroredFilesWithImports: 457,
+          mirroredFilesWithExports: 693
+        })
+      })
+    };
+
+    const parity = getMetadataSurfaceParity(db);
+
+    expect(parity.healthy).toBe(true);
+    expect(parity.fileUniverseParityRatio).toBeGreaterThanOrEqual(0.99);
+    expect(parity.issues).toHaveLength(0);
   });
 });
