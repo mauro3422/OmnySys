@@ -108,6 +108,7 @@ function compactCompilerExplainabilitySummary(explainability) {
       topMissingFields: takeSample(explainability.metadataExtractionCoverage.topMissingFields, 3),
       topCoveredFields: takeSample(explainability.metadataExtractionCoverage.topCoveredFields, 3)
     } : null,
+    surfaceAudit: explainability.surfaceAudit ? summarizeSurfaceAuditForStatus(explainability.surfaceAudit) : null,
     semanticCanonicality: explainability.semanticCanonicality ? {
       total: explainability.semanticCanonicality.total,
       healthy: explainability.semanticCanonicality.healthy

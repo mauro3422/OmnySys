@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.173 - Sprint 16: Surface Audit Status Propagation](changelogs/v0.9.173.md)
 - [v0.9.172 - Sprint 16: Canonical Surface Audit Unification](changelogs/v0.9.172.md)
 - [v0.9.171 - Sprint 16: Atom-Semantic Surface Repair](changelogs/v0.9.171.md)
 - [v0.9.170 - Sprint 16: Compiler Governance Data Gateway Integration](changelogs/v0.9.170.md)
@@ -57,6 +58,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.173 - Sprint 16: Surface Audit Status Propagation](changelogs/v0.9.173.md)
 - [v0.9.172 - Sprint 16: Canonical Surface Audit Unification](changelogs/v0.9.172.md)
 - [v0.9.170 - Sprint 16: Compiler Governance Data Gateway Integration](changelogs/v0.9.170.md)
 - [v0.9.169 - Sprint 16: Active Files Parity Alignment](changelogs/v0.9.169.md)
@@ -110,6 +112,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.173** | 2026-03-21 | Sprint 16: Surface Audit Status Propagation, carried `surfaceAudit` through compact status explainability so the live summary no longer collapses it to an empty default. |
 | **0.9.172** | 2026-03-21 | Sprint 16: Canonical Surface Audit Unification, unified status and explainability behind `surfaceAudit`, added DB-only metadata extraction coverage, and consolidated governance reporting across canonical surfaces. |
 | **0.9.171** | 2026-03-21 | Sprint 16: Atom-Semantic Surface Repair, repopulated `semantic_connections` and `system_files.semantic_connections_json` from atom semantic metadata, aligned semantic contracts to atoms, and restored A+ database health after cleanup. |
 | **0.9.164** | 2026-03-21 | Sprint 16: Framework Lifecycle Hook Policy, classified initialization rollback and extraction-strategy confidence hooks as framework contracts and reduced duplicate-signal noise on the policy surface. |
