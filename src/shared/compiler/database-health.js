@@ -9,7 +9,7 @@
 
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
-import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
+import { getSystemMapPersistenceCoverage, repairSystemMapPersistenceCoverage } from './system-map-persistence.js';
 import { buildDatabaseHealthAssessment } from './database-health-assessment.js';
 import { loadDatabaseHealthCounts } from './database-health-counts.js';
 import { resolveDatabaseHealthLiveRowSync } from './database-health-live-row-sync.js';
@@ -35,6 +35,14 @@ export function getDatabaseHealthSummary(db, options = {}) {
   }
 
   const liveRowSync = resolveDatabaseHealthLiveRowSync(db, options);
+  let systemMapCoverage = getSystemMapPersistenceCoverage(db);
+  if (systemMapCoverage.healthy === false) {
+    const repairResult = repairSystemMapPersistenceCoverage(db);
+    if (repairResult?.repaired === true) {
+      systemMapCoverage = getSystemMapPersistenceCoverage(db);
+    }
+  }
+
   const counts = loadDatabaseHealthCounts(db);
 
   const fileUniverse = getFileUniverseGranularity({
@@ -42,7 +50,6 @@ export function getDatabaseHealthSummary(db, options = {}) {
     manifestFileTotal: counts.scannedFiles,
     liveFileCount: counts.activeFiles
   });
-  const systemMapCoverage = getSystemMapPersistenceCoverage(db);
   const semanticSurface = getSemanticSurfaceGranularity(db);
 
   const assessment = buildDatabaseHealthAssessment({
