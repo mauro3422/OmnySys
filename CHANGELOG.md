@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.179 - Sprint 16: Database Health Orchestration Split and Orphan Reconciliation](changelogs/v0.9.179.md)
 - [v0.9.178 - Sprint 16: Watcher Provenance and Live Database Health Auto-Sync](changelogs/v0.9.178.md)
 - [v0.9.177 - Sprint 16: Atom Metadata Surface Backfill](changelogs/v0.9.177.md)
 - [v0.9.176 - Sprint 16: Metadata Extraction Coverage Aggregation Fix](changelogs/v0.9.176.md)
