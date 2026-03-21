@@ -64,6 +64,18 @@ function compactCompilerExplainabilitySummary(explainability) {
       stableCanonicalFamilies: explainability.standardization.stableCanonicalFamilies?.length || 0,
       summary: explainability.standardization.summary || null
     } : null,
+    compilerContractLayer: explainability.compilerContractLayer ? {
+      summary: {
+        healthy: explainability.compilerContractLayer.summary?.healthy,
+        failedInvariantCount: explainability.compilerContractLayer.summary?.failedInvariantCount,
+        canonicalWrapperFindings: explainability.compilerContractLayer.summary?.canonicalWrapperFindings,
+        canonicalBypassFindings: explainability.compilerContractLayer.summary?.canonicalBypassFindings,
+        parallelCanonicalSurfaceFindings: explainability.compilerContractLayer.summary?.parallelCanonicalSurfaceFindings,
+        dataGatewayContractTrustworthy: explainability.compilerContractLayer.summary?.dataGatewayContractTrustworthy,
+        dataGatewayContractState: explainability.compilerContractLayer.summary?.dataGatewayContractState,
+        nextAction: explainability.compilerContractLayer.summary?.nextAction
+      }
+    } : null,
     persistedFileCoverage: explainability.persistedFileCoverage ? {
       total: explainability.persistedFileCoverage.total,
       healthy: explainability.persistedFileCoverage.healthy

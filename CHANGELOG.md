@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.170 - Sprint 16: Compiler Governance Data Gateway Integration](changelogs/v0.9.170.md)
 - [v0.9.169 - Sprint 16: Active Files Parity Alignment](changelogs/v0.9.169.md)
 - [v0.9.168 - Sprint 16: Data Gateway Freshness Contract](changelogs/v0.9.168.md)
 - [v0.9.167 - Sprint 16: System Map Coverage and Dependency Repair Heuristics](changelogs/v0.9.167.md)
@@ -54,6 +55,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.170 - Sprint 16: Compiler Governance Data Gateway Integration](changelogs/v0.9.170.md)
 - [v0.9.169 - Sprint 16: Active Files Parity Alignment](changelogs/v0.9.169.md)
 - [v0.9.168 - Sprint 16: Data Gateway Freshness Contract](changelogs/v0.9.168.md)
 - [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)

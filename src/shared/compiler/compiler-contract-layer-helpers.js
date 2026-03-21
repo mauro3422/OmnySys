@@ -119,6 +119,18 @@ function buildCanonicalEntrypoints() {
       status: 'canonical',
       entrypoint: 'buildCompilerStandardizationReport',
       domain: 'governance'
+    },
+    {
+      id: 'data_gateway_contract',
+      status: 'canonical',
+      entrypoint: 'buildDataGatewayContract',
+      domain: 'governance'
+    },
+    {
+      id: 'surface_freshness_ledger',
+      status: 'canonical',
+      entrypoint: 'buildSurfaceFreshnessLedger',
+      domain: 'governance'
     }
   ];
 }

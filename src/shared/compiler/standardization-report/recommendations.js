@@ -42,6 +42,10 @@ function hasCanonicalScannedFileManifestAdoption(canonicalAdoptions = {}) {
   return canonicalAdoptions.scannedFileManifest === true;
 }
 
+function hasCanonicalDataGatewayAdoption(dataGatewayContract = null) {
+  return dataGatewayContract?.summary?.trustworthy === true;
+}
+
 export function buildMissingCanonicalSurfaceReport(adoptionGaps = []) {
   const byArea = Object.fromEntries(adoptionGaps.map((gap) => [gap.area, gap.count]));
   const surfaces = [];
@@ -113,7 +117,8 @@ export function buildMissingCanonicalApis({
   systemMapPersistenceCoverage = null,
   metadataSurfaceParity = null,
   semanticSurfaceGranularity = null,
-  fileUniverseGranularity = null
+  fileUniverseGranularity = null,
+  dataGatewayContract = null
 } = {}) {
   const missingCanonicalApis = [];
 
@@ -219,6 +224,15 @@ export function buildMissingCanonicalApis({
       'medium',
       'Scanner, manifest, and live indexed file universes are no longer aligned.',
       'Read file-universe differences through a canonical contract before treating scanned files, persisted manifest rows, and live indexed files as interchangeable.'
+    ));
+  }
+
+  if (!hasCanonicalDataGatewayAdoption(dataGatewayContract)) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'data_gateway_contract',
+      'medium',
+      'The DB-first data gateway contract is missing, stale, or not trustworthy enough to govern downstream reads.',
+      'Route freshness, coverage and drift checks through the canonical data gateway contract before letting tools interpret DB projections or support tables independently.'
     ));
   }
 

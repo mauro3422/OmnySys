@@ -19,6 +19,7 @@ import {
   normalizeCount
 } from './compiler-contract-layer-helpers.js';
 import { buildDerivedFeatureRegistry } from './derived-feature-registry.js';
+import { summarizeDataGatewayContract } from './data-gateway-contract.js';
 
 function buildCanonicalGovernanceMetrics(policySummary = {}, standardization = null) {
   const byRule = policySummary?.byRule || {};
@@ -165,6 +166,7 @@ export function buildCompilerContractLayer({
   semanticSurfaceGranularity = null,
   semanticCanonicality = null,
   systemMapPersistenceCoverage = null,
+  dataGatewayContract = null,
   standardization = null,
   policySummary = {},
   tableCounts = {}
@@ -193,6 +195,7 @@ export function buildCompilerContractLayer({
   const apiGovernance = buildApiGovernance(standardization, invariants, policySummary);
   const canonicalEntrypoints = buildCanonicalEntrypoints();
   const derivedFeatureSummary = derivedFeatureRegistry.summary;
+  const dataGatewaySummary = summarizeDataGatewayContract(dataGatewayContract);
   const failedInvariantCount = invariants.filter((item) => item.status === 'fail').length;
   const advisorySurfaceCount = surfaces.filter((item) => item.status === 'advisory' || item.status === 'advisory_only').length;
   const supportSurfaceCount = surfaces.filter((item) => item.status === 'mirrored_support').length;
@@ -211,6 +214,8 @@ export function buildCompilerContractLayer({
       canonicalBypassFindings: apiGovernance.governanceMetrics.canonicalBypassFindings,
       parallelCanonicalSurfaceFindings: apiGovernance.governanceMetrics.parallelCanonicalSurfaceFindings,
       contractTaxonomyCoverage: standardization?.contractTaxonomy?.coverage?.coverageRatio ?? 0,
+      dataGatewayContractTrustworthy: dataGatewaySummary?.trustworthy === true,
+      dataGatewayContractState: dataGatewaySummary?.primaryIssue?.state || (dataGatewaySummary?.trustworthy === true ? 'trustworthy' : 'needs_attention'),
       healthy: failedInvariantCount === 0,
       mode: failedInvariantCount === 0 ? 'explicit_contract' : 'contract_violation',
       nextAction: apiGovernance.nextAction
@@ -219,6 +224,9 @@ export function buildCompilerContractLayer({
     canonicalEntrypoints,
     derivedFeatures: derivedFeatureSummary,
     invariants,
-    apiGovernance
+    apiGovernance,
+    governanceContracts: {
+      dataGatewayContract: dataGatewaySummary
+    }
   };
 }

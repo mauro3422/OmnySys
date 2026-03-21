@@ -147,6 +147,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         semanticCanonicality,
         contractTaxonomy,
         systemMapPersistenceCoverage,
+        dataGatewayContract,
         standardization: standardizationReport,
         policySummary,
         tableCounts

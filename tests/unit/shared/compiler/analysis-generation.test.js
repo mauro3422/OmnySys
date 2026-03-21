@@ -79,17 +79,92 @@ describe('analysis generation snapshots', () => {
 
 describe('compiler contract layer', () => {
   it('includes derived feature governance data', () => {
+    const dataGatewayContract = buildDataGatewayContract({
+      analysisGeneration: buildAnalysisGenerationSnapshot({
+        projectPath: '/tmp/project',
+        source: 'test',
+        phase: 'status',
+        totalFiles: 12,
+        atomCount: 10,
+        relationCount: 8,
+        semanticConnectionCount: 4
+      }),
+      persistedFileCoverage: {
+        healthy: true,
+        synchronized: true,
+        scannedFileTotal: 12,
+        manifestFileTotal: 12,
+        liveIndexedFiles: 12,
+        summary: 'Persisted scanned-file coverage is fresh.'
+      },
+      fileImportEvidenceCoverage: {
+        healthy: true,
+        total: 12,
+        filesTotal: 12,
+        activeFiles: 12,
+        primaryFilesWithImports: 12,
+        systemFilesTotal: 12,
+        fileDependenciesTotal: 12,
+        summary: 'File import evidence is fresh.'
+      },
+      systemMapPersistenceCoverage: {
+        healthy: true,
+        systemFilesTotal: 12,
+        activeFiles: 12,
+        fileDependenciesTotal: 12,
+        summary: 'System-map persistence is fresh.'
+      },
+      metadataSurfaceParity: {
+        healthy: true,
+        primaryFilesTotal: 12,
+        primaryFilesWithImports: 12,
+        primaryFilesWithExports: 12,
+        mirroredFilesTotal: 12,
+        mirroredFilesWithImports: 12,
+        mirroredFilesWithExports: 12,
+        summary: 'Mirrored metadata parity is fresh.'
+      },
+      semanticSurfaceGranularity: {
+        healthy: true,
+        fileLevel: { total: 1 },
+        atomLevel: { total: 1 },
+        summary: 'Semantic surface granularity is fresh.'
+      },
+      fileUniverseGranularity: {
+        healthy: true,
+        scannedFileTotal: 12,
+        manifestFileTotal: 12,
+        liveFileCount: 12
+      },
+      databaseHealth: {
+        healthy: true,
+        summary: 'Database projections are aligned',
+        metrics: {
+          activeAtoms: 10,
+          activeCallRelations: 8,
+          activeSemanticConnections: 4
+        }
+      }
+    });
+
     const layer = buildCompilerContractLayer({
       tableCounts: {
         files: 1,
         atoms: 1,
         atom_relations: 1,
         risk_assessments: 1
-      }
+      },
+      dataGatewayContract
     });
 
     expect(layer.summary.derivedFeatureCount).toBeGreaterThan(0);
     expect(layer.derivedFeatures.total).toBeGreaterThan(0);
+    expect(layer.governanceContracts.dataGatewayContract).toMatchObject({
+      trustworthy: true,
+      primaryIssue: null
+    });
+    expect(layer.summary.dataGatewayContractTrustworthy).toBe(true);
+    expect(layer.summary.dataGatewayContractState).toBe('trustworthy');
   });
 });
 

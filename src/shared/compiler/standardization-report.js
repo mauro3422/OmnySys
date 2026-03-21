@@ -22,6 +22,7 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'system_map_persistence', label: 'System-map persistence coverage', status: 'canonical' },
   { id: 'metadata_surface_parity', label: 'Metadata surface parity', status: 'canonical' },
   { id: 'metadata_propagation', label: 'Metadata propagation drift', status: 'canonical' },
+  { id: 'data_gateway', label: 'Data gateway freshness contract', status: 'canonical' },
   { id: 'semantic_surface_granularity', label: 'Semantic surface granularity', status: 'canonical' },
   { id: 'file_universe_granularity', label: 'File-universe granularity', status: 'canonical' },
   { id: 'live_row_drift', label: 'Live/stale row drift', status: 'canonical' },
@@ -74,12 +75,12 @@ export function buildCompilerStandardizationReport({
   canonicalAdoptions = {},
   persistedFileCoverage = null,
   fileImportEvidenceCoverage = null,
-  systemMapPersistenceCoverage = null
-  ,
+  systemMapPersistenceCoverage = null,
   metadataSurfaceParity = null,
   semanticSurfaceGranularity = null,
   fileUniverseGranularity = null,
-  contractTaxonomy = null
+  contractTaxonomy = null,
+  dataGatewayContract = null
 } = {}) {
   const driftAreas = Object.entries(policySummary?.byPolicyArea || {})
     .map(([area, count]) => normalizeDriftArea(area, count))
@@ -96,7 +97,8 @@ export function buildCompilerStandardizationReport({
     systemMapPersistenceCoverage,
     metadataSurfaceParity,
     semanticSurfaceGranularity,
-    fileUniverseGranularity
+    fileUniverseGranularity,
+    dataGatewayContract
   });
   const stableCanonicalFamilies = CANONICAL_COMPILER_FAMILIES.filter((family) =>
     !adoptionGaps.some((gap) => gap.area === family.id)
