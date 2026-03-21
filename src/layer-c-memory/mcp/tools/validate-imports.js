@@ -75,7 +75,13 @@ async function buildCircularDependencyGraph(projectPath, rootFilePath) {
         }
 
         loaded.add(nodePath);
-        const nodeDeps = await getFileDependencies(projectPath, nodePath);
+        let nodeDeps;
+        try {
+            nodeDeps = await getFileDependencies(projectPath, nodePath);
+        } catch (error) {
+            throw new Error(`Failed to load dependencies for ${nodePath}: ${error?.message || error}`);
+        }
+
         const targets = Array.isArray(nodeDeps?.dependencies)
             ? nodeDeps.dependencies
                 .map((dependency) => dependency?.resolvedPath || dependency?.source)

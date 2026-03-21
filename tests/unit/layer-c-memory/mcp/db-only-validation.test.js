@@ -96,4 +96,22 @@ describe('DB-only validation', () => {
     expect(chain.originFile).toBe('src/b.js');
     expect(mocks.getFileExports).toHaveBeenCalledWith('/proj', 'src/b.js');
   });
+
+  it('ValidateImportsTool surfaces circular dependency loader failures as structured errors', async () => {
+    mocks.getFileAnalysis.mockResolvedValueOnce({ imports: [] });
+    mocks.getFileDependencies.mockRejectedValueOnce(new Error('dependency load failed'));
+
+    const tool = new ValidateImportsTool();
+    tool.projectPath = '/proj';
+    tool.repo = { db: {} };
+
+    const result = await tool.performAction({
+      filePath: 'src/a.js',
+      checkCircular: true
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('VALIDATION_FAILED');
+    expect(result.message).toContain('Failed to compute circular dependencies');
+  });
 });
