@@ -128,6 +128,21 @@ export function isFrameworkCoordinatorActionHook(filePath, atomName, semanticFin
     return isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint);
 }
 
+/**
+ * Detects framework tracker hooks that intentionally share the same
+ * `trackMolecule` contract across the race-detector tracker hierarchy.
+ */
+export function isFrameworkTrackerHook(filePath, atomName, semanticFingerprint) {
+    const { normalizedPath, normalizedName } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        semanticFingerprint
+    );
+
+    return normalizedPath.includes('/race-detector/trackers/') &&
+        normalizedName === 'trackmolecule';
+}
+
 function isInitializationLifecycleHook(filePath, atomName) {
     const { normalizedPath, normalizedName } = normalizeDuplicateSignalInputs(
         filePath,
@@ -206,6 +221,12 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
     // Ignore canonical framework coordinator hooks that intentionally share
     // the `performAction` contract across the MCP tool hierarchy.
     if (isFrameworkCoordinatorActionHook(filePath, atomName, semanticFingerprint)) {
+        return true;
+    }
+
+    // Ignore canonical framework tracker hooks that intentionally share
+    // the `trackMolecule` contract across the race-detector tracker hierarchy.
+    if (isFrameworkTrackerHook(filePath, atomName, semanticFingerprint)) {
         return true;
     }
 
