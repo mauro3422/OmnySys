@@ -3,7 +3,7 @@ import {
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
 
-export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}) {
+export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null) {
   try {
     const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
@@ -37,6 +37,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity,
       fileUniverseGranularity: snapshot.fileUniverseGranularity,
       analysisGeneration: snapshot.analysisGeneration,
+      watcherStats,
       dataGatewayContract: snapshot.dataGatewayContract,
       databaseHealth: snapshot.databaseHealth,
       surfaceAudit: snapshot.surfaceAudit

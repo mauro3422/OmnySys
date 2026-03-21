@@ -14,8 +14,9 @@ const logger = createLogger('OmnySys:file-watcher:handlers');
 /**
  * Maneja creacion de archivo
  */
-export async function handleFileCreated(filePath, fullPath) {
-  logger.info(`[FILE CREATED] ${filePath}`);
+export async function handleFileCreated(filePath, fullPath, changeContext = {}) {
+  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
+  logger.info(`[FILE CREATED] ${filePath}${originSuffix}`);
 
   const analysis = await analyzeAndIndex.call(this, filePath, fullPath, false);
   const atoms = analysis.moleculeAtoms || analysis.atoms || [];
@@ -30,7 +31,12 @@ export async function handleFileCreated(filePath, fullPath) {
   const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
   logger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
 
-  this.emit('file:created', { filePath, analysis });
+  this.emit('file:created', {
+    filePath,
+    analysis,
+    origin: changeContext.origin || 'unknown',
+    source: changeContext.source || null
+  });
 }
 
 /**
@@ -69,7 +75,7 @@ export async function saveAtom(atom, filePath) {
 /**
  * Maneja modificacion de archivo
  */
-export async function handleFileModified(filePath, fullPath) {
+export async function handleFileModified(filePath, fullPath, changeContext = {}) {
   // Hash-dedup
   const newHash = await this._calculateContentHash(fullPath);
   const oldHash = this.fileHashes?.get(filePath);
@@ -93,7 +99,8 @@ export async function handleFileModified(filePath, fullPath) {
     // Ignore races where the file disappears between detection and processing.
   }
 
-  logger.info(`[FILE MODIFIED] ${filePath}`);
+  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
+  logger.info(`[FILE MODIFIED] ${filePath}${originSuffix}`);
   const previousAtoms = await this.getAtomsForFile(filePath);
 
   // Invalidar cache si existe cacheInvalidator
@@ -149,7 +156,12 @@ export async function handleFileModified(filePath, fullPath) {
     `[FILE PROCESSED] ${filePath} -> atoms=${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0}, previous=${previousAtoms.length}`
   );
 
-  this.emit('file:modified', { filePath, analysis });
+  this.emit('file:modified', {
+    filePath,
+    analysis,
+    origin: changeContext.origin || 'unknown',
+    source: changeContext.source || null
+  });
 }
 
 /**
@@ -184,8 +196,9 @@ export async function detectDuplicateRiskForFile(filePath, options = {}) {
 /**
  * Maneja borrado de archivo
  */
-export async function handleFileDeleted(filePath) {
-  logger.info(`[FILE DELETING] ${filePath}`);
+export async function handleFileDeleted(filePath, changeContext = {}) {
+  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
+  logger.info(`[FILE DELETING] ${filePath}${originSuffix}`);
 
   const fs = await import('fs/promises');
   const fullPath = this.rootPath ?
@@ -200,7 +213,11 @@ export async function handleFileDeleted(filePath) {
     await this.removeAtomMetadata(filePath);
     if (this.fileHashes) this.fileHashes.delete(filePath);
     if (this.fileStats) this.fileStats.delete(filePath);
-    this.emit('file:deleted', { filePath });
+    this.emit('file:deleted', {
+      filePath,
+      origin: changeContext.origin || 'unknown',
+      source: changeContext.source || null
+    });
     return;
   }
 
@@ -213,7 +230,11 @@ export async function handleFileDeleted(filePath) {
     if (this.fileStats) this.fileStats.delete(filePath);
     await this.notifyDependents(filePath, 'file_deleted');
 
-    this.emit('file:deleted', { filePath });
+    this.emit('file:deleted', {
+      filePath,
+      origin: changeContext.origin || 'unknown',
+      source: changeContext.source || null
+    });
     logger.info(`[FILE DELETED] ${filePath} - shadows preserved`);
   } catch (error) {
     logger.error(`[DELETE ERROR] ${filePath}:`, error);

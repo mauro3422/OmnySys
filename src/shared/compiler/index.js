@@ -20,6 +20,10 @@ export {
 } from './core-utils.js';
 
 export {
+  normalizeCount
+} from './data-gateway-contract-helpers.js';
+
+export {
   LANGUAGE_ADAPTER_CONTRACT,
   createLanguageAdapterContract,
   assertLanguageAdapterContract

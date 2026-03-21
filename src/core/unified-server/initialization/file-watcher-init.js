@@ -33,15 +33,32 @@ export async function initializeFileWatcher(context) {
   });
 
   fileWatcher.on('file:created', (event) => {
-    batchProcessor?.addChange(event.filePath, 'created');
+    batchProcessor?.addChange(event.filePath, {
+      type: 'created',
+      timestamp: Date.now(),
+      origin: event.origin || 'unknown',
+      source: event.source || 'file-watcher',
+      analysis: event.analysis || null
+    });
   });
 
   fileWatcher.on('file:modified', (event) => {
-    batchProcessor?.addChange(event.filePath, 'modified');
+    batchProcessor?.addChange(event.filePath, {
+      type: 'modified',
+      timestamp: Date.now(),
+      origin: event.origin || 'unknown',
+      source: event.source || 'file-watcher',
+      analysis: event.analysis || null
+    });
   });
 
   fileWatcher.on('file:deleted', (event) => {
-    batchProcessor?.addChange(event.filePath, 'deleted');
+    batchProcessor?.addChange(event.filePath, {
+      type: 'deleted',
+      timestamp: Date.now(),
+      origin: event.origin || 'unknown',
+      source: event.source || 'file-watcher'
+    });
   });
 
   await fileWatcher.initialize();

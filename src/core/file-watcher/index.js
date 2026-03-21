@@ -34,6 +34,15 @@ class FileWatcher extends EventEmitter {
     this.batchProcessor = null;        // SmartBatchProcessor instance
     this.watcherStartedAt = 0;
     this.startupNoiseSuppressed = 0;
+    this.changeOrigins = {
+      filesystem: 0,
+      manual: 0,
+      api: 0,
+      atomic: 0,
+      unknown: 0
+    };
+    this.lastChangeOrigin = null;
+    this.lastChangeAt = null;
 
     // Estadísticas
     this.stats = {

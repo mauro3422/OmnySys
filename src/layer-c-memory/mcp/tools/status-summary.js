@@ -4,6 +4,7 @@
  */
 
 import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
+import { compactWatcherSummary } from './status-watcher-summary.js';
 
 function takeSample(items = [], limit = 3) {
   if (!Array.isArray(items)) return [];
@@ -127,6 +128,7 @@ function compactCompilerExplainabilitySummary(explainability) {
       healthy: explainability.analysisGeneration.healthy,
       recommendation: explainability.analysisGeneration.recommendation
     } : null,
+    watcher: compactWatcherSummary(explainability.watcherStats),
     dataGatewayContract: explainability.dataGatewayContract ? {
       sourceOfTruth: explainability.dataGatewayContract.contract?.recommendedSourceOfTruth,
       generation: explainability.dataGatewayContract.generation ? {
@@ -237,6 +239,7 @@ function summarizeStatus(status, recentErrors) {
       runtimeCodeFresh: status.hotReload.runtimeCodeFresh,
       restartRequired: status.hotReload.restartRequired
     } : null,
+    watcher: compactWatcherSummary(status.watcher),
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability: compactCompilerExplainabilitySummary(status.compilerExplainability),
     surfaceAudit: summarizeSurfaceAuditForStatus(status.surfaceAudit || status.compilerExplainability?.surfaceAudit),
@@ -251,5 +254,6 @@ export {
   compactCompilerExplainabilitySummary,
   summarizeNodeVitals,
   summarizeStatus,
+  compactWatcherSummary,
   takeSample
 };

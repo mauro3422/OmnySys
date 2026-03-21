@@ -87,7 +87,14 @@ export async function processPendingChanges() {
  * Procesa un cambio individual
  */
 export async function processChange(change) {
-  const { filePath, type, fullPath } = change;
+  const {
+    filePath,
+    type,
+    fullPath,
+    origin = 'unknown',
+    actor = null,
+    source = null
+  } = change;
 
   // Evitar procesar el mismo archivo concurrentemente
   if (this.processingFiles.has(filePath)) {
@@ -100,17 +107,17 @@ export async function processChange(change) {
   this.processingFiles.add(filePath);
 
   try {
-    logger.info(`File change detected: ${filePath} (${type})`);
+    logger.info(`File change detected: ${filePath} (${type}, origin=${origin})`);
 
     switch (type) {
       case 'created':
-        await this.handleFileCreated(filePath, fullPath);
+        await this.handleFileCreated(filePath, fullPath, change);
         break;
       case 'modified':
-        await this.handleFileModified(filePath, fullPath);
+        await this.handleFileModified(filePath, fullPath, change);
         break;
       case 'deleted':
-        await this.handleFileDeleted(filePath);
+        await this.handleFileDeleted(filePath, change);
         break;
       default:
         logger.warn(`Unknown change type: ${type}`);
@@ -124,14 +131,24 @@ export async function processChange(change) {
     await clearWatcherRuntimeError(this.rootPath, filePath);
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
+    this.stats.lastProcessedOrigin = origin;
     logger.info(`File change processed: ${filePath}`);
   } catch (error) {
     logger.error(`Error processing ${filePath}:`, error);
     await persistWatcherRuntimeError(this.rootPath, filePath, error, {
-      changeType: type
+      changeType: type,
+      origin,
+      actor,
+      source
     });
     this.stats.failedChanges++;
-    this.emit('change:error', { filePath, error: error.message });
+    this.emit('change:error', {
+      filePath,
+      error: error.message,
+      origin,
+      actor,
+      source
+    });
   } finally {
     this.processingFiles.delete(filePath);
   }

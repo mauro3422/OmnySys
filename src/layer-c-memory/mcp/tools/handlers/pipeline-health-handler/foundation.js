@@ -31,7 +31,7 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
     warnings.push(...tableHealth.warnings);
 
     const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
-    const databaseHealth = getDatabaseHealthSummary(db);
+    const databaseHealth = getDatabaseHealthSummary(db, { autoSyncLiveRows: false });
     tableCounts.database_health_score = databaseHealth.healthScore;
     tableCounts.database_call_relations = databaseHealth.metrics.activeCallRelations || 0;
     tableCounts.database_call_graph_rows = databaseHealth.metrics.callGraphRows || 0;

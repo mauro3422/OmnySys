@@ -35,6 +35,7 @@ import {
 import {
   compactDatabaseHealth,
   compactCompilerExplainabilitySummary,
+  compactWatcherSummary,
   summarizeNodeVitals,
   summarizeStatus
 } from './status-summary.js';
@@ -59,12 +60,14 @@ export async function get_server_status(args, context) {
     }
     attachOrchestratorStatus(status, orchestrator);
     attachRuntimeHotReload(status, server);
+    status.watcher = server.fileWatcher?.getStats?.() || null;
 
     const notifications = await loadNotifications(projectPath, server);
     const compactNotifications = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 5 });
     attachNotificationSignals(status, compactNotifications);
 
     if (phase2InProgress) {
+      status.watcher = compactWatcherSummary(status.watcher);
       attachPhase2Status(
         status,
         server,
@@ -93,7 +96,8 @@ export async function get_server_status(args, context) {
     const compilerExplainability = await loadCompilerExplainability(
       projectPath,
       notifications.watcherAlerts || [],
-      status.sharedState || {}
+      status.sharedState || {},
+      status.watcher
     );
     status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
     status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);

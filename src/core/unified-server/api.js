@@ -172,7 +172,13 @@ export function setupBridgeAPI() {
   // POST /api/watcher/notify - Manual file change notification
   this.bridgeApp.post('/api/watcher/notify', async (req, res) => {
     try {
-      const { filePath, changeType = 'modified' } = req.body;
+      const {
+        filePath,
+        changeType = 'modified',
+        origin = 'manual',
+        actor = null,
+        source = 'bridge-api'
+      } = req.body;
       if (!filePath) {
         return res.status(400).json({ error: 'filePath required' });
       }
@@ -180,10 +186,17 @@ export function setupBridgeAPI() {
       // Notify file watcher of external change (e.g., from VS Code)
       await this.fileWatcher?.notifyChange(
         path.join(this.projectPath, filePath),
-        changeType
+        changeType,
+        {
+          origin,
+          actor,
+          source,
+          detector: 'manual-notify',
+          requestedBy: 'bridge-api'
+        }
       );
 
-      res.json({ status: 'notified', filePath, changeType });
+      res.json({ status: 'notified', filePath, changeType, origin, actor, source });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

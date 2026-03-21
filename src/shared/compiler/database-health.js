@@ -8,31 +8,17 @@
  */
 
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
+import { ensureLiveRowSync } from './live-row-reconciliation.js';
 import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
+import { buildDatabaseHealthAssessment } from './database-health-assessment.js';
 import { toNumber } from './core-utils.js';
-
-function buildGrade(score) {
-  if (score >= 95) return 'A+';
-  if (score >= 90) return 'A';
-  if (score >= 85) return 'B+';
-  if (score >= 80) return 'B';
-  if (score >= 75) return 'C+';
-  if (score >= 70) return 'C';
-  if (score >= 65) return 'D+';
-  if (score >= 60) return 'D';
-  return 'F';
-}
-
-function buildFinding(code, severity, message, details = {}) {
-  return { code, severity, message, details };
-}
 
 function parseCount(row, key) {
   return toNumber(row?.[key]);
 }
 
-export function getDatabaseHealthSummary(db) {
+export function getDatabaseHealthSummary(db, options = {}) {
   if (!db) {
     return {
       healthy: false,
@@ -40,10 +26,45 @@ export function getDatabaseHealthSummary(db) {
       grade: 'F',
       summary: 'Database unavailable',
       metrics: {},
-      criticalFindings: [buildFinding('database_unavailable', 'high', 'Repository database is not available')],
+      criticalFindings: [{
+        code: 'database_unavailable',
+        severity: 'high',
+        message: 'Repository database is not available',
+        details: {}
+      }],
       warnings: [],
       recommendations: ['Restart the runtime and ensure the repository can be initialized']
     };
+  }
+
+  const {
+    autoSyncLiveRows = true,
+    liveRowSyncSampleLimit = 5
+  } = options || {};
+
+  let liveRowSync = null;
+  if (autoSyncLiveRows) {
+    try {
+      liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: liveRowSyncSampleLimit });
+    } catch (error) {
+      liveRowSync = {
+        autoSync: true,
+        hadDrift: false,
+        synchronized: false,
+        cleanupError: error,
+        deleted: { atoms: 0, files: 0, riskAssessments: 0, relations: 0, connections: 0 },
+        before: null,
+        after: null,
+        summary: {
+          liveFileTotal: 0,
+          staleAtomRows: 0,
+          staleFileRows: 0,
+          staleRiskRows: 0,
+          staleRelationRows: 0,
+          staleConnectionRows: 0
+        }
+      };
+    }
   }
 
   const counts = db.prepare(`
@@ -125,127 +146,39 @@ export function getDatabaseHealthSummary(db) {
   const systemMapCoverage = getSystemMapPersistenceCoverage(db);
   const semanticSurface = getSemanticSurfaceGranularity(db);
 
-  const criticalFindings = [];
-  const warnings = [];
-  let score = 100;
-
-  if (fileUniverse.healthy === false) {
-    const penalty = 12 * Math.max(1, fileUniverse.issues.length);
-    score -= penalty;
-    warnings.push(...fileUniverse.issues.map((issue) => buildFinding(issue.code, issue.severity, issue.message)));
-  }
-
-  if (systemMapCoverage.healthy === false) {
-    const penalty = 10 * Math.max(1, systemMapCoverage.issues.length);
-    score -= penalty;
-    warnings.push(...systemMapCoverage.issues.map((issue) => buildFinding(issue, 'medium', issue)));
-  }
-
-  if (semanticSurface.materiallyDrifting === true) {
-    const penalty = 15 + (semanticSurface.materialIssues?.length || 0) * 5;
-    score -= penalty;
-    warnings.push(...(semanticSurface.advisories || []).map((message) => buildFinding('semantic_surface_advisory', 'medium', message)));
-    criticalFindings.push(...(semanticSurface.materialIssues || []).map((message) => buildFinding('semantic_surface_drift', 'medium', message)));
-  }
-
-  if (orphanAtoms > 0) {
-    score -= Math.min(35, 12 + Math.floor(orphanAtoms / 25));
-    criticalFindings.push(buildFinding(
-      'orphaned_atoms',
-      'high',
-      'Active atoms still point to files that are missing from the canonical files table.',
-      {
-        orphanAtoms,
-        orphanAtomsMissingScan
-      }
-    ));
-  }
-
-  if (atomsWithCalls > 0 && activeCallRelations === 0) {
-    score -= 40;
-    criticalFindings.push(buildFinding(
-      'call_graph_not_hydrated',
-      'high',
-      'Atoms still contain calls_json, but the canonical atom_relations call projection has no active calls.'
-    ));
-  } else if (atomsWithCalls > 0 && callGraphRows === 0) {
-    score -= 25;
-    criticalFindings.push(buildFinding(
-      'call_graph_view_empty',
-      'high',
-      'Atoms contain call telemetry, but the canonical call_graph view is empty.'
-    ));
-  } else if (atomsWithCalls > 0 && callGraphRows !== activeCallRelations) {
-    score -= 10;
-    warnings.push(buildFinding(
-      'call_graph_projection_drift',
-      'medium',
-      'The call_graph view and atom_relations call rows are not aligned.'
-    ));
-  }
-
-  if (orphanCallRelations > 0) {
-    score -= Math.min(15, 5 + Math.floor(orphanCallRelations / 50));
-    warnings.push(buildFinding(
-      'orphan_call_relations',
-      'medium',
-      'Some call relations point to inactive or missing atoms.',
-      { orphanCallRelations }
-    ));
-  }
-
-  if (contradictoryRiskRows > 0) {
-    score -= Math.min(25, 10 + contradictoryRiskRows);
-    criticalFindings.push(buildFinding(
-      'risk_lifecycle_contradiction',
-      'high',
-      'risk_assessments contains rows marked removed while still claiming lifecycle_status = active.',
-      { contradictoryRiskRows }
-    ));
-  }
-
-  if (atomsWithSemanticSignals > 0 && activeSemanticConnections === 0) {
-    score -= 8;
-    warnings.push(buildFinding(
-      'semantic_projection_lag',
-      'medium',
-      'Atom semantic signals exist, but the semantic_connections table is empty.'
-    ));
-  }
-
-  if (activeSystemFiles > 0 && systemFilesWithSemantics === 0 && atomsWithSemanticSignals > 0) {
-    score -= 6;
-    warnings.push(buildFinding(
-      'system_files_semantic_lag',
-      'medium',
-      'system_files has no semantic_connections_json rows while atom semantic signals exist.'
-    ));
-  }
-
-  const healthScore = Math.max(0, Math.round(score));
-  const healthy = healthScore >= 85 && criticalFindings.length === 0;
-
-  const recommendations = [];
-  if (atomsWithCalls > 0 && activeCallRelations === 0) {
-    recommendations.push('Reindex the project so call relations are persisted into atom_relations and exposed through call_graph.');
-  }
-  if (orphanAtoms > 0) {
-    recommendations.push('Reconcile active atoms against the files and compiler_scanned_files tables before trusting database health.');
-  }
-  if (contradictoryRiskRows > 0) {
-    recommendations.push('Reconcile risk_assessments lifecycle fields and soft-delete flags before trusting risk telemetry.');
-  }
-  if (semanticSurface.materiallyDrifting === true) {
-    recommendations.push('Rebuild semantic_connections from the canonical atom semantic metadata surface.');
-  }
+  const assessment = buildDatabaseHealthAssessment({
+    counts: {
+      scannedFiles,
+      activeFiles,
+      activeAtoms,
+      orphanAtoms,
+      orphanAtomsMissingScan,
+      atomsWithCalls,
+      atomsWithCalledBy,
+      activeCallRelations,
+      activeSharesStateRelations,
+      callGraphRows,
+      orphanCallRelations,
+      contradictoryRiskRows,
+      activeRiskRows,
+      atomsWithSharedState,
+      atomsWithEventEmitters,
+      atomsWithEventListeners,
+      atomsWithSemanticSignals,
+      activeSystemFiles,
+      systemFilesWithSemantics,
+      activeSemanticConnections
+    },
+    fileUniverse,
+    systemMapCoverage,
+    semanticSurface
+  });
 
   return {
-    healthy,
-    healthScore,
-    grade: buildGrade(healthScore),
-    summary: healthy
-      ? 'Database projections are aligned'
-      : 'Database projections are drifting from the canonical atom graph',
+    healthy: assessment.healthy,
+    healthScore: assessment.healthScore,
+    grade: assessment.grade,
+    summary: assessment.summary,
     metrics: {
       scannedFiles,
       activeFiles,
@@ -267,13 +200,14 @@ export function getDatabaseHealthSummary(db) {
       activeSystemFiles,
       systemFilesWithSemantics,
       activeSemanticConnections,
+      liveRowSync,
       fileUniverse,
       systemMapCoverage,
       semanticSurface
     },
-    criticalFindings,
-    warnings,
-    recommendations
+    criticalFindings: assessment.criticalFindings,
+    warnings: assessment.warnings,
+    recommendations: assessment.recommendations
   };
 }
 

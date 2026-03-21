@@ -1,6 +1,6 @@
 import path from 'path';
 import { watch } from 'fs';
-import { access, stat } from 'fs/promises';
+import { access } from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
@@ -60,7 +60,11 @@ export function startWatching() {
         }
 
         // Notificar el cambio
-        await this.notifyChange(fullPath, changeType);
+        await this.notifyChange(fullPath, changeType, {
+          origin: 'filesystem',
+          detector: 'fs.watch',
+          transport: 'filesystem-watch'
+        });
       }
     );
 
@@ -85,73 +89,59 @@ export function startWatching() {
  * Notifica un cambio en un archivo
  * Llama a esta funcion cuando detectes un cambio (fs.watch, etc.)
  */
-export async function notifyChange(filePath, changeType = 'modified') {
+export async function notifyChange(filePath, changeType = 'modified', metadata = {}) {
   const relativePath = path.relative(this.rootPath, filePath).replace(/\\/g, '/');
-
-  // Ignorar archivos que no son JS/TS
-  if (!this.isRelevantFile(relativePath)) {
+  const surface = this.classifyWatcherSurface(relativePath);
+  if (!surface.relevant) {
     return;
   }
 
-  // Ignorar cambios en node_modules, .git, etc.
-  if (this.shouldIgnore(relativePath)) {
+  const changeInfo = this.buildWatcherChangeInfo({
+    filePath: relativePath,
+    fullPath: filePath,
+    changeType,
+    metadata,
+    surface
+  });
+
+  this.recordWatcherOrigin(this, changeInfo.origin);
+  this.recordWatcherSurface(this, surface);
+
+  if (!changeInfo.queueForAnalysis) {
+    this.emitWatcherSurfaceChange(this, changeInfo);
+    if (this.options.verbose) {
+      logger.debug(`Observed surface: ${relativePath} (${changeType}, surface=${changeInfo.surfaceKind}, origin=${changeInfo.origin})`);
+    }
     return;
   }
 
   if (changeType === 'modified') {
-    try {
-      const currentStats = await stat(filePath);
-      const previousStats = this.fileStats?.get(relativePath);
+    const skipResult = await this.shouldSkipModifiedWatcherChange(this, filePath, relativePath, {
+      verbose: this.options.verbose
+    });
 
-      if (
-        previousStats &&
-        previousStats.mtimeMs === currentStats.mtimeMs &&
-        previousStats.size === currentStats.size
-      ) {
-        if (this.options.verbose) {
-          logger.debug(`[SKIP] ${relativePath} - file stats unchanged`);
-        }
-        return;
+    if (skipResult.skip) {
+      if (this.options.verbose) {
+        logger.debug(`[SKIP] ${relativePath} - ${skipResult.reason}`);
       }
-
-      const nextHash = await this._calculateContentHash(filePath);
-      const previousHash = this.fileHashes?.get(relativePath);
-
-      if (nextHash && previousHash && nextHash === previousHash) {
-        this.fileStats?.set(relativePath, {
-          mtimeMs: currentStats.mtimeMs,
-          size: currentStats.size
-        });
-        if (this.options.verbose) {
-          logger.debug(`[SKIP] ${relativePath} - content unchanged before queue`);
-        }
-        return;
-      }
-    } catch {
-      // Si el archivo desaparece en medio del evento, el lifecycle lo resolvera.
+      return;
     }
   }
 
-  // Agregar a pendientes con timestamp
-  const timestamp = Date.now();
-  const changeInfo = {
-    type: changeType,
-    timestamp,
-    fullPath: filePath
-  };
-
-  this.pendingChanges.set(relativePath, changeInfo);
-
-  // Tambien registrar en SmartBatchProcessor si esta activo
-  if (this.batchProcessor && this.options.useSmartBatch) {
-    this.batchProcessor.addChange(relativePath, changeInfo);
-  }
-
-  this.stats.totalChanges++;
+  this.queueWatcherChange(this, relativePath, changeInfo);
 
   if (this.options.verbose) {
-    logger.debug(`Queued: ${relativePath} (${changeType})`);
+    logger.debug(`Queued: ${relativePath} (${changeType}, surface=${changeInfo.surfaceKind}, origin=${changeInfo.origin})`);
   }
 
-  this.emit('change:queued', { filePath: relativePath, type: changeType });
+  this.emit('change:queued', {
+    filePath: relativePath,
+    type: changeType,
+    origin: changeInfo.origin,
+    actor: changeInfo.actor,
+    detector: changeInfo.detector,
+    source: changeInfo.source,
+    surface: changeInfo.surfaceKind,
+    scope: changeInfo.surfaceScope
+  });
 }
