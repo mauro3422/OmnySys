@@ -8,6 +8,61 @@
  */
 
 import { loadAtoms } from '#layer-c/storage/index.js';
+import { getFileAnalysis } from '../core/single-file.js';
+
+function getAtomExportName(atom = {}) {
+  return atom.name || atom.atom_name || atom.functionName || atom.exportName || null;
+}
+
+function collectMetadataExportNames(metadataExports, exportNames) {
+  for (const exp of metadataExports) {
+    if (exp?.name) {
+      exportNames.add(exp.name);
+    }
+
+    if (exp?.type === 'reexport' && Array.isArray(exp.exports)) {
+      for (const reexport of exp.exports) {
+        if (reexport?.name) {
+          exportNames.add(reexport.name);
+        }
+      }
+    }
+  }
+}
+
+function collectAtomExportNames(atoms = []) {
+  const exportNames = new Set();
+
+  for (const atom of atoms) {
+    const isExported = atom.isExported ?? atom.is_exported ?? false;
+    const atomName = getAtomExportName(atom);
+
+    if (isExported && atomName) {
+      exportNames.add(atomName);
+    }
+
+    if (Array.isArray(atom.metadata?.exports) && atom.metadata.exports.length > 0) {
+      collectMetadataExportNames(atom.metadata.exports, exportNames);
+    }
+  }
+
+  return exportNames;
+}
+
+function collectAnalysisExportNames(analysis, exportNames) {
+  const analysisExports = Array.isArray(analysis?.exports) ? analysis.exports : [];
+
+  for (const exp of analysisExports) {
+    if (typeof exp === 'string' && exp.trim()) {
+      exportNames.add(exp.trim());
+      continue;
+    }
+
+    if (exp?.name) {
+      exportNames.add(exp.name);
+    }
+  }
+}
 
 /**
  * Obtiene todos los exports de un archivo específico
@@ -17,31 +72,11 @@ import { loadAtoms } from '#layer-c/storage/index.js';
  */
 export async function getFileExports(rootPath, filePath) {
   const atoms = await loadAtoms(rootPath, filePath);
-  
-  const exportNames = new Set();
-  
-  for (const atom of atoms) {
-    // Agregar exports directos
-    if (atom.is_exported && atom.name) {
-      exportNames.add(atom.name);
-    }
-    
-    // Agregar re-exports (export * from)
-    if (atom.metadata?.exports) {
-      for (const exp of atom.metadata.exports) {
-        if (exp?.name) {
-          exportNames.add(exp.name);
-        }
-        // Manejar re-exports anidados
-        if (exp?.type === 'reexport' && exp?.exports) {
-          for (const reexport of exp.exports) {
-            if (reexport?.name) {
-              exportNames.add(reexport.name);
-            }
-          }
-        }
-      }
-    }
+  const exportNames = collectAtomExportNames(atoms);
+
+  if (exportNames.size === 0) {
+    const analysis = await getFileAnalysis(rootPath, filePath).catch(() => null);
+    collectAnalysisExportNames(analysis, exportNames);
   }
   
   return exportNames;

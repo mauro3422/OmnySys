@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)
 - [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.161 - Sprint 16: Framework Hook Duplicate Policy](changelogs/v0.9.161.md)
 - [v0.9.160 - Sprint 16: Chain Builder Contract Simplification](changelogs/v0.9.160.md)
@@ -47,6 +48,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)
 - [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.158 - Sprint 15: Import Validation Error Boundary Hardening](changelogs/v0.9.158.md)
 - [v0.9.157 - Sprint 15: Circular Dependency Split for Import Validation](changelogs/v0.9.157.md)
@@ -94,8 +96,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
-| **0.9.151** | 2026-03-19 | Sprint 15: Call Relation Orchestration Split, delegated call persistence and shared-state linkage into dedicated helpers and slimmed the linker orchestration layer. |
+| **0.9.163** | 2026-03-21 | Sprint 16: Analysis Generation & System Map Recovery, formalized canonical analysis generations, added derived-feature registry surfaces, and restored support-table persistence from DB canonical data. |
 | **0.9.162** | 2026-03-21 | Sprint 16: Barrel Surface Governance, introduced mixed-barrel policy coverage, split compiler contract helpers, and added regression coverage for pure vs mixed barrels. |
+| **0.9.151** | 2026-03-19 | Sprint 15: Call Relation Orchestration Split, delegated call persistence and shared-state linkage into dedicated helpers and slimmed the linker orchestration layer. |
 | **0.9.150** | 2026-03-19 | Sprint 15: Canonical ID Helper Centralization, shared the canonical atom-ID helper across relation writers and added async boundaries to shared-state linkage. |
 | **0.9.149** | 2026-03-19 | Sprint 15: Canonical Atom-ID Reconciliation, preserved native atom IDs in relation persistence, and migrated mixed-ID call rows back into a joinable canonical projection. |
 | **0.9.148** | 2026-03-19 | Sprint 15: Relation Cascade Fix for File Deletions, cascade-soft-deleted calls on atom/file removal and kept the live DB from accumulating orphan call rows. |
@@ -137,7 +140,29 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.162 (2026-03-21)
+## Latest Release: v0.9.163 (2026-03-21)
+
+**Analysis Generation & System Map Recovery**
+
+### Key Achievements
+
+1.  **Canonical Generations**: the shared compiler now publishes generation snapshots with drift status and derived-feature metadata.
+2.  **System Map Repair**: support tables can be rebuilt from the canonical DB surfaces after a failed or locked reanalysis.
+3.  **Derived Feature Registry**: purpose, archetype, topology, risk, contract, and lifecycle features now have a canonical registry.
+4.  **DB-Only Validation**: export-chain validation and export resolution remain DB-backed while handling builtin/external and re-export cases.
+
+### New & Refactored Files
+
+- `src/shared/compiler/analysis-generation.js`
+- `src/shared/compiler/derived-feature-registry.js`
+- `src/shared/compiler/system-map-persistence-repair.js`
+- `src/core/orchestrator/static-insights-helpers.js`
+- `tests/unit/shared/compiler/analysis-generation.test.js`
+- `changelogs/v0.9.163.md`
+
+---
+
+## Previous Release: v0.9.162 (2026-03-21)
 
 **Barrel Surface Governance**
 

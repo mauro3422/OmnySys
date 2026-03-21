@@ -18,6 +18,7 @@ import {
   buildSurfaceInventory,
   normalizeCount
 } from './compiler-contract-layer-helpers.js';
+import { buildDerivedFeatureRegistry } from './derived-feature-registry.js';
 
 function buildCanonicalGovernanceMetrics(policySummary = {}, standardization = null) {
   const byRule = policySummary?.byRule || {};
@@ -168,6 +169,7 @@ export function buildCompilerContractLayer({
   policySummary = {},
   tableCounts = {}
 } = {}) {
+  const derivedFeatureRegistry = buildDerivedFeatureRegistry();
   const surfaces = buildSurfaceInventory({
     persistedFileCoverage,
     fileUniverseGranularity,
@@ -190,6 +192,7 @@ export function buildCompilerContractLayer({
 
   const apiGovernance = buildApiGovernance(standardization, invariants, policySummary);
   const canonicalEntrypoints = buildCanonicalEntrypoints();
+  const derivedFeatureSummary = derivedFeatureRegistry.summary;
   const failedInvariantCount = invariants.filter((item) => item.status === 'fail').length;
   const advisorySurfaceCount = surfaces.filter((item) => item.status === 'advisory' || item.status === 'advisory_only').length;
   const supportSurfaceCount = surfaces.filter((item) => item.status === 'mirrored_support').length;
@@ -201,6 +204,8 @@ export function buildCompilerContractLayer({
       advisorySurfaceCount,
       supportSurfaceCount,
       failedInvariantCount,
+      derivedFeatureCount: derivedFeatureSummary.total,
+      derivedFeatureFamilies: derivedFeatureSummary.byFamily,
       canonicalWrapperFindings: apiGovernance.governanceMetrics.canonicalWrapperFindings,
       canonicalBarrelFindings: apiGovernance.governanceMetrics.canonicalBarrelFindings,
       canonicalBypassFindings: apiGovernance.governanceMetrics.canonicalBypassFindings,
@@ -212,6 +217,7 @@ export function buildCompilerContractLayer({
     },
     surfaces,
     canonicalEntrypoints,
+    derivedFeatures: derivedFeatureSummary,
     invariants,
     apiGovernance
   };

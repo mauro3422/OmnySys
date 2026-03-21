@@ -73,6 +73,18 @@ export {
 } from './signal-confidence.js';
 
 export {
+  buildDerivedFeatureRegistry,
+  summarizeDerivedFeatureRegistry,
+  findDerivedFeatureDefinition
+} from './derived-feature-registry.js';
+
+export {
+  buildAnalysisGenerationSnapshot,
+  compareAnalysisGenerations,
+  summarizeAnalysisGeneration
+} from './analysis-generation.js';
+
+export {
   buildTelemetryProvenance,
   buildRuntimeCodeFreshness
 } from './telemetry-provenance.js';
