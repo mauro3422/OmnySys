@@ -128,6 +128,46 @@ export function isFrameworkCoordinatorActionHook(filePath, atomName, semanticFin
     return isCanonicalMcpToolRouter(filePath, atomName, semanticFingerprint);
 }
 
+function isInitializationLifecycleHook(filePath, atomName) {
+    const { normalizedPath, normalizedName } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        ''
+    );
+
+    return normalizedPath.includes('/mcp/core/initialization/') &&
+        normalizedName === 'rollback';
+}
+
+function isTypeContractStrategyHook(filePath, atomName) {
+    const { normalizedPath, normalizedName } = normalizeDuplicateSignalInputs(
+        filePath,
+        atomName,
+        ''
+    );
+
+    return normalizedPath.includes('/extractors/metadata/type-contracts/strategies/') &&
+        normalizedName === 'calculateconfidence';
+}
+
+function isFrameworkOrchestrationEntryPoint(semanticFingerprint) {
+    const normalizedFingerprint = String(semanticFingerprint || '').trim();
+
+    return normalizedFingerprint === 'process:orchestration:core:main' ||
+        normalizedFingerprint === 'execute:orchestration:core:execute' ||
+        normalizedFingerprint === 'run:orchestration:core:run' ||
+        normalizedFingerprint === 'process:logic:core:score' ||
+        normalizedFingerprint === 'validate:logic:core:validate' ||
+        normalizedFingerprint.startsWith('test_framework:');
+}
+
+function isLowSignalOrCompatibilityConceptualDuplicate(filePath, atomName, semanticFingerprint) {
+    return isLowSignalGeneratedAtom(atomName, semanticFingerprint) ||
+        isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
+        isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint) ||
+        isCompatibilityWrapper(filePath, atomName, semanticFingerprint);
+}
+
 /**
  * Internal helper for canonical duplicate signal policy detection.
  * @private
@@ -169,36 +209,24 @@ export function shouldIgnoreConceptualDuplicateFinding(filePath, atomName, seman
         return true;
     }
 
-    // Ignore valid framework orchestration entry points (CLI commands, standalone scripts)
-    const normalizedFingerprint = String(semanticFingerprint || '').trim();
+    // Ignore canonical lifecycle hooks in the initialization pipeline and
+    // confidence hooks in extraction strategies. They are framework contracts,
+    // not accidental repeated business logic.
     if (
-        normalizedFingerprint === 'process:orchestration:core:main' || 
-        normalizedFingerprint === 'execute:orchestration:core:execute' ||
-        normalizedFingerprint === 'run:orchestration:core:run' ||
-        normalizedFingerprint === 'process:logic:core:score' ||
-        normalizedFingerprint === 'validate:logic:core:validate' ||
-        normalizedFingerprint.startsWith('test_framework:')
+        isInitializationLifecycleHook(filePath, atomName) ||
+        isTypeContractStrategyHook(filePath, atomName)
     ) {
         return true;
     }
 
-    // Ignore low-signal generated atoms (anonymous, callbacks, etc.)
-    if (isLowSignalGeneratedAtom(atomName, semanticFingerprint)) {
+    // Ignore valid framework orchestration entry points (CLI commands, standalone scripts)
+    if (isFrameworkOrchestrationEntryPoint(semanticFingerprint)) {
         return true;
     }
 
-    // Ignore low-signal data access fingerprints
-    if (isLowSignalConceptualFingerprint(filePath, atomName, semanticFingerprint)) {
-        return true;
-    }
-
-    // Ignore guard utility conceptual fingerprints
-    if (isGuardUtilityConceptualFingerprint(filePath, atomName, semanticFingerprint)) {
-        return true;
-    }
-
-    // Ignore compatibility wrappers
-    if (isCompatibilityWrapper(filePath, atomName, semanticFingerprint)) {
+    // Ignore low-signal generated atoms, data-access surfaces, guard helpers,
+    // and compatibility wrappers.
+    if (isLowSignalOrCompatibilityConceptualDuplicate(filePath, atomName, semanticFingerprint)) {
         return true;
     }
 

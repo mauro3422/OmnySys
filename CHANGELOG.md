@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)
 - [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)
 - [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.161 - Sprint 16: Framework Hook Duplicate Policy](changelogs/v0.9.161.md)
@@ -48,6 +49,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.164 - Sprint 16: Framework Lifecycle Hook Policy](changelogs/v0.9.164.md)
 - [v0.9.163 - Sprint 16: Analysis Generation & System Map Recovery](changelogs/v0.9.163.md)
 - [v0.9.162 - Sprint 16: Barrel Surface Governance](changelogs/v0.9.162.md)
 - [v0.9.158 - Sprint 15: Import Validation Error Boundary Hardening](changelogs/v0.9.158.md)
@@ -96,6 +98,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.164** | 2026-03-21 | Sprint 16: Framework Lifecycle Hook Policy, classified initialization rollback and extraction-strategy confidence hooks as framework contracts and reduced duplicate-signal noise on the policy surface. |
 | **0.9.163** | 2026-03-21 | Sprint 16: Analysis Generation & System Map Recovery, formalized canonical analysis generations, added derived-feature registry surfaces, and restored support-table persistence from DB canonical data. |
 | **0.9.162** | 2026-03-21 | Sprint 16: Barrel Surface Governance, introduced mixed-barrel policy coverage, split compiler contract helpers, and added regression coverage for pure vs mixed barrels. |
 | **0.9.151** | 2026-03-19 | Sprint 15: Call Relation Orchestration Split, delegated call persistence and shared-state linkage into dedicated helpers and slimmed the linker orchestration layer. |
@@ -140,7 +143,26 @@ All notable changes to this project are documented here as a release index. Deta
 
 See `changelog/README.md` for the full historical index.
 
-## Latest Release: v0.9.163 (2026-03-21)
+## Latest Release: v0.9.164 (2026-03-21)
+
+**Framework Lifecycle Hook Policy**
+
+### Key Achievements
+
+1.  **Initialization Rollback Hooks**: the duplicate-signal policy now treats initialization step rollbacks as framework lifecycle contracts.
+2.  **Strategy Confidence Hooks**: the type-contract extraction strategies now share a policy exception for `calculateConfidence`.
+3.  **Policy Simplification**: the core decision path was compacted into smaller helpers and stayed within the complexity target after the refactor.
+4.  **Regression Coverage**: the policy regression test now covers framework and non-framework surfaces for `performAction`, `rollback`, and `calculateConfidence`.
+
+### New & Refactored Files
+
+- `src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js`
+- `tests/unit/shared/compiler/duplicate-signal-policy.test.js`
+- `changelogs/v0.9.164.md`
+
+---
+
+## Previous Release: v0.9.163 (2026-03-21)
 
 **Analysis Generation & System Map Recovery**
 

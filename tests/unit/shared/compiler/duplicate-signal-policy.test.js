@@ -32,4 +32,46 @@ describe('duplicate-signal policy - framework coordinator hooks', () => {
       'process:logic:core:perform_action'
     )).toBe(false);
   });
+
+  it('treats initialization rollback hooks as intentional framework contracts', () => {
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/layer-c-memory/mcp/core/initialization/steps/base-step.js',
+      'rollback',
+      'process:core:rollback'
+    )).toBe(true);
+
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/layer-c-memory/mcp/core/initialization/steps/cache-init-step.js',
+      'rollback',
+      'process:core:rollback'
+    )).toBe(true);
+  });
+
+  it('treats type-contract confidence hooks as intentional framework contracts', () => {
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/layer-a-static/extractors/metadata/type-contracts/strategies/base-strategy.js',
+      'calculateConfidence',
+      'calculate:logic:core:confidence'
+    )).toBe(true);
+
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/layer-a-static/extractors/metadata/type-contracts/strategies/jsdoc-strategy.js',
+      'calculateConfidence',
+      'calculate:logic:core:confidence'
+    )).toBe(true);
+  });
+
+  it('keeps non-framework rollback and confidence surfaces actionable', () => {
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/shared/compiler/actions/ActionEngine.js',
+      'rollback',
+      'process:core:rollback'
+    )).toBe(false);
+
+    expect(shouldIgnoreConceptualDuplicateFinding(
+      'src/shared/compiler/metrics/confidence-helper.js',
+      'calculateConfidence',
+      'calculate:logic:core:confidence'
+    )).toBe(false);
+  });
 });
