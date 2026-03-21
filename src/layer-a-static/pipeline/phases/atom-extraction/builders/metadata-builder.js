@@ -248,6 +248,11 @@ export function buildAtomMetadata({
 
     // Imports
     imports: buildImports(imports),
+    importsJson: buildImports(imports),
+    exportsJson: functionInfo.isExported
+      ? [{ name: functionInfo.name, type: functionInfo.type || 'declaration', line: functionInfo.line }]
+      : [],
+    sideEffectsJson: se,
 
     // Metadata
     extractedAt: new Date().toISOString(),

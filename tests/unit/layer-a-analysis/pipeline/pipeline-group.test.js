@@ -36,6 +36,48 @@ describe('Pipeline - Atom Builders', () => {
     expect(typeof atomBuilders.buildAtomMetadata).toBe('function');
     expect(typeof atomBuilders.enrichWithDNA).toBe('function');
   });
+
+  it('persists canonical JSON metadata surfaces on atoms', () => {
+    const atom = atomBuilders.buildAtomMetadata({
+      functionInfo: {
+        name: 'saveAtom',
+        type: 'function',
+        line: 42,
+        isExported: true
+      },
+      filePath: 'src/example.js',
+      linesOfCode: 12,
+      complexity: 3,
+      sideEffects: { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] },
+      callGraph: { internalCalls: [], externalCalls: [] },
+      temporal: { lifecycleHooks: [], cleanupPatterns: [] },
+      temporalPatterns: {},
+      typeContracts: {},
+      errorFlow: {},
+      performanceHints: { nestedLoops: [], blockingOperations: [] },
+      performanceMetrics: {},
+      semanticDomain: null,
+      dataFlowV2: null,
+      functionCode: 'export function saveAtom() {}',
+      imports: [{ source: './dep.js', type: 'static', names: ['dep'], line: 1 }],
+      jsdocContracts: null,
+      treeSitter: null
+    });
+
+    expect(atom.importsJson).toEqual([
+      { source: './dep.js', type: 'static', specifiers: ['dep'], line: 1 }
+    ]);
+    expect(atom.exportsJson).toEqual([
+      { name: 'saveAtom', type: 'function', line: 42 }
+    ]);
+    expect(atom.sideEffectsJson).toEqual({
+      all: [],
+      networkCalls: [],
+      domManipulations: [],
+      storageAccess: [],
+      consoleUsage: []
+    });
+  });
 });
 
 describe('Pipeline - Atom Extraction Module', () => {
