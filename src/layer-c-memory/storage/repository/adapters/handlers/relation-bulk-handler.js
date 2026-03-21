@@ -7,6 +7,7 @@
  */
 
 import { primeActiveAtomCache } from '../helpers/call-target-resolver.js';
+import { syncCalledByReferences } from '../helpers/relations.js';
 
 export class RelationBulkHandler {
     constructor(db, logger) {
@@ -27,6 +28,7 @@ export class RelationBulkHandler {
         const batchSize = 500;
         const totalBatches = Math.ceil(relationsToSave.length / batchSize);
         let totalSaved = 0;
+        const affectedTargetIds = new Set();
         const resolverCache = {
             importsBySourcePath: new Map(),
             resolvedTargets: new Map()
@@ -72,6 +74,7 @@ export class RelationBulkHandler {
                     contextJson,
                     now
                 });
+                affectedTargetIds.add(targetId);
             }
 
             if (validRelations.length === 0) continue;
@@ -97,6 +100,7 @@ export class RelationBulkHandler {
             totalSaved += validRelations.length;
         }
 
+        syncCalledByReferences(this.db, [...affectedTargetIds], this.logger);
         return totalSaved;
     }
 }

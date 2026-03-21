@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.176 - Sprint 16: Metadata Extraction Coverage Aggregation Fix](changelogs/v0.9.176.md)
 - [v0.9.175 - Sprint 16: Surface Audit Reason Normalization](changelogs/v0.9.175.md)
 - [v0.9.174 - Sprint 16: Surface Audit Status Envelope Wiring](changelogs/v0.9.174.md)
 - [v0.9.173 - Sprint 16: Surface Audit Status Propagation](changelogs/v0.9.173.md)

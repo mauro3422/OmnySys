@@ -74,6 +74,10 @@ describe('SQLiteBulkOperations Orchestrator', () => {
         data_flow_json TEXT,
         calls_json TEXT,
         called_by_json TEXT,
+        imports_json TEXT,
+        exports_json TEXT,
+        uses_json TEXT,
+        side_effects_json TEXT,
         temporal_json TEXT,
         error_flow_json TEXT,
         performance_json TEXT,
@@ -107,7 +111,12 @@ describe('SQLiteBulkOperations Orchestrator', () => {
           weight REAL NOT NULL DEFAULT 1,
           line_number INTEGER,
           context_json TEXT,
-          created_at TEXT NOT NULL
+          is_removed INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          lifecycle_status TEXT
+          ,
+          UNIQUE(source_id, target_id, relation_type, line_number)
       );
 
       CREATE TABLE atom_versions (
@@ -143,6 +152,11 @@ describe('SQLiteBulkOperations Orchestrator', () => {
                     type: 'function',
                     filePath: 'src/file.js',
                     calls: [{ callee: 'funcB', line: 10 }]
+                },
+                {
+                    name: 'funcB',
+                    type: 'function',
+                    filePath: 'src/file.js'
                 }
             ];
 
@@ -157,6 +171,13 @@ describe('SQLiteBulkOperations Orchestrator', () => {
             const relation = db.prepare('SELECT * FROM atom_relations WHERE source_id = ?').get(atom.id);
             expect(relation).toBeDefined();
             expect(relation.target_id).toContain('funcB');
+
+            const target = db.prepare('SELECT * FROM atoms WHERE name = ?').get('funcB');
+            expect(target).toBeDefined();
+
+            const callers = JSON.parse(target.called_by_json || '[]');
+            expect(callers).toHaveLength(1);
+            expect(callers[0].id).toBe('src/file.js::funcA');
 
             // Verify metadata
             const file = db.prepare('SELECT * FROM files WHERE path = ?').get('src/file.js');
@@ -204,11 +225,22 @@ describe('SQLiteBulkOperations Orchestrator', () => {
         });
 
         it('saveRelationsBulk still works', () => {
+            db.prepare(`
+                INSERT INTO atoms (id, name, file_path, atom_type, line_start, line_end, lines_of_code, complexity, extracted_at, updated_at)
+                VALUES (?, ?, ?, ?, 1, 1, 1, 1, datetime('now'), datetime('now'))
+            `).run('A', 'A', 'test.js', 'function');
+            db.prepare(`
+                INSERT INTO atoms (id, name, file_path, atom_type, line_start, line_end, lines_of_code, complexity, extracted_at, updated_at)
+                VALUES (?, ?, ?, ?, 1, 1, 1, 1, datetime('now'), datetime('now'))
+            `).run('B', 'B', 'test.js', 'function');
+
             const relations = [{ atomId: 'A', call: 'B' }];
             bulkOps.saveRelationsBulk(relations);
 
             const rel = db.prepare('SELECT * FROM atom_relations WHERE source_id = ?').get('A');
             expect(rel).toBeDefined();
+            const target = db.prepare('SELECT * FROM atoms WHERE id = ?').get('B');
+            expect(JSON.parse(target.called_by_json || '[]')).toHaveLength(1);
         });
     });
 });

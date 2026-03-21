@@ -27,14 +27,14 @@ function isMetadataColumn(config, columnName) {
   return !config.excludedColumns.has(columnName);
 }
 
-function buildPopulatedExpression(columnName) {
+function buildPopulatedAggregation(columnName) {
   const quoted = quoteIdentifier(columnName);
-  return `CASE
+  return `SUM(CASE
     WHEN ${quoted} IS NULL THEN 0
     WHEN typeof(${quoted}) = 'text' AND trim(${quoted}) IN ('', 'null', '[]', '{}') THEN 0
     WHEN typeof(${quoted}) = 'blob' AND length(${quoted}) = 0 THEN 0
     ELSE 1
-  END`;
+  END)`;
 }
 
 function formatCoverageRatio(populatedRows, totalRows) {
@@ -107,20 +107,26 @@ function summarizeCoverageMetrics(fields = [], totalRows = 0) {
   };
 }
 
-function summarizeCoverageIssues(config, fields = [], totalRows = 0, metrics = {}) {
-  const sortedMissingFields = [...fields]
+function collectMissingCoverageFields(fields = [], totalRows = 0) {
+  return [...fields]
     .filter((field) => field.populatedRows === 0 && totalRows > 0)
     .sort((a, b) => a.field.localeCompare(b.field));
-  const sortedCoveredFields = [...fields]
+}
+
+function collectCoveredCoverageFields(fields = []) {
+  return [...fields]
     .filter((field) => field.populatedRows > 0)
     .sort((a, b) => b.coverageRatio - a.coverageRatio || a.field.localeCompare(b.field));
+}
 
-  const primaryIssue = sortedMissingFields[0] || [...fields]
-    .filter((field) => field.populatedRows > 0)
-    .sort((a, b) => a.coverageRatio - b.coverageRatio || a.field.localeCompare(b.field))[0] || null;
+function pickPrimaryCoverageIssue(sortedMissingFields = [], sortedCoveredFields = []) {
+  return sortedMissingFields[0] || sortedCoveredFields[0] || null;
+}
 
+function buildCoverageIssueSets(config, totalRows, metrics, primaryIssue) {
   const warnings = [];
   const criticalFindings = [];
+
   if (totalRows === 0) {
     criticalFindings.push({
       table: config.table,
@@ -146,6 +152,15 @@ function summarizeCoverageIssues(config, fields = [], totalRows = 0, metrics = {
       message: `${config.table} metadata coverage is partial (${Math.round((metrics.fieldCoverageRatio || 0) * 100)}% fields populated, ${Math.round((metrics.rowCoverageRatio || 0) * 100)}% average row coverage).`
     });
   }
+
+  return { warnings, criticalFindings };
+}
+
+function summarizeCoverageIssues(config, fields = [], totalRows = 0, metrics = {}) {
+  const sortedMissingFields = collectMissingCoverageFields(fields, totalRows);
+  const sortedCoveredFields = collectCoveredCoverageFields(fields);
+  const primaryIssue = pickPrimaryCoverageIssue(sortedMissingFields, sortedCoveredFields);
+  const { warnings, criticalFindings } = buildCoverageIssueSets(config, totalRows, metrics, primaryIssue);
 
   return {
     warnings,
@@ -182,7 +197,7 @@ export function buildTableCoverage(db, config) {
   const selectParts = ['COUNT(*) as totalRows'];
   for (const column of metadataColumns) {
     const name = String(column.name || '');
-    selectParts.push(`${buildPopulatedExpression(name)} AS ${quoteIdentifier(`${name}__populated`)}`);
+    selectParts.push(`${buildPopulatedAggregation(name)} AS ${quoteIdentifier(`${name}__populated`)}`);
   }
 
   const row = db.prepare(`

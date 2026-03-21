@@ -32,6 +32,7 @@ describe('metadata-extraction-coverage', () => {
         shared_state_json TEXT,
         event_emitters_json TEXT,
         event_listeners_json TEXT,
+        called_by_json TEXT,
         created_at TEXT,
         updated_at TEXT,
         is_removed INTEGER DEFAULT 0,
@@ -71,10 +72,10 @@ describe('metadata-extraction-coverage', () => {
       INSERT INTO atoms (
         id, name, atom_type, file_path, line_start, line_end, lines_of_code, complexity,
         parameter_count, is_exported, function_type, shared_state_json, event_emitters_json,
-        event_listeners_json, created_at, updated_at, is_removed, lifecycle_status
+        event_listeners_json, called_by_json, created_at, updated_at, is_removed, lifecycle_status
       ) VALUES
-        (?, ?, 'function', 'src/a.js', 1, 10, 10, 3, 2, 1, 'function', '[{"fullReference":"process.env.DEBUG"}]', '[]', '[]', datetime('now'), datetime('now'), 0, 'active'),
-        (?, ?, 'function', 'src/b.js', 1, 8, 8, 2, 0, 0, 'arrow', NULL, '[{"eventName":"ready"}]', '[{"eventName":"ready"}]', datetime('now'), datetime('now'), 0, 'active')
+        (?, ?, 'function', 'src/a.js', 1, 10, 10, 3, 2, 1, 'function', '[{"fullReference":"process.env.DEBUG"}]', '[]', '[]', '["src/b.js::beta"]', datetime('now'), datetime('now'), 0, 'active'),
+        (?, ?, 'function', 'src/b.js', 1, 8, 8, 2, 0, 0, 'arrow', NULL, '[{"eventName":"ready"}]', '[{"eventName":"ready"}]', '[]', datetime('now'), datetime('now'), 0, 'active')
     `).run('atom-a', 'alpha', 'atom-b', 'beta');
 
     db.prepare(`
@@ -105,7 +106,12 @@ describe('metadata-extraction-coverage', () => {
     expect(summary.coverageRatio).toBeLessThan(1);
     expect(coverage.primaryIssue).toBeTruthy();
     expect(coverage.tables).toHaveLength(3);
-    expect(coverage.tables.find((table) => table.table === 'atoms')?.fields.some((field) => field.field === 'shared_state_json')).toBe(true);
+    const atomsTable = coverage.tables.find((table) => table.table === 'atoms');
+    const calledByField = atomsTable?.fields.find((field) => field.field === 'called_by_json');
+    expect(calledByField?.populatedRows).toBeGreaterThan(0);
+    expect(calledByField?.coverageRatio).toBeGreaterThan(0);
+    expect(coverage.primaryIssue?.field).not.toBe('called_by_json');
+    expect(atomsTable?.fields.some((field) => field.field === 'shared_state_json')).toBe(true);
     expect(coverage.tables.find((table) => table.table === 'files')?.fields.some((field) => field.field === 'semantic_connections_json')).toBe(true);
     expect(coverage.tables.find((table) => table.table === 'system_files')?.fields.some((field) => field.field === 'semantic_analysis_json')).toBe(true);
   });

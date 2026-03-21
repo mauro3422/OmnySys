@@ -1,6 +1,7 @@
 import { atomToRow } from './converters.js';
 import { buildAtomInsertValues } from './atom-schema.js';
 import { markRelatedTestAtoms } from './test-atom-orphaning.js';
+import { loadCallTargetIdsForSources, syncCalledByReferences } from './relations.js';
 
 export function softDeleteRelatedCallRelations(adapter, atomIds = [], now = new Date().toISOString()) {
   if (!adapter?.db || !Array.isArray(atomIds) || atomIds.length === 0) {
@@ -73,6 +74,7 @@ export function deleteAtomRecord(adapter, id) {
   const normalizedId = adapter._normalizeId(id);
   const now = new Date().toISOString();
   const atomBefore = adapter.statements.getById.get(normalizedId);
+  const affectedCalledByTargets = loadCallTargetIdsForSources(adapter.db, [normalizedId]);
 
   if (atomBefore) {
     try {
@@ -86,6 +88,7 @@ export function deleteAtomRecord(adapter, id) {
 
     markRelatedTestAtoms(adapter.db, normalizedId, atomBefore.file_path, adapter._logger);
     softDeleteRelatedCallRelations(adapter, [normalizedId], now);
+    syncCalledByReferences(adapter.db, affectedCalledByTargets, adapter._logger);
   }
 
   const result = adapter.statements.deleteById.run(normalizedId);
