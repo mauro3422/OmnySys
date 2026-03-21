@@ -1,0 +1,112 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import Database from 'better-sqlite3';
+
+import {
+  getMetadataExtractionCoverage,
+  summarizeMetadataExtractionCoverage
+} from '../../../../src/shared/compiler/metadata-extraction-coverage.js';
+
+describe('metadata-extraction-coverage', () => {
+  let db;
+
+  afterEach(() => {
+    db?.close();
+    db = null;
+  });
+
+  it('summarizes extracted metadata coverage across atoms, files and system_files', () => {
+    db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE atoms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        atom_type TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        line_start INTEGER NOT NULL,
+        line_end INTEGER NOT NULL,
+        lines_of_code INTEGER NOT NULL,
+        complexity INTEGER NOT NULL,
+        parameter_count INTEGER DEFAULT 0,
+        is_exported BOOLEAN DEFAULT 0,
+        function_type TEXT,
+        shared_state_json TEXT,
+        event_emitters_json TEXT,
+        event_listeners_json TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        is_removed INTEGER DEFAULT 0,
+        lifecycle_status TEXT
+      );
+
+      CREATE TABLE files (
+        path TEXT PRIMARY KEY,
+        last_analyzed TEXT NOT NULL,
+        atom_count INTEGER DEFAULT 0,
+        total_complexity INTEGER DEFAULT 0,
+        total_lines INTEGER DEFAULT 0,
+        module_name TEXT,
+        imports_json TEXT,
+        exports_json TEXT,
+        semantic_analysis_json TEXT,
+        semantic_connections_json TEXT,
+        is_removed INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE system_files (
+        path TEXT PRIMARY KEY,
+        display_path TEXT,
+        culture TEXT,
+        culture_role TEXT,
+        risk_score REAL DEFAULT 0,
+        semantic_analysis_json TEXT,
+        semantic_connections_json TEXT,
+        exports_json TEXT,
+        imports_json TEXT,
+        definitions_json TEXT,
+        is_removed INTEGER DEFAULT 0
+      );
+    `);
+
+    db.prepare(`
+      INSERT INTO atoms (
+        id, name, atom_type, file_path, line_start, line_end, lines_of_code, complexity,
+        parameter_count, is_exported, function_type, shared_state_json, event_emitters_json,
+        event_listeners_json, created_at, updated_at, is_removed, lifecycle_status
+      ) VALUES
+        (?, ?, 'function', 'src/a.js', 1, 10, 10, 3, 2, 1, 'function', '[{"fullReference":"process.env.DEBUG"}]', '[]', '[]', datetime('now'), datetime('now'), 0, 'active'),
+        (?, ?, 'function', 'src/b.js', 1, 8, 8, 2, 0, 0, 'arrow', NULL, '[{"eventName":"ready"}]', '[{"eventName":"ready"}]', datetime('now'), datetime('now'), 0, 'active')
+    `).run('atom-a', 'alpha', 'atom-b', 'beta');
+
+    db.prepare(`
+      INSERT INTO files (
+        path, last_analyzed, atom_count, total_complexity, total_lines, module_name,
+        imports_json, exports_json, semantic_analysis_json, semantic_connections_json, is_removed
+      ) VALUES
+        (?, datetime('now'), 2, 5, 18, 'module-a', '["a"]', '["x"]', '{"ok":true}', '[]', 0),
+        (?, datetime('now'), 1, 2, 8, 'module-b', NULL, '[]', NULL, NULL, 0)
+    `).run('src/a.js', 'src/b.js');
+
+    db.prepare(`
+      INSERT INTO system_files (
+        path, display_path, culture, culture_role, risk_score, semantic_analysis_json,
+        semantic_connections_json, exports_json, imports_json, definitions_json, is_removed
+      ) VALUES
+        (?, 'src/a.js', 'feature', 'primary', 0.2, '{"signals":1}', '[]', '["x"]', '["a"]', '{"defs":1}', 0),
+        (?, 'src/b.js', 'feature', 'support', 0.1, NULL, NULL, NULL, NULL, NULL, 0)
+    `).run('src/a.js', 'src/b.js');
+
+    const coverage = getMetadataExtractionCoverage(db);
+    const summary = summarizeMetadataExtractionCoverage(coverage);
+
+    expect(summary.totalTables).toBe(3);
+    expect(summary.totalFields).toBeGreaterThan(0);
+    expect(summary.coveredFields).toBeGreaterThan(0);
+    expect(summary.coverageRatio).toBeGreaterThan(0);
+    expect(summary.coverageRatio).toBeLessThan(1);
+    expect(coverage.primaryIssue).toBeTruthy();
+    expect(coverage.tables).toHaveLength(3);
+    expect(coverage.tables.find((table) => table.table === 'atoms')?.fields.some((field) => field.field === 'shared_state_json')).toBe(true);
+    expect(coverage.tables.find((table) => table.table === 'files')?.fields.some((field) => field.field === 'semantic_connections_json')).toBe(true);
+    expect(coverage.tables.find((table) => table.table === 'system_files')?.fields.some((field) => field.field === 'semantic_analysis_json')).toBe(true);
+  });
+});
