@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.161 - Sprint 16: Framework Hook Duplicate Policy](changelogs/v0.9.161.md)
 - [v0.9.160 - Sprint 16: Chain Builder Contract Simplification](changelogs/v0.9.160.md)
 - [v0.9.159 - Sprint 16: MCP Zombie Cleanup Alignment](changelogs/v0.9.159.md)
 - [v0.9.158 - Sprint 15: Import Validation Error Boundary Hardening](changelogs/v0.9.158.md)
