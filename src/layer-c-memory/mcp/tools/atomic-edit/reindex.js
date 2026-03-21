@@ -7,7 +7,7 @@ import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { parseFileFromDisk } from '#layer-a/parser/index.js';
-import { extractAllMetadata } from '#layer-a/extractors/metadata/index.js';
+import { extractMetadataSurface } from '#layer-a/pipeline/metadata-gateway.js';
 import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
 const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
@@ -32,7 +32,11 @@ export async function reindexFile(filePath, projectPath) {
     const code = parsedFile.source || '';
 
     // 2. Extraer metadata (JSDoc, async, etc.) para el extractor de átomos
-    const metadata = extractAllMetadata(absolutePath, code);
+    const metadata = await extractMetadataSurface({
+      mode: 'file',
+      filePath: absolutePath,
+      code
+    });
 
     // 3. Extraer átomos usando el resultado del parser y metadata
     // Nota: El extractor de átomos ahora requiere (fileInfo, code, fileMetadata, filePath)

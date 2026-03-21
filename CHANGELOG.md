@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.183 - Sprint 16: Canonical Metadata Surface Gateway](changelogs/v0.9.183.md)
 - [v0.9.182 - Sprint 16: Tree-Sitter Freshness and DB-Only File Surfaces](changelogs/v0.9.182.md)
 - [v0.9.181 - Sprint 16: Database Health Auto-Repair for System Map Persistence](changelogs/v0.9.181.md)
 - [v0.9.180 - Sprint 16: Framework Tracker Hook Policy](changelogs/v0.9.180.md)
@@ -67,6 +68,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.183 - Sprint 16: Canonical Metadata Surface Gateway](changelogs/v0.9.183.md)
 - [v0.9.182 - Sprint 16: Tree-Sitter Freshness and DB-Only File Surfaces](changelogs/v0.9.182.md)
 - [v0.9.175 - Sprint 16: Surface Audit Reason Normalization](changelogs/v0.9.175.md)
 - [v0.9.174 - Sprint 16: Surface Audit Status Envelope Wiring](changelogs/v0.9.174.md)

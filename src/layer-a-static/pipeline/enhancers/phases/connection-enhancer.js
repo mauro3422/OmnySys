@@ -9,7 +9,7 @@
 import { detectAllSemanticConnections } from '#layer-a/extractors/static/index.js';
 import { detectAllReduxContextConnections } from '#layer-a/extractors/state-management/index.js';
 import { detectAllAdvancedConnections } from '#layer-a/extractors/communication/index.js';
-import { extractAllMetadata } from '#layer-a/extractors/metadata/index.js';
+import { extractMetadataSurface } from '../../metadata-gateway.js';
 
 /**
  * Enriquece conexiones en los resultados estáticos
@@ -29,7 +29,10 @@ export async function enhanceConnections(staticResults) {
   const advancedConnections = detectAllAdvancedConnections(fileSourceCode);
   
   // Extraer metadata
-  const metadata = extractAllMetadata(fileSourceCode);
+  const metadata = await extractMetadataSurface({
+    mode: 'batch',
+    fileSourceCode
+  });
   
   // Agregar a cada archivo
   for (const [filePath, fileData] of Object.entries(staticResults.files || {})) {

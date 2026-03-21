@@ -2,7 +2,7 @@
 
 ## Bugs y observaciones abiertas
 
-- `src/layer-a-static/extractors/metadata/index.js` is still regex-first at the file-surface entrypoint, so Tree-Sitter remains first-class only in the atom pipeline. If file-level Tree-Sitter metadata should become canonical, the next step is to wire `extractAllMetadata()` through the Tree-Sitter bridge and replace the current side-effects TODO with the tier-3 detector.
+- `src/layer-a-static/extractors/metadata/index.js` is still regex-first at the file-surface entrypoint, but `src/layer-a-static/pipeline/metadata-gateway.js` now unifies file, batch, and atom surfaces for callers. If file-level Tree-Sitter metadata should become canonical, the next step is to wire the gateway through the Tree-Sitter bridge and replace the current side-effects TODO with the tier-3 detector.
 - `src/layer-c-memory/mcp/tools/atomic-edit/validators.js` is now split into smaller helpers, but the runtime module still needs a reload before we trust the live watcher result.
 - `src/layer-c-memory/storage/repository/adapters/sqlite-bulk-operations.js` no longer carries the high complexity alert, but the conceptual duplicate on `saveMany` is still active.
 - `src/layer-a-static/pipeline/call-relations-linkage.js` and `src/layer-c-memory/storage/repository/adapters/helpers/relations.js` are now split further, but the `saveMany` conceptual duplicate remains by contract compatibility.

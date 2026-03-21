@@ -7,7 +7,7 @@
 
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
-import { extractAllMetadata } from '../../extractors/metadata/index.js';
+import { extractMetadataSurface } from '../metadata-gateway.js';
 
 import {
   analyzeAllFiles
@@ -48,27 +48,52 @@ export async function generateEnhancedSystemMap(
 ) {
   if (verbose) logger.info('\n🔍 Performing semantic analysis (static)...');
 
-  // Paso 1: Analizar archivos individuales
+  const semanticAnalysis = await buildSemanticAnalysisContext(parsedFiles, absoluteRootPath, verbose);
+  const connectionContext = buildConnectionContext(semanticAnalysis.enhancedFiles, semanticAnalysis.fileSourceCode, verbose);
+  const riskContext = buildRiskContext(systemMap, connectionContext.semanticConnectionsByFile, semanticAnalysis.allSideEffects, connectionContext.connections, verbose);
+
+  const enhancedSystemMap = buildEnhancedSystemMap({
+    systemMap,
+    enhancedFiles: semanticAnalysis.enhancedFiles,
+    connections: connectionContext.connections,
+    allSideEffects: semanticAnalysis.allSideEffects,
+    riskScores: riskContext.riskScores,
+    semanticConnectionsByFile: connectionContext.semanticConnectionsByFile,
+    brokenConnectionsAnalysis: riskContext.brokenConnectionsAnalysis,
+    riskReport: riskContext.riskReport,
+    verbose
+  });
+
+  if (verbose) logger.info('  ✓ Enhanced system map built');
+
+  return enhancedSystemMap;
+}
+
+async function buildSemanticAnalysisContext(parsedFiles, absoluteRootPath, verbose) {
   if (verbose) logger.info('  📊 Analyzing global state and event patterns...');
+
   const { enhancedFiles, allSideEffects, fileSourceCode } = await analyzeAllFiles(
     parsedFiles,
     absoluteRootPath
   );
-  if (verbose) logger.info('  ✓ Semantic analysis complete');
 
-  // Paso 2: Extraer metadatos adicionales
+  if (verbose) logger.info('  ✓ Semantic analysis complete');
   if (verbose) logger.info('  🔍 Extracting additional metadata...');
+
   await extractAdditionalMetadata(enhancedFiles, fileSourceCode, verbose);
 
-  // Paso 3: Extraer conexiones
+  return { enhancedFiles, allSideEffects, fileSourceCode };
+}
+
+function buildConnectionContext(enhancedFiles, fileSourceCode, verbose) {
   if (verbose) logger.info('  🔗 Generating semantic connections...');
+
   const connections = extractAllConnections(enhancedFiles, fileSourceCode);
 
   if (verbose) {
     logConnectionStats(connections);
   }
 
-  // Combinar y deduplicar conexiones
   const allConnections = dedupeConnections([
     ...connections.sharedState,
     ...connections.events,
@@ -81,11 +106,16 @@ export async function generateEnhancedSystemMap(
     ...connections.reduxContext?.connections || []
   ]);
 
-  // Agrupar conexiones por archivo
-  const semanticConnectionsByFile = groupConnectionsByFile(allConnections);
+  return {
+    connections,
+    allConnections,
+    semanticConnectionsByFile: groupConnectionsByFile(allConnections)
+  };
+}
 
-  // Paso 4: Calcular risk scores
+function buildRiskContext(systemMap, semanticConnectionsByFile, allSideEffects, connections, verbose) {
   if (verbose) logger.info('  📈 Calculating risk scores...');
+
   const graphMetrics = calculateGraphMetrics(systemMap);
   const riskScores = calculateRisks(
     systemMap,
@@ -93,32 +123,20 @@ export async function generateEnhancedSystemMap(
     allSideEffects,
     graphMetrics
   );
-  if (verbose) logger.info('  ✓ Risk scores calculated');
 
-  // Paso 5: Analizar conexiones rotas
+  if (verbose) logger.info('  ✓ Risk scores calculated');
   if (verbose) logger.info('  🔍 Detecting broken connections...');
+
   const brokenConnectionsAnalysis = analyzeBroken(systemMap, connections.advanced);
+
   if (verbose) logBrokenConnections(brokenConnectionsAnalysis);
 
-  // Paso 6: Construir enhanced system map
-  if (verbose) logger.info('  🏗️  Building enhanced system map...');
-  const riskReport = generateReport(riskScores);
-
-  const enhancedSystemMap = buildEnhancedSystemMap({
-    systemMap,
-    enhancedFiles,
-    connections,
-    allSideEffects,
+  return {
+    graphMetrics,
     riskScores,
-    semanticConnectionsByFile,
     brokenConnectionsAnalysis,
-    riskReport,
-    verbose
-  });
-
-  if (verbose) logger.info('  ✓ Enhanced system map built');
-
-  return enhancedSystemMap;
+    riskReport: generateReport(riskScores)
+  };
 }
 
 /**
@@ -129,7 +147,11 @@ async function extractAdditionalMetadata(enhancedFiles, fileSourceCode, verbose)
   for (const [filePath, fileInfo] of Object.entries(enhancedFiles)) {
     try {
       const code = fileSourceCode[filePath] || '';
-      const metadata = extractAllMetadata(filePath, code);
+      const metadata = await extractMetadataSurface({
+        mode: 'file',
+        filePath,
+        code
+      });
 
       enhancedFiles[filePath].metadata = {
         jsdocContracts: metadata.jsdoc,

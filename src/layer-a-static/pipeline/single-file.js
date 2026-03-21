@@ -6,6 +6,7 @@ import { extractAtoms } from './phases/atom-extraction/extraction/atom-extractor
 import { createLogger } from '../../utils/logger.js';
 import { loadExistingMap, saveAtoms, saveFileResult } from './single-file-db.js';
 import { resolveFileImports, detectConnections, buildFileAnalysis } from './single-file-utils.js';
+import { extractMetadataSurface } from './metadata-gateway.js';
 
 const logger = createLogger('OmnySys:single:file');
 
@@ -46,8 +47,11 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
       ctx.advancedConnections = advancedConnections;
     })
     .addPhase('Metadata Extraction', async (ctx) => {
-      const { extractAllMetadata } = await import('../extractors/metadata/index.js');
-      ctx.metadata = extractAllMetadata(ctx.targetFilePath, ctx.parsedFile.source || '');
+      ctx.metadata = await extractMetadataSurface({
+        mode: 'file',
+        filePath: ctx.targetFilePath,
+        code: ctx.parsedFile.source || ''
+      });
     })
     .addPhase('Atom Extraction', async (ctx) => {
       ctx.atoms = await extractAtoms(ctx.parsedFile, ctx.parsedFile.source || '', ctx.metadata, ctx.singleFile, extractionDepth);
