@@ -14,6 +14,7 @@ import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage
 import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
 import { getMetadataSurfaceParity } from './metadata-surface-parity.js';
+import { getMetadataExtractionCoverage } from './metadata-extraction-coverage.js';
 import { getSemanticSurfaceGranularity, summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { getDatabaseHealthSummary } from './database-health.js';
@@ -23,6 +24,7 @@ import { getLiveFileTotal } from './live-row-utils.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
 import { buildDataGatewayContract } from './data-gateway-contract.js';
+import { buildSurfaceAudit } from './surface-audit.js';
 
 const CANONICAL_ADOPTION_PATTERNS = {
     centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
@@ -84,6 +86,7 @@ export async function loadCompilerDiagnosticsSnapshot({
     const fileImportEvidenceCoverage = db ? getFileImportEvidenceCoverage(db) : null;
     const systemMapPersistenceCoverage = db ? getSystemMapPersistenceCoverage(db) : null;
     const metadataSurfaceParity = db ? getMetadataSurfaceParity(db) : null;
+    const metadataExtractionCoverage = db ? getMetadataExtractionCoverage(db) : null;
     const semanticSurfaceGranularity = db ? getSemanticSurfaceGranularity(db) : null;
     const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
     const contractTaxonomy = db ? summarizeContractTaxonomy(db) : null;
@@ -108,6 +111,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
         metadataSurfaceParity,
+        metadataExtractionCoverage,
         semanticSurfaceGranularity,
         fileUniverseGranularity,
         databaseHealth
@@ -131,6 +135,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         fileImportEvidenceCoverage,
         systemMapPersistenceCoverage,
         metadataSurfaceParity,
+        metadataExtractionCoverage,
         semanticSurfaceGranularity,
         semanticCanonicality,
         contractTaxonomy,
@@ -143,6 +148,7 @@ export async function loadCompilerDiagnosticsSnapshot({
         persistedFileCoverage,
         fileUniverseGranularity,
         metadataSurfaceParity,
+        metadataExtractionCoverage,
         semanticSurfaceGranularity,
         semanticCanonicality,
         contractTaxonomy,
@@ -151,6 +157,17 @@ export async function loadCompilerDiagnosticsSnapshot({
         standardization: standardizationReport,
         policySummary,
         tableCounts
+    });
+    const surfaceAudit = buildSurfaceAudit({
+        analysisGeneration,
+        dataGatewayContract,
+        databaseHealth,
+        fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage,
+        metadataSurfaceParity,
+        metadataExtractionCoverage,
+        semanticSurfaceGranularity,
+        fileUniverseGranularity
     });
 
     return {
@@ -168,6 +185,8 @@ export async function loadCompilerDiagnosticsSnapshot({
         canonicalAdoptions: resolvedCanonicalAdoptions,
         standardizationReport,
         compilerContractLayer,
-        databaseHealth
+        databaseHealth,
+        metadataExtractionCoverage,
+        surfaceAudit
     };
 }

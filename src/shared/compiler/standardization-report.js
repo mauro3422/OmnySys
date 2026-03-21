@@ -21,6 +21,7 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'file_import_evidence', label: 'File import evidence coverage', status: 'canonical' },
   { id: 'system_map_persistence', label: 'System-map persistence coverage', status: 'canonical' },
   { id: 'metadata_surface_parity', label: 'Metadata surface parity', status: 'canonical' },
+  { id: 'metadata_extraction_coverage', label: 'Metadata extraction coverage', status: 'canonical' },
   { id: 'metadata_propagation', label: 'Metadata propagation drift', status: 'canonical' },
   { id: 'data_gateway', label: 'Data gateway freshness contract', status: 'canonical' },
   { id: 'semantic_surface_granularity', label: 'Semantic surface granularity', status: 'canonical' },
@@ -77,6 +78,7 @@ export function buildCompilerStandardizationReport({
   fileImportEvidenceCoverage = null,
   systemMapPersistenceCoverage = null,
   metadataSurfaceParity = null,
+  metadataExtractionCoverage = null,
   semanticSurfaceGranularity = null,
   fileUniverseGranularity = null,
   contractTaxonomy = null,
@@ -96,6 +98,7 @@ export function buildCompilerStandardizationReport({
     fileImportEvidenceCoverage,
     systemMapPersistenceCoverage,
     metadataSurfaceParity,
+    metadataExtractionCoverage,
     semanticSurfaceGranularity,
     fileUniverseGranularity,
     dataGatewayContract

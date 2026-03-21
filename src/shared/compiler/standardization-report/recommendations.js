@@ -116,6 +116,7 @@ export function buildMissingCanonicalApis({
   fileImportEvidenceCoverage = null,
   systemMapPersistenceCoverage = null,
   metadataSurfaceParity = null,
+  metadataExtractionCoverage = null,
   semanticSurfaceGranularity = null,
   fileUniverseGranularity = null,
   dataGatewayContract = null
@@ -206,6 +207,15 @@ export function buildMissingCanonicalApis({
       'high',
       'Primary and mirrored file-level metadata surfaces disagree on payload richness.',
       'Read surface parity from a canonical API before trusting mirrored support tables as a substitute for the primary files surface.'
+    ));
+  }
+
+  if (metadataExtractionCoverage?.healthy === false) {
+    missingCanonicalApis.push(buildSuggestedTarget(
+      'metadata_extraction_coverage',
+      'medium',
+      'Extracted metadata is present in the DB, but the canonical coverage surface is incomplete or stale.',
+      'Expose the metadata extraction coverage surface through the canonical data gateway before consumers inspect atom/file metadata fields individually.'
     ));
   }
 

@@ -85,6 +85,17 @@ export {
 } from './analysis-generation.js';
 
 export {
+  buildSurfaceAudit,
+  summarizeSurfaceAudit,
+  summarizeSurfaceAuditForStatus
+} from './surface-audit.js';
+
+export {
+  getMetadataExtractionCoverage,
+  summarizeMetadataExtractionCoverage
+} from './metadata-extraction-coverage.js';
+
+export {
   buildSurfaceFreshnessLedger,
   summarizeSurfaceFreshnessLedger,
   buildDataGatewayContract,

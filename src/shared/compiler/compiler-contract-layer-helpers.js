@@ -91,6 +91,12 @@ function buildCanonicalEntrypoints() {
       domain: 'metadata_surfaces'
     },
     {
+      id: 'metadata_extraction_coverage',
+      status: 'canonical',
+      entrypoint: 'getMetadataExtractionCoverage',
+      domain: 'metadata_surfaces'
+    },
+    {
       id: 'system_map_persistence',
       status: 'canonical',
       entrypoint: 'getSystemMapPersistenceCoverage',
@@ -139,6 +145,7 @@ function buildSurfaceInventory({
   persistedFileCoverage = null,
   fileUniverseGranularity = null,
   metadataSurfaceParity = null,
+  metadataExtractionCoverage = null,
   semanticSurfaceGranularity = null,
   semanticCanonicality = null,
   systemMapPersistenceCoverage = null,
@@ -237,6 +244,29 @@ function buildSurfaceInventory({
       summary: metadataSurfaceParity?.summary || 'Mirrored support metadata surface used for parity checks.',
       evidence: {
         parityStatus: metadataSurfaceParity?.status || 'unknown'
+      }
+    }),
+    buildSurface({
+      id: 'metadata_extraction_coverage',
+      kind: 'coverage',
+      status: metadataExtractionCoverage?.healthy === false ? 'advisory' : 'canonical',
+      sourceOfTruth: false,
+      scope: 'metadata extraction coverage',
+      surface: 'metadata_extraction_coverage',
+      backingSurface: 'atoms + files + system_files',
+      trustworthy: metadataExtractionCoverage?.trustworthy !== false,
+      healthy: metadataExtractionCoverage?.healthy !== false,
+      summary: metadataExtractionCoverage?.summary
+        ? `Metadata extraction coverage spans ${normalizeCount(metadataExtractionCoverage.summary.totalFields)} tracked field(s) across ${normalizeCount(metadataExtractionCoverage.summary.totalTables)} table(s).`
+        : 'Metadata extraction coverage is tracked across atoms, files, and system_files.',
+      evidence: {
+        totalTables: normalizeCount(metadataExtractionCoverage?.summary?.totalTables),
+        totalRows: normalizeCount(metadataExtractionCoverage?.summary?.totalRows),
+        totalFields: normalizeCount(metadataExtractionCoverage?.summary?.totalFields),
+        coveredFields: normalizeCount(metadataExtractionCoverage?.summary?.coveredFields),
+        fieldCoverageRatio: Number(metadataExtractionCoverage?.summary?.fieldCoverageRatio || 0),
+        rowCoverageRatio: Number(metadataExtractionCoverage?.summary?.rowCoverageRatio || 0),
+        primaryIssue: metadataExtractionCoverage?.primaryIssue || null
       }
     }),
     buildSurface({

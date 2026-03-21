@@ -3,6 +3,8 @@
  * Keeps the MCP status output small without dropping canonical metrics.
  */
 
+import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
+
 function takeSample(items = [], limit = 3) {
   if (!Array.isArray(items)) return [];
   return items.slice(0, limit);
@@ -91,6 +93,20 @@ function compactCompilerExplainabilitySummary(explainability) {
     metadataSurfaceParity: explainability.metadataSurfaceParity ? {
       total: explainability.metadataSurfaceParity.total,
       healthy: explainability.metadataSurfaceParity.healthy
+    } : null,
+    metadataExtractionCoverage: explainability.metadataExtractionCoverage ? {
+      totalTables: explainability.metadataExtractionCoverage.summary?.totalTables,
+      totalRows: explainability.metadataExtractionCoverage.summary?.totalRows,
+      totalFields: explainability.metadataExtractionCoverage.summary?.totalFields,
+      coveredFields: explainability.metadataExtractionCoverage.summary?.coveredFields,
+      coveragePct: explainability.metadataExtractionCoverage.summary?.coveragePct,
+      fieldCoveragePct: explainability.metadataExtractionCoverage.summary?.fieldCoveragePct,
+      healthy: explainability.metadataExtractionCoverage.healthy,
+      trustworthy: explainability.metadataExtractionCoverage.trustworthy,
+      nextAction: explainability.metadataExtractionCoverage.summary?.nextAction,
+      primaryIssue: explainability.metadataExtractionCoverage.primaryIssue,
+      topMissingFields: takeSample(explainability.metadataExtractionCoverage.topMissingFields, 3),
+      topCoveredFields: takeSample(explainability.metadataExtractionCoverage.topCoveredFields, 3)
     } : null,
     semanticCanonicality: explainability.semanticCanonicality ? {
       total: explainability.semanticCanonicality.total,
@@ -222,6 +238,7 @@ function summarizeStatus(status, recentErrors) {
     } : null,
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability: compactCompilerExplainabilitySummary(status.compilerExplainability),
+    surfaceAudit: summarizeSurfaceAuditForStatus(status.surfaceAudit || status.compilerExplainability?.surfaceAudit),
     signalConfidence: status.signalConfidence || null,
     warnings: takeSample(status.warnings || [], 3),
     criticalIssues: takeSample(status.criticalIssues || [], 3)

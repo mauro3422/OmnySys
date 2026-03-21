@@ -124,6 +124,33 @@ describe('compiler contract layer', () => {
         mirroredFilesWithExports: 12,
         summary: 'Mirrored metadata parity is fresh.'
       },
+      metadataExtractionCoverage: {
+        healthy: true,
+        trustworthy: true,
+        filesTotal: 24,
+        activeFiles: 18,
+        primaryFilesWithImports: 18,
+        liveAtomFiles: 3,
+        systemFilesTotal: 36,
+        systemFilesWithImports: 18,
+        fileDependenciesTotal: 36,
+        dependencySourceFiles: 18,
+        summary: {
+          totalTables: 3,
+          totalRows: 24,
+          totalFields: 36,
+          coveredFields: 18,
+          emptyFields: 18,
+          partialFields: 6,
+          fieldCoverageRatio: 0.5,
+          rowCoverageRatio: 0.75,
+          coverageRatio: 0.75,
+          coveragePct: 75,
+          fieldCoveragePct: 50,
+          nextAction: 'Metadata extraction coverage is healthy enough to trust downstream consumers.'
+        },
+        primaryIssue: null
+      },
       semanticSurfaceGranularity: {
         healthy: true,
         fileLevel: { total: 1 },
@@ -216,6 +243,33 @@ describe('data gateway contract', () => {
         mirroredFilesWithExports: 12,
         summary: 'Mirrored metadata parity is fresh.'
       },
+      metadataExtractionCoverage: {
+        healthy: true,
+        trustworthy: true,
+        filesTotal: 24,
+        activeFiles: 18,
+        primaryFilesWithImports: 18,
+        liveAtomFiles: 3,
+        systemFilesTotal: 36,
+        systemFilesWithImports: 18,
+        fileDependenciesTotal: 36,
+        dependencySourceFiles: 18,
+        summary: {
+          totalTables: 3,
+          totalRows: 24,
+          totalFields: 36,
+          coveredFields: 18,
+          emptyFields: 18,
+          partialFields: 6,
+          fieldCoverageRatio: 0.5,
+          rowCoverageRatio: 0.75,
+          coverageRatio: 0.75,
+          coveragePct: 75,
+          fieldCoveragePct: 50,
+          nextAction: 'Metadata extraction coverage is healthy enough to trust downstream consumers.'
+        },
+        primaryIssue: null
+      },
       semanticSurfaceGranularity: {
         healthy: true,
         fileLevel: { total: 1 },
@@ -239,15 +293,15 @@ describe('data gateway contract', () => {
       }
     });
 
-    expect(contract.contract.sourceOfTruth).toBe('atom_relations');
-    expect(contract.summary.total).toBe(8);
+    expect(contract.contract.sourceOfTruth).toBe('atoms');
+    expect(contract.summary.total).toBe(9);
     expect(contract.summary.trustworthy).toBe(false);
     expect(contract.summary.primaryIssue).toMatchObject({
       key: 'system_map_persistence',
       state: 'stale'
     });
     expect(summarizeDataGatewayContract(contract)).toMatchObject({
-      total: 8,
+      total: 9,
       stale: 1,
       trustworthy: false
     });

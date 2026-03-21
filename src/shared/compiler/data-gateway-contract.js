@@ -9,6 +9,7 @@
  */
 
 import { summarizeAnalysisGeneration } from './analysis-generation.js';
+import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage.js';
 import {
   normalizeCount,
   normalizeFileImportEvidenceSurface,
@@ -152,6 +153,7 @@ export function buildSurfaceFreshnessLedger({
   fileImportEvidenceCoverage = null,
   systemMapPersistenceCoverage = null,
   metadataSurfaceParity = null,
+  metadataExtractionCoverage = null,
   semanticSurfaceGranularity = null,
   fileUniverseGranularity = null,
   databaseHealth = null
@@ -159,6 +161,7 @@ export function buildSurfaceFreshnessLedger({
   const analysisGenerationSummary = summarizeAnalysisGeneration(analysisGeneration);
   const normalizedPersistedFileCoverage = normalizePersistedFileCoverageSurface(persistedFileCoverage);
   const normalizedFileImportEvidenceCoverage = normalizeFileImportEvidenceSurface(fileImportEvidenceCoverage);
+  const normalizedMetadataExtractionCoverage = summarizeMetadataExtractionCoverage(metadataExtractionCoverage);
   const surfaces = [
     buildSurfaceEntry({
       key: 'analysis_generation',
@@ -196,6 +199,13 @@ export function buildSurfaceFreshnessLedger({
       fallbackReason: 'Metadata surface parity was not supplied.'
     }),
     buildSurfaceEntry({
+      key: 'metadata_extraction_coverage',
+      label: 'Metadata extraction coverage',
+      sourceOfTruth: 'atoms + files + system_files',
+      surface: metadataExtractionCoverage,
+      fallbackReason: 'Metadata extraction coverage was not supplied.'
+    }),
+    buildSurfaceEntry({
       key: 'semantic_surface_granularity',
       label: 'Semantic surface granularity',
       sourceOfTruth: 'atoms.semantic_metadata',
@@ -230,6 +240,7 @@ export function buildSurfaceFreshnessLedger({
       recommendedSourceOfTruth: 'atoms'
     },
     generation: analysisGenerationSummary,
+    metadataExtractionCoverage: normalizedMetadataExtractionCoverage,
     surfaces,
     summary: {
       ...summary,

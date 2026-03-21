@@ -32,12 +32,14 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       fileImportEvidenceCoverage: snapshot.fileImportEvidenceCoverage,
       systemMapPersistenceCoverage: snapshot.systemMapPersistenceCoverage,
       metadataSurfaceParity: snapshot.metadataSurfaceParity,
+      metadataExtractionCoverage: snapshot.metadataExtractionCoverage,
       semanticCanonicality: snapshot.semanticCanonicality,
       semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity,
       fileUniverseGranularity: snapshot.fileUniverseGranularity,
       analysisGeneration: snapshot.analysisGeneration,
       dataGatewayContract: snapshot.dataGatewayContract,
-      databaseHealth: snapshot.databaseHealth
+      databaseHealth: snapshot.databaseHealth,
+      surfaceAudit: snapshot.surfaceAudit
     };
   } catch (error) {
     return {

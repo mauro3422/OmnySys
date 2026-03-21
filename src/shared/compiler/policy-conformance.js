@@ -104,6 +104,7 @@ function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
     /summarizePersistedScannedFileCoverage/,
     /syncPersistedScannedFileManifest/,
     /getFileImportEvidenceCoverage/,
+    /getMetadataExtractionCoverage/,
     /getSystemMapPersistenceCoverage/,
     /getMetadataSurfaceParity/,
     /getSemanticSurfaceGranularity/,

@@ -105,6 +105,11 @@ const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getMetadataSurfaceParity'),
     recommendedReplacement: 'Check mirrored surface parity before assuming `system_files` is a faithful substitute for primary file metadata.'
   },
+  metadata_extraction_coverage: {
+    existingCanonicalEntryPoint: 'getMetadataExtractionCoverage',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getMetadataExtractionCoverage'),
+    recommendedReplacement: 'Read metadata extraction coverage through the canonical DB-backed coverage API before hand-building completeness heuristics.'
+  },
   metadata_propagation: {
     existingCanonicalEntryPoint: 'getSystemMapPersistenceCoverage',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getSystemMapPersistenceCoverage'),
@@ -153,6 +158,7 @@ const AREA_FALLBACK_GUIDANCE = {
   shared_state_hotspots: RULE_GUIDANCE.manual_shared_state_hotspot_scan
   ,
   metadata_surface_parity: RULE_GUIDANCE.metadata_surface_parity,
+  metadata_extraction_coverage: RULE_GUIDANCE.metadata_extraction_coverage,
   metadata_propagation: RULE_GUIDANCE.metadata_propagation,
   semantic_surface_granularity: RULE_GUIDANCE.semantic_surface_granularity,
   async_error: {
