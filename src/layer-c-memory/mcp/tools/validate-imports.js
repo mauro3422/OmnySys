@@ -65,6 +65,66 @@ async function filterCyclesByDirectImportEvidence(projectPath, cycles = []) {
     return verifiedCycles;
 }
 
+async function buildCircularDependencyGraph(projectPath, rootFilePath) {
+    const graph = new Map();
+    const loaded = new Set();
+
+    async function loadNodeDependencies(nodePath) {
+        if (!nodePath || loaded.has(nodePath)) {
+            return;
+        }
+
+        loaded.add(nodePath);
+        const nodeDeps = await getFileDependencies(projectPath, nodePath);
+        const targets = Array.isArray(nodeDeps?.dependencies)
+            ? nodeDeps.dependencies
+                .map((dependency) => dependency?.resolvedPath || dependency?.source)
+                .filter(Boolean)
+            : [];
+
+        graph.set(nodePath, targets);
+
+        for (const target of targets) {
+            await loadNodeDependencies(target);
+        }
+    }
+
+    await loadNodeDependencies(rootFilePath);
+    return graph;
+}
+
+function collectCyclesFromGraph(graph, rootFilePath) {
+    const visited = new Set();
+    const pathStack = [];
+    const cycles = [];
+
+    const dfs = (current) => {
+        visited.add(current);
+        pathStack.push(current);
+
+        const neighbors = graph.get(current) || [];
+        for (const neighbor of neighbors) {
+            const idx = pathStack.indexOf(neighbor);
+            if (idx !== -1) {
+                const cycle = pathStack.slice(idx);
+                if (cycle.includes(rootFilePath)) {
+                    cycles.push([...cycle, neighbor]);
+                }
+            } else if (!visited.has(neighbor)) {
+                dfs(neighbor);
+            }
+        }
+
+        pathStack.pop();
+    };
+
+    if (graph.has(rootFilePath)) {
+        dfs(rootFilePath);
+    }
+
+    return cycles;
+}
+
 async function computeCircularDependencies(repo, projectPath, filePath, checkCircular) {
     try {
         if (!checkCircular || !repo?.db) {
@@ -76,58 +136,8 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
             return [];
         }
 
-        const graph = new Map();
-        const loaded = new Set();
-
-        async function loadNodeDependencies(nodePath) {
-            if (!nodePath || loaded.has(nodePath)) {
-                return;
-            }
-
-            loaded.add(nodePath);
-            const nodeDeps = await getFileDependencies(projectPath, nodePath);
-            const targets = Array.isArray(nodeDeps?.dependencies)
-                ? nodeDeps.dependencies
-                    .map((dependency) => dependency?.resolvedPath || dependency?.source)
-                    .filter(Boolean)
-                : [];
-
-            graph.set(nodePath, targets);
-
-            for (const target of targets) {
-                await loadNodeDependencies(target);
-            }
-        }
-
-        await loadNodeDependencies(filePath);
-
-        const visited = new Set();
-        const pathStack = [];
-        const cycles = [];
-
-        const dfs = (current) => {
-            visited.add(current);
-            pathStack.push(current);
-
-            const neighbors = graph.get(current) || [];
-            for (const neighbor of neighbors) {
-                const idx = pathStack.indexOf(neighbor);
-                if (idx !== -1) {
-                    const cycle = pathStack.slice(idx);
-                    if (cycle.includes(filePath)) {
-                        cycles.push([...cycle, neighbor]);
-                    }
-                } else if (!visited.has(neighbor)) {
-                    dfs(neighbor);
-                }
-            }
-            pathStack.pop();
-        };
-
-        if (graph.has(filePath)) {
-            dfs(filePath);
-        }
-
+        const graph = await buildCircularDependencyGraph(projectPath, filePath);
+        const cycles = collectCyclesFromGraph(graph, filePath);
         const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles);
         return Array.from(new Set(verifiedCycles.map((cycle) => cycle.join(' -> '))));
     } catch (error) {
