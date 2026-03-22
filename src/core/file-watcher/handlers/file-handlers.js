@@ -11,6 +11,10 @@ import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
+function isTestFactorySurface(filePath = '') {
+  return String(filePath || '').replace(/\\/g, '/').startsWith('tests/factories/');
+}
+
 /**
  * Maneja creacion de archivo
  */
@@ -120,6 +124,11 @@ export async function handleFileModified(filePath, fullPath, changeContext = {})
   const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
 
   try {
+    if (isTestFactorySurface(filePath)) {
+      logger.debug(`[EXPORT VALIDATION SKIP] ${filePath}: test factory surface`);
+      return;
+    }
+
     const exportValidation = await validateAllExports(this.rootPath, filePath);
     if (!exportValidation.valid) {
       logger.warn(

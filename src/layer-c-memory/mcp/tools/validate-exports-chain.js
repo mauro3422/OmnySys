@@ -16,6 +16,11 @@ function normalizeCompilerPath(filePath) {
   return String(filePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
 }
 
+function isTestFactorySurface(filePath = '') {
+  const normalized = normalizeCompilerPath(filePath);
+  return normalized.startsWith('tests/factories/');
+}
+
 function isBuiltinModuleSpecifier(modulePath = '') {
   const normalized = String(modulePath || '').replace(/^node:/, '');
   return builtinModules.includes(normalized);
@@ -50,6 +55,21 @@ function buildMissingDatabaseResult(filePath) {
     results: [],
     validationMode: 'database_only',
     compilerIndexed: false
+  };
+}
+
+function buildSkippedTestFactoryResult(filePath) {
+  return {
+    valid: true,
+    totalImports: 0,
+    invalidCount: 0,
+    invalid: [],
+    results: [],
+    validationMode: 'database_only',
+    compilerIndexed: false,
+    skipped: true,
+    reason: 'test_factory_surface',
+    filePath
   };
 }
 
@@ -277,6 +297,11 @@ function resolveModuleToPath(modulePath, projectPath, baseFilePath = '') {
  */
 export async function validateAllExports(projectPath, filePath) {
   const normalizedFilePath = normalizeCompilerPath(filePath);
+
+  if (isTestFactorySurface(normalizedFilePath)) {
+    return buildSkippedTestFactoryResult(filePath);
+  }
+
   const analysis = await getFileAnalysis(projectPath, normalizedFilePath).catch(() => null);
 
   if (!analysis) {
