@@ -57,13 +57,7 @@ export class HotReloadManager {
     }
 
     logger.info('Starting hot-reload manager...');
-
-    this.fileWatcher = new FileWatcher({
-      projectPath: this.server.projectPath,
-      onChange: (eventType, filename) => this._handleFileChange(eventType, filename),
-      debounceMs: 500
-    });
-
+    this.fileWatcher = createManagedFileWatcher(this.server, (eventType, filename) => this._handleFileChange(eventType, filename));
     await this.fileWatcher.start();
 
     logger.info('Monitoring tools, extractors, handlers, and queries');
@@ -87,37 +81,13 @@ export class HotReloadManager {
    * @param {string} filename - Changed file
    */
   _handleFileChange(eventType, filename) {
-    if (this.reloadHandler.isReloading) {
-      logger.debug(`Ignoring change during reload: ${filename}`);
-      return;
-    }
-
-    // Ignore changes while system is indexing (prevents analysis loop)
-    if (this.server.isIndexing) {
-      logger.debug(`Ignoring change during indexing: ${filename}`);
-      return;
-    }
-
-    // Classify the module
-    const moduleInfo = this.classifier.classify(filename);
-
-    if (!moduleInfo) {
-      logger.debug(`Ignoring non-reloadable file: ${filename}`);
-      return;
-    }
-
-    // Handle critical modules
-    if (moduleInfo.type === 'critical') {
-      logger.warn(`🚨 Live compiler critical change: ${filename}`);
-      logger.warn('   Manual restart required for changes to take effect');
-      this.server.emit('hot-reload:critical-change', { file: filename });
-      return;
-    }
-
-    logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo.type}/${eventType})`);
-
-    // Execute reload
-    this.reloadHandler.reload(filename, moduleInfo);
+    handleReloadableChange({
+      eventType,
+      filename,
+      server: this.server,
+      classifier: this.classifier,
+      reloadHandler: this.reloadHandler
+    });
   }
 
   /**
@@ -126,7 +96,7 @@ export class HotReloadManager {
    */
   getStats() {
     const status = this.reloadHandler.getStatus();
-    const watcherStats = this.fileWatcher?.getStats?.() || {};
+    const watcherStats = getWatcherStatsSnapshot(this.fileWatcher);
 
     return {
       isWatching: this.fileWatcher?.isWatching() || false,
@@ -154,4 +124,44 @@ export {
 };
 
 export default HotReloadManager;
+
+function createManagedFileWatcher(server, onChange) {
+  return new FileWatcher({
+    projectPath: server.projectPath,
+    onChange,
+    debounceMs: 500
+  });
+}
+
+function handleReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
+  if (reloadHandler.isReloading) {
+    logger.debug(`Ignoring change during reload: ${filename}`);
+    return;
+  }
+
+  if (server.isIndexing) {
+    logger.debug(`Ignoring change during indexing: ${filename}`);
+    return;
+  }
+
+  const moduleInfo = classifier.classify(filename);
+  if (!moduleInfo) {
+    logger.debug(`Ignoring non-reloadable file: ${filename}`);
+    return;
+  }
+
+  if (moduleInfo.type === 'critical') {
+    logger.warn(`🚨 Live compiler critical change: ${filename}`);
+    logger.warn('   Manual restart required for changes to take effect');
+    server.emit('hot-reload:critical-change', { file: filename });
+    return;
+  }
+
+  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo.type}/${eventType})`);
+  reloadHandler.reload(filename, moduleInfo);
+}
+
+function getWatcherStatsSnapshot(fileWatcher) {
+  return fileWatcher?.getStats?.() || {};
+}
 
