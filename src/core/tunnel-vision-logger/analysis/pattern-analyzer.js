@@ -34,7 +34,7 @@ export async function analyzePatterns() {
       problematicFiles: getProblematicFiles(stats)
     },
     insights: generateInsights(events, stats),
-    recommendations: generateRecommendations(stats, events)
+    recommendations: generatePatternRecommendations(stats, events)
   };
 }
 
@@ -98,7 +98,7 @@ function generateInsights(events, stats) {
 /**
  * Generate recommendations based on patterns
  */
-function generateRecommendations(stats, events) {
+function generatePatternRecommendations(stats, events) {
   const recommendations = [];
 
   const topFiles = Object.entries(stats.mostFrequentFiles)
