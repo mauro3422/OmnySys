@@ -6,155 +6,16 @@
  * @module pipeline/phases/atom-extraction/builders/metadata-builder
  */
 
-import { determineScopeType } from '../../../../extractors/metadata/tree-sitter-integration.js';
-
-// ── Helper functions ──────────────────────────────────────────────────────────
-
-/**
- * Detecta manejo de errores en el código de la función
- * @param {string} functionCode - Código fuente de la función
- * @returns {boolean} true si tiene try/catch o .catch()
- */
-function detectErrorHandling(functionCode) {
-  if (!functionCode || typeof functionCode !== 'string') {
-    return false;
-  }
-
-  const code = functionCode;
-
-  // Patrón 1: Bloque try/catch
-  // Busca: try { ... } catch ... {
-  const tryCatchPattern = /try\s*\{[\s\S]*?\}\s*catch\s*\(?[\s\S]*?\)?\s*\{/;
-  if (tryCatchPattern.test(code)) {
-    return true;
-  }
-
-  // Patrón 2: Método .catch() en promises
-  // Busca: .catch( o .catch (
-  const catchMethodPattern = /\.catch\s*\(/;
-  if (catchMethodPattern.test(code)) {
-    return true;
-  }
-
-  // Patrón 3: Bloque try/catch en una línea (arrow functions)
-  // Busca: try { ... } catch ... { ... }
-  const tryCatchInlinePattern = /try\s*\{[^}]*\}\s*catch\s*[\({][^}]*\{/;
-  if (tryCatchInlinePattern.test(code)) {
-    return true;
-  }
-
-  // Patrón 4: async/await con try/catch
-  const asyncTryPattern = /async.*try\s*\{/;
-  if (asyncTryPattern.test(code)) {
-    return true;
-  }
-
-  return false;
-}
-
-// ── Section builders ──────────────────────────────────────────────────────────
-
-function buildSideEffectFields(se, dataFlowV2) {
-  const dfOutputs = dataFlowV2?.outputs || dataFlowV2?.real?.outputs || [];
-  return {
-    hasSideEffects: se.all.length > 0 || dfOutputs.some(o => o.type === 'side_effect' || o.isSideEffect === true),
-    hasNetworkCalls: se.networkCalls.length > 0,
-    hasDomManipulation: se.domManipulations.length > 0,
-    hasStorageAccess: se.storageAccess.length > 0,
-    hasLogging: se.consoleUsage.length > 0,
-    networkEndpoints: se.networkCalls.map(c => c.url || c.endpoint).filter(Boolean)
-  };
-}
-
-function buildCallFields(functionInfo, cg) {
-  const unified = [
-    ...(functionInfo.calls || []),
-    ...(cg.internalCalls || []).map(c => ({ name: c.name || c.callee, type: c.type || 'internal', line: c.line })),
-    ...(cg.externalCalls || []).map(c => ({ name: c.name || c.callee, type: 'external', line: c.line }))
-  ].filter((call, i, self) => i === self.findIndex(c => c.name === call.name && c.line === call.line));
-
-  return {
-    internalCalls: cg.internalCalls || [],
-    externalCalls: cg.externalCalls || [],
-    externalCallCount: (cg.externalCalls || []).length,
-    calls: unified
-  };
-}
-
-function buildDataFlowFields(dataFlowV2) {
-  return {
-    dataFlow: dataFlowV2?.real || dataFlowV2 || null,
-    dataFlowAnalysis: dataFlowV2?.analysis || null,
-    hasDataFlow: dataFlowV2 !== null &&
-      (dataFlowV2.inputs?.length > 0 || dataFlowV2.real?.inputs?.length > 0)
-  };
-}
-
-function buildImports(imports) {
-  return imports.map(imp => ({
-    source: imp.source || imp.module,
-    type: imp.type,
-    specifiers: imp.names || imp.specifiers || [],
-    line: imp.line
-  }));
-}
-
-function buildMeta(dataFlowV2) {
-  return {
-    dataFlowVersion: '1.0.0-fractal',
-    extractionTime: new Date().toISOString(),
-    confidence: dataFlowV2?.analysis?.coherence ? dataFlowV2.analysis.coherence / 100 : 0.5
-  };
-}
-
-function summarizeScopeTypes(sharedStateAccess = []) {
-  const scopeCounts = new Map();
-
-  for (const access of sharedStateAccess) {
-    const scopeType = access?.scopeType || determineScopeType(access);
-    if (!scopeType) continue;
-    scopeCounts.set(scopeType, (scopeCounts.get(scopeType) || 0) + 1);
-  }
-
-  if (scopeCounts.size === 0) {
-    return {
-      scopeType: null,
-      scopeTypes: [],
-      scopeTypeBreakdown: {}
-    };
-  }
-
-  const priority = ['closure', 'global', 'module', 'local'];
-  let dominantScope = null;
-  let dominantCount = -1;
-
-  for (const [scopeType, count] of scopeCounts.entries()) {
-    if (
-      count > dominantCount ||
-      (count === dominantCount && priority.indexOf(scopeType) < priority.indexOf(dominantScope))
-    ) {
-      dominantScope = scopeType;
-      dominantCount = count;
-    }
-  }
-
-  return {
-    scopeType: dominantScope,
-    scopeTypes: [...scopeCounts.keys()],
-    scopeTypeBreakdown: Object.fromEntries(scopeCounts)
-  };
-}
-
-function buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo) {
-  return {
-    fragilityScore: computeFragilityScore(complexity, cg, errorFlow, ph),
-    testabilityScore: computeTestabilityScore(complexity, se, ph, functionInfo),
-    couplingScore: (cg.externalCalls?.length || 0) + (cg.internalCalls?.length || 0),
-    changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
-  };
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
+import {
+  buildCallFields,
+  buildDataFlowFields,
+  buildDerivedScores,
+  buildImports,
+  buildMeta,
+  buildSideEffectFields,
+  detectErrorHandling,
+  summarizeScopeTypes
+} from '../../../../../shared/compiler/atom-metadata-helpers.js';
 
 /**
  * Build atom metadata object
@@ -179,16 +40,14 @@ export function buildAtomMetadata({
   functionCode,
   imports = [],
   jsdocContracts = null,
-  treeSitter = null // NEW: Tree-sitter metadata
+  treeSitter = null
 }) {
-  // Normalize extractor results — guard against null/undefined when an extractor fails gracefully
   const se = sideEffects || { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] };
   const cg = callGraph || { internalCalls: [], externalCalls: [] };
   const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
   const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
   const scopeSummary = summarizeScopeTypes(treeSitter?.sharedStateAccess || []);
 
-  // Intentar parear el jsdoc. Usar preferentemente la línea extraída por el parser AST si está disponible
   let jsdocMatch = null;
   if (jsdocContracts?.functions) {
     const astDocLine = functionInfo.jsdoc?.line;
@@ -196,7 +55,6 @@ export function buildAtomMetadata({
       jsdocMatch = jsdocContracts.functions.find(c => c.line === astDocLine);
     }
 
-    // Fallback: usar una ventana muy pequeña encima de la función
     if (!jsdocMatch) {
       const fnLine = functionInfo.line || functionInfo.lineStart || 0;
       jsdocMatch = jsdocContracts.functions.find(c => c.line >= fnLine - 10 && c.line < fnLine);
@@ -204,7 +62,6 @@ export function buildAtomMetadata({
   }
 
   return {
-    // Identity
     id: functionInfo.id || `${filePath}::${functionInfo.fullName || functionInfo.name}`,
     name: functionInfo.name,
     type: functionInfo.type || 'atom',
@@ -213,50 +70,36 @@ export function buildAtomMetadata({
     endLine: functionInfo.endLine,
     linesOfCode,
 
-    // Export & class
     isExported: functionInfo.isExported,
     className: functionInfo.className || null,
     functionType: functionInfo.type || 'declaration',
 
-    // Test callback identity
     isTestCallback: functionInfo.isTestCallback || false,
     testCallbackType: functionInfo.testCallbackType || null,
 
-    // Complexity
     complexity,
 
-    // Signature (Fase 10 integration)
     signature: {
       params: functionInfo.params || [],
       returnType: functionInfo.returnType || 'any'
     },
 
-    // Side effects
     ...buildSideEffectFields(se, dataFlowV2),
-
-    // Call graph
     ...buildCallFields(functionInfo, cg),
-
-    // Code patterns - Error handling detection
-    // Mejorado: detecta patrones reales de try/catch, no solo las palabras
     hasErrorHandling: detectErrorHandling(functionCode),
     isAsync: functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
-    // Temporal
     hasLifecycleHooks: tmp.lifecycleHooks.length > 0,
     lifecycleHooks: tmp.lifecycleHooks,
     hasCleanupPatterns: tmp.cleanupPatterns.length > 0,
     temporal: { patterns: temporalPatterns, executionOrder: temporalPatterns?.executionOrder || null },
 
-    // Contracts & flow
     typeContracts,
     errorFlow,
 
-    // Deprecation details
     deprecated: jsdocMatch?.deprecated || false,
     deprecatedReason: jsdocMatch?.deprecatedReason || '',
 
-    // Performance
     hasNestedLoops: ph.nestedLoops.length > 0,
     hasBlockingOps: ph.blockingOperations.length > 0,
     performance: {
@@ -264,26 +107,18 @@ export function buildAtomMetadata({
       ...performanceMetrics
     },
 
-    // Data flow
     ...buildDataFlowFields(dataFlowV2),
-
-    // Derived scores
     derived: buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo),
-
-    // Semantic
     semanticDomain: semanticDomain || null,
 
-    // Tree-sitter metadata (shared state, events, scope)
     sharedStateAccess: treeSitter?.sharedStateAccess || [],
     eventEmitters: treeSitter?.eventEmitters || [],
     eventListeners: treeSitter?.eventListeners || [],
     scopeType: scopeSummary.scopeType,
 
-    // DNA & Lineage (set later)
     dna: null,
     lineage: null,
 
-    // Imports
     imports: buildImports(imports),
     importsJson: buildImports(imports),
     exportsJson: functionInfo.isExported
@@ -291,7 +126,6 @@ export function buildAtomMetadata({
       : [],
     sideEffectsJson: se,
 
-    // Metadata
     extractedAt: new Date().toISOString(),
     _meta: {
       ...buildMeta(dataFlowV2),
@@ -301,35 +135,6 @@ export function buildAtomMetadata({
       scopeTypeBreakdown: scopeSummary.scopeTypeBreakdown
     }
   };
-}
-
-// ── Score helpers ─────────────────────────────────────────────────────────────
-
-function computeFragilityScore(complexity, callGraph, errorFlow, performanceHints) {
-  let score = 0;
-  score += Math.min(0.4, complexity / 100);
-  score += (performanceHints?.nestedLoops?.length > 0) ? 0.2 : 0;
-  score += (errorFlow?.propagation === 'partial') ? 0.2 : 0;
-  score += (performanceHints?.blockingOperations?.length > 0) ? 0.1 : 0;
-  score += Math.min(0.1, (callGraph?.externalCalls?.length || 0) / 20);
-  return Math.round(Math.min(1, score) * 100) / 100;
-}
-
-function computeTestabilityScore(complexity, sideEffects, performanceHints, functionInfo) {
-  let score = 1;
-  score -= Math.min(0.4, complexity / 80);
-  score -= (sideEffects?.all?.length > 0) ? 0.2 : 0;
-  score -= (performanceHints?.nestedLoops?.length > 0) ? 0.15 : 0;
-  score -= (functionInfo?.isAsync) ? 0.1 : 0;
-  score -= Math.min(0.15, (functionInfo?.params?.length || 0) / 10);
-  return Math.round(Math.max(0, score) * 100) / 100;
-}
-
-function computeBaseChangeRisk(complexity, isExported) {
-  return Math.round((
-    (isExported ? 0.2 : 0) +
-    Math.min(0.3, complexity / 100)
-  ) * 100) / 100;
 }
 
 export default buildAtomMetadata;

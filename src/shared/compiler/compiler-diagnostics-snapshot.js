@@ -25,6 +25,7 @@ import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
 import { buildDataGatewayContract } from './data-gateway-contract.js';
 import { buildSurfaceAudit } from './surface-audit.js';
+import { getPhase2FileCounts } from './compiler-runtime-metrics.js';
 
 const CANONICAL_ADOPTION_PATTERNS = {
     centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
@@ -68,7 +69,140 @@ async function collectCanonicalAdoptionEvidence(projectPath) {
     return evidence;
 }
 
-export async function loadCompilerDiagnosticsSnapshot({
+function getCompilerDiagnosticsDatabaseSurfaces(db) {
+    const phase2PendingFiles = db ? getPhase2FileCounts(db).pendingFiles : 0;
+
+    return {
+        phase2PendingFiles,
+        fileImportEvidenceCoverage: db ? getFileImportEvidenceCoverage(db) : null,
+        systemMapPersistenceCoverage: db ? getSystemMapPersistenceCoverage(db) : null,
+        metadataSurfaceParity: db ? getMetadataSurfaceParity(db) : null,
+        metadataExtractionCoverage: db ? getMetadataExtractionCoverage(db) : null,
+        semanticSurfaceGranularity: db ? getSemanticSurfaceGranularity(db) : null,
+        contractTaxonomy: db ? summarizeContractTaxonomy(db) : null,
+        databaseHealth: db ? getDatabaseHealthSummary(db) : null
+    };
+}
+
+function buildResolvedCanonicalAdoptions({
+    canonicalAdoptionEvidence,
+    persistedFileCoverage,
+    canonicalAdoptions
+}) {
+    return {
+        // Prefer measured compiler/runtime consumer evidence over optimistic defaults.
+        centralityCoverage: canonicalAdoptionEvidence.centralityCoverage.adopted,
+        sharedStateContention: canonicalAdoptionEvidence.sharedStateContention.adopted,
+        scannedFileManifest:
+            canonicalAdoptionEvidence.scannedFileManifest.adopted &&
+            persistedFileCoverage?.synchronized === true,
+        ...(canonicalAdoptions || {})
+    };
+}
+
+function buildCompilerDiagnosticsSnapshotContracts({
+    projectPath,
+    persistedFileCoverage,
+    canonicalAdoptionEvidence,
+    dbSurfaces,
+    db,
+    policySummary,
+    watcherAlerts,
+    sharedState,
+    compilerRemediation,
+    canonicalAdoptions,
+    tableCounts
+}) {
+    const semanticCanonicality = summarizeSemanticCanonicality(dbSurfaces.semanticSurfaceGranularity);
+    const fileUniverseGranularity = getFileUniverseGranularity({
+        scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
+        manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
+        liveFileCount: db ? getLiveFileTotal(db) : (persistedFileCoverage?.liveIndexedFiles || 0)
+    });
+    const analysisGeneration = buildAnalysisGenerationSnapshot({
+        projectPath,
+        source: 'compiler-diagnostics-snapshot',
+        phase: 'status',
+        totalFiles: persistedFileCoverage?.scannedFileTotal || 0,
+        atomCount: dbSurfaces.databaseHealth?.metrics?.activeAtoms || 0,
+        relationCount: dbSurfaces.databaseHealth?.metrics?.activeCallRelations || 0,
+        semanticConnectionCount: dbSurfaces.databaseHealth?.metrics?.activeSemanticConnections || 0
+    });
+    const dataGatewayContract = buildDataGatewayContract({
+        analysisGeneration,
+        persistedFileCoverage,
+        fileImportEvidenceCoverage: dbSurfaces.fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
+        metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
+        metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
+        semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+        fileUniverseGranularity,
+        databaseHealth: dbSurfaces.databaseHealth
+    });
+    const resolvedCanonicalAdoptions = buildResolvedCanonicalAdoptions({
+        canonicalAdoptionEvidence,
+        persistedFileCoverage,
+        canonicalAdoptions
+    });
+
+    const standardizationReport = buildCompilerStandardizationReport({
+        policySummary,
+        watcherAlerts,
+        sharedState,
+        compilerRemediation,
+        persistedFileCoverage,
+        fileImportEvidenceCoverage: dbSurfaces.fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
+        metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
+        metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
+        semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+        semanticCanonicality,
+        contractTaxonomy: dbSurfaces.contractTaxonomy,
+        fileUniverseGranularity,
+        dataGatewayContract,
+        canonicalAdoptions: resolvedCanonicalAdoptions
+    });
+
+    const compilerContractLayer = buildCompilerContractLayer({
+        persistedFileCoverage,
+        fileUniverseGranularity,
+        metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
+        metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
+        semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+        semanticCanonicality,
+        contractTaxonomy: dbSurfaces.contractTaxonomy,
+        systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
+        dataGatewayContract,
+        standardization: standardizationReport,
+        policySummary,
+        tableCounts
+    });
+    const surfaceAudit = buildSurfaceAudit({
+        analysisGeneration,
+        dataGatewayContract,
+        databaseHealth: dbSurfaces.databaseHealth,
+        fileImportEvidenceCoverage: dbSurfaces.fileImportEvidenceCoverage,
+        systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
+        metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
+        metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
+        semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+        fileUniverseGranularity
+    });
+
+    return {
+        persistedFileCoverage,
+        semanticCanonicality,
+        fileUniverseGranularity,
+        analysisGeneration,
+        dataGatewayContract,
+        resolvedCanonicalAdoptions,
+        standardizationReport,
+        compilerContractLayer,
+        surfaceAudit
+    };
+}
+
+async function buildCompilerDiagnosticsSnapshotPayload({
     projectPath,
     db,
     policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
@@ -80,113 +214,35 @@ export async function loadCompilerDiagnosticsSnapshot({
 } = {}) {
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
     const canonicalAdoptionEvidence = await collectCanonicalAdoptionEvidence(projectPath);
-    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
+    const dbSurfaces = getCompilerDiagnosticsDatabaseSurfaces(db);
+
+    if (dbSurfaces.phase2PendingFiles === 0) {
+        await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
+    }
 
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
-    const fileImportEvidenceCoverage = db ? getFileImportEvidenceCoverage(db) : null;
-    const systemMapPersistenceCoverage = db ? getSystemMapPersistenceCoverage(db) : null;
-    const metadataSurfaceParity = db ? getMetadataSurfaceParity(db) : null;
-    const metadataExtractionCoverage = db ? getMetadataExtractionCoverage(db) : null;
-    const semanticSurfaceGranularity = db ? getSemanticSurfaceGranularity(db) : null;
-    const semanticCanonicality = summarizeSemanticCanonicality(semanticSurfaceGranularity);
-    const contractTaxonomy = db ? summarizeContractTaxonomy(db) : null;
-    const databaseHealth = db ? getDatabaseHealthSummary(db) : null;
-    const fileUniverseGranularity = getFileUniverseGranularity({
-        scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
-        manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
-        liveFileCount: db ? getLiveFileTotal(db) : (persistedFileCoverage?.liveIndexedFiles || 0)
-    });
-    const analysisGeneration = buildAnalysisGenerationSnapshot({
+    const contracts = buildCompilerDiagnosticsSnapshotContracts({
         projectPath,
-        source: 'compiler-diagnostics-snapshot',
-        phase: 'status',
-        totalFiles: persistedFileCoverage?.scannedFileTotal || 0,
-        atomCount: databaseHealth?.metrics?.activeAtoms || 0,
-        relationCount: databaseHealth?.metrics?.activeCallRelations || 0,
-        semanticConnectionCount: databaseHealth?.metrics?.activeSemanticConnections || 0
-    });
-    const dataGatewayContract = buildDataGatewayContract({
-        analysisGeneration,
         persistedFileCoverage,
-        fileImportEvidenceCoverage,
-        systemMapPersistenceCoverage,
-        metadataSurfaceParity,
-        metadataExtractionCoverage,
-        semanticSurfaceGranularity,
-        fileUniverseGranularity,
-        databaseHealth
-    });
-    const resolvedCanonicalAdoptions = {
-        // Prefer measured compiler/runtime consumer evidence over optimistic defaults.
-        centralityCoverage: canonicalAdoptionEvidence.centralityCoverage.adopted,
-        sharedStateContention: canonicalAdoptionEvidence.sharedStateContention.adopted,
-        scannedFileManifest:
-            canonicalAdoptionEvidence.scannedFileManifest.adopted &&
-            persistedFileCoverage?.synchronized === true,
-        ...(canonicalAdoptions || {})
-    };
-
-    const standardizationReport = buildCompilerStandardizationReport({
+        canonicalAdoptionEvidence,
+        dbSurfaces,
+        db,
         policySummary,
         watcherAlerts,
         sharedState,
         compilerRemediation,
-        persistedFileCoverage,
-        fileImportEvidenceCoverage,
-        systemMapPersistenceCoverage,
-        metadataSurfaceParity,
-        metadataExtractionCoverage,
-        semanticSurfaceGranularity,
-        semanticCanonicality,
-        contractTaxonomy,
-        fileUniverseGranularity,
-        dataGatewayContract,
-        canonicalAdoptions: resolvedCanonicalAdoptions
-    });
-
-    const compilerContractLayer = buildCompilerContractLayer({
-        persistedFileCoverage,
-        fileUniverseGranularity,
-        metadataSurfaceParity,
-        metadataExtractionCoverage,
-        semanticSurfaceGranularity,
-        semanticCanonicality,
-        contractTaxonomy,
-        systemMapPersistenceCoverage,
-        dataGatewayContract,
-        standardization: standardizationReport,
-        policySummary,
+        canonicalAdoptions,
         tableCounts
-    });
-    const surfaceAudit = buildSurfaceAudit({
-        analysisGeneration,
-        dataGatewayContract,
-        databaseHealth,
-        fileImportEvidenceCoverage,
-        systemMapPersistenceCoverage,
-        metadataSurfaceParity,
-        metadataExtractionCoverage,
-        semanticSurfaceGranularity,
-        fileUniverseGranularity
     });
 
     return {
-        persistedFileCoverage,
-        fileImportEvidenceCoverage,
-        systemMapPersistenceCoverage,
-        metadataSurfaceParity,
-        semanticSurfaceGranularity,
-        semanticCanonicality,
-        contractTaxonomy,
-        fileUniverseGranularity,
-        analysisGeneration,
-        dataGatewayContract,
+        ...dbSurfaces,
+        ...contracts,
         canonicalAdoptionEvidence,
-        canonicalAdoptions: resolvedCanonicalAdoptions,
-        standardizationReport,
-        compilerContractLayer,
-        databaseHealth,
-        metadataExtractionCoverage,
-        surfaceAudit
+        canonicalAdoptions: contracts.resolvedCanonicalAdoptions
     };
+}
+
+export async function loadCompilerDiagnosticsSnapshot(options = {}) {
+    return buildCompilerDiagnosticsSnapshotPayload(options);
 }

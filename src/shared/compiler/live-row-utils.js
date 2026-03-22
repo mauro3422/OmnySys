@@ -46,7 +46,7 @@ export function getLiveFileTotal(db) {
       FROM compiler_scanned_files
       WHERE path IS NOT NULL
         AND path != ''
-    `).get()
+    `).get()?.total
     );
 }
 
@@ -57,7 +57,7 @@ export function getStaleTableRowCount(db, tableName, fileColumn = 'file_path') {
       FROM ${tableName}
       WHERE (is_removed IS NULL OR is_removed = 0)
         AND ${fileColumn} NOT IN (${getLiveFileSetSql()})
-    `).get()
+    `).get()?.total
     );
 }
 
@@ -69,7 +69,7 @@ export function getStaleAtomRowCount(db) {
       LEFT JOIN files f ON a.file_path = f.path
       WHERE (a.is_removed IS NULL OR a.is_removed = 0)
         AND (f.path IS NULL OR f.is_removed = 1)
-    `).get()
+    `).get()?.total
     );
 }
 
@@ -90,7 +90,7 @@ export function getLiveRowDriftSummary(db) {
           src.id IS NULL OR src.is_removed = 1 OR
           tgt.id IS NULL OR tgt.is_removed = 1
         )
-    `).get()
+    `).get()?.total
     );
     const staleConnectionRows = toCount(
         db.prepare(`
@@ -103,7 +103,7 @@ export function getLiveRowDriftSummary(db) {
           src.path IS NULL OR src.is_removed = 1 OR
           tgt.path IS NULL OR tgt.is_removed = 1
         )
-    `).get()
+    `).get()?.total
     );
 
     return {

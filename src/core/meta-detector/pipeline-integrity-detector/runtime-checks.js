@@ -16,6 +16,13 @@ export function reconcileLiveRows(detector) {
         const cleanup = executeLiveRowCleanup(detector.repo.db, { dryRun: false });
         detector.lastCleanupResult = cleanup;
 
+        if (cleanup?.skipped) {
+            logger.info(
+                `Pipeline integrity live-row reconciliation deferred (${cleanup.skippedReason || 'phase2_settling'})`
+            );
+            return;
+        }
+
         const totalDeleted = (cleanup?.deleted?.atoms || 0)
             + (cleanup?.deleted?.files || 0)
             + (cleanup?.deleted?.riskAssessments || 0)

@@ -36,9 +36,23 @@ function createFileHashBatchWriter(repo) {
     });
 }
 
-function getWorkerCount(totalFiles) {
+function getWorkerCount(totalFiles, existingHashCount = 0, extractionDepth = 'structural') {
     const numCPUs = os.cpus().length;
     const optimalWorkers = Math.max(1, numCPUs - 2);
+
+    // Cold start means no persisted hash baseline yet, so concurrent writers
+    // would contend for the same SQLite file. Keep the first full reindex
+    // serial until the baseline exists.
+    if (existingHashCount === 0) {
+        return 1;
+    }
+
+    // Deep scans are the most write-heavy path (Phase 2 / semantic enrichment),
+    // so keep them serial to avoid SQLite writer contention across worker threads.
+    if (extractionDepth === 'deep') {
+        return 1;
+    }
+
     return totalFiles < 50 ? Math.min(2, optimalWorkers) : optimalWorkers;
 }
 
@@ -151,15 +165,23 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
 
     const gitStats = await getGitStats(absoluteRootPath);
     const repo = getRepository(absoluteRootPath);
+    const existingHashCount = typeof repo.getAllFileHashes === 'function'
+        ? (repo.getAllFileHashes()?.size || 0)
+        : 0;
     const totalsRef = { totalAtomsExtracted: 0 };
     const filesSkippedRef = { count: 0 };
     const totalFiles = files.length;
     const batchTimer = new BatchTimer(logPrefix, totalFiles, verbose);
     const parsedFiles = {};
     const writeFileHashesBatch = createFileHashBatchWriter(repo);
-    const workerCount = getWorkerCount(totalFiles);
+    const workerCount = getWorkerCount(totalFiles, existingHashCount, extractionDepth);
 
     if (verbose) {
+        if (existingHashCount === 0) {
+            logger.info('  Cold-start detected: serializing writer threads until the file-hash baseline exists.');
+        } else if (extractionDepth === 'deep' && workerCount === 1) {
+            logger.info('  Deep scan detected: serializing writer threads to avoid SQLite lock contention.');
+        }
         logger.info(`  Booting ${workerCount} Worker Threads (Optimal Pool) for Parallel Analysis...`);
     }
 

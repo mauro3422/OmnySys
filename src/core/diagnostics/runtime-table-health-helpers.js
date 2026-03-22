@@ -73,6 +73,14 @@ function buildKnownIssueTypes() {
   ];
 }
 
+function getPhase2PendingFiles(db) {
+  try {
+    return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
+  } catch {
+    return 0;
+  }
+}
+
 function loadTableCount(db, table) {
   const columns = db.prepare(`PRAGMA table_info("${table}")`).all();
   const hasSoftDelete = Array.isArray(columns) && columns.some((column) => column?.name === 'is_removed');
@@ -84,6 +92,7 @@ function loadTableCount(db, table) {
 export function buildRuntimeHealthIssues(db) {
   const tableCounts = {};
   const issues = [];
+  const phase2PendingFiles = getPhase2PendingFiles(db);
 
   for (const check of TABLE_HEALTH_CHECKS) {
     const total = loadTableCount(db, check.table);
@@ -105,7 +114,7 @@ export function buildRuntimeHealthIssues(db) {
   }
 
   let semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
-  if (semanticSurfaceGranularity.materiallyDrifting === true) {
+  if (semanticSurfaceGranularity.materiallyDrifting === true && phase2PendingFiles === 0) {
     const repairResult = repairSystemMapPersistenceCoverage(db);
     if (repairResult?.repaired === true) {
       semanticSurfaceGranularity = getSemanticSurfaceGranularity(db);
@@ -160,6 +169,7 @@ export function buildRuntimeHealthIssues(db) {
 
 export async function buildDeepRuntimeHealthIssues(projectPath, db) {
   const issues = [];
+  const phase2PendingFiles = getPhase2PendingFiles(db);
 
   const metadataSurfaceParity = getMetadataSurfaceParity(db);
   if (metadataSurfaceParity.healthy === false) {
@@ -177,7 +187,7 @@ export async function buildDeepRuntimeHealthIssues(projectPath, db) {
 
   const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
   let effectiveSystemMapPersistenceCoverage = systemMapPersistenceCoverage;
-  if (systemMapPersistenceCoverage.healthy === false) {
+  if (systemMapPersistenceCoverage.healthy === false && phase2PendingFiles === 0) {
     const repairResult = repairSystemMapPersistenceCoverage(db);
     if (repairResult.repaired === true) {
       effectiveSystemMapPersistenceCoverage = getSystemMapPersistenceCoverage(db);
@@ -199,7 +209,9 @@ export async function buildDeepRuntimeHealthIssues(projectPath, db) {
 
   if (projectPath) {
     const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
-    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
+    if (phase2PendingFiles === 0) {
+      await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
+    }
     const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
     const liveFileCount = getLiveFileTotal(db);
     const fileUniverseGranularity = getFileUniverseGranularity({

@@ -17,6 +17,14 @@ import { repairRiskAssessmentsIfEmpty } from './risk-assessment-repair.js';
 const logger = createLogger('OmnySys:runtime:table-health');
 const PROJECT_WIDE_FILE = 'project-wide';
 
+function getPhase2PendingFiles(db) {
+    try {
+        return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
+    } catch {
+        return 0;
+    }
+}
+
 export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
   try {
     const db = options.db || await getWatcherIssueDb(projectPath);
@@ -31,7 +39,10 @@ export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
       };
     }
 
-    repairRiskAssessmentsIfEmpty(db, logger);
+    const phase2PendingFiles = getPhase2PendingFiles(db);
+    if (phase2PendingFiles === 0) {
+      repairRiskAssessmentsIfEmpty(db, logger);
+    }
 
     const runtimeHealth = buildRuntimeHealthIssues(db);
     if (options.deep === true) {

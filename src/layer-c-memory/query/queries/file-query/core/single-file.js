@@ -45,17 +45,37 @@ function parseJsonArray(value, fallback = []) {
   return Array.isArray(value) ? value : fallback;
 }
 
+function getAtomType(atom) {
+  return atom.atom_type || atom.type || 'unknown';
+}
+
+function getAtomName(atom) {
+  return atom.name || 'unknown';
+}
+
+function getAtomCalls(atom) {
+  return Array.isArray(atom.calls) ? atom.calls : parseJsonArray(atom.calls_json, []);
+}
+
+function getAtomCalledBy(atom) {
+  return Array.isArray(atom.calledBy) ? atom.calledBy : parseJsonArray(atom.called_by_json, []);
+}
+
+function registerAtomExport(atom, atomExports, atomName, atomType) {
+  if (atom.isExported) {
+    atomExports.push({ name: atomName, kind: atomType });
+  }
+}
+
 function mapAtom(atom, atomExports) {
   if (!atom) {
     return null;
   }
 
-  const atomType = atom.atom_type || atom.type || 'unknown';
-  const atomName = atom.name || 'unknown';
+  const atomType = getAtomType(atom);
+  const atomName = getAtomName(atom);
 
-  if (atom.isExported) {
-    atomExports.push({ name: atomName, kind: atomType });
-  }
+  registerAtomExport(atom, atomExports, atomName, atomType);
 
   return {
     id: atom.id,
@@ -67,8 +87,8 @@ function mapAtom(atom, atomExports) {
     complexity: atom.complexity || 0,
     isExported: !!atom.isExported,
     isAsync: !!atom.isAsync,
-    calls: Array.isArray(atom.calls) ? atom.calls : parseJsonArray(atom.calls_json, []),
-    calledBy: Array.isArray(atom.calledBy) ? atom.calledBy : parseJsonArray(atom.called_by_json, []),
+    calls: getAtomCalls(atom),
+    calledBy: getAtomCalledBy(atom),
     archetype: atom.archetype_type || atom.archetype || 'unknown',
     purpose: atom.purpose_type || atom.purpose || 'unknown',
     compilerEvaluation: evaluateAtomRefactoringSignals(atom)

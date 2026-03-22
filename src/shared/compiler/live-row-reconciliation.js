@@ -14,6 +14,18 @@ import {
   loadStaleTableRows
 } from './live-row-utils.js';
 
+function getPhase2PendingFiles(db) {
+    try {
+        return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
+    } catch {
+        return 0;
+    }
+}
+
+function buildZeroCleanupResult() {
+    return { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 };
+}
+
 function buildDeleteStatement(tableName, fileColumn) {
     return `UPDATE ${tableName} SET is_removed = 1, updated_at = datetime('now') WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`;
 }
@@ -79,11 +91,23 @@ export function buildLiveRowCleanupPlan(db, options = {}) {
 export function executeLiveRowCleanup(db, options = {}) {
     const { dryRun = true } = options;
     const plan = buildLiveRowCleanupPlan(db, options);
+    const phase2PendingFiles = getPhase2PendingFiles(db);
+
+    if (phase2PendingFiles > 0 && options.allowDuringPhase2 !== true) {
+        return {
+            ...plan,
+            dryRun: true,
+            skipped: true,
+            skippedReason: 'phase2_settling',
+            phase2PendingFiles,
+            deleted: buildZeroCleanupResult()
+        };
+    }
 
     if (dryRun) {
         return {
             ...plan,
-            deleted: { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 }
+            deleted: buildZeroCleanupResult()
         };
     }
 
@@ -144,16 +168,21 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
 
 export function ensureLiveRowSync(db, options = {}) {
     const { autoSync = true, sampleLimit = 5 } = options;
+    const phase2PendingFiles = getPhase2PendingFiles(db);
     const before = buildLiveRowReconciliationPlan(db, { sampleLimit });
     const cleanupOutcome = runLiveRowCleanup(db, before, { autoSync, sampleLimit }, executeLiveRowCleanup);
     const after = buildLiveRowReconciliationPlan(db, { sampleLimit });
 
     return {
         autoSync,
+        phase2PendingFiles,
         hadDrift: hasLiveRowDrift(before?.summary),
+        deferred: Boolean(cleanupOutcome.cleanup?.skipped),
+        skipped: Boolean(cleanupOutcome.cleanup?.skipped),
+        skippedReason: cleanupOutcome.cleanup?.skippedReason || null,
         synchronized: countLiveRowDeletes(cleanupOutcome.cleanup?.deleted) > 0 && !cleanupOutcome.cleanupError,
         cleanupError: cleanupOutcome.cleanupError,
-        deleted: cleanupOutcome.cleanup?.deleted || { atoms: 0, files: 0, riskAssessments: 0, relations: 0, connections: 0 },
+        deleted: cleanupOutcome.cleanup?.deleted || buildZeroCleanupResult(),
         before,
         after,
         summary: after.summary

@@ -15,6 +15,14 @@ import { loadDatabaseHealthCounts } from './database-health-counts.js';
 import { resolveDatabaseHealthLiveRowSync } from './database-health-live-row-sync.js';
 import { buildDatabaseHealthReport } from './database-health-report.js';
 
+function getPhase2PendingFiles(db) {
+  try {
+    return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function getDatabaseHealthSummary(db, options = {}) {
   if (!db) {
     return {
@@ -35,8 +43,10 @@ export function getDatabaseHealthSummary(db, options = {}) {
   }
 
   const liveRowSync = resolveDatabaseHealthLiveRowSync(db, options);
+  const phase2PendingFiles = getPhase2PendingFiles(db);
   let systemMapCoverage = getSystemMapPersistenceCoverage(db);
-  if (systemMapCoverage.healthy === false) {
+  const canAutoRepairSystemMap = phase2PendingFiles === 0;
+  if (systemMapCoverage.healthy === false && canAutoRepairSystemMap) {
     const repairResult = repairSystemMapPersistenceCoverage(db);
     if (repairResult?.repaired === true) {
       systemMapCoverage = getSystemMapPersistenceCoverage(db);
