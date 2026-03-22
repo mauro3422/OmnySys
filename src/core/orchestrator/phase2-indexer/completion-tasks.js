@@ -1,8 +1,4 @@
 import { getPhase2FileCounts } from '#shared/compiler/index.js';
-import {
-    buildTechnicalDebtPayload,
-    calculateTechnicalDebtSeverity
-} from './completion-tasks-helpers.js';
 
 export async function runPhase2CompletionTasks(projectPath, logger) {
     try {
@@ -67,22 +63,43 @@ async function persistTechnicalDebtSummary(projectPath) {
         return;
     }
 
-    const severity = calculateTechnicalDebtSeverity(totalDebtItems);
+    const severity = totalDebtItems > 10 ? 'high' : totalDebtItems > 5 ? 'medium' : 'low';
     await persistWatcherIssue(
         projectPath,
         'project-wide',
         createIssueType('arch', 'technical_debt', severity),
         severity,
         `${totalDebtItems} technical debt items detected post-Phase 2`,
-        buildTechnicalDebtPayload({
-            structuralDuplicates,
-            duplicateStats,
-            structuralRemediation,
-            conceptualSummary,
-            conceptualGroups,
-            orphanSummary,
-            phase2Counts
-        })
+        {
+            source: 'phase2_post_completion',
+            timestamp: new Date().toISOString(),
+            structural: {
+                groups: structuralDuplicates.length,
+                instances: duplicateStats.total_instances,
+                topIssues: structuralRemediation?.items?.slice(0, 5) || []
+            },
+            conceptual: {
+                groups: conceptualSummary?.actionable?.groupCount || conceptualGroups.length,
+                rawGroups: conceptualSummary?.raw?.groupCount || conceptualGroups.length,
+                noiseByClass: conceptualSummary?.noiseByClass || {},
+                topIssues: conceptualGroups.slice(0, 5).map((group) => ({
+                    fingerprint: group.semanticFingerprint,
+                    implementationCount: group.implementationCount
+                }))
+            },
+            pipelineOrphans: {
+                total: orphanSummary?.total || 0,
+                items: orphanSummary?.items?.slice(0, 5) || []
+            },
+            phase2: {
+                pendingFiles: phase2Counts.pendingFiles,
+                completedFiles: phase2Counts.completedFiles,
+                liveFileCount: phase2Counts.liveFileCount
+            },
+            remediation: {
+                nextAction: structuralRemediation?.recommendation || orphanSummary?.recommendation || 'No immediate action required'
+            }
+        }
     );
 }
 
