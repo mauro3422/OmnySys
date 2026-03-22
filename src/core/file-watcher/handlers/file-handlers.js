@@ -1,4 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
+import { analyzeAndIndex } from '../analyze.js';
 import { detectCircularDependencies } from '../guards/circular-guard.js';
 import { getRecentCommits } from './recent-commits.js';
 import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
