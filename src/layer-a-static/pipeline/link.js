@@ -10,16 +10,9 @@ import { linkVariableCalledBy } from './phases/calledby/variable-linker.js';
 import { linkMixinNamespaceCalledBy } from './phases/calledby/mixin-namespace-linker.js';
 import { linkExportObjectReferences } from './phases/calledby/export-object-references.js';
 import { createLogger } from '../../utils/logger.js';
+import { chunkArray } from '../../../shared/utils/array-utils.js';
 
 const logger = createLogger('OmnySys:link');
-
-function chunkArray(values, size = 500) {
-    const chunks = [];
-    for (let index = 0; index < values.length; index += size) {
-        chunks.push(values.slice(index, index + size));
-    }
-    return chunks;
-}
 
 function readStoredCallsHash(row) {
     if (!row?.field_hashes_json) {

@@ -1,3 +1,5 @@
+import { escapeRegExp } from '../../../../../shared/utils/regex-utils.js';
+
 const REGEX_FALLBACK_PATTERNS = [
     /if\s*\(\s*!\w+\s*\)\s*\{[^}]*=\s*(await\s+)?[^}]+\}/,
     /if\s*\(\s*\w+\s*===?\s*null\s*\)\s*\{/,
@@ -104,8 +106,4 @@ function extractSingletonVariable(code) {
     }
 
     return null;
-}
-
-function escapeRegExp(value) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

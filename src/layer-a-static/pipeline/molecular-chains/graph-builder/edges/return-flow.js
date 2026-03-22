@@ -3,6 +3,8 @@
  * @module graph-builder/edges/return-flow
  */
 
+import { escapeRegExp } from '../../../../../../shared/utils/regex-utils.js';
+
 /**
  * Construye aristas para flujo de returns
  * @param {Array} atoms - Lista de átomos
@@ -92,8 +94,4 @@ function getReturnOutput(atom) {
   }
 
   return null;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
