@@ -38,6 +38,7 @@ export async function initialize() {
   logger.info(`📁 Project: ${this.projectPath}\n`);
 
   try {
+    cleanupInitializationListeners(this);
     // Step 1: Initialize Cache
     const { cache } = await cacheManager.initializeCache(this.projectPath);
     this.cache = cache;
@@ -161,3 +162,12 @@ export {
   websocketInit,
   orchestratorInit
 };
+
+function cleanupInitializationListeners(server) {
+  server.fileWatcher?.removeAllListeners?.('file:created');
+  server.fileWatcher?.removeAllListeners?.('file:modified');
+  server.fileWatcher?.removeAllListeners?.('file:deleted');
+  server.wsManager?.removeAllListeners?.('message');
+  server.wsManager?.removeAllListeners?.('close');
+  server.wsManager?.removeAllListeners?.('error');
+}
