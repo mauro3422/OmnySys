@@ -9,89 +9,22 @@ import { builtinModules } from 'node:module';
 import path from 'node:path';
 import { getFileAnalysis, getFileExports as getCanonicalFileExports } from '#layer-c/query/apis/file-api.js';
 import { createLogger } from '#utils/logger.js';
+import {
+  buildMissingDatabaseResult,
+  buildSkippedImportResult,
+  buildSkippedTestFactoryResult,
+  isBuiltinModuleSpecifier,
+  isExternalNonCanonicalModule,
+  isTestFactorySurface,
+  normalizeCompilerPath
+} from './validate-exports-chain-helpers.js';
 
 const logger = createLogger('OmnySys:ValidateExportsChain');
-
-function normalizeCompilerPath(filePath) {
-  return String(filePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-}
-
-function isTestFactorySurface(filePath = '') {
-  const normalized = normalizeCompilerPath(filePath);
-  return normalized.startsWith('tests/factories/');
-}
-
-function isBuiltinModuleSpecifier(modulePath = '') {
-  const normalized = String(modulePath || '').replace(/^node:/, '');
-  return builtinModules.includes(normalized);
-}
-
-function isExternalNonCanonicalModule(modulePath = '') {
-  const normalized = String(modulePath || '');
-  return !normalized.startsWith('.') &&
-    !normalized.startsWith('#') &&
-    !isBuiltinModuleSpecifier(normalized);
-}
 
 function getSpecifierNames(specifier = {}) {
   const remoteName = String(specifier?.imported || specifier?.name || specifier?.local || '').trim();
   const localName = String(specifier?.local || specifier?.name || remoteName || '').trim();
   return { remoteName, localName };
-}
-
-function buildMissingDatabaseResult(filePath) {
-  return {
-    valid: false,
-    totalImports: 0,
-    invalidCount: 1,
-    invalid: [{
-      importName: '*',
-      fromModule: filePath,
-      line: 0,
-      valid: false,
-      error: 'DB_MISSING: file is not indexed in the canonical compiler DB',
-      chain: []
-    }],
-    results: [],
-    validationMode: 'database_only',
-    compilerIndexed: false
-  };
-}
-
-function buildSkippedTestFactoryResult(filePath) {
-  return {
-    valid: true,
-    totalImports: 0,
-    invalidCount: 0,
-    invalid: [],
-    results: [],
-    validationMode: 'database_only',
-    compilerIndexed: false,
-    skipped: true,
-    reason: 'test_factory_surface',
-    filePath
-  };
-}
-
-function buildSkippedImportResult(imp, fromModule) {
-  if (!fromModule) return null;
-
-  if (!isBuiltinModuleSpecifier(fromModule) && !isExternalNonCanonicalModule(fromModule)) {
-    return null;
-  }
-
-  const builtin = isBuiltinModuleSpecifier(fromModule);
-
-  return {
-    importName: fromModule,
-    exportName: fromModule,
-    fromModule,
-    line: imp.line || imp.loc?.start?.line || 0,
-    valid: true,
-    skipped: true,
-    reason: builtin ? 'builtin_module' : 'external_module',
-    chain: []
-  };
 }
 
 function getImportTargets(imp = {}) {
