@@ -2,6 +2,8 @@
  * @fileoverview Module System Test Factory - Helpers
  */
 
+import { ModuleBuilder } from './builders/index.js';
+
 export function createMockModules(count = 3) {
   return Array.from({ length: count }, (_, i) => 
     ModuleBuilder.create(`module-${i + 1}`)
@@ -65,4 +67,3 @@ export function createMockEntryPoint(type, overrides = {}) {
 
   return { ...base, ...overrides };
 }
-

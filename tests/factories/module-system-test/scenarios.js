@@ -2,7 +2,7 @@
  * @fileoverview Module System Test Factory - Scenarios
  */
 
-import { DependencyBuilder, EntryPointBuilder, ModuleBuilder, ProjectBuilder } from './builders/index.js';
+import { AtomBuilder, DependencyBuilder, EntryPointBuilder, ModuleBuilder, ProjectBuilder } from './builders/index.js';
 
 export const TestScenarios = {
   empty() {
@@ -68,5 +68,4 @@ export const TestScenarios = {
 // ============================================================================
 // MOCK HELPERS
 // ============================================================================
-
 

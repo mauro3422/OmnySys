@@ -2,6 +2,8 @@
  * @fileoverview Pipeline Test Factory - Helpers
  */
 
+import { vi } from 'vitest';
+
 export function createMockFileSystem(files = {}) {
   const fileMap = new Map(Object.entries(files));
   
@@ -106,5 +108,4 @@ export function createValidConnection(overrides = {}) {
     ...overrides
   };
 }
-
 

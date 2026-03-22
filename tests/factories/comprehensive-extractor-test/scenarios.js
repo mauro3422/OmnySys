@@ -13,7 +13,7 @@ export class ExtractionScenarioFactory {
   static simpleModule() {
     return {
       code: `
-import { helper } from './helper';
+import { helper } from './helper.js';
 
 export function greet(name) {
   return helper(name);
@@ -29,10 +29,10 @@ export default greet;
     return {
       code: `
 import React, { useState, useEffect } from 'react';
-import * as utils from './utils';
+import * as utils from './utils.js';
 import './styles.css';
 
-const { helper } = require('./common');
+const { helper } = require('./common.js');
 
 export class Component extends React.Component {
   constructor(props) {
@@ -61,8 +61,8 @@ export function* generator() {
   yield 3;
 }
 
-export { helper } from './common';
-export * from './types';
+export { helper } from './common.js';
+export * from './types.js';
 
 export default Component;
       `.trim(),
@@ -74,7 +74,7 @@ export default Component;
     return {
       code: `
 import { describe, it, expect } from 'vitest';
-import { myFunction } from './module';
+import { myFunction } from './module.js';
 
 describe('myFunction', () => {
   it('should work', () => {
@@ -101,9 +101,9 @@ export default {
   static barrelFile() {
     return {
       code: `
-export * from './components';
-export * from './utils';
-export * from './hooks';
+export * from './components.js';
+export * from './utils.js';
+export * from './hooks.js';
       `.trim(),
       filePath: 'test/index.js'
     };
