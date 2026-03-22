@@ -95,48 +95,55 @@ function buildUnusedInputsViolation(atom, analysis, inputNames) {
     };
 }
 
-function analyzeAtomDataFlow(atom) {
-    if (isLikelyToolWrapperAtom(atom)) {
-        return [];
+function getAtomDataFlowContext(atom) {
+    if (isLikelyToolWrapperAtom(atom) || !atom.dataFlow) {
+        return null;
     }
 
-    if (!atom.dataFlow) {
-        return [];
-    }
-
+    const filePath = atom.file_path || atom.filePath || '';
     const analyzer = new DataFlowAnalyzer(
         atom.dataFlow.inputs || [],
         atom.dataFlow.transformations || [],
         atom.dataFlow.outputs || []
     );
-    const analysis = analyzer.analyze();
-    const violations = [];
-    const filePath = atom.file_path || atom.filePath || '';
-    const role = classifyAtomOperationalRole(atom, { filePath });
-    const fileRole = classifyFileOperationalRole(filePath);
-    const resolvedRole = role.role === 'standard' ? fileRole : role;
-    const inputsCount = analysis.inputs?.length || 0;
-    const outputsCount = analysis.outputs?.length || 0;
-    const transformationCount = analysis.transformations?.length || 0;
 
-    const skipLowCoherenceViolation = isLikelyBoundaryContainerAtom(atom) &&
-        inputsCount === 0 &&
-        outputsCount === 0 &&
-        transformationCount === 0;
+    return {
+        analysis: analyzer.analyze(),
+        filePath,
+        role: classifyAtomOperationalRole(atom, { filePath }),
+        fileRole: classifyFileOperationalRole(filePath)
+    };
+}
 
-    const skipCoordinatorBiasViolation = (
+function shouldSkipDataFlowViolation(atom, resolvedRole, inputsCount, outputsCount, transformationCount) {
+    const isEmptyFlow = inputsCount === 0 && outputsCount === 0 && transformationCount === 0;
+    const isCoordinatorLike = (
         resolvedRole.role === 'orchestrator' ||
         resolvedRole.role === 'resolver' ||
         resolvedRole.role === 'builder' ||
         resolvedRole.role === 'analyzer' ||
         resolvedRole.role === 'bridge' ||
         resolvedRole.role === 'policy'
-    ) &&
-        inputsCount === 0 &&
-        outputsCount === 0 &&
-        transformationCount === 0;
+    );
 
-    if (!skipLowCoherenceViolation && !skipCoordinatorBiasViolation && analysis.coherence < StandardThresholds.COHERENCE_MIN) {
+    return (isLikelyBoundaryContainerAtom(atom) && isEmptyFlow) || (isCoordinatorLike && isEmptyFlow);
+}
+
+function analyzeAtomDataFlow(atom) {
+    const flowContext = getAtomDataFlowContext(atom);
+    if (!flowContext) {
+        return [];
+    }
+
+    const { analysis, filePath, role, fileRole } = flowContext;
+    const violations = [];
+    const resolvedRole = role.role === 'standard' ? fileRole : role;
+    const inputsCount = analysis.inputs?.length || 0;
+    const outputsCount = analysis.outputs?.length || 0;
+    const transformationCount = analysis.transformations?.length || 0;
+
+    if (!shouldSkipDataFlowViolation(atom, resolvedRole, inputsCount, outputsCount, transformationCount) &&
+        analysis.coherence < StandardThresholds.COHERENCE_MIN) {
         violations.push(buildLowCoherenceViolation(atom, analysis));
     }
 
