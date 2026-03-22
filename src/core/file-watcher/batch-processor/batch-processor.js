@@ -39,13 +39,49 @@ function updateBatchMode(processor) {
   }
 }
 
+function getCurrentWindow(processor) {
+  return calculateAdaptiveWindow(
+    processor.changeBuffer.size,
+    processor.options.debounceMs,
+    BATCH_CONFIG.MAX_WINDOW_MS
+  );
+}
+
+function getReadyChangesForProcessor(processor) {
+  return getReadyChanges(processor.changeBuffer, getCurrentWindow(processor));
+}
+
+function completeSuccessfulBatch(processor, readyChanges, isMassBatch) {
+  for (const change of readyChanges) {
+    processor.changeBuffer.delete(change.filePath);
+  }
+
+  processor.stats.update(readyChanges.length, isMassBatch);
+
+  if (isMassBatch) {
+    processor._setState(BatchState.COOLDOWN);
+    setTimeout(() => {
+      processor._setState(BatchState.IDLE);
+    }, BATCH_CONFIG.BATCH_COOLDOWN_MS);
+    return;
+  }
+
+  processor._setState(BatchState.IDLE);
+}
+
+function handleBatchError(processor, error) {
+  logger.error('❌ Error processing batch:', error);
+  processor._setState(BatchState.IDLE);
+  throw error;
+}
+
 async function processBatchWindow(processor, processFn) {
   if (processor.state === BatchState.PROCESSING) {
     logger.debug('⚠️ BatchProcessor is already processing');
     return { processed: 0, skipped: 0 };
   }
 
-  const readyChanges = processor.getReadyChanges();
+  const readyChanges = getReadyChangesForProcessor(processor);
 
   if (readyChanges.length === 0) {
     return { processed: 0, skipped: 0 };
@@ -69,32 +105,17 @@ async function processBatchWindow(processor, processFn) {
       processor.options.maxConcurrent
     );
 
-    for (const change of readyChanges) {
-      processor.changeBuffer.delete(change.filePath);
-    }
-
-    processor.stats.update(readyChanges.length, isMassBatch);
-
     const duration = Date.now() - startTime;
 
     if (processor.options.verbose || isMassBatch) {
       logger.info(`✅ Batch completed: ${results.processed} processed in ${duration}ms`);
     }
 
-    if (isMassBatch) {
-      processor._setState(BatchState.COOLDOWN);
-      setTimeout(() => {
-        processor._setState(BatchState.IDLE);
-      }, BATCH_CONFIG.BATCH_COOLDOWN_MS);
-    } else {
-      processor._setState(BatchState.IDLE);
-    }
+    completeSuccessfulBatch(processor, readyChanges, isMassBatch);
 
     return results;
   } catch (error) {
-    logger.error('❌ Error processing batch:', error);
-    processor._setState(BatchState.IDLE);
-    throw error;
+    handleBatchError(processor, error);
   }
 }
 
@@ -142,21 +163,6 @@ export class SmartBatchProcessor {
   /**
    * Gets the current time window (adaptive)
    */
-  getCurrentWindow() {
-    return calculateAdaptiveWindow(
-      this.changeBuffer.size,
-      this.options.debounceMs,
-      BATCH_CONFIG.MAX_WINDOW_MS
-    );
-  }
-
-  /**
-   * Gets changes ready for processing
-   */
-  getReadyChanges() {
-    return getReadyChanges(this.changeBuffer, this.getCurrentWindow());
-  }
-
   /**
    * Processes the current batch
    */
@@ -182,7 +188,7 @@ export class SmartBatchProcessor {
 
   // Public API methods
   getBufferedCount() { return this.changeBuffer.size; }
-  hasReadyChanges() { return this.getReadyChanges().length > 0; }
+  hasReadyChanges() { return getReadyChangesForProcessor(this).length > 0; }
 
   resetBuffer() {
     const count = this.changeBuffer.size;
