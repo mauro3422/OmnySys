@@ -4,7 +4,7 @@ import {
   loadPersistedScannedFilePaths
 } from '../../../shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
-import { SmartBatchProcessor } from '../batch-processor/index.js';
+import { createSmartBatchProcessor } from '../batch-processor/index.js';
 
 const logger = createLogger('file-watcher');
 
@@ -17,7 +17,7 @@ export async function initialize() {
   }
 
   if (this.options.useSmartBatch && !this.batchProcessor) {
-    this.batchProcessor = new SmartBatchProcessor({
+    this.batchProcessor = createSmartBatchProcessor({
       debounceMs: this.options.debounceMs,
       maxConcurrent: this.options.maxConcurrent,
       verbose: this.options.verbose

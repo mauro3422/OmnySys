@@ -192,5 +192,9 @@ getStats() {
     return statsPool.getStats('batch-processor');
   }}
 
+export function createSmartBatchProcessor(options = {}) {
+  return new SmartBatchProcessor(options);
+}
+
 export default SmartBatchProcessor;
 

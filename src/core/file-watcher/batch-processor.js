@@ -10,6 +10,7 @@
 
 export {
   SmartBatchProcessor,
+  createSmartBatchProcessor,
   BATCH_CONFIG,
   BatchState,
   BatchStats,

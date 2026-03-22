@@ -6,7 +6,7 @@
  * @module core/file-watcher/batch-processor
  */
 
-export { SmartBatchProcessor } from './batch-processor.js';
+export { SmartBatchProcessor, createSmartBatchProcessor } from './batch-processor.js';
 export { BATCH_CONFIG, BatchState } from './config.js';
 export { BatchStats } from './stats.js';
 export { 

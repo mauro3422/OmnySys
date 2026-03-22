@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.185 - Sprint 16: Canonical Smart Batch Processor Factory](changelogs/v0.9.185.md)
 - [v0.9.184 - Sprint 16: Canonical Phase 2 Pending Count Helper](changelogs/v0.9.184.md)
 - [v0.9.183 - Sprint 16: Canonical Metadata Surface Gateway](changelogs/v0.9.183.md)
 - [v0.9.182 - Sprint 16: Tree-Sitter Freshness and DB-Only File Surfaces](changelogs/v0.9.182.md)
