@@ -34,7 +34,7 @@ export async function stop() {
       }
       
       // Limpiar batch processor
-      this.batchProcessor.clear();
+      this.batchProcessor.resetBuffer();
     }
 
     // Limpiar incremental analyzer

@@ -18,6 +18,86 @@ import { processAllGroups } from './group-processor.js';
 
 const logger = createLogger('OmnySys:file-watcher:batch');
 
+function updateBatchMode(processor) {
+  processor._recentChangeCount = (processor._recentChangeCount || 0) + 1;
+
+  if (!processor._lastResetTime || Date.now() - processor._lastResetTime > 1000) {
+    processor._lastResetTime = Date.now();
+    processor._recentChangeCount = 1;
+  }
+
+  if (processor._recentChangeCount <= BATCH_CONFIG.MASS_CHANGE_THRESHOLD) {
+    return;
+  }
+
+  if (processor.state !== BatchState.ACCUMULATING) {
+    processor._setState(BatchState.ACCUMULATING);
+
+    if (processor.options.verbose) {
+      logger.info(`🚀 Batch mode activated: >${BATCH_CONFIG.MASS_CHANGE_THRESHOLD} changes/second detected`);
+    }
+  }
+}
+
+async function processBatchWindow(processor, processFn) {
+  if (processor.state === BatchState.PROCESSING) {
+    logger.debug('⚠️ BatchProcessor is already processing');
+    return { processed: 0, skipped: 0 };
+  }
+
+  const readyChanges = processor.getReadyChanges();
+
+  if (readyChanges.length === 0) {
+    return { processed: 0, skipped: 0 };
+  }
+
+  processor._setState(BatchState.PROCESSING);
+
+  const startTime = Date.now();
+  const isMassBatch = readyChanges.length > BATCH_CONFIG.MASS_CHANGE_THRESHOLD;
+
+  if (isMassBatch && processor.options.verbose) {
+    logger.info(`📦 Processing mass batch: ${readyChanges.length} changes`);
+  }
+
+  const groups = groupChangesByType(readyChanges);
+
+  try {
+    const results = await processAllGroups(
+      groups,
+      processFn,
+      processor.options.maxConcurrent
+    );
+
+    for (const change of readyChanges) {
+      processor.changeBuffer.delete(change.filePath);
+    }
+
+    processor.stats.update(readyChanges.length, isMassBatch);
+
+    const duration = Date.now() - startTime;
+
+    if (processor.options.verbose || isMassBatch) {
+      logger.info(`✅ Batch completed: ${results.processed} processed in ${duration}ms`);
+    }
+
+    if (isMassBatch) {
+      processor._setState(BatchState.COOLDOWN);
+      setTimeout(() => {
+        processor._setState(BatchState.IDLE);
+      }, BATCH_CONFIG.BATCH_COOLDOWN_MS);
+    } else {
+      processor._setState(BatchState.IDLE);
+    }
+
+    return results;
+  } catch (error) {
+    logger.error('❌ Error processing batch:', error);
+    processor._setState(BatchState.IDLE);
+    throw error;
+  }
+}
+
 /**
  * Smart Batch Processor for file changes
  */
@@ -56,23 +136,7 @@ export class SmartBatchProcessor {
    * Evaluates if we should activate mass batch mode
    */
   _evaluateBatchMode() {
-    this._recentChangeCount = (this._recentChangeCount || 0) + 1;
-
-    // Reset counter every second
-    if (!this._lastResetTime || Date.now() - this._lastResetTime > 1000) {
-      this._lastResetTime = Date.now();
-      this._recentChangeCount = 1;
-    }
-
-    if (this._recentChangeCount > BATCH_CONFIG.MASS_CHANGE_THRESHOLD) {
-      if (this.state !== BatchState.ACCUMULATING) {
-        this._setState(BatchState.ACCUMULATING);
-
-        if (this.options.verbose) {
-          logger.info(`🚀 Batch mode activated: >${BATCH_CONFIG.MASS_CHANGE_THRESHOLD} changes/second detected`);
-        }
-      }
-    }
+    updateBatchMode(this);
   }
 
   /**
@@ -97,68 +161,7 @@ export class SmartBatchProcessor {
    * Processes the current batch
    */
   async processBatch(processFn) {
-    if (this.state === BatchState.PROCESSING) {
-      logger.debug('⚠️ BatchProcessor is already processing');
-      return { processed: 0, skipped: 0 };
-    }
-
-    const readyChanges = this.getReadyChanges();
-
-    if (readyChanges.length === 0) {
-      return { processed: 0, skipped: 0 };
-    }
-
-    this._setState(BatchState.PROCESSING);
-
-    const startTime = Date.now();
-    const isMassBatch = readyChanges.length > BATCH_CONFIG.MASS_CHANGE_THRESHOLD;
-
-    if (isMassBatch && this.options.verbose) {
-      logger.info(`📦 Processing mass batch: ${readyChanges.length} changes`);
-    }
-
-    // Group changes by type
-    const groups = groupChangesByType(readyChanges);
-
-    try {
-      // Process all groups
-      const results = await processAllGroups(
-        groups,
-        processFn,
-        this.options.maxConcurrent
-      );
-
-      // Clear processed changes from buffer
-      for (const change of readyChanges) {
-        this.changeBuffer.delete(change.filePath);
-      }
-
-      // Update statistics
-      this.stats.update(readyChanges.length, isMassBatch);
-
-      const duration = Date.now() - startTime;
-
-      if (this.options.verbose || isMassBatch) {
-        logger.info(`✅ Batch completed: ${results.processed} processed in ${duration}ms`);
-      }
-
-      // Cooldown after mass batch
-      if (isMassBatch) {
-        this._setState(BatchState.COOLDOWN);
-        setTimeout(() => {
-          this._setState(BatchState.IDLE);
-        }, BATCH_CONFIG.BATCH_COOLDOWN_MS);
-      } else {
-        this._setState(BatchState.IDLE);
-      }
-
-      return results;
-
-    } catch (error) {
-      logger.error('❌ Error processing batch:', error);
-      this._setState(BatchState.IDLE);
-      throw error;
-    }
+    return processBatchWindow(this, processFn);
   }
 
   /**
@@ -181,16 +184,17 @@ export class SmartBatchProcessor {
   getBufferedCount() { return this.changeBuffer.size; }
   hasReadyChanges() { return this.getReadyChanges().length > 0; }
 
-  clear() {
+  resetBuffer() {
     const count = this.changeBuffer.size;
     this.changeBuffer.clear();
     this._setState(BatchState.IDLE);
     return count;
   }
 
-getStats() {
+  getStats() {
     return statsPool.getStats('batch-processor');
-  }}
+  }
+}
 
 export function createSmartBatchProcessor(options = {}) {
   return new SmartBatchProcessor(options);
