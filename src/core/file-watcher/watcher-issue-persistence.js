@@ -194,13 +194,7 @@ export async function loadWatcherIssues(projectPath, options = {}) {
 
     if (issueType !== 'all') { whereClause += ' AND issue_type = ?'; params.push(issueType); }
 
-    const rows = db.prepare(`
-      SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
-      FROM semantic_issues
-      ${whereClause} AND (is_removed IS NULL OR is_removed = 0)
-      ORDER BY detected_at DESC
-    `).all(...params);
-
+    const rows = loadWatcherIssueRows(db, whereClause, params);
     const alerts = rows
       .map(mapSemanticIssueRowToWatcherAlert)
       .filter((alert) => !shouldSuppressWatcherAlert(alert))
@@ -220,34 +214,16 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     const db = existingDb || await getWatcherIssueDb(projectPath);
     if (!db) return createWatcherIssueReconciliationSummary();
 
-    const rows = db.prepare(`
-      SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
-      FROM semantic_issues
-      WHERE message LIKE ? AND (is_removed IS NULL OR is_removed = 0)
-      ORDER BY detected_at DESC
-    `).all(`${WATCHER_MESSAGE_PREFIX}%`);
-
+    const rows = loadReconciliationRows(db);
     const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
     const partitioned = partitionWatcherAlertsByLifecycle(alerts);
-    const expiredIds = partitioned.expired.map((alert) => alert.id).filter((id) => Number.isInteger(id)).slice(0, maxDelete);
-    const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
-
-    const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts, { db })).slice(0, maxDelete);
-    const orphanedIds = findOrphanedWatcherAlertIds(db, alerts).slice(0, maxDelete);
-    const lowSignalIds = alerts.filter((alert) => shouldSuppressWatcherAlert(alert)).map((alert) => alert.id).filter((id) => Number.isInteger(id)).slice(0, maxDelete);
-
-    const idsToDelete = [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...orphanedIds, ...lowSignalIds])].slice(0, maxDelete);
+    const idsToDelete = await collectWatcherIssueDeletionIds(projectPath, db, alerts, partitioned, maxDelete);
 
     if (idsToDelete.length > 0) {
-      const placeholders = idsToDelete.map(() => '?').join(', ');
-      db.prepare(`
-        UPDATE semantic_issues 
-        SET is_removed = 1, updated_at = datetime('now') 
-        WHERE id IN (${placeholders})
-      `).run(...idsToDelete);
+      deleteWatcherIssueIds(db, idsToDelete);
       logger.info(
         `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
-        ` (expired=${expiredIds.length}, superseded=${supersededIds.length}, outdated=${outdatedIds.length}, orphaned=${orphanedIds.length}, lowSignal=${lowSignalIds.length})`
+        ` (${formatWatcherReconciliationSummary(partitioned, idsToDelete)})`
       );
     }
 
@@ -263,4 +239,59 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     logger.debug(`[WATCHER ISSUE RECONCILE SKIP] ${error.message}`);
     return createWatcherIssueReconciliationSummary();
   }
+}
+
+function loadWatcherIssueRows(db, whereClause, params) {
+  return db.prepare(`
+    SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
+    FROM semantic_issues
+    ${whereClause} AND (is_removed IS NULL OR is_removed = 0)
+    ORDER BY detected_at DESC
+  `).all(...params);
+}
+
+function loadReconciliationRows(db) {
+  return db.prepare(`
+    SELECT id, file_path, issue_type, severity, message, line_number, context_json, detected_at
+    FROM semantic_issues
+    WHERE message LIKE ? AND (is_removed IS NULL OR is_removed = 0)
+    ORDER BY detected_at DESC
+  `).all(`${WATCHER_MESSAGE_PREFIX}%`);
+}
+
+async function collectWatcherIssueDeletionIds(projectPath, db, alerts, partitioned, maxDelete) {
+  const expiredIds = partitioned.expired
+    .map((alert) => alert.id)
+    .filter((id) => Number.isInteger(id))
+    .slice(0, maxDelete);
+  const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
+  const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts, { db })).slice(0, maxDelete);
+  const orphanedIds = findOrphanedWatcherAlertIds(db, alerts).slice(0, maxDelete);
+  const lowSignalIds = alerts
+    .filter((alert) => shouldSuppressWatcherAlert(alert))
+    .map((alert) => alert.id)
+    .filter((id) => Number.isInteger(id))
+    .slice(0, maxDelete);
+
+  return [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...orphanedIds, ...lowSignalIds])].slice(0, maxDelete);
+}
+
+function deleteWatcherIssueIds(db, idsToDelete) {
+  const placeholders = idsToDelete.map(() => '?').join(', ');
+  db.prepare(`
+    UPDATE semantic_issues
+    SET is_removed = 1, updated_at = datetime('now')
+    WHERE id IN (${placeholders})
+  `).run(...idsToDelete);
+}
+
+function formatWatcherReconciliationSummary(partitioned, idsToDelete) {
+  return [
+    `expired=${partitioned.expired.length}`,
+    `superseded=${partitioned.superseded.length}`,
+    `outdated=${partitioned.outdated?.length || 0}`,
+    `orphaned=${partitioned.orphaned?.length || 0}`,
+    `lowSignal=${partitioned.lowSignal?.length || 0}`,
+    `deleted=${idsToDelete.length}`
+  ].join(', ');
 }
