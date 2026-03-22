@@ -3,7 +3,7 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import { buildCanonicalAtomIdVariants } from '../../layer-c-memory/storage/repository/adapters/helpers/canonical-atom-id.js';
 import { normalizeCanonicalAtomId } from '../../layer-c-memory/storage/repository/adapters/helpers/canonical-atom-id.js';
 import { primeActiveAtomCache, resolveCallTargetId } from '../../layer-c-memory/storage/repository/adapters/helpers/call-target-resolver.js';
-import { chunkArray } from '../../../shared/utils/array-utils.js';
+import { chunkArray } from '../../shared/utils/array-utils.js';
 
 function buildSourceIds(atomsToSync, absoluteRootPath) {
   return [...new Set(

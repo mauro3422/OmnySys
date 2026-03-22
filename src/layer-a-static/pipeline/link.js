@@ -10,7 +10,7 @@ import { linkVariableCalledBy } from './phases/calledby/variable-linker.js';
 import { linkMixinNamespaceCalledBy } from './phases/calledby/mixin-namespace-linker.js';
 import { linkExportObjectReferences } from './phases/calledby/export-object-references.js';
 import { createLogger } from '../../utils/logger.js';
-import { chunkArray } from '../../../shared/utils/array-utils.js';
+import { chunkArray } from '../../shared/utils/array-utils.js';
 
 const logger = createLogger('OmnySys:link');
 

@@ -3,7 +3,7 @@
  * @module graph-builder/edges/return-flow
  */
 
-import { escapeRegExp } from '../../../../../../shared/utils/regex-utils.js';
+import { escapeRegExp } from '../../../../../shared/utils/regex-utils.js';
 
 /**
  * Construye aristas para flujo de returns
