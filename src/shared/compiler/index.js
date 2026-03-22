@@ -149,6 +149,10 @@ export {
 } from './metadata-propagation-conformance.js';
 
 export {
+  detectSummaryConformanceFromSource
+} from './summary-conformance.js';
+
+export {
   evaluateAtomTestability,
   evaluateAtomSemanticPurity,
   evaluateAtomRefactoringSignals

@@ -24,6 +24,7 @@ const CANONICAL_COMPILER_FAMILIES = [
   { id: 'metadata_extraction_coverage', label: 'Metadata extraction coverage', status: 'canonical' },
   { id: 'metadata_propagation', label: 'Metadata propagation drift', status: 'canonical' },
   { id: 'data_gateway', label: 'Data gateway freshness contract', status: 'canonical' },
+  { id: 'summary_presentation', label: 'Summary presentation contract', status: 'canonical' },
   { id: 'semantic_surface_granularity', label: 'Semantic surface granularity', status: 'canonical' },
   { id: 'file_universe_granularity', label: 'File-universe granularity', status: 'canonical' },
   { id: 'live_row_drift', label: 'Live/stale row drift', status: 'canonical' },

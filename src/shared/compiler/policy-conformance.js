@@ -25,6 +25,7 @@ import { detectTestabilityConformanceFromSource } from './testability-conformanc
 import { detectSemanticPurityConformanceFromSource } from './semantic-purity-conformance.js';
 import { detectMetadataPropagationConformanceFromSource } from './metadata-propagation-conformance.js';
 import { detectSemanticSurfaceGranularityConformanceFromSource } from './semantic-surface-granularity-conformance.js';
+import { detectSummaryConformanceFromSource } from './summary-conformance.js';
 import { detectSignalCoverageDrift } from './signal-coverage.js';
 import { detectPipelineOrphanDrift } from './pipeline-orphans.js';
 import { detectDeadCodeDrift } from './dead-code-utils.js';
@@ -58,6 +59,7 @@ export const COMPILER_POLICY_AREA = {
   SEMANTIC_PURITY: 'semantic_purity',
   METADATA_PROPAGATION: 'metadata_propagation',
   SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity',
+  SUMMARY_PRESENTATION: 'summary_presentation',
   WATCHER_DIAGNOSTICS: 'watcher_diagnostics',
   WATCHER_LIFECYCLE: 'watcher_lifecycle',
   CANONICAL_BYPASS: 'canonical_bypass'
@@ -289,7 +291,8 @@ function collectConformanceFindings(normalizedPath, source) {
     [detectTestabilityConformanceFromSource, COMPILER_POLICY_AREA.TESTABILITY],
     [detectSemanticPurityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_PURITY],
     [detectMetadataPropagationConformanceFromSource, COMPILER_POLICY_AREA.METADATA_PROPAGATION],
-    [detectSemanticSurfaceGranularityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_SURFACE_GRANULARITY]
+    [detectSemanticSurfaceGranularityConformanceFromSource, COMPILER_POLICY_AREA.SEMANTIC_SURFACE_GRANULARITY],
+    [detectSummaryConformanceFromSource, COMPILER_POLICY_AREA.SUMMARY_PRESENTATION]
   ];
 
   return conformanceDetectors.flatMap(([detector, policyArea]) => detector(normalizedPath, source, {
