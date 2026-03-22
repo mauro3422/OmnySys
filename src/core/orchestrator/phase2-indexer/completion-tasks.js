@@ -54,10 +54,7 @@ async function persistTechnicalDebtSummary(projectPath) {
     await clearWatcherIssue(projectPath, 'project-wide', 'technical_debt_report');
 
     const phase2Counts = getPhase2FileCounts(debtRepo.db);
-    const totalDebtItems =
-        (structuralRemediation?.totalGroups || 0) +
-        (conceptualSummary?.actionable?.groupCount || conceptualGroups?.length || 0) +
-        (orphanSummary?.total || 0);
+    const totalDebtItems = calculateTechnicalDebtItemCount(structuralRemediation, conceptualSummary, conceptualGroups, orphanSummary);
 
     if (totalDebtItems <= 0) {
         return;
@@ -70,37 +67,57 @@ async function persistTechnicalDebtSummary(projectPath) {
         createIssueType('arch', 'technical_debt', severity),
         severity,
         `${totalDebtItems} technical debt items detected post-Phase 2`,
-        {
-            source: 'phase2_post_completion',
-            timestamp: new Date().toISOString(),
-            structural: {
-                groups: structuralDuplicates.length,
-                instances: duplicateStats.total_instances,
-                topIssues: structuralRemediation?.items?.slice(0, 5) || []
-            },
-            conceptual: {
-                groups: conceptualSummary?.actionable?.groupCount || conceptualGroups.length,
-                rawGroups: conceptualSummary?.raw?.groupCount || conceptualGroups.length,
-                noiseByClass: conceptualSummary?.noiseByClass || {},
-                topIssues: conceptualGroups.slice(0, 5).map((group) => ({
-                    fingerprint: group.semanticFingerprint,
-                    implementationCount: group.implementationCount
-                }))
-            },
-            pipelineOrphans: {
-                total: orphanSummary?.total || 0,
-                items: orphanSummary?.items?.slice(0, 5) || []
-            },
-            phase2: {
-                pendingFiles: phase2Counts.pendingFiles,
-                completedFiles: phase2Counts.completedFiles,
-                liveFileCount: phase2Counts.liveFileCount
-            },
-            remediation: {
-                nextAction: structuralRemediation?.recommendation || orphanSummary?.recommendation || 'No immediate action required'
-            }
-        }
+        buildTechnicalDebtIssueDetails(structuralDuplicates, duplicateStats, structuralRemediation, conceptualSummary, conceptualGroups, orphanSummary, phase2Counts)
     );
+}
+
+function calculateTechnicalDebtItemCount(structuralRemediation, conceptualSummary, conceptualGroups, orphanSummary) {
+    return (
+        (structuralRemediation?.totalGroups || 0) +
+        (conceptualSummary?.actionable?.groupCount || conceptualGroups?.length || 0) +
+        (orphanSummary?.total || 0)
+    );
+}
+
+function buildTechnicalDebtIssueDetails(
+    structuralDuplicates,
+    duplicateStats,
+    structuralRemediation,
+    conceptualSummary,
+    conceptualGroups,
+    orphanSummary,
+    phase2Counts
+) {
+    return {
+        source: 'phase2_post_completion',
+        timestamp: new Date().toISOString(),
+        structural: {
+            groups: structuralDuplicates.length,
+            instances: duplicateStats.total_instances,
+            topIssues: structuralRemediation?.items?.slice(0, 5) || []
+        },
+        conceptual: {
+            groups: conceptualSummary?.actionable?.groupCount || conceptualGroups.length,
+            rawGroups: conceptualSummary?.raw?.groupCount || conceptualGroups.length,
+            noiseByClass: conceptualSummary?.noiseByClass || {},
+            topIssues: conceptualGroups.slice(0, 5).map((group) => ({
+                fingerprint: group.semanticFingerprint,
+                implementationCount: group.implementationCount
+            }))
+        },
+        pipelineOrphans: {
+            total: orphanSummary?.total || 0,
+            items: orphanSummary?.items?.slice(0, 5) || []
+        },
+        phase2: {
+            pendingFiles: phase2Counts.pendingFiles,
+            completedFiles: phase2Counts.completedFiles,
+            liveFileCount: phase2Counts.liveFileCount
+        },
+        remediation: {
+            nextAction: structuralRemediation?.recommendation || orphanSummary?.recommendation || 'No immediate action required'
+        }
+    };
 }
 
 async function printFinalDiagnosticsDashboard(projectPath, logger) {
