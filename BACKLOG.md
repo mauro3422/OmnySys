@@ -16,6 +16,48 @@
 - Import/export validation is now DB-only; the remaining cleanup is runtime reload and any future naming cleanup for the `filesystem-validation` helper alias.
 - Watcher alert lifecycle should reconcile against the current published analysis generation immediately after a file fix. Today, tool/runtime module staleness can leave an old alert active until reload, which makes `_recentErrors` lag behind the actual source state. The target is: fixed code on disk should expire the old alert, leave only `stale/restart-required` markers for reload-only modules, and surface only genuinely new issues.
 
+## Consolidacion arquitectonica: grupos conceptuales accionables
+
+### Metodo de ataque
+
+1. Priorizar grupos con mayor riesgo y fan-out.
+2. Separar hook de framework, helper reutilizable y duplicado conceptual real.
+3. Si el grupo es un helper privado generico, moverlo a `src/shared/utils/`.
+4. Si el grupo es un wrapper de contrato canónico, dejarlo como fachada fina y reforzar la policy.
+5. Si el grupo mezcla negocio y presentacion, extraer el contrato canonico y dejar el consumidor liviano.
+
+### Orden inicial de trabajo
+
+- `analyze:logic:core:fn`
+  - Alta prioridad.
+  - Suele indicar lógica de análisis repetida o wrappers cercanos al motor de inspeccion.
+  - Buscar consolidación en helpers de analisis o en una api canonica de evaluación.
+
+- `generate:logic:core:recommendations`
+  - Alta prioridad.
+  - Suele mezclar generacion de recomendaciones con presentacion o scoring local.
+  - Validar si puede delegarse a una sola recomendacion canonica por dominio.
+
+- `get:logic:core:id`
+  - Alta prioridad.
+  - Suele ser helper de identidad demasiado cercano al dominio de negocio.
+  - Evaluar si debe vivir en utilidades compartidas o en una capa de contrato de identidad.
+
+- `process:storage:core:reload`
+  - Prioridad media.
+  - Puede ser orquestacion valida, pero conviene verificar si hay duplicacion de reload/recovery.
+
+- `get:telemetry:core:stats`
+  - Prioridad media-baja.
+  - Normalmente es señal de lectura/summary; revisar solo si hay recomposicion manual fuera del summary canónico.
+
+### Criterio de cierre
+
+- Si el grupo termina siendo un hook de framework, se mantiene y se documenta en policy.
+- Si el grupo termina siendo un helper reusable, se mueve a `src/shared/utils/` o a un modulo canonico equivalente.
+- Si el grupo termina siendo un wrapper de presentacion, se fuerza a pasar por `data-gateway` + `summary_presentation`.
+- Si el grupo termina siendo duplicado real, se consolida y se eliminan las copias.
+
 ## Notes
 
 - Any new bug or regression found during validation should be appended here before merging.
