@@ -14,6 +14,7 @@
 import { createHash } from 'crypto';
 import { detectGlobalState } from '../../analyses/tier3/shared-state/parsers/state-parser.js';
 import { detectEventPatterns } from '../../analyses/tier3/event-detector/detector.js';
+import { extractSideEffects } from './side-effects.js';
 
 /**
  * Extrae metadata de Tree-sitter para un átomo específico
@@ -54,8 +55,8 @@ export async function extractTreeSitterMetadata(functionCode, functionInfo, file
       atomLineEnd
     ),
     
-    // Side effects detectados por Tree-sitter
-    treeSitterSideEffects: filterAccessesByLineRange(
+    // Side effects detectados por el extractor canónico de side-effects
+    sideEffects: filterAccessesByLineRange(
       fileAnalysis.sideEffects || [],
       atomLineStart,
       atomLineEnd
@@ -93,7 +94,7 @@ async function analyzeFileWithTreeSitter(code, filePath) {
         emitters: events.eventEmitters || [],
         listeners: events.eventListeners || []
       },
-      sideEffects: [] // TODO: integrar side-effects-detector
+      sideEffects: extractSideEffects(code).all || []
     };
 
     fileAnalysisCache.set(filePath, { cacheKey, result });
