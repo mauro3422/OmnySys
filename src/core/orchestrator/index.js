@@ -32,40 +32,11 @@ class Orchestrator extends EventEmitter {
       ...options
     };
 
-    // Components
-    this.queue = new AnalysisQueue();
-    this.worker = null;
-    this.stateManager = null;
-    this.fileWatcher = null;
-    this.batchProcessor = null;
-    this.wsManager = null;
-    this.cache = null;
-
-    // State
-    this.currentJob = null;
-    this.isRunning = true;
-    this.startTime = Date.now();
-    this.stats = {
-      totalAnalyzed: 0,
-      totalQueued: 0,
-      avgTime: 0
-    };
-
-    // Indexing state
-    this.isIndexing = false;
-    this.indexingProgress = 0;
-    this.indexedFiles = new Set();
-
-    // Iterative analysis state
-    this.iteration = 0;
-    this.maxIterations = 10;
-    this.isIterating = false;
-    this.iterativeQueue = [];
-
-    // Tracking for completion
-    this.totalFilesToAnalyze = 0;
-    this.processedFiles = new Set();
-    this.analysisCompleteEmitted = false;
+    this._initializeComponentState();
+    this._initializeRuntimeState();
+    this._initializeIndexingState();
+    this._initializeIterationState();
+    this._initializeCompletionTrackingState();
 
     // Atomic Editor - Para ediciones seguras con vibración
     this.atomicEditor = getAtomicEditor(() => new AtomicEditor(projectPath, this));
@@ -85,6 +56,46 @@ class Orchestrator extends EventEmitter {
       this.cacheInvalidator = getCacheInvalidator(this.cache || { projectPath: this.projectPath });
     }
     return this.cacheInvalidator;
+  }
+
+  _initializeComponentState() {
+    this.queue = new AnalysisQueue();
+    this.worker = null;
+    this.stateManager = null;
+    this.fileWatcher = null;
+    this.batchProcessor = null;
+    this.wsManager = null;
+    this.cache = null;
+  }
+
+  _initializeRuntimeState() {
+    this.currentJob = null;
+    this.isRunning = true;
+    this.startTime = Date.now();
+    this.stats = {
+      totalAnalyzed: 0,
+      totalQueued: 0,
+      avgTime: 0
+    };
+  }
+
+  _initializeIndexingState() {
+    this.isIndexing = false;
+    this.indexingProgress = 0;
+    this.indexedFiles = new Set();
+  }
+
+  _initializeIterationState() {
+    this.iteration = 0;
+    this.maxIterations = 10;
+    this.isIterating = false;
+    this.iterativeQueue = [];
+  }
+
+  _initializeCompletionTrackingState() {
+    this.totalFilesToAnalyze = 0;
+    this.processedFiles = new Set();
+    this.analysisCompleteEmitted = false;
   }
 
   /**
