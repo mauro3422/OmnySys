@@ -1,46 +1,21 @@
 import { createLogger } from '../../../utils/logger.js';
-import { guardRegistry } from '../guards/registry.js';
-import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave.js';
-import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { detectCircularDependencies } from '../guards/circular-guard.js';
-import { analyzeAndIndex } from '../analyze.js';
-import { isLowSignalName } from '../guards/guard-standards.js';
-import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 import { getRecentCommits } from './recent-commits.js';
 import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
+import { isTestFactorySurface } from '#layer-c/mcp/tools/validate-exports-chain-helpers.js';
+import {
+  detectDuplicateRiskForFile as detectDuplicateRiskForFileAction,
+  detectImpactWaveForFile as detectImpactWaveForFileAction
+} from './file-handlers-actions.js';
+import { handleFileCreatedForWatcher } from './file-handlers-create.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
-
-function isTestFactorySurface(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/').startsWith('tests/factories/');
-}
 
 /**
  * Maneja creacion de archivo
  */
 export async function handleFileCreated(filePath, fullPath, changeContext = {}) {
-  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
-  logger.info(`[FILE CREATED] ${filePath}${originSuffix}`);
-
-  const analysis = await analyzeAndIndex.call(this, filePath, fullPath, false);
-  const atoms = analysis.moleculeAtoms || analysis.atoms || [];
-
-  await guardRegistry.initializeDefaultGuards();
-  await guardRegistry.runImpactGuards(this.rootPath, filePath, this, {
-    fullPath,
-    atoms,
-    analysis
-  });
-
-  const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
-  logger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
-
-  this.emit('file:created', {
-    filePath,
-    analysis,
-    origin: changeContext.origin || 'unknown',
-    source: changeContext.source || null
-  });
+  return await handleFileCreatedForWatcher(this, filePath, fullPath, changeContext);
 }
 
 /**
@@ -173,33 +148,12 @@ export async function handleFileModified(filePath, fullPath, changeContext = {})
   });
 }
 
-/**
- * Simula una "ola de impacto" local tras cambios de archivo.
- * Delegado a guards/impact-wave.js para mantenibilidad.
- */
 export async function detectImpactWaveForFile(filePath, previousAtoms = [], options = {}) {
-  return await detectImpactWaveGuard(
-    this.rootPath,
-    filePath,
-    previousAtoms,
-    this,
-    async fp => await this.getAtomsForFile(fp),
-    {
-      ...options,
-      relationHelpers: {
-        countRequiredSignatureParams,
-        extractRelatedFilePath
-      }
-    }
-  );
+  return await detectImpactWaveForFileAction(this, filePath, previousAtoms, options);
 }
 
-/**
- * Detecta riesgo de simbolos duplicados tras una creacion/modificacion.
- * Delegado a guards/duplicate-risk.js para mantenibilidad.
- */
 export async function detectDuplicateRiskForFile(filePath, options = {}) {
-  return await detectDuplicateRiskGuard(this.rootPath, filePath, this, options);
+  return await detectDuplicateRiskForFileAction(this, filePath, options);
 }
 
 /**
