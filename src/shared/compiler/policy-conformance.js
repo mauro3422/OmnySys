@@ -18,6 +18,7 @@ import {
 import { detectStateOwnershipConformanceFromSource } from './state-ownership-conformance.js';
 import { detectServiceBoundaryConformanceFromSource } from './service-boundary-conformance.js';
 import { detectCanonicalExtensionConformanceFromSource } from './canonical-extension-conformance.js';
+import { detectDataGatewayConformanceFromSource } from './data-gateway-conformance.js';
 import { detectAsyncErrorConformanceFromSource } from './async-error-conformance.js';
 import { detectSharedStateHotspotConformanceFromSource } from './shared-state-hotspot-conformance.js';
 import { detectTestabilityConformanceFromSource } from './testability-conformance.js';
@@ -49,6 +50,7 @@ export const COMPILER_POLICY_AREA = {
   STATE_OWNERSHIP: 'state_ownership',
   SERVICE_BOUNDARY: 'service_boundary',
   CANONICAL_EXTENSION: 'canonical_extension',
+  DATA_GATEWAY: 'data_gateway',
   ASYNC_ERROR: 'async_error',
   SHARED_STATE_HOTSPOTS: 'shared_state_hotspots',
   CENTRALITY_COVERAGE: 'centrality_coverage',
@@ -281,6 +283,7 @@ function collectConformanceFindings(normalizedPath, source) {
     [detectStateOwnershipConformanceFromSource, COMPILER_POLICY_AREA.STATE_OWNERSHIP],
     [detectServiceBoundaryConformanceFromSource, COMPILER_POLICY_AREA.SERVICE_BOUNDARY],
     [detectCanonicalExtensionConformanceFromSource, COMPILER_POLICY_AREA.CANONICAL_EXTENSION],
+    [detectDataGatewayConformanceFromSource, COMPILER_POLICY_AREA.DATA_GATEWAY],
     [detectAsyncErrorConformanceFromSource, COMPILER_POLICY_AREA.ASYNC_ERROR],
     [detectSharedStateHotspotConformanceFromSource, COMPILER_POLICY_AREA.SHARED_STATE_HOTSPOTS],
     [detectTestabilityConformanceFromSource, COMPILER_POLICY_AREA.TESTABILITY],

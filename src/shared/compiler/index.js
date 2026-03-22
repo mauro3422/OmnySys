@@ -124,6 +124,10 @@ export {
 } from './canonical-extension-conformance.js';
 
 export {
+  detectDataGatewayConformanceFromSource
+} from './data-gateway-conformance.js';
+
+export {
   detectAsyncErrorConformanceFromSource
 } from './async-error-conformance.js';
 
