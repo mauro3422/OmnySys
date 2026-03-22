@@ -163,6 +163,17 @@ export class SmartBatchProcessor {
   /**
    * Gets the current time window (adaptive)
    */
+  getCurrentWindow() {
+    return getCurrentWindow(this);
+  }
+
+  /**
+   * Gets changes ready for processing
+   */
+  getReadyChanges() {
+    return getReadyChangesForProcessor(this);
+  }
+
   /**
    * Processes the current batch
    */
