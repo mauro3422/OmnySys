@@ -61,6 +61,14 @@ export function getAtomCountSummary(db) {
   };
 }
 
+export function getPhase2PendingFiles(db) {
+  if (!db) {
+    return 0;
+  }
+
+  return db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0;
+}
+
 export function getPhase2FileCounts(db) {
   if (!db) {
     return {
@@ -71,7 +79,7 @@ export function getPhase2FileCounts(db) {
   }
 
   return {
-    pendingFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
+    pendingFiles: getPhase2PendingFiles(db),
     completedFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 1').get()?.n || 0,
     liveFileCount: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0
   };

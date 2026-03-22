@@ -11,19 +11,12 @@ import {
   clearWatcherIssueRecord,
   upsertWatcherIssueRecord
 } from '../file-watcher/watcher-issue-persistence.js';
+import { getPhase2PendingFiles } from '../../shared/compiler/index.js';
 import { buildRuntimeHealthIssues, buildDeepRuntimeHealthIssues, getRuntimeHealthIssueTypes } from './runtime-table-health-helpers.js';
 import { repairRiskAssessmentsIfEmpty } from './risk-assessment-repair.js';
 
 const logger = createLogger('OmnySys:runtime:table-health');
 const PROJECT_WIDE_FILE = 'project-wide';
-
-function getPhase2PendingFiles(db) {
-    try {
-        return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
-    } catch {
-        return 0;
-    }
-}
 
 export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
   try {

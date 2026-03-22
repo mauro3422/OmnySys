@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   buildAnalysisGenerationSnapshot: vi.fn(),
   buildDataGatewayContract: vi.fn(),
   buildSurfaceAudit: vi.fn(),
-  getPhase2FileCounts: vi.fn()
+  getPhase2PendingFiles: vi.fn()
 }));
 
 vi.mock('../../../../src/shared/compiler/file-discovery.js', () => ({
@@ -91,7 +91,7 @@ vi.mock('../../../../src/shared/compiler/surface-audit.js', () => ({
 }));
 
 vi.mock('../../../../src/shared/compiler/compiler-runtime-metrics.js', () => ({
-  getPhase2FileCounts: mocks.getPhase2FileCounts
+  getPhase2PendingFiles: mocks.getPhase2PendingFiles
 }));
 
 import { loadCompilerDiagnosticsSnapshot } from '../../../../src/shared/compiler/compiler-diagnostics-snapshot.js';
@@ -135,7 +135,7 @@ beforeEach(() => {
   });
   mocks.buildDataGatewayContract.mockReturnValue({ healthy: true, summary: 'data-gateway' });
   mocks.buildSurfaceAudit.mockReturnValue({ healthy: true, trustworthy: true, summary: 'surface-audit' });
-  mocks.getPhase2FileCounts.mockReturnValue({ pendingFiles: 0 });
+  mocks.getPhase2PendingFiles.mockReturnValue(0);
 });
 
 describe('compiler-diagnostics-snapshot', () => {
@@ -164,7 +164,7 @@ describe('compiler-diagnostics-snapshot', () => {
   });
 
   it('skips manifest sync while phase 2 files are still pending', async () => {
-    mocks.getPhase2FileCounts.mockReturnValue({ pendingFiles: 2 });
+    mocks.getPhase2PendingFiles.mockReturnValue(2);
 
     await loadCompilerDiagnosticsSnapshot({
       projectPath: 'C:/Dev/OmnySystem',

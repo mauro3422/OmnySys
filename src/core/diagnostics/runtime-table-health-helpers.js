@@ -8,7 +8,8 @@ import {
   summarizePersistedScannedFileCoverage,
   syncPersistedScannedFileManifest,
   ensureLiveRowSync,
-  getLiveFileTotal
+  getLiveFileTotal,
+  getPhase2PendingFiles
 } from '../../shared/compiler/index.js';
 
 const PROJECT_WIDE_FILE = 'project-wide';
@@ -71,14 +72,6 @@ function buildKnownIssueTypes() {
     `${ISSUE_TYPE_PREFIX}_system_map_persistence`,
     `${ISSUE_TYPE_PREFIX}_file_universe_drift`
   ];
-}
-
-function getPhase2PendingFiles(db) {
-  try {
-    return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
-  } catch {
-    return 0;
-  }
 }
 
 function loadTableCount(db, table) {

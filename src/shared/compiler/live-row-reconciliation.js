@@ -8,19 +8,12 @@ import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { buildOrphanCallCleanupStatement } from './live-row-relations-cleanup.js';
 import { countLiveRowDeletes, hasLiveRowDrift, runLiveRowCleanup } from './live-row-sync-helpers.js';
+import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
 import {
   getLiveFileSetSql,
   getLiveRowDriftSummary,
   loadStaleTableRows
 } from './live-row-utils.js';
-
-function getPhase2PendingFiles(db) {
-    try {
-        return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
-    } catch {
-        return 0;
-    }
-}
 
 function buildZeroCleanupResult() {
     return { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 };

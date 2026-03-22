@@ -14,14 +14,7 @@ import { buildDatabaseHealthAssessment } from './database-health-assessment.js';
 import { loadDatabaseHealthCounts } from './database-health-counts.js';
 import { resolveDatabaseHealthLiveRowSync } from './database-health-live-row-sync.js';
 import { buildDatabaseHealthReport } from './database-health-report.js';
-
-function getPhase2PendingFiles(db) {
-  try {
-    return db.prepare('SELECT COUNT(DISTINCT file_path) as total FROM atoms WHERE is_phase2_complete = 0').get()?.total || 0;
-  } catch {
-    return 0;
-  }
-}
+import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
 
 export function getDatabaseHealthSummary(db, options = {}) {
   if (!db) {

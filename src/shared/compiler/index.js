@@ -400,6 +400,7 @@ export {
 
 export {
   getAtomCountSummary,
+  getPhase2PendingFiles,
   getPhase2FileCounts,
   getGraphCoverageSummary,
   getIssueSummary,

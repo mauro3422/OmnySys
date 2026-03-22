@@ -25,7 +25,7 @@ import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
 import { buildDataGatewayContract } from './data-gateway-contract.js';
 import { buildSurfaceAudit } from './surface-audit.js';
-import { getPhase2FileCounts } from './compiler-runtime-metrics.js';
+import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
 
 const CANONICAL_ADOPTION_PATTERNS = {
     centralityCoverage: /\bsummarizeCentralityCoverageRow\b/,
@@ -70,7 +70,7 @@ async function collectCanonicalAdoptionEvidence(projectPath) {
 }
 
 function getCompilerDiagnosticsDatabaseSurfaces(db) {
-    const phase2PendingFiles = db ? getPhase2FileCounts(db).pendingFiles : 0;
+    const phase2PendingFiles = db ? getPhase2PendingFiles(db) : 0;
 
     return {
         phase2PendingFiles,
