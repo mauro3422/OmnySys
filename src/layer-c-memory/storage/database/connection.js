@@ -33,6 +33,83 @@ const __dirForSchema = dirname(fileURLToPath(__fileUrl));
 const _schemaPath = resolve(__dirForSchema, 'schema.sql');
 const _schemaSql = existsSync(_schemaPath) ? readFileSync(_schemaPath, 'utf8') : null;
 
+function ensureDataDirectory(projectPath) {
+  const dataDir = resolve(projectPath, '.omnysysdata');
+  if (!existsSync(dataDir)) {
+    logger.debug(`[Connection] Creating data directory: ${dataDir}`);
+    mkdirSync(dataDir, { recursive: true });
+  }
+}
+
+function applyMissingColumns(db, tableName) {
+  const existingColumns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const missingColumns = detectMissingColumns(tableName, existingColumns);
+
+  if (missingColumns.length === 0) {
+    return;
+  }
+
+  logger.info(
+    `[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`
+  );
+
+  for (const column of missingColumns) {
+    try {
+      const addColumnSQL = generateAddColumnSQL(tableName, column.name);
+      db.exec(addColumnSQL);
+    } catch (err) {
+      if (!err.message.includes('duplicate column')) {
+        logger.warn(`[Connection] Failed to add column ${column.name} to ${tableName}: ${err.message}`);
+      }
+    }
+  }
+}
+
+function syncRegisteredTables(db) {
+  const registeredTables = getRegisteredTables();
+
+  for (const tableName of registeredTables) {
+    const tableExists = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
+    ).get(tableName);
+
+    if (!tableExists) {
+      const createSQL = generateCreateTableSQL(tableName);
+      db.exec(createSQL);
+      logger.info(`[Connection] Created table '${tableName}' from registry`);
+    }
+
+    applyMissingColumns(db, tableName);
+
+    const indexes = generateCreateIndexesSQL(tableName);
+    for (const indexSQL of indexes) {
+      db.exec(indexSQL);
+    }
+  }
+}
+
+function reportSchemaDrift(db) {
+  const registeredTables = getRegisteredTables();
+
+  for (const tableName of registeredTables) {
+    const existingColumns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+    const registeredColumns = getTableDefinition(tableName).columns;
+
+    const existingNames = new Set(existingColumns.map(c => c.name));
+    const registeredNames = new Set(registeredColumns.map(c => c.name));
+
+    const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
+
+    if (driftColumns.length > 0) {
+      logger.warn(
+        `[Connection] Schema drift detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
+        '   These columns exist in DB but not in schema-registry.js\n' +
+        '   -> Consider adding them to registry or removing from DB'
+      );
+    }
+  }
+}
+
 /**
  * Connection Manager para SQLite
  * Implementa patron Singleton para mantener una sola conexion
@@ -56,12 +133,7 @@ class ConnectionManager {
 
     this.dbPath = resolve(projectPath, '.omnysysdata', 'omnysys.db');
 
-    // Crear directorio si no existe
-    const dataDir = resolve(projectPath, '.omnysysdata');
-    if (!existsSync(dataDir)) {
-      logger.debug(`[Connection] Creating data directory: ${dataDir}`);
-      mkdirSync(dataDir, { recursive: true });
-    }
+    ensureDataDirectory(projectPath);
     logger.debug(`[Connection] Initializing SQLite at: ${this.dbPath}`);
 
     try {
@@ -123,57 +195,13 @@ class ConnectionManager {
     try {
       this.refreshCanonicalViews();
 
-      // Step 1: Apply base schema.sql
       if (_schemaSql) {
         this.db.exec(_schemaSql);
         logger.debug('[Connection] Base schema.sql executed');
       }
 
-      // Step 2: Use schema-registry as SSOT
-      const registeredTables = getRegisteredTables();
-
-      for (const tableName of registeredTables) {
-        const tableExists = this.db.prepare(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
-        ).get(tableName);
-
-        if (!tableExists) {
-          const createSQL = generateCreateTableSQL(tableName);
-          this.db.exec(createSQL);
-          logger.info(`[Connection] Created table '${tableName}' from registry`);
-        }
-
-        // Add missing columns before creating indexes.
-        // Otherwise an existing database can fail boot when a new index targets
-        // a column introduced by the migration in this same startup cycle.
-        const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
-        const missingColumns = detectMissingColumns(tableName, existingColumns);
-
-        if (missingColumns.length > 0) {
-          logger.info(
-            `[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`
-          );
-
-          for (const column of missingColumns) {
-            try {
-              const addColumnSQL = generateAddColumnSQL(tableName, column.name);
-              this.db.exec(addColumnSQL);
-            } catch (err) {
-              if (!err.message.includes('duplicate column')) {
-                logger.warn(`[Connection] Failed to add column ${column.name} to ${tableName}: ${err.message}`);
-              }
-            }
-          }
-        }
-
-        const indexes = generateCreateIndexesSQL(tableName);
-        for (const indexSQL of indexes) {
-          this.db.exec(indexSQL);
-        }
-      }
-
-      // Step 4: Report schema drift
-      this._checkSchemaDrift();
+      syncRegisteredTables(this.db);
+      reportSchemaDrift(this.db);
 
       logger.debug('[Connection] Schema initialization complete (registry-based)');
     } catch (error) {
@@ -196,25 +224,7 @@ class ConnectionManager {
    * Advierte si hay columnas en schema.sql que no estan en el registry
    */
   _checkSchemaDrift() {
-    const registeredTables = getRegisteredTables();
-
-    for (const tableName of registeredTables) {
-      const existingColumns = this.db.prepare(`PRAGMA table_info(${tableName})`).all();
-      const registeredColumns = getTableDefinition(tableName).columns;
-
-      const existingNames = new Set(existingColumns.map(c => c.name));
-      const registeredNames = new Set(registeredColumns.map(c => c.name));
-
-      const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
-
-      if (driftColumns.length > 0) {
-        logger.warn(
-          `[Connection] Schema drift detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
-          '   These columns exist in DB but not in schema-registry.js\n' +
-          '   -> Consider adding them to registry or removing from DB'
-        );
-      }
-    }
+    reportSchemaDrift(this.db);
   }
 
   /**
@@ -266,9 +276,11 @@ class ConnectionManager {
    * Obtiene estadisticas de la base de datos
    * @returns {Object} Estadisticas
    */
-getStats() {
+  getStats() {
     return statsPool.getModuleStats('connection');
-  }  /**
+  }
+
+  /**
    * Fuerza checkpoint WAL para persistir datos
    * Util despues de bulk operations
    */
