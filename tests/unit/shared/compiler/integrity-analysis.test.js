@@ -56,6 +56,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats scheduler shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'BatchScheduler',
+      filePath: 'src/core/batch-processor/batch-scheduler.js'
+    }))).toBe(true);
+  });
+
   it('does not classify ordinary classes as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'PlainUtility',

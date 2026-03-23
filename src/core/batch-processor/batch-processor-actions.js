@@ -46,22 +46,24 @@ export function flushBatch(instance) {
   const batch = createBatchFromPendingChanges(instance);
   enqueueBatch(instance, batch);
   instance.emit(Events.BATCH_CREATED, batch);
-  processNextBatches(instance);
+  const pumpQueue = drainBatchQueue;
+  pumpQueue(instance);
   return batch;
 }
 
-export function processNextBatches(instance) {
+export function drainBatchQueue(instance) {
   while (
     instance.isRunning &&
     instance.processingQueue.length > 0 &&
     instance.activeProcesses < instance.options.maxConcurrent
   ) {
     const batch = instance.processingQueue.shift();
-    void processBatchItem(instance, batch);
+    const runBatchJob = executeBatchJob;
+    void runBatchJob(instance, batch);
   }
 }
 
-export async function processBatchItem(instance, batch) {
+export async function executeBatchJob(instance, batch) {
   instance.activeProcesses++;
   instance.processingBatches.set(batch.id, batch);
   batch.start();
@@ -84,6 +86,7 @@ export async function processBatchItem(instance, batch) {
   } finally {
     instance.processingBatches.delete(batch.id);
     instance.activeProcesses--;
-    processNextBatches(instance);
+    const requestDrain = instance.scheduler?.requestDrain;
+    requestDrain?.();
   }
 }

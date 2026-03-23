@@ -26,10 +26,13 @@ export function initializeBatchProcessorState(instance) {
 }
 
 export function createBatchProcessorScheduler(instance) {
-  return new BatchScheduler({
+  const scheduler = new BatchScheduler({
     batchTimeoutMs: instance.options.batchTimeoutMs,
-    onFlush: () => instance.flushBatch()
+    onFlush: () => instance.flushBatch(),
+    onDrain: () => instance.drainBatchQueue()
   });
+
+  return scheduler;
 }
 
 export function buildBatchProcessorStats(instance) {

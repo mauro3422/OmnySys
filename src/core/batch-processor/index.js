@@ -20,8 +20,8 @@ import {
   stopBatchProcessor,
   addBatchChange,
   flushBatch,
-  processNextBatches,
-  processBatchItem
+  drainBatchQueue,
+  executeBatchJob
 } from './batch-processor-actions.js';
 
 /**
@@ -82,8 +82,8 @@ export class BatchProcessor extends EventEmitter {
    * Procesa batches disponibles
    * @private
    */
-  async processNextBatches() {
-    return processNextBatches(this);
+  async drainBatchQueue() {
+    return drainBatchQueue(this);
   }
 
   /**
@@ -91,8 +91,8 @@ export class BatchProcessor extends EventEmitter {
    * @private
    * @param {Batch} batch - Batch a procesar
    */
-  async processBatch(batch) {
-    return processBatchItem(this, batch);
+  async executeBatchJob(batch) {
+    return executeBatchJob(this, batch);
   }
 
   /**

@@ -18,45 +18,36 @@ export class BatchScheduler {
    * @param {Function} options.onFlush - Callback cuando se debe hacer flush
    */
   constructor(options = {}) {
-    this.batchTimeoutMs = options.batchTimeoutMs ?? DEFAULT_CONFIG.batchTimeoutMs;
-    this.onFlush = options.onFlush ?? (() => {});
-    this.timer = null;
-    this.isRunning = false;
+    this.controller = createBatchSchedulerController(options);
   }
 
   /**
    * Inicia el scheduler
    */
   start() {
-    if (this.isRunning) return;
-    
-    this.isRunning = true;
-    this.scheduleTick();
+    this.controller.start();
   }
 
   /**
    * Detiene el scheduler
    */
   stop() {
-    this.isRunning = false;
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
+    this.controller.stop();
   }
 
   /**
    * Fuerza un tick inmediato
    */
   tick() {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-    this.onFlush();
-    if (this.isRunning) {
-      this.scheduleTick();
-    }
+    this.controller.tick();
+  }
+
+  requestDrain() {
+    this.controller.requestDrain();
+  }
+
+  flushDrainRequest() {
+    this.controller.flushDrainRequest();
   }
 
   /**
@@ -64,15 +55,124 @@ export class BatchScheduler {
    * @private
    */
   scheduleTick() {
-    this.timer = setTimeout(() => {
-      if (!this.isRunning) return;
-      
-      this.onFlush();
-      
-      // Reprogramar si sigue corriendo
-      if (this.isRunning) {
-        this.scheduleTick();
-      }
-    }, this.batchTimeoutMs);
+    this.controller.scheduleTick();
   }
+
+  scheduleDrainTick() {
+    this.controller.scheduleDrainTick();
+  }
+}
+
+export function createBatchSchedulerController(options = {}) {
+  return {
+    batchTimeoutMs: options.batchTimeoutMs ?? DEFAULT_CONFIG.batchTimeoutMs,
+    onFlush: options.onFlush ?? (() => {}),
+    onDrain: options.onDrain ?? (() => {}),
+    timer: null,
+    drainTimer: null,
+    pendingDrain: false,
+    isRunning: false,
+    start() {
+      startBatchScheduler(this);
+    },
+    stop() {
+      stopBatchScheduler(this);
+    },
+    tick() {
+      tickBatchScheduler(this);
+    },
+    requestDrain() {
+      requestBatchDrain(this);
+    },
+    flushDrainRequest() {
+      flushBatchDrainRequest(this);
+    },
+    scheduleTick() {
+      scheduleBatchSchedulerTick(this);
+    },
+    scheduleDrainTick() {
+      scheduleBatchDrainTick(this);
+    }
+  };
+}
+
+export function startBatchScheduler(instance) {
+  if (instance.isRunning) return;
+
+  instance.isRunning = true;
+  instance.scheduleTick();
+}
+
+export function stopBatchScheduler(instance) {
+  instance.isRunning = false;
+
+  if (instance.timer) {
+    clearTimeout(instance.timer);
+    instance.timer = null;
+  }
+
+  if (instance.drainTimer) {
+    clearTimeout(instance.drainTimer);
+    instance.drainTimer = null;
+  }
+
+  instance.pendingDrain = false;
+}
+
+export function tickBatchScheduler(instance) {
+  if (instance.timer) {
+    clearTimeout(instance.timer);
+    instance.timer = null;
+  }
+
+  instance.onFlush();
+  instance.flushDrainRequest();
+
+  if (instance.isRunning) {
+    instance.scheduleTick();
+  }
+}
+
+export function requestBatchDrain(instance) {
+  instance.pendingDrain = true;
+
+  if (!instance.isRunning || instance.drainTimer) {
+    return;
+  }
+
+  instance.scheduleDrainTick();
+}
+
+export function flushBatchDrainRequest(instance) {
+  if (!instance.pendingDrain) {
+    return;
+  }
+
+  instance.pendingDrain = false;
+  instance.onDrain();
+}
+
+export function scheduleBatchSchedulerTick(instance) {
+  instance.timer = setTimeout(() => {
+    if (!instance.isRunning) return;
+
+    instance.onFlush();
+    instance.flushDrainRequest();
+
+    if (instance.isRunning) {
+      instance.scheduleTick();
+    }
+  }, instance.batchTimeoutMs);
+}
+
+export function scheduleBatchDrainTick(instance) {
+  instance.drainTimer = setTimeout(() => {
+    instance.drainTimer = null;
+
+    if (!instance.isRunning) {
+      return;
+    }
+
+    instance.flushDrainRequest();
+  }, 0);
 }
