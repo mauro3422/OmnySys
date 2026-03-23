@@ -15,5 +15,3 @@ export const getWatcherStats = createStatsGetter('watcher', function buildWatche
     lastChangeSurface: this.lastChangeSurface || null
   };
 });
-
-export const getStats = (...args) => getWatcherStats(...args);

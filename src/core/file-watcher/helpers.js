@@ -14,4 +14,4 @@ export {
   shouldSkipModifiedWatcherChange
 } from './helpers-change.js';
 
-export { getStats, getWatcherStats } from './helpers-stats.js';
+export { getWatcherStats } from './helpers-stats.js';
