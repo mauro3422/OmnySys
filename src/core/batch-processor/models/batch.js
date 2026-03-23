@@ -133,7 +133,12 @@ export class Batch {
    * Obtiene estadísticas del batch
    * @returns {Object}
    */
-getStats() {
+  getBatchStats() {
     return statsPool.getModuleStats('batch');
-  }}
+  }
+
+  getStats() {
+    return this.getBatchStats();
+  }
+}
 
