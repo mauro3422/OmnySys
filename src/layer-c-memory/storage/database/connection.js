@@ -276,8 +276,12 @@ class ConnectionManager {
    * Obtiene estadisticas de la base de datos
    * @returns {Object} Estadisticas
    */
-  getStats() {
+  getConnectionStats() {
     return statsPool.getModuleStats('connection');
+  }
+
+  getStats() {
+    return this.getConnectionStats();
   }
 
   /**

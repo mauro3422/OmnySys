@@ -226,7 +226,7 @@ export async function invalidateDependentCaches(cacheManager, changedFilePath, p
  * Obtiene reporte de estado del caché unificado
  */
 export function generateCacheReport(cacheManager) {
-  const stats = cacheManager.getStats();
+  const stats = cacheManager.getCacheManagerStats();
   const entries = Object.values(cacheManager.index.entries);
   
   // Calcular ahorro estimado

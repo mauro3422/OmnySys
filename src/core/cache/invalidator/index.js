@@ -151,11 +151,15 @@ export class CacheInvalidator extends EventEmitter {
    * Get statistics
    * @returns {Object} Stats
    */
-  getStats() {
+  getCacheInvalidatorStats() {
     return {
       pendingOperations: this.pendingOperations.size,
       config: this.config
     };
+  }
+
+  getStats() {
+    return this.getCacheInvalidatorStats();
   }
 }
 

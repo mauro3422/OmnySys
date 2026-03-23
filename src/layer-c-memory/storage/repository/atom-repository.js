@@ -49,8 +49,12 @@ export class AtomRepository {
    * Gets repository statistics.
    * @returns {Object}
    */
-  getStats() {
+  getAtomRepositoryStats() {
     return statsPool.getModuleStats('atom-repository');
+  }
+
+  getStats() {
+    return this.getAtomRepositoryStats();
   }
 }
 

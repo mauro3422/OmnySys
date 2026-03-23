@@ -4,7 +4,7 @@
  * In SQLite mode the manager may not populate `index.entries`, so we fall back
  * to persisted metadata to keep status telemetry truthful.
  */
-export function getStats() {
+export function getCacheManagerStats() {
   const entries = Object.values(this.index.entries);
   const metadata = this.index.metadata || {};
   const totalFiles = entries.length || metadata.totalFiles || 0;
@@ -28,6 +28,10 @@ export function getStats() {
       critical: entries.filter((entry) => entry.changeType === 'critical').length
     }
   };
+}
+
+export function getStats() {
+  return getCacheManagerStats.call(this);
 }
 /**
  * Returns full cache statistics, including the RAM cache layer.
