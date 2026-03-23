@@ -47,28 +47,35 @@ export async function reloadMetadata(context) {
   const { cache, projectPath, wsManager } = context;
 
   try {
-    const { getProjectMetadata } = await import('#layer-c/query/apis/project-api.js');
-    const { getAllConnections } = await import('#layer-c/query/apis/connections-api.js');
-    const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
-
-    const metadata = await getProjectMetadata(projectPath);
-    cache.set('metadata', metadata);
-
-    const connections = await getAllConnections(projectPath);
-    cache.set('connections', connections);
-
-    const assessment = await getRiskAssessment(projectPath);
-    cache.set('assessment', assessment);
-
-    // Notificar a clientes WebSocket
-    wsManager?.broadcast({
-      type: 'analysis:completed',
-      filesAnalyzed: metadata?.stats?.totalFiles || 0,
-      timestamp: Date.now()
-    });
-
+    const metadata = await refreshAnalysisCache(cache, projectPath);
+    notifyAnalysisCompleted(wsManager, metadata);
     logger.info(`📊 Data refreshed: ${metadata?.stats?.totalFiles || 0} files`);
   } catch (error) {
     logger.error('Failed to reload metadata:', error.message);
   }
+}
+
+async function refreshAnalysisCache(cache, projectPath) {
+  const { getProjectMetadata } = await import('#layer-c/query/apis/project-api.js');
+  const { getAllConnections } = await import('#layer-c/query/apis/connections-api.js');
+  const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
+
+  const metadata = await getProjectMetadata(projectPath);
+  cache.set('metadata', metadata);
+
+  const connections = await getAllConnections(projectPath);
+  cache.set('connections', connections);
+
+  const assessment = await getRiskAssessment(projectPath);
+  cache.set('assessment', assessment);
+
+  return metadata;
+}
+
+function notifyAnalysisCompleted(wsManager, metadata) {
+  wsManager?.broadcast({
+    type: 'analysis:completed',
+    filesAnalyzed: metadata?.stats?.totalFiles || 0,
+    timestamp: Date.now()
+  });
 }
