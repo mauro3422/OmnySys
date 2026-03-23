@@ -29,6 +29,66 @@ function calculateHash(data) {
   return crypto.createHash('sha256').update(str).digest('hex');
 }
 
+function buildVersionPayload(atomData) {
+  return {
+    hash: calculateHash(atomData),
+    fieldHashes: calculateFieldHashes(atomData),
+    lastModified: Date.now(),
+    filePath: atomData.file || atomData.filePath,
+    atomName: atomData.name
+  };
+}
+
+function loadFieldHashes(row, atomId) {
+  try {
+    return JSON.parse(row.field_hashes_json || '{}');
+  } catch (_error) {
+    logger.warn(`Corrupted field hashes for ${atomId}, treating as new`);
+    return null;
+  }
+}
+
+function diffFieldHashes(oldFieldHashes, newFieldHashes) {
+  const changedFields = [];
+  const unchangedFields = [];
+
+  for (const [field, newHash] of Object.entries(newFieldHashes)) {
+    if (oldFieldHashes[field] !== newHash) {
+      changedFields.push(field);
+    } else {
+      unchangedFields.push(field);
+    }
+  }
+
+  for (const field of Object.keys(oldFieldHashes)) {
+    if (!(field in newFieldHashes)) {
+      changedFields.push(field);
+    }
+  }
+
+  return { changedFields, unchangedFields };
+}
+
+function insertOrUpdateVersion(db, atomId, version) {
+  const stmt = db.prepare(`
+    INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(atom_id) DO UPDATE SET
+      hash = excluded.hash,
+      field_hashes_json = excluded.field_hashes_json,
+      last_modified = excluded.last_modified
+  `);
+
+  stmt.run(
+    atomId,
+    version.hash,
+    JSON.stringify(version.fieldHashes),
+    version.lastModified,
+    version.filePath,
+    version.atomName
+  );
+}
+
 /**
  * Calcula hashes individuales para cada campo de un átomo
  * @param {Object} atomData - Datos del átomo
@@ -87,32 +147,8 @@ export class AtomVersionManager {
   async trackAtomVersion(atomId, atomData) {
     try {
       await this._ensureDb();
-      const version = {
-        hash: calculateHash(atomData),
-        fieldHashes: calculateFieldHashes(atomData),
-        lastModified: Date.now(),
-        filePath: atomData.file || atomData.filePath,
-        atomName: atomData.name
-      };
-
-      const stmt = this.db.prepare(`
-        INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(atom_id) DO UPDATE SET
-          hash = excluded.hash,
-          field_hashes_json = excluded.field_hashes_json,
-          last_modified = excluded.last_modified
-      `);
-
-      stmt.run(
-        atomId,
-        version.hash,
-        JSON.stringify(version.fieldHashes),
-        version.lastModified,
-        version.filePath,
-        version.atomName
-      );
-
+      const version = buildVersionPayload(atomData);
+      insertOrUpdateVersion(this.db, atomId, version);
       return version;
     } catch (error) {
       logger.error(`Failed to track atom version for ${atomId}: ${error.message}`);
@@ -140,11 +176,8 @@ export class AtomVersionManager {
         };
       }
 
-      let oldFieldHashes;
-      try {
-        oldFieldHashes = JSON.parse(row.field_hashes_json || '{}');
-      } catch (parseError) {
-        logger.warn(`Corrupted field hashes for ${atomId}, treating as new`);
+      const oldFieldHashes = loadFieldHashes(row, atomId);
+      if (!oldFieldHashes) {
         return {
           isNew: true,
           fields: Object.keys(newData).filter(k => !k.startsWith('_')),
@@ -153,24 +186,7 @@ export class AtomVersionManager {
       }
 
       const newFieldHashes = calculateFieldHashes(newData);
-      const changedFields = [];
-      const unchangedFields = [];
-
-      // Detectar campos modificados
-      for (const [field, newHash] of Object.entries(newFieldHashes)) {
-        if (oldFieldHashes[field] !== newHash) {
-          changedFields.push(field);
-        } else {
-          unchangedFields.push(field);
-        }
-      }
-
-      // Detectar campos eliminados
-      for (const field of Object.keys(oldFieldHashes)) {
-        if (!(field in newFieldHashes)) {
-          changedFields.push(field);
-        }
-      }
+      const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
 
       return {
         isNew: false,
@@ -197,13 +213,7 @@ export class AtomVersionManager {
       const row = this.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
       if (!row) return null;
       
-      let fieldHashes;
-      try {
-        fieldHashes = JSON.parse(row.field_hashes_json);
-      } catch (parseError) {
-        logger.warn(`Corrupted field hashes for ${atomId}`);
-        fieldHashes = {};
-      }
+      const fieldHashes = loadFieldHashes(row, atomId) || {};
       
       return {
         hash: row.hash,
@@ -246,9 +256,10 @@ export class AtomVersionManager {
    * 
    * @returns {Promise<Object>} Estadísticas
    */
-getStats() {
+  getStats() {
     return statsPool.getModuleStats('atom-version-manager');
-  }}
+  }
+}
 
 /**
  * Función helper para crear instancia del gestor
