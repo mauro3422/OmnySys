@@ -170,7 +170,7 @@ export class SmartBatchProcessor {
   /**
    * Gets changes ready for processing
    */
-  getReadyChanges() {
+  getReadyChangesSnapshot() {
     return collectReadyChangesForProcessor(this);
   }
 

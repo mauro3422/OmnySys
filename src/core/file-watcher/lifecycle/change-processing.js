@@ -17,7 +17,7 @@ export async function _processWithBatchProcessor() {
     return { processed: 0, skipped: 0, errors: [] };
   }
 
-  const readyChanges = this.batchProcessor.getReadyChanges();
+  const readyChanges = this.batchProcessor.getReadyChangesSnapshot();
   if (readyChanges.length === 0) {
     return { processed: 0, skipped: 0, errors: [] };
   }
