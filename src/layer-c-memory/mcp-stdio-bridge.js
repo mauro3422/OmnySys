@@ -11,16 +11,13 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
 import {
     createBridgeState,
+    log,
     waitForDaemonReady,
     startBridgeRecovery,
     sendBridgeRetryableError
 } from './mcp/stdio-bridge-lifecycle.js';
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
-
-function log(message) {
-    process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
-}
 
 function isRequestMessage(message) {
     return !!message &&

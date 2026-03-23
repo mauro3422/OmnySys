@@ -30,7 +30,7 @@ function waitMs(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function log(message) {
+export function log(message) {
     process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
 }
 
