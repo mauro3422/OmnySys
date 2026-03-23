@@ -26,7 +26,7 @@ export function generateRecommendation(obj) {
  * @param {Array} findings - Detection findings
  * @returns {number} Score (0-100)
  */
-export function calculateScore(findings) {
+export function scoreSharedObjects(findings) {
   if (findings.length === 0) return 100;
   
   const critical = findings.filter(f => f.severity === 'critical').length;

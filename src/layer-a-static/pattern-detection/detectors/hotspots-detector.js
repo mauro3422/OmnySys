@@ -6,11 +6,14 @@ import { BusinessLogicHotspotRule } from './rules/hotspot-rules.js';
  */
 export class HotspotsDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super({ ...config, id: 'hotspots' }, globalConfig);
+    super({
+      ...config,
+      id: 'hotspots',
+      name: 'Critical Function Hotspots',
+      description: 'Detects business logic functions with excessive usage'
+    }, globalConfig);
     this._initRules();
   }
-  getName() { return 'Critical Function Hotspots'; }
-  getDescription() { return 'Detects business logic functions with excessive usage'; }
 
   _initRules() {
     this.rules = [
@@ -46,8 +49,10 @@ export class HotspotsDetector extends PatternDetector {
 
     return {
       detector: this.getId(),
+      name: this._name || this.getId(),
+      description: this._description,
       findings: findings.sort((a, b) => b.metadata.riskScore - a.metadata.riskScore),
-      score: this.calculateScore(findings),
+      score: this.scoreFindings(findings),
       summary: { totalFindings: findings.length }
     };
   }

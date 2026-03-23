@@ -337,7 +337,7 @@ function getDatabaseSchemaStatus() {
       tables: report.tables,
       missingColumns: report.missingColumns,
       extraColumns: report.extraColumns,
-      recommendations: generateRecommendations(report, missingTables)
+      recommendations: buildSchemaRecommendations(report, missingTables)
     };
   } catch (error) {
     return {
@@ -348,7 +348,7 @@ function getDatabaseSchemaStatus() {
   }
 }
 
-function generateRecommendations(report, missingTables) {
+function buildSchemaRecommendations(report, missingTables) {
   const recs = [];
   if (missingTables > 0) {
     recs.push({ severity: 'high', message: `Missing ${missingTables} table(s). Run restart_server({ clearCache: true }) to recreate.`, action: 'restart_server' });

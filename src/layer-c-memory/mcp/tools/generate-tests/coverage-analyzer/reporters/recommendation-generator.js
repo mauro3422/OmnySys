@@ -9,7 +9,7 @@
  * @param {Array} duplicateTests - Tests duplicados detectados
  * @returns {Array} - Array de recomendaciones
  */
-export function generateRecommendations(coverageGaps, obsoleteTests, duplicateTests) {
+export function buildCoverageRecommendations(coverageGaps, obsoleteTests, duplicateTests) {
   const recommendations = [];
   
   if (coverageGaps.length > 0) {

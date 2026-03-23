@@ -11,15 +11,12 @@ import { PatternDetector } from '../detector-base.js';
 
 export class PerformancePatternsDetector extends PatternDetector {
     constructor(config = {}, globalConfig = {}) {
-        super({ ...config, id: 'performance-patterns' }, globalConfig);
-    }
-
-    getName() {
-        return 'Performance Anti-Patterns';
-    }
-
-    getDescription() {
-        return 'Detects algorithmic complexity risks and blocking operations in hot paths';
+        super({
+            ...config,
+            id: 'performance-patterns',
+            name: 'Performance Anti-Patterns',
+            description: 'Detects algorithmic complexity risks and blocking operations in hot paths'
+        }, globalConfig);
     }
 
     async detect(systemMap) {
@@ -55,10 +52,10 @@ export class PerformancePatternsDetector extends PatternDetector {
 
         return {
             detector: this.getId(),
-            name: this.getName(),
-            description: this.getDescription(),
+            name: this._name || this.getId(),
+            description: this._description,
             findings: findings.sort((a, b) => b.metadata.riskScore - a.metadata.riskScore),
-            score: this.calculateScore(findings),
+            score: this.scoreFindings(findings),
             weight: 0.20
         };
     }
@@ -89,7 +86,7 @@ export class PerformancePatternsDetector extends PatternDetector {
         return 'Review iteration patterns for potential optimizations.';
     }
 
-    calculateScore(findings) {
+    scoreFindings(findings) {
         if (findings.length === 0) return 100;
         const highCount = findings.filter(f => f.severity === 'high').length;
         const medCount = findings.filter(f => f.severity === 'medium').length;

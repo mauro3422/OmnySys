@@ -21,15 +21,12 @@ const logger = {
 
 export class DeepChainsDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super({ ...config, id: 'deepChains' }, globalConfig);
-  }
-
-  getName() {
-    return 'Deep Dependency Chains';
-  }
-  
-  getDescription() {
-    return 'Detects dependency chains deeper than 7 levels with high coupling';
+    super({
+      ...config,
+      id: 'deepChains',
+      name: 'Deep Dependency Chains',
+      description: 'Detects dependency chains deeper than 7 levels with high coupling'
+    }, globalConfig);
   }
   
   async detect(systemMap) {
@@ -37,8 +34,8 @@ export class DeepChainsDetector extends PatternDetector {
     if (!systemMap) {
       return {
         detector: this.getId(),
-        name: this.getName(),
-        description: this.getDescription(),
+        name: this._name || this.getId(),
+        description: this._description,
         findings: [],
         score: 100,
         weight: this.globalConfig.weights?.deepChains || 0.2,
@@ -62,7 +59,7 @@ export class DeepChainsDetector extends PatternDetector {
       if (visited.has(entry.id)) continue;
       
       const chain = this.buildChain(entry.id, [entry.id], systemMap, minDepth + 3);
-      const riskScore = this.calculateRiskScore(chain, entry, systemMap);
+      const riskScore = this.scoreChainRisk(chain, entry, systemMap);
       
       // Solo reportar si es realmente problemático
       if (chain.length >= minDepth && riskScore >= 20) {
@@ -89,12 +86,12 @@ export class DeepChainsDetector extends PatternDetector {
     }
     
     // Calcular score basado en cantidad y severidad
-    const score = this.calculateScore(findings, maxAcceptable);
+    const score = this.scoreFindings(findings, maxAcceptable);
     
     return {
       detector: this.getId(),
-      name: this.getName(),
-      description: this.getDescription(),
+      name: this._name || this.getId(),
+      description: this._description,
       findings,
       score,
       weight: this.globalConfig.weights?.deepChains || 0.15,
@@ -171,7 +168,7 @@ export class DeepChainsDetector extends PatternDetector {
   /**
    * Calcula score de riesgo de una cadena
    */
-  calculateRiskScore(chain, entry, systemMap) {
+  scoreChainRisk(chain, entry, systemMap) {
     let score = 0;
     
     // Factor 1: Profundidad (cuadrática)
@@ -194,7 +191,7 @@ export class DeepChainsDetector extends PatternDetector {
     return score;
   }
   
-  calculateScore(findings, maxAcceptable) {
+  scoreFindings(findings, maxAcceptable) {
     if (findings.length === 0) return 100;
     
     const highRiskCount = findings.filter(f => f.severity === 'high').length;

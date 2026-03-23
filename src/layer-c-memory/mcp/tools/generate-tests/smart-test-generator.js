@@ -17,7 +17,7 @@ import { generateBuildMethodTests } from './smart-test-generator/build-tests.js'
 import { generateChainingTests } from './smart-test-generator/chaining-tests.js';
 import { generateImmutabilityTests } from './smart-test-generator/immutability-tests.js';
 import { generateStaticFactoryTests } from './smart-test-generator/static-tests.js';
-import { countTests, generateRecommendations } from './smart-test-generator/test-helpers.js';
+import { countTests, buildBuilderRecommendations } from './smart-test-generator/test-helpers.js';
 
 const logger = createLogger('OmnySys:smart-test-generator');
 
@@ -91,7 +91,7 @@ export async function generateSmartClassTests(classInfo, filePath, projectPath, 
       immutabilityTests: includeImmutabilityTests && hasBuildMethod ? 2 : 0,
       staticTests: Math.min(validStaticMethods.length, 5)
     },
-    recommendations: generateRecommendations(validMethods, validStaticMethods, className)
+    recommendations: buildBuilderRecommendations(validMethods, validStaticMethods, className)
   };
 }
 

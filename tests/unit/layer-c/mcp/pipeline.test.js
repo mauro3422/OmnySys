@@ -6,7 +6,7 @@
  *
  * Cubre:
  * - execute() success flow (all steps pass)
- * - execute() halts when shouldExecute() returns false
+ * - execute() halts when canExecute() returns false
  * - execute() rollback when a step throws
  * - Pipeline counts only executable steps in progress log
  * - rollback is called in reverse order
@@ -26,12 +26,12 @@ import { InitializationStep } from '#layer-c/mcp/core/initialization/steps/base-
 function makeStep(name, {
   execute = async () => true,
   rollback = async () => {},
-  shouldExecute = () => true
+  canExecute = () => true
 } = {}) {
   const step = new InitializationStep(name);
   step.execute = vi.fn(execute);
   step.rollback = vi.fn(rollback);
-  step.shouldExecute = vi.fn(shouldExecute);
+  step.canExecute = vi.fn(canExecute);
   return step;
 }
 
@@ -97,10 +97,10 @@ describe('InitializationPipeline', () => {
     expect(receivedServer.customProp).toBe('test-value');
   });
 
-  // ── shouldExecute() filtering ────────────────────────────────────────────────
+  // ── canExecute() filtering ────────────────────────────────────────────────────
 
-  test('execute() omite steps donde shouldExecute() retorna false', async () => {
-    const skippedStep = makeStep('skipped', { shouldExecute: () => false });
+  test('execute() omite steps donde canExecute() retorna false', async () => {
+    const skippedStep = makeStep('skipped', { canExecute: () => false });
     const executedStep = makeStep('executed');
 
     const pipeline = new InitializationPipeline([skippedStep, executedStep]);
@@ -115,9 +115,9 @@ describe('InitializationPipeline', () => {
   test('execute() cuenta correctamente los steps a ejecutar', async () => {
     const steps = [
       makeStep('run-1'),
-      makeStep('skip-1', { shouldExecute: () => false }),
+      makeStep('skip-1', { canExecute: () => false }),
       makeStep('run-2'),
-      makeStep('skip-2', { shouldExecute: () => false }),
+      makeStep('skip-2', { canExecute: () => false }),
       makeStep('run-3')
     ];
 
@@ -235,9 +235,9 @@ describe('InitializationStep (base class)', () => {
     await expect(step.execute({})).rejects.toThrow('must implement execute()');
   });
 
-  test('shouldExecute() retorna true por defecto', () => {
+  test('canExecute() retorna true por defecto', () => {
     const step = new InitializationStep('default');
-    expect(step.shouldExecute({})).toBe(true);
+    expect(step.canExecute({})).toBe(true);
   });
 
   test('rollback() por defecto no lanza', async () => {

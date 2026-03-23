@@ -23,12 +23,7 @@ const logger = createLogger('OmnySys:orchestrator:init:step');
  */
 export class OrchestratorInitStep extends InitializationStep {
   constructor() {
-    super('orchestrator-init');
-  }
-
-  shouldExecute(server) {
-    // LIGHT mode skips Orchestrator — PRIMARY handles it
-    return server.isPrimary !== false;
+    super('orchestrator-init', { primaryOnly: true });
   }
 
   async execute(server) {

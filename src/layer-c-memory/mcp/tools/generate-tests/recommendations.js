@@ -75,13 +75,6 @@ export function buildTestRecommendations(atom, tests) {
 }
 
 /**
- * Alias compatible para consumidores existentes.
- */
-export function generateRecommendations(atom, tests) {
-  return buildTestRecommendations(atom, tests);
-}
-
-/**
  * Determina la prioridad de un test
  */
 export function getTestPriority(test) {
@@ -94,6 +87,5 @@ export function getTestPriority(test) {
 export default {
   calculateRiskScore,
   buildTestRecommendations,
-  generateRecommendations,
   getTestPriority
 };

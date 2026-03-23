@@ -63,6 +63,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats initialization step shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'LLMSetupStep',
+      filePath: 'src/layer-c-memory/mcp/core/initialization/steps/llm-setup-step.js'
+    }))).toBe(true);
+  });
+
   it('does not classify ordinary classes as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'PlainUtility',

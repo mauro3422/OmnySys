@@ -146,12 +146,12 @@ describe('McpSetupStep', () => {
     expect(existingServer.setRequestHandler).toHaveBeenCalled();
   });
 
-  // ── shouldExecute() ─────────────────────────────────────────────────────────
+  // ── canExecute() ─────────────────────────────────────────────────────────────
 
-  test('shouldExecute() retorna true por defecto (no tiene guard de isPrimary)', () => {
+  test('canExecute() retorna true por defecto (no tiene guard de isPrimary)', () => {
     const server = makeServer();
     // McpSetupStep siempre ejecuta (tanto en PRIMARY como en LIGHT)
-    expect(step.shouldExecute(server)).toBe(true);
+    expect(step.canExecute(server)).toBe(true);
   });
 });
 

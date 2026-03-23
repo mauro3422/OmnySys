@@ -31,12 +31,12 @@ export class InitializationPipeline {
    * @returns {Promise<Object>} - Result { success, error, failedAt }
    */
   async execute(server) {
-    const totalSteps = this.steps.filter(s => s.shouldExecute(server)).length;
+    const totalSteps = this.steps.filter(s => s.canExecute(server)).length;
     let currentStep = 0;
 
     for (const step of this.steps) {
       // Check if should execute
-      if (!step.shouldExecute(server)) {
+      if (!step.canExecute(server)) {
         continue;
       }
 

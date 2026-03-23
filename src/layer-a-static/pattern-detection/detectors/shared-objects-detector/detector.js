@@ -10,7 +10,7 @@
 import { PatternDetector } from '../../detector-base.js';
 import { analyzeRiskProfile } from './analyzers/risk-analyzer.js';
 import { countUsages } from './analyzers/usage-counter.js';
-import { generateRecommendation, calculateScore } from './analyzers/recommendation-generator.js';
+import { generateRecommendation, scoreSharedObjects } from './analyzers/recommendation-generator.js';
 
 // Simple logger
 const logger = {
@@ -22,15 +22,12 @@ const logger = {
  */
 export class SharedObjectsDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super({ ...config, id: 'sharedObjects' }, globalConfig);
-  }
-
-  getName() {
-    return 'Shared Mutable Objects';
-  }
-  
-  getDescription() {
-    return 'Detects truly critical shared mutable state (not config or utils)';
+    super({
+      ...config,
+      id: 'sharedObjects',
+      name: 'Shared Mutable Objects',
+      description: 'Detects truly critical shared mutable state (not config or utils)'
+    }, globalConfig);
   }
   
   async detect(systemMap) {
@@ -38,8 +35,8 @@ export class SharedObjectsDetector extends PatternDetector {
     if (!systemMap) {
       return {
         detector: this.getId(),
-        name: this.getName(),
-        description: this.getDescription(),
+        name: this._name || this.getId(),
+        description: this._description,
         findings: [],
         score: 100,
         weight: this.globalConfig.weights?.sharedObjects || 0.20,
@@ -94,12 +91,12 @@ export class SharedObjectsDetector extends PatternDetector {
       });
     });
     
-    const score = calculateScore(findings);
+    const score = scoreSharedObjects(findings);
     
     return {
       detector: this.getId(),
-      name: this.getName(),
-      description: this.getDescription(),
+      name: this._name || this.getId(),
+      description: this._description,
       findings,
       score,
       weight: this.globalConfig.weights?.sharedObjects || 0.20,

@@ -52,7 +52,11 @@ export class InitializationStep {
    * @param {Object} server - Server instance
    * @returns {boolean} - True if should execute
    */
-  shouldExecute(server) {
+  canExecute(server) {
+    if (this.options.primaryOnly === true) {
+      return server.isPrimary !== false;
+    }
+
     return true;
   }
 }

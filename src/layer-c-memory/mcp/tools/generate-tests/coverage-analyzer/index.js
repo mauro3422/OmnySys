@@ -16,7 +16,7 @@ import path from 'path';
 import { parseExistingTests } from './parsers/index.js';
 import { detectTestedEntities, detectObsoleteTests, detectDuplicateTests } from './detectors/index.js';
 import { analyzeEntityCoverage } from './analyzers/index.js';
-import { generateRecommendations, compareWithGeneratedTests } from './reporters/index.js';
+import { buildCoverageRecommendations, compareWithGeneratedTests } from './reporters/index.js';
 
 const logger = createLogger('OmnySys:test-coverage-analyzer');
 
@@ -69,7 +69,7 @@ export async function analyzeTestCoverage(testFilePath, projectPath) {
       gaps: coverageGaps,
       obsolete: obsoleteTests,
       duplicates: duplicateTests,
-      recommendations: generateRecommendations(coverageGaps, obsoleteTests, duplicateTests)
+      recommendations: buildCoverageRecommendations(coverageGaps, obsoleteTests, duplicateTests)
     };
 
   } catch (error) {

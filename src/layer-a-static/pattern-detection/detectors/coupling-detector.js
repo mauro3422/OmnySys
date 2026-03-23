@@ -6,11 +6,14 @@ import { GodObjectRule } from './rules/coupling-rules.js';
  */
 export class CouplingDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super({ ...config, id: 'coupling' }, globalConfig);
+    super({
+      ...config,
+      id: 'coupling',
+      name: 'Architectural Coupling',
+      description: 'Detects files with excessive coupling that may indicate architectural issues'
+    }, globalConfig);
     this._initRules();
   }
-  getName() { return 'Architectural Coupling'; }
-  getDescription() { return 'Detects files with excessive coupling that may indicate architectural issues'; }
 
   _initRules() {
     this.rules = [
@@ -37,10 +40,10 @@ export class CouplingDetector extends PatternDetector {
 
     return {
       detector: this.getId(),
-      name: this.getName(),
-      description: this.getDescription(),
+      name: this._name || this.getId(),
+      description: this._description,
       findings: findings.sort((a, b) => b.metadata.riskScore - a.metadata.riskScore),
-      score: this.calculateScore(findings),
+      score: this.scoreFindings(findings),
       weight: this.globalConfig.weights?.coupling || 0.15,
       recommendation: findings.length > 0
         ? `Found ${findings.length} files with excessive coupling`

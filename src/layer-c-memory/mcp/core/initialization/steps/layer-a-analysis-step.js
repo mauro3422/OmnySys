@@ -22,12 +22,7 @@ const logger = createLogger('OmnySys:layer:a:analysis:step');
  */
 export class LayerAAnalysisStep extends InitializationStep {
   constructor() {
-    super('layer-a-analysis', { blocking: true });
-  }
-
-  shouldExecute(server) {
-    // LIGHT mode skips Layer A analysis — PRIMARY handles it
-    return server.isPrimary !== false;
+    super('layer-a-analysis', { blocking: true, primaryOnly: true });
   }
 
   async execute(server) {

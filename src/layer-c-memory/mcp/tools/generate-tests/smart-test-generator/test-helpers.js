@@ -20,7 +20,7 @@ export function countTests(code) {
  * @param {string} className - Class name
  * @returns {Array} - Array of recommendations
  */
-export function generateRecommendations(methods, staticMethods, className) {
+export function buildBuilderRecommendations(methods, staticMethods, className) {
   const recommendations = [];
   
   if (methods.length > 20) {

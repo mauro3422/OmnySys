@@ -7,14 +7,6 @@
  * @module pattern-detection/detector-base
  */
 
-// Simple logger para evitar dependencias circulares
-const createDetectorLogger = (id) => ({
-  info: (msg, ...args) => console.log(`[${id}] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[${id}] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[${id}] ${msg}`, ...args),
-  debug: (msg, ...args) => process.env.DEBUG && console.log(`[${id}] ${msg}`, ...args)
-});
-
 /**
  * Interfaz base para todos los detectores
  * Cada detector debe implementar esta interfaz
@@ -24,22 +16,15 @@ export class PatternDetector {
     this.config = options.config !== undefined ? options.config : options;
     this.globalConfig = options.globalConfig !== undefined ? options.globalConfig : globalConfig;
     this._id = options.id ?? this.config?.id ?? null;
-    // Delay logger creation to avoid calling getId() during construction
-    this._logger = null;
-  }
-  
-  /**
-   * Get logger (created lazily)
-   */
-  get logger() {
-    if (!this._logger) {
-      try {
-        this._logger = createDetectorLogger(this.getId());
-      } catch {
-        this._logger = createDetectorLogger('PatternDetector');
-      }
-    }
-    return this._logger;
+    this._name = options.name ?? this.config?.name ?? null;
+    this._description = options.description ?? this.config?.description ?? '';
+    const loggerId = this._id || 'PatternDetector';
+    this._logger = {
+      info: (msg, ...args) => console.log(`[${loggerId}] ${msg}`, ...args),
+      warn: (msg, ...args) => console.warn(`[${loggerId}] ${msg}`, ...args),
+      error: (msg, ...args) => console.error(`[${loggerId}] ${msg}`, ...args),
+      debug: (msg, ...args) => process.env.DEBUG && console.log(`[${loggerId}] ${msg}`, ...args)
+    };
   }
   
   /**
@@ -48,20 +33,6 @@ export class PatternDetector {
   getId() {
     if (this._id) return this._id;
     throw new Error('Detector must implement getId()');
-  }
-  
-  /**
-   * Nombre descriptivo
-   */
-  getName() {
-    return this.getId();
-  }
-  
-  /**
-   * Descripción de qué detecta
-   */
-  getDescription() {
-    return '';
   }
   
   /**
@@ -78,7 +49,7 @@ export class PatternDetector {
    * Calcula score de 0-100 basado en findings
    * 100 = perfecto, 0 = terrible
    */
-  calculateScore(findings) {
+  scoreFindings(findings) {
     if (!findings || findings.length === 0) return 100;
     
     // Implementación base: cada finding reduce el score

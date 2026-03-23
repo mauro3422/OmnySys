@@ -24,12 +24,7 @@ const logger = createLogger('OmnySys:llm:setup:step');
  */
 export class LLMSetupStep extends InitializationStep {
   constructor() {
-    super('llm-setup');
-  }
-
-  shouldExecute(server) {
-    // LIGHT mode skips LLM — PRIMARY handles it
-    return server.isPrimary !== false;
+    super('llm-setup', { primaryOnly: true });
   }
 
   async execute(server) {
