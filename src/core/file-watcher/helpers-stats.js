@@ -1,6 +1,6 @@
 import { createStatsGetter } from '../../shared/utils/stats-pool.js';
 
-export const getStats = createStatsGetter('watcher', function buildWatcherStats(pooled) {
+export const getWatcherStats = createStatsGetter('watcher', function buildWatcherStats(pooled) {
   return {
     ...pooled,
     isRunning: this.isRunning,
@@ -15,3 +15,5 @@ export const getStats = createStatsGetter('watcher', function buildWatcherStats(
     lastChangeSurface: this.lastChangeSurface || null
   };
 });
+
+export const getStats = (...args) => getWatcherStats(...args);
