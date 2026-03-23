@@ -17,6 +17,7 @@ import { loadStats, updateStatsWithEvent, saveStats } from './stats/stats-manage
 import { analyzePatterns } from './analysis/pattern-analyzer.js';
 import { exportToCSV } from './reports/csv-exporter.js';
 import { generateSessionId } from './utils/session.js';
+import { statsPool as sharedStatsPool } from '../../shared/utils/stats-pool.js';
 
 /**
  * Log a tunnel vision event with stats update
@@ -40,8 +41,8 @@ export async function logEvent(alert, context = {}) {
  * Get statistics
  * @returns {Promise<Object>} Stats
  */
-import { statsPool as sharedStatsPool } from '../../shared/utils/stats-pool.js';
-export const getStats = (...args) => sharedStatsPool.getStats('tunnel-vision-logger', ...args);
+export const getTunnelVisionLoggerStats = (...args) => sharedStatsPool.getModuleStats('tunnel-vision-logger', ...args);
+export const getStats = (...args) => getTunnelVisionLoggerStats(...args);
 export {
   logTunnelVisionEvent,
   readAllEvents,
@@ -56,6 +57,7 @@ export {
 // Default export
 export default {
   logEvent,
+  getTunnelVisionLoggerStats,
   getStats,
   readAllEvents,
   analyzePatterns,

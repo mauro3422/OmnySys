@@ -102,9 +102,9 @@ export class TunnelVisionDetector {
    * Gets current statistics
    * @returns {Object}
    */
-  getStats() {
+  getTunnelVisionDetectorStats() {
     return {
-      tracker: this.tracker.getStats(),
+      tracker: this.tracker.getModificationTrackerStats(),
       atomicDetector: this.detectors.atomic.getStats?.() || null,
       fileDetector: this.detectors.file.getStats?.() || null,
       minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS,
@@ -162,11 +162,11 @@ export function formatAlert(alert) {
 }
 
 /**
- * Gets statistics (convenience function)
+ * Gets current statistics (canonical alias)
  * @returns {Object}
  */
 export function getStats() {
-  return detector.getStats();
+  return detector.getTunnelVisionDetectorStats();
 }
 /**
  * Gets modification history (convenience function)

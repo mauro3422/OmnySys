@@ -24,4 +24,5 @@ export async function updateStats(event) {
 }
 
 import { statsPool } from '../../../shared/utils/stats-pool.js';
-export const getStats = (...args) => statsPool.getModuleStats('calculator', ...args);
+export const getTunnelVisionCalculatorStats = (...args) => statsPool.getModuleStats('calculator', ...args);
+export const getStats = (...args) => getTunnelVisionCalculatorStats(...args);

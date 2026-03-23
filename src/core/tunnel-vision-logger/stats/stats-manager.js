@@ -8,6 +8,7 @@
 
 import fs from 'fs/promises';
 import { TUNNEL_VISION_STATS } from '../utils/paths.js';
+import { statsPool } from '../../../shared/utils/stats-pool.js';
 
 /**
  * Default stats structure
@@ -84,4 +85,5 @@ export function updateStatsWithEvent(stats, event) {
  * Get stats
  * @returns {Promise<Object>} Current stats
  */
-export const getStats = (...args) => statsPool.getModuleStats('stats-manager', ...args);
+export const getTunnelVisionStatsManagerStats = (...args) => statsPool.getModuleStats('stats-manager', ...args);
+export const getStats = (...args) => getTunnelVisionStatsManagerStats(...args);

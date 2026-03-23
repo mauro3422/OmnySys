@@ -93,9 +93,15 @@ export class ModificationTracker {
    * 
    * @returns {Object}
    */
-getStats() {
+  getModificationTrackerStats() {
     return statsPool.getModuleStats('modification-tracker');
-  }  /**
+  }
+
+  getStats() {
+    return this.getModificationTrackerStats();
+  }
+
+  /**
    * Clears all tracked modifications
    */
   clear() {
