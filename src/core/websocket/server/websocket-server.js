@@ -196,9 +196,15 @@ export class WebSocketManager extends EventEmitter {
    * Obtiene estadísticas
    * @returns {Object}
    */
-getStats() {
+  getWebSocketServerStats() {
     return statsPool.getModuleStats('websocket-server');
-  }  /**
+  }
+
+  getStats() {
+    return this.getWebSocketServerStats();
+  }
+
+  /**
    * Detiene el servidor WebSocket
    * @returns {Promise<void>}
    */

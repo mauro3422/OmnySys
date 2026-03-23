@@ -156,7 +156,12 @@ export class WSClient {
    * Obtiene estadísticas del cliente
    * @returns {Object}
    */
-getStats() {
+  getWebSocketClientStats() {
     return statsPool.getModuleStats('ws-client');
-  }}
+  }
+
+  getStats() {
+    return this.getWebSocketClientStats();
+  }
+}
 

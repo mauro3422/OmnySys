@@ -190,7 +190,7 @@ export class BatchProcessor extends EventEmitter {
    * Obtiene estadísticas del procesador
    * @returns {Object}
    */
-  getStats() {
+  getProcessorStats() {
     return {
       isRunning: this.isRunning,
       pendingChanges: this.pendingChanges.size,
@@ -199,6 +199,10 @@ export class BatchProcessor extends EventEmitter {
       activeProcesses: this.activeProcesses,
       completedBatches: this.completedBatches.length
     };
+  }
+
+  getStats() {
+    return this.getProcessorStats();
   }
 }
 
