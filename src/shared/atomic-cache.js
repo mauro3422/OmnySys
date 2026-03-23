@@ -150,7 +150,7 @@ export class AtomicCache {
   /**
    * Obtiene estadísticas del caché
    */
-  getStats() {
+  getAtomicCacheStats() {
     let memoryBytes = 0;
     for (const item of this.atoms.values()) {
       memoryBytes += JSON.stringify(item.data).length;
@@ -161,8 +161,12 @@ export class AtomicCache {
       derivationsCached: this.derivations.cache.size,
       filesTracked: this.fileToAtoms.size,
       memoryUsageKB: Math.round(memoryBytes / 1024),
-      derivationStats: this.derivations.getStats()
+      derivationStats: this.derivations.getDerivationCacheStats()
     };
+  }
+
+  getStats() {
+    return this.getAtomicCacheStats();
   }
 
   /**

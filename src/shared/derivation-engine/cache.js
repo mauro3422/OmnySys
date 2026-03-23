@@ -104,7 +104,7 @@ export class DerivationCache {
    * Obtiene estadísticas de la cache
    * @returns {Object} - Cache stats
    */
-  getStats() {
+  getDerivationCacheStats() {
     const total = this.stats.hits + this.stats.misses;
 
     return {
@@ -114,6 +114,10 @@ export class DerivationCache {
       misses: this.stats.misses,
       hitRate: total === 0 ? 0 : this.stats.hits / total
     };
+  }
+
+  getStats() {
+    return this.getDerivationCacheStats();
   }
 
   /**
