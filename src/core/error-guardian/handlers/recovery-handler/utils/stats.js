@@ -12,7 +12,8 @@
  * @returns {Object} Copia de estadísticas
  */
 import { getGuardianStats } from '../../../utils/shared-stats.js';
-export const getStats = (...args) => getGuardianStats('recovery-handler', ...args);
+export const getRecoveryStats = (...args) => getGuardianStats('recovery-handler', ...args);
+export const getStats = (...args) => getRecoveryStats(...args);
 /**
  * Reset statistics
  * @returns {Object} Estadísticas reseteadas

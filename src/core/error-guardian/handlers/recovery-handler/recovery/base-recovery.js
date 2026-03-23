@@ -17,7 +17,7 @@ import {
 import { attemptAutoFix } from '../actions/auto-fix.js';
 import { saveSystemState } from '../actions/state-manager.js';
 import { registerCallback, executeCallback } from '../utils/callbacks.js';
-import { getStats, resetStats } from '../utils/stats.js';
+import { getRecoveryStats, resetStats } from '../utils/stats.js';
 
 const logger = createLogger('OmnySys:error:recovery');
 
@@ -50,8 +50,12 @@ export class RecoveryHandler {
    * Get recovery statistics
    * @returns {Object} - Statistics
    */
+  getRecoveryStats() {
+    return getRecoveryStats(this.stats);
+  }
+
   getStats() {
-    return getStats(this.stats);
+    return this.getRecoveryStats();
   }
 
   /**

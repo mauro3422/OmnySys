@@ -45,8 +45,8 @@ export function aggregateStats(stats, components) {
     ...stats,
     recentErrors: errorLog.slice(-10),
     health,
-    classification: classifier?.getStats(),
-    recovery: recovery?.getStats(),
+    classification: classifier?.getClassifierStats?.() || classifier?.getStats(),
+    recovery: recovery?.getRecoveryStats?.() || recovery?.getStats(),
     circuits: circuitBreaker?.getAllStates()
   };
 }

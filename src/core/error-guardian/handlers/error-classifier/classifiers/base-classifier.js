@@ -8,7 +8,7 @@
 
 import { createLogger } from '../../../../utils/logger.js';
 import { SEVERITY, ERROR_PATTERNS } from '../patterns/constants.js';
-import { getStats } from '../utils/stats.js';
+import { getClassifierStats } from '../utils/stats.js';
 
 const logger = createLogger('OmnySys:error:classifier');
 
@@ -38,8 +38,12 @@ export class ErrorClassifier {
    * Get classification statistics
    * @returns {Object} - Statistics
    */
+  getClassifierStats() {
+    return getClassifierStats(this.classificationHistory);
+  }
+
   getStats() {
-    return getStats(this.classificationHistory);
+    return this.getClassifierStats();
   }
 
   /**

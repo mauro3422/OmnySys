@@ -105,7 +105,7 @@ export class ErrorGuardian {
     return this.classifier.classify(error);
   }
 
-  getStats() {
+  getErrorGuardianStats() {
     return aggregateStats(this.stats, {
       classifier: this.classifier,
       recovery: this.recovery,
@@ -113,6 +113,10 @@ export class ErrorGuardian {
       errorLog: this.errorLog,
       health: calculateHealth(this.stats)
     });
+  }
+
+  getStats() {
+    return this.getErrorGuardianStats();
   }
 
   getCircuitState(operationId) {

@@ -12,4 +12,5 @@
  * @returns {Object} - Statistics by type and severity
  */
 import { getGuardianStats } from '../../../utils/shared-stats.js';
-export const getStats = (...args) => getGuardianStats('error-classifier', ...args);
+export const getClassifierStats = (...args) => getGuardianStats('error-classifier', ...args);
+export const getStats = (...args) => getClassifierStats(...args);
