@@ -7,6 +7,7 @@
  */
 
 import { BatchProcessor, calculatePriority } from '../../batch-processor/index.js';
+import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:batch:processor:init');
@@ -57,7 +58,7 @@ export async function initializeBatchProcessor(context) {
     wsManager?.broadcast({
       type: 'batch:completed',
       batchId: batch.id,
-      stats: batch.getStats(),
+      stats: batch.getBatchStats(),
       timestamp: Date.now()
     });
   });
