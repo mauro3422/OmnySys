@@ -20,10 +20,10 @@ const logger = createLogger('OmnySys:cache:atomic');
  * Operación individual del caché
  */
 export class CacheOperation {
-  constructor(type, execute, rollback, description) {
+  constructor(type, action, undoAction, description) {
     this.type = type;
-    this.execute = execute;
-    this.rollback = rollback;
+    this.action = action;
+    this.undoAction = undoAction;
     this.description = description;
     this.status = InvalidationStatus.PENDING;
     this.result = null;
@@ -35,12 +35,12 @@ export class CacheOperation {
   /**
    * Ejecuta la operación
    */
-  async run() {
+  async perform() {
     this.startTime = Date.now();
     this.status = InvalidationStatus.IN_PROGRESS;
 
     try {
-      this.result = await this.execute();
+      this.result = await this.action();
       this.status = InvalidationStatus.SUCCESS;
       this.endTime = Date.now();
       return { success: true, result: this.result };
@@ -55,7 +55,7 @@ export class CacheOperation {
   /**
    * Ejecuta rollback de la operación
    */
-  async undo() {
+  async revert() {
     if (this.status !== InvalidationStatus.FAILED &&
       this.status !== InvalidationStatus.SUCCESS) {
       return { success: true, message: 'Nothing to rollback' };
@@ -64,7 +64,7 @@ export class CacheOperation {
     this.status = InvalidationStatus.ROLLING_BACK;
 
     try {
-      await this.rollback(this.result);
+      await this.undoAction(this.result);
       this.status = InvalidationStatus.ROLLED_BACK;
       return { success: true };
     } catch (error) {
@@ -121,7 +121,7 @@ export class AtomicTransaction {
   /**
    * Ejecuta toda la transacción (todo o nada)
    */
-  async execute() {
+  async commit() {
     this.startTime = Date.now();
     this.status = InvalidationStatus.IN_PROGRESS;
 
@@ -130,44 +130,15 @@ export class AtomicTransaction {
     const completedOperations = [];
 
     try {
-      // Ejecutar operaciones en orden
-      for (let i = 0; i < this.operations.length; i++) {
-        const operation = this.operations[i];
-
-        logger.debug(`  [${i + 1}/${this.operations.length}] ${operation.description}`);
-
-        const result = await operation.run();
-
-        if (!result.success) {
-          throw new Error(
-            `Operation ${operation.type} failed: ${result.error.message}`
-          );
-        }
-
-        completedOperations.push(operation);
-      }
-
-      // Todas las operaciones exitosas
+      await this._runOperations(completedOperations);
       this.status = InvalidationStatus.SUCCESS;
       this.endTime = Date.now();
 
       logger.debug(`✅ Atomic transaction completed in ${this.getDuration()}ms`);
-
-      return {
-        success: true,
-        filePath: this.filePath,
-        duration: this.getDuration(),
-        operationsCompleted: completedOperations.length
-      };
+      return this._buildSuccessResult(completedOperations.length);
 
     } catch (error) {
-      // Algunas operaciones fallaron, hacer rollback
-      this.status = InvalidationStatus.FAILED;
-      logger.error(`❌ Transaction failed: ${error.message}`);
-
-      await this.rollback(completedOperations);
-
-      throw error;
+      return this._handleFailure(error, completedOperations);
     }
   }
 
@@ -175,25 +146,7 @@ export class AtomicTransaction {
    * Rollback de todas las operaciones completadas
    */
   async rollback(completedOperations) {
-    logger.warn(`↩️  Rolling back ${completedOperations.length} operations...`);
-    this.status = InvalidationStatus.ROLLING_BACK;
-
-    // Rollback en orden inverso
-    for (let i = completedOperations.length - 1; i >= 0; i--) {
-      const operation = completedOperations[i];
-
-      logger.debug(`  Rolling back: ${operation.description}`);
-
-      const result = await operation.undo();
-
-      if (!result.success) {
-        logger.error(`    ⚠️  Rollback failed for ${operation.type}:`, result.error?.message);
-        // Continuar con el resto del rollback aunque uno falle
-      }
-    }
-
-    this.status = InvalidationStatus.ROLLED_BACK;
-    logger.info(`↩️  Rollback completed`);
+    await this._rollbackOperations(completedOperations);
   }
 
   /**
@@ -220,6 +173,64 @@ export class AtomicTransaction {
         error: op.error?.message
       }))
     };
+  }
+
+  async _runOperations(completedOperations) {
+    // Ejecutar operaciones en orden
+    for (let i = 0; i < this.operations.length; i++) {
+      const operation = this.operations[i];
+
+      logger.debug(`  [${i + 1}/${this.operations.length}] ${operation.description}`);
+
+      const result = await operation.perform();
+
+      if (!result.success) {
+        throw new Error(`Operation ${operation.type} failed: ${result.error.message}`);
+      }
+
+      completedOperations.push(operation);
+    }
+  }
+
+  _buildSuccessResult(operationsCompleted) {
+    return {
+      success: true,
+      filePath: this.filePath,
+      duration: this.getDuration(),
+      operationsCompleted
+    };
+  }
+
+  async _handleFailure(error, completedOperations) {
+    // Algunas operaciones fallaron, hacer rollback
+    this.status = InvalidationStatus.FAILED;
+    logger.error(`❌ Transaction failed: ${error.message}`);
+
+    await this._rollbackOperations(completedOperations);
+
+    throw error;
+  }
+
+  async _rollbackOperations(completedOperations) {
+    logger.warn(`↩️  Rolling back ${completedOperations.length} operations...`);
+    this.status = InvalidationStatus.ROLLING_BACK;
+
+    // Rollback en orden inverso
+    for (let i = completedOperations.length - 1; i >= 0; i--) {
+      const operation = completedOperations[i];
+
+      logger.debug(`  Rolling back: ${operation.description}`);
+
+      const result = await operation.revert();
+
+      if (!result.success) {
+        logger.error(`    ⚠️  Rollback failed for ${operation.type}:`, result.error?.message);
+        // Continuar con el resto del rollback aunque uno falle
+      }
+    }
+
+    this.status = InvalidationStatus.ROLLED_BACK;
+    logger.info(`↩️  Rollback completed`);
   }
 }
 

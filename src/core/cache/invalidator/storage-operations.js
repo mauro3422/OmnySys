@@ -13,6 +13,76 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:storage');
 
+function normalizeCachePath(filePath) {
+  return filePath.replace(/\\/g, '/');
+}
+
+function invalidateLegacyRamKey(ramCache, key) {
+  if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
+    const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
+    const regex = new RegExp(pattern);
+    let count = 0;
+
+    for (const k of ramCache.keys()) {
+      if (regex.test(k)) {
+        ramCache.delete(k);
+        count++;
+      }
+    }
+
+    return count > 0;
+  }
+
+  return ramCache.delete(key);
+}
+
+function captureLegacyRamSnapshot(cache, key) {
+  if (typeof cache?.get === 'function') {
+    const item = cache.get(key);
+    if (!item) {
+      return { existed: false, key };
+    }
+
+    return {
+      existed: true,
+      key,
+      data: JSON.parse(JSON.stringify(item))
+    };
+  }
+
+  const item = cache.ramCache?.get(key);
+  if (!item) {
+    return { existed: false, key };
+  }
+
+  return {
+    existed: true,
+    key,
+    data: JSON.parse(JSON.stringify(item.data))
+  };
+}
+
+function restoreLegacyRamSnapshot(cache, snapshot) {
+  if (!snapshot.existed) {
+    return;
+  }
+
+  if (typeof cache?.set === 'function') {
+    cache.set(snapshot.key, snapshot.data);
+    return;
+  }
+
+  if (!cache.ramCache) {
+    cache.ramCache = new Map();
+  }
+
+  cache.ramCache.set(snapshot.key, {
+    data: snapshot.data,
+    expiry: null,
+    createdAt: Date.now()
+  });
+}
+
 /**
  * Operaciones de almacenamiento en RAM
  */
@@ -39,26 +109,7 @@ export class RamStorageOperations {
       return false;
     }
 
-    // Fallback for legacy in-memory cache managers.
-    if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
-      const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
-      const regex = new RegExp(pattern);
-      let count = 0;
-
-      for (const k of this.cache.ramCache.keys()) {
-        if (regex.test(k)) {
-          this.cache.ramCache.delete(k);
-          count++;
-        }
-      }
-
-      if (count > 0) {
-        logger.debug(`🗑️  Invalidated ${count} RAM entries matching ${key}`);
-      }
-      return count > 0;
-    }
-
-    const deleted = this.cache.ramCache.delete(key);
+    const deleted = invalidateLegacyRamKey(this.cache.ramCache, key);
     if (deleted) {
       logger.debug(`🗑️  Invalidated RAM entry: ${key}`);
     }
@@ -75,19 +126,7 @@ export class RamStorageOperations {
       return null;
     }
 
-    const item = typeof this.cache?.get === 'function'
-      ? this.cache.get(key)
-      : this.cache.ramCache.get(key)?.data;
-
-    if (!item) {
-      return { existed: false, key };
-    }
-
-    return {
-      existed: true,
-      key,
-      data: JSON.parse(JSON.stringify(item))
-    };
+    return captureLegacyRamSnapshot(this.cache, key);
   }
 
   /**
@@ -96,18 +135,7 @@ export class RamStorageOperations {
    */
   restoreSnapshot(snapshot) {
     if (snapshot.existed) {
-      if (typeof this.cache?.set === 'function') {
-        this.cache.set(snapshot.key, snapshot.data);
-      } else {
-        if (!this.cache.ramCache) {
-          this.cache.ramCache = new Map();
-        }
-        this.cache.ramCache.set(snapshot.key, {
-          data: snapshot.data,
-          expiry: null,
-          createdAt: Date.now()
-        });
-      }
+      restoreLegacyRamSnapshot(this.cache, snapshot);
       logger.debug(`↩️  Restored RAM entry from snapshot: ${snapshot.key}`);
     }
   }
@@ -128,7 +156,7 @@ export class DiskStorageOperations {
    * @returns {boolean} - true si se eliminó
    */
   async deleteFile(filePath) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizeCachePath(filePath);
     const fileDataPath = path.join(this.filesDir, normalizedPath + '.json');
 
     try {
@@ -151,7 +179,7 @@ export class DiskStorageOperations {
    * @returns {object} - Backup info
    */
   async createBackup(filePath) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizeCachePath(filePath);
     const fileDataPath = path.join(this.filesDir, normalizedPath + '.json');
     const backupPath = fileDataPath + '.backup';
 
@@ -230,7 +258,7 @@ export class IndexOperations {
    * @returns {object} - Entrada eliminada o null
    */
   removeEntry(filePath) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizeCachePath(filePath);
     
     // Safety check: ensure index and entries exist
     if (!this.cache?.index?.entries) {
@@ -257,7 +285,7 @@ export class IndexOperations {
    * @param {object} entry - Entrada a restaurar
    */
   restoreEntry(filePath, entry) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizeCachePath(filePath);
     
     // Safety check: ensure index and entries exist
     if (!this.cache?.index) {

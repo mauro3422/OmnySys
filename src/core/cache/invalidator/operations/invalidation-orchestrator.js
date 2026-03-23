@@ -67,7 +67,7 @@ export function createInvalidationOrchestrator(deps) {
       emit(InvalidationEvents.STARTED, { filePath, timestamp: Date.now() });
 
       try {
-        const result = await transaction.execute();
+        const result = await transaction.commit();
         await indexOps.saveIndex();
 
         emit(InvalidationEvents.SUCCESS, {
