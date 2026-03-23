@@ -47,7 +47,7 @@ function getCurrentWindow(processor) {
   );
 }
 
-function getReadyChangesForProcessor(processor) {
+function collectReadyChangesForProcessor(processor) {
   return getReadyChanges(processor.changeBuffer, getCurrentWindow(processor));
 }
 
@@ -81,7 +81,7 @@ async function processBatchWindow(processor, processFn) {
     return { processed: 0, skipped: 0 };
   }
 
-  const readyChanges = getReadyChangesForProcessor(processor);
+  const readyChanges = collectReadyChangesForProcessor(processor);
 
   if (readyChanges.length === 0) {
     return { processed: 0, skipped: 0 };
@@ -171,7 +171,7 @@ export class SmartBatchProcessor {
    * Gets changes ready for processing
    */
   getReadyChanges() {
-    return getReadyChangesForProcessor(this);
+    return collectReadyChangesForProcessor(this);
   }
 
   /**
@@ -199,7 +199,7 @@ export class SmartBatchProcessor {
 
   // Public API methods
   getBufferedCount() { return this.changeBuffer.size; }
-  hasReadyChanges() { return getReadyChangesForProcessor(this).length > 0; }
+  hasReadyChanges() { return collectReadyChangesForProcessor(this).length > 0; }
 
   resetBuffer() {
     const count = this.changeBuffer.size;

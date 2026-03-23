@@ -82,7 +82,7 @@ export const statsPool = new StatsPool();
 export default statsPool;
 
 export function createStatsGetter(moduleName, extraBuilder = null) {
-    return function getStats(...args) {
+    return function buildStatsSnapshot(...args) {
         const pooled = statsPool.getStats(moduleName, ...args) || {};
         return typeof extraBuilder === 'function'
             ? { ...pooled, ...extraBuilder.call(this, pooled, ...args) }
