@@ -10,111 +10,89 @@ import { statsPool } from '../../../shared/utils/stats-pool.js';
 
 import fs from 'fs/promises';
 import path from 'path';
-import crypto from 'crypto';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../../utils/logger.js';
+import {
+  buildVersionPayload,
+  calculateFieldHashes,
+  diffFieldHashes,
+  insertOrUpdateVersion,
+  loadFieldHashes
+} from './atom-version-manager-helpers.js';
 
 const logger = createLogger('OmnySys:AtomVersionManager');
 
 const DATA_DIR = '.omnysysdata';
 const VERSIONS_FILE = 'atom-versions.json';
 
-/**
- * Calcula hash SHA-256 de un objeto
- * @param {*} data - Datos a hashear
- * @returns {string} Hash hex
- */
-function calculateHash(data) {
-  const str = typeof data === 'string' ? data : JSON.stringify(data);
-  return crypto.createHash('sha256').update(str).digest('hex');
+export { calculateFieldHashes } from './atom-version-manager-helpers.js';
+
+async function ensureDbForManager(manager) {
+  if (manager.db) return;
+  const { connectionManager } = await import('../database/connection.js');
+  manager.db = connectionManager.getDatabase();
 }
 
-function buildVersionPayload(atomData) {
+async function trackAtomVersionForManager(manager, atomId, atomData) {
+  await ensureDbForManager(manager);
+  const version = buildVersionPayload(atomData);
+  insertOrUpdateVersion(manager.db, atomId, version);
+  return version;
+}
+
+async function detectChangesForManager(manager, atomId, newData) {
+  await ensureDbForManager(manager);
+  const row = manager.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
+
+  if (!row) {
+    return {
+      isNew: true,
+      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
+      hasChanges: true
+    };
+  }
+
+  const oldFieldHashes = loadFieldHashes(row, atomId, logger);
+  if (!oldFieldHashes) {
+    return {
+      isNew: true,
+      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
+      hasChanges: true
+    };
+  }
+
+  const newFieldHashes = calculateFieldHashes(newData);
+  const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
+
   return {
-    hash: calculateHash(atomData),
-    fieldHashes: calculateFieldHashes(atomData),
-    lastModified: Date.now(),
-    filePath: atomData.file || atomData.filePath,
-    atomName: atomData.name
+    isNew: false,
+    fields: changedFields,
+    unchangedFields,
+    hasChanges: changedFields.length > 0,
+    previousModified: row.last_modified
   };
 }
 
-function loadFieldHashes(row, atomId) {
-  try {
-    return JSON.parse(row.field_hashes_json || '{}');
-  } catch (_error) {
-    logger.warn(`Corrupted field hashes for ${atomId}, treating as new`);
-    return null;
-  }
+async function getVersionForManager(manager, atomId) {
+  await ensureDbForManager(manager);
+  const row = manager.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
+  if (!row) return null;
+
+  const fieldHashes = loadFieldHashes(row, atomId, logger) || {};
+
+  return {
+    hash: row.hash,
+    fieldHashes,
+    lastModified: row.last_modified,
+    filePath: row.file_path,
+    atomName: row.atom_name
+  };
 }
 
-function diffFieldHashes(oldFieldHashes, newFieldHashes) {
-  const changedFields = [];
-  const unchangedFields = [];
-
-  for (const [field, newHash] of Object.entries(newFieldHashes)) {
-    if (oldFieldHashes[field] !== newHash) {
-      changedFields.push(field);
-    } else {
-      unchangedFields.push(field);
-    }
-  }
-
-  for (const field of Object.keys(oldFieldHashes)) {
-    if (!(field in newFieldHashes)) {
-      changedFields.push(field);
-    }
-  }
-
-  return { changedFields, unchangedFields };
-}
-
-function insertOrUpdateVersion(db, atomId, version) {
-  const stmt = db.prepare(`
-    INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
-    VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(atom_id) DO UPDATE SET
-      hash = excluded.hash,
-      field_hashes_json = excluded.field_hashes_json,
-      last_modified = excluded.last_modified
-  `);
-
-  stmt.run(
-    atomId,
-    version.hash,
-    JSON.stringify(version.fieldHashes),
-    version.lastModified,
-    version.filePath,
-    version.atomName
-  );
-}
-
-/**
- * Calcula hashes individuales para cada campo de un átomo
- * @param {Object} atomData - Datos del átomo
- * @returns {Object} Mapa de campo -> hash
- */
-export function calculateFieldHashes(atomData) {
-  const hashes = {};
-  const excludedFields = ['_meta', 'lineage', 'timestamp'];
-
-  for (const [key, value] of Object.entries(atomData)) {
-    if (excludedFields.includes(key)) continue;
-
-    // Para objetos anidados, hashear recursivamente
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      hashes[key] = calculateHash(value);
-    } else if (Array.isArray(value)) {
-      // Para arrays, hashear cada elemento
-      hashes[key] = calculateHash(value.map((item, i) =>
-        typeof item === 'object' ? calculateHash(item) : `${i}:${item}`
-      ));
-    } else {
-      hashes[key] = calculateHash(String(value));
-    }
-  }
-
-  return hashes;
+async function removeAtomVersionForManager(manager, atomId) {
+  await ensureDbForManager(manager);
+  const hr = new BaseSqlRepository(manager.db, 'AtomVersionManager');
+  hr.delete('atom_versions', 'atom_id', atomId);
 }
 
 /**
@@ -127,10 +105,8 @@ export class AtomVersionManager {
   }
 
   async _ensureDb() {
-    if (this.db) return;
     try {
-      const { connectionManager } = await import('../database/connection.js');
-      this.db = connectionManager.getDatabase();
+      await ensureDbForManager(this);
     } catch (error) {
       logger.error(`Failed to initialize database connection: ${error.message}`);
       throw new Error(`Database connection failed: ${error.message}`);
@@ -146,10 +122,7 @@ export class AtomVersionManager {
    */
   async trackAtomVersion(atomId, atomData) {
     try {
-      await this._ensureDb();
-      const version = buildVersionPayload(atomData);
-      insertOrUpdateVersion(this.db, atomId, version);
-      return version;
+      return await trackAtomVersionForManager(this, atomId, atomData);
     } catch (error) {
       logger.error(`Failed to track atom version for ${atomId}: ${error.message}`);
       throw error;
@@ -165,36 +138,7 @@ export class AtomVersionManager {
    */
   async detectChanges(atomId, newData) {
     try {
-      await this._ensureDb();
-      const row = this.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
-
-      if (!row) {
-        return {
-          isNew: true,
-          fields: Object.keys(newData).filter(k => !k.startsWith('_')),
-          hasChanges: true
-        };
-      }
-
-      const oldFieldHashes = loadFieldHashes(row, atomId);
-      if (!oldFieldHashes) {
-        return {
-          isNew: true,
-          fields: Object.keys(newData).filter(k => !k.startsWith('_')),
-          hasChanges: true
-        };
-      }
-
-      const newFieldHashes = calculateFieldHashes(newData);
-      const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
-
-      return {
-        isNew: false,
-        fields: changedFields,
-        unchangedFields,
-        hasChanges: changedFields.length > 0,
-        previousModified: row.last_modified
-      };
+      return await detectChangesForManager(this, atomId, newData);
     } catch (error) {
       logger.error(`Failed to detect changes for ${atomId}: ${error.message}`);
       throw error;
@@ -209,19 +153,7 @@ export class AtomVersionManager {
    */
   async getVersion(atomId) {
     try {
-      await this._ensureDb();
-      const row = this.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
-      if (!row) return null;
-      
-      const fieldHashes = loadFieldHashes(row, atomId) || {};
-      
-      return {
-        hash: row.hash,
-        fieldHashes,
-        lastModified: row.last_modified,
-        filePath: row.file_path,
-        atomName: row.atom_name
-      };
+      return await getVersionForManager(this, atomId);
     } catch (error) {
       logger.error(`Failed to get version for ${atomId}: ${error.message}`);
       throw error;
@@ -235,9 +167,7 @@ export class AtomVersionManager {
    */
   async removeAtomVersion(atomId) {
     try {
-      await this._ensureDb();
-      const hr = new BaseSqlRepository(this.db, 'AtomVersionManager');
-      hr.delete('atom_versions', 'atom_id', atomId);
+      await removeAtomVersionForManager(this, atomId);
     } catch (error) {
       logger.error(`Failed to remove atom version for ${atomId}: ${error.message}`);
       throw error;
