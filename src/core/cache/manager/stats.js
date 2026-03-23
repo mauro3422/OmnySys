@@ -30,15 +30,12 @@ export function getCacheManagerStats() {
   };
 }
 
-export function getStats() {
-  return getCacheManagerStats.call(this);
-}
 /**
  * Returns full cache statistics, including the RAM cache layer.
  */
 export function getAllStats() {
   return {
-    persistent: this.getStats(),
+    persistent: this.getCacheManagerStats(),
     ram: this.getRamStats()
   };
 }
