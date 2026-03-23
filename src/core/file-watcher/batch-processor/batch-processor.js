@@ -1,4 +1,4 @@
-import { statsPool } from '../../../shared/utils/stats-pool.js';
+import { createStatsGetter } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Smart Batch Processor
  * Main class for batch processing file changes
@@ -208,9 +208,7 @@ export class SmartBatchProcessor {
     return count;
   }
 
-  getStats() {
-    return statsPool.getStats('batch-processor');
-  }
+  getStats = createStatsGetter('batch-processor');
 }
 
 export function createSmartBatchProcessor(options = {}) {

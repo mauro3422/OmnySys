@@ -1,7 +1,6 @@
-import { statsPool } from '../../shared/utils/stats-pool.js';
+import { createStatsGetter } from '../../shared/utils/stats-pool.js';
 
-export function getStats(...args) {
-  const pooled = statsPool.getStats('watcher', ...args) || {};
+export const getStats = createStatsGetter('watcher', function buildWatcherStats(pooled) {
   return {
     ...pooled,
     isRunning: this.isRunning,
@@ -15,4 +14,4 @@ export function getStats(...args) {
     surfaceCounts: { ...(this.surfaceCounts || {}) },
     lastChangeSurface: this.lastChangeSurface || null
   };
-}
+});
