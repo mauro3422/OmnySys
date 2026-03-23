@@ -48,10 +48,6 @@ export class ErrorClassifier {
     return getClassifierStats(this.classificationHistory);
   }
 
-  getStats() {
-    return this.getClassifierStats();
-  }
-
   /**
    * Check if error is quiet
    * @param {Object} classification

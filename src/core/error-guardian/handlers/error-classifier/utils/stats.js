@@ -13,4 +13,3 @@
  */
 import { getGuardianStats } from '../../../utils/shared-stats.js';
 export const getClassifierStats = (...args) => getGuardianStats('error-classifier', ...args);
-export const getStats = (...args) => getClassifierStats(...args);

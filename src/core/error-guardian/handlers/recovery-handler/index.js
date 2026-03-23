@@ -20,8 +20,6 @@ import {
 import { attemptAutoFix } from './actions/auto-fix.js';
 import { saveSystemState } from './actions/state-manager.js';
 import { registerCallback, executeCallback } from './utils/callbacks.js';
-import { getStats, resetStats } from './utils/stats.js';
-
 // Methods now integrated in the base class via base-recovery.js
 
 export { RecoveryHandler, RECOVERY_ACTIONS };

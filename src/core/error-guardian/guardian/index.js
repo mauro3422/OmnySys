@@ -58,10 +58,6 @@ export class ErrorGuardian {
     );
   }
 
-  getStats() {
-    return this.getErrorGuardianStats();
-  }
-
   getCircuitState(operationId) {
     return this.circuitBreaker.getState(operationId);
   }
@@ -78,7 +74,7 @@ export class ErrorGuardian {
     this.recovery.registerCallback(severity, callback);
   }
 
-  async reset() {
+  async resetGuardianState() {
     resetGuardianState(this);
     await clearGuardianErrorLog(this.projectPath);
   }

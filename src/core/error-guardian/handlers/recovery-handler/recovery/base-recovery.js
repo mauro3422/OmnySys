@@ -54,10 +54,6 @@ export class RecoveryHandler {
     return getRecoveryStats(this.stats);
   }
 
-  getStats() {
-    return this.getRecoveryStats();
-  }
-
   /**
    * Reset recovery statistics
    */
