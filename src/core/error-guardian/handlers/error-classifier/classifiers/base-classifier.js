@@ -83,7 +83,7 @@ export class ErrorClassifier {
    * @param {Error} error - Error to analyze
    * @returns {ErrorClassification} - Classification result
    */
-  classifyError(error) {
+  determineErrorClassification(error) {
     const errorString = error.stack || error.message || String(error);
     const matchResult = selectMatchingPattern(errorString, this.patterns);
     const classification = buildClassification(error, matchResult);

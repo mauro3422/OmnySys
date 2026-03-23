@@ -49,6 +49,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats classifier shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'ErrorClassifier',
+      filePath: 'src/core/error-guardian/handlers/error-classifier/classifiers/base-classifier.js'
+    }))).toBe(true);
+  });
+
   it('does not classify ordinary classes as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'PlainUtility',
