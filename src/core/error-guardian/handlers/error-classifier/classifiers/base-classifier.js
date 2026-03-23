@@ -83,7 +83,7 @@ export class ErrorClassifier {
    * @param {Error} error - Error to analyze
    * @returns {ErrorClassification} - Classification result
    */
-  classify(error) {
+  classifyError(error) {
     const errorString = error.stack || error.message || String(error);
     const matchResult = selectMatchingPattern(errorString, this.patterns);
     const classification = buildClassification(error, matchResult);
@@ -104,7 +104,7 @@ export class ErrorClassifier {
    * @param {string} type - Pattern identifier
    * @param {Object} config - Pattern configuration
    */
-  addPattern(type, config) {
+  registerPattern(type, config) {
     this.patterns[type] = config;
     logger.info(`📋 Added custom error pattern: ${type}`);
   }

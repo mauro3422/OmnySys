@@ -30,7 +30,7 @@ export class ErrorGuardian {
    */
   _createFatalHandler() {
     return (error, source, context = {}) => {
-      const analysis = this.classifier.classify(error);
+      const analysis = this.classifier.classifyError(error);
       return handleFatalError(error, analysis, source, context, {
         recovery: this.recovery,
         options: this.options,
@@ -45,7 +45,7 @@ export class ErrorGuardian {
   }
 
   analyzeError(error) {
-    return this.classifier.classify(error);
+    return this.classifier.classifyError(error);
   }
 
   getErrorGuardianStats() {
@@ -67,7 +67,7 @@ export class ErrorGuardian {
   }
 
   addErrorPattern(type, config) {
-    this.classifier.addPattern(type, config);
+    this.classifier.registerPattern(type, config);
   }
 
   registerRecoveryCallback(severity, callback) {
