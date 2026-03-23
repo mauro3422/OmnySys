@@ -25,7 +25,7 @@ export {
 
 // === Recommendations ===
 export { 
-  generateRecommendations,
+  buildVerificationRecommendations,
   prioritizeRecommendations,
   filterRecommendationsByPriority
 } from './recommendations/index.js';

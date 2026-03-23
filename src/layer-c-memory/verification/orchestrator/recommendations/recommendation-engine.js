@@ -71,13 +71,6 @@ export function buildVerificationRecommendations(allIssues) {
 }
 
 /**
- * Alias compatible para consumidores existentes.
- */
-export function generateRecommendations(allIssues) {
-  return buildVerificationRecommendations(allIssues);
-}
-
-/**
  * Prioriza recomendaciones por severidad
  * @param {Array<Recommendation>} recommendations 
  * @returns {Array<Recommendation>} Recomendaciones ordenadas

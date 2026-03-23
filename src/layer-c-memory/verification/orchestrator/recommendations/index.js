@@ -5,7 +5,7 @@
  */
 
 export { 
-  generateRecommendations,
+  buildVerificationRecommendations,
   prioritizeRecommendations,
   filterRecommendationsByPriority
 } from './recommendation-engine.js';

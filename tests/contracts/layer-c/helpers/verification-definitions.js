@@ -12,7 +12,7 @@ export const ORCHESTRATOR_EXPORTS = [
   'generateSummary',
   'groupIssuesByCategory',
   'calculateIssueStats',
-  'generateRecommendations',
+  'buildVerificationRecommendations',
   'prioritizeRecommendations',
   'filterRecommendationsByPriority',
   'generateCertificate',
