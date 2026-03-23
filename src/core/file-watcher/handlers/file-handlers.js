@@ -1,5 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
-import { analyzeAndIndex } from '../analyze.js';
+import { collectAndIndexFile } from '../analyze.js';
 import { detectCircularDependencies } from '../guards/circular-guard.js';
 import { guardRegistry } from '../guards/registry.js';
 import { getRecentCommits } from './recent-commits.js';
@@ -98,7 +98,7 @@ export async function handleFileModified(filePath, fullPath, changeContext = {})
     }
   }
 
-  const analysis = await analyzeAndIndex.call(this, filePath, fullPath, true);
+  const analysis = await collectAndIndexFile.call(this, filePath, fullPath, true);
 
   try {
     if (isTestFactorySurface(filePath)) {

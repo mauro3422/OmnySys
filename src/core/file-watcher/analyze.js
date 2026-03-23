@@ -5,8 +5,6 @@ const logger = createLogger('OmnySys:analyze');
 const DATA_DIR = '.omnysysdata';
 
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
-// Esta función queda como stub para compatibilidad
-const persistFileAnalysis = async () => { };
 import { analyzeFileCore, calculateShadowVolume } from '../../layer-a-static/pipeline/core-analyzer.js';
 import { saveAtom, saveMolecule, loadAtoms } from '#layer-c/storage/index.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
@@ -28,25 +26,24 @@ import { syncIncrementalSemanticSurface } from './analyze-post-processing.js';
 
 export { _detectChangeType, _calculateContentHash };
 
-
 import { handleRemovedAtoms, filterProtectedAtoms } from './analyze-logic.js';
 
 /**
- * Analiza un archivo individual
+ * Collects and builds the analysis result for a single file.
  */
-export async function analyzeFile(filePath, fullPath) {
+export async function collectFileAnalysis(filePath, fullPath) {
   try {
     const parsed = await parseFileFromDisk(fullPath);
     if (!parsed) throw new Error('Failed to parse file');
 
     // Unified Analysis Core
-    const result_core = await analyzeFileCore(filePath, this.rootPath, {
+    const coreAnalysis = await analyzeFileCore(filePath, this.rootPath, {
       depth: 'deep', // Real-time is always deep for context, but skeleton is for initial project scan
       source: parsed.source
     });
 
-    const moleculeAtoms = result_core.atoms;
-    const metadata = result_core.metadata;
+    const moleculeAtoms = coreAnalysis.atoms;
+    const metadata = coreAnalysis.metadata;
 
     // Shadow Volume Calculation
     const shadowStats = calculateShadowVolume(parsed.source, moleculeAtoms);
@@ -70,11 +67,11 @@ export async function analyzeFile(filePath, fullPath) {
     await cleanupOrphanedAtomFiles(this.rootPath, filePath, newAtomNames);
 
     const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
-    const vm = new AtomVersionManager(this.rootPath);
+    const versionManager = new AtomVersionManager(this.rootPath);
 
     for (const atom of moleculeAtoms) {
       const atomId = `${filePath}::${atom.name}`;
-      const changes = await vm.detectChanges(atomId, atom);
+      const changes = await versionManager.detectChanges(atomId, atom);
       if (changes.hasChanges && !changes.isNew) {
         await invalidateAtomCaches(atomId, changes.fields, this.rootPath);
       }
@@ -89,24 +86,24 @@ export async function analyzeFile(filePath, fullPath) {
     await syncIncrementalSemanticSurface(this.rootPath, filePath, moleculeAtoms);
 
     const contentHash = await _calculateContentHash(fullPath);
-    const result = buildFileResult(filePath, parsed, result_core.parsed.imports || [], [], [], metadata, moleculeAtoms, contentHash);
+    const result = buildFileResult(filePath, parsed, coreAnalysis.parsed.imports || [], [], [], metadata, moleculeAtoms, contentHash);
 
     // Exponer los átomos para procesamiento posterior (como vinculación incremental)
     result.moleculeAtoms = moleculeAtoms;
 
     return result;
   } catch (error) {
-    logger.error(`Error in analyzeFile for ${filePath}: ${error.message}`);
+    logger.error(`Error in collectFileAnalysis for ${filePath}: ${error.message}`);
     throw error;
   }
 }
 
 /**
- * Registra y analiza un archivo en el sistema
+ * Collects, indexes and validates a file in the system.
  */
-export async function analyzeAndIndex(filePath, fullPath, isUpdate = false) {
-  // 1. Analizar archivo
-  const analysis = await analyzeFile.call(this, filePath, fullPath);
+export async function collectAndIndexFile(filePath, fullPath, isUpdate = false) {
+  // 1. Collect file analysis
+  const analysis = await collectFileAnalysis.call(this, filePath, fullPath);
   logger.info(`🧩 FileWatcher compile: ${filePath} -> ${analysis.moleculeAtoms?.length || 0} atoms, shadow=${analysis.metadata?.shadowVolume ?? 'n/a'}%${isUpdate ? ' [update]' : ' [create]'}`);
 
   // 2. Ejecutar Guardias Semánticos

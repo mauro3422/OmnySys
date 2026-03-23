@@ -1,4 +1,4 @@
-import { analyzeAndIndex } from '../analyze.js';
+import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
 
@@ -6,7 +6,7 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
   const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
   fileWatcher._logger.info(`[FILE CREATED] ${filePath}${originSuffix}`);
 
-  const analysis = await analyzeAndIndex.call(fileWatcher, filePath, fullPath, false);
+  const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, false);
   const atoms = analysis.moleculeAtoms || analysis.atoms || [];
 
   await guardRegistry.initializeDefaultGuards();
