@@ -37,40 +37,18 @@ export async function analyzeFileCore(filePath, rootPath, options = {}) {
     const relativePath = path.relative(rootPath, fullPath).replace(/\\/g, '/');
 
     try {
-        // 1. Parsing (Layer A)
-        const parsed = source
-            ? await parseFile(fullPath, source)
-            : await parseFileFromDisk(fullPath);
-        if (parsed && !parsed.source) {
-            parsed.source = source || parsed.source;
-        }
+        const parsed = await parseSourceFile(fullPath, source);
         if (!parsed) {
             throw new Error(`Failed to parse file: ${fullPath}`);
         }
 
-        // 2. Extracción de Átomos (Phase 1)
-        const atomPhase = new AtomExtractionPhase();
-        const context = {
-            filePath: relativePath,
-            code: parsed.source || source || '',
-            fileInfo: parsed,
-            fileMetadata: parsed.metadata || {},
-            extractionDepth: depth
-        };
-
-        await atomPhase.execute(context);
-
-        // 3. Enriquecimiento Básico (Git Stats / DNA / etc)
-        if (context.atoms && context.atoms.length > 0) {
-            // Aplicar Git Stats si están disponibles (evita re-calcular en cada archivo)
-            if (gitStats) {
-                const fileGitStats = gitStats[relativePath] || { ageDays: 0, changeFrequency: 0 };
-                context.atoms.forEach(atom => {
-                    atom.ageDays = fileGitStats.ageDays;
-                    atom.changeFrequency = fileGitStats.changeFrequency;
-                });
-            }
-        }
+        const context = await extractAtomsFromParsedFile({
+            relativePath,
+            parsed,
+            source,
+            depth,
+            gitStats
+        });
 
         return {
             filePath: relativePath,
@@ -86,6 +64,44 @@ export async function analyzeFileCore(filePath, rootPath, options = {}) {
         logger.error(`[CoreAnalyzer] Error analyzing ${relativePath}: ${error.message}`);
         throw error;
     }
+}
+
+async function parseSourceFile(fullPath, source) {
+    const parsed = source
+        ? await parseFile(fullPath, source)
+        : await parseFileFromDisk(fullPath);
+
+    if (parsed && !parsed.source) {
+        parsed.source = source || parsed.source;
+    }
+
+    return parsed;
+}
+
+async function extractAtomsFromParsedFile({ relativePath, parsed, source, depth, gitStats }) {
+    // Parse and enrichment are intentionally split so the main orchestration stays thin.
+    const atomPhase = new AtomExtractionPhase();
+    const context = {
+        filePath: relativePath,
+        code: parsed.source || source || '',
+        fileInfo: parsed,
+        fileMetadata: parsed.metadata || {},
+        extractionDepth: depth
+    };
+
+    await atomPhase.execute(context);
+    applyGitStatsToAtoms(context.atoms, relativePath, gitStats);
+    return context;
+}
+
+function applyGitStatsToAtoms(atoms, relativePath, gitStats) {
+    if (!atoms?.length || !gitStats) return;
+
+    const fileGitStats = gitStats[relativePath] || { ageDays: 0, changeFrequency: 0 };
+    atoms.forEach(atom => {
+        atom.ageDays = fileGitStats.ageDays;
+        atom.changeFrequency = fileGitStats.changeFrequency;
+    });
 }
 
 /**
