@@ -185,12 +185,13 @@ export function formatAlert(alert) {
 }
 
 /**
- * Gets current statistics (canonical alias)
+ * Gets current statistics (canonical convenience function)
  * @returns {Object}
  */
-export function getStats() {
+export function getTunnelVisionDetectorStats() {
   return detector.getTunnelVisionDetectorStats();
 }
+
 /**
  * Gets modification history (convenience function)
  * @returns {Array}
@@ -200,9 +201,9 @@ export function getModificationHistory() {
 }
 
 /**
- * Cleans up old modifications (convenience function)
+ * Prunes expired modification history entries (convenience function)
  */
-export function cleanupHistory() {
+export function pruneExpiredHistory() {
   return detector.cleanup();
 }
 

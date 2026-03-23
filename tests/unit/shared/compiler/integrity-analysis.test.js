@@ -42,6 +42,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats detector shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'TunnelVisionDetector',
+      filePath: 'src/core/tunnel-vision-detector/index.js'
+    }))).toBe(true);
+  });
+
   it('does not classify ordinary classes as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'PlainUtility',

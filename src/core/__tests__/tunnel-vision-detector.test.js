@@ -8,9 +8,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   detectTunnelVision,
   formatAlert,
-  getStats,
-  cleanupHistory,
-  clearHistory,
+  getTunnelVisionDetectorStats,
+  pruneExpiredHistory,
+  resetHistory,
   getModificationHistory
 } from '../tunnel-vision-detector/index.js';
 
@@ -24,7 +24,7 @@ import { getAtomDetails, getFileAnalysisWithAtoms } from '../../layer-c-memory/q
 
 describe('tunnel-vision-detector', () => {
   beforeEach(() => {
-    clearHistory();
+    resetHistory();
     vi.clearAllMocks();
   });
   
@@ -231,18 +231,21 @@ describe('tunnel-vision-detector', () => {
     });
   });
   
-  describe('getStats', () => {
+  describe('getTunnelVisionDetectorStats', () => {
     it('should return correct stats', () => {
-      const stats = getStats();
+      const stats = getTunnelVisionDetectorStats();
       
-      expect(stats.version).toBe('3.0');
-      expect(stats.architecture).toBe('molecular');
-      expect(stats.minThreshold).toBe(2);
-      expect(stats.recentlyModifiedCount).toBe(0);
+      expect(stats.tracker).toEqual({
+        total: 0,
+        byType: { semantic: 0, impact: 0 },
+        byDomain: {}
+      });
+      expect(stats.minUnmodifiedDependents).toBe(2);
+      expect(stats.recentWindowMs).toBe(5 * 60 * 1000);
     });
   });
   
-  describe('cleanupHistory', () => {
+  describe('pruneExpiredHistory', () => {
     it('should remove old modifications', async () => {
       // First, add some modifications
       const mockAtom = {
@@ -260,7 +263,7 @@ describe('tunnel-vision-detector', () => {
       expect(history).toHaveLength(1);
       
       // Cleanup should not remove recent items
-      cleanupHistory();
+      pruneExpiredHistory();
       expect(getModificationHistory()).toHaveLength(1);
     });
   });
