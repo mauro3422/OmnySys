@@ -1,5 +1,6 @@
 import { createLogger } from '../../utils/logger.js';
 import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
+import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
 
 const logger = createLogger('OmnySys:restart:server');
 
@@ -197,9 +198,11 @@ async function handleReindexOnly(server, cache, result) {
     await step.execute(server);
     server._layerAComplete = originalAnalyzed;
 
-    if (typeof server.reloadMetadata === 'function') {
-      await server.reloadMetadata();
-    }
+    await reloadServerMetadata({
+      cache: server.cache,
+      projectPath: server.projectPath,
+      wsManager: server.wsManager
+    });
 
     if (cache?.initialize) {
       await cache.initialize();

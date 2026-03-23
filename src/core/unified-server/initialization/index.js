@@ -125,33 +125,14 @@ export async function initialize() {
   }
 }
 
-/**
- * Recarga metadata (API pública - compatible)
- */
-export async function reloadMetadata() {
-  return analysisManager.reloadMetadata({
-    cache: this.cache,
-    projectPath: this.projectPath,
-    wsManager: this.wsManager
-  });
-}
 
 /**
- * Verifica si existe análisis (API pública - compatible)
+ * Verifica si existe an�lisis (API p�blica - compatible)
  */
 export async function hasExistingAnalysis() {
   return cacheManager.hasExistingAnalysis(this.OmnySysDataPath);
 }
 
-/**
- * Encola análisis inicial (API pública - compatible)
- */
-export async function queueInitialAnalysis() {
-  return analysisManager.queueInitialAnalysis(
-    this.projectPath,
-    () => this.reloadMetadata()
-  );
-}
 
 // APIs de inicialización individuales (para uso avanzado)
 export {
