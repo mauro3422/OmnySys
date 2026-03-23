@@ -21,8 +21,14 @@ export function createStateValidator(cache) {
      * @returns {boolean}
      */
     isInRam(filePath) {
+      const key = `${CACHE_KEY_PREFIXES.ANALYSIS}${filePath}`;
+
+      if (typeof cache?.get === 'function') {
+        return cache.get(key) !== null;
+      }
+
       if (!cache.ramCache) return false;
-      return cache.ramCache.has(`${CACHE_KEY_PREFIXES.ANALYSIS}${filePath}`);
+      return cache.ramCache.has(key);
     },
 
     /**
@@ -39,7 +45,7 @@ export function createStateValidator(cache) {
      * @param {string} filePath - File path
      * @returns {Object} Status
      */
-    getStatus(filePath) {
+    buildStatus(filePath) {
       return {
         filePath,
         inRam: this.isInRam(filePath),

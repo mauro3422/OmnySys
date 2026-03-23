@@ -137,7 +137,7 @@ export class CacheInvalidator extends EventEmitter {
    */
   getStatus(filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
-    return this.validator.getStatus(normalizedPath);
+    return this.validator.buildStatus(normalizedPath);
   }
 
   /**
@@ -156,10 +156,6 @@ export class CacheInvalidator extends EventEmitter {
       pendingOperations: this.pendingOperations.size,
       config: this.config
     };
-  }
-
-  getStats() {
-    return this.getCacheInvalidatorStats();
   }
 }
 

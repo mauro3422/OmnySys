@@ -26,12 +26,20 @@ export class RamStorageOperations {
    * @param {string} key - Clave a invalidar
    * @returns {boolean} - true si se eliminó
    */
-  invalidate(key) {
-    if (!this.cache.ramCache) {
+  invalidateEntry(key) {
+    if (typeof this.cache?.invalidate === 'function') {
+      const deleted = this.cache.invalidate(key);
+      if (deleted) {
+        logger.debug(`🗑️  Invalidated RAM entry: ${key}`);
+      }
+      return deleted;
+    }
+
+    if (!this.cache?.ramCache) {
       return false;
     }
 
-    // Soporte para wildcards
+    // Fallback for legacy in-memory cache managers.
     if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
       const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
       const regex = new RegExp(pattern);
@@ -43,7 +51,7 @@ export class RamStorageOperations {
           count++;
         }
       }
-      
+
       if (count > 0) {
         logger.debug(`🗑️  Invalidated ${count} RAM entries matching ${key}`);
       }
@@ -62,12 +70,15 @@ export class RamStorageOperations {
    * @param {string} key - Clave a guardar
    * @returns {object|null} - Snapshot o null
    */
-  createSnapshot(key) {
-    if (!this.cache.ramCache) {
+  captureSnapshot(key) {
+    if (typeof this.cache?.get !== 'function' && !this.cache?.ramCache) {
       return null;
     }
 
-    const item = this.cache.ramCache.get(key);
+    const item = typeof this.cache?.get === 'function'
+      ? this.cache.get(key)
+      : this.cache.ramCache.get(key)?.data;
+
     if (!item) {
       return { existed: false, key };
     }
@@ -75,9 +86,7 @@ export class RamStorageOperations {
     return {
       existed: true,
       key,
-      data: JSON.parse(JSON.stringify(item.data)),
-      expiry: item.expiry,
-      createdAt: item.createdAt
+      data: JSON.parse(JSON.stringify(item))
     };
   }
 
@@ -85,17 +94,20 @@ export class RamStorageOperations {
    * Restaura desde snapshot (rollback)
    * @param {object} snapshot - Snapshot a restaurar
    */
-  restoreFromSnapshot(snapshot) {
-    if (!this.cache.ramCache) {
-      this.cache.ramCache = new Map();
-    }
-
+  restoreSnapshot(snapshot) {
     if (snapshot.existed) {
-      this.cache.ramCache.set(snapshot.key, {
-        data: snapshot.data,
-        expiry: snapshot.expiry,
-        createdAt: snapshot.createdAt
-      });
+      if (typeof this.cache?.set === 'function') {
+        this.cache.set(snapshot.key, snapshot.data);
+      } else {
+        if (!this.cache.ramCache) {
+          this.cache.ramCache = new Map();
+        }
+        this.cache.ramCache.set(snapshot.key, {
+          data: snapshot.data,
+          expiry: null,
+          createdAt: Date.now()
+        });
+      }
       logger.debug(`↩️  Restored RAM entry from snapshot: ${snapshot.key}`);
     }
   }

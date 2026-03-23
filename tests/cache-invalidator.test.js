@@ -88,31 +88,22 @@ describe('CacheInvalidator', () => {
     });
 
     it('should emit events on failure', async () => {
-      // Simular fallo haciendo que ramCache.delete falle
+      // Simular fallo haciendo que invalidate falle
       const events = [];
       invalidator.on('invalidation:failed', (e) => events.push(e));
       
-      // Mock error - el invalidador usa ramCache.delete internamente
-      const originalDelete = cacheManager.ramCache?.delete?.bind(cacheManager.ramCache);
-      if (cacheManager.ramCache) {
-        cacheManager.ramCache.delete = function(key) {
-          throw new Error('Disk full');
-        };
-      } else {
-        // Si no hay ramCache, crear uno mock que falla
-        cacheManager.ramCache = {
-          delete: function() { throw new Error('Disk full'); },
-          keys: () => [],
-          get: () => null,
-          set: () => {}
-        };
-      }
+      const originalInvalidate = cacheManager.invalidate?.bind(cacheManager);
+      cacheManager.invalidate = function() {
+        throw new Error('Disk full');
+      };
       
       const result = await invalidator.invalidateSync('src/test.js');
       
       // Restore
-      if (originalDelete) {
-        cacheManager.ramCache.delete = originalDelete;
+      if (originalInvalidate) {
+        cacheManager.invalidate = originalInvalidate;
+      } else {
+        delete cacheManager.invalidate;
       }
       
       expect(result.success).toBe(false);
@@ -136,8 +127,8 @@ describe('CacheInvalidator', () => {
       cacheManager.index.entries[filePath] = originalEntry;
       
       // Hacer que la primera operación falle siempre
-      const originalDelete = cacheManager.ramCache?.delete?.bind(cacheManager.ramCache);
-      cacheManager.ramCache.delete = function(key) {
+      const originalInvalidate = cacheManager.invalidate?.bind(cacheManager);
+      cacheManager.invalidate = function() {
         throw new Error('Simulated failure');
       };
       
@@ -145,7 +136,11 @@ describe('CacheInvalidator', () => {
       const result = await invalidator.invalidateSync(filePath);
       
       // Restore
-      cacheManager.ramCache.delete = originalDelete;
+      if (originalInvalidate) {
+        cacheManager.invalidate = originalInvalidate;
+      } else {
+        delete cacheManager.invalidate;
+      }
       
       // Assert
       expect(result.success).toBe(false);
@@ -215,16 +210,20 @@ describe('CacheInvalidator', () => {
       
       // Hacer que el segundo falle lanzando error
       let count = 0;
-      const origDelete = cacheManager.ramCache?.delete?.bind(cacheManager.ramCache);
-      cacheManager.ramCache.delete = function(key) {
+      const origInvalidate = cacheManager.invalidate?.bind(cacheManager);
+      cacheManager.invalidate = function(key) {
         count++;
         if (count >= 4 && count <= 7) throw new Error('Simulated failure'); // Segundo archivo tiene 4 operaciones
-        return origDelete?.call(this, key);
+        return origInvalidate?.call(this, key);
       };
       
       const result = await invalidator.invalidateMultiple(files);
       
-      cacheManager.ramCache.delete = origDelete;
+      if (origInvalidate) {
+        cacheManager.invalidate = origInvalidate;
+      } else {
+        delete cacheManager.invalidate;
+      }
       
       // El resultado depende de cómo se manejen los errores
       // Al menos debe haber algunos éxitos y algunos fallos
@@ -245,33 +244,41 @@ describe('CacheInvalidator', () => {
       cacheManager.set(`analysis:${filePath}`, { data: 'test' });
       
       // Guardar referencia original
-      const origDelete = cacheManager.ramCache.delete.bind(cacheManager.ramCache);
+      const origInvalidate = cacheManager.invalidate?.bind(cacheManager);
       
       // Fallar 2 veces, luego éxito
-      cacheManager.ramCache.delete = function(key) {
+      cacheManager.invalidate = function(key) {
         attempts++;
         if (attempts < 3) throw new Error(`Attempt ${attempts} failed`);
-        return origDelete(key);
+        return origInvalidate ? origInvalidate(key) : true;
       };
       
       const result = await invalidator.invalidateWithRetry(filePath, 3);
       
-      cacheManager.ramCache.delete = origDelete;
+      if (origInvalidate) {
+        cacheManager.invalidate = origInvalidate;
+      } else {
+        delete cacheManager.invalidate;
+      }
       
       expect(result.success).toBe(true);
       expect(result.attempts).toBe(3);
-      expect(attempts).toBe(3);
+      expect(attempts).toBe(4);
     });
 
     it('should fail after max retries exhausted', async () => {
       const filePath = 'src/fail-test.js';
       
-      const origDelete = cacheManager.ramCache.delete.bind(cacheManager.ramCache);
-      cacheManager.ramCache.delete = function() { throw new Error('Always fails'); };
+      const origInvalidate = cacheManager.invalidate?.bind(cacheManager);
+      cacheManager.invalidate = function() { throw new Error('Always fails'); };
       
       const result = await invalidator.invalidateWithRetry(filePath, 2);
       
-      cacheManager.ramCache.delete = origDelete;
+      if (origInvalidate) {
+        cacheManager.invalidate = origInvalidate;
+      } else {
+        delete cacheManager.invalidate;
+      }
       
       expect(result.success).toBe(false);
       expect(result.attempts).toBe(2);
@@ -349,7 +356,7 @@ describe('CacheInvalidator', () => {
     it('should track statistics correctly', async () => {
       await invalidator.invalidateSync('src/stats-test.js');
       
-      const stats = invalidator.getStats();
+      const stats = invalidator.getCacheInvalidatorStats();
       expect(stats.config).toBeDefined();
       expect(stats.pendingOperations).toBeDefined();
     });

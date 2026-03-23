@@ -31,7 +31,7 @@ export function createInvalidationOrchestrator(deps) {
         OperationFactory.createRamInvalidation(
           ramOps,
           `${CACHE_KEY_PREFIXES.ANALYSIS}${filePath}`,
-          () => ramOps.createSnapshot(`${CACHE_KEY_PREFIXES.ANALYSIS}${filePath}`)
+          () => ramOps.captureSnapshot(`${CACHE_KEY_PREFIXES.ANALYSIS}${filePath}`)
         )
       );
 

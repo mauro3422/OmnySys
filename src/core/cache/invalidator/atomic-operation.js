@@ -238,12 +238,12 @@ export class OperationFactory {
       async () => {
         // Guardar snapshot antes de modificar
         snapshot = createSnapshotFn ? createSnapshotFn() : null;
-        return ramStorage.invalidate(key);
+        return ramStorage.invalidateEntry(key);
       },
       async () => {
         // Restaurar desde snapshot
         if (snapshot) {
-          ramStorage.restoreFromSnapshot(snapshot);
+          ramStorage.restoreSnapshot(snapshot);
         }
       },
       `Invalidate RAM cache: ${key}`
