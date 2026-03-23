@@ -134,6 +134,6 @@ export class Batch {
    * @returns {Object}
    */
 getStats() {
-    return statsPool.getStats('batch');
+    return statsPool.getModuleStats('batch');
   }}
 

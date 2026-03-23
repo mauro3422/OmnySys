@@ -129,7 +129,7 @@ export class DecisionAuditLogger {
   }
 
 getStats() {
-    return statsPool.getStats('audit-logger');
+    return statsPool.getModuleStats('audit-logger');
   }  async overrideDecision(decisionId, overriddenBy, reason) {
     const decision = this.decisions.get(decisionId);
     if (!decision) {

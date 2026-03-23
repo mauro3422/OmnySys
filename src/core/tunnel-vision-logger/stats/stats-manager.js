@@ -84,4 +84,4 @@ export function updateStatsWithEvent(stats, event) {
  * Get stats
  * @returns {Promise<Object>} Current stats
  */
-export const getStats = (...args) => statsPool.getStats('stats-manager', ...args);
+export const getStats = (...args) => statsPool.getModuleStats('stats-manager', ...args);

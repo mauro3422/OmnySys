@@ -8,5 +8,5 @@
 import { statsPool } from '../../../shared/utils/stats-pool.js';
 
 export const getGuardianStats = (namespace, ...args) => {
-  return statsPool.getStats(namespace, ...args);
+  return statsPool.getModuleStats(namespace, ...args);
 };

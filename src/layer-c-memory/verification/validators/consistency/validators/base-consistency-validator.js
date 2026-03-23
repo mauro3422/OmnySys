@@ -12,7 +12,7 @@ export class BaseConsistencyValidator {
   }
 
   getStats() {
-    return statsPool.getStats(this.statsModuleName);
+    return statsPool.getModuleStats(this.statsModuleName);
   }
 }
 

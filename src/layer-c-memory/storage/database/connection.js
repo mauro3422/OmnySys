@@ -267,7 +267,7 @@ class ConnectionManager {
    * @returns {Object} Estadisticas
    */
 getStats() {
-    return statsPool.getStats('connection');
+    return statsPool.getModuleStats('connection');
   }  /**
    * Fuerza checkpoint WAL para persistir datos
    * Util despues de bulk operations

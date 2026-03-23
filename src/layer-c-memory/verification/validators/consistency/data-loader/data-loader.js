@@ -203,7 +203,7 @@ export class DataLoader {
    * @returns {Object} - Estadísticas
    */
 getStats() {
-    return statsPool.getStats('data-loader');
+    return statsPool.getModuleStats('data-loader');
   }}
 
 export default DataLoader;

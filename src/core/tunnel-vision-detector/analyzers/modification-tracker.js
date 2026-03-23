@@ -94,7 +94,7 @@ export class ModificationTracker {
    * @returns {Object}
    */
 getStats() {
-    return statsPool.getStats('modification-tracker');
+    return statsPool.getModuleStats('modification-tracker');
   }  /**
    * Clears all tracked modifications
    */

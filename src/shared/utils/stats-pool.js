@@ -39,7 +39,7 @@ class StatsPool {
         this.staticStats.set(key, value);
     }
 
-    getStats(moduleName) {
+    getModuleStats(moduleName, ..._args) {
         logger.info(`[StatsPool] Requested stats for module: ${moduleName || 'ALL'}`);
         if (moduleName && !this.providers.has(moduleName)) {
 
@@ -75,6 +75,14 @@ class StatsPool {
         logger.info(`[StatsPool] Returning stats: ${JSON.stringify(result).substring(0, 100)}...`);
         return result;
     }
+
+    getStats(moduleName) {
+        return this.getModuleStats(moduleName);
+    }
+
+    getSystemStats() {
+        return this.getModuleStats();
+    }
 }
 
 // Singleton export
@@ -82,8 +90,8 @@ export const statsPool = new StatsPool();
 export default statsPool;
 
 export function createStatsGetter(moduleName, extraBuilder = null) {
-    return function buildStatsSnapshot(...args) {
-        const pooled = statsPool.getStats(moduleName, ...args) || {};
+    return function buildModuleStatsSnapshot(...args) {
+        const pooled = statsPool.getModuleStats(moduleName, ...args) || {};
         return typeof extraBuilder === 'function'
             ? { ...pooled, ...extraBuilder.call(this, pooled, ...args) }
             : pooled;

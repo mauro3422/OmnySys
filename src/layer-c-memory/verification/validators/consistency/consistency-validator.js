@@ -153,7 +153,7 @@ export class ConsistencyValidator {
    * @returns {Object} - Estadísticas
    */
 getStats() {
-    return statsPool.getStats('consistency-validator');
+    return statsPool.getModuleStats('consistency-validator');
   }  /**
    * Obtiene issues encontrados
    * @returns {Array} - Lista de issues

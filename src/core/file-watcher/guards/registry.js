@@ -151,7 +151,7 @@ class GuardRegistry {
      * @returns {Object} Estadísticas
      */
     getRegistryStats() {
-        const stats = statsPool.getStats('registry') || this.getLocalStats();
+        const stats = statsPool.getModuleStats('registry') || this.getLocalStats();
         logger.debug(`[GuardRegistry] getRegistryStats returning: ${JSON.stringify(stats).substring(0, 100)}`);
         return stats;
     }

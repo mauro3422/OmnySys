@@ -50,7 +50,7 @@ export class AtomRepository {
    * @returns {Object}
    */
   getStats() {
-    return statsPool.getStats('atom-repository');
+    return statsPool.getModuleStats('atom-repository');
   }
 }
 

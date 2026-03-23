@@ -157,6 +157,6 @@ export class WSClient {
    * @returns {Object}
    */
 getStats() {
-    return statsPool.getStats('ws-client');
+    return statsPool.getModuleStats('ws-client');
   }}
 
