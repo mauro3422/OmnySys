@@ -30,6 +30,47 @@ const MIN_UNMODIFIED_DEPENDENTS = 2;
  */
 const RECENT_WINDOW_MS = 5 * 60 * 1000;
 
+function createDetectorOptions(tracker) {
+  return {
+    wasRecentlyModified: (id) => tracker.wasRecentlyModified(id),
+    markAsModified: (id) => tracker.mark(id),
+    minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS
+  };
+}
+
+function createTunnelVisionDetectors(tracker) {
+  const detectorOptions = createDetectorOptions(tracker);
+  return {
+    atomic: new AtomicDetector(detectorOptions),
+    file: new FileDetector(detectorOptions)
+  };
+}
+
+function buildTunnelVisionDetectorStats(tracker, detectors) {
+  return {
+    tracker: tracker.getModificationTrackerStats(),
+    atomicDetector: detectors.atomic.getStats?.() || null,
+    fileDetector: detectors.file.getStats?.() || null,
+    minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS,
+    recentWindowMs: RECENT_WINDOW_MS
+  };
+}
+
+async function detectFileTunnelVision(detector, projectPath, filePath, severityAnalyzer, alertBuilder) {
+  const alertData = await detector.detect(
+    projectPath,
+    filePath,
+    (atom, count) => severityAnalyzer.calculate(atom, count)
+  );
+
+  return alertData ? alertBuilder.buildFileAlert(alertData) : null;
+}
+
+async function detectAtomicTunnelVision(detector, projectPath, filePath, functionName, alertBuilder) {
+  const alertData = await detector.detect(projectPath, filePath, functionName);
+  return alertData ? alertBuilder.buildAtomicAlert(alertData) : null;
+}
+
 /**
  * Detects tunnel vision anti-patterns
  * 
@@ -41,19 +82,7 @@ export class TunnelVisionDetector {
     this.severityAnalyzer = new SeverityAnalyzer();
     this.alertBuilder = new AlertBuilder();
     this.alertFormatter = new AlertFormatter();
-
-    // Initialize detectors
-    const detectorOptions = {
-      wasRecentlyModified: (id) => this.tracker.wasRecentlyModified(id),
-      markAsModified: (id) => this.tracker.mark(id),
-      minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS
-    };
-
-    this.detectors = {
-      atomic: new AtomicDetector(detectorOptions),
-      file: new FileDetector(detectorOptions)
-    };
-
+    this.detectors = createTunnelVisionDetectors(this.tracker);
     // Start periodic cleanup
     this._startCleanup();
   }
@@ -69,23 +98,23 @@ export class TunnelVisionDetector {
   async detect(projectPath, filePath, functionName = null) {
     // If no function specified, analyze entire file
     if (!functionName) {
-      const alertData = await this.detectors.file.detect(
+      return detectFileTunnelVision(
+        this.detectors.file,
         projectPath,
         filePath,
-        (atom, count) => this.severityAnalyzer.calculate(atom, count)
+        this.severityAnalyzer,
+        this.alertBuilder
       );
-
-      return alertData ? this.alertBuilder.buildFileAlert(alertData) : null;
     }
 
     // Atomic detection for specific function
-    const alertData = await this.detectors.atomic.detect(
+    return detectAtomicTunnelVision(
+      this.detectors.atomic,
       projectPath,
       filePath,
-      functionName
+      functionName,
+      this.alertBuilder
     );
-
-    return alertData ? this.alertBuilder.buildAtomicAlert(alertData) : null;
   }
 
   /**
@@ -103,13 +132,7 @@ export class TunnelVisionDetector {
    * @returns {Object}
    */
   getTunnelVisionDetectorStats() {
-    return {
-      tracker: this.tracker.getModificationTrackerStats(),
-      atomicDetector: this.detectors.atomic.getStats?.() || null,
-      fileDetector: this.detectors.file.getStats?.() || null,
-      minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS,
-      recentWindowMs: RECENT_WINDOW_MS
-    };
+    return buildTunnelVisionDetectorStats(this.tracker, this.detectors);
   }
 
   /**

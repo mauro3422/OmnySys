@@ -33,20 +33,54 @@ import { CircuitBreaker } from '../strategies/circuit-breaker.js';
 
 const logger = createLogger('OmnySys:error:guardian');
 
+function createGuardianOptions(options = {}) {
+  return {
+    enableGlobalHandlers: true,
+    enableCircuitBreaker: true,
+    enableRetry: true,
+    enableFallback: true,
+    enableAutoFix: false,
+    ...options
+  };
+}
+
+function createGuardianComponents(projectPath) {
+  return {
+    classifier: new ErrorClassifier(),
+    recovery: new RecoveryHandler(projectPath),
+    retry: new RetryStrategy(),
+    fallback: new FallbackStrategy(),
+    circuitBreaker: new CircuitBreaker()
+  };
+}
+
+function createGuardianUtilities(projectPath, errorLog, stats, options, retry, fallback, circuitBreaker) {
+  return {
+    logError: createErrorLogger(projectPath, errorLog, stats),
+    execute: createExecutionWrapper(
+      { retry, fallback, circuitBreaker },
+      options
+    )
+  };
+}
+
+function buildGuardianStats(stats, classifier, recovery, circuitBreaker, errorLog) {
+  return aggregateStats(stats, {
+    classifier,
+    recovery,
+    circuitBreaker,
+    errorLog,
+    health: calculateHealth(stats)
+  });
+}
+
 /**
  * ErrorGuardian - Sistema de protección recursiva
  */
 export class ErrorGuardian {
   constructor(projectPath, options = {}) {
     this.projectPath = projectPath;
-    this.options = {
-      enableGlobalHandlers: true,
-      enableCircuitBreaker: true,
-      enableRetry: true,
-      enableFallback: true,
-      enableAutoFix: false,
-      ...options
-    };
+    this.options = createGuardianOptions(options);
 
     // Safety warning
     if (this.options.enableAutoFix) {
@@ -55,11 +89,12 @@ export class ErrorGuardian {
     }
 
     // Initialize components
-    this.classifier = new ErrorClassifier();
-    this.recovery = new RecoveryHandler(projectPath);
-    this.retry = new RetryStrategy();
-    this.fallback = new FallbackStrategy();
-    this.circuitBreaker = new CircuitBreaker();
+    const components = createGuardianComponents(projectPath);
+    this.classifier = components.classifier;
+    this.recovery = components.recovery;
+    this.retry = components.retry;
+    this.fallback = components.fallback;
+    this.circuitBreaker = components.circuitBreaker;
 
     // State
     this.errorLog = [];
@@ -75,11 +110,17 @@ export class ErrorGuardian {
     }
 
     // Create utilities
-    this.logError = createErrorLogger(projectPath, this.errorLog, this.stats);
-    this.execute = createExecutionWrapper(
-      { retry: this.retry, fallback: this.fallback, circuitBreaker: this.circuitBreaker },
-      this.options
+    const utilities = createGuardianUtilities(
+      projectPath,
+      this.errorLog,
+      this.stats,
+      this.options,
+      this.retry,
+      this.fallback,
+      this.circuitBreaker
     );
+    this.logError = utilities.logError;
+    this.execute = utilities.execute;
   }
 
   /**
@@ -106,13 +147,13 @@ export class ErrorGuardian {
   }
 
   getErrorGuardianStats() {
-    return aggregateStats(this.stats, {
-      classifier: this.classifier,
-      recovery: this.recovery,
-      circuitBreaker: this.circuitBreaker,
-      errorLog: this.errorLog,
-      health: calculateHealth(this.stats)
-    });
+    return buildGuardianStats(
+      this.stats,
+      this.classifier,
+      this.recovery,
+      this.circuitBreaker,
+      this.errorLog
+    );
   }
 
   getStats() {
