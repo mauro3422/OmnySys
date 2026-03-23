@@ -11,7 +11,21 @@
  * @module shared/atomic-cache
  */
 
-import { DerivationCache } from './derivation-engine/index.js';
+import {
+  buildAtomicCacheStats,
+  evictLeastRecentlyUsedAtom,
+  getAtomicCacheAtom,
+  getAtomicCacheAtoms,
+  setAtomicCacheAtom,
+  invalidateAtomicCacheAtom,
+  invalidateAtomicCacheFile,
+  deriveAtomicCache,
+  clearAtomicCache
+} from './atomic-cache-helpers.js';
+import {
+  buildAtomicCacheOptions,
+  initializeAtomicCacheState
+} from './atomic-cache-factory-helpers.js';
 
 /**
  * AtomicCache - Gestiona caché de átomos con invalidación inteligente
@@ -25,18 +39,10 @@ import { DerivationCache } from './derivation-engine/index.js';
  */
 export class AtomicCache {
   constructor(options = {}) {
-    // Caché RAM para átomos individuales
-    this.atoms = new Map();
-    
-    // Caché para metadata derivada
-    this.derivations = new DerivationCache();
-    
-    // Índice inverso: archivo → átomos (para invalidación eficiente)
-    this.fileToAtoms = new Map();
-    
-    // Configuración
-    this.maxAtoms = options.maxAtoms || 1000; // LRU limit
-    this.ttlMs = options.ttlMs || 5 * 60 * 1000; // 5 min default
+    initializeAtomicCacheState(this);
+    const atomicOptions = buildAtomicCacheOptions(options);
+    this.maxAtoms = atomicOptions.maxAtoms;
+    this.ttlMs = atomicOptions.ttlMs;
   }
 
   /**
@@ -45,20 +51,7 @@ export class AtomicCache {
    * @returns {Atom|null}
    */
   getAtom(atomId) {
-    const cached = this.atoms.get(atomId);
-    
-    if (!cached) return null;
-    
-    // Verificar TTL
-    if (Date.now() > cached.expiry) {
-      this.atoms.delete(atomId);
-      return null;
-    }
-    
-    // Actualizar lastAccessed (para LRU)
-    cached.lastAccessed = Date.now();
-    
-    return cached.data;
+    return getAtomicCacheAtom(this, atomId);
   }
 
   /**
@@ -68,24 +61,7 @@ export class AtomicCache {
    * @param {string} filePath - Archivo al que pertenece (para índice)
    */
   setAtom(atomId, atomData, filePath) {
-    // LRU eviction si es necesario
-    if (this.atoms.size >= this.maxAtoms) {
-      this._evictLRU();
-    }
-    
-    // Guardar átomo
-    this.atoms.set(atomId, {
-      data: atomData,
-      expiry: Date.now() + this.ttlMs,
-      createdAt: Date.now(),
-      lastAccessed: Date.now()
-    });
-    
-    // Actualizar índice inverso
-    if (!this.fileToAtoms.has(filePath)) {
-      this.fileToAtoms.set(filePath, new Set());
-    }
-    this.fileToAtoms.get(filePath).add(atomId);
+    return setAtomicCacheAtom(this, atomId, atomData, filePath);
   }
 
   /**
@@ -94,19 +70,7 @@ export class AtomicCache {
    * @returns {Map<string, Atom>} - Mapa de átomos encontrados
    */
   getAtoms(atomIds) {
-    const result = new Map();
-    const missing = [];
-    
-    for (const id of atomIds) {
-      const atom = this.getAtom(id);
-      if (atom) {
-        result.set(id, atom);
-      } else {
-        missing.push(id);
-      }
-    }
-    
-    return { found: result, missing };
+    return getAtomicCacheAtoms(this, atomIds);
   }
 
   /**
@@ -114,11 +78,7 @@ export class AtomicCache {
    * @param {string} atomId - ID del átomo
    */
   invalidateAtom(atomId) {
-    // Eliminar del caché de átomos
-    this.atoms.delete(atomId);
-    
-    // Invalidar derivaciones que dependen de este átomo
-    this.derivations.invalidate(atomId);
+    return invalidateAtomicCacheAtom(this, atomId);
   }
 
   /**
@@ -126,14 +86,7 @@ export class AtomicCache {
    * @param {string} filePath - Ruta del archivo
    */
   invalidateFile(filePath) {
-    const atomIds = this.fileToAtoms.get(filePath);
-    
-    if (atomIds) {
-      for (const atomId of atomIds) {
-        this.invalidateAtom(atomId);
-      }
-      this.fileToAtoms.delete(filePath);
-    }
+    return invalidateAtomicCacheFile(this, filePath);
   }
 
   /**
@@ -144,25 +97,14 @@ export class AtomicCache {
    * @returns {any}
    */
   derive(filePath, atoms, ruleName) {
-    return this.derivations.derive(filePath, atoms, ruleName);
+    return deriveAtomicCache(this, filePath, atoms, ruleName);
   }
 
   /**
    * Obtiene estadísticas del caché
    */
   getAtomicCacheStats() {
-    let memoryBytes = 0;
-    for (const item of this.atoms.values()) {
-      memoryBytes += JSON.stringify(item.data).length;
-    }
-
-    return {
-      atomsCached: this.atoms.size,
-      derivationsCached: this.derivations.cache.size,
-      filesTracked: this.fileToAtoms.size,
-      memoryUsageKB: Math.round(memoryBytes / 1024),
-      derivationStats: this.derivations.getDerivationCacheStats()
-    };
+    return buildAtomicCacheStats(this);
   }
 
   getStats() {
@@ -173,9 +115,7 @@ export class AtomicCache {
    * Limpia todo el caché
    */
   clear() {
-    this.atoms.clear();
-    this.derivations.clear();
-    this.fileToAtoms.clear();
+    return clearAtomicCache(this);
   }
 
   /**
@@ -183,19 +123,7 @@ export class AtomicCache {
    * @private
    */
   _evictLRU() {
-    let oldestKey = null;
-    let oldestTime = Infinity;
-    
-    for (const [key, item] of this.atoms.entries()) {
-      if (item.lastAccessed < oldestTime) {
-        oldestTime = item.lastAccessed;
-        oldestKey = key;
-      }
-    }
-    
-    if (oldestKey) {
-      this.atoms.delete(oldestKey);
-    }
+    evictLeastRecentlyUsedAtom(this);
   }
 }
 

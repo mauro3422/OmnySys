@@ -9,6 +9,12 @@
 import { createLogger } from '../../../../utils/logger.js';
 import { SEVERITY, ERROR_PATTERNS } from '../patterns/constants.js';
 import { getClassifierStats } from '../utils/stats.js';
+import {
+  buildClassifierPatterns,
+  selectMatchingPattern,
+  buildClassification,
+  recordClassificationHistory
+} from './base-classifier-helpers.js';
 
 const logger = createLogger('OmnySys:error:classifier');
 
@@ -30,7 +36,7 @@ const logger = createLogger('OmnySys:error:classifier');
  */
 export class ErrorClassifier {
   constructor(customPatterns = {}) {
-    this.patterns = { ...ERROR_PATTERNS, ...customPatterns };
+    this.patterns = buildClassifierPatterns(customPatterns, ERROR_PATTERNS);
     this.classificationHistory = [];
   }
 
@@ -83,44 +89,10 @@ export class ErrorClassifier {
    */
   classify(error) {
     const errorString = error.stack || error.message || String(error);
-
-    for (const [type, config] of Object.entries(this.patterns)) {
-      const match = errorString.match(config.pattern);
-      if (match) {
-        const classification = {
-          type,
-          severity: config.severity,
-          autoFixable: config.autoFixable,
-          suggestion: config.suggestion(match),
-          commonFixes: config.commonFixes || [],
-          category: config.category || 'UNKNOWN',
-          match: match[0],
-          originalError: error
-        };
-
-        this.recordClassification(classification);
-        return classification;
-      }
-    }
-
-    // Unknown error
-    const unknownClassification = {
-      type: 'UNKNOWN',
-      severity: SEVERITY.HIGH,
-      autoFixable: false,
-      suggestion: 'Error no catalogado. Revisar stack trace completo.',
-      commonFixes: [
-        'Buscar el error en Google/StackOverflow',
-        'Revisar logs completos',
-        'Reportar issue con stack trace'
-      ],
-      category: 'UNKNOWN',
-      match: errorString.substring(0, 100),
-      originalError: error
-    };
-
-    this.recordClassification(unknownClassification);
-    return unknownClassification;
+    const matchResult = selectMatchingPattern(errorString, this.patterns);
+    const classification = buildClassification(error, matchResult);
+    this.recordClassification(classification);
+    return classification;
   }
 
   /**
@@ -128,17 +100,7 @@ export class ErrorClassifier {
    * @param {ErrorClassification} classification
    */
   recordClassification(classification) {
-    this.classificationHistory.push({
-      timestamp: new Date().toISOString(),
-      type: classification.type,
-      severity: classification.severity,
-      category: classification.category
-    });
-
-    // Keep only last 100 classifications
-    if (this.classificationHistory.length > 100) {
-      this.classificationHistory.shift();
-    }
+    recordClassificationHistory(this.classificationHistory, classification);
   }
 
   /**

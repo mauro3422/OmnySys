@@ -56,16 +56,17 @@ export class ReloadHandler {
    * @param {Object} moduleInfo - Module classification info
    * @returns {Promise<Object>} Reload result
    */
-  async reload(filename, moduleInfo) {
+  async applyModuleReload(filename, moduleInfo) {
     if (this.isReloading) {
       return { success: false, error: 'Already reloading' };
     }
 
     this.isReloading = true;
     const startTime = Date.now();
+    const moduleType = moduleInfo?.type || 'generic';
 
     try {
-      logger.info(`🧠 Live compiler runtime pass: ${filename} -> ${moduleInfo.type}`);
+      logger.info(`🧠 Live compiler runtime pass: ${filename} -> ${moduleType}`);
 
       // 0. SYNTAX VALIDATION SHIELD
       try {
@@ -81,13 +82,13 @@ export class ReloadHandler {
       this.stateHandler.preserve();
 
       // 2. Execute reload strategy
-      await this._executeStrategy(filename, moduleInfo);
+      await this._dispatchStrategyReload(filename, moduleInfo);
 
       // 3. Restore state
       this.stateHandler.restore();
 
       const duration = Date.now() - startTime;
-      logger.info(`✅ Runtime reload applied: ${filename} (${moduleInfo.type}, ${duration}ms)`);
+      logger.info(`✅ Runtime reload applied: ${filename} (${moduleType}, ${duration}ms)`);
 
       this._emitSuccess(filename, moduleInfo, duration);
 
@@ -110,7 +111,7 @@ export class ReloadHandler {
    * @param {string} filename - File being reloaded
    * @param {Object} moduleInfo - Module classification
    */
-  async _executeStrategy(filename, moduleInfo) {
+  async _dispatchStrategyReload(filename, moduleInfo) {
     // moduleInfo is null when the file doesn't match any reloadable pattern — skip silently
     if (!moduleInfo) {
       return;
@@ -123,7 +124,7 @@ export class ReloadHandler {
       return;
     }
 
-    await strategy.reload(filename);
+    await strategy.applyReload(filename);
   }
 
   /**
@@ -156,7 +157,7 @@ export class ReloadHandler {
   _emitSuccess(filename, moduleInfo, duration) {
     this.server.emit('hot-reload:completed', {
       file: filename,
-      type: moduleInfo.type,
+      type: moduleInfo?.type || 'generic',
       duration
     });
   }

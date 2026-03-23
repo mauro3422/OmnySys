@@ -23,7 +23,7 @@ export class ExtractorStrategy extends BaseStrategy {
    * @param {string} filename - Extractor file to reload
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     // Extractors are used during analysis
     // They will reload automatically on next analysis
     this._log('Extractor queued for reload (will apply on next analysis)', filename);

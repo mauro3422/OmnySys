@@ -23,7 +23,7 @@ export class HandlerStrategy extends BaseStrategy {
    * @param {string} filename - Handler file to reload
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     if (!this._requestWorkerRestart(filename, 'Handler module')) {
       this._log('Handler changed - restart task to apply (8s)', filename);
     }

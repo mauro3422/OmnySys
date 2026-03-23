@@ -14,6 +14,19 @@ import { fileURLToPath } from 'url';
 import { createLogger } from '#utils/logger.js';
 import { readFileSync, mkdirSync, existsSync } from 'fs';
 import {
+  ensureDataDirectory,
+  refreshCanonicalViews,
+  reportSchemaDrift,
+  initializeConnection,
+  applyConnectionConfig,
+  initializeConnectionSchema,
+  shutdownConnection,
+  transactionConnection,
+  getConnectionDatabase,
+  checkpointConnection,
+  isConnectionInitialized
+} from './connection-helpers.js';
+import {
   getRegisteredTables,
   getTableDefinition,
   detectMissingColumns,
@@ -33,87 +46,6 @@ const __dirForSchema = dirname(fileURLToPath(__fileUrl));
 const _schemaPath = resolve(__dirForSchema, 'schema.sql');
 const _schemaSql = existsSync(_schemaPath) ? readFileSync(_schemaPath, 'utf8') : null;
 
-function ensureDataDirectory(projectPath) {
-  const dataDir = resolve(projectPath, '.omnysysdata');
-  if (!existsSync(dataDir)) {
-    logger.debug(`[Connection] Creating data directory: ${dataDir}`);
-    mkdirSync(dataDir, { recursive: true });
-  }
-}
-
-function applyMissingColumns(db, tableName) {
-  const existingColumns = db.prepare(`PRAGMA table_info(${tableName})`).all();
-  const missingColumns = detectMissingColumns(tableName, existingColumns);
-
-  if (missingColumns.length === 0) {
-    return;
-  }
-
-  logger.info(
-    `[Connection] Adding ${missingColumns.length} missing column(s) to '${tableName}': ${missingColumns.map(c => c.name).join(', ')}`
-  );
-
-  for (const column of missingColumns) {
-    try {
-      const addColumnSQL = generateAddColumnSQL(tableName, column.name);
-      db.exec(addColumnSQL);
-    } catch (err) {
-      if (!err.message.includes('duplicate column')) {
-        logger.warn(`[Connection] Failed to add column ${column.name} to ${tableName}: ${err.message}`);
-      }
-    }
-  }
-}
-
-function syncRegisteredTables(db) {
-  const registeredTables = getRegisteredTables();
-
-  for (const tableName of registeredTables) {
-    const tableExists = db.prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
-    ).get(tableName);
-
-    if (!tableExists) {
-      const createSQL = generateCreateTableSQL(tableName);
-      db.exec(createSQL);
-      logger.info(`[Connection] Created table '${tableName}' from registry`);
-    }
-
-    applyMissingColumns(db, tableName);
-
-    const indexes = generateCreateIndexesSQL(tableName);
-    for (const indexSQL of indexes) {
-      db.exec(indexSQL);
-    }
-  }
-}
-
-function reportSchemaDrift(db) {
-  const registeredTables = getRegisteredTables();
-
-  for (const tableName of registeredTables) {
-    const existingColumns = db.prepare(`PRAGMA table_info(${tableName})`).all();
-    const registeredColumns = getTableDefinition(tableName).columns;
-
-    const existingNames = new Set(existingColumns.map(c => c.name));
-    const registeredNames = new Set(registeredColumns.map(c => c.name));
-
-    const driftColumns = [...existingNames].filter(name => !registeredNames.has(name));
-
-    if (driftColumns.length > 0) {
-      logger.warn(
-        `[Connection] Schema drift detected in table '${tableName}': ${driftColumns.join(', ')}\n` +
-        '   These columns exist in DB but not in schema-registry.js\n' +
-        '   -> Consider adding them to registry or removing from DB'
-      );
-    }
-  }
-}
-
-/**
- * Connection Manager para SQLite
- * Implementa patron Singleton para mantener una sola conexion
- */
 class ConnectionManager {
   constructor() {
     this.db = null;
@@ -121,161 +53,56 @@ class ConnectionManager {
     this.dbPath = null;
   }
 
-  /**
-   * Inicializa la conexion a la base de datos
-   * @param {string} projectPath - Ruta del proyecto
-   * @returns {Database} Instancia de base de datos
-   */
   initialize(projectPath) {
-    if (this.initialized && this.db) {
-      return this.db;
-    }
-
-    this.dbPath = resolve(projectPath, '.omnysysdata', 'omnysys.db');
-
-    ensureDataDirectory(projectPath);
-    logger.debug(`[Connection] Initializing SQLite at: ${this.dbPath}`);
-
-    try {
-      // Abrir conexion con better-sqlite3 (sincronico)
-      this.db = new Database(this.dbPath);
-
-      // Aplicar configuraciones
-      this.applyConfig();
-
-      // Ejecutar schema
-      this.initializeSchema();
-
-      this.initialized = true;
-
-      logger.debug('[Connection] SQLite initialized successfully');
-
-      return this.db;
-    } catch (error) {
-      logger.error(`[Connection] Failed to initialize SQLite: ${error.message}`);
-      throw error;
-    }
+    return initializeConnection(this, projectPath, {
+      Database,
+      logger,
+      existsSync,
+      mkdirSync,
+      generateCreateTableSQL,
+      generateCreateIndexesSQL,
+      detectMissingColumns,
+      generateAddColumnSQL,
+      getRegisteredTables,
+      getTableDefinition,
+      readFileSync,
+      schemaSql: _schemaSql
+    });
   }
 
-  /**
-   * Aplica configuraciones optimizadas de SQLite
-   */
   applyConfig() {
-    // WAL mode para mejor performance concurrente
-    this.db.pragma('journal_mode = WAL');
-
-    // Cache size: 64MB
-    this.db.pragma('cache_size = 64000');
-
-    // Synchronous: NORMAL (balance)
-    this.db.pragma('synchronous = NORMAL');
-
-    // Temp store: MEMORY
-    this.db.pragma('temp_store = MEMORY');
-
-    // Page size: 4096
-    this.db.pragma('page_size = 4096');
-
-    // Foreign keys: ON
-    this.db.pragma('foreign_keys = ON');
-
-    // Busy timeout: 5000ms
-    this.db.pragma('busy_timeout = 5000');
-
-    logger.debug('[Connection] SQLite config applied');
+    return applyConnectionConfig(this.db, logger);
   }
 
-  /**
-   * Inicializa el schema de la base de datos
-   *
-   * Usa schema-registry.js como single source of truth.
-   * Detecta y migra automaticamente columnas faltantes.
-   */
   initializeSchema() {
-    try {
-      this.refreshCanonicalViews();
-
-      if (_schemaSql) {
-        this.db.exec(_schemaSql);
-        logger.debug('[Connection] Base schema.sql executed');
-      }
-
-      syncRegisteredTables(this.db);
-      reportSchemaDrift(this.db);
-
-      logger.debug('[Connection] Schema initialization complete (registry-based)');
-    } catch (error) {
-      logger.error(`[Connection] Failed to initialize schema: ${error.message}`);
-      throw error;
-    }
+    return initializeConnectionSchema(this.db, {
+      schemaSql: _schemaSql,
+      logger,
+      generateCreateTableSQL,
+      generateCreateIndexesSQL,
+      detectMissingColumns,
+      generateAddColumnSQL,
+      getRegisteredTables,
+      getTableDefinition
+    });
   }
 
-  refreshCanonicalViews() {
-    try {
-      this.db.exec('DROP VIEW IF EXISTS call_graph;');
-      logger.debug('[Connection] Refreshed canonical call_graph view');
-    } catch (error) {
-      logger.warn(`[Connection] Failed to refresh canonical views: ${error.message}`);
-    }
-  }
-
-  /**
-   * Detecta drift entre schema.sql y schema-registry
-   * Advierte si hay columnas en schema.sql que no estan en el registry
-   */
-  _checkSchemaDrift() {
-    reportSchemaDrift(this.db);
-  }
-
-  /**
-   * Obtiene la instancia de base de datos
-   * @returns {Database} Instancia de better-sqlite3
-   */
   getDatabase() {
-    if (!this.db) {
-      throw new Error('Database not initialized. Call initialize() first.');
-    }
-    return this.db;
+    return getConnectionDatabase(this);
   }
 
-  /**
-   * Ejecuta una transaccion
-   * @param {Function} callback - Funcion a ejecutar dentro de la transaccion
-   * @returns {any} Resultado de la transaccion
-   */
   transaction(callback) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    const transaction = this.db.transaction(callback);
-    return transaction();
+    return transactionConnection(this, callback);
   }
 
-  /**
-   * Cierra la conexion a la base de datos
-   */
-  close() {
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-      this.initialized = false;
-      logger.info('[Connection] Database connection closed');
-    }
+  shutdown() {
+    return shutdownConnection(this, logger);
   }
 
-  /**
-   * Verifica si la base de datos esta inicializada
-   * @returns {boolean}
-   */
   isInitialized() {
-    return this.initialized && this.db !== null;
+    return isConnectionInitialized(this);
   }
 
-  /**
-   * Obtiene estadisticas de la base de datos
-   * @returns {Object} Estadisticas
-   */
   getConnectionStats() {
     return statsPool.getModuleStats('connection');
   }
@@ -284,19 +111,8 @@ class ConnectionManager {
     return this.getConnectionStats();
   }
 
-  /**
-   * Fuerza checkpoint WAL para persistir datos
-   * Util despues de bulk operations
-   */
   checkpoint() {
-    if (!this.db) return;
-
-    try {
-      this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
-      logger.debug('[Connection] WAL checkpoint executed');
-    } catch (error) {
-      logger.warn('[Connection] WAL checkpoint failed:', error.message);
-    }
+    return checkpointConnection(this, logger);
   }
 }
 
@@ -310,8 +126,8 @@ export function getDatabase() {
   return connectionManager.getDatabase();
 }
 
-export function closeStorage() {
-  connectionManager.close();
+export function shutdownStorage() {
+  connectionManager.shutdown();
 }
 
 export default connectionManager;

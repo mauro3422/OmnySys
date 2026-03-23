@@ -23,7 +23,7 @@ export class PipelineStrategy extends BaseStrategy {
    * @param {string} filename - Changed pipeline file
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     if (!this._requestWorkerRestart(filename, 'Pipeline module')) {
       this._log('Pipeline module changed - restart task to apply (8s)', filename);
     }

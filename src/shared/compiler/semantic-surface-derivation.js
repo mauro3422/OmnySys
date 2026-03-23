@@ -1,7 +1,7 @@
 /**
  * @fileoverview Canonical semantic surface derivation helpers.
  *
- * Builds file-level semantic connections from atom semantic metadata stored in
+ * Builds file-level semantic connections from atom s emantic metadata stored in
  * SQLite. This keeps the semantic summary surface DB-first and avoids relying
  * on legacy atom_relations buckets that may not exist for a given reindex.
  *

@@ -1,4 +1,3 @@
-import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview ws-client.js
  * 
@@ -12,6 +11,11 @@ import { SubscriptionManager } from './subscription-manager.js';
 import { handleClientCommand } from './message-handler.js';
 import { parseMessage, createErrorMessage } from '../messaging/message-types.js';
 import { createLogger } from '../../../utils/logger.js';
+import {
+  initializeWebSocketClientState,
+  attachWebSocketClientHandlers,
+  buildWebSocketClientRuntime
+} from './ws-client-helpers.js';
 
 const logger = createLogger('OmnySys:ws:client');
 
@@ -27,28 +31,9 @@ export class WSClient {
    * @param {EventEmitter} manager - Manager padre (EventEmitter)
    */
   constructor(ws, id, manager) {
-    this.ws = ws;
-    this.id = id;
-    this.manager = manager;
-    this.state = ConnectionState.CONNECTED;
-    this.subscriptions = new SubscriptionManager();
-    this.lastPing = Date.now();
-    this.metadata = {};
-
-    this.setupHandlers();
-  }
-
-  /**
-   * Configura handlers del WebSocket nativo
-   * @private
-   */
-  setupHandlers() {
-    this.ws.on('message', (data) => this.handleMessage(data));
-    this.ws.on('close', () => this.handleClose());
-    this.ws.on('error', (error) => this.handleError(error));
-    this.ws.on('pong', () => {
-      this.lastPing = Date.now();
-    });
+    initializeWebSocketClientState(this, ws, id, manager);
+    buildWebSocketClientRuntime(this, SubscriptionManager);
+    attachWebSocketClientHandlers(this);
   }
 
   /**
@@ -157,7 +142,14 @@ export class WSClient {
    * @returns {Object}
    */
   getWebSocketClientStats() {
-    return statsPool.getModuleStats('ws-client');
+    return {
+      id: this.id,
+      state: this.state,
+      alive: this.isAlive(),
+      lastPing: this.lastPing,
+      subscriptions: this.subscriptions?.count ?? 0,
+      projectPath: this.subscriptions?.getProject?.() || null
+    };
   }
 
   getStats() {

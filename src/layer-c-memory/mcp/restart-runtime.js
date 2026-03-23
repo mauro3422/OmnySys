@@ -1,6 +1,7 @@
 import { createLogger } from '../../utils/logger.js';
 import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
 import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
+import { clearPendingRuntimeRestart } from './core/hot-reload-manager/restart-coordinator.js';
 import {
   buildProxyRestartResult,
   fastRestartOrchestrator,
@@ -13,13 +14,22 @@ import {
 const logger = createLogger('OmnySys:restart:server');
 
 export async function handleRuntimeRestart(args = {}, context = {}) {
-  const { clearCache = false, reanalyze = false, reindexOnly = false, clearCacheOnly = false } = args;
+  const {
+    clearCache = false,
+    reanalyze = false,
+    reindexOnly = false,
+    clearCacheOnly = false,
+    refreshOnly = false,
+    softReload = false
+  } = args;
   const { cache, server, orchestrator, refreshToolRegistry } = context;
 
   try {
     logger.info('Restarting OmnySys server...');
     clearPendingHotReloadRestart(server);
 
+    if (refreshOnly) return await handleRefreshOnly(server, cache, refreshToolRegistry);
+    if (softReload) return await handleSoftReload(server, orchestrator, cache, refreshToolRegistry);
     if (clearCacheOnly) return await handleClearCacheOnly(cache, refreshToolRegistry);
     if (reindexOnly) {
       const result = {
@@ -79,14 +89,7 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
 }
 
 function clearPendingHotReloadRestart(server) {
-  server?._pendingHotReloadRestartFiles?.clear?.();
-  if (server) {
-    server._hotReloadRestartScheduled = false;
-  }
-  if (server?._hotReloadRestartTimer) {
-    clearTimeout(server._hotReloadRestartTimer);
-    server._hotReloadRestartTimer = null;
-  }
+  clearPendingRuntimeRestart(server);
 }
 
 async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
@@ -107,6 +110,72 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
     restartType: 'cache_only_flush',
     lifecycle: buildRestartLifecycleGuidance({ restartType: 'cache_only_flush', clearCacheOnly: true }),
     message: 'In-memory cache flushed and tool registry refreshed. No reindex needed.',
+    timestamp: new Date().toISOString()
+  };
+}
+
+async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
+  logger.info('Refresh-only requested...');
+
+  if (cache?.clear) {
+    await cache.clear();
+    logger.info('Runtime cache cleared');
+  }
+
+  try {
+    await reloadServerMetadata({
+      cache,
+      projectPath: server?.projectPath,
+      wsManager: server?.wsManager
+    });
+  } catch (error) {
+    logger.warn('Metadata refresh skipped:', error.message);
+  }
+
+  try {
+    await refreshToolRegistryFn?.(logger);
+    logger.info('Tool registry refreshed');
+  } catch {
+    // Best effort in non-HTTP runtimes.
+  }
+
+  return {
+    success: true,
+    restarting: false,
+    restartType: 'refresh_only',
+    lifecycle: buildRestartLifecycleGuidance({ restartType: 'refresh_only', refreshOnly: true }),
+    message: 'Runtime refreshed without restart. Cache and metadata reloaded.',
+    timestamp: new Date().toISOString()
+  };
+}
+
+async function handleSoftReload(server, orchestrator, cache, refreshToolRegistryFn) {
+  logger.info('Soft reload requested...');
+
+  await stopOrchestrator(orchestrator);
+  if (orchestrator) {
+    await fastRestartOrchestrator(server, {});
+  }
+
+  if (cache?.initialize) {
+    await cache.initialize();
+    if (server.metadata && cache.set) {
+      cache.set('metadata', server.metadata);
+    }
+  }
+
+  try {
+    await refreshToolRegistryFn?.(logger);
+  } catch {
+    // Best effort.
+  }
+
+  return {
+    success: true,
+    restarting: false,
+    restartType: 'soft_reload',
+    lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
+    message: 'Soft reload complete. Orchestrator and runtime state refreshed without process restart.',
     timestamp: new Date().toISOString()
   };
 }

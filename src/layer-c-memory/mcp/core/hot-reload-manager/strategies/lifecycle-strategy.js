@@ -26,7 +26,7 @@ export class LifecycleStrategy extends BaseStrategy {
    * @param {string} filename - Lifecycle file to reload
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     if (!this._requestWorkerRestart(filename, 'Lifecycle module')) {
       logger.warn(`Lifecycle reload requires manual restart in standalone mode: ${filename}`);
     }

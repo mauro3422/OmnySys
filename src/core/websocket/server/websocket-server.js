@@ -1,4 +1,3 @@
-import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview websocket-server.js
  * 
@@ -197,7 +196,15 @@ export class WebSocketManager extends EventEmitter {
    * @returns {Object}
    */
   getWebSocketServerStats() {
-    return statsPool.getModuleStats('websocket-server');
+    return {
+      isRunning: this.isRunning,
+      port: this.options.port,
+      path: this.options.path,
+      clients: this.clients.size,
+      maxClients: this.options.maxClients,
+      heartbeatInterval: this.options.heartbeatInterval,
+      heartbeatActive: !!this.heartbeatManager
+    };
   }
 
   getStats() {

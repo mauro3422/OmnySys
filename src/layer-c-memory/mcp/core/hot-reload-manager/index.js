@@ -20,6 +20,8 @@ import { createLogger } from '../../../utils/logger.js';
 import { FileWatcher } from './watchers/file-watcher.js';
 import { ModuleClassifier } from './watchers/module-classifier.js';
 import { ReloadHandler } from './handlers/reload-handler.js';
+import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
+import { queueRuntimeRestart } from './restart-coordinator.js';
 
 const logger = createLogger('OmnySys:hot-reload');
 
@@ -94,9 +96,9 @@ export class HotReloadManager {
    * Gets hot-reload statistics
    * @returns {Object}
    */
-  getStats() {
+  getHotReloadStats() {
     const status = this.reloadHandler.getStatus();
-    const watcherStats = getWatcherStatsSnapshot(this.fileWatcher);
+    const watcherStats = snapshotWatcherStats(this.fileWatcher);
 
     return {
       isWatching: this.fileWatcher?.isWatching() || false,
@@ -145,23 +147,49 @@ function handleReloadableChange({ eventType, filename, server, classifier, reloa
   }
 
   const moduleInfo = classifier.classify(filename);
-  if (!moduleInfo) {
-    logger.debug(`Ignoring non-reloadable file: ${filename}`);
+  const policy = classifyRuntimeChange(filename, moduleInfo);
+  if (policy.action === RuntimeChangeAction.IGNORE) {
+    logger.debug(`Ignoring non-runtime file: ${filename}`);
     return;
   }
 
-  if (moduleInfo.type === 'critical') {
-    logger.warn(`🚨 Live compiler critical change: ${filename}`);
-    logger.warn('   Manual restart required for changes to take effect');
-    server.emit('hot-reload:critical-change', { file: filename });
+  if (policy.action === RuntimeChangeAction.REFRESH) {
+    logger.info(`♻️ Refresh-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+    server.emit('hot-reload:refresh-requested', {
+      file: filename,
+      reason: policy.reason,
+      action: policy.action
+    });
+    reloadHandler.applyModuleReload(filename, moduleInfo);
     return;
   }
 
-  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo.type}/${eventType})`);
-  reloadHandler.reload(filename, moduleInfo);
+  if (policy.action === RuntimeChangeAction.RESTART) {
+    logger.warn(`🚨 Runtime restart required: ${filename} (${policy.reason})`);
+    queueRuntimeRestart(server, {
+      filename,
+      reason: policy.reason,
+      eventName: 'hot-reload:restart-pending'
+    });
+    return;
+  }
+
+  if (policy.action === RuntimeChangeAction.REINDEX) {
+    logger.info(`♻️ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+    server.emit('hot-reload:reindex-requested', {
+      file: filename,
+      reason: policy.reason,
+      action: policy.action
+    });
+    reloadHandler.applyModuleReload(filename, moduleInfo);
+    return;
+  }
+
+  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+  reloadHandler.applyModuleReload(filename, moduleInfo);
 }
 
-function getWatcherStatsSnapshot(fileWatcher) {
+function snapshotWatcherStats(fileWatcher) {
   return fileWatcher?.getStats?.() || {};
 }
 

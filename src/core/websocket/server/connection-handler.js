@@ -8,6 +8,10 @@
 
 import { CloseCodes } from '../constants.js';
 import { createConnectedMessage } from '../messaging/message-types.js';
+import crypto from 'crypto';
+import { createLogger } from '../../../utils/logger.js';
+
+const logger = createLogger('OmnySys:connection:handler');
 
 /**
  * Maneja nueva conexión WebSocket
@@ -20,7 +24,7 @@ import { createConnectedMessage } from '../messaging/message-types.js';
  * @param {EventEmitter} context.emitter - EventEmitter para notificaciones
  * @returns {Object|null} - Cliente creado o null si fue rechazado
  */
-export function handleConnection(ws, req, context) {
+export function handleConnection(ws, _req, context) {
   const { clients, maxClients, generateClientId, createClient, emitter } = context;
 
   // Limitar número de clientes
@@ -95,11 +99,3 @@ export function closeAllConnections(clients, code = CloseCodes.GOING_AWAY, reaso
 export function generateClientId() {
   return crypto.randomUUID();
 }
-
-// Import crypto for generateClientId
-import crypto from 'crypto';
-import { createLogger } from '../../../utils/logger.js';
-
-const logger = createLogger('OmnySys:connection:handler');
-
-

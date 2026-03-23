@@ -11,9 +11,9 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import { execFileSync } from 'child_process';
 import { createLogger } from '../../../../utils/logger.js';
+import { queueRuntimeRestart } from '../restart-coordinator.js';
 
 const logger = createLogger('OmnySys:hot-reload:strategy');
-const RUNTIME_RESTART_DEBOUNCE_MS = 900;
 
 function hasRealGitChange(projectPath, filename) {
   try {
@@ -48,13 +48,28 @@ export class BaseStrategy {
   }
 
   /**
-   * Reloads a module
-   * @abstract
+   * Applies a reload action for a module
    * @param {string} filename - File to reload
    * @returns {Promise<void>}
    */
-  async reload(filename) {
-    throw new Error('reload() must be implemented by subclass');
+  async applyReload(filename) {
+    if (typeof this._applyReload !== 'function') {
+      throw new Error('_applyReload() must be implemented by subclass');
+    }
+
+    return this._applyReload(filename);
+  }
+
+  /**
+   * Internal reload implementation used by subclasses.
+   *
+   * @abstract
+   * @protected
+   * @param {string} filename
+   * @returns {Promise<void>}
+   */
+  async _applyReload() {
+    throw new Error('_applyReload() must be implemented by subclass');
   }
 
   /**
@@ -104,30 +119,6 @@ export class BaseStrategy {
   }
 
   /**
-   * Returns true when the worker runs under the HTTP proxy and can request a
-   * fresh child process without dropping the parent listener.
-   *
-   * @protected
-   * @returns {boolean}
-   */
-  _isProxyManaged() {
-    return process.env.OMNYSYS_PROXY_MODE === '1' && typeof process.send === 'function';
-  }
-
-  /**
-   * Returns the runtime restart mode for hot-reload runtime-facing changes.
-   *
-   * `manual`: queue pending restart files but do not restart automatically.
-   * `auto`: current behavior, request a proxy-managed worker restart.
-   *
-   * @protected
-   * @returns {'manual'|'auto'}
-   */
-  _getRuntimeRestartMode() {
-    return this.server?.runtimeRestartMode === 'auto' ? 'auto' : 'manual';
-  }
-
-  /**
    * Queues a runtime restart without executing it automatically.
    *
    * @protected
@@ -141,22 +132,11 @@ export class BaseStrategy {
       return false;
     }
 
-    if (!this.server._pendingHotReloadRestartFiles) {
-      this.server._pendingHotReloadRestartFiles = new Set();
-    }
-
-    this.server._pendingHotReloadRestartFiles.add(filename);
-    logger.warn(
-      `${reason} changed - queued manual runtime restart: ${Array.from(this.server._pendingHotReloadRestartFiles).join(', ')}`
-    );
-
-    this.server.emit?.('hot-reload:restart-pending', {
-      file: filename,
-      files: Array.from(this.server._pendingHotReloadRestartFiles),
-      reason: 'manual_runtime_restart_required'
+    return queueRuntimeRestart(this.server, {
+      filename,
+      reason,
+      eventName: 'hot-reload:restart-pending'
     });
-
-    return true;
   }
 
   /**
@@ -169,65 +149,11 @@ export class BaseStrategy {
    * @returns {boolean}
    */
   _requestWorkerRestart(filename, reason) {
-    if (this._getRuntimeRestartMode() !== 'auto') {
-      return this._queueManualRuntimeRestart(filename, reason);
-    }
-
-    if (!this._isProxyManaged()) {
-      return false;
-    }
-
-    if (!this.server._pendingHotReloadRestartFiles) {
-      this.server._pendingHotReloadRestartFiles = new Set();
-    }
-    this.server._pendingHotReloadRestartFiles.add(filename);
-
-    if (this.server._hotReloadRestartTimer) {
-      clearTimeout(this.server._hotReloadRestartTimer);
-    }
-
-    if (this.server._hotReloadRestartScheduled) {
-      this._log('Worker restart already scheduled', filename);
-      return true;
-    }
-
-    try {
-      this.server._hotReloadRestartTimer = setTimeout(() => {
-        const touchedFiles = Array.from(this.server._pendingHotReloadRestartFiles || []);
-        this.server._pendingHotReloadRestartFiles?.clear();
-        this.server._hotReloadRestartTimer = null;
-        this.server._hotReloadRestartScheduled = true;
-
-        logger.warn(
-          `${reason} changed - requesting worker restart for fresh runtime cache: ${touchedFiles.join(', ')}`
-        );
-
-        process.send({
-          type: 'restart',
-          clearCache: false,
-          reanalyze: false,
-          clearCacheOnly: false,
-          reindexOnly: false,
-          reason: 'hot_reload_runtime_change',
-          file: filename,
-          files: touchedFiles
-        });
-      }, RUNTIME_RESTART_DEBOUNCE_MS);
-
-      if (this.server._hotReloadRestartTimer?.unref) {
-        this.server._hotReloadRestartTimer.unref();
-      }
-      return true;
-    } catch (error) {
-      if (this.server._hotReloadRestartTimer) {
-        clearTimeout(this.server._hotReloadRestartTimer);
-        this.server._hotReloadRestartTimer = null;
-      }
-      this.server._pendingHotReloadRestartFiles?.clear();
-      this.server._hotReloadRestartScheduled = false;
-      logger.warn(`Failed to request worker restart for ${filename}: ${error.message}`);
-      return false;
-    }
+    return queueRuntimeRestart(this.server, {
+      filename,
+      reason,
+      eventName: 'hot-reload:restart-pending'
+    });
   }
 }
 

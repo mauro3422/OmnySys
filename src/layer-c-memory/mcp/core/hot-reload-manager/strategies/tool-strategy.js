@@ -23,7 +23,7 @@ export class ToolStrategy extends BaseStrategy {
    * @param {string} filename - Changed tool file
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     if (!this._requestWorkerRestart(filename, 'Tool module')) {
       this._log('Tool changed - restart task to apply (8s)', filename);
     }

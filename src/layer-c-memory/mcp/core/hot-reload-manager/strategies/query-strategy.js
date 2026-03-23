@@ -23,7 +23,7 @@ export class QueryStrategy extends BaseStrategy {
    * @param {string} filename - Query file to reload
    * @returns {Promise<void>}
    */
-  async reload(filename) {
+  async _applyReload(filename) {
     if (!this._requestWorkerRestart(filename, 'Query module')) {
       this._log('Query changed - restart task to apply (8s)', filename);
     }

@@ -8,13 +8,21 @@
  */
 
 import { EventEmitter } from 'events';
-import { FileChange } from './models/file-change.js';
-import { Batch } from './models/batch.js';
-import { calculatePriority } from './priority-calculator.js';
-import { loadDependencies } from './dependency-loader.js';
-import { BatchScheduler } from './batch-scheduler.js';
-import { processBatch } from './change-processor.js';
-import { Priority, BatchState, DEFAULT_CONFIG, Events } from './constants.js';
+import { Priority, BatchState, Events } from './constants.js';
+import {
+  buildBatchProcessorOptions,
+  initializeBatchProcessorState,
+  createBatchProcessorScheduler,
+  buildBatchProcessorStats
+} from './helpers.js';
+import {
+  startBatchProcessor,
+  stopBatchProcessor,
+  addBatchChange,
+  flushBatch,
+  processNextBatches,
+  processBatchItem
+} from './batch-processor-actions.js';
 
 /**
  * Procesador de cambios batch con soporte para dependencias y prioridades
@@ -32,49 +40,23 @@ export class BatchProcessor extends EventEmitter {
    */
   constructor(options = {}) {
     super();
-    
-    this.options = {
-      maxBatchSize: options.maxBatchSize ?? DEFAULT_CONFIG.maxBatchSize,
-      batchTimeoutMs: options.batchTimeoutMs ?? DEFAULT_CONFIG.batchTimeoutMs,
-      maxConcurrent: options.maxConcurrent ?? DEFAULT_CONFIG.maxConcurrent,
-      dependencyGraph: options.dependencyGraph ?? null,
-      processChange: options.processChange ?? null,
-      afterBatch: options.afterBatch ?? null
-    };
-
-    this.pendingChanges = new Map();
-    this.processingQueue = [];
-    this.processingBatches = new Map();
-    this.completedBatches = [];
-    this.isRunning = false;
-    this.activeProcesses = 0;
-    
-    this.scheduler = new BatchScheduler({
-      batchTimeoutMs: this.options.batchTimeoutMs,
-      onFlush: () => this.flushBatch()
-    });
+    this.options = buildBatchProcessorOptions(options);
+    initializeBatchProcessorState(this);
+    this.scheduler = createBatchProcessorScheduler(this);
   }
 
   /**
    * Inicia el procesador
    */
   start() {
-    if (this.isRunning) return;
-    
-    this.isRunning = true;
-    this.scheduler.start();
-    this.emit(Events.STARTED);
+    startBatchProcessor(this);
   }
 
   /**
    * Detiene el procesador
    */
   stop() {
-    if (!this.isRunning) return;
-    
-    this.isRunning = false;
-    this.scheduler.stop();
-    this.emit(Events.STOPPED);
+    stopBatchProcessor(this);
   }
 
   /**
@@ -85,32 +67,7 @@ export class BatchProcessor extends EventEmitter {
    * @returns {FileChange} - El cambio creado
    */
   addChange(filePath, changeType, options = {}) {
-    const priority = calculatePriority(filePath, changeType, {
-      ...options,
-      priority: options.priority
-    });
-
-    const change = new FileChange(filePath, changeType, {
-      ...options,
-      priority,
-      metadata: {
-        ...options.metadata,
-        addedAt: Date.now()
-      }
-    });
-
-    // Cargar dependencias si hay grafo disponible
-    loadDependencies(change, this.options.dependencyGraph);
-
-    this.pendingChanges.set(filePath, change);
-    this.emit(Events.CHANGE_ADDED, change);
-
-    // Flushear si alcanzamos el tamaño máximo
-    if (this.pendingChanges.size >= this.options.maxBatchSize) {
-      this.flushBatch();
-    }
-
-    return change;
+    return addBatchChange(this, filePath, changeType, options);
   }
 
   /**
@@ -118,19 +75,7 @@ export class BatchProcessor extends EventEmitter {
    * @returns {Batch|null} - El batch creado o null
    */
   flushBatch() {
-    if (this.pendingChanges.size === 0) return null;
-
-    const batchId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const batch = new Batch(batchId, Array.from(this.pendingChanges.values()));
-
-    this.processingQueue.push(batch);
-    this.pendingChanges.clear();
-    this.emit(Events.BATCH_CREATED, batch);
-
-    // Procesar batches disponibles
-    this.processNextBatches();
-
-    return batch;
+    return flushBatch(this);
   }
 
   /**
@@ -138,14 +83,7 @@ export class BatchProcessor extends EventEmitter {
    * @private
    */
   async processNextBatches() {
-    while (
-      this.isRunning &&
-      this.processingQueue.length > 0 &&
-      this.activeProcesses < this.options.maxConcurrent
-    ) {
-      const batch = this.processingQueue.shift();
-      this.processBatch(batch);
-    }
+    return processNextBatches(this);
   }
 
   /**
@@ -154,36 +92,7 @@ export class BatchProcessor extends EventEmitter {
    * @param {Batch} batch - Batch a procesar
    */
   async processBatch(batch) {
-    this.activeProcesses++;
-    this.processingBatches.set(batch.id, batch);
-    batch.start();
-
-    this.emit(Events.BATCH_STARTED, batch);
-
-    try {
-      await processBatch(batch, {
-        processFn: this.options.processChange,
-        emitter: this
-      });
-
-      batch.complete();
-      this.completedBatches.push(batch);
-      this.emit(Events.BATCH_COMPLETED, batch);
-
-      // Ejecutar callback post-batch si existe
-      if (this.options.afterBatch) {
-        await this.options.afterBatch(batch);
-      }
-    } catch (error) {
-      batch.fail(error);
-      this.emit(Events.BATCH_FAILED, batch, error);
-    } finally {
-      this.processingBatches.delete(batch.id);
-      this.activeProcesses--;
-      
-      // Procesar más batches si hay disponibles
-      this.processNextBatches();
-    }
+    return processBatchItem(this, batch);
   }
 
   /**
@@ -191,14 +100,7 @@ export class BatchProcessor extends EventEmitter {
    * @returns {Object}
    */
   getProcessorStats() {
-    return {
-      isRunning: this.isRunning,
-      pendingChanges: this.pendingChanges.size,
-      queuedBatches: this.processingQueue.length,
-      processingBatches: this.processingBatches.size,
-      activeProcesses: this.activeProcesses,
-      completedBatches: this.completedBatches.length
-    };
+    return buildBatchProcessorStats(this);
   }
 
   getStats() {

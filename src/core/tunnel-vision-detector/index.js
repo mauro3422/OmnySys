@@ -209,7 +209,7 @@ export function cleanupHistory() {
 /**
  * Clears all modifications (for testing)
  */
-export function clearHistory() {
+export function resetHistory() {
   return detector.tracker.clear();
 }
 
