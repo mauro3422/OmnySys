@@ -1,8 +1,7 @@
 export {
   WATCHER_SURFACE_KIND,
   classifyWatcherSurface,
-  isRelevantFile,
-  shouldIgnore
+  isRelevantFile
 } from './helpers-surface.js';
 
 export {
