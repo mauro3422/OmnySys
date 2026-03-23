@@ -22,16 +22,16 @@ export async function _initializeFileWatcher() {
   });
 
   this.fileWatcher.on('file:created', (event) => {
-    this.batchProcessor?.addChange(event.filePath, 'created');
+    this.batchProcessor?.queueChange(event.filePath, 'created');
   });
 
   this.fileWatcher.on('file:modified', async (event) => {
     // Cache invalidation now happens automatically inside FileWatcher
-    this.batchProcessor?.addChange(event.filePath, 'modified');
+    this.batchProcessor?.queueChange(event.filePath, 'modified');
   });
 
   this.fileWatcher.on('file:deleted', (event) => {
-    this.batchProcessor?.addChange(event.filePath, 'deleted');
+    this.batchProcessor?.queueChange(event.filePath, 'deleted');
   });
 
   // Tunnel vision warnings
@@ -57,7 +57,7 @@ export async function _initializeFileWatcher() {
   // Broken dependencies - re-queue affected files
   this.fileWatcher.on('dependency:broken', (event) => {
     logger.warn(`\n⚠️ Broken dependency: ${event.affectedFile} (broken by ${event.brokenBy})`);
-    this.batchProcessor?.addChange(event.affectedFile, 'modified');
+    this.batchProcessor?.queueChange(event.affectedFile, 'modified');
   });
 
   // Metadata cleanup can emit orphaned import relationships.

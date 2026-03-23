@@ -1,5 +1,5 @@
 /**
- * @fileoverview change-processor.js
+ * @fileoverview batch change execution helpers
  * 
  * Servicio: Procesa cambios individuales con retry
  * 
@@ -9,7 +9,7 @@
 import { Events } from './constants.js';
 
 /**
- * Procesa un cambio individual
+ * Ejecuta un cambio individual del batch
  * @param {FileChange} change - Cambio a procesar
  * @param {Batch} batch - Batch al que pertenece
  * @param {Object} context - Contexto del procesador
@@ -17,7 +17,7 @@ import { Events } from './constants.js';
  * @param {EventEmitter} context.emitter - Emitter para eventos
  * @returns {Promise<void>}
  */
-export async function processChange(change, batch, context) {
+export async function executeBatchChange(change, batch, context) {
   const { processFn, emitter } = context;
   
   emitter.emit(Events.CHANGE_PROCESSING, change, batch);
@@ -35,7 +35,7 @@ export async function processChange(change, batch, context) {
     // Intentar retry si es posible
     if (change.canRetry()) {
       change.incrementRetry();
-      await processChange(change, batch, context);
+      await executeBatchChange(change, batch, context);
     } else {
       throw error;
     }
@@ -43,17 +43,17 @@ export async function processChange(change, batch, context) {
 }
 
 /**
- * Procesa un batch completo
+ * Ejecuta un batch completo
  * @param {Batch} batch - Batch a procesar
  * @param {Object} context - Contexto del procesador
  * @param {Function} context.processFn - Función de procesamiento
  * @param {EventEmitter} context.emitter - Emitter para eventos
  * @returns {Promise<void>}
  */
-export async function processBatch(batch, context) {
+export async function executeBatch(batch, context) {
   const changes = batch.getTopologicalOrder();
 
   for (const change of changes) {
-    await processChange(change, batch, context);
+    await executeBatchChange(change, batch, context);
   }
 }

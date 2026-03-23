@@ -16,9 +16,9 @@ import {
   buildBatchProcessorStats
 } from './helpers.js';
 import {
-  startBatchProcessor,
+  activateBatchProcessor,
   stopBatchProcessor,
-  addBatchChange,
+  queueBatchChange,
   flushBatch,
   drainBatchQueue,
   executeBatchJob
@@ -49,7 +49,7 @@ export class BatchProcessor extends EventEmitter {
    * Inicia el procesador
    */
   start() {
-    startBatchProcessor(this);
+    activateBatchProcessor(this);
   }
 
   /**
@@ -66,8 +66,8 @@ export class BatchProcessor extends EventEmitter {
    * @param {Object} options - Opciones adicionales
    * @returns {FileChange} - El cambio creado
    */
-  addChange(filePath, changeType, options = {}) {
-    return addBatchChange(this, filePath, changeType, options);
+  queueChange(filePath, changeType, options = {}) {
+    return queueBatchChange(this, filePath, changeType, options);
   }
 
   /**
@@ -115,5 +115,5 @@ export { Batch } from './models/batch.js';
 export { calculatePriority } from './priority-calculator.js';
 export { loadDependencies } from './dependency-loader.js';
 export { BatchScheduler } from './batch-scheduler.js';
-export { processBatch, processChange } from './change-processor.js';
+export { executeBatch, executeBatchChange } from './change-processor.js';
 

@@ -28,15 +28,15 @@ export class Batch {
 
     // Agregar cambios
     for (const change of changes) {
-      this.addChange(change);
+      this.upsertChange(change);
     }
   }
 
   /**
-   * Agrega cambio al batch
+   * Inserta o actualiza un cambio en el batch
    * @param {FileChange} change - Cambio a agregar
    */
-  addChange(change) {
+  upsertChange(change) {
     const existing = this.changes.get(change.filePath);
     
     if (existing) {

@@ -8,11 +8,11 @@ import {
   registerPendingChange,
   createBatchFromPendingChanges,
   enqueueBatch,
-  processBatchThroughProcessor,
+  runBatchThroughProcessor,
   shouldFlushBatch
 } from './batch-processor-flow.js';
 
-export function startBatchProcessor(instance) {
+export function activateBatchProcessor(instance) {
   if (instance.isRunning) return;
 
   instance.isRunning = true;
@@ -28,7 +28,7 @@ export function stopBatchProcessor(instance) {
   instance.emit(Events.STOPPED);
 }
 
-export function addBatchChange(instance, filePath, changeType, options = {}) {
+export function queueBatchChange(instance, filePath, changeType, options = {}) {
   const change = createProcessedChange(filePath, changeType, options);
   registerPendingChange(instance, change);
   instance.emit(Events.CHANGE_ADDED, change);
@@ -71,7 +71,7 @@ export async function executeBatchJob(instance, batch) {
   instance.emit(Events.BATCH_STARTED, batch);
 
   try {
-    await processBatchThroughProcessor(instance, batch);
+    await runBatchThroughProcessor(instance, batch);
 
     batch.complete();
     instance.completedBatches.push(batch);
@@ -86,7 +86,6 @@ export async function executeBatchJob(instance, batch) {
   } finally {
     instance.processingBatches.delete(batch.id);
     instance.activeProcesses--;
-    const requestDrain = instance.scheduler?.requestDrain;
-    requestDrain?.();
+    instance.scheduler?.requestDrain?.();
   }
 }

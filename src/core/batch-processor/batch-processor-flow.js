@@ -6,7 +6,7 @@ import { FileChange } from './models/file-change.js';
 import { Batch } from './models/batch.js';
 import { calculatePriority } from './priority-calculator.js';
 import { loadDependencies } from './dependency-loader.js';
-import { processBatch as runBatchProcessor } from './change-processor.js';
+import { executeBatch as runBatchProcessor } from './change-processor.js';
 
 export function createProcessedChange(filePath, changeType, options = {}) {
   const priority = calculatePriority(filePath, changeType, {
@@ -39,7 +39,7 @@ export function enqueueBatch(instance, batch) {
   instance.pendingChanges.clear();
 }
 
-export async function processBatchThroughProcessor(instance, batch) {
+export async function runBatchThroughProcessor(instance, batch) {
   await runBatchProcessor(batch, {
     processFn: instance.options.processChange,
     emitter: instance

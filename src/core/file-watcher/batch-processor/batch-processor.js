@@ -142,7 +142,7 @@ export class SmartBatchProcessor {
   /**
    * Adds a change to the buffer
    */
-  addChange(filePath, changeInfo) {
+  enqueueChange(filePath, changeInfo) {
     this.changeBuffer.set(filePath, {
       ...changeInfo,
       timestamp: Date.now(),

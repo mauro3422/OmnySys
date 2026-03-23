@@ -33,7 +33,7 @@ export async function initializeFileWatcher(context) {
   });
 
   fileWatcher.on('file:created', (event) => {
-    batchProcessor?.addChange(event.filePath, {
+    batchProcessor?.queueChange(event.filePath, {
       type: 'created',
       timestamp: Date.now(),
       origin: event.origin || 'unknown',
@@ -43,7 +43,7 @@ export async function initializeFileWatcher(context) {
   });
 
   fileWatcher.on('file:modified', (event) => {
-    batchProcessor?.addChange(event.filePath, {
+    batchProcessor?.queueChange(event.filePath, {
       type: 'modified',
       timestamp: Date.now(),
       origin: event.origin || 'unknown',
@@ -53,7 +53,7 @@ export async function initializeFileWatcher(context) {
   });
 
   fileWatcher.on('file:deleted', (event) => {
-    batchProcessor?.addChange(event.filePath, {
+    batchProcessor?.queueChange(event.filePath, {
       type: 'deleted',
       timestamp: Date.now(),
       origin: event.origin || 'unknown',

@@ -104,7 +104,7 @@ export function queueWatcherChange(watcher, relativePath, changeInfo) {
   watcher.pendingChanges.set(relativePath, changeInfo);
 
   if (watcher.batchProcessor && watcher.options.useSmartBatch) {
-    watcher.batchProcessor.addChange(relativePath, changeInfo);
+    watcher.batchProcessor.enqueueChange(relativePath, changeInfo);
   }
 
   watcher.stats.totalChanges++;
