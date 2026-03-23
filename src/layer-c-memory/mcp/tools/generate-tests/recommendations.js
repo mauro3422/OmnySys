@@ -27,7 +27,7 @@ export function calculateRiskScore(atom) {
 /**
  * Genera recomendaciones basadas en el analisis
  */
-export function generateRecommendations(atom, tests) {
+export function buildTestRecommendations(atom, tests) {
   const recommendations = [];
   
   // Complejidad
@@ -75,6 +75,13 @@ export function generateRecommendations(atom, tests) {
 }
 
 /**
+ * Alias compatible para consumidores existentes.
+ */
+export function generateRecommendations(atom, tests) {
+  return buildTestRecommendations(atom, tests);
+}
+
+/**
  * Determina la prioridad de un test
  */
 export function getTestPriority(test) {
@@ -86,6 +93,7 @@ export function getTestPriority(test) {
 
 export default {
   calculateRiskScore,
+  buildTestRecommendations,
   generateRecommendations,
   getTestPriority
 };
