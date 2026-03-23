@@ -20,7 +20,7 @@
  * @param {Array} allIssues - Todos los issues encontrados
  * @returns {Array<Recommendation>} Lista de recomendaciones
  */
-export function generateRecommendations(allIssues) {
+export function buildVerificationRecommendations(allIssues) {
   const recommendations = [];
   
   const hasPathIssues = allIssues.some(i => 
@@ -68,6 +68,13 @@ export function generateRecommendations(allIssues) {
   }
   
   return recommendations;
+}
+
+/**
+ * Alias compatible para consumidores existentes.
+ */
+export function generateRecommendations(allIssues) {
+  return buildVerificationRecommendations(allIssues);
 }
 
 /**

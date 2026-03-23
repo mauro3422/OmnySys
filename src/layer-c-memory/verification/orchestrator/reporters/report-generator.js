@@ -7,7 +7,7 @@
  */
 
 import { VerificationStatus, Severity } from '../../types/index.js';
-import { generateRecommendations } from '../recommendations/recommendation-engine.js';
+import { buildVerificationRecommendations } from '../recommendations/recommendation-engine.js';
 
 /**
  * Genera reporte consolidado de verificación
@@ -91,7 +91,7 @@ export function generateSummary(allIssues) {
   
   return {
     message,
-    recommendations: generateRecommendations(allIssues)
+    recommendations: buildVerificationRecommendations(allIssues)
   };
 }
 
