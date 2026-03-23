@@ -42,7 +42,6 @@ export async function logEvent(alert, context = {}) {
  * @returns {Promise<Object>} Stats
  */
 export const getTunnelVisionLoggerStats = (...args) => sharedStatsPool.getModuleStats('tunnel-vision-logger', ...args);
-export const getStats = (...args) => getTunnelVisionLoggerStats(...args);
 export {
   logTunnelVisionEvent,
   readAllEvents,
@@ -58,7 +57,6 @@ export {
 export default {
   logEvent,
   getTunnelVisionLoggerStats,
-  getStats,
   readAllEvents,
   analyzePatterns,
   exportToCSV,

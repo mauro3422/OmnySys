@@ -86,4 +86,3 @@ export function updateStatsWithEvent(stats, event) {
  * @returns {Promise<Object>} Current stats
  */
 export const getTunnelVisionStatsManagerStats = (...args) => statsPool.getModuleStats('stats-manager', ...args);
-export const getStats = (...args) => getTunnelVisionStatsManagerStats(...args);

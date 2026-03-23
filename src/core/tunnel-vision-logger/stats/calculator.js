@@ -13,10 +13,6 @@ import {
   updateStatsWithEvent
 } from './stats-manager.js';
 
-export async function loadStats() {
-  return loadCanonicalStats();
-}
-
 export async function updateStats(event) {
   const stats = await loadCanonicalStats();
   const updatedStats = updateStatsWithEvent(stats, event);
@@ -25,4 +21,3 @@ export async function updateStats(event) {
 
 import { statsPool } from '../../../shared/utils/stats-pool.js';
 export const getTunnelVisionCalculatorStats = (...args) => statsPool.getModuleStats('calculator', ...args);
-export const getStats = (...args) => getTunnelVisionCalculatorStats(...args);
