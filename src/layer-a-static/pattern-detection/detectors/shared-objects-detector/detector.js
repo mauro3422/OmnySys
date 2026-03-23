@@ -21,10 +21,10 @@ const logger = {
  * Shared Objects Detector
  */
 export class SharedObjectsDetector extends PatternDetector {
-  getId() {
-    return 'sharedObjects';
+  constructor(config = {}, globalConfig = {}) {
+    super({ ...config, id: 'sharedObjects' }, globalConfig);
   }
-  
+
   getName() {
     return 'Shared Mutable Objects';
   }

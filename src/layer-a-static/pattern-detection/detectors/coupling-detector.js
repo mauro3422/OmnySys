@@ -6,11 +6,9 @@ import { GodObjectRule } from './rules/coupling-rules.js';
  */
 export class CouplingDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super(config, globalConfig);
+    super({ ...config, id: 'coupling' }, globalConfig);
     this._initRules();
   }
-
-  getId() { return 'coupling'; }
   getName() { return 'Architectural Coupling'; }
   getDescription() { return 'Detects files with excessive coupling that may indicate architectural issues'; }
 

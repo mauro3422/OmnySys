@@ -20,9 +20,10 @@ const createDetectorLogger = (id) => ({
  * Cada detector debe implementar esta interfaz
  */
 export class PatternDetector {
-  constructor(options = {}) {
-    this.config = options.config !== undefined ? options.config : {};
-    this.globalConfig = options.globalConfig !== undefined ? options.globalConfig : {};
+  constructor(options = {}, globalConfig = {}) {
+    this.config = options.config !== undefined ? options.config : options;
+    this.globalConfig = options.globalConfig !== undefined ? options.globalConfig : globalConfig;
+    this._id = options.id ?? this.config?.id ?? null;
     // Delay logger creation to avoid calling getId() during construction
     this._logger = null;
   }
@@ -45,6 +46,7 @@ export class PatternDetector {
    * Identificador único del detector
    */
   getId() {
+    if (this._id) return this._id;
     throw new Error('Detector must implement getId()');
   }
   

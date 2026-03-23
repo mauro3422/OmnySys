@@ -20,10 +20,10 @@ const logger = {
 };
 
 export class DeepChainsDetector extends PatternDetector {
-  getId() {
-    return 'deepChains';
+  constructor(config = {}, globalConfig = {}) {
+    super({ ...config, id: 'deepChains' }, globalConfig);
   }
-  
+
   getName() {
     return 'Deep Dependency Chains';
   }

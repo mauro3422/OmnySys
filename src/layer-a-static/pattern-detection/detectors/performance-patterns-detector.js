@@ -10,8 +10,8 @@
 import { PatternDetector } from '../detector-base.js';
 
 export class PerformancePatternsDetector extends PatternDetector {
-    getId() {
-        return 'performance-patterns';
+    constructor(config = {}, globalConfig = {}) {
+        super({ ...config, id: 'performance-patterns' }, globalConfig);
     }
 
     getName() {

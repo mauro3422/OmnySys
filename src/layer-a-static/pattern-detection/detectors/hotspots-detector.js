@@ -6,11 +6,9 @@ import { BusinessLogicHotspotRule } from './rules/hotspot-rules.js';
  */
 export class HotspotsDetector extends PatternDetector {
   constructor(config = {}, globalConfig = {}) {
-    super(config, globalConfig);
+    super({ ...config, id: 'hotspots' }, globalConfig);
     this._initRules();
   }
-
-  getId() { return 'hotspots'; }
   getName() { return 'Critical Function Hotspots'; }
   getDescription() { return 'Detects business logic functions with excessive usage'; }
 
