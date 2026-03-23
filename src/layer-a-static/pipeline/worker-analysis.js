@@ -65,21 +65,6 @@ function createAnalyzedResult(result, liteAtoms) {
     };
 }
 
-function tryReusePersistedAnalysis(repo, relativeFilePath, currentHash, knownHashes, extractionDepth, getPersistedFileSummary) {
-    const existingHash = knownHashes.get(relativeFilePath);
-    if (!existingHash || existingHash !== currentHash || extractionDepth === 'deep') {
-        return null;
-    }
-
-    const dbAtoms = repo.getByFile(relativeFilePath);
-    if (!dbAtoms || dbAtoms.length === 0) {
-        return null;
-    }
-
-    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
-    return createSkippedLiteResult(dbAtoms, persistedSummary);
-}
-
 function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result) {
     const liteAtoms = result.atoms.map((atom) => createLiteAtom(
         atom,
@@ -111,6 +96,87 @@ function flushProgress(processedSinceLastPing, skipped = false) {
     return 0;
 }
 
+async function readFileSnapshot(absoluteRootPath, absoluteFilePath) {
+    const stat = await fs.stat(absoluteFilePath).catch(() => null);
+    if (!stat || stat.isDirectory()) return null;
+
+    const relativeFilePath = toProjectRelativePath(absoluteRootPath, absoluteFilePath);
+    const content = await fs.readFile(absoluteFilePath, 'utf8');
+
+    return {
+        absoluteFilePath,
+        relativeFilePath,
+        content,
+        currentHash: calculateContentHash(content)
+    };
+}
+
+function reusePersistedResultIfPossible({
+    repo,
+    relativeFilePath,
+    currentHash,
+    knownHashes,
+    extractionDepth,
+    getPersistedFileSummary
+}) {
+    const existingHash = knownHashes.get(relativeFilePath);
+    if (!existingHash || existingHash !== currentHash || extractionDepth === 'deep') {
+        return null;
+    }
+
+    const dbAtoms = repo.getByFile(relativeFilePath);
+    if (!dbAtoms || dbAtoms.length === 0) {
+        return null;
+    }
+
+    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
+    return createSkippedLiteResult(dbAtoms, persistedSummary);
+}
+
+async function analyzeAndPersistFile({
+    absoluteFilePath,
+    absoluteRootPath,
+    relativeFilePath,
+    content,
+    currentHash,
+    extractionDepth,
+    gitStats,
+    repo,
+    knownHashes,
+    getPersistedFileSummary,
+    state
+}) {
+    try {
+        state.allFileHashesToSave.set(relativeFilePath, currentHash);
+
+        const skippedResult = reusePersistedResultIfPossible({
+            repo,
+            relativeFilePath,
+            currentHash,
+            knownHashes,
+            extractionDepth,
+            getPersistedFileSummary
+        });
+        if (skippedResult) {
+            state.allLiteResults[absoluteFilePath] = skippedResult;
+            return { skipped: true };
+        }
+
+        const result = await analyzeFileCore(absoluteFilePath, absoluteRootPath, {
+            depth: extractionDepth,
+            source: content,
+            gitStats,
+            verbose: false
+        });
+
+        saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result);
+        return { skipped: false };
+    } catch (error) {
+        logger.warn(`[WorkerAnalysis] Failed to analyze ${relativeFilePath}: ${error.message}`);
+        throw error;
+    }
+}
+
 async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const repo = getRepository(absoluteRootPath);
@@ -136,44 +202,24 @@ async function runWorker() {
         WHERE path = ?
     `);
 
-    async function processFile(absoluteFilePath) {
+    async function processWorkerFile(absoluteFilePath) {
         try {
-            const stat = await fs.stat(absoluteFilePath).catch(() => null);
-            if (!stat || stat.isDirectory()) return { skipped: true };
+            const snapshot = await readFileSnapshot(absoluteRootPath, absoluteFilePath);
+            if (!snapshot) return { skipped: true };
 
-            const relativeFilePath = toProjectRelativePath(absoluteRootPath, absoluteFilePath);
-
-            // 1. Incremental Check
-            const content = await fs.readFile(absoluteFilePath, 'utf8');
-            const currentHash = calculateContentHash(content);
-            state.allFileHashesToSave.set(relativeFilePath, currentHash);
-
-            const skippedResult = tryReusePersistedAnalysis(
-                repo,
-                relativeFilePath,
-                currentHash,
-                knownHashes,
+            return await analyzeAndPersistFile({
+                absoluteFilePath,
+                absoluteRootPath,
+                relativeFilePath: snapshot.relativeFilePath,
+                content: snapshot.content,
+                currentHash: snapshot.currentHash,
                 extractionDepth,
-                getPersistedFileSummary
-            );
-            if (skippedResult) {
-                state.allLiteResults[absoluteFilePath] = skippedResult;
-                return { skipped: true };
-            }
-
-            // 2. Unified Analysis
-            const result = await analyzeFileCore(absoluteFilePath, absoluteRootPath, {
-                depth: extractionDepth,
-                source: content,
                 gitStats,
-                verbose: false
+                repo,
+                knownHashes,
+                getPersistedFileSummary,
+                state
             });
-
-            // 3. Lite Optimization & Buffer
-            saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result);
-
-            return { skipped: false };
-
         } catch (error) {
             parentPort.postMessage({ type: 'ERROR', file: absoluteFilePath, error: error.message });
             return { skipped: false, error: true };
@@ -182,7 +228,7 @@ async function runWorker() {
 
     // Main Loop
     for (const absoluteFilePath of files) {
-        const result = await processFile(absoluteFilePath);
+        const result = await processWorkerFile(absoluteFilePath);
         processedSinceLastPing++;
         if (processedSinceLastPing >= 20) {
             processedSinceLastPing = flushProgress(processedSinceLastPing, result?.skipped || false);
