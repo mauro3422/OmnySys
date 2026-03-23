@@ -10,7 +10,10 @@ import { EventEmitter } from 'events';
 import { createLogger } from '../../../utils/logger.js';
 import { getErrorGuardian } from '../../../core/error-guardian/index.js';
 import { performServerShutdown } from './server-shutdown.js';
-import { resolveRuntimeRestartMode, startHotReload } from './server-class-helpers.js';
+import {
+  initializeRuntimeRestartState,
+  startHotReload
+} from './server-class-helpers.js';
 import { InitializationPipeline } from './initialization/pipeline.js';
 import {
   InstanceDetectionStep,
@@ -36,11 +39,7 @@ export class OmnySysMCPServer extends EventEmitter {
     this.cache = null;
     this.server = null;
 
-    this.hotReloadManager = null;
-    this.runtimeRestartMode = resolveRuntimeRestartMode(process.env, typeof process.send === 'function');
-    this._pendingHotReloadRestartFiles = new Set();
-    this._hotReloadRestartScheduled = false;
-    this._hotReloadRestartTimer = null;
+    initializeRuntimeRestartState(this);
 
     this.initialized = false;
     this.startTime = Date.now();

@@ -58,6 +58,18 @@ export function clearDerivationCache(cache) {
   cache.stats = { hits: 0, misses: 0 };
 }
 
+export function buildDerivationCacheStats(cache) {
+  const total = cache.stats.hits + cache.stats.misses;
+
+  return {
+    size: cache.cache.size,
+    dependencyNodes: cache.dependencyGraph.size,
+    hits: cache.stats.hits,
+    misses: cache.stats.misses,
+    hitRate: total === 0 ? 0 : cache.stats.hits / total
+  };
+}
+
 export function getDerivationValue(cache, cacheKey) {
   return cache.cache.get(cacheKey);
 }

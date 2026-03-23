@@ -109,6 +109,19 @@ export async function refreshRegistry(result, refreshToolRegistryFn) {
   }
 }
 
+export async function refreshToolRegistrySafely(refreshToolRegistryFn, successMessage, failureMessage = 'Tool registry refresh skipped') {
+  try {
+    await refreshToolRegistryFn?.(logger);
+    if (successMessage) {
+      logger.info(successMessage);
+    }
+    return true;
+  } catch (refreshErr) {
+    logger.warn(`${failureMessage}: ${refreshErr.message}`);
+    return false;
+  }
+}
+
 export function buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }) {
   return {
     success: true,

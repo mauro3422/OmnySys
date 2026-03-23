@@ -14,6 +14,7 @@ import {
   invalidateCachedDerivations,
   invalidateCachedMolecule,
   clearDerivationCache,
+  buildDerivationCacheStats,
   getDerivationValue,
   hasDerivationValue
 } from './cache-helpers.js';
@@ -70,15 +71,7 @@ export class DerivationCache {
    * @returns {Object} - Cache stats
    */
   getDerivationCacheStats() {
-    const total = this.stats.hits + this.stats.misses;
-
-    return {
-      size: this.cache.size,
-      dependencyNodes: this.dependencyGraph.size,
-      hits: this.stats.hits,
-      misses: this.stats.misses,
-      hitRate: total === 0 ? 0 : this.stats.hits / total
-    };
+    return buildDerivationCacheStats(this);
   }
 
   getStats() {

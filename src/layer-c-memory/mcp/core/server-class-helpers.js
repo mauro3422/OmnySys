@@ -36,3 +36,11 @@ export async function startHotReload(server, logger) {
   logger.info('   Watching for code changes in src/\n');
   return true;
 }
+
+export function initializeRuntimeRestartState(server) {
+  server.hotReloadManager = null;
+  server.runtimeRestartMode = resolveRuntimeRestartMode(process.env, typeof process.send === 'function');
+  server._pendingHotReloadRestartFiles = new Set();
+  server._hotReloadRestartScheduled = false;
+  server._hotReloadRestartTimer = null;
+}

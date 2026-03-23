@@ -7,6 +7,7 @@ import {
   fastRestartOrchestrator,
   invalidateIncrementalState,
   refreshRegistry,
+  refreshToolRegistrySafely,
   runFullPipeline,
   stopOrchestrator
 } from './restart-runtime-helpers.js';
@@ -98,12 +99,7 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
     await cache.clear();
     logger.info('In-memory cache cleared');
   }
-  try {
-    await refreshToolRegistryFn?.(logger);
-    logger.info('Tool registry refreshed');
-  } catch {
-    // Best effort in non-HTTP runtimes.
-  }
+  await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
   return {
     success: true,
     restarting: false,
@@ -132,12 +128,7 @@ async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
     logger.warn('Metadata refresh skipped:', error.message);
   }
 
-  try {
-    await refreshToolRegistryFn?.(logger);
-    logger.info('Tool registry refreshed');
-  } catch {
-    // Best effort in non-HTTP runtimes.
-  }
+  await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
 
   return {
     success: true,
@@ -164,11 +155,7 @@ async function handleSoftReload(server, orchestrator, cache, refreshToolRegistry
     }
   }
 
-  try {
-    await refreshToolRegistryFn?.(logger);
-  } catch {
-    // Best effort.
-  }
+  await refreshToolRegistrySafely(refreshToolRegistryFn);
 
   return {
     success: true,

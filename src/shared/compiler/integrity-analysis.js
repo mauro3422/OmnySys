@@ -83,6 +83,10 @@ function hasBoundaryContainerName(name = '') {
   return /(Repository|Operations|Handler|Adapter|Service|Manager)$/i.test(name);
 }
 
+function hasStandaloneBoundaryContainerName(name = '') {
+  return /(Server|Client|Cache|Processor|Coordinator|Worker|Bridge|Controller)$/i.test(name);
+}
+
 function hasBoundaryContainerPath(filePath = '') {
   return /\/(storage|repository|adapters|handlers|mcp|watcher)\//.test(filePath);
 }
@@ -117,12 +121,14 @@ export function isLikelyBoundaryContainerAtom(atom = {}) {
   }
 
   const boundaryName = hasBoundaryContainerName(name);
+  const standaloneBoundaryName = hasStandaloneBoundaryContainerName(name);
   const boundaryPath = hasBoundaryContainerPath(filePath);
   const boundaryFingerprint = hasBoundaryContainerFingerprint(semanticFingerprint);
   const orchestratorPath = hasOrchestratorContainerPath(filePath);
   const orchestratorFingerprint = hasOrchestratorContainerFingerprint(semanticFingerprint);
 
-  return (boundaryName && boundaryPath) ||
+  return standaloneBoundaryName ||
+    (boundaryName && boundaryPath) ||
     (boundaryName && orchestratorPath) ||
     boundaryFingerprint ||
     orchestratorFingerprint;
