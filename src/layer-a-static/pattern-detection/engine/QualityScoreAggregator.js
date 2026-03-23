@@ -67,7 +67,7 @@ export class QualityScoreAggregator {
       totalIssues: results.reduce((sum, r) => sum + (r.findings?.length || 0), 0),
       breakdown,
       components,
-      recommendations: this.generateRecommendations(results),
+      recommendations: this.buildQualityRecommendations(results),
       weights: this.weights
     };
   }
@@ -93,7 +93,7 @@ export class QualityScoreAggregator {
   /**
    * Generate recommendations based on results
    */
-  generateRecommendations(results) {
+  buildQualityRecommendations(results) {
     const recommendations = [];
     
     const sortedByScore = [...results]
@@ -112,6 +112,13 @@ export class QualityScoreAggregator {
     }
     
     return recommendations;
+  }
+
+  /**
+   * Compatibility alias for existing callers.
+   */
+  generateRecommendations(results) {
+    return this.buildQualityRecommendations(results);
   }
 
   /**
