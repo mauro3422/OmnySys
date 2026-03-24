@@ -56,6 +56,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats parser shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'FileParser',
+      filePath: 'src/layer-a-static/parser/index.js'
+    }))).toBe(true);
+  });
+
   it('treats scheduler shells as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'BatchScheduler',
