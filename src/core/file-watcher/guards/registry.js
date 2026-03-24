@@ -1,4 +1,3 @@
-import { statsPool } from '../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview registry.js
  *
@@ -13,7 +12,7 @@ import { createLogger } from '../../../utils/logger.js';
 import { validateGuard } from './guard-standards.js';
 import { getMetadataFromMap, listMetadataItems } from '../../../shared/compiler/index.js';
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { buildRegistryStats } from './registry/stats.js';
+import { buildRegistryStats, registerRegistryStatsProvider } from './registry/stats.js';
 import { registerGuard } from './registry/registration.js';
 import { runGuardMap } from './registry/execution.js';
 import { initializeDefaultGuards } from './registry/initialization.js';
@@ -28,8 +27,7 @@ class GuardRegistry {
         this.initialized = false;
         this.initializationPromise = null;
 
-        // Registrar en StatsPool
-        statsPool.registerProvider('registry', () => this.getGuardRegistryStats());
+        registerRegistryStatsProvider(this);
     }
 
     /**

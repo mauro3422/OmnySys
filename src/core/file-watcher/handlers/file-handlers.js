@@ -1,11 +1,11 @@
 import { createLogger } from '../../../utils/logger.js';
 import { detectCircularDependencies } from '../guards/circular-guard.js';
-import { getRecentCommits } from './recent-commits.js';
 import {
   detectDuplicateRiskForFile as detectDuplicateRiskForFileAction,
   detectImpactWaveForFile as detectImpactWaveForFileAction
 } from './file-handlers-actions.js';
 import { handleFileCreatedForWatcher } from './file-handlers-create.js';
+import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete.js';
 import { handleFileModifiedForWatcher } from './file-handlers-modified.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
@@ -70,82 +70,14 @@ export async function detectDuplicateRiskForFile(filePath, options = {}) {
  * Maneja borrado de archivo
  */
 export async function handleFileDeleted(filePath, changeContext = {}) {
-  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
-  logger.info(`[FILE DELETING] ${filePath}${originSuffix}`);
-
-  const fs = await import('fs/promises');
-  const fullPath = this.rootPath ?
-    (filePath.startsWith('/') || filePath.match(/^[A-Z]:/)) ? filePath : `${this.rootPath}/${filePath}`.replace(/\\/g, '/') :
-    filePath;
-
-  const fileExists = await fs.access(fullPath).then(() => true).catch(() => false);
-
-  if (!fileExists) {
-    logger.debug(`[SKIP] File already deleted on disk: ${filePath}`);
-    await this.removeFileMetadata(filePath);
-    await this.removeAtomMetadata(filePath);
-    if (this.fileHashes) this.fileHashes.delete(filePath);
-    if (this.fileStats) this.fileStats.delete(filePath);
-    this.emit('file:deleted', {
-      filePath,
-      origin: changeContext.origin || 'unknown',
-      source: changeContext.source || null
-    });
-    return;
-  }
-
-  try {
-    await this.createShadowsForFile(filePath);
-    await this.cleanupRelationships(filePath);
-    await this.removeFileMetadata(filePath);
-    await this.removeAtomMetadata(filePath);
-    if (this.fileHashes) this.fileHashes.delete(filePath);
-    if (this.fileStats) this.fileStats.delete(filePath);
-    await this.notifyDependents(filePath, 'file_deleted');
-
-    this.emit('file:deleted', {
-      filePath,
-      origin: changeContext.origin || 'unknown',
-      source: changeContext.source || null
-    });
-    logger.info(`[FILE DELETED] ${filePath} - shadows preserved`);
-  } catch (error) {
-    logger.error(`[DELETE ERROR] ${filePath}:`, error);
-    throw error;
-  }
+  return await handleDeletedFileLifecycle(this, filePath, changeContext);
 }
 
 /**
  * Crea sombras de todos los atomos de un archivo
  */
 export async function createShadowsForFile(filePath) {
-  const { getShadowRegistry } = await import('../../../layer-c-memory/shadow-registry/index.js');
-  const registry = getShadowRegistry(this.dataPath);
-  await registry.initialize();
-
-  const atoms = await this.getAtomsForFile(filePath);
-
-  if (!atoms || atoms.length === 0) {
-    logger.debug(`[SHADOW] No atoms found for deleted file: ${filePath}`);
-    return 0;
-  }
-
-  let created = 0;
-  for (const atom of atoms) {
-    try {
-      atom.filePath = filePath;
-      const shadow = await registry.createShadow(atom, {
-        reason: 'file_deleted',
-        commits: await getRecentCommits(this.dataPath)
-      });
-      logger.debug(`[SHADOW] ${atom.id} -> ${shadow.shadowId}`);
-      created++;
-    } catch (error) {
-      logger.debug(`[SHADOW SKIP] ${atom.id}: ${error.message}`);
-    }
-  }
-
-  return created;
+  return await createShadowsForDeletedFile(this, filePath);
 }
 
 /**

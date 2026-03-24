@@ -1,3 +1,5 @@
+import { statsPool } from '../../../../shared/utils/stats-pool.js';
+
 export function buildRegistryStats(semanticGuards, impactGuards, metadata) {
     const byType = {
         semantic: semanticGuards.size,
@@ -15,4 +17,8 @@ export function buildRegistryStats(semanticGuards, impactGuards, metadata) {
         byType,
         byDomain
     };
+}
+
+export function registerRegistryStatsProvider(registry) {
+    statsPool.registerProvider('registry', () => registry.getGuardRegistryStats());
 }
