@@ -9,7 +9,7 @@
 import { CloseCodes } from '../constants.js';
 import { createConnectedMessage } from '../messaging/message-types.js';
 import crypto from 'crypto';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:connection:handler');
 
@@ -72,7 +72,7 @@ export function handleDisconnection(clientId, context) {
  */
 export function handleServerError(error, emitter) {
   logger.error('WebSocket server error:', error);
-  emitter.emit('error', error);
+  emitter.emit('server:error', error);
 }
 
 /**

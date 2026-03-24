@@ -62,6 +62,71 @@ describe('database-health', () => {
     expect(summary.metrics.systemMapCoverage.fileDependenciesTotal).toBeGreaterThan(0);
   });
 
+  it('repairs lagging system_files when the mirrored surface falls behind active files', () => {
+    db = new Database(':memory:');
+    db.exec(exportSchemaSQL());
+    db.exec(`
+      CREATE VIEW IF NOT EXISTS call_graph AS
+      SELECT
+        a1.id AS caller_id,
+        a1.name AS caller_name,
+        a1.file_path AS caller_file,
+        a2.id AS callee_id,
+        a2.name AS callee_name,
+        a2.file_path AS callee_file,
+        r.weight,
+        r.line_number
+      FROM atom_relations r
+      JOIN atoms a1 ON r.source_id = a1.id
+      JOIN atoms a2 ON r.target_id = a2.id
+      WHERE r.relation_type = 'calls'
+        AND (r.is_removed IS NULL OR r.is_removed = 0);
+    `);
+
+    const fileNames = Array.from({ length: 10 }, (_, index) => `src/file-${index + 1}.js`);
+    const systemFileNames = fileNames.slice(0, 2);
+
+    db.transaction(() => {
+      const insertScannedFile = db.prepare(`
+        INSERT INTO compiler_scanned_files (path, first_seen, last_seen)
+        VALUES (?, datetime('now'), datetime('now'))
+      `);
+      const insertFile = db.prepare(`
+        INSERT INTO files (
+          path, last_analyzed, atom_count, total_complexity, total_lines, module_name,
+          imports_json, exports_json, is_removed
+        ) VALUES (?, datetime('now'), 1, 1, 10, ?, '[]', '[]', 0)
+      `);
+
+      for (const fileName of fileNames) {
+        insertScannedFile.run(fileName);
+        insertFile.run(fileName, fileName);
+      }
+
+      const insertSystemFile = db.prepare(`
+        INSERT INTO system_files (
+          path, display_path, culture, culture_role, risk_score,
+          semantic_analysis_json, semantic_connections_json, exports_json, imports_json,
+          definitions_json, used_by_json, calls_json, identifier_refs_json, depends_on_json,
+          transitive_depends_json, transitive_dependents_json, is_removed, updated_at
+        ) VALUES (?, ?, 'feature', 'primary', 0, '{}', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', '[]', 0, datetime('now'))
+      `);
+
+      for (const fileName of systemFileNames) {
+        insertSystemFile.run(fileName, fileName);
+      }
+    })();
+
+    const summary = getDatabaseHealthSummary(db);
+    const coverage = getSystemMapPersistenceCoverage(db);
+
+    expect(coverage.healthy).toBe(true);
+    expect(coverage.systemFilesTotal).toBe(10);
+    expect(summary.healthy).toBe(true);
+    expect(summary.metrics.activeSystemFiles).toBe(10);
+    expect(summary.metrics.systemMapCoverage.systemFilesTotal).toBe(10);
+  });
+
   it('defers live-row sync while phase2 is still pending', () => {
     db = new Database(':memory:');
     db.exec(exportSchemaSQL());

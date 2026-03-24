@@ -6,7 +6,7 @@
 
 export { 
   updateAtom,
-  invalidateCache,
+  invalidateAtomCache,
   emitModificationSuccess,
   emitAtomCreated
 } from './atom-updater.js';

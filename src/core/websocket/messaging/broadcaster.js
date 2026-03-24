@@ -47,7 +47,7 @@ export function broadcast(clients, message) {
 export function broadcastToSubscribers(clients, filePath, message) {
   let sent = 0;
   for (const client of clients.values()) {
-    if (client.isSubscribedTo(filePath)) {
+    if (client.isSubscribedToFile(filePath)) {
       if (client.send(message)) {
         sent++;
       }

@@ -36,7 +36,7 @@ describe('ContextModel', () => {
     test('enter() agrega contexto al stack', () => {
       context.enter(CONTEXTS.CLASS_BODY);
       expect(context.current()).toBe(CONTEXTS.CLASS_BODY);
-      expect(context.getAll()).toEqual([CONTEXTS.CLASS_BODY]);
+      expect(context.getStackSnapshot()).toEqual([CONTEXTS.CLASS_BODY]);
     });
 
     test('exit() remueve el último contexto', () => {
@@ -58,7 +58,7 @@ describe('ContextModel', () => {
       context.enter(CONTEXTS.FUNCTION_BODY);
       context.enter(CONTEXTS.ARROW_BODY);
       
-      expect(context.getAll()).toEqual([
+      expect(context.getStackSnapshot()).toEqual([
         CONTEXTS.CLASS_BODY,
         CONTEXTS.FUNCTION_BODY,
         CONTEXTS.ARROW_BODY

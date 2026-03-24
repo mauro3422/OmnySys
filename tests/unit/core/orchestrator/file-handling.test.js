@@ -141,45 +141,45 @@ describe('Orchestrator - File Handling', () => {
     });
   });
 
-  describe('handleFileChange() - WebSocket broadcast', () => {
-    it('should broadcast file:changed event', async () => {
-      const broadcastCalls = [];
+  describe('handleFileChange() - WebSocket publish', () => {
+    it('should publish file:changed event', async () => {
+      const publishCalls = [];
       orchestrator.wsManager = { 
-        broadcast: (msg) => broadcastCalls.push(msg),
+        publish: (msg) => publishCalls.push(msg),
         stop: async () => {}
       };
       
       await orchestrator.handleFileChange('src/test.js', 'modified');
       
-      expect(broadcastCalls.length).toBe(1);
-      expect(broadcastCalls[0].type).toBe('file:changed');
-      expect(broadcastCalls[0].filePath).toBe('src/test.js');
-      expect(broadcastCalls[0].changeType).toBe('modified');
+      expect(publishCalls.length).toBe(1);
+      expect(publishCalls[0].type).toBe('file:changed');
+      expect(publishCalls[0].filePath).toBe('src/test.js');
+      expect(publishCalls[0].changeType).toBe('modified');
     });
 
-    it('should include timestamp in broadcast', async () => {
-      const broadcastCalls = [];
+    it('should include timestamp in publish', async () => {
+      const publishCalls = [];
       orchestrator.wsManager = { 
-        broadcast: (msg) => broadcastCalls.push(msg),
+        publish: (msg) => publishCalls.push(msg),
         stop: async () => {}
       };
       
       await orchestrator.handleFileChange('src/test.js', 'modified');
       
-      expect(broadcastCalls[0].timestamp).toBeDefined();
-      expect(typeof broadcastCalls[0].timestamp).toBe('number');
+      expect(publishCalls[0].timestamp).toBeDefined();
+      expect(typeof publishCalls[0].timestamp).toBe('number');
     });
 
-    it('should include priority in broadcast', async () => {
-      const broadcastCalls = [];
+    it('should include priority in publish', async () => {
+      const publishCalls = [];
       orchestrator.wsManager = { 
-        broadcast: (msg) => broadcastCalls.push(msg),
+        publish: (msg) => publishCalls.push(msg),
         stop: async () => {}
       };
       
       await orchestrator.handleFileChange('src/test.js', 'modified', { priority: 'high' });
       
-      expect(broadcastCalls[0].priority).toBe('high');
+      expect(publishCalls[0].priority).toBe('high');
     });
 
     it('should not fail if wsManager is not set', async () => {

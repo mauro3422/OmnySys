@@ -3,18 +3,24 @@ import path from 'path';
 import { readJSON, fileExists } from './readers/json-reader.js';
 import { getDataDirectory } from '#layer-c/storage/index.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getSystemFilesSnapshot } from './queries/file-query/index.js';
 import {
   getSemanticSurfaceGranularity,
   getSystemMapPersistenceCoverage,
+  repairSystemMapPersistenceCoverage,
   shouldTrustSystemMapDependencies
 } from '../../shared/compiler/index.js';
 
-function buildSQLiteExport(repo) {
-  const systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+async function buildSQLiteExport(projectPath, repo) {
+  let systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+  if (systemMapCoverage.healthy === false) {
+    repairSystemMapPersistenceCoverage(repo.db);
+    systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+  }
   const trustSystemMapDeps = shouldTrustSystemMapDependencies(systemMapCoverage);
   const semanticSurface = getSemanticSurfaceGranularity(repo.db);
   const atoms = repo.db.prepare('SELECT * FROM atoms LIMIT 10000').all();
-  const files = repo.db.prepare('SELECT * FROM system_files').all();
+  const files = await getSystemFilesSnapshot(projectPath);
   const risks = repo.db.prepare('SELECT * FROM risk_assessments').all();
   const dependencies = trustSystemMapDeps
     ? repo.db.prepare('SELECT * FROM file_dependencies').all()
@@ -116,7 +122,7 @@ export async function exportFullSystemMapToFile(projectPath, outputPath = null, 
   try {
     const repo = getRepository(projectPath);
     if (repo && repo.db) {
-      fullSystemMap = buildSQLiteExport(repo);
+      fullSystemMap = await buildSQLiteExport(projectPath, repo);
     }
   } catch (err) {
     console.error(`[exportFullSystemMapToFile] SQLite error: ${err.message}`);

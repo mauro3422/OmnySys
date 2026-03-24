@@ -444,7 +444,10 @@ export function repairSystemMapPersistenceCoverage(db) {
   const shouldRepairFromPrimaryFiles =
     initialCoverage.systemFilesTotal === 0 ||
     initialCoverage.systemFilesWithImports === 0 ||
-    initialCoverage.fileDependenciesTotal === 0;
+    initialCoverage.fileDependenciesTotal === 0 ||
+    (initialCoverage.activeFiles > 0 && initialCoverage.systemFilesTotal < Math.floor(initialCoverage.activeFiles * 0.9)) ||
+    (initialCoverage.primaryFilesWithImports > 0 && initialCoverage.mirroredImportCoverageRatio < 0.5) ||
+    (initialCoverage.primaryFilesWithImports > 0 && initialCoverage.dependencySourceCoverageRatio < 0.5);
 
   if (shouldRepairFromPrimaryFiles) {
     const primaryRepair = repairFromPrimaryFiles(db, now);

@@ -97,7 +97,7 @@ export async function getMoleculeSummary(filePath) {
  * @param {string} functionName - Nombre de la función
  * @returns {Promise<Object>} - Análisis de impacto
  */
-export async function analyzeFunctionChange(filePath, functionName) {
+export async function getFunctionImpact(filePath, functionName) {
   try {
     const atom = await getAtomDetails(this.projectPath, filePath, functionName);
 
@@ -199,6 +199,6 @@ export async function getAtomicFunctions(filePath) {
 export default {
   getFunctionDetails,
   getMoleculeSummary,
-  analyzeFunctionChange,
+  getFunctionImpact,
   getAtomicFunctions
 };

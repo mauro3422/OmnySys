@@ -18,7 +18,7 @@ import {
   handleServerError,
   closeAllConnections 
 } from './connection-handler.js';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../utils/logger.js';
 import {
   sendToClient,
   broadcast,
@@ -73,9 +73,27 @@ export class WebSocketManager extends EventEmitter {
           path: this.options.path
         });
 
+        let started = false;
+        const startupErrorHandler = (error) => {
+          handleServerError(error, this);
+
+          if (!started) {
+            this.wss = null;
+            this.isRunning = false;
+            reject(error);
+          }
+        };
+
+        const listeningHandler = () => {
+          started = true;
+          this.wss.removeListener('error', startupErrorHandler);
+          this.wss.on('error', (error) => handleServerError(error, this));
+          this.onListening(resolve, reject);
+        };
+
         this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
-        this.wss.on('error', (error) => handleServerError(error, this));
-        this.wss.on('listening', () => this.onListening(resolve));
+        this.wss.once('error', startupErrorHandler);
+        this.wss.once('listening', listeningHandler);
       } catch (error) {
         reject(error);
       }
@@ -109,31 +127,42 @@ export class WebSocketManager extends EventEmitter {
    * Handler cuando el servidor está escuchando
    * @private
    */
-  onListening(resolve) {
-    this.isRunning = true;
-    this.startHeartbeat();
-    logger.info(`🔌 WebSocket server listening on ws://localhost:${this.options.port}${this.options.path}`);
-    this.emit(Events.STARTED);
-    resolve();
+  onListening(resolve, reject) {
+    try {
+      this.isRunning = true;
+      this.setupHeartbeatManager();
+      logger.info(`🔌 WebSocket server listening on ws://localhost:${this.options.port}${this.options.path}`);
+      this.emit(Events.STARTED);
+      resolve();
+    } catch (error) {
+      this.isRunning = false;
+      handleServerError(error, this);
+      reject(error);
+    }
   }
 
   /**
    * Inicia heartbeat para detectar desconexiones
    * @private
    */
-  startHeartbeat() {
-    this.heartbeatManager = new HeartbeatManager({
-      interval: this.options.heartbeatInterval,
-      getClients: () => this.clients,
-      onDeadClient: (id) => {
-        const client = this.clients.get(id);
-        if (client) {
-          logger.info(`💀 Removing dead client: ${id}`);
-          client.close(1001, 'Heartbeat timeout');
+  setupHeartbeatManager() {
+    try {
+      this.heartbeatManager = new HeartbeatManager({
+        interval: this.options.heartbeatInterval,
+        getClients: () => this.clients,
+        onDeadClient: (id) => {
+          const client = this.clients.get(id);
+          if (client) {
+            logger.info(`💀 Removing dead client: ${id}`);
+            client.close(1001, 'Heartbeat timeout');
+          }
         }
-      }
-    });
-    this.heartbeatManager.start();
+      });
+      this.heartbeatManager.begin();
+    } catch (error) {
+      this.heartbeatManager = null;
+      throw error;
+    }
   }
 
   /**
@@ -168,7 +197,7 @@ export class WebSocketManager extends EventEmitter {
    * @param {Object} message - Mensaje a enviar
    * @returns {number}
    */
-  broadcastToSubscribers(filePath, message) {
+  publishToSubscribers(filePath, message) {
     return broadcastToSubscribers(this.clients, filePath, message);
   }
 
@@ -177,7 +206,7 @@ export class WebSocketManager extends EventEmitter {
    * @param {Object} message - Mensaje a enviar
    * @returns {number}
    */
-  broadcast(message) {
+  publish(message) {
     return broadcast(this.clients, message);
   }
 
@@ -187,7 +216,7 @@ export class WebSocketManager extends EventEmitter {
    * @param {Object} message - Mensaje a enviar
    * @returns {number}
    */
-  broadcastToProject(projectPath, message) {
+  publishToProject(projectPath, message) {
     return broadcastToProject(this.clients, projectPath, message);
   }
 
@@ -229,8 +258,16 @@ export class WebSocketManager extends EventEmitter {
 
     // Cerrar servidor
     return new Promise((resolve) => {
+      if (!this.wss) {
+        this.isRunning = false;
+        this.emit(Events.STOPPED);
+        resolve();
+        return;
+      }
+
       this.wss.close(() => {
         this.isRunning = false;
+        this.wss = null;
         this.emit(Events.STOPPED);
         resolve();
       });

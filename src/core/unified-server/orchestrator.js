@@ -107,11 +107,6 @@ export function resolvePriorityLevel(priority) {
   return levels[priority] || 0;
 }
 
-export function invalidateCache(filePath) {
-  this.cache.ramCacheInvalidate(`impact:${filePath}`);
-  this.cache.ramCacheInvalidate(`file:${filePath}`);
-}
-
 export async function restartOrchestrator() {
   logger.info('ðŸ”„ Restarting orchestrator...');
   await this.worker.stop();

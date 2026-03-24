@@ -36,7 +36,7 @@ export {
 // === Utils ===
 export {
   updateAtom,
-  invalidateCache,
+  invalidateAtomCache,
   emitModificationSuccess,
   emitAtomCreated
 } from './utils/index.js';

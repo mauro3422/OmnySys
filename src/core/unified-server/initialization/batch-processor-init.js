@@ -40,7 +40,7 @@ export async function initializeBatchProcessor(context) {
       }
       
       // Notificar a clientes WebSocket
-      wsManager?.broadcast({
+      wsManager?.publish({
         type: 'file:queued',
         filePath: change.filePath,
         changeType: change.changeType,
@@ -55,7 +55,7 @@ export async function initializeBatchProcessor(context) {
   batchProcessor.on('batch:completed', (batch) => {
     logger.info(`✅ Batch ${batch.id} completed: ${batch.changes.size} changes processed`);
     
-    wsManager?.broadcast({
+    wsManager?.publish({
       type: 'batch:completed',
       batchId: batch.id,
       stats: batch.getBatchStats(),
@@ -66,7 +66,7 @@ export async function initializeBatchProcessor(context) {
   batchProcessor.on('batch:failed', (batch, error) => {
     logger.error(`❌ Batch ${batch.id} failed:`, error.message);
     
-    wsManager?.broadcast({
+    wsManager?.publish({
       type: 'batch:failed',
       batchId: batch.id,
       error: error.message,

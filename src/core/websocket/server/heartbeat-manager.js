@@ -27,13 +27,21 @@ export class HeartbeatManager {
   }
 
   /**
-   * Inicia el heartbeat
+   * Activa el heartbeat
    */
-  start() {
+  begin() {
     if (this.isRunning) return;
     
     this.isRunning = true;
     this.timer = setInterval(() => this.checkHealth(), this.interval);
+  }
+
+  /**
+   * Compatibilidad hacia atrás para llamadas existentes.
+   * @deprecated Use begin().
+   */
+  start() {
+    return this.begin();
   }
 
   /**

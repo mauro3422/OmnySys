@@ -144,7 +144,7 @@ export function createRules(placeholderPrefix) {
         const lastToken = context.getLastToken();
         if (lastToken?.value === '(' || lastToken?.value === ',') {
           // Verificar si estamos en contexto que podría ser pipeline
-          const ctxs = context.getAll();
+          const ctxs = context.getStackSnapshot();
           if (ctxs.some(c => c === CONTEXTS.ARROW_BODY || c === CONTEXTS.FUNCTION_BODY)) {
             return { matched: true };
           }

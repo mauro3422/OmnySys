@@ -137,7 +137,7 @@ export class ContextModel {
    * Obtiene todos los contextos activos
    * @returns {string[]} Stack de contextos
    */
-  getAll() {
+  getStackSnapshot() {
     return [...this._stack];
   }
   

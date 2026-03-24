@@ -162,10 +162,6 @@ export class AnalysisQueue {
     return getAllQueues(this);
   }
 
-  getAll() {
-    return this.getQueueSnapshot();
-  }
-
   size() {
     return this.enqueuedFiles.size;
   }

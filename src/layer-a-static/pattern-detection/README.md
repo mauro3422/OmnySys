@@ -49,7 +49,7 @@ interface PatternDetector {
 El core no depende de implementaciones:
 ```javascript
 // Core depende de abstracción
-this.registry.getAll().forEach(detector => {
+this.registry.listDetectors().forEach(detector => {
   // No sabe qué detector es, solo ejecuta
 });
 ```

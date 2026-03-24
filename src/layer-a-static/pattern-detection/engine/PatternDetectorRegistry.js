@@ -35,7 +35,7 @@ export class PatternDetectorRegistry {
   /**
    * Get all detectors sorted by priority
    */
-  getAll() {
+  listDetectors() {
     return Array.from(this.detectors.values())
       .sort((a, b) => {
         // Sort by priority descending, then by id ascending for stable ordering

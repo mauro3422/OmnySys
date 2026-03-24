@@ -50,7 +50,7 @@ export async function getImpactMap(filePath) {
  * @param {string} symbolName - Nombre del símbolo
  * @returns {Promise<Object>} - Análisis de cambio
  */
-export async function analyzeChange(filePath, symbolName) {
+export async function getChangeImpact(filePath, symbolName) {
   try {
     const fileData = await getFileAnalysis(this.projectPath, filePath);
     const symbol = fileData.exports?.find((e) => e.name === symbolName);

@@ -7,7 +7,7 @@
  */
 
 // Impact Tools
-export { getImpactMap, analyzeChange } from './impact-tools.js';
+export { getImpactMap, getChangeImpact } from './impact-tools.js';
 
 // Connection Tools
 export { explainConnection } from './connection-tools.js';
@@ -25,7 +25,7 @@ export { getFullStatus, getFilesStatus, getFileTool } from './status-tools.js';
 export {
   getFunctionDetails,
   getMoleculeSummary,
-  analyzeFunctionChange,
+  getFunctionImpact,
   getAtomicFunctions
 } from './atomic/atomic-tools.js';
 

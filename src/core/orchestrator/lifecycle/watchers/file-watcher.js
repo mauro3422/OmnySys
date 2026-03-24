@@ -37,7 +37,7 @@ export async function _initializeFileWatcher() {
   // Tunnel vision warnings
   this.fileWatcher.on('tunnel-vision:detected', (event) => {
     logger.warn(`\n🔍 Tunnel Vision Alert: ${event.file} → ${event.totalAffected} files affected`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'tunnel-vision:detected',
       ...event,
       timestamp: Date.now()
@@ -47,7 +47,7 @@ export async function _initializeFileWatcher() {
   // Archetype changes
   this.fileWatcher.on('archetype:changed', (event) => {
     logger.warn(`\n🏗️ Archetype Change: ${event.filePath}`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'archetype:changed',
       ...event,
       timestamp: Date.now()
@@ -63,7 +63,7 @@ export async function _initializeFileWatcher() {
   // Metadata cleanup can emit orphaned import relationships.
   this.fileWatcher.on('import:orphaned', (event) => {
     logger.warn(`Import orphaned: ${event.importer} -> ${event.imported} (${event.reason})`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'import:orphaned',
       ...event,
       timestamp: Date.now()
@@ -73,7 +73,7 @@ export async function _initializeFileWatcher() {
   // Lightweight impact-wave signal emitted by file-watcher after each change.
   this.fileWatcher.on('impact:wave', (event) => {
     logger.warn(`\n🌊 Impact Wave: ${event.filePath} [${event.level}] score=${event.score}`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'impact:wave',
       ...event,
       timestamp: Date.now()
@@ -83,7 +83,7 @@ export async function _initializeFileWatcher() {
   // Duplicate risk signal from watcher duplicate guard.
   this.fileWatcher.on('duplicate:risk', (event) => {
     logger.warn(`[DUPLICATE RISK] ${event.filePath} (${event.findings?.length || 0} symbols)`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'duplicate:risk',
       ...event,
       timestamp: Date.now()
@@ -93,7 +93,7 @@ export async function _initializeFileWatcher() {
   // Runtime processing errors detected by watcher lifecycle.
   this.fileWatcher.on('change:error', (event) => {
     logger.error(`[FILEWATCHER CHANGE ERROR] ${event.filePath} -> ${event.error}`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'change:error',
       ...event,
       timestamp: Date.now()
@@ -104,7 +104,7 @@ export async function _initializeFileWatcher() {
   this.fileWatcher.on('error', (error) => {
     const message = error?.message || String(error);
     logger.error(`[FILEWATCHER ERROR] ${message}`);
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'file-watcher:error',
       message,
       timestamp: Date.now()
@@ -113,21 +113,21 @@ export async function _initializeFileWatcher() {
 
   // 🧠 Pattern Refresh Events
   this.fileWatcher.on('pattern:refresh:start', (event) => {
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'pattern:refresh:start',
       ...event
     });
   });
 
   this.fileWatcher.on('pattern:refresh:complete', (event) => {
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'pattern:refresh:complete',
       ...event
     });
   });
 
   this.fileWatcher.on('pattern:refresh:error', (event) => {
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'pattern:refresh:error',
       ...event
     });
@@ -147,7 +147,7 @@ export async function _initializeFileWatcher() {
         this._processNext();
       }
 
-      this.wsManager?.broadcast({
+      this.wsManager?.publish({
         type: 'file:queued',
         filePath: change.filePath,
         priority,

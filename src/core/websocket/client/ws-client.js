@@ -6,18 +6,21 @@
  * @module websocket/client/ws-client
  */
 
-import { ConnectionState, DEFAULT_CONFIG } from '../constants.js';
 import { SubscriptionManager } from './subscription-manager.js';
-import { handleClientCommand } from './message-handler.js';
-import { parseMessage, createErrorMessage } from '../messaging/message-types.js';
-import { createLogger } from '../../../utils/logger.js';
 import {
   initializeWebSocketClientState,
   attachWebSocketClientHandlers,
-  buildWebSocketClientRuntime
+  buildWebSocketClientRuntime,
+  handleWebSocketClientMessage,
+  handleWebSocketClientClose,
+  handleWebSocketClientError,
+  sendWebSocketClientMessage,
+  isWebSocketClientSubscribedToFile,
+  closeWebSocketClient,
+  isWebSocketClientAlive,
+  updateWebSocketClientPing,
+  getWebSocketClientStats
 } from './ws-client-helpers.js';
-
-const logger = createLogger('OmnySys:ws:client');
 
 
 
@@ -41,46 +44,22 @@ export class WSClient {
    * @param {Buffer} data - Datos recibidos
    */
   handleMessage(data) {
-    const message = parseMessage(data);
-    
-    if (!message) {
-      this.send(createErrorMessage('Invalid JSON message'));
-      return;
-    }
-
-    this.manager.emit('message', this, message);
-    
-    handleClientCommand(message, {
-      subscriptions: this.subscriptions,
-      send: (msg) => this.send(msg),
-      emitter: this.manager,
-      clientId: this.id,
-      ws: this.ws
-    });
+    return handleWebSocketClientMessage(this, data);
   }
 
   /**
    * Maneja cierre de conexión
    */
   handleClose() {
-    this.state = ConnectionState.DISCONNECTED;
-    
-    // Limpiar subscriptions para prevenir memory leak
-    const subCount = this.subscriptions.clear();
-    if (subCount > 0) {
-      logger.info(`🧹 Cleaned up ${subCount} subscriptions for client ${this.id}`);
-    }
-    
-    this.manager.removeClient(this.id);
+    return handleWebSocketClientClose(this);
   }
 
   /**
    * Maneja error de conexión
    * @param {Error} error - Error ocurrido
    */
-  handleError(error) {
-    logger.error(`WebSocket error for client ${this.id}:`, error.message);
-    this.manager.emit('client:error', this, error);
+  handleSocketError(error) {
+    return handleWebSocketClientError(this, error);
   }
 
   /**
@@ -89,18 +68,7 @@ export class WSClient {
    * @returns {boolean} - true si se envió exitosamente
    */
   send(message) {
-    if (this.state !== ConnectionState.CONNECTED) {
-      return false;
-    }
-
-    try {
-      const data = typeof message === 'string' ? message : JSON.stringify(message);
-      this.ws.send(data);
-      return true;
-    } catch (error) {
-      logger.error(`Failed to send message to client ${this.id}:`, error.message);
-      return false;
-    }
+    return sendWebSocketClientMessage(this, message);
   }
 
   /**
@@ -108,8 +76,8 @@ export class WSClient {
    * @param {string} filePath - Ruta del archivo
    * @returns {boolean}
    */
-  isSubscribedTo(filePath) {
-    return this.subscriptions.isSubscribedTo(filePath);
+  isSubscribedToFile(filePath) {
+    return isWebSocketClientSubscribedToFile(this, filePath);
   }
 
   /**
@@ -118,8 +86,7 @@ export class WSClient {
    * @param {string} reason - Razón del cierre
    */
   close(code = 1000, reason = 'Normal closure') {
-    this.state = ConnectionState.DISCONNECTING;
-    this.ws.close(code, reason);
+    return closeWebSocketClient(this, code, reason);
   }
 
   /**
@@ -127,14 +94,14 @@ export class WSClient {
    * @returns {boolean}
    */
   isAlive() {
-    return Date.now() - this.lastPing < DEFAULT_CONFIG.clientTimeout;
+    return isWebSocketClientAlive(this);
   }
 
   /**
    * Actualiza timestamp de último ping
    */
   updatePing() {
-    this.lastPing = Date.now();
+    return updateWebSocketClientPing(this);
   }
 
   /**
@@ -142,14 +109,7 @@ export class WSClient {
    * @returns {Object}
    */
   getWebSocketClientStats() {
-    return {
-      id: this.id,
-      state: this.state,
-      alive: this.isAlive(),
-      lastPing: this.lastPing,
-      subscriptions: this.subscriptions?.count ?? 0,
-      projectPath: this.subscriptions?.getProject?.() || null
-    };
+    return getWebSocketClientStats(this);
   }
 }
 

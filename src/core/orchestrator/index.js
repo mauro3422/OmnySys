@@ -50,98 +50,6 @@ class Orchestrator extends EventEmitter {
    * Obtiene o inicializa el Cache Invalidator (lazy initialization)
    * @returns {Promise<CacheInvalidator>}
    */
-  async _getCacheInvalidator() {
-    if (!this.cacheInvalidator) {
-      const { getCacheInvalidator } = await import('#core/cache/invalidator/index.js');
-      this.cacheInvalidator = getCacheInvalidator(this.cache || { projectPath: this.projectPath });
-    }
-    return this.cacheInvalidator;
-  }
-
-  _initializeComponentState() {
-    this.queue = new AnalysisQueue();
-    this.worker = null;
-    this.stateManager = null;
-    this.fileWatcher = null;
-    this.batchProcessor = null;
-    this.wsManager = null;
-    this.cache = null;
-  }
-
-  _initializeRuntimeState() {
-    this.currentJob = null;
-    this.isRunning = true;
-    this.startTime = Date.now();
-    this.stats = {
-      totalAnalyzed: 0,
-      totalQueued: 0,
-      avgTime: 0
-    };
-  }
-
-  _initializeIndexingState() {
-    this.isIndexing = false;
-    this.indexingProgress = 0;
-    this.indexedFiles = new Set();
-  }
-
-  _initializeIterationState() {
-    this.iteration = 0;
-    this.maxIterations = 10;
-    this.isIterating = false;
-    this.iterativeQueue = [];
-  }
-
-  _initializeCompletionTrackingState() {
-    this.totalFilesToAnalyze = 0;
-    this.processedFiles = new Set();
-    this.analysisCompleteEmitted = false;
-  }
-
-  /**
-   * Configura listeners del Atomic Editor
-   */
-  _setupAtomicEditor() {
-    // Escuchar eventos de validación fallida
-    this.atomicEditor.on('atom:validation:failed', (event) => {
-      logger.error(`🚫 Atomic validation failed: ${event.file}`);
-      logger.error(`   Error: ${event.error}`);
-
-      // Notificar por WebSocket si está disponible
-      this.wsManager?.broadcast({
-        type: 'atomic:validation:failed',
-        ...event,
-        timestamp: Date.now()
-      });
-    });
-
-    // Escuchar cambios atómicos exitosos
-    this.atomicEditor.on('atom:modified', (event) => {
-      logger.info(`✅ Atomic edit complete: ${event.file}`);
-
-      // Hook para actualización incremental de sociedades
-      this._triggerIncrementalSocietyUpdate(event.file);
-
-      // Notificar dependientes
-      this.wsManager?.broadcast({
-        type: 'atomic:modified',
-        ...event,
-        timestamp: Date.now()
-      });
-    });
-
-    // Escuchar propagación de vibración
-    this.atomicEditor.on('vibration:propagating', (event) => {
-      logger.info(`📡 Vibration propagating from ${event.source}`);
-      logger.info(`   Affects: ${event.affected.length} files`);
-
-      // Actualizar caché de dependientes
-      event.affected.forEach(file => {
-        this._invalidateFileCache(file);
-      });
-    });
-  }
-
   /**
    * Edita un archivo de forma atómica (valida, guarda, propaga)
    * 
@@ -197,7 +105,7 @@ class Orchestrator extends EventEmitter {
     }
 
     // Broadcast por WebSocket
-    this.wsManager?.broadcast({
+    this.wsManager?.publish({
       type: 'file:changed',
       filePath,
       changeType,

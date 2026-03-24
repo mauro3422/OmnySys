@@ -13,24 +13,29 @@ async function clearWatcherRuntimeError(projectPath, filePath) {
 }
 
 export async function _processWithBatchProcessor() {
-  if (!this.batchProcessor) {
-    return { processed: 0, skipped: 0, errors: [] };
+  try {
+    if (!this.batchProcessor) {
+      return { processed: 0, skipped: 0, errors: [] };
+    }
+
+    const readyChanges = this.batchProcessor.getReadyChangesSnapshot();
+    if (readyChanges.length === 0) {
+      return { processed: 0, skipped: 0, errors: [] };
+    }
+
+    const results = await this.batchProcessor.processBatch(async (change) => {
+      await this.processChange(change);
+    });
+
+    for (const change of readyChanges) {
+      this.pendingChanges.delete(change.filePath);
+    }
+
+    return results;
+  } catch (error) {
+    logger.error(`[BATCH PROCESS] Failed to process changes with batch processor: ${error.message}`);
+    return { processed: 0, skipped: 0, errors: [error.message] };
   }
-
-  const readyChanges = this.batchProcessor.getReadyChangesSnapshot();
-  if (readyChanges.length === 0) {
-    return { processed: 0, skipped: 0, errors: [] };
-  }
-
-  const results = await this.batchProcessor.processBatch(async (change) => {
-    await this.processChange(change);
-  });
-
-  for (const change of readyChanges) {
-    this.pendingChanges.delete(change.filePath);
-  }
-
-  return results;
 }
 
 /**
@@ -38,48 +43,52 @@ export async function _processWithBatchProcessor() {
  * Usa SmartBatchProcessor si está disponible
  */
 export async function processPendingChanges() {
-  if (!this.isRunning) {
-    return;
-  }
-
-  // Si tenemos SmartBatchProcessor activo, usarlo
-  if (this.batchProcessor && this.options.useSmartBatch) {
-    await this._processWithBatchProcessor();
-    return;
-  }
-
-  // Fallback al comportamiento original
-  if (this.pendingChanges.size === 0) {
-    return;
-  }
-
-  // Aplicar debounce: solo procesar cambios que pasaron el tiempo de debounce
-  const now = Date.now();
-  const readyToProcess = [];
-
-  for (const [filePath, changeInfo] of this.pendingChanges) {
-    if (now - changeInfo.timestamp >= this.options.debounceMs) {
-      readyToProcess.push({ filePath, ...changeInfo });
+  try {
+    if (!this.isRunning) {
+      return;
     }
-  }
 
-  if (readyToProcess.length === 0) {
-    return;
-  }
+    // Si tenemos SmartBatchProcessor activo, usarlo
+    if (this.batchProcessor && this.options.useSmartBatch) {
+      await this._processWithBatchProcessor();
+      return;
+    }
 
-  // Limitar concurrencia
-  const toProcess = readyToProcess.slice(0, this.options.maxConcurrent);
+    // Fallback al comportamiento original
+    if (this.pendingChanges.size === 0) {
+      return;
+    }
 
-  if (this.options.verbose) {
-    logger.info(`Processing ${toProcess.length} changes (${this.pendingChanges.size} pending)`);
-  }
+    // Aplicar debounce: solo procesar cambios que pasaron el tiempo de debounce
+    const now = Date.now();
+    const readyToProcess = [];
 
-  // Procesar en paralelo
-  await Promise.all(toProcess.map(change => this.processChange(change)));
+    for (const [filePath, changeInfo] of this.pendingChanges) {
+      if (now - changeInfo.timestamp >= this.options.debounceMs) {
+        readyToProcess.push({ filePath, ...changeInfo });
+      }
+    }
 
-  // Limpiar procesados de pendientes
-  for (const change of toProcess) {
-    this.pendingChanges.delete(change.filePath);
+    if (readyToProcess.length === 0) {
+      return;
+    }
+
+    // Limitar concurrencia
+    const toProcess = readyToProcess.slice(0, this.options.maxConcurrent);
+
+    if (this.options.verbose) {
+      logger.info(`Processing ${toProcess.length} changes (${this.pendingChanges.size} pending)`);
+    }
+
+    // Procesar en paralelo
+    await Promise.all(toProcess.map(change => this.processChange(change)));
+
+    // Limpiar procesados de pendientes
+    for (const change of toProcess) {
+      this.pendingChanges.delete(change.filePath);
+    }
+  } catch (error) {
+    logger.error(`[PROCESS PENDING] Failed to process pending changes: ${error.message}`);
   }
 }
 

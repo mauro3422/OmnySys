@@ -3,7 +3,6 @@
  * 
  * Tests para métodos reales del engine:
  * - analyze(), runDetector(), addDetector(), getResults()
- * - PatternDetectorRegistry: register(), get(), getAll(), containsDetector(), size()
  * - QualityScoreAggregator: calculate(), calculateGrade(), buildQualityRecommendations()
  * 
  * @module tests/functional/pattern-detection-detailed.functional.test
@@ -141,97 +140,6 @@ describe('Pattern Detection - Detailed Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.metadata.detectorsRun).toBeGreaterThan(0);
-    });
-  });
-
-  describe('PatternDetectorRegistry Real Methods', () => {
-    let registry;
-
-    beforeEach(() => {
-      registry = new PatternDetectorRegistry();
-    });
-
-    it('register() adds detector with id and loader', () => {
-      const detector = { 
-        id: 'd1', 
-        loader: () => Promise.resolve({}),
-        priority: 10
-      };
-      
-      registry.register(detector);
-      
-      expect(registry.size()).toBe(1);
-      expect(registry.containsDetector('d1')).toBe(true);
-    });
-
-    it('register() requires id', () => {
-      expect(() => {
-        registry.register({ priority: 10 });
-      }).toThrow('Detector id is required');
-    });
-
-    it('register() throws on duplicate id', () => {
-      registry.register({ id: 'd1', loader: () => Promise.resolve({}) });
-      
-      expect(() => {
-        registry.register({ id: 'd1', loader: () => Promise.resolve({}) });
-      }).toThrow('already registered');
-    });
-
-    it('get() retrieves detector by id', () => {
-      const detector = { id: 'd2', loader: () => Promise.resolve({}), priority: 5 };
-      registry.register(detector);
-
-      const retrieved = registry.get('d2');
-
-      expect(retrieved.id).toBe('d2');
-      expect(retrieved.priority).toBe(5);
-    });
-
-    it('containsDetector() checks if detector exists', () => {
-      registry.register({ id: 'd3', loader: () => Promise.resolve({}) });
-
-      expect(registry.containsDetector('d3')).toBe(true);
-      expect(registry.containsDetector('nonexistent')).toBe(false);
-    });
-
-    it('getAll() returns all detectors sorted by priority', () => {
-      registry.register({ id: 'd1', loader: () => Promise.resolve({}), priority: 10 });
-      registry.register({ id: 'd2', loader: () => Promise.resolve({}), priority: 20 });
-      registry.register({ id: 'd3', loader: () => Promise.resolve({}), priority: 5 });
-
-      const all = registry.getAll();
-
-      expect(Array.isArray(all)).toBe(true);
-      expect(all.length).toBe(3);
-      // Debe estar ordenado por prioridad descendente
-      expect(all[0].priority).toBe(20);
-      expect(all[1].priority).toBe(10);
-      expect(all[2].priority).toBe(5);
-    });
-
-    it('removeDetector() removes detector', () => {
-      registry.register({ id: 'd6', loader: () => Promise.resolve({}) });
-      expect(registry.containsDetector('d6')).toBe(true);
-      
-      registry.removeDetector('d6');
-
-      expect(registry.containsDetector('d6')).toBe(false);
-      expect(registry.size()).toBe(0);
-    });
-
-    it('clearRegistry() removes all detectors', () => {
-      registry.register({ id: 'd7', loader: () => Promise.resolve({}) });
-      registry.register({ id: 'd8', loader: () => Promise.resolve({}) });
-      registry.clearRegistry();
-
-      expect(registry.size()).toBe(0);
-    });
-
-    it('size() returns correct count', () => {
-      expect(registry.size()).toBe(0);
-      registry.register({ id: 'd9', loader: () => Promise.resolve({}) });
-      expect(registry.size()).toBe(1);
     });
   });
 

@@ -193,7 +193,7 @@ function findAPIByTableName(sqlStatement) {
     'risk_assessments': { api: 'getFileAnalysis', from: '#layer-c/query/apis/file-api.js', description: `Risk data available via file analysis metadata`, usage: 'const meta = await getFileAnalysis(projectPath, filePath); meta.risk' },
     'semantic_connections': { api: 'getFileDependencies', from: '#layer-c/query/apis/file-api.js', description: `Semantic data via dependency APIs`, usage: 'await getFileDependencies(projectPath, filePath)' },
     'file_dependencies': { api: 'getFileDependencies', from: '#layer-c/query/apis/file-api.js', description: `Use canonical dependency API`, usage: 'await getFileDependencies(projectPath, filePath)' },
-    'system_files': { api: 'getMetadataSurfaceParity', from: '#layer-c/query/apis/file-api.js', description: `System file metadata via parity API`, usage: 'await getMetadataSurfaceParity(projectPath)' },
+    'system_files': { api: 'getSystemFilesSnapshot', from: '#layer-c/query/apis/file-api.js', description: `System file metadata via canonical snapshot API`, usage: 'await getSystemFilesSnapshot(projectPath)' },
     'compiler_scanned_files': { api: 'getPersistedScannedFileManifest', from: '#layer-c/query/apis/file-api.js', description: `Scanner manifest via canonical API`, usage: 'await getPersistedScannedFileManifest(projectPath)' }
   };
   

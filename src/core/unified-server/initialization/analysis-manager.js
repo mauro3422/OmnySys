@@ -6,8 +6,6 @@
  * @module unified-server/initialization/analysis-manager
  */
 
-import fs from 'fs/promises';
-import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:analysis:manager');
@@ -24,7 +22,7 @@ export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
   const { indexProject } = await import('#layer-a/indexer.js');
 
   // Ejecutar análisis en background
-  indexProject(projectPath, {
+  return indexProject(projectPath, {
     outputPath: 'system-map.json',
     verbose: true,
     skipLLM: true
@@ -43,7 +41,7 @@ export async function queueInitialAnalysis(projectPath, reloadMetadataFn) {
  * @param {Object} context - { cache, projectPath, wsManager }
  * @returns {Promise<void>}
  */
-export async function reloadMetadata(context) {
+export async function reloadMetadata(context = {}) {
   const { cache, projectPath, wsManager } = context;
 
   try {
@@ -61,19 +59,22 @@ async function refreshAnalysisCache(cache, projectPath) {
   const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
 
   const metadata = await getProjectMetadata(projectPath);
-  cache.set('metadata', metadata);
-
   const connections = await getAllConnections(projectPath);
-  cache.set('connections', connections);
-
   const assessment = await getRiskAssessment(projectPath);
-  cache.set('assessment', assessment);
+
+  if (cache && typeof cache.set === 'function') {
+    cache.set('metadata', metadata);
+    cache.set('connections', connections);
+    cache.set('assessment', assessment);
+  } else {
+    logger.debug('Skipping cache refresh: cache object unavailable');
+  }
 
   return metadata;
 }
 
 function notifyAnalysisCompleted(wsManager, metadata) {
-  wsManager?.broadcast({
+  wsManager?.publish({
     type: 'analysis:completed',
     filesAnalyzed: metadata?.stats?.totalFiles || 0,
     timestamp: Date.now()

@@ -58,7 +58,7 @@ export class PatternDetectionEngine {
 
     this.configManager.detectProjectType(systemMap);
 
-    const detectors = this.registry.getAll();
+    const detectors = this.registry.listDetectors();
     const detectionPromises = detectors.map(detector =>
       this.runDetector(detector, systemMap)
     );

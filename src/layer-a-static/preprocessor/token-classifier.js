@@ -164,7 +164,7 @@ export class TokenClassifier {
         token,
         position,
         currentContext: this.context.current(),
-        allContexts: this.context.getAll(),
+        allContexts: this.context.getStackSnapshot(),
         lastTokens: this.context.getLastTokens(5),
         matchedRule: classification.rule
       }

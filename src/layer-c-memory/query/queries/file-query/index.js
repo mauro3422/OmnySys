@@ -15,6 +15,9 @@ export { getFileAnalysis, getMultipleFileAnalysis } from './core/index.js';
 // Dependency queries
 export { getFileDependencies, getFileDependents } from './dependencies/index.js';
 
+// System-map snapshots
+export { getSystemFileSnapshot, getSystemFilesSnapshot } from './system-map.js';
+
 // Enriched analysis with atoms
 export { getFileAnalysisWithAtoms } from './enriched/index.js';
 

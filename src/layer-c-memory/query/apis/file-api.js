@@ -14,6 +14,8 @@ export {
   getMultipleFileAnalysis,
   getFileDependencies,
   getFileDependents,
+  getSystemFileSnapshot,
+  getSystemFilesSnapshot,
   getFileAnalysisWithAtoms,
   getAtomDetails,
   findAtomsByArchetype,

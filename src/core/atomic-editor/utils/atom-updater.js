@@ -30,7 +30,7 @@ export async function updateAtom(filePath, orchestrator, projectPath, impact) {
     }
 
     // Invalidate cache
-    await invalidateCache(filePath, projectPath);
+    await invalidateAtomCache(filePath, projectPath);
 
   } catch (error) {
     logger.warn(`  ⚠️  Could not update atom: ${error.message}`);
@@ -44,7 +44,7 @@ export async function updateAtom(filePath, orchestrator, projectPath, impact) {
  * @param {string} projectPath - Path del proyecto
  * @returns {Promise<void>}
  */
-export async function invalidateCache(filePath, projectPath) {
+export async function invalidateAtomCache(filePath, projectPath) {
   try {
     const { getCacheManager } = await import('#core/cache/singleton.js');
     const cache = await getCacheManager(projectPath);

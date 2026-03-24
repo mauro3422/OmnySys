@@ -45,7 +45,7 @@ export const pipelineAlertGuard = {
             watcher.emit('pipeline:alert', alert);
 
             // Broadcast si el watcher tiene acceso al wsManager (vía orchestrator)
-            watcher.wsManager?.broadcast(alert);
+            watcher.wsManager?.publish(alert);
         }
 
         // Alerta si no se encontraron átomos en un archivo que tiene código

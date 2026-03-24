@@ -16,6 +16,7 @@
 - `src/shared/compiler/metadata-surface-parity.js` now compares mirrored support coverage against the active file universe. The remaining follow-up is to keep the reload lifecycle clean so the watcher doesn't retain stale export-validation logs after this heuristic change.
 - Import/export validation is now DB-only; the remaining cleanup is runtime reload and any future naming cleanup for the `filesystem-validation` helper alias.
 - Watcher alert lifecycle should reconcile against the current published analysis generation immediately after a file fix. Today, tool/runtime module staleness can leave an old alert active until reload, which makes `_recentErrors` lag behind the actual source state. The target is: fixed code on disk should expire the old alert, leave only `stale/restart-required` markers for reload-only modules, and surface only genuinely new issues.
+- Atoms trust gate: atoms remain the source of truth, but downstream automation should score confidence from `databaseHealth`, `runtimeCodeFreshness`, `surfaceAudit`, `metadataExtractionCoverage`, and watcher lifecycle. Treat the 24 medium-risk files as coordination surfaces for targeted hardening, not as 24 independent bugs.
 
 ## Consolidacion arquitectonica: grupos conceptuales accionables
 

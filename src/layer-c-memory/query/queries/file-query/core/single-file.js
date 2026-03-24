@@ -8,9 +8,11 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import {
   evaluateAtomRefactoringSignals,
   getSystemMapPersistenceCoverage,
+  repairSystemMapPersistenceCoverage,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../../../shared/compiler/index.js';
+import { getSystemFileSnapshot } from '../system-map.js';
 
 /**
  * Normalizes file path to be relative to root
@@ -163,14 +165,18 @@ export async function getFileAnalysis(rootPath, filePath) {
 
     // Enrich from system_files for semantic data
     try {
-      const systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+      let systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+      if (systemMapCoverage.healthy === false) {
+        repairSystemMapPersistenceCoverage(repo.db);
+        systemMapCoverage = getSystemMapPersistenceCoverage(repo.db);
+      }
       fileAnalysis.systemMapCoverage = systemMapCoverage;
 
       if (systemMapCoverage.healthy) {
-        const sysRow = repo.db.prepare('SELECT semantic_analysis_json, semantic_connections_json FROM system_files WHERE path = ?').get(normalizedPath);
+        const sysRow = await getSystemFileSnapshot(rootPath, normalizedPath);
         if (sysRow) {
-          fileAnalysis.semanticAnalysis = parseJsonArray(sysRow.semantic_analysis_json, {});
-          fileAnalysis.semanticConnections = parseJsonArray(sysRow.semantic_connections_json, []);
+          fileAnalysis.semanticAnalysis = sysRow.semanticAnalysis || {};
+          fileAnalysis.semanticConnections = sysRow.semanticConnections || [];
         }
         fileAnalysis.systemMapTrustworthy = true;
       } else {

@@ -155,10 +155,10 @@ describe('Orchestrator', () => {
       expect(listeners.length).toBeGreaterThan(0);
     });
 
-    it('should broadcast on atom:validation:failed when wsManager exists', async () => {
-      const broadcastCalls = [];
+    it('should publish on atom:validation:failed when wsManager exists', async () => {
+      const publishCalls = [];
       orchestrator.wsManager = { 
-        broadcast: (msg) => broadcastCalls.push(msg),
+        publish: (msg) => publishCalls.push(msg),
         stop: async () => {}
       };
       
@@ -167,23 +167,23 @@ describe('Orchestrator', () => {
         error: 'validation error' 
       });
       
-      expect(broadcastCalls.length).toBe(1);
-      expect(broadcastCalls[0].type).toBe('atomic:validation:failed');
-      expect(broadcastCalls[0].file).toBe('test.js');
+      expect(publishCalls.length).toBe(1);
+      expect(publishCalls[0].type).toBe('atomic:validation:failed');
+      expect(publishCalls[0].file).toBe('test.js');
     });
 
-    it('should broadcast on atom:modified when wsManager exists', async () => {
-      const broadcastCalls = [];
+    it('should publish on atom:modified when wsManager exists', async () => {
+      const publishCalls = [];
       orchestrator.wsManager = { 
-        broadcast: (msg) => broadcastCalls.push(msg),
+        publish: (msg) => publishCalls.push(msg),
         stop: async () => {}
       };
       
       orchestrator.atomicEditor.emit('atom:modified', { file: 'test.js' });
       
-      expect(broadcastCalls.length).toBe(1);
-      expect(broadcastCalls[0].type).toBe('atomic:modified');
-      expect(broadcastCalls[0].file).toBe('test.js');
+      expect(publishCalls.length).toBe(1);
+      expect(publishCalls[0].type).toBe('atomic:modified');
+      expect(publishCalls[0].file).toBe('test.js');
     });
   });
 });
