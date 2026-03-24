@@ -1,21 +1,10 @@
-function impactGuard(name, loadGuard, metadata) {
-  return { name, loadGuard, metadata };
-}
-
-async function loadImpactGuard(moduleLoader, selector) {
-  try {
-    const mod = await moduleLoader();
-    return selector(mod);
-  } catch (error) {
-    throw new Error(`Failed to load impact guard: ${error.message}`);
-  }
-}
+import { defineGuard, loadGuardMember } from './guard-definition-factory.js';
 
 export const impactGuardDefinitions = [
-  impactGuard(
+  defineGuard(
     'impact-wave',
     async () => {
-      const detectImpactWave = await loadImpactGuard(
+      const detectImpactWave = await loadGuardMember(
         () => import('./impact-wave.js'),
         (mod) => mod.detectImpactWave
       );
@@ -26,15 +15,15 @@ export const impactGuardDefinitions = [
     },
     { domain: 'arch', version: '2.0.0', description: 'Analyzes blast radius of changes (impact wave)' }
   ),
-  impactGuard(
+  defineGuard(
     'duplicate-risk',
-    async () => loadImpactGuard(() => import('./duplicate-risk.js'), (mod) => mod.detectDuplicateRisk),
+    async () => loadGuardMember(() => import('./duplicate-risk.js'), (mod) => mod.detectDuplicateRisk),
     { domain: 'code', version: '2.0.0', description: 'Detects duplicate symbols by DNA hash' }
   ),
-  impactGuard(
+  defineGuard(
     'circular-dependencies',
     async () => {
-      const detectCircularDependencies = await loadImpactGuard(
+      const detectCircularDependencies = await loadGuardMember(
         () => import('./circular-guard.js'),
         (mod) => mod.detectCircularDependencies
       );
@@ -45,49 +34,49 @@ export const impactGuardDefinitions = [
     },
     { domain: 'arch', version: '2.0.0', description: 'Detects circular import and call dependencies' }
   ),
-  impactGuard(
+  defineGuard(
     'hotspot-detector',
-    async () => loadImpactGuard(() => import('./hotspot-guard.js'), (mod) => mod.detectHotspots),
+    async () => loadGuardMember(() => import('./hotspot-guard.js'), (mod) => mod.detectHotspots),
     { domain: 'perf', version: '1.0.0', description: 'Detects frequently changing code (hotspots)' }
   ),
-  impactGuard(
+  defineGuard(
     'pipeline-health',
-    async () => loadImpactGuard(() => import('./pipeline-health-guard.js'), (mod) => mod.detectPipelineIssues),
+    async () => loadGuardMember(() => import('./pipeline-health-guard.js'), (mod) => mod.detectPipelineIssues),
     { domain: 'code', version: '1.0.0', description: 'Monitors pipeline health (shadow volume, zero atoms)' }
   ),
-  impactGuard(
+  defineGuard(
     'topology-regression',
-    async () => loadImpactGuard(() => import('./topology-regression-guard.js'), (mod) => mod.detectTopologyRegression),
+    async () => loadGuardMember(() => import('./topology-regression-guard.js'), (mod) => mod.detectTopologyRegression),
     { domain: 'arch', version: '1.0.0', description: 'Detects sudden loss of topology signal after a file change' }
   ),
-  impactGuard(
+  defineGuard(
     'pipeline-orphan',
-    async () => loadImpactGuard(() => import('./pipeline-orphan-guard.js'), (mod) => mod.detectPipelineOrphans),
+    async () => loadGuardMember(() => import('./pipeline-orphan-guard.js'), (mod) => mod.detectPipelineOrphans),
     { domain: 'arch', version: '1.0.0', description: 'Detects exported pipeline atoms that became disconnected after a change' }
   ),
-  impactGuard(
+  defineGuard(
     'semantic-coverage',
-    async () => loadImpactGuard(() => import('./semantic-coverage-guard.js'), (mod) => mod.detectSemanticCoverage),
+    async () => loadGuardMember(() => import('./semantic-coverage-guard.js'), (mod) => mod.detectSemanticCoverage),
     { domain: 'sem', version: '1.0.0', description: 'Detects code patterns not reflected in semantic metadata' }
   ),
-  impactGuard(
+  defineGuard(
     'semantic-persistence',
-    async () => loadImpactGuard(() => import('./semantic-persistence-guard.js'), (mod) => mod.detectSemanticPersistence),
+    async () => loadGuardMember(() => import('./semantic-persistence-guard.js'), (mod) => mod.detectSemanticPersistence),
     { domain: 'sem', version: '1.0.0', description: 'Detects atoms whose semantic compiler metadata was dropped during persistence' }
   ),
-  impactGuard(
+  defineGuard(
     'runtime-registry-health',
-    async () => loadImpactGuard(() => import('./runtime-registry-health-guard.js'), (mod) => mod.detectRuntimeRegistryHealth),
+    async () => loadGuardMember(() => import('./runtime-registry-health-guard.js'), (mod) => mod.detectRuntimeRegistryHealth),
     { domain: 'runtime', version: '1.0.0', description: 'Detects idempotency issues, churn, and leaks in runtime registries' }
   ),
-  impactGuard(
+  defineGuard(
     'conceptual-duplicate-risk',
-    async () => loadImpactGuard(() => import('./conceptual-duplicate-risk.js'), (mod) => mod.detectConceptualDuplicateRisk),
+    async () => loadGuardMember(() => import('./conceptual-duplicate-risk.js'), (mod) => mod.detectConceptualDuplicateRisk),
     { domain: 'code', version: '1.0.0', description: 'Detects mirror atoms - functions with same semantic purpose but different implementations' }
   ),
-  impactGuard(
+  defineGuard(
     'unified-duplicate-risk',
-    async () => loadImpactGuard(() => import('./unified-duplicate-guard.js'), (mod) => mod.detectUnifiedDuplicateRisk),
+    async () => loadGuardMember(() => import('./unified-duplicate-guard.js'), (mod) => mod.detectUnifiedDuplicateRisk),
     { domain: 'code', version: '1.0.0', description: 'Unified coordinator for structural (DNA) and conceptual (semantic) duplicate detection' }
   )
 ];
