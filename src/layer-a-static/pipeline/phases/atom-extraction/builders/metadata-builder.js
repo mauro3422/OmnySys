@@ -17,6 +17,58 @@ import {
   summarizeScopeTypes
 } from '../../../../../shared/compiler/atom-metadata-helpers.js';
 
+const TEST_CALLBACK_RE = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\b/i;
+
+function inferTestCallbackType(functionInfo) {
+  if (functionInfo?.testCallbackType) {
+    return functionInfo.testCallbackType;
+  }
+
+  const name = typeof functionInfo?.name === 'string' ? functionInfo.name.trim() : '';
+  const match = name.match(TEST_CALLBACK_RE);
+  return match ? match[1] : null;
+}
+
+function buildUsesJson(callFields, imports) {
+  const uses = [];
+  const seen = new Set();
+
+  const pushUse = (key, value) => {
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    uses.push(value);
+  };
+
+  for (const call of callFields?.calls || []) {
+    const name = call?.name || call?.callee;
+    if (!name) continue;
+
+    const type = call?.type || 'internal';
+    const line = call?.line ?? null;
+    pushUse(`call:${name}:${type}:${line ?? ''}`, {
+      kind: 'call',
+      name,
+      type,
+      line
+    });
+  }
+
+  for (const imp of imports || []) {
+    const source = imp?.source || imp?.module;
+    if (!source) continue;
+
+    const specifiers = Array.isArray(imp?.specifiers) ? imp.specifiers : [];
+    pushUse(`import:${source}:${specifiers.join(',')}`, {
+      kind: 'import',
+      source,
+      specifiers,
+      line: imp?.line ?? null
+    });
+  }
+
+  return uses;
+}
+
 /**
  * Build atom metadata object
  * @param {Object} params - Build parameters
@@ -47,6 +99,9 @@ export function buildAtomMetadata({
   const tmp = temporal || { lifecycleHooks: [], cleanupPatterns: [] };
   const ph = performanceHints || { nestedLoops: [], blockingOperations: [] };
   const scopeSummary = summarizeScopeTypes(treeSitter?.sharedStateAccess || []);
+  const callFields = buildCallFields(functionInfo, cg);
+  const normalizedImports = buildImports(imports);
+  const testCallbackType = inferTestCallbackType(functionInfo);
 
   let jsdocMatch = null;
   if (jsdocContracts?.functions) {
@@ -74,8 +129,8 @@ export function buildAtomMetadata({
     className: functionInfo.className || null,
     functionType: functionInfo.type || 'declaration',
 
-    isTestCallback: functionInfo.isTestCallback || false,
-    testCallbackType: functionInfo.testCallbackType || null,
+    isTestCallback: functionInfo.isTestCallback || testCallbackType !== null,
+    testCallbackType,
 
     complexity,
 
@@ -85,7 +140,7 @@ export function buildAtomMetadata({
     },
 
     ...buildSideEffectFields(se, dataFlowV2),
-    ...buildCallFields(functionInfo, cg),
+    ...callFields,
     hasErrorHandling: detectErrorHandling(functionCode),
     isAsync: functionInfo.isAsync || /async\s+function/.test(functionCode) || /await\s+/.test(functionCode),
 
@@ -119,8 +174,9 @@ export function buildAtomMetadata({
     dna: null,
     lineage: null,
 
-    imports: buildImports(imports),
-    importsJson: buildImports(imports),
+    imports: normalizedImports,
+    importsJson: normalizedImports,
+    usesJson: buildUsesJson(callFields, normalizedImports),
     exportsJson: functionInfo.isExported
       ? [{ name: functionInfo.name, type: functionInfo.type || 'declaration', line: functionInfo.line }]
       : [],

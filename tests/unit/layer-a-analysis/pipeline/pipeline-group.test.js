@@ -71,6 +71,14 @@ describe('Pipeline - Atom Builders', () => {
     expect(atom.exportsJson).toEqual([
       { name: 'saveAtom', type: 'function', line: 42 }
     ]);
+    expect(atom.usesJson).toEqual([
+      {
+        kind: 'import',
+        source: './dep.js',
+        specifiers: ['dep'],
+        line: 1
+      }
+    ]);
     expect(atom.sideEffectsJson).toEqual({
       all: [],
       networkCalls: [],
@@ -78,6 +86,42 @@ describe('Pipeline - Atom Builders', () => {
       storageAccess: [],
       consoleUsage: []
     });
+  });
+
+  it('derives test callback type and direct uses from the atom metadata', () => {
+    const atom = atomBuilders.buildAtomMetadata({
+      functionInfo: {
+        name: 'beforeEach(setup)',
+        type: 'function',
+        line: 12,
+        isExported: false,
+        calls: [{ name: 'bootstrap', type: 'internal', line: 13 }]
+      },
+      filePath: 'tests/example.test.js',
+      linesOfCode: 6,
+      complexity: 1,
+      sideEffects: { all: [], networkCalls: [], domManipulations: [], storageAccess: [], consoleUsage: [] },
+      callGraph: { internalCalls: [{ name: 'bootstrap', line: 13 }], externalCalls: [] },
+      temporal: { lifecycleHooks: [], cleanupPatterns: [] },
+      temporalPatterns: {},
+      typeContracts: {},
+      errorFlow: {},
+      performanceHints: { nestedLoops: [], blockingOperations: [] },
+      performanceMetrics: {},
+      semanticDomain: null,
+      dataFlowV2: null,
+      functionCode: 'beforeEach(() => bootstrap())',
+      imports: [{ source: './setup.js', type: 'static', names: ['setup'], line: 1 }],
+      jsdocContracts: null,
+      treeSitter: null
+    });
+
+    expect(atom.isTestCallback).toBe(true);
+    expect(atom.testCallbackType).toBe('beforeEach');
+    expect(atom.usesJson).toEqual([
+      { kind: 'call', name: 'bootstrap', type: 'internal', line: 13 },
+      { kind: 'import', source: './setup.js', specifiers: ['setup'], line: 1 }
+    ]);
   });
 
   it('summarizes Tree-Sitter scope types across all accesses', () => {

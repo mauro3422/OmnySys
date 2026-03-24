@@ -5,8 +5,10 @@ import { saveAtom } from '#layer-c/storage/atoms/atom.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { enrichAtom as enrichAtomPurpose } from './phases/atom-extraction/metadata/purpose-enricher.js';
 import { enrichAtom as enrichAtomVectors } from '#layer-c/storage/enrichers/atom-enricher.js';
+import { saveFileSummariesBatch } from './file-summary-storage.js';
 import { createLogger } from '../../utils/logger.js';
 import { getGitStats } from '../../utils/git-analyzer.js';
+import { calculateContentHash } from './incremental-analysis-utils.js';
 
 const logger = createLogger('OmnySys:extract');
 const BATCH_SIZE = 50;
@@ -66,7 +68,8 @@ async function processFileAtoms({
     absoluteRootPath,
     atomPhase,
     gitStats,
-    allExtractedAtoms
+    allExtractedAtoms,
+    batchFileSummaries
 }) {
     const relativeFilePath = path.relative(absoluteRootPath, absoluteFilePath).replace(/\\/g, '/');
     const context = {
@@ -81,6 +84,18 @@ async function processFileAtoms({
 
     parsedFile.atoms = context.atoms || [];
     parsedFile.atomCount = context.atomCount || 0;
+
+    batchFileSummaries.push([
+        relativeFilePath,
+        {
+            imports: parsedFile.imports || [],
+            exports: parsedFile.exports || [],
+            moduleName: parsedFile.moduleName || null,
+            atomCount: context.atomCount || 0,
+            totalLines: parsedFile.source ? parsedFile.source.split(/\r?\n/).length : 0,
+            hash: calculateContentHash(parsedFile.source || '')
+        }
+    ]);
 
     if (context.atoms?.length > 0) {
         const fileGitStats = gitStats[relativeFilePath] || { ageDays: 0, changeFrequency: 0 };
@@ -116,6 +131,7 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
     for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
         const batch = entries.slice(i, i + BATCH_SIZE);
         const allExtractedAtoms = [];
+        const batchFileSummaries = [];
         const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
 
         if (verbose && batchIndex % 5 === 0) {
@@ -130,7 +146,8 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
                     absoluteRootPath,
                     atomPhase,
                     gitStats,
-                    allExtractedAtoms
+                    allExtractedAtoms,
+                    batchFileSummaries
                 });
                 batchTimer.onItemProcessed(1);
             } catch (error) {
@@ -143,6 +160,7 @@ export async function extractAndSaveAtoms(parsedFiles, absoluteRootPath, verbose
         }));
 
         await persistBatchAtoms(repo, absoluteRootPath, allExtractedAtoms);
+        saveFileSummariesBatch(repo, batchFileSummaries);
 
         const { logMemoryUsage } = await import('../../utils/memory-telemetry.js');
         logMemoryUsage(`Extract Batch ${batchIndex}/${totalBatches}`);

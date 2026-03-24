@@ -77,7 +77,8 @@ function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, conte
         imports: result.parsed?.imports || [],
         exports: result.parsed?.exports || [],
         atomCount: liteAtoms.length,
-        totalLines: content.split(/\r?\n/).length
+        totalLines: content.split(/\r?\n/).length,
+        hash: currentHash
     });
     state.allLiteResults[absoluteFilePath] = createAnalyzedResult(result, liteAtoms);
 }

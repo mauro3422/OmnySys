@@ -4,14 +4,15 @@ export function saveFileSummariesBatch(repo, entries, now = new Date().toISOStri
     }
 
     const upsertFileSummary = repo.db.prepare(`
-        INSERT INTO files (path, imports_json, exports_json, module_name, atom_count, total_lines, last_analyzed)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO files (path, imports_json, exports_json, module_name, atom_count, total_lines, hash, last_analyzed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(path) DO UPDATE SET
             imports_json = excluded.imports_json,
             exports_json = excluded.exports_json,
             module_name = excluded.module_name,
             atom_count = excluded.atom_count,
             total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
+            hash = COALESCE(excluded.hash, files.hash),
             last_analyzed = excluded.last_analyzed,
             is_removed = 0,
             updated_at = datetime('now')
@@ -26,6 +27,7 @@ export function saveFileSummariesBatch(repo, entries, now = new Date().toISOStri
                 summary.moduleName || null,
                 Number(summary.atomCount || 0),
                 Number(summary.totalLines || 0),
+                summary.hash || null,
                 now
             );
         }

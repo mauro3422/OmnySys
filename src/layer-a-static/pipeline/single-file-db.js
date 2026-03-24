@@ -62,7 +62,7 @@ export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
 /**
  * Guarda los resultados finales del analisis
  */
-export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, existingMap, incremental, verbose) {
+export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, fileHash, existingMap, incremental, verbose) {
     try {
         const repo = getRepository(absoluteRootPath);
 
@@ -72,7 +72,8 @@ export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis,
                 exports: fileAnalysis.exports || [],
                 moduleName: fileAnalysis.moduleName || deriveModuleName(singleFile, absoluteRootPath),
                 atomCount: fileAnalysis.totalAtoms || 0,
-                totalLines: fileAnalysis.totalLines || 0
+                totalLines: fileAnalysis.totalLines || 0,
+                hash: fileHash || null
             }]]);
 
             if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);

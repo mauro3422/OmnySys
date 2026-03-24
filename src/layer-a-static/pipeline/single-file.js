@@ -7,6 +7,7 @@ import { createLogger } from '../../utils/logger.js';
 import { loadExistingMap, saveAtoms, saveFileResult } from './single-file-db.js';
 import { resolveFileImports, detectConnections, buildFileAnalysis } from './single-file-utils.js';
 import { extractMetadataSurface } from './metadata-gateway.js';
+import { calculateContentHash } from './incremental-analysis-utils.js';
 
 const logger = createLogger('OmnySys:single:file');
 
@@ -57,12 +58,13 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
       ctx.atoms = await extractAtoms(ctx.parsedFile, ctx.parsedFile.source || '', ctx.metadata, ctx.singleFile, extractionDepth);
     })
     .addPhase('Persistence', async (ctx) => {
+      ctx.fileHash = calculateContentHash(ctx.parsedFile.source || '');
       await saveAtoms(ctx.absoluteRootPath, ctx.singleFile, ctx.atoms);
       ctx.fileAnalysis = buildFileAnalysis(
         ctx.singleFile, ctx.parsedFile, ctx.resolvedImports,
         ctx.staticConnections, ctx.advancedConnections, ctx.metadata, ctx.atoms
       );
-      await saveFileResult(ctx.absoluteRootPath, ctx.singleFile, ctx.fileAnalysis, ctx.existingMap, incremental, ctx.verbose);
+      await saveFileResult(ctx.absoluteRootPath, ctx.singleFile, ctx.fileAnalysis, ctx.fileHash, ctx.existingMap, incremental, ctx.verbose);
     });
 
   try {

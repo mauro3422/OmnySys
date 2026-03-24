@@ -40,6 +40,7 @@ const FIELD_TO_TOOLS_MAP = {
   // Campos de tests
   'isTestCallback': ['detect_patterns', 'get_health_metrics'],
   'testCallbackType': ['detect_patterns', 'get_health_metrics'],
+  'usesJson': ['get_call_graph', 'explain_value_flow', 'detect_patterns', 'get_health_metrics'],
 
   // Campos de conexiones
   'externalCalls': ['detect_race_conditions', 'get_risk_assessment'],
