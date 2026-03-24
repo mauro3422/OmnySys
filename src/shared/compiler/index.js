@@ -191,6 +191,10 @@ export {
 } from './system-map-persistence.js';
 
 export {
+  repairMetadataExtractionCoverage
+} from './metadata-extraction-coverage-repair.js';
+
+export {
   getMetadataSurfaceParity
 } from './metadata-surface-parity.js';
 

@@ -9,6 +9,19 @@
 
 import { toNumber } from './core-utils.js';
 import { buildNoDatabaseCoverage, buildTableCoverage } from './metadata-extraction-coverage-helpers.js';
+import { repairMetadataExtractionCoverage } from './metadata-extraction-coverage-repair.js';
+
+const REPAIRABLE_MISSING_FIELDS = new Set([
+  'test_callback_type',
+  'hash',
+  'calls_json',
+  'culture',
+  'culture_role',
+  'definitions_json',
+  'semantic_analysis_json',
+  'transitive_depends_json',
+  'transitive_dependents_json'
+]);
 
 const METADATA_SURFACE_TABLES = [
   {
@@ -213,7 +226,18 @@ export function getMetadataExtractionCoverage(db) {
     return buildNoDatabaseCoverage();
   }
 
-  return buildMetadataCoverageReport(collectMetadataCoverageTables(db));
+  const initialCoverage = buildMetadataCoverageReport(collectMetadataCoverageTables(db));
+  const hasRepairableMissingFields = Array.isArray(initialCoverage.topMissingFields)
+    && initialCoverage.topMissingFields.some((field) => REPAIRABLE_MISSING_FIELDS.has(field?.field));
+
+  if (initialCoverage.healthy === false || hasRepairableMissingFields) {
+    const repairResult = repairMetadataExtractionCoverage(db);
+    if (repairResult?.repaired === true) {
+      return buildMetadataCoverageReport(collectMetadataCoverageTables(db));
+    }
+  }
+
+  return initialCoverage;
 }
 
 export function summarizeMetadataExtractionCoverage(coverage = null) {

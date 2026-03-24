@@ -65,7 +65,7 @@ function createAnalyzedResult(result, liteAtoms) {
     };
 }
 
-function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result) {
+function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, currentHash, result) {
     const liteAtoms = result.atoms.map((atom) => createLiteAtom(
         atom,
         relativeFilePath,
@@ -170,7 +170,7 @@ async function analyzeAndPersistFile({
             verbose: false
         });
 
-        saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, result);
+        saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, currentHash, result);
         return { skipped: false };
     } catch (error) {
         logger.warn(`[WorkerAnalysis] Failed to analyze ${relativeFilePath}: ${error.message}`);

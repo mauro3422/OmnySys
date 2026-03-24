@@ -69,7 +69,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
 
   try {
     const finalContext = await runner.run(verbose);
-    if (verbose) printSummary(absoluteRootPath, singleFile, finalContext.fileAnalysis);
+    if (verbose) printSingleFileSummary(absoluteRootPath, singleFile, finalContext.fileAnalysis);
     return finalContext.fileAnalysis;
   } catch (error) {
     logger.error(`❌ Single-file analysis failed: ${error.message}`);
@@ -79,7 +79,7 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
 
 
 
-function printSummary(absoluteRootPath, singleFile, fileAnalysis) {
+function printSingleFileSummary(absoluteRootPath, singleFile, fileAnalysis) {
   logger.info(`💾 Results saved to SQLite for: ${singleFile}`);
   logger.info(`\n📊 Summary:`);
   logger.info(`  - Imports: ${fileAnalysis.imports.length}`);
