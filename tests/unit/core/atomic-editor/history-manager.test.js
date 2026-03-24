@@ -287,13 +287,11 @@ describe('HistoryManager', () => {
     });
   });
 
-  describe('clear()', () => {
+  describe('resetUndoRedoState()', () => {
     it('empties history', () => {
       history.add({ type: 'modify' }, {});
       history.add({ type: 'insert' }, {});
-
-      history.clear();
-
+      history.resetUndoRedoState();
       expect(history.history).toEqual([]);
       expect(history.historyIndex).toBe(-1);
     });
@@ -302,22 +300,20 @@ describe('HistoryManager', () => {
       history.add({ type: 'modify' }, {});
       history.add({ type: 'insert' }, {});
       history.moveBackward();
-
-      history.clear();
-
+      history.resetUndoRedoState();
       expect(history.historyIndex).toBe(-1);
     });
   });
 
-  describe('getAll()', () => {
+  describe('getHistorySnapshot()', () => {
     it('returns empty array when no history', () => {
-      expect(history.getAll()).toEqual([]);
+      expect(history.getHistorySnapshot()).toEqual([]);
     });
 
     it('returns copy of history', () => {
       history.add({ type: 'modify' }, {});
 
-      const all = history.getAll();
+      const all = history.getHistorySnapshot();
 
       expect(all).not.toBe(history.history);
       expect(all.length).toBe(1);
@@ -328,7 +324,7 @@ describe('HistoryManager', () => {
       history.add({ type: 'insert', id: 2 }, {});
       history.add({ type: 'delete', id: 3 }, {});
 
-      const all = history.getAll();
+      const all = history.getHistorySnapshot();
 
       expect(all.length).toBe(3);
       expect(all[0].operation.id).toBe(1);

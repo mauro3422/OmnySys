@@ -70,17 +70,17 @@ export class SubscriptionManager {
    * Limpia todas las suscripciones
    * @returns {number} - Cantidad de suscripciones eliminadas
    */
-  clear() {
+  clearSubscriptions() {
     const count = this.subscriptions.size;
     this.subscriptions.clear();
     return count;
   }
 
   /**
-   * Obtiene todas las suscripciones
+   * Obtiene una copia de las suscripciones.
    * @returns {string[]}
    */
-  getAll() {
+  getSubscriptions() {
     return Array.from(this.subscriptions);
   }
 

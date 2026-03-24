@@ -236,13 +236,11 @@ describe('AnalysisQueue', () => {
       queue.enqueue('high.js', 'high');
       
       const all = queue.getQueueSnapshot();
-      const alias = queue.getAll();
       
       expect(all.critical.length).toBe(1);
       expect(all.high.length).toBe(1);
       expect(all.medium.length).toBe(0);
       expect(all.low.length).toBe(0);
-      expect(alias).toEqual(all);
     });
   });
 
