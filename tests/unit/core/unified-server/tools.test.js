@@ -13,7 +13,7 @@ describe('Tools - Status Tools', () => {
     mockServer = {
       projectPath: tempDir,
       cache: {
-        ramCacheGet: () => null,
+        getRamCache: () => null,
         set: () => {},
         getCacheStats: () => ({ ram: { entries: 0 }, disk: { entries: 0 } }),
         invalidate: () => {},
@@ -138,10 +138,12 @@ describe('Tools - Server Tools', () => {
     mockServer = {
       projectPath: tempDir,
       cache: {
-        ramCacheGet: () => null,
+        getRamCache: () => null,
         set: () => {},
         getCacheStats: () => ({ ram: { entries: 5 }, disk: { entries: 10 } }),
-        getRamStats: () => ({ entries: 5 }),
+        getRamCacheStats: () => ({ entries: 5 }),
+        setRamCache: () => {},
+        purge: () => {},
         invalidate: () => {},
         clear: () => {}
       },

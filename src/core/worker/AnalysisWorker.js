@@ -63,14 +63,14 @@ export class AnalysisWorker {
    * Pause the worker
    */
   pause() {
-    this.state.pause();
+    this.state.setPaused();
   }
 
   /**
    * Resume the worker
    */
   resume() {
-    this.state.resume();
+    this.state.setRunning();
   }
 
   /**
@@ -96,7 +96,7 @@ export class AnalysisWorker {
     this.state.startJob();
 
     const analyzer = new JobAnalyzer(this.rootPath, this.callbacks, this);
-    const result = await analyzer.analyze(job, jobId);
+    const result = await analyzer.runJobAnalysis(job, jobId);
 
   }
 }

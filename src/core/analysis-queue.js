@@ -1,13 +1,125 @@
 /**
  * analysis-queue.js
  * Cola de prioridad para trabajos de análisis
- * 
+ *
  * Prioridades: CRITICAL > HIGH > MEDIUM > LOW
  */
 
+const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low'];
+
+function normalizePriority(priority) {
+  const normalized = priority?.toLowerCase();
+  return PRIORITY_ORDER.includes(normalized) ? normalized : 'low';
+}
+
+function getPosition(queue, filePath) {
+  let position = 0;
+
+  for (const priority of PRIORITY_ORDER) {
+    const index = queue.queues[priority].findIndex((job) => job.filePath === filePath);
+    if (index !== -1) {
+      return position + index;
+    }
+    position += queue.queues[priority].length;
+  }
+
+  return -1;
+}
+
+function reprioritize(queue, filePath, newPriority) {
+  for (const priority of PRIORITY_ORDER) {
+    const index = queue.queues[priority].findIndex((job) => job.filePath === filePath);
+    if (index !== -1) {
+      const [job] = queue.queues[priority].splice(index, 1);
+      job.priority = newPriority;
+      job.reprioritizedAt = Date.now();
+      queue.queues[newPriority].push(job);
+      return;
+    }
+  }
+}
+
+function enqueueItem(queue, filePath, priority = 'low') {
+  const validPriority = normalizePriority(priority);
+
+  if (queue.enqueuedFiles.has(filePath)) {
+    reprioritize(queue, filePath, validPriority);
+    return getPosition(queue, filePath);
+  }
+
+  queue.queues[validPriority].push({
+    filePath,
+    priority: validPriority,
+    enqueuedAt: Date.now()
+  });
+
+  queue.enqueuedFiles.add(filePath);
+  return getPosition(queue, filePath);
+}
+
+function enqueueJobItem(queue, job, priority = 'low') {
+  if (!job || !job.filePath) {
+    throw new Error('Job must have a filePath property');
+  }
+
+  const validPriority = normalizePriority(priority);
+
+  if (queue.enqueuedFiles.has(job.filePath)) {
+    reprioritize(queue, job.filePath, validPriority);
+    return getPosition(queue, job.filePath);
+  }
+
+  queue.queues[validPriority].push({
+    ...job,
+    priority: validPriority,
+    enqueuedAt: Date.now()
+  });
+
+  queue.enqueuedFiles.add(job.filePath);
+  return getPosition(queue, job.filePath);
+}
+
+function dequeueNext(queue) {
+  for (const priority of PRIORITY_ORDER) {
+    if (queue.queues[priority].length > 0) {
+      const job = queue.queues[priority].shift();
+      queue.enqueuedFiles.delete(job.filePath);
+      return job;
+    }
+  }
+
+  return null;
+}
+
+function peekNext(queue) {
+  for (const priority of PRIORITY_ORDER) {
+    if (queue.queues[priority].length > 0) {
+      return queue.queues[priority][0];
+    }
+  }
+
+  return null;
+}
+
+function getAllQueues(queue) {
+  return {
+    critical: [...queue.queues.critical],
+    high: [...queue.queues.high],
+    medium: [...queue.queues.medium],
+    low: [...queue.queues.low]
+  };
+}
+
+function resetQueueState(queue) {
+  queue.queues.critical = [];
+  queue.queues.high = [];
+  queue.queues.medium = [];
+  queue.queues.low = [];
+  queue.enqueuedFiles.clear();
+}
+
 export class AnalysisQueue {
   constructor() {
-    // Cuatro colas separadas por prioridad
     this.queues = {
       critical: [],
       high: [],
@@ -15,190 +127,58 @@ export class AnalysisQueue {
       low: []
     };
 
-    // Tracking de archivos encolados (evitar duplicados)
     this.enqueuedFiles = new Set();
   }
 
-  /**
-   * Agrega un archivo a la cola con prioridad
-   * @param {string} filePath - Ruta del archivo
-   * @param {string} priority - 'critical' | 'high' | 'medium' | 'low'
-   * @returns {number} - Posición en la cola (0 = siguiente a procesar)
-   */
   enqueue(filePath, priority = 'low') {
-    // Normalizar prioridad
-    const validPriority = this.normalizePriority(priority);
-
-    // Verificar si ya está encolado
-    if (this.enqueuedFiles.has(filePath)) {
-      // Si la nueva prioridad es mayor, mover a cola superior
-      this.reprioritize(filePath, validPriority);
-      return this.getPosition(filePath);
-    }
-
-    // Agregar a la cola correspondiente
-    this.queues[validPriority].push({
-      filePath,
-      priority: validPriority,
-      enqueuedAt: Date.now()
-    });
-
-    this.enqueuedFiles.add(filePath);
-
-    return this.getPosition(filePath);
+    return enqueueItem(this, filePath, priority);
   }
 
-  /**
-   * Agrega un job completo a la cola con prioridad
-   * @param {object} job - Job completo con filePath y metadata adicional
-   * @param {string} priority - 'critical' | 'high' | 'medium' | 'low'
-   * @returns {number} - Posición en la cola
-   */
   enqueueJob(job, priority = 'low') {
-    if (!job || !job.filePath) {
-      throw new Error('Job must have a filePath property');
-    }
-
-    // Normalizar prioridad
-    const validPriority = this.normalizePriority(priority);
-
-    // Verificar si ya está encolado
-    if (this.enqueuedFiles.has(job.filePath)) {
-      this.reprioritize(job.filePath, validPriority);
-      return this.getPosition(job.filePath);
-    }
-
-    // Agregar a la cola correspondiente con toda la metadata
-    this.queues[validPriority].push({
-      ...job,
-      priority: validPriority,
-      enqueuedAt: Date.now()
-    });
-
-    this.enqueuedFiles.add(job.filePath);
-
-    return this.getPosition(job.filePath);
+    return enqueueJobItem(this, job, priority);
   }
 
-  /**
-   * Obtiene el siguiente trabajo de mayor prioridad
-   * @returns {object|null} - Trabajo o null si vacío
-   */
   dequeue() {
-    // Buscar en orden de prioridad
-    for (const priority of ['critical', 'high', 'medium', 'low']) {
-      if (this.queues[priority].length > 0) {
-        const job = this.queues[priority].shift();
-        this.enqueuedFiles.delete(job.filePath);
-        return job;
-      }
-    }
-
-    return null;
+    return dequeueNext(this);
   }
 
-  /**
-   * Ver el siguiente trabajo sin sacarlo
-   * @returns {object|null}
-   */
   peek() {
-    for (const priority of ['critical', 'high', 'medium', 'low']) {
-      if (this.queues[priority].length > 0) {
-        return this.queues[priority][0];
-      }
-    }
-    return null;
+    return peekNext(this);
   }
 
-  /**
-   * Obtener posición de un archivo en la cola
-   */
   getPosition(filePath) {
-    let position = 0;
-
-    // Contar trabajos de mayor prioridad primero
-    for (const priority of ['critical', 'high', 'medium', 'low']) {
-      const index = this.queues[priority].findIndex(j => j.filePath === filePath);
-      if (index !== -1) {
-        return position + index;
-      }
-      position += this.queues[priority].length;
-    }
-
-    return -1; // No encontrado
+    return getPosition(this, filePath);
   }
 
-  /**
-   * Alias for getPosition — used by analyzeAndWait() in queueing.js
-   * Returns the position of a file in the queue, or -1 if not found.
-   * @param {string} filePath
-   * @returns {number}
-   */
   findPosition(filePath) {
     return this.getPosition(filePath);
   }
 
-  /**
-   * Cambiar prioridad de un archivo ya encolado
-   */
   reprioritize(filePath, newPriority) {
-    // Encontrar y remover de cola actual
-    for (const priority of ['critical', 'high', 'medium', 'low']) {
-      const index = this.queues[priority].findIndex(j => j.filePath === filePath);
-      if (index !== -1) {
-        const [job] = this.queues[priority].splice(index, 1);
-        // Agregar a nueva cola
-        job.priority = newPriority;
-        job.reprioritizedAt = Date.now();
-        this.queues[newPriority].push(job);
-        return;
-      }
-    }
+    return reprioritize(this, filePath, newPriority);
   }
 
-  /**
-   * Obtener todas las colas
-   */
+  getQueueSnapshot() {
+    return getAllQueues(this);
+  }
+
   getAll() {
-    return {
-      critical: [...this.queues.critical],
-      high: [...this.queues.high],
-      medium: [...this.queues.medium],
-      low: [...this.queues.low]
-    };
+    return this.getQueueSnapshot();
   }
 
-  /**
-   * Total de trabajos en cola
-   */
   size() {
     return this.enqueuedFiles.size;
   }
 
-  /**
-   * Verificar si un archivo está en cola
-   */
-  has(filePath) {
+  containsFile(filePath) {
     return this.enqueuedFiles.has(filePath);
   }
 
-  /**
-   * Limpiar todas las colas
-   */
-  clear() {
-    this.queues.critical = [];
-    this.queues.high = [];
-    this.queues.medium = [];
-    this.queues.low = [];
-    this.enqueuedFiles.clear();
+  resetQueue() {
+    resetQueueState(this);
   }
 
-  /**
-   * Normalizar nombre de prioridad
-   */
   normalizePriority(priority) {
-    const valid = ['critical', 'high', 'medium', 'low'];
-    const normalized = priority?.toLowerCase();
-    return valid.includes(normalized) ? normalized : 'low';
+    return normalizePriority(priority);
   }
 }

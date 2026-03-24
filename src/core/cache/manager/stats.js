@@ -33,9 +33,9 @@ export function getCacheManagerStats() {
 /**
  * Returns full cache statistics, including the RAM cache layer.
  */
-export function getAllStats() {
+export function getCacheManagerOverview() {
   return {
     persistent: this.getCacheManagerStats(),
-    ram: this.getRamStats()
+    ram: this.getRamCacheStats()
   };
 }

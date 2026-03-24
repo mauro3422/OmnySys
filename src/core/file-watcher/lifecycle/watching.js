@@ -1,6 +1,6 @@
 import path from 'path';
 import { watch } from 'fs';
-import { access } from 'fs/promises';
+import { access, stat } from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
@@ -90,6 +90,11 @@ export function startWatching() {
  * Llama a esta funcion cuando detectes un cambio (fs.watch, etc.)
  */
 export async function notifyChange(filePath, changeType = 'modified', metadata = {}) {
+  const targetStats = await stat(filePath).catch(() => null);
+  if (!targetStats || targetStats.isDirectory()) {
+    return;
+  }
+
   const relativePath = path.relative(this.rootPath, filePath).replace(/\\/g, '/');
   const surface = this.classifyWatcherSurface(relativePath);
   if (!surface.relevant) {

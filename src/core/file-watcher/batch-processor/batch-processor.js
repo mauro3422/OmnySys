@@ -208,7 +208,7 @@ export class SmartBatchProcessor {
     return count;
   }
 
-  getStats = createStatsGetter('batch-processor');
+  getBatchProcessorStats = createStatsGetter('batch-processor');
 }
 
 export function createSmartBatchProcessor(options = {}) {

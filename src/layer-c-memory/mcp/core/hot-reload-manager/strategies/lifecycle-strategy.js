@@ -9,9 +9,6 @@
  */
 
 import { BaseStrategy } from './base-strategy.js';
-import { createLogger } from '../../../../utils/logger.js';
-
-const logger = createLogger('OmnySys:hot-reload:strategy:lifecycle');
 
 /**
  * Strategy for reloading lifecycle modules
@@ -20,17 +17,13 @@ const logger = createLogger('OmnySys:hot-reload:strategy:lifecycle');
  * @extends BaseStrategy
  */
 export class LifecycleStrategy extends BaseStrategy {
-  /**
-   * Reloads a lifecycle module.
-   *
-   * @param {string} filename - Lifecycle file to reload
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    if (!this._requestWorkerRestart(filename, 'Lifecycle module')) {
-      logger.warn(`Lifecycle reload requires manual restart in standalone mode: ${filename}`);
-    }
-  }
 }
+
+LifecycleStrategy.reloadPlan = {
+  mode: 'restart',
+  restartReason: 'Lifecycle module',
+  fallbackMessage: 'Lifecycle reload requires manual restart in standalone mode',
+  fallbackLevel: 'warn'
+};
 
 export default LifecycleStrategy;

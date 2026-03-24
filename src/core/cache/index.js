@@ -24,10 +24,8 @@ export {
 
 // Integration
 export {
-  analyzeWithUnifiedCache,
-  analyzeLLMWithUnifiedCache,
-  // Alias backward-compatible
-  analyzeLLMWithUnifiedCache as analyzeWithLLMCache
+  runStaticAnalysisWithUnifiedCache,
+  runLlmAnalysisWithUnifiedCache
 } from './integration.js';
 
 // Invalidator

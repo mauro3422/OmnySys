@@ -214,7 +214,7 @@ export class CircuitBreaker {
    * Reset a circuit to initial state
    * @param {string} operationId - Circuit identifier
    */
-  reset(operationId) {
+  resetCircuit(operationId) {
     this.circuits.delete(operationId);
     logger.info(`🔄 Circuit ${operationId} reset`);
   }
@@ -222,7 +222,7 @@ export class CircuitBreaker {
   /**
    * Reset all circuits
    */
-  resetAll() {
+  resetAllCircuits() {
     this.circuits.clear();
     logger.info('🔄 All circuits reset');
   }

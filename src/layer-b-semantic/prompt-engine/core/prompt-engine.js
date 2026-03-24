@@ -38,7 +38,7 @@ export class PromptEngine {
     this.schemaCache = new Map();
 
     // Registrar proveedor de estadísticas
-    statsPool.registerProvider('prompt-engine', () => this.getStats());
+    statsPool.registerProvider('prompt-engine', () => this.getPromptEngineStats());
 
     logger.debug('PromptEngine initialized');
   }
@@ -150,7 +150,7 @@ export class PromptEngine {
    * Obtiene estadísticas del engine
    * @returns {Object} - Estadísticas
    */
-  getStats() {
+  getPromptEngineStats() {
     return {
       cachedSchemas: this.schemaCache.size,
       config: { ...this.config }

@@ -39,7 +39,7 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
     societiesCount: null
   };
 
-  status.cache = cache?.getStats ? cache.getStats() : { status: 'initializing' };
+  status.cache = cache?.getCacheManagerStats ? cache.getCacheManagerStats() : { status: 'initializing' };
   status.nodeVitals = buildNodeVitals(server);
   status.sharedState = {
     status: 'settling',

@@ -55,15 +55,15 @@ describe('AnalysisQueue', () => {
 
   it('should track enqueued files', () => {
     queue.enqueue('/src/test.js', 'medium');
-    expect(queue.has('/src/test.js')).toBe(true);
-    expect(queue.has('/src/other.js')).toBe(false);
+    expect(queue.containsFile('/src/test.js')).toBe(true);
+    expect(queue.containsFile('/src/other.js')).toBe(false);
   });
 
   it('should return all queues', () => {
     queue.enqueue('/src/a.js', 'critical');
     queue.enqueue('/src/b.js', 'low');
     
-    const all = queue.getAll();
+    const all = queue.getQueueSnapshot();
     expect(all.critical.length).toBe(1);
     expect(all.low.length).toBe(1);
   });
@@ -102,9 +102,9 @@ describe('AnalysisQueue', () => {
     queue.enqueue('/src/c.js', 'medium');
     queue.enqueue('/src/d.js', 'low');
     
-    queue.clear();
+    queue.resetQueue();
     expect(queue.size()).toBe(0);
-    expect(queue.has('/src/a.js')).toBe(false);
+    expect(queue.containsFile('/src/a.js')).toBe(false);
   });
 
   it('should handle enqueueJob with metadata', () => {
@@ -123,7 +123,7 @@ describe('AnalysisQueue', () => {
   it('should normalize invalid priority to low', () => {
     queue.enqueue('/src/test.js', 'invalid');
     
-    const all = queue.getAll();
+    const all = queue.getQueueSnapshot();
     expect(all.low.length).toBe(1);
     expect(all.low[0].priority).toBe('low');
   });
@@ -142,7 +142,7 @@ describe('AnalysisQueue', () => {
     queue.enqueue('/src/test.js', 'medium');
     const after = Date.now();
     
-    const all = queue.getAll();
+    const all = queue.getQueueSnapshot();
     expect(all.medium[0].enqueuedAt).toBeGreaterThanOrEqual(before);
     expect(all.medium[0].enqueuedAt).toBeLessThanOrEqual(after);
   });

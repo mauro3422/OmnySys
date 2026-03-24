@@ -20,7 +20,7 @@ export function setupOrchestratorAPI() {
         return res.status(400).json({ error: 'filePath required' });
       }
 
-      const result = await this.handlePrioritize(filePath, priority, Date.now().toString());
+      const result = await this.prioritizeFile(filePath, priority, Date.now().toString());
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -53,7 +53,7 @@ export function setupOrchestratorAPI() {
   this.orchestratorApp.get('/queue', (req, res) => {
     res.json({
       current: this.currentJob,
-      queue: this.queue.getAll(),
+      queue: this.queue.getQueueSnapshot(),
       total: this.queue.size(),
       stats: this.stats
     });
@@ -62,7 +62,7 @@ export function setupOrchestratorAPI() {
   // POST /restart - Restart orchestrator
   this.orchestratorApp.post('/restart', async (req, res) => {
     try {
-      await this.restart();
+      await this.restartOrchestrator();
       res.json({ status: 'restarted' });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -138,7 +138,7 @@ export function setupBridgeAPI() {
       if (!filePath) {
         return res.status(400).json({ error: 'filePath required' });
       }
-      const result = await this.handlePrioritize(filePath, priority, Date.now().toString());
+      const result = await this.prioritizeFile(filePath, priority, Date.now().toString());
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -162,7 +162,7 @@ export function setupBridgeAPI() {
   // GET /api/watcher - File watcher stats
   this.bridgeApp.get('/api/watcher', async (req, res) => {
     try {
-      const stats = this.fileWatcher?.getStats() || { error: 'File watcher not initialized' };
+      const stats = this.fileWatcher?.getFileWatcherStats() || { error: 'File watcher not initialized' };
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -240,7 +240,7 @@ export function setupWebSocket() {
   // GET /api/batch - Batch processor stats
   this.bridgeApp.get('/api/batch', async (req, res) => {
     try {
-      const stats = this.batchProcessor?.getStats() || { error: 'Batch processor not initialized' };
+      const stats = this.batchProcessor?.getBatchProcessorStats() || { error: 'Batch processor not initialized' };
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: error.message });

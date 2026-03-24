@@ -110,8 +110,8 @@ export function deriveAtomicCache(cache, filePath, atoms, ruleName) {
   return cache.derivations.derive(filePath, atoms, ruleName);
 }
 
-export function clearAtomicCache(cache) {
+export function purgeAtomicCache(cache) {
   cache.atoms.clear();
-  cache.derivations.reset();
+  cache.derivations.purge();
   cache.fileToAtoms.clear();
 }

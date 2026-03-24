@@ -186,7 +186,7 @@ export class AtomVersionManager {
    * 
    * @returns {Promise<Object>} Estadísticas
    */
-  getStats() {
+  getAtomVersionManagerStats() {
     return statsPool.getModuleStats('atom-version-manager');
   }
 }

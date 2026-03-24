@@ -56,21 +56,21 @@ export class PatternDetectorRegistry {
   /**
    * Unregister a detector
    */
-  unregister(id) {
+  removeDetector(id) {
     return this.detectors.delete(id);
   }
 
   /**
    * Clear all detectors
    */
-  clear() {
+  clearRegistry() {
     this.detectors.clear();
   }
 
   /**
    * Check if a detector exists
    */
-  has(id) {
+  containsDetector(id) {
     return this.detectors.has(id);
   }
 

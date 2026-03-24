@@ -15,7 +15,7 @@ describe('AnalysisQueue', () => {
       
       queue.enqueue(item.filePath, 'normal');
       
-      expect(queue.has('test.js')).toBe(true);
+      expect(queue.containsFile('test.js')).toBe(true);
     });
 
     it('should return position in queue', () => {
@@ -197,26 +197,26 @@ describe('AnalysisQueue', () => {
     });
   });
 
-  describe('has()', () => {
+  describe('containsFile()', () => {
     it('should return false for missing file', () => {
-      expect(queue.has('missing.js')).toBe(false);
+      expect(queue.containsFile('missing.js')).toBe(false);
     });
 
     it('should return true for enqueued file', () => {
       queue.enqueue('test.js', 'normal');
       
-      expect(queue.has('test.js')).toBe(true);
+      expect(queue.containsFile('test.js')).toBe(true);
     });
   });
 
-  describe('clear()', () => {
+  describe('resetQueue()', () => {
     it('should empty all queues', () => {
       queue.enqueue('critical.js', 'critical');
       queue.enqueue('high.js', 'high');
       queue.enqueue('normal.js', 'normal');
       queue.enqueue('low.js', 'low');
       
-      queue.clear();
+      queue.resetQueue();
       
       expect(queue.size()).toBe(0);
     });
@@ -224,23 +224,25 @@ describe('AnalysisQueue', () => {
     it('should clear enqueued files set', () => {
       queue.enqueue('test.js', 'normal');
       
-      queue.clear();
+      queue.resetQueue();
       
-      expect(queue.has('test.js')).toBe(false);
+      expect(queue.containsFile('test.js')).toBe(false);
     });
   });
 
-  describe('getAll()', () => {
+  describe('getQueueSnapshot()', () => {
     it('should return all queues', () => {
       queue.enqueue('critical.js', 'critical');
       queue.enqueue('high.js', 'high');
       
-      const all = queue.getAll();
+      const all = queue.getQueueSnapshot();
+      const alias = queue.getAll();
       
       expect(all.critical.length).toBe(1);
       expect(all.high.length).toBe(1);
       expect(all.medium.length).toBe(0);
       expect(all.low.length).toBe(0);
+      expect(alias).toEqual(all);
     });
   });
 

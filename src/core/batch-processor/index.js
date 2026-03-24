@@ -99,12 +99,8 @@ export class BatchProcessor extends EventEmitter {
    * Obtiene estadísticas del procesador
    * @returns {Object}
    */
-  getProcessorStats() {
+  getBatchProcessorStats() {
     return buildBatchProcessorStats(this);
-  }
-
-  getStats() {
-    return this.getProcessorStats();
   }
 }
 

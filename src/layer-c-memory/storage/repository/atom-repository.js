@@ -52,10 +52,6 @@ export class AtomRepository {
   getAtomRepositoryStats() {
     return statsPool.getModuleStats('atom-repository');
   }
-
-  getStats() {
-    return this.getAtomRepositoryStats();
-  }
 }
 
 for (const methodName of ABSTRACT_METHODS) {

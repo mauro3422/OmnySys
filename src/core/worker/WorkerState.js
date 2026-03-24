@@ -32,9 +32,9 @@ export class WorkerState {
   }
 
   /**
-   * Pause worker
+   * Mark worker as paused
    */
-  pause() {
+  setPaused() {
     this.isPaused = true;
     if (this.currentJob?.abortController) {
       this.currentJob.abortController.abort();
@@ -42,9 +42,9 @@ export class WorkerState {
   }
 
   /**
-   * Resume worker
+   * Mark worker as running
    */
-  resume() {
+  setRunning() {
     this.isPaused = false;
   }
 

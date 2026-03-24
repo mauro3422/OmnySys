@@ -1,4 +1,3 @@
-import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview Consistency Validator
  * 
@@ -152,9 +151,14 @@ export class ConsistencyValidator {
    * Obtiene estadísticas de validación
    * @returns {Object} - Estadísticas
    */
-getStats() {
-    return statsPool.getModuleStats('consistency-validator');
-  }  /**
+  getConsistencyValidatorStats() {
+    return {
+      data: this.dataLoader.getDataLoaderStats(),
+      issues: this.issueManager.calculateStats()
+    };
+  }
+
+  /**
    * Obtiene issues encontrados
    * @returns {Array} - Lista de issues
    */
@@ -165,9 +169,9 @@ getStats() {
   /**
    * Limpia el estado del validador
    */
-  reset() {
-    this.dataLoader.clear();
-    this.issueManager.clear();
+  resetValidationState() {
+    this.dataLoader.purgeDataCache();
+    this.issueManager.resetIssues();
     this.cache = null;
   }
 }

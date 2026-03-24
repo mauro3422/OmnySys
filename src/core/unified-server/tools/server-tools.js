@@ -29,7 +29,7 @@ export async function restartServer(clearCache = false) {
     
     if (clearCache && this.cache) {
       logger.info('🧹 Limpiando caché...');
-      this.cache.clear();
+      this.cache.purge();
       result.cacheCleared = true;
     }
     
@@ -64,7 +64,7 @@ export async function clearAnalysisCache() {
       return { error: 'Cache not initialized' };
     }
     
-    const beforeStats = this.cache.getRamStats();
+    const beforeStats = this.cache.getRamCacheStats();
     
     this.cache.invalidate('analysis:*');
     this.cache.invalidate('atom:*');
@@ -73,7 +73,7 @@ export async function clearAnalysisCache() {
     this.cache.invalidate('connections');
     this.cache.invalidate('assessment');
     
-    const afterStats = this.cache.getRamStats();
+    const afterStats = this.cache.getRamCacheStats();
     
     return {
       cleared: true,

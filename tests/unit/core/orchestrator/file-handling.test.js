@@ -36,7 +36,7 @@ describe('Orchestrator - File Handling', () => {
       
       await orchestrator.handleFileChange(testFile, 'modified');
       
-      expect(orchestrator.queue.has(testFile)).toBe(true);
+      expect(orchestrator.queue.containsFile(testFile)).toBe(true);
     });
 
     it('should not process immediately for normal modified', async () => {
@@ -64,10 +64,10 @@ describe('Orchestrator - File Handling', () => {
     it('should enqueue created file with high priority', async () => {
       await orchestrator.handleFileChange('src/new.js', 'created');
       
-      const allQueues = orchestrator.queue.getAll();
+      const allQueues = orchestrator.queue.getQueueSnapshot();
       const found = allQueues.high.some(j => j.filePath === 'src/new.js') ||
                     allQueues.critical.some(j => j.filePath === 'src/new.js');
-      expect(found || orchestrator.queue.has('src/new.js')).toBe(true);
+      expect(found || orchestrator.queue.containsFile('src/new.js')).toBe(true);
     });
 
     it('should not enqueue for deleted files', async () => {
@@ -135,7 +135,7 @@ describe('Orchestrator - File Handling', () => {
       
       await orchestrator.handleFileChange('src/critical-override.js', 'created', { priority: 'critical' });
       
-      const allQueues = orchestrator.queue.getAll();
+      const allQueues = orchestrator.queue.getQueueSnapshot();
       const criticalFiles = allQueues.critical.map(j => j.filePath);
       expect(criticalFiles).toContain('src/critical-override.js');
     });
@@ -209,9 +209,9 @@ describe('Orchestrator - File Handling', () => {
       
       await orchestrator.handleFileChange('src/priority-test.js', 'modified', { priority: 'critical' });
       
-      const allQueues = orchestrator.queue.getAll();
+      const allQueues = orchestrator.queue.getQueueSnapshot();
       const criticalFiles = allQueues.critical.map(j => j.filePath);
-      const isQueued = orchestrator.queue.has('src/priority-test.js');
+      const isQueued = orchestrator.queue.containsFile('src/priority-test.js');
       
       expect(isQueued).toBe(true);
       expect(criticalFiles).toContain('src/priority-test.js');
@@ -231,8 +231,8 @@ describe('Orchestrator - File Handling', () => {
       await orchestrator.handleFileChange('src/a.js', 'modified');
       await orchestrator.handleFileChange('src/b.js', 'created');
       
-      expect(orchestrator.queue.has('src/a.js')).toBe(true);
-      expect(orchestrator.queue.has('src/b.js')).toBe(true);
+      expect(orchestrator.queue.containsFile('src/a.js')).toBe(true);
+      expect(orchestrator.queue.containsFile('src/b.js')).toBe(true);
     });
 
     it('should not duplicate files in queue', async () => {
@@ -240,7 +240,7 @@ describe('Orchestrator - File Handling', () => {
       await orchestrator.handleFileChange('src/duplicate.js', 'modified');
       
       let count = 0;
-      const allQueues = orchestrator.queue.getAll();
+      const allQueues = orchestrator.queue.getQueueSnapshot();
       for (const priority of ['critical', 'high', 'medium', 'low']) {
         count += allQueues[priority].filter(j => j.filePath === 'src/duplicate.js').length;
       }
@@ -251,7 +251,7 @@ describe('Orchestrator - File Handling', () => {
       await orchestrator.handleFileChange('src/reprior.js', 'modified');
       await orchestrator.handleFileChange('src/reprior.js', 'created');
       
-      expect(orchestrator.queue.has('src/reprior.js')).toBe(true);
+      expect(orchestrator.queue.containsFile('src/reprior.js')).toBe(true);
     });
   });
 });

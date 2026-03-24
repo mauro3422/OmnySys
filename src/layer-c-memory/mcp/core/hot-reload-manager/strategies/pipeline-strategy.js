@@ -17,17 +17,13 @@ import { BaseStrategy } from './base-strategy.js';
  * @extends BaseStrategy
  */
 export class PipelineStrategy extends BaseStrategy {
-  /**
-   * Handles a pipeline file change.
-   *
-   * @param {string} filename - Changed pipeline file
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    if (!this._requestWorkerRestart(filename, 'Pipeline module')) {
-      this._log('Pipeline module changed - restart task to apply (8s)', filename);
-    }
-  }
 }
+
+PipelineStrategy.reloadPlan = {
+  mode: 'restart',
+  restartReason: 'Pipeline module',
+  fallbackMessage: 'Pipeline module changed - restart task to apply (8s)',
+  fallbackLevel: 'debug'
+};
 
 export default PipelineStrategy;

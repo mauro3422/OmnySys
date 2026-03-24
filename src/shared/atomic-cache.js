@@ -20,7 +20,7 @@ import {
   invalidateAtomicCacheAtom,
   invalidateAtomicCacheFile,
   deriveAtomicCache,
-  clearAtomicCache
+  purgeAtomicCache
 } from './atomic-cache-helpers.js';
 import {
   buildAtomicCacheOptions,
@@ -107,15 +107,11 @@ export class AtomicCache {
     return buildAtomicCacheStats(this);
   }
 
-  getStats() {
-    return this.getAtomicCacheStats();
-  }
-
   /**
    * Limpia todo el caché
    */
-  clear() {
-    return clearAtomicCache(this);
+  purge() {
+    return purgeAtomicCache(this);
   }
 
   /**

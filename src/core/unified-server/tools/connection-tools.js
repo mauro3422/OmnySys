@@ -16,7 +16,7 @@ import { getAllConnections } from '../../../layer-c-memory/query/apis/connection
  */
 export async function explainConnection(fileA, fileB) {
   try {
-    const connections = this.cache.ramCacheGet('connections') ||
+    const connections = this.cache.getRamCache('connections') ||
       await getAllConnections(this.projectPath);
 
     const relevant = connections.sharedState

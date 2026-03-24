@@ -100,7 +100,7 @@ export function invalidateDerived(filePath) {
  * Obtiene estadísticas específicas de átomos
  * @returns {object}
  */
-export function getAtomStats() {
+export function getAtomCacheStats() {
   const stats = {
     atomsCached: 0,
     derivedCached: 0,

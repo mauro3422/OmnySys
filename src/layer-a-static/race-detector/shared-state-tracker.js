@@ -158,7 +158,7 @@ export class SharedStateTracker {
   /**
    * Limpia el tracker
    */
-  clear() {
+  resetSharedState() {
     this.state.clear();
     this.accessLog = [];
   }

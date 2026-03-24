@@ -84,7 +84,7 @@ function hasBoundaryContainerName(name = '') {
 }
 
 function hasStandaloneBoundaryContainerName(name = '') {
-  return /(Server|Client|Cache|Processor|Coordinator|Worker|Bridge|Controller|Detector|Classifier|Scheduler|Step)$/i.test(name);
+  return /(Server|Client|Cache|Processor|Coordinator|Worker|Bridge|Controller|Detector|Classifier|Scheduler|Step|State|Dashboard)$/i.test(name);
 }
 
 function hasBoundaryContainerPath(filePath = '') {

@@ -185,7 +185,7 @@ export class PatternMatcher {
   /**
    * Get suggested mitigation strategies for a race
    */
-  getMitigationStrategies(patternType) {
+  resolveMitigationStrategies(patternType) {
     return this.registry.getMitigationStrategies(patternType);
   }
 

@@ -134,7 +134,7 @@ export class FileWatcher {
     return !!this.fsWatcher;
   }
 
-  getStats() {
+  getFileWatcherStats() {
     return {
       startupNoiseSuppressed: this._startupNoiseSuppressed,
       startupSuppressionWindowMs: 1500,

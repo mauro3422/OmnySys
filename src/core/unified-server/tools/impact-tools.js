@@ -17,7 +17,7 @@ import {
  * @returns {Promise<Object>} - Mapa de impacto
  */
 export async function getImpactMap(filePath) {
-  const cached = this.cache.ramCacheGet(`impact:${filePath}`);
+  const cached = this.cache.getRamCache(`impact:${filePath}`);
   if (cached) return cached;
 
   try {

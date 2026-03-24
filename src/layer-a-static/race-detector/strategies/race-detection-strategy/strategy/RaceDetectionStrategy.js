@@ -142,8 +142,8 @@ export class RaceDetectionStrategy {
    * Get mitigation strategies for a pattern type
    * @protected
    */
-  getMitigationStrategies(patternType) {
-    return this.raceFactory.getMitigationStrategies(patternType);
+  resolveMitigationStrategies(patternType) {
+    return this.raceFactory.resolveMitigationStrategies(patternType);
   }
 }
 

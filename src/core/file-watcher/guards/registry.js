@@ -29,14 +29,14 @@ class GuardRegistry {
         this.initializationPromise = null;
 
         // Registrar en StatsPool
-        statsPool.registerProvider('registry', () => this.getLocalStats());
+        statsPool.registerProvider('registry', () => this.getGuardRegistryStats());
     }
 
     /**
      * Obtiene estadísticas locales del registro
      * @returns {Object} Estadísticas formateadas
      */
-    getLocalStats() {
+    getGuardRegistryStats() {
         return {
             ...buildRegistryStats(this.semanticGuards, this.impactGuards, this.metadata),
             initialized: this.initialized
@@ -150,15 +150,6 @@ class GuardRegistry {
      * Obtiene estadísticas de los guards
      * @returns {Object} Estadísticas
      */
-    getRegistryStats() {
-        const stats = statsPool.getModuleStats('registry') || this.getLocalStats();
-        logger.debug(`[GuardRegistry] getRegistryStats returning: ${JSON.stringify(stats).substring(0, 100)}`);
-        return stats;
-    }
-
-    getStats() {
-        return this.getLocalStats();
-    }
 }
 
 // Exportar singleton

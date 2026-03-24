@@ -84,13 +84,6 @@ export class QualityScoreAggregator {
   }
 
   /**
-   * Convert score to grade (alias for engine compatibility)
-   */
-  scoreToGrade(score) {
-    return this.calculateGrade(score);
-  }
-
-  /**
    * Generate recommendations based on results
    */
   buildQualityRecommendations(results) {
@@ -112,13 +105,6 @@ export class QualityScoreAggregator {
     }
     
     return recommendations;
-  }
-
-  /**
-   * Compatibility alias for existing callers.
-   */
-  generateRecommendations(results) {
-    return this.buildQualityRecommendations(results);
   }
 
   /**

@@ -23,7 +23,7 @@ export async function getFullStatus() {
     orchestrator: {
       status: this.isRunning ? 'running' : 'paused',
       currentJob: this.currentJob,
-      queue: this.queue.getAll(),
+      queue: this.queue.getQueueSnapshot(),
       stats: this.stats
     },
     project: {

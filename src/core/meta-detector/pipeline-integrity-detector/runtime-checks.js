@@ -46,7 +46,7 @@ export async function checkGuardExecution(detector) {
         const { guardRegistry } = await import(`../../file-watcher/guards/registry.js?bust=${Date.now()}`);
         await guardRegistry.initializeDefaultGuards();
 
-        const stats = guardRegistry.getLocalStats();
+        const stats = guardRegistry.getGuardRegistryStats();
         const expectedGuards = { semantic: 8, impact: 12 };
         const missingGuards = [];
 

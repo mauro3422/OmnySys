@@ -20,7 +20,7 @@ describe('AtomicCache - Basic Operations', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('stores and retrieves an atom', () => {
@@ -76,7 +76,7 @@ describe('AtomicCache - TTL Expiration', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('returns atom before TTL expires', async () => {
@@ -116,7 +116,7 @@ describe('AtomicCache - Batch Operations', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('getAtoms returns found and missing', () => {
@@ -159,7 +159,7 @@ describe('AtomicCache - Invalidation', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('invalidates single atom', () => {
@@ -225,7 +225,7 @@ describe('AtomicCache - LRU Eviction', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('evicts oldest atom when limit reached', () => {
@@ -272,14 +272,14 @@ describe('AtomicCache - Statistics', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('returns correct stats', () => {
     const atom = AtomBuilder.create().build();
     cache.setAtom(atom.id, atom, atom.filePath);
 
-    const stats = cache.getStats();
+    const stats = cache.getAtomicCacheStats();
 
     expect(stats.atomsCached).toBe(1);
     expect(stats.filesTracked).toBe(1);
@@ -287,7 +287,7 @@ describe('AtomicCache - Statistics', () => {
   });
 
   it('tracks derivation stats', () => {
-    const stats = cache.getStats();
+    const stats = cache.getAtomicCacheStats();
     expect(stats.derivationStats).toBeDefined();
   });
 
@@ -298,12 +298,12 @@ describe('AtomicCache - Statistics', () => {
     cache.setAtom(atom1.id, atom1, atom1.filePath);
     cache.setAtom(atom2.id, atom2, atom2.filePath);
 
-    let stats = cache.getStats();
+    let stats = cache.getAtomicCacheStats();
     expect(stats.atomsCached).toBe(2);
 
     cache.invalidateAtom(atom1.id);
 
-    stats = cache.getStats();
+    stats = cache.getAtomicCacheStats();
     expect(stats.atomsCached).toBe(1);
   });
 });
@@ -316,7 +316,7 @@ describe('AtomicCache - Derivation Integration', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('derives molecular metadata from atoms', () => {
@@ -340,7 +340,7 @@ describe('AtomicCache - Derivation Integration', () => {
     cache.derive('file.js', atoms, 'moleculeExportCount');
     cache.derive('file.js', atoms, 'moleculeExportCount');
 
-    const stats = cache.derivations.getStats();
+    const stats = cache.derivations.getDerivationCacheStats();
     expect(stats.hits).toBe(1);
   });
 
@@ -366,7 +366,7 @@ describe('AtomicCache - Real File Scenarios', () => {
   });
 
   afterEach(async () => {
-    cache.clear();
+    cache.purge();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
@@ -407,28 +407,28 @@ export function processC() { return 3; }
   });
 });
 
-describe('AtomicCache - Clear Operation', () => {
+describe('AtomicCache - Purge Operation', () => {
   let cache;
 
   beforeEach(() => {
     cache = new AtomicCache();
   });
 
-  it('clears all data', () => {
+  it('purges all data', () => {
     const atom = AtomBuilder.create().build();
     cache.setAtom(atom.id, atom, atom.filePath);
 
-    cache.clear();
+    cache.purge();
 
     expect(cache.atoms.size).toBe(0);
     expect(cache.derivations.cache.size).toBe(0);
     expect(cache.fileToAtoms.size).toBe(0);
   });
 
-  it('allows reuse after clear', () => {
+  it('allows reuse after purge', () => {
     const atom1 = AtomBuilder.create('file1.js::func1').build();
     cache.setAtom(atom1.id, atom1, atom1.filePath);
-    cache.clear();
+    cache.purge();
 
     const atom2 = AtomBuilder.create('file2.js::func2').build();
     cache.setAtom(atom2.id, atom2, atom2.filePath);

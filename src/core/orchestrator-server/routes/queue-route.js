@@ -16,7 +16,7 @@ import { serverState } from '../server/state.js';
 export function handleQueue(req, res) {
   res.json({
     current: serverState.currentJob,
-    queue: serverState.queue.getAll(),
+    queue: serverState.queue.getQueueSnapshot(),
     total: serverState.queue.size()
   });
 }

@@ -17,17 +17,13 @@ import { BaseStrategy } from './base-strategy.js';
  * @extends BaseStrategy
  */
 export class ToolStrategy extends BaseStrategy {
-  /**
-   * Handles a tool file change.
-   *
-   * @param {string} filename - Changed tool file
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    if (!this._requestWorkerRestart(filename, 'Tool module')) {
-      this._log('Tool changed - restart task to apply (8s)', filename);
-    }
-  }
 }
+
+ToolStrategy.reloadPlan = {
+  mode: 'restart',
+  restartReason: 'Tool module',
+  fallbackMessage: 'Tool changed - restart task to apply (8s)',
+  fallbackLevel: 'debug'
+};
 
 export default ToolStrategy;

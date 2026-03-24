@@ -120,8 +120,8 @@ export class MockCacheManagerBuilder {
       // RAM cache methods
       set: (key, value) => { store.set(key, value); },
       get: (key) => store.get(key) ?? null,
-      ramCacheSet: (key, value) => { store.set(key, value); },
-      ramCacheGet: (key) => store.get(key) ?? null,
+      setRamCache: (key, value) => { store.set(key, value); },
+      getRamCache: (key) => store.get(key) ?? null,
 
       // Async methods (stubs)
       initialize: async () => { },

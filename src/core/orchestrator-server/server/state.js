@@ -130,23 +130,13 @@ export async function restart(updateCallback) {
   if (serverState.worker) {
     await serverState.worker.stop();
   }
-  serverState.queue.clear();
+  serverState.queue.resetQueue();
   serverState.currentJob = null;
   serverState.isRunning = true;
 
   await serverState.worker.initialize();
   updateCallback();
   processNext(updateCallback);
-}
-
-/**
- * Calculate ETA for a job position
- * @param {number} position - Position in queue
- * @returns {number} Estimated time in ms
- */
-export function calculateETA(position) {
-  const avgTime = serverState.stats.avgTime || 3000;
-  return position * avgTime;
 }
 
 /**
@@ -164,7 +154,7 @@ export function getStateData() {
       port: 9999
     },
     currentJob: serverState.currentJob,
-    queue: serverState.queue.getAll(),
+    queue: serverState.queue.getQueueSnapshot(),
     stats: serverState.stats
   };
 }

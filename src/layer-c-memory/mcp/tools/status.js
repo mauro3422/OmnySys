@@ -60,7 +60,7 @@ export async function get_server_status(args, context) {
     }
     attachOrchestratorStatus(status, orchestrator);
     attachRuntimeHotReload(status, server);
-    status.watcher = server.fileWatcher?.getStats?.() || null;
+    status.watcher = server.fileWatcher?.getFileWatcherStats?.() || null;
 
     const notifications = await loadNotifications(projectPath, server);
     const compactNotifications = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 5 });

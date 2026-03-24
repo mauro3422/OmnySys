@@ -128,9 +128,11 @@ export class DecisionAuditLogger {
     return getDecisionsForFile(this.decisions, filePath);
   }
 
-getStats() {
+  getAuditLoggerStats() {
     return statsPool.getModuleStats('audit-logger');
-  }  async overrideDecision(decisionId, overriddenBy, reason) {
+  }
+
+  async overrideDecision(decisionId, overriddenBy, reason) {
     const decision = this.decisions.get(decisionId);
     if (!decision) {
       throw new Error(`Decision not found: ${decisionId}`);

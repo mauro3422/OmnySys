@@ -274,7 +274,7 @@ export function resetRegistryStats() {
  * Obtiene estadísticas actuales
  * @returns {Object} Estadísticas
  */
-export function getRegistryStats() {
+export function getRuntimeRegistryHealthStats() {
     const stats = {};
     for (const [filePath, data] of registryStats.entries()) {
         stats[filePath] = {

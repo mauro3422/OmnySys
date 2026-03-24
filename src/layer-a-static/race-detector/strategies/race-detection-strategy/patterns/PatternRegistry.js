@@ -203,7 +203,7 @@ export class PatternRegistry {
   }
 
   /** Clear all registered patterns */
-  clear() {
+  resetPatterns() {
     this._patterns.clear();
     this._categories.clear();
     if (this._severityFallback) this._severityFallback.clear();

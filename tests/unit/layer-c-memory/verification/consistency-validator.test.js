@@ -233,10 +233,10 @@ describe('ConsistencyValidator', () => {
     });
   });
 
-  describe('getStats()', () => {
+  describe('getConsistencyValidatorStats()', () => {
     it('returns data and issue stats', async () => {
       await validator.validate();
-      const stats = validator.getStats();
+      const stats = validator.getConsistencyValidatorStats();
 
       expect(stats).toHaveProperty('data');
       expect(stats).toHaveProperty('issues');
@@ -252,12 +252,12 @@ describe('ConsistencyValidator', () => {
     });
   });
 
-  describe('reset()', () => {
+  describe('resetValidationState()', () => {
     it('resets cache to null', async () => {
       await validator.validate();
       expect(validator.cache).not.toBeNull();
 
-      validator.reset();
+      validator.resetValidationState();
 
       expect(validator.cache).toBeNull();
     });

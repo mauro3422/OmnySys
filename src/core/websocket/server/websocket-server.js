@@ -207,10 +207,6 @@ export class WebSocketManager extends EventEmitter {
     };
   }
 
-  getStats() {
-    return this.getWebSocketServerStats();
-  }
-
   /**
    * Detiene el servidor WebSocket
    * @returns {Promise<void>}

@@ -49,8 +49,8 @@ function createTunnelVisionDetectors(tracker) {
 function buildTunnelVisionDetectorStats(tracker, detectors) {
   return {
     tracker: tracker.getModificationTrackerStats(),
-    atomicDetector: detectors.atomic.getStats?.() || null,
-    fileDetector: detectors.file.getStats?.() || null,
+    atomicDetector: null,
+    fileDetector: null,
     minUnmodifiedDependents: MIN_UNMODIFIED_DEPENDENTS,
     recentWindowMs: RECENT_WINDOW_MS
   };
@@ -146,8 +146,8 @@ export class TunnelVisionDetector {
   /**
    * Manually triggers cleanup
    */
-  cleanup() {
-    this.tracker.cleanup();
+  _pruneExpiredModifications() {
+    this.tracker.pruneExpiredModifications();
   }
 
   /**
@@ -155,7 +155,7 @@ export class TunnelVisionDetector {
    * @private
    */
   _startCleanup() {
-    setInterval(() => this.cleanup(), 60 * 1000);
+    setInterval(() => this._pruneExpiredModifications(), 60 * 1000);
   }
 }
 
@@ -204,14 +204,14 @@ export function getModificationHistory() {
  * Prunes expired modification history entries (convenience function)
  */
 export function pruneExpiredHistory() {
-  return detector.cleanup();
+  return detector._pruneExpiredModifications();
 }
 
 /**
  * Clears all modifications (for testing)
  */
 export function resetHistory() {
-  return detector.tracker.clear();
+  return detector.tracker.resetHistory();
 }
 
 // Export all components for advanced usage

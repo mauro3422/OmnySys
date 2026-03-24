@@ -162,7 +162,7 @@ export class FallbackStrategy {
   /**
    * Clear all registrations
    */
-  clear() {
+  resetFallbacks() {
     this.fallbacks.clear();
     this.fallbackResults.clear();
   }

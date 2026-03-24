@@ -52,7 +52,7 @@ export function invalidateCachedMolecule(cache, moleculeId) {
   }
 }
 
-export function clearDerivationCache(cache) {
+export function purgeDerivationCache(cache) {
   cache.cache.clear();
   cache.dependencyGraph.clear();
   cache.stats = { hits: 0, misses: 0 };

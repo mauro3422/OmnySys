@@ -114,7 +114,7 @@ const CacheTestHelper = {
   deriveTwice: (cache, atoms, rule) => {
     cache.derive('test.js', atoms, rule);
     cache.derive('test.js', atoms, rule);
-    return cache.getStats();
+    return cache.getDerivationCacheStats();
   },
 
   deriveMultiple: (cache, atoms, rules) => {
@@ -131,7 +131,7 @@ describe('DerivationCache - Basic Operations', () => {
   });
 
   afterEach(() => {
-    cache.clear();
+    cache.purge();
   });
 
   it('derives and caches result', () => {
@@ -169,7 +169,7 @@ describe('DerivationCache - Basic Operations', () => {
 
     cache.derive(scenario1.filePath, scenario1.atoms, 'moleculeExportCount');
     cache.derive(scenario2.filePath, scenario2.atoms, 'moleculeExportCount');
-    cache.clear();
+    cache.purge();
 
     expect(cache.cache.size).toBe(0);
     expect(cache.dependencyGraph.size).toBe(0);
@@ -191,7 +191,7 @@ describe('DerivationCache - Basic Operations', () => {
     const { atoms } = TestScenarioBuilder.create().build();
     const stats = CacheTestHelper.deriveTwice(cache, atoms, 'moleculeExportCount');
 
-    expect(stats.cacheSize).toBe(1);
+    expect(stats.size).toBe(1);
     expect(stats.hits).toBe(1);
     expect(stats.misses).toBe(1);
     expect(stats.hitRate).toBe(0.5);
@@ -201,12 +201,12 @@ describe('DerivationCache - Basic Operations', () => {
     const { atoms } = TestScenarioBuilder.create().build();
     const cacheKey = 'test.js::moleculeExportCount';
 
-    expect(cache.has(cacheKey)).toBe(false);
+    expect(cache.contains(cacheKey)).toBe(false);
 
     cache.derive('test.js', atoms, 'moleculeExportCount');
 
-    expect(cache.has(cacheKey)).toBe(true);
-    expect(cache.get(cacheKey)).toBeDefined();
+    expect(cache.contains(cacheKey)).toBe(true);
+    expect(cache.valueForKey(cacheKey)).toBeDefined();
   });
 });
 
@@ -594,9 +594,9 @@ describe('createComposer - Factory Function', () => {
       test: () => {
         const composer = createComposer();
         expect(composer.compose).toBeDefined();
-        expect(composer.getStats).toBeDefined();
+        expect(composer.getDerivationCacheStats).toBeDefined();
         expect(composer.invalidate).toBeDefined();
-        expect(composer.clear).toBeDefined();
+        expect(composer.purge).toBeDefined();
       },
     },
     {
@@ -608,7 +608,7 @@ describe('createComposer - Factory Function', () => {
         composer.compose('test.js', atoms);
         composer.compose('test.js', atoms);
 
-        const stats = composer.getStats();
+        const stats = composer.getDerivationCacheStats();
         expect(stats.hits).toBeGreaterThan(0);
       },
     },
@@ -621,7 +621,7 @@ describe('createComposer - Factory Function', () => {
         composer.compose('test.js', [atom]);
         composer.invalidate(atom.id);
 
-        expect(composer.getStats().cacheSize).toBe(0);
+        expect(composer.getDerivationCacheStats().size).toBe(0);
       },
     },
     {
@@ -631,9 +631,9 @@ describe('createComposer - Factory Function', () => {
         const { atoms } = TestScenarioBuilder.create().build();
 
         composer.compose('test.js', atoms);
-        composer.clear();
+        composer.purge();
 
-        expect(composer.getStats().cacheSize).toBe(0);
+        expect(composer.getDerivationCacheStats().size).toBe(0);
       },
     },
   ];

@@ -1,4 +1,5 @@
 import { createLogger } from '../../utils/logger.js';
+import { estimateQueueTime } from '../orchestrator-server/utils/eta.js';
 
 const logger = createLogger('OmnySys:orchestrator');
 
@@ -9,7 +10,7 @@ const logger = createLogger('OmnySys:orchestrator');
 // Orchestrator Logic
 // ============================================================
 
-export async function handlePrioritize(filePath, priority, requestId) {
+export async function prioritizeFile(filePath, priority, requestId) {
   // Check if already analyzed
   const isAnalyzed = await this.worker.isAnalyzed(filePath);
   if (isAnalyzed) {
@@ -29,8 +30,8 @@ export async function handlePrioritize(filePath, priority, requestId) {
 
   // If CRITICAL and lower priority job running, pause it
   if (priority === 'critical' && this.currentJob) {
-    const currentPriority = this.getPriorityLevel(this.currentJob.priority);
-    const newPriority = this.getPriorityLevel(priority);
+    const currentPriority = this.resolvePriorityLevel(this.currentJob.priority);
+    const newPriority = this.resolvePriorityLevel(priority);
 
     if (newPriority > currentPriority) {
       logger.info(`â¸ï¸  Pausing current job to prioritize ${path.basename(filePath)}`);
@@ -42,7 +43,7 @@ export async function handlePrioritize(filePath, priority, requestId) {
 
   // Start processing if idle
   if (!this.currentJob) {
-    this.processNext();
+    this.advanceQueue();
   }
 
   await this.updateState();
@@ -52,12 +53,12 @@ export async function handlePrioritize(filePath, priority, requestId) {
     filePath,
     priority,
     position,
-    estimatedTime: this.calculateETA(position),
+    estimatedTime: estimateQueueTime(position, this.stats.avgTime),
     requestId
   };
 }
 
-export async function processNext() {
+export async function advanceQueue() {
   if (!this.isRunning || this.currentJob) {
     return;
   }
@@ -88,7 +89,7 @@ export async function updateState() {
       port: this.ports.orchestrator
     },
     currentJob: this.currentJob,
-    queue: this.queue.getAll(),
+    queue: this.queue.getQueueSnapshot(),
     stats: this.stats,
     health: {
       status: 'healthy',
@@ -101,14 +102,9 @@ export async function updateState() {
   await this.stateManager.write(stateData);
 }
 
-export function getPriorityLevel(priority) {
+export function resolvePriorityLevel(priority) {
   const levels = { critical: 4, high: 3, medium: 2, low: 1 };
   return levels[priority] || 0;
-}
-
-export function calculateETA(position) {
-  const avgTime = this.stats.avgTime || 3000;
-  return position * avgTime;
 }
 
 export function invalidateCache(filePath) {
@@ -116,10 +112,10 @@ export function invalidateCache(filePath) {
   this.cache.ramCacheInvalidate(`file:${filePath}`);
 }
 
-export async function restart() {
+export async function restartOrchestrator() {
   logger.info('ðŸ”„ Restarting orchestrator...');
   await this.worker.stop();
-  this.queue.clear();
+  this.queue.resetQueue();
   this.currentJob = null;
   this.isRunning = true;
   await this.worker.initialize();

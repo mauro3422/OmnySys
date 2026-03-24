@@ -119,7 +119,7 @@ export class RetryStrategy {
    * Clear attempt tracking
    * @param {string} operationId - Optional specific operation to clear
    */
-  clearAttempts(operationId) {
+  resetAttempts(operationId) {
     if (operationId) {
       this.attempts.delete(operationId);
     } else {

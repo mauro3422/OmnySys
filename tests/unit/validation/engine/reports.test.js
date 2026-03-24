@@ -23,17 +23,17 @@ describe('ReportBuilder', () => {
     });
   });
 
-  describe('reset', () => {
+  describe('resetReport', () => {
     it('creates new report', () => {
       builder.addResult(ValidationResult.valid('e1', 'f1'));
       
-      builder.reset();
+      builder.resetReport();
       
       expect(builder.report.stats.total).toBe(0);
     });
 
     it('returns builder for chaining', () => {
-      const result = builder.reset();
+      const result = builder.resetReport();
       
       expect(result).toBe(builder);
     });

@@ -190,6 +190,6 @@ function handleReloadableChange({ eventType, filename, server, classifier, reloa
 }
 
 function snapshotWatcherStats(fileWatcher) {
-  return fileWatcher?.getStats?.() || {};
+  return fileWatcher?.getFileWatcherStats?.() || {};
 }
 

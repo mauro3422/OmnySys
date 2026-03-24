@@ -107,10 +107,6 @@ class ConnectionManager {
     return statsPool.getModuleStats('connection');
   }
 
-  getStats() {
-    return this.getConnectionStats();
-  }
-
   checkpoint() {
     return checkpointConnection(this, logger);
   }

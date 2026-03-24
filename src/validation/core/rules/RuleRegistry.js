@@ -22,14 +22,26 @@ export class RuleRegistry {
     this.rulesByEntity = new Map();
     this.invariants = [];
 
-    statsPool.registerProvider('RuleRegistry', () => ({
+    statsPool.registerProvider('RuleRegistry', () => this.getRuleRegistryStats());
+  }
+
+  getRuleRegistryStats() {
+    const byLayer = Object.fromEntries(
+      Object.entries(this.rulesByLayer).map(([k, v]) => [k, v.length])
+    );
+
+    const byEntity = Object.fromEntries(
+      Array.from(this.rulesByEntity.entries()).map(([entityType, rules]) => [entityType, rules.length])
+    );
+
+    return {
+      total: this.rules.size,
       totalRules: this.rules.size,
-      byLayer: Object.fromEntries(
-        Object.entries(this.rulesByLayer).map(([k, v]) => [k, v.length])
-      ),
+      byLayer,
+      byEntity,
       totalEntities: this.rulesByEntity.size,
       invariants: this.invariants.length
-    }));
+    };
   }
 
   /**
@@ -158,7 +170,7 @@ export class RuleRegistry {
   /**
    * Limpia todas las reglas
    */
-  clear() {
+  resetRegistry() {
     this.rules.clear();
     this.rulesByLayer.source = [];
     this.rulesByLayer.derivation = [];

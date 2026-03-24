@@ -57,9 +57,9 @@ export async function loadExistingData(context) {
  * @param {Object} cache - Instancia de cache
  */
 export function initializeEmptyCache(cache) {
-  cache.ramCacheSet('metadata', { metadata: { totalFiles: 0 }, fileIndex: {} });
-  cache.ramCacheSet('connections', { sharedState: [], eventListeners: [], total: 0 });
-  cache.ramCacheSet('assessment', { report: { summary: {} } });
+  cache.setRamCache('metadata', { metadata: { totalFiles: 0 }, fileIndex: {} });
+  cache.setRamCache('connections', { sharedState: [], eventListeners: [], total: 0 });
+  cache.setRamCache('assessment', { report: { summary: {} } });
 }
 
 /**
@@ -96,5 +96,4 @@ import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:manager');
-
 

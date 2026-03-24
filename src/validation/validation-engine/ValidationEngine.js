@@ -37,7 +37,7 @@ export class ValidationEngine {
     this.runner = initializeRunner(this.options);
     this.reportBuilder = new ReportBuilder();
 
-    statsPool.registerProvider('ValidationEngine', () => this.reportBuilder.getStats());
+    statsPool.registerProvider('ValidationEngine', () => this.getValidationEngineStats());
   }
 
   async validate(projectPath, omnysysPath) {
@@ -46,7 +46,7 @@ export class ValidationEngine {
 
     this.context = new ValidationContext(projectPath, omnysysPath);
     await this.context.load();
-    this.reportBuilder.reset();
+    this.reportBuilder.resetReport();
 
     try {
       const results = await this.executeStrategies();
@@ -102,14 +102,18 @@ export class ValidationEngine {
     logger.info(`Set runner to: ${runner.name}`);
   }
 
-  clearCache() {
+  purgeExecutionCache() {
     this.cache.clear();
-    logger.info('Cache cleared');
+    logger.info('Execution cache purged');
   }
 
-  clearCache() {
-    this.cache.clear();
-    logger.info('Cache cleared');
+  getValidationEngineStats() {
+    return {
+      cacheSize: this.cache.size,
+      strategies: Array.from(this.strategies.keys()),
+      runner: this.runner?.name || null,
+      options: this.options
+    };
   }
 
   logStart(projectPath) {

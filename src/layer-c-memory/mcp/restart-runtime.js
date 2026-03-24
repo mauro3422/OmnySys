@@ -43,7 +43,7 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
       };
 
       if (clearCache && cache) {
-        await cache.clear();
+        await cache.purge();
         result.cacheCleared = true;
       }
 
@@ -96,7 +96,7 @@ function clearPendingHotReloadRestart(server) {
 async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
   logger.info('Cache-only flush requested...');
   if (cache) {
-    await cache.clear();
+    await cache.purge();
     logger.info('In-memory cache cleared');
   }
   await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
@@ -113,8 +113,8 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
 async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
   logger.info('Refresh-only requested...');
 
-  if (cache?.clear) {
-    await cache.clear();
+  if (cache?.purge) {
+    await cache.purge();
     logger.info('Runtime cache cleared');
   }
 
@@ -176,7 +176,7 @@ async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindex
 
   if (clearCache && cache) {
     logger.info('Clearing local cache before restart...');
-    await cache.clear();
+    await cache.purge();
     if (reanalyze) {
       logger.info('reanalyze=true: delegating data cleanup to proxy to avoid Windows file locks.');
     }
@@ -209,7 +209,7 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
 
 async function clearStandaloneCache(cache, reanalyze, server, result) {
   logger.info('Clearing cache...');
-  await cache.clear();
+  await cache.purge();
 
   if (reanalyze) {
     logger.info('Deleting previous analysis (full reindex)...');

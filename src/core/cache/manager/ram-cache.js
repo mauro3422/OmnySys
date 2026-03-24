@@ -158,7 +158,7 @@ export function invalidate(key) {
 /**
  * Limpia todo el caché
  */
-export function clear() {
+export function purge() {
   const hr = getRamRepo(this?.projectPath);
 
   if (hr) {
@@ -177,7 +177,7 @@ export function clear() {
 /**
  * Obtiene estadísticas del caché
  */
-export function getRamStats() {
+export function getRamCacheStats() {
   const hr = getRamRepo(this?.projectPath);
   const db = hr?.db;
 
@@ -224,16 +224,16 @@ export function getRamStats() {
 }
 
 /**
- * Alias for get() - Compatibilidad
+ * Get a RAM cache value through the cache manager API
  */
-export function ramCacheGet(key) {
+export function getRamCache(key) {
   return this.get(key);
 }
 
 /**
- * Alias for set() - Compatibilidad
+ * Set a RAM cache value through the cache manager API
  */
-export function ramCacheSet(key, data, ttlMinutes) {
+export function setRamCache(key, data, ttlMinutes) {
   return this.set(key, data, ttlMinutes);
 }
 

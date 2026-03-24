@@ -3,8 +3,8 @@
  * 
  * Tests para métodos reales del engine:
  * - analyze(), runDetector(), addDetector(), getResults()
- * - PatternDetectorRegistry: register(), get(), getAll(), has(), size()
- * - QualityScoreAggregator: calculate(), calculateGrade(), generateRecommendations()
+ * - PatternDetectorRegistry: register(), get(), getAll(), containsDetector(), size()
+ * - QualityScoreAggregator: calculate(), calculateGrade(), buildQualityRecommendations()
  * 
  * @module tests/functional/pattern-detection-detailed.functional.test
  */
@@ -57,7 +57,7 @@ describe('Pattern Detection - Detailed Tests', () => {
 
       engine.addDetector(detectorConfig);
       
-      expect(engine.registry.has('test-detector')).toBe(true);
+      expect(engine.registry.containsDetector('test-detector')).toBe(true);
     });
 
     it('analyze() runs async detection on systemMap', async () => {
@@ -161,7 +161,7 @@ describe('Pattern Detection - Detailed Tests', () => {
       registry.register(detector);
       
       expect(registry.size()).toBe(1);
-      expect(registry.has('d1')).toBe(true);
+      expect(registry.containsDetector('d1')).toBe(true);
     });
 
     it('register() requires id', () => {
@@ -188,11 +188,11 @@ describe('Pattern Detection - Detailed Tests', () => {
       expect(retrieved.priority).toBe(5);
     });
 
-    it('has() checks if detector exists', () => {
+    it('containsDetector() checks if detector exists', () => {
       registry.register({ id: 'd3', loader: () => Promise.resolve({}) });
 
-      expect(registry.has('d3')).toBe(true);
-      expect(registry.has('nonexistent')).toBe(false);
+      expect(registry.containsDetector('d3')).toBe(true);
+      expect(registry.containsDetector('nonexistent')).toBe(false);
     });
 
     it('getAll() returns all detectors sorted by priority', () => {
@@ -210,20 +210,20 @@ describe('Pattern Detection - Detailed Tests', () => {
       expect(all[2].priority).toBe(5);
     });
 
-    it('unregister() removes detector', () => {
+    it('removeDetector() removes detector', () => {
       registry.register({ id: 'd6', loader: () => Promise.resolve({}) });
-      expect(registry.has('d6')).toBe(true);
+      expect(registry.containsDetector('d6')).toBe(true);
       
-      registry.unregister('d6');
+      registry.removeDetector('d6');
 
-      expect(registry.has('d6')).toBe(false);
+      expect(registry.containsDetector('d6')).toBe(false);
       expect(registry.size()).toBe(0);
     });
 
-    it('clear() removes all detectors', () => {
+    it('clearRegistry() removes all detectors', () => {
       registry.register({ id: 'd7', loader: () => Promise.resolve({}) });
       registry.register({ id: 'd8', loader: () => Promise.resolve({}) });
-      registry.clear();
+      registry.clearRegistry();
 
       expect(registry.size()).toBe(0);
     });
@@ -276,18 +276,13 @@ describe('Pattern Detection - Detailed Tests', () => {
       expect(aggregator.calculateGrade(55)).toBe('F');
     });
 
-    it('scoreToGrade() is alias for calculateGrade()', () => {
-      expect(aggregator.scoreToGrade(95)).toBe('A');
-      expect(aggregator.scoreToGrade(55)).toBe('F');
-    });
-
-    it('generateRecommendations() provides suggestions from results', () => {
+    it('buildQualityRecommendations() provides suggestions from results', () => {
       const results = [
         { detector: 'complexity', findings: [{ severity: 'high' }], score: 45 },
         { detector: 'coupling', findings: [{ severity: 'medium' }], score: 60 }
       ];
 
-      const recommendations = aggregator.generateRecommendations(results);
+      const recommendations = aggregator.buildQualityRecommendations(results);
 
       expect(Array.isArray(recommendations)).toBe(true);
     });

@@ -15,7 +15,7 @@ import { getRiskAssessment } from '../../../layer-c-memory/query/apis/risk-api.j
  */
 export async function getRisk(minSeverity = 'medium') {
   try {
-    const assessment = this.cache.ramCacheGet('assessment') ||
+    const assessment = this.cache.getRamCache('assessment') ||
       await getRiskAssessment(this.projectPath);
 
     const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };

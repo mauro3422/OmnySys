@@ -11,7 +11,7 @@ export class BaseConsistencyValidator {
     this.statsModuleName = statsModuleName;
   }
 
-  getStats() {
+  getConsistencyStats() {
     return statsPool.getModuleStats(this.statsModuleName);
   }
 }

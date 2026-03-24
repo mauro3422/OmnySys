@@ -17,17 +17,13 @@ import { BaseStrategy } from './base-strategy.js';
  * @extends BaseStrategy
  */
 export class QueryStrategy extends BaseStrategy {
-  /**
-   * Reloads a query module.
-   *
-   * @param {string} filename - Query file to reload
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    if (!this._requestWorkerRestart(filename, 'Query module')) {
-      this._log('Query changed - restart task to apply (8s)', filename);
-    }
-  }
 }
+
+QueryStrategy.reloadPlan = {
+  mode: 'restart',
+  restartReason: 'Query module',
+  fallbackMessage: 'Query changed - restart task to apply (8s)',
+  fallbackLevel: 'debug'
+};
 
 export default QueryStrategy;

@@ -192,7 +192,7 @@ export class DataLoader {
   /**
    * Limpia el cache
    */
-  clear() {
+  purgeDataCache() {
     this.cache.atoms.clear();
     this.cache.files.clear();
     this.cache.connections = [];
@@ -202,9 +202,10 @@ export class DataLoader {
    * Obtiene estadísticas de datos cargados
    * @returns {Object} - Estadísticas
    */
-getStats() {
+  getDataLoaderStats() {
     return statsPool.getModuleStats('data-loader');
-  }}
+  }
+}
 
 export default DataLoader;
 

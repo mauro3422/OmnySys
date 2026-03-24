@@ -13,7 +13,7 @@ import {
   deriveCachedValue,
   invalidateCachedDerivations,
   invalidateCachedMolecule,
-  clearDerivationCache,
+  purgeDerivationCache,
   buildDerivationCacheStats,
   getDerivationValue,
   hasDerivationValue
@@ -62,8 +62,8 @@ export class DerivationCache {
   /**
    * Reinicia toda la cache
    */
-  reset() {
-    return clearDerivationCache(this);
+  purge() {
+    return purgeDerivationCache(this);
   }
 
   /**
@@ -72,10 +72,6 @@ export class DerivationCache {
    */
   getDerivationCacheStats() {
     return buildDerivationCacheStats(this);
-  }
-
-  getStats() {
-    return this.getDerivationCacheStats();
   }
 
   /**

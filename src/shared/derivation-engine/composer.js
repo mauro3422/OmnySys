@@ -95,9 +95,9 @@ export function createComposer() {
 
   return {
     compose: (moleculeId, atoms) => composeMolecularMetadata(moleculeId, atoms, cache),
-    getStats: () => cache.getStats(),
+    getDerivationCacheStats: () => cache.getDerivationCacheStats(),
     invalidate: (atomId) => cache.invalidate(atomId),
-    clear: () => cache.clear()
+    purge: () => cache.purge()
   };
 }
 

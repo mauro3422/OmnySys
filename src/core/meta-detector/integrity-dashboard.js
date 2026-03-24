@@ -12,6 +12,104 @@ import { buildIntegrityRecommendation } from './integrity-contract.js';
 
 const logger = createLogger('OmnySys:IntegrityDashboard');
 
+function buildIntegrityGrade(score) {
+    if (score >= 95) return 'A+';
+    if (score >= 90) return 'A';
+    if (score >= 85) return 'B+';
+    if (score >= 80) return 'B';
+    if (score >= 75) return 'C+';
+    if (score >= 70) return 'C';
+    if (score >= 65) return 'D+';
+    if (score >= 60) return 'D';
+    return 'F';
+}
+
+function summarizeIntegrityResults(results, weights) {
+    let totalWeight = 0;
+    let passedWeight = 0;
+
+    for (const result of results) {
+        const weight = weights[result.severity] || 10;
+        totalWeight += weight;
+        if (result.passed) {
+            passedWeight += weight;
+        }
+    }
+
+    const overallHealth = totalWeight === 0 ? 100 : Math.round((passedWeight / totalWeight) * 100);
+    const criticalIssues = results.filter((r) => r.severity === 'high' && !r.passed);
+    const warnings = results.filter((r) => r.severity === 'medium' && !r.passed);
+
+    return {
+        overallHealth,
+        grade: buildIntegrityGrade(overallHealth),
+        summary: {
+            totalChecks: results.length,
+            passedChecks: results.filter((r) => r.passed).length,
+            failedChecks: results.filter((r) => !r.passed).length,
+            criticalIssues: criticalIssues.length,
+            warnings: warnings.length
+        },
+        criticalIssues,
+        warnings
+    };
+}
+
+function mapIntegrityIssues(issues) {
+    return issues.map((issue) => ({
+        check: issue.name,
+        severity: issue.severity,
+        details: issue.details,
+        recommendation: issue.recommendation
+    }));
+}
+
+function appendSection(lines, title, items, renderItem) {
+    if (items.length === 0) return;
+
+    lines.push(title);
+    for (const item of items) {
+        lines.push(renderItem(item));
+    }
+    lines.push('');
+}
+
+function buildIntegrityConsoleLines(report) {
+    const lines = [
+        '',
+        '==============================================',
+        '        OMNYSYS PIPELINE INTEGRITY REPORT',
+        '==============================================',
+        '',
+        `Timestamp: ${report.timestamp}`,
+        `Overall Health: ${report.overallHealth}/100 (Grade: ${report.grade})`,
+        '',
+        'Summary:',
+        `  Passed Checks: ${report.summary.passedChecks}/${report.summary.totalChecks}`,
+        `  Failed Checks: ${report.summary.failedChecks}`,
+        `  Critical Issues: ${report.summary.criticalIssues}`,
+        `  Warnings: ${report.summary.warnings}`,
+        ''
+    ];
+
+    appendSection(lines, 'CRITICAL ISSUES:', report.criticalIssues, (issue) => `   - ${issue.check}: ${issue.recommendation}`);
+    appendSection(lines, 'WARNINGS:', report.warnings, (issue) => `   - ${issue.check}: ${issue.recommendation}`);
+
+    if (report.recommendations.length > 0) {
+        lines.push('TOP RECOMMENDATIONS:');
+        for (let i = 0; i < Math.min(5, report.recommendations.length); i++) {
+            const rec = report.recommendations[i];
+            lines.push(`   ${i + 1}. [${rec.priority.toUpperCase()}] ${rec.action}`);
+            lines.push(`      Reason: ${rec.reason}`);
+            lines.push(`      Effort: ${rec.estimatedEffort}`);
+            lines.push('');
+        }
+    }
+
+    lines.push('==============================================');
+    return lines.join('\n');
+}
+
 /**
  * Dashboard de integridad del pipeline
  */
@@ -30,34 +128,16 @@ export class IntegrityDashboard {
      * @returns {Object} Reporte consolidado
      */
     async generateReport(results) {
-        const overallHealth = this.calculateOverallHealth(results);
-        const criticalIssues = results.filter(r => r.severity === 'high' && !r.passed);
-        const warnings = results.filter(r => r.severity === 'medium' && !r.passed);
-        const recommendations = this.generateRecommendations(results);
+        const { overallHealth, grade, summary, criticalIssues, warnings } = summarizeIntegrityResults(results, this.weights);
+        const recommendations = this.buildIntegrityRecommendations(results);
 
         return {
             timestamp: new Date().toISOString(),
             overallHealth,
-            grade: this.calculateGrade(overallHealth),
-            summary: {
-                totalChecks: results.length,
-                passedChecks: results.filter(r => r.passed).length,
-                failedChecks: results.filter(r => !r.passed).length,
-                criticalIssues: criticalIssues.length,
-                warnings: warnings.length
-            },
-            criticalIssues: criticalIssues.map(issue => ({
-                check: issue.name,
-                severity: issue.severity,
-                details: issue.details,
-                recommendation: issue.recommendation
-            })),
-            warnings: warnings.map(issue => ({
-                check: issue.name,
-                severity: issue.severity,
-                details: issue.details,
-                recommendation: issue.recommendation
-            })),
+            grade,
+            summary,
+            criticalIssues: mapIntegrityIssues(criticalIssues),
+            warnings: mapIntegrityIssues(warnings),
             recommendations,
             detailedResults: results
         };
@@ -67,41 +147,20 @@ export class IntegrityDashboard {
      * Calcula score de salud general (0-100)
      */
     calculateOverallHealth(results) {
-        let totalWeight = 0;
-        let passedWeight = 0;
-
-        for (const result of results) {
-            const weight = this.weights[result.severity] || 10;
-            totalWeight += weight;
-            if (result.passed) {
-                passedWeight += weight;
-            }
-        }
-
-        if (totalWeight === 0) return 100;
-
-        return Math.round((passedWeight / totalWeight) * 100);
+        return summarizeIntegrityResults(results, this.weights).overallHealth;
     }
 
     /**
      * Calcula grade basado en score
      */
-    calculateGrade(score) {
-        if (score >= 95) return 'A+';
-        if (score >= 90) return 'A';
-        if (score >= 85) return 'B+';
-        if (score >= 80) return 'B';
-        if (score >= 75) return 'C+';
-        if (score >= 70) return 'C';
-        if (score >= 65) return 'D+';
-        if (score >= 60) return 'D';
-        return 'F';
+    calculateIntegrityGrade(score) {
+        return buildIntegrityGrade(score);
     }
 
     /**
      * Genera recomendaciones priorizadas
      */
-    generateRecommendations(results) {
+    buildIntegrityRecommendations(results) {
         const recommendations = [];
 
         for (const result of results.filter(r => !r.passed)) {
@@ -125,53 +184,7 @@ export class IntegrityDashboard {
      * Genera resumen ejecutivo para mostrar en consola
      */
     generateConsoleSummary(report) {
-        const lines = [];
-
-        lines.push('');
-        lines.push('==============================================');
-        lines.push('        OMNYSYS PIPELINE INTEGRITY REPORT');
-        lines.push('==============================================');
-        lines.push('');
-        lines.push(`Timestamp: ${report.timestamp}`);
-        lines.push(`Overall Health: ${report.overallHealth}/100 (Grade: ${report.grade})`);
-        lines.push('');
-        lines.push('Summary:');
-        lines.push(`  Passed Checks: ${report.summary.passedChecks}/${report.summary.totalChecks}`);
-        lines.push(`  Failed Checks: ${report.summary.failedChecks}`);
-        lines.push(`  Critical Issues: ${report.summary.criticalIssues}`);
-        lines.push(`  Warnings: ${report.summary.warnings}`);
-        lines.push('');
-
-        if (report.criticalIssues.length > 0) {
-            lines.push('CRITICAL ISSUES:');
-            for (const issue of report.criticalIssues) {
-                lines.push(`   - ${issue.check}: ${issue.recommendation}`);
-            }
-            lines.push('');
-        }
-
-        if (report.warnings.length > 0) {
-            lines.push('WARNINGS:');
-            for (const issue of report.warnings) {
-                lines.push(`   - ${issue.check}: ${issue.recommendation}`);
-            }
-            lines.push('');
-        }
-
-        if (report.recommendations.length > 0) {
-            lines.push('TOP RECOMMENDATIONS:');
-            for (let i = 0; i < Math.min(5, report.recommendations.length); i++) {
-                const rec = report.recommendations[i];
-                lines.push(`   ${i + 1}. [${rec.priority.toUpperCase()}] ${rec.action}`);
-                lines.push(`      Reason: ${rec.reason}`);
-                lines.push(`      Effort: ${rec.estimatedEffort}`);
-                lines.push('');
-            }
-        }
-
-        lines.push('==============================================');
-
-        return lines.join('\n');
+        return buildIntegrityConsoleLines(report);
     }
 }
 

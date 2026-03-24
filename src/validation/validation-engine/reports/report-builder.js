@@ -15,14 +15,14 @@ import { ValidationReport, ValidationResult, ValidationSeverity } from '../../co
 export class ReportBuilder {
   constructor(options = {}) {
     this.options = options;
-    this.reset();
+    this.resetReport();
   }
 
   /**
    * Reinicia el builder
    * @returns {ReportBuilder}
    */
-  reset() {
+  resetReport() {
     this.report = new ValidationReport(this.options);
     return this;
   }
@@ -87,7 +87,7 @@ export class ReportBuilder {
    * Obtiene estadísticas del reporte actual
    * @returns {Object}
    */
-  getStats() {
+  getReportBuilderStats() {
     return this.report.stats || { passed: 0, failed: 0, critical: 0, total: 0 };
   }
 

@@ -76,7 +76,7 @@ export class CacheInitStep extends InitializationStep {
 
   async rollback(server, error) {
     if (server.cache) {
-      await server.cache.clear();
+      await server.cache.purge();
       server.cache = null;
     }
     server.metadata = null;

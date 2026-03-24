@@ -25,7 +25,7 @@ export class JobAnalyzer {
   /**
    * Analyze a job
    */
-  async analyze(job, jobId) {
+  async runJobAnalysis(job, jobId) {
     const signal = this.worker.state.currentJob?.signal;
 
     try {

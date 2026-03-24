@@ -1,8 +1,14 @@
+import fs from 'fs/promises';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
 
 export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPath, changeContext = {}) {
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats || stats.isDirectory()) {
+    return;
+  }
+
   const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
   fileWatcher._logger.info(`[FILE CREATED] ${filePath}${originSuffix}`);
 

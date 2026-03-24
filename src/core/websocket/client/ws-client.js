@@ -151,9 +151,5 @@ export class WSClient {
       projectPath: this.subscriptions?.getProject?.() || null
     };
   }
-
-  getStats() {
-    return this.getWebSocketClientStats();
-  }
 }
 

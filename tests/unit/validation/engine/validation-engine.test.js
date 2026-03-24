@@ -156,22 +156,22 @@ describe('ValidationEngine', () => {
     });
   });
 
-  describe('clearCache', () => {
+  describe('purgeExecutionCache', () => {
     it('clears cache', () => {
       const engine = new ValidationEngine();
       engine.cache.set('key', 'value');
       
-      engine.clearCache();
+      engine.purgeExecutionCache();
       
       expect(engine.cache.size).toBe(0);
     });
   });
 
-  describe('getStats', () => {
+  describe('getValidationEngineStats', () => {
     it('returns engine stats', () => {
       const engine = new ValidationEngine({ parallel: true });
       
-      const stats = engine.getStats();
+      const stats = engine.getValidationEngineStats();
       
       expect(stats.cacheSize).toBe(0);
       expect(stats.strategies).toContain('syntax');

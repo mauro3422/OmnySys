@@ -70,6 +70,13 @@ describe('integrity-analysis boundary heuristics', () => {
     }))).toBe(true);
   });
 
+  it('treats worker state shells as boundary containers', () => {
+    expect(isLikelyBoundaryContainerAtom(buildClassAtom({
+      name: 'WorkerState',
+      filePath: 'src/core/worker/WorkerState.js'
+    }))).toBe(true);
+  });
+
   it('does not classify ordinary classes as boundary containers', () => {
     expect(isLikelyBoundaryContainerAtom(buildClassAtom({
       name: 'PlainUtility',

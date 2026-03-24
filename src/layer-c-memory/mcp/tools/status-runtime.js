@@ -38,7 +38,7 @@ export function attachOrchestratorStatus(status, orchestrator) {
 }
 
 export function buildRuntimeHotReloadStatus(server) {
-  return server?.hotReloadManager?.getStats?.() || {
+  return server?.hotReloadManager?.getHotReloadStats?.() || {
     isWatching: false,
     isReloading: false,
     runtimeRestartMode: server?.runtimeRestartMode || 'manual',
@@ -61,7 +61,7 @@ export function attachRuntimeHotReload(status, server) {
 export function attachCacheStatus(status, cache) {
   if (cache) {
     try {
-      status.cache = cache.getStats ? cache.getStats() : { status: 'initializing' };
+      status.cache = cache.getCacheManagerStats ? cache.getCacheManagerStats() : { status: 'initializing' };
     } catch (error) {
       status.cache = { status: 'error', message: error.message };
     }

@@ -15,13 +15,13 @@ const logger = createLogger('OmnySys:file-watcher:batch:stats');
 export class BatchStats {
   constructor(verbose = false) {
     this.verbose = verbose;
-    this.reset();
+    this.resetStats();
   }
 
   /**
    * Reset all statistics
    */
-  reset() {
+  resetStats() {
     this.totalBatches = 0;
     this.massBatches = 0;
     this.totalChanges = 0;
@@ -57,7 +57,7 @@ export class BatchStats {
   /**
    * Get current statistics
    */
-  get() {
+  getBatchStats() {
     return {
       totalBatches: this.totalBatches,
       massBatches: this.massBatches,

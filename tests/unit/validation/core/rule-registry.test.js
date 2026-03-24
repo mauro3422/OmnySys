@@ -557,7 +557,7 @@ describe('RuleRegistry', () => {
     });
   });
 
-  describe('getStats', () => {
+  describe('getRuleRegistryStats', () => {
     it('returns registry statistics', () => {
       registry.registerMany([
         { id: 'r1', name: 'R1', layer: 'source', appliesTo: ['file'], invariant: true },
@@ -565,7 +565,7 @@ describe('RuleRegistry', () => {
         { id: 'r3', name: 'R3', layer: 'source', appliesTo: ['file', 'atom'] }
       ]);
       
-      const stats = registry.getStats();
+      const stats = registry.getRuleRegistryStats();
       
       expect(stats.total).toBe(3);
       expect(stats.byLayer.source).toBe(2);
@@ -576,14 +576,14 @@ describe('RuleRegistry', () => {
     });
   });
 
-  describe('clear', () => {
+  describe('resetRegistry', () => {
     it('removes all rules', () => {
       registry.registerMany([
         { id: 'r1', name: 'R1', invariant: true },
         { id: 'r2', name: 'R2', appliesTo: ['file'] }
       ]);
       
-      registry.clear();
+      registry.resetRegistry();
       
       expect(registry.list()).toHaveLength(0);
       expect(registry.getInvariants()).toHaveLength(0);

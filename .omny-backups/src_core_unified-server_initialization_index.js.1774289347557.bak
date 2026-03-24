@@ -1,11 +1,11 @@
-﻿/**
+/**
  * @fileoverview index.js
  * 
- * Initialization Module - SSOT para inicializaciÃ³n del servidor
+ * Initialization Module - SSOT para inicialización del servidor
  * 
- * Este mÃ³dulo centraliza toda la lÃ³gica de inicializaciÃ³n del
+ * Este módulo centraliza toda la lógica de inicialización del
  * OmnySysUnifiedServer siguiendo principios SOLID:
- * - S: Cada sub-mÃ³dulo tiene una responsabilidad Ãºnica
+ * - S: Cada sub-módulo tiene una responsabilidad única
  * - O: Extensible mediante nuevos inicializadores
  * - D: Depende de abstracciones (contextos), no de implementaciones
  * 
@@ -28,14 +28,14 @@ const logger = createLogger('OmnySys:index');
 export { calculateChangePriority } from './batch-processor-init.js';
 
 /**
- * Inicializa el servidor completo (API pÃºblica - compatible con versiÃ³n anterior)
+ * Inicializa el servidor completo (API pública - compatible con versión anterior)
  * @returns {Promise<boolean>}
  */
 export async function initialize() {
-  logger.info('\nâ•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—');
-  logger.info('â•‘     OmnySys Unified Server v2.0.0                         â•‘');
-  logger.info('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n');
-  logger.info(`ðŸ“ Project: ${this.projectPath}\n`);
+  logger.info('\n╔═══════════════════════════════════════════════════════════════╗');
+  logger.info('║     OmnySys Unified Server v2.0.0                         ║');
+  logger.info('╚═══════════════════════════════════════════════════════════════╝\n');
+  logger.info(`📁 Project: ${this.projectPath}\n`);
 
   try {
     cleanupInitializationListeners(this);
@@ -43,18 +43,18 @@ export async function initialize() {
     const { cache } = await cacheManager.initializeCache(this.projectPath);
     this.cache = cache;
 
-    // Verificar si existe anÃ¡lisis
+    // Verificar si existe análisis
     const hasAnalysis = await cacheManager.hasExistingAnalysis(this.OmnySysDataPath);
 
     if (!hasAnalysis) {
-      logger.info('  âš ï¸  No analysis data found (or already running via MCP index-runner)');
+      logger.info('  ⚠️  No analysis data found (or already running via MCP index-runner)');
       // FIX: Removed the automatic background trigger here because the MCP daemon's 
       // index-runner.js already handles full synchronous execution. Launching a background
       // queue simultaneously duplicates the AST extraction process, doubling the atoms 
       // (18k vs 9k) and causing 80-second delays due to lock contention.
 
       cacheManager.initializeEmptyCache(this.cache);
-      logger.info('  â³ Server initialized with empty cache, waiting for primary analysis to complete (or already ready)\n');
+      logger.info('  ⏳ Server initialized with empty cache, waiting for primary analysis to complete (or already ready)\n');
     } else {
       this.metadata = await cacheManager.loadExistingData({
         cache: this.cache,
@@ -74,15 +74,15 @@ export async function initialize() {
     // Step 3: Initialize File Watcher
     this.fileWatcher = await fileWatcherInit.initializeFileWatcher({
       projectPath: this.projectPath,
-      batchProcessor: null, // Se conecta despuÃ©s
-      wsManager: null // Se conecta despuÃ©s
+      batchProcessor: null, // Se conecta después
+      wsManager: null // Se conecta después
     });
 
     // Step 4: Initialize Batch Processor
     this.batchProcessor = await batchProcessorInit.initializeBatchProcessor({
       queue: this.queue,
-      wsManager: null, // Se actualiza despuÃ©s
-      processNextFn: () => this.advanceQueue(),
+      wsManager: null, // Se actualiza después
+      processNextFn: () => this.processNext(),
       isRunningRef: { current: this.isRunning },
       currentJobRef: { current: this.currentJob }
     });
@@ -93,13 +93,13 @@ export async function initialize() {
     this.fileWatcher.removeAllListeners('file:deleted');
 
     this.fileWatcher.on('file:created', (event) => {
-      this.batchProcessor?.queueChange(event.filePath, 'created');
+      this.batchProcessor?.addChange(event.filePath, 'created');
     });
     this.fileWatcher.on('file:modified', (event) => {
-      this.batchProcessor?.queueChange(event.filePath, 'modified');
+      this.batchProcessor?.addChange(event.filePath, 'modified');
     });
     this.fileWatcher.on('file:deleted', (event) => {
-      this.batchProcessor?.queueChange(event.filePath, 'deleted');
+      this.batchProcessor?.addChange(event.filePath, 'deleted');
     });
 
     // Step 5: Initialize WebSocket
@@ -111,7 +111,7 @@ export async function initialize() {
     // (Esto es un workaround para mantener compatibilidad)
 
     // Step 6: Start processing
-    this.advanceQueue();
+    this.processNext();
 
     this.initialized = true;
     this.emit('ready');
@@ -119,7 +119,7 @@ export async function initialize() {
 
     return true;
   } catch (error) {
-    logger.error('\nâŒ Initialization failed:', error.message);
+    logger.error('\n❌ Initialization failed:', error.message);
     logger.error(error.stack);
     throw error;
   }
@@ -127,14 +127,14 @@ export async function initialize() {
 
 
 /**
- * Verifica si existe anï¿½lisis (API pï¿½blica - compatible)
+ * Verifica si existe an�lisis (API p�blica - compatible)
  */
 export async function hasExistingAnalysis() {
   return cacheManager.hasExistingAnalysis(this.OmnySysDataPath);
 }
 
 
-// APIs de inicializaciÃ³n individuales (para uso avanzado)
+// APIs de inicialización individuales (para uso avanzado)
 export {
   cacheManager,
   analysisManager,
@@ -152,4 +152,3 @@ function cleanupInitializationListeners(server) {
   server.wsManager?.removeAllListeners?.('close');
   server.wsManager?.removeAllListeners?.('error');
 }
-

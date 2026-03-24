@@ -7,6 +7,7 @@
  */
 
 import { shouldPreempt } from '../utils/priority-helper.js';
+import { estimateQueueTime } from '../utils/eta.js';
 
 /**
  * Handle command requests
@@ -80,7 +81,7 @@ async function handlePrioritize(req, res, state, processNext, updateState) {
     filePath,
     priority,
     position,
-    estimatedTime: calculateETA(position, state.stats.avgTime),
+    estimatedTime: estimateQueueTime(position, state.stats.avgTime),
     requestId
   });
 }
@@ -103,12 +104,4 @@ async function handleResume(req, res, state, processNext, updateState) {
   await updateState();
   processNext(updateState);
   res.json({ status: 'resumed' });
-}
-
-/**
- * Calculate ETA for a position
- */
-function calculateETA(position, avgTime) {
-  const time = avgTime || 3000;
-  return position * time;
 }

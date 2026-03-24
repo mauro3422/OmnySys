@@ -136,9 +136,5 @@ export class Batch {
   getBatchStats() {
     return statsPool.getModuleStats('batch');
   }
-
-  getStats() {
-    return this.getBatchStats();
-  }
 }
 

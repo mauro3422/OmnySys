@@ -17,17 +17,13 @@ import { BaseStrategy } from './base-strategy.js';
  * @extends BaseStrategy
  */
 export class HandlerStrategy extends BaseStrategy {
-  /**
-   * Reloads a handler module.
-   *
-   * @param {string} filename - Handler file to reload
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    if (!this._requestWorkerRestart(filename, 'Handler module')) {
-      this._log('Handler changed - restart task to apply (8s)', filename);
-    }
-  }
 }
+
+HandlerStrategy.reloadPlan = {
+  mode: 'restart',
+  restartReason: 'Handler module',
+  fallbackMessage: 'Handler changed - restart task to apply (8s)',
+  fallbackLevel: 'debug'
+};
 
 export default HandlerStrategy;

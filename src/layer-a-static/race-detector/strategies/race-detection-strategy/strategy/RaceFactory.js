@@ -76,7 +76,7 @@ export class RaceFactory {
    * @param {string} patternType - Type of race pattern
    * @returns {Array<string>} - Mitigation strategies
    */
-  getMitigationStrategies(patternType) {
+  resolveMitigationStrategies(patternType) {
     return this.patternRegistry.getMitigationStrategies(patternType);
   }
 }

@@ -105,9 +105,9 @@ export function resetGuardianState(instance) {
   resetStats(instance.stats);
   instance.classifier.clearHistory();
   instance.recovery.resetStats();
-  instance.circuitBreaker.resetAll();
-  instance.retry.clearAttempts();
-  instance.fallback.clear();
+  instance.circuitBreaker.resetAllCircuits();
+  instance.retry.resetAttempts();
+  instance.fallback.resetFallbacks();
 }
 
 export async function clearGuardianErrorLog(projectPath) {

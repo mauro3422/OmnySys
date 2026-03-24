@@ -58,6 +58,12 @@ export async function saveAtom(atom, filePath) {
  */
 export async function handleFileModified(filePath, fullPath, changeContext = {}) {
   // Hash-dedup
+  const fs = await import('fs/promises');
+  const stats = await fs.stat(fullPath).catch(() => null);
+  if (!stats || stats.isDirectory()) {
+    return;
+  }
+
   const newHash = await this._calculateContentHash(fullPath);
   const oldHash = this.fileHashes?.get(filePath);
   if (newHash && oldHash && newHash === oldHash) {
@@ -68,8 +74,6 @@ export async function handleFileModified(filePath, fullPath, changeContext = {})
     this.fileHashes.set(filePath, newHash);
   }
   try {
-    const fs = await import('fs/promises');
-    const stats = await fs.stat(fullPath);
     if (this.fileStats) {
       this.fileStats.set(filePath, {
         mtimeMs: stats.mtimeMs,

@@ -17,17 +17,11 @@ import { BaseStrategy } from './base-strategy.js';
  * @extends BaseStrategy
  */
 export class ExtractorStrategy extends BaseStrategy {
-  /**
-   * Reloads an extractor module
-   * 
-   * @param {string} filename - Extractor file to reload
-   * @returns {Promise<void>}
-   */
-  async _applyReload(filename) {
-    // Extractors are used during analysis
-    // They will reload automatically on next analysis
-    this._log('Extractor queued for reload (will apply on next analysis)', filename);
-  }
 }
+
+ExtractorStrategy.reloadPlan = {
+  mode: 'log',
+  message: 'Extractor queued for reload (will apply on next analysis)'
+};
 
 export default ExtractorStrategy;

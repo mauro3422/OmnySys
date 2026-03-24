@@ -53,10 +53,6 @@ export class SQLiteAdapterCore extends AtomRepository {
     return statsPool.getModuleStats('sqlite-adapter-core');
   }
 
-  getStats() {
-    return this.getSQLiteAdapterCoreStats();
-  }
-
   shutdown() {
     return shutdownSQLiteAdapterCore(this, connectionManager);
   }

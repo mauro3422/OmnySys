@@ -80,8 +80,8 @@ describe('Orchestrator API', () => {
       worker: {
         isHealthy: vi.fn().mockReturnValue(true)
       },
-      handlePrioritize: vi.fn().mockResolvedValue({ status: 'queued', position: 1 }),
-      restart: vi.fn().mockResolvedValue(true)
+      prioritizeFile: vi.fn().mockResolvedValue({ status: 'queued', position: 1 }),
+      restartOrchestrator: vi.fn().mockResolvedValue(true)
     };
     
     routes = await createOrchestratorRouteHandlers(mockServer);
@@ -104,7 +104,7 @@ describe('Orchestrator API', () => {
       
       await routes.post['/command'](req, res);
       
-      expect(mockServer.handlePrioritize).toHaveBeenCalled();
+      expect(mockServer.prioritizeFile).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalled();
     });
 
@@ -114,7 +114,7 @@ describe('Orchestrator API', () => {
       
       await routes.post['/command'](req, res);
       
-      expect(mockServer.handlePrioritize).toHaveBeenCalledWith(
+      expect(mockServer.prioritizeFile).toHaveBeenCalledWith(
         '/src/test.js',
         'high',
         expect.any(String)
@@ -127,7 +127,7 @@ describe('Orchestrator API', () => {
       
       await routes.post['/command'](req, res);
       
-      expect(mockServer.handlePrioritize).toHaveBeenCalledWith(
+      expect(mockServer.prioritizeFile).toHaveBeenCalledWith(
         '/src/test.js',
         'critical',
         expect.any(String)
@@ -135,7 +135,7 @@ describe('Orchestrator API', () => {
     });
 
     it('should handle errors with 500 status', async () => {
-      mockServer.handlePrioritize.mockRejectedValueOnce(new Error('Processing failed'));
+      mockServer.prioritizeFile.mockRejectedValueOnce(new Error('Processing failed'));
       const req = createMockRequest({ body: { filePath: '/src/test.js' } });
       const res = createMockResponse();
       
@@ -235,12 +235,12 @@ describe('Orchestrator API', () => {
       
       await routes.post['/restart'](req, res);
       
-      expect(mockServer.restart).toHaveBeenCalled();
+      expect(mockServer.restartOrchestrator).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith({ status: 'restarted' });
     });
 
     it('should handle restart errors', async () => {
-      mockServer.restart.mockRejectedValueOnce(new Error('Restart failed'));
+      mockServer.restartOrchestrator.mockRejectedValueOnce(new Error('Restart failed'));
       const req = createMockRequest();
       const res = createMockResponse();
       
@@ -265,11 +265,11 @@ describe('Bridge API', () => {
         get: vi.fn().mockReturnValue(null)
       },
       fileWatcher: {
-        getStats: vi.fn().mockReturnValue({ watching: true }),
+        getFileWatcherStats: vi.fn().mockReturnValue({ watching: true }),
         notifyChange: vi.fn().mockResolvedValue(true)
       },
       batchProcessor: {
-        getStats: vi.fn().mockReturnValue({ batches: 0 }),
+        getBatchProcessorStats: vi.fn().mockReturnValue({ batches: 0 }),
         getBatchInfo: vi.fn().mockReturnValue(null),
         on: vi.fn(),
         off: vi.fn()
@@ -278,7 +278,7 @@ describe('Bridge API', () => {
       getFilesStatus: vi.fn().mockResolvedValue([{ path: '/src/test.js', status: 'analyzed' }]),
       getFileTool: vi.fn().mockResolvedValue({ path: '/src/test.js', analysis: {} }),
       getImpactMap: vi.fn().mockResolvedValue({ impacts: [] }),
-      handlePrioritize: vi.fn().mockResolvedValue({ status: 'queued' }),
+      prioritizeFile: vi.fn().mockResolvedValue({ status: 'queued' }),
       searchFiles: vi.fn().mockResolvedValue([{ path: '/src/test.js' }]),
       setupWebSocket: vi.fn()
     };
@@ -371,7 +371,7 @@ describe('Bridge API', () => {
       
       await routes.post['/api/analyze'](req, res);
       
-      expect(mockServer.handlePrioritize).toHaveBeenCalled();
+      expect(mockServer.prioritizeFile).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalled();
     });
 
@@ -391,7 +391,7 @@ describe('Bridge API', () => {
       
       await routes.post['/api/analyze'](req, res);
       
-      expect(mockServer.handlePrioritize).toHaveBeenCalledWith(
+      expect(mockServer.prioritizeFile).toHaveBeenCalledWith(
         '/src/test.js',
         'high',
         expect.any(String)
@@ -449,11 +449,14 @@ describe('Bridge API', () => {
       
       await routes.post['/api/watcher/notify'](req, res);
       
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         status: 'notified',
         filePath: '/src/test.js',
-        changeType: 'modified'
-      });
+        changeType: 'modified',
+        origin: 'manual',
+        actor: null,
+        source: 'bridge-api'
+      }));
     });
 
     it('should return 400 when filePath is missing', async () => {
@@ -488,7 +491,7 @@ describe('WebSocket API', () => {
     mockServer = {
       bridgeApp: null,
       batchProcessor: {
-        getStats: vi.fn().mockReturnValue({ batches: 5 }),
+        getBatchProcessorStats: vi.fn().mockReturnValue({ batches: 5 }),
         getBatchInfo: vi.fn().mockReturnValue(null),
         on: vi.fn(),
         off: vi.fn()

@@ -16,7 +16,7 @@ const logger = createLogger('OmnySys:cache:integration');
 /**
  * Wrapper para el análisis estático con caché inteligente
  */
-export async function analyzeWithUnifiedCache(options) {
+export async function runStaticAnalysisWithUnifiedCache(options) {
   const {
     rootPath,
     filePath,
@@ -87,7 +87,7 @@ export async function analyzeWithUnifiedCache(options) {
 /**
  * Wrapper para el análisis LLM con caché inteligente
  */
-export async function analyzeLLMWithUnifiedCache(options) {
+export async function runLlmAnalysisWithUnifiedCache(options) {
   const {
     filePath,
     content,
@@ -260,8 +260,8 @@ export function generateCacheReport(cacheManager) {
 
 export { ChangeType };
 export default {
-  analyzeWithUnifiedCache,
-  analyzeLLMWithUnifiedCache,
+  runStaticAnalysisWithUnifiedCache,
+  runLlmAnalysisWithUnifiedCache,
   invalidateDependentCaches,
   generateCacheReport
 };
