@@ -4,14 +4,13 @@
  * @module shared/compiler/live-row-relations-cleanup
  */
 
-export function buildOrphanCallCleanupStatement() {
+export function buildOrphanRelationCleanupStatement() {
   return `
     UPDATE atom_relations
     SET is_removed = 1,
         lifecycle_status = 'removed',
         updated_at = datetime('now')
-    WHERE relation_type = 'calls'
-      AND (is_removed IS NULL OR is_removed = 0)
+    WHERE (is_removed IS NULL OR is_removed = 0)
       AND (
         NOT EXISTS (
           SELECT 1

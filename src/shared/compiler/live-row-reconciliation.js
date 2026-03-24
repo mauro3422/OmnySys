@@ -6,7 +6,7 @@
 
 import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
-import { buildOrphanCallCleanupStatement } from './live-row-relations-cleanup.js';
+import { buildOrphanRelationCleanupStatement } from './live-row-relations-cleanup.js';
 import { countLiveRowDeletes, hasLiveRowDrift, runLiveRowCleanup } from './live-row-sync-helpers.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
 import {
@@ -53,7 +53,7 @@ export function buildLiveRowReconciliationPlan(db, options = {}) {
             'Reconcile stale files rows against the live atom graph before trusting support-table counts.',
             'Drop or archive stale risk rows once the owning file is no longer present in atoms.',
             'Prefer live atom-backed counts for compiler telemetry while cleanup remains pending.',
-            'Reconcile orphan call relations so atom_relations and call_graph stay aligned.',
+            'Reconcile orphan relation rows so atom_relations and call_graph stay aligned.',
             'Refresh semantic connection summaries on system_files after semantic_connections are rebuilt.'
         ]
     };
@@ -69,7 +69,7 @@ export function buildLiveRowCleanupPlan(db, options = {}) {
             atoms: `UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE (is_removed IS NULL OR is_removed = 0) AND file_path IS NOT NULL AND file_path != '' AND NOT EXISTS (SELECT 1 FROM files WHERE path = atoms.file_path AND (is_removed IS NULL OR is_removed = 0))`,
             files: buildDeleteStatement('files', 'path'),
             riskAssessments: `UPDATE risk_assessments SET is_removed = 1, lifecycle_status = 'removed', updated_at = datetime('now') WHERE file_path NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`,
-            relations: buildOrphanCallCleanupStatement(),
+            relations: buildOrphanRelationCleanupStatement(),
             issues: `UPDATE semantic_issues SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (file_path != 'project-wide') AND NOT EXISTS (SELECT 1 FROM files WHERE path = file_path AND (is_removed IS NULL OR is_removed = 0))`,
             connections: `UPDATE semantic_connections SET is_removed = 1, updated_at = datetime('now'), lifecycle_status = 'removed' WHERE (is_removed IS NULL OR is_removed = 0) AND (NOT EXISTS (SELECT 1 FROM files WHERE path = source_path AND (is_removed IS NULL OR is_removed = 0)) OR NOT EXISTS (SELECT 1 FROM files WHERE path = target_path AND (is_removed IS NULL OR is_removed = 0)))`
         },
@@ -153,7 +153,7 @@ export function buildLiveRowRemediationPlan(db, options = {}) {
             staleAtomRows > 0 ? 'Purge stale atoms that no longer have a canonical file row.' : 'atoms table is aligned.',
             staleFileRows > 0 ? 'Purge stale files rows.' : 'files table is aligned.',
             staleRiskRows > 0 ? 'Purge stale risk rows.' : 'risk_assessments is aligned.',
-            staleRelationRows > 0 ? 'Reconcile orphan call relations from atom_relations.' : 'call relations are aligned.',
+            staleRelationRows > 0 ? 'Reconcile orphan relation rows from atom_relations.' : 'relation rows are aligned.',
             staleConnectionRows > 0 ? 'Refresh semantic connection summaries on system_files.' : 'semantic connection summaries are aligned.'
         ]
     });
