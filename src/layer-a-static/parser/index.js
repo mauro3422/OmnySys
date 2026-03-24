@@ -158,6 +158,14 @@ export async function parseFile(filePath, code) {
  */
 export async function parseFileFromDisk(filePath, content = null) {
     try {
+        if (!content) {
+            const stat = await fs.stat(filePath).catch(() => null);
+            if (stat?.isDirectory()) {
+                logger.debug(`Skipping directory during parse: ${filePath}`);
+                return null;
+            }
+        }
+
         const raw = content ?? await fs.readFile(filePath, 'utf-8');
         const code = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
         const fileInfo = await parseFile(filePath, code);
