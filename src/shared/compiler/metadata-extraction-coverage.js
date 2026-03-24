@@ -15,6 +15,7 @@ const REPAIRABLE_MISSING_FIELDS = new Set([
   'test_callback_type',
   'hash',
   'calls_json',
+  'identifier_refs_json',
   'culture',
   'culture_role',
   'definitions_json',

@@ -19,7 +19,7 @@ import {
 
 const TEST_CALLBACK_RE = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\b/i;
 
-function inferTestCallbackType(functionInfo) {
+export function inferTestCallbackType(functionInfo) {
   if (functionInfo?.testCallbackType) {
     return functionInfo.testCallbackType;
   }

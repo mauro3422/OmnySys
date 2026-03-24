@@ -43,13 +43,14 @@ describe('metadata-extraction-coverage repair', () => {
     db.prepare(`
       INSERT INTO atoms (
         id, name, atom_type, file_path, line_start, line_end, lines_of_code, complexity,
-        is_test_callback, test_callback_type, calls_json, extracted_at, updated_at, is_removed
-      ) VALUES (?, ?, 'function', ?, 1, 1, 1, 1, 0, NULL, ?, datetime('now'), datetime('now'), 0)
+        is_test_callback, test_callback_type, calls_json, _meta_json, extracted_at, updated_at, is_removed
+      ) VALUES (?, ?, 'function', ?, 1, 1, 1, 1, 0, NULL, ?, ?, datetime('now'), datetime('now'), 0)
     `).run(
       'src/example.test.js::describe_arg1',
-      'describe_arg1',
+      'describe',
       'src/example.test.js',
-      JSON.stringify([{ name: 'bootstrap', type: 'internal', line: 1 }])
+      JSON.stringify([{ name: 'bootstrap', type: 'internal', line: 1 }]),
+      JSON.stringify({ identifierRefs: ['bootstrap', 'helperFn'] })
     );
 
     const repaired = repairMetadataExtractionCoverage(db);
@@ -74,17 +75,21 @@ describe('metadata-extraction-coverage repair', () => {
     expect(file.hash).toBe('abc123');
 
     const systemFile = db.prepare(`
-      SELECT culture, culture_role, definitions_json, calls_json
+      SELECT culture, culture_role, definitions_json, calls_json, identifier_refs_json
       FROM system_files
       WHERE path = ?
     `).get('src/example.test.js');
     expect(systemFile.culture).toBe('auditor');
     expect(systemFile.culture_role).toBe('Observes and validates production atoms');
     expect(JSON.parse(systemFile.definitions_json)).toEqual([
-      { type: 'function', name: 'describe_arg1', params: 0 }
+      { type: 'function', name: 'describe', params: 0 }
     ]);
     expect(JSON.parse(systemFile.calls_json)).toEqual([
       { name: 'bootstrap', type: 'internal', line: 1 }
+    ]);
+    expect(JSON.parse(systemFile.identifier_refs_json)).toEqual([
+      'bootstrap',
+      'helperFn'
     ]);
 
     const coverage = getMetadataExtractionCoverage(db);
@@ -95,7 +100,8 @@ describe('metadata-extraction-coverage repair', () => {
         expect.objectContaining({ field: 'calls_json' }),
         expect.objectContaining({ field: 'culture' }),
         expect.objectContaining({ field: 'culture_role' }),
-        expect.objectContaining({ field: 'definitions_json' })
+        expect.objectContaining({ field: 'definitions_json' }),
+        expect.objectContaining({ field: 'identifier_refs_json' })
       ])
     );
   });
