@@ -11,6 +11,14 @@ export function defineGuard(name, loadGuard, metadata) {
   return { name, loadGuard, metadata };
 }
 
+export function defineLazyGuard(name, moduleLoader, selector, metadata, label = 'guard') {
+  return defineGuard(
+    name,
+    async () => loadGuardMember(moduleLoader, selector, label),
+    metadata
+  );
+}
+
 export async function loadGuardMember(moduleLoader, selector, label = 'guard') {
   try {
     const mod = await moduleLoader();
