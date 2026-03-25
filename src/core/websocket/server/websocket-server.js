@@ -62,21 +62,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {Promise<void>}
    */
   async start() {
-    if (this.isRunning) {
-      return;
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        this.wss = new WebSocketServer({
-          port: this.options.port,
-          path: this.options.path
-        });
-        attachWebSocketServerListeners(this, this.wss, resolve, reject);
-      } catch (error) {
-        reject(error);
-      }
-    });
+    return startWebSocketServer(this);
   }
 
   /**

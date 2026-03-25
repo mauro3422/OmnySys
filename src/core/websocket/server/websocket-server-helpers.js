@@ -1,4 +1,5 @@
 import { createLogger } from '../../utils/logger.js';
+import crypto from 'crypto';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { handleConnection, handleDisconnection, handleServerError } from './connection-handler.js';
 import { WSClient } from '../client/ws-client.js';
@@ -35,6 +36,24 @@ export function attachWebSocketServerListeners(server, wss, resolve, reject) {
   wss.on('connection', (ws, req) => attachConnectionContext(server, ws, req));
   wss.once('error', startupErrorHandler);
   wss.once('listening', listeningHandler);
+}
+
+export async function startWebSocketServer(server) {
+  if (server.isRunning) {
+    return;
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      server.wss = new WebSocketServer({
+        port: server.options.port,
+        path: server.options.path
+      });
+      attachWebSocketServerListeners(server, server.wss, resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 export function attachConnectionContext(server, ws, req) {
