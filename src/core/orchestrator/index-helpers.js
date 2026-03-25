@@ -37,9 +37,9 @@ export function getOrchestratorStatus() {
     isIndexing: this.isIndexing,
     indexingProgress: this.indexingProgress,
     currentJob: this.currentJob,
-    queueSize: this.queue.size(),
+    queueSize: this.queue?.size?.() ?? 0,
     stats: this.stats,
-    uptime: Date.now() - this.startTime
+    uptime: this.startTime ? Date.now() - this.startTime : 0
   };
 }
 
@@ -84,6 +84,10 @@ export function initializeCompletionTrackingState(orchestrator) {
 }
 
 export function setupAtomicEditor(orchestrator) {
+  if (!orchestrator.atomicEditor || typeof orchestrator.atomicEditor.on !== 'function') {
+    return;
+  }
+
   orchestrator.atomicEditor.on('atom:validation:failed', (event) => {
     logger.error(`🚫 Atomic validation failed: ${event.file}`);
     logger.error(`   Error: ${event.error}`);
