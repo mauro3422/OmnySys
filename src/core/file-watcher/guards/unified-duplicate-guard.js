@@ -14,14 +14,8 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
-    normalizeFilePath,
-    summarizeAtomTestability,
-    loadPreviousFindings,
-    buildDuplicateDebtHistory,
-    coordinateDuplicateFindings
 } from '../../../shared/compiler/index.js';
 import {
     buildStructuralFindings,
@@ -34,6 +28,14 @@ import {
     detectConceptualFindings
 } from './duplicate-conceptual-core.js';
 import { persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
+import {
+    clearUnifiedDuplicateIssues,
+    normalizeUnifiedDuplicateFilePath,
+    loadUnifiedPreviousFindings,
+    buildUnifiedDebtHistory,
+    coordinateUnifiedDuplicateFindings,
+    summarizeUnifiedAtomTestability
+} from './unified-duplicate-guard-helpers.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
@@ -54,12 +56,10 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         enableConceptual = true
     } = options;
 
-    const normalizedFilePath = normalizeFilePath(filePath);
+    const normalizedFilePath = normalizeUnifiedDuplicateFilePath(filePath);
 
     if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_medium');
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_critical_high');
+        await clearUnifiedDuplicateIssues(rootPath, normalizedFilePath);
         return { structural: [], conceptual: [], coordinated: null };
     }
 
@@ -74,7 +74,7 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             return { structural: [], conceptual: [], coordinated: null };
         }
 
-        const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_%duplicate');
+        const previousFindings = loadUnifiedPreviousFindings(repo, normalizedFilePath);
 
         const structuralPromise = enableStructural
             ? runStructuralDuplicateGuard(repo, normalizedFilePath, providedAtoms, { maxFindings, minLinesOfCode })
@@ -96,9 +96,9 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             logger.debug(resultMessage);
         }
 
-        const coordinated = coordinateDuplicateFindings(structuralFindings, conceptualFindings);
+        const coordinated = coordinateUnifiedDuplicateFindings(structuralFindings, conceptualFindings);
         const allFindings = [...structuralFindings, ...conceptualFindings];
-        const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, allFindings, previousFindings);
+        const debtHistory = buildUnifiedDebtHistory(normalizedFilePath, allFindings, previousFindings);
 
         if (allFindings.length > 0) {
             await persistUnifiedFinding(
@@ -180,7 +180,7 @@ async function runConceptualDuplicateGuard(repo, rootPath, normalizedFilePath, o
             return [];
         }
 
-        const testabilitySummary = summarizeAtomTestability(localAtoms);
+        const testabilitySummary = summarizeUnifiedAtomTestability(localAtoms);
         return await detectConceptualFindings(
             repo,
             normalizedFilePath,
