@@ -33,17 +33,39 @@ Object.assign(
 
 let globalServerInstance = null;
 
+async function safeShutdownCurrentServer() {
+  if (!globalServerInstance) {
+    return;
+  }
+
+  try {
+    await globalServerInstance.shutdown();
+  } catch (error) {
+    const logger = createLogger('OmnySys:unified-server');
+    logger.error('Shutdown failed during interrupt handling', error);
+  } finally {
+    globalServerInstance = null;
+  }
+}
+
+async function safeStartUnifiedServer(absolutePath) {
+  try {
+    globalServerInstance = new OmnySysUnifiedServer(absolutePath);
+    await globalServerInstance.initialize();
+  } catch (error) {
+    globalServerInstance = null;
+    const logger = createLogger('OmnySys:unified-server');
+    logger.error('Unified server bootstrap failed', error);
+    throw error;
+  }
+}
+
 const main = createCliOrchestrator({
   name: 'unified-server',
   logger: createLogger,
   keepAlive: true,
-  onInterrupt: async () => {
-    if (globalServerInstance) await globalServerInstance.shutdown();
-  },
-  run: async ({ absolutePath }) => {
-    globalServerInstance = new OmnySysUnifiedServer(absolutePath);
-    await globalServerInstance.initialize();
-  }
+  onInterrupt: safeShutdownCurrentServer,
+  run: async ({ absolutePath }) => safeStartUnifiedServer(absolutePath)
 });
 
 export { OmnySysUnifiedServer, main };
