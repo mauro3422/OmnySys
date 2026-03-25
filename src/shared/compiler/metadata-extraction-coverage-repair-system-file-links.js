@@ -9,22 +9,7 @@
  */
 
 import { parsePersistedArray } from './core-utils.js';
-
-function normalizeDbPath(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
-
-function getTableColumns(db, table) {
-  return db.prepare(`PRAGMA table_info("${table}")`).all();
-}
-
-function hasColumn(columns, columnName) {
-  return Array.isArray(columns) && columns.some((column) => column?.name === columnName);
-}
+import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
 
 function buildSystemFileSemanticAnalysisByPath(db) {
   const atomColumns = getTableColumns(db, 'atoms');
@@ -263,3 +248,4 @@ export function backfillSystemFileTransitiveDepends(db, nowIso) {
 
   return updated;
 }
+

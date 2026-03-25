@@ -20,22 +20,7 @@ import {
 } from './metadata-extraction-coverage-repair-system-file-links.js';
 import { isTestFilePath } from '../../core/file-watcher/guards/impact-wave-helpers.js';
 import { inferTestCallbackType } from '../../layer-a-static/pipeline/phases/atom-extraction/builders/metadata-builder.js';
-
-function normalizeDbPath(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
-
-function getTableColumns(db, table) {
-  return db.prepare(`PRAGMA table_info("${table}")`).all();
-}
-
-function hasColumn(columns, columnName) {
-  return Array.isArray(columns) && columns.some((column) => column?.name === columnName);
-}
+import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
 
 function backfillAtomTestCallbackTypes(db, nowIso) {
   const rows = db.prepare(`

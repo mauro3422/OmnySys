@@ -7,11 +7,8 @@
  * @module shared/compiler/metadata-extraction-coverage-repair-system-files
  */
 import { parsePersistedArray, safeParseJson } from './core-utils.js';
-import {
-  backfillSystemFileSemanticAnalysis,
-  backfillSystemFileTransitiveDependents,
-  backfillSystemFileTransitiveDepends
-} from './metadata-extraction-coverage-repair-system-file-links.js';
+import { backfillSystemFileSemanticAnalysis, backfillSystemFileTransitiveDependents, backfillSystemFileTransitiveDepends } from './metadata-extraction-coverage-repair-system-file-links.js';
+import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
 const CULTURE_ROLES = {
   entrypoint: 'System entry point (CLI, server, main)',
   gatekeeper: 'Organizes module exports',
@@ -21,19 +18,6 @@ const CULTURE_ROLES = {
   citizen: 'Productive business logic',
   unknown: 'Unclassified'
 };
-function normalizeDbPath(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
-function getTableColumns(db, table) {
-  return db.prepare(`PRAGMA table_info("${table}")`).all();
-}
-function hasColumn(columns, columnName) {
-  return Array.isArray(columns) && columns.some((column) => column?.name === columnName);
-}
 function isEntryPointPath(filePath = '') {
   const normalized = normalizeDbPath(filePath).toLowerCase();
   if (!normalized) return false;
@@ -257,3 +241,4 @@ export function backfillSystemFileIdentifierRefs(db, nowIso) {
   }
   return updated;
 }
+
