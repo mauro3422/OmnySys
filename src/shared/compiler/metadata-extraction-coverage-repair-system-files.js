@@ -9,6 +9,7 @@
 import { parsePersistedArray, safeParseJson } from './core-utils.js';
 import { backfillSystemFileSemanticAnalysis, backfillSystemFileTransitiveDependents, backfillSystemFileTransitiveDepends } from './metadata-extraction-coverage-repair-system-file-links.js';
 import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
+import { buildConditionalUpdateStatement, runConditionalUpdate } from './metadata-extraction-coverage-repair-updates.js';
 const CULTURE_ROLES = {
   entrypoint: 'System entry point (CLI, server, main)',
   gatekeeper: 'Organizes module exports',
@@ -172,10 +173,7 @@ function resolveSystemFileMetadata(row, definitionsByPath) {
 export function backfillSystemFileCalls(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET calls_json = ?, updated_at = ? WHERE path = ? AND (calls_json IS NULL OR calls_json = '' OR calls_json = '[]')`
-    : `UPDATE system_files SET calls_json = ? WHERE path = ? AND (calls_json IS NULL OR calls_json = '' OR calls_json = '[]')`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(db, 'system_files', 'calls_json', "calls_json IS NULL OR calls_json = '' OR calls_json = '[]'", hasUpdatedAt);
   const groupedCalls = buildSystemFileCallsByPath(db);
   if (groupedCalls.size === 0) {
     return 0;
@@ -183,9 +181,7 @@ export function backfillSystemFileCalls(db, nowIso) {
   let updated = 0;
   for (const [filePath, bucket] of groupedCalls.entries()) {
     const payload = JSON.stringify(bucket.items);
-    const result = hasUpdatedAt
-      ? updateStmt.run(payload, nowIso, filePath)
-      : updateStmt.run(payload, filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, payload, nowIso, filePath);
     updated += Number(result?.changes || 0);
   }
   return updated;
@@ -193,10 +189,7 @@ export function backfillSystemFileCalls(db, nowIso) {
 export function backfillSystemFileDefinitionsAndCulture(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET culture = ?, culture_role = ?, definitions_json = ?, updated_at = ? WHERE path = ? AND ((culture IS NULL OR culture = '') OR (culture_role IS NULL OR culture_role = '') OR (definitions_json IS NULL OR definitions_json = '' OR definitions_json = '[]'))`
-    : `UPDATE system_files SET culture = ?, culture_role = ?, definitions_json = ? WHERE path = ? AND ((culture IS NULL OR culture = '') OR (culture_role IS NULL OR culture_role = '') OR (definitions_json IS NULL OR definitions_json = '' OR definitions_json = '[]'))`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(db, 'system_files', 'culture, culture_role, definitions_json', "(culture IS NULL OR culture = '') OR (culture_role IS NULL OR culture_role = '') OR (definitions_json IS NULL OR definitions_json = '' OR definitions_json = '[]')", hasUpdatedAt);
   const definitionsByPath = buildAtomDefinitionsByPath(db);
   const rows = db.prepare(`
     SELECT path, culture, culture_role, definitions_json, exports_json
@@ -213,9 +206,7 @@ export function backfillSystemFileDefinitionsAndCulture(db, nowIso) {
     if (!hasMissingCulture && !hasMissingRole && !hasMissingDefinitions) {
       continue;
     }
-    const result = hasUpdatedAt
-      ? updateStmt.run(patch.culture, patch.cultureRole, patch.definitionsJson, nowIso, patch.filePath)
-      : updateStmt.run(patch.culture, patch.cultureRole, patch.definitionsJson, patch.filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, [patch.culture, patch.cultureRole, patch.definitionsJson], nowIso, patch.filePath);
     updated += Number(result?.changes || 0);
   }
   return updated;
@@ -223,10 +214,7 @@ export function backfillSystemFileDefinitionsAndCulture(db, nowIso) {
 export function backfillSystemFileIdentifierRefs(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET identifier_refs_json = ?, updated_at = ? WHERE path = ? AND (identifier_refs_json IS NULL OR identifier_refs_json = '' OR identifier_refs_json = '[]')`
-    : `UPDATE system_files SET identifier_refs_json = ? WHERE path = ? AND (identifier_refs_json IS NULL OR identifier_refs_json = '' OR identifier_refs_json = '[]')`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(db, 'system_files', 'identifier_refs_json', "identifier_refs_json IS NULL OR identifier_refs_json = '' OR identifier_refs_json = '[]'", hasUpdatedAt);
   const groupedIdentifiers = buildSystemFileIdentifiersByPath(db);
   if (groupedIdentifiers.size === 0) {
     return 0;
@@ -234,9 +222,7 @@ export function backfillSystemFileIdentifierRefs(db, nowIso) {
   let updated = 0;
   for (const [filePath, bucket] of groupedIdentifiers.entries()) {
     const payload = JSON.stringify(bucket.items);
-    const result = hasUpdatedAt
-      ? updateStmt.run(payload, nowIso, filePath)
-      : updateStmt.run(payload, filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, payload, nowIso, filePath);
     updated += Number(result?.changes || 0);
   }
   return updated;
