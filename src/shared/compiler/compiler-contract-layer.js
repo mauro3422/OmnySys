@@ -18,7 +18,7 @@ import {
 } from './compiler-contract-layer-helpers.js';
 import { buildDerivedFeatureRegistry } from './derived-feature-registry.js';
 import { summarizeDataGatewayContract } from './data-gateway-contract.js';
-import { buildApiGovernance } from './compiler-contract-layer-governance.js';
+import { buildApiGovernance, buildInvariants } from './compiler-contract-layer-governance.js';
 
 export function buildCompilerContractLayer({
   persistedFileCoverage = null,
