@@ -1,9 +1,9 @@
-﻿import { createLogger } from '../../utils/logger.js';
+import { collectAndBuildFileAnalysis, runFileWatcherSemanticGuards } from './analyze-flow.js';
+import { buildFileWatcherCompileLogMessage } from './analyze-output.js';
+import { _calculateContentHash, _detectChangeType } from './analyze-utils.js';
+import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:analyze');
-
-import { collectAndBuildFileAnalysis, runFileWatcherSemanticGuards } from './analyze-flow.js';
-import { _calculateContentHash, _detectChangeType } from './analyze-utils.js';
 
 export { _detectChangeType, _calculateContentHash };
 
@@ -19,8 +19,9 @@ export async function collectFileAnalysis(filePath, fullPath) {
  */
 export async function collectAndIndexFile(filePath, fullPath, isUpdate = false) {
   const analysis = await collectFileAnalysis.call(this, filePath, fullPath);
-  logger.info(`🧩 FileWatcher compile: ${filePath} -> ${analysis.moleculeAtoms?.length || 0} atoms, shadow=${analysis.metadata?.shadowVolume ?? 'n/a'}%${isUpdate ? ' [update]' : ' [create]'}`);
+  logger.info(buildFileWatcherCompileLogMessage(filePath, analysis, isUpdate));
   await runFileWatcherSemanticGuards(this, filePath, analysis.moleculeAtoms);
 
   return analysis;
 }
+
