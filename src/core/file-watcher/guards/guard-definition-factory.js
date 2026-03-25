@@ -11,11 +11,39 @@ export function defineGuard(name, loadGuard, metadata) {
   return { name, loadGuard, metadata };
 }
 
+export function createGuardMetadata(domain, version, description, extraMetadata = {}) {
+  return {
+    domain,
+    version,
+    description,
+    ...extraMetadata
+  };
+}
+
 export function defineLazyGuard(name, moduleLoader, selector, metadata, label = 'guard') {
   return defineGuard(
     name,
     async () => loadGuardMember(moduleLoader, selector, label),
     metadata
+  );
+}
+
+export function defineVersionedLazyGuard(
+  name,
+  moduleLoader,
+  selector,
+  domain,
+  version,
+  description,
+  extraMetadata = {},
+  label = 'guard'
+) {
+  return defineLazyGuard(
+    name,
+    moduleLoader,
+    selector,
+    createGuardMetadata(domain, version, description, extraMetadata),
+    label
   );
 }
 

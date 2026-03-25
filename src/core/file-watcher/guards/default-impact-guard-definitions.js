@@ -1,4 +1,4 @@
-import { defineGuard, defineLazyGuard, loadGuardMember } from './guard-definition-factory.js';
+import { defineGuard, defineLazyGuard, defineVersionedLazyGuard, loadGuardMember } from './guard-definition-factory.js';
 
 export const impactGuardDefinitions = [
   defineGuard(
@@ -15,11 +15,13 @@ export const impactGuardDefinitions = [
     },
     { domain: 'arch', version: '2.0.0', description: 'Analyzes blast radius of changes (impact wave)' }
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'duplicate-risk',
     () => import('./duplicate-risk.js'),
     (mod) => mod.detectDuplicateRisk,
-    { domain: 'code', version: '2.0.0', description: 'Detects duplicate symbols by DNA hash' }
+    'code',
+    '2.0.0',
+    'Detects duplicate symbols by DNA hash'
   ),
   defineGuard(
     'circular-dependencies',
@@ -35,58 +37,76 @@ export const impactGuardDefinitions = [
     },
     { domain: 'arch', version: '2.0.0', description: 'Detects circular import and call dependencies' }
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'hotspot-detector',
     () => import('./hotspot-guard.js'),
     (mod) => mod.detectHotspots,
-    { domain: 'perf', version: '1.0.0', description: 'Detects frequently changing code (hotspots)' }
+    'perf',
+    '1.0.0',
+    'Detects frequently changing code (hotspots)'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'pipeline-health',
     () => import('./pipeline-health-guard.js'),
     (mod) => mod.detectPipelineIssues,
-    { domain: 'code', version: '1.0.0', description: 'Monitors pipeline health (shadow volume, zero atoms)' }
+    'code',
+    '1.0.0',
+    'Monitors pipeline health (shadow volume, zero atoms)'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'topology-regression',
     () => import('./topology-regression-guard.js'),
     (mod) => mod.detectTopologyRegression,
-    { domain: 'arch', version: '1.0.0', description: 'Detects sudden loss of topology signal after a file change' }
+    'arch',
+    '1.0.0',
+    'Detects sudden loss of topology signal after a file change'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'pipeline-orphan',
     () => import('./pipeline-orphan-guard.js'),
     (mod) => mod.detectPipelineOrphans,
-    { domain: 'arch', version: '1.0.0', description: 'Detects exported pipeline atoms that became disconnected after a change' }
+    'arch',
+    '1.0.0',
+    'Detects exported pipeline atoms that became disconnected after a change'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'semantic-coverage',
     () => import('./semantic-coverage-guard.js'),
     (mod) => mod.detectSemanticCoverage,
-    { domain: 'sem', version: '1.0.0', description: 'Detects code patterns not reflected in semantic metadata' }
+    'sem',
+    '1.0.0',
+    'Detects code patterns not reflected in semantic metadata'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'semantic-persistence',
     () => import('./semantic-persistence-guard.js'),
     (mod) => mod.detectSemanticPersistence,
-    { domain: 'sem', version: '1.0.0', description: 'Detects atoms whose semantic compiler metadata was dropped during persistence' }
+    'sem',
+    '1.0.0',
+    'Detects atoms whose semantic compiler metadata was dropped during persistence'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'runtime-registry-health',
     () => import('./runtime-registry-health-guard.js'),
     (mod) => mod.detectRuntimeRegistryHealth,
-    { domain: 'runtime', version: '1.0.0', description: 'Detects idempotency issues, churn, and leaks in runtime registries' }
+    'runtime',
+    '1.0.0',
+    'Detects idempotency issues, churn, and leaks in runtime registries'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'conceptual-duplicate-risk',
     () => import('./conceptual-duplicate-risk.js'),
     (mod) => mod.detectConceptualDuplicateRisk,
-    { domain: 'code', version: '1.0.0', description: 'Detects mirror atoms - functions with same semantic purpose but different implementations' }
+    'code',
+    '1.0.0',
+    'Detects mirror atoms - functions with same semantic purpose but different implementations'
   ),
-  defineLazyGuard(
+  defineVersionedLazyGuard(
     'unified-duplicate-risk',
     () => import('./unified-duplicate-guard.js'),
     (mod) => mod.detectUnifiedDuplicateRisk,
-    { domain: 'code', version: '1.0.0', description: 'Unified coordinator for structural (DNA) and conceptual (semantic) duplicate detection' }
+    'code',
+    '1.0.0',
+    'Unified coordinator for structural (DNA) and conceptual (semantic) duplicate detection'
   )
 ];
