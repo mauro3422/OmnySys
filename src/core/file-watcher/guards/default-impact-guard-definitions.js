@@ -1,4 +1,4 @@
-import { defineGuard, defineLazyGuard, defineVersionedLazyGuard, loadGuardMember } from './guard-definition-factory.js';
+import { defineGuard, defineVersionedLazyGuard, loadGuardMember } from './guard-definition-factory.js';
 
 export const impactGuardDefinitions = [
   defineGuard(
