@@ -5,6 +5,7 @@ export default defineConfig({
     name: 'integration',
     globals: true,
     environment: 'node',
+    setupFiles: ['./tests/config/setup-sqlite.js'],
     include: [
       'tests/integration/**/*.test.js',
     ],

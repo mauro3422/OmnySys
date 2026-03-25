@@ -70,11 +70,11 @@ describe('validators/lineage-validator/checks/coherence-checks', () => {
         .asReadOperation()
         .withTransformations([{ operation: 'process' }])
         .build();
-      
+
       const result = validateCoherence(atom);
-      
+
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('FlowType says "read" but no read operation found');
+      expect(result.errors).toContain('FlowType says "read" but no read-like operation found');
     });
 
     it('should accept read with read operation', () => {
@@ -108,11 +108,11 @@ describe('validators/lineage-validator/checks/coherence-checks', () => {
           transformations: [{ operation: 'write', hasSideEffects: false }]
         })
         .build();
-      
+
       const result = validateCoherence(atom);
-      
+
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('FlowType says "persist" but no side effect output found');
+      expect(result.errors).toContain('FlowType says "persist" but no side effect output or mutation found');
     });
 
     it('should handle atom without semantic', () => {

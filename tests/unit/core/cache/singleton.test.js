@@ -69,9 +69,9 @@ describe('getCacheManager — singleton', () => {
       const cache = await getCacheManager(dir);
 
       expect(cache).toBeDefined();
-      expect(typeof cache.initialize).toBe('function');
-      expect(typeof cache.clear).toBe('function');
-      expect(typeof cache.getStats).toBe('function');
+      expect(typeof cache.getCacheManagerStats).toBe('function');
+      expect(typeof cache.purge).toBe('function');
+      expect(typeof cache.getRamCacheStats).toBe('function');
       expect(cache.projectPath).toBe(path.resolve(dir));
     });
 

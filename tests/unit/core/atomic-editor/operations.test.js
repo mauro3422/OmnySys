@@ -44,7 +44,7 @@ describe('ModifyOperation', () => {
   });
 
   describe('validate()', () => {
-    it('requires oldString', async () => {
+    it('requires oldString or symbolName', async () => {
       const operation = new ModifyOperation('src/test.js', {
         newString: 'new'
       }, createMockContext(tempDir));
@@ -52,7 +52,7 @@ describe('ModifyOperation', () => {
       const result = await operation.validate();
 
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('oldString is required');
+      expect(result.error).toContain('oldString or symbolName is required');
     });
 
     it('requires newString', async () => {
@@ -120,7 +120,7 @@ describe('ModifyOperation', () => {
       const result = await operation.validate();
 
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('Cannot read file');
+      expect(result.error).toContain('Validation failed');
     });
   });
 

@@ -13,9 +13,6 @@ describe('Storage Manager - Functional Tests', () => {
   
   it('all expected functions are exported', () => {
     expect(typeof storageManager.saveMetadata).toBe('function');
-    expect(typeof storageManager.saveFileAnalysis).toBe('function');
-    expect(typeof storageManager.saveConnections).toBe('function');
-    expect(typeof storageManager.saveRiskAssessment).toBe('function');
     expect(typeof storageManager.saveMolecule).toBe('function');
     expect(typeof storageManager.loadMolecule).toBe('function');
     expect(typeof storageManager.saveAtom).toBe('function');
@@ -67,20 +64,8 @@ describe('Storage Manager - Functional Tests', () => {
   });
 
   describe('Save Operations', () => {
-    it('saveMetadata is exported', () => {
-      expect(typeof storageManager.saveMetadata).toBe('function');
-    });
-
-    it('saveFileAnalysis is exported', () => {
-      expect(typeof storageManager.saveFileAnalysis).toBe('function');
-    });
-
-    it('saveConnections is exported', () => {
-      expect(typeof storageManager.saveConnections).toBe('function');
-    });
-
-    it('saveRiskAssessment is exported', () => {
-      expect(typeof storageManager.saveRiskAssessment).toBe('function');
+    it('saveAtom is exported', () => {
+      expect(typeof storageManager.saveAtom).toBe('function');
     });
   });
 

@@ -1,0 +1,34 @@
+
+ RUN  v4.0.18 C:/Dev/OmnySystem
+
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Basic Detection > should detect function with high usage as hotspot 2ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Basic Detection > should NOT detect function below threshold 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Basic Detection > should calculate risk score based on usage 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Business Logic Filtering > should filter out utility functions like formatDate 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Business Logic Filtering > should flag business logic functions 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Result Structure > should return findings with required fields 1ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Result Structure > should include recommendation 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Result Structure > should return overall score 0ms
+ × tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Result Structure > should return detector metadata 7ms (retry x1)
+   → expected undefined to be 0.15 // Object.is equality
+   → expected undefined to be 0.15 // Object.is equality
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Edge Cases > should handle empty system map 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Edge Cases > should handle missing function_links 0ms
+ × tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Edge Cases > should handle null/undefined config gracefully 2ms (retry x1)
+   → Cannot read properties of null (reading 'minUsageThreshold')
+   → Cannot read properties of null (reading 'minUsageThreshold')
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Detector Metadata > should provide correct detector ID 0ms
+ × tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Detector Metadata > should provide detector name 1ms (retry x1)
+   → detector.getName is not a function
+   → detector.getName is not a function
+ × tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Detector Metadata > should provide description 0ms (retry x1)
+   → detector.getDescription is not a function
+   → detector.getDescription is not a function
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Utility Function Detection > should identify format as utility 0ms
+ ✓ tests/unit/pattern-detection/detectors/hotspots-detector.test.js > Hotspots Detector > Utility Function Detection > should identify get/set as utilities 0ms
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 13 passed (17)
+   Start at  01:26:38
+   Duration  278ms (transform 47ms, setup 0ms, import 69ms, tests 17ms, environment 0ms)
+

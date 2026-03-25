@@ -27,12 +27,10 @@ import {
 import { 
   analyzeCoupling
 } from '#layer-a/analyses/tier2/index.js';
-import { 
-  saveMetadata, 
-  saveFileAnalysis,
-  saveConnections,
-  saveRiskAssessment 
-} from '#layer-c/storage/index.js';
+import { saveMetadata } from '#layer-c/storage/files/metadata.js';
+import { saveFileAnalysis } from '#layer-c/storage/files/file-analysis.js';
+import { saveConnections } from '#layer-c/storage/files/connections.js';
+import { saveRiskAssessment } from '#layer-c/storage/files/risks.js';
 import { getProjectStats } from '#layer-c/query/queries/project-query.js';
 
 describe('Layer A: Extended Integration Workflows', () => {

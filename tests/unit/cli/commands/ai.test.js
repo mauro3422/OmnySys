@@ -144,42 +144,23 @@ describe('aiLogic', () => {
   });
 
   describe('status', () => {
-    it('returns status with health info', async () => {
-      vi.mocked(loadAIConfig).mockResolvedValue({
-        performance: { enableCPUFallback: true },
-        llm: { enabled: true, mode: 'hybrid' }
-      });
-
-      vi.mocked(LLMService.getInstance).mockResolvedValue({
-        checkHealth: vi.fn(),
-        getMetrics: vi.fn().mockReturnValue({
-          circuitBreakerState: 'closed',
-          availability: true,
-          requestsTotal: 10,
-          requestsSuccessful: 9,
-          latencyMsAvg: 100
-        }),
-        client: {
-          healthCheck: vi.fn().mockResolvedValue({ gpu: true, cpu: false })
-        }
-      });
-
+    it('returns deprecation error', async () => {
       const result = await aiLogic(['status'], { silent: true });
 
-      expect(result.success).toBe(true);
-      expect(result.exitCode).toBe(0);
-      expect(result.health.gpu).toBe(true);
-      expect(result.health.cpu).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('DEPRECATED');
+      expect(result.error).toContain('AI status commands are no longer supported');
     });
 
-    it('handles status check failure', async () => {
+    it('returns deprecation error even with config failure', async () => {
       vi.mocked(loadAIConfig).mockRejectedValue(new Error('Config not found'));
 
       const result = await aiLogic(['status'], { silent: true });
 
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
-      expect(result.error).toBe('Config not found');
+      expect(result.error).toContain('DEPRECATED');
     });
   });
 });

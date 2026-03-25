@@ -189,7 +189,6 @@ export function backfillSystemFileCalls(db, nowIso) {
 export function backfillSystemFileDefinitionsAndCulture(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateStmt = buildConditionalUpdateStatement(db, 'system_files', 'culture, culture_role, definitions_json', "(culture IS NULL OR culture = '') OR (culture_role IS NULL OR culture_role = '') OR (definitions_json IS NULL OR definitions_json = '' OR definitions_json = '[]')", hasUpdatedAt);
   const definitionsByPath = buildAtomDefinitionsByPath(db);
   const rows = db.prepare(`
     SELECT path, culture, culture_role, definitions_json, exports_json
@@ -206,7 +205,13 @@ export function backfillSystemFileDefinitionsAndCulture(db, nowIso) {
     if (!hasMissingCulture && !hasMissingRole && !hasMissingDefinitions) {
       continue;
     }
-    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, [patch.culture, patch.cultureRole, patch.definitionsJson], nowIso, patch.filePath);
+    const updateSql = hasUpdatedAt
+      ? `UPDATE system_files SET culture = ?, culture_role = ?, definitions_json = ?, updated_at = ? WHERE path = ?`
+      : `UPDATE system_files SET culture = ?, culture_role = ?, definitions_json = ? WHERE path = ?`;
+    const updateStmt = db.prepare(updateSql);
+    const result = hasUpdatedAt
+      ? updateStmt.run(patch.culture, patch.cultureRole, patch.definitionsJson, nowIso, patch.filePath)
+      : updateStmt.run(patch.culture, patch.cultureRole, patch.definitionsJson, patch.filePath);
     updated += Number(result?.changes || 0);
   }
   return updated;

@@ -1,8 +1,9 @@
 export class BusinessLogicHotspotRule {
     constructor(config = {}) {
         this.type = 'function_hotspot';
-        this.minUsageThreshold = config.minUsageThreshold || 10;
-        this.highUsageThreshold = config.highUsageThreshold || 20;
+        const safeConfig = config || {};
+        this.minUsageThreshold = safeConfig.minUsageThreshold ?? 10;
+        this.highUsageThreshold = safeConfig.highUsageThreshold ?? 20;
     }
 
     check(findings, stats, { calculateRiskScore, isUtilityFunction, generateFinding }) {

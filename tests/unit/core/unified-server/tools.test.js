@@ -9,7 +9,7 @@ describe('Tools - Status Tools', () => {
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tools-test-'));
-    
+
     mockServer = {
       projectPath: tempDir,
       cache: {
@@ -25,7 +25,8 @@ describe('Tools - Status Tools', () => {
       isRunning: true,
       currentJob: null,
       queue: {
-        getAll: () => ({ critical: [], high: [], medium: [], low: [] })
+        getAll: () => ({ critical: [], high: [], medium: [], low: [] }),
+        getQueueSnapshot: () => ({ critical: [], high: [], medium: [], low: [] })
       },
       stats: {
         totalAnalyzed: 0,

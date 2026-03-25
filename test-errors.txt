@@ -1,0 +1,61 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Dev/OmnySystem[39m
+
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould return server status structure[33m 409[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include server version[32m 3[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include uptime calculation[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include initialized state[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include ports[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include orchestrator status[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould show running status when isRunning is true[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould show paused status when isRunning is false[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include project path[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [31m×[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Status Tools[2m > [22mgetFullStatus[2m > [22mshould include cache stats[32m 2[2mms[22m[39m[33m (retry x1)[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+[31m   → this.queue.getQueueSnapshot is not a function[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mclearAnalysisCache[2m > [22mshould return error when cache not initialized[32m 11[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mclearAnalysisCache[2m > [22mshould clear cache when initialized[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mclearAnalysisCache[2m > [22mshould include before and after stats[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mclearAnalysisCache[2m > [22mshould include success message[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mrestartServer[2m > [22mshould return restart result[32m 2[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mrestartServer[2m > [22mshould include timestamp[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mrestartServer[2m > [22mshould accept clearCache option[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Server Tools[2m > [22mrestartServer[2m > [22mshould default clearCache to false[32m 1[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mStatus Tools[2m > [22mgetFullStatus should be async function[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mStatus Tools[2m > [22mgetFilesStatus should be async function[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mStatus Tools[2m > [22mgetFileTool should be async function[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mStatus Tools[2m > [22mgetFileTool should accept filePath parameter[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mServer Tools[2m > [22mrestartServer should be async function[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mServer Tools[2m > [22mclearAnalysisCache should be async function[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mTools - Function Signatures[2m > [22mServer Tools[2m > [22mrestartServer should accept optional clearCache parameter[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould build running server state[32m 8[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould build stopped server state[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould build initializing server state[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould include stats in state[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould transition from initializing to running[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould transition from running to stopped[32m 0[2mms[22m[39m
+ [32m✓[39m tests/unit/core/unified-server/tools.test.js[2m > [22mServerStateBuilder Usage[2m > [22mshould track uptime[32m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m10 failed[39m[22m[2m | [22m[1m[32m22 passed[39m[22m[90m (32)[39m
+[2m   Start at [22m 01:56:15
+[2m   Duration [22m 748ms[2m (transform 341ms, setup 0ms, import 59ms, tests 458ms, environment 0ms)[22m
+

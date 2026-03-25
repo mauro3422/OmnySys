@@ -1,2 +1,4 @@
-"Get-Content" no se reconoce como un comando interno o externo,
-programa o archivo por lotes ejecutable.
+Ya existe el subdirectorio o el archivo report.
+Error mientras se procesaba: report.
+Ya existe el subdirectorio o el archivo echo.
+Error mientras se procesaba: echo.

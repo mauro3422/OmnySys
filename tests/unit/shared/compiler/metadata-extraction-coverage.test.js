@@ -33,10 +33,14 @@ describe('metadata-extraction-coverage', () => {
         event_emitters_json TEXT,
         event_listeners_json TEXT,
         called_by_json TEXT,
+        calls_json TEXT,
         created_at TEXT,
         updated_at TEXT,
         is_removed INTEGER DEFAULT 0,
-        lifecycle_status TEXT
+        lifecycle_status TEXT,
+        is_test_callback BOOLEAN DEFAULT 0,
+        test_callback_type TEXT,
+        _meta_json TEXT
       );
 
       CREATE TABLE files (
@@ -50,7 +54,9 @@ describe('metadata-extraction-coverage', () => {
         exports_json TEXT,
         semantic_analysis_json TEXT,
         semantic_connections_json TEXT,
-        is_removed INTEGER DEFAULT 0
+        is_removed INTEGER DEFAULT 0,
+        hash TEXT,
+        updated_at TEXT
       );
 
       CREATE TABLE system_files (
@@ -64,7 +70,20 @@ describe('metadata-extraction-coverage', () => {
         exports_json TEXT,
         imports_json TEXT,
         definitions_json TEXT,
-        is_removed INTEGER DEFAULT 0
+        is_removed INTEGER DEFAULT 0,
+        updated_at TEXT,
+        calls_json TEXT,
+        identifier_refs_json TEXT,
+        used_by_json TEXT,
+        depends_on_json TEXT,
+        transitive_depends_json TEXT,
+        transitive_dependents_json TEXT
+      );
+
+      CREATE TABLE file_hashes (
+        file_path TEXT PRIMARY KEY,
+        content_hash TEXT NOT NULL,
+        last_updated INTEGER NOT NULL
       );
     `);
 

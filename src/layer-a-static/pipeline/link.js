@@ -1,4 +1,5 @@
 import { startTimer } from '../../utils/performance-tracker.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { calculateFieldHashes } from '#layer-c/storage/atoms/atom-version-manager.js';
 import { buildCanonicalAtomIdVariants, normalizeCanonicalAtomId } from '../../layer-c-memory/storage/repository/adapters/helpers/canonical-atom-id.js';
 import { persistCallRelations as persistCallRelationsHelper } from './call-relations-linkage.js';

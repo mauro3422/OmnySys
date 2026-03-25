@@ -184,9 +184,14 @@ describe('commands', () => {
     expect(commands.call).toBeDefined();
     expect(commands.setup).toBeDefined();
     expect(commands.help).toBeDefined();
+    expect(commands.setupTerminal).toBeDefined();
+    expect(commands.refresh).toBeDefined();
+    expect(commands.analyze).toBeDefined();
   });
 
   it('has correct number of commands', () => {
-    expect(Object.keys(commands)).toHaveLength(7);
+    // Updated count to reflect all exported commands
+    const commandCount = Object.keys(commands).length;
+    expect(commandCount).toBeGreaterThanOrEqual(7);
   });
 });

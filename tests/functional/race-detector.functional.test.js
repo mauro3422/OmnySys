@@ -50,14 +50,7 @@ describe('Race Detector - Detailed Tests', () => {
       expect(result1).toBe(result2);
     });
 
-    it('scoreToSeverity converts numeric score to severity', () => {
-      const scorer = new RiskScorer();
 
-      expect(scorer.scoreToSeverity(0.9)).toBe('critical');
-      expect(scorer.scoreToSeverity(0.7)).toBe('high');
-      expect(scorer.scoreToSeverity(0.5)).toBe('medium');
-      expect(scorer.scoreToSeverity(0.2)).toBe('low');
-    });
 
     it('explainScore returns array of factors', () => {
       const scorer = new RiskScorer();

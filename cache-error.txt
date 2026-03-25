@@ -1,0 +1,37 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Dev/OmnySystem[39m
+
+ [31m❯[39m tests/unit/core/cache/singleton.test.js [2m([22m[2m27 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 90[2mms[22m[39m
+[31m       [31m×[31m should return an object with the UnifiedCacheManager interface[39m[32m 71[2mms[22m[39m[33m (retry x1)[39m
+       [32m✓[39m should have loaded = true after getCacheManager[32m 1[2mms[22m[39m
+       [32m✓[39m should return the SAME instance for the same path (===)[32m 1[2mms[22m[39m
+       [32m✓[39m should return the same instance for normalized paths (relative vs absolute)[32m 1[2mms[22m[39m
+       [32m✓[39m should return DIFFERENT instances for different paths[32m 1[2mms[22m[39m
+       [32m✓[39m should not initialize twice when called concurrently (same Promise)[32m 1[2mms[22m[39m
+       [32m✓[39m should resolve to same instance after sequential + concurrent mix[32m 1[2mms[22m[39m
+       [32m✓[39m should remove the instance from the map[32m 1[2mms[22m[39m
+       [32m✓[39m should be safe to call invalidate on non-existent path[32m 1[2mms[22m[39m
+       [32m✓[39m should allow re-initialization after invalidation[32m 1[2mms[22m[39m
+       [32m✓[39m getCacheInstanceCount should reflect registered instances[32m 0[2mms[22m[39m
+       [32m✓[39m getCacheInstanceKeys should include the registered path[32m 1[2mms[22m[39m
+       [32m✓[39m keys should not include path after invalidation[32m 0[2mms[22m[39m
+       [32m✓[39m getCacheManager should be exported from core/cache/index.js[32m 0[2mms[22m[39m
+       [32m✓[39m invalidateCacheInstance should be exported from core/cache/index.js[32m 0[2mms[22m[39m
+       [32m✓[39m getCacheInstanceCount should be exported from core/cache/index.js[32m 0[2mms[22m[39m
+       [32m✓[39m getCacheInstanceKeys should be exported from core/cache/index.js[32m 0[2mms[22m[39m
+       [32m✓[39m singleton namespace export should exist[32m 0[2mms[22m[39m
+       [32m✓[39m getCacheManager from index should be same function as from singleton[32m 0[2mms[22m[39m
+     [32m✓[39m should build a mock with correct interface[32m 5[2mms[22m[39m
+     [32m✓[39m should support set/get roundtrip[32m 0[2mms[22m[39m
+     [32m✓[39m should return null for missing keys[32m 0[2mms[22m[39m
+     [32m✓[39m should clear all data on clear()[32m 1[2mms[22m[39m
+     [32m✓[39m should build a valid default entry[32m 0[2mms[22m[39m
+     [32m✓[39m should build an LLM-analyzed entry[32m 0[2mms[22m[39m
+     [32m✓[39m should build a default config[32m 0[2mms[22m[39m
+     [32m✓[39m should build a production config[32m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m26 passed[39m[22m[90m (27)[39m
+[2m   Start at [22m 01:57:58
+[2m   Duration [22m 742ms[2m (transform 337ms, setup 0ms, import 461ms, tests 90ms, environment 0ms)[22m
+

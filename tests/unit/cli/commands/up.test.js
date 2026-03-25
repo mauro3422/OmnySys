@@ -32,7 +32,8 @@ describe('upLogic', () => {
     expect(result.success).toBe(true);
     expect(result.exitCode).toBe(0);
     expect(result.services.mcp.running).toBe(true);
-    expect(result.services.mcp.started).toBe(false);
+    // When MCP is already running, a graceful restart is triggered (started=true)
+    expect(result.services.mcp.started).toBe(true);
   });
 
   it('starts MCP when not running', async () => {

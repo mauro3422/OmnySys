@@ -22,10 +22,8 @@ import {
   findUnusedExports, 
   findCircularFunctionDeps 
 } from '#layer-a/analyses/tier1/index.js';
-import { 
-  saveMetadata, 
-  saveFileAnalysis 
-} from '#layer-c/storage/index.js';
+import { saveMetadata } from '#layer-c/storage/files/metadata.js';
+import { saveFileAnalysis } from '#layer-c/storage/files/file-analysis.js';
 import { 
   getProjectMetadata
 } from '#layer-c/query/queries/project-query.js';

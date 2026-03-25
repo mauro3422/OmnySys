@@ -34,10 +34,24 @@ export class PatternDetector {
     if (this._id) return this._id;
     throw new Error('Detector must implement getId()');
   }
-  
+
+  /**
+   * Nombre legible del detector
+   */
+  getName() {
+    return this._name || this._id || 'Unknown Detector';
+  }
+
+  /**
+   * Descripción del detector
+   */
+  getDescription() {
+    return this._description || 'No description available';
+  }
+
   /**
    * Método principal de detección
-   * 
+   *
    * @param {object} systemMap - SystemMap completo
    * @returns {Promise<DetectionResult>}
    */

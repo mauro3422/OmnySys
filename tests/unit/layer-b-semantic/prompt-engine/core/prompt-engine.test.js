@@ -52,16 +52,16 @@ describe('prompt-engine/core/PromptEngine', () => {
     });
   });
 
-  describe('getStats', () => {
+  describe('getPromptEngineStats', () => {
     it('should return initial stats', () => {
-      const stats = engine.getStats();
+      const stats = engine.getPromptEngineStats();
       expect(stats).toHaveProperty('cachedSchemas');
       expect(stats).toHaveProperty('config');
       expect(stats.cachedSchemas).toBe(0);
     });
 
     it('should include config in stats', () => {
-      const stats = engine.getStats();
+      const stats = engine.getPromptEngineStats();
       expect(stats.config).toHaveProperty('temperature');
       expect(stats.config).toHaveProperty('maxTokens');
     });
@@ -70,7 +70,7 @@ describe('prompt-engine/core/PromptEngine', () => {
   describe('clearSchemaCache', () => {
     it('should clear cache', () => {
       engine.clearSchemaCache();
-      const stats = engine.getStats();
+      const stats = engine.getPromptEngineStats();
       expect(stats.cachedSchemas).toBe(0);
     });
   });
@@ -156,13 +156,13 @@ describe('prompt-engine/core/PromptEngine', () => {
     it('should cache schema after first use', async () => {
       const metadata = new FileMetadataBuilder().build();
       const fileContent = '';
-      
+
       await engine.generatePrompt(metadata, fileContent);
-      const stats1 = engine.getStats();
-      
+      const stats1 = engine.getPromptEngineStats();
+
       await engine.generatePrompt(metadata, fileContent);
-      const stats2 = engine.getStats();
-      
+      const stats2 = engine.getPromptEngineStats();
+
       expect(stats2.cachedSchemas).toBe(stats1.cachedSchemas);
     });
   });
@@ -170,8 +170,8 @@ describe('prompt-engine/core/PromptEngine', () => {
   describe('preloadSchemas', () => {
     it('should preload specified schemas', async () => {
       await engine.preloadSchemas(['default', 'semantic-connections']);
-      
-      const stats = engine.getStats();
+
+      const stats = engine.getPromptEngineStats();
       expect(stats.cachedSchemas).toBeGreaterThan(0);
     });
   });

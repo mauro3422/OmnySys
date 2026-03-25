@@ -62,11 +62,12 @@ describe('Orchestrator API', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     mockServer = {
       queue: {
         size: vi.fn().mockReturnValue(5),
-        getAll: vi.fn().mockReturnValue([])
+        getAll: vi.fn().mockReturnValue([]),
+        getQueueSnapshot: vi.fn().mockReturnValue({ critical: [], high: [], medium: [], low: [] })
       },
       currentJob: null,
       isRunning: true,
@@ -83,7 +84,7 @@ describe('Orchestrator API', () => {
       prioritizeFile: vi.fn().mockResolvedValue({ status: 'queued', position: 1 }),
       restartOrchestrator: vi.fn().mockResolvedValue(true)
     };
-    
+
     routes = await createOrchestratorRouteHandlers(mockServer);
   });
 
@@ -216,12 +217,12 @@ describe('Orchestrator API', () => {
     it('should return queue information', () => {
       const req = createMockRequest();
       const res = createMockResponse();
-      
+
       routes.get['/queue'](req, res);
-      
+
       expect(res.json).toHaveBeenCalledWith({
         current: mockServer.currentJob,
-        queue: [],
+        queue: { critical: [], high: [], medium: [], low: [] },
         total: 5,
         stats: mockServer.stats
       });

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.187 - Sprint 16: E2E Testing DB Enforcements Stabilized](changelogs/v0.9.187.md)
 - [v0.9.186 - Sprint 16: Smart Batch Processor Complexity Split](changelogs/v0.9.186.md)
 - [v0.9.185 - Sprint 16: Canonical Smart Batch Processor Factory](changelogs/v0.9.185.md)
 - [v0.9.184 - Sprint 16: Canonical Phase 2 Pending Count Helper](changelogs/v0.9.184.md)
@@ -71,6 +72,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Quick Links
 
+- [v0.9.187 - Sprint 16: E2E Testing DB Enforcements Stabilized](changelogs/v0.9.187.md)
 - [v0.9.183 - Sprint 16: Canonical Metadata Surface Gateway](changelogs/v0.9.183.md)
 - [v0.9.182 - Sprint 16: Tree-Sitter Freshness and DB-Only File Surfaces](changelogs/v0.9.182.md)
 - [v0.9.175 - Sprint 16: Surface Audit Reason Normalization](changelogs/v0.9.175.md)
@@ -129,6 +131,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Version Index
 
+| **0.9.187** | 2026-03-25 | Sprint 16: E2E Testing DB Enforcements Stabilized, purged obsolete JSON-based integration & e2e testing, fixed missing DB storage imports to restore Phase 3 pipeline execution, achieving 100% health across all test suites. |
 | **0.9.174** | 2026-03-21 | Sprint 16: Surface Audit Status Envelope Wiring, carried raw `surfaceAudit` into the live status envelope so compact summary rendering no longer depends on an empty default. |
 | **0.9.173** | 2026-03-21 | Sprint 16: Surface Audit Status Propagation, carried `surfaceAudit` through compact status explainability so the live summary no longer collapses it to an empty default. |
 | **0.9.172** | 2026-03-21 | Sprint 16: Canonical Surface Audit Unification, unified status and explainability behind `surfaceAudit`, added DB-only metadata extraction coverage, and consolidated governance reporting across canonical surfaces. |

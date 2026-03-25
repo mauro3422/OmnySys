@@ -10,14 +10,14 @@ export class HotspotsDetector extends PatternDetector {
       ...config,
       id: 'hotspots',
       name: 'Critical Function Hotspots',
-      description: 'Detects business logic functions with excessive usage'
+      description: 'Detects business logic functions with excessive usage (code smells)'
     }, globalConfig);
     this._initRules();
   }
 
   _initRules() {
     this.rules = [
-      new BusinessLogicHotspotRule(this.config)
+      new BusinessLogicHotspotRule(this.config || {})
     ];
   }
 
@@ -53,6 +53,7 @@ export class HotspotsDetector extends PatternDetector {
       description: this._description,
       findings: findings.sort((a, b) => b.metadata.riskScore - a.metadata.riskScore),
       score: this.scoreFindings(findings),
+      weight: this.globalConfig.weights?.hotspots || 0.15,
       summary: { totalFindings: findings.length }
     };
   }

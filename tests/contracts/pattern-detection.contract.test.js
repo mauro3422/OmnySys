@@ -25,23 +25,23 @@ const DETECTORS = [
  */
 describe.each(DETECTORS)('$name: Structure Contract', ({ class: DetectorClass, expectedId }) => {
   it('must extend PatternDetector base class', () => {
-    const detector = new DetectorClass({ globalConfig: {} });
+    const detector = new DetectorClass({ config: { minUsageThreshold: 3 }, globalConfig: { weights: { [expectedId]: 0.1 } } });
     expect(detector).toBeInstanceOf(PatternDetector);
   });
 
   it('must implement getId() method', () => {
-    const detector = new DetectorClass({ globalConfig: {} });
+    const detector = new DetectorClass({ config: { minUsageThreshold: 3 }, globalConfig: { weights: { [expectedId]: 0.1 } } });
     expect(detector.getId()).toBe(expectedId);
   });
 
   it('must implement getName() method', () => {
-    const detector = new DetectorClass({ globalConfig: {} });
+    const detector = new DetectorClass({ config: { minUsageThreshold: 3 }, globalConfig: { weights: { [expectedId]: 0.1 } } });
     expect(typeof detector.getName()).toBe('string');
     expect(detector.getName().length).toBeGreaterThan(0);
   });
 
   it('must implement getDescription() method', () => {
-    const detector = new DetectorClass({ globalConfig: {} });
+    const detector = new DetectorClass({ config: { minUsageThreshold: 3 }, globalConfig: { weights: { [expectedId]: 0.1 } } });
     expect(typeof detector.getDescription()).toBe('string');
     expect(detector.getDescription().length).toBeGreaterThan(0);
   });
