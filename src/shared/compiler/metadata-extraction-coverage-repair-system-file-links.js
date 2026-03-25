@@ -10,6 +10,7 @@
 
 import { parsePersistedArray } from './core-utils.js';
 import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
+import { buildConditionalUpdateStatement, runConditionalUpdate } from './metadata-extraction-coverage-repair-updates.js';
 
 function buildSystemFileSemanticAnalysisByPath(db) {
   const atomColumns = getTableColumns(db, 'atoms');
@@ -145,10 +146,13 @@ function collectTransitivePaths(startPath, graph) {
 export function backfillSystemFileSemanticAnalysis(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET semantic_analysis_json = ?, updated_at = ? WHERE path = ? AND (semantic_analysis_json IS NULL OR semantic_analysis_json = '' OR semantic_analysis_json = '{}')`
-    : `UPDATE system_files SET semantic_analysis_json = ? WHERE path = ? AND (semantic_analysis_json IS NULL OR semantic_analysis_json = '' OR semantic_analysis_json = '{}')`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(
+    db,
+    'system_files',
+    'semantic_analysis_json',
+    "semantic_analysis_json IS NULL OR semantic_analysis_json = '' OR semantic_analysis_json = '{}'",
+    hasUpdatedAt
+  );
 
   const groupedAnalysis = buildSystemFileSemanticAnalysisByPath(db);
   if (groupedAnalysis.size === 0) {
@@ -172,9 +176,7 @@ export function backfillSystemFileSemanticAnalysis(db, nowIso) {
         scopeTypes: [...bucket.scopeTypes]
       }
     });
-    const result = hasUpdatedAt
-      ? updateStmt.run(payload, nowIso, filePath)
-      : updateStmt.run(payload, filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, payload, nowIso, filePath);
     updated += Number(result?.changes || 0);
   }
 
@@ -184,10 +186,13 @@ export function backfillSystemFileSemanticAnalysis(db, nowIso) {
 export function backfillSystemFileTransitiveDependents(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET transitive_dependents_json = ?, updated_at = ? WHERE path = ? AND (transitive_dependents_json IS NULL OR transitive_dependents_json = '' OR transitive_dependents_json = '[]')`
-    : `UPDATE system_files SET transitive_dependents_json = ? WHERE path = ? AND (transitive_dependents_json IS NULL OR transitive_dependents_json = '' OR transitive_dependents_json = '[]')`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(
+    db,
+    'system_files',
+    'transitive_dependents_json',
+    "transitive_dependents_json IS NULL OR transitive_dependents_json = '' OR transitive_dependents_json = '[]'",
+    hasUpdatedAt
+  );
 
   const { reverse } = buildDependencyGraph(db);
   const rows = db.prepare(`
@@ -206,9 +211,7 @@ export function backfillSystemFileTransitiveDependents(db, nowIso) {
       continue;
     }
 
-    const result = hasUpdatedAt
-      ? updateStmt.run(JSON.stringify(dependents), nowIso, filePath)
-      : updateStmt.run(JSON.stringify(dependents), filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, JSON.stringify(dependents), nowIso, filePath);
     updated += Number(result?.changes || 0);
   }
 
@@ -218,10 +221,13 @@ export function backfillSystemFileTransitiveDependents(db, nowIso) {
 export function backfillSystemFileTransitiveDepends(db, nowIso) {
   const systemFileColumns = getTableColumns(db, 'system_files');
   const hasUpdatedAt = hasColumn(systemFileColumns, 'updated_at');
-  const updateSql = hasUpdatedAt
-    ? `UPDATE system_files SET transitive_depends_json = ?, updated_at = ? WHERE path = ? AND (transitive_depends_json IS NULL OR transitive_depends_json = '' OR transitive_depends_json = '[]')`
-    : `UPDATE system_files SET transitive_depends_json = ? WHERE path = ? AND (transitive_depends_json IS NULL OR transitive_depends_json = '' OR transitive_depends_json = '[]')`;
-  const updateStmt = db.prepare(updateSql);
+  const updateStmt = buildConditionalUpdateStatement(
+    db,
+    'system_files',
+    'transitive_depends_json',
+    "transitive_depends_json IS NULL OR transitive_depends_json = '' OR transitive_depends_json = '[]'",
+    hasUpdatedAt
+  );
 
   const { forward } = buildDependencyGraph(db);
   const rows = db.prepare(`
@@ -240,9 +246,7 @@ export function backfillSystemFileTransitiveDepends(db, nowIso) {
       continue;
     }
 
-    const result = hasUpdatedAt
-      ? updateStmt.run(JSON.stringify(dependsOn), nowIso, filePath)
-      : updateStmt.run(JSON.stringify(dependsOn), filePath);
+    const result = runConditionalUpdate(updateStmt, hasUpdatedAt, JSON.stringify(dependsOn), nowIso, filePath);
     updated += Number(result?.changes || 0);
   }
 
