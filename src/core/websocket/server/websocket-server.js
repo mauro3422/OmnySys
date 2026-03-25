@@ -65,100 +65,17 @@ export class WebSocketManager extends EventEmitter {
     return startWebSocketServer(this);
   }
 
-  /**
-   * Handler de nueva conexión
-   * @private
-   */
-  onConnection(ws, req) {
-    return attachConnectionContext(this, ws, req);
-  }
-
-  /**
-   * Handler cuando el servidor está escuchando
-   * @private
-   */
-  onListening(resolve, reject) {
-    return runListeningBootstrap(this, resolve, reject);
-  }
-
-  /**
-   * Inicia heartbeat para detectar desconexiones
-   * @private
-   */
-  setupHeartbeatManager() {
-    return initializeHeartbeatManager(this);
-  }
-
-  /**
-   * Remueve cliente del mapa
-   * @param {string} clientId - ID del cliente
-   */
-  removeClient(clientId) {
-    return removeWebSocketClient(this, clientId);
-  }
-
-  /**
-   * Genera ID único para cliente
-   * @returns {string}
-   */
-  generateClientId() {
-    return generateWebSocketClientId();
-  }
-
-  /**
-   * Envía mensaje a un cliente específico
-   * @param {string} clientId - ID del cliente
-   * @param {Object} message - Mensaje a enviar
-   * @returns {boolean}
-   */
-  sendToClient(clientId, message) {
-    return sendWebSocketMessage(this, clientId, message);
-  }
-
-  /**
-   * Envía mensaje a todos los clientes suscritos a un archivo
-   * @param {string} filePath - Ruta del archivo
-   * @param {Object} message - Mensaje a enviar
-   * @returns {number}
-   */
-  publishToSubscribers(filePath, message) {
-    return publishWebSocketToSubscribers(this, filePath, message);
-  }
-
-  /**
-   * Envía mensaje a todos los clientes
-   * @param {Object} message - Mensaje a enviar
-   * @returns {number}
-   */
-  publish(message) {
-    return publishWebSocket(this, message);
-  }
-
-  /**
-   * Envía mensaje a clientes de un proyecto específico
-   * @param {string} projectPath - Ruta del proyecto
-   * @param {Object} message - Mensaje a enviar
-   * @returns {number}
-   */
-  publishToProject(projectPath, message) {
-    return publishWebSocketToProject(this, projectPath, message);
-  }
-
-  /**
-   * Obtiene estadísticas
-   * @returns {Object}
-   */
-  getWebSocketServerStats() {
-    return getWebSocketServerStats(this);
-  }
-
-  /**
-   * Detiene el servidor WebSocket
-   * @returns {Promise<void>}
-   */
-  async stop() {
-    closeAllConnections(this.clients);
-    return stopWebSocketServer(this);
-  }
+  onConnection(ws, req) { return attachConnectionContext(this, ws, req); }
+  onListening(resolve, reject) { return runListeningBootstrap(this, resolve, reject); }
+  setupHeartbeatManager() { return initializeHeartbeatManager(this); }
+  removeClient(clientId) { return removeWebSocketClient(this, clientId); }
+  generateClientId() { return generateWebSocketClientId(); }
+  sendToClient(clientId, message) { return sendWebSocketMessage(this, clientId, message); }
+  publishToSubscribers(filePath, message) { return publishWebSocketToSubscribers(this, filePath, message); }
+  publish(message) { return publishWebSocket(this, message); }
+  publishToProject(projectPath, message) { return publishWebSocketToProject(this, projectPath, message); }
+  getWebSocketServerStats() { return getWebSocketServerStats(this); }
+  async stop() { closeAllConnections(this.clients); return stopWebSocketServer(this); }
 }
+
 
