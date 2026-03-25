@@ -2,6 +2,8 @@
 
 ## Bugs y observaciones abiertas
 
+- Indexability audit: some surfaces are healthy at runtime but still missing from graph traversal or watcher-driven index snapshots. Add a policy check that distinguishes `out-of-scope`, `legacy`, and `must-index` paths before reporting them as missing.
+- Coverage gate for required surfaces: make `tests/factories`, `core/file-watcher`, `core/orchestrator`, `core/unified-server`, and `shared/compiler` report their expected index status explicitly so downstream tools can tell coverage gaps from intentional exclusions.
 - `src/layer-a-static/extractors/metadata/index.js` is still regex-first at the file-surface entrypoint, but `src/layer-a-static/pipeline/metadata-gateway.js` now unifies file, batch, and atom surfaces for callers. If file-level Tree-Sitter metadata should become canonical, the next step is to wire the gateway through the Tree-Sitter bridge and replace the current side-effects TODO with the tier-3 detector.
 - File-surface Tree-Sitter canonicalization is intentionally deferred for now. The gateway already exposes a stable contract and the atom-surface bridge now fills canonical `sideEffects`, so the remaining work is to decide whether the added precision justifies the extra cost at file scope before changing `extractAllMetadata()` semantics.
 - `src/layer-c-memory/mcp/tools/atomic-edit/validators.js` is now split into smaller helpers, but the runtime module still needs a reload before we trust the live watcher result.
