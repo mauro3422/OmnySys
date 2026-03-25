@@ -1,8 +1,5 @@
 import express from 'express';
-import path from 'path';
 import { EventEmitter } from 'events';
-
-import { AnalysisQueue } from '../analysis-queue.js';
 
 import * as init from './initialization/index.js';
 import * as api from './api.js';
@@ -12,52 +9,16 @@ import { printStatus } from './status.js';
 import { shutdown } from './lifecycle.js';
 import { createLogger } from '../../utils/logger.js';
 import { createCliOrchestrator } from '../../shared/cli/base-orchestrator.js';
-
-const logger = createLogger('OmnySys:index');
+import { buildUnifiedServerState } from './index-helpers.js';
 
 
 
 class OmnySysUnifiedServer extends EventEmitter {
   constructor(projectPath) {
     super();
-    this.projectPath = projectPath;
-    this.OmnySysDataPath = path.join(projectPath, '.omnysysdata');
-    this.cache = null;  // Initialized in initializeMCP()
-    this.metadata = null;
-    this.initialized = false;
-
-    // Orchestrator components
-    this.queue = new AnalysisQueue();
-    this.worker = null;
-    this.stateManager = null;
-    this.currentJob = null;
-    this.isRunning = true;
-    this.startTime = Date.now();
-    this.stats = {
-      totalAnalyzed: 0,
-      totalQueued: 0,
-      avgTime: 0,
-      cacheHitRate: 0
-    };
-
-    // Server instances
     this.orchestratorApp = express();
     this.bridgeApp = express();
-    this.orchestratorServer = null;
-    this.bridgeServer = null;
-    this.ports = {
-      orchestrator: process.env.ORCHESTRATOR_PORT || 9999,
-      bridge: process.env.BRIDGE_PORT || 9998
-    };
-
-    // File Watcher
-    this.fileWatcher = null;
-
-    // WebSocket Manager (nativo)
-    this.wsManager = null;
-
-    // Batch Processor para cambios concurrentes
-    this.batchProcessor = null;
+    buildUnifiedServerState(this, projectPath);
   }
 }
 
@@ -91,4 +52,3 @@ export { OmnySysUnifiedServer, main };
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
-

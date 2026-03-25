@@ -1,13 +1,3 @@
-import { EventEmitter } from 'events';
-import path from 'path';
-import { AnalysisQueue } from '../analysis-queue.js';
-import { getDataPath } from '#config/paths.js';
-import { getAtomicEditor } from '../atomic-editor/index.js';
-import { AtomicEditor } from '../atomic-editor/AtomicEditor.js';
-import { createLogger } from '../../utils/logger.js';
-
-const logger = createLogger('OmnySys:orchestrator');
-
 import * as lifecycle from './lifecycle/index.js';
 import * as queueing from './queueing.js';
 import * as staticInsights from './static-insights.js';
@@ -15,35 +5,25 @@ import * as iterative from './iterative.js';
 import * as issues from './issues.js';
 import * as helpers from './helpers.js';
 import { pipelineAlertGuard } from '../file-watcher/guards/pipeline-alert-guard.js';
+import { EventEmitter } from 'events';
+import { createLogger } from '../../utils/logger.js';
+import {
+  buildOrchestratorState,
+  getOrchestratorStatus,
+  initializeComponentState,
+  initializeRuntimeState,
+  initializeIndexingState,
+  initializeIterationState,
+  initializeCompletionTrackingState,
+  setupAtomicEditor
+} from './index-helpers.js';
+
+const logger = createLogger('OmnySys:orchestrator');
 
 class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
     super();
-    this.projectPath = projectPath;
-    this.OmnySysDataPath = getDataPath(projectPath, '');
-    this.options = {
-      enableFileWatcher: true,
-      enableWebSocket: true,
-      autoStartLLM: true,
-      ports: {
-        webSocket: 9997,
-        ...options.ports
-      },
-      ...options
-    };
-
-    this._initializeComponentState();
-    this._initializeRuntimeState();
-    this._initializeIndexingState();
-    this._initializeIterationState();
-    this._initializeCompletionTrackingState();
-
-    // Atomic Editor - Para ediciones seguras con vibración
-    this.atomicEditor = getAtomicEditor(() => new AtomicEditor(projectPath, this));
-    this._setupAtomicEditor();
-
-    // Cache Invalidator - Para invalidación síncrona de caché
-    this.cacheInvalidator = null; // Se inicializa lazy
+    buildOrchestratorState(this, projectPath, options);
   }
 
   /**
@@ -71,6 +51,10 @@ class Orchestrator extends EventEmitter {
    */
   async atomicWrite(filePath, content) {
     return await this.atomicEditor.write(filePath, content);
+  }
+
+  getStatus() {
+    return getOrchestratorStatus.call(this);
   }
 
   /**
@@ -114,6 +98,27 @@ class Orchestrator extends EventEmitter {
     });
   }
 }
+
+Object.assign(Orchestrator.prototype, {
+  _initializeComponentState() {
+    return initializeComponentState(this);
+  },
+  _initializeRuntimeState() {
+    return initializeRuntimeState(this);
+  },
+  _initializeIndexingState() {
+    return initializeIndexingState(this);
+  },
+  _initializeIterationState() {
+    return initializeIterationState(this);
+  },
+  _initializeCompletionTrackingState() {
+    return initializeCompletionTrackingState(this);
+  },
+  _setupAtomicEditor() {
+    return setupAtomicEditor(this);
+  }
+});
 
 Object.assign(
   Orchestrator.prototype,
