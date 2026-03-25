@@ -7,6 +7,7 @@ import * as helpers from './helpers.js';
 import { pipelineAlertGuard } from '../file-watcher/guards/pipeline-alert-guard.js';
 import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger.js';
+import { handleOrchestratorFileChange } from './change-handling.js';
 import {
   buildOrchestratorState,
   getOrchestratorStatus,
@@ -23,6 +24,7 @@ const logger = createLogger('OmnySys:orchestrator');
 class Orchestrator extends EventEmitter {
   constructor(projectPath, options = {}) {
     super();
+    this.logger = logger;
     buildOrchestratorState(this, projectPath, options);
   }
 
@@ -66,36 +68,7 @@ class Orchestrator extends EventEmitter {
    * @param {Object} options - Opciones
    */
   async handleFileChange(filePath, changeType, options = {}) {
-    const { skipDebounce = false, priority = 'normal' } = options;
-
-    logger.info(`📁 File change detected: ${filePath} (${changeType})`);
-
-    // Invalidar caché
-    await this._invalidateFileCache(filePath);
-
-    // Agregar a cola de análisis
-    if (changeType === 'modified' || changeType === 'created') {
-      const queuePriority = priority === 'critical' ? 'critical' :
-        changeType === 'created' ? 'high' : 'normal';
-
-      this.queue.enqueue(filePath, queuePriority);
-
-      // Procesar inmediatamente si es crítico o skipDebounce
-      if (skipDebounce || priority === 'critical') {
-        if (!this.currentJob && this.isRunning) {
-          this._processNext();
-        }
-      }
-    }
-
-    // Broadcast por WebSocket
-    this.wsManager?.publish({
-      type: 'file:changed',
-      filePath,
-      changeType,
-      priority,
-      timestamp: Date.now()
-    });
+    return handleOrchestratorFileChange(this, filePath, changeType, options);
   }
 }
 

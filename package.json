@@ -1,6 +1,6 @@
 {
   "name": "omnysys",
-  "version": "0.9.275",
+  "version": "0.9.276",
   "description": "Motor de Contexto Multi-Capa para IAs - Previene visión de túnel al editar código",
   "main": "omny.js",
   "bin": {
@@ -152,3 +152,4 @@
     "mcp-stdio-bridge.js"
   ]
 }
+
