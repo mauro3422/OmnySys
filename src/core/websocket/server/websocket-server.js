@@ -10,7 +10,7 @@ import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
 import { DEFAULT_CONFIG, Events } from '../constants.js';
-import { closeAllConnections } from './connection-handler.js';
+import { closeAllConnections, handleDisconnection } from './connection-handler.js';
 import {
   attachWebSocketServerListeners,
   attachConnectionContext,
