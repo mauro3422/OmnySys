@@ -1,5 +1,4 @@
 import { createLogger } from '../../../utils/logger.js';
-import { detectCircularDependencies } from '../guards/circular-guard.js';
 import {
   detectDuplicateRiskForFile as detectDuplicateRiskForFileAction,
   detectImpactWaveForFile as detectImpactWaveForFileAction
@@ -7,6 +6,12 @@ import {
 import { handleFileCreatedForWatcher } from './file-handlers-create.js';
 import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete.js';
 import { handleFileModifiedForWatcher } from './file-handlers-modified.js';
+import {
+  enrichAtomsWithAncestry as enrichAtomsWithAncestryHelper,
+  saveAtom as saveAtomHelper,
+  getAtomsForFile as getAtomsForFileHelper,
+  detectCircularDependencyForFile as detectCircularDependencyForFileHelper
+} from './file-handlers-core-helpers.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -21,33 +26,14 @@ export async function handleFileCreated(filePath, fullPath, changeContext = {}) 
  * Enriquece atomos de un archivo con ancestry
  */
 export async function enrichAtomsWithAncestry(filePath) {
-  const { getShadowRegistry } = await import('../../../layer-c-memory/shadow-registry/index.js');
-  const registry = getShadowRegistry(this.dataPath);
-  await registry.initialize();
-
-  const atoms = await this.getAtomsForFile(filePath);
-
-  for (const atom of atoms) {
-    try {
-      const enriched = await registry.enrichWithAncestry(atom);
-
-      if (enriched.ancestry?.replaced) {
-        logger.info(`[ANCESTRY] ${atom.id} enriched from ${enriched.ancestry.replaced}`);
-        await this.saveAtom(enriched, filePath);
-      }
-    } catch (error) {
-      logger.warn(`[ANCESTRY FAIL] ${atom.id}:`, error.message);
-    }
-  }
+  return await enrichAtomsWithAncestryHelper(this, filePath);
 }
 
 /**
  * Guarda un atomo enriquecido
  */
 export async function saveAtom(atom, filePath) {
-  const { saveAtom: saveAtomToStorage } = await import('#layer-c/storage/index.js');
-  await saveAtomToStorage(this.rootPath, filePath, atom.name, atom);
-  logger.info(`[ATOM SAVED] ${filePath}::${atom.name}`);
+  return await saveAtomHelper(this, atom, filePath);
 }
 
 /**
@@ -84,13 +70,7 @@ export async function createShadowsForFile(filePath) {
  * Obtiene atomos de un archivo
  */
 export async function getAtomsForFile(filePath) {
-  const { loadAtoms } = await import('#layer-c/storage/index.js');
-  try {
-    return await loadAtoms(this.rootPath, filePath);
-  } catch (error) {
-    logger.debug(`[NO ATOMS] ${filePath}`);
-    return [];
-  }
+  return await getAtomsForFileHelper(this, filePath);
 }
 
 /**
@@ -98,14 +78,7 @@ export async function getAtomsForFile(filePath) {
  * sobre el archivo modificado para alertar en tiempo real.
  */
 export async function detectCircularDependencyForFile(filePath) {
-  try {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(this.rootPath);
-    return await detectCircularDependencies(this.rootPath, filePath, repo);
-  } catch (err) {
-    logger.debug(`[CIRCULAR GUARD SKIP] ${filePath}: ${err.message}`);
-    return null;
-  }
+  return await detectCircularDependencyForFileHelper(this, filePath);
 }
 
 export default {
