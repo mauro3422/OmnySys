@@ -1,5 +1,13 @@
-// Storage files module - JSON generation removed
-// All data is now stored in SQLite via the repository pattern
+/**
+ * @fileoverview Stub for removed file operations
+ * @module storage/files
+ */
 
-// Kept for backwards compatibility but does nothing
-export { savePartitionedSystemMap } from './system-map.js';
+/**
+ * Stub function for removed savePartitionedSystemMap
+ * @deprecated This function has been removed in favor of SQLite-only storage
+ */
+export function savePartitionedSystemMap() {
+  // Stub - functionality removed
+  return Promise.resolve();
+}
