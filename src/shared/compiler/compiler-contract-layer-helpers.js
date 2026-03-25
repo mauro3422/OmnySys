@@ -7,10 +7,7 @@
  * @module shared/compiler/compiler-contract-layer-helpers
  */
 
-function normalizeCount(value) {
-  const count = Number(value || 0);
-  return Number.isFinite(count) && count >= 0 ? count : 0;
-}
+import { normalizeCount } from './surface-utils.js';
 
 function buildSurface({
   id,
