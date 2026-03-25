@@ -10,14 +10,15 @@ import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
 import { DEFAULT_CONFIG, Events } from '../constants.js';
-import { WSClient } from '../client/ws-client.js';
-import { HeartbeatManager } from './heartbeat-manager.js';
-import { 
-  handleConnection, 
-  handleDisconnection, 
-  handleServerError,
-  closeAllConnections 
-} from './connection-handler.js';
+import { closeAllConnections } from './connection-handler.js';
+import {
+  attachWebSocketServerListeners,
+  attachConnectionContext,
+  runListeningBootstrap,
+  initializeHeartbeatManager,
+  getWebSocketServerStats,
+  stopWebSocketServer
+} from './websocket-server-helpers.js';
 import { createLogger } from '../../utils/logger.js';
 import {
   sendToClient,
@@ -72,28 +73,7 @@ export class WebSocketManager extends EventEmitter {
           port: this.options.port,
           path: this.options.path
         });
-
-        let started = false;
-        const startupErrorHandler = (error) => {
-          handleServerError(error, this);
-
-          if (!started) {
-            this.wss = null;
-            this.isRunning = false;
-            reject(error);
-          }
-        };
-
-        const listeningHandler = () => {
-          started = true;
-          this.wss.removeListener('error', startupErrorHandler);
-          this.wss.on('error', (error) => handleServerError(error, this));
-          this.onListening(resolve, reject);
-        };
-
-        this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
-        this.wss.once('error', startupErrorHandler);
-        this.wss.once('listening', listeningHandler);
+        attachWebSocketServerListeners(this, this.wss, resolve, reject);
       } catch (error) {
         reject(error);
       }
@@ -105,22 +85,7 @@ export class WebSocketManager extends EventEmitter {
    * @private
    */
   onConnection(ws, req) {
-    const client = handleConnection(ws, req, {
-      clients: this.clients,
-      maxClients: this.options.maxClients,
-      generateClientId: () => this.generateClientId(),
-      createClient: (ws, id) => new WSClient(ws, id, this),
-      emitter: this
-    });
-
-    // Sobrescribir removeClient para usar nuestro handler
-    if (client) {
-      const originalClose = client.handleClose.bind(client);
-      client.handleClose = () => {
-        handleDisconnection(client.id, { clients: this.clients, emitter: this });
-        originalClose();
-      };
-    }
+    return attachConnectionContext(this, ws, req);
   }
 
   /**
@@ -128,17 +93,7 @@ export class WebSocketManager extends EventEmitter {
    * @private
    */
   onListening(resolve, reject) {
-    try {
-      this.isRunning = true;
-      this.setupHeartbeatManager();
-      logger.info(`🔌 WebSocket server listening on ws://localhost:${this.options.port}${this.options.path}`);
-      this.emit(Events.STARTED);
-      resolve();
-    } catch (error) {
-      this.isRunning = false;
-      handleServerError(error, this);
-      reject(error);
-    }
+    return runListeningBootstrap(this, resolve, reject);
   }
 
   /**
@@ -146,23 +101,7 @@ export class WebSocketManager extends EventEmitter {
    * @private
    */
   setupHeartbeatManager() {
-    try {
-      this.heartbeatManager = new HeartbeatManager({
-        interval: this.options.heartbeatInterval,
-        getClients: () => this.clients,
-        onDeadClient: (id) => {
-          const client = this.clients.get(id);
-          if (client) {
-            logger.info(`💀 Removing dead client: ${id}`);
-            client.close(1001, 'Heartbeat timeout');
-          }
-        }
-      });
-      this.heartbeatManager.begin();
-    } catch (error) {
-      this.heartbeatManager = null;
-      throw error;
-    }
+    return initializeHeartbeatManager(this);
   }
 
   /**
@@ -225,15 +164,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {Object}
    */
   getWebSocketServerStats() {
-    return {
-      isRunning: this.isRunning,
-      port: this.options.port,
-      path: this.options.path,
-      clients: this.clients.size,
-      maxClients: this.options.maxClients,
-      heartbeatInterval: this.options.heartbeatInterval,
-      heartbeatActive: !!this.heartbeatManager
-    };
+    return getWebSocketServerStats(this);
   }
 
   /**
@@ -241,37 +172,8 @@ export class WebSocketManager extends EventEmitter {
    * @returns {Promise<void>}
    */
   async stop() {
-    if (!this.isRunning) {
-      return;
-    }
-
-    logger.info('🔌 Stopping WebSocket server...');
-
-    // Detener heartbeat
-    if (this.heartbeatManager) {
-      this.heartbeatManager.stop();
-      this.heartbeatManager = null;
-    }
-
-    // Cerrar todas las conexiones
     closeAllConnections(this.clients);
-
-    // Cerrar servidor
-    return new Promise((resolve) => {
-      if (!this.wss) {
-        this.isRunning = false;
-        this.emit(Events.STOPPED);
-        resolve();
-        return;
-      }
-
-      this.wss.close(() => {
-        this.isRunning = false;
-        this.wss = null;
-        this.emit(Events.STOPPED);
-        resolve();
-      });
-    });
+    return stopWebSocketServer(this);
   }
 }
 
