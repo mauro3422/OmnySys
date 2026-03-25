@@ -1,7 +1,6 @@
 import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     normalizeFilePath,
-    summarizeAtomTestability,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     coordinateDuplicateFindings
@@ -27,8 +26,4 @@ export function buildUnifiedDebtHistory(normalizedFilePath, findings, previousFi
 
 export function coordinateUnifiedDuplicateFindings(structuralFindings, conceptualFindings) {
     return coordinateDuplicateFindings(structuralFindings, conceptualFindings);
-}
-
-export function summarizeUnifiedAtomTestability(localAtoms) {
-    return summarizeAtomTestability(localAtoms);
 }

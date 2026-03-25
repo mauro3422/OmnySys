@@ -14,6 +14,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
 } from '../../../shared/compiler/index.js';
@@ -33,9 +34,9 @@ import {
     normalizeUnifiedDuplicateFilePath,
     loadUnifiedPreviousFindings,
     buildUnifiedDebtHistory,
-    coordinateUnifiedDuplicateFindings,
-    summarizeUnifiedAtomTestability
+    coordinateUnifiedDuplicateFindings
 } from './unified-duplicate-guard-helpers.js';
+import { summarizeAtomTestability } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
@@ -180,7 +181,7 @@ async function runConceptualDuplicateGuard(repo, rootPath, normalizedFilePath, o
             return [];
         }
 
-        const testabilitySummary = summarizeUnifiedAtomTestability(localAtoms);
+        const testabilitySummary = summarizeAtomTestability(localAtoms);
         return await detectConceptualFindings(
             repo,
             normalizedFilePath,

@@ -8,24 +8,23 @@
 
 import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
-import crypto from 'crypto';
 import { DEFAULT_CONFIG, Events } from '../constants.js';
-import { closeAllConnections, handleDisconnection } from './connection-handler.js';
+import { closeAllConnections } from './connection-handler.js';
 import {
   attachWebSocketServerListeners,
   attachConnectionContext,
+  removeWebSocketClient,
+  generateWebSocketClientId,
+  sendWebSocketMessage,
+  publishWebSocketToSubscribers,
+  publishWebSocket,
+  publishWebSocketToProject,
   runListeningBootstrap,
   initializeHeartbeatManager,
   getWebSocketServerStats,
   stopWebSocketServer
 } from './websocket-server-helpers.js';
 import { createLogger } from '../../utils/logger.js';
-import {
-  sendToClient,
-  broadcast,
-  broadcastToSubscribers,
-  broadcastToProject
-} from '../messaging/broadcaster.js';
 
 const logger = createLogger('OmnySys:websocket:server');
 
@@ -109,7 +108,7 @@ export class WebSocketManager extends EventEmitter {
    * @param {string} clientId - ID del cliente
    */
   removeClient(clientId) {
-    handleDisconnection(clientId, { clients: this.clients, emitter: this });
+    return removeWebSocketClient(this, clientId);
   }
 
   /**
@@ -117,7 +116,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {string}
    */
   generateClientId() {
-    return crypto.randomUUID();
+    return generateWebSocketClientId();
   }
 
   /**
@@ -127,7 +126,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {boolean}
    */
   sendToClient(clientId, message) {
-    return sendToClient(this.clients, clientId, message);
+    return sendWebSocketMessage(this, clientId, message);
   }
 
   /**
@@ -137,7 +136,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {number}
    */
   publishToSubscribers(filePath, message) {
-    return broadcastToSubscribers(this.clients, filePath, message);
+    return publishWebSocketToSubscribers(this, filePath, message);
   }
 
   /**
@@ -146,7 +145,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {number}
    */
   publish(message) {
-    return broadcast(this.clients, message);
+    return publishWebSocket(this, message);
   }
 
   /**
@@ -156,7 +155,7 @@ export class WebSocketManager extends EventEmitter {
    * @returns {number}
    */
   publishToProject(projectPath, message) {
-    return broadcastToProject(this.clients, projectPath, message);
+    return publishWebSocketToProject(this, projectPath, message);
   }
 
   /**

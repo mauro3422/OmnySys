@@ -3,6 +3,12 @@ import { HeartbeatManager } from './heartbeat-manager.js';
 import { handleConnection, handleDisconnection, handleServerError } from './connection-handler.js';
 import { WSClient } from '../client/ws-client.js';
 import { Events } from '../constants.js';
+import {
+  sendToClient,
+  broadcast,
+  broadcastToSubscribers,
+  broadcastToProject
+} from '../messaging/broadcaster.js';
 
 const logger = createLogger('OmnySys:websocket:server:helpers');
 
@@ -47,6 +53,30 @@ export function attachConnectionContext(server, ws, req) {
       originalClose();
     };
   }
+}
+
+export function removeWebSocketClient(server, clientId) {
+  handleDisconnection(clientId, { clients: server.clients, emitter: server });
+}
+
+export function generateWebSocketClientId() {
+  return crypto.randomUUID();
+}
+
+export function sendWebSocketMessage(server, clientId, message) {
+  return sendToClient(server.clients, clientId, message);
+}
+
+export function publishWebSocketToSubscribers(server, filePath, message) {
+  return broadcastToSubscribers(server.clients, filePath, message);
+}
+
+export function publishWebSocket(server, message) {
+  return broadcast(server.clients, message);
+}
+
+export function publishWebSocketToProject(server, projectPath, message) {
+  return broadcastToProject(server.clients, projectPath, message);
 }
 
 export function runListeningBootstrap(server, resolve, reject) {
