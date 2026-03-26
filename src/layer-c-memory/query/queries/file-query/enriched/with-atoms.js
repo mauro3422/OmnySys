@@ -46,6 +46,17 @@ async function loadAtomsWithCache(rootPath, filePath, analysis, cache) {
  * @returns {object} - Statistics object
  */
 function calculateStats(atoms, derivedMetadata) {
+  if (!derivedMetadata) {
+    return {
+      totalAtoms: atoms.length,
+      exportedAtoms: atoms.filter(a => a.isExported).length,
+      deadAtoms: atoms.filter(a => a.archetype?.type === 'dead-function').length,
+      hotPathAtoms: atoms.filter(a => a.archetype?.type === 'hot-path').length,
+      fragileNetworkAtoms: atoms.filter(a => a.archetype?.type === 'fragile-network').length,
+      totalComplexity: 0,
+      averageComplexity: 0
+    };
+  }
   return {
     totalAtoms: atoms.length,
     exportedAtoms: atoms.filter(a => a.isExported).length,

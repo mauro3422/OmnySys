@@ -12,7 +12,6 @@ import * as storageManager from '#layer-c/storage/index.js';
 describe('Storage Manager - Functional Tests', () => {
   
   it('all expected functions are exported', () => {
-    expect(typeof storageManager.saveMetadata).toBe('function');
     expect(typeof storageManager.saveMolecule).toBe('function');
     expect(typeof storageManager.loadMolecule).toBe('function');
     expect(typeof storageManager.saveAtom).toBe('function');
@@ -21,6 +20,8 @@ describe('Storage Manager - Functional Tests', () => {
     expect(typeof storageManager.getDataDirectory).toBe('function');
     expect(typeof storageManager.hasExistingAnalysis).toBe('function');
     expect(typeof storageManager.calculateFileHash).toBe('function');
+    expect(typeof storageManager.savePartitionedSystemMap).toBe('function');
+    expect(typeof storageManager.getAllAtoms).toBe('function');
   });
 
   describe('Utility Functions', () => {

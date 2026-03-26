@@ -10,6 +10,11 @@ import { getFileAnalysis } from '#layer-c/query/queries/file-query/core/single-f
 import { loadAtoms, loadMolecule } from '#layer-c/storage/index.js';
 import { composeMolecularMetadata } from '#shared/derivation-engine/index.js';
 
+// Hoist mocks to top level
+vi.mock('#layer-c/query/queries/file-query/core/single-file.js');
+vi.mock('#layer-c/storage/index.js');
+vi.mock('#shared/derivation-engine/index.js');
+
 describe('getFileAnalysisWithAtoms', () => {
   const rootPath = 'C:/Dev/OmnySystem';
   const filePath = 'src/test-file.js';
@@ -25,6 +30,7 @@ describe('getFileAnalysisWithAtoms', () => {
     imports: ['lodash'],
     exports: [{ name: 'exportedFunc', kind: 'function' }],
     atoms: [],
+    atomIds: ['src_test-file_js::func1', 'src_test-file_js::func2', 'src_test-file_js::func3'],
     compilerSignals: {
       testability: { score: 0.7 },
       semanticPurity: { score: 0.8 }
@@ -43,7 +49,7 @@ describe('getFileAnalysisWithAtoms', () => {
       line_end: 30,
       complexity: 8,
       atom_type: 'function',
-      is_exported: true,
+      isExported: true,
       is_async: false,
       archetype: { type: 'core-function' },
       propagation_score: 0.5,
@@ -61,7 +67,7 @@ describe('getFileAnalysisWithAtoms', () => {
       line_end: 60,
       complexity: 12,
       atom_type: 'arrow',
-      is_exported: true,
+      isExported: true,
       is_async: true,
       archetype: { type: 'hot-path' },
       propagation_score: 0.7,
@@ -79,7 +85,7 @@ describe('getFileAnalysisWithAtoms', () => {
       line_end: 80,
       complexity: 5,
       atom_type: 'function',
-      is_exported: false,
+      isExported: false,
       is_async: false,
       archetype: { type: 'dead-function' },
       propagation_score: 0.1,
@@ -103,10 +109,10 @@ describe('getFileAnalysisWithAtoms', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getFileAnalysis).mockResolvedValue(mockFileAnalysis);
-    vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
-    vi.mocked(loadMolecule).mockResolvedValue(mockMolecule);
-    vi.mocked(composeMolecularMetadata).mockReturnValue({
+    getFileAnalysis.mockResolvedValue(mockFileAnalysis);
+    loadAtoms.mockResolvedValue(mockAtoms);
+    loadMolecule.mockResolvedValue(mockMolecule);
+    composeMolecularMetadata.mockReturnValue({
       totalComplexity: 25,
       averageComplexity: 8.3,
       cohesionScore: 0.65,
@@ -224,7 +230,10 @@ describe('getFileAnalysisWithAtoms', () => {
 
     it('handles cache without getDerivedMetadata method', async () => {
       const mockCache = {
-        getAtoms: vi.fn(),
+        getAtoms: vi.fn().mockReturnValue({
+          found: new Map(),
+          missing: ['src_test-file_js::func1', 'src_test-file_js::func2', 'src_test-file_js::func3']
+        }),
         setAtom: vi.fn()
       };
 
@@ -288,7 +297,7 @@ describe('getFileAnalysisWithAtoms', () => {
 
   describe('edge cases', () => {
     it('returns null when file analysis returns null', async () => {
-      vi.mocked(getFileAnalysis).mockResolvedValue(null);
+      getFileAnalysis.mockResolvedValue(null);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -296,7 +305,7 @@ describe('getFileAnalysisWithAtoms', () => {
     });
 
     it('handles file with no atoms', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue([]);
+      loadAtoms.mockResolvedValue([]);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -306,7 +315,7 @@ describe('getFileAnalysisWithAtoms', () => {
     });
 
     it('handles file with null molecule', async () => {
-      vi.mocked(loadMolecule).mockResolvedValue(null);
+      loadMolecule.mockResolvedValue(null);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -315,7 +324,7 @@ describe('getFileAnalysisWithAtoms', () => {
     });
 
     it('handles composeMolecularMetadata returning null', async () => {
-      vi.mocked(composeMolecularMetadata).mockReturnValue(null);
+      composeMolecularMetadata.mockReturnValue(null);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -347,7 +356,7 @@ describe('getFileAnalysisWithAtoms', () => {
           archetype: { type: 'core-function' }
         }
       ];
-      vi.mocked(loadAtoms).mockResolvedValue(updatedAtoms);
+      loadAtoms.mockResolvedValue(updatedAtoms);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -368,7 +377,7 @@ describe('getFileAnalysisWithAtoms', () => {
           is_exported: false
         }
       ];
-      vi.mocked(loadAtoms).mockResolvedValue(atomsWithFragile);
+      loadAtoms.mockResolvedValue(atomsWithFragile);
 
       const result = await getFileAnalysisWithAtoms(rootPath, filePath);
 
@@ -377,14 +386,14 @@ describe('getFileAnalysisWithAtoms', () => {
 
     it('handles multiple archetype types', async () => {
       const diverseAtoms = [
-        { id: '1', name: 'a1', archetype: { type: 'core-function' }, is_exported: true },
-        { id: '2', name: 'a2', archetype: { type: 'dead-function' }, is_exported: false },
-        { id: '3', name: 'a3', archetype: { type: 'hot-path' }, is_exported: true },
-        { id: '4', name: 'a4', archetype: { type: 'fragile-network' }, is_exported: false },
-        { id: '5', name: 'a5', archetype: { type: 'core-function' }, is_exported: false }
+        { id: '1', name: 'a1', archetype: { type: 'core-function' }, isExported: true },
+        { id: '2', name: 'a2', archetype: { type: 'dead-function' }, isExported: false },
+        { id: '3', name: 'a3', archetype: { type: 'hot-path' }, isExported: true },
+        { id: '4', name: 'a4', archetype: { type: 'fragile-network' }, isExported: false },
+        { id: '5', name: 'a5', archetype: { type: 'core-function' }, isExported: false }
       ];
-      vi.mocked(loadAtoms).mockResolvedValue(diverseAtoms);
-      vi.mocked(composeMolecularMetadata).mockReturnValue({
+      loadAtoms.mockResolvedValue(diverseAtoms);
+      composeMolecularMetadata.mockReturnValue({
         totalComplexity: 50,
         averageComplexity: 10
       });

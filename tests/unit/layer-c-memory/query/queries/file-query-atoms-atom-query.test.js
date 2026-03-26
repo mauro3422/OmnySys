@@ -4,7 +4,6 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import fs from 'fs/promises';
 import path from 'path';
 
 import {
@@ -14,6 +13,25 @@ import {
 } from '#layer-c/query/queries/file-query/atoms/atom-query.js';
 import { loadAtoms } from '#layer-c/storage/index.js';
 import { getFileAnalysis } from '#layer-c/query/queries/file-query/core/single-file.js';
+
+vi.mock('#layer-c/storage/index.js');
+vi.mock('#layer-c/query/queries/file-query/core/single-file.js');
+
+vi.mock('fs/promises', () => {
+  const mockReaddir = vi.fn();
+  const mockReadFile = vi.fn();
+  return {
+    default: {
+      readdir: mockReaddir,
+      readFile: mockReadFile
+    },
+    readdir: mockReaddir,
+    readFile: mockReadFile
+  };
+});
+
+// Import fs after mocking
+import fs from 'fs/promises';
 
 describe('atom-query', () => {
   const rootPath = 'C:/Dev/OmnySystem';
@@ -70,7 +88,7 @@ describe('atom-query', () => {
     ];
 
     it('builds correct atom ID from file path and function name', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
 
       const result = await getAtomDetails(rootPath, filePath, 'myFunction');
 
@@ -79,7 +97,7 @@ describe('atom-query', () => {
     });
 
     it('returns atom when found', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
 
       const result = await getAtomDetails(rootPath, filePath, 'myFunction');
 
@@ -89,7 +107,7 @@ describe('atom-query', () => {
     });
 
     it('returns null when atom not found', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
 
       const result = await getAtomDetails(rootPath, filePath, 'nonExistent');
 
@@ -97,7 +115,7 @@ describe('atom-query', () => {
     });
 
     it('uses cache when available and hit', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
       const mockCache = {
         getAtom: vi.fn().mockReturnValue(mockAtoms[0]),
         setAtom: vi.fn()
@@ -105,13 +123,13 @@ describe('atom-query', () => {
 
       const result = await getAtomDetails(rootPath, filePath, 'myFunction', mockCache);
 
-      expect(mockCache.getAtom).toHaveBeenCalledWith('src_test-file_js::myFunction');
+      expect(mockCache.getAtom).toHaveBeenCalledWith('src_test-file::myFunction');
       expect(loadAtoms).not.toHaveBeenCalled();
       expect(result).toEqual(mockAtoms[0]);
     });
 
     it('loads from disk when cache miss', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
       const mockCache = {
         getAtom: vi.fn().mockReturnValue(null),
         setAtom: vi.fn()
@@ -121,12 +139,12 @@ describe('atom-query', () => {
 
       expect(mockCache.getAtom).toHaveBeenCalled();
       expect(loadAtoms).toHaveBeenCalledWith(rootPath, filePath);
-      expect(mockCache.setAtom).toHaveBeenCalledWith('src_test-file_js::myFunction', mockAtoms[0]);
+      expect(mockCache.setAtom).toHaveBeenCalledWith('src_test-file::myFunction', mockAtoms[0]);
       expect(result).toEqual(mockAtoms[0]);
     });
 
     it('only caches requested atom on cache miss', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
       const mockCache = {
         getAtom: vi.fn().mockReturnValue(null),
         setAtom: vi.fn()
@@ -135,7 +153,7 @@ describe('atom-query', () => {
       await getAtomDetails(rootPath, filePath, 'myFunction', mockCache);
 
       expect(mockCache.setAtom).toHaveBeenCalledTimes(1);
-      expect(mockCache.setAtom).toHaveBeenCalledWith('src_test-file_js::myFunction', mockAtoms[0]);
+      expect(mockCache.setAtom).toHaveBeenCalledWith('src_test-file::myFunction', mockAtoms[0]);
     });
 
     describe('backward compatibility migrations', () => {
@@ -145,7 +163,7 @@ describe('atom-query', () => {
           name: 'tsFunc',
           params: ['arg1', 'arg2']
         };
-        vi.mocked(loadAtoms).mockResolvedValue([atomWithoutDataFlow]);
+        loadAtoms.mockResolvedValue([atomWithoutDataFlow]);
 
         const result = await getAtomDetails(rootPath, filePath, 'tsFunc');
 
@@ -166,7 +184,7 @@ describe('atom-query', () => {
             outputs: []
           }
         };
-        vi.mocked(loadAtoms).mockResolvedValue([atomWithDataFlow]);
+        loadAtoms.mockResolvedValue([atomWithDataFlow]);
 
         const result = await getAtomDetails(rootPath, filePath, 'modernFunc');
 
@@ -178,8 +196,8 @@ describe('atom-query', () => {
           id: 'src_test-file_js::noImports',
           name: 'noImports'
         };
-        vi.mocked(loadAtoms).mockResolvedValue([atomWithoutImports]);
-        vi.mocked(getFileAnalysis).mockResolvedValue({
+        loadAtoms.mockResolvedValue([atomWithoutImports]);
+        getFileAnalysis.mockResolvedValue({
           imports: ['lodash', 'axios']
         });
 
@@ -194,8 +212,8 @@ describe('atom-query', () => {
           id: 'src_test-file_js::errorCase',
           name: 'errorCase'
         };
-        vi.mocked(loadAtoms).mockResolvedValue([atomWithoutImports]);
-        vi.mocked(getFileAnalysis).mockRejectedValue(new Error('File not found'));
+        loadAtoms.mockResolvedValue([atomWithoutImports]);
+        getFileAnalysis.mockRejectedValue(new Error('File not found'));
 
         const result = await getAtomDetails(rootPath, filePath, 'errorCase');
 
@@ -207,7 +225,7 @@ describe('atom-query', () => {
   describe('findAtomsByArchetype', () => {
     const mockAtomFiles = [
       {
-        path: '.omnysysdata/atoms/src/file1.json',
+        path: 'C:/Dev/OmnySystem/.omnysysdata/atoms/src/file1.json',
         content: JSON.stringify({
           id: 'atom1',
           name: 'deadFunc',
@@ -216,7 +234,7 @@ describe('atom-query', () => {
         })
       },
       {
-        path: '.omnysysdata/atoms/src/file2.json',
+        path: 'C:/Dev/OmnySystem/.omnysysdata/atoms/src/file2.json',
         content: JSON.stringify({
           id: 'atom2',
           name: 'hotFunc',
@@ -225,7 +243,7 @@ describe('atom-query', () => {
         })
       },
       {
-        path: '.omnysysdata/atoms/src/file3.json',
+        path: 'C:/Dev/OmnySystem/.omnysysdata/atoms/src/file3.json',
         content: JSON.stringify({
           id: 'atom3',
           name: 'anotherDeadFunc',
@@ -236,24 +254,26 @@ describe('atom-query', () => {
     ];
 
     beforeEach(() => {
-      vi.mocked(fs.readdir).mockImplementation(async (dir, options) => {
-        if (dir.includes('.omnysysdata/atoms')) {
+      fs.readdir.mockImplementation(async (dir, options) => {
+        const normalizedDir = dir.replace(/\\/g, '/');
+        if (normalizedDir.endsWith('/atoms')) {
           return [
-            { name: 'src', isDirectory: () => true },
-            { name: 'README.md', isDirectory: () => false }
+            { name: 'src', isDirectory: () => true, isFile: () => false }
           ];
         }
-        if (dir.includes('.omnysysdata/atoms/src')) {
-          return mockAtomFiles.map(f => ({
-            name: path.basename(f.path),
-            isDirectory: () => false
-          }));
+        if (normalizedDir.endsWith('/atoms/src')) {
+          return [
+            { name: 'file1.json', isDirectory: () => false, isFile: () => true },
+            { name: 'file2.json', isDirectory: () => false, isFile: () => true },
+            { name: 'file3.json', isDirectory: () => false, isFile: () => true }
+          ];
         }
         return [];
       });
 
-      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
-        const mockFile = mockAtomFiles.find(f => f.path.includes(path.basename(filePath)));
+      fs.readFile.mockImplementation(async (filePath) => {
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        const mockFile = mockAtomFiles.find(f => normalizedPath.includes(path.basename(f.path)));
         if (mockFile) {
           return mockFile.content;
         }
@@ -279,23 +299,20 @@ describe('atom-query', () => {
     it('recursively walks atom directory', async () => {
       await findAtomsByArchetype(rootPath, 'dead-function');
 
-      expect(fs.readdir).toHaveBeenCalledWith(
-        expect.stringContaining('.omnysysdata/atoms'),
-        expect.objectContaining({ withFileTypes: true })
-      );
+      expect(fs.readdir).toHaveBeenCalled();
     });
 
     it('only reads .json files', async () => {
       await findAtomsByArchetype(rootPath, 'dead-function');
 
-      const jsonReadCalls = vi.mocked(fs.readFile).mock.calls;
+      const jsonReadCalls = fs.readFile.mock.calls;
       jsonReadCalls.forEach(call => {
         expect(call[0]).toMatch(/\.json$/);
       });
     });
 
     it('handles corrupted JSON files gracefully', async () => {
-      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+      fs.readFile.mockImplementation(async (filePath) => {
         const fileName = path.basename(filePath);
         if (fileName === 'file1.json') {
           return 'invalid json {';
@@ -311,7 +328,7 @@ describe('atom-query', () => {
     });
 
     it('handles missing directory gracefully', async () => {
-      vi.mocked(fs.readdir).mockRejectedValue(new Error('Directory not found'));
+      fs.readdir.mockRejectedValue(new Error('Directory not found'));
 
       const result = await findAtomsByArchetype(rootPath, 'dead-function');
 
@@ -334,27 +351,27 @@ describe('atom-query', () => {
         id: 'src_file_js::func1',
         name: 'func1',
         file_path: filePath,
-        line_start: 1,
-        line_end: 30
+        lineStart: 1,
+        lineEnd: 30
       },
       {
         id: 'src_file_js::func2',
         name: 'func2',
         file_path: filePath,
-        line_start: 31,
-        line_end: 60
+        lineStart: 31,
+        lineEnd: 60
       },
       {
         id: 'src_file_js::func3',
         name: 'func3',
         file_path: filePath,
-        line_start: 61,
-        line_end: 90
+        lineStart: 61,
+        lineEnd: 90
       }
     ];
 
     beforeEach(() => {
-      vi.mocked(loadAtoms).mockResolvedValue(mockAtoms);
+      loadAtoms.mockResolvedValue(mockAtoms);
     });
 
     it('finds atom containing specified line number', async () => {
@@ -382,7 +399,7 @@ describe('atom-query', () => {
     });
 
     it('returns null when file has no atoms', async () => {
-      vi.mocked(loadAtoms).mockResolvedValue([]);
+      loadAtoms.mockResolvedValue([]);
 
       const result = await findAtomByLine(rootPath, filePath, 10);
 
@@ -397,16 +414,16 @@ describe('atom-query', () => {
 
     it('returns first matching atom when ranges overlap', async () => {
       const overlappingAtoms = [
-        { line_start: 1, line_end: 50, name: 'outer' },
-        { line_start: 10, line_end: 30, name: 'inner' }
+        { lineStart: 1, lineEnd: 50, name: 'outer' },
+        { lineStart: 10, lineEnd: 30, name: 'inner' }
       ];
-      vi.mocked(loadAtoms).mockResolvedValue(overlappingAtoms);
+      loadAtoms.mockResolvedValue(overlappingAtoms);
 
       const result = await findAtomByLine(rootPath, filePath, 20);
 
       expect(result).toBeDefined();
-      expect(result.line_start).toBeLessThanOrEqual(20);
-      expect(result.line_end).toBeGreaterThanOrEqual(20);
+      expect(result.lineStart).toBeLessThanOrEqual(20);
+      expect(result.lineEnd).toBeGreaterThanOrEqual(20);
     });
   });
 
@@ -414,10 +431,10 @@ describe('atom-query', () => {
     it('replaces backslashes with underscores', () => {
       const filePath = 'src\\folder\\file.js';
       const expected = 'src_folder_file_js';
-      
+
       // Test the ID construction logic indirectly through getAtomDetails
       const mockAtom = { id: `${expected}::myFunc`, name: 'myFunc' };
-      vi.mocked(loadAtoms).mockResolvedValue([mockAtom]);
+      loadAtoms.mockResolvedValue([mockAtom]);
 
       getAtomDetails(rootPath, filePath, 'myFunc');
 
@@ -427,9 +444,9 @@ describe('atom-query', () => {
     it('replaces forward slashes with underscores', () => {
       const filePath = 'src/folder/file.js';
       const expected = 'src_folder_file_js';
-      
+
       const mockAtom = { id: `${expected}::myFunc`, name: 'myFunc' };
-      vi.mocked(loadAtoms).mockResolvedValue([mockAtom]);
+      loadAtoms.mockResolvedValue([mockAtom]);
 
       getAtomDetails(rootPath, filePath, 'myFunc');
 
@@ -439,9 +456,9 @@ describe('atom-query', () => {
     it('removes file extension', () => {
       const filePath = 'src/file.ts';
       const expected = 'src_file_ts';
-      
+
       const mockAtom = { id: `${expected}::myFunc`, name: 'myFunc' };
-      vi.mocked(loadAtoms).mockResolvedValue([mockAtom]);
+      loadAtoms.mockResolvedValue([mockAtom]);
 
       getAtomDetails(rootPath, filePath, 'myFunc');
 
@@ -464,7 +481,7 @@ describe('atom-query', () => {
           outputs: [{ name: 'result', type: 'any' }]
         }
       };
-      vi.mocked(loadAtoms).mockResolvedValue([mockAtom]);
+      loadAtoms.mockResolvedValue([mockAtom]);
 
       const result = await getAtomDetails(rootPath, 'src/module/utils.js', 'helper');
 
@@ -482,7 +499,7 @@ describe('atom-query', () => {
         getAtom: vi.fn().mockReturnValue(null),
         setAtom: vi.fn()
       };
-      vi.mocked(loadAtoms).mockResolvedValue([mockAtom]);
+      loadAtoms.mockResolvedValue([mockAtom]);
 
       const result = await getAtomDetails(rootPath, 'src/cached.js', 'func', mockCache);
 

@@ -42,15 +42,17 @@ export {
   createDataDirectory,
   getDataDirectory,
   hasExistingAnalysis,
-  saveMetadata,
-  saveFileAnalysis,
-  saveConnections,
-  saveRiskAssessment,
   savePartitionedSystemMap,
   saveMolecule,
   loadMolecule,
   saveAtom,
-  loadAtoms
+  loadAtoms,
+  getAllAtoms,
+  queryAtoms,
+  enrichAtomsWithRelations,
+  enrichAtomsForFile,
+  enrichAtomWithFullRelations,
+  getRelationStats
 } from '#layer-c/storage/index.js';
 
 // Default export

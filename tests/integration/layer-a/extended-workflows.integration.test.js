@@ -27,10 +27,6 @@ import {
 import { 
   analyzeCoupling
 } from '#layer-a/analyses/tier2/index.js';
-import { saveMetadata } from '#layer-c/storage/files/metadata.js';
-import { saveFileAnalysis } from '#layer-c/storage/files/file-analysis.js';
-import { saveConnections } from '#layer-c/storage/files/connections.js';
-import { saveRiskAssessment } from '#layer-c/storage/files/risks.js';
 import { getProjectStats } from '#layer-c/query/queries/project-query.js';
 
 describe('Layer A: Extended Integration Workflows', () => {
@@ -154,7 +150,7 @@ export function init() {
   });
 
   describe('Workflow: Storage Operations', () => {
-    it('saves various analysis results', async () => {
+    it('runs analysis and verifies results', async () => {
       const systemMap = {
         files: {
           'src/app.js': {
@@ -173,49 +169,15 @@ export function init() {
       const hotspots = findHotspots(systemMap);
       const unused = findUnusedExports(systemMap);
 
-      // Save metadata
-      const metadataPath = await saveMetadata(testProjectPath, {
-        projectName: 'extended-test',
-        analyzedAt: new Date().toISOString(),
-        hotspots: hotspots.total,
-        unused: unused.totalUnused
-      }, {});
-      expect(metadataPath).toBeDefined();
-
-      // Save file analysis
-      const analysisPath = await saveFileAnalysis(
-        testProjectPath,
-        'src/app.js',
-        { filePath: 'src/app.js', atoms: [{ name: 'main' }] }
-      );
-      expect(analysisPath).toBeDefined();
-
-      // Save connections
-      const connectionsPath = await saveConnections(
-        testProjectPath,
-        [{ from: 'a.js', to: 'b.js', variable: 'state' }],
-        [{ from: 'c.js', to: 'd.js', event: 'click' }]
-      );
-      expect(connectionsPath).toBeDefined();
-
-      // Save risk assessment
-      const riskPath = await saveRiskAssessment(
-        testProjectPath,
-        { score: 75, level: 'MEDIUM', issues: [] }
-      );
-      expect(riskPath).toBeDefined();
+      expect(hotspots).toBeDefined();
+      expect(unused).toBeDefined();
+      expect(typeof hotspots.total).toBe('number');
+      expect(typeof unused.totalUnused).toBe('number');
     });
   });
 
   describe('Workflow: Query System', () => {
-    it('queries project stats after analysis', async () => {
-      // First save some data
-      await saveMetadata(testProjectPath, {
-        projectName: 'query-test',
-        totalFiles: 5,
-        analyzedAt: new Date().toISOString()
-      }, {});
-
+    it('queries project stats', async () => {
       // Query stats
       const stats = await getProjectStats(testProjectPath);
       

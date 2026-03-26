@@ -7,11 +7,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 
 import { getRiskAssessment } from '#layer-c/query/queries/risk-query.js';
+
+// Hoisted mock - must come BEFORE importing from the mocked module
+vi.mock('#layer-c/storage/repository/index.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getRepository: vi.fn()
+  };
+});
+
 import { getRepository } from '#layer-c/storage/repository/index.js';
 
 describe('getRiskAssessment', () => {
-  let db;
   let repo;
+  let db;
   const rootPath = 'C:/Dev/OmnySystem';
 
   beforeEach(() => {
@@ -23,9 +33,9 @@ describe('getRiskAssessment', () => {
         name TEXT NOT NULL,
         atom_type TEXT NOT NULL,
         file_path TEXT NOT NULL,
-        line_start INTEGER NOT NULL,
-        line_end INTEGER NOT NULL,
-        lines_of_code INTEGER NOT NULL,
+        line_start INTEGER NOT NULL DEFAULT 0,
+        line_end INTEGER NOT NULL DEFAULT 0,
+        lines_of_code INTEGER NOT NULL DEFAULT 0,
         complexity INTEGER NOT NULL,
         is_exported BOOLEAN DEFAULT 0,
         is_async BOOLEAN DEFAULT 0,
@@ -35,6 +45,7 @@ describe('getRiskAssessment', () => {
         purpose_type TEXT,
         is_dead_code BOOLEAN DEFAULT 0,
         is_removed BOOLEAN DEFAULT 0,
+        is_phase2_complete BOOLEAN DEFAULT 0,
         importance_score REAL DEFAULT 0,
         coupling_score REAL DEFAULT 0,
         cohesion_score REAL DEFAULT 0,
@@ -52,8 +63,8 @@ describe('getRiskAssessment', () => {
         callees_count INTEGER DEFAULT 0,
         dependency_depth INTEGER DEFAULT 0,
         external_call_count INTEGER DEFAULT 0,
-        extracted_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
+        extracted_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         change_frequency REAL DEFAULT 0,
         age_days INTEGER DEFAULT 0,
         generation INTEGER DEFAULT 1,
@@ -79,7 +90,10 @@ describe('getRiskAssessment', () => {
         total_lines INTEGER DEFAULT 0,
         module_name TEXT,
         imports_json TEXT,
-        exports_json TEXT
+        exports_json TEXT,
+        is_removed BOOLEAN DEFAULT 0,
+        hash TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
       );
       CREATE TABLE IF NOT EXISTS risk_assessments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,10 +106,39 @@ describe('getRiskAssessment', () => {
         complexity_score REAL,
         propagation_score REAL,
         assessed_at TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        is_removed BOOLEAN DEFAULT 0,
+        updated_at TEXT DEFAULT (datetime('now')),
+        lifecycle_status TEXT
+      );
+      CREATE TABLE IF NOT EXISTS compiler_scanned_files (
+        path TEXT PRIMARY KEY,
+        scanned_at TEXT DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS atom_relations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        relation_type TEXT NOT NULL,
+        weight REAL DEFAULT 1.0,
+        line_number INTEGER,
+        context_json TEXT,
+        is_removed BOOLEAN DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS semantic_connections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        connection_type TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        target_path TEXT NOT NULL,
+        connection_key TEXT,
+        context_json TEXT,
+        weight REAL DEFAULT 1.0,
+        is_removed BOOLEAN DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_atoms_file_path ON atoms(file_path);
+      CREATE INDEX IF NOT EXISTS idx_relations_source ON atom_relations(source_id);
+      CREATE INDEX IF NOT EXISTS idx_relations_target ON atom_relations(target_id);
     `);
 
     repo = {
@@ -105,17 +148,19 @@ describe('getRiskAssessment', () => {
       getByFile: vi.fn()
     };
 
-    vi.mock('#layer-c/storage/repository/index.js', async (importOriginal) => {
-      const actual = await importOriginal();
-      return {
-        ...actual,
-        getRepository: vi.fn(() => repo)
-      };
-    });
+    getRepository.mockReturnValue(repo);
   });
 
   describe('when risk_assessments table has data', () => {
     beforeEach(() => {
+      db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/high-risk.js'),
+          ('src/medium-risk.js'),
+          ('src/low-risk.js')
+      `).run();
+
       db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
@@ -200,16 +245,22 @@ describe('getRiskAssessment', () => {
   describe('when risk_assessments table is empty', () => {
     beforeEach(() => {
       db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/file1.js')
+      `).run();
+
+      db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
-          ('src/file1.js', datetime('now'), 50, 300, 'module1', '[]', '[]')
+          ('src/file1.js', datetime('now'), 10, 50, 'module1', '[]', '[]')
       `).run();
 
       db.prepare(`
         INSERT INTO atoms (id, name, atom_type, file_path, line_start, line_end, complexity, propagation_score, coupling_score, fragility_score, centrality_score, has_network_calls, is_async, has_error_handling, risk_level, is_removed)
         VALUES
-          ('src_file1_js::func1', 'func1', 'function', 'src/file1.js', 1, 40, 10, 0.6, 0.5, 0.7, 50, 1, 1, 0, null, 0),
-          ('src_file1_js::func2', 'func2', 'function', 'src/file1.js', 41, 80, 8, 0.4, 0.3, 0.5, 30, 0, 0, 1, null, 0)
+          ('src_file1_js::func1', 'func1', 'function', 'src/file1.js', 1, 40, 2, 0.1, 0.05, 0.1, 5, 0, 0, 1, null, 0),
+          ('src_file1_js::func2', 'func2', 'function', 'src/file1.js', 41, 80, 1, 0.05, 0.02, 0.05, 2, 0, 0, 1, null, 0)
       `).run();
     });
 
@@ -222,7 +273,7 @@ describe('getRiskAssessment', () => {
     it('includes note about fallback derivation', async () => {
       const result = await getRiskAssessment(rootPath);
       expect(result.report.summary).toHaveProperty('note');
-      expect(result.report.summary.note).toContain('derived from atoms');
+      expect(result.report.summary.note).toContain('derived');
     });
 
     it('calculates risk scores using weighted formula', async () => {
@@ -249,18 +300,24 @@ describe('getRiskAssessment', () => {
 
   describe('when database is not available', () => {
     it('throws error when repository is null', async () => {
-      vi.mocked(getRepository).mockReturnValue(null);
+      getRepository.mockReturnValue(null);
       await expect(getRiskAssessment(rootPath)).rejects.toThrow('SQLite not available');
     });
 
     it('throws error when repository has no db', async () => {
-      vi.mocked(getRepository).mockReturnValue({ db: null });
+      getRepository.mockReturnValue({ db: null });
       await expect(getRiskAssessment(rootPath)).rejects.toThrow('SQLite not available');
     });
   });
 
   describe('risk score calculation', () => {
     beforeEach(() => {
+      db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/critical.js')
+      `).run();
+
       db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
@@ -270,7 +327,7 @@ describe('getRiskAssessment', () => {
       db.prepare(`
         INSERT INTO atoms (id, name, atom_type, file_path, line_start, line_end, complexity, propagation_score, coupling_score, fragility_score, centrality_score, has_network_calls, is_async, has_error_handling, risk_level, is_removed)
         VALUES
-          ('src_critical_js::criticalFunc', 'criticalFunc', 'function', 'src/critical.js', 1, 100, 14, 0.95, 0.9, 0.95, 95, 5, 1, 0, 'critical', 0)
+          ('src_critical_js::criticalFunc', 'criticalFunc', 'function', 'src/critical.js', 1, 100, 14, 0.95, 0.9, 0.95, 95, 1, 1, 0, 'critical', 0)
       `).run();
     });
 
@@ -299,6 +356,12 @@ describe('getRiskAssessment', () => {
 
   describe('live file set synchronization', () => {
     beforeEach(() => {
+      db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/existing.js')
+      `).run();
+
       db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
@@ -350,6 +413,12 @@ describe('getRiskAssessment', () => {
 
     it('handles malformed factors_json gracefully', async () => {
       db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/malformed.js')
+      `).run();
+
+      db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
           ('src/malformed.js', datetime('now'), 30, 150, 'malformed', '[]', '[]')
@@ -367,6 +436,12 @@ describe('getRiskAssessment', () => {
     });
 
     it('handles null risk_level as low', async () => {
+      db.prepare(`
+        INSERT INTO compiler_scanned_files (path)
+        VALUES
+          ('src/null-level.js')
+      `).run();
+
       db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES

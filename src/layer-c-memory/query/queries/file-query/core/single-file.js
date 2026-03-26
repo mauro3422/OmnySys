@@ -41,7 +41,11 @@ function normalizeFilePath(rootPath, filePath) {
 
 function parseJsonArray(value, fallback = []) {
   if (typeof value === 'string') {
-    return JSON.parse(value);
+    try {
+      return JSON.parse(value);
+    } catch (e) {
+      return fallback;
+    }
   }
 
   return Array.isArray(value) ? value : fallback;
@@ -177,6 +181,9 @@ export async function getFileAnalysis(rootPath, filePath) {
         if (sysRow) {
           fileAnalysis.semanticAnalysis = sysRow.semanticAnalysis || {};
           fileAnalysis.semanticConnections = sysRow.semanticConnections || [];
+        } else {
+          fileAnalysis.semanticAnalysis = {};
+          fileAnalysis.semanticConnections = [];
         }
         fileAnalysis.systemMapTrustworthy = true;
       } else {

@@ -22,8 +22,6 @@ import {
   findUnusedExports, 
   findCircularFunctionDeps 
 } from '#layer-a/analyses/tier1/index.js';
-import { saveMetadata } from '#layer-c/storage/files/metadata.js';
-import { saveFileAnalysis } from '#layer-c/storage/files/file-analysis.js';
 import { 
   getProjectMetadata
 } from '#layer-c/query/queries/project-query.js';
@@ -252,46 +250,7 @@ export function cyclicB() {
   });
 
   describe('Workflow 3: Analysis → Storage', () => {
-    it('saves analysis results successfully', async () => {
-      // PASO 1: Crear datos de análisis
-      const metadata = {
-        projectName: 'test-project',
-        version: '1.0.0',
-        totalFiles: 3
-      };
-      
-      const fileIndex = {
-        'src/app.js': { analyzed: true },
-        'src/utils/helpers.js': { analyzed: true }
-      };
-      
-      const fileAnalysis = {
-        filePath: 'src/app.js',
-        atoms: [
-          { name: 'init', type: 'function' },
-          { name: 'main', type: 'function' }
-        ]
-      };
-      
-      // PASO 2: Guardar metadata
-      const metadataPath = await saveMetadata(testProjectPath, metadata, fileIndex);
-      expect(typeof metadataPath).toBe('string');
-      expect(metadataPath.endsWith('index.json')).toBe(true);
-      
-      // PASO 3: Guardar análisis de archivo
-      const analysisPath = await saveFileAnalysis(
-        testProjectPath, 
-        'src/app.js', 
-        fileAnalysis
-      );
-      expect(typeof analysisPath).toBe('string');
-      
-      // Verificar que los archivos existen
-      const metadataExists = await fs.access(metadataPath).then(() => true).catch(() => false);
-      expect(metadataExists).toBe(true);
-    });
-
-    it('end-to-end workflow: scan → analyze → save', async () => {
+    it('end-to-end workflow: scan → analyze', async () => {
       // PASO 1: Scan project
       const files = await scanProject(testProjectPath);
       expect(files.length).toBeGreaterThan(0);
@@ -316,19 +275,9 @@ export function cyclicB() {
         unused: findUnusedExports(systemMap)
       };
       
-      // PASO 4: Save metadata
-      const metadata = {
-        projectName: 'integration-test',
-        analyzedAt: new Date().toISOString(),
-        totalFiles: files.length
-      };
-      
-      const savedPath = await saveMetadata(testProjectPath, metadata, {});
-      
       // Verificar que todo el flujo funcionó
       expect(analysis.hotspots).toBeDefined();
       expect(analysis.unused).toBeDefined();
-      expect(typeof savedPath).toBe('string');
     });
   });
 

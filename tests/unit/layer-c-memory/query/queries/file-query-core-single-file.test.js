@@ -7,11 +7,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Database from 'better-sqlite3';
 
 import { getFileAnalysis } from '#layer-c/query/queries/file-query/core/single-file.js';
+
+// Hoisted mock - must come BEFORE importing from the mocked module
+vi.mock('#layer-c/storage/repository/index.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getRepository: vi.fn()
+  };
+});
+
+vi.mock('#layer-c/query/queries/file-query/system-map.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getSystemFileSnapshot: vi.fn()
+  };
+});
+
+vi.mock('#shared/compiler/index.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getSystemMapPersistenceCoverage: vi.fn(),
+    repairSystemMapPersistenceCoverage: vi.fn()
+  };
+});
+
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getSystemFileSnapshot } from '#layer-c/query/queries/file-query/system-map.js';
+import { getSystemMapPersistenceCoverage, repairSystemMapPersistenceCoverage } from '#shared/compiler/index.js';
 
 describe('getFileAnalysis', () => {
-  let db;
   let repo;
+  let db;
   const rootPath = 'C:/Dev/OmnySystem';
 
   beforeEach(() => {
@@ -58,6 +87,14 @@ describe('getFileAnalysis', () => {
         file_path TEXT PRIMARY KEY,
         semantic_analysis_json TEXT,
         semantic_connections_json TEXT,
+        imports_json TEXT,
+        last_analyzed TEXT
+      );
+      CREATE TABLE IF NOT EXISTS file_dependencies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_path TEXT NOT NULL,
+        target_path TEXT NOT NULL,
+        dependency_type TEXT DEFAULT 'import',
         last_analyzed TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_atoms_file_path ON atoms(file_path);
@@ -70,19 +107,13 @@ describe('getFileAnalysis', () => {
       getByFile: vi.fn()
     };
 
-    vi.mock('#layer-c/storage/repository/index.js', async (importOriginal) => {
-      const actual = await importOriginal();
-      return {
-        ...actual,
-        getRepository: vi.fn(() => repo)
-      };
-    });
+    getRepository.mockReturnValue(repo);
   });
 
   describe('path normalization', () => {
     it('normalizes absolute paths to relative', async () => {
       const absolutePath = 'C:/Dev/OmnySystem/src/test.js';
-      
+
       repo.getFile.mockResolvedValue({
         file_path: 'src/test.js',
         last_analyzed: new Date().toISOString(),
@@ -102,7 +133,7 @@ describe('getFileAnalysis', () => {
 
     it('handles paths with backslashes', async () => {
       const backslashPath = 'src\\test.js';
-      
+
       repo.getFile.mockResolvedValue({
         file_path: 'src/test.js',
         last_analyzed: new Date().toISOString(),
@@ -121,7 +152,7 @@ describe('getFileAnalysis', () => {
 
     it('removes leading ./ from paths', async () => {
       const relativePath = './src/test.js';
-      
+
       repo.getFile.mockResolvedValue({
         file_path: 'src/test.js',
         last_analyzed: new Date().toISOString(),
@@ -169,6 +200,76 @@ describe('getFileAnalysis', () => {
           ('src_example_js::funcB', 'funcB', 'arrow', 'src/example.js', 31, 60, 12, 1, 1, '[]', '["funcA"]', 'helper', 'utility', 30, 0),
           ('src_example_js::internalFunc', 'internalFunc', 'function', 'src/example.js', 61, 90, 5, 0, 0, '[]', '["funcA"]', 'dead-function', 'unused', 30, 0)
       `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/example.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 45,
+        total_lines: 250,
+        module_name: 'example',
+        imports_json: '["lodash", "axios"]',
+        exports_json: '["funcA", "funcB"]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_example_js::funcA',
+          name: 'funcA',
+          type: 'function',
+          filePath: 'src/example.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 8,
+          isExported: true,
+          isAsync: false,
+          calls: ['funcB'],
+          calledBy: ['funcC'],
+          archetype: { type: 'core-function' },
+          purpose: 'business-logic',
+          linesOfCode: 30,
+          parameterCount: 0
+        },
+        {
+          id: 'src_example_js::funcB',
+          name: 'funcB',
+          type: 'arrow',
+          filePath: 'src/example.js',
+          line: 31,
+          lineStart: 31,
+          endLine: 60,
+          lineEnd: 60,
+          complexity: 12,
+          isExported: true,
+          isAsync: true,
+          calls: [],
+          calledBy: ['funcA'],
+          archetype: { type: 'helper' },
+          purpose: 'utility',
+          linesOfCode: 30,
+          parameterCount: 0
+        },
+        {
+          id: 'src_example_js::internalFunc',
+          name: 'internalFunc',
+          type: 'function',
+          filePath: 'src/example.js',
+          line: 61,
+          lineStart: 61,
+          endLine: 90,
+          lineEnd: 90,
+          complexity: 5,
+          isExported: false,
+          isAsync: false,
+          calls: [],
+          calledBy: ['funcA'],
+          archetype: { type: 'dead-function' },
+          purpose: 'unused',
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
     });
 
     it('returns complete file analysis', async () => {
@@ -221,7 +322,7 @@ describe('getFileAnalysis', () => {
       expect(funcA.isAsync).toBe(false);
       expect(funcA.calls).toEqual(['funcB']);
       expect(funcA.calledBy).toEqual(['funcC']);
-      expect(funcA.archetype).toBe('core-function');
+      expect(funcA.archetype).toEqual({ type: 'core-function' });
       expect(funcA.purpose).toBe('business-logic');
     });
 
@@ -237,7 +338,7 @@ describe('getFileAnalysis', () => {
 
       expect(Array.isArray(result.definitions)).toBe(true);
       expect(result.definitions.length).toBe(3);
-      
+
       const funcADef = result.definitions.find(d => d.name === 'funcA');
       expect(funcADef).toHaveProperty('type', 'function');
       expect(funcADef).toHaveProperty('line');
@@ -265,6 +366,51 @@ describe('getFileAnalysis', () => {
           ('src_exports_js::atomExport', 'atomExport', 'function', 'src/exports.js', 1, 30, 8, 1, 0),
           ('src_exports_js::internalFunc', 'internalFunc', 'function', 'src/exports.js', 31, 60, 5, 0, 0)
       `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/exports.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 30,
+        total_lines: 150,
+        module_name: 'exports',
+        imports_json: '[]',
+        exports_json: '["dbExport1", "dbExport2"]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_exports_js::atomExport',
+          name: 'atomExport',
+          type: 'function',
+          filePath: 'src/exports.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 8,
+          isExported: true,
+          calls: [],
+          calledBy: [],
+          linesOfCode: 30,
+          parameterCount: 0
+        },
+        {
+          id: 'src_exports_js::internalFunc',
+          name: 'internalFunc',
+          type: 'function',
+          filePath: 'src/exports.js',
+          line: 31,
+          lineStart: 31,
+          endLine: 60,
+          lineEnd: 60,
+          complexity: 5,
+          isExported: false,
+          calls: [],
+          calledBy: [],
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
     });
 
     it('prefers atom exports over database exports when available', async () => {
@@ -282,6 +428,41 @@ describe('getFileAnalysis', () => {
         UPDATE atoms SET is_exported = 0 WHERE file_path = 'src/exports.js'
       `).run();
 
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_exports_js::atomExport',
+          name: 'atomExport',
+          type: 'function',
+          filePath: 'src/exports.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 8,
+          isExported: false,
+          calls: [],
+          calledBy: [],
+          linesOfCode: 30,
+          parameterCount: 0
+        },
+        {
+          id: 'src_exports_js::internalFunc',
+          name: 'internalFunc',
+          type: 'function',
+          filePath: 'src/exports.js',
+          line: 31,
+          lineStart: 31,
+          endLine: 60,
+          lineEnd: 60,
+          complexity: 5,
+          isExported: false,
+          calls: [],
+          calledBy: [],
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
+
       const result = await getFileAnalysis(rootPath, 'src/exports.js');
 
       expect(result.exports).toEqual(['dbExport1', 'dbExport2']);
@@ -293,7 +474,8 @@ describe('getFileAnalysis', () => {
       db.prepare(`
         INSERT INTO files (path, last_analyzed, total_complexity, total_lines, module_name, imports_json, exports_json)
         VALUES
-          ('src/enriched.js', datetime('now'), 40, 200, 'enriched', '[]', '[]')
+          ('src/enriched.js', datetime('now'), 40, 200, 'enriched', '["src/other.js"]', '[]'),
+          ('src/other.js', datetime('now'), 20, 100, 'other', '[]', '[]')
       `).run();
 
       db.prepare(`
@@ -309,13 +491,84 @@ describe('getFileAnalysis', () => {
       `).run();
 
       db.prepare(`
-        INSERT INTO system_files (file_path, semantic_analysis_json, semantic_connections_json, last_analyzed)
+        INSERT INTO system_files (file_path, semantic_analysis_json, semantic_connections_json, imports_json, last_analyzed)
         VALUES
-          ('src/enriched.js', '{"purity": 0.8}', '[{"target": "src/other.js", "type": "shares_state"}]', datetime('now'))
+          ('src/enriched.js', '{"purity": 0.8}', '[{"target": "src/other.js", "type": "shares_state"}]', '["src/other.js"]', datetime('now')),
+          ('src/other.js', '{}', '[]', '[]', datetime('now'))
       `).run();
+
+      db.prepare(`
+        INSERT INTO file_dependencies (source_path, target_path, dependency_type, last_analyzed)
+        VALUES
+          ('src/enriched.js', 'src/other.js', 'import', datetime('now'))
+      `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/enriched.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 40,
+        total_lines: 200,
+        module_name: 'enriched',
+        imports_json: '[]',
+        exports_json: '[]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_enriched_js::func',
+          name: 'func',
+          type: 'function',
+          filePath: 'src/enriched.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 10,
+          isExported: false,
+          calls: [],
+          calledBy: [],
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
+
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: [{ target: 'src/other.js', type: 'shares_state' }]
+      });
+
+      getSystemMapPersistenceCoverage.mockReturnValue({
+        filesTotal: 2,
+        activeFiles: 2,
+        primaryFilesWithImports: 1,
+        liveAtomFiles: 1,
+        phase2PendingAtoms: 0,
+        systemFilesTotal: 2,
+        systemFilesWithImports: 1,
+        fileDependenciesTotal: 1,
+        dependencySourceFiles: 1,
+        importBackedFileRatio: 0.5,
+        mirroredImportCoverageRatio: 1,
+        dependencySourceCoverageRatio: 1,
+        healthy: true,
+        issues: []
+      });
+
+      repairSystemMapPersistenceCoverage.mockReturnValue({
+        repaired: false,
+        inserted: 0,
+        sources: 0,
+        dependencies: 0,
+        semanticConnections: 0
+      });
     });
 
     it('includes system map coverage when healthy', async () => {
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: [{ target: 'src/other.js', type: 'shares_state' }]
+      });
+
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
       expect(result).toHaveProperty('systemMapCoverage');
@@ -323,6 +576,11 @@ describe('getFileAnalysis', () => {
     });
 
     it('includes semantic analysis from system_files', async () => {
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: [{ target: 'src/other.js', type: 'shares_state' }]
+      });
+
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
       expect(result).toHaveProperty('semanticAnalysis');
@@ -330,6 +588,11 @@ describe('getFileAnalysis', () => {
     });
 
     it('includes semantic connections from system_files', async () => {
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: [{ target: 'src/other.js', type: 'shares_state' }]
+      });
+
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
       expect(result).toHaveProperty('semanticConnections');
@@ -338,6 +601,11 @@ describe('getFileAnalysis', () => {
     });
 
     it('sets systemMapTrustworthy to true when coverage is healthy', async () => {
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: [{ target: 'src/other.js', type: 'shares_state' }]
+      });
+
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
       expect(result.systemMapTrustworthy).toBe(true);
@@ -345,6 +613,23 @@ describe('getFileAnalysis', () => {
 
     it('handles missing system_files gracefully', async () => {
       db.prepare(`DELETE FROM system_files WHERE file_path = 'src/enriched.js'`).run();
+      getSystemFileSnapshot.mockResolvedValue(null);
+      getSystemMapPersistenceCoverage.mockReturnValue({
+        filesTotal: 1,
+        activeFiles: 1,
+        primaryFilesWithImports: 0,
+        liveAtomFiles: 1,
+        phase2PendingAtoms: 0,
+        systemFilesTotal: 1,
+        systemFilesWithImports: 0,
+        fileDependenciesTotal: 0,
+        dependencySourceFiles: 0,
+        importBackedFileRatio: 0,
+        mirroredImportCoverageRatio: 0,
+        dependencySourceCoverageRatio: 0,
+        healthy: true,
+        issues: []
+      });
 
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
@@ -356,6 +641,10 @@ describe('getFileAnalysis', () => {
       db.prepare(`
         UPDATE system_map_persistence SET coverage_percentage = 30, is_healthy = 0
       `).run();
+      getSystemFileSnapshot.mockResolvedValue({
+        semanticAnalysis: { purity: 0.8 },
+        semanticConnections: []
+      });
 
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
@@ -367,6 +656,23 @@ describe('getFileAnalysis', () => {
         UPDATE system_map_persistence SET coverage_percentage = 30, is_healthy = 0
       `).run();
       db.prepare(`DELETE FROM system_files`).run();
+      getSystemFileSnapshot.mockResolvedValue(null);
+      getSystemMapPersistenceCoverage.mockReturnValue({
+        filesTotal: 1,
+        activeFiles: 1,
+        primaryFilesWithImports: 0,
+        liveAtomFiles: 1,
+        phase2PendingAtoms: 0,
+        systemFilesTotal: 0,
+        systemFilesWithImports: 0,
+        fileDependenciesTotal: 0,
+        dependencySourceFiles: 0,
+        importBackedFileRatio: 0,
+        mirroredImportCoverageRatio: 0,
+        dependencySourceCoverageRatio: 0,
+        healthy: false,
+        issues: ['system_files is empty while files metadata exists']
+      });
 
       const result = await getFileAnalysis(rootPath, 'src/enriched.js');
 
@@ -381,7 +687,7 @@ describe('getFileAnalysis', () => {
     });
 
     it('throws error when SQLite is not available', async () => {
-      vi.mocked(getRepository).mockReturnValue(null);
+      getRepository.mockReturnValue(null);
 
       await expect(getFileAnalysis(rootPath, 'src/test.js')).rejects.toThrow('SQLite not available');
     });
@@ -407,6 +713,37 @@ describe('getFileAnalysis', () => {
         VALUES
           ('src_legacy_js::legacyFunc', 'legacyFunc', 'function', 'arrow', 'src/legacy.js', 1, 30, 8, 1, '["other"]', '["caller"]', 'core', 'helper', 'business', 'utility', 30, 0)
       `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/legacy.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 25,
+        total_lines: 120,
+        module_name: 'legacy',
+        imports_json: '[]',
+        exports_json: '[]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_legacy_js::legacyFunc',
+          name: 'legacyFunc',
+          type: 'arrow',
+          filePath: 'src/legacy.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 8,
+          isExported: true,
+          calls: ['other'],
+          calledBy: ['caller'],
+          archetype: { type: 'core' },
+          purpose: 'business',
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
     });
 
     it('handles atoms with type field instead of atom_type', async () => {
@@ -439,6 +776,18 @@ describe('getFileAnalysis', () => {
           ('src/empty.js', datetime('now'), 0, 50, 'empty', '[]', '[]')
       `).run();
 
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/empty.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 0,
+        total_lines: 50,
+        module_name: 'empty',
+        imports_json: '[]',
+        exports_json: '[]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([]);
+
       const result = await getFileAnalysis(rootPath, 'src/empty.js');
 
       expect(result.atomCount).toBe(0);
@@ -457,6 +806,35 @@ describe('getFileAnalysis', () => {
         VALUES
           ('src_nulls_js::nullFunc', 'nullFunc', 'function', 'src/nulls.js', 1, 30, null, null, null, null, 0)
       `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/nulls.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 10,
+        total_lines: 50,
+        module_name: 'nulls',
+        imports_json: '[]',
+        exports_json: '[]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_nulls_js::nullFunc',
+          name: 'nullFunc',
+          type: 'function',
+          filePath: 'src/nulls.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: null,
+          isExported: null,
+          calls: null,
+          calledBy: null,
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
 
       const result = await getFileAnalysis(rootPath, 'src/nulls.js');
 
@@ -478,6 +856,35 @@ describe('getFileAnalysis', () => {
         VALUES
           ('src_malformed_js::badJson', 'badJson', 'function', 'src/malformed.js', 1, 30, 5, 0, 'not valid json', 'also invalid', 0)
       `).run();
+
+      repo.getFile = vi.fn().mockResolvedValue({
+        file_path: 'src/malformed.js',
+        last_analyzed: new Date().toISOString(),
+        total_complexity: 10,
+        total_lines: 50,
+        module_name: 'malformed',
+        imports_json: '[]',
+        exports_json: '[]'
+      });
+
+      repo.getByFile = vi.fn().mockResolvedValue([
+        {
+          id: 'src_malformed_js::badJson',
+          name: 'badJson',
+          type: 'function',
+          filePath: 'src/malformed.js',
+          line: 1,
+          lineStart: 1,
+          endLine: 30,
+          lineEnd: 30,
+          complexity: 5,
+          isExported: false,
+          calls: 'not valid json',
+          calledBy: 'also invalid',
+          linesOfCode: 30,
+          parameterCount: 0
+        }
+      ]);
 
       const result = await getFileAnalysis(rootPath, 'src/malformed.js');
 

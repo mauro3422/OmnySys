@@ -1,1 +1,0 @@
-export const verifyFixV5 = () => "success_v5";

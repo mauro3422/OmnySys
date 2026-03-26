@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS atoms (
     file_path TEXT NOT NULL,
     
     -- Vectores estructurales
-    line_start INTEGER NOT NULL,
-    line_end INTEGER NOT NULL,
-    lines_of_code INTEGER NOT NULL,
+    line_start INTEGER NOT NULL DEFAULT 0,
+    line_end INTEGER NOT NULL DEFAULT 0,
+    lines_of_code INTEGER NOT NULL DEFAULT 0,
     complexity INTEGER NOT NULL,
     parameter_count INTEGER DEFAULT 0,
     
@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS atoms (
     external_call_count INTEGER DEFAULT 0,
     
     -- Temporales
-    extracted_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
+    extracted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     change_frequency REAL DEFAULT 0,       -- Cambios por dia
     age_days INTEGER DEFAULT 0,
     generation INTEGER DEFAULT 1,
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS atom_relations (
     weight REAL DEFAULT 1.0,               -- Peso de la relacion (0-1)
     line_number INTEGER,                   -- Linea donde ocurre
     context_json TEXT,                     -- Metadata adicional
-    created_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     -- FOREIGN KEYs removidos para permitir discovery cross-file incremental
     UNIQUE(source_id, target_id, relation_type, line_number)
@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS system_files (
     depends_on_json TEXT,                  -- Dependencias directas
     transitive_depends_json TEXT,          -- Dependencias transitivas
     transitive_dependents_json TEXT,       -- Dependientes transitivos
-    updated_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     
     FOREIGN KEY (path) REFERENCES files(path) ON DELETE CASCADE
 );
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS file_dependencies (
     symbols_json TEXT,                     -- Simbolos importados
     reason TEXT,                           -- Razon de la dependencia
     is_dynamic BOOLEAN DEFAULT 0,          -- Import dinamico?
-    created_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(source_path, target_path, dependency_type)
 );
 
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS semantic_connections (
     connection_key TEXT,                   -- Nombre de la variable/evento/env
     context_json TEXT,                     -- Metadata adicional
     weight REAL DEFAULT 1.0,               -- Peso de la conexion
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_semantic_conn_type ON semantic_connections(connection_type);
@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS risk_assessments (
     external_deps_count INTEGER DEFAULT 0, -- Cantidad de dependencias externas
     complexity_score REAL DEFAULT 0,       -- Score de complejidad
     propagation_score REAL DEFAULT 0,      -- Score de propagacion
-    assessed_at TEXT NOT NULL,
+    assessed_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(file_path)
 );
 
@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS semantic_issues (
     message TEXT NOT NULL,                 -- Descripcion del problema
     line_number INTEGER,                   -- Linea donde ocurre (si aplica)
     context_json TEXT,                     -- Contexto adicional
-    detected_at TEXT NOT NULL
+    detected_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_semantic_issues_file ON semantic_issues(file_path);

@@ -47,6 +47,7 @@ export class HotspotsDetector extends PatternDetector {
       }
     }
 
+    const totalFindings = findings.length;
     return {
       detector: this.getId(),
       name: this._name || this.getId(),
@@ -54,7 +55,10 @@ export class HotspotsDetector extends PatternDetector {
       findings: findings.sort((a, b) => b.metadata.riskScore - a.metadata.riskScore),
       score: this.scoreFindings(findings),
       weight: this.globalConfig.weights?.hotspots || 0.15,
-      summary: { totalFindings: findings.length }
+      recommendation: totalFindings > 0
+        ? `Found ${totalFindings} hotspot(s). Review high-usage functions for potential refactoring.`
+        : 'No hotspots detected. Code structure looks healthy.',
+      summary: { totalFindings }
     };
   }
 
@@ -85,7 +89,16 @@ export class HotspotsDetector extends PatternDetector {
   }
 
   _emptyResult() {
-    return { detector: this.getId(), findings: [], score: 100 };
+    return {
+      detector: this.getId(),
+      name: this._name || this.getId(),
+      description: this._description,
+      findings: [],
+      score: 100,
+      weight: this.globalConfig.weights?.hotspots || 0.15,
+      recommendation: 'No hotspots detected. Code structure looks healthy.',
+      summary: { totalFindings: 0 }
+    };
   }
 }
 

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventEmitter } from 'events';
 
 // Mock logger
-vi.mock('../../../../src/utils/logger.js', () => ({
+vi.mock('/src/utils/logger.js', () => ({
     createLogger: vi.fn(() => ({
         debug: vi.fn(),
         info: vi.fn(),
@@ -19,13 +19,13 @@ vi.mock('../../../../src/utils/logger.js', () => ({
 }));
 
 // Mock watcher-issue-persistence
-vi.mock('../../../../src/core/file-watcher/watcher-issue-persistence.js', () => ({
+vi.mock('/src/core/file-watcher/watcher-issue-persistence.js', () => ({
     persistWatcherIssue: vi.fn(),
     clearWatcherIssue: vi.fn()
 }));
 
 // Mock guard-standards
-vi.mock('../../../../src/core/file-watcher/guards/guard-standards.js', () => ({
+vi.mock('/src/core/file-watcher/guards/guard-standards.js', () => ({
     validateGuard: vi.fn((guard) => {
         if (!guard || typeof guard !== 'function') {
             throw new Error('Invalid guard');
@@ -63,7 +63,7 @@ vi.mock('../../../../src/core/file-watcher/guards/guard-standards.js', () => ({
 }));
 
 // Import after mocks
-const { guardRegistry } = await import('../../../../src/core/file-watcher/guards/registry.js');
+const { guardRegistry } = await import('/src/core/file-watcher/guards/registry.js');
 
 describe('Guard Registry', () => {
     let registry;
