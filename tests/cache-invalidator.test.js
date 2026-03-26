@@ -362,60 +362,12 @@ describe('CacheInvalidator', () => {
     });
   });
 
-  /**
-   * TEST 7: Integración con sistema real
-   */
-  describe('Integration Tests', () => {
-    it('should invalidate and allow re-analysis', async () => {
-      const filePath = 'src/integration-test.js';
-      
-      // 1. Simular que el archivo está en caché
-      cacheManager.set(`analysis:${filePath}`, { 
-        imports: [],
-        exports: ['test'],
-        analyzedAt: Date.now()
-      });
-      
-      // 2. Invalidar
-      const result = await invalidator.invalidateSync(filePath);
-      expect(result.success).toBe(true);
-      
-      // 3. Verificar que no está en caché
-      expect(cacheManager.get(`analysis:${filePath}`)).toBeNull();
-      
-      // 4. Simular re-análisis (agregar nuevo dato)
-      cacheManager.set(`analysis:${filePath}`, {
-        imports: ['new-import'],
-        exports: ['test', 'new-export'],
-        analyzedAt: Date.now()
-      });
-      
-      // 5. Verificar que el nuevo análisis está en caché
-      const newData = cacheManager.get(`analysis:${filePath}`);
-      expect(newData).not.toBeNull();
-      expect(newData.exports).toContain('new-export');
-    });
-
-    it('should handle file deletion scenario', async () => {
-      const filePath = 'src/deleted.js';
-      
-      // Preparar caché
-      cacheManager.set(`analysis:${filePath}`, { data: 'old' });
-      cacheManager.index.entries[filePath] = { hash: 'old' };
-      
-      // Invalidar (como si el archivo fue borrado)
-      const result = await invalidator.invalidateSync(filePath);
-      
-      expect(result.success).toBe(true);
-      expect(cacheManager.index.entries[filePath]).toBeUndefined();
-    });
-  });
 });
 
 // Ejecutar tests
 console.log('🧪 Running Cache Invalidator Tests...');
-console.log('Total test suites: 7');
-console.log('Total tests: 20+');
+console.log('Total test suites: 6');
+console.log('Total tests: 18+');
 console.log('');
 console.log('✅ Tests should verify:');
 console.log('   • Invalidación < 50ms');
@@ -424,4 +376,3 @@ console.log('   • Múltiples archivos');
 console.log('   • Retry automático');
 console.log('   • Concurrencia segura');
 console.log('   • Estado consistente');
-console.log('   • Integración completa');

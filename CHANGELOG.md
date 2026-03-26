@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.292 - Sprint 16: Cache Invalidator Modular Split and Test Extraction](changelogs/v0.9.292.md)
 - [v0.9.291 - Sprint 16: Invalidator File Status Rename](changelogs/v0.9.291.md)
 - [v0.9.290 - Sprint 16: Orchestrator Server Health Delegation](changelogs/v0.9.290.md)
 - [v0.9.289 - Sprint 16: Cache, Atom Tracking, and PatternMatcher Helper Extraction](changelogs/v0.9.289.md)
