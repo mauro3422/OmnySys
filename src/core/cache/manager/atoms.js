@@ -7,13 +7,20 @@
  * @module unified-cache-manager/atoms
  */
 
+import {
+  getNamespacedCacheValue,
+  invalidateFileAtomPattern,
+  invalidateNamespacedCacheValue,
+  setNamespacedCacheValue
+} from './cache-key-helpers.js';
+
 /**
  * Obtiene un átomo del caché RAM
  * @param {string} atomId - ID del átomo (filePath::functionName)
  * @returns {object|null}
  */
 export function getAtom(atomId) {
-  return this.get(`atom:${atomId}`);
+  return getNamespacedCacheValue(this, 'atom', atomId);
 }
 
 /**
@@ -23,7 +30,7 @@ export function getAtom(atomId) {
  * @param {number} ttlMinutes - TTL opcional
  */
 export function setAtom(atomId, atomData, ttlMinutes) {
-  this.set(`atom:${atomId}`, atomData, ttlMinutes);
+  return setNamespacedCacheValue(this, 'atom', atomId, atomData, ttlMinutes);
 }
 
 /**
@@ -53,7 +60,7 @@ export function getAtoms(atomIds) {
  * @returns {boolean}
  */
 export function invalidateAtom(atomId) {
-  return this.invalidate(`atom:${atomId}`);
+  return invalidateNamespacedCacheValue(this, 'atom', atomId);
 }
 
 /**
@@ -62,10 +69,7 @@ export function invalidateAtom(atomId) {
  * @returns {number} - Número de entradas invalidadas
  */
 export function invalidateFileAtoms(filePath) {
-  // Crear patrón para todos los átomos de este archivo
-  // Los IDs son: filePath::functionName
-  const fileId = filePath.replace(/\\/g, '_').replace(/\//g, '_');
-  return this.invalidate(`atom:${fileId}::*`);
+  return invalidateFileAtomPattern(this, filePath);
 }
 
 /**
@@ -75,7 +79,7 @@ export function invalidateFileAtoms(filePath) {
  * @param {number} ttlMinutes - TTL opcional
  */
 export function setDerivedMetadata(filePath, derived, ttlMinutes) {
-  this.set(`derived:${filePath}`, derived, ttlMinutes);
+  return setNamespacedCacheValue(this, 'derived', filePath, derived, ttlMinutes);
 }
 
 /**
@@ -84,7 +88,7 @@ export function setDerivedMetadata(filePath, derived, ttlMinutes) {
  * @returns {object|null}
  */
 export function getDerivedMetadata(filePath) {
-  return this.get(`derived:${filePath}`);
+  return getNamespacedCacheValue(this, 'derived', filePath);
 }
 
 /**
@@ -93,7 +97,7 @@ export function getDerivedMetadata(filePath) {
  * @returns {boolean}
  */
 export function invalidateDerived(filePath) {
-  return this.invalidate(`derived:${filePath}`);
+  return invalidateNamespacedCacheValue(this, 'derived', filePath);
 }
 
 /**
