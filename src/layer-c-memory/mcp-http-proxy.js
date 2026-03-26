@@ -264,19 +264,27 @@ function spawnWorker(extraArgs = []) {
 }
 
 // ── Proxy shutdown ────────────────────────────────────────────────────────────
+function beginProxyShutdown() {
+    shutdownInProgress = true;
+    log('Proxy SIGINT/SIGTERM — shutting down worker...');
+    clearRespawnTimer();
+    removeOwnerLock();
+}
+
+function finalizeProxyShutdown() {
+    if (worker) {
+        worker.kill('SIGTERM');
+    }
+    setTimeout(() => process.exit(0), 2000);
+}
+
 function shutdown() {
     if (shutdownInProgress) {
         return;
     }
 
-    shutdownInProgress = true;
-    log('Proxy SIGINT/SIGTERM — shutting down worker...');
-    clearRespawnTimer();
-    removeOwnerLock();
-    if (worker) {
-        worker.kill('SIGTERM');
-    }
-    setTimeout(() => process.exit(0), 2000);
+    beginProxyShutdown();
+    finalizeProxyShutdown();
 }
 
 process.on('SIGINT', shutdown);
