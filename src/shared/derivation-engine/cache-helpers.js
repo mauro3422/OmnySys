@@ -4,7 +4,11 @@
 
 import { DerivationRules } from './rules/index.js';
 
-import { clearCacheCollections } from '../cache/cache-maintenance.js';
+import {
+  deleteCacheEntries,
+  deleteCacheEntriesByPrefix,
+  purgeCacheState
+} from '../cache/cache-maintenance.js';
 
 export function deriveCachedValue(cache, moleculeId, atoms, ruleName) {
   const cacheKey = `${moleculeId}::${ruleName}`;
@@ -35,28 +39,20 @@ export function deriveCachedValue(cache, moleculeId, atoms, ruleName) {
 
 export function invalidateCachedDerivations(cache, atomId) {
   const affected = cache.dependencyGraph.get(atomId) || new Set();
-  for (const cacheKey of affected) {
-    cache.cache.delete(cacheKey);
-  }
+  deleteCacheEntries(cache.cache, affected);
   cache.dependencyGraph.delete(atomId);
 }
 
 export function invalidateCachedMolecule(cache, moleculeId) {
-  const keysToDelete = [];
-  for (const [key] of cache.cache.entries()) {
-    if (key.startsWith(`${moleculeId}::`)) {
-      keysToDelete.push(key);
-    }
-  }
-
-  for (const key of keysToDelete) {
-    cache.cache.delete(key);
-  }
+  deleteCacheEntriesByPrefix(cache.cache, `${moleculeId}::`);
 }
 
 export function purgeDerivationCache(cache) {
-  clearCacheCollections(cache, ['cache', 'dependencyGraph']);
-  cache.stats = { hits: 0, misses: 0 };
+  purgeCacheState(cache, ['cache', 'dependencyGraph'], [
+    (target) => {
+      target.stats = { hits: 0, misses: 0 };
+    }
+  ]);
 }
 
 export function buildDerivationCacheStats(cache) {

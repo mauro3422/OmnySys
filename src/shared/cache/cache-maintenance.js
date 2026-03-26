@@ -77,6 +77,57 @@ export function clearCacheCollections(target, collectionNames = []) {
   return cleared;
 }
 
+export function deleteCacheEntries(collection, keys = []) {
+  if (!collection || typeof collection.delete !== 'function') {
+    return 0;
+  }
+
+  const resolvedKeys = Array.isArray(keys) || typeof keys?.[Symbol.iterator] === 'function'
+    ? keys
+    : [];
+
+  let deleted = 0;
+  for (const key of resolvedKeys) {
+    if (collection.delete(key)) {
+      deleted++;
+    }
+  }
+
+  return deleted;
+}
+
+export function deleteCacheEntriesByPrefix(collection, prefix) {
+  if (!collection || typeof collection.keys !== 'function' || typeof collection.delete !== 'function') {
+    return 0;
+  }
+
+  const normalizedPrefix = String(prefix || '');
+  let deleted = 0;
+
+  for (const key of collection.keys()) {
+    if (typeof key === 'string' && key.startsWith(normalizedPrefix)) {
+      collection.delete(key);
+      deleted++;
+    }
+  }
+
+  return deleted;
+}
+
+export function purgeCacheState(target, collectionNames = [], resetters = []) {
+  const cleared = clearCacheCollections(target, collectionNames);
+
+  if (target && Array.isArray(resetters)) {
+    for (const reset of resetters) {
+      if (typeof reset === 'function') {
+        reset(target);
+      }
+    }
+  }
+
+  return cleared;
+}
+
 export function invalidateCacheStoreKey({ repository, table, key, memoryCache } = {}) {
   const {
     repository: resolvedRepository,

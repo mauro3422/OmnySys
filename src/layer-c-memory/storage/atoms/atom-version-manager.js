@@ -8,9 +8,6 @@ import { statsPool } from '../../../shared/utils/stats-pool.js';
  * @module layer-c-memory/storage/atoms/atom-version-manager
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../../utils/logger.js';
 import {
   buildAtomChangeDetection,
@@ -20,9 +17,6 @@ import {
 
 const logger = createLogger('OmnySys:AtomVersionManager');
 
-const DATA_DIR = '.omnysysdata';
-const VERSIONS_FILE = 'atom-versions.json';
-
 export { calculateFieldHashes } from './atom-version-manager-helpers.js';
 
 async function ensureDbForManager(manager) {
@@ -31,20 +25,22 @@ async function ensureDbForManager(manager) {
   manager.db = connectionManager.getDatabase();
 }
 
-async function trackAtomVersionForManager(manager, atomId, atomData) {
-  await ensureDbForManager(manager);
-  return trackAtomVersionWithDb(manager.db, atomId, atomData);
+async function runAtomVersionOperation(manager, action, operation) {
+  try {
+    await ensureDbForManager(manager);
+    return await operation(manager.db);
+  } catch (error) {
+    logger.error(`Failed to ${action}: ${error.message}`);
+    throw error;
+  }
 }
 
-async function detectChangesForManager(manager, atomId, newData) {
-  await ensureDbForManager(manager);
-  const row = manager.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
-  return buildAtomChangeDetection(row, atomId, newData, logger);
+function getAtomVersionRow(db, atomId) {
+  return db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
 }
 
-async function getVersionForManager(manager, atomId) {
-  await ensureDbForManager(manager);
-  const row = manager.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
+function buildAtomVersionSnapshot(db, atomId) {
+  const row = getAtomVersionRow(db, atomId);
   if (!row) return null;
 
   const fieldHashes = loadFieldHashes(row, atomId, logger) || {};
@@ -58,10 +54,9 @@ async function getVersionForManager(manager, atomId) {
   };
 }
 
-async function removeAtomVersionForManager(manager, atomId) {
-  await ensureDbForManager(manager);
-  const hr = new BaseSqlRepository(manager.db, 'AtomVersionManager');
-  hr.delete('atom_versions', 'atom_id', atomId);
+function detectAtomVersionChanges(db, atomId, newData) {
+  const row = getAtomVersionRow(db, atomId);
+  return buildAtomChangeDetection(row, atomId, newData, logger);
 }
 
 /**
@@ -88,14 +83,11 @@ export class AtomVersionManager {
    * @param {string} atomId - ID único del átomo
    * @param {Object} atomData - Datos del átomo
    * @returns {Promise<Object>} Versión registrada
-   */
+  */
   async trackAtomVersion(atomId, atomData) {
-    try {
-      return await trackAtomVersionForManager(this, atomId, atomData);
-    } catch (error) {
-      logger.error(`Failed to track atom version for ${atomId}: ${error.message}`);
-      throw error;
-    }
+    return runAtomVersionOperation(this, `track atom version for ${atomId}`, async (db) => {
+      return trackAtomVersionWithDb(db, atomId, atomData);
+    });
   }
 
   /**
@@ -106,12 +98,9 @@ export class AtomVersionManager {
    * @returns {Promise<Object>} Cambios detectados
    */
   async detectChanges(atomId, newData) {
-    try {
-      return await detectChangesForManager(this, atomId, newData);
-    } catch (error) {
-      logger.error(`Failed to detect changes for ${atomId}: ${error.message}`);
-      throw error;
-    }
+    return runAtomVersionOperation(this, `detect changes for ${atomId}`, async (db) => {
+      return detectAtomVersionChanges(db, atomId, newData);
+    });
   }
 
   /**
@@ -121,12 +110,9 @@ export class AtomVersionManager {
    * @returns {Promise<Object|null>} Versión o null si no existe
    */
   async getVersion(atomId) {
-    try {
-      return await getVersionForManager(this, atomId);
-    } catch (error) {
-      logger.error(`Failed to get version for ${atomId}: ${error.message}`);
-      throw error;
-    }
+    return runAtomVersionOperation(this, `get version for ${atomId}`, async (db) => {
+      return buildAtomVersionSnapshot(db, atomId);
+    });
   }
 
   /**
@@ -135,12 +121,9 @@ export class AtomVersionManager {
    * @param {string} atomId - ID del átomo a eliminar
    */
   async removeAtomVersion(atomId) {
-    try {
-      await removeAtomVersionForManager(this, atomId);
-    } catch (error) {
-      logger.error(`Failed to remove atom version for ${atomId}: ${error.message}`);
-      throw error;
-    }
+    return runAtomVersionOperation(this, `remove atom version for ${atomId}`, async (db) => {
+      db.prepare('DELETE FROM atom_versions WHERE atom_id = ?').run(atomId);
+    });
   }
 
   /**
