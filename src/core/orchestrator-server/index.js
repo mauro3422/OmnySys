@@ -20,6 +20,7 @@ import {
   processNext,
   serverState,
   getStateData,
+  getHealthStatus as getOrchestratorHealthStatus,
   stopServerState
 } from './server/state.js';
 
@@ -111,17 +112,7 @@ export class OrchestratorServer {
    * Get health status
    */
   async getHealthStatus() {
-    const health = {
-      status: 'healthy',
-      memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      lastError: null
-    };
-
-    if (serverState.worker && !serverState.worker.isHealthy()) {
-      health.status = 'degraded';
-    }
-
-    return health;
+    return getOrchestratorHealthStatus();
   }
 
   /**
