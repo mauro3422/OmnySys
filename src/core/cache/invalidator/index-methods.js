@@ -10,20 +10,24 @@ function normalizeCacheFilePath(filePath) {
   return filePath.replace(/\\/g, '/');
 }
 
-export async function invalidateSync(filePath) {
+async function runInvalidation(invalidator, filePath) {
   const normalizedPath = normalizeCacheFilePath(filePath);
-  this.logger?.debug?.(`🗑️  Invalidating cache for: ${normalizedPath}`);
+  invalidator.logger?.debug?.(`🗑️  Invalidating cache for: ${normalizedPath}`);
 
-  const transaction = this.orchestrator.createTransaction(normalizedPath);
-  const result = await this.orchestrator.execute(transaction, normalizedPath);
+  const transaction = invalidator.orchestrator.createTransaction(normalizedPath);
+  const result = await invalidator.orchestrator.execute(transaction, normalizedPath);
 
   if (result.success) {
-    this.logger?.debug?.(`✅ Cache invalidated in ${result.duration}ms: ${normalizedPath}`);
+    invalidator.logger?.debug?.(`✅ Cache invalidated in ${result.duration}ms: ${normalizedPath}`);
   } else {
-    this.logger?.error?.(`❌ Cache invalidation failed: ${normalizedPath}`, result.error);
+    invalidator.logger?.error?.(`❌ Cache invalidation failed: ${normalizedPath}`, result.error);
   }
 
   return result;
+}
+
+export async function invalidateSync(filePath) {
+  return runInvalidation(this, filePath);
 }
 
 export async function invalidateWithRetry(filePath, maxRetries = null) {
