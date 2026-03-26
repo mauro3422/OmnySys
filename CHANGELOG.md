@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.302 - Sprint 16: Layer B Validators Factory Split](changelogs/v0.9.302.md)
 - [v0.9.301 - Sprint 16: Proxy Shutdown Helper Split](changelogs/v0.9.301.md)
 - [v0.9.300 - Sprint 16: Server Shutdown Helper Split](changelogs/v0.9.300.md)
 - [v0.9.299 - Sprint 16: Atom Extractor Complexity Split and Cache Invalidator Run Helper](changelogs/v0.9.299.md)
