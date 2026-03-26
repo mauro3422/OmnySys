@@ -36,6 +36,42 @@ export function buildVersionPayload(atomData) {
   };
 }
 
+export function trackAtomVersionWithDb(db, atomId, atomData) {
+  const version = buildVersionPayload(atomData);
+  insertOrUpdateVersion(db, atomId, version);
+  return version;
+}
+
+export function buildAtomChangeDetection(row, atomId, newData, logger) {
+  if (!row) {
+    return {
+      isNew: true,
+      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
+      hasChanges: true
+    };
+  }
+
+  const oldFieldHashes = loadFieldHashes(row, atomId, logger);
+  if (!oldFieldHashes) {
+    return {
+      isNew: true,
+      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
+      hasChanges: true
+    };
+  }
+
+  const newFieldHashes = calculateFieldHashes(newData);
+  const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
+
+  return {
+    isNew: false,
+    fields: changedFields,
+    unchangedFields,
+    hasChanges: changedFields.length > 0,
+    previousModified: row.last_modified
+  };
+}
+
 export function loadFieldHashes(row, atomId, logger) {
   try {
     return JSON.parse(row.field_hashes_json || '{}');

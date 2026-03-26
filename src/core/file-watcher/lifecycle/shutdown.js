@@ -7,15 +7,18 @@ const logger = createLogger('file-watcher');
  */
 export async function stop() {
   this.isRunning = false;
+  const logVerbose = (message) => {
+    if (this.options.verbose) {
+      logger.info(message);
+    }
+  };
   try {
     // Detener fs.watch
     if (this.fsWatcher) {
       this.fsWatcher.close();
       this.fsWatcher = null;
-      
-      if (this.options.verbose) {
-        logger.info('Filesystem watcher stopped');
-      }
+
+      logVerbose('Filesystem watcher stopped');
     }
 
     if (this.processingInterval) {
@@ -27,9 +30,7 @@ export async function stop() {
     if (this.batchProcessor && this.options.useSmartBatch) {
       const pendingCount = this.batchProcessor.getBufferedCount();
       if (pendingCount > 0) {
-        if (this.options.verbose) {
-          logger.info(`Processing ${pendingCount} pending changes before stop...`);
-        }
+        logVerbose(`Processing ${pendingCount} pending changes before stop...`);
         await this._processWithBatchProcessor();
       }
       
@@ -44,9 +45,7 @@ export async function stop() {
 
     // Esperar a que terminen procesos pendientes
     if (this.processingFiles.size > 0) {
-      if (this.options.verbose) {
-        logger.info(`Waiting for ${this.processingFiles.size} analyses to complete...`);
-      }
+      logVerbose(`Waiting for ${this.processingFiles.size} analyses to complete...`);
 
       const maxWait = 10000; // 10 segundos máximo
       const start = Date.now();
@@ -58,8 +57,6 @@ export async function stop() {
   } finally {
     this.emit('stopped');
 
-    if (this.options.verbose) {
-      logger.info('FileWatcher stopped');
-    }
+    logVerbose('FileWatcher stopped');
   }
 }

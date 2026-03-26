@@ -10,6 +10,7 @@ import { PatternRegistry, defaultRegistry } from '../../pattern-registry.js';
 import { SharedStateAnalyzer } from '../../analyzers/shared-state-analyzer.js';
 import { TimingAnalyzer } from '../../analyzers/timing-analyzer.js';
 import { LockAnalyzer } from '../../analyzers/lock-analyzer.js';
+import { checkMitigation as checkLockMitigation } from '../../../analyzers/lock/analysis/mitigation.js';
 import { buildContext } from '../utils/context.js';
 import { findAtom, severityRank } from '../utils/helpers.js';
 
@@ -58,6 +59,19 @@ function buildRaceRecord(access1, access2, matches) {
     pattern: findBestMatch(matches),
     allMatches: matches
   };
+}
+
+function mapMitigationType(type) {
+  switch (type) {
+    case 'common_lock':
+      return 'shared-lock';
+    case 'atomic_operations':
+      return 'atomics';
+    case 'transaction_isolation':
+      return 'transaction';
+    default:
+      return type || null;
+  }
 }
 
 /**
@@ -173,13 +187,29 @@ export class PatternMatcher {
    * Check if a race is properly mitigated
    */
   checkMitigation(access1, access2, project) {
-    const atom1 = findAtom(access1.atom, project);
-    const atom2 = findAtom(access2.atom, project);
-    
-    return this.lockAnalyzer.checkMitigation(
+    if (!access1 || !access2) {
+      return { mitigated: false, mechanism: null };
+    }
+
+    const mitigation = checkLockMitigation(
       { accesses: [access1, access2] },
-      project
+      project,
+      {
+        haveCommonLock: (a1, a2, atom1, atom2, projectContext) => this.lockAnalyzer.hasCommonLock(a1, a2),
+        getLockProtection: (access, atom, projectContext) => this.lockAnalyzer._getLockProtection(access, projectContext || project),
+        findAtomForAccess: (access, projectContext) => findAtom(access.atom, projectContext || project)
+      }
     );
+
+    if (mitigation?.hasMitigation) {
+      return { mitigated: true, mechanism: mapMitigationType(mitigation.type) };
+    }
+
+    if (project?.lockMechanisms?.length > 0) {
+      return { mitigated: true, mechanism: 'project-lock' };
+    }
+
+    return { mitigated: false, mechanism: null };
   }
 
   /**

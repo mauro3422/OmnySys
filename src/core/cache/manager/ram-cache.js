@@ -9,7 +9,10 @@
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
-import { deleteMatchingKeys } from '../../../shared/cache/cache-maintenance.js';
+import {
+  invalidateCacheStoreKey,
+  purgeCacheStore
+} from '../../../shared/cache/cache-maintenance.js';
 
 let _ramRepo = null;
 
@@ -124,14 +127,11 @@ export function invalidate(key) {
 
   if (db) {
     try {
-      if (key.includes('*') || key.includes('?')) {
-        const pattern = key.replace(/\*/g, '%').replace(/\?/g, '_');
-        const result = hr.deleteByPattern('cache_entries', 'key', pattern);
-        return result.changes > 0;
-      }
-
-      const result = hr.delete('cache_entries', 'key', key);
-      return result.changes > 0;
+      return invalidateCacheStoreKey({
+        repository: hr,
+        table: 'cache_entries',
+        key
+      });
     } catch (err) {
       console.warn('[ram-cache] SQLite invalidate error:', err.message);
     }
@@ -139,11 +139,10 @@ export function invalidate(key) {
 
   if (!this.ramCache) return false;
 
-  if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
-    return deleteMatchingKeys(this.ramCache, key) > 0;
-  }
-
-  return this.ramCache.delete(key);
+  return invalidateCacheStoreKey({
+    memoryCache: this.ramCache,
+    key
+  });
 }
 
 /**
@@ -154,7 +153,13 @@ export function purge() {
 
   if (hr) {
     try {
-      hr.clearTable('cache_entries');
+      purgeCacheStore({
+        repository: hr,
+        table: 'cache_entries',
+        target: this,
+        collections: ['ramCache']
+      });
+      return;
     } catch (err) {
       console.warn('[ram-cache] SQLite clear error:', err.message);
     }

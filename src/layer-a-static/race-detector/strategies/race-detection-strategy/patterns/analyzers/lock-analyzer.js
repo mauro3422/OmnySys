@@ -34,43 +34,35 @@ export class LockAnalyzer {
   }
 
   /**
-   * Verifica si una race condition está adecuadamente mitigada.
-   * @param {Object} race - Descripción de la race condition ({ accesses })
-   * @param {Object} project - Datos del proyecto
-   * @returns {{ mitigated: boolean, mechanism: string|null }}
-   */
-  checkMitigation(race, project) {
-    if (!race || !race.accesses || race.accesses.length < 2) {
-      return { mitigated: false, mechanism: null };
-    }
-
-    const [access1, access2] = race.accesses;
-
-    // Verificar lock común
-    if (this.hasCommonLock(access1, access2)) {
-      return { mitigated: true, mechanism: 'shared-lock' };
-    }
-
-    // Verificar Atomics (SharedArrayBuffer)
-    if (access1.usesAtomics || access2.usesAtomics) {
-      return { mitigated: true, mechanism: 'atomics' };
-    }
-
-    // Verificar mutex / semaphore en el proyecto
-    if (project?.lockMechanisms?.length > 0) {
-      return { mitigated: true, mechanism: 'project-lock' };
-    }
-
-    return { mitigated: false, mechanism: null };
-  }
-
-  /**
    * Obtiene los locks activos para un acceso dado.
    * @param {Object} access
    * @returns {Array<string>}
    */
   getActiveLocks(access) {
     return access?.locks || [];
+  }
+
+  _getLockProtection(access, project) {
+    if (!access) return null;
+
+    if (access.usesAtomics) {
+      return { type: 'atomic' };
+    }
+
+    if (access.transactionId || access.lockType === 'transaction') {
+      return { type: 'transaction' };
+    }
+
+    const locks = access.locks || [];
+    if (locks.length > 0) {
+      return { type: 'lock', lockName: locks[0] };
+    }
+
+    if (project?.lockMechanisms?.length > 0) {
+      return { type: 'project-lock' };
+    }
+
+    return null;
   }
 }
 

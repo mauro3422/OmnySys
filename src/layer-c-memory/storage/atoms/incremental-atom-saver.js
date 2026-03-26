@@ -17,6 +17,48 @@ import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:incremental-saver');
 
+function getAtomChangeDetection(atom, existingRow) {
+  if (!existingRow) {
+    return {
+      isNew: true,
+      fields: Object.keys(atom).filter(key => !key.startsWith('_')),
+      hasChanges: true
+    };
+  }
+
+  let oldFieldHashes = {};
+  try {
+    oldFieldHashes = JSON.parse(existingRow.field_hashes_json || '{}');
+  } catch (_error) {
+    oldFieldHashes = {};
+  }
+
+  const newFieldHashes = calculateFieldHashes(atom);
+  const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
+
+  return {
+    isNew: false,
+    fields: changedFields,
+    unchangedFields,
+    hasChanges: changedFields.length > 0,
+    previousModified: existingRow.last_modified
+  };
+}
+
+function buildIncrementalAtomMetadata(atom, rootPath, options) {
+  return {
+    ...atom,
+    _meta: {
+      ...(atom._meta || {}),
+      rootPath,
+      lastModified: Date.now(),
+      version: (atom._meta?.version || 0) + 1,
+      incrementalUpdate: true,
+      source: options.source || 'unknown'
+    }
+  };
+}
+
 function loadExistingVersionRowsForFile(db, filePath) {
   const rows = db.prepare(`
     SELECT atom_id, hash, field_hashes_json, last_modified, file_path, atom_name
@@ -115,32 +157,7 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
       atom.filePath = normalizedPath;
 
       const existingRow = existingVersions.get(atomId);
-      let changeDetection;
-      if (!existingRow) {
-        changeDetection = {
-          isNew: true,
-          fields: Object.keys(atom).filter(key => !key.startsWith('_')),
-          hasChanges: true
-        };
-      } else {
-        let oldFieldHashes = {};
-        try {
-          oldFieldHashes = JSON.parse(existingRow.field_hashes_json || '{}');
-        } catch (_error) {
-          oldFieldHashes = {};
-        }
-
-        const newFieldHashes = calculateFieldHashes(atom);
-        const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
-
-        changeDetection = {
-          isNew: false,
-          fields: changedFields,
-          unchangedFields,
-          hasChanges: changedFields.length > 0,
-          previousModified: existingRow.last_modified
-        };
-      }
+      const changeDetection = getAtomChangeDetection(atom, existingRow);
 
       if (!changeDetection.hasChanges && !options.forceFull) {
         results.unchanged++;
@@ -148,17 +165,7 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
       }
 
       // Metadata update for record keeping
-      const finalAtom = {
-        ...atom,
-        _meta: {
-          ...(atom._meta || {}),
-          rootPath,
-          lastModified: Date.now(),
-          version: (atom._meta?.version || 0) + 1,
-          incrementalUpdate: true,
-          source: options.source || 'unknown'
-        }
-      };
+      const finalAtom = buildIncrementalAtomMetadata(atom, rootPath, options);
 
       atomsToSave.push(finalAtom);
 

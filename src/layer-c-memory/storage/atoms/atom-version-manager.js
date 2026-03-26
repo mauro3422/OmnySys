@@ -13,11 +13,9 @@ import path from 'path';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../../utils/logger.js';
 import {
-  buildVersionPayload,
-  calculateFieldHashes,
-  diffFieldHashes,
-  insertOrUpdateVersion,
-  loadFieldHashes
+  buildAtomChangeDetection,
+  loadFieldHashes,
+  trackAtomVersionWithDb
 } from './atom-version-manager-helpers.js';
 
 const logger = createLogger('OmnySys:AtomVersionManager');
@@ -35,42 +33,13 @@ async function ensureDbForManager(manager) {
 
 async function trackAtomVersionForManager(manager, atomId, atomData) {
   await ensureDbForManager(manager);
-  const version = buildVersionPayload(atomData);
-  insertOrUpdateVersion(manager.db, atomId, version);
-  return version;
+  return trackAtomVersionWithDb(manager.db, atomId, atomData);
 }
 
 async function detectChangesForManager(manager, atomId, newData) {
   await ensureDbForManager(manager);
   const row = manager.db.prepare('SELECT * FROM atom_versions WHERE atom_id = ?').get(atomId);
-
-  if (!row) {
-    return {
-      isNew: true,
-      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
-      hasChanges: true
-    };
-  }
-
-  const oldFieldHashes = loadFieldHashes(row, atomId, logger);
-  if (!oldFieldHashes) {
-    return {
-      isNew: true,
-      fields: Object.keys(newData).filter(k => !k.startsWith('_')),
-      hasChanges: true
-    };
-  }
-
-  const newFieldHashes = calculateFieldHashes(newData);
-  const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
-
-  return {
-    isNew: false,
-    fields: changedFields,
-    unchangedFields,
-    hasChanges: changedFields.length > 0,
-    previousModified: row.last_modified
-  };
+  return buildAtomChangeDetection(row, atomId, newData, logger);
 }
 
 async function getVersionForManager(manager, atomId) {

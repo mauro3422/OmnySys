@@ -25,28 +25,13 @@ import {
 } from './directory-structure-analyzer.js';
 import { detectHelperReuseOpportunities } from './helper-reuse-detector.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import {
+    CATEGORY_WEIGHTS,
+    getSeverityLevel,
+    sortIssuesBySeverityAndLocation
+} from './architectural-debt-score-helpers.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
-
-/**
- * Pesos de cada categoría en el score final
- */
-const CATEGORY_WEIGHTS = {
-    directoryStructure: 0.25,
-    patterns: 0.25,
-    coupling: 0.25,
-    duplication: 0.25
-};
-
-/**
- * Thresholds para severidad
- */
-const SEVERITY_THRESHOLDS = {
-    low: { min: 0, max: 25 },
-    moderate: { min: 26, max: 50 },
-    high: { min: 51, max: 75 },
-    critical: { min: 76, max: 100 }
-};
 
 /**
  * Calcula score de deuda arquitectónica
@@ -82,7 +67,7 @@ export async function calculateArchitecturalDebtScore(projectPath, repo) {
     const level = getSeverityLevel(overallScore);
 
     // 7. Consolidar issues principales
-    const topIssues = consolidateTopIssues([
+    const topIssues = sortIssuesBySeverityAndLocation([
         ...directoryScore.issues,
         ...patternScore.issues,
         ...couplingScore.issues,
@@ -385,32 +370,8 @@ async function calculateDuplicationScore(projectPath, repo) {
 
 
 /**
- * Obtiene nivel de severidad basado en score
- */
-export function getSeverityLevel(score) {
-    if (score <= SEVERITY_THRESHOLDS.low.max) return 'low';
-    if (score <= SEVERITY_THRESHOLDS.moderate.max) return 'moderate';
-    if (score <= SEVERITY_THRESHOLDS.high.max) return 'high';
-    return 'critical';
-}
-
-/**
- * Consolida y ordena issues por severidad
- */
-function consolidateTopIssues(allIssues) {
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    const getIssueLocation = (issue) => issue?.file || issue?.filePath || issue?.name || issue?.symbol || '';
-    const getSeverityRank = (severity) => severityOrder[severity] ?? 99;
-
-    return allIssues
-        .sort((a, b) => {
-            const severityDiff = getSeverityRank(a.severity) - getSeverityRank(b.severity);
-            if (severityDiff !== 0) return severityDiff;
-            return getIssueLocation(a).localeCompare(getIssueLocation(b));
-        });
-}
-
-/**
  * Export principal
  */
 export default calculateArchitecturalDebtScore;
+
+export { getSeverityLevel };

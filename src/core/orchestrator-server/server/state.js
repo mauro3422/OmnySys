@@ -140,6 +140,17 @@ export async function restart(updateCallback) {
 }
 
 /**
+ * Stop the orchestrator worker and mark the server as stopped.
+ */
+export async function stopServerState() {
+  serverState.isRunning = false;
+
+  if (serverState.worker) {
+    await serverState.worker.stop();
+  }
+}
+
+/**
  * Get complete state for serialization
  * @returns {Object} State object
  */

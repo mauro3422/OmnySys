@@ -19,7 +19,8 @@ import {
   initializeState,
   processNext,
   serverState,
-  getStateData
+  getStateData,
+  stopServerState
 } from './server/state.js';
 
 import {
@@ -127,9 +128,7 @@ export class OrchestratorServer {
    * Stop the server
    */
   async stop() {
-    if (serverState.worker) {
-      await serverState.worker.stop();
-    }
+    await stopServerState();
     if (this.server) {
       this.server.close();
     }

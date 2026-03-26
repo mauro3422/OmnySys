@@ -18,7 +18,7 @@ import { DerivationCache } from './cache.js';
  * @returns {Object} - Complete derived metadata
  */
 export function composeMolecularMetadata(moleculeId, atoms, cache = null) {
-  const derive = (ruleName) => {
+  const resolveDerivedValue = (ruleName) => {
     if (cache) {
       return cache.derive(moleculeId, atoms, ruleName);
     }
@@ -36,36 +36,36 @@ export function composeMolecularMetadata(moleculeId, atoms, cache = null) {
     atomCount: atoms.length,
 
     // Derived archetype
-    archetype: derive('moleculeArchetype'),
+    archetype: resolveDerivedValue('moleculeArchetype'),
 
     // Derived complexity metrics
-    totalComplexity: derive('moleculeComplexity'),
-    riskScore: derive('moleculeRisk'),
+    totalComplexity: resolveDerivedValue('moleculeComplexity'),
+    riskScore: resolveDerivedValue('moleculeRisk'),
 
     // Derived exports
-    exports: derive('moleculeExports'),
-    exportCount: derive('moleculeExportCount'),
-    functionCount: derive('moleculeFunctionCount'),
+    exports: resolveDerivedValue('moleculeExports'),
+    exportCount: resolveDerivedValue('moleculeExportCount'),
+    functionCount: resolveDerivedValue('moleculeFunctionCount'),
 
     // Derived side effects
-    hasSideEffects: derive('moleculeHasSideEffects'),
-    hasNetworkCalls: derive('moleculeHasNetworkCalls'),
-    hasDomManipulation: derive('moleculeHasDomManipulation'),
-    hasStorageAccess: derive('moleculeHasStorageAccess'),
-    networkEndpoints: derive('moleculeNetworkEndpoints'),
+    hasSideEffects: resolveDerivedValue('moleculeHasSideEffects'),
+    hasNetworkCalls: resolveDerivedValue('moleculeHasNetworkCalls'),
+    hasDomManipulation: resolveDerivedValue('moleculeHasDomManipulation'),
+    hasStorageAccess: resolveDerivedValue('moleculeHasStorageAccess'),
+    networkEndpoints: resolveDerivedValue('moleculeNetworkEndpoints'),
 
     // Derived error handling
-    hasErrorHandling: derive('moleculeHasErrorHandling'),
+    hasErrorHandling: resolveDerivedValue('moleculeHasErrorHandling'),
 
     // Derived async patterns
-    hasAsyncPatterns: derive('moleculeHasAsyncPatterns'),
+    hasAsyncPatterns: resolveDerivedValue('moleculeHasAsyncPatterns'),
 
     // Derived call graph
-    externalCallCount: derive('moleculeExternalCallCount'),
+    externalCallCount: resolveDerivedValue('moleculeExternalCallCount'),
 
     // Derived temporal
-    hasLifecycleHooks: derive('moleculeHasLifecycleHooks'),
-    hasCleanupPatterns: derive('moleculeHasCleanupPatterns'),
+    hasLifecycleHooks: resolveDerivedValue('moleculeHasLifecycleHooks'),
+    hasCleanupPatterns: resolveDerivedValue('moleculeHasCleanupPatterns'),
 
     // References (not derived)
     atoms: atoms.map(a => a.id),

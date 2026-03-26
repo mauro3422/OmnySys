@@ -14,20 +14,16 @@ export async function stop() {
     logger.info('✅ LLM health checker stopped');
   }
 
-  if (this.fileWatcher) {
-    await this.fileWatcher.stop();
-  }
+  const stopSteps = [
+    { name: 'fileWatcher', stop: () => this.fileWatcher.stop() },
+    { name: 'batchProcessor', stop: () => this.batchProcessor.stop() },
+    { name: 'wsManager', stop: () => this.wsManager.stop() },
+    { name: 'worker', stop: () => this.worker.stop() }
+  ];
 
-  if (this.batchProcessor) {
-    this.batchProcessor.stop();
-  }
-
-  if (this.wsManager) {
-    await this.wsManager.stop();
-  }
-
-  if (this.worker) {
-    await this.worker.stop();
+  for (const step of stopSteps) {
+    if (!this[step.name]) continue;
+    await step.stop();
   }
 
   logger.info('✅ Orchestrator stopped');

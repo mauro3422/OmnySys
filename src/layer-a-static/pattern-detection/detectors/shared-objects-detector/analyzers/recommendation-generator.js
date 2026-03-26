@@ -36,3 +36,6 @@ export function scoreSharedObjects(findings) {
   let penalty = critical * 15 + high * 8 + medium * 3;
   return Math.max(0, 100 - penalty);
 }
+
+// Backward-compatible alias used by detector index exports.
+export const calculateScore = scoreSharedObjects;
