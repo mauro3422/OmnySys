@@ -194,6 +194,13 @@ app.post('/restart', express.json(), async (req, res) => {
   }
 });
 
+app.use((err, req, res, _next) => {
+  logger.error(`Unhandled error in ${req.method} ${req.path}: ${err.message}`);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
 const httpServer = await startHttpServer({ app, host, port, logger });
 logger.info(`Project: ${projectPath}`);
 

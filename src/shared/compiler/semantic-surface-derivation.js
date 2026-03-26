@@ -140,6 +140,8 @@ function pushConnectionRow(rows, seen, payload) {
   });
 }
 
+const MAX_CONNECTIONS_PER_GROUP = 200;
+
 export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now = Date.now()) {
   const rows = [];
   const seen = new Set();
@@ -227,14 +229,15 @@ export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now =
     }
   }
 
+  const globalCap = MAX_CONNECTIONS_PER_GROUP * (sharedGroups.size + eventGroups.size);
+
   for (const group of sharedGroups.values()) {
     const files = [...group.files.keys()].sort();
-    if (files.length < 2) {
-      continue;
-    }
+    if (files.length < 2) continue;
 
     for (let i = 0; i < files.length; i++) {
       for (let j = i + 1; j < files.length; j++) {
+        if (rows.length >= globalCap) break;
         pushConnectionRow(rows, seen, {
           sourcePath: files[i],
           targetPath: files[j],
@@ -251,19 +254,18 @@ export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now =
           now
         });
       }
+      if (rows.length >= globalCap) break;
     }
   }
 
   for (const group of eventGroups.values()) {
     const emitters = [...group.emitters.keys()].sort();
     const listeners = [...group.listeners.keys()].sort();
-
-    if (emitters.length === 0 || listeners.length === 0) {
-      continue;
-    }
+    if (emitters.length === 0 || listeners.length === 0) continue;
 
     for (const sourcePath of emitters) {
       for (const targetPath of listeners) {
+        if (rows.length >= globalCap) break;
         pushConnectionRow(rows, seen, {
           sourcePath,
           targetPath,
@@ -281,6 +283,7 @@ export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now =
           now
         });
       }
+      if (rows.length >= globalCap) break;
     }
   }
 

@@ -34,12 +34,37 @@ function buildSharedStateMap(atoms) {
   return stateMap;
 }
 
+const MAX_RELATIONS_PER_KEY = 500;
+
 function buildSharedStateRelations(stateMap) {
   const relations = [];
 
   for (const [key, bucket] of stateMap.entries()) {
     const writers = bucket.writers;
     const readers = bucket.readers;
+    const totalPotential = (writers.length * readers.length) + (writers.length * (writers.length - 1)) / 2;
+
+    if (totalPotential > MAX_RELATIONS_PER_KEY) {
+      const writerIds = new Set(writers.map(w => w.id));
+      const readerIds = new Set(readers.map(r => r.id));
+
+      for (const writer of writers) {
+        for (const reader of readers) {
+          if (writer.id === reader.id) continue;
+          if (relations.length >= MAX_RELATIONS_PER_KEY) break;
+          relations.push({
+            sourceId: writer.id,
+            targetId: reader.id,
+            type: 'shares_state',
+            weight: 1.0,
+            line: writer.line,
+            context: JSON.stringify({ key, direction: 'writer_to_reader', capped: true })
+          });
+        }
+        if (relations.length >= MAX_RELATIONS_PER_KEY) break;
+      }
+      continue;
+    }
 
     for (const writer of writers) {
       for (const reader of readers) {
