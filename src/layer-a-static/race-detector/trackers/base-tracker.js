@@ -115,6 +115,23 @@ export class BaseTracker {
   }
 
   /**
+   * Iterate atoms in a molecule and apply a tracker callback.
+   * Shared loop to keep concrete trackers focused on detection logic.
+   *
+   * @protected
+   * @param {Object} molecule - Molecule data with atoms
+   * @param {Object} module - Parent module
+   * @param {Function} visitor - Atom visitor callback
+   */
+  trackAtomsInMolecule(molecule, module, visitor) {
+    if (!molecule || typeof visitor !== 'function') return;
+
+    for (const atom of molecule.atoms || []) {
+      visitor(atom, molecule, module);
+    }
+  }
+
+  /**
    * Finalize and return tracked state
    * Override for custom post-processing
    * 

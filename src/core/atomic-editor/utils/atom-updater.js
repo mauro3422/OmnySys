@@ -7,6 +7,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { invalidateFileCacheEntries } from '../../cache/manager/cache-key-helpers.js';
 
 const logger = createLogger('OmnySys:atomic:editor:updater');
 
@@ -50,8 +51,7 @@ export async function invalidateAtomCache(filePath, projectPath) {
     const cache = await getCacheManager(projectPath);
     
     if (cache) {
-      cache.invalidate(`analysis:${filePath}`);
-      cache.invalidate(`atom:${filePath}`);
+      invalidateFileCacheEntries(cache, filePath);
       logger.debug(`Cache invalidated for ${filePath}`);
     }
   } catch (error) {

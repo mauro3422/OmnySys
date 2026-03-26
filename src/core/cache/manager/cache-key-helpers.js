@@ -35,3 +35,22 @@ export function invalidateNamespacedCachePattern(cache, namespace, pattern) {
 export function invalidateFileAtomPattern(cache, filePath) {
   return cache.invalidate(buildFileAtomPattern(filePath));
 }
+
+export function invalidateFileCacheEntries(cache, filePath, namespaces = ['analysis', 'atom']) {
+  if (!cache || typeof cache.invalidate !== 'function') {
+    return 0;
+  }
+
+  let invalidated = 0;
+  const normalizedValue = String(filePath || '');
+
+  for (const namespace of namespaces) {
+    if (typeof namespace !== 'string' || namespace.length === 0) continue;
+
+    if (cache.invalidate(buildNamespacedCacheKey(namespace, normalizedValue))) {
+      invalidated++;
+    }
+  }
+
+  return invalidated;
+}

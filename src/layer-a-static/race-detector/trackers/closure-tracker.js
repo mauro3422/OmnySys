@@ -60,11 +60,9 @@ export class ClosureTracker extends BaseTracker {
    * @param {Object} module - Parent module
    */
   trackMolecule(molecule, module) {
-    const atoms = molecule.atoms || [];
-
-    for (const atom of atoms) {
+    this.trackAtomsInMolecule(molecule, module, (atom) => {
       this.trackAtom(atom, molecule, module);
-    }
+    });
   }
 
   /**

@@ -4,6 +4,7 @@ import * as staticInsights from './static-insights.js';
 import * as iterative from './iterative.js';
 import * as issues from './issues.js';
 import * as helpers from './helpers.js';
+import * as runtimeOps from './runtime-ops.js';
 import { pipelineAlertGuard } from '../file-watcher/guards/pipeline-alert-guard.js';
 import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger.js';
@@ -100,7 +101,8 @@ Object.assign(
   staticInsights,
   iterative,
   issues,
-  helpers
+  helpers,
+  runtimeOps
 );
 
 export { Orchestrator };

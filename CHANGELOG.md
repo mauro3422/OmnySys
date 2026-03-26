@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.298 - Sprint 16: Orchestrator Runtime Ops Extraction](changelogs/v0.9.298.md)
 - [v0.9.297 - Sprint 16: HTTP Listener Proxy Mode Purge and Test Harness Split](changelogs/v0.9.297.md)
 - [v0.9.296 - Sprint 16: Cache Manager Namespaced Key Helpers](changelogs/v0.9.296.md)
 - [v0.9.295 - Sprint 16: Shared Cache Lifecycle Canonicalization and Atom Version Manager Cleanup](changelogs/v0.9.295.md)
