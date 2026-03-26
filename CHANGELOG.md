@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.294 - Sprint 16: Real Project Factory Lifecycle Rename](changelogs/v0.9.294.md)
 - [v0.9.293 - Sprint 16: Cache Invalidator Barrel Demotion](changelogs/v0.9.293.md)
 - [v0.9.292 - Sprint 16: Cache Invalidator Modular Split and Test Extraction](changelogs/v0.9.292.md)
 - [v0.9.291 - Sprint 16: Invalidator File Status Rename](changelogs/v0.9.291.md)

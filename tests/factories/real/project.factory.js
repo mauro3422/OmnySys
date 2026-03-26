@@ -77,13 +77,13 @@ export class ProjectFactory {
     this.baseDir = baseDir;
   }
 
-  static async create(templateName = 'simple', customFiles = {}, baseDir = null) {
+  static async fromTemplate(templateName = 'simple', customFiles = {}, baseDir = null) {
     const factory = new ProjectFactory(baseDir);
-    await factory.init();
+    await factory.initialize();
     return await factory.createProject(templateName, customFiles);
   }
 
-  async init() {
+  async initialize() {
     this.fs = await FileSystemFactory.create(this.baseDir);
   }
 
@@ -108,7 +108,7 @@ export class ProjectFactory {
 }
 
 export async function createTestProject(templateName = 'simple', files = {}) {
-  return await ProjectFactory.create(templateName, files);
+  return await ProjectFactory.fromTemplate(templateName, files);
 }
 
 export async function withProject(templateName, callback, customFiles = {}) {
