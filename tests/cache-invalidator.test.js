@@ -339,7 +339,7 @@ describe('CacheInvalidator', () => {
       cacheManager.set(`analysis:${filePath}`, { data: 'test' });
       cacheManager.index.entries[filePath] = { hash: 'abc' };
       
-      const status = invalidator.getStatus(filePath);
+      const status = invalidator.getFileStatus(filePath);
       
       expect(status.filePath).toBe(filePath);
       expect(status.inRam).toBe(true);
@@ -347,7 +347,7 @@ describe('CacheInvalidator', () => {
     });
 
     it('should report correct status for non-cached file', async () => {
-      const status = invalidator.getStatus('src/not-cached.js');
+      const status = invalidator.getFileStatus('src/not-cached.js');
       
       expect(status.inRam).toBe(false);
       expect(status.inIndex).toBe(false);

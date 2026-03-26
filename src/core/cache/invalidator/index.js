@@ -131,11 +131,11 @@ export class CacheInvalidator extends EventEmitter {
   }
 
   /**
-   * Get invalidation status
+   * Get invalidation status for a file
    * @param {string} filePath - File path
    * @returns {Object} Status
    */
-  getStatus(filePath) {
+  getFileStatus(filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
     return this.validator.buildStatus(normalizedPath);
   }
