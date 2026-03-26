@@ -3,20 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const transportInstances = [];
 
-  class MockTransport {
-    constructor(config) {
-      this.config = config;
-      this.sessionId = config.sessionIdGenerator();
-      this.handleRequest = vi.fn(async () => undefined);
-      this.onclose = null;
-      transportInstances.push(this);
-    }
-
-    async connect() {
-      if (this.config.onsessioninitialized) {
-        this.config.onsessioninitialized(this.sessionId);
+  function createMockTransport(config) {
+    const transport = {
+      config,
+      sessionId: config.sessionIdGenerator(),
+      handleRequest: vi.fn(async () => undefined),
+      onclose: null,
+      async connect() {
+        if (transport.config.onsessioninitialized) {
+          transport.config.onsessioninitialized(transport.sessionId);
+        }
       }
-    }
+    };
+
+    transportInstances.push(transport);
+    return transport;
   }
 
   class MockServer {
@@ -33,10 +34,15 @@ const mocks = vi.hoisted(() => {
     isInitializeRequest: vi.fn(() => false),
     applyPagination: vi.fn((value) => value),
     compactRecentNotifications: vi.fn((value) => value),
-    StreamableHTTPServerTransport: MockTransport,
+    StreamableHTTPServerTransport: createMockTransport,
     Server: MockServer,
     ErrorCode: { MethodNotFound: 'MethodNotFound' },
-    McpError: class McpError extends Error {}
+    McpError: function MockMcpError(message) {
+      const error = new Error(message);
+      error.name = 'McpError';
+      Object.setPrototypeOf(error, MockMcpError.prototype);
+      return error;
+    }
   };
 });
 
@@ -77,6 +83,12 @@ import {
   createConditionalJsonMiddleware,
   handleMcpRequest
 } from '../../../src/layer-c-memory/mcp-http-session-routing.js';
+import {
+  createBuildSessionServer,
+  createLogger,
+  createResponse,
+  createSessionManager
+} from './test-helpers.js';
 
 beforeEach(() => {
   mocks.transportInstances.length = 0;
@@ -87,62 +99,6 @@ beforeEach(() => {
   mocks.applyPagination.mockClear();
   mocks.compactRecentNotifications.mockClear();
 });
-
-function createLogger() {
-  return {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  };
-}
-
-function createResponse() {
-  const response = {
-    headersSent: false,
-    statusCode: 200,
-    headers: {},
-    payload: null,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    set(name, value) {
-      this.headers[name] = value;
-      return this;
-    },
-    json(body) {
-      this.payload = body;
-      this.headersSent = true;
-      return body;
-    }
-  };
-
-  return response;
-}
-
-function createSessionManager(overrides = {}) {
-  return {
-    reserveSession: vi.fn(() => ({
-      sessionId: 'transport-session',
-      reused: false,
-      source: 'new'
-    })),
-    saveSession: vi.fn(() => 'transport-session'),
-    getSession: vi.fn(() => null),
-    releasePendingSession: vi.fn(),
-    deleteSession: vi.fn(),
-    ...overrides
-  };
-}
-
-function createBuildSessionServer() {
-  return vi.fn(() => ({
-    connect: vi.fn(async (transport) => {
-      await transport.connect();
-    })
-  }));
-}
 
 describe('createConditionalJsonMiddleware', () => {
   it('returns a parse error when express.json reports malformed JSON', () => {

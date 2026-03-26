@@ -1,13 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startHttpServer } from '../../../src/layer-c-memory/mcp-http-listener.js';
-
-function createLogger() {
-  return {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  };
-}
+import {
+  createExitSpy,
+  createLogger
+} from './test-helpers.js';
 
 function createListenScenarioQueue(scenarios = []) {
   const servers = [];
@@ -51,28 +47,14 @@ function createError(code, message) {
 }
 
 describe('startHttpServer', () => {
-  let originalProxyMode;
-  let exitSpy;
-
-  beforeEach(() => {
-    originalProxyMode = process.env.OMNYSYS_PROXY_MODE;
-    exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined);
-  });
-
   afterEach(() => {
-    if (originalProxyMode === undefined) {
-      delete process.env.OMNYSYS_PROXY_MODE;
-    } else {
-      process.env.OMNYSYS_PROXY_MODE = originalProxyMode;
-    }
-
-    exitSpy.mockRestore();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
   it('returns the created server when the bind succeeds', async () => {
     const logger = createLogger();
+    const exitSpy = createExitSpy();
     const { listen, servers } = createListenScenarioQueue([{ type: 'success' }]);
     const app = { listen };
 
@@ -80,7 +62,8 @@ describe('startHttpServer', () => {
       app,
       host: '127.0.0.1',
       port: 9999,
-      logger
+      logger,
+      isProxyMode: false
     });
 
     expect(server).toBe(servers[0]);
@@ -93,9 +76,9 @@ describe('startHttpServer', () => {
 
   it('retries on EADDRINUSE in proxy mode and eventually succeeds', async () => {
     vi.useFakeTimers();
-    process.env.OMNYSYS_PROXY_MODE = '1';
 
     const logger = createLogger();
+    const exitSpy = createExitSpy();
     const { listen, servers } = createListenScenarioQueue([
       { type: 'error', error: createError('EADDRINUSE', 'busy') },
       { type: 'success' }
@@ -106,7 +89,8 @@ describe('startHttpServer', () => {
       app,
       host: '127.0.0.1',
       port: 9999,
-      logger
+      logger,
+      isProxyMode: true
     });
 
     await Promise.resolve();
@@ -127,6 +111,7 @@ describe('startHttpServer', () => {
 
   it('closes the server and exits cleanly when the port is already in use outside proxy mode', async () => {
     const logger = createLogger();
+    const exitSpy = createExitSpy();
     const { listen, servers } = createListenScenarioQueue([
       { type: 'error', error: createError('EADDRINUSE', 'busy') }
     ]);
@@ -136,7 +121,8 @@ describe('startHttpServer', () => {
       app,
       host: '127.0.0.1',
       port: 9999,
-      logger
+      logger,
+      isProxyMode: false
     });
 
     expect(server).toBeNull();
@@ -150,6 +136,7 @@ describe('startHttpServer', () => {
 
   it('logs and exits with code 1 on unexpected listen errors', async () => {
     const logger = createLogger();
+    const exitSpy = createExitSpy();
     const { listen, servers } = createListenScenarioQueue([
       { type: 'error', error: createError('EACCES', 'permission denied') }
     ]);
@@ -159,7 +146,8 @@ describe('startHttpServer', () => {
       app,
       host: '127.0.0.1',
       port: 9999,
-      logger
+      logger,
+      isProxyMode: false
     });
 
     expect(server).toBeNull();

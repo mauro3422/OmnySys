@@ -218,7 +218,13 @@ app.use((err, req, res, _next) => {
   }
 });
 
-const httpServer = await startHttpServer({ app, host, port, logger });
+const httpServer = await startHttpServer({
+  app,
+  host,
+  port,
+  logger,
+  isProxyMode: process.env.OMNYSYS_PROXY_MODE === '1'
+});
 logger.info(`Project: ${projectPath}`);
 
 core.initialize().then(async () => {

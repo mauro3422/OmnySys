@@ -50,8 +50,7 @@ function tryListen(app, host, port, logger, attempt, bindRetryLimit, isProxyMode
   });
 }
 
-export async function startHttpServer({ app, host, port, logger }) {
-  const isProxyMode = process.env.OMNYSYS_PROXY_MODE === '1';
+export async function startHttpServer({ app, host, port, logger, isProxyMode = false }) {
   const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 8 : 3) : 0;
 
   for (let attempt = 0; ; attempt += 1) {
