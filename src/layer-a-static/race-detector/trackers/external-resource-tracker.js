@@ -38,21 +38,10 @@ export class ExternalResourceTracker extends BaseTracker {
   }
 
   /**
-   * Track external resource access
-   * @param {Object} molecule - Molecule with atoms
-   * @param {Object} module - Parent module
-   */
-  trackMolecule(molecule, module) {
-    this.trackAtomsInMolecule(molecule, module, (atom) => {
-      this.trackAtom(atom, molecule, module);
-    });
-  }
-
-  /**
    * Track external calls in a single atom
    * @private
    */
-  trackAtom(atom, molecule, module) {
+  handleAtom(atom, molecule, module) {
     const calls = atom.calls || [];
     
     for (const call of calls) {

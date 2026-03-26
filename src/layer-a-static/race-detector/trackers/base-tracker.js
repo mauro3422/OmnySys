@@ -95,7 +95,7 @@ export class BaseTracker {
 
   /**
    * Track a single molecule (file)
-   * IMPLEMENT THIS METHOD in subclasses
+   * Implement trackMolecule() for custom flows, or handleAtom() for simple cases.
    * 
    * @abstract
    * @param {Object} molecule - Molecule data with atoms
@@ -111,7 +111,13 @@ export class BaseTracker {
    * }
    */
   trackMolecule(molecule, module) {
-    throw new Error('Subclasses must implement trackMolecule()');
+    if (typeof this.handleAtom !== 'function') {
+      throw new Error('Subclasses must implement trackMolecule() or handleAtom()');
+    }
+
+    this.trackAtomsInMolecule(molecule, module, (atom) => {
+      this.handleAtom(atom, molecule, module);
+    });
   }
 
   /**
@@ -130,6 +136,29 @@ export class BaseTracker {
       visitor(atom, molecule, module);
     }
   }
+
+  /**
+   * Iterate shared state accesses for an atom and invoke a handler.
+   * Returns true if any access was handled by the callback.
+   *
+   * @protected
+   * @param {Object} atom - Atom data
+   * @param {Function} handler - Access handler callback
+   * @returns {boolean} - Whether any access was handled
+   */
+  withSharedStateAccess(atom, handler) {
+    if (!atom?.sharedStateAccess || typeof handler !== 'function') return false;
+
+    let handled = false;
+    for (const access of atom.sharedStateAccess) {
+      if (handler(access, atom) !== false) {
+        handled = true;
+      }
+    }
+
+    return handled;
+  }
+
 
   /**
    * Finalize and return tracked state

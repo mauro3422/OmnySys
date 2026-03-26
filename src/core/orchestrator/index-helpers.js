@@ -6,6 +6,14 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:orchestrator:helpers');
 
+function publishAtomicEvent(orchestrator, type, event) {
+  orchestrator.wsManager?.publish({
+    type,
+    ...event,
+    timestamp: Date.now()
+  });
+}
+
 export function buildOrchestratorState(orchestrator, projectPath, options = {}) {
   orchestrator.projectPath = projectPath;
   orchestrator.OmnySysDataPath = getDataPath(projectPath, '');
@@ -92,22 +100,14 @@ export function setupAtomicEditor(orchestrator) {
     logger.error(`🚫 Atomic validation failed: ${event.file}`);
     logger.error(`   Error: ${event.error}`);
 
-    orchestrator.wsManager?.publish({
-      type: 'atomic:validation:failed',
-      ...event,
-      timestamp: Date.now()
-    });
+    publishAtomicEvent(orchestrator, 'atomic:validation:failed', event);
   });
 
   orchestrator.atomicEditor.on('atom:modified', (event) => {
     logger.info(`✅ Atomic edit complete: ${event.file}`);
     orchestrator._triggerIncrementalSocietyUpdate(event.file);
 
-    orchestrator.wsManager?.publish({
-      type: 'atomic:modified',
-      ...event,
-      timestamp: Date.now()
-    });
+    publishAtomicEvent(orchestrator, 'atomic:modified', event);
   });
 
   orchestrator.atomicEditor.on('vibration:propagating', (event) => {

@@ -1,4 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
+import { closeIfPresent } from '../../../shared/lifecycle/shutdown-helpers.js';
 
 const logger = createLogger('file-watcher');
 
@@ -15,7 +16,7 @@ export async function stop() {
   try {
     // Detener fs.watch
     if (this.fsWatcher) {
-      this.fsWatcher.close();
+      await closeIfPresent(this.fsWatcher);
       this.fsWatcher = null;
 
       logVerbose('Filesystem watcher stopped');
@@ -35,12 +36,12 @@ export async function stop() {
       }
       
       // Limpiar batch processor
-      this.batchProcessor.resetBuffer();
+      await closeIfPresent(this.batchProcessor, 'resetBuffer');
     }
 
     // Limpiar incremental analyzer
     if (this.incrementalAnalyzer) {
-      this.incrementalAnalyzer.clear();
+      await closeIfPresent(this.incrementalAnalyzer, 'clear');
     }
 
     // Esperar a que terminen procesos pendientes

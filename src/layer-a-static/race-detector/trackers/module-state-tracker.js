@@ -16,28 +16,16 @@ import { BaseTracker } from './base-tracker.js';
  */
 export class ModuleStateTracker extends BaseTracker {
   /**
-   * Track module state modifications
-   * @param {Object} molecule - Molecule with atoms
-   * @param {Object} module - Parent module
-   */
-  trackMolecule(molecule, module) {
-    this.trackAtomsInMolecule(molecule, module, (atom) => {
-      this.trackAtom(atom, molecule, module);
-    });
-  }
-
-  /**
    * Track module state in a single atom
    * Uses Tree-sitter metadata for accurate scope detection
    * @private
    */
-  trackAtom(atom, molecule, module) {
+  handleAtom(atom, molecule, module) {
     // PRIORITY 1: Use Tree-sitter metadata if available (most accurate)
     if (atom.sharedStateAccess && atom.sharedStateAccess.length > 0) {
-      for (const access of atom.sharedStateAccess) {
-        // Tree-sitter already determined the scope
+      this.withSharedStateAccess(atom, (access) => {
         const stateType = access.scopeType || this.determineStateTypeFromAccess(access, atom);
-        
+
         this.registerAccess(
           stateType,
           access.fullReference || access.variable || 'unknown',
@@ -50,7 +38,9 @@ export class ModuleStateTracker extends BaseTracker {
           },
           molecule.filePath
         );
-      }
+        return true;
+      });
+
       return; // Don't process sideEffects if we have Tree-sitter data
     }
 

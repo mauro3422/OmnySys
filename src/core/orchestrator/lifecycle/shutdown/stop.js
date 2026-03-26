@@ -1,4 +1,5 @@
 import { createLogger } from '../../../../utils/logger.js';
+import { shutdownTargets } from '../../../../shared/lifecycle/shutdown-helpers.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 
@@ -14,17 +15,14 @@ export async function stop() {
     logger.info('✅ LLM health checker stopped');
   }
 
-  const stopSteps = [
-    { name: 'fileWatcher', stop: () => this.fileWatcher.stop() },
-    { name: 'batchProcessor', stop: () => this.batchProcessor.stop() },
-    { name: 'wsManager', stop: () => this.wsManager.stop() },
-    { name: 'worker', stop: () => this.worker.stop() }
+  const stopTargets = [
+    { target: this.fileWatcher, methodName: 'stop' },
+    { target: this.batchProcessor, methodName: 'stop' },
+    { target: this.wsManager, methodName: 'stop' },
+    { target: this.worker, methodName: 'stop' }
   ];
 
-  for (const step of stopSteps) {
-    if (!this[step.name]) continue;
-    await step.stop();
-  }
+  await shutdownTargets(stopTargets);
 
   logger.info('✅ Orchestrator stopped');
 }

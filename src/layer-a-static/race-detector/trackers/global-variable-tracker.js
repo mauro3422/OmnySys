@@ -13,28 +13,17 @@ import { BaseTracker } from './base-tracker.js';
  */
 export class GlobalVariableTracker extends BaseTracker {
   /**
-   * Track global variable access in a molecule
-   * @param {Object} molecule - Molecule with atoms
-   * @param {Object} module - Parent module
-   */
-  trackMolecule(molecule, module) {
-    this.trackAtomsInMolecule(molecule, module, (atom) => {
-      this.trackAtom(atom, molecule, module);
-    });
-  }
-
-  /**
    * Track global access in a single atom
    * Uses Tree-sitter metadata for accurate detection
    * @private
    */
-  trackAtom(atom, molecule, module) {
+  handleAtom(atom, molecule, module) {
     // PRIORITY 1: Use Tree-sitter sharedStateAccess (más preciso)
     if (atom.sharedStateAccess && atom.sharedStateAccess.length > 0) {
-      for (const access of atom.sharedStateAccess) {
+      this.withSharedStateAccess(atom, (access) => {
         // Tree-sitter ya determinó el scope
         const stateType = access.scopeType || 'global';
-        
+
         // Solo registrar si es realmente global
         if (stateType === 'global' || access.objectName) {
           this.registerAccess(
@@ -49,8 +38,12 @@ export class GlobalVariableTracker extends BaseTracker {
             },
             molecule.filePath
           );
+          return true;
         }
-      }
+
+        return false;
+      });
+
       return; // No procesar sideEffects si hay datos Tree-sitter
     }
 

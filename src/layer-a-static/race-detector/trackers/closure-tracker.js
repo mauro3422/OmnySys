@@ -55,26 +55,15 @@ function collectModifiedVariableNames(code) {
  */
 export class ClosureTracker extends BaseTracker {
   /**
-   * Track closure state
-   * @param {Object} molecule - Molecule with atoms
-   * @param {Object} module - Parent module
-   */
-  trackMolecule(molecule, module) {
-    this.trackAtomsInMolecule(molecule, module, (atom) => {
-      this.trackAtom(atom, molecule, module);
-    });
-  }
-
-  /**
    * Track closures in a single atom
    * @private
    */
-  trackAtom(atom, molecule, module) {
+  handleAtom(atom, molecule, module) {
     // PRIORITY 1: Tree-sitter scope detection
     if (atom.sharedStateAccess && atom.sharedStateAccess.length > 0) {
-      const capturedAccesses = atom.sharedStateAccess.filter(a => a.scopeType === 'closure');
+      const handled = this.withSharedStateAccess(atom, (access) => {
+        if (access.scopeType !== 'closure') return false;
 
-      for (const access of capturedAccesses) {
         this.registerAccess(
           'closure',
           access.variable,
@@ -87,9 +76,10 @@ export class ClosureTracker extends BaseTracker {
           },
           molecule.filePath
         );
-      }
+        return true;
+      });
 
-      if (capturedAccesses.length > 0) return; // Confiar en Tree-sitter si encontró algo
+      if (handled) return; // Confiar en Tree-sitter si encontró algo
     }
 
     // FALLBACK: Legacy Regex Detection

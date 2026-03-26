@@ -9,6 +9,7 @@
  */
 
 import { getCacheManager } from '#core/cache/singleton.js';
+import { invalidateNamespacedCacheKeys } from '#core/cache/manager/cache-key-helpers.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:smart-cache');
@@ -106,15 +107,7 @@ export async function invalidateAtomCaches(atomId, changedFields, projectPathOrM
     for (const cacheName of affectedCaches) {
       try {
         // Invalidar entrada específica del átomo en el caché
-        const cacheKey = `${cacheName}:${atomId}`;
-        if (cache.invalidate) {
-          await cache.invalidate(cacheKey);
-        }
-
-        // También invalidar cachés de patrones que incluyan este átomo
-        if (cache.invalidatePattern) {
-          await cache.invalidatePattern(atomId);
-        }
+        invalidateNamespacedCacheKeys(cache, [cacheName], atomId, atomId);
 
         results.invalidated.push(cacheName);
       } catch (err) {

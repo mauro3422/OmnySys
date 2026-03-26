@@ -4,6 +4,8 @@
  * Shared helpers for namespaced cache keys inside the cache manager module.
  */
 
+import { invalidateCachePatterns } from '../../../shared/cache/cache-maintenance.js';
+
 export function buildNamespacedCacheKey(namespace, value) {
   return `${namespace}:${value}`;
 }
@@ -25,7 +27,7 @@ export function setNamespacedCacheValue(cache, namespace, value, data, ttlMinute
 }
 
 export function invalidateNamespacedCacheValue(cache, namespace, value) {
-  return cache.invalidate(buildNamespacedCacheKey(namespace, value));
+  return invalidateNamespacedCacheKeys(cache, [namespace], value);
 }
 
 export function invalidateNamespacedCachePattern(cache, namespace, pattern) {
@@ -36,21 +38,29 @@ export function invalidateFileAtomPattern(cache, filePath) {
   return cache.invalidate(buildFileAtomPattern(filePath));
 }
 
-export function invalidateFileCacheEntries(cache, filePath, namespaces = ['analysis', 'atom']) {
-  if (!cache || typeof cache.invalidate !== 'function') {
+export function invalidateNamespacedCacheKeys(cache, namespaces = [], value, pattern = null) {
+  if (!cache) {
     return 0;
   }
 
-  let invalidated = 0;
-  const normalizedValue = String(filePath || '');
+  const normalizedValue = String(value ?? '');
+  const resolvedNamespaces = Array.isArray(namespaces) ? namespaces : [namespaces];
+  const keys = [];
 
-  for (const namespace of namespaces) {
+  for (const namespace of resolvedNamespaces) {
     if (typeof namespace !== 'string' || namespace.length === 0) continue;
-
-    if (cache.invalidate(buildNamespacedCacheKey(namespace, normalizedValue))) {
-      invalidated++;
-    }
+    keys.push(buildNamespacedCacheKey(namespace, normalizedValue));
   }
 
-  return invalidated;
+  const result = invalidateCachePatterns(cache, keys);
+
+  if (pattern && typeof cache.invalidatePattern === 'function') {
+    cache.invalidatePattern(pattern);
+  }
+
+  return result.invalidated;
+}
+
+export function invalidateFileCacheEntries(cache, filePath, namespaces = ['analysis', 'atom']) {
+  return invalidateNamespacedCacheKeys(cache, namespaces, filePath);
 }
