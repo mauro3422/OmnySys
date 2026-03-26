@@ -21,6 +21,24 @@ export function wildcardToSqlLike(pattern) {
     .replace(/\?/g, '_');
 }
 
+export function resolveCacheTargets({
+  repository = null,
+  table = null,
+  target = null,
+  memoryCache = null,
+  collections = []
+} = {}) {
+  return {
+    repository,
+    table,
+    target,
+    memoryCache,
+    collections: Array.isArray(collections)
+      ? collections.filter((name) => typeof name === 'string' && name.length > 0)
+      : []
+  };
+}
+
 export function invalidateCachePatterns(cache, patterns = DEFAULT_CACHE_INVALIDATION_PATTERNS) {
   if (!cache || typeof cache.invalidate !== 'function') {
     return { invalidated: 0, patterns: [...patterns] };
@@ -40,11 +58,16 @@ export function invalidateCachePatterns(cache, patterns = DEFAULT_CACHE_INVALIDA
 }
 
 export function clearCacheCollections(target, collectionNames = []) {
-  if (!target) return 0;
+  const { target: resolvedTarget, collections: resolvedCollections } = resolveCacheTargets({
+    target,
+    collections: collectionNames
+  });
+
+  if (!resolvedTarget) return 0;
 
   let cleared = 0;
-  for (const name of collectionNames) {
-    const collection = target[name];
+  for (const name of resolvedCollections) {
+    const collection = resolvedTarget[name];
     if (collection && typeof collection.clear === 'function') {
       collection.clear();
       cleared++;
@@ -55,16 +78,22 @@ export function clearCacheCollections(target, collectionNames = []) {
 }
 
 export function invalidateCacheStoreKey({ repository, table, key, memoryCache } = {}) {
-  if (repository && table) {
+  const {
+    repository: resolvedRepository,
+    table: resolvedTable,
+    memoryCache: resolvedMemoryCache
+  } = resolveCacheTargets({ repository, table, memoryCache });
+
+  if (resolvedRepository && resolvedTable) {
     try {
-      if (isWildcardPattern(key) && typeof repository.deleteByPattern === 'function') {
+      if (isWildcardPattern(key) && typeof resolvedRepository.deleteByPattern === 'function') {
         const pattern = wildcardToSqlLike(key);
-        const result = repository.deleteByPattern(table, 'key', pattern);
+        const result = resolvedRepository.deleteByPattern(resolvedTable, 'key', pattern);
         return (result?.changes || 0) > 0;
       }
 
-      if (typeof repository.delete === 'function') {
-        const result = repository.delete(table, 'key', key);
+      if (typeof resolvedRepository.delete === 'function') {
+        const result = resolvedRepository.delete(resolvedTable, 'key', key);
         return (result?.changes || 0) > 0;
       }
     } catch (_error) {
@@ -72,26 +101,33 @@ export function invalidateCacheStoreKey({ repository, table, key, memoryCache } 
     }
   }
 
-  if (!memoryCache || typeof memoryCache.delete !== 'function') {
+  if (!resolvedMemoryCache || typeof resolvedMemoryCache.delete !== 'function') {
     return false;
   }
 
   if (isWildcardPattern(key)) {
-    return deleteMatchingKeys(memoryCache, key) > 0;
+    return deleteMatchingKeys(resolvedMemoryCache, key) > 0;
   }
 
-  return memoryCache.delete(key);
+  return resolvedMemoryCache.delete(key);
 }
 
 export function purgeCacheStore({ repository, table, target, collections = [] } = {}) {
+  const {
+    repository: resolvedRepository,
+    table: resolvedTable,
+    target: resolvedTarget,
+    collections: resolvedCollections
+  } = resolveCacheTargets({ repository, table, target, collections });
+
   let cleared = 0;
 
-  if (repository && table && typeof repository.clearTable === 'function') {
-    repository.clearTable(table);
+  if (resolvedRepository && resolvedTable && typeof resolvedRepository.clearTable === 'function') {
+    resolvedRepository.clearTable(resolvedTable);
     cleared += 1;
   }
 
-  cleared += clearCacheCollections(target, collections);
+  cleared += clearCacheCollections(resolvedTarget, resolvedCollections);
   return cleared;
 }
 

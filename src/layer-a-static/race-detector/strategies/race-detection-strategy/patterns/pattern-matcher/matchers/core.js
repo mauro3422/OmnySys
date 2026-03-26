@@ -12,54 +12,13 @@ import { TimingAnalyzer } from '../../analyzers/timing-analyzer.js';
 import { LockAnalyzer } from '../../analyzers/lock-analyzer.js';
 import { checkMitigation as checkLockMitigation } from '../../../analyzers/lock/analysis/mitigation.js';
 import { buildContext } from '../utils/context.js';
-import { findAtom, severityRank } from '../utils/helpers.js';
-
-function canEvaluateMatch(config, matchContext) {
-  if (config.checkConcurrency && !matchContext.canRunConcurrently) {
-    return false;
-  }
-
-  if (config.checkLocks && matchContext.hasCommonLock) {
-    return false;
-  }
-
-  return true;
-}
-
-function buildPatternMatch(pattern, matchContext) {
-  return {
-    matches: true,
-    type: pattern.type,
-    name: pattern.name,
-    severity: pattern.severity,
-    context: matchContext
-  };
-}
-
-function getPairKey(access1, access2) {
-  return `${access1.atom}:${access2.atom}:${access1.type}:${access2.type}`;
-}
-
-function findBestMatch(matches) {
-  let bestMatch = null;
-
-  for (const match of matches) {
-    if (!bestMatch || severityRank(match.severity) > severityRank(bestMatch.severity)) {
-      bestMatch = match;
-    }
-  }
-
-  return bestMatch;
-}
-
-function buildRaceRecord(access1, access2, matches) {
-  return {
-    access1,
-    access2,
-    pattern: findBestMatch(matches),
-    allMatches: matches
-  };
-}
+import { findAtom } from '../utils/helpers.js';
+import {
+  buildRaceRecord,
+  canEvaluateMatch,
+  executePatternMatcher,
+  forEachUniqueAccessPair
+} from '../utils/matcher-helpers.js';
 
 function mapMitigationType(type) {
   switch (type) {
@@ -97,32 +56,30 @@ export class PatternMatcher {
    */
   match(access1, access2, project, context = {}) {
     const results = [];
-    
+
     if (!this._sameStateTarget(access1, access2)) {
       return results;
     }
-    
+
     const matchContext = buildContext(
       access1, access2, project, context,
       this.timingAnalyzer, this.lockAnalyzer, this.config
     );
-    
+
     if (!canEvaluateMatch(this.config, matchContext)) {
       return results;
     }
-    
+
     const patterns = this.registry.getAllPatterns();
-    
+
     for (const pattern of patterns) {
-      try {
-        if (pattern.matcher(access1, access2, matchContext)) {
-          results.push(buildPatternMatch(pattern, matchContext));
-        }
-      } catch (err) {
-        // Silently ignore matcher errors
+      const match = executePatternMatcher(pattern, access1, access2, matchContext);
+
+      if (match) {
+        results.push(match);
       }
     }
-    
+
     return results;
   }
 
@@ -131,28 +88,26 @@ export class PatternMatcher {
    */
   matchType(type, access1, access2, project, context = {}) {
     const pattern = this.registry.get(type);
-    
+
     if (!pattern) {
       return { matches: false };
     }
-    
+
     const matchContext = buildContext(
       access1, access2, project, context,
       this.timingAnalyzer, this.lockAnalyzer, this.config
     );
-    
+
     if (!canEvaluateMatch(this.config, matchContext)) {
       return { matches: false };
     }
-    
-    try {
-      if (pattern.matcher(access1, access2, matchContext)) {
-        return buildPatternMatch(pattern, matchContext);
-      }
-    } catch (err) {
-      // Ignore matcher errors
+
+    const match = executePatternMatcher(pattern, access1, access2, matchContext);
+
+    if (match) {
+      return match;
     }
-    
+
     return { matches: false };
   }
 
@@ -161,25 +116,15 @@ export class PatternMatcher {
    */
   findRaces(accesses, project, options = {}) {
     const races = [];
-    const matched = new Set();
-    
-    for (let i = 0; i < accesses.length; i++) {
-      for (let j = i + 1; j < accesses.length; j++) {
-        const access1 = accesses[i];
-        const access2 = accesses[j];
-        
-        const pairKey = getPairKey(access1, access2);
-        if (matched.has(pairKey)) continue;
-        matched.add(pairKey);
-        
+
+    forEachUniqueAccessPair(accesses, (access1, access2) => {
         const matches = this.match(access1, access2, project, options);
-        
+
         if (matches.length > 0) {
           races.push(buildRaceRecord(access1, access2, matches));
         }
-      }
-    }
-    
+    });
+
     return races;
   }
 

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.289 - Sprint 16: Cache, Atom Tracking, and PatternMatcher Helper Extraction](changelogs/v0.9.289.md)
 - [v0.9.288 - Sprint 16: Canonical Batch Consolidation & Detector Export Fix](changelogs/v0.9.288.md)
 - [v0.9.287 - Sprint 16: Runtime Canonicalization & Stability Hardening](changelogs/v0.9.287.md)
 - [v0.9.286 - Sprint 16: Canonical System Map Test Coverage & Zombie Eradication](changelogs/v0.9.286.md)

@@ -9,41 +9,12 @@
  */
 
 import {
+  buildAtomChangeDetection,
   buildVersionPayload,
-  calculateFieldHashes,
-  diffFieldHashes
 } from './atom-version-manager-helpers.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:incremental-saver');
-
-function getAtomChangeDetection(atom, existingRow) {
-  if (!existingRow) {
-    return {
-      isNew: true,
-      fields: Object.keys(atom).filter(key => !key.startsWith('_')),
-      hasChanges: true
-    };
-  }
-
-  let oldFieldHashes = {};
-  try {
-    oldFieldHashes = JSON.parse(existingRow.field_hashes_json || '{}');
-  } catch (_error) {
-    oldFieldHashes = {};
-  }
-
-  const newFieldHashes = calculateFieldHashes(atom);
-  const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
-
-  return {
-    isNew: false,
-    fields: changedFields,
-    unchangedFields,
-    hasChanges: changedFields.length > 0,
-    previousModified: existingRow.last_modified
-  };
-}
 
 function buildIncrementalAtomMetadata(atom, rootPath, options) {
   return {
@@ -56,6 +27,13 @@ function buildIncrementalAtomMetadata(atom, rootPath, options) {
       incrementalUpdate: true,
       source: options.source || 'unknown'
     }
+  };
+}
+
+function buildVersionSaveEntry(atomId, atom) {
+  return {
+    atomId,
+    ...buildVersionPayload(atom)
   };
 }
 
@@ -157,7 +135,7 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
       atom.filePath = normalizedPath;
 
       const existingRow = existingVersions.get(atomId);
-      const changeDetection = getAtomChangeDetection(atom, existingRow);
+      const changeDetection = buildAtomChangeDetection(existingRow, atomId, atom, logger);
 
       if (!changeDetection.hasChanges && !options.forceFull) {
         results.unchanged++;
@@ -175,11 +153,7 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
         results.totalFieldsChanged += changeDetection.fields.length;
       }
 
-      const versionPayload = buildVersionPayload(finalAtom);
-      versionsToSave.push({
-        atomId,
-        ...versionPayload
-      });
+      versionsToSave.push(buildVersionSaveEntry(atomId, finalAtom));
     }
 
     if (atomsToSave.length > 0) {
