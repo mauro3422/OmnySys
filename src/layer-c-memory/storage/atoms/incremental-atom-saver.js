@@ -8,10 +8,60 @@
  * @module layer-c-memory/storage/atoms/incremental-atom-saver
  */
 
-import { AtomVersionManager } from './atom-version-manager.js';
+import {
+  buildVersionPayload,
+  calculateFieldHashes,
+  diffFieldHashes
+} from './atom-version-manager-helpers.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:incremental-saver');
+
+function loadExistingVersionRowsForFile(db, filePath) {
+  const rows = db.prepare(`
+    SELECT atom_id, hash, field_hashes_json, last_modified, file_path, atom_name
+    FROM atom_versions
+    WHERE file_path = ?
+  `).all(filePath);
+
+  const byAtomId = new Map();
+  for (const row of rows) {
+    byAtomId.set(row.atom_id, row);
+  }
+
+  return byAtomId;
+}
+
+function saveAtomVersionsBatch(db, versions) {
+  if (!versions || versions.length === 0) {
+    return { changes: 0 };
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO atom_versions (atom_id, hash, field_hashes_json, last_modified, file_path, atom_name)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(atom_id) DO UPDATE SET
+      hash = excluded.hash,
+      field_hashes_json = excluded.field_hashes_json,
+      last_modified = excluded.last_modified
+  `);
+
+  return db.transaction(() => {
+    let changes = 0;
+    for (const version of versions) {
+      const result = stmt.run(
+        version.atomId,
+        version.hash,
+        JSON.stringify(version.fieldHashes),
+        version.lastModified,
+        version.filePath,
+        version.atomName
+      );
+      changes += result.changes || 0;
+    }
+    return { changes };
+  })();
+}
 
 /**
  * Guarda un átomo de forma incremental
@@ -49,9 +99,10 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
   try {
     const { getRepository } = await import('../repository/index.js');
     const repo = getRepository(rootPath);
-    const versionManager = new AtomVersionManager(rootPath);
+    const existingVersions = loadExistingVersionRowsForFile(repo.db, normalizedPath);
 
     const atomsToSave = [];
+    const versionsToSave = [];
 
     for (const atom of atoms) {
       if (!atom.name) continue;
@@ -63,7 +114,33 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
       atom.file_path = normalizedPath;
       atom.filePath = normalizedPath;
 
-      const changeDetection = await versionManager.detectChanges(atomId, atom);
+      const existingRow = existingVersions.get(atomId);
+      let changeDetection;
+      if (!existingRow) {
+        changeDetection = {
+          isNew: true,
+          fields: Object.keys(atom).filter(key => !key.startsWith('_')),
+          hasChanges: true
+        };
+      } else {
+        let oldFieldHashes = {};
+        try {
+          oldFieldHashes = JSON.parse(existingRow.field_hashes_json || '{}');
+        } catch (_error) {
+          oldFieldHashes = {};
+        }
+
+        const newFieldHashes = calculateFieldHashes(atom);
+        const { changedFields, unchangedFields } = diffFieldHashes(oldFieldHashes, newFieldHashes);
+
+        changeDetection = {
+          isNew: false,
+          fields: changedFields,
+          unchangedFields,
+          hasChanges: changedFields.length > 0,
+          previousModified: existingRow.last_modified
+        };
+      }
 
       if (!changeDetection.hasChanges && !options.forceFull) {
         results.unchanged++;
@@ -91,13 +168,20 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
         results.totalFieldsChanged += changeDetection.fields.length;
       }
 
-      // Update version tracking in DB
-      await versionManager.trackAtomVersion(atomId, finalAtom);
+      const versionPayload = buildVersionPayload(finalAtom);
+      versionsToSave.push({
+        atomId,
+        ...versionPayload
+      });
     }
 
     if (atomsToSave.length > 0) {
       // Use the unified repository save (will handle atoms, files, and relations)
       await repo.saveMany(atomsToSave);
+    }
+
+    if (versionsToSave.length > 0) {
+      saveAtomVersionsBatch(repo.db, versionsToSave);
     }
 
     return {

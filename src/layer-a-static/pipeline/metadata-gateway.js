@@ -8,6 +8,7 @@
 
 import { extractAllMetadata } from '../extractors/metadata/index.js';
 import { extractAtomMetadata as extractAtomMetadataImpl } from './phases/atom-extraction/extraction/atom-extractor.js';
+import crypto from 'crypto';
 
 export const METADATA_SURFACE_MODE = {
   FILE: 'file',
@@ -27,6 +28,41 @@ function buildMetadataEnvelope(metadata, surfaceKind, options = {}) {
       batchSize: options.batchSize || null
     }
   };
+}
+
+const metadataSurfaceCache = new Map();
+const METADATA_SURFACE_CACHE_LIMIT = 250;
+
+function buildMetadataCacheKey(input = {}) {
+  const filePath = typeof input.filePath === 'string' ? input.filePath : '';
+  const code = typeof input.code === 'string' ? input.code : '';
+  const functionCode = typeof input.functionCode === 'string' ? input.functionCode : '';
+  const fullFileCode = typeof input.fullFileCode === 'string' ? input.fullFileCode : '';
+  const atomInfo = input?.atomInfo ? JSON.stringify(input.atomInfo) : '';
+  const functionInfo = input?.functionInfo ? JSON.stringify(input.functionInfo) : '';
+  const mode = input?.mode || resolveMetadataSurfaceMode(input);
+
+  const digest = crypto
+    .createHash('sha1')
+    .update([filePath, code, functionCode, fullFileCode, atomInfo, functionInfo, mode].join('\u0000'))
+    .digest('hex');
+
+  return `${mode}:${digest}`;
+}
+
+function rememberMetadataCache(key, value) {
+  if (metadataSurfaceCache.has(key)) {
+    metadataSurfaceCache.delete(key);
+  }
+
+  metadataSurfaceCache.set(key, value);
+
+  if (metadataSurfaceCache.size > METADATA_SURFACE_CACHE_LIMIT) {
+    const oldestKey = metadataSurfaceCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      metadataSurfaceCache.delete(oldestKey);
+    }
+  }
 }
 
 function resolveMetadataSurfaceMode(input = {}) {
@@ -116,7 +152,15 @@ export async function extractAtomMetadataSurface(
 }
 
 export async function extractMetadataSurface(input = {}, options = {}) {
-  return dispatchMetadataSurface(resolveMetadataSurfaceMode(input), input, options);
+  const cacheKey = buildMetadataCacheKey(input);
+  const cached = metadataSurfaceCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const result = await dispatchMetadataSurface(resolveMetadataSurfaceMode(input), input, options);
+  rememberMetadataCache(cacheKey, result);
+  return result;
 }
 
 export default {

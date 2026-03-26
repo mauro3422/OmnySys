@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Race Detector System', () => {
   createAnalysisTestSuite({
     module: 'race-detector',
     exports: {},
-    analyzeFn: () => ({ races: [] }),
     expectedFields: { races: 'array' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Race Detector System', () => {
     specificTests: [
       {
         name: 'race detector module available',
-        fn: async () => {
-          const mod = await import('#layer-a/race-detector/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/race-detector/index.js')
       }
     ]
   });

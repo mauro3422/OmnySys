@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Extractors - TypeScript', () => {
   createAnalysisTestSuite({
     module: 'extractors/typescript',
     exports: {},
-    analyzeFn: () => ({ types: [] }),
     expectedFields: { types: 'array' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Extractors - TypeScript', () => {
     specificTests: [
       {
         name: 'typescript extractor available',
-        fn: async () => {
-          const mod = await import('#layer-a/extractors/typescript/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/extractors/typescript/index.js')
       }
     ]
   });

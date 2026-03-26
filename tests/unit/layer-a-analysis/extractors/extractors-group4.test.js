@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Extractors - Data Flow', () => {
   createAnalysisTestSuite({
     module: 'extractors/data-flow',
     exports: {},
-    analyzeFn: () => ({ flows: [] }),
     expectedFields: { flows: 'array' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Extractors - Data Flow', () => {
     specificTests: [
       {
         name: 'data-flow extractor available',
-        fn: async () => {
-          const mod = await import('#layer-a/extractors/data-flow/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/extractors/data-flow/index.js')
       }
     ]
   });

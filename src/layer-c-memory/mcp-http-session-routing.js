@@ -14,6 +14,23 @@ import {
 import { applyPagination } from './mcp/core/pagination.js';
 import { compactRecentNotifications } from './mcp/core/recent-notifications.js';
 
+export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
+  const response = {
+    jsonrpc: '2.0',
+    error: {
+      code,
+      message
+    },
+    id
+  };
+
+  if (data !== undefined) {
+    response.error.data = data;
+  }
+
+  return response;
+}
+
 export function buildServerForSession({ logger, getLiveToolDefinitions, executeMcpToolCall }) {
   const sessionServer = new Server(
     { name: 'omnysys', version: '3.0.0' },
@@ -132,16 +149,18 @@ export async function handleMcpRequest(req, res, dependencies) {
         logger.debug(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
 
         let sessionServer = null;
+        let resolvedSessionId = sessionId;
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
           onsessioninitialized: (recoveredId) => {
+            resolvedSessionId = recoveredId;
             sessions.set(recoveredId, { transport, server: sessionServer });
             logger.info(`MCP HTTP session recovered: ${recoveredId}`);
           }
         });
 
         transport.onclose = async () => {
-          const sid = transport.sessionId;
+          const sid = resolvedSessionId;
           if (!sid) return;
           sessions.delete(sid);
           sessionManager.deleteSession(sid);
@@ -153,20 +172,18 @@ export async function handleMcpRequest(req, res, dependencies) {
         logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
         res.status(404)
           .set('Mcp-Session-Expired', 'true')
-          .json({
-            jsonrpc: '2.0',
-            error: {
-              code: -32001,
-              message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
-              data: { reason: 'session_not_found' }
-            },
-            id: req.body?.id ?? null
-          });
+          .json(buildJsonRpcErrorResponse({
+            code: -32001,
+            message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
+            id: req.body?.id ?? null,
+            data: { reason: 'session_not_found' }
+          }));
         return;
       }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
       const sessionManager = await getSessionManager();
       let sessionServer = null;
+      let resolvedSessionId = null;
 
       const clientInfo = req.body.params?.clientInfo;
       const clientId = clientInfo?.name || clientInfo?.client_id || 'unknown';
@@ -183,23 +200,22 @@ export async function handleMcpRequest(req, res, dependencies) {
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => sessionIdToUse,
         onsessioninitialized: (newSessionId) => {
-          sessions.set(newSessionId, { transport, server: sessionServer });
-          const savedId = sessionManager.saveSession(newSessionId, clientInfo, {});
-          if (savedId !== newSessionId) {
+          resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {});
+          sessions.set(resolvedSessionId, { transport, server: sessionServer });
+          if (resolvedSessionId !== newSessionId) {
             sessions.delete(newSessionId);
-            sessions.set(savedId, { transport, server: sessionServer });
-            logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${savedId}`);
+            logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${resolvedSessionId}`);
           }
           if (isNewSession) {
-            logger.info(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
+            logger.info(`MCP HTTP session initialized: ${resolvedSessionId} (client: ${clientId})`);
           } else {
-            logger.debug(`MCP HTTP session initialized: ${newSessionId} (client: ${clientId})`);
+            logger.debug(`MCP HTTP session initialized: ${resolvedSessionId} (client: ${clientId})`);
           }
         }
       });
 
       transport.onclose = async () => {
-        const sid = transport.sessionId;
+        const sid = resolvedSessionId || transport.sessionId;
         if (!sid) return;
         sessions.delete(sid);
         sessionManager.deleteSession(sid);
@@ -213,14 +229,11 @@ export async function handleMcpRequest(req, res, dependencies) {
         throw error;
       }
     } else {
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: invalid or missing MCP session'
-        },
-        id: null
-      });
+      res.status(400).json(buildJsonRpcErrorResponse({
+        code: -32000,
+        message: 'Bad Request: invalid or missing MCP session',
+        id: req.body?.id ?? null
+      }));
       return;
     }
 
@@ -228,14 +241,10 @@ export async function handleMcpRequest(req, res, dependencies) {
   } catch (error) {
     logger.error(`Error handling MCP request: ${error.message}`);
     if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Internal server error'
-        },
-        id: null
-      });
+      res.status(500).json(buildJsonRpcErrorResponse({
+        code: -32603,
+        message: 'Internal server error'
+      }));
     }
   }
 }
@@ -250,14 +259,10 @@ export function createConditionalJsonMiddleware(logger) {
       if (!err) return next();
 
       logger.warn(`[MCP JSON PARSE] ${req.method} ${req.path}: ${err.message}`);
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32700,
-          message: 'Parse error: invalid JSON payload'
-        },
-        id: null
-      });
+      res.status(400).json(buildJsonRpcErrorResponse({
+        code: -32700,
+        message: 'Parse error: invalid JSON payload'
+      }));
     });
   };
 }

@@ -8,6 +8,10 @@ import { calculatePriority } from './priority-calculator.js';
 import { loadDependencies } from './dependency-loader.js';
 import { executeBatch as runBatchProcessor } from './change-processor.js';
 
+export function buildBatchId(now = Date.now(), randomValue = Math.random()) {
+  return `batch-${now}-${randomValue.toString(36).slice(2, 11)}`;
+}
+
 export function createProcessedChange(filePath, changeType, options = {}) {
   const priority = calculatePriority(filePath, changeType, {
     ...options,
@@ -30,8 +34,7 @@ export function registerPendingChange(instance, change) {
 }
 
 export function createBatchFromPendingChanges(instance) {
-  const batchId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  return new Batch(batchId, Array.from(instance.pendingChanges.values()));
+  return new Batch(buildBatchId(), Array.from(instance.pendingChanges.values()));
 }
 
 export function enqueueBatch(instance, batch) {

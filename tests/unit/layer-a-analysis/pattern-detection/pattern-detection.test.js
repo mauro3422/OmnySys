@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Pattern Detection System', () => {
   createAnalysisTestSuite({
     module: 'pattern-detection',
     exports: {},
-    analyzeFn: () => ({ patterns: [] }),
     expectedFields: { patterns: 'array' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Pattern Detection System', () => {
     specificTests: [
       {
         name: 'pattern detection module available',
-        fn: async () => {
-          const mod = await import('#layer-a/pattern-detection/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/pattern-detection/index.js')
       }
     ]
   });

@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Extractors - Metadata', () => {
   createAnalysisTestSuite({
     module: 'extractors/metadata',
     exports: {},
-    analyzeFn: () => ({ metadata: {} }),
     expectedFields: { metadata: 'object' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Extractors - Metadata', () => {
     specificTests: [
       {
         name: 'metadata extractor available',
-        fn: async () => {
-          const mod = await import('#layer-a/extractors/metadata/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/extractors/metadata/index.js')
       }
     ]
   });

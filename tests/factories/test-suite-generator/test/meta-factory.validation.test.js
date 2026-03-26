@@ -90,8 +90,8 @@ describe('Meta-Factory Foundation', () => {
 
       const contracts = ContractPresets.analysis({
         moduleName: 'test-analysis',
-        analyzeFn: async () => ({ total: 0 }),
-        expectedFields: { items: 'array' },
+        expectedSafeResult: { total: 0 },
+        expectedFields: { total: 'number' },
         createMockInput: () => ({})
       });
 

@@ -8,6 +8,9 @@ import { createLogger } from '../../../../utils/logger.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { parseFileFromDisk } from '#layer-a/parser/index.js';
 import { extractMetadataSurface } from '#layer-a/pipeline/metadata-gateway.js';
+import { calculateContentHash } from '#layer-a/pipeline/incremental-analysis-utils.js';
+import { saveFileResult } from '#layer-a/pipeline/single-file-db.js';
+import { buildFileAnalysis, resolveFileImports } from '#layer-a/pipeline/single-file-utils.js';
 import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
 const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
@@ -49,6 +52,31 @@ export async function reindexFile(filePath, projectPath) {
     // 4. Guardar de forma incremental en SQLite
     // Ahora repo.saveMany (vía incremental-atom-saver) actualiza la tabla 'files' automáticamente en la misma transacción
     await saveAtomsIncremental(projectPath, relativePath, atoms, { source: 'atomic-edit' });
+
+    // 4b. Refrescar el summary de archivo para mantener `files.imports_json` y `files.exports_json`
+    // alineados con el parser actual. validate_imports y varias superficies de compiler leen
+    // esa tabla, así que dejarla vieja genera falsos positivos aunque atoms ya estén frescos.
+    const resolvedImports = await resolveFileImports(parsedFile, absolutePath, projectPath);
+    const fileAnalysis = buildFileAnalysis(
+      relativePath,
+      parsedFile,
+      resolvedImports,
+      { all: [] },
+      { all: [] },
+      metadata,
+      atoms
+    );
+    fileAnalysis.totalLines = code.split(/\r?\n/).length;
+
+    await saveFileResult(
+      projectPath,
+      relativePath,
+      fileAnalysis,
+      calculateContentHash(code),
+      null,
+      false,
+      false
+    );
 
     // Invalidate cache for this file
     try {

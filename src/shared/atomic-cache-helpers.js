@@ -7,6 +7,8 @@
  * @module shared/atomic-cache-helpers
  */
 
+import { clearCacheCollections } from './cache/cache-maintenance.js';
+
 export function calculateAtomicCacheMemoryUsage(cache) {
   let memoryBytes = 0;
   for (const item of cache.atoms.values()) {
@@ -111,7 +113,6 @@ export function deriveAtomicCache(cache, filePath, atoms, ruleName) {
 }
 
 export function purgeAtomicCache(cache) {
-  cache.atoms.clear();
+  clearCacheCollections(cache, ['atoms', 'fileToAtoms']);
   cache.derivations.purge();
-  cache.fileToAtoms.clear();
 }

@@ -1,37 +1,24 @@
 import { createLogger } from '../../utils/logger.js';
+import { closeIfPresent, stopIfPresent } from '../../shared/lifecycle/shutdown-helpers.js';
 
 const logger = createLogger('OmnySys:lifecycle');
 
-
-﻿export async function shutdown() {
-  logger.info('\nðŸ‘‹ Shutting down Unified Server...');
+export async function shutdown() {
+  logger.info('\nShutting down Unified Server...');
 
   this.isRunning = false;
 
-  if (this.wsManager) {
-    await this.wsManager.stop();
-  }
+  await stopIfPresent(this.wsManager);
 
   if (this.batchProcessor) {
     this.batchProcessor.stop();
   }
 
-  if (this.fileWatcher) {
-    await this.fileWatcher.stop();
-  }
+  await stopIfPresent(this.fileWatcher);
+  await stopIfPresent(this.worker);
+  await closeIfPresent(this.orchestratorServer);
+  await closeIfPresent(this.bridgeServer);
 
-  if (this.worker) {
-    await this.worker.stop();
-  }
-
-  if (this.orchestratorServer) {
-    this.orchestratorServer.close();
-  }
-
-  if (this.bridgeServer) {
-    this.bridgeServer.close();
-  }
-
-  logger.info('âœ… Server stopped');
+  logger.info('Server stopped');
   process.exit(0);
 }

@@ -7,6 +7,8 @@
  * @module query/queries/file-query/atoms/exports-query
  */
 
+import path from 'path';
+import { parseFileFromDisk } from '#layer-a/parser/index.js';
 import { loadAtoms } from '#layer-c/storage/index.js';
 import { getFileAnalysis } from '../core/single-file.js';
 
@@ -77,6 +79,14 @@ export async function getFileExports(rootPath, filePath) {
   if (exportNames.size === 0) {
     const analysis = await getFileAnalysis(rootPath, filePath).catch(() => null);
     collectAnalysisExportNames(analysis, exportNames);
+  }
+
+  if (exportNames.size === 0) {
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
+      : path.join(rootPath, filePath);
+    const parsedFile = await parseFileFromDisk(absolutePath).catch(() => null);
+    collectAnalysisExportNames(parsedFile, exportNames);
   }
   
   return exportNames;

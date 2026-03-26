@@ -9,6 +9,7 @@
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
+import { deleteMatchingKeys } from '../../../shared/cache/cache-maintenance.js';
 
 let _ramRepo = null;
 
@@ -139,17 +140,7 @@ export function invalidate(key) {
   if (!this.ramCache) return false;
 
   if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
-    const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
-    const regex = new RegExp(pattern);
-    let count = 0;
-
-    for (const k of this.ramCache.keys()) {
-      if (regex.test(k)) {
-        this.ramCache.delete(k);
-        count++;
-      }
-    }
-    return count > 0;
+    return deleteMatchingKeys(this.ramCache, key) > 0;
   }
 
   return this.ramCache.delete(key);

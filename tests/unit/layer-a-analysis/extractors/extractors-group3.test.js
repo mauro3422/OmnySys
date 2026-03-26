@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Extractors - CSS-in-JS', () => {
   createAnalysisTestSuite({
     module: 'extractors/css-in-js-extractor',
     exports: {},
-    analyzeFn: () => ({ styles: [] }),
     expectedFields: { styles: 'array' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Extractors - CSS-in-JS', () => {
     specificTests: [
       {
         name: 'css-in-js extractor available',
-        fn: async () => {
-          const mod = await import('#layer-a/extractors/css-in-js-extractor/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-a/extractors/css-in-js-extractor/index.js')
       }
     ]
   });

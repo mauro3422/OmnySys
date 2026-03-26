@@ -16,6 +16,7 @@
 import { InitializationStep } from './base-step.js';
 import http from 'http';
 import { createLogger } from '../../../../../utils/logger.js';
+import { closeIfPresent } from '../../../../../shared/lifecycle/shutdown-helpers.js';
 
 const logger = createLogger('OmnySys:instance:detection');
 
@@ -237,8 +238,7 @@ export class InstanceDetectionStep extends InitializationStep {
 
     async rollback(server, error) {
         // Clean up health beacon if we started one
-        if (server._healthBeacon) {
-            await new Promise(resolve => server._healthBeacon.close(resolve));
+        if (await closeIfPresent(server._healthBeacon)) {
             logger.info('  Health beacon closed (rollback)');
         }
         if (server._watchdogInterval) {

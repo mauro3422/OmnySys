@@ -17,6 +17,7 @@ export {
 } from './test-suite-builders.js';
 export { 
   runTestWithCleanup, 
-  validateTestSuiteConfig 
+  validateTestSuiteConfig,
+  createModuleAvailabilityTest
 } from './test-helpers.js';
 export { applyContract } from './contract-applier.js';

@@ -63,6 +63,7 @@ let worker = null;
 let restartScheduled = false;
 let restartCount = 0;
 let respawnTimer = null;
+let shutdownInProgress = false;
 
 function writeOwnerLock(state) {
     writeDaemonOwnerLockSync(projectRoot, {
@@ -264,6 +265,11 @@ function spawnWorker(extraArgs = []) {
 
 // ── Proxy shutdown ────────────────────────────────────────────────────────────
 function shutdown() {
+    if (shutdownInProgress) {
+        return;
+    }
+
+    shutdownInProgress = true;
     log('Proxy SIGINT/SIGTERM — shutting down worker...');
     clearRespawnTimer();
     removeOwnerLock();

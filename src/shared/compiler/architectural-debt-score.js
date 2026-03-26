@@ -269,13 +269,22 @@ async function calculateCouplingScore(projectPath, repo) {
         if (repo?.db) {
             // Obtener archivos con alto acoplamiento (muchos imports/dependencias)
             const files = repo.db.prepare(`
-                SELECT file_path,
-                       COUNT(DISTINCT json_extract(imports_json, '$[*].source')) as importCount
+                SELECT
+                    file_path,
+                    COUNT(DISTINCT json_extract(j.value, '$.source')) as importCount
                 FROM atoms
+                JOIN json_each(
+                    CASE
+                        WHEN json_valid(imports_json) THEN imports_json
+                        ELSE '[]'
+                    END
+                ) AS j
                 WHERE imports_json IS NOT NULL
+                  AND imports_json != ''
+                  AND imports_json != '[]'
                   AND (is_removed IS NULL OR is_removed = 0)
                 GROUP BY file_path
-                HAVING importCount > 10  // Threshold: más de 10 imports
+                HAVING importCount > 10
             `).all();
 
             totalFiles = files.length;
@@ -390,12 +399,14 @@ export function getSeverityLevel(score) {
  */
 function consolidateTopIssues(allIssues) {
     const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    const getIssueLocation = (issue) => issue?.file || issue?.filePath || issue?.name || issue?.symbol || '';
+    const getSeverityRank = (severity) => severityOrder[severity] ?? 99;
 
     return allIssues
         .sort((a, b) => {
-            const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+            const severityDiff = getSeverityRank(a.severity) - getSeverityRank(b.severity);
             if (severityDiff !== 0) return severityDiff;
-            return a.file.localeCompare(b.file);
+            return getIssueLocation(a).localeCompare(getIssueLocation(b));
         });
 }
 

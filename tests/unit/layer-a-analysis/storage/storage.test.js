@@ -3,13 +3,12 @@
  */
 
 import { describe } from 'vitest';
-import { createAnalysisTestSuite } from '#test-factories/test-suite-generator';
+import { createAnalysisTestSuite, createModuleAvailabilityTest } from '#test-factories/test-suite-generator';
 
 describe('Storage System', () => {
   createAnalysisTestSuite({
     module: 'storage/storage-manager',
     exports: {},
-    analyzeFn: () => ({ data: {} }),
     expectedFields: { data: 'object' },
     contractOptions: {
       async: false,
@@ -19,10 +18,7 @@ describe('Storage System', () => {
     specificTests: [
       {
         name: 'storage module available',
-        fn: async () => {
-          const mod = await import('#layer-c/storage/index.js');
-          expect(mod).toBeDefined();
-        }
+        fn: createModuleAvailabilityTest('#layer-c/storage/index.js')
       }
     ]
   });

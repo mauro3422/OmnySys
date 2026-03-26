@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../utils/logger.js';
+import { deleteMatchingKeys } from '../../../shared/cache/cache-maintenance.js';
 
 const logger = createLogger('OmnySys:cache:storage');
 
@@ -19,18 +20,7 @@ function normalizeCachePath(filePath) {
 
 function invalidateLegacyRamKey(ramCache, key) {
   if (typeof key === 'string' && (key.includes('*') || key.includes('?'))) {
-    const pattern = key.replace(/\*/g, '.*').replace(/\?/g, '.');
-    const regex = new RegExp(pattern);
-    let count = 0;
-
-    for (const k of ramCache.keys()) {
-      if (regex.test(k)) {
-        ramCache.delete(k);
-        count++;
-      }
-    }
-
-    return count > 0;
+    return deleteMatchingKeys(ramCache, key) > 0;
   }
 
   return ramCache.delete(key);

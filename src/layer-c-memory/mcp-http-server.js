@@ -80,6 +80,25 @@ async function getLiveToolHandler(name) {
   return getLiveHandlers()[name];
 }
 
+export function buildHealthSnapshot({
+  initialized = false,
+  initError = null,
+  projectPath,
+  sessionCount = 0,
+  background = null
+} = {}) {
+  return {
+    status: initError ? 'degraded' : (initialized ? 'healthy' : 'starting'),
+    service: 'omnysys-mcp-http',
+    initialized: Boolean(initialized),
+    projectPath,
+    sessions: sessionCount ?? 0,
+    background,
+    transport: 'streamable-http',
+    error: initError?.message || null
+  };
+}
+
 await refreshLiveToolRegistry(logger);
 
 const arg1 = process.argv[2];
@@ -105,6 +124,7 @@ const sessions = new Map();
 const core = new OmnySysMCPServer(projectPath);
 core.sessions = sessions;
 let initError = null;
+let shutdownInProgress = false;
 
 const executeLiveMcpToolCall = (request) => executeMcpToolCall(request, {
   initError: () => initError,
@@ -154,16 +174,13 @@ app.get('/health', async (req, res) => {
     background = null;
   }
 
-  res.json({
-    status: initError ? 'degraded' : (core.initialized ? 'healthy' : 'starting'),
-    service: 'omnysys-mcp-http',
+  res.json(buildHealthSnapshot({
     initialized: core.initialized,
+    initError,
     projectPath,
-    sessions: sessions.size,
-    background,
-    transport: 'streamable-http',
-    error: initError?.message || null
-  });
+    sessionCount: sessions.size,
+    background
+  }));
 });
 
 app.get('/tools', async (req, res) => {
@@ -217,6 +234,12 @@ core.initialize().then(async () => {
 });
 
 async function gracefulHttpShutdown() {
+  if (shutdownInProgress) {
+    return;
+  }
+
+  shutdownInProgress = true;
+
   for (const [sid, session] of sessions.entries()) {
     try {
       await session.server?.close();
@@ -228,12 +251,14 @@ async function gracefulHttpShutdown() {
 
   await core.shutdown().catch(() => { });
 
-  await new Promise((resolve) => {
-    httpServer.close(() => resolve());
-  });
+  if (httpServer?.close) {
+    await new Promise((resolve) => {
+      httpServer.close(() => resolve());
+    });
+  }
 
   process.exit(0);
 }
 
-process.on('SIGINT', gracefulHttpShutdown);
-process.on('SIGTERM', gracefulHttpShutdown);
+process.once('SIGINT', gracefulHttpShutdown);
+process.once('SIGTERM', gracefulHttpShutdown);

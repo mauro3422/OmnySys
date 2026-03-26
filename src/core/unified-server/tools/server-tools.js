@@ -1,4 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
+import { DEFAULT_CACHE_INVALIDATION_PATTERNS, invalidateCachePatterns } from '../../../shared/cache/cache-maintenance.js';
 
 const logger = createLogger('OmnySys:server:tools');
 
@@ -32,13 +33,11 @@ export async function restartServer(clearCache = false) {
       this.cache.purge();
       result.cacheCleared = true;
     }
-    
+
     if (this.cache) {
-      this.cache.invalidate('analysis:*');
-      this.cache.invalidate('atom:*');
-      this.cache.invalidate('derived:*');
-      this.cache.invalidate('impact:*');
-      result.cacheInvalidated = true;
+      const cleanup = invalidateCachePatterns(this.cache, DEFAULT_CACHE_INVALIDATION_PATTERNS);
+      result.cacheInvalidated = cleanup.invalidated > 0;
+      result.cacheInvalidationPatterns = cleanup.patterns;
     }
     
     setTimeout(async () => {
@@ -65,11 +64,8 @@ export async function clearAnalysisCache() {
     }
     
     const beforeStats = this.cache.getRamCacheStats();
-    
-    this.cache.invalidate('analysis:*');
-    this.cache.invalidate('atom:*');
-    this.cache.invalidate('derived:*');
-    this.cache.invalidate('impact:*');
+
+    invalidateCachePatterns(this.cache, DEFAULT_CACHE_INVALIDATION_PATTERNS);
     this.cache.invalidate('connections');
     this.cache.invalidate('assessment');
     

@@ -6,7 +6,8 @@
  * en lugar de implementar sus propios métodos getStats() ad-hoc.
  */
 
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '#utils/logger.js';
+import { safeStringifyJson } from '#utils/json-safe.js';
 
 const logger = createLogger('OmnySys:Shared:StatsPool');
 
@@ -72,7 +73,7 @@ class StatsPool {
         }
 
         const result = stats;
-        logger.info(`[StatsPool] Returning stats: ${JSON.stringify(result).substring(0, 100)}...`);
+        logger.info(`[StatsPool] Returning stats: ${safeStringifyJson(result).substring(0, 100)}...`);
         return result;
     }
 

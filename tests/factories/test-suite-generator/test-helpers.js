@@ -6,6 +6,8 @@
  * @module tests/factories/test-suite-generator/test-helpers
  */
 
+import { expect } from 'vitest';
+
 /**
  * Utility function to run a test with automatic cleanup
  * 
@@ -19,6 +21,19 @@ export async function runTestWithCleanup(testFn, cleanupFn, context = {}) {
   } finally {
     await cleanupFn(context);
   }
+}
+
+/**
+ * Creates a reusable specific test that verifies a module can be imported.
+ *
+ * @param {string} modulePath - Module path or alias to import.
+ * @returns {Function}
+ */
+export function createModuleAvailabilityTest(modulePath) {
+  return async () => {
+    const mod = await import(modulePath);
+    expect(mod).toBeDefined();
+  };
 }
 
 /**

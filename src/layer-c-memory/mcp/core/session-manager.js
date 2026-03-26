@@ -28,6 +28,12 @@ function extractClientId(clientInfo) {
   return clientInfo.name || clientInfo.client_id || 'unknown';
 }
 
+export function isDedupFresh(updatedAt, now = Date.now()) {
+  if (!updatedAt) return false;
+  const updatedMs = typeof updatedAt === 'number' ? updatedAt : new Date(updatedAt).getTime();
+  return updatedMs > now - 5 * 60 * 1000;
+}
+
 export class SessionManager {
     constructor() {
         this.db = null;
@@ -95,16 +101,15 @@ export class SessionManager {
     reserveSession(clientInfo = {}, proposedSessionId) {
         const clientId = extractClientId(clientInfo);
         const now = Date.now();
-        const fiveMinutesAgo = now - 5 * 60 * 1000;
-
-        const pending = this.pendingSessions.get(clientId);
-        if (pending && pending.updatedAt > fiveMinutesAgo) {
-            return { sessionId: pending.id, reused: true, source: 'pending' };
-        }
 
         const existingSession = this.findSessionByClientId(clientId);
         if (existingSession) {
             return { sessionId: existingSession.id, reused: true, source: 'active' };
+        }
+
+        const pending = this.pendingSessions.get(clientId);
+        if (pending && isDedupFresh(pending.updatedAt, now)) {
+            return { sessionId: pending.id, reused: true, source: 'pending' };
         }
 
         const sessionId = proposedSessionId;
@@ -151,8 +156,7 @@ export class SessionManager {
             // Check in-memory cache first (fastest)
             if (this.activeSessions.has(clientId)) {
                 const cached = this.activeSessions.get(clientId);
-                const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-                if (new Date(cached.updated_at).getTime() > fiveMinutesAgo) {
+                if (isDedupFresh(cached.updated_at)) {
                     logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${cached.id}`);
                     return cached;
                 }
@@ -169,8 +173,7 @@ export class SessionManager {
             };
 
             // Only reuse if session is recent (5 minutes)
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-            if (new Date(session.updated_at).getTime() > fiveMinutesAgo) {
+            if (isDedupFresh(session.updated_at)) {
                 this.activeSessions.set(clientId, session);
                 logger.debug(`[DEDUP] Reusing existing session for ${clientId}: ${session.id}`);
                 return session;

@@ -18,7 +18,8 @@ export {
   createFocusedTestSuite,
   createSkippedTestSuite,
   runTestWithCleanup,
-  validateTestSuiteConfig
+  validateTestSuiteConfig,
+  createModuleAvailabilityTest
 } from './core.js';
 
 // Contract test functions
@@ -48,6 +49,7 @@ export const TestSuiteGenerator = {
   createSkipped: Core.createSkippedTestSuite,
   runWithCleanup: Core.runTestWithCleanup,
   validate: Core.validateTestSuiteConfig,
+  createModuleAvailabilityTest: Core.createModuleAvailabilityTest,
 
   // Contract functions
   Contracts: {
@@ -69,7 +71,9 @@ export const TestSuiteGenerator = {
  * @param {Object} config
  * @param {string} config.module - Module path
  * @param {Object} config.exports - Module exports
- * @param {Function} config.analyzeFn - Analysis function
+ * @param {Function} [config.analyzeFn] - Analysis function. If omitted, the suite
+ *   uses `expectedSafeResult` to build a constant function.
+ * @param {*} [config.expectedSafeResult] - Safe fallback result when `analyzeFn` is omitted
  * @param {Object} config.expectedFields - Expected return fields
  * @param {Function} [config.createMockInput] - Factory for mock input
  * @param {Array} [config.specificTests] - Additional specific tests
@@ -95,12 +99,18 @@ export function createAnalysisTestSuite(config) {
     specificTests = []
   } = config;
 
+  const fallbackAnalyzeFn = analyzeFn || (contractOptions.expectedSafeResult !== undefined
+    ? (contractOptions.async === false
+      ? (() => contractOptions.expectedSafeResult)
+      : (async () => contractOptions.expectedSafeResult))
+    : undefined);
+
   return Core.createTestSuite({
     module,
     exports,
     contracts: ['structure', 'error-handling', 'return-structure'],
     contractOptions: {
-      analyzeFn,
+      analyzeFn: fallbackAnalyzeFn,
       expectedFields,
       createMockInput,
       ...contractOptions
@@ -192,6 +202,7 @@ export default {
   createAnalysisTestSuite,
   createDetectorTestSuite,
   createUtilityTestSuite,
+  createModuleAvailabilityTest: Core.createModuleAvailabilityTest,
 
   // Namespaced API
   TestSuiteGenerator

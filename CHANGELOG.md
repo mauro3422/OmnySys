@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.287 - Sprint 16: Runtime Canonicalization & Stability Hardening](changelogs/v0.9.287.md)
 - [v0.9.286 - Sprint 16: Canonical System Map Test Coverage & Zombie Eradication](changelogs/v0.9.286.md)
 - [v0.9.285 - Sprint 16: E2E Testing DB Enforcements Stabilized](changelogs/v0.9.285.md)
 - [v0.9.186 - Sprint 16: Smart Batch Processor Complexity Split](changelogs/v0.9.186.md)

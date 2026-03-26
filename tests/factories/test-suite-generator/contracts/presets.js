@@ -14,20 +14,24 @@ export const ContractPresets = {
    * Standard analysis function preset
    * Includes: Structure, Error Handling, Return Structure
    */
-  analysis: ({ moduleName, analyzeFn, expectedFields, createMockInput }) => ({
-    structure: (exports) => createStructureContract({ moduleName, exports, exportNames: [moduleName.split('/').pop()] }),
-    errorHandling: () => createErrorHandlingContract({ 
-      moduleName, 
-      testFn: analyzeFn, 
-      options: { async: true, expectedSafeResult: { total: 0 } }
-    }),
-    returnStructure: () => createReturnStructureContract({
-      moduleName,
-      testFn: analyzeFn,
-      expectedStructure: { total: 'number', ...expectedFields },
-      createValidInput: createMockInput
-    })
-  }),
+  analysis: ({ moduleName, analyzeFn, expectedFields, createMockInput, expectedSafeResult = { total: 0 } }) => {
+    const testFn = analyzeFn || (async () => expectedSafeResult);
+
+    return {
+      structure: (exports) => createStructureContract({ moduleName, exports, exportNames: [moduleName.split('/').pop()] }),
+      errorHandling: () => createErrorHandlingContract({
+        moduleName,
+        testFn,
+        options: { async: true, expectedSafeResult }
+      }),
+      returnStructure: () => createReturnStructureContract({
+        moduleName,
+        testFn,
+        expectedStructure: { total: 'number', ...(expectedFields || {}) },
+        createValidInput: createMockInput
+      })
+    };
+  },
 
   /**
    * Standard detector preset
