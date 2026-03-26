@@ -104,15 +104,8 @@ export class OrchestratorServer {
    */
   async updateState() {
     const stateData = getStateData();
-    stateData.health = await this.getHealthStatus();
+    stateData.health = await getOrchestratorHealthStatus();
     await serverState.stateManager?.write(stateData);
-  }
-
-  /**
-   * Get health status
-   */
-  async getHealthStatus() {
-    return getOrchestratorHealthStatus();
   }
 
   /**
