@@ -18,7 +18,7 @@ import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
 } from '../../../shared/compiler/index.js';
-import { persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
+import { buildUnifiedDuplicateSummary, persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
 import {
     clearUnifiedDuplicateIssues,
     normalizeUnifiedDuplicateFilePath,
@@ -91,12 +91,14 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         const coordinated = coordinateUnifiedDuplicateFindings(structuralFindings, conceptualFindings);
         const allFindings = [...structuralFindings, ...conceptualFindings];
         const debtHistory = buildUnifiedDebtHistory(normalizedFilePath, allFindings, previousFindings);
+        const summary = buildUnifiedDuplicateSummary(rootPath, normalizedFilePath, coordinated, debtHistory);
+        const coordinatedWithSummary = { ...coordinated, summary };
 
         if (allFindings.length > 0) {
             await persistUnifiedFinding(
                 rootPath,
                 normalizedFilePath,
-                coordinated,
+                coordinatedWithSummary,
                 debtHistory,
                 EventEmitterContext
             );
@@ -108,7 +110,7 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         return {
             structural: structuralFindings,
             conceptual: conceptualFindings,
-            coordinated,
+            coordinated: coordinatedWithSummary,
             debtHistory,
             totalFindings: allFindings.length
         };
