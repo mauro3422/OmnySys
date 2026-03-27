@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.306 - Sprint 16: Database Health Assessment and Data Gateway Split Batch](changelogs/v0.9.306.md)
 - [v0.9.305 - Sprint 16: Diagnostics Snapshot, Helper Reuse, and Contract Split Batch](changelogs/v0.9.305.md)
 - [v0.9.304 - Sprint 16: Policy Conformance, Surface, and Guidance Split Batch](changelogs/v0.9.304.md)
 - [v0.9.303 - Sprint 16: Compiler Persistence Export Repair and Core Split Batch](changelogs/v0.9.303.md)
