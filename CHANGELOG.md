@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.320 - Sprint 16: File Watcher Core Helpers Split Batch](changelogs/v0.9.320.md)
 - [v0.9.319 - Sprint 16: File Watcher Guard Definitions Split Batch](changelogs/v0.9.319.md)
 - [v0.9.318 - Sprint 16: File Watcher Analyze Utils Split Batch](changelogs/v0.9.318.md)
 - [v0.9.317 - Sprint 16: Analysis Generation Split Batch](changelogs/v0.9.317.md)
