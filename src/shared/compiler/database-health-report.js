@@ -7,70 +7,10 @@
  * @module shared/compiler/database-health-report
  */
 
-export function buildDatabaseHealthReport({
-  counts = {},
-  fileUniverse = null,
-  systemMapCoverage = null,
-  semanticSurface = null,
-  assessment = null,
-  liveRowSync = null
-} = {}) {
-  const {
-    scannedFiles,
-    activeFiles,
-    activeAtoms,
-    orphanAtoms,
-    orphanAtomsMissingScan,
-    atomsWithCalls,
-    atomsWithCalledBy,
-    activeCallRelations,
-    activeSharesStateRelations,
-    callGraphRows,
-    orphanCallRelations,
-    contradictoryRiskRows,
-    activeRiskRows,
-    atomsWithSharedState,
-    atomsWithEventEmitters,
-    atomsWithEventListeners,
-    atomsWithSemanticSignals,
-    activeSystemFiles,
-    systemFilesWithSemantics,
-    activeSemanticConnections
-  } = counts || {};
+export {
+  buildDatabaseHealthMetrics
+} from './database-health-report-metrics.js';
 
-  return {
-    healthy: assessment?.healthy,
-    healthScore: assessment?.healthScore,
-    grade: assessment?.grade,
-    summary: assessment?.summary,
-    metrics: {
-      scannedFiles,
-      activeFiles,
-      activeAtoms,
-      orphanAtoms,
-      orphanAtomsMissingScan,
-      atomsWithCalls,
-      atomsWithCalledBy,
-      activeCallRelations,
-      activeSharesStateRelations,
-      callGraphRows,
-      orphanCallRelations,
-      contradictoryRiskRows,
-      activeRiskRows,
-      atomsWithSharedState,
-      atomsWithEventEmitters,
-      atomsWithEventListeners,
-      atomsWithSemanticSignals,
-      activeSystemFiles,
-      systemFilesWithSemantics,
-      activeSemanticConnections,
-      liveRowSync,
-      fileUniverse,
-      systemMapCoverage,
-      semanticSurface
-    },
-    criticalFindings: assessment?.criticalFindings || [],
-    warnings: assessment?.warnings || [],
-    recommendations: assessment?.recommendations || []
-  };
-}
+export {
+  buildDatabaseHealthReport
+} from './database-health-report-assembly.js';
