@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.330 - Sprint 16: Hotspot Guard Split](changelogs/v0.9.330.md)
 - [v0.9.329 - Sprint 16: Async Safety Guard Split](changelogs/v0.9.329.md)
 - [v0.9.328 - Sprint 16: Pipeline Health Guard Split](changelogs/v0.9.328.md)
 - [v0.9.327 - Sprint 16: Event Leak Guard Split](changelogs/v0.9.327.md)
