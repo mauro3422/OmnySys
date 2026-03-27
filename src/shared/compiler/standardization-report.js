@@ -12,62 +12,11 @@ import {
   buildMissingCanonicalApis,
   buildMissingCanonicalSurfaceReport
 } from './standardization-report/recommendations.js';
-
-const CANONICAL_COMPILER_FAMILIES = [
-  { id: 'duplicates', label: 'Duplicate policy', status: 'canonical' },
-  { id: 'impact', label: 'Impact/topology', status: 'canonical' },
-  { id: 'file_discovery', label: 'File discovery', status: 'canonical' },
-  { id: 'signal_coverage', label: 'Signal coverage', status: 'canonical' },
-  { id: 'file_import_evidence', label: 'File import evidence coverage', status: 'canonical' },
-  { id: 'system_map_persistence', label: 'System-map persistence coverage', status: 'canonical' },
-  { id: 'metadata_surface_parity', label: 'Metadata surface parity', status: 'canonical' },
-  { id: 'metadata_extraction_coverage', label: 'Metadata extraction coverage', status: 'canonical' },
-  { id: 'metadata_propagation', label: 'Metadata propagation drift', status: 'canonical' },
-  { id: 'data_gateway', label: 'Data gateway freshness contract', status: 'canonical' },
-  { id: 'summary_presentation', label: 'Summary presentation contract', status: 'canonical' },
-  { id: 'semantic_surface_granularity', label: 'Semantic surface granularity', status: 'canonical' },
-  { id: 'file_universe_granularity', label: 'File-universe granularity', status: 'canonical' },
-  { id: 'live_row_drift', label: 'Live/stale row drift', status: 'canonical' },
-  { id: 'pipeline_orphans', label: 'Pipeline orphan classification', status: 'canonical' },
-  { id: 'dead_code', label: 'Dead code reporting/remediation', status: 'canonical' },
-  { id: 'watcher_diagnostics', label: 'Watcher diagnostics contract', status: 'canonical' },
-  { id: 'watcher_lifecycle', label: 'Watcher diagnostics lifecycle', status: 'canonical' },
-  { id: 'runtime_ownership', label: 'Runtime ownership/daemon lock', status: 'canonical' },
-  { id: 'state_ownership', label: 'State ownership/singleton policy', status: 'canonical' },
-  { id: 'service_boundary', label: 'Service boundary policy', status: 'canonical' },
-  { id: 'runtime_boundary_surfaces', label: 'Runtime boundary surfaces', status: 'canonical' },
-  { id: 'canonical_extension', label: 'Canonical extension policy', status: 'canonical' },
-  { id: 'async_error', label: 'Async error/recovery policy', status: 'canonical' },
-  { id: 'shared_state_hotspots', label: 'Shared-state hotspot policy', status: 'canonical' },
-  { id: 'centrality_coverage', label: 'Centrality coverage policy', status: 'canonical' },
-  { id: 'testability', label: 'Testability policy', status: 'canonical' },
-  { id: 'semantic_purity', label: 'Semantic purity policy', status: 'canonical' },
-  { id: 'compiler_diagnostics', label: 'Compiler diagnostics', status: 'canonical' },
-  { id: 'session_lifecycle', label: 'Session/restart lifecycle', status: 'canonical' },
-  { id: 'remediation', label: 'Compiler remediation backlog', status: 'canonical' }
-];
-
-function normalizeDriftArea(area, count = 0) {
-  return {
-    area,
-    count,
-    status: count > 0 ? 'adoption_gap' : 'stable'
-  };
-}
-
-function buildCanonicalAdoptionCoverage(canonicalFamilies = [], adoptionGaps = []) {
-  const totalFamilies = canonicalFamilies.length;
-  const adoptedFamilies = canonicalFamilies.filter((family) =>
-    !adoptionGaps.some((gap) => gap.area === family.id)
-  ).length;
-
-  return {
-    totalFamilies,
-    adoptedFamilies,
-    adoptionRatio: totalFamilies > 0 ? Number((adoptedFamilies / totalFamilies).toFixed(3)) : 0,
-    gapFamilies: adoptionGaps.length
-  };
-}
+import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
+import {
+  buildCanonicalAdoptionCoverage,
+  normalizeDriftArea
+} from './standardization-report-helpers.js';
 
 export function buildCompilerStandardizationReport({
   policySummary = {},
