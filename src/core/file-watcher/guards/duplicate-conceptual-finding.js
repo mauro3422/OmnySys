@@ -1,0 +1,62 @@
+import {
+    generateAlternativeNames,
+    classifyUtilityHelperDuplicate,
+    detectHelperReuseOpportunities
+} from '../../../shared/compiler/index.js';
+
+export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low', projectPath = null) {
+    const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];
+    const utilityHelperInfo = classifyUtilityHelperDuplicate(
+        localAtom.filePath,
+        localAtom.name,
+        localAtom.semanticFingerprint
+    );
+
+    const finding = {
+        symbol: localAtom.name,
+        atomId: localAtom.id,
+        semanticFingerprint: localAtom.semanticFingerprint,
+        duplicateType: 'CONCEPTUAL_DUPLICATE',
+        totalInstances: structuralVariants.length + 1,
+        duplicateFiles: uniqueFiles,
+        duplicateNames: [...new Set(structuralVariants.map((duplicate) => duplicate.name))],
+        sample: uniqueFiles.slice(0, 3),
+        isExported: localAtom.isExported,
+        existingExports: structuralVariants.filter((duplicate) => duplicate.is_exported).length,
+        testabilitySeverity,
+        suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
+    };
+
+    if (utilityHelperInfo.isUtilityHelper) {
+        finding.isUtilityHelper = true;
+        finding.utilityHelperReason = utilityHelperInfo.reason;
+        if (utilityHelperInfo.suggestedLocation) {
+            finding.suggestedConsolidationLocation = utilityHelperInfo.suggestedLocation;
+        }
+    }
+
+    return finding;
+}
+
+export async function enrichConceptualFindingWithReuseOpportunities(projectPath, normalizedFilePath, finding) {
+    if (!projectPath) {
+        return finding;
+    }
+
+    try {
+        const reuseOpportunities = await detectHelperReuseOpportunities(
+            projectPath,
+            normalizedFilePath,
+            [finding]
+        );
+
+        if (reuseOpportunities.length > 0 && reuseOpportunities[0].existingHelper) {
+            finding.helperReuseSuggestion = reuseOpportunities[0].existingHelper;
+            finding.hasReuseOpportunity = true;
+        }
+    } catch {
+        // Best effort only.
+    }
+
+    return finding;
+}
