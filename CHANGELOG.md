@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.352 - Sprint 16: Runtime Registry Evidence and Unified Duplicate Execution Split](changelogs/v0.9.352.md)
 - [v0.9.351 - Sprint 16: Structural Duplicate Remediation and Core Split Batch](changelogs/v0.9.351.md)
 - [v0.9.350 - Sprint 16: Impact, Registry, Shared-State, and Conceptual Duplicate Split Batch](changelogs/v0.9.350.md)
 - [v0.9.349 - Sprint 16: Unified Duplicate Coordination Split](changelogs/v0.9.349.md)
