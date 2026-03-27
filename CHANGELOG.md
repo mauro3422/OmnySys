@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.327 - Sprint 16: Event Leak Guard Split](changelogs/v0.9.327.md)
 - [v0.9.326 - Sprint 16: Integrity Follow-up and Runtime Registry Health Split](changelogs/v0.9.326.md)
 - [v0.9.325 - Sprint 16: Impact Wave Guard Split](changelogs/v0.9.325.md)
 - [v0.9.324 - Sprint 16: Integrity Guard Barrel Split](changelogs/v0.9.324.md)
