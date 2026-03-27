@@ -10,11 +10,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { normalizeFilePath, isCanonicalDuplicateSignalPolicyFile } from '../../../shared/compiler/index.js';
-import { clearConceptualDuplicateIssues } from './duplicate-conceptual-core.js';
-import { loadConceptualDuplicateRepo, loadConceptualDuplicateContext } from './conceptual-duplicate-risk-repo.js';
-import { detectConceptualDuplicateFindings } from './conceptual-duplicate-risk-detection.js';
-import { persistConceptualDuplicateFinding } from './conceptual-duplicate-risk-persistence.js';
+import { executeConceptualDuplicateRisk } from './conceptual-duplicate-risk-execution.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
 
@@ -27,61 +23,10 @@ const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
  * @returns {Promise<Array<Object>>} Findings detectados
  */
 export async function detectConceptualDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}) {
-    const {
-        maxFindings = 5,
-        minLinesOfCode = 3
-    } = options;
-    const normalizedFilePath = normalizeFilePath(filePath);
-
-    if (isCanonicalDuplicateSignalPolicyFile(normalizedFilePath)) {
-        await clearConceptualDuplicateIssues(rootPath, normalizedFilePath);
-        return [];
-    }
-
     try {
-        const repo = await loadConceptualDuplicateRepo(rootPath);
-        if (!repo?.db) {
-            return [];
-        }
-
-        const {
-            previousFindings,
-            localAtoms
-        } = loadConceptualDuplicateContext(
-            repo,
-            normalizedFilePath,
-            minLinesOfCode
-        );
-
-        if (localAtoms.length === 0) {
-            await clearConceptualDuplicateIssues(rootPath, normalizedFilePath);
-            return [];
-        }
-
-        const findings = await detectConceptualDuplicateFindings({
-            repo,
-            normalizedFilePath,
-            localAtoms,
-            maxFindings,
-            projectPath: rootPath
-        });
-
-        if (findings.length === 0) {
-            await clearConceptualDuplicateIssues(rootPath, normalizedFilePath);
-            return [];
-        }
-
-        await persistConceptualDuplicateFinding({
-            rootPath,
-            normalizedFilePath,
-            findings,
-            previousFindings,
-            eventEmitterContext: EventEmitterContext,
-            maxFindings
-        });
-
-        return findings;
+        return await executeConceptualDuplicateRisk(rootPath, filePath, EventEmitterContext, options, logger);
     } catch (error) {
+        const normalizedFilePath = filePath;
         logger.warn(`[CONCEPTUAL DUPLICATE GUARD ERROR] ${normalizedFilePath}: ${error.message}`);
         console.error('[CONCEPTUAL DUPLICATE GUARD ERROR]', error);
         return [];
