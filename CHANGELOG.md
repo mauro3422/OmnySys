@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.312 - Sprint 16: Watcher Issue Storage Runtime Split Batch](changelogs/v0.9.312.md)
 - [v0.9.311 - Sprint 16: Architectural Debt Score Calculator Split Batch](changelogs/v0.9.311.md)
 - [v0.9.310 - Sprint 16: Signal Coverage Aggregations Split Batch](changelogs/v0.9.310.md)
 - [v0.9.309 - Sprint 16: Duplicate Debt and Contract Taxonomy Split Batch](changelogs/v0.9.309.md)
