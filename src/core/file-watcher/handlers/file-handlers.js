@@ -6,10 +6,10 @@ import { handleFileCreatedForWatcher } from './file-handlers-create.js';
 import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete.js';
 import { handleFileModifiedForWatcher } from './file-handlers-modified.js';
 import {
-  enrichAtomsWithAncestry as enrichAtomsWithAncestryHelper,
-  saveAtom as saveAtomHelper,
-  getAtomsForFile as getAtomsForFileHelper,
-  detectCircularDependencyForFile as detectCircularDependencyForFileHelper
+  enrichAtomsWithAncestryCore as enrichAtomsWithAncestryHelper,
+  saveAtomToStorage as saveAtomHelper,
+  loadAtomsForFile as getAtomsForFileHelper,
+  detectCircularDependencyForFileCore as detectCircularDependencyForFileHelper
 } from './file-handlers-core-helpers.js';
 import { runFileHandlerWithBoundary } from './file-handler-boundary.js';
 
