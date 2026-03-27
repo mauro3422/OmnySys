@@ -18,16 +18,9 @@ import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
 } from '../../../shared/compiler/index.js';
-import { buildUnifiedDuplicateSummary, persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
-import {
-    clearUnifiedDuplicateIssues,
-    normalizeUnifiedDuplicateFilePath,
-    loadUnifiedPreviousFindings,
-    buildUnifiedDebtHistory,
-    coordinateUnifiedDuplicateFindings
-} from './unified-duplicate-guard-helpers.js';
-import { runStructuralDuplicateGuard } from './unified-duplicate-guard-structural.js';
-import { runConceptualDuplicateGuard } from './unified-duplicate-guard-conceptual.js';
+import { clearUnifiedDuplicateIssues, normalizeUnifiedDuplicateFilePath } from './unified-duplicate-guard-helpers.js';
+import { persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
+import { coordinateUnifiedDuplicateRisk } from './unified-duplicate-guard-coordinator.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
@@ -65,41 +58,24 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
             logger.warn('[UNIFIED DUPLICATE GUARD] No repo/db, returning empty');
             return { structural: [], conceptual: [], coordinated: null };
         }
+        const coordination = await coordinateUnifiedDuplicateRisk({
+            rootPath,
+            normalizedFilePath,
+            repo,
+            providedAtoms,
+            maxFindings,
+            minLinesOfCode,
+            enableStructural,
+            enableConceptual,
+            logger
+        });
 
-        const previousFindings = loadUnifiedPreviousFindings(repo, normalizedFilePath);
-
-        const structuralPromise = enableStructural
-            ? runStructuralDuplicateGuard(repo, normalizedFilePath, providedAtoms, { maxFindings, minLinesOfCode })
-            : Promise.resolve([]);
-
-        const conceptualPromise = enableConceptual
-            ? runConceptualDuplicateGuard(repo, rootPath, normalizedFilePath, { maxFindings, minLinesOfCode })
-            : Promise.resolve([]);
-
-        const [structuralFindings, conceptualFindings] = await Promise.all([
-            structuralPromise,
-            conceptualPromise
-        ]);
-
-        const resultMessage = `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: structural=${structuralFindings.length}, conceptual=${conceptualFindings.length}`;
-        if (structuralFindings.length > 0 || conceptualFindings.length > 0) {
-            logger.warn(resultMessage);
-        } else {
-            logger.debug(resultMessage);
-        }
-
-        const coordinated = coordinateUnifiedDuplicateFindings(structuralFindings, conceptualFindings);
-        const allFindings = [...structuralFindings, ...conceptualFindings];
-        const debtHistory = buildUnifiedDebtHistory(normalizedFilePath, allFindings, previousFindings);
-        const summary = buildUnifiedDuplicateSummary(rootPath, normalizedFilePath, coordinated, debtHistory);
-        const coordinatedWithSummary = { ...coordinated, summary };
-
-        if (allFindings.length > 0) {
+        if (coordination.totalFindings > 0) {
             await persistUnifiedFinding(
                 rootPath,
                 normalizedFilePath,
-                coordinatedWithSummary,
-                debtHistory,
+                coordination.coordinated,
+                coordination.debtHistory,
                 EventEmitterContext
             );
         } else {
@@ -108,11 +84,11 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         }
 
         return {
-            structural: structuralFindings,
-            conceptual: conceptualFindings,
-            coordinated: coordinatedWithSummary,
-            debtHistory,
-            totalFindings: allFindings.length
+            structural: coordination.structuralFindings,
+            conceptual: coordination.conceptualFindings,
+            coordinated: coordination.coordinated,
+            debtHistory: coordination.debtHistory,
+            totalFindings: coordination.totalFindings
         };
     } catch (error) {
         logger.error(`[UNIFIED DUPLICATE GUARD ERROR] ${normalizedFilePath}: ${error.message}`);
