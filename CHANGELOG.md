@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.324 - Sprint 16: Integrity Guard Barrel Split](changelogs/v0.9.324.md)
 - [v0.9.323 - Sprint 16: Circular Guard Split Batch](changelogs/v0.9.323.md)
 - [v0.9.322 - Sprint 16: File Watcher Modified and Delete Helpers Split Batch](changelogs/v0.9.322.md)
 - [v0.9.321 - Sprint 16: File Watcher Core Helper Rename Batch](changelogs/v0.9.321.md)
