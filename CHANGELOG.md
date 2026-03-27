@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.315 - Sprint 16: Live Row Utils Split Batch](changelogs/v0.9.315.md)
 - [v0.9.314 - Sprint 16: Database Health Report and Runtime Boundary Execution Split Batch](changelogs/v0.9.314.md)
 - [v0.9.313 - Sprint 16: Compiler Persistence Split Batch](changelogs/v0.9.313.md)
 - [v0.9.312 - Sprint 16: Watcher Issue Storage Runtime Split Batch](changelogs/v0.9.312.md)
