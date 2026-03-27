@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.304 - Sprint 16: Policy Conformance, Surface, and Guidance Split Batch](changelogs/v0.9.304.md)
 - [v0.9.303 - Sprint 16: Compiler Persistence Export Repair and Core Split Batch](changelogs/v0.9.303.md)
 - [v0.9.302 - Sprint 16: Layer B Validators Factory Split](changelogs/v0.9.302.md)
 - [v0.9.301 - Sprint 16: Proxy Shutdown Helper Split](changelogs/v0.9.301.md)

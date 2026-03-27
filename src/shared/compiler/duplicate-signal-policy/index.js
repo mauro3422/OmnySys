@@ -28,11 +28,20 @@ export {
     isCanonicalDuplicateSignalPolicyFile
 } from './detectors/core-policy.js';
 
-// Utility functions (re-export from duplicate-utils for backward compatibility)
+// Utility functions (re-exported from canonical helpers for backward compatibility)
 export {
     generateAlternativeNames,
+} from '../duplicate-utils-naming.js';
+
+export {
     buildDuplicateDebtHistory,
     buildDuplicateContext,
+} from '../duplicate-debt.js';
+
+export {
     loadPreviousFindings,
+} from '../duplicate-utils-persistence.js';
+
+export {
     coordinateDuplicateFindings
-} from '../duplicate-utils.js';
+} from '../duplicate-utils-coordination.js';

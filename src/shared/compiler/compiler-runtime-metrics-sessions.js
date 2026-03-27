@@ -4,42 +4,11 @@
  * @module shared/compiler/compiler-runtime-metrics-sessions
  */
 
-function formatMcpSessionSummary({
-  hasRuntimeSessionCount,
-  runtimeSessionCount,
-  totalPersistentActive,
-  uniqueClients,
-  clientsWithDuplicates,
-  toleratedDuplicateClients
-}) {
-  const toleratedSuffix = toleratedDuplicateClients > 0
-    ? `, ${toleratedDuplicateClients} tolerated`
-    : '';
-
-  return [
-    hasRuntimeSessionCount ? `${runtimeSessionCount} runtime` : null,
-    `${totalPersistentActive} persistent active`,
-    `${uniqueClients} client${uniqueClients === 1 ? '' : 's'}`,
-    clientsWithDuplicates > 0
-      ? `${clientsWithDuplicates} duplicate client bucket${clientsWithDuplicates === 1 ? '' : 's'}${toleratedSuffix}`
-      : 'no duplicate client buckets'
-  ].filter(Boolean).join(', ');
-}
-
-function buildMcpSessionSummaryText(summaryOptions) {
-  return formatMcpSessionSummary(summaryOptions);
-}
-
-function normalizeClientId(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function buildToleratedDuplicateClientSet(extraClientIds = []) {
-  return new Set([
-    'cline',
-    ...extraClientIds.map((clientId) => normalizeClientId(clientId)).filter(Boolean)
-  ]);
-}
+import {
+  buildMcpSessionSummaryText,
+  buildToleratedDuplicateClientSet,
+  normalizeClientId
+} from './compiler-runtime-metrics-sessions-format.js';
 
 export function collectMcpSessionMetrics(sessionManager, options = {}) {
   const hasRuntimeSessionCount = Number.isFinite(options.runtimeSessionCount);
@@ -109,7 +78,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     multiClientActive,
     sessionCountDrift,
     multiClientChurn,
-    summary: formatMcpSessionSummary({
+    summary: buildMcpSessionSummaryText({
       hasRuntimeSessionCount,
       runtimeSessionCount,
       totalPersistentActive,
