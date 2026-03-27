@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.341 - Sprint 16: Semantic Coverage Guard Split](changelogs/v0.9.341.md)
 - [v0.9.340 - Sprint 16: Pipeline Health Issues Split](changelogs/v0.9.340.md)
 - [v0.9.339 - Sprint 16: Semantic Persistence Guard Split](changelogs/v0.9.339.md)
 - [v0.9.338 - Sprint 16: Topology Regression Guard Split](changelogs/v0.9.338.md)
