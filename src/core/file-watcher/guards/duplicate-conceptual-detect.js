@@ -1,14 +1,10 @@
-import { enrichConceptualFindingWithReuseOpportunities } from './duplicate-conceptual-finding.js';
 import {
-    loadConceptualDuplicateRows,
-    loadLocalStructuralHash
+    loadConceptualDuplicateRows
 } from './duplicate-conceptual-query.js';
 import {
-    isActionableConceptualPeer,
-    isTrivialCanonicalDelegate,
     shouldSkipConceptualAtom
 } from './duplicate-conceptual-filters.js';
-import { buildConceptualFinding } from './duplicate-conceptual-finding.js';
+import { evaluateConceptualDuplicateCandidate } from './duplicate-conceptual-detect-evaluate.js';
 
 export async function detectConceptualFindings(
     repo,
@@ -36,25 +32,18 @@ export async function detectConceptualFindings(
             continue;
         }
 
-        const localStructuralHash = loadLocalStructuralHash(repo, localAtom.id);
-        const structuralVariants = duplicates.filter(
-            (duplicate) => duplicate.structuralHash !== localStructuralHash
-        );
+        const finding = await evaluateConceptualDuplicateCandidate({
+            repo,
+            normalizedFilePath,
+            localAtom,
+            duplicates,
+            testabilitySeverity,
+            projectPath
+        });
 
-        const actionableVariants = structuralVariants.filter((duplicate) =>
-            isActionableConceptualPeer(localAtom, duplicate)
-        );
-
-        if (actionableVariants.length === 0) {
+        if (!finding) {
             continue;
         }
-
-        if (isTrivialCanonicalDelegate(localAtom, actionableVariants)) {
-            continue;
-        }
-
-        let finding = buildConceptualFinding(localAtom, actionableVariants, testabilitySeverity, projectPath);
-        finding = await enrichConceptualFindingWithReuseOpportunities(projectPath, normalizedFilePath, finding);
 
         findings.push(finding);
         if (findings.length >= maxFindings) {

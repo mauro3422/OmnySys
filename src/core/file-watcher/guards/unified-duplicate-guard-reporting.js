@@ -1,22 +1,23 @@
 import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { buildUnifiedDuplicateReportingPayload } from './unified-duplicate-guard-reporting-payload.js';
+import { emitUnifiedDuplicateFinding } from './unified-duplicate-guard-reporting-event.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate:persistence');
 
 export async function persistUnifiedFinding(rootPath, normalizedFilePath, coordinated, debtHistory, EventEmitterContext) {
     const summary = coordinated.summary;
-    const { allFindings, severity, issueType, preview, context } = summary;
+    const payload = buildUnifiedDuplicateReportingPayload(summary, debtHistory);
+    const { allFindings, severity, issueType, preview, context, message, loggerMessage } = payload;
 
-    logger.warn(
-        `[UNIFIED DUPLICATE GUARD] ${normalizedFilePath}: ${allFindings.length} total -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
-    );
+    logger.warn(loggerMessage);
 
     await persistWatcherIssue(
         rootPath,
         normalizedFilePath,
         issueType,
         severity,
-        `${allFindings.length} duplicate(s): ${preview}`,
+        message,
         context
     );
 
@@ -26,20 +27,5 @@ export async function persistUnifiedFinding(rootPath, normalizedFilePath, coordi
         await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');
     }
 
-    EventEmitterContext.emit('code:duplicate_unified', {
-        filePath: normalizedFilePath,
-        severity,
-        totalDuplicateCount: allFindings.length,
-        structuralCount: coordinated.structural.length,
-        conceptualCount: coordinated.conceptual.length,
-        hasOverlap: coordinated.hasOverlap,
-        debtScore: debtHistory.debt.score,
-        debtTrend: debtHistory.debt.trend,
-        findings: allFindings.map((finding) => ({
-            symbol: finding.symbol,
-            type: finding.duplicateType,
-            instances: finding.totalInstances,
-            files: finding.duplicateFiles.length
-        }))
-    });
+    emitUnifiedDuplicateFinding(EventEmitterContext, normalizedFilePath, payload, allFindings);
 }

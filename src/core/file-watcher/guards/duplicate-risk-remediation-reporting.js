@@ -3,16 +3,15 @@ import { createLogger } from '../../../utils/logger.js';
 import {
     IssueDomains,
     createIssueType,
-    createStandardContext,
-    StandardSuggestions
 } from './guard-standards.js';
 import {
     buildDuplicateRemediationPlan,
     loadPreviousFindings,
-    buildDuplicateDebtHistory,
-    buildDuplicateContext
+    buildDuplicateDebtHistory
 } from '../../../shared/compiler/index.js';
 import { buildStructuralRemediationInput } from './duplicate-risk-remediation-input.js';
+import { resolveStructuralDuplicateSeverity } from './duplicate-risk-remediation-severity.js';
+import { buildStructuralDuplicateContext } from './duplicate-risk-remediation-context.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 
@@ -30,7 +29,7 @@ export async function persistStructuralDuplicateFinding({
         buildStructuralRemediationInput(normalizedFilePath, findings)
     );
     const preview = findings.map((finding) => `${finding.symbol}(${finding.totalInstances})`).join(', ');
-    const severity = findings.length >= 3 ? 'high' : 'medium';
+    const severity = resolveStructuralDuplicateSeverity(findings);
     const issueType = createIssueType(IssueDomains.CODE, 'duplicate', severity);
     const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
 
@@ -38,22 +37,12 @@ export async function persistStructuralDuplicateFinding({
         `[DUPLICATE GUARD] ${normalizedFilePath}: ${findings.length} duplicated symbol(s) -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
     );
 
-    const enrichedContext = buildDuplicateContext(findings, debtHistory);
-    const context = createStandardContext({
-        guardName: 'duplicate-risk-guard',
+    const context = buildStructuralDuplicateContext({
+        findings,
+        debtHistory,
         severity,
-        suggestedAction: findings.length >= 3
-            ? `${StandardSuggestions.DUPLICATE_REUSE} (multiple duplicates detected)`
-            : StandardSuggestions.DUPLICATE_REUSE,
-        suggestedAlternatives: remediationPlan.items.flatMap((item) => item.recommendedActions).slice(0, 6),
-        relatedFiles: findings.flatMap((finding) => finding.duplicateFiles).filter((value, index, all) => all.indexOf(value) === index),
-        extraData: {
-            duplicateCount: findings.length,
-            findings: findings.slice(0, maxFindings),
-            remediation: remediationPlan,
-            debtHistory: enrichedContext.debtHistory,
-            recommendations: enrichedContext.recommendations
-        }
+        remediationPlan,
+        maxFindings
     });
 
     await persistWatcherIssue(

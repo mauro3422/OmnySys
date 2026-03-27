@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.355 - Sprint 16: Conceptual Duplicate Pipeline and Unified Reporting Split Batch](changelogs/v0.9.355.md)
 - [v0.9.354 - Sprint 16: Duplicate Guard Execution Safety Fix](changelogs/v0.9.354.md)
 - [v0.9.353 - Sprint 16: Conceptual and Structural Duplicate Execution Split](changelogs/v0.9.353.md)
 - [v0.9.352 - Sprint 16: Runtime Registry Evidence and Unified Duplicate Execution Split](changelogs/v0.9.352.md)
