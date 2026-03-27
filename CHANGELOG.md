@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.322 - Sprint 16: File Watcher Modified and Delete Helpers Split Batch](changelogs/v0.9.322.md)
 - [v0.9.321 - Sprint 16: File Watcher Core Helper Rename Batch](changelogs/v0.9.321.md)
 - [v0.9.320 - Sprint 16: File Watcher Core Helpers Split Batch](changelogs/v0.9.320.md)
 - [v0.9.319 - Sprint 16: File Watcher Guard Definitions Split Batch](changelogs/v0.9.319.md)

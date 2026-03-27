@@ -1,10 +1,17 @@
-import fs from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
 import { isTestFactorySurface } from '#layer-c/mcp/tools/validate-exports-chain-helpers.js';
 import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
+import {
+  readModifiedFileSnapshot,
+  shouldSkipModifiedFile,
+  invalidateModifiedFileCache,
+  recordModifiedFileStats,
+  loadPreviousAtomsForFile,
+  processModifiedFilePostActions
+} from './file-handlers-modified-helpers.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -44,67 +51,32 @@ async function reconcileWatcherIssuesAfterModification(fileWatcher, filePath) {
 }
 
 export async function handleFileModifiedForWatcher(fileWatcher, filePath, fullPath, changeContext = {}) {
-  const stats = await fs.stat(fullPath).catch(() => null);
-  if (!stats || stats.isDirectory()) {
+  const snapshot = await readModifiedFileSnapshot(fullPath);
+  if (shouldSkipModifiedFile(snapshot)) {
     return;
   }
 
   const newHash = await fileWatcher._calculateContentHash(fullPath);
-  const oldHash = fileWatcher.fileHashes?.get(filePath);
-  if (newHash && oldHash && newHash === oldHash) {
-    logger.debug(`[SKIP] ${filePath} - content unchanged`);
+  if (await invalidateModifiedFileCache(fileWatcher, filePath, newHash)) {
     return;
   }
 
-  if (newHash && fileWatcher.fileHashes) {
-    fileWatcher.fileHashes.set(filePath, newHash);
-  }
-
-  try {
-    if (fileWatcher.fileStats) {
-      fileWatcher.fileStats.set(filePath, {
-        mtimeMs: stats.mtimeMs,
-        size: stats.size
-      });
-    }
-  } catch {
-    // Ignore races where the file disappears between detection and processing.
-  }
+  await recordModifiedFileStats(fileWatcher, filePath, snapshot);
 
   logFileLifecycle(`[FILE MODIFIED] ${filePath}${formatOriginSuffix(changeContext)}`);
-  const previousAtoms = await fileWatcher.getAtomsForFile(filePath);
-
-  if (fileWatcher.cacheInvalidator) {
-    try {
-      const result = await fileWatcher.cacheInvalidator.invalidateSync(filePath);
-      if (result.success) {
-        logger.debug(`✅ Cache invalidated (${result.duration}ms): ${filePath}`);
-      } else {
-        logger.warn(`⚠️ Cache invalidation failed: ${filePath}`, result.error);
-      }
-    } catch (error) {
-      logger.error(`❌ Error during cache invalidation: ${filePath}`, error.message);
-    }
-  }
+  const previousAtoms = await loadPreviousAtomsForFile(fileWatcher, filePath);
 
   const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, true);
 
-  try {
-    await validateExportsForModifiedFile(fileWatcher, filePath);
-  } catch (error) {
-    logger.warn(`[EXPORT VALIDATION SKIP] Failed to validate exports for ${filePath}: ${error.message}`);
-  }
-
-  await runImpactGuardsForModifiedFile(fileWatcher, filePath, fullPath, previousAtoms, analysis);
-
-  try {
-    await reconcileWatcherIssuesAfterModification(fileWatcher, filePath);
-  } catch (error) {
-    logger.warn(`[ISSUE RECONCILE SKIP] Failed to reconcile issues after ${filePath}: ${error.message}`);
-  }
-
-  logger.info(
-    `[FILE PROCESSED] ${filePath} -> atoms=${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0}, previous=${previousAtoms.length}`
+  await processModifiedFilePostActions(
+    fileWatcher,
+    filePath,
+    fullPath,
+    previousAtoms,
+    analysis,
+    validateExportsForModifiedFile,
+    runImpactGuardsForModifiedFile,
+    reconcileWatcherIssuesAfterModification
   );
 
   emitFileLifecycleEvent(fileWatcher, 'file:modified', filePath, changeContext, { analysis });
