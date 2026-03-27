@@ -10,6 +10,7 @@ import {
   getFileDependencies,
   getFileAnalysis
 } from '../../../layer-c-memory/query/apis/file-api.js';
+import { buildToolError, getCachedImpact } from './tool-helpers.js';
 
 /**
  * Obtiene mapa de impacto de un archivo
@@ -17,7 +18,7 @@ import {
  * @returns {Promise<Object>} - Mapa de impacto
  */
 export async function getImpactMap(filePath) {
-  const cached = this.cache.getRamCache(`impact:${filePath}`);
+  const cached = getCachedImpact(this.cache, filePath);
   if (cached) return cached;
 
   try {
@@ -40,7 +41,7 @@ export async function getImpactMap(filePath) {
     this.cache.set(`impact:${filePath}`, result);
     return result;
   } catch (error) {
-    return { error: error.message };
+    return buildToolError(error);
   }
 }
 
@@ -73,6 +74,6 @@ export async function getChangeImpact(filePath, symbolName) {
         : '✓ Safe - Limited scope'
     };
   } catch (error) {
-    return { error: error.message };
+    return buildToolError(error);
   }
 }

@@ -1,4 +1,3 @@
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     buildDuplicateWhereSql,
     normalizeDuplicateCandidateAtom
@@ -7,10 +6,10 @@ import {
     generateAlternativeNames,
     shouldIgnoreStructuralDuplicateFinding
 } from '../../../shared/compiler/index.js';
+import { clearUnifiedDuplicateIssues } from './unified-duplicate-guard-helpers.js';
 
 export async function clearStructuralDuplicateIssues(rootPath, filePath) {
-    await clearWatcherIssue(rootPath, filePath, 'code_duplicate_high');
-    await clearWatcherIssue(rootPath, filePath, 'code_duplicate_medium');
+    await clearUnifiedDuplicateIssues(rootPath, filePath);
 }
 
 export function loadStructuralLocalAtoms({

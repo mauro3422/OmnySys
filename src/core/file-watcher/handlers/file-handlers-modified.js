@@ -4,6 +4,7 @@ import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
 import { isTestFactorySurface } from '#layer-c/mcp/tools/validate-exports-chain-helpers.js';
+import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers');
 
@@ -70,8 +71,7 @@ export async function handleFileModifiedForWatcher(fileWatcher, filePath, fullPa
     // Ignore races where the file disappears between detection and processing.
   }
 
-  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
-  logger.info(`[FILE MODIFIED] ${filePath}${originSuffix}`);
+  logFileLifecycle(`[FILE MODIFIED] ${filePath}${formatOriginSuffix(changeContext)}`);
   const previousAtoms = await fileWatcher.getAtomsForFile(filePath);
 
   if (fileWatcher.cacheInvalidator) {
@@ -107,10 +107,5 @@ export async function handleFileModifiedForWatcher(fileWatcher, filePath, fullPa
     `[FILE PROCESSED] ${filePath} -> atoms=${analysis.moleculeAtoms?.length || analysis.atoms?.length || 0}, previous=${previousAtoms.length}`
   );
 
-  fileWatcher.emit('file:modified', {
-    filePath,
-    analysis,
-    origin: changeContext.origin || 'unknown',
-    source: changeContext.source || null
-  });
+  emitFileLifecycleEvent(fileWatcher, 'file:modified', filePath, changeContext, { analysis });
 }

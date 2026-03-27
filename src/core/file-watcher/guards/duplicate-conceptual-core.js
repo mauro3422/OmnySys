@@ -1,4 +1,3 @@
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     generateAlternativeNames,
     shouldIgnoreConceptualDuplicateFinding,
@@ -8,12 +7,10 @@ import {
     classifyUtilityHelperDuplicate,
     detectHelperReuseOpportunities
 } from '../../../shared/compiler/index.js';
+import { clearUnifiedDuplicateIssues } from './unified-duplicate-guard-helpers.js';
 
 export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
-    return Promise.all([
-        clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_high'),
-        clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_medium')
-    ]);
+    return clearUnifiedDuplicateIssues(rootPath, normalizedFilePath);
 }
 
 export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode) {

@@ -2,23 +2,29 @@ import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave
 import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
-export async function detectImpactWaveForFile(fileWatcher, filePath, previousAtoms = [], options = {}) {
-  return await detectImpactWaveGuard(
+async function runGuardAction(guardFn, fileWatcher, filePath, options = {}, previousAtoms = []) {
+  return await guardFn(
     fileWatcher.rootPath,
     filePath,
     previousAtoms,
     fileWatcher,
     async fp => await fileWatcher.getAtomsForFile(fp),
-    {
-      ...options,
-      relationHelpers: {
-        countRequiredSignatureParams,
-        extractRelatedFilePath
-      }
-    }
+    options
   );
 }
 
 export async function detectDuplicateRiskForFile(fileWatcher, filePath, options = {}) {
-  return await detectDuplicateRiskGuard(fileWatcher.rootPath, filePath, fileWatcher, options);
+  return await runGuardAction(detectDuplicateRiskGuard, fileWatcher, filePath, options);
+}
+
+export async function detectImpactWaveForFile(fileWatcher, filePath, previousAtoms = [], options = {}) {
+  const guardOptions = {
+    ...options,
+    relationHelpers: {
+      countRequiredSignatureParams,
+      extractRelatedFilePath
+    }
+  };
+
+  return await runGuardAction(detectImpactWaveGuard, fileWatcher, filePath, guardOptions, previousAtoms);
 }

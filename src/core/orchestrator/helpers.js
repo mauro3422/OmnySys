@@ -1,10 +1,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { AnalysisQueue } from '../analysis-queue.js';
-import { createLogger } from '../../utils/logger.js';
-
-const logger = createLogger('OmnySys:helpers');
+import {
+  getOrchestratorStatus,
+  initializeComponentState,
+  initializeRuntimeState,
+  initializeIndexingState,
+  initializeIterationState,
+  initializeCompletionTrackingState,
+  setupAtomicEditor
+} from './index-helpers.js';
 
 
 
@@ -24,15 +29,7 @@ export async function isAnalyzed(filePath) {
  * Get current status
  */
 export function getStatus() {
-  return {
-    isRunning: this.isRunning,
-    isIndexing: this.isIndexing,
-    indexingProgress: this.indexingProgress,
-    currentJob: this.currentJob,
-    queueSize: this.queue.size(),
-    stats: this.stats,
-    uptime: Date.now() - this.startTime
-  };
+  return getOrchestratorStatus.call(this);
 }
 
 export async function _hasExistingAnalysis() {
@@ -84,76 +81,27 @@ export async function _getCacheInvalidator() {
 }
 
 export function _initializeComponentState() {
-  this.queue = new AnalysisQueue();
-  this.worker = null;
-  this.stateManager = null;
-  this.fileWatcher = null;
-  this.batchProcessor = null;
-  this.wsManager = null;
-  this.cache = null;
+  return initializeComponentState(this);
 }
 
 export function _initializeRuntimeState() {
-  this.currentJob = null;
-  this.isRunning = true;
-  this.startTime = Date.now();
-  this.stats = {
-    totalAnalyzed: 0,
-    totalQueued: 0,
-    avgTime: 0
-  };
+  return initializeRuntimeState(this);
 }
 
 export function _initializeIndexingState() {
-  this.isIndexing = false;
-  this.indexingProgress = 0;
-  this.indexedFiles = new Set();
+  return initializeIndexingState(this);
 }
 
 export function _initializeIterationState() {
-  this.iteration = 0;
-  this.maxIterations = 10;
-  this.isIterating = false;
-  this.iterativeQueue = [];
+  return initializeIterationState(this);
 }
 
 export function _initializeCompletionTrackingState() {
-  this.totalFilesToAnalyze = 0;
-  this.processedFiles = new Set();
-  this.analysisCompleteEmitted = false;
+  return initializeCompletionTrackingState(this);
 }
 
 export function _setupAtomicEditor() {
-  this.atomicEditor.on('atom:validation:failed', (event) => {
-    logger.error(`🚫 Atomic validation failed: ${event.file}`);
-    logger.error(`   Error: ${event.error}`);
-
-    this.wsManager?.publish({
-      type: 'atomic:validation:failed',
-      ...event,
-      timestamp: Date.now()
-    });
-  });
-
-  this.atomicEditor.on('atom:modified', (event) => {
-    logger.info(`✅ Atomic edit complete: ${event.file}`);
-    this._triggerIncrementalSocietyUpdate(event.file);
-
-    this.wsManager?.publish({
-      type: 'atomic:modified',
-      ...event,
-      timestamp: Date.now()
-    });
-  });
-
-  this.atomicEditor.on('vibration:propagating', (event) => {
-    logger.info(`📡 Vibration propagating from ${event.source}`);
-    logger.info(`   Affects: ${event.affected.length} files`);
-
-    event.affected.forEach(file => {
-      this._invalidateFileCache(file);
-    });
-  });
+  return setupAtomicEditor(this);
 }
 
 export function _queueFileChange(filePath, changeType, priority, skipDebounce) {

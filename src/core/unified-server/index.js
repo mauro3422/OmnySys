@@ -22,6 +22,11 @@ class OmnySysUnifiedServer extends EventEmitter {
   }
 }
 
+function logUnifiedServerError(message, error) {
+  const logger = createLogger('OmnySys:unified-server');
+  logger.error(message, error);
+}
+
 Object.assign(
   OmnySysUnifiedServer.prototype,
   init,
@@ -41,8 +46,7 @@ async function safeShutdownCurrentServer() {
   try {
     await globalServerInstance.shutdown();
   } catch (error) {
-    const logger = createLogger('OmnySys:unified-server');
-    logger.error('Shutdown failed during interrupt handling', error);
+    logUnifiedServerError('Shutdown failed during interrupt handling', error);
   } finally {
     globalServerInstance = null;
   }
@@ -54,8 +58,7 @@ async function safeStartUnifiedServer(absolutePath) {
     await globalServerInstance.initialize();
   } catch (error) {
     globalServerInstance = null;
-    const logger = createLogger('OmnySys:unified-server');
-    logger.error('Unified server bootstrap failed', error);
+    logUnifiedServerError('Unified server bootstrap failed', error);
     throw error;
   }
 }

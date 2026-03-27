@@ -8,7 +8,7 @@
  */
 
 import {
-  deleteCacheEntries,
+  deleteCacheEntriesWithDependents,
   purgeCacheState
 } from './cache/cache-maintenance.js';
 
@@ -96,8 +96,7 @@ export function getAtomicCacheAtoms(cache, atomIds) {
 }
 
 export function invalidateAtomicCacheAtom(cache, atomId) {
-  deleteCacheEntries(cache.atoms, [atomId]);
-  cache.derivations.invalidate(atomId);
+  deleteCacheEntriesWithDependents(cache.atoms, cache.derivations, atomId);
 }
 
 export function invalidateAtomicCacheFile(cache, filePath) {

@@ -22,6 +22,10 @@ import {
 import {
   resolveArchitecturalRecommendation
 } from './architectural-recommendations.js';
+import {
+  buildGodObjectStructure,
+  classifyOperationalRole
+} from './architectural-pattern-detector-helpers.js';
 
 const logger = createLogger('OmnySys:ArchitecturalPatternDetector');
 
@@ -104,29 +108,6 @@ export function detectArchitecturalPattern(metadata) {
   logger.debug(`[detectArchitecturalPattern] ${metadata.filePath || 'unknown'}: ${result.patterns.length} patterns detected`);
 
   return result;
-}
-
-/**
- * Sugiere estructura de carpetas para un God Object
- */
-function buildGodObjectStructure(metadata) {
-  const fileName = metadata.filePath ? metadata.filePath.split('/').pop() : 'module';
-  const baseName = fileName.replace('.js', '');
-
-  return {
-    type: 'directory_structure',
-    suggestion: `Split ${fileName} into:`,
-    structure: {
-      [`${baseName}/`]: {
-        'index.js': 'Barrel exports (coordinator)',
-        'core.js': 'Core business logic',
-        'utils.js': 'Helper functions',
-        'validators.js': 'Validation logic',
-        'handlers.js': 'Event/request handlers'
-      }
-    },
-    principle: 'Single Responsibility Principle + Directory-based modularity'
-  };
 }
 
 /**
@@ -303,34 +284,6 @@ export function detectAllArchitecturalPatterns(filePath, metadata) {
   logger.info(`[detectAllArchitecturalPatterns] ${filePath}: ${results.patterns.length} patterns, severity: ${results.severity}`);
 
   return results;
-}
-
-/**
- * Clasifica rol operacional basado en nombre de archivo
- */
-function classifyOperationalRole(fileName) {
-  const name = fileName.toLowerCase();
-  
-  if (name.includes('orchestrator') || name.includes('coordinator')) {
-    return 'orchestrator';
-  }
-  if (name.includes('builder')) {
-    return 'builder';
-  }
-  if (name.includes('analyzer')) {
-    return 'analyzer';
-  }
-  if (name.includes('resolver')) {
-    return 'resolver';
-  }
-  if (name.includes('bridge')) {
-    return 'bridge';
-  }
-  if (name.includes('policy')) {
-    return 'policy';
-  }
-  
-  return 'standard';
 }
 
 /**

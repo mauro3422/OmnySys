@@ -7,6 +7,7 @@
  */
 
 import { getAllConnections } from '../../../layer-c-memory/query/apis/connections-api.js';
+import { buildToolError, getCachedConnections } from './tool-helpers.js';
 
 /**
  * Explica la conexión entre dos archivos
@@ -16,8 +17,7 @@ import { getAllConnections } from '../../../layer-c-memory/query/apis/connection
  */
 export async function explainConnection(fileA, fileB) {
   try {
-    const connections = this.cache.getRamCache('connections') ||
-      await getAllConnections(this.projectPath);
+    const connections = await getCachedConnections(this.cache, this.projectPath, getAllConnections);
 
     const relevant = connections.sharedState
       ?.filter(
@@ -43,6 +43,6 @@ export async function explainConnection(fileA, fileB) {
       }))
     };
   } catch (error) {
-    return { error: error.message };
+    return buildToolError(error);
   }
 }

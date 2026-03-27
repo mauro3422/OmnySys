@@ -4,6 +4,8 @@
  * @module atomic/recommendations
  */
 
+import { lookupCatalogValue } from '../helpers/catalog-helpers.js';
+
 /**
  * Obtiene recomendación basada en el arquetipo
  * @param {string} archetypeType - Tipo de arquetipo
@@ -17,7 +19,7 @@ export function getRecommendation(archetypeType) {
     'god-function': 'Consider breaking into smaller functions',
     'default': 'Standard changes - proceed with normal testing'
   };
-  return recommendations[archetypeType] || recommendations.default;
+  return lookupCatalogValue(archetypeType, recommendations);
 }
 
 /**

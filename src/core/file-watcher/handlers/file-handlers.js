@@ -1,7 +1,6 @@
-import { createLogger } from '../../../utils/logger.js';
 import {
-  detectDuplicateRiskForFile as detectDuplicateRiskForFileAction,
-  detectImpactWaveForFile as detectImpactWaveForFileAction
+  detectDuplicateRiskForFile,
+  detectImpactWaveForFile
 } from './file-handlers-actions.js';
 import { handleFileCreatedForWatcher } from './file-handlers-create.js';
 import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete.js';
@@ -12,17 +11,12 @@ import {
   getAtomsForFile as getAtomsForFileHelper,
   detectCircularDependencyForFile as detectCircularDependencyForFileHelper
 } from './file-handlers-core-helpers.js';
+import { runFileHandlerWithBoundary } from './file-handler-boundary.js';
 
-const logger = createLogger('OmnySys:file-watcher:handlers');
-
-async function runFileHandlerWithBoundary(operationName, runner) {
-  try {
-    return await runner();
-  } catch (error) {
-    logger.error(`File handler failed in ${operationName}`, error);
-    throw error;
-  }
-}
+export {
+  detectImpactWaveForFile,
+  detectDuplicateRiskForFile
+};
 
 /**
  * Maneja creacion de archivo
@@ -50,14 +44,6 @@ export async function saveAtom(atom, filePath) {
  */
 export async function handleFileModified(filePath, fullPath, changeContext = {}) {
   return await runFileHandlerWithBoundary('handleFileModified', () => handleFileModifiedForWatcher(this, filePath, fullPath, changeContext));
-}
-
-export async function detectImpactWaveForFile(filePath, previousAtoms = [], options = {}) {
-  return await runFileHandlerWithBoundary('detectImpactWaveForFile', () => detectImpactWaveForFileAction(this, filePath, previousAtoms, options));
-}
-
-export async function detectDuplicateRiskForFile(filePath, options = {}) {
-  return await runFileHandlerWithBoundary('detectDuplicateRiskForFile', () => detectDuplicateRiskForFileAction(this, filePath, options));
 }
 
 /**

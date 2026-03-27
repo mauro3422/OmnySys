@@ -10,6 +10,8 @@ import { BatchProcessor, calculatePriority } from '../../batch-processor/index.j
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 
+export { calculatePriority as calculateChangePriority } from '../../batch-processor/index.js';
+
 const logger = createLogger('OmnySys:batch:processor:init');
 
 /**

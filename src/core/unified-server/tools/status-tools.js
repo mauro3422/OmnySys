@@ -7,6 +7,7 @@
  */
 
 import { getProjectMetadata } from '../../../layer-c-memory/query/apis/project-api.js';
+import { buildToolError } from './tool-helpers.js';
 
 /**
  * Obtiene estado completo del servidor
@@ -54,7 +55,7 @@ export async function getFilesStatus() {
 
     return { files, total: files.length };
   } catch (error) {
-    return { error: error.message };
+    return buildToolError(error);
   }
 }
 
@@ -73,6 +74,6 @@ export async function getFileTool(filePath) {
       analysis: fileData
     };
   } catch (error) {
-    return { error: error.message };
+    return buildToolError(error);
   }
 }

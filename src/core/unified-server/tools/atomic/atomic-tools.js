@@ -17,16 +17,13 @@ import {
   getFileAnalysisWithAtoms
 } from '../../../../layer-c-memory/query/apis/file-api.js';
 
-import { getRiskReason, getRiskLevel, calculateRiskMetrics } from './helpers/risk-helpers.js';
-import { getRecommendation, getAllRecommendations } from './recommendations/archetype-recommendations.js';
 import {
-  formatAtomBasic,
-  formatSideEffects,
-  formatCallGraph,
-  formatQualityMetrics,
-  formatFunctionSummary,
-  formatInsights
-} from './formatters/atom-formatters.js';
+  buildAtomicToolError,
+  buildFunctionDetailsResponse,
+  buildMoleculeSummaryResponse,
+  buildFunctionImpactResponse,
+  buildAtomicFunctionLists
+} from './helpers/atomic-tool-helpers.js';
 
 /**
  * Obtiene detalles de una función específica (átomo)
@@ -45,15 +42,9 @@ export async function getFunctionDetails(filePath, functionName) {
       };
     }
 
-    return {
-      atom: formatAtomBasic(atom),
-      archetype: atom.archetype,
-      sideEffects: formatSideEffects(atom),
-      callGraph: formatCallGraph(atom),
-      quality: formatQualityMetrics(atom)
-    };
+    return buildFunctionDetailsResponse(atom);
   } catch (error) {
-    return { error: error.message };
+    return buildAtomicToolError(error);
   }
 }
 
@@ -78,16 +69,9 @@ export async function getMoleculeSummary(filePath) {
       };
     }
 
-    return {
-      filePath,
-      atomsAvailable: true,
-      molecule: data.derived,
-      stats: data.stats,
-      atoms: data.atoms.map(formatFunctionSummary),
-      insights: formatInsights(data)
-    };
+    return buildMoleculeSummaryResponse(filePath, data);
   } catch (error) {
-    return { error: error.message };
+    return buildAtomicToolError(error);
   }
 }
 
@@ -105,25 +89,9 @@ export async function getFunctionImpact(filePath, functionName) {
       return { error: `Function '${functionName}' not found` };
     }
 
-    return {
-      function: functionName,
-      file: filePath,
-      atomId: atom.id,
-      directImpact: {
-        callers: atom.calledBy || [],
-        callerCount: atom.calledBy?.length || 0,
-        isExported: atom.isExported
-      },
-      dependencies: {
-        calls: atom.calls || [],
-        externalCalls: atom.externalCalls || [],
-        internalCalls: atom.internalCalls || []
-      },
-      risk: calculateRiskMetrics(atom),
-      recommendation: getRecommendation(atom.archetype?.type)
-    };
+    return buildFunctionImpactResponse(filePath, functionName, atom);
   } catch (error) {
-    return { error: error.message };
+    return buildAtomicToolError(error);
   }
 }
 
@@ -145,54 +113,9 @@ export async function getAtomicFunctions(filePath) {
       };
     }
     
-    const byArchetype = {};
-    const exported = [];
-    const internal = [];
-    
-    for (const atom of data.atoms) {
-      const archetype = atom.archetype?.type || 'unknown';
-      if (!byArchetype[archetype]) {
-        byArchetype[archetype] = [];
-      }
-      byArchetype[archetype].push(formatFunctionSummary(atom));
-      
-      if (atom.isExported) {
-        exported.push({
-          name: atom.name,
-          archetype: archetype,
-          complexity: atom.complexity,
-          calledBy: atom.calledBy?.length || 0
-        });
-      } else {
-        internal.push({
-          name: atom.name,
-          archetype: archetype,
-          complexity: atom.complexity,
-          calledBy: atom.calledBy?.length || 0
-        });
-      }
-    }
-    
-    return {
-      filePath,
-      summary: {
-        total: data.atoms.length,
-        exported: exported.length,
-        internal: internal.length,
-        archetypes: Object.keys(byArchetype)
-      },
-      byArchetype,
-      exported: exported.sort((a, b) => b.calledBy - a.calledBy),
-      internal: internal.sort((a, b) => b.calledBy - a.calledBy),
-      insights: {
-        deadCode: byArchetype['dead-function'] || [],
-        hotPaths: byArchetype['hot-path'] || [],
-        fragile: byArchetype['fragile-network'] || [],
-        godFunctions: byArchetype['god-function'] || []
-      }
-    };
+    return buildAtomicFunctionLists(filePath, data.atoms);
   } catch (error) {
-    return { error: error.message };
+    return buildAtomicToolError(error);
   }
 }
 

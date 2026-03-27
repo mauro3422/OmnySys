@@ -5,8 +5,8 @@
 import { DerivationRules } from './rules/index.js';
 
 import {
-  deleteCacheEntries,
   deleteCacheEntriesByPrefix,
+  deleteCacheEntriesWithDependents,
   purgeCacheState
 } from '../cache/cache-maintenance.js';
 
@@ -38,9 +38,7 @@ export function deriveCachedValue(cache, moleculeId, atoms, ruleName) {
 }
 
 export function invalidateCachedDerivations(cache, atomId) {
-  const affected = cache.dependencyGraph.get(atomId) || new Set();
-  deleteCacheEntries(cache.cache, affected);
-  cache.dependencyGraph.delete(atomId);
+  deleteCacheEntriesWithDependents(cache.cache, cache.dependencyGraph, atomId);
 }
 
 export function invalidateCachedMolecule(cache, moleculeId) {

@@ -57,6 +57,17 @@ export function invalidateCachePatterns(cache, patterns = DEFAULT_CACHE_INVALIDA
   };
 }
 
+export function clearAnalysisCacheEntries(cache, patterns = DEFAULT_CACHE_INVALIDATION_PATTERNS) {
+  const cleanup = invalidateCachePatterns(cache, patterns);
+
+  if (cache && typeof cache.invalidate === 'function') {
+    cache.invalidate('connections');
+    cache.invalidate('assessment');
+  }
+
+  return cleanup;
+}
+
 export function clearCacheCollections(target, collectionNames = []) {
   const { target: resolvedTarget, collections: resolvedCollections } = resolveCacheTargets({
     target,
@@ -109,6 +120,16 @@ export function deleteCacheEntriesByPrefix(collection, prefix) {
       collection.delete(key);
       deleted++;
     }
+  }
+
+  return deleted;
+}
+
+export function deleteCacheEntriesWithDependents(collection, dependencyGraph, key) {
+  const deleted = deleteCacheEntries(collection, [key]);
+
+  if (dependencyGraph && typeof dependencyGraph.delete === 'function') {
+    dependencyGraph.delete(key);
   }
 
   return deleted;

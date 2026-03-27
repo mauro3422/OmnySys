@@ -24,7 +24,8 @@ export * from './detectors/index.js';
 export {
     shouldIgnoreConceptualDuplicateFinding,
     shouldIgnoreStructuralDuplicateFinding,
-    classifyUtilityHelperDuplicate
+    classifyUtilityHelperDuplicate,
+    isCanonicalDuplicateSignalPolicyFile
 } from './detectors/core-policy.js';
 
 // Utility functions (re-export from duplicate-utils for backward compatibility)

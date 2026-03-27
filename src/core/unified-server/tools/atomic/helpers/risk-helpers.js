@@ -4,6 +4,8 @@
  * @module atomic/helpers
  */
 
+import { buildMetricCategories, lookupCatalogValue } from './catalog-helpers.js';
+
 /**
  * Obtiene la razón del riesgo basada en el arquetipo
  * @param {string} archetypeType - Tipo de arquetipo
@@ -17,7 +19,7 @@ export function getRiskReason(archetypeType) {
     'dead-function': 'Function is not used anywhere',
     'default': 'Standard function'
   };
-  return reasons[archetypeType] || reasons.default;
+  return lookupCatalogValue(archetypeType, reasons);
 }
 
 /**
@@ -26,10 +28,7 @@ export function getRiskReason(archetypeType) {
  * @returns {string} Nivel de riesgo
  */
 export function getRiskLevel(severity) {
-  if (severity > 7) return 'critical';
-  if (severity > 4) return 'high';
-  if (severity > 2) return 'medium';
-  return 'low';
+  return buildMetricCategories(severity);
 }
 
 /**

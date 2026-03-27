@@ -9,14 +9,16 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { validateGuard } from './guard-standards.js';
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { buildRegistryStats, registerRegistryStatsProvider } from './registry/stats.js';
-import { registerGuard } from './registry/registration.js';
-import { runGuardMap } from './registry/execution.js';
-import { initializeDefaultGuards } from './registry/initialization.js';
-
-const logger = createLogger('OmnySys:guards:registry');
+import { registerRegistryStatsProvider } from './registry/stats.js';
+import {
+  createGuardRegistryStats,
+  registerImpactGuard,
+  registerSemanticGuard,
+  getGuardMetadata,
+  listGuards,
+  runGuardGroup,
+  initializeDefaultGuards
+} from './registry/operations.js';
 
 class GuardRegistry {
   constructor() {
@@ -25,88 +27,55 @@ class GuardRegistry {
     this.metadata = new Map();
     this.initialized = false;
     this.initializationPromise = null;
+    this.logger = createLogger('OmnySys:guards:registry');
 
     registerRegistryStatsProvider(this);
   }
 
   getGuardRegistryStats() {
-    return {
-      ...buildRegistryStats(this.semanticGuards, this.impactGuards, this.metadata),
-      initialized: this.initialized
-    };
-  }
-
-  #registerGuard(guardMap, type, name, guardFn, metadata = {}) {
-    return registerGuard(guardMap, this.metadata, validateGuard, logger, type, name, guardFn, metadata);
-  }
-
-  async #runGuardMap(guardMap, type, rootPath, filePath, runner) {
-    return runGuardMap({
-      guardMap,
-      type,
-      rootPath,
-      filePath,
-      runner,
-      logger,
-      persistWatcherIssue,
-      clearWatcherIssue
-    });
+    return createGuardRegistryStats(this);
   }
 
   registerSemanticGuard(name, guardFn, metadata = {}) {
-    return this.#registerGuard(this.semanticGuards, 'semantic', name, guardFn, metadata);
+    return registerSemanticGuard(this, name, guardFn, metadata);
   }
 
   registerImpactGuard(name, guardFn, metadata = {}) {
-    return this.#registerGuard(this.impactGuards, 'impact', name, guardFn, metadata);
+    return registerImpactGuard(this, name, guardFn, metadata);
   }
 
   getGuardMetadata(name) {
-    return this.metadata.get(name) || null;
+    return getGuardMetadata(this, name);
   }
 
   listGuards() {
-    return [...this.metadata.values()];
+    return listGuards(this);
   }
 
   async runSemanticGuards(rootPath, filePath, context, atoms, options = {}) {
-    return this.#runGuardMap(this.semanticGuards, 'semantic', rootPath, filePath, async (guardFn) => {
-      return await guardFn(rootPath, filePath, context, atoms, options);
-    });
+    return runGuardGroup(
+      this,
+      this.semanticGuards,
+      'semantic',
+      rootPath,
+      filePath,
+      async (guardFn) => guardFn(rootPath, filePath, context, atoms, options)
+    );
   }
 
   async runImpactGuards(rootPath, filePath, context, options = {}) {
-    return this.#runGuardMap(this.impactGuards, 'impact', rootPath, filePath, async (guardFn) => {
-      return await guardFn(rootPath, filePath, context, options);
-    });
+    return runGuardGroup(
+      this,
+      this.impactGuards,
+      'impact',
+      rootPath,
+      filePath,
+      async (guardFn) => guardFn(rootPath, filePath, context, options)
+    );
   }
 
   async initializeDefaultGuards() {
-    if (this.initialized) {
-      return;
-    }
-
-    if (this.initializationPromise) {
-      await this.initializationPromise;
-      return;
-    }
-
-    const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('./default-guards.js');
-    this.initializationPromise = initializeDefaultGuards({
-      semanticGuards: this.semanticGuards,
-      impactGuards: this.impactGuards,
-      logger,
-      registerAllDefaultSemanticGuards,
-      registerAllDefaultImpactGuards,
-      registry: this
-    });
-
-    try {
-      await this.initializationPromise;
-      this.initialized = true;
-    } finally {
-      this.initializationPromise = null;
-    }
+    return initializeDefaultGuards(this);
   }
 }
 

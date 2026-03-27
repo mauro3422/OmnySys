@@ -19,9 +19,18 @@ async function registerGuardDefinitions(definitions, registerGuard) {
   }
 }
 
+async function registerDefaultGuardGroup(registry, definitions, registerGuard) {
+  try {
+    await registerGuardDefinitions(definitions, registerGuard);
+  } catch (error) {
+    throw error;
+  }
+}
+
 export async function registerAllDefaultSemanticGuards(registry) {
   try {
-    await registerGuardDefinitions(
+    await registerDefaultGuardGroup(
+      registry,
       semanticGuardDefinitions,
       (name, guard, metadata) => registry.registerSemanticGuard(name, guard, metadata)
     );
@@ -32,7 +41,8 @@ export async function registerAllDefaultSemanticGuards(registry) {
 
 export async function registerAllDefaultImpactGuards(registry) {
   try {
-    await registerGuardDefinitions(
+    await registerDefaultGuardGroup(
+      registry,
       impactGuardDefinitions,
       (name, guard, metadata) => registry.registerImpactGuard(name, guard, metadata)
     );

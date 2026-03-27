@@ -7,6 +7,7 @@ import {
   fastRestartOrchestrator,
   invalidateIncrementalState,
   refreshRegistry,
+  purgeRuntimeCache,
   refreshToolRegistrySafely,
   runFullPipeline,
   stopOrchestrator
@@ -43,7 +44,7 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
       };
 
       if (clearCache && cache) {
-        await cache.purge();
+        await purgeRuntimeCache(cache, 'Reindex-only cache cleared');
         result.cacheCleared = true;
       }
 
@@ -95,10 +96,7 @@ function clearPendingHotReloadRestart(server) {
 
 async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
   logger.info('Cache-only flush requested...');
-  if (cache) {
-    await cache.purge();
-    logger.info('In-memory cache cleared');
-  }
+  await purgeRuntimeCache(cache, 'In-memory cache cleared');
   await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
   return {
     success: true,
@@ -113,10 +111,7 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
 async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
   logger.info('Refresh-only requested...');
 
-  if (cache?.purge) {
-    await cache.purge();
-    logger.info('Runtime cache cleared');
-  }
+  await purgeRuntimeCache(cache, 'Runtime cache cleared');
 
   try {
     await reloadServerMetadata({
@@ -176,7 +171,7 @@ async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindex
 
   if (clearCache && cache) {
     logger.info('Clearing local cache before restart...');
-    await cache.purge();
+    await purgeRuntimeCache(cache, null);
     if (reanalyze) {
       logger.info('reanalyze=true: delegating data cleanup to proxy to avoid Windows file locks.');
     }
@@ -209,7 +204,7 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
 
 async function clearStandaloneCache(cache, reanalyze, server, result) {
   logger.info('Clearing cache...');
-  await cache.purge();
+  await purgeRuntimeCache(cache, null);
 
   if (reanalyze) {
     logger.info('Deleting previous analysis (full reindex)...');

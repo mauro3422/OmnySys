@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
+import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
 
 export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPath, changeContext = {}) {
   const stats = await fs.stat(fullPath).catch(() => null);
@@ -9,8 +10,7 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
     return;
   }
 
-  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
-  fileWatcher._logger.info(`[FILE CREATED] ${filePath}${originSuffix}`);
+  logFileLifecycle(`[FILE CREATED] ${filePath}${formatOriginSuffix(changeContext)}`);
 
   const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, false);
   const atoms = analysis.moleculeAtoms || analysis.atoms || [];
@@ -25,10 +25,5 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
   const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
   fileWatcher._logger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
 
-  fileWatcher.emit('file:created', {
-    filePath,
-    analysis,
-    origin: changeContext.origin || 'unknown',
-    source: changeContext.source || null
-  });
+  emitFileLifecycleEvent(fileWatcher, 'file:created', filePath, changeContext, { analysis });
 }

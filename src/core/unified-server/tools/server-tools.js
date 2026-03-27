@@ -1,7 +1,15 @@
 import { createLogger } from '../../../utils/logger.js';
-import { DEFAULT_CACHE_INVALIDATION_PATTERNS, invalidateCachePatterns } from '../../../shared/cache/cache-maintenance.js';
+import { clearAnalysisCacheEntries } from '../../../shared/cache/cache-maintenance.js';
 
 const logger = createLogger('OmnySys:server:tools');
+
+function applyAnalysisCacheCleanup(cache) {
+  if (!cache) {
+    return { invalidated: 0, patterns: [] };
+  }
+
+  return clearAnalysisCacheEntries(cache);
+}
 
 
 /**
@@ -30,12 +38,12 @@ export async function restartServer(clearCache = false) {
     
     if (clearCache && this.cache) {
       logger.info('🧹 Limpiando caché...');
-      this.cache.purge();
+      await this.cache.purge();
       result.cacheCleared = true;
     }
 
     if (this.cache) {
-      const cleanup = invalidateCachePatterns(this.cache, DEFAULT_CACHE_INVALIDATION_PATTERNS);
+      const cleanup = applyAnalysisCacheCleanup(this.cache);
       result.cacheInvalidated = cleanup.invalidated > 0;
       result.cacheInvalidationPatterns = cleanup.patterns;
     }
@@ -65,9 +73,7 @@ export async function clearAnalysisCache() {
     
     const beforeStats = this.cache.getRamCacheStats();
 
-    invalidateCachePatterns(this.cache, DEFAULT_CACHE_INVALIDATION_PATTERNS);
-    this.cache.invalidate('connections');
-    this.cache.invalidate('assessment');
+    applyAnalysisCacheCleanup(this.cache);
     
     const afterStats = this.cache.getRamCacheStats();
     

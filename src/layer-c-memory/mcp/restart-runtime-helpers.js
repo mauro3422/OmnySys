@@ -122,6 +122,19 @@ export async function refreshToolRegistrySafely(refreshToolRegistryFn, successMe
   }
 }
 
+export async function purgeRuntimeCache(cache, message = 'Cache cleared') {
+  if (!cache?.purge) {
+    return false;
+  }
+
+  await cache.purge();
+  if (message) {
+    logger.info(message);
+  }
+
+  return true;
+}
+
 export function buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }) {
   return {
     success: true,

@@ -14,6 +14,7 @@ import {
   removeAtomMetadata,
   removeFileMetadata
 } from './metadata-cleanup.js';
+import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers:delete');
 
@@ -28,17 +29,8 @@ function clearCachedFileState(context, filePath) {
   if (context.fileStats) context.fileStats.delete(filePath);
 }
 
-function emitDeletedEvent(context, filePath, changeContext = {}) {
-  context.emit('file:deleted', {
-    filePath,
-    origin: changeContext.origin || 'unknown',
-    source: changeContext.source || null
-  });
-}
-
 export async function handleDeletedFileLifecycle(context, filePath, changeContext = {}) {
-  const originSuffix = changeContext.origin ? ` (origin=${changeContext.origin})` : '';
-  logger.info(`[FILE DELETING] ${filePath}${originSuffix}`);
+  logFileLifecycle(`[FILE DELETING] ${filePath}${formatOriginSuffix(changeContext)}`);
 
   const fs = await import('fs/promises');
   const fullPath = resolveFullPath(context.rootPath, filePath);
@@ -49,7 +41,7 @@ export async function handleDeletedFileLifecycle(context, filePath, changeContex
     await removeFileMetadata.call(context, filePath);
     await removeAtomMetadata.call(context, filePath);
     clearCachedFileState(context, filePath);
-    emitDeletedEvent(context, filePath, changeContext);
+    emitFileLifecycleEvent(context, 'file:deleted', filePath, changeContext);
     return;
   }
 
@@ -60,7 +52,7 @@ export async function handleDeletedFileLifecycle(context, filePath, changeContex
     await cleanupRelationships.call(context, filePath);
     clearCachedFileState(context, filePath);
     await context.notifyDependents(filePath, 'file_deleted');
-    emitDeletedEvent(context, filePath, changeContext);
+    emitFileLifecycleEvent(context, 'file:deleted', filePath, changeContext);
     logger.info(`[FILE DELETED] ${filePath} - shadows preserved`);
   } catch (error) {
     logger.error(`[DELETE ERROR] ${filePath}:`, error);
