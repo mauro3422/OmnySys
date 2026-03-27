@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.350 - Sprint 16: Impact, Registry, Shared-State, and Conceptual Duplicate Split Batch](changelogs/v0.9.350.md)
 - [v0.9.349 - Sprint 16: Unified Duplicate Coordination Split](changelogs/v0.9.349.md)
 - [v0.9.348 - Sprint 16: Event Leak Core Split](changelogs/v0.9.348.md)
 - [v0.9.347 - Sprint 16: Async Safety Core Split](changelogs/v0.9.347.md)
