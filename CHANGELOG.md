@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.344 - Sprint 16: Circular Persistence Split](changelogs/v0.9.344.md)
 - [v0.9.343 - Sprint 16: Runtime Registry Health Split](changelogs/v0.9.343.md)
 - [v0.9.342 - Sprint 16: Metadata Completeness Guard Split](changelogs/v0.9.342.md)
 - [v0.9.341 - Sprint 16: Semantic Coverage Guard Split](changelogs/v0.9.341.md)
