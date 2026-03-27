@@ -2,85 +2,16 @@
  * Detects exported pipeline atoms that look disconnected after re-analysis.
  */
 
-import Database from 'better-sqlite3';
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { createLogger } from '../../../utils/logger.js';
+import { clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { evaluateAtomTestability } from '../../../shared/compiler/index.js';
+import { persistPipelineOrphanFinding } from './pipeline-orphan-reporting.js';
 import {
-    getDeadCodePlausibilitySummary,
-    evaluateAtomTestability,
-    getPipelineOrphanSummary
-} from '../../../shared/compiler/index.js';
-import {
-    IssueDomains,
-    createIssueType,
-    createStandardContext,
-    StandardSuggestions,
-    isValidGuardTarget
-} from './guard-standards.js';
+    loadPipelineOrphanEvidence,
+    hasPipelineShape
+} from './pipeline-orphan-evidence.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:pipeline-orphan');
-const PIPELINE_NAME_PATTERN = /(persist|analyze|compute|calculate|build|generate|process|index)/i;
-
-function getEffectiveCallerCount(atom) {
-    if ((atom?.callersCount || atom?.callerCount || atom?.callers_count || 0) > 0) {
-        return atom.callersCount || atom.callerCount || atom.callers_count || 0;
-    }
-
-    return 0;
-}
-
-function getEffectiveCalleeCount(atom) {
-    return Math.max(
-        Number(atom?.calleesCount) || 0,
-        Number(atom?.calleeCount) || 0,
-        Number(atom?.callees_count) || 0,
-        Array.isArray(atom?.calls) ? atom.calls.length : 0
-    );
-}
-
-function isProductionPipelineFile(filePath = '') {
-    return typeof filePath === 'string'
-        && filePath.startsWith('src/')
-        && !filePath.startsWith('tests/')
-        && !filePath.startsWith('scripts/');
-}
-
-function hasPipelineShape(atom) {
-    if (!isValidGuardTarget(atom)) return false;
-    if (!(atom?.isExported || atom?.is_exported)) return false;
-    const filePath = atom.filePath || atom.file_path || '';
-    if (!isProductionPipelineFile(filePath)) return false;
-    return PIPELINE_NAME_PATTERN.test(atom?.name || '');
-}
-
-function loadPipelineOrphanEvidence(rootPath, filePath) {
-    let db;
-    try {
-        db = new Database(`${rootPath}/.omnysysdata/omnysys.db`, { readonly: true });
-        const orphanSummary = getPipelineOrphanSummary(db, {
-            candidateLimit: 200,
-            orphanLimit: 100,
-            minComplexity: 0
-        });
-        const deadCodeSummary = getDeadCodePlausibilitySummary(db, {
-            minLines: 0,
-            allowExported: true,
-            suspiciousThreshold: 0
-        });
-
-        return {
-            deadCodeSummary,
-            orphanAtoms: orphanSummary.orphans.filter((atom) => atom.file_path === filePath)
-        };
-    } catch {
-        return {
-            deadCodeSummary: null,
-            orphanAtoms: []
-        };
-    } finally {
-        db?.close();
-    }
-}
 
 export async function detectPipelineOrphans(rootPath, filePath, EventEmitterContext, options = {}) {
     const { atoms = [], verbose = true } = options;
@@ -118,47 +49,15 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
             const evaluation = evaluateAtomTestability(atom);
             return evaluation.severity === 'high' || evaluation.signals.complexity >= 20;
         }) ? 'high' : 'medium';
-        const issueType = createIssueType(IssueDomains.ARCH, 'pipeline_orphan', severity);
-        const message = `Detected ${disconnected.length} exported pipeline atom(s) with no callers, no callees, and no file-level import evidence`;
 
-        await persistWatcherIssue(
+        await persistPipelineOrphanFinding({
             rootPath,
             filePath,
-            issueType,
-            severity,
-            message,
-            createStandardContext({
-                guardName: 'pipeline-orphan-guard',
-                severity,
-                threshold: 0,
-                metricValue: disconnected.length,
-                suggestedAction: 'Verify whether this export is actually wired into the production pipeline or can be removed.',
-                suggestedAlternatives: [
-                    StandardSuggestions.IMPACT_REVIEW,
-                    'If the module is integrated by import only, ensure file_dependencies/import metadata is persisted.',
-                    'If the export is obsolete, remove it or move it to test/support code.'
-                ],
-                extraData: {
-                    fileImporterCount,
-                    deadCodePlausibility: deadCodeSummary ? {
-                        flaggedDeadCode: deadCodeSummary.flaggedDeadCode,
-                        suspiciousDeadCandidates: deadCodeSummary.suspiciousDeadCandidates,
-                        hasCoverageGap: deadCodeSummary.hasCoverageGap
-                    } : null,
-                    disconnectedAtoms: disconnected.slice(0, 10).map((atom) => ({
-                        name: atom.name,
-                        complexity: atom.complexity || 0,
-                        atomType: atom.type || atom.atom_type || 'unknown'
-                    }))
-                }
-            })
-        );
-
-        EventEmitterContext.emit('arch:pipeline-orphan', {
-            filePath,
-            severity,
+            disconnected,
+            deadCodeSummary,
             fileImporterCount,
-            disconnectedAtoms: disconnected.map((atom) => atom.name)
+            severity,
+            EventEmitterContext
         });
 
         if (verbose) {
@@ -166,15 +65,32 @@ export async function detectPipelineOrphans(rootPath, filePath, EventEmitterCont
         }
 
         return [{
-            issueType,
+            issueType: `arch:pipeline_orphan:${severity}`,
             severity,
-            message,
+            message: `Detected ${disconnected.length} exported pipeline atom(s) with no callers, no callees, and no file-level import evidence`,
             disconnectedAtoms: disconnected.map((atom) => atom.name)
         }];
     } catch (error) {
         logger.debug(`[PIPELINE ORPHAN GUARD SKIP] ${filePath}: ${error.message}`);
         return [];
     }
+}
+
+function getEffectiveCallerCount(atom) {
+    if ((atom?.callersCount || atom?.callerCount || atom?.callers_count || 0) > 0) {
+        return atom.callersCount || atom.callerCount || atom.callers_count || 0;
+    }
+
+    return 0;
+}
+
+function getEffectiveCalleeCount(atom) {
+    return Math.max(
+        Number(atom?.calleesCount) || 0,
+        Number(atom?.calleeCount) || 0,
+        Number(atom?.callees_count) || 0,
+        Array.isArray(atom?.calls) ? atom.calls.length : 0
+    );
 }
 
 export default detectPipelineOrphans;
