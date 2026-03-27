@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.347 - Sprint 16: Async Safety Core Split](changelogs/v0.9.347.md)
 - [v0.9.346 - Sprint 16: Hotspot Issues Split](changelogs/v0.9.346.md)
 - [v0.9.345 - Sprint 16: Unified Duplicate Persistence Split](changelogs/v0.9.345.md)
 - [v0.9.344 - Sprint 16: Circular Persistence Split](changelogs/v0.9.344.md)
