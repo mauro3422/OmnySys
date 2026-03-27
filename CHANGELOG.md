@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.338 - Sprint 16: Topology Regression Guard Split](changelogs/v0.9.338.md)
 - [v0.9.337 - Sprint 16: Pipeline Orphan Guard Split](changelogs/v0.9.337.md)
 - [v0.9.336 - Sprint 16: Conceptual Duplicate Risk Split](changelogs/v0.9.336.md)
 - [v0.9.335 - Sprint 16: Unified Duplicate Guard Split](changelogs/v0.9.335.md)
