@@ -18,16 +18,6 @@ import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
 } from '../../../shared/compiler/index.js';
-import {
-    buildStructuralFindings,
-    collectCandidateDnas,
-    loadStructuralDuplicateRows,
-    loadStructuralLocalAtoms
-} from './duplicate-structural-core.js';
-import {
-    loadConceptualLocalAtoms,
-    detectConceptualFindings
-} from './duplicate-conceptual-core.js';
 import { persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
 import {
     clearUnifiedDuplicateIssues,
@@ -36,7 +26,8 @@ import {
     buildUnifiedDebtHistory,
     coordinateUnifiedDuplicateFindings
 } from './unified-duplicate-guard-helpers.js';
-import { summarizeAtomTestability } from '../../../shared/compiler/index.js';
+import { runStructuralDuplicateGuard } from './unified-duplicate-guard-structural.js';
+import { runConceptualDuplicateGuard } from './unified-duplicate-guard-conceptual.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 
@@ -125,75 +116,6 @@ export async function detectUnifiedDuplicateRisk(rootPath, filePath, EventEmitte
         logger.error(`[UNIFIED DUPLICATE GUARD ERROR] ${normalizedFilePath}: ${error.message}`);
         console.error('[UNIFIED DUPLICATE GUARD ERROR]', error);
         return { structural: [], conceptual: [], coordinated: null, error: error.message };
-    }
-}
-
-async function runStructuralDuplicateGuard(repo, normalizedFilePath, providedAtoms, options) {
-    const { maxFindings, minLinesOfCode } = options;
-
-    try {
-        const { getDuplicateKeySqlForMode, DUPLICATE_MODES } = await import('#layer-c/storage/repository/utils/index.js');
-
-        const duplicateMode = DUPLICATE_MODES.STRUCTURAL;
-        const duplicateKeySql = getDuplicateKeySqlForMode(duplicateMode, 'a.dna_json');
-
-        const localAtoms = loadStructuralLocalAtoms({
-            repo,
-            normalizedFilePath,
-            providedAtoms,
-            minLinesOfCode,
-            maxFindings,
-            duplicateMode,
-            duplicateKeySql
-        });
-
-        if (localAtoms.length === 0) {
-            return [];
-        }
-
-        const { isLowSignalName } = await import('./guard-standards.js');
-        const candidateDnas = collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName);
-
-        if (candidateDnas.length === 0) {
-            return [];
-        }
-
-        const duplicateRows = loadStructuralDuplicateRows(repo, candidateDnas, normalizedFilePath, duplicateKeySql);
-        if (duplicateRows.length === 0) {
-            return [];
-        }
-
-        return buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings);
-    } catch (error) {
-        logger.debug(`[STRUCTURAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
-        return [];
-    }
-}
-
-async function runConceptualDuplicateGuard(repo, rootPath, normalizedFilePath, options) {
-    const { maxFindings, minLinesOfCode } = options;
-
-    try {
-        const { isLowSignalName } = await import('./guard-standards.js');
-        const localAtoms = loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode);
-
-        if (localAtoms.length === 0) {
-            return [];
-        }
-
-        const testabilitySummary = summarizeAtomTestability(localAtoms);
-        return await detectConceptualFindings(
-            repo,
-            normalizedFilePath,
-            localAtoms,
-            maxFindings,
-            isLowSignalName,
-            testabilitySummary.severity,
-            rootPath
-        );
-    } catch (error) {
-        logger.debug(`[CONCEPTUAL GUARD SKIP] ${normalizedFilePath}: ${error.message}`);
-        return [];
     }
 }
 
