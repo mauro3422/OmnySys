@@ -42,6 +42,19 @@ export const actionToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_folderize_family',
+    description: 'Aplica un plan de folderizaci?n aprobado: mueve una familia cohesiva a una carpeta dedicada, actualiza imports y valida el resultado.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizable dentro de la DB' },
+        execute: { type: 'boolean', default: false, description: 'Si es true, mueve los archivos y reescribe imports. Si es false, solo devuelve el plan.' },
+        validateAfterMove: { type: 'boolean', default: true, description: 'Si es true, valida imports luego de mover la familia.' }
+      },
+      required: ['candidatePath']
+    }
+  },
+  {
     name: 'mcp_omnysystem_fix_imports',
     description: 'Resuelve automáticamente los imports rotos en un archivo buscando los símbolos en el grafo global del proyecto.',
     inputSchema: {

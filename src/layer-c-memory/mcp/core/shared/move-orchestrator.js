@@ -7,6 +7,7 @@ import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../
 import { atomic_edit } from '../../tools/atomic-edit/index.js';
 import { extractImportsFromCode } from '../../tools/atomic-edit/exports.js';
 import { reindexFile } from '../../tools/atomic-edit/reindex.js';
+import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/compiler-persistence.js';
 
 const logger = createLogger('OmnySys:move:orchestrator');
 
@@ -48,6 +49,11 @@ export class MoveOrchestrator {
 
             // 3. Re-indexar el archivo en su nueva ubicación para que el sistema lo reconozca
             await reindexFile(newPath, projectPath);
+
+            await Promise.allSettled([
+                removePersistedFileMetadata(projectPath, oldPath),
+                removePersistedAtomMetadata(projectPath, oldPath)
+            ]);
 
             // También borramos el átomo viejo del índice si es necesario (el reindexFile suele manejarlo por path)
             // pero para estar seguros, el sistema de limpieza de átomos huérfanos debería actuar o podemos forzarlo.

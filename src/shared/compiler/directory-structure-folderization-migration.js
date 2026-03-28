@@ -84,6 +84,20 @@ function decideMigration(candidate, importImpact) {
   return 'approve';
 }
 
+function buildRewriteMap(moveTargets = []) {
+  const rewriteMap = {};
+
+  for (const target of moveTargets) {
+    if (!target?.from || !target?.to) {
+      continue;
+    }
+
+    rewriteMap[normalizeFolderizationPath(target.from)] = normalizeFolderizationPath(target.to);
+  }
+
+  return rewriteMap;
+}
+
 export function buildFolderizationMigrationPlanFromRows(candidate, rows = []) {
   if (!candidate) {
     return null;
@@ -105,6 +119,7 @@ export function buildFolderizationMigrationPlanFromRows(candidate, rows = []) {
       importMetadata: 'files.imports_json',
       exportMetadata: 'files.exports_json'
     },
+    rewriteMap: buildRewriteMap(moveTargets),
     candidate: {
       familyRoot: candidate.familyRoot,
       directory: candidate.directory,

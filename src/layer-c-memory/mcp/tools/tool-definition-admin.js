@@ -20,6 +20,31 @@ export const adminToolDefinitions = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
+    name: 'mcp_omnysystem_list_tools',
+    description: 'Returns the canonical MCP tool inventory grouped by query, action, and admin categories, using the registry as the source of truth.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['all', 'query', 'action', 'admin'],
+          default: 'all',
+          description: 'Filter by tool category'
+        },
+        includeSchemas: {
+          type: 'boolean',
+          default: true,
+          description: 'Include each tool input schema in the inventory response'
+        },
+        namePattern: {
+          type: 'string',
+          description: 'Optional substring filter over tool names and descriptions'
+        }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_get_recent_errors',
     description: 'Returns recent warnings/errors captured by the logger and clears them.',
     inputSchema: { type: 'object', properties: {} }
