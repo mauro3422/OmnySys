@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.361 - Sprint 16: Architectural Debt Score Calculators Folderization Pilot](changelogs/v0.9.361.md)
 - [v0.9.360 - Sprint 16: Folderization Candidate Detection Batch](changelogs/v0.9.360.md)
 - [v0.9.359 - Sprint 16: Pipeline Orphan Evidence Split Batch](changelogs/v0.9.359.md)
 - [v0.9.358 - Sprint 16: Circular Guard Detection Split Batch](changelogs/v0.9.358.md)

@@ -19,7 +19,7 @@ import {
   calculatePatternScore,
   calculateCouplingScore,
   calculateDuplicationScore
-} from './architectural-debt-score-calculators.js';
+} from './architectural-debt-score/calculators/index.js';
 import { analyzeDirectoryStructure } from './directory-structure-analyzer.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');

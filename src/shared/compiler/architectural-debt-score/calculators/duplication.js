@@ -1,6 +1,6 @@
 import { createLogger } from '#utils/logger.js';
-import { loadDuplicateRows } from './architectural-debt-score-repository.js';
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { loadDuplicateRows } from '../../architectural-debt-score-repository.js';
+import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 

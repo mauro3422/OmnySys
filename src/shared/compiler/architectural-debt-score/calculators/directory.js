@@ -1,8 +1,8 @@
 import { createLogger } from '#utils/logger.js';
-import { loadDistinctFilePaths } from './architectural-debt-score-repository.js';
-import { detectFileType, validateFileLocation } from './directory-structure-analyzer.js';
-import { findFolderizationCandidates } from './directory-structure-folderization.js';
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { loadDistinctFilePaths } from '../../architectural-debt-score-repository.js';
+import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer.js';
+import { findFolderizationCandidates } from '../../directory-structure-folderization.js';
+import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 
