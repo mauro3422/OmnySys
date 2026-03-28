@@ -1,4 +1,4 @@
-import { buildPolicyImportMap, collectManualReuseFindings } from './policy-conformance-reuse.js';
+import { buildPolicyImportMap, collectManualReuseFindings } from './reuse.js';
 import { collectManualDriftFindings } from './policy-conformance-drift.js';
 import { collectConformanceFindings } from './policy-conformance-rules.js';
 

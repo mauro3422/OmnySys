@@ -8,4 +8,4 @@ export {
 
 export {
   collectManualReuseFindings
-} from './policy-conformance-reuse-findings.js';
+} from './reuse-findings.js';

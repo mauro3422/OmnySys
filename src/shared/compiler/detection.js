@@ -2,7 +2,7 @@ import {
   collectManualPolicyFindingsForCompiler,
   collectConformanceFindingsForCompiler,
   buildCompilerPolicyImportMap
-} from './policy-conformance-helpers.js';
+} from './helpers.js';
 import { isCompilerRuntimeFile } from './file-discovery.js';
 
 function normalizePathLocal(p) {

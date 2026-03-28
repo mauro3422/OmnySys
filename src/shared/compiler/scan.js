@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { discoverCompilerFiles } from './file-discovery.js';
-import { detectCompilerPolicyDriftFromSource } from './policy-conformance-detection.js';
+import { detectCompilerPolicyDriftFromSource } from './detection.js';
 
 export async function scanCompilerPolicyDrift(rootPath, options = {}) {
   const { limit = 20 } = options;
