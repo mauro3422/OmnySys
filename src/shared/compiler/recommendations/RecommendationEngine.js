@@ -18,6 +18,11 @@ const CANONICAL_TEMPLATES = {
         action: 'Relocate file to maintain structural conformance',
         strategy: 'directory_alignment'
     }),
+    flat_family_sprawl: (ctx) => ({
+        message: `Folderize ${ctx.familyRoot} into a dedicated subdirectory under ${ctx.directory} and keep a barrel/index entrypoint.`,
+        action: 'Group related helpers into a dedicated folder with a thin barrel',
+        strategy: 'folderization'
+    }),
     high_coupling: () => ({
         message: 'Consider splitting into smaller modules or using dependency injection',
         action: 'Reduce import count to improve modularity',

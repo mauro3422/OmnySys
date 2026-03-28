@@ -222,6 +222,11 @@ export {
 } from './canonical-reuse-guidance.js';
 
 export {
+  deriveFlatFamilyRoot,
+  findFolderizationCandidates
+} from './directory-structure-folderization.js';
+
+export {
   normalizeDerivedRiskLevel
 } from './risk-level.js';
 
