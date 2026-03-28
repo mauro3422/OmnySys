@@ -35,7 +35,7 @@ export function buildCompilerReadinessStatus({
   }
 
   return {
-    ready: checks.phase2Complete && checks.societiesReady && checks.dedupHealthy && checks.sessionCountsAligned,
+    ready: checks.phase2Complete && checks.societiesReady && checks.dedupHealthy,
     checks,
     warnings
   };
