@@ -164,10 +164,8 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     // 3.8: Caller Pattern Detection
     const timerPattern = startTimer('6f. Caller pattern detection');
     if (verbose) logger.info('🏷️  Detecting caller patterns...');
-    enrichWithCallerPattern(allAtoms);
-
-    // Todos los átomos tienen callerPattern ahora
-    allAtoms.forEach(a => modifiedAtoms.add(a));
+    const callerPatternChangedAtoms = enrichWithCallerPattern(allAtoms);
+    callerPatternChangedAtoms.forEach(a => modifiedAtoms.add(a));
 
     if (verbose) {
         const patternStats = {};
@@ -179,7 +177,7 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
             .map(([id, count]) => `${id}: ${count}`);
-        logger.info(`  ✓ Caller patterns: ${topPatterns.join(', ')}\n`);
+        logger.info(`  ✓ Caller patterns: ${topPatterns.join(', ')}${callerPatternChangedAtoms.length > 0 ? ` (${callerPatternChangedAtoms.length} changed)` : ' (unchanged)'}\n`);
     }
     timerPattern.end(verbose);
 

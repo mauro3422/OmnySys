@@ -1,4 +1,6 @@
-export function saveFileSummariesBatch(repo, entries, now = new Date().toISOString()) {
+import { chunkArray } from '../../shared/utils/array-utils.js';
+
+export function saveFileSummariesBatch(repo, entries, now = new Date().toISOString(), batchSize = 500) {
     if (!repo?.db || !entries || entries.length === 0) {
         return;
     }
@@ -18,20 +20,23 @@ export function saveFileSummariesBatch(repo, entries, now = new Date().toISOStri
             updated_at = datetime('now')
     `);
 
-    const saveFileSummariesTx = repo.db.transaction((batchEntries) => {
-        for (const [filePath, summary] of batchEntries) {
-            upsertFileSummary.run(
-                filePath,
-                JSON.stringify(summary.imports || []),
-                JSON.stringify(summary.exports || []),
-                summary.moduleName || null,
-                Number(summary.atomCount || 0),
-                Number(summary.totalLines || 0),
-                summary.hash || null,
-                now
-            );
-        }
-    });
+    const size = Math.max(1, Number(batchSize) || 500);
+    for (const batchEntries of chunkArray(entries, size)) {
+        const saveFileSummariesTx = repo.db.transaction((chunk) => {
+            for (const [filePath, summary] of chunk) {
+                upsertFileSummary.run(
+                    filePath,
+                    JSON.stringify(summary.imports || []),
+                    JSON.stringify(summary.exports || []),
+                    summary.moduleName || null,
+                    Number(summary.atomCount || 0),
+                    Number(summary.totalLines || 0),
+                    summary.hash || null,
+                    now
+                );
+            }
+        });
 
-    saveFileSummariesTx(entries);
+        saveFileSummariesTx(batchEntries);
+    }
 }

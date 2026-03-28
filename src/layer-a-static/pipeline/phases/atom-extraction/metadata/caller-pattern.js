@@ -219,11 +219,12 @@ export function detectCallerPattern(atom, filePath = '') {
  * @param {Array} atoms - Array de átomos
  */
 export function enrichWithCallerPattern(atoms) {
+  const changedAtoms = [];
+
   for (const atom of atoms) {
     const filePath = atom.filePath || '';
     const result = detectCallerPattern(atom, filePath);
-    
-    atom.callerPattern = {
+    const nextPattern = {
       id: result.pattern.id,
       label: result.pattern.label,
       icon: result.pattern.icon,
@@ -231,7 +232,24 @@ export function enrichWithCallerPattern(atoms) {
       hasCallers: result.pattern.hasCallers,
       confidence: result.confidence
     };
+    const previousPattern = atom.callerPattern || null;
+
+    atom.callerPattern = nextPattern;
+
+    if (
+      !previousPattern ||
+      previousPattern.id !== nextPattern.id ||
+      previousPattern.label !== nextPattern.label ||
+      previousPattern.icon !== nextPattern.icon ||
+      previousPattern.reason !== nextPattern.reason ||
+      previousPattern.hasCallers !== nextPattern.hasCallers ||
+      previousPattern.confidence !== nextPattern.confidence
+    ) {
+      changedAtoms.push(atom);
+    }
   }
+
+  return changedAtoms;
 }
 
 export default { detectCallerPattern, enrichWithCallerPattern, CALLER_PATTERNS };

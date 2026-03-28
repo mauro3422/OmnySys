@@ -11,6 +11,43 @@ import {
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
+function isSqliteBusyError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'SQLITE_BUSY' ||
+    error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database is locked') ||
+    message.includes('database is busy')
+  );
+}
+
+function sleepSync(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return;
+  const shared = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(shared, 0, 0, ms);
+}
+
+function runWithBusyRetry(operation, label, attempts = 5, baseDelayMs = 25) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return operation();
+    } catch (error) {
+      lastError = error;
+      if (!isSqliteBusyError(error) || attempt === attempts - 1) {
+        throw error;
+      }
+
+      const delay = baseDelayMs * (attempt + 1);
+      logger.debug(`[DEDUP] Retrying ${label} after SQLite busy lock (${attempt + 1}/${attempts}) in ${delay}ms`);
+      sleepSync(delay);
+    }
+  }
+
+  throw lastError;
+}
+
 export function reserveSession(clientInfo = {}, proposedSessionId) {
   const clientId = extractClientId(clientInfo);
   const now = Date.now();
@@ -55,15 +92,16 @@ export function findSessionByClientId(clientId) {
   if (!this.statements || !clientId) return null;
 
   try {
-    if (this.activeSessions.has(clientId)) {
-      const cached = this.activeSessions.get(clientId);
-      if (isDedupFresh(cached.updated_at)) {
-        logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${cached.id}`);
-        return cached;
-      }
+    const cached = this.activeSessions.get(clientId);
+    if (cached && isDedupFresh(cached.updated_at)) {
+      logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${cached.id}`);
+      return cached;
     }
 
-    const row = this.statements.getByClientId.get(clientId);
+    const row = runWithBusyRetry(
+      () => this.statements.getByClientId.get(clientId),
+      `findSessionByClientId(${clientId})`
+    );
     if (!row) return null;
 
     const session = hydrateSessionRow(row);
@@ -84,7 +122,10 @@ export function deduplicateSessions(clientId, keepSessionId) {
   if (!this.statements || !clientId) return 0;
 
   try {
-    const info = this.statements.deleteByClientId.run(clientId, keepSessionId);
+    const info = runWithBusyRetry(
+      () => this.statements.deleteByClientId.run(clientId, keepSessionId),
+      `deduplicateSessions(${clientId})`
+    );
     if (info.changes > 0) {
       logger.info(`[DEDUP] Removed ${info.changes} duplicate sessions for ${clientId}, keeping ${keepSessionId}`);
     }
@@ -117,14 +158,17 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
     const createdAt = existing ? existing.created_at : now;
 
     if (this.statements) {
-      this.statements.upsert.run(
-        sessionId,
-        clientId,
-        JSON.stringify(clientInfo),
-        JSON.stringify(metadata),
-        createdAt,
-        now,
-        1
+      runWithBusyRetry(
+        () => this.statements.upsert.run(
+          sessionId,
+          clientId,
+          JSON.stringify(clientInfo),
+          JSON.stringify(metadata),
+          createdAt,
+          now,
+          1
+        ),
+        `saveSession(${sessionId})`
       );
     }
 
@@ -146,7 +190,12 @@ export function getSession(sessionId) {
   if (!this.statements) return null;
 
   try {
-    return hydrateSessionRow(this.statements.get.get(sessionId));
+    return hydrateSessionRow(
+      runWithBusyRetry(
+        () => this.statements.get.get(sessionId),
+        `getSession(${sessionId})`
+      )
+    );
   } catch (err) {
     logger.error(`Failed to get session ${sessionId}: ${err.message}`);
     return null;
@@ -158,7 +207,10 @@ export function updateActivity(sessionId) {
     this.ensureInitialized();
     const now = new Date().toISOString();
     if (this.statements) {
-      this.statements.updateActivity.run(now, sessionId);
+      runWithBusyRetry(
+        () => this.statements.updateActivity.run(now, sessionId),
+        `updateActivity(${sessionId})`
+      );
     }
     updateCachedSessionActivity(this.activeSessions, sessionId, now);
   } catch (err) {
@@ -172,7 +224,10 @@ export function deleteSession(sessionId) {
     this.releasePendingSession(sessionId);
     removeSessionFromCache(this.activeSessions, sessionId);
     if (this.statements) {
-      this.statements.markInactive.run(new Date().toISOString(), sessionId);
+      runWithBusyRetry(
+        () => this.statements.markInactive.run(new Date().toISOString(), sessionId),
+        `deleteSession(${sessionId})`
+      );
     }
   } catch (err) {
     logger.error(`Failed to delete session ${sessionId}: ${err.message}`);
@@ -184,7 +239,10 @@ export function cleanup(maxAgeHours = 24) {
 
   try {
     const cutoff = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000)).toISOString();
-    const info = this.statements.cleanup.run(cutoff);
+    const info = runWithBusyRetry(
+      () => this.statements.cleanup.run(cutoff),
+      'cleanupSessions'
+    );
     if (info.changes > 0) {
       logger.info(`[DEDUP] Cleaned up ${info.changes} expired MCP sessions`);
     }

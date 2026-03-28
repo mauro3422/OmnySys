@@ -17,6 +17,7 @@ import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
 import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 import { resolveCallTargetId } from './helpers/call-target-resolver.js';
 import { normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
+import { chunkArray } from '../../../../shared/utils/array-utils.js';
 
 function getAtomFilePath(atom) {
   return atom.file_path || atom.file || atom.filePath || 'unknown';
@@ -166,12 +167,45 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
   }
 
   // Metodos antiguos mantenidos por compatibilidad pero delegando a handlers
-  saveManyBulk(atoms) {
-    return this._saveAtomsBatch(atoms, null, false);
+  saveManyBulk(atoms, batchSize = 500) {
+    if (!Array.isArray(atoms) || atoms.length === 0) {
+      return atoms;
+    }
+
+    const size = Math.max(1, Number(batchSize) || 500);
+    if (atoms.length <= size) {
+      return this._saveAtomsBatch(atoms, null, false);
+    }
+
+    const savedAtoms = [];
+    for (const batch of chunkArray(atoms, size)) {
+      const batchResult = this._saveAtomsBatch(batch, null, false);
+      if (Array.isArray(batchResult) && batchResult.length > 0) {
+        savedAtoms.push(...batchResult);
+      }
+    }
+
+    return savedAtoms;
   }
 
-  saveRelationsBulk(relations) {
-    return connectionManager.transaction(() => this._saveRelationRows(relations, new Date().toISOString()));
+  saveRelationsBulk(relations, batchSize = 500) {
+    if (!Array.isArray(relations) || relations.length === 0) {
+      return relations;
+    }
+
+    const size = Math.max(1, Number(batchSize) || 500);
+    if (relations.length <= size) {
+      return connectionManager.transaction(() => this._saveRelationRows(relations, new Date().toISOString()));
+    }
+
+    const results = [];
+    for (const batch of chunkArray(relations, size)) {
+      results.push(
+        connectionManager.transaction(() => this._saveRelationRows(batch, new Date().toISOString()))
+      );
+    }
+
+    return results;
   }
 
   _saveRelationRows(relations, now) {

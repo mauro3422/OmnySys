@@ -40,17 +40,12 @@ function getWorkerCount(totalFiles, existingHashCount = 0, extractionDepth = 'st
     const numCPUs = os.cpus().length;
     const optimalWorkers = Math.max(1, numCPUs - 2);
 
-    // Cold start means no persisted hash baseline yet, so concurrent writers
-    // would contend for the same SQLite file. Keep the first full reindex
-    // serial until the baseline exists.
     if (existingHashCount === 0) {
-        return 1;
+        return Math.min(optimalWorkers, 4);
     }
 
-    // Deep scans are the most write-heavy path (Phase 2 / semantic enrichment),
-    // so keep them serial to avoid SQLite writer contention across worker threads.
     if (extractionDepth === 'deep') {
-        return 1;
+        return Math.min(optimalWorkers, 2);
     }
 
     return totalFiles < 50 ? Math.min(2, optimalWorkers) : optimalWorkers;
@@ -180,9 +175,9 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
 
     if (verbose) {
         if (existingHashCount === 0) {
-            logger.info('  Cold-start detected: serializing writer threads until the file-hash baseline exists.');
-        } else if (extractionDepth === 'deep' && workerCount === 1) {
-            logger.info('  Deep scan detected: serializing writer threads to avoid SQLite lock contention.');
+            logger.info('  Cold-start detected: using limited parallel workers until the file-hash baseline exists.');
+        } else if (extractionDepth === 'deep') {
+            logger.info('  Deep scan detected: using a conservative worker cap to reduce SQLite contention.');
         }
         logger.info(`  Booting ${workerCount} Worker Threads (Optimal Pool) for Parallel Analysis...`);
     }
