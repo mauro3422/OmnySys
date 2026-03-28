@@ -5,6 +5,7 @@
 
 import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
+import { compactToolInventory } from './status-tool-inventory.js';
 
 function takeSample(items = [], limit = 3) {
   if (!Array.isArray(items)) return [];
@@ -147,21 +148,6 @@ function compactCompilerExplainabilitySummary(explainability) {
       primaryIssue: explainability.dataGatewayContract.summary?.primaryIssue
     } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)
-  };
-}
-
-function compactToolInventory(toolInventory) {
-  if (!toolInventory || typeof toolInventory !== 'object') return null;
-
-  const snapshot = toolInventory.snapshot || {};
-  const report = toolInventory.report || {};
-
-  return {
-    totalTools: snapshot.summary?.totalTools || 0,
-    categories: snapshot.summary?.categories || [],
-    dominantCategory: report.dominantCategory || null,
-    concentration: report.concentration || 0,
-    recommendations: takeSample(report.recommendations || [], 3)
   };
 }
 
