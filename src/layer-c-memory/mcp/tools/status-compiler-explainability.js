@@ -2,6 +2,12 @@ import {
   loadCompilerDiagnosticsSnapshot,
   summarizeCompilerPolicyDrift
 } from '../../../shared/compiler/index.js';
+import {
+  buildFolderizationCandidateReport,
+  buildFolderizationFamilyStateReportFromRepo,
+  buildFolderizationMigrationPlanFromRepo,
+  findFolderizationCandidatesFromRepo
+} from '../../../shared/compiler/directory-structure-folderization.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null) {
   try {
@@ -24,6 +30,11 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       }
     });
 
+    const folderizationCandidateList = findFolderizationCandidatesFromRepo(repo);
+    const folderizationFamilyState = buildFolderizationFamilyStateReportFromRepo(repo);
+    const folderizationMigrationPlans = buildFolderizationMigrationPlanFromRepo(repo);
+    const folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidateList);
+
     return {
       policySummary,
       standardization: snapshot.standardizationReport,
@@ -40,7 +51,12 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       watcherStats,
       dataGatewayContract: snapshot.dataGatewayContract,
       databaseHealth: snapshot.databaseHealth,
-      surfaceAudit: snapshot.surfaceAudit
+      surfaceAudit: snapshot.surfaceAudit,
+      folderization: {
+        candidateReport: folderizationCandidateReport,
+        familyState: folderizationFamilyState,
+        migrationPlans: folderizationMigrationPlans
+      }
     };
   } catch (error) {
     return {

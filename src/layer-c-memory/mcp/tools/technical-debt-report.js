@@ -9,6 +9,13 @@
  */
 
 import { AggregateMetricsTool } from './aggregate-metrics.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
+import {
+    buildFolderizationCandidateReport,
+    buildFolderizationFamilyStateReportFromRepo,
+    buildFolderizationMigrationPlanFromRepo,
+    findFolderizationCandidatesFromRepo
+} from '../../../shared/compiler/directory-structure-folderization.js';
 
 /**
  * Ejecuta reporte completo de deuda técnica
@@ -20,6 +27,9 @@ export async function getTechnicalDebtReport(args, context) {
     const aggregateTool = new AggregateMetricsTool();
 
     try {
+        const projectPath = context?.projectPath || null;
+        const repo = projectPath ? getRepository(projectPath) : null;
+
         // Ejecutar todas las métricas en paralelo
         const [
             duplicatesResult,
@@ -30,6 +40,19 @@ export async function getTechnicalDebtReport(args, context) {
             aggregateTool.execute({ aggregationType: 'conceptual_duplicates', limit: 10 }, context),
             aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
         ]);
+
+        const folderizationCandidateList = repo ? findFolderizationCandidatesFromRepo(repo) : [];
+        const folderizationCandidates = buildFolderizationCandidateReport(folderizationCandidateList);
+        const folderizationFamilyState = repo ? buildFolderizationFamilyStateReportFromRepo(repo) : {
+            totalFamilies: 0,
+            stateCounts: { flat: 0, mixed: 0, already_folderized: 0 },
+            topFamilies: []
+        };
+        const folderizationMigrationPlans = repo ? buildFolderizationMigrationPlanFromRepo(repo) : {
+            candidateCount: 0,
+            focusCandidate: null,
+            candidates: []
+        };
 
         // Consolidar resultados
         const report = {
@@ -48,6 +71,12 @@ export async function getTechnicalDebtReport(args, context) {
                     score: pipelineHealthResult.healthScore || 0,
                     grade: pipelineHealthResult.grade || 'F',
                     orphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
+                },
+                folderization: {
+                    candidates: folderizationCandidates.candidateCount || 0,
+                    flatFamilies: folderizationFamilyState.stateCounts.flat || 0,
+                    mixedFamilies: folderizationFamilyState.stateCounts.mixed || 0,
+                    alreadyFolderizedFamilies: folderizationFamilyState.stateCounts.already_folderized || 0
                 }
             },
             structural: {
@@ -88,16 +117,26 @@ export async function getTechnicalDebtReport(args, context) {
                     diagnosis: orphan.diagnosis
                 }))
             },
+            folderization: {
+                candidates: folderizationCandidates.topCandidates || [],
+                familyState: folderizationFamilyState,
+                migrationPlans: folderizationMigrationPlans.candidates || [],
+                focusPlan: folderizationMigrationPlans.focusCandidate || null
+            },
             debtScore: calculateDebtScore({
                 structuralGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
                 conceptualGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
                 highRiskConceptual: conceptualResult.summary?.highRisk || 0,
-                pipelineOrphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
+                pipelineOrphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0,
+                flatFamilies: folderizationFamilyState.stateCounts.flat || 0,
+                mixedFamilies: folderizationFamilyState.stateCounts.mixed || 0
             }),
             priorityActions: generatePriorityActions({
                 structural: duplicatesResult.remediation?.items || [],
                 conceptual: conceptualResult.groups || [],
-                orphans: pipelineHealthResult.orphanPipelineFunctions || []
+                orphans: pipelineHealthResult.orphanPipelineFunctions || [],
+                folderization: folderizationMigrationPlans.candidates || [],
+                folderizationFamilyState
             }),
             timestamp: new Date().toISOString()
         };
@@ -126,7 +165,9 @@ function calculateDebtScore(metrics) {
         structuralGroups = 0,
         conceptualGroups = 0,
         highRiskConceptual = 0,
-        pipelineOrphans = 0
+        pipelineOrphans = 0,
+        flatFamilies = 0,
+        mixedFamilies = 0
     } = metrics;
 
     // Pesos: structural=3x, conceptual=2x, highRisk=5x, orphans=4x
@@ -134,7 +175,9 @@ function calculateDebtScore(metrics) {
         (structuralGroups * 3) +
         (conceptualGroups * 2) +
         (highRiskConceptual * 5) +
-        (pipelineOrphans * 4)
+        (pipelineOrphans * 4) +
+        (flatFamilies * 2) +
+        (mixedFamilies * 3)
     );
 
     // Normalizar a 0-100 (max esperado: 500)
@@ -147,7 +190,9 @@ function calculateDebtScore(metrics) {
             structural: structuralGroups * 3,
             conceptual: conceptualGroups * 2,
             highRisk: highRiskConceptual * 5,
-            orphans: pipelineOrphans * 4
+            orphans: pipelineOrphans * 4,
+            flatFamilies: flatFamilies * 2,
+            mixedFamilies: mixedFamilies * 3
         }
     };
 }
@@ -157,7 +202,7 @@ function calculateDebtScore(metrics) {
  */
 function generatePriorityActions(data) {
     const actions = [];
-    const { structural, conceptual, orphans } = data;
+    const { structural, conceptual, orphans, folderization = [], folderizationFamilyState = null } = data;
 
     // Top structural duplicates
     if (structural.length > 0) {
@@ -191,6 +236,32 @@ function generatePriorityActions(data) {
             action: `Revisar '${orphan.name}' en ${orphan.file}`,
             impact: orphan.diagnosis,
             urgencyScore: orphan.complexity
+        });
+    });
+
+    const folderizableFamilies = folderization
+        .filter(plan => plan?.decision === 'approve')
+        .slice(0, 5);
+    folderizableFamilies.forEach(plan => {
+        actions.push({
+            priority: 'high',
+            type: 'folderization_candidate',
+            action: `Folderizar ${plan.candidate?.familyRoot || 'family'} en ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
+            impact: `Requiere ${plan.moveTargets?.length || 0} movimientos y ${plan.importImpact?.rewriteCount || 0} reescrituras`,
+            urgencyScore: (plan.candidate?.confidence || 0) + (plan.importImpact?.rewriteCount || 0)
+        });
+    });
+
+    const mixedFamilies = folderizationFamilyState?.topFamilies
+        ?.filter(family => family.migrationState === 'mixed')
+        ?.slice(0, 3) || [];
+    mixedFamilies.forEach(family => {
+        actions.push({
+            priority: 'medium',
+            type: 'folderization_mixed',
+            action: `Completar migración de ${family.familyRoot} en ${family.directory}`,
+            impact: `Estado mixto: ${family.rootFileCount} raíz / ${family.folderFileCount} folderizados`,
+            urgencyScore: family.rootFileCount + family.folderFileCount
         });
     });
 

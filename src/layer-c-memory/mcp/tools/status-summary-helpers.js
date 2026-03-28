@@ -145,6 +145,21 @@ export function compactCompilerExplainabilitySummary(explainability) {
       nextAction: explainability.dataGatewayContract.summary?.nextAction,
       primaryIssue: explainability.dataGatewayContract.summary?.primaryIssue
     } : null,
+    folderization: explainability.folderization ? {
+      candidateReport: explainability.folderization.candidateReport ? {
+        candidateCount: explainability.folderization.candidateReport.candidateCount,
+        topCandidates: takeSample(explainability.folderization.candidateReport.topCandidates || [], 3)
+      } : null,
+      familyState: explainability.folderization.familyState ? {
+        totalFamilies: explainability.folderization.familyState.totalFamilies,
+        stateCounts: explainability.folderization.familyState.stateCounts,
+        topFamilies: takeSample(explainability.folderization.familyState.topFamilies || [], 3)
+      } : null,
+      migrationPlans: explainability.folderization.migrationPlans ? {
+        candidateCount: explainability.folderization.migrationPlans.candidateCount,
+        focusDecision: explainability.folderization.migrationPlans.focusCandidate?.decision || null
+      } : null
+    } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)
   };
 }
