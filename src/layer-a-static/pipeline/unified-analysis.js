@@ -6,7 +6,11 @@
  * Optimized for systems with high RAM (16GB+).
  */
 
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import {
+    REPOSITORY_MUTATION_DURABILITY,
+    getRepository,
+    runRepositoryMutation
+} from '#layer-c/storage/repository/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { logMemoryUsage } from '../../utils/memory-telemetry.js';
 import { BatchTimer } from '../../utils/performance-tracker.js';
@@ -14,6 +18,7 @@ import os from 'os';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import { getGitStats } from '../../utils/git-analyzer.js';
+import { saveFileSummariesBatch } from './file-summary-storage.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
 
@@ -45,19 +50,31 @@ function handleWorkerProgress(msg, batchTimer, verbose, totalFiles, filesSkipped
     }
 }
 
-function handleWorkerDone(msg, workerIndex, parsedFiles, pendingHashEntries, totalsRef) {
+function collectWorkerWrites(msg, pendingWrites) {
+    const workerFiles = Object.values(msg.liteResults || {});
+    for (const fileResult of workerFiles) {
+        if (Array.isArray(fileResult.atoms) && fileResult.atoms.length > 0) {
+            pendingWrites.atoms.push(...fileResult.atoms);
+        }
+    }
+
+    if (Array.isArray(msg.summaries) && msg.summaries.length > 0) {
+        pendingWrites.summaries.push(...msg.summaries);
+    }
+
+    if (Array.isArray(msg.hashes) && msg.hashes.length > 0) {
+        pendingWrites.hashes.push(...msg.hashes);
+    }
+}
+
+function handleWorkerDone(msg, workerIndex, parsedFiles, pendingWrites, totalsRef) {
     totalsRef.totalAtomsExtracted += msg.extractedCount;
     Object.assign(parsedFiles, msg.liteResults);
+    collectWorkerWrites(msg, pendingWrites);
 
-    if (!msg.hashes || msg.hashes.length === 0) {
-        return;
+    if (Array.isArray(msg.hashes) && msg.hashes.length > 0) {
+        logger.debug(`Worker ${workerIndex + 1} staged ${msg.hashes.length} file hashes`);
     }
-
-    for (const entry of msg.hashes) {
-        pendingHashEntries.push(entry);
-    }
-
-    logger.debug(`Worker ${workerIndex + 1} staged ${msg.hashes.length} file hashes`);
 }
 
 function createWorkerPromise(workerIndex, chunk, workerContext) {
@@ -71,7 +88,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
         totalFiles,
         filesSkippedRef,
         parsedFiles,
-        pendingHashEntries,
+        pendingWrites,
         totalsRef
     } = workerContext;
 
@@ -92,7 +109,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
             }
 
             if (msg.type === 'DONE') {
-                handleWorkerDone(msg, workerIndex, parsedFiles, pendingHashEntries, totalsRef);
+                handleWorkerDone(msg, workerIndex, parsedFiles, pendingWrites, totalsRef);
                 resolve();
                 return;
             }
@@ -156,6 +173,68 @@ function writeFileHashBatch(repo, hashEntries) {
     transaction(hashMap.entries());
 }
 
+async function persistPendingWorkerWrites(absoluteRootPath, pendingWrites) {
+    if (pendingWrites.atoms.length > 0) {
+        const atomResult = await runRepositoryMutation(
+            absoluteRootPath,
+            {
+                label: 'save atom bulk',
+                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+                metadata: {
+                    source: 'unified-analysis',
+                    count: pendingWrites.atoms.length
+                },
+                run: (bulkRepo) => bulkRepo.saveManyBulk(pendingWrites.atoms, 500)
+            },
+            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+        );
+
+        if (atomResult?.success === false) {
+            logger.warn(`Deferred atom flush failed after worker settlement: ${atomResult.reason || atomResult.error || 'unknown error'}`);
+        }
+    }
+
+    if (pendingWrites.summaries.length > 0) {
+        const summaryResult = await runRepositoryMutation(
+            absoluteRootPath,
+            {
+                label: 'save file summaries',
+                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+                metadata: {
+                    source: 'unified-analysis',
+                    count: pendingWrites.summaries.length
+                },
+                run: (summaryRepo) => saveFileSummariesBatch(summaryRepo, pendingWrites.summaries, undefined, 500)
+            },
+            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+        );
+
+        if (summaryResult?.success === false) {
+            logger.warn(`Deferred summary flush failed after worker settlement: ${summaryResult.reason || summaryResult.error || 'unknown error'}`);
+        }
+    }
+
+    if (pendingWrites.hashes.length > 0) {
+        const hashResult = await runRepositoryMutation(
+            absoluteRootPath,
+            {
+                label: 'save file hashes',
+                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+                metadata: {
+                    source: 'unified-analysis',
+                    count: pendingWrites.hashes.length
+                },
+                run: (hashRepo) => writeFileHashBatch(hashRepo, pendingWrites.hashes)
+            },
+            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+        );
+
+        if (hashResult?.success === false) {
+            logger.warn(`Deferred hash flush failed after worker settlement: ${hashResult.reason || hashResult.error || 'unknown error'}`);
+        }
+    }
+}
+
 /**
  * High-performance incremental analysis.
  */
@@ -172,7 +251,11 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
     const totalFiles = files.length;
     const batchTimer = new BatchTimer(logPrefix, totalFiles, verbose);
     const parsedFiles = {};
-    const pendingHashEntries = [];
+    const pendingWrites = {
+        atoms: [],
+        summaries: [],
+        hashes: []
+    };
     const workerCount = getWorkerCount(totalFiles, existingHashCount, extractionDepth);
 
     if (verbose) {
@@ -197,7 +280,7 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
             totalFiles,
             filesSkippedRef,
             parsedFiles,
-            pendingHashEntries,
+            pendingWrites,
             totalsRef
         });
     } catch (err) {
@@ -205,12 +288,15 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
         throw err;
     }
 
-    if (pendingHashEntries.length > 0) {
+    if (pendingWrites.atoms.length > 0 || pendingWrites.summaries.length > 0 || pendingWrites.hashes.length > 0) {
         try {
-            writeFileHashBatch(repo, pendingHashEntries);
-            logger.debug(`Persisted ${pendingHashEntries.length} file hashes after worker settlement`);
-        } catch (hashErr) {
-            logger.warn(`Deferred hash write failed after worker settlement: ${hashErr.message}`);
+            await persistPendingWorkerWrites(absoluteRootPath, pendingWrites);
+            logger.debug(
+                `Persisted worker settlement writes after Phase 2 ` +
+                `(atoms=${pendingWrites.atoms.length}, summaries=${pendingWrites.summaries.length}, hashes=${pendingWrites.hashes.length})`
+            );
+        } catch (persistErr) {
+            logger.warn(`Deferred worker write flush failed after settlement: ${persistErr.message}`);
         }
     }
 

@@ -15,9 +15,9 @@
 import { parentPort, workerData } from 'worker_threads';
 import { analyzeFileCore } from './core-analyzer.js';
 import { createLogger } from '../../utils/logger.js';
-import { REPOSITORY_MUTATION_DURABILITY, getRepository, runRepositoryMutation } from '#layer-c/storage/repository/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
-import { saveFileSummariesBatch } from './file-summary-storage.js';
+import { deriveModuleName } from './single-file-utils.js';
 import { calculateContentHash, toProjectRelativePath } from './incremental-analysis-utils.js';
 import fs from 'fs/promises';
 
@@ -69,9 +69,9 @@ function createSkippedLiteResult(dbAtoms, persistedSummary) {
     };
 }
 
-function createLiteAtom(atom, relativeFilePath, globalWorkerBuffer) {
+function createLiteAtom(atom, relativeFilePath) {
     const lite = { ...atom };
-    globalWorkerBuffer.push({ ...lite, filePath: relativeFilePath });
+    lite.filePath = relativeFilePath;
 
     delete lite.dna;
     delete lite.dataFlow;
@@ -104,14 +104,14 @@ function createAnalyzedResult(result, liteAtoms) {
 function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, content, currentHash, result) {
     const liteAtoms = result.atoms.map((atom) => createLiteAtom(
         atom,
-        relativeFilePath,
-        state.globalWorkerBuffer
+        relativeFilePath
     ));
 
     state.totalExtractedCount += liteAtoms.length;
     state.allFileSummariesToSave.set(relativeFilePath, {
         imports: result.parsed?.imports || [],
         exports: result.parsed?.exports || [],
+        moduleName: deriveModuleName(relativeFilePath),
         atomCount: liteAtoms.length,
         totalLines: content.split(/\r?\n/).length,
         hash: currentHash
@@ -169,9 +169,14 @@ async function reusePersistedResultIfPossible({
         return null;
     }
 
-    const persistedSummary = getPersistedFileSummary
-        ? await getPersistedFileSummary(relativeFilePath)
-        : {};
+    let persistedSummary = {};
+    if (getPersistedFileSummary) {
+        try {
+            persistedSummary = await getPersistedFileSummary(relativeFilePath);
+        } catch (error) {
+            logger.warn(`[WorkerAnalysis] Falling back without persisted summary for ${relativeFilePath}: ${error.message}`);
+        }
+    }
     return createSkippedLiteResult(dbAtoms, persistedSummary);
 }
 
@@ -227,8 +232,7 @@ async function runWorker() {
         totalExtractedCount: 0,
         allLiteResults: {},
         allFileHashesToSave: new Map(),
-        allFileSummariesToSave: new Map(),
-        globalWorkerBuffer: []
+        allFileSummariesToSave: new Map()
     };
     let processedSinceLastPing = 0;
 
@@ -292,75 +296,12 @@ async function runWorker() {
 
     processedSinceLastPing = flushProgress(processedSinceLastPing, false);
 
-    // Bulk Save
-    try {
-        if (state.globalWorkerBuffer.length > 0) {
-            const bulkResult = await runRepositoryMutation(
-                absoluteRootPath,
-                {
-                    label: 'save atom bulk',
-                    durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                    metadata: {
-                        source: 'worker-analysis',
-                        count: state.globalWorkerBuffer.length
-                    },
-                    run: (bulkRepo) => withBusyRetry(
-                        () => bulkRepo.saveManyBulk(state.globalWorkerBuffer, 500),
-                        'save atom bulk'
-                    )
-                },
-                { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
-            );
-
-            if (bulkResult?.success === false) {
-                logger.warn(`[WorkerAnalysis] Atom bulk flush failed after retries: ${bulkResult.reason || bulkResult.error || 'unknown error'}`);
-            }
-
-            if (bulkResult.queued) {
-                logger.warn('[WorkerAnalysis] Atom bulk flush queued for replay after transient SQLite availability issue');
-            }
-        }
-    } catch (error) {
-        logger.warn(`[WorkerAnalysis] Atom bulk flush skipped after retries: ${error.message}`);
-    }
-
-    try {
-        const summaries = Array.from(state.allFileSummariesToSave.entries());
-        if (summaries.length > 0) {
-            const summaryResult = await runRepositoryMutation(
-                absoluteRootPath,
-                {
-                    label: 'save file summaries',
-                    durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                    metadata: {
-                        source: 'worker-analysis',
-                        count: summaries.length
-                    },
-                    run: (summaryRepo) => withBusyRetry(
-                        () => saveFileSummariesBatch(summaryRepo, summaries, undefined, 500),
-                        'save file summaries'
-                    )
-                },
-                { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
-            );
-
-            if (summaryResult?.success === false) {
-                logger.warn(`[WorkerAnalysis] File summary flush failed after retries: ${summaryResult.reason || summaryResult.error || 'unknown error'}`);
-            }
-
-            if (summaryResult.queued) {
-                logger.warn('[WorkerAnalysis] File summary flush queued for replay after transient SQLite availability issue');
-            }
-        }
-    } catch (error) {
-        logger.warn(`[WorkerAnalysis] File summary flush skipped after retries: ${error.message}`);
-    }
-
     // Final Report
     parentPort.postMessage({
         type: 'DONE',
         liteResults: state.allLiteResults,
         hashes: Array.from(state.allFileHashesToSave.entries()),
+        summaries: Array.from(state.allFileSummariesToSave.entries()),
         extractedCount: state.totalExtractedCount
     });
 }
