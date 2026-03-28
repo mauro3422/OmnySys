@@ -2,7 +2,6 @@ import { DataFlowAnalyzer } from '../../../layer-a-static/extractors/data-flow/c
 import {
     classifyAtomOperationalRole,
     classifyFileOperationalRole,
-    isLikelyBoundaryContainerAtom,
     isLikelyToolWrapperAtom
 } from '../../../shared/compiler/index.js';
 

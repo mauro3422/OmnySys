@@ -139,6 +139,33 @@ function buildCandidateContext(candidate) {
   };
 }
 
+export function findFolderizationCandidateForPaths(candidates = [], filePaths = []) {
+  const normalizedPaths = filePaths
+    .map((filePath) => normalizeFolderizationPath(filePath))
+    .filter(Boolean);
+
+  if (normalizedPaths.length === 0) {
+    return null;
+  }
+
+  const candidateByPath = new Map();
+
+  for (const candidate of candidates) {
+    for (const memberPath of candidate.files || []) {
+      candidateByPath.set(normalizeFolderizationPath(memberPath), candidate);
+    }
+  }
+
+  for (const normalizedPath of normalizedPaths) {
+    const candidate = candidateByPath.get(normalizedPath);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 function scoreCandidateGroup(group, importerIndex, options = {}) {
   const { minFileCount = 4 } = options;
   const members = group.members.slice().sort((a, b) => a.path.localeCompare(b.path));

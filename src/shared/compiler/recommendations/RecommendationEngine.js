@@ -29,8 +29,12 @@ const CANONICAL_TEMPLATES = {
         strategy: 'decoupling'
     }),
     conceptual_duplicate: (ctx) => ({
-        message: `Consolidate ${ctx.instanceCount} duplicate implementations`,
-        action: 'Use a single canonical API (SSOT) instead of re-implementing logic',
+        message: ctx.folderizationHint
+            ? `Consolidate ${ctx.instanceCount} duplicate implementations and folderize ${ctx.folderizationHint.familyRoot} into ${ctx.folderizationHint.recommendedFolder}.`
+            : `Consolidate ${ctx.instanceCount} duplicate implementations`,
+        action: ctx.folderizationHint
+            ? 'Use a single canonical API (SSOT) and group the family into a dedicated folder with a thin barrel'
+            : 'Use a single canonical API (SSOT) instead of re-implementing logic',
         strategy: 'logic_consolidation'
     }),
     dead_code: () => ({

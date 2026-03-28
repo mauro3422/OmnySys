@@ -1,5 +1,6 @@
 import { createLogger } from '#utils/logger.js';
 import { loadDuplicateRows } from '../../architectural-debt-score-repository.js';
+import { findFolderizationCandidateForPaths, findFolderizationCandidatesFromRepo } from '../../directory-structure-folderization.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
@@ -12,20 +13,40 @@ export async function calculateDuplicationScore(projectPath, repo) {
   try {
     const duplicates = loadDuplicateRows(repo);
     if (duplicates.length > 0) {
+      const folderizationCandidates = findFolderizationCandidatesFromRepo(repo);
       duplicateGroups = duplicates.length;
       duplicateImplementations = duplicates.reduce((sum, duplicate) => sum + duplicate.instanceCount, 0);
 
       for (const duplicate of duplicates.slice(0, 20)) {
+        const files = duplicate.files.split(',').map((filePath) => filePath.trim()).filter(Boolean);
+        const folderizationHint = findFolderizationCandidateForPaths(folderizationCandidates, files);
+
         issues.push({
           type: 'conceptual_duplicate',
           semanticFingerprint: duplicate.fingerprint,
           instanceCount: duplicate.instanceCount,
-          files: duplicate.files.split(','),
+          files,
           severity: duplicate.instanceCount > 5 ? 'high' : 'medium',
+          folderizationHint: folderizationHint ? {
+            familyRoot: folderizationHint.familyRoot,
+            recommendedFolder: folderizationHint.recommendedFolder,
+            barrelFile: folderizationHint.barrelFile?.path || null,
+            confidence: folderizationHint.confidence,
+            fileCount: folderizationHint.fileCount
+          } : null,
           recommendation: getRecommendation({
             type: 'conceptual_duplicate',
-            filePath: duplicate.files.split(',')[0],
-            context: { instanceCount: duplicate.instanceCount }
+            filePath: files[0],
+            context: {
+              instanceCount: duplicate.instanceCount,
+              folderizationHint: folderizationHint ? {
+                familyRoot: folderizationHint.familyRoot,
+                recommendedFolder: folderizationHint.recommendedFolder,
+                barrelFile: folderizationHint.barrelFile?.path || null,
+                confidence: folderizationHint.confidence,
+                fileCount: folderizationHint.fileCount
+              } : null
+            }
           }).message
         });
       }

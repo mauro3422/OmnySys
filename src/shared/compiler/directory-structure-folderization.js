@@ -7,6 +7,7 @@ export {
 
 export {
   deriveFlatFamilyRoot,
+  findFolderizationCandidateForPaths,
   findFolderizationCandidates,
   findFolderizationCandidatesFromRows,
   findFolderizationCandidatesFromRepo,
