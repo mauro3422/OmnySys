@@ -48,13 +48,12 @@ export function extractDataFlow(codeOrNode, options = {}) {
 
   let localTree = null;
   let shouldDeleteTree = false;
+  const targetFilePath = options.filePath || 'snippet.js';
 
   try {
     // Accept either a source code string or an already-parsed Tree-sitter node
     let code = typeof codeOrNode === 'string' ? codeOrNode : (options.code || '');
     let node = typeof codeOrNode !== 'string' ? codeOrNode : null;
-
-    const filePath = options.filePath || 'snippet.js';
 
     if (!node && code) {
       // For standalone/test usage where code is a string and no node is provided,
@@ -66,16 +65,16 @@ export function extractDataFlow(codeOrNode, options = {}) {
         const tree = parser.parse(code);
         node = tree.rootNode;
         if (node.hasError) {
-          throw new Error('Syntax error: invalid or unsupported JavaScript syntax');
+          throw new Error(`Syntax error: invalid or unsupported JavaScript syntax in ${targetFilePath}`);
         }
       } catch (parseErr) {
-        logger.warn(`Synchronous parse failed in extractDataFlow: ${parseErr.message}`);
-        return { error: parseErr.message };
+        logger.warn(`Synchronous parse failed in extractDataFlow for ${targetFilePath}: ${parseErr.message}`);
+        return { error: parseErr.message, filePath: targetFilePath };
       }
     }
 
     if (!node) {
-      logger.debug(`extractDataFlow called without a valid node for ${options.filePath || 'unknown'} - data flow will be empty.`);
+      logger.debug(`extractDataFlow called without a valid node for ${targetFilePath} - data flow will be empty.`);
       return { inputs: [], outputs: [], transformations: [], graph: null, analysis: { invariants: [], inferredTypes: {} } };
     }
 
