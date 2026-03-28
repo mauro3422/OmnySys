@@ -10,6 +10,9 @@
 export async function getWatcherIssueDb(projectPath) {
   const { getRepository } = await import('#layer-c/storage/repository/index.js');
   const repo = getRepository(projectPath);
-  return repo?.db || null;
-}
+  if (!repo?.initialized || !repo?.db || repo.db.open === false) {
+    return null;
+  }
 
+  return repo.db;
+}

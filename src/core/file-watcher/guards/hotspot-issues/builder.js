@@ -1,9 +1,10 @@
+// Parent guard standards live one level up from the folderized family.
 import {
     IssueDomains,
     StandardSuggestions,
     createIssueType,
     createStandardContext
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export function buildHotspotIssue({ issue, highThreshold, mediumThreshold }) {
     if (issue.severity === 'high') {

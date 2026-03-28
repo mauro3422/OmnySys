@@ -1,7 +1,4 @@
-function normalizeCount(value) {
-  const count = Number(value || 0);
-  return Number.isFinite(count) && count >= 0 ? count : 0;
-}
+export { normalizeCount } from './analysis-generation-counts.js';
 
 function normalizeText(value, fallback = '') {
   const text = String(value || '').trim();
@@ -9,6 +6,5 @@ function normalizeText(value, fallback = '') {
 }
 
 export {
-  normalizeCount,
   normalizeText
 };

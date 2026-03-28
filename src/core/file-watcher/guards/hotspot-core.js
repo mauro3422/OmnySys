@@ -1,6 +1,6 @@
 import { createLogger } from '../../../utils/logger.js';
 import { loadHotspotAtoms, collectHotspotIssues } from './hotspot-query.js';
-import { buildHotspotIssue, buildHotspotEventPayload, buildHotspotPersistencePayload } from './hotspot-issues.js';
+import { buildHotspotIssue, buildHotspotEventPayload, buildHotspotPersistencePayload } from './hotspot-issues/index.js';
 import { clearPersistedHotspotIssues, persistHotspotIssues } from './hotspot-persistence.js';
 import { StandardThresholds } from './guard-standards.js';
 

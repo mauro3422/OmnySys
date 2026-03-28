@@ -111,8 +111,13 @@ export function initializeConnection(manager, projectPath, deps) {
     schemaSql
   } = deps;
 
-  if (manager.initialized && manager.db) {
+  if (manager.initialized && manager.db && manager.db.open !== false) {
     return manager.db;
+  }
+
+  if (manager.db && manager.db.open === false) {
+    manager.db = null;
+    manager.initialized = false;
   }
 
   manager.dbPath = resolve(projectPath, '.omnysysdata', 'omnysys.db');
@@ -134,6 +139,13 @@ export function initializeConnection(manager, projectPath, deps) {
     });
     manager.initialized = true;
     logger.debug('[Connection] SQLite initialized successfully');
+
+    queueMicrotask(() => {
+      import('../repository/repository-bridge.js')
+        .then(({ flushRepositoryMutationJournal }) => flushRepositoryMutationJournal(projectPath))
+        .catch((error) => logger.debug(`[Connection] Repository bridge flush skipped: ${error.message}`));
+    });
+
     return manager.db;
   } catch (error) {
     logger.error(`[Connection] Failed to initialize SQLite: ${error.message}`);
@@ -198,7 +210,7 @@ export function shutdownConnection(manager, logger) {
 }
 
 export function transactionConnection(manager, callback) {
-  if (!manager.db) {
+  if (!manager.db || manager.db.open === false) {
     throw new Error('Database not initialized');
   }
 
@@ -207,14 +219,14 @@ export function transactionConnection(manager, callback) {
 }
 
 export function getConnectionDatabase(manager) {
-  if (!manager.db) {
+  if (!manager.db || manager.db.open === false) {
     throw new Error('Database not initialized. Call initialize() first.');
   }
   return manager.db;
 }
 
 export function checkpointConnection(manager, logger) {
-  if (!manager.db) return;
+  if (!manager.db || manager.db.open === false) return;
 
   try {
     manager.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -225,5 +237,5 @@ export function checkpointConnection(manager, logger) {
 }
 
 export function isConnectionInitialized(manager) {
-  return manager.initialized && manager.db !== null;
+  return manager.initialized && manager.db !== null && manager.db.open !== false;
 }

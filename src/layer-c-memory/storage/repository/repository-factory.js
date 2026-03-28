@@ -28,7 +28,13 @@ export class RepositoryFactory {
   static getInstance(projectPath = process.cwd()) {
     if (!this.instance) {
       this.instance = this.create('sqlite', projectPath);
+      return this.instance;
     }
+
+    if (!this.instance.initialized || !this.instance.db || this.instance.db.open === false) {
+      this.instance.initialize(projectPath);
+    }
+
     return this.instance;
   }
 

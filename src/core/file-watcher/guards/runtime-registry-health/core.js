@@ -1,7 +1,7 @@
 import { createLogger } from '../../../utils/logger.js';
-import { getOrCreateRuntimeRegistryHealthStats } from './runtime-registry-health-stats.js';
-import { collectRuntimeRegistryHealthIssues } from './runtime-registry-health-evidence.js';
-import { reportRuntimeRegistryHealth } from './runtime-registry-health-reporting.js';
+import { getOrCreateRuntimeRegistryHealthStats } from './stats.js';
+import { collectRuntimeRegistryHealthIssues } from './evidence.js';
+import { reportRuntimeRegistryHealth } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:runtime-registry-health');
 

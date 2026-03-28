@@ -4,6 +4,14 @@ import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:Storage:Atom');
 
+function isRepositoryReady(repo) {
+  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
+}
+
+function isDatabaseClosedError(error) {
+  return String(error?.message || '').includes('database connection is not open');
+}
+
 /**
  * Guarda un átomo en SQLite
  * @param {string} rootPath - Ruta del proyecto
@@ -14,10 +22,17 @@ const logger = createLogger('OmnySys:Storage:Atom');
 export async function saveAtom(rootPath, filePath, functionName, atomData) {
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return atomData.id;
+    }
     repo.save(atomData);
     logger.debug(`[saveAtom] Saved to SQLite: ${atomData.id}`);
     return atomData.id;
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return atomData.id;
+    }
+
     logger.error(`[saveAtom] SQLite error: ${error.message}`);
     throw error;
   }
@@ -34,6 +49,9 @@ export async function loadAtoms(rootPath, filePath, options = {}) {
 
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return [];
+    }
     const normalizedPath = normalizeFilePath(rootPath, filePath);
     let atoms = repo.getByFile(normalizedPath);
 
@@ -43,6 +61,10 @@ export async function loadAtoms(rootPath, filePath, options = {}) {
 
     return atoms;
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return [];
+    }
+
     logger.error(`[loadAtoms] SQLite error: ${error.message}`);
     return [];
   }
@@ -56,6 +78,9 @@ export async function loadAtoms(rootPath, filePath, options = {}) {
 export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return [];
+    }
     const atoms = repo.getAll();
 
     if (!includeRemoved) {
@@ -65,6 +90,10 @@ export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
 
     return atoms;
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return [];
+    }
+
     logger.error(`[getAllAtoms] SQLite error: ${error.message}`);
     return [];
   }
@@ -76,6 +105,9 @@ export async function getAllAtoms(rootPath, { includeRemoved = false } = {}) {
 export async function getRemovedAtoms(rootPath, filePath = null) {
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return [];
+    }
     const atoms = repo.query({
       isDeadCode: true
     });
@@ -86,6 +118,10 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
 
     return atoms;
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return [];
+    }
+
     logger.error(`[getRemovedAtoms] SQLite error: ${error.message}`);
     return [];
   }
@@ -100,8 +136,15 @@ export async function getRemovedAtoms(rootPath, filePath = null) {
 export async function queryAtoms(rootPath, filter = {}, limit = null) {
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return [];
+    }
     return repo.query(filter, { limit });
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return [];
+    }
+
     logger.error(`[queryAtoms] SQLite error: ${error.message}`);
     return [];
   }
@@ -113,9 +156,16 @@ export async function queryAtoms(rootPath, filter = {}, limit = null) {
 export async function deleteAtom(rootPath, filePath, functionName) {
   try {
     const repo = getRepository(rootPath);
+    if (!isRepositoryReady(repo)) {
+      return false;
+    }
     const id = `${filePath}::${functionName}`;
     return repo.delete(id);
   } catch (error) {
+    if (isDatabaseClosedError(error)) {
+      return false;
+    }
+
     logger.error(`[deleteAtom] SQLite error: ${error.message}`);
     return false;
   }
@@ -154,5 +204,8 @@ export async function getAtomsInFile(rootPath, filePath) {
  */
 export async function getAtomsByName(rootPath, name) {
   const repo = getRepository(rootPath);
+  if (!isRepositoryReady(repo)) {
+    return [];
+  }
   return repo.findByName(name);
 }

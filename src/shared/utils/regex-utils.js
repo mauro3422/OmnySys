@@ -7,3 +7,5 @@
 export function escapeRegExp(value = '') {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+export const escapeRegex = escapeRegExp;

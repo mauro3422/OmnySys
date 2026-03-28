@@ -20,6 +20,7 @@ import {
   createSessionStatements
 } from './session-manager-helpers.js';
 import * as sessionManagerMethods from './session-manager-methods.js';
+import { connectionManager } from '../../storage/database/connection.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
@@ -35,6 +36,9 @@ export class SessionManager {
 
   initialize() {
     if (this.statements) return true;
+    if (!connectionManager.isInitialized()) {
+      return false;
+    }
     try {
       this.db = getDatabase();
       this.statements = createSessionStatements(this.db);
@@ -52,6 +56,10 @@ export class SessionManager {
   }
 
   ensureInitialized() {
+    if (!connectionManager.isInitialized()) {
+      return false;
+    }
+
     return this.statements ? true : this.initialize();
   }
 }

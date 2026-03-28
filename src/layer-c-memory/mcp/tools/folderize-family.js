@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
@@ -7,6 +9,10 @@ import { validate_imports } from './validate-imports.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family');
+
+function isRepositoryReady(repo) {
+  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
+}
 
 function sortMoveTargets(moveTargets = [], barrelPath = null) {
   return moveTargets.slice().sort((a, b) => {
@@ -21,18 +27,90 @@ function sortMoveTargets(moveTargets = [], barrelPath = null) {
   });
 }
 
+function normalizeSnapshotPath(filePath = '') {
+  return String(filePath || '')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\/+/, '');
+}
+
+function buildFolderizationMoveSnapshot(focusPlan) {
+  const impactedFiles = Array.isArray(focusPlan?.importImpact?.impactedFiles)
+    ? focusPlan.importImpact.impactedFiles
+        .map((item) => normalizeSnapshotPath(item?.filePath || item))
+        .filter(Boolean)
+    : [];
+
+  const dependentsBySourcePath = new Map();
+
+  for (const target of focusPlan?.moveTargets || []) {
+    const key = normalizeSnapshotPath(target?.from);
+    if (!key) {
+      continue;
+    }
+
+    dependentsBySourcePath.set(key, impactedFiles);
+  }
+
+  return {
+    createdAt: new Date().toISOString(),
+    candidate: {
+      familyRoot: focusPlan?.candidate?.familyRoot || null,
+      recommendedFolder: focusPlan?.candidate?.recommendedFolder || null,
+      barrelFile: focusPlan?.candidate?.barrelFile || null
+    },
+    impactedFiles,
+    dependentsBySourcePath,
+    getDependentsForPath(filePath) {
+      const normalized = normalizeSnapshotPath(filePath);
+      return dependentsBySourcePath.get(normalized) || impactedFiles;
+    }
+  };
+}
+
+async function verifyFileExists(projectPath, filePath) {
+  try {
+    await fs.access(path.resolve(projectPath, filePath));
+    return { exists: true };
+  } catch {
+    return { exists: false };
+  }
+}
+
 async function validateMovedFamily(plan, projectPath, context) {
   const validations = [];
+  const snapshot = context.folderizationSnapshot || null;
+  const repo = getRepository(projectPath);
+  const impactedFiles = Array.isArray(snapshot?.impactedFiles) ? snapshot.impactedFiles : [];
   const focusFiles = Array.from(new Set([
     plan.candidate.barrelFile || null,
-    ...plan.moveTargets.map((target) => target.to)
+    ...plan.moveTargets.map((target) => target.to),
+    ...impactedFiles
   ].filter(Boolean)));
 
   if (focusFiles.length === 0) {
     return validations;
   }
 
+  if (!isRepositoryReady(repo)) {
+    for (const filePath of focusFiles.slice(0, 10)) {
+      const disk = await verifyFileExists(projectPath, filePath);
+      validations.push({
+        filePath,
+        disk,
+        validation: {
+          skipped: true,
+          reason: 'database connection is not open'
+        }
+      });
+    }
+
+    return validations;
+  }
+
   for (const filePath of focusFiles.slice(0, 10)) {
+    const disk = await verifyFileExists(projectPath, filePath);
     const validation = await validate_imports({
       filePath,
       checkBroken: true,
@@ -46,11 +124,70 @@ async function validateMovedFamily(plan, projectPath, context) {
 
     validations.push({
       filePath,
+      disk,
       validation
     });
   }
 
   return validations;
+}
+
+async function executeFolderizationPlan({
+  focusPlan,
+  projectPath,
+  context,
+  moveContext,
+  server,
+  validateAfterMove
+}) {
+  const moveTargets = sortMoveTargets(focusPlan.moveTargets, focusPlan.candidate?.barrelFile || null);
+
+  return await withMutationBatch(server, {
+    reason: 'folderize_family',
+    files: focusPlan.files || []
+  }, async () => {
+    const results = [];
+
+    for (const target of moveTargets) {
+      logger.info(`[Tool] folderize move: ${target.from} -> ${target.to}`);
+      const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, moveContext);
+      results.push({
+        from: target.from,
+        to: target.to,
+        result: moveResult
+      });
+
+      if (!moveResult?.success) {
+        return {
+          success: false,
+          mode: 'failed',
+          plan: focusPlan,
+          results,
+          error: moveResult?.error || `Failed to move ${target.from}`
+        };
+      }
+    }
+
+    const rewriteResult = await rewriteFolderizedFamilyImports({
+      projectPath,
+      moveTargets,
+      impactedFiles: focusPlan.importImpact?.impactedFiles?.map((item) => item.filePath) || [],
+      context: moveContext
+    });
+
+    const validations = validateAfterMove
+      ? await validateMovedFamily(focusPlan, projectPath, moveContext)
+      : [];
+
+    return {
+      success: true,
+      mode: 'applied',
+      plan: focusPlan,
+      results,
+      rewrites: rewriteResult,
+      validations
+    };
+  });
 }
 
 export async function folderize_family(args, context) {
@@ -89,6 +226,12 @@ export async function folderize_family(args, context) {
       };
     }
 
+    const folderizationSnapshot = buildFolderizationMoveSnapshot(focusPlan);
+    const moveContext = {
+      ...context,
+      folderizationSnapshot
+    };
+
     if (focusPlan.decision === 'reject') {
       return {
         success: false,
@@ -102,48 +245,14 @@ export async function folderize_family(args, context) {
       reason: 'folderize_family',
       files: focusPlan.files || []
     }, async () => {
-      const moveTargets = sortMoveTargets(focusPlan.moveTargets, focusPlan.candidate?.barrelFile || null);
-      const results = [];
-
-      for (const target of moveTargets) {
-        logger.info(`[Tool] folderize move: ${target.from} -> ${target.to}`);
-        const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, context);
-        results.push({
-          from: target.from,
-          to: target.to,
-          result: moveResult
-        });
-
-        if (!moveResult?.success) {
-          return {
-            success: false,
-            mode: 'failed',
-            plan: focusPlan,
-            results,
-            error: moveResult?.error || `Failed to move ${target.from}`
-          };
-        }
-      }
-
-      const rewriteResult = await rewriteFolderizedFamilyImports({
+      return await executeFolderizationPlan({
+        focusPlan,
         projectPath,
-        moveTargets,
-        impactedFiles: focusPlan.importImpact?.impactedFiles?.map((item) => item.filePath) || [],
-        context
+        context,
+        moveContext,
+        server,
+        validateAfterMove
       });
-
-      const validations = validateAfterMove
-        ? await validateMovedFamily(focusPlan, projectPath, context)
-        : [];
-
-      return {
-        success: true,
-        mode: 'applied',
-        plan: focusPlan,
-        results,
-        rewrites: rewriteResult,
-        validations
-      };
     });
   } catch (error) {
     logger.error(`[Tool] folderize_family failed: ${error.message}`);

@@ -153,8 +153,8 @@ export async function getFileAnalysis(rootPath, filePath) {
 
   const repo = getRepository(rootPath);
 
-  if (!repo || !repo.db) {
-    throw new Error('SQLite not available. Run analysis first.');
+  if (!repo?.initialized || !repo?.db || repo.db.open === false) {
+    return null;
   }
 
   try {
@@ -197,6 +197,10 @@ export async function getFileAnalysis(rootPath, filePath) {
 
     return fileAnalysis;
   } catch (err) {
+    if (String(err?.message || '').includes('database connection is not open')) {
+      return null;
+    }
+
     throw new Error(`[getFileAnalysis] SQLite error: ${err.message}`);
   }
 }

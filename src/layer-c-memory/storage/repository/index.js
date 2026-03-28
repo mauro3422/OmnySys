@@ -16,6 +16,18 @@ export { SQLiteAdapter } from './adapters/sqlite-adapter.js';
 // Factory
 export { RepositoryFactory, getRepository } from './repository-factory.js';
 
+// Bridge canonical between runtime subsystems and SQLite repository
+export {
+  REPOSITORY_MUTATION_DURABILITY,
+  enqueueRepositoryMutation,
+  flushRepositoryMutationJournal,
+  getRepositoryDiagnostics,
+  getRepositoryMutationJournalSnapshot,
+  getRepositoryStatus,
+  isRepositoryReady,
+  runRepositoryMutation
+} from './repository-bridge.js';
+
 // Utilidades
 export {
   calculateAtomVectors,

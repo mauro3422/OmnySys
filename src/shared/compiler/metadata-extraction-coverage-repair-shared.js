@@ -1,10 +1,4 @@
-export function normalizeDbPath(value = '') {
-  return String(value || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
-}
+export { normalizeDbPath } from './system-map-persistence-repair-normalization.js';
 
 export function getTableColumns(db, table) {
   return db.prepare(`PRAGMA table_info("${table}")`).all();

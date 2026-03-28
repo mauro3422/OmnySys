@@ -30,6 +30,14 @@ const RESTART_PATTERNS = [
   /(^|[\\/])cli[\\/].*\.js$/i
 ];
 
+const HOT_RELOAD_SUPPORT_PATTERNS = [
+  /(^|[\\/])layer-c-memory[\\/]mcp[\\/]core[\\/]hot-reload-manager[\\/].*\.js$/i
+];
+
+const STARTUP_SUPPORT_PATTERNS = [
+  /(^|[\\/])layer-c-memory[\\/]mcp[\\/]core[\\/]server-class-helpers\.js$/i
+];
+
 function isIgnoredSurface(normalized) {
   return IGNORED_PATTERNS.some((pattern) => pattern.test(normalized));
 }
@@ -48,6 +56,14 @@ function isRefreshSurface(normalized) {
 
 function isRuntimeRestartSurface(normalized) {
   return RESTART_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function isHotReloadSupportSurface(normalized) {
+  return HOT_RELOAD_SUPPORT_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function isStartupSupportSurface(normalized) {
+  return STARTUP_SUPPORT_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function isReindexSurface(normalized) {
@@ -99,6 +115,28 @@ export function classifyRuntimeChange(filename = '', moduleInfo = null) {
       reloadRequired: false,
       reindexRequired: false,
       refreshRequired: true
+    };
+  }
+
+  if (isHotReloadSupportSurface(normalized)) {
+    return {
+      action: RuntimeChangeAction.REINDEX,
+      reason: 'hot-reload support surface',
+      restartRequired: false,
+      reloadRequired: false,
+      reindexRequired: true,
+      refreshRequired: false
+    };
+  }
+
+  if (isStartupSupportSurface(normalized)) {
+    return {
+      action: RuntimeChangeAction.REINDEX,
+      reason: 'startup support surface',
+      restartRequired: false,
+      reloadRequired: false,
+      reindexRequired: true,
+      refreshRequired: false
     };
   }
 

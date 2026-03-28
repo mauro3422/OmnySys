@@ -2,7 +2,7 @@
  * Shared compacting helpers for MCP status summaries.
  */
 
-import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
+import { normalizeCount, summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
 export function takeSample(items = [], limit = 3) {
@@ -47,6 +47,29 @@ export function compactDatabaseHealth(databaseHealth) {
           materiallyDrifting: metrics.semanticSurface?.materiallyDrifting
         }
       }
+    }
+  };
+}
+
+export function compactRepositoryDiagnostics(repositoryDiagnostics) {
+  if (!repositoryDiagnostics || typeof repositoryDiagnostics !== 'object') return null;
+
+  const status = repositoryDiagnostics.status || {};
+  const journal = repositoryDiagnostics.journal || {};
+
+  return {
+    health: repositoryDiagnostics.health,
+    projectPath: status.projectPath || null,
+    ready: !!status.ready,
+    initialized: !!status.initialized,
+    dbOpen: !!status.dbOpen,
+    reason: status.reason || null,
+    queuedDurable: normalizeCount(repositoryDiagnostics.queuedDurable),
+    issues: takeSample(repositoryDiagnostics.issues || [], 3),
+    recommendations: takeSample(repositoryDiagnostics.recommendations || [], 3),
+    journal: {
+      queued: normalizeCount(journal.queued),
+      entries: takeSample(journal.entries || [], 3)
     }
   };
 }

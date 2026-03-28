@@ -7,6 +7,7 @@
  */
 
 import { getProjectMetadata } from '../../../layer-c-memory/query/apis/project-api.js';
+import { getRepositoryDiagnostics } from '../../../layer-c-memory/storage/repository/index.js';
 import { buildToolError } from './tool-helpers.js';
 
 /**
@@ -32,6 +33,7 @@ export async function getFullStatus() {
       totalFiles: this.metadata?.stats?.totalFiles || 0,
       totalFunctions: this.metadata?.stats?.totalAtoms || 0
     },
+    repository: getRepositoryDiagnostics(this.projectPath),
     cache: this.cache.getCacheStats()
   };
 }

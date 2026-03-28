@@ -1,1 +1,1 @@
-export { persistConceptualDuplicateFinding } from './conceptual-duplicate-risk-reporting.js';
+export { persistConceptualDuplicateFinding } from './conceptual-duplicate-risk/reporting.js';

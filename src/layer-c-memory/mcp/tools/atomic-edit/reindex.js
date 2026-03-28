@@ -12,6 +12,7 @@ import { calculateContentHash } from '#layer-a/pipeline/incremental-analysis-uti
 import { saveFileResult } from '#layer-a/pipeline/single-file-db.js';
 import { buildFileAnalysis, resolveFileImports } from '#layer-a/pipeline/single-file-utils.js';
 import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
+import { clearWatcherIssue } from '../../../../core/file-watcher/watcher-issue-persistence.js';
 const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
 const logger = createLogger('OmnySys:atomic:reindex');
@@ -77,6 +78,10 @@ export async function reindexFile(filePath, projectPath) {
       false,
       false
     );
+
+    // A successful reindex should clear transient watcher runtime failures for
+    // the same file, matching the success path used by the live file watcher.
+    await clearWatcherIssue(projectPath, relativePath, 'watcher_runtime_error');
 
     // Invalidate cache for this file
     try {

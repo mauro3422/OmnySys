@@ -19,7 +19,7 @@ export const impactGuardDefinitionsSemantic = [
   ),
   defineVersionedLazyGuard(
     'runtime-registry-health',
-    () => import('./runtime-registry-health-guard.js'),
+    () => import('./runtime-registry-health/guard.js'),
     (mod) => mod.detectRuntimeRegistryHealth,
     'runtime',
     '1.0.0',
@@ -27,7 +27,7 @@ export const impactGuardDefinitionsSemantic = [
   ),
   defineVersionedLazyGuard(
     'conceptual-duplicate-risk',
-    () => import('./conceptual-duplicate-risk.js'),
+    () => import('./conceptual-duplicate-risk/index.js'),
     (mod) => mod.detectConceptualDuplicateRisk,
     'code',
     '1.0.0',

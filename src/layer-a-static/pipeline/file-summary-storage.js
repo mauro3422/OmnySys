@@ -1,7 +1,7 @@
 import { chunkArray } from '../../shared/utils/array-utils.js';
 
 export function saveFileSummariesBatch(repo, entries, now = new Date().toISOString(), batchSize = 500) {
-    if (!repo?.db || !entries || entries.length === 0) {
+    if (!repo?.db || repo.db.open === false || !entries || entries.length === 0) {
         return;
     }
 

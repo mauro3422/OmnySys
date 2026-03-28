@@ -5,6 +5,10 @@ export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
 }
 
 export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCode) {
+    if (!repo?.db || repo.db.open === false) {
+        return [];
+    }
+
     const rows = repo.db.prepare(`
         SELECT id, name, atom_type, purpose_type, lines_of_code, is_exported,
                json_extract(dna_json, '$.semanticFingerprint') as semanticFingerprint
@@ -30,6 +34,10 @@ export function loadConceptualLocalAtoms(repo, normalizedFilePath, minLinesOfCod
 }
 
 export function loadConceptualDuplicateRows(repo, normalizedFilePath, fingerprint) {
+    if (!repo?.db || repo.db.open === false) {
+        return [];
+    }
+
     return repo.db.prepare(`
         SELECT a.name, a.file_path, a.purpose_type, a.lines_of_code, a.is_exported,
                json_extract(a.dna_json, '$.structuralHash') as structuralHash
@@ -45,6 +53,10 @@ export function loadConceptualDuplicateRows(repo, normalizedFilePath, fingerprin
 }
 
 export function loadLocalStructuralHash(repo, atomId) {
+    if (!repo?.db || repo.db.open === false) {
+        return null;
+    }
+
     return repo.db.prepare(`
         SELECT json_extract(dna_json, '$.structuralHash') as sh
         FROM atoms WHERE id = ?

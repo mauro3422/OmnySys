@@ -31,6 +31,16 @@ export function normalizePath(filePath, projectPath = null) {
 }
 
 /**
+ * Normaliza un path para comparaciones por identidad de archivo.
+ * Mantiene el path relativo, pero unifica separadores y quita la extensión.
+ * @param {string} filePath
+ * @returns {string}
+ */
+export function normalizeComparablePath(filePath) {
+  return normalizePath(filePath).replace(/\.[jt]sx?$/i, '');
+}
+
+/**
  * Compara dos paths para ver si referencian el mismo archivo.
  * @param {string} path1
  * @param {string} path2
@@ -107,13 +117,31 @@ export function getFileExtension(filePath) {
   return lastDot > 0 ? filePath.slice(lastDot) : '';
 }
 
-export function classifyFile(filePath) {
-  if (!filePath) {
-    return { type: 'unknown', description: 'Unknown file type' };
-  }
+function isConfigFile(normalizedPath) {
+  return normalizedPath.includes('config') || /\.(config|rc)\./.test(normalizedPath);
+}
 
-  const normalized = filePath.toLowerCase();
+function isCoreFile(normalizedPath) {
+  return normalizedPath.startsWith('src/core/') || normalizedPath.startsWith('src/lib/');
+}
 
+function isFeatureFile(normalizedPath) {
+  return normalizedPath.startsWith('src/features/') || normalizedPath.startsWith('src/modules/');
+}
+
+function isUiFile(normalizedPath) {
+  return normalizedPath.includes('components') || normalizedPath.includes('ui/');
+}
+
+function isDocumentationRootFile(normalizedPath) {
+  return normalizedPath.startsWith('docs/') || normalizedPath.startsWith('readme');
+}
+
+function isDocumentationExtension(normalizedPath) {
+  return /\.(md|markdown|txt|rst|adoc)$/i.test(normalizedPath);
+}
+
+function resolveFileClassification(filePath, normalized) {
   if (isTestFile(filePath)) {
     return { type: 'test', description: 'Test file - validates functionality', priority: 'low' };
   }
@@ -122,27 +150,27 @@ export function classifyFile(filePath) {
     return { type: 'script', description: 'Utility script - automation/task runner', priority: 'medium' };
   }
 
-  if (normalized.includes('config') || /\.(config|rc)\./.test(normalized)) {
+  if (isConfigFile(normalized)) {
     return { type: 'config', description: 'Configuration file - project settings', priority: 'high' };
   }
 
-  if (normalized.startsWith('src/core/') || normalized.startsWith('src/lib/')) {
+  if (isCoreFile(normalized)) {
     return { type: 'core', description: 'Core library - fundamental functionality', priority: 'critical' };
   }
 
-  if (normalized.startsWith('src/features/') || normalized.startsWith('src/modules/')) {
+  if (isFeatureFile(normalized)) {
     return { type: 'feature', description: 'Feature module - domain logic', priority: 'high' };
   }
 
-  if (normalized.includes('components') || normalized.includes('ui/')) {
+  if (isUiFile(normalized)) {
     return { type: 'ui', description: 'UI Component - presentation layer', priority: 'medium' };
   }
 
-  if (normalized.startsWith('docs/') || normalized.startsWith('readme')) {
+  if (isDocumentationRootFile(normalized)) {
     return { type: 'documentation', description: 'Documentation - reference material', priority: 'low' };
   }
 
-  if (/\.(md|markdown|txt|rst|adoc)$/i.test(normalized)) {
+  if (isDocumentationExtension(normalized)) {
     return {
       type: 'documentation',
       description: 'Documentation file - knowledge and reference',
@@ -157,4 +185,12 @@ export function classifyFile(filePath) {
     priority: 'medium',
     extractable: true
   };
+}
+
+export function classifyFile(filePath) {
+  if (!filePath) {
+    return { type: 'unknown', description: 'Unknown file type' };
+  }
+
+  return resolveFileClassification(filePath, filePath.toLowerCase());
 }

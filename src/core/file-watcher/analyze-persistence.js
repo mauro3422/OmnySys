@@ -1,4 +1,5 @@
-﻿import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../utils/logger.js';
+import { getRepository } from '../../layer-c-memory/storage/repository/index.js';
 import { loadAtoms, saveAtom, saveMolecule } from '#layer-c/storage/index.js';
 import { saveAtomsIncremental } from '#layer-c/storage/atoms/incremental-atom-saver.js';
 import { invalidateAtomCaches } from '#layer-c/cache/smart-cache-invalidator.js';
@@ -9,6 +10,15 @@ import { syncIncrementalSemanticSurface } from './analyze-post-processing.js';
 const logger = createLogger('OmnySys:analyze:persistence');
 
 export async function persistAnalysisArtifacts(rootPath, filePath, moleculeAtoms) {
+  const repo = getRepository(rootPath);
+  if (!repo?.initialized || !repo?.db || repo.db.open === false) {
+    return {
+      success: true,
+      skipped: true,
+      reason: 'database connection is not open'
+    };
+  }
+
   try {
     const previousAtoms = await loadAtoms(rootPath, filePath, { includeRemoved: true });
     const newAtomNames = await handleRemovedAtoms(rootPath, filePath, moleculeAtoms, previousAtoms, _markAtomAsRemoved, saveAtom);
@@ -18,6 +28,18 @@ export async function persistAnalysisArtifacts(rootPath, filePath, moleculeAtoms
 
     if (saveResults.updated > 0) {
       logger.info(`⚡ Incremental save: ${filePath} (${saveResults.updated} updated)`);
+    }
+
+    if (saveResults?.skipped) {
+      return {
+        success: true,
+        skipped: true,
+        reason: saveResults.reason || saveResults.error || 'database connection is not open'
+      };
+    }
+
+    if (saveResults?.success === false) {
+      return saveResults;
     }
 
     await cleanupOrphanedAtomFiles(rootPath, filePath, newAtomNames);
@@ -42,6 +64,14 @@ export async function persistAnalysisArtifacts(rootPath, filePath, moleculeAtoms
 
     await syncIncrementalSemanticSurface(rootPath, filePath, moleculeAtoms);
   } catch (error) {
+    if (String(error?.message || '').includes('database connection is not open')) {
+      return {
+        success: true,
+        skipped: true,
+        reason: error.message
+      };
+    }
+
     logger.error(`Error persisting analysis artifacts for ${filePath}: ${error.message}`);
     throw error;
   }

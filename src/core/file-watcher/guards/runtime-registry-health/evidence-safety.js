@@ -1,4 +1,4 @@
-import { buildSlowInitializationIssue } from './runtime-registry-health-issues.js';
+import { buildSlowInitializationIssue } from './issues.js';
 
 export function collectRuntimeRegistryHealthSafetyIssues({ filePath, registrySnapshot, stats }) {
     if (!registrySnapshot?.initializationPromise || registrySnapshot.initialized) return [];

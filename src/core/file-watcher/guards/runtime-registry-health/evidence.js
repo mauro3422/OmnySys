@@ -1,7 +1,7 @@
-import { collectRuntimeRegistryHealthDuplicateIssues } from './runtime-registry-health-evidence-duplicates.js';
-import { collectRuntimeRegistryHealthLifecycleIssues } from './runtime-registry-health-evidence-lifecycle.js';
-import { collectRuntimeRegistryHealthGrowthIssues } from './runtime-registry-health-evidence-growth.js';
-import { collectRuntimeRegistryHealthSafetyIssues } from './runtime-registry-health-evidence-safety.js';
+import { collectRuntimeRegistryHealthDuplicateIssues } from './evidence-duplicates.js';
+import { collectRuntimeRegistryHealthLifecycleIssues } from './evidence-lifecycle.js';
+import { collectRuntimeRegistryHealthGrowthIssues } from './evidence-growth.js';
+import { collectRuntimeRegistryHealthSafetyIssues } from './evidence-safety.js';
 
 export function collectRuntimeRegistryHealthIssues({ filePath, registrySnapshot, stats }) {
     return [

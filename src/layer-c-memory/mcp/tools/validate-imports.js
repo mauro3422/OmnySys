@@ -3,12 +3,9 @@ import { getFileAnalysis, getFileDependencies } from '../../query/apis/file-api.
 import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 import {
     buildIndexedValidationResult,
-    collectBrokenImports
+    collectBrokenImports,
+    normalizeComparablePath
 } from './validate-imports/filesystem-validation.js';
-
-function normalizeComparablePath(filePath = '') {
-    return String(filePath || '').replace(/\\/g, '/');
-}
 
 function hasDirectImportEvidence(fileData, targetPath) {
     const normalizedTarget = normalizeComparablePath(targetPath);

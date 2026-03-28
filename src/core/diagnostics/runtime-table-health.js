@@ -18,10 +18,21 @@ import { repairRiskAssessmentsIfEmpty } from './risk-assessment-repair.js';
 const logger = createLogger('OmnySys:runtime:table-health');
 const PROJECT_WIDE_FILE = 'project-wide';
 
+function isTransientSqliteIssue(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'SQLITE_BUSY' ||
+    error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database connection is not open') ||
+    message.includes('database is locked') ||
+    message.includes('database is busy')
+  );
+}
+
 export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
   try {
     const db = options.db || await getWatcherIssueDb(projectPath);
-    if (!db) {
+    if (!db || db.open === false) {
       return {
         activeIssues: [],
         persisted: 0,
@@ -76,6 +87,20 @@ export async function syncRuntimeTableHealthIssues(projectPath, options = {}) {
       liveRowSync: runtimeHealth.liveRowSync
     };
   } catch (error) {
+    if (isTransientSqliteIssue(error)) {
+      logger.debug(`Skipping runtime table health sync: ${error.message}`);
+      return {
+        activeIssues: [],
+        persisted: 0,
+        cleared: 0,
+        tableCounts: {},
+        semanticSurfaceGranularity: null,
+        liveRowSync: null,
+        skipped: true,
+        error: error.message
+      };
+    }
+
     logger.error('Failed to sync runtime table health issues:', error.message);
     return {
       activeIssues: [],

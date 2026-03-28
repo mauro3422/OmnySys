@@ -11,6 +11,43 @@ import { withMutationBatch } from './mutation-batch.js';
 
 const logger = createLogger('OmnySys:move:orchestrator');
 
+function normalizeSnapshotPath(filePath = '') {
+    return String(filePath || '')
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^\.\//, '')
+        .replace(/^\/+/, '');
+}
+
+function resolveDependentsFromSnapshot(oldPath, snapshot) {
+    if (!snapshot) {
+        return null;
+    }
+
+    const normalizedOldPath = normalizeSnapshotPath(oldPath);
+    const directMap = snapshot.dependentsBySourcePath;
+
+    if (directMap instanceof Map) {
+        const direct = directMap.get(normalizedOldPath) || directMap.get(oldPath);
+        if (Array.isArray(direct)) {
+            return direct;
+        }
+    }
+
+    if (typeof snapshot.getDependentsForPath === 'function') {
+        const resolved = snapshot.getDependentsForPath(normalizedOldPath);
+        if (Array.isArray(resolved)) {
+            return resolved;
+        }
+    }
+
+    if (Array.isArray(snapshot.dependents)) {
+        return snapshot.dependents;
+    }
+
+    return null;
+}
+
 export class MoveOrchestrator {
     /**
      * Mueve un archivo y actualiza todas sus referencias globales de forma atómica
@@ -34,8 +71,14 @@ export class MoveOrchestrator {
             }
         }
 
-        // 1. Obtener dependientes ANTES del movimiento (basado en el índice actual)
-        const dependents = await getFileDependents(projectPath, oldPath);
+        const snapshot = context.folderizationSnapshot || context.analysisSnapshot || null;
+        const snapshotDependents = resolveDependentsFromSnapshot(oldPath, snapshot);
+
+        // 1. Obtener dependientes ANTES del movimiento. Preferimos la snapshot del momento
+        // para no depender de SQLite durante la mutación sensible.
+        const dependents = Array.isArray(snapshotDependents)
+            ? snapshotDependents
+            : await getFileDependents(projectPath, oldPath);
         logger.info(`[MoveOrchestrator] Found ${dependents.length} dependent files to update`);
 
         const absOld = path.resolve(projectPath, oldPath);

@@ -10,6 +10,10 @@
 
 import { createLogger } from '../../utils/logger.js';
 import {
+  REPOSITORY_MUTATION_DURABILITY,
+  runRepositoryMutation
+} from '#layer-c/storage/repository/index.js';
+import {
   WATCHER_MESSAGE_PREFIX,
   attachWatcherAlertLifecycle,
   createWatcherIssueRecord,
@@ -112,11 +116,28 @@ export function upsertWatcherIssueRecord(db, issue, options = {}) {
  */
 export async function persistWatcherIssue(projectPath, filePath, issueType, severity, message, context = {}) {
   try {
-    const db = await getWatcherIssueDb(projectPath);
-    if (!db) return false;
-
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    return upsertWatcherIssueRecord(db, { filePath: normalizedFilePath, issueType, severity, message, context }, { logPrefix: '[WATCHER ISSUE]' });
+    const result = await runRepositoryMutation(
+      projectPath,
+      {
+        key: `watcher:${normalizedFilePath}:${issueType}`,
+        label: `watcher:${issueType}`,
+        durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+        metadata: { filePath: normalizedFilePath, issueType, severity },
+        run: (repo) => {
+          const db = repo?.db;
+          if (!db) return false;
+          return upsertWatcherIssueRecord(
+            db,
+            { filePath: normalizedFilePath, issueType, severity, message, context },
+            { logPrefix: '[WATCHER ISSUE]' }
+          );
+        }
+      },
+      { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+    );
+
+    return result.success !== false;
   } catch (error) {
     logger.debug(`[WATCHER ISSUE PERSIST SKIP] ${filePath}:${issueType} -> ${error.message}`);
     return false;
@@ -135,17 +156,28 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
  */
 export async function clearWatcherIssue(projectPath, filePath, issueType) {
   try {
-    const db = await getWatcherIssueDb(projectPath);
-    if (!db) return false;
-
     const normalizedFilePath = normalizeWatcherIssueFilePath(projectPath, filePath);
-    const result = clearWatcherIssueRecord(db, normalizedFilePath, issueType);
+    const result = await runRepositoryMutation(
+      projectPath,
+      {
+        key: `watcher-clear:${normalizedFilePath}:${issueType}`,
+        label: `watcher-clear:${issueType}`,
+        durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+        metadata: { filePath: normalizedFilePath, issueType },
+        run: (repo) => {
+          const db = repo?.db;
+          if (!db) return false;
+          const clearResult = clearWatcherIssueRecord(db, normalizedFilePath, issueType);
+          if ((clearResult?.changes || 0) > 0) {
+            logger.info(`[WATCHER ISSUE CLEARED] ${normalizedFilePath} -> ${issueType}`);
+          }
+          return clearResult;
+        }
+      },
+      { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+    );
 
-    if ((result?.changes || 0) > 0) {
-      logger.info(`[WATCHER ISSUE CLEARED] ${normalizedFilePath} -> ${issueType}`);
-    }
-
-    return true;
+    return result.success !== false;
   } catch (error) {
     logger.debug(`[WATCHER ISSUE CLEAR SKIP] ${filePath}:${issueType} -> ${error.message}`);
     return false;

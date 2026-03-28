@@ -3,6 +3,8 @@
  * @module molecular-chains/argument-mapper/utils/code-utils
  */
 
+import { escapeRegex } from '../../../../../shared/utils/regex-utils.js';
+
 /**
  * Finds usages of a variable in code after a specific line
  * @param {string} varName - Variable name
@@ -25,15 +27,6 @@ export function findVariableUsages(varName, code, afterLine) {
   }
   
   return usages;
-}
-
-/**
- * Escapes special regex characters
- * @param {string} string - String to escape
- * @returns {string} Escaped string
- */
-export function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export default { findVariableUsages, escapeRegex };

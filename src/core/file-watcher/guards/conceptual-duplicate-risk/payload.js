@@ -1,6 +1,6 @@
-import { buildDuplicateDebtHistory } from '../../../shared/compiler/index.js';
-import { buildConceptualSeverity } from './conceptual-duplicate-risk-severity.js';
-import { buildConceptualContext } from './conceptual-duplicate-risk-context.js';
+import { buildDuplicateDebtHistory } from '../../../../shared/compiler/index.js';
+import { buildConceptualSeverity } from './severity.js';
+import { buildConceptualContext } from './context.js';
 
 export function buildConceptualDuplicateReportPayload({
     normalizedFilePath,

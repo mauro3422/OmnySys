@@ -7,10 +7,9 @@
  */
 
 import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
+import { normalizeComparablePath } from '#shared/utils/path-utils.js';
 
-function normalizeComparablePath(filePath) {
-    return String(filePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-}
+export { normalizeComparablePath };
 
 function createCacheKey(projectPath, filePath) {
     return `${normalizeComparablePath(projectPath)}::${normalizeComparablePath(filePath)}`;

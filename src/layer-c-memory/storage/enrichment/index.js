@@ -11,6 +11,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { connectionManager } from '../database/connection.js';
 import { getRepository } from '../repository/index.js';
 import { rowToAtom } from '../repository/adapters/helpers/converters.js';
 import { calculateAtomVectors } from '../repository/utils/vector-calculator.js';
@@ -70,6 +71,17 @@ function getStoredGraphCounts(atomRow = {}) {
 function buildSyntheticRelations(count) {
   const safeCount = Math.max(0, Number(count) || 0);
   return Array.from({ length: safeCount }, (_, index) => `__synthetic_${index}`);
+}
+
+function isTransientSqliteAvailabilityError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'SQLITE_BUSY' ||
+    error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database connection is not open') ||
+    message.includes('database is locked') ||
+    message.includes('database is busy')
+  );
 }
 
 /**
@@ -144,8 +156,11 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
   const atomsArray = isSingleAtom ? [atoms] : atoms;
 
   try {
+    if (!connectionManager.isInitialized()) {
+      return atoms;
+    }
     const repo = getRepository(projectPath);
-    if (!repo || !repo.db) {
+    if (!repo?.initialized || !repo?.db || repo.db.open === false) {
       logger.debug('[enrichAtomsWithRelations] No repository available');
       return atoms;
     }
@@ -244,6 +259,11 @@ export async function enrichAtomsWithRelations(atoms, options = {}, projectPath)
     return isSingleAtom ? enrichedAtoms[0] : enrichedAtoms;
 
   } catch (err) {
+    if (isTransientSqliteAvailabilityError(err)) {
+      logger.debug(`[enrichAtomsWithRelations] Skipping transient SQLite issue: ${err.message}`);
+      return atoms;
+    }
+
     logger.error('[enrichAtomsWithRelations] Error:', err.message);
     return atoms;
   }
@@ -295,8 +315,9 @@ export async function getRelationStats(atomIds, projectPath) {
   if (!atomIds || atomIds.length === 0) return new Map();
 
   try {
+    if (!connectionManager.isInitialized()) return new Map();
     const repo = getRepository(projectPath);
-    if (!repo || !repo.db) return new Map();
+    if (!repo?.initialized || !repo?.db || repo.db.open === false) return new Map();
 
     const placeholders = atomIds.map(() => '?').join(',');
 
@@ -338,6 +359,11 @@ export async function getRelationStats(atomIds, projectPath) {
     return statsMap;
 
   } catch (err) {
+    if (isTransientSqliteAvailabilityError(err)) {
+      logger.debug(`[getRelationStats] Skipping transient SQLite issue: ${err.message}`);
+      return new Map();
+    }
+
     logger.error('[getRelationStats] Error:', err.message);
     return new Map();
   }
@@ -352,8 +378,12 @@ export async function getRelationStats(atomIds, projectPath) {
  */
 export async function persistGraphMetrics(projectPath, atomIds = null) {
   try {
+    if (!connectionManager.isInitialized()) {
+      logger.debug('[persistGraphMetrics] No repo available');
+      return;
+    }
     const repo = getRepository(projectPath);
-    if (!repo || !repo.db) {
+    if (!repo?.initialized || !repo?.db || repo.db.open === false) {
       logger.debug('[persistGraphMetrics] No repo available');
       return;
     }
@@ -442,6 +472,11 @@ export async function persistGraphMetrics(projectPath, atomIds = null) {
     logger.debug(`[persistGraphMetrics] Updated ${atomsToUpdate.length} atoms with graph metrics`);
 
   } catch (err) {
+    if (isTransientSqliteAvailabilityError(err)) {
+      logger.debug(`[persistGraphMetrics] Skipping transient SQLite issue: ${err.message}`);
+      return;
+    }
+
     logger.error('[persistGraphMetrics] Error:', err.message);
   }
 }

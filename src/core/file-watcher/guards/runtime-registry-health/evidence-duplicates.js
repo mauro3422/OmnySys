@@ -1,5 +1,5 @@
-import { buildDuplicateRegistrationIssue } from './runtime-registry-health-issues.js';
-import { findRuntimeRegistryHealthDuplicateRegistrations } from './runtime-registry-health-duplicates.js';
+import { buildDuplicateRegistrationIssue } from './issues.js';
+import { findRuntimeRegistryHealthDuplicateRegistrations } from './duplicates.js';
 
 export function collectRuntimeRegistryHealthDuplicateIssues({ filePath, registrySnapshot }) {
     if (!registrySnapshot) return [];

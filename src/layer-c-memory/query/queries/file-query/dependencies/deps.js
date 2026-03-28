@@ -18,7 +18,7 @@ export async function getFileDependencies(rootPath, filePath, options = {}) {
   const result = new Set();
   try {
     const repo = getRepository(rootPath);
-    if (repo && repo.db) {
+    if (repo?.initialized && repo?.db && repo.db.open !== false) {
       const normalizedPath = filePath.replace(/\\/g, '/');
       const coverage = getSystemMapPersistenceCoverage(repo.db);
 
@@ -61,7 +61,10 @@ export async function getFileDependencies(rootPath, filePath, options = {}) {
       if (result.size > 0) return Array.from(result);
     }
   } catch (err) {
-    console.error(`[getFileDependencies] SQLite error: ${err.message}`);
+    if (!String(err?.message || '').includes('database connection is not open')) {
+      console.error(`[getFileDependencies] SQLite error: ${err.message}`);
+    }
+    return Array.from(result);
   }
 
   // Fallback
@@ -80,7 +83,7 @@ export async function getFileDependents(rootPath, filePath, options = {}) {
   const result = new Set();
   try {
     const repo = getRepository(rootPath);
-    if (repo && repo.db) {
+    if (repo?.initialized && repo?.db && repo.db.open !== false) {
       const normalizedPath = filePath.replace(/\\/g, '/');
       const coverage = getSystemMapPersistenceCoverage(repo.db);
 
@@ -108,7 +111,10 @@ export async function getFileDependents(rootPath, filePath, options = {}) {
       if (result.size > 0) return Array.from(result);
     }
   } catch (err) {
-    console.error(`[getFileDependents] SQLite error: ${err.message}`);
+    if (!String(err?.message || '').includes('database connection is not open')) {
+      console.error(`[getFileDependents] SQLite error: ${err.message}`);
+    }
+    return Array.from(result);
   }
 
   // Fallback

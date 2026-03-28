@@ -1,4 +1,5 @@
 import { createLogger } from '#utils/logger.js';
+import { connectionManager } from '../../storage/database/connection.js';
 import {
   isDedupFresh,
   extractClientId,
@@ -16,6 +17,17 @@ function isSqliteBusyError(error) {
   return (
     error?.code === 'SQLITE_BUSY' ||
     error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database is locked') ||
+    message.includes('database is busy')
+  );
+}
+
+function isTransientSqliteAvailabilityError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'SQLITE_BUSY' ||
+    error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database connection is not open') ||
     message.includes('database is locked') ||
     message.includes('database is busy')
   );
@@ -46,6 +58,12 @@ function runWithBusyRetry(operation, label, attempts = 5, baseDelayMs = 25) {
   }
 
   throw lastError;
+}
+
+function canUseSessionDb(manager) {
+  return connectionManager.isInitialized()
+    && Boolean(connectionManager.db && connectionManager.db.open !== false)
+    && Boolean(manager?.statements);
 }
 
 export function reserveSession(clientInfo = {}, proposedSessionId) {
@@ -89,13 +107,17 @@ export function releasePendingSession(sessionId, clientInfo = {}) {
 }
 
 export function findSessionByClientId(clientId) {
-  if (!this.statements || !clientId) return null;
+  if (!clientId) return null;
 
   try {
     const cached = this.activeSessions.get(clientId);
     if (cached && isDedupFresh(cached.updated_at)) {
       logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${cached.id}`);
       return cached;
+    }
+
+    if (!canUseSessionDb(this)) {
+      return null;
     }
 
     const row = runWithBusyRetry(
@@ -113,13 +135,15 @@ export function findSessionByClientId(clientId) {
 
     return null;
   } catch (err) {
-    logger.error(`Failed to find session by client_id ${clientId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to find session by client_id ${clientId}: ${err.message}`);
+    }
     return null;
   }
 }
 
 export function deduplicateSessions(clientId, keepSessionId) {
-  if (!this.statements || !clientId) return 0;
+  if (!clientId || !canUseSessionDb(this)) return 0;
 
   try {
     const info = runWithBusyRetry(
@@ -131,14 +155,15 @@ export function deduplicateSessions(clientId, keepSessionId) {
     }
     return info.changes;
   } catch (err) {
-    logger.error(`Failed to deduplicate sessions for ${clientId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to deduplicate sessions for ${clientId}: ${err.message}`);
+    }
     return 0;
   }
 }
 
 export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
   try {
-    this.ensureInitialized();
     const clientId = extractClientId(clientInfo);
     this.releasePendingSession(sessionId, clientInfo);
 
@@ -157,7 +182,7 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
     const existing = this.getSession(sessionId);
     const createdAt = existing ? existing.created_at : now;
 
-    if (this.statements) {
+    if (canUseSessionDb(this)) {
       runWithBusyRetry(
         () => this.statements.upsert.run(
           sessionId,
@@ -177,17 +202,23 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
       createActiveSessionRecord(sessionId, clientId, clientInfo, metadata, createdAt, now)
     );
 
+    if (!canUseSessionDb(this)) {
+      logger.debug(`[DEDUP] Saved in-memory session ${sessionId} for ${clientId} (DB unavailable)`);
+      return sessionId;
+    }
+
     logger.debug(`[DEDUP] Saved session ${sessionId} for ${clientId}`);
     return sessionId;
   } catch (err) {
-    logger.error(`Failed to save session ${sessionId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to save session ${sessionId}: ${err.message}`);
+    }
     return sessionId;
   }
 }
 
 export function getSession(sessionId) {
-  this.ensureInitialized();
-  if (!this.statements) return null;
+  if (!canUseSessionDb(this)) return null;
 
   try {
     return hydrateSessionRow(
@@ -197,16 +228,17 @@ export function getSession(sessionId) {
       )
     );
   } catch (err) {
-    logger.error(`Failed to get session ${sessionId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to get session ${sessionId}: ${err.message}`);
+    }
     return null;
   }
 }
 
 export function updateActivity(sessionId) {
   try {
-    this.ensureInitialized();
     const now = new Date().toISOString();
-    if (this.statements) {
+    if (canUseSessionDb(this)) {
       runWithBusyRetry(
         () => this.statements.updateActivity.run(now, sessionId),
         `updateActivity(${sessionId})`
@@ -214,28 +246,31 @@ export function updateActivity(sessionId) {
     }
     updateCachedSessionActivity(this.activeSessions, sessionId, now);
   } catch (err) {
-    logger.error(`Failed to update activity for session ${sessionId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to update activity for session ${sessionId}: ${err.message}`);
+    }
   }
 }
 
 export function deleteSession(sessionId) {
   try {
-    this.ensureInitialized();
     this.releasePendingSession(sessionId);
     removeSessionFromCache(this.activeSessions, sessionId);
-    if (this.statements) {
+    if (canUseSessionDb(this)) {
       runWithBusyRetry(
         () => this.statements.markInactive.run(new Date().toISOString(), sessionId),
         `deleteSession(${sessionId})`
       );
     }
   } catch (err) {
-    logger.error(`Failed to delete session ${sessionId}: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to delete session ${sessionId}: ${err.message}`);
+    }
   }
 }
 
 export function cleanup(maxAgeHours = 24) {
-  if (!this.statements) return;
+  if (!canUseSessionDb(this)) return;
 
   try {
     const cutoff = new Date(Date.now() - (maxAgeHours * 60 * 60 * 1000)).toISOString();
@@ -252,7 +287,10 @@ export function cleanup(maxAgeHours = 24) {
 }
 
 export function getAllSessions(activeOnly = false) {
-  if (!this.statements) return [];
+  if (!canUseSessionDb(this)) {
+    const sessions = Array.from(this.activeSessions.values());
+    return activeOnly ? sessions.filter((session) => session?.is_active === 1) : sessions;
+  }
   try {
     return activeOnly ? this.statements.getAllActive.all() : this.statements.getAll.all();
   } catch (err) {

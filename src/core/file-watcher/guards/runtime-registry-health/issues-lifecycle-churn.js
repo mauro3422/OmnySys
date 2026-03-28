@@ -1,4 +1,4 @@
-import { IssueDomains, createIssueType, createStandardContext } from './guard-standards.js';
+import { IssueDomains, createIssueType, createStandardContext } from '../guard-standards.js';
 
 export function buildInitializationChurnIssue({ filePath, initCalls, lastInitTime }) {
     const severity = 'medium';

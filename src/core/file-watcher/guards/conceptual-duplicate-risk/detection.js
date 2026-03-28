@@ -1,5 +1,5 @@
-import { isLowSignalName } from './guard-standards.js';
-import { detectConceptualFindings } from './duplicate-conceptual-core.js';
+import { isLowSignalName } from '../guard-standards.js';
+import { detectConceptualFindings } from '../duplicate-conceptual-core.js';
 
 export async function detectConceptualDuplicateFindings({
     repo,

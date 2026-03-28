@@ -1,4 +1,4 @@
-import { buildInitializationChurnIssue } from './runtime-registry-health-issues.js';
+import { buildInitializationChurnIssue } from './issues.js';
 
 const MAX_INIT_CALLS = 3;
 

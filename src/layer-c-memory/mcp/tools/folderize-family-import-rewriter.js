@@ -2,17 +2,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../utils/path-utils.js';
+import { normalizeComparablePath } from '#shared/utils/path-utils.js';
 import { atomic_edit } from './atomic-edit/index.js';
 import { extractImportsFromCode } from './atomic-edit/exports.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family:rewriter');
-
-function normalizeComparablePath(filePath = '') {
-  return String(filePath || '')
-    .replace(/\\/g, '/')
-    .replace(/\.[jt]sx?$/i, '')
-    .replace(/\/+$/g, '');
-}
 
 function buildMoveMap(projectPath, moveTargets = []) {
   const moveMap = new Map();

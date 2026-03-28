@@ -1,8 +1,8 @@
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { createLogger } from '../../../utils/logger.js';
-import { IssueDomains, createIssueType } from './guard-standards.js';
-import { buildConceptualDuplicateReportPayload } from './conceptual-duplicate-risk-reporting-payload.js';
-import { emitConceptualDuplicateFinding } from './conceptual-duplicate-risk-reporting-event.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { IssueDomains, createIssueType } from '../guard-standards.js';
+import { buildConceptualDuplicateReportPayload } from './payload.js';
+import { emitConceptualDuplicateFinding } from './event.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
 

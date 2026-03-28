@@ -9,8 +9,8 @@
  * @version 1.0.0
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { executeConceptualDuplicateRisk } from './conceptual-duplicate-risk-execution.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { executeConceptualDuplicateRisk } from './execution.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
 

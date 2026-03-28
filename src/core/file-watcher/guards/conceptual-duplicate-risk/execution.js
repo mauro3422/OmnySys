@@ -1,9 +1,9 @@
-import { clearConceptualDuplicateIssues } from './duplicate-conceptual-core.js';
-import { loadConceptualDuplicateRepo, loadConceptualDuplicateContext } from './conceptual-duplicate-risk-repo.js';
-import { detectConceptualDuplicateFindings } from './conceptual-duplicate-risk-detection.js';
-import { persistConceptualDuplicateFinding } from './conceptual-duplicate-risk-persistence.js';
-import { normalizeFilePath, isCanonicalDuplicateSignalPolicyFile } from '../../../shared/compiler/index.js';
-import { connectionManager } from '../../../layer-c-memory/storage/database/connection.js';
+import { clearConceptualDuplicateIssues } from '../duplicate-conceptual-core.js';
+import { loadConceptualDuplicateRepo, loadConceptualDuplicateContext } from '../conceptual-duplicate-risk-repo.js';
+import { detectConceptualDuplicateFindings } from './detection.js';
+import { persistConceptualDuplicateFinding } from '../conceptual-duplicate-risk-persistence.js';
+import { normalizeFilePath, isCanonicalDuplicateSignalPolicyFile } from '../../../../shared/compiler/index.js';
+import { connectionManager } from '../../../../layer-c-memory/storage/database/connection.js';
 
 export async function executeConceptualDuplicateRisk(rootPath, filePath, EventEmitterContext, options = {}, logger) {
     try {

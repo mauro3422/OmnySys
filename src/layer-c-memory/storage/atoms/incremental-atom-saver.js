@@ -13,6 +13,10 @@ import {
   buildVersionPayload,
 } from './atom-version-manager-helpers.js';
 import { createLogger } from '#utils/logger.js';
+import {
+  REPOSITORY_MUTATION_DURABILITY,
+  runRepositoryMutation
+} from '../repository/index.js';
 
 const logger = createLogger('OmnySys:incremental-saver');
 
@@ -117,65 +121,109 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
   };
 
   try {
-    const { getRepository } = await import('../repository/index.js');
-    const repo = getRepository(rootPath);
-    const existingVersions = loadExistingVersionRowsForFile(repo.db, normalizedPath);
+    const mutation = await runRepositoryMutation(
+      rootPath,
+      {
+        key: `incremental-atoms:${normalizedPath}`,
+        label: `saveAtomsIncremental:${normalizedPath}`,
+        durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+        metadata: { filePath: normalizedPath, atomCount: atoms.length },
+        run: (repo) => saveAtomsIncrementalInternal(
+          repo,
+          rootPath,
+          normalizedPath,
+          atoms,
+          options,
+          startTime,
+          results
+        )
+      },
+      { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+    );
 
-    const atomsToSave = [];
-    const versionsToSave = [];
-
-    for (const atom of atoms) {
-      if (!atom.name) continue;
-
-      const atomId = `${normalizedPath}::${atom.name}`;
-
-      // Aseguramos que el objeto atom tenga los campos correctos para el repo
-      atom.id = atomId;
-      atom.file_path = normalizedPath;
-      atom.filePath = normalizedPath;
-
-      const existingRow = existingVersions.get(atomId);
-      const changeDetection = buildAtomChangeDetection(existingRow, atomId, atom, logger);
-
-      if (!changeDetection.hasChanges && !options.forceFull) {
-        results.unchanged++;
-        continue;
-      }
-
-      // Metadata update for record keeping
-      const finalAtom = buildIncrementalAtomMetadata(atom, rootPath, options);
-
-      atomsToSave.push(finalAtom);
-
-      if (changeDetection.isNew) results.created++;
-      else {
-        results.updated++;
-        results.totalFieldsChanged += changeDetection.fields.length;
-      }
-
-      versionsToSave.push(buildVersionSaveEntry(atomId, finalAtom));
+    if (mutation.queued || mutation.skipped) {
+      return {
+        success: true,
+        ...results,
+        duration: Date.now() - startTime,
+        atomsProcessed: atoms.length,
+        skipped: mutation.skipped,
+        queued: mutation.queued,
+        reason: mutation.reason
+      };
     }
 
-    if (atomsToSave.length > 0) {
-      // Use the unified repository save (will handle atoms, files, and relations)
-      await repo.saveMany(atomsToSave);
-    }
-
-    if (versionsToSave.length > 0) {
-      saveAtomVersionsBatch(repo.db, versionsToSave);
-    }
-
-    return {
-      success: true,
-      ...results,
-      duration: Date.now() - startTime,
-      atomsProcessed: atoms.length
-    };
+    return mutation.result;
 
   } catch (error) {
+    if (String(error?.message || '').includes('database connection is not open')) {
+      return {
+        success: true,
+        ...results,
+        duration: Date.now() - startTime,
+        atomsProcessed: atoms.length,
+        skipped: true,
+        reason: error.message
+      };
+    }
+
     logger.error(`Failed incremental save for ${normalizedPath}:`, error);
     return { success: false, error: error.message };
   }
+}
+
+async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atoms, options, startTime, results) {
+  const existingVersions = loadExistingVersionRowsForFile(repo.db, normalizedPath);
+
+  const atomsToSave = [];
+  const versionsToSave = [];
+
+  for (const atom of atoms) {
+    if (!atom.name) continue;
+
+    const atomId = `${normalizedPath}::${atom.name}`;
+
+    // Aseguramos que el objeto atom tenga los campos correctos para el repo
+    atom.id = atomId;
+    atom.file_path = normalizedPath;
+    atom.filePath = normalizedPath;
+
+    const existingRow = existingVersions.get(atomId);
+    const changeDetection = buildAtomChangeDetection(existingRow, atomId, atom, logger);
+
+    if (!changeDetection.hasChanges && !options.forceFull) {
+      results.unchanged++;
+      continue;
+    }
+
+    // Metadata update for record keeping
+    const finalAtom = buildIncrementalAtomMetadata(atom, rootPath, options);
+
+    atomsToSave.push(finalAtom);
+
+    if (changeDetection.isNew) results.created++;
+    else {
+      results.updated++;
+      results.totalFieldsChanged += changeDetection.fields.length;
+    }
+
+    versionsToSave.push(buildVersionSaveEntry(atomId, finalAtom));
+  }
+
+  if (atomsToSave.length > 0) {
+    await repo.saveMany(atomsToSave);
+  }
+
+  if (versionsToSave.length > 0) {
+    saveAtomVersionsBatch(repo.db, versionsToSave);
+  }
+
+  return {
+    success: true,
+    ...results,
+    duration: Date.now() - startTime,
+    atomsProcessed: atoms.length
+  };
 }
 
 export function getSaverStats() {

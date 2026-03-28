@@ -19,6 +19,10 @@
 - Import/export validation is now DB-only; the remaining cleanup is runtime reload and any future naming cleanup for the `filesystem-validation` helper alias.
 - Watcher alert lifecycle should reconcile against the current published analysis generation immediately after a file fix. Today, tool/runtime module staleness can leave an old alert active until reload, which makes `_recentErrors` lag behind the actual source state. The target is: fixed code on disk should expire the old alert, leave only `stale/restart-required` markers for reload-only modules, and surface only genuinely new issues.
 - Atoms trust gate: atoms remain the source of truth, but downstream automation should score confidence from `databaseHealth`, `runtimeCodeFreshness`, `surfaceAudit`, `metadataExtractionCoverage`, and watcher lifecycle. Treat the 24 medium-risk files as coordination surfaces for targeted hardening, not as 24 independent bugs.
+- SQLite durability bridge follow-up: the canonical repository bridge now queues durable writes and the runtime status surface reports queue depth, but we still need one more pass to make every derived writer honor the same contract. Watch `persistGraphMetrics`, `session-manager-methods`, and any new bulk writer for accidental direct writes while SQLite is busy.
+- Runtime lock noise follow-up: `database is locked` is now treated as transient in the main recovery path, but the remaining diagnostic goal is to ensure every replay path surfaces as `queued/skipped` instead of `error` unless data truly cannot be reconstructed.
+- Phase 2 parse-noise follow-up: the deep scan still reports unsupported-syntax parse failures in a few test fixtures. Those files are not runtime bugs, but they should be tracked so the analysis pipeline can distinguish fixtures from production surfaces.
+- Restart discipline follow-up: when a stale module is patched, prefer hot-reload plus `get_server_status()` verification first. Only restart the IDE if the daemon still reports stale tool modules after the proxy reload window.
 
 ## Consolidacion arquitectonica: grupos conceptuales accionables
 

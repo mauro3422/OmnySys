@@ -1,4 +1,4 @@
-import { IssueDomains, createIssueType, createStandardContext } from './guard-standards.js';
+import { IssueDomains, createIssueType, createStandardContext } from '../guard-standards.js';
 
 export function buildRegistryLeakIssue({ filePath, semanticCount, impactCount, totalSize }) {
     const severity = 'medium';

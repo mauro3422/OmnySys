@@ -1,4 +1,4 @@
-import { IssueDomains, createIssueType, createStandardContext } from './guard-standards.js';
+import { IssueDomains, createIssueType, createStandardContext } from '../guard-standards.js';
 
 export function buildDuplicateRegistrationIssue({ filePath, duplicates }) {
     const severity = 'high';

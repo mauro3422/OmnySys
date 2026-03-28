@@ -16,6 +16,10 @@ import { BaseSqlRepository } from '../../core/BaseSqlRepository.js';
  * Guarda el system map completo en SQLite
  */
 export async function persistSystemMapToDb(db, connectionManager, systemMap, logger) {
+  if (!db || db.open === false) {
+    return { skipped: true, reason: 'database connection is not open' };
+  }
+
   const now = Date.now();
 
   try {
@@ -81,6 +85,17 @@ function normalizeIssues(systemMap) {
  * Carga el system map completo desde SQLite
  */
 export async function retrieveSystemMapFromDb(db) {
+  if (!db || db.open === false) {
+    return {
+      files: {},
+      dependencies: {},
+      semanticConnections: [],
+      semanticIssues: [],
+      riskAssessment: {},
+      metadata: {}
+    };
+  }
+
   return {
     files: await loadSystemFiles(db) || {},
     dependencies: await loadFileDependencies(db) || {},

@@ -14,6 +14,7 @@ import { EventEmitter } from 'events';
 import { createLogger } from '../../utils/logger.js';
 import { SyntaxValidator, SafetyValidator } from './validators/index.js';
 import { ModifyOperation, InsertOperation, DeleteOperation } from './operations/index.js';
+import { calculateModification } from './operations/modify-operation-helpers.js';
 import { HistoryManager, TransactionManager } from './history/index.js';
 import { executeOperation, validateWrite } from './execution/operation-executor.js';
 import { updateAtom, emitModificationSuccess, emitAtomCreated } from './utils/atom-updater.js';
@@ -292,7 +293,16 @@ export class AtomicEditor extends EventEmitter {
     const content = await fs.readFile(absolutePath, 'utf-8');
 
     if (operation.type === 'modify') {
-      const { newContent } = await operation._calculateModification(content);
+      const { newContent } = await calculateModification(
+        content,
+        operation.options,
+        operation.filePath,
+        {
+          projectPath: this.projectPath,
+          orchestrator: this.orchestrator
+        },
+        logger
+      );
       return newContent;
     }
 

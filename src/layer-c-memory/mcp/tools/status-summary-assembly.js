@@ -2,7 +2,7 @@
  * Final status summary assembly.
  */
 
-import { compactDatabaseHealth, compactCompilerExplainabilitySummary, summarizeNodeVitals, takeSample } from './status-summary-helpers.js';
+import { compactDatabaseHealth, compactCompilerExplainabilitySummary, compactRepositoryDiagnostics, summarizeNodeVitals, takeSample } from './status-summary-helpers.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 import { compactToolInventory } from './status-tool-inventory.js';
 import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
@@ -22,6 +22,7 @@ export function summarizeStatus(status, recentErrors) {
     },
     recentErrors,
     databaseHealth: compactDatabaseHealth(status.databaseHealth),
+    repository: compactRepositoryDiagnostics(status.repository),
     metadata: status.metadata ? {
       totalFiles: status.metadata.totalFiles,
       totalFunctions: status.metadata.totalFunctions,

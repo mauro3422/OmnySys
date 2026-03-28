@@ -1,4 +1,4 @@
-import { buildRegistryLeakIssue } from './runtime-registry-health-issues.js';
+import { buildRegistryLeakIssue } from './issues.js';
 
 const MAX_EXPECTED_GUARDS = 50;
 

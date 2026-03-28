@@ -1,4 +1,5 @@
 import path from 'path';
+import { escapeRegex } from '../../../shared/utils/regex-utils.js';
 
 export function resolveAbsolutePath(context, filePath) {
   return path.join(context.projectPath, filePath);
@@ -18,10 +19,6 @@ export function getPositionFromIndex(content, index) {
     line: lines.length,
     column: lines[lines.length - 1]?.length || 0
   };
-}
-
-export function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function extractRange(content, range) {

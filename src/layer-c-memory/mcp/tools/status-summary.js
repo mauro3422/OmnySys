@@ -5,6 +5,7 @@
 export {
   compactDatabaseHealth,
   compactCompilerExplainabilitySummary,
+  compactRepositoryDiagnostics,
   summarizeNodeVitals,
   takeSample
 } from './status-summary-helpers.js';

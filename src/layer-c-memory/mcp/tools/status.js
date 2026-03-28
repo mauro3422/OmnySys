@@ -13,7 +13,7 @@ import {
   summarizeSurfaceAuditForStatus
 } from '../../../shared/compiler/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
 import {
   attachCacheStatus,
   attachOrchestratorStatus,
@@ -54,9 +54,13 @@ export async function get_server_status(args, context) {
 
     const status = buildServerStatusEnvelope(server, projectPath, phase2InProgress);
     try {
-      const repo = getRepository(projectPath);
-      status.databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
+      const repositoryDiagnostics = getRepositoryDiagnostics(projectPath);
+      status.repository = repositoryDiagnostics;
+      status.databaseHealth = repositoryDiagnostics?.status?.repo?.db
+        ? getDatabaseHealthSummary(repositoryDiagnostics.status.repo.db)
+        : null;
     } catch {
+      status.repository = null;
       status.databaseHealth = null;
     }
     attachOrchestratorStatus(status, orchestrator);

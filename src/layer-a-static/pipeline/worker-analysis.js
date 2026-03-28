@@ -15,7 +15,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import { analyzeFileCore } from './core-analyzer.js';
 import { createLogger } from '../../utils/logger.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import { REPOSITORY_MUTATION_DURABILITY, getRepository, runRepositoryMutation } from '#layer-c/storage/repository/index.js';
 import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
 import { saveFileSummariesBatch } from './file-summary-storage.js';
 import { calculateContentHash, toProjectRelativePath } from './incremental-analysis-utils.js';
@@ -295,20 +295,55 @@ async function runWorker() {
     // Bulk Save
     try {
         if (state.globalWorkerBuffer.length > 0) {
-            await withBusyRetry(
-                () => repo.saveManyBulk(state.globalWorkerBuffer, 500),
-                'save atom bulk'
+            const bulkResult = await runRepositoryMutation(
+                absoluteRootPath,
+                {
+                    label: 'save atom bulk',
+                    durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+                    metadata: {
+                        source: 'worker-analysis',
+                        count: state.globalWorkerBuffer.length
+                    },
+                    run: (bulkRepo) => withBusyRetry(
+                        () => bulkRepo.saveManyBulk(state.globalWorkerBuffer, 500),
+                        'save atom bulk'
+                    )
+                },
+                { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
             );
+
+            if (bulkResult.queued) {
+                logger.warn('[WorkerAnalysis] Atom bulk flush queued for replay after transient SQLite availability issue');
+            }
         }
     } catch (error) {
         logger.warn(`[WorkerAnalysis] Atom bulk flush skipped after retries: ${error.message}`);
     }
 
     try {
-        await withBusyRetry(
-            () => saveFileSummariesBatch(repo, Array.from(state.allFileSummariesToSave.entries()), undefined, 500),
-            'save file summaries'
-        );
+        const summaries = Array.from(state.allFileSummariesToSave.entries());
+        if (summaries.length > 0) {
+            const summaryResult = await runRepositoryMutation(
+                absoluteRootPath,
+                {
+                    label: 'save file summaries',
+                    durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
+                    metadata: {
+                        source: 'worker-analysis',
+                        count: summaries.length
+                    },
+                    run: (summaryRepo) => withBusyRetry(
+                        () => saveFileSummariesBatch(summaryRepo, summaries, undefined, 500),
+                        'save file summaries'
+                    )
+                },
+                { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
+            );
+
+            if (summaryResult.queued) {
+                logger.warn('[WorkerAnalysis] File summary flush queued for replay after transient SQLite availability issue');
+            }
+        }
     } catch (error) {
         logger.warn(`[WorkerAnalysis] File summary flush skipped after retries: ${error.message}`);
     }

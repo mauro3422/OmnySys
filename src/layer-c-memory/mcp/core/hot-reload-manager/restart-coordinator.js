@@ -9,6 +9,7 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
+import { buildRestartLifecycleGuidance } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:hot-reload:restart');
 const DEFAULT_RESTART_DEBOUNCE_MS = 900;
@@ -53,6 +54,10 @@ function requestProxyManagedRestart(server, filename, reason, eventName) {
   server._hotReloadRestartTimer = setTimeout(() => {
     const touchedFiles = buildRestartFiles(server);
     clearPendingRuntimeRestart(server);
+    const lifecycle = buildRestartLifecycleGuidance({
+      restartType: 'hot_reload_runtime_restart',
+      proxyMode: true
+    });
 
     logger.warn(
       `${reason || 'Runtime module'} changed - requesting worker restart for fresh runtime cache: ${touchedFiles.join(', ')}`
@@ -66,7 +71,8 @@ function requestProxyManagedRestart(server, filename, reason, eventName) {
       reindexOnly: false,
       reason: 'hot_reload_runtime_change',
       file: filename,
-      files: touchedFiles
+      files: touchedFiles,
+      lifecycle
     });
   }, DEFAULT_RESTART_DEBOUNCE_MS);
 
@@ -102,8 +108,17 @@ export function queueRuntimeRestart(server, { filename, reason, eventName = 'hot
 
   const runtimeRestartMode = getRuntimeRestartMode(server);
   if (runtimeRestartMode !== 'auto' || !isProxyManaged(server)) {
+    const lifecycle = buildRestartLifecycleGuidance({
+      restartType: 'hot_reload_runtime_restart',
+      proxyMode: runtimeRestartMode === 'auto'
+    });
     logger.warn(`${reason || 'Runtime module'} changed - queued manual runtime restart: ${buildRestartFiles(server).join(', ')}`);
     emitRestartNotice(server, eventName, filename, buildRestartFiles(server), 'manual_runtime_restart_required');
+    server.emit?.('hot-reload:restart-lifecycle', {
+      file: filename,
+      reason,
+      lifecycle
+    });
     return false;
   }
   return requestProxyManagedRestart(server, filename, reason, eventName);

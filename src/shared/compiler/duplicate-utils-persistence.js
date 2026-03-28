@@ -16,7 +16,7 @@ import { normalizeFilePath } from './path-normalization.js';
  */
 export function loadPreviousFindings(db, filePath, issueTypePrefix = 'code_duplicate') {
   try {
-    if (!db || !filePath) return [];
+    if (!db || db.open === false || !filePath) return [];
 
     const normalizedPath = normalizeFilePath(filePath);
     const rows = db.prepare(`

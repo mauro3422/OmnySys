@@ -20,9 +20,12 @@ import { createLogger } from '../../../utils/logger.js';
 import { FileWatcher } from './watchers/file-watcher.js';
 import { ModuleClassifier } from './watchers/module-classifier.js';
 import { ReloadHandler } from './handlers/reload-handler.js';
-import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
-import { queueRuntimeRestart } from './restart-coordinator.js';
-import { isMutationBatchActive } from '../shared/mutation-batch.js';
+import {
+  createManagedFileWatcher,
+  handleReloadableChange,
+  snapshotWatcherStats
+} from './change-flow.js';
+import { buildRestartLifecycleGuidance } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:hot-reload');
 
@@ -91,13 +94,7 @@ export class HotReloadManager {
    * @param {string} filename - Changed file
    */
   _handleFileChange(eventType, filename) {
-    handleReloadableChange({
-      eventType,
-      filename,
-      server: this.server,
-      classifier: this.classifier,
-      reloadHandler: this.reloadHandler
-    });
+    handleReloadableChange({ eventType, filename, server: this.server, classifier: this.classifier, reloadHandler: this.reloadHandler });
   }
 
   /**
@@ -107,11 +104,16 @@ export class HotReloadManager {
   getHotReloadStats() {
     const status = this.reloadHandler.getStatus();
     const watcherStats = snapshotWatcherStats(this.fileWatcher);
+    const proxyManaged = process.env.OMNYSYS_PROXY_MODE === '1' || typeof process.send === 'function';
 
     return {
       isWatching: this.fileWatcher?.isWatching() || false,
       isReloading: status.isReloading,
       runtimeRestartMode: this.server?.runtimeRestartMode || 'manual',
+      restartLifecycle: buildRestartLifecycleGuidance({
+        restartType: 'hot_reload_runtime_restart',
+        proxyMode: proxyManaged
+      }),
       pendingRuntimeRestart: {
         scheduled: !!this.server?._hotReloadRestartScheduled,
         files: Array.from(this.server?._pendingHotReloadRestartFiles || [])
@@ -138,172 +140,4 @@ export {
 };
 
 export default HotReloadManager;
-
-function createManagedFileWatcher(server, onChange) {
-  return new FileWatcher({
-    projectPath: server.projectPath,
-    onChange,
-    debounceMs: 500
-  });
-}
-
-function handleReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
-  if (shouldDeferChange(server)) {
-    queueDeferredChange(server, { eventType, filename, server, classifier, reloadHandler });
-    logger.debug(`Deferring hot-reload while indexing/mutating: ${filename}`);
-    return;
-  }
-
-  processReloadableChange({ eventType, filename, server, classifier, reloadHandler });
-}
-
-function processReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
-  if (reloadHandler.isReloading) {
-    logger.debug(`Ignoring change during reload: ${filename}`);
-    return;
-  }
-
-  if (isServerIndexing(server)) {
-    logger.debug(`Ignoring change during indexing: ${filename}`);
-    return;
-  }
-
-  if (isMutationBatchActive(server)) {
-    logger.debug(`Deferring reload during mutation batch: ${filename}`);
-    return;
-  }
-
-  const moduleInfo = classifier.classify(filename);
-  const policy = classifyRuntimeChange(filename, moduleInfo);
-  if (policy.action === RuntimeChangeAction.IGNORE) {
-    logger.debug(`Ignoring non-runtime file: ${filename}`);
-    return;
-  }
-
-  if (policy.action === RuntimeChangeAction.REFRESH) {
-    logger.info(`♻️ Refresh-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
-    server.emit('hot-reload:refresh-requested', {
-      file: filename,
-      reason: policy.reason,
-      action: policy.action
-    });
-    reloadHandler.applyModuleReload(filename, moduleInfo);
-    return;
-  }
-
-  if (policy.action === RuntimeChangeAction.RESTART) {
-    logger.warn(`🚨 Runtime restart required: ${filename} (${policy.reason})`);
-    queueRuntimeRestart(server, {
-      filename,
-      reason: policy.reason,
-      eventName: 'hot-reload:restart-pending'
-    });
-    return;
-  }
-
-  if (policy.action === RuntimeChangeAction.REINDEX) {
-    logger.info(`♻️ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
-    server.emit('hot-reload:reindex-requested', {
-      file: filename,
-      reason: policy.reason,
-      action: policy.action,
-      runtimeReloadDeferred: true,
-      runtimeRestartMode: server?.runtimeRestartMode || 'manual'
-    });
-
-    if (server?.runtimeRestartMode === 'auto') {
-      queueRuntimeRestart(server, {
-        filename,
-        reason: `${policy.reason} (deferred until reindex settles)`,
-        eventName: 'hot-reload:restart-pending'
-      });
-    }
-    return;
-  }
-
-  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
-  reloadHandler.applyModuleReload(filename, moduleInfo);
-}
-
-function shouldDeferChange(server) {
-  return isServerIndexing(server) || isMutationBatchActive(server);
-}
-
-function isServerIndexing(server) {
-  return !!server?.orchestrator?.isIndexing || !!server?.isIndexing;
-}
-
-function ensureDeferredChangeQueue(server) {
-  if (!server._pendingHotReloadChanges) {
-    server._pendingHotReloadChanges = new Map();
-  }
-
-  return server._pendingHotReloadChanges;
-}
-
-function queueDeferredChange(server, payload) {
-  if (!server || !payload?.filename) {
-    return;
-  }
-
-  const queue = ensureDeferredChangeQueue(server);
-  queue.set(payload.filename, {
-    eventType: payload.eventType,
-    filename: payload.filename,
-    classifier: payload.classifier,
-    reloadHandler: payload.reloadHandler,
-    queuedAt: Date.now()
-  });
-
-  scheduleDeferredDrain(server);
-}
-
-function scheduleDeferredDrain(server) {
-  if (!server || server._hotReloadDeferredDrainTimer) {
-    return;
-  }
-
-  server._hotReloadDeferredDrainTimer = setTimeout(() => {
-    server._hotReloadDeferredDrainTimer = null;
-    drainDeferredChanges(server);
-  }, 1000);
-
-  server._hotReloadDeferredDrainTimer?.unref?.();
-}
-
-function drainDeferredChanges(server) {
-  const queue = server._pendingHotReloadChanges;
-  if (!queue || queue.size === 0) {
-    return;
-  }
-
-  if (shouldDeferChange(server) || server?.hotReloadManager?.reloadHandler?.isReloading) {
-    scheduleDeferredDrain(server);
-    return;
-  }
-
-  const queuedChanges = Array.from(queue.values());
-  queue.clear();
-
-  queuedChanges.sort((left, right) => {
-    const priority = getChangePriority(right.filename) - getChangePriority(left.filename);
-    return priority !== 0 ? priority : left.queuedAt - right.queuedAt;
-  });
-
-  for (const change of queuedChanges) {
-    processReloadableChange(change);
-  }
-}
-
-function getChangePriority(filename) {
-  const normalized = String(filename || '').replace(/\\/g, '/');
-  if (/(^|[\\/])layer-c-memory[\\/]mcp[\\/].*\.js$/i.test(normalized)) return 4;
-  if (/(^|[\\/])shared[\\/]compiler[\\/].*\.js$/i.test(normalized)) return 3;
-  if (/(^|[\\/])layer-a-static[\\/].*\.js$/i.test(normalized)) return 2;
-  return 1;
-}
-
-function snapshotWatcherStats(fileWatcher) {
-  return fileWatcher?.getFileWatcherStats?.() || {};
-}
 
