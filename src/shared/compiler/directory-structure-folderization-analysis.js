@@ -108,6 +108,98 @@ function indexFolderizationRows(rows = []) {
   return pathIndex;
 }
 
+function toComparableStamp(value) {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function buildFamilyStateIndex(rows = []) {
+  const index = new Map();
+
+  for (const row of rows) {
+    const directory = row.directory || '';
+    const familyRoot = deriveFlatFamilyRoot(row.path);
+    if (!directory || !familyRoot) {
+      continue;
+    }
+
+    const key = buildFamilyKey(directory, familyRoot);
+    if (!index.has(key)) {
+      index.set(key, {
+        directory,
+        familyRoot,
+        rootRows: [],
+        folderRows: [],
+        versionCountTotal: 0,
+        latestUpdatedAt: null,
+        earliestUpdatedAt: null
+      });
+    }
+
+    const state = index.get(key);
+    const isFolderizedRow = isAlreadyFolderized(directory, familyRoot);
+
+    state.versionCountTotal += Number(row.versionCount) || 0;
+    if (isFolderizedRow) {
+      state.folderRows.push(row);
+    } else {
+      state.rootRows.push(row);
+    }
+
+    const updatedStamp = toComparableStamp(row.updatedAt);
+    if (updatedStamp != null) {
+      if (state.latestUpdatedAt == null || updatedStamp > state.latestUpdatedAt.stamp) {
+        state.latestUpdatedAt = { stamp: updatedStamp, value: row.updatedAt || null };
+      }
+
+      if (state.earliestUpdatedAt == null || updatedStamp < state.earliestUpdatedAt.stamp) {
+        state.earliestUpdatedAt = { stamp: updatedStamp, value: row.updatedAt || null };
+      }
+    }
+  }
+
+  return index;
+}
+
+function summarizeFamilyEvolution(state = {}) {
+  return {
+    rootFileCount: state.rootRows?.length || 0,
+    folderFileCount: state.folderRows?.length || 0,
+    versionCountTotal: state.versionCountTotal || 0,
+    latestUpdatedAt: state.latestUpdatedAt?.value || null,
+    earliestUpdatedAt: state.earliestUpdatedAt?.value || null,
+    migrationState: state.folderRows?.length > 0
+      ? (state.rootRows?.length > state.folderRows.length ? 'mixed' : 'already_folderized')
+      : 'flat'
+  };
+}
+
+function buildFamilyStateByRoot(rows = []) {
+  const stateByKey = buildFamilyStateIndex(rows);
+  const rootIndex = new Map();
+
+  for (const state of stateByKey.values()) {
+    const evolution = summarizeFamilyEvolution(state);
+    const existing = rootIndex.get(state.familyRoot);
+    if (!existing || (evolution.folderFileCount + evolution.rootFileCount) > (existing.folderFileCount + existing.rootFileCount)) {
+      rootIndex.set(state.familyRoot, {
+        ...state,
+        evolution
+      });
+    }
+  }
+
+  return rootIndex;
+}
+
 function buildBarrelCandidate(members, groupSet, importerIndex) {
   const scored = members.map((member) => {
     const internalImportCount = member.importTargets.filter((target) => groupSet.has(target)).length;
@@ -173,7 +265,11 @@ export function findFolderizationCandidateForPaths(candidates = [], filePaths = 
 }
 
 function scoreCandidateGroup(group, importerIndex, options = {}) {
-  const { minFileCount = 4 } = options;
+  const {
+    minFileCount = 4,
+    familyEvolution = null,
+    migrationState = 'flat'
+  } = options;
   const members = group.members.slice().sort((a, b) => a.path.localeCompare(b.path));
   const groupSet = new Set(members.map((member) => member.path));
 
@@ -228,7 +324,23 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
     exportCount,
     exportingMembers,
     confidence,
-    shouldFolderize: enrichedMembers.length >= minFileCount && (Boolean(barrelFile) || internalImportEdges >= enrichedMembers.length),
+    shouldFolderize: migrationState === 'flat' && enrichedMembers.length >= minFileCount && (Boolean(barrelFile) || internalImportEdges >= enrichedMembers.length),
+    migrationState,
+    familyEvolution: familyEvolution ? {
+      rootFileCount: familyEvolution.rootFileCount || 0,
+      folderFileCount: familyEvolution.folderFileCount || 0,
+      versionCountTotal: familyEvolution.versionCountTotal || 0,
+      latestUpdatedAt: familyEvolution.latestUpdatedAt || null,
+      earliestUpdatedAt: familyEvolution.earliestUpdatedAt || null,
+      migrationState: familyEvolution.migrationState || migrationState
+    } : {
+      rootFileCount: 0,
+      folderFileCount: 0,
+      versionCountTotal: 0,
+      latestUpdatedAt: null,
+      earliestUpdatedAt: null,
+      migrationState
+    },
     recommendation: getRecommendation({
       type: 'flat_family_sprawl',
       filePath: enrichedMembers[0]?.path || '',
@@ -247,11 +359,17 @@ export function findFolderizationCandidatesFromRows(rows = [], options = {}) {
   const pathIndex = indexFolderizationRows(rows);
   const importerIndex = new Map();
   const groups = new Map();
+  const familyStateByRoot = buildFamilyStateByRoot(rows);
 
   for (const row of rows) {
     const directory = row.directory || '';
     const familyRoot = deriveFlatFamilyRoot(row.path);
     if (!directory || !familyRoot || isAlreadyFolderized(directory, familyRoot)) {
+      continue;
+    }
+
+    const familyState = familyStateByRoot.get(familyRoot);
+    if (familyState?.folderFileCount > 0 && !isAlreadyFolderized(directory, familyRoot)) {
       continue;
     }
 
@@ -283,7 +401,11 @@ export function findFolderizationCandidatesFromRows(rows = [], options = {}) {
   }
 
   return Array.from(groups.values())
-    .map((group) => scoreCandidateGroup(group, importerIndex, { minFileCount }))
+    .map((group) => scoreCandidateGroup(group, importerIndex, {
+      minFileCount,
+      familyEvolution: familyStateByRoot.get(group.familyRoot)?.evolution || null,
+      migrationState: familyStateByRoot.get(group.familyRoot)?.evolution?.migrationState || 'flat'
+    }))
     .filter((candidate) => candidate.shouldFolderize)
     .sort((a, b) => b.confidence - a.confidence || b.fileCount - a.fileCount || a.recommendedFolder.localeCompare(b.recommendedFolder));
 }
@@ -294,6 +416,83 @@ export function findFolderizationCandidatesFromRepo(repo, options = {}) {
   }
 
   return findFolderizationCandidatesFromRows(loadFolderizationRows(repo), options);
+}
+
+function buildExistingFolderizedFamilyHint(state, importerIndex, minFileCount = 4) {
+  if (!state?.folderRows?.length) {
+    return null;
+  }
+
+  const group = {
+    directory: state.directory,
+    familyRoot: state.familyRoot,
+    members: state.folderRows.slice()
+  };
+
+  const hint = scoreCandidateGroup(group, importerIndex, {
+    minFileCount,
+    familyEvolution: state.evolution || summarizeFamilyEvolution(state),
+    migrationState: 'already_folderized'
+  });
+
+  return {
+    ...hint,
+    shouldFolderize: false,
+    alreadyFolderized: true,
+    migrationState: 'already_folderized'
+  };
+}
+
+export function findExistingFolderizedFamilyForPathsFromRows(rows = [], filePaths = [], options = {}) {
+  const normalizedPaths = filePaths
+    .map((filePath) => normalizeFolderizationPath(filePath))
+    .filter(Boolean);
+
+  if (normalizedPaths.length === 0) {
+    return null;
+  }
+
+  const familyStateByRoot = buildFamilyStateByRoot(rows);
+  const pathIndex = indexFolderizationRows(rows);
+  const importerIndex = new Map();
+
+  for (const row of rows) {
+    for (const importTarget of row.importTargets) {
+      const normalizedTarget = normalizeFolderizationPath(importTarget);
+      if (!normalizedTarget || !pathIndex.has(normalizedTarget)) {
+        continue;
+      }
+
+      if (!importerIndex.has(normalizedTarget)) {
+        importerIndex.set(normalizedTarget, new Set());
+      }
+
+      importerIndex.get(normalizedTarget).add(row.path);
+    }
+  }
+
+  for (const normalizedPath of normalizedPaths) {
+    const familyRoot = deriveFlatFamilyRoot(normalizedPath);
+    const familyState = familyStateByRoot.get(familyRoot);
+    if (!familyState?.folderRows?.length) {
+      continue;
+    }
+
+    const folderedHint = buildExistingFolderizedFamilyHint(familyState, importerIndex, options.minFileCount || 4);
+    if (folderedHint) {
+      return folderedHint;
+    }
+  }
+
+  return null;
+}
+
+export function findExistingFolderizedFamilyForPathsFromRepo(repo, filePaths = [], options = {}) {
+  if (!repo?.db?.prepare) {
+    return null;
+  }
+
+  return findExistingFolderizedFamilyForPathsFromRows(loadFolderizationRows(repo), filePaths, options);
 }
 
 export function findFolderizationCandidates(filePaths = [], { minFileCount = 4 } = {}) {
@@ -340,6 +539,8 @@ export function buildFolderizationCandidateReport(candidates = []) {
       fileCount: candidate.fileCount,
       confidence: candidate.confidence || 0,
       barrelFile: candidate.barrelFile?.path || null,
+      migrationState: candidate.migrationState || candidate.familyEvolution?.migrationState || 'flat',
+      familyEvolution: candidate.familyEvolution || null,
       members: candidate.files || candidate.members?.map((member) => member.path) || []
     }))
   };

@@ -41,10 +41,42 @@ function parseImportTarget(importEntry = {}) {
   );
 }
 
+function loadFolderizationVersionStats(repo) {
+  if (!repo?.db?.prepare) {
+    return new Map();
+  }
+
+  const versionRows = repo.db.prepare(`
+    SELECT file_path, COUNT(*) AS version_count, MAX(last_modified) AS latest_version_at, MIN(last_modified) AS earliest_version_at
+    FROM atom_versions
+    WHERE file_path IS NOT NULL
+    GROUP BY file_path
+  `).all();
+
+  const stats = new Map();
+
+  for (const row of versionRows) {
+    const filePath = normalizeFolderizationPath(row.file_path);
+    if (!filePath) {
+      continue;
+    }
+
+    stats.set(filePath, {
+      versionCount: Number(row.version_count) || 0,
+      latestVersionAt: row.latest_version_at || null,
+      earliestVersionAt: row.earliest_version_at || null
+    });
+  }
+
+  return stats;
+}
+
 export function loadFolderizationRows(repo) {
   if (!repo?.db?.prepare) {
     return [];
   }
+
+  const versionStats = loadFolderizationVersionStats(repo);
 
   return repo.db.prepare(`
     SELECT path, module_name, imports_json, exports_json, atom_count, total_lines, updated_at
@@ -56,6 +88,7 @@ export function loadFolderizationRows(repo) {
     const exports = parseFolderizationArray(row.exports_json, []);
     const path = normalizeFolderizationPath(row.path);
     const importTargets = imports.map(parseImportTarget).filter(Boolean);
+    const versionStatsForPath = versionStats.get(path) || {};
 
     return {
       path,
@@ -69,7 +102,10 @@ export function loadFolderizationRows(repo) {
       importTargets,
       importCount: importTargets.length,
       exports,
-      exportCount: exports.length
+      exportCount: exports.length,
+      versionCount: versionStatsForPath.versionCount || 0,
+      latestVersionAt: versionStatsForPath.latestVersionAt || null,
+      earliestVersionAt: versionStatsForPath.earliestVersionAt || null
     };
   });
 }

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.370 - Sprint 16: Folderization Evolution and Existing Family Hints](changelogs/v0.9.370.md)
 - [v0.9.369 - Sprint 16: Mutation Batch Guard and Status Summary Finalization](changelogs/v0.9.369.md)
 - [v0.9.368 - Sprint 16: Status Summary Helpers and Assembly Split](changelogs/v0.9.368.md)
 - [v0.9.367 - Sprint 16: Status Tool Inventory Summary Refactor](changelogs/v0.9.367.md)

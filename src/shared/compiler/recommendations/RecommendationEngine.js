@@ -19,8 +19,12 @@ const CANONICAL_TEMPLATES = {
         strategy: 'directory_alignment'
     }),
     flat_family_sprawl: (ctx) => ({
-        message: `Folderize ${ctx.familyRoot} into ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`} and keep ${ctx.barrelFile || 'an index.js'} as the barrel.`,
-        action: 'Group related helpers into a dedicated folder with a thin barrel',
+        message: ctx.alreadyFolderized
+            ? `Family ${ctx.familyRoot} is already folderized in ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`}; keep the existing barrel and avoid creating a duplicate folder.`
+            : `Folderize ${ctx.familyRoot} into ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`} and keep ${ctx.barrelFile || 'an index.js'} as the barrel.`,
+        action: ctx.alreadyFolderized
+            ? 'Preserve the existing folder and avoid duplicate folderization'
+            : 'Group related helpers into a dedicated folder with a thin barrel',
         strategy: 'folderization'
     }),
     high_coupling: () => ({
@@ -29,10 +33,14 @@ const CANONICAL_TEMPLATES = {
         strategy: 'decoupling'
     }),
     conceptual_duplicate: (ctx) => ({
-        message: ctx.folderizationHint
+        message: ctx.folderizationHint?.alreadyFolderized
+            ? `Consolidate ${ctx.instanceCount} duplicate implementations; the family already lives in ${ctx.folderizationHint.recommendedFolder}.`
+            : ctx.folderizationHint
             ? `Consolidate ${ctx.instanceCount} duplicate implementations and folderize ${ctx.folderizationHint.familyRoot} into ${ctx.folderizationHint.recommendedFolder}.`
             : `Consolidate ${ctx.instanceCount} duplicate implementations`,
-        action: ctx.folderizationHint
+        action: ctx.folderizationHint?.alreadyFolderized
+            ? 'Use the existing folder as the canonical family location'
+            : ctx.folderizationHint
             ? 'Use a single canonical API (SSOT) and group the family into a dedicated folder with a thin barrel'
             : 'Use a single canonical API (SSOT) instead of re-implementing logic',
         strategy: 'logic_consolidation'

@@ -1,6 +1,10 @@
 import { createLogger } from '#utils/logger.js';
 import { loadDuplicateRows } from '../../architectural-debt-score-repository.js';
-import { findFolderizationCandidateForPaths, findFolderizationCandidatesFromRepo } from '../../directory-structure-folderization.js';
+import {
+  findExistingFolderizedFamilyForPathsFromRepo,
+  findFolderizationCandidateForPaths,
+  findFolderizationCandidatesFromRepo
+} from '../../directory-structure-folderization.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
@@ -19,7 +23,8 @@ export async function calculateDuplicationScore(projectPath, repo) {
 
       for (const duplicate of duplicates.slice(0, 20)) {
         const files = duplicate.files.split(',').map((filePath) => filePath.trim()).filter(Boolean);
-        const folderizationHint = findFolderizationCandidateForPaths(folderizationCandidates, files);
+        const folderizationHint = findFolderizationCandidateForPaths(folderizationCandidates, files)
+          || findExistingFolderizedFamilyForPathsFromRepo(repo, files);
 
         issues.push({
           type: 'conceptual_duplicate',
@@ -32,7 +37,10 @@ export async function calculateDuplicationScore(projectPath, repo) {
             recommendedFolder: folderizationHint.recommendedFolder,
             barrelFile: folderizationHint.barrelFile?.path || null,
             confidence: folderizationHint.confidence,
-            fileCount: folderizationHint.fileCount
+            fileCount: folderizationHint.fileCount,
+            migrationState: folderizationHint.migrationState || null,
+            alreadyFolderized: !!folderizationHint.alreadyFolderized,
+            familyEvolution: folderizationHint.familyEvolution || null
           } : null,
           recommendation: getRecommendation({
             type: 'conceptual_duplicate',
@@ -44,7 +52,10 @@ export async function calculateDuplicationScore(projectPath, repo) {
                 recommendedFolder: folderizationHint.recommendedFolder,
                 barrelFile: folderizationHint.barrelFile?.path || null,
                 confidence: folderizationHint.confidence,
-                fileCount: folderizationHint.fileCount
+                fileCount: folderizationHint.fileCount,
+                migrationState: folderizationHint.migrationState || null,
+                alreadyFolderized: !!folderizationHint.alreadyFolderized,
+                familyEvolution: folderizationHint.familyEvolution || null
               } : null
             }
           }).message

@@ -103,6 +103,39 @@ export function buildFolderizationMigrationPlanFromRows(candidate, rows = []) {
     return null;
   }
 
+  const familyEvolution = candidate.familyEvolution || null;
+  if (candidate.alreadyFolderized || familyEvolution?.migrationState === 'already_folderized' || (familyEvolution?.folderFileCount || 0) > 0) {
+    return {
+      decision: 'reject',
+      reason: 'Family is already folderized according to metadata evolution',
+      sourceOfTruth: {
+        filesTable: 'files',
+        importMetadata: 'files.imports_json',
+        exportMetadata: 'files.exports_json'
+      },
+      rewriteMap: {},
+      candidate: {
+        familyRoot: candidate.familyRoot,
+        directory: candidate.directory,
+        recommendedFolder: candidate.recommendedFolder,
+        barrelFile: candidate.barrelFile?.path || null,
+        confidence: candidate.confidence,
+        fileCount: candidate.fileCount
+      },
+      moveTargets: [],
+      importImpact: {
+        impactedFileCount: 0,
+        impactedFiles: [],
+        rewriteCount: 0
+      },
+      breakingRisk: 'low',
+      reasons: [
+        'family already exists in a dedicated folder',
+        'metadata evolution shows folderized member rows'
+      ]
+    };
+  }
+
   const barrelPath = candidate.barrelFile?.path || null;
   const moveTargets = (candidate.files || []).map((memberPath) => ({
     from: normalizeFolderizationPath(memberPath),

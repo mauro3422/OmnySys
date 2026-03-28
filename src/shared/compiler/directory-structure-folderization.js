@@ -11,6 +11,8 @@ export {
   findFolderizationCandidates,
   findFolderizationCandidatesFromRows,
   findFolderizationCandidatesFromRepo,
+  findExistingFolderizedFamilyForPathsFromRows,
+  findExistingFolderizedFamilyForPathsFromRepo,
   buildFolderizationCandidateReport
 } from './directory-structure-folderization-analysis.js';
 
