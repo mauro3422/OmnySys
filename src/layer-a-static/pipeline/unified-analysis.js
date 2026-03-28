@@ -7,9 +7,7 @@
  */
 
 import {
-    REPOSITORY_MUTATION_DURABILITY,
     getRepository,
-    runRepositoryMutation
 } from '#layer-c/storage/repository/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { logMemoryUsage } from '../../utils/memory-telemetry.js';
@@ -173,65 +171,17 @@ function writeFileHashBatch(repo, hashEntries) {
     transaction(hashMap.entries());
 }
 
-async function persistPendingWorkerWrites(absoluteRootPath, pendingWrites) {
+async function persistPendingWorkerWrites(repo, pendingWrites) {
     if (pendingWrites.atoms.length > 0) {
-        const atomResult = await runRepositoryMutation(
-            absoluteRootPath,
-            {
-                label: 'save atom bulk',
-                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                metadata: {
-                    source: 'unified-analysis',
-                    count: pendingWrites.atoms.length
-                },
-                run: (bulkRepo) => bulkRepo.saveManyBulk(pendingWrites.atoms, 500)
-            },
-            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
-        );
-
-        if (atomResult?.success === false) {
-            logger.warn(`Deferred atom flush failed after worker settlement: ${atomResult.reason || atomResult.error || 'unknown error'}`);
-        }
+        repo.saveManyBulk(pendingWrites.atoms, 500);
     }
 
     if (pendingWrites.summaries.length > 0) {
-        const summaryResult = await runRepositoryMutation(
-            absoluteRootPath,
-            {
-                label: 'save file summaries',
-                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                metadata: {
-                    source: 'unified-analysis',
-                    count: pendingWrites.summaries.length
-                },
-                run: (summaryRepo) => saveFileSummariesBatch(summaryRepo, pendingWrites.summaries, undefined, 500)
-            },
-            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
-        );
-
-        if (summaryResult?.success === false) {
-            logger.warn(`Deferred summary flush failed after worker settlement: ${summaryResult.reason || summaryResult.error || 'unknown error'}`);
-        }
+        saveFileSummariesBatch(repo, pendingWrites.summaries, undefined, 500);
     }
 
     if (pendingWrites.hashes.length > 0) {
-        const hashResult = await runRepositoryMutation(
-            absoluteRootPath,
-            {
-                label: 'save file hashes',
-                durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                metadata: {
-                    source: 'unified-analysis',
-                    count: pendingWrites.hashes.length
-                },
-                run: (hashRepo) => writeFileHashBatch(hashRepo, pendingWrites.hashes)
-            },
-            { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
-        );
-
-        if (hashResult?.success === false) {
-            logger.warn(`Deferred hash flush failed after worker settlement: ${hashResult.reason || hashResult.error || 'unknown error'}`);
-        }
+        writeFileHashBatch(repo, pendingWrites.hashes);
     }
 }
 
@@ -290,7 +240,7 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
 
     if (pendingWrites.atoms.length > 0 || pendingWrites.summaries.length > 0 || pendingWrites.hashes.length > 0) {
         try {
-            await persistPendingWorkerWrites(absoluteRootPath, pendingWrites);
+            await persistPendingWorkerWrites(repo, pendingWrites);
             logger.debug(
                 `Persisted worker settlement writes after Phase 2 ` +
                 `(atoms=${pendingWrites.atoms.length}, summaries=${pendingWrites.summaries.length}, hashes=${pendingWrites.hashes.length})`

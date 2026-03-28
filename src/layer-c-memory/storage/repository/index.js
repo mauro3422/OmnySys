@@ -21,12 +21,13 @@ export {
   REPOSITORY_MUTATION_DURABILITY,
   enqueueRepositoryMutation,
   flushRepositoryMutationJournal,
-  getRepositoryDiagnostics,
   getRepositoryMutationJournalSnapshot,
   getRepositoryStatus,
   isRepositoryReady,
   runRepositoryMutation
 } from './repository-bridge.js';
+
+export { getRepositoryDiagnostics } from './repository-diagnostics.js';
 
 // Utilidades
 export {

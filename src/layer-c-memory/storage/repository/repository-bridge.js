@@ -14,6 +14,11 @@ import { resolve } from 'path';
 import { isMainThread } from 'worker_threads';
 import { createLogger } from '#utils/logger.js';
 import { RepositoryFactory } from './repository-factory.js';
+import {
+  getRepositoryRetryDelay,
+  isTransientDatabaseError,
+  retryUntilAvailable
+} from './repository-bridge-utils.js';
 
 const logger = createLogger('OmnySys:Storage:RepositoryBridge');
 const bridgeState = {
@@ -32,66 +37,51 @@ function normalizeProjectPath(projectPath) {
   return resolve(raw).replace(/\\/g, '/');
 }
 
-function isTransientDatabaseError(error) {
-  const message = String(error?.message || '').toLowerCase();
-  return (
-    error?.code === 'SQLITE_BUSY' ||
-    error?.code === 'SQLITE_LOCKED' ||
-    message.includes('database connection is not open') ||
-    message.includes('database is locked') ||
-    message.includes('database is busy')
-  );
-}
-
-async function wait(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return;
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getRepositoryRetryDelay(attempts, baseDelayMs = 100, maxDelayMs = 2000) {
-  const safeAttempts = Math.max(1, Number(attempts) || 1);
-  const safeBaseDelayMs = Math.max(1, Number(baseDelayMs) || 100);
-  const safeMaxDelayMs = Math.max(safeBaseDelayMs, Number(maxDelayMs) || 2000);
-  return Math.min(safeBaseDelayMs * safeAttempts, safeMaxDelayMs);
-}
-
 async function retryMutationUntilAvailable(projectPath, mutation, retryOptions = {}) {
   const attempts = Math.max(1, retryOptions.maxRetries ?? 5);
   const baseDelayMs = Math.max(1, retryOptions.baseDelayMs ?? 50);
   const maxDelayMs = Math.max(baseDelayMs, retryOptions.maxDelayMs ?? 500);
-  let lastError = null;
 
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const status = getRepositoryStatus(projectPath);
-    if (!status.ready) {
-      lastError = new Error(status.reason || 'repository is not ready');
-    } else {
-      try {
-        const result = await mutation.run(status.repo, status);
-        return { success: true, queued: false, skipped: false, reason: null, state: status, result };
-      } catch (error) {
-        lastError = error;
-        if (!isTransientDatabaseError(error)) {
-          throw error;
+  try {
+    const result = await retryUntilAvailable({
+      attempts,
+      baseDelayMs,
+      maxDelayMs,
+      shouldRetry: isTransientDatabaseError,
+      operation: async () => {
+        const status = getRepositoryStatus(projectPath);
+        if (!status.ready) {
+          throw new Error(status.reason || 'repository is not ready');
         }
+
+        const mutationResult = await mutation.run(status.repo, status);
+        return { state: status, result: mutationResult };
       }
+    });
+
+    return {
+      success: true,
+      queued: false,
+      skipped: false,
+      reason: null,
+      state: result.state,
+      result: result.result
+    };
+  } catch (error) {
+    if (!isTransientDatabaseError(error)) {
+      throw error;
     }
 
-    if (attempt < attempts - 1) {
-      const delay = Math.min(baseDelayMs * (attempt + 1), maxDelayMs);
-      await wait(delay);
-    }
+    return {
+      success: false,
+      queued: false,
+      skipped: false,
+      reason: error?.message || 'repository mutation retry exhausted',
+      state: getRepositoryStatus(projectPath),
+      result: null,
+      error: error?.message || 'repository mutation retry exhausted'
+    };
   }
-
-  return {
-    success: false,
-    queued: false,
-    skipped: false,
-    reason: lastError?.message || 'repository mutation retry exhausted',
-    state: getRepositoryStatus(projectPath),
-    result: null,
-    error: lastError?.message || 'repository mutation retry exhausted'
-  };
 }
 
 function getProjectJournal(projectPath) {
@@ -187,48 +177,6 @@ export function getRepositoryMutationJournalSnapshot(projectPath) {
       attempts: entry.attempts,
       metadata: entry.metadata
     }))
-  };
-}
-
-export function getRepositoryDiagnostics(projectPath) {
-  const status = getRepositoryStatus(projectPath);
-  const journalSnapshot = getRepositoryMutationJournalSnapshot(projectPath);
-  const queuedDurable = journalSnapshot.entries.filter((entry) => entry.durability === REPOSITORY_MUTATION_DURABILITY.DURABLE).length;
-  const issues = [];
-  const recommendations = [];
-
-  if (!status.initialized) {
-    issues.push('repository_not_initialized');
-    recommendations.push('Initialize the repository before running durable mutations.');
-  }
-
-  if (!status.dbOpen) {
-    issues.push('database_closed');
-    recommendations.push('Reopen or reinitialize SQLite, then flush the repository mutation journal.');
-  }
-
-  if (journalSnapshot.queued > 0) {
-    issues.push('queued_mutations_pending');
-    recommendations.push('Flush the repository mutation journal after SQLite is ready.');
-  }
-
-  if (status.ready && journalSnapshot.queued === 0) {
-    recommendations.push('Repository is healthy and ready for immediate writes.');
-  }
-
-  const health = !status.ready
-    ? 'degraded'
-    : journalSnapshot.queued > 0
-      ? 'degraded'
-      : 'healthy';
-
-  return {
-    health,
-    status,
-    journal: journalSnapshot,
-    queuedDurable,
-    issues,
-    recommendations
   };
 }
 
