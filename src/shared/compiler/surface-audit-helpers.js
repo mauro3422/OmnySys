@@ -1,4 +1,4 @@
-import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage.js';
+import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/metadata-extraction-coverage.js';
 
 export function compactSurfaceEntry(entry = {}) {
   return {

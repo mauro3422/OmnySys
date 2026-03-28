@@ -8,12 +8,12 @@
  */
 
 import { buildNoDatabaseCoverage } from './metadata-extraction-coverage-helpers.js';
-import { repairMetadataExtractionCoverage } from './metadata-extraction-coverage-repair.js';
+import { repairMetadataExtractionCoverage } from '../metadata-extraction-coverage-repair.js';
 import {
   buildMetadataCoverageReport,
   collectMetadataCoverageTables,
   shouldRepairMetadataCoverage
-} from './metadata-extraction-coverage-report.js';
+} from './index.js';
 
 export function getMetadataExtractionCoverage(db) {
   if (!db?.prepare) {

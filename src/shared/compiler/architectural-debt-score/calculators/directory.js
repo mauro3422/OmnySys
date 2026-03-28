@@ -3,6 +3,7 @@ import { loadDistinctFilePaths } from '../../architectural-debt-score-repository
 import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer.js';
 import {
   buildFolderizationCandidateReport,
+  buildFolderizationMigrationPlanFromRepo,
   findFolderizationCandidatesFromRepo
 } from '../../directory-structure-folderization.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
@@ -25,6 +26,9 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
       totalFiles = files.length;
       const folderizationCandidates = findFolderizationCandidatesFromRepo(repo);
       folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidates);
+      const folderizationMigrationPlan = buildFolderizationMigrationPlanFromRepo(repo, {
+        focusCandidate: folderizationCandidates[0]?.files || []
+      });
       folderizationCandidateCount = folderizationCandidates.length;
 
       for (const file of files) {
@@ -54,6 +58,9 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
       }
 
       for (const candidate of folderizationCandidates) {
+        const migrationPlan = folderizationMigrationPlan.candidates.find((plan) =>
+          plan?.candidate?.recommendedFolder === candidate.recommendedFolder
+        ) || null;
         const severity = candidate.fileCount >= 6 ? 'medium' : 'low';
         issues.push({
           type: 'flat_family_sprawl',
@@ -66,6 +73,8 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
           confidence: candidate.confidence,
           fileCount: candidate.fileCount,
           files: candidate.files,
+          migrationDecision: migrationPlan?.decision || 'review',
+          migrationPlan,
           recommendation: getRecommendation({
             type: 'flat_family_sprawl',
             filePath: candidate.files[0],
@@ -75,7 +84,8 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
               fileCount: candidate.fileCount,
               recommendedFolder: candidate.recommendedFolder,
               barrelFile: candidate.barrelFile?.path || null,
-              confidence: candidate.confidence
+              confidence: candidate.confidence,
+              migrationDecision: migrationPlan?.decision || 'review'
             }
           }).message
         });
@@ -83,12 +93,17 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
 
       if (folderizationCandidateReport.topCandidates.length > 0) {
         const topCandidate = folderizationCandidateReport.topCandidates[0];
+        const topMigrationPlan = folderizationMigrationPlan.candidates.find((plan) =>
+          plan?.candidate?.recommendedFolder === topCandidate.recommendedFolder
+        ) || null;
         issues.push({
           type: 'folderization_candidates',
           file: topCandidate.members[0] || topCandidate.recommendedFolder,
           severity: topCandidate.confidence >= 70 ? 'medium' : 'low',
           recommendation: topCandidate.recommendedFolder,
-          candidates: folderizationCandidateReport.topCandidates
+          candidates: folderizationCandidateReport.topCandidates,
+          migrationDecision: topMigrationPlan?.decision || 'review',
+          migrationPlan: topMigrationPlan
         });
       }
     }

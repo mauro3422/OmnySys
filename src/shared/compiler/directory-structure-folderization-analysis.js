@@ -92,6 +92,12 @@ function buildFamilyKey(directory, familyRoot) {
   return `${directory}::${familyRoot}`;
 }
 
+function isAlreadyFolderized(directory = '', familyRoot = '') {
+  const normalizedDirectory = normalizeFolderizationPath(directory);
+  const directoryBasename = normalizedDirectory.split('/').pop() || '';
+  return Boolean(normalizedDirectory) && directoryBasename === familyRoot;
+}
+
 function indexFolderizationRows(rows = []) {
   const pathIndex = new Map();
 
@@ -245,7 +251,7 @@ export function findFolderizationCandidatesFromRows(rows = [], options = {}) {
   for (const row of rows) {
     const directory = row.directory || '';
     const familyRoot = deriveFlatFamilyRoot(row.path);
-    if (!directory || !familyRoot) {
+    if (!directory || !familyRoot || isAlreadyFolderized(directory, familyRoot)) {
       continue;
     }
 
@@ -298,7 +304,7 @@ export function findFolderizationCandidates(filePaths = [], { minFileCount = 4 }
     const directory = filePath.slice(0, filePath.lastIndexOf('/'));
     const familyRoot = deriveFlatFamilyRoot(filePath);
 
-    if (!familyRoot || !directory) {
+    if (!familyRoot || !directory || isAlreadyFolderized(directory, familyRoot)) {
       continue;
     }
 

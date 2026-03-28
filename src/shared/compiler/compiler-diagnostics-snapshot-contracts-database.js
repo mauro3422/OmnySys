@@ -1,7 +1,7 @@
 import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
 import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
 import { getMetadataSurfaceParity } from './metadata-surface-parity.js';
-import { getMetadataExtractionCoverage } from './metadata-extraction-coverage.js';
+import { getMetadataExtractionCoverage } from './metadata-extraction-coverage/metadata-extraction-coverage.js';
 import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 import { getDatabaseHealthSummary } from './database-health.js';

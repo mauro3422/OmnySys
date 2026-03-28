@@ -5,11 +5,11 @@
 import { createLogger } from '../../../utils/logger.js';
 import { clearWatcherIssue } from '../watcher-issue-persistence.js';
 import { evaluateAtomTestability } from '../../../shared/compiler/index.js';
-import { persistPipelineOrphanFinding } from './pipeline-orphan-reporting.js';
+import { persistPipelineOrphanFinding } from './pipeline-orphan/pipeline-orphan-reporting.js';
 import {
     loadPipelineOrphanEvidence,
     hasPipelineShape
-} from './pipeline-orphan-evidence.js';
+} from './pipeline-orphan/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:pipeline-orphan');
 

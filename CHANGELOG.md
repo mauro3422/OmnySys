@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.364 - Sprint 16: Folderization Migration Planner and Approved Family Moves](changelogs/v0.9.364.md)
 - [v0.9.363 - Sprint 16: Duplicate-Aware Folderization Guidance](changelogs/v0.9.363.md)
 - [v0.9.362 - Sprint 16: DB-Driven Folderization Candidate Scoring](changelogs/v0.9.362.md)
 - [v0.9.361 - Sprint 16: Architectural Debt Score Calculators Folderization Pilot](changelogs/v0.9.361.md)

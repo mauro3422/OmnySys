@@ -55,4 +55,4 @@ export function buildNoDatabaseCoverage() {
   };
 }
 
-export { buildFieldCoverageRow, buildTableCoverage } from './metadata-extraction-coverage-table.js';
+export { buildFieldCoverageRow, buildTableCoverage } from '../metadata-extraction-coverage-table.js';

@@ -28,7 +28,7 @@ function isCanonicalGatewayModule(normalizedPath = '') {
     '/shared/compiler/standardization-report.js',
     '/shared/compiler/database-health.js',
     '/shared/compiler/live-row-reconciliation.js',
-    '/shared/compiler/metadata-extraction-coverage.js',
+    '/shared/compiler/metadata-extraction-coverage/metadata-extraction-coverage.js',
     '/shared/compiler/file-import-evidence.js',
     '/shared/compiler/system-map-persistence.js',
     '/shared/compiler/metadata-surface-parity.js',

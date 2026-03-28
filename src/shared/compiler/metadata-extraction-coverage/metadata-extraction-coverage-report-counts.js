@@ -1,4 +1,4 @@
-import { toNumber } from './core-utils.js';
+import { toNumber } from '../core-utils.js';
 
 export function collectMetadataCoverageCounts(tables = []) {
   const totalTables = tables.length;
