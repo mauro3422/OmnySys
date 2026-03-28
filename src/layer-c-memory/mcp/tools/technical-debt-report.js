@@ -10,13 +10,7 @@
 
 import { AggregateMetricsTool } from './aggregate-metrics.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import {
-    buildFolderizationCandidateReport,
-    buildFolderizationFamilyStateReportFromRepo,
-    buildFolderizationMigrationPlanFromRepo,
-    buildFolderizationNamingReportFromRepo,
-    findFolderizationCandidatesFromRepo
-} from '../../../shared/compiler/directory-structure-folderization.js';
+import { buildFolderizationReportFromRepo } from '../../../shared/compiler/index.js';
 
 /**
  * Executes the complete technical debt report.
@@ -42,22 +36,43 @@ export async function getTechnicalDebtReport(args, context) {
             aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
         ]);
 
-        const folderizationCandidateList = repo ? findFolderizationCandidatesFromRepo(repo) : [];
-        const folderizationCandidates = buildFolderizationCandidateReport(folderizationCandidateList);
-        const folderizationFamilyState = repo ? buildFolderizationFamilyStateReportFromRepo(repo) : {
-            totalFamilies: 0,
-            stateCounts: { flat: 0, mixed: 0, already_folderized: 0 },
-            topFamilies: []
-        };
-        const folderizationMigrationPlans = repo ? buildFolderizationMigrationPlanFromRepo(repo) : {
-            candidateCount: 0,
-            focusCandidate: null,
-            candidates: []
-        };
-        const folderizationNamingReport = repo ? buildFolderizationNamingReportFromRepo(repo) : {
-            familyCount: 0,
-            renameTargetCount: 0,
-            topFamilies: []
+        const folderizationReport = repo ? buildFolderizationReportFromRepo(repo) : {
+            candidateReport: {
+                candidateCount: 0,
+                topCandidates: []
+            },
+            familyState: {
+                totalFamilies: 0,
+                stateCounts: { flat: 0, mixed: 0, already_folderized: 0 },
+                topFamilies: []
+            },
+            migrationPlans: {
+                candidateCount: 0,
+                focusCandidate: null,
+                candidates: []
+            },
+            naming: {
+                familyCount: 0,
+                renameTargetCount: 0,
+                topFamilies: []
+            },
+            recommendation: {
+                message: 'No folderization candidate available',
+                action: 'Review folderization signals after more helpers are extracted',
+                strategy: 'folderization',
+                alternatives: []
+            },
+            decision: 'reject',
+            summary: {
+                candidateCount: 0,
+                flatFamilies: 0,
+                mixedFamilies: 0,
+                alreadyFolderizedFamilies: 0,
+                namingFamilies: 0,
+                namingTargets: 0,
+                focusDecision: 'reject',
+                recommendationStrategy: null
+            }
         };
 
         // Consolidate results
@@ -78,14 +93,7 @@ export async function getTechnicalDebtReport(args, context) {
                     grade: pipelineHealthResult.grade || 'F',
                     orphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
                 },
-                folderization: {
-                    candidates: folderizationCandidates.candidateCount || 0,
-                    flatFamilies: folderizationFamilyState.stateCounts.flat || 0,
-                    mixedFamilies: folderizationFamilyState.stateCounts.mixed || 0,
-                    alreadyFolderizedFamilies: folderizationFamilyState.stateCounts.already_folderized || 0,
-                    namingFamilies: folderizationNamingReport.familyCount || 0,
-                    namingTargets: folderizationNamingReport.renameTargetCount || 0
-                }
+                folderization: folderizationReport.summary
             },
             structural: {
                 totalGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
@@ -126,27 +134,30 @@ export async function getTechnicalDebtReport(args, context) {
                 }))
             },
             folderization: {
-                candidates: folderizationCandidates.topCandidates || [],
-                familyState: folderizationFamilyState,
-                migrationPlans: folderizationMigrationPlans.candidates || [],
-                focusPlan: folderizationMigrationPlans.focusCandidate || null,
-                naming: folderizationNamingReport
+                candidates: folderizationReport.candidateReport?.topCandidates || [],
+                familyState: folderizationReport.familyState,
+                migrationPlans: folderizationReport.migrationPlans?.candidates || [],
+                focusPlan: folderizationReport.migrationPlans?.focusCandidate || null,
+                naming: folderizationReport.naming,
+                recommendation: folderizationReport.recommendation,
+                decision: folderizationReport.decision,
+                summary: folderizationReport.summary
             },
             debtScore: calculateDebtScore({
                 structuralGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
                 conceptualGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
                 highRiskConceptual: conceptualResult.summary?.highRisk || 0,
                 pipelineOrphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0,
-                flatFamilies: folderizationFamilyState.stateCounts.flat || 0,
-                mixedFamilies: folderizationFamilyState.stateCounts.mixed || 0
+                flatFamilies: folderizationReport.familyState.stateCounts.flat || 0,
+                mixedFamilies: folderizationReport.familyState.stateCounts.mixed || 0
             }),
             priorityActions: generatePriorityActions({
                 structural: duplicatesResult.remediation?.items || [],
                 conceptual: conceptualResult.groups || [],
                 orphans: pipelineHealthResult.orphanPipelineFunctions || [],
-                folderization: folderizationMigrationPlans.candidates || [],
-                folderizationFamilyState,
-                folderizationNaming: folderizationNamingReport
+                folderization: folderizationReport.migrationPlans.candidates || [],
+                folderizationFamilyState: folderizationReport.familyState,
+                folderizationNaming: folderizationReport.naming
             }),
             timestamp: new Date().toISOString()
         };

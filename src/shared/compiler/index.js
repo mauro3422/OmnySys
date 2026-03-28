@@ -232,6 +232,9 @@ export {
   buildFolderizationMigrationPlanFromRepo,
   buildFolderizationNamingReportFromRows,
   buildFolderizationNamingReportFromRepo,
+  buildFolderizationReportFromRows,
+  buildFolderizationReportFromRepo,
+  buildEmptyFolderizationReport,
   loadFolderizationRows,
   normalizeFolderizationPath
 } from './directory-structure-folderization.js';

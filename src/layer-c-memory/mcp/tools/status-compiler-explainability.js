@@ -1,14 +1,8 @@
 import {
   loadCompilerDiagnosticsSnapshot,
-  summarizeCompilerPolicyDrift
+  summarizeCompilerPolicyDrift,
+  buildFolderizationReportFromRepo
 } from '../../../shared/compiler/index.js';
-import {
-  buildFolderizationCandidateReport,
-  buildFolderizationFamilyStateReportFromRepo,
-  buildFolderizationMigrationPlanFromRepo,
-  buildFolderizationNamingReportFromRepo,
-  findFolderizationCandidatesFromRepo
-} from '../../../shared/compiler/directory-structure-folderization.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null) {
   try {
@@ -31,11 +25,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       }
     });
 
-    const folderizationCandidateList = findFolderizationCandidatesFromRepo(repo);
-    const folderizationFamilyState = buildFolderizationFamilyStateReportFromRepo(repo);
-    const folderizationMigrationPlans = buildFolderizationMigrationPlanFromRepo(repo);
-    const folderizationNamingReport = buildFolderizationNamingReportFromRepo(repo);
-    const folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidateList);
+    const folderizationReport = buildFolderizationReportFromRepo(repo);
 
     return {
       policySummary,
@@ -55,10 +45,13 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       databaseHealth: snapshot.databaseHealth,
       surfaceAudit: snapshot.surfaceAudit,
       folderization: {
-        candidateReport: folderizationCandidateReport,
-        familyState: folderizationFamilyState,
-        migrationPlans: folderizationMigrationPlans,
-        naming: folderizationNamingReport
+        candidateReport: folderizationReport.candidateReport,
+        familyState: folderizationReport.familyState,
+        migrationPlans: folderizationReport.migrationPlans,
+        naming: folderizationReport.naming,
+        recommendation: folderizationReport.recommendation,
+        decision: folderizationReport.decision,
+        summary: folderizationReport.summary
       }
     };
   } catch (error) {

@@ -27,3 +27,9 @@ export {
   buildFolderizationNamingReportFromRows,
   buildFolderizationNamingReportFromRepo
 } from './directory-structure-folderization-naming.js';
+
+export {
+  buildFolderizationReportFromRows,
+  buildFolderizationReportFromRepo,
+  buildEmptyFolderizationReport
+} from './folderization-report.js';
