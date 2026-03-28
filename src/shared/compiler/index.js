@@ -223,7 +223,12 @@ export {
 
 export {
   deriveFlatFamilyRoot,
-  findFolderizationCandidates
+  findFolderizationCandidates,
+  findFolderizationCandidatesFromRows,
+  findFolderizationCandidatesFromRepo,
+  buildFolderizationCandidateReport,
+  loadFolderizationRows,
+  normalizeFolderizationPath
 } from './directory-structure-folderization.js';
 
 export {

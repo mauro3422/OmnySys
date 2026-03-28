@@ -1,7 +1,10 @@
 import { createLogger } from '#utils/logger.js';
 import { loadDistinctFilePaths } from '../../architectural-debt-score-repository.js';
 import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer.js';
-import { findFolderizationCandidates } from '../../directory-structure-folderization.js';
+import {
+  buildFolderizationCandidateReport,
+  findFolderizationCandidatesFromRepo
+} from '../../directory-structure-folderization.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
@@ -11,14 +14,17 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
   let totalFiles = 0;
   let filesInWrongPlace = 0;
   let folderizationCandidateCount = 0;
+  let folderizationCandidateReport = {
+    candidateCount: 0,
+    topCandidates: []
+  };
 
   try {
     const files = loadDistinctFilePaths(repo);
     if (files.length > 0) {
       totalFiles = files.length;
-      const folderizationCandidates = findFolderizationCandidates(
-        files.map((file) => file.file_path)
-      );
+      const folderizationCandidates = findFolderizationCandidatesFromRepo(repo);
+      folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidates);
       folderizationCandidateCount = folderizationCandidates.length;
 
       for (const file of files) {
@@ -55,6 +61,9 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
           severity,
           familyRoot: candidate.familyRoot,
           directory: candidate.directory,
+          recommendedFolder: candidate.recommendedFolder,
+          barrelFile: candidate.barrelFile?.path || null,
+          confidence: candidate.confidence,
           fileCount: candidate.fileCount,
           files: candidate.files,
           recommendation: getRecommendation({
@@ -63,9 +72,23 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
             context: {
               familyRoot: candidate.familyRoot,
               directory: candidate.directory,
-              fileCount: candidate.fileCount
+              fileCount: candidate.fileCount,
+              recommendedFolder: candidate.recommendedFolder,
+              barrelFile: candidate.barrelFile?.path || null,
+              confidence: candidate.confidence
             }
           }).message
+        });
+      }
+
+      if (folderizationCandidateReport.topCandidates.length > 0) {
+        const topCandidate = folderizationCandidateReport.topCandidates[0];
+        issues.push({
+          type: 'folderization_candidates',
+          file: topCandidate.members[0] || topCandidate.recommendedFolder,
+          severity: topCandidate.confidence >= 70 ? 'medium' : 'low',
+          recommendation: topCandidate.recommendedFolder,
+          candidates: folderizationCandidateReport.topCandidates
         });
       }
     }
@@ -83,7 +106,8 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
       totalFiles,
       filesInWrongPlace,
       wrongPlaceRatio: Math.round(wrongPlaceRatio * 100 * 100) / 100,
-      folderizationCandidateCount
+      folderizationCandidateCount,
+      folderizationCandidateReport
     }
   };
 }

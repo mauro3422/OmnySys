@@ -19,7 +19,7 @@ const CANONICAL_TEMPLATES = {
         strategy: 'directory_alignment'
     }),
     flat_family_sprawl: (ctx) => ({
-        message: `Folderize ${ctx.familyRoot} into a dedicated subdirectory under ${ctx.directory} and keep a barrel/index entrypoint.`,
+        message: `Folderize ${ctx.familyRoot} into ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`} and keep ${ctx.barrelFile || 'an index.js'} as the barrel.`,
         action: 'Group related helpers into a dedicated folder with a thin barrel',
         strategy: 'folderization'
     }),
