@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.381 - Sprint 16: Canonical Mutation Settlement and Duplicate Conceptual Folderization](changelogs/v0.9.381.md)
 - [v0.9.380 - Sprint 16: Runtime Metrics Folder Rename Cleanup](changelogs/v0.9.380.md)
 - [v0.9.379 - Sprint 16: Folderization Dependency Rewrite Repair](changelogs/v0.9.379.md)
 - [v0.9.378 - Sprint 16: Policy Conformance Rename Repair and Barrel Compatibility](changelogs/v0.9.378.md)

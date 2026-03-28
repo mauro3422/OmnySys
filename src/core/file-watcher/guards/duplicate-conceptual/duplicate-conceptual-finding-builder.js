@@ -1,7 +1,7 @@
 import {
     generateAlternativeNames,
     classifyUtilityHelperDuplicate
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 
 export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low') {
     const uniqueFiles = [...new Set(structuralVariants.map((duplicate) => duplicate.file_path))];

@@ -1,19 +1,13 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
+import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
 import { buildFolderizationNamingPlanFromRows } from '../../../shared/compiler/directory-structure-folderization-naming.js';
-import { validate_imports } from './validate-imports.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
-import { loadFolderizationRows, normalizeFolderizationPath } from '../../../shared/compiler/directory-structure-folderization-data.js';
+import { loadFolderizationRows, normalizeFolderizationPath } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:rename_folderized_family');
-
-function isRepositoryReady(repo) {
-  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
-}
 
 function sortRenameTargets(renameTargets = []) {
   return renameTargets.slice().sort((a, b) => a.from.localeCompare(b.from));
@@ -25,6 +19,19 @@ function normalizeSnapshotPath(filePath = '') {
     .replace(/\\/g, '/')
     .replace(/^\.\//, '')
     .replace(/^\/+/, '');
+}
+
+function buildRowDependencyTargets(row = {}) {
+  return [
+    ...(Array.isArray(row.importTargets) ? row.importTargets : []),
+    ...(Array.isArray(row.exportTargets) ? row.exportTargets : []),
+    ...(Array.isArray(row.imports)
+      ? row.imports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry)).filter(Boolean)
+      : []),
+    ...(Array.isArray(row.exports)
+      ? row.exports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry?.from || '')).filter(Boolean)
+      : [])
+  ];
 }
 
 function collectRenameImpact(rows = [], renameTargets = []) {
@@ -39,16 +46,7 @@ function collectRenameImpact(rows = [], renameTargets = []) {
 
     const dependencyTargets = Array.isArray(row.dependencyTargets)
       ? row.dependencyTargets
-      : [
-          ...(Array.isArray(row.importTargets) ? row.importTargets : []),
-          ...(Array.isArray(row.exportTargets) ? row.exportTargets : []),
-          ...(Array.isArray(row.imports)
-            ? row.imports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry)).filter(Boolean)
-            : []),
-          ...(Array.isArray(row.exports)
-            ? row.exports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry?.from || '')).filter(Boolean)
-            : [])
-        ];
+      : buildRowDependencyTargets(row);
 
     const matchedDependencies = dependencyTargets.filter((target) => targetSet.has(normalizeSnapshotPath(target)));
     if (matchedDependencies.length === 0) {
@@ -100,69 +98,6 @@ function buildRenameSnapshot(focusPlan, impactedFiles = []) {
       return dependentsBySourcePath.get(normalized) || impactedPaths;
     }
   };
-}
-
-async function verifyFileExists(projectPath, filePath) {
-  try {
-    await fs.access(path.resolve(projectPath, filePath));
-    return { exists: true };
-  } catch {
-    return { exists: false };
-  }
-}
-
-async function validateRenamedFamily(plan, projectPath, context) {
-  const validations = [];
-  const snapshot = context.folderizationSnapshot || null;
-  const repo = getRepository(projectPath);
-  const impactedFiles = Array.isArray(snapshot?.impactedFiles) ? snapshot.impactedFiles : [];
-  const focusFiles = Array.from(new Set([
-    plan.barrelFile || null,
-    ...plan.renameTargets.map((target) => target.to),
-    ...impactedFiles
-  ].filter(Boolean)));
-
-  if (focusFiles.length === 0) {
-    return validations;
-  }
-
-  if (!isRepositoryReady(repo)) {
-    for (const filePath of focusFiles.slice(0, 10)) {
-      const disk = await verifyFileExists(projectPath, filePath);
-      validations.push({
-        filePath,
-        disk,
-        validation: {
-          skipped: true,
-          reason: 'database connection is not open'
-        }
-      });
-    }
-
-    return validations;
-  }
-
-  for (const filePath of focusFiles.slice(0, 10)) {
-    const disk = await verifyFileExists(projectPath, filePath);
-    const validation = await validate_imports({
-      filePath,
-      checkBroken: true,
-      checkUnused: true,
-      checkCircular: false,
-      checkFileExistence: true
-    }, {
-      ...context,
-      projectPath
-    });
-
-    validations.push({
-      filePath,
-      disk,
-      validation
-    });
-  }
-
-  return validations;
 }
 
 async function executeRenamePlan({
@@ -218,18 +153,13 @@ async function executeRenamePlan({
     };
   }
 
-  const validations = validateAfterMove
-    ? await validateRenamedFamily(focusPlan, projectPath, moveContext)
-    : [];
-
   return {
     success: true,
     mode: 'applied',
     plan: focusPlan,
     renameImpact,
     results,
-    rewrites: rewriteResult,
-    validations
+    rewrites: rewriteResult
   };
 }
 
@@ -281,7 +211,7 @@ export async function rename_folderized_family(args, context) {
       folderizationSnapshot: renameSnapshot
     };
 
-    return await withMutationBatch(server, {
+    const executionResult = await withMutationBatch(server, {
       reason: 'rename_folderized_family',
       files: (plan.renameTargets || []).map((target) => target.from)
     }, async () => {
@@ -295,6 +225,34 @@ export async function rename_folderized_family(args, context) {
         validateAfterMove
       });
     });
+
+  if (!executionResult?.success || !validateAfterMove) {
+    return executionResult;
+  }
+
+  const impactedFiles = Array.isArray(moveContext.folderizationSnapshot?.impactedFiles)
+    ? moveContext.folderizationSnapshot.impactedFiles
+    : [];
+  const validationTargets = Array.from(new Set([
+    plan.barrelFile || null,
+    ...plan.renameTargets.map((target) => target.to),
+    ...impactedFiles
+  ].filter(Boolean)));
+
+  const settlement = await settleMutationFiles({
+    projectPath,
+    context: moveContext,
+    reason: 'rename_folderized_family',
+    touchedFiles: validationTargets,
+    validationTargets,
+    maxValidationTargets: 10
+  });
+  const validations = settlement.validations;
+
+  return {
+    ...executionResult,
+      validations
+    };
   } catch (error) {
     logger.error(`[Tool] rename_folderized_family failed: ${error.message}`);
     return {

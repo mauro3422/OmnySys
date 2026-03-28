@@ -27,6 +27,7 @@ import {
 } from './atomic-editor-helpers.js';
 import { normalizeAtomicPath } from './write-orchestrator.js';
 import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
+import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement.js';
 
 export class AtomicEditorTool extends AtomicMutationTool {
     constructor() {
@@ -136,6 +137,17 @@ export class AtomicEditorTool extends AtomicMutationTool {
             return { ...txResult, file: filePath, severity: 'critical' };
         }
 
+        const settlement = await settleMutationSnapshot({
+            projectPath: this.projectPath,
+            context: this.context,
+            snapshot: buildMutationSettlementSnapshot({
+                reason: this.name,
+                touchedFiles: [filePath],
+                validationTargets: [filePath]
+            }),
+            maxValidationTargets: 1
+        });
+
         const { reindexResult, autoFixed, autoFixedFiles } = txResult.analysisContext;
         const impact = await analyzeFullImpact(filePath, this.projectPath, previousAtoms, reindexResult.atoms);
         const semanticPurity = summarizeAtomSemanticPurity(reindexResult.atoms || []);
@@ -154,6 +166,7 @@ export class AtomicEditorTool extends AtomicMutationTool {
             autoFixed,
             autoFixedFiles,
             semanticPurity,
+            settlement,
             warnings: allWarnings.length > 0 ? allWarnings : undefined,
             crossFileDuplicates: preValidation.crossFileDuplicates?.length > 0 ? preValidation.crossFileDuplicates : undefined,
             blastRadius: preValidation.blastRadius,

@@ -2,7 +2,7 @@ import { createLogger } from '../../../utils/logger.js';
 import {
     loadConceptualLocalAtoms,
     detectConceptualFindings
-} from './duplicate-conceptual-core.js';
+} from './duplicate-conceptual/index.js';
 import { isLowSignalName } from './guard-standards.js';
 import { summarizeAtomTestability } from '../../../shared/compiler/index.js';
 

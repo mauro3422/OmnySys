@@ -8,6 +8,7 @@ import { extractModuleDependencySourcesFromCode } from '../../tools/atomic-edit/
 import { reindexFile } from '../../tools/atomic-edit/reindex.js';
 import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/compiler-persistence.js';
 import { withMutationBatch } from './mutation-batch.js';
+import { settleMutationFiles } from './mutation-settlement.js';
 
 const logger = createLogger('OmnySys:move:orchestrator');
 
@@ -142,7 +143,7 @@ export class MoveOrchestrator {
         const mutationServer = context.server || context.orchestrator?.server || null;
 
         try {
-            return await withMutationBatch(mutationServer, {
+            const moveResult = await withMutationBatch(mutationServer, {
                 reason: 'move_file',
                 files: [oldPath, newPath]
             }, async () => {
@@ -222,6 +223,24 @@ export class MoveOrchestrator {
 
                 return results;
             });
+
+            if (!moveResult?.success) {
+                return moveResult;
+            }
+
+            const settlement = await settleMutationFiles({
+                projectPath,
+                context,
+                reason: 'move_file',
+                touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || [])],
+                validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents],
+                maxValidationTargets: 10
+            });
+
+            return {
+                ...moveResult,
+                settlement
+            };
         } catch (err) {
             logger.error(`[MoveOrchestrator] Fatal move error: ${err.message}`);
             return {

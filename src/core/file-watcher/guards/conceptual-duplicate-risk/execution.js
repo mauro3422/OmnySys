@@ -1,4 +1,4 @@
-import { clearConceptualDuplicateIssues } from '../duplicate-conceptual-core.js';
+import { clearConceptualDuplicateIssues } from '../duplicate-conceptual/index.js';
 import { loadConceptualDuplicateRepo, loadConceptualDuplicateContext } from '../conceptual-duplicate-risk-repo.js';
 import { detectConceptualDuplicateFindings } from './detection.js';
 import { persistConceptualDuplicateFinding } from '../conceptual-duplicate-risk-persistence.js';

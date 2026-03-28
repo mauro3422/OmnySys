@@ -22,6 +22,7 @@ import {
     enforceCrossFileDuplicateGuard,
     buildAtomicWriteWarnings
 } from './atomic-write-helpers.js';
+import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement.js';
 
 export class AtomicWriterTool extends AtomicMutationTool {
     constructor() {
@@ -123,6 +124,17 @@ export class AtomicWriterTool extends AtomicMutationTool {
             return txResult;
         }
 
+        const settlement = await settleMutationSnapshot({
+            projectPath,
+            context: this.context,
+            snapshot: buildMutationSettlementSnapshot({
+                reason: this.name,
+                touchedFiles: [filePath],
+                validationTargets: [filePath]
+            }),
+            maxValidationTargets: 1
+        });
+
         const { impact, circularCheck, reindexResult } = txResult.analysisContext;
         const semanticPurity = summarizeAtomSemanticPurity(reindexResult?.atoms || []);
         const response = this.formatSuccess({
@@ -144,6 +156,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
                 circular: circularCheck?.summary?.totalCircular || 0
             },
             semanticPurity,
+            settlement,
             refactoring: analysis.refactoring.duplicates.length > 0 ? analysis.refactoring : undefined
         }, 'Atomic write successful');
 

@@ -1,4 +1,4 @@
-import { clearUnifiedDuplicateIssues } from './unified-duplicate-guard-helpers.js';
+import { clearUnifiedDuplicateIssues } from '../unified-duplicate-guard-helpers.js';
 
 export function clearConceptualDuplicateIssues(rootPath, normalizedFilePath) {
     return clearUnifiedDuplicateIssues(rootPath, normalizedFilePath);

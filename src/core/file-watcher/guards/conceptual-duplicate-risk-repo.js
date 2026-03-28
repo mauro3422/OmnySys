@@ -1,5 +1,5 @@
 import { loadPreviousFindings } from '../../../shared/compiler/index.js';
-import { loadConceptualLocalAtoms } from './duplicate-conceptual-core.js';
+import { loadConceptualLocalAtoms } from './duplicate-conceptual/index.js';
 
 export async function loadConceptualDuplicateRepo(rootPath) {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');

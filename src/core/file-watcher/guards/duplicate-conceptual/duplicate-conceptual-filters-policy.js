@@ -1,4 +1,4 @@
-import { classifyConceptualNoise, shouldIgnoreConceptualDuplicateFinding } from '../../../shared/compiler/index.js';
+import { classifyConceptualNoise, shouldIgnoreConceptualDuplicateFinding } from '../../../../shared/compiler/index.js';
 
 export function shouldSkipConceptualAtom(normalizedFilePath, localAtom, isLowSignalNameFn) {
     if (

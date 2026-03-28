@@ -1,4 +1,4 @@
-import { detectHelperReuseOpportunities } from '../../../shared/compiler/index.js';
+import { detectHelperReuseOpportunities } from '../../../../shared/compiler/index.js';
 
 export async function enrichConceptualFindingWithReuseOpportunities(projectPath, normalizedFilePath, finding) {
     if (!projectPath) {
