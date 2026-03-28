@@ -4,11 +4,12 @@ import { restart_server } from './restart-server.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
 import { get_atom_history } from './get-atom-history.js';
-import { list_tools } from './list-tools.js';
+import { get_tool_inventory_report, list_tools } from './list-tools.js';
 
 export const adminToolHandlers = {
   mcp_omnysystem_get_schema: get_schema,
   mcp_omnysystem_get_server_status: get_server_status,
+  mcp_omnysystem_get_tool_inventory_report: get_tool_inventory_report,
   mcp_omnysystem_list_tools: list_tools,
   mcp_omnysystem_get_recent_errors: get_recent_errors,
   mcp_omnysystem_restart_server: restart_server,

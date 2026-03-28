@@ -39,6 +39,7 @@ import {
   summarizeNodeVitals,
   summarizeStatus
 } from './status-summary.js';
+import { buildInventoryReport, buildInventorySnapshot } from './list-tools.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -108,6 +109,11 @@ export async function get_server_status(args, context) {
     }
 
     const recentErrors = buildRecentErrorsResponse(compactNotifications);
+    const toolInventorySnapshot = buildInventorySnapshot({ includeSchemas: false });
+    status.toolInventory = {
+      snapshot: toolInventorySnapshot,
+      report: buildInventoryReport(toolInventorySnapshot)
+    };
     return summarizeStatus(status, recentErrors);
   } catch (error) {
     logger.warn(`[Tool] get_server_status degraded: ${error.message}`);

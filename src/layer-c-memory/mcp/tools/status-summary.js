@@ -150,6 +150,21 @@ function compactCompilerExplainabilitySummary(explainability) {
   };
 }
 
+function compactToolInventory(toolInventory) {
+  if (!toolInventory || typeof toolInventory !== 'object') return null;
+
+  const snapshot = toolInventory.snapshot || {};
+  const report = toolInventory.report || {};
+
+  return {
+    totalTools: snapshot.summary?.totalTools || 0,
+    categories: snapshot.summary?.categories || [],
+    dominantCategory: report.dominantCategory || null,
+    concentration: report.concentration || 0,
+    recommendations: takeSample(report.recommendations || [], 3)
+  };
+}
+
 function summarizeNodeVitals(nodeVitals) {
   if (!nodeVitals || typeof nodeVitals !== 'object') return null;
   return {
@@ -242,6 +257,7 @@ function summarizeStatus(status, recentErrors) {
     watcher: compactWatcherSummary(status.watcher),
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability: compactCompilerExplainabilitySummary(status.compilerExplainability),
+    toolInventory: compactToolInventory(status.toolInventory),
     surfaceAudit: summarizeSurfaceAuditForStatus(status.surfaceAudit || status.compilerExplainability?.surfaceAudit),
     signalConfidence: status.signalConfidence || null,
     warnings: takeSample(status.warnings || [], 3),
