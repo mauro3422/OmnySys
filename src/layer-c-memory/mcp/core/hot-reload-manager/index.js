@@ -22,6 +22,7 @@ import { ModuleClassifier } from './watchers/module-classifier.js';
 import { ReloadHandler } from './handlers/reload-handler.js';
 import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
 import { queueRuntimeRestart } from './restart-coordinator.js';
+import { isMutationBatchActive } from '../shared/mutation-batch.js';
 
 const logger = createLogger('OmnySys:hot-reload');
 
@@ -143,6 +144,11 @@ function handleReloadableChange({ eventType, filename, server, classifier, reloa
 
   if (server.isIndexing) {
     logger.debug(`Ignoring change during indexing: ${filename}`);
+    return;
+  }
+
+  if (isMutationBatchActive(server)) {
+    logger.debug(`Deferring reload during mutation batch: ${filename}`);
     return;
   }
 
