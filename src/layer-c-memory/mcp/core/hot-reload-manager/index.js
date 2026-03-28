@@ -73,6 +73,13 @@ export class HotReloadManager {
     if (this.fileWatcher) {
       this.fileWatcher.stop();
       this.fileWatcher = null;
+      if (this.server) {
+        this.server._pendingHotReloadChanges?.clear?.();
+        if (this.server._hotReloadDeferredDrainTimer) {
+          clearTimeout(this.server._hotReloadDeferredDrainTimer);
+          this.server._hotReloadDeferredDrainTimer = null;
+        }
+      }
       logger.info('Hot-reload stopped');
     }
   }
@@ -109,6 +116,10 @@ export class HotReloadManager {
         scheduled: !!this.server?._hotReloadRestartScheduled,
         files: Array.from(this.server?._pendingHotReloadRestartFiles || [])
       },
+      pendingDeferredChanges: {
+        scheduled: !!this.server?._hotReloadDeferredDrainTimer,
+        files: Array.from(this.server?._pendingHotReloadChanges?.keys?.() || [])
+      },
       criticalModules: this.classifier.getCriticalModules().length,
       reloadablePatterns: this.classifier.getPatterns().length,
       watcherNoise: {
@@ -137,12 +148,22 @@ function createManagedFileWatcher(server, onChange) {
 }
 
 function handleReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
+  if (shouldDeferChange(server)) {
+    queueDeferredChange(server, { eventType, filename, server, classifier, reloadHandler });
+    logger.debug(`Deferring hot-reload while indexing/mutating: ${filename}`);
+    return;
+  }
+
+  processReloadableChange({ eventType, filename, server, classifier, reloadHandler });
+}
+
+function processReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
   if (reloadHandler.isReloading) {
     logger.debug(`Ignoring change during reload: ${filename}`);
     return;
   }
 
-  if (server.isIndexing) {
+  if (isServerIndexing(server)) {
     logger.debug(`Ignoring change during indexing: ${filename}`);
     return;
   }
@@ -202,6 +223,84 @@ function handleReloadableChange({ eventType, filename, server, classifier, reloa
 
   logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
   reloadHandler.applyModuleReload(filename, moduleInfo);
+}
+
+function shouldDeferChange(server) {
+  return isServerIndexing(server) || isMutationBatchActive(server);
+}
+
+function isServerIndexing(server) {
+  return !!server?.orchestrator?.isIndexing || !!server?.isIndexing;
+}
+
+function ensureDeferredChangeQueue(server) {
+  if (!server._pendingHotReloadChanges) {
+    server._pendingHotReloadChanges = new Map();
+  }
+
+  return server._pendingHotReloadChanges;
+}
+
+function queueDeferredChange(server, payload) {
+  if (!server || !payload?.filename) {
+    return;
+  }
+
+  const queue = ensureDeferredChangeQueue(server);
+  queue.set(payload.filename, {
+    eventType: payload.eventType,
+    filename: payload.filename,
+    classifier: payload.classifier,
+    reloadHandler: payload.reloadHandler,
+    queuedAt: Date.now()
+  });
+
+  scheduleDeferredDrain(server);
+}
+
+function scheduleDeferredDrain(server) {
+  if (!server || server._hotReloadDeferredDrainTimer) {
+    return;
+  }
+
+  server._hotReloadDeferredDrainTimer = setTimeout(() => {
+    server._hotReloadDeferredDrainTimer = null;
+    drainDeferredChanges(server);
+  }, 1000);
+
+  server._hotReloadDeferredDrainTimer?.unref?.();
+}
+
+function drainDeferredChanges(server) {
+  const queue = server._pendingHotReloadChanges;
+  if (!queue || queue.size === 0) {
+    return;
+  }
+
+  if (shouldDeferChange(server) || server?.hotReloadManager?.reloadHandler?.isReloading) {
+    scheduleDeferredDrain(server);
+    return;
+  }
+
+  const queuedChanges = Array.from(queue.values());
+  queue.clear();
+
+  queuedChanges.sort((left, right) => {
+    const priority = getChangePriority(right.filename) - getChangePriority(left.filename);
+    return priority !== 0 ? priority : left.queuedAt - right.queuedAt;
+  });
+
+  for (const change of queuedChanges) {
+    processReloadableChange(change);
+  }
+}
+
+function getChangePriority(filename) {
+  const normalized = String(filename || '').replace(/\\/g, '/');
+  if (/(^|[\\/])layer-c-memory[\\/]mcp[\\/].*\.js$/i.test(normalized)) return 4;
+  if (/(^|[\\/])shared[\\/]compiler[\\/].*\.js$/i.test(normalized)) return 3;
+  if (/(^|[\\/])layer-a-static[\\/].*\.js$/i.test(normalized)) return 2;
+  return 1;
 }
 
 function snapshotWatcherStats(fileWatcher) {

@@ -43,4 +43,6 @@ export function initializeRuntimeRestartState(server) {
   server._pendingHotReloadRestartFiles = new Set();
   server._hotReloadRestartScheduled = false;
   server._hotReloadRestartTimer = null;
+  server._pendingHotReloadChanges = new Map();
+  server._hotReloadDeferredDrainTimer = null;
 }
