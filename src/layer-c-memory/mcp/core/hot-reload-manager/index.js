@@ -179,9 +179,18 @@ function handleReloadableChange({ eventType, filename, server, classifier, reloa
     server.emit('hot-reload:reindex-requested', {
       file: filename,
       reason: policy.reason,
-      action: policy.action
+      action: policy.action,
+      runtimeReloadDeferred: true,
+      runtimeRestartMode: server?.runtimeRestartMode || 'manual'
     });
-    reloadHandler.applyModuleReload(filename, moduleInfo);
+
+    if (server?.runtimeRestartMode === 'auto') {
+      queueRuntimeRestart(server, {
+        filename,
+        reason: `${policy.reason} (deferred until reindex settles)`,
+        eventName: 'hot-reload:restart-pending'
+      });
+    }
     return;
   }
 

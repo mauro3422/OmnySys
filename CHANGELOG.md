@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.366 - Sprint 16: Deferred Runtime Reload for Reindex-Worthy Changes](changelogs/v0.9.366.md)
 - [v0.9.365 - Sprint 16: Folderization Rewrite Map, Tool Inventory, and Metadata Cleanup Fixes](changelogs/v0.9.365.md)
 - [v0.9.364 - Sprint 16: Folderization Migration Planner and Approved Family Moves](changelogs/v0.9.364.md)
 - [v0.9.363 - Sprint 16: Duplicate-Aware Folderization Guidance](changelogs/v0.9.363.md)
