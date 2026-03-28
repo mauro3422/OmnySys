@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.357 - Sprint 16: Integrity Guard Data-Flow Split Batch](changelogs/v0.9.357.md)
 - [v0.9.356 - Sprint 16: Semantic Persistence, Pipeline Orphan, and Registry Lifecycle Split Batch](changelogs/v0.9.356.md)
 - [v0.9.355 - Sprint 16: Conceptual Duplicate Pipeline and Unified Reporting Split Batch](changelogs/v0.9.355.md)
 - [v0.9.354 - Sprint 16: Duplicate Guard Execution Safety Fix](changelogs/v0.9.354.md)
