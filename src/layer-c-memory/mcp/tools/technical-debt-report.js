@@ -10,7 +10,14 @@
 
 import { AggregateMetricsTool } from './aggregate-metrics.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { buildFolderizationReportFromRepo } from '../../../shared/compiler/index.js';
+import {
+    buildEmptyFolderizationReport,
+    buildFolderizationReportFromRepo
+} from '../../../shared/compiler/index.js';
+import {
+    buildTechnicalDebtPriorityActions,
+    calculateTechnicalDebtScore
+} from './technical-debt-report-helpers.js';
 
 /**
  * Executes the complete technical debt report.
@@ -36,44 +43,7 @@ export async function getTechnicalDebtReport(args, context) {
             aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
         ]);
 
-        const folderizationReport = repo ? buildFolderizationReportFromRepo(repo) : {
-            candidateReport: {
-                candidateCount: 0,
-                topCandidates: []
-            },
-            familyState: {
-                totalFamilies: 0,
-                stateCounts: { flat: 0, mixed: 0, already_folderized: 0 },
-                topFamilies: []
-            },
-            migrationPlans: {
-                candidateCount: 0,
-                focusCandidate: null,
-                candidates: []
-            },
-            naming: {
-                familyCount: 0,
-                renameTargetCount: 0,
-                topFamilies: []
-            },
-            recommendation: {
-                message: 'No folderization candidate available',
-                action: 'Review folderization signals after more helpers are extracted',
-                strategy: 'folderization',
-                alternatives: []
-            },
-            decision: 'reject',
-            summary: {
-                candidateCount: 0,
-                flatFamilies: 0,
-                mixedFamilies: 0,
-                alreadyFolderizedFamilies: 0,
-                namingFamilies: 0,
-                namingTargets: 0,
-                focusDecision: 'reject',
-                recommendationStrategy: null
-            }
-        };
+        const folderizationReport = repo ? buildFolderizationReportFromRepo(repo) : buildEmptyFolderizationReport();
 
         // Consolidate results
         const report = {
@@ -143,7 +113,7 @@ export async function getTechnicalDebtReport(args, context) {
                 decision: folderizationReport.decision,
                 summary: folderizationReport.summary
             },
-            debtScore: calculateDebtScore({
+            debtScore: calculateTechnicalDebtScore({
                 structuralGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
                 conceptualGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
                 highRiskConceptual: conceptualResult.summary?.highRisk || 0,
@@ -151,7 +121,7 @@ export async function getTechnicalDebtReport(args, context) {
                 flatFamilies: folderizationReport.familyState.stateCounts.flat || 0,
                 mixedFamilies: folderizationReport.familyState.stateCounts.mixed || 0
             }),
-            priorityActions: generatePriorityActions({
+            priorityActions: buildTechnicalDebtPriorityActions({
                 structural: duplicatesResult.remediation?.items || [],
                 conceptual: conceptualResult.groups || [],
                 orphans: pipelineHealthResult.orphanPipelineFunctions || [],
@@ -176,139 +146,6 @@ export async function getTechnicalDebtReport(args, context) {
             timestamp: new Date().toISOString()
         };
     }
-}
-
-/**
- * Calculates technical debt score (0-100)
- */
-function calculateDebtScore(metrics) {
-    const {
-        structuralGroups = 0,
-        conceptualGroups = 0,
-        highRiskConceptual = 0,
-        pipelineOrphans = 0,
-        flatFamilies = 0,
-        mixedFamilies = 0
-    } = metrics;
-
-    // Weights: structural=3x, conceptual=2x, highRisk=5x, orphans=4x
-    const rawScore = (
-        (structuralGroups * 3) +
-        (conceptualGroups * 2) +
-        (highRiskConceptual * 5) +
-        (pipelineOrphans * 4) +
-        (flatFamilies * 2) +
-        (mixedFamilies * 3)
-    );
-
-    // Normalize to 0-100 (expected max: 500)
-    const normalizedScore = Math.min(100, Math.round((rawScore / 500) * 100));
-
-    return {
-        score: normalizedScore,
-        level: normalizedScore >= 75 ? 'critical' : normalizedScore >= 50 ? 'high' : normalizedScore >= 25 ? 'medium' : 'low',
-        breakdown: {
-            structural: structuralGroups * 3,
-            conceptual: conceptualGroups * 2,
-            highRisk: highRiskConceptual * 5,
-            orphans: pipelineOrphans * 4,
-            flatFamilies: flatFamilies * 2,
-            mixedFamilies: mixedFamilies * 3
-        }
-    };
-}
-
-/**
- * Generate priority actions based on the data.
- */
-function generatePriorityActions(data) {
-    const actions = [];
-    const {
-        structural,
-        conceptual,
-        orphans,
-        folderization = [],
-        folderizationFamilyState = null,
-        folderizationNaming = null
-    } = data;
-
-    // Top structural duplicates
-    if (structural.length > 0) {
-        const top = structural[0];
-        actions.push({
-            priority: 'high',
-            type: 'structural_duplicate',
-            action: `Consolidate ${top.groupSize} duplicates of '${top.name}' into ${top.canonical?.file || top.file}`,
-            impact: `Reduce ${top.duplicateFiles} duplicate files`,
-            urgencyScore: top.urgencyScore
-        });
-    }
-
-    // High risk conceptual duplicates
-    const highRiskConceptual = conceptual.filter((g) => g.risk === 'high').slice(0, 3);
-    highRiskConceptual.forEach((group) => {
-        actions.push({
-            priority: 'high',
-            type: 'conceptual_duplicate',
-            action: `Standardize ${group.implementationCount} implementations of '${group.concept.verb}:${group.concept.chest}:${group.concept.domain}:${group.concept.entity}'`,
-            impact: `Reduce ${group.fileCount} files with similar logic`,
-            urgencyScore: group.implementationCount
-        });
-    });
-
-    // Pipeline orphans
-    orphans.forEach((orphan) => {
-        actions.push({
-            priority: 'medium',
-            type: 'pipeline_orphan',
-            action: `Review '${orphan.name}' in ${orphan.file}`,
-            impact: orphan.diagnosis,
-            urgencyScore: orphan.complexity
-        });
-    });
-
-    const folderizableFamilies = folderization
-        .filter((plan) => plan?.decision === 'approve')
-        .slice(0, 5);
-    folderizableFamilies.forEach((plan) => {
-        actions.push({
-            priority: 'high',
-            type: 'folderization_candidate',
-            action: `Folderize ${plan.candidate?.familyRoot || 'family'} into ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
-            impact: `Requires ${plan.moveTargets?.length || 0} moves and ${plan.importImpact?.rewriteCount || 0} rewrites`,
-            urgencyScore: (plan.candidate?.confidence || 0) + (plan.importImpact?.rewriteCount || 0)
-        });
-    });
-
-    const mixedFamilies = folderizationFamilyState?.topFamilies
-        ?.filter((family) => family.migrationState === 'mixed')
-        ?.slice(0, 3) || [];
-    mixedFamilies.forEach((family) => {
-        actions.push({
-            priority: 'medium',
-            type: 'folderization_mixed',
-            action: `Complete migration of ${family.familyRoot} in ${family.directory}`,
-            impact: `Mixed state: ${family.rootFileCount} root / ${family.folderFileCount} folderized`,
-            urgencyScore: family.rootFileCount + family.folderFileCount
-        });
-    });
-
-    const namingFamilies = folderizationNaming?.topFamilies?.slice(0, 3) || [];
-    namingFamilies.forEach((family) => {
-        const topTarget = family.renameTargets?.[0] || null;
-        actions.push({
-            priority: 'medium',
-            type: 'folderization_naming',
-            action: `Simplify names for ${family.familyRoot} in ${family.directory}`,
-            impact: topTarget
-                ? `Rename ${family.renameTargetCount} files; example: ${topTarget.currentName} -> ${topTarget.recommendedName}`
-                : `Rename ${family.renameTargetCount} folderized files`,
-            urgencyScore: family.renameTargetCount * 2 + family.fileCount
-        });
-    });
-
-    // Order by urgency
-    return actions.sort((a, b) => b.urgencyScore - a.urgencyScore).slice(0, 10);
 }
 
 /**
