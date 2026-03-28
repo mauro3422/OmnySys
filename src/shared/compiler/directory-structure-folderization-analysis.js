@@ -200,6 +200,37 @@ function buildFamilyStateByRoot(rows = []) {
   return rootIndex;
 }
 
+function buildFamilyStateReport(familyStates = new Map()) {
+  const topFamilies = Array.from(familyStates.values())
+    .map((state) => ({
+      directory: state.directory,
+      familyRoot: state.familyRoot,
+      rootFileCount: state.evolution?.rootFileCount || 0,
+      folderFileCount: state.evolution?.folderFileCount || 0,
+      versionCountTotal: state.evolution?.versionCountTotal || 0,
+      latestUpdatedAt: state.evolution?.latestUpdatedAt || null,
+      earliestUpdatedAt: state.evolution?.earliestUpdatedAt || null,
+      migrationState: state.evolution?.migrationState || 'flat'
+    }))
+    .sort((a, b) => (b.folderFileCount + b.rootFileCount) - (a.folderFileCount + a.rootFileCount) || a.familyRoot.localeCompare(b.familyRoot));
+
+  const stateCounts = topFamilies.reduce((counts, family) => {
+    const key = family.migrationState || 'flat';
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {
+    flat: 0,
+    mixed: 0,
+    already_folderized: 0
+  });
+
+  return {
+    totalFamilies: topFamilies.length,
+    stateCounts,
+    topFamilies: topFamilies.slice(0, 10)
+  };
+}
+
 function buildBarrelCandidate(members, groupSet, importerIndex) {
   const scored = members.map((member) => {
     const internalImportCount = member.importTargets.filter((target) => groupSet.has(target)).length;
@@ -493,6 +524,26 @@ export function findExistingFolderizedFamilyForPathsFromRepo(repo, filePaths = [
   }
 
   return findExistingFolderizedFamilyForPathsFromRows(loadFolderizationRows(repo), filePaths, options);
+}
+
+export function buildFolderizationFamilyStateReportFromRows(rows = []) {
+  return buildFamilyStateReport(buildFamilyStateByRoot(rows));
+}
+
+export function buildFolderizationFamilyStateReportFromRepo(repo) {
+  if (!repo?.db?.prepare) {
+    return {
+      totalFamilies: 0,
+      stateCounts: {
+        flat: 0,
+        mixed: 0,
+        already_folderized: 0
+      },
+      topFamilies: []
+    };
+  }
+
+  return buildFolderizationFamilyStateReportFromRows(loadFolderizationRows(repo));
 }
 
 export function findFolderizationCandidates(filePaths = [], { minFileCount = 4 } = {}) {

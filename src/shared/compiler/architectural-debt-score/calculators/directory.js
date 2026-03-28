@@ -3,6 +3,7 @@ import { loadDistinctFilePaths } from '../../architectural-debt-score-repository
 import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer.js';
 import {
   buildFolderizationCandidateReport,
+  buildFolderizationFamilyStateReportFromRepo,
   buildFolderizationMigrationPlanFromRepo,
   findFolderizationCandidatesFromRepo
 } from '../../directory-structure-folderization.js';
@@ -25,7 +26,10 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
     if (files.length > 0) {
       totalFiles = files.length;
       const folderizationCandidates = findFolderizationCandidatesFromRepo(repo);
-      folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidates);
+      folderizationCandidateReport = {
+        ...buildFolderizationCandidateReport(folderizationCandidates),
+        familyStateSummary: buildFolderizationFamilyStateReportFromRepo(repo)
+      };
       const folderizationMigrationPlan = buildFolderizationMigrationPlanFromRepo(repo, {
         focusCandidate: folderizationCandidates[0]?.files || []
       });
