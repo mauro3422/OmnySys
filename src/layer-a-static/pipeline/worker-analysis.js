@@ -23,6 +23,42 @@ import fs from 'fs/promises';
 
 const logger = createLogger('OmnySys:Worker:Analysis');
 
+function isBusyDatabaseError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return (
+        error?.code === 'SQLITE_BUSY' ||
+        error?.code === 'SQLITE_LOCKED' ||
+        message.includes('database is locked') ||
+        message.includes('database is busy')
+    );
+}
+
+async function wait(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return;
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withBusyRetry(operation, label, attempts = 5, baseDelayMs = 50) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            if (!isBusyDatabaseError(error) || attempt === attempts - 1) {
+                throw error;
+            }
+
+            const delay = baseDelayMs * (attempt + 1);
+            logger.warn(`[WorkerAnalysis] Retrying ${label} after SQLite lock (${attempt + 1}/${attempts}) in ${delay}ms`);
+            await wait(delay);
+        }
+    }
+
+    throw lastError;
+}
+
 function createSkippedLiteResult(dbAtoms, persistedSummary) {
     return {
         atoms: dbAtoms.map((atom) => ({ ...atom, skipped: true })),
@@ -112,7 +148,7 @@ async function readFileSnapshot(absoluteRootPath, absoluteFilePath) {
     };
 }
 
-function reusePersistedResultIfPossible({
+async function reusePersistedResultIfPossible({
     repo,
     relativeFilePath,
     currentHash,
@@ -125,12 +161,17 @@ function reusePersistedResultIfPossible({
         return null;
     }
 
-    const dbAtoms = repo.getByFile(relativeFilePath);
+    const dbAtoms = await withBusyRetry(
+        () => Promise.resolve(repo.getByFile(relativeFilePath)),
+        `load persisted atoms for ${relativeFilePath}`
+    );
     if (!dbAtoms || dbAtoms.length === 0) {
         return null;
     }
 
-    const persistedSummary = getPersistedFileSummary?.get(relativeFilePath) || {};
+    const persistedSummary = getPersistedFileSummary
+        ? await getPersistedFileSummary(relativeFilePath)
+        : {};
     return createSkippedLiteResult(dbAtoms, persistedSummary);
 }
 
@@ -150,7 +191,7 @@ async function analyzeAndPersistFile({
     try {
         state.allFileHashesToSave.set(relativeFilePath, currentHash);
 
-        const skippedResult = reusePersistedResultIfPossible({
+        const skippedResult = await reusePersistedResultIfPossible({
             repo,
             relativeFilePath,
             currentHash,
@@ -195,13 +236,26 @@ async function runWorker() {
     await warmExtractorCache();
 
     const knownHashes = (typeof repo.getAllFileHashes === 'function')
-        ? repo.getAllFileHashes()
+        ? await withBusyRetry(() => repo.getAllFileHashes(), 'load known hashes')
         : new Map();
-    const getPersistedFileSummary = repo?.db?.prepare(`
-        SELECT imports_json, exports_json
-        FROM files
-        WHERE path = ?
-    `);
+    const getPersistedFileSummary = repo?.db
+        ? async (relativeFilePath) => {
+            try {
+                const row = await withBusyRetry(
+                    () => Promise.resolve(repo.db.prepare(`
+                        SELECT imports_json, exports_json
+                        FROM files
+                        WHERE path = ?
+                    `).get(relativeFilePath)),
+                    `load persisted summary for ${relativeFilePath}`
+                );
+                return row || {};
+            } catch (error) {
+                logger.warn(`[WorkerAnalysis] Falling back without persisted summary for ${relativeFilePath}: ${error.message}`);
+                return {};
+            }
+        }
+        : null;
 
     async function processWorkerFile(absoluteFilePath) {
         try {
@@ -239,10 +293,25 @@ async function runWorker() {
     processedSinceLastPing = flushProgress(processedSinceLastPing, false);
 
     // Bulk Save
-    if (state.globalWorkerBuffer.length > 0) {
-        repo.saveManyBulk(state.globalWorkerBuffer);
+    try {
+        if (state.globalWorkerBuffer.length > 0) {
+            await withBusyRetry(
+                () => repo.saveManyBulk(state.globalWorkerBuffer, 500),
+                'save atom bulk'
+            );
+        }
+    } catch (error) {
+        logger.warn(`[WorkerAnalysis] Atom bulk flush skipped after retries: ${error.message}`);
     }
-    saveFileSummariesBatch(repo, Array.from(state.allFileSummariesToSave.entries()));
+
+    try {
+        await withBusyRetry(
+            () => saveFileSummariesBatch(repo, Array.from(state.allFileSummariesToSave.entries()), undefined, 500),
+            'save file summaries'
+        );
+    } catch (error) {
+        logger.warn(`[WorkerAnalysis] File summary flush skipped after retries: ${error.message}`);
+    }
 
     // Final Report
     parentPort.postMessage({
