@@ -57,13 +57,15 @@ function getWorkerCount(totalFiles, existingHashCount = 0, extractionDepth = 'st
 }
 
 function handleWorkerProgress(msg, batchTimer, verbose, totalFiles, filesSkippedRef) {
-    if (msg.skipped) {
-        filesSkippedRef.count++;
-    }
-    batchTimer.onItemProcessed(1);
+    const processedCount = Math.max(1, Number(msg.count || 1));
 
-    if (batchTimer.processedCount % 300 === 0 && verbose) {
-        logMemoryUsage(`Turbo Progress ${batchTimer.processedCount}/${totalFiles} (Skipped: ${filesSkippedRef.count})`);
+    if (msg.skipped) {
+        filesSkippedRef.count += processedCount;
+    }
+    batchTimer.onItemProcessed(processedCount);
+
+    if (batchTimer.itemsProcessed % 300 === 0 && verbose) {
+        logMemoryUsage(`Turbo Progress ${batchTimer.itemsProcessed}/${totalFiles} (Skipped: ${filesSkippedRef.count})`);
     }
 }
 
