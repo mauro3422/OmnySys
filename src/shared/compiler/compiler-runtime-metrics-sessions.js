@@ -14,6 +14,12 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
   const hasRuntimeSessionCount = Number.isFinite(options.runtimeSessionCount);
   const runtimeSessionCount = hasRuntimeSessionCount ? options.runtimeSessionCount : null;
   const toleratedDuplicateClientIds = buildToleratedDuplicateClientSet(options.toleratedDuplicateClientIds);
+  const persistenceState = sessionManager?.getSessionPersistenceState?.() || {
+    available: false,
+    mode: 'memory-fallback',
+    source: 'memory',
+    reason: 'session manager state unavailable'
+  };
   const empty = {
     runtimeSessions: runtimeSessionCount,
     totalPersistent: 0,
@@ -28,8 +34,9 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     multiClientActive: false,
     sessionCountDrift: false,
     multiClientChurn: false,
+    persistenceState,
     summary: runtimeSessionCount > 0
-      ? `${runtimeSessionCount} runtime session(s), session persistence unavailable`
+      ? `${runtimeSessionCount} runtime session(s), ${persistenceState.available ? 'session persistence available' : 'session persistence unavailable (memory fallback)'}`
       : 'No active MCP sessions'
   };
 
@@ -78,6 +85,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     multiClientActive,
     sessionCountDrift,
     multiClientChurn,
+    persistenceState,
     summary: buildMcpSessionSummaryText({
       hasRuntimeSessionCount,
       runtimeSessionCount,

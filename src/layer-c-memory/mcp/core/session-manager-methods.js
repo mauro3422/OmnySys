@@ -66,6 +66,30 @@ function canUseSessionDb(manager) {
     && Boolean(manager?.statements);
 }
 
+export function getSessionPersistenceState() {
+  const initialized = connectionManager.isInitialized();
+  const dbOpen = Boolean(connectionManager.db && connectionManager.db.open !== false);
+  const statementsReady = Boolean(this?.statements);
+  const available = initialized && dbOpen && statementsReady;
+  const reason = available
+    ? null
+    : (!initialized
+      ? 'session connection not initialized'
+      : !dbOpen
+        ? 'database connection is not open'
+        : 'session statements unavailable');
+
+  return {
+    initialized,
+    dbOpen,
+    statementsReady,
+    available,
+    mode: available ? 'sqlite' : 'memory-fallback',
+    source: available ? 'sqlite' : 'memory',
+    reason
+  };
+}
+
 export function reserveSession(clientInfo = {}, proposedSessionId) {
   const clientId = extractClientId(clientInfo);
   const now = Date.now();
