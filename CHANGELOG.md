@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.380 - Sprint 16: Runtime Metrics Folder Rename Cleanup](changelogs/v0.9.380.md)
+- [v0.9.379 - Sprint 16: Folderization Dependency Rewrite Repair](changelogs/v0.9.379.md)
 - [v0.9.378 - Sprint 16: Policy Conformance Rename Repair and Barrel Compatibility](changelogs/v0.9.378.md)
 - [v0.9.377 - Sprint 16: Folderization Naming Split and Live-Row Drift Suppression](changelogs/v0.9.377.md)
 - [v0.9.376 - Sprint 16: Session Persistence Transparency in Runtime Status](changelogs/v0.9.376.md)
@@ -508,6 +510,6 @@ See `changelog/README.md` for the full historical index.
 
 ## What To Do Next
 
-1. Extend the same “canonical manifest + adoption detection” pattern to any remaining telemetry families that still compare mismatched universes.
+1. Extend the same ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œcanonical manifest + adoption detectionÃƒÂ¢Ã¢â€šÂ¬Ã‚Â pattern to any remaining telemetry families that still compare mismatched universes.
 2. Reduce structural debt in runtime-heavy modules and watcher policy files now that the compiler surfaces are aligned.
 3. Keep promoting new families through shared/compiler entry points before MCP/runtime consumers add local heuristics.

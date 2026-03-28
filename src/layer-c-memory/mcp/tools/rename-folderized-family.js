@@ -37,21 +37,30 @@ function collectRenameImpact(rows = [], renameTargets = []) {
       continue;
     }
 
-    const importTargets = Array.isArray(row.importTargets)
-      ? row.importTargets
-      : Array.isArray(row.imports)
-        ? row.imports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry)).filter(Boolean)
-        : [];
+    const dependencyTargets = Array.isArray(row.dependencyTargets)
+      ? row.dependencyTargets
+      : [
+          ...(Array.isArray(row.importTargets) ? row.importTargets : []),
+          ...(Array.isArray(row.exportTargets) ? row.exportTargets : []),
+          ...(Array.isArray(row.imports)
+            ? row.imports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry)).filter(Boolean)
+            : []),
+          ...(Array.isArray(row.exports)
+            ? row.exports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry?.from || '')).filter(Boolean)
+            : [])
+        ];
 
-    const matchedImports = importTargets.filter((target) => targetSet.has(normalizeSnapshotPath(target)));
-    if (matchedImports.length === 0) {
+    const matchedDependencies = dependencyTargets.filter((target) => targetSet.has(normalizeSnapshotPath(target)));
+    if (matchedDependencies.length === 0) {
       continue;
     }
 
     impactedFiles.push({
       filePath: rowPath,
-      matchedImports,
-      importCount: matchedImports.length
+      matchedImports: matchedDependencies,
+      matchedDependencies,
+      importCount: matchedDependencies.length,
+      dependencyCount: matchedDependencies.length
     });
   }
 

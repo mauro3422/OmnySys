@@ -22,6 +22,25 @@ export function extractImportsFromCode(code) {
 }
 
 /**
+ * Extrae importaciones y re-exportaciones de módulos desde un string de código.
+ * Se usa para mover/renombrar archivos que también están referenciados por barrels.
+ */
+export function extractModuleDependencySourcesFromCode(code) {
+  const sources = new Set(extractImportsFromCode(code));
+  const exportRegex = /export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"]([^'"]+)['"]/g;
+  let match;
+
+  while ((match = exportRegex.exec(code)) !== null) {
+    const source = match[1];
+    if (source) {
+      sources.add(source);
+    }
+  }
+
+  return Array.from(sources);
+}
+
+/**
  * Extrae exports de un string de código
  */
 function appendNamedExports(exports, rawNames) {

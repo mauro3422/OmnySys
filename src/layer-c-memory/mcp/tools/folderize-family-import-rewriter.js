@@ -4,7 +4,7 @@ import { createLogger } from '../../../utils/logger.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../utils/path-utils.js';
 import { normalizeComparablePath } from '#shared/utils/path-utils.js';
 import { atomic_edit } from './atomic-edit/index.js';
-import { extractImportsFromCode } from './atomic-edit/exports.js';
+import { extractModuleDependencySourcesFromCode } from './atomic-edit/exports.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family:rewriter');
 
@@ -76,7 +76,7 @@ async function rewriteLineDirectly(absFilePath, code, oldLine, newLine, allowDir
 async function rewriteImportsInFile(filePath, projectPath, moveMap, context = {}) {
   const absFilePath = path.resolve(projectPath, filePath);
   let code = await fs.readFile(absFilePath, 'utf8');
-  const importSources = extractImportsFromCode(code);
+  const importSources = extractModuleDependencySourcesFromCode(code);
   const rewrites = [];
   const allowDirectFallback = context?.allowUnsafeDirectRewriteFallback === true
     || context?.allowDirectImportRewriteFallback === true;

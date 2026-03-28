@@ -4,7 +4,7 @@ import { createLogger } from '../../../../utils/logger.js';
 import { getFileDependents } from '#layer-c/query/apis/file-api.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
 import { atomic_edit } from '../../tools/atomic-edit/index.js';
-import { extractImportsFromCode } from '../../tools/atomic-edit/exports.js';
+import { extractModuleDependencySourcesFromCode } from '../../tools/atomic-edit/exports.js';
 import { reindexFile } from '../../tools/atomic-edit/reindex.js';
 import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/compiler-persistence.js';
 import { withMutationBatch } from './mutation-batch.js';
@@ -46,6 +46,62 @@ function resolveDependentsFromSnapshot(oldPath, snapshot) {
     }
 
     return null;
+}
+
+function findModuleSourceLineIndex(code, moduleSource) {
+    return code.split('\n').findIndex((line) => line.includes(`'${moduleSource}'`) || line.includes(`"${moduleSource}"`));
+}
+
+async function rewriteMovedFileReferences(oldPath, newPath, projectPath, context = {}) {
+    const absNew = path.resolve(projectPath, newPath);
+    let code = await fs.readFile(absNew, 'utf-8');
+    const moduleSources = extractModuleDependencySourcesFromCode(code);
+    const rewrites = [];
+
+    for (const moduleSource of moduleSources) {
+        if (!moduleSource.startsWith('.') && !moduleSource.startsWith('#')) {
+            continue;
+        }
+
+        const resolvedTarget = normalizeImportToAbsolute(moduleSource, oldPath, projectPath);
+        if (!resolvedTarget || resolvedTarget === moduleSource) {
+            continue;
+        }
+
+        const newModuleSource = calculateRelativeImport(newPath, path.relative(projectPath, resolvedTarget), projectPath);
+        if (!newModuleSource || newModuleSource === moduleSource) {
+            continue;
+        }
+
+        const lineIndex = findModuleSourceLineIndex(code, moduleSource);
+        if (lineIndex === -1) {
+            continue;
+        }
+
+        const lines = code.split('\n');
+        const oldLine = lines[lineIndex];
+        const newLine = oldLine.replace(moduleSource, newModuleSource);
+        if (newLine === oldLine) {
+            continue;
+        }
+
+        const editRes = await atomic_edit({
+            filePath: newPath,
+            oldString: oldLine,
+            newString: newLine
+        }, { ...context, projectPath });
+
+        if (editRes.success) {
+            rewrites.push({
+                filePath: newPath,
+                from: moduleSource,
+                to: newModuleSource
+            });
+            code = code.replace(oldLine, newLine);
+        }
+    }
+
+    return rewrites;
 }
 
 export class MoveOrchestrator {
@@ -95,7 +151,8 @@ export class MoveOrchestrator {
                 await fs.rename(absOld, absNew);
                 logger.info(`[MoveOrchestrator] Physical move successful`);
 
-                // 3. Re-indexar el archivo en su nueva ubicación para que el sistema lo reconozca
+                const selfRewrites = await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
+
                 await reindexFile(newPath, projectPath);
 
                 await Promise.allSettled([
@@ -106,6 +163,8 @@ export class MoveOrchestrator {
                 const results = {
                     success: true,
                     moved: { from: oldPath, to: newPath },
+                    selfUpdated: selfRewrites.length > 0,
+                    selfRewrites,
                     updatedFiles: [],
                     failedUpdates: []
                 };
@@ -115,7 +174,7 @@ export class MoveOrchestrator {
                     try {
                         const absDep = path.resolve(projectPath, depPath);
                         const code = await fs.readFile(absDep, 'utf-8');
-                        const imports = extractImportsFromCode(code);
+                        const imports = extractModuleDependencySourcesFromCode(code);
 
                         // Identificar el import exacto que apunta al archivo movido
                         const matchingImport = imports.find((imp) => {

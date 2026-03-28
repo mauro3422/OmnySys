@@ -1,3 +1,5 @@
+import path from 'path';
+
 function normalizeFolderizationPath(filePath = '') {
   return String(filePath || '')
     .replace(/\\/g, '/')
@@ -26,19 +28,36 @@ function parseFolderizationArray(value, fallback = []) {
   }
 }
 
-function parseImportTarget(importEntry = {}) {
-  if (typeof importEntry === 'string') {
-    return normalizeFolderizationPath(importEntry);
+function parseFolderizationDependencyTarget(depEntry = {}, ownerPath = '') {
+  const rawTarget = typeof depEntry === 'string'
+    ? depEntry
+    : depEntry?.resolved
+      || depEntry?.target
+      || depEntry?.source
+      || depEntry?.path
+      || depEntry?.filePath
+      || depEntry?.from
+      || '';
+
+  const trimmedTarget = String(rawTarget || '').trim();
+  if (!trimmedTarget) {
+    return '';
   }
 
-  return normalizeFolderizationPath(
-    importEntry?.resolved
-    || importEntry?.target
-    || importEntry?.source
-    || importEntry?.path
-    || importEntry?.filePath
-    || ''
-  );
+  if (trimmedTarget.startsWith('.')) {
+    const ownerDir = normalizeFolderizationPath(ownerPath).split('/').slice(0, -1).join('/');
+    return normalizeFolderizationPath(
+      path.posix.normalize(
+        path.posix.join(ownerDir || '.', trimmedTarget)
+      )
+    );
+  }
+
+  return normalizeFolderizationPath(trimmedTarget);
+}
+
+function parseImportTarget(importEntry = {}, ownerPath = '') {
+  return parseFolderizationDependencyTarget(importEntry, ownerPath);
 }
 
 function loadFolderizationVersionStats(repo) {
@@ -87,7 +106,11 @@ export function loadFolderizationRows(repo) {
     const imports = parseFolderizationArray(row.imports_json, []);
     const exports = parseFolderizationArray(row.exports_json, []);
     const path = normalizeFolderizationPath(row.path);
-    const importTargets = imports.map(parseImportTarget).filter(Boolean);
+    const importTargets = imports.map((entry) => parseImportTarget(entry, path)).filter(Boolean);
+    const exportTargets = exports
+      .map((entry) => parseFolderizationDependencyTarget(entry, path))
+      .filter(Boolean);
+    const dependencyTargets = Array.from(new Set([...importTargets, ...exportTargets]));
     const versionStatsForPath = versionStats.get(path) || {};
 
     return {
@@ -102,7 +125,10 @@ export function loadFolderizationRows(repo) {
       importTargets,
       importCount: importTargets.length,
       exports,
+      exportTargets,
       exportCount: exports.length,
+      dependencyTargets,
+      dependencyCount: dependencyTargets.length,
       versionCount: versionStatsForPath.versionCount || 0,
       latestVersionAt: versionStatsForPath.latestVersionAt || null,
       earliestVersionAt: versionStatsForPath.earliestVersionAt || null

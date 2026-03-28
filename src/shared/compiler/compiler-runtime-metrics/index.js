@@ -8,7 +8,7 @@ export {
   getAtomCountSummary,
   getPhase2PendingFiles,
   getPhase2FileCounts
-} from './compiler-runtime-metrics-db.js';
+} from '../compiler-runtime-metrics-db.js';
 
 export {
   getGraphCoverageSummary,
@@ -17,4 +17,5 @@ export {
   getConceptualDuplicateSummary,
   getFileUniverseSummary,
   summarizeWatcherNoise
-} from './compiler-runtime-metrics-summary.js';
+} from './summary.js';
+

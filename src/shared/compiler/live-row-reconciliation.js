@@ -5,7 +5,7 @@
  */
 
 import { countLiveRowDeletes, hasLiveRowDrift, runLiveRowCleanup } from './live-row-sync-helpers.js';
-import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
+import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
 import {
   buildLiveRowCleanupPlan,
   buildLiveRowReconciliationPlan,

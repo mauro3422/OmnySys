@@ -6,7 +6,7 @@
 
 export {
   collectIssueMetrics
-} from './compiler-runtime-metrics-issues.js';
+} from './compiler-runtime-metrics/issues.js';
 
 export {
   collectConceptualDuplicateMetrics

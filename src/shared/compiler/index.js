@@ -438,7 +438,7 @@ export {
   getFileUniverseSummary,
   getMcpSessionSummary,
   summarizeWatcherNoise
-} from './compiler-runtime-metrics.js';
+} from './compiler-runtime-metrics/index.js';
 
 export {
   PIPELINE_ORPHAN_NAME_PATTERNS,

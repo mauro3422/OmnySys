@@ -108,6 +108,19 @@ function indexFolderizationRows(rows = []) {
   return pathIndex;
 }
 
+function getDependencyTargets(row = {}) {
+  if (Array.isArray(row?.dependencyTargets)) {
+    return row.dependencyTargets;
+  }
+
+  const combined = [
+    ...(Array.isArray(row?.importTargets) ? row.importTargets : []),
+    ...(Array.isArray(row?.exportTargets) ? row.exportTargets : [])
+  ];
+
+  return Array.from(new Set(combined.filter(Boolean)));
+}
+
 function toComparableStamp(value) {
   if (value == null || value === '') {
     return null;
@@ -233,7 +246,8 @@ function buildFamilyStateReport(familyStates = new Map()) {
 
 function buildBarrelCandidate(members, groupSet, importerIndex) {
   const scored = members.map((member) => {
-    const internalImportCount = member.importTargets.filter((target) => groupSet.has(target)).length;
+    const dependencyTargets = getDependencyTargets(member);
+    const internalImportCount = dependencyTargets.filter((target) => groupSet.has(target)).length;
     const inboundImporters = importerIndex.get(member.path)?.size || 0;
     const isIndexFile = member.basename === 'index';
     const score = (
@@ -247,7 +261,7 @@ function buildBarrelCandidate(members, groupSet, importerIndex) {
     return {
       ...member,
       internalImportCount,
-      outboundImportCount: member.importTargets.length - internalImportCount,
+      outboundImportCount: dependencyTargets.length - internalImportCount,
       inboundImporters,
       score,
       isIndexFile
@@ -305,8 +319,9 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
   const groupSet = new Set(members.map((member) => member.path));
 
   const enrichedMembers = members.map((member) => {
-    const internalImportCount = member.importTargets.filter((target) => groupSet.has(target)).length;
-    const externalImportCount = member.importTargets.length - internalImportCount;
+    const dependencyTargets = getDependencyTargets(member);
+    const internalImportCount = dependencyTargets.filter((target) => groupSet.has(target)).length;
+    const externalImportCount = dependencyTargets.length - internalImportCount;
     const inboundImporters = importerIndex.get(member.path)?.size || 0;
 
     return {
@@ -346,7 +361,7 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
     barrelFile: barrelFile ? {
       path: barrelFile.path,
       exportsCount: barrelFile.exportCount,
-      importsCount: barrelFile.importTargets.length,
+      importsCount: getDependencyTargets(barrelFile).length,
       inboundImporters: barrelFile.inboundImporters,
       score: barrelFile.score
     } : null,
@@ -417,7 +432,7 @@ export function findFolderizationCandidatesFromRows(rows = [], options = {}) {
   }
 
   for (const row of rows) {
-    for (const importTarget of row.importTargets) {
+    for (const importTarget of getDependencyTargets(row)) {
       const normalizedTarget = normalizeFolderizationPath(importTarget);
       if (!normalizedTarget || !pathIndex.has(normalizedTarget)) {
         continue;
@@ -488,7 +503,7 @@ export function findExistingFolderizedFamilyForPathsFromRows(rows = [], filePath
   const importerIndex = new Map();
 
   for (const row of rows) {
-    for (const importTarget of row.importTargets) {
+    for (const importTarget of getDependencyTargets(row)) {
       const normalizedTarget = normalizeFolderizationPath(importTarget);
       if (!normalizedTarget || !pathIndex.has(normalizedTarget)) {
         continue;

@@ -5,7 +5,7 @@ import { getMetadataExtractionCoverage } from './metadata-extraction-coverage/co
 import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy.js';
 import { getDatabaseHealthSummary } from './database-health.js';
-import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
+import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
 
 export function getCompilerDiagnosticsDatabaseSurfaces(db) {
   const phase2PendingFiles = db ? getPhase2PendingFiles(db) : 0;

@@ -4,14 +4,14 @@
  * @module shared/compiler/compiler-runtime-metrics-summary
  */
 
-import { computeGraphCoverageMetrics } from './compiler-runtime-metrics-graph.js';
-import { collectMcpSessionMetrics } from './compiler-runtime-metrics-sessions.js';
+import { computeGraphCoverageMetrics } from './graph.js';
+import { collectMcpSessionMetrics } from '../compiler-runtime-metrics-sessions.js';
 import {
   collectIssueMetrics,
   collectConceptualDuplicateMetrics,
   collectFileUniverseMetrics,
   collectWatcherNoiseMetrics
-} from './compiler-runtime-metrics-support.js';
+} from '../compiler-runtime-metrics-support.js';
 
 export function getGraphCoverageSummary(db) {
   return computeGraphCoverageMetrics(db);
@@ -36,3 +36,4 @@ export function getFileUniverseSummary(db) {
 export function summarizeWatcherNoise(stats = {}) {
   return collectWatcherNoiseMetrics(stats);
 }
+

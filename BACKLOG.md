@@ -26,6 +26,7 @@
 - Folderization smoke-test follow-up: every `move_file` or folderization pass should finish with a Node import smoke test on the new barrel, because stale relative imports inside the moved folder can survive the physical move and only show up when the barrel is loaded.
 - Live-row drift follow-up: `runtime_table_health_live_row_drift` is now suppressed when Phase 2 is still settling and only relation rows are stale. If it reappears after Phase 2 completes, inspect the orphan-relation cleanup path rather than treating it as a generic atom/file drift.
 - Folderization naming follow-up: the naming planner is now split into helper + wrapper modules. Keep an eye on future family growth so barrel selection and collision avoidance stay below the watcher size threshold.
+- Folderization dependency rewrite follow-up: the planner now resolves `export from` edges and the move orchestrator rewrites imports inside the moved file itself, because the first pass only fixed dependents and left the moved barrel crashing on stale sibling paths.
 
 ## Consolidacion arquitectonica: grupos conceptuales accionables
 
@@ -34,15 +35,15 @@
 1. Priorizar grupos con mayor riesgo y fan-out.
 2. Separar hook de framework, helper reutilizable y duplicado conceptual real.
 3. Si el grupo es un helper privado generico, moverlo a `src/shared/utils/`.
-4. Si el grupo es un wrapper de contrato canónico, dejarlo como fachada fina y reforzar la policy.
+4. Si el grupo es un wrapper de contrato canÃƒÆ’Ã‚Â³nico, dejarlo como fachada fina y reforzar la policy.
 5. Si el grupo mezcla negocio y presentacion, extraer el contrato canonico y dejar el consumidor liviano.
 
 ### Orden inicial de trabajo
 
 - `analyze:logic:core:fn`
   - Alta prioridad.
-  - Suele indicar lógica de análisis repetida o wrappers cercanos al motor de inspeccion.
-  - Buscar consolidación en helpers de analisis o en una api canonica de evaluación.
+  - Suele indicar lÃƒÆ’Ã‚Â³gica de anÃƒÆ’Ã‚Â¡lisis repetida o wrappers cercanos al motor de inspeccion.
+  - Buscar consolidaciÃƒÆ’Ã‚Â³n en helpers de analisis o en una api canonica de evaluaciÃƒÆ’Ã‚Â³n.
 
 - `generate:logic:core:recommendations`
   - Alta prioridad.
@@ -60,7 +61,7 @@
 
 - `get:telemetry:core:stats`
   - Prioridad media-baja.
-  - Normalmente es señal de lectura/summary; revisar solo si hay recomposicion manual fuera del summary canónico.
+  - Normalmente es seÃƒÆ’Ã‚Â±al de lectura/summary; revisar solo si hay recomposicion manual fuera del summary canÃƒÆ’Ã‚Â³nico.
 
 ### Criterio de cierre
 

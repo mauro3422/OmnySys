@@ -4,8 +4,8 @@
  * @module shared/compiler/compiler-runtime-metrics-issues
  */
 
-import { getPipelineOrphanSummary } from './pipeline-orphans.js';
-import { getDeadCodePlausibilitySummary } from './dead-code-reporting.js';
+import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
+import { getDeadCodePlausibilitySummary } from '../dead-code-reporting.js';
 
 export function collectIssueMetrics(db, options = {}) {
   if (!db) {
@@ -40,3 +40,4 @@ export function collectIssueMetrics(db, options = {}) {
     deadCodeWarning: deadCodeSummary?.warning || null
   };
 }
+

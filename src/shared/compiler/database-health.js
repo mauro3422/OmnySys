@@ -14,7 +14,7 @@ import { buildDatabaseHealthAssessment } from './database-health-assessment.js';
 import { loadDatabaseHealthCounts } from './database-health-counts.js';
 import { resolveDatabaseHealthLiveRowSync } from './database-health-live-row-sync.js';
 import { buildDatabaseHealthReport } from './database-health-report.js';
-import { getPhase2PendingFiles } from './compiler-runtime-metrics.js';
+import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
 
 export function getDatabaseHealthSummary(db, options = {}) {
   if (!db) {

@@ -22,17 +22,22 @@ function buildMoveTarget(candidate, memberPath, barrelPath) {
 }
 
 function parseImportTargets(row) {
-  if (Array.isArray(row?.importTargets)) {
-    return row.importTargets;
+  if (Array.isArray(row?.dependencyTargets)) {
+    return row.dependencyTargets;
   }
 
-  if (Array.isArray(row?.imports)) {
-    return row.imports
-      .map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry))
-      .filter(Boolean);
-  }
+  const importTargets = Array.isArray(row?.importTargets)
+    ? row.importTargets
+    : Array.isArray(row?.imports)
+      ? row.imports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry)).filter(Boolean)
+      : [];
+  const exportTargets = Array.isArray(row?.exportTargets)
+    ? row.exportTargets
+    : Array.isArray(row?.exports)
+      ? row.exports.map((entry) => normalizeFolderizationPath(entry?.resolved || entry?.target || entry?.source || entry?.path || entry?.filePath || entry?.from || '')).filter(Boolean)
+      : [];
 
-  return [];
+  return Array.from(new Set([...importTargets, ...exportTargets]));
 }
 
 function summarizeImportImpact(candidate, rows = []) {
