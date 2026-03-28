@@ -294,7 +294,9 @@ export function getAllSessions(activeOnly = false) {
   try {
     return activeOnly ? this.statements.getAllActive.all() : this.statements.getAll.all();
   } catch (err) {
-    logger.error(`Failed to get all sessions: ${err.message}`);
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to get all sessions: ${err.message}`);
+    }
     return [];
   }
 }

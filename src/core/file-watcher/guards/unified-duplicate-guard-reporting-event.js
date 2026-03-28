@@ -1,4 +1,10 @@
 export function emitUnifiedDuplicateFinding(eventEmitterContext, normalizedFilePath, payload, allFindings) {
+    const findings = Array.isArray(allFindings) ? allFindings : [];
+
+    if (!eventEmitterContext?.emit) {
+        return;
+    }
+
     eventEmitterContext.emit('code:duplicate_unified', {
         filePath: normalizedFilePath,
         severity: payload.severity,
@@ -8,7 +14,7 @@ export function emitUnifiedDuplicateFinding(eventEmitterContext, normalizedFileP
         hasOverlap: payload.hasOverlap,
         debtScore: payload.debtScore,
         debtTrend: payload.debtTrend,
-        findings: allFindings.map((finding) => ({
+        findings: findings.map((finding) => ({
             symbol: finding.symbol,
             type: finding.duplicateType,
             instances: finding.totalInstances,

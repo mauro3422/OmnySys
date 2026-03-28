@@ -7,7 +7,7 @@
  * @version 2.0.0
  */
 
-export { TransformationExtractor } from './transformation-extractor.js';
+export { TransformationExtractor } from './extractor.js';
 
 // Core
 export {

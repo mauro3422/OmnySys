@@ -406,7 +406,7 @@ export {
   detectAllArchitecturalPatterns,
   summarizeArchitecturalPatterns,
   ARCHITECTURAL_PATTERNS
-} from './architectural-pattern-detector.js';
+} from './architectural-pattern-detector/index.js';
 
 export {
   calculateArchitecturalDebtScore,

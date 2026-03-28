@@ -23,6 +23,7 @@
 - Runtime lock noise follow-up: `database is locked` is now treated as transient in the main recovery path, but the remaining diagnostic goal is to ensure every replay path surfaces as `queued/skipped` instead of `error` unless data truly cannot be reconstructed.
 - Phase 2 parse-noise follow-up: the deep scan still reports unsupported-syntax parse failures in a few test fixtures. Those files are not runtime bugs, but they should be tracked so the analysis pipeline can distinguish fixtures from production surfaces.
 - Restart discipline follow-up: when a stale module is patched, prefer hot-reload plus `get_server_status()` verification first. Only restart the IDE if the daemon still reports stale tool modules after the proxy reload window.
+- Folderization smoke-test follow-up: every `move_file` or folderization pass should finish with a Node import smoke test on the new barrel, because stale relative imports inside the moved folder can survive the physical move and only show up when the barrel is loaded.
 
 ## Consolidacion arquitectonica: grupos conceptuales accionables
 

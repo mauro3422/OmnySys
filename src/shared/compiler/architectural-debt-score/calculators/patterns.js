@@ -1,5 +1,5 @@
 import { createLogger } from '#utils/logger.js';
-import { detectArchitecturalPattern } from '../../architectural-pattern-detector.js';
+import { detectArchitecturalPattern } from '../../architectural-pattern-detector/index.js';
 import { loadPatternAtoms } from '../../architectural-debt-score-repository.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');

@@ -1,4 +1,4 @@
-import { ARCHITECTURAL_PATTERNS } from './architectural-pattern-detector-constants.js';
+import { ARCHITECTURAL_PATTERNS } from '../architectural-pattern-detector-constants.js';
 
 export function summarizeArchitecturalPatterns(results) {
   if (!results || results.patterns.length === 0) {

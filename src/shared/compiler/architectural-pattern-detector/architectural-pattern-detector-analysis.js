@@ -6,7 +6,7 @@ export {
 
 export {
   detectAllArchitecturalPatterns
-} from './architectural-pattern-detector-orchestration.js';
+} from '../architectural-pattern-detector-orchestration.js';
 
 export {
   summarizeArchitecturalPatterns

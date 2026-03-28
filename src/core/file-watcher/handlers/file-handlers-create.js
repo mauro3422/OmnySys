@@ -23,7 +23,12 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
   });
 
   const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
-  fileWatcher._logger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
+  const watcherLogger = fileWatcher._logger;
+  if (watcherLogger?.info) {
+    watcherLogger.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
+  } else {
+    console.info(`[FILE COMPILED] ${filePath} -> ${atoms.length} atoms (${highSignalAtoms.length} high-signal)`);
+  }
 
   emitFileLifecycleEvent(fileWatcher, 'file:created', filePath, changeContext, { analysis });
 }

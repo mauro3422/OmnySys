@@ -1,9 +1,9 @@
 import { createLogger } from '#utils/logger.js';
-import { detectArchitecturalPatterns } from '../architecture-utils.js';
+import { detectArchitecturalPatterns } from '../../architecture-utils.js';
 import {
   resolveArchitecturalRecommendation
-} from './architectural-recommendations.js';
-import { ARCHITECTURAL_PATTERNS } from './architectural-pattern-detector-constants.js';
+} from '../architectural-recommendations.js';
+import { ARCHITECTURAL_PATTERNS } from '../architectural-pattern-detector-constants.js';
 import { buildGodObjectStructure, classifyOperationalRole } from './architectural-pattern-detector-helpers.js';
 
 const logger = createLogger('OmnySys:ArchitecturalPatternDetector');

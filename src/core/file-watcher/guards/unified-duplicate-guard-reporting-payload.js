@@ -2,6 +2,7 @@ export function buildUnifiedDuplicateReportingPayload(summary, debtHistory) {
     const { allFindings, severity, issueType, preview, context } = summary;
 
     return {
+        allFindings,
         severity,
         issueType,
         preview,
