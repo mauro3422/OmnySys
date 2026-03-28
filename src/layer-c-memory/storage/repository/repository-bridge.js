@@ -11,6 +11,7 @@
  */
 
 import { resolve } from 'path';
+import { isMainThread } from 'worker_threads';
 import { createLogger } from '#utils/logger.js';
 import { RepositoryFactory } from './repository-factory.js';
 
@@ -40,6 +41,50 @@ function isTransientDatabaseError(error) {
     message.includes('database is locked') ||
     message.includes('database is busy')
   );
+}
+
+async function wait(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return;
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function retryMutationUntilAvailable(projectPath, mutation, retryOptions = {}) {
+  const attempts = Math.max(1, retryOptions.maxRetries ?? 5);
+  const baseDelayMs = Math.max(1, retryOptions.baseDelayMs ?? 50);
+  const maxDelayMs = Math.max(baseDelayMs, retryOptions.maxDelayMs ?? 500);
+  let lastError = null;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const status = getRepositoryStatus(projectPath);
+    if (!status.ready) {
+      lastError = new Error(status.reason || 'repository is not ready');
+    } else {
+      try {
+        const result = await mutation.run(status.repo, status);
+        return { success: true, queued: false, skipped: false, reason: null, state: status, result };
+      } catch (error) {
+        lastError = error;
+        if (!isTransientDatabaseError(error)) {
+          throw error;
+        }
+      }
+    }
+
+    if (attempt < attempts - 1) {
+      const delay = Math.min(baseDelayMs * (attempt + 1), maxDelayMs);
+      await wait(delay);
+    }
+  }
+
+  return {
+    success: false,
+    queued: false,
+    skipped: false,
+    reason: lastError?.message || 'repository mutation retry exhausted',
+    state: getRepositoryStatus(projectPath),
+    result: null,
+    error: lastError?.message || 'repository mutation retry exhausted'
+  };
 }
 
 function getProjectJournal(projectPath) {
@@ -190,6 +235,10 @@ export async function runRepositoryMutation(projectPath, mutation, options = {})
       return { success: true, queued: false, skipped: false, reason: null, state: status, result };
     } catch (error) {
       if (durability === REPOSITORY_MUTATION_DURABILITY.DURABLE && isTransientDatabaseError(error)) {
+        if (!isMainThread) {
+          return await retryMutationUntilAvailable(projectPath, mutation, options.retryOptions || {});
+        }
+
         enqueueRepositoryMutation(projectPath, {
           ...mutation,
           durability,
@@ -202,6 +251,18 @@ export async function runRepositoryMutation(projectPath, mutation, options = {})
   }
 
   if (durability === REPOSITORY_MUTATION_DURABILITY.DURABLE) {
+    if (!isMainThread) {
+      return {
+        success: false,
+        queued: false,
+        skipped: true,
+        reason: status.reason,
+        state: status,
+        result: null,
+        error: status.reason
+      };
+    }
+
     enqueueRepositoryMutation(projectPath, mutation);
     return { success: true, queued: true, skipped: false, reason: status.reason, state: status, result: null };
   }

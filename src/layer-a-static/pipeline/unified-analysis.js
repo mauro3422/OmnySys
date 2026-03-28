@@ -17,25 +17,6 @@ import { getGitStats } from '../../utils/git-analyzer.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
 
-
-function createFileHashBatchWriter(repo) {
-    const upsertFileHash = repo.db.prepare(`
-        INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
-        ON CONFLICT(path) DO UPDATE SET
-            last_analyzed = excluded.last_analyzed,
-            hash = excluded.hash,
-            is_removed = 0,
-            updated_at = datetime('now')
-    `);
-
-    return repo.db.transaction((hashMap) => {
-        const now = new Date().toISOString();
-        for (const [filePath, hash] of hashMap) {
-            upsertFileHash.run(filePath, now, hash);
-        }
-    });
-}
-
 function getWorkerCount(totalFiles, existingHashCount = 0, extractionDepth = 'structural') {
     const numCPUs = os.cpus().length;
     const optimalWorkers = Math.max(1, numCPUs - 2);
@@ -64,7 +45,7 @@ function handleWorkerProgress(msg, batchTimer, verbose, totalFiles, filesSkipped
     }
 }
 
-function handleWorkerDone(msg, workerIndex, parsedFiles, writeFileHashesBatch, totalsRef) {
+function handleWorkerDone(msg, workerIndex, parsedFiles, pendingHashEntries, totalsRef) {
     totalsRef.totalAtomsExtracted += msg.extractedCount;
     Object.assign(parsedFiles, msg.liteResults);
 
@@ -72,15 +53,11 @@ function handleWorkerDone(msg, workerIndex, parsedFiles, writeFileHashesBatch, t
         return;
     }
 
-    const hashMap = new Map();
-    msg.hashes.forEach(([key, val]) => hashMap.set(key, val));
-
-    try {
-        writeFileHashesBatch(hashMap);
-        logger.debug(`Worker ${workerIndex + 1} wrote ${msg.hashes.length} file hashes`);
-    } catch (hashErr) {
-        logger.warn(`Hash write failed for Worker ${workerIndex + 1}: ${hashErr.message}`);
+    for (const entry of msg.hashes) {
+        pendingHashEntries.push(entry);
     }
+
+    logger.debug(`Worker ${workerIndex + 1} staged ${msg.hashes.length} file hashes`);
 }
 
 function createWorkerPromise(workerIndex, chunk, workerContext) {
@@ -94,7 +71,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
         totalFiles,
         filesSkippedRef,
         parsedFiles,
-        writeFileHashesBatch,
+        pendingHashEntries,
         totalsRef
     } = workerContext;
 
@@ -115,7 +92,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
             }
 
             if (msg.type === 'DONE') {
-                handleWorkerDone(msg, workerIndex, parsedFiles, writeFileHashesBatch, totalsRef);
+                handleWorkerDone(msg, workerIndex, parsedFiles, pendingHashEntries, totalsRef);
                 resolve();
                 return;
             }
@@ -154,6 +131,31 @@ async function executeWorkerPool(files, workerCount, workerContext) {
     }
 }
 
+function writeFileHashBatch(repo, hashEntries) {
+    if (!repo?.db || repo.db.open === false || !Array.isArray(hashEntries) || hashEntries.length === 0) {
+        return;
+    }
+
+    const upsertFileHash = repo.db.prepare(`
+        INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+            last_analyzed = excluded.last_analyzed,
+            hash = excluded.hash,
+            is_removed = 0,
+            updated_at = datetime('now')
+    `);
+
+    const hashMap = new Map(hashEntries);
+    const transaction = repo.db.transaction((entries) => {
+        const now = new Date().toISOString();
+        for (const [filePath, hash] of entries) {
+            upsertFileHash.run(filePath, now, hash);
+        }
+    });
+
+    transaction(hashMap.entries());
+}
+
 /**
  * High-performance incremental analysis.
  */
@@ -170,7 +172,7 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
     const totalFiles = files.length;
     const batchTimer = new BatchTimer(logPrefix, totalFiles, verbose);
     const parsedFiles = {};
-    const writeFileHashesBatch = createFileHashBatchWriter(repo);
+    const pendingHashEntries = [];
     const workerCount = getWorkerCount(totalFiles, existingHashCount, extractionDepth);
 
     if (verbose) {
@@ -195,12 +197,21 @@ export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbos
             totalFiles,
             filesSkippedRef,
             parsedFiles,
-            writeFileHashesBatch,
+            pendingHashEntries,
             totalsRef
         });
     } catch (err) {
         logger.error(`Worker execution failed: ${err.message}`);
         throw err;
+    }
+
+    if (pendingHashEntries.length > 0) {
+        try {
+            writeFileHashBatch(repo, pendingHashEntries);
+            logger.debug(`Persisted ${pendingHashEntries.length} file hashes after worker settlement`);
+        } catch (hashErr) {
+            logger.warn(`Deferred hash write failed after worker settlement: ${hashErr.message}`);
+        }
     }
 
     if (verbose) {

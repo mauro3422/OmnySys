@@ -312,6 +312,10 @@ async function runWorker() {
                 { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
             );
 
+            if (bulkResult?.success === false) {
+                logger.warn(`[WorkerAnalysis] Atom bulk flush failed after retries: ${bulkResult.reason || bulkResult.error || 'unknown error'}`);
+            }
+
             if (bulkResult.queued) {
                 logger.warn('[WorkerAnalysis] Atom bulk flush queued for replay after transient SQLite availability issue');
             }
@@ -339,6 +343,10 @@ async function runWorker() {
                 },
                 { durability: REPOSITORY_MUTATION_DURABILITY.DURABLE }
             );
+
+            if (summaryResult?.success === false) {
+                logger.warn(`[WorkerAnalysis] File summary flush failed after retries: ${summaryResult.reason || summaryResult.error || 'unknown error'}`);
+            }
 
             if (summaryResult.queued) {
                 logger.warn('[WorkerAnalysis] File summary flush queued for replay after transient SQLite availability issue');
