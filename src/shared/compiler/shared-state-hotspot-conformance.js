@@ -9,7 +9,8 @@
  */
 
 import {
-  countMatches
+  countMatches,
+  createPositionalFinding as createFinding
 } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';

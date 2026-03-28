@@ -1,7 +1,27 @@
+function normalizeClientIdentityValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 export function extractClientId(clientInfo) {
   if (!clientInfo) return 'unknown';
-  if (typeof clientInfo === 'string') return clientInfo;
-  return clientInfo.name || clientInfo.client_id || 'unknown';
+
+  if (typeof clientInfo === 'string') {
+    return normalizeClientIdentityValue(clientInfo) || 'unknown';
+  }
+
+  const clientId = normalizeClientIdentityValue(clientInfo.client_id);
+  if (clientId) return clientId;
+
+  const originalClientId = normalizeClientIdentityValue(clientInfo.original_client_id);
+  if (originalClientId) return originalClientId;
+
+  const name = normalizeClientIdentityValue(clientInfo.name);
+  if (name) return name;
+
+  const originalName = normalizeClientIdentityValue(clientInfo.original_name);
+  if (originalName) return originalName;
+
+  return 'unknown';
 }
 
 export function isDedupFresh(updatedAt, now = Date.now()) {

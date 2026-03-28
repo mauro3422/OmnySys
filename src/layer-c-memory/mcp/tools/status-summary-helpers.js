@@ -2,7 +2,11 @@
  * Shared compacting helpers for MCP status summaries.
  */
 
-import { normalizeCount, summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
+import {
+  normalizeCount,
+  summarizeSurfaceAuditForStatus,
+  summarizeCompilerDriftAssessment
+} from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
 export function takeSample(items = [], limit = 3) {
@@ -76,6 +80,9 @@ export function compactRepositoryDiagnostics(repositoryDiagnostics) {
 
 export function compactCompilerExplainabilitySummary(explainability) {
   if (!explainability || typeof explainability !== 'object') return null;
+  const driftAssessment = explainability.driftAssessment
+    ? summarizeCompilerDriftAssessment(explainability.driftAssessment)
+    : null;
 
   return {
     policySummary: explainability.policySummary ? {
@@ -140,6 +147,7 @@ export function compactCompilerExplainabilitySummary(explainability) {
       total: explainability.semanticSurfaceGranularity.total,
       healthy: explainability.semanticSurfaceGranularity.healthy
     } : null,
+    driftAssessment,
     fileUniverseGranularity: explainability.fileUniverseGranularity ? {
       total: explainability.fileUniverseGranularity.total,
       healthy: explainability.fileUniverseGranularity.healthy

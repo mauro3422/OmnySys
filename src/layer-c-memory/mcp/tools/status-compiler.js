@@ -94,7 +94,8 @@ export async function attachDeepVitals(status, projectPath, server) {
       persistentActive: sessionSummary.totalPersistentActive,
       clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
       actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
-      toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients
+      toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
+      sessionCountDrift: sessionSummary.sessionCountDrift
     });
   } catch (error) {
     status.deepVitalsError = error.message;

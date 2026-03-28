@@ -95,6 +95,11 @@ export {
 } from './surface-audit.js';
 
 export {
+  buildCompilerDriftAssessment,
+  summarizeCompilerDriftAssessment
+} from './compiler-drift-assessment.js';
+
+export {
   getMetadataExtractionCoverage,
   summarizeMetadataExtractionCoverage
 } from './metadata-extraction-coverage/coverage.js';

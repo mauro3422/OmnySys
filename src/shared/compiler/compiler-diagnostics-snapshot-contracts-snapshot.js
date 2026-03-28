@@ -1,6 +1,7 @@
 import { summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
+import { buildCompilerDriftAssessment } from './compiler-drift-assessment.js';
 import { buildDataGatewayContract } from './data-gateway-contract.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
@@ -96,6 +97,18 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
     fileUniverseGranularity
   });
+  const driftAssessment = buildCompilerDriftAssessment({
+    analysisGeneration,
+    policySummary,
+    metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
+    metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
+    dataGatewayContract,
+    databaseHealth: dbSurfaces.databaseHealth,
+    liveRowSync: dbSurfaces.databaseHealth?.metrics?.liveRowSync || null,
+    systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
+    semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+    fileUniverseGranularity
+  });
 
   return {
     persistedFileCoverage,
@@ -106,6 +119,7 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     resolvedCanonicalAdoptions,
     standardizationReport,
     compilerContractLayer,
-    surfaceAudit
+    surfaceAudit,
+    driftAssessment
   };
 }

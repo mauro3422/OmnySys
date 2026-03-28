@@ -200,6 +200,41 @@ describe('handleMcpRequest', () => {
     }));
   });
 
+  it('waits briefly for a persisted session before declaring expiration', async () => {
+    const logger = createLogger();
+    const sessions = new Map();
+    const sessionManager = createSessionManager({
+      getSession: vi.fn()
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce({
+          id: 'persisted-session',
+          client_id: 'Claude'
+        })
+    });
+    const buildSessionServer = createBuildSessionServer();
+    const req = {
+      headers: { 'mcp-session-id': 'persisted-session' },
+      method: 'POST',
+      body: { id: 12 }
+    };
+    const res = createResponse();
+
+    await handleMcpRequest(req, res, {
+      logger,
+      sessions,
+      buildSessionServer,
+      getSessionManager: vi.fn(async () => sessionManager)
+    });
+
+    expect(sessionManager.getSession).toHaveBeenCalledTimes(5);
+    expect(buildSessionServer).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(sessions.has('persisted-session')).toBe(true);
+  });
+
   it('restores a persisted session and keeps cleanup aligned with the recovered id', async () => {
     const logger = createLogger();
     const sessions = new Map();

@@ -31,6 +31,13 @@ const logger = createLogger('OmnySys:DashboardReporter');
 let lastReportType = null;
 let lastReportSnapshot = '';
 
+function isTransientDatabaseAvailabilityError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('database connection is not open')
+    || message.includes('database is locked')
+    || message.includes('database is busy');
+}
+
 export async function printDiagnosticsDashboard(projectPath, options = {}) {
   const { isFinal = false, force = false } = options;
 
@@ -60,6 +67,11 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
 
     process.stdout.write(`\n${output}\n`);
   } catch (error) {
+    if (isTransientDatabaseAvailabilityError(error)) {
+      logger.debug(`Skipping consolidated dashboard during recovery: ${error.message}`);
+      return;
+    }
+
     logger.error('Failed to generate consolidated dashboard:', error.message);
   }
 }

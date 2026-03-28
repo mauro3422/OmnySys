@@ -43,6 +43,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       watcherStats,
       dataGatewayContract: snapshot.dataGatewayContract,
       databaseHealth: snapshot.databaseHealth,
+      driftAssessment: snapshot.driftAssessment,
       surfaceAudit: snapshot.surfaceAudit,
       folderization: {
         candidateReport: folderizationReport.candidateReport,

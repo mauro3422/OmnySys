@@ -23,7 +23,9 @@ function buildBridgeEnv(url, projectPath) {
         OMNYSYS_DAEMON_URL: url,
         OMNYSYS_HEALTH_URL: getHealthUrl(),
         OMNYSYS_AUTO_START: '1',
-        OMNYSYS_PROJECT_PATH: normalizeSlashes(projectPath)
+        OMNYSYS_PROJECT_PATH: normalizeSlashes(projectPath),
+        OMNYSYS_CLIENT_ID: 'codex',
+        OMNYSYS_CLIENT_NAME: 'codex'
     };
 }
 
@@ -32,6 +34,14 @@ function buildCodexTableBody(url, projectPath) {
     const nodeCommand = getNodeCommand();
     const normalizedProjectPath = normalizeSlashes(projectPath);
     const env = buildBridgeEnv(url, normalizedProjectPath);
+    const envEntries = [
+        ['OMNYSYS_DAEMON_URL', env.OMNYSYS_DAEMON_URL],
+        ['OMNYSYS_HEALTH_URL', env.OMNYSYS_HEALTH_URL],
+        ['OMNYSYS_AUTO_START', env.OMNYSYS_AUTO_START],
+        ['OMNYSYS_PROJECT_PATH', env.OMNYSYS_PROJECT_PATH],
+        ['OMNYSYS_CLIENT_ID', env.OMNYSYS_CLIENT_ID],
+        ['OMNYSYS_CLIENT_NAME', env.OMNYSYS_CLIENT_NAME]
+    ];
 
     return [
         'type = "stdio"',
@@ -39,7 +49,7 @@ function buildCodexTableBody(url, projectPath) {
         `args = ["${bridgePath}"]`,
         `cwd = "${normalizedProjectPath}"`,
         'startup_timeout_sec = 120',
-        `env = { OMNYSYS_DAEMON_URL = "${env.OMNYSYS_DAEMON_URL}", OMNYSYS_HEALTH_URL = "${env.OMNYSYS_HEALTH_URL}", OMNYSYS_AUTO_START = "${env.OMNYSYS_AUTO_START}", OMNYSYS_PROJECT_PATH = "${env.OMNYSYS_PROJECT_PATH}" }`
+        `env = { ${envEntries.map(([key, value]) => `${key} = "${value}"`).join(', ')} }`
     ];
 }
 
@@ -79,7 +89,8 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
         content = '';
     }
 
-    content = removeTomlTable(content, `mcp.servers.${SERVER_KEY}`);
+    content = removeTomlTable(content, `mcp_servers.${SERVER_KEY}.env`);
+    content = removeTomlTable(content, `mcp_servers.${SERVER_KEY}`);
 
     let updated = upsertTomlTable(content, `mcp_servers.${SERVER_KEY}`, codexTableBody);
     updated = upsertTomlTable(updated, buildCodexProjectTableName(projectPath), ['trust_level = "trusted"']);
@@ -93,6 +104,9 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
     } catch {
         projectContent = '';
     }
+
+    projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}.env`);
+    projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`);
 
     const updatedProject = upsertTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`, codexTableBody);
     await fs.mkdir(path.dirname(projectConfigPath), { recursive: true });

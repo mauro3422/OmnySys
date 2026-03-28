@@ -12,6 +12,10 @@ import { FileWatcher } from './watchers/file-watcher.js';
 import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
 import { queueRuntimeRestart } from './restart-coordinator.js';
 import { isMutationBatchActive } from '../shared/mutation-batch.js';
+import {
+  buildRestartLifecycleGuidance,
+  evaluateAtomRefactoringSignals
+} from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:hot-reload');
 
@@ -37,7 +41,34 @@ export function snapshotWatcherStats(fileWatcher) {
   return fileWatcher?.getFileWatcherStats?.() || {};
 }
 
-function processReloadableChange({ eventType, filename, server, classifier, reloadHandler }) {
+function buildHotReloadConformanceContext({ filename, server }) {
+  return {
+    restartLifecycle: buildRestartLifecycleGuidance({ restartType: 'hot_reload_runtime_restart', proxyMode: server?.runtimeRestartMode === 'auto' }),
+    semanticSignals: evaluateAtomRefactoringSignals({
+      name: filename,
+      filePath: filename,
+      isAsync: true,
+      hasErrorHandling: true,
+      semantic: { isPure: false, mutatesParams: ['server'], usesThisContext: false, hasReturnValue: true },
+      sharedStateAccess: ['_pendingHotReloadChanges', '_hotReloadDeferredDrainTimer'],
+      eventEmitters: ['server.emit']
+    })
+  };
+}
+
+function processReloadableChange({
+  eventType,
+  filename,
+  server,
+  classifier,
+  reloadHandler,
+  recoveryContext
+}) {
+  if (!server) {
+    logger.warn(`Skipping hot-reload change without server context: ${filename}`);
+    return;
+  }
+
   if (reloadHandler.isReloading) {
     logger.debug(`Ignoring change during reload: ${filename}`);
     return;
@@ -55,53 +86,89 @@ function processReloadableChange({ eventType, filename, server, classifier, relo
 
   const moduleInfo = classifier.classify(filename);
   const policy = classifyRuntimeChange(filename, moduleInfo);
-  if (policy.action === RuntimeChangeAction.IGNORE) {
-    logger.debug(`Ignoring non-runtime file: ${filename}`);
-    return;
-  }
+  const runtimeContext = recoveryContext || buildHotReloadConformanceContext({ filename, server });
+  dispatchReloadableChange({ eventType, filename, server, moduleInfo, policy, reloadHandler, runtimeContext });
+}
 
-  if (policy.action === RuntimeChangeAction.REFRESH) {
-    logger.info(`♻️ Refresh-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
-    server.emit('hot-reload:refresh-requested', {
-      file: filename,
-      reason: policy.reason,
-      action: policy.action
-    });
-    reloadHandler.applyModuleReload(filename, moduleInfo);
-    return;
+function dispatchReloadableChange({
+  eventType,
+  filename,
+  server,
+  moduleInfo,
+  policy,
+  reloadHandler,
+  runtimeContext
+}) {
+  switch (policy.action) {
+    case RuntimeChangeAction.IGNORE:
+      logger.debug(`Ignoring non-runtime file: ${filename}`);
+      return;
+    case RuntimeChangeAction.REFRESH: return applyRefreshChange({ eventType, filename, server, moduleInfo, policy, reloadHandler, runtimeContext });
+    case RuntimeChangeAction.RESTART: return applyRestartChange({ filename, server, policy });
+    case RuntimeChangeAction.REINDEX: return applyReindexChange({ eventType, filename, server, moduleInfo, policy, runtimeContext });
+    default: return applyRuntimeReloadChange({ eventType, filename, moduleInfo, reloadHandler });
   }
+}
 
-  if (policy.action === RuntimeChangeAction.RESTART) {
-    logger.warn(`🚨 Runtime restart required: ${filename} (${policy.reason})`);
+function applyRefreshChange({
+  eventType,
+  filename,
+  server,
+  moduleInfo,
+  policy,
+  reloadHandler,
+  runtimeContext
+}) {
+  logger.info(`♻️ Refresh-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+  server.emit('hot-reload:refresh-requested', {
+    file: filename,
+    reason: policy.reason,
+    action: policy.action,
+    lifecycle: runtimeContext.restartLifecycle,
+    semanticSignals: runtimeContext.semanticSignals
+  });
+  reloadHandler.applyModuleReload(filename, moduleInfo);
+}
+
+function applyRestartChange({ filename, server, policy }) {
+  logger.warn(`🚨 Runtime restart required: ${filename} (${policy.reason})`);
+  queueRuntimeRestart(server, {
+    filename,
+    reason: policy.reason,
+    eventName: 'hot-reload:restart-pending'
+  });
+}
+
+function applyReindexChange({
+  eventType,
+  filename,
+  server,
+  moduleInfo,
+  policy,
+  runtimeContext
+}) {
+  logger.info(`♻️ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+  server.emit('hot-reload:reindex-requested', {
+    file: filename,
+    reason: policy.reason,
+    action: policy.action,
+    runtimeReloadDeferred: true,
+    runtimeRestartMode: server?.runtimeRestartMode || 'manual',
+    lifecycle: runtimeContext.restartLifecycle,
+    semanticSignals: runtimeContext.semanticSignals
+  });
+
+  if (shouldAutoRestartAfterReindex(server)) {
     queueRuntimeRestart(server, {
       filename,
-      reason: policy.reason,
+      reason: `${policy.reason} (deferred until reindex settles)`,
       eventName: 'hot-reload:restart-pending'
     });
-    return;
   }
+}
 
-  if (policy.action === RuntimeChangeAction.REINDEX) {
-    logger.info(`♻️ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
-    server.emit('hot-reload:reindex-requested', {
-      file: filename,
-      reason: policy.reason,
-      action: policy.action,
-      runtimeReloadDeferred: true,
-      runtimeRestartMode: server?.runtimeRestartMode || 'manual'
-    });
-
-    if (shouldAutoRestartAfterReindex(server)) {
-      queueRuntimeRestart(server, {
-        filename,
-        reason: `${policy.reason} (deferred until reindex settles)`,
-        eventName: 'hot-reload:restart-pending'
-      });
-    }
-    return;
-  }
-
-  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+function applyRuntimeReloadChange({ eventType, filename, moduleInfo, reloadHandler }) {
+  logger.info(`♻️ Runtime change detected: ${filename} (${moduleInfo?.type || 'reloadable surface'}/${eventType})`);
   reloadHandler.applyModuleReload(filename, moduleInfo);
 }
 
@@ -135,8 +202,10 @@ function queueDeferredChange(server, payload) {
   queue.set(payload.filename, {
     eventType: payload.eventType,
     filename: payload.filename,
+    server: payload.server,
     classifier: payload.classifier,
     reloadHandler: payload.reloadHandler,
+    recoveryContext: payload.recoveryContext,
     queuedAt: Date.now()
   });
 
@@ -183,7 +252,10 @@ function drainDeferredChanges(server) {
   });
 
   for (const change of queuedChanges) {
-    processReloadableChange(change);
+    processReloadableChange({
+      ...change,
+      server
+    });
   }
 }
 

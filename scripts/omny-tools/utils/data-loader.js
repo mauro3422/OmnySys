@@ -1,37 +1,77 @@
 /**
- * @fileoverview Data Loader - Carga datos de .omnysysdata/
+ * @fileoverview Data Loader - Carga datos desde SQLite con fallback legacy.
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { getAllAtoms } from '../../../src/layer-c-memory/storage/index.js';
+import { getRepository } from '../../../src/layer-c-memory/storage/repository/repository-factory.js';
 
 const DATA_DIR = '.omnysysdata';
+const PROJECT_ROOT = process.cwd();
+
+function readLegacyJson(fileName, fallbackValue) {
+  const filePath = join(DATA_DIR, fileName);
+  if (!existsSync(filePath)) {
+    return fallbackValue;
+  }
+
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8'));
+  } catch {
+    return fallbackValue;
+  }
+}
+
+function atomsToMap(atoms) {
+  const map = new Map();
+
+  for (const atom of atoms) {
+    if (!atom) continue;
+    const key = atom.id || `${atom.filePath || 'unknown'}::${atom.name || 'unknown'}`;
+    map.set(key, atom);
+  }
+
+  return map;
+}
 
 export async function loadAtoms() {
-  const atomsPath = join(DATA_DIR, 'atoms.json');
-  if (!existsSync(atomsPath)) {
-    console.error('❌ No se encontró atoms.json. Ejecuta el análisis primero.');
-    process.exit(1);
+  try {
+    const atoms = await getAllAtoms(PROJECT_ROOT, { includeRemoved: true });
+    if (Array.isArray(atoms) && atoms.length > 0) {
+      return atomsToMap(atoms);
+    }
+  } catch {
+    // Fall through to legacy JSON below.
   }
-  
-  const data = JSON.parse(readFileSync(atomsPath, 'utf-8'));
-  return new Map(Object.entries(data));
+
+  const legacyAtoms = readLegacyJson('atoms.json', null);
+  if (legacyAtoms && typeof legacyAtoms === 'object') {
+    return new Map(Object.entries(legacyAtoms));
+  }
+
+  return new Map();
 }
 
 export async function loadSystemMap() {
-  const mapPath = join(DATA_DIR, 'system-map.json');
-  if (!existsSync(mapPath)) {
-    return { files: {} };
+  try {
+    const repo = getRepository(PROJECT_ROOT);
+    const systemMap = await repo.loadSystemMap();
+    if (systemMap && typeof systemMap === 'object' && Object.keys(systemMap).length > 0) {
+      return systemMap;
+    }
+  } catch {
+    // Fall through to legacy JSON below.
   }
-  
-  return JSON.parse(readFileSync(mapPath, 'utf-8'));
+
+  return readLegacyJson('system-map.json', { files: {} }) || { files: {} };
 }
 
 export async function loadIndex() {
-  const indexPath = join(DATA_DIR, 'index.json');
-  if (!existsSync(indexPath)) {
-    return { metadata: {} };
+  const legacyIndex = readLegacyJson('index.json', null);
+  if (legacyIndex && typeof legacyIndex === 'object') {
+    return legacyIndex;
   }
-  
-  return JSON.parse(readFileSync(indexPath, 'utf-8'));
+
+  return { metadata: {} };
 }

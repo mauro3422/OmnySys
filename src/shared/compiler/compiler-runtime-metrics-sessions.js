@@ -67,7 +67,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
   const actionableDuplicateClients = actionableDuplicateDetails.length;
   const multiClientActive = uniqueClients > 1;
   const sessionCountDrift = hasRuntimeSessionCount
-    ? runtimeSessionCount > totalPersistentActive
+    ? totalPersistentActive === 0 && runtimeSessionCount > 0
     : false;
   const multiClientChurn = actionableDuplicateClients > 0 || sessionCountDrift;
 

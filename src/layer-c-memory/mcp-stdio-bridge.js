@@ -13,11 +13,16 @@ import {
     createBridgeState,
     log,
     waitForDaemonReady,
-    startBridgeRecovery,
     sendBridgeRetryableError
 } from './mcp/stdio-bridge-lifecycle.js';
+import {
+    startBridgeRecovery,
+    scheduleBridgeRecovery
+} from './mcp/stdio-bridge-recovery.js';
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
+const BRIDGE_CLIENT_ID = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
+const BRIDGE_CLIENT_NAME = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
 
 function isRequestMessage(message) {
     return !!message &&
@@ -36,6 +41,64 @@ function isResponseMessage(message) {
 function shouldTriggerRecovery(error) {
     const message = String(error?.message || error || '');
     return /Server not initialized|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(message);
+}
+
+function canonicalizeClientInfo(clientInfo = {}) {
+    const base = clientInfo && typeof clientInfo === 'object' ? { ...clientInfo } : {};
+    const originalName = getTrimmedClientField(base, 'name');
+    const originalClientId = getTrimmedClientField(base, 'client_id');
+    const canonicalId = resolveCanonicalClientId(originalClientId, originalName);
+    const canonicalName = resolveCanonicalClientName(originalName, originalClientId, canonicalId);
+
+    return buildCanonicalClientInfo(base, canonicalName, canonicalId, originalName, originalClientId);
+}
+
+function getTrimmedClientField(clientInfo, field) {
+    const value = clientInfo?.[field];
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function resolveCanonicalClientId(originalClientId, originalName) {
+    return BRIDGE_CLIENT_ID || originalClientId || originalName || '';
+}
+
+function resolveCanonicalClientName(originalName, originalClientId, canonicalId) {
+    return BRIDGE_CLIENT_NAME || canonicalId || originalName || originalClientId || '';
+}
+
+function buildCanonicalClientInfo(base, canonicalName, canonicalId, originalName, originalClientId) {
+    const normalized = { ...base };
+    if (canonicalName) {
+        normalized.name = canonicalName;
+    }
+    if (canonicalId) {
+        normalized.client_id = canonicalId;
+    }
+
+    if (BRIDGE_CLIENT_ID && originalName && originalName !== canonicalName) {
+        normalized.original_name = originalName;
+    }
+    if (BRIDGE_CLIENT_ID && originalClientId && originalClientId !== canonicalId) {
+        normalized.original_client_id = originalClientId;
+    }
+
+    return normalized;
+}
+
+function normalizeBridgeInitializeMessage(message) {
+    if (!isRequestMessage(message) || message.method !== 'initialize') {
+        return message;
+    }
+
+    const params = message.params && typeof message.params === 'object'
+        ? { ...message.params }
+        : {};
+    params.clientInfo = canonicalizeClientInfo(params.clientInfo);
+
+    return {
+        ...message,
+        params
+    };
 }
 
 async function connectBridgeTransport(state, options = {}) {
@@ -83,14 +146,16 @@ async function connectBridgeTransport(state, options = {}) {
 }
 
 async function handleBridgeStdioMessage(state, message) {
+    const normalizedMessage = normalizeBridgeInitializeMessage(message);
+
     if (state.isReconnecting) {
-        if (isRequestMessage(message)) {
-            log(`Rejecting request ${message.method} while daemon is restarting.`);
+        if (isRequestMessage(normalizedMessage)) {
+            log(`Rejecting request ${normalizedMessage.method} while daemon is restarting.`);
             await sendBridgeRetryableError(
                 state,
-                message.id,
+                normalizedMessage.id,
                 'DAEMON_RESTARTING: bridge is recovering. Retry this request in a moment.',
-                { interruptedMethod: message.method }
+                { interruptedMethod: normalizedMessage.method }
             );
             return;
         }
@@ -100,35 +165,39 @@ async function handleBridgeStdioMessage(state, message) {
     }
 
     try {
-        if (message?.method === 'initialize' && isRequestMessage(message)) {
-            state.cachedInitializeRequest = message;
+        if (normalizedMessage?.method === 'initialize' && isRequestMessage(normalizedMessage)) {
+            state.cachedInitializeRequest = normalizedMessage;
         } else if (
-            message?.method === 'notifications/initialized' &&
-            !Object.prototype.hasOwnProperty.call(message, 'id')
+            normalizedMessage?.method === 'notifications/initialized' &&
+            !Object.prototype.hasOwnProperty.call(normalizedMessage, 'id')
         ) {
-            state.cachedInitializedNotification = message;
+            state.cachedInitializedNotification = normalizedMessage;
         }
 
-        if (isRequestMessage(message)) {
-            state.pendingRequests.set(message.id, message);
+        if (isRequestMessage(normalizedMessage)) {
+            state.pendingRequests.set(normalizedMessage.id, normalizedMessage);
         }
 
-        await state.httpTransport.send(message);
+        await state.httpTransport.send(normalizedMessage);
         if (state.httpTransport?._sessionId) {
             state.lastSessionId = state.httpTransport._sessionId;
         }
     } catch (err) {
         if (shouldTriggerRecovery(err)) {
-            void startBridgeRecovery(state, 'server rejected request after daemon restart', connectBridgeTransport);
+            void scheduleBridgeRecovery(
+                state,
+                'server rejected request after daemon restart',
+                connectBridgeTransport
+            );
         }
 
-        if (isRequestMessage(message)) {
-            state.pendingRequests.delete(message.id);
+        if (isRequestMessage(normalizedMessage)) {
+            state.pendingRequests.delete(normalizedMessage.id);
             await sendBridgeRetryableError(
                 state,
-                message.id,
+                normalizedMessage.id,
                 `BRIDGE_FORWARD_FAILED: ${err.message}`,
-                { interruptedMethod: message.method }
+                { interruptedMethod: normalizedMessage.method }
             );
             return;
         }

@@ -90,6 +90,32 @@ describe('status summary explainability', () => {
             { table: 'files', field: 'hash' }
           ]
         }
+      },
+      driftAssessment: {
+        status: 'stable',
+        healthy: true,
+        trustworthy: true,
+        summary: {
+          total: 2,
+          fresh: 2,
+          partial: 0,
+          stale: 0,
+          missing: 0,
+          blocked: 0,
+          nextAction: 'ok',
+          primaryIssue: null
+        },
+        recommendations: ['ok'],
+        signals: [
+          {
+            key: 'policy_drift',
+            label: 'Policy drift',
+            state: 'fresh',
+            severity: 'low',
+            reason: 'ok',
+            sourceOfTruth: 'policy conformance scan'
+          }
+        ]
       }
     });
 
@@ -113,6 +139,21 @@ describe('status summary explainability', () => {
         coveragePct: 50,
         fieldCoveragePct: 60
       }
+    });
+
+    expect(summary.driftAssessment).toMatchObject({
+      status: 'stable',
+      healthy: true,
+      trustworthy: true,
+      total: 2,
+      fresh: 2,
+      partial: 0,
+      stale: 0,
+      missing: 0,
+      blocked: 0,
+      nextAction: 'ok',
+      primaryIssue: null,
+      recommendations: ['ok']
     });
   });
 });

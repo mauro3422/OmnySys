@@ -14,6 +14,9 @@ import {
 import { applyPagination } from './mcp/core/pagination.js';
 import { compactRecentNotifications } from './mcp/core/recent-notifications.js';
 
+const SESSION_RECOVERY_ATTEMPTS = 5;
+const SESSION_RECOVERY_DELAY_MS = 100;
+
 export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
   const response = {
     jsonrpc: '2.0',
@@ -126,6 +129,21 @@ export async function executeMcpToolCall(request, dependencies) {
   };
 }
 
+async function waitForPersistedSession(sessionManager, sessionId) {
+  for (let attempt = 0; attempt < SESSION_RECOVERY_ATTEMPTS; attempt += 1) {
+    const persistedSession = sessionManager.getSession(sessionId);
+    if (persistedSession) {
+      return persistedSession;
+    }
+
+    if (attempt < SESSION_RECOVERY_ATTEMPTS - 1) {
+      await new Promise((resolve) => setTimeout(resolve, SESSION_RECOVERY_DELAY_MS));
+    }
+  }
+
+  return null;
+}
+
 export async function handleMcpRequest(req, res, dependencies) {
   const {
     logger,
@@ -143,7 +161,7 @@ export async function handleMcpRequest(req, res, dependencies) {
       transport = sessions.get(sessionId).transport;
     } else if (sessionId && !sessions.has(sessionId)) {
       const sessionManager = await getSessionManager();
-      const persistedSession = sessionManager.getSession(sessionId);
+      const persistedSession = await waitForPersistedSession(sessionManager, sessionId);
 
       if (persistedSession) {
         logger.debug(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
@@ -186,7 +204,7 @@ export async function handleMcpRequest(req, res, dependencies) {
       let resolvedSessionId = null;
 
       const clientInfo = req.body.params?.clientInfo;
-      const clientId = clientInfo?.name || clientInfo?.client_id || 'unknown';
+      const clientId = clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown';
       const reservation = sessionManager.reserveSession(clientInfo, randomUUID());
       const sessionIdToUse = reservation.sessionId;
       const isNewSession = !reservation.reused;

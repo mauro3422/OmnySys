@@ -44,6 +44,26 @@ describe('SessionManager', () => {
     });
   });
 
+  it('prefers client_id over name so canonical Codex sessions stay deduplicated', () => {
+    manager.findSessionByClientId = vi.fn(() => null);
+
+    const result = manager.reserveSession({
+      name: 'codex-mcp-client',
+      client_id: 'codex'
+    }, 'new-session');
+
+    expect(manager.findSessionByClientId).toHaveBeenCalledWith('codex');
+    expect(result).toEqual({
+      sessionId: 'new-session',
+      reused: false,
+      source: 'new'
+    });
+    expect(manager.pendingSessions.get('codex')).toMatchObject({
+      id: 'new-session',
+      clientId: 'codex'
+    });
+  });
+
   it('reuses the existing active session id when saveSession deduplicates', () => {
     manager.ensureInitialized = vi.fn(() => true);
     manager.releasePendingSession = vi.fn();

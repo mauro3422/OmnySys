@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   getDatabaseHealthSummary: vi.fn(),
   buildCompilerStandardizationReport: vi.fn(),
   buildCompilerContractLayer: vi.fn(),
+  buildCompilerDriftAssessment: vi.fn(),
   getLiveFileTotal: vi.fn(),
   summarizeContractTaxonomy: vi.fn(),
   buildAnalysisGenerationSnapshot: vi.fn(),
@@ -90,7 +91,11 @@ vi.mock('../../../../src/shared/compiler/surface-audit.js', () => ({
   buildSurfaceAudit: mocks.buildSurfaceAudit
 }));
 
-vi.mock('../../../../src/shared/compiler/compiler-runtime-metrics.js', () => ({
+vi.mock('../../../../src/shared/compiler/compiler-drift-assessment.js', () => ({
+  buildCompilerDriftAssessment: mocks.buildCompilerDriftAssessment
+}));
+
+vi.mock('../../../../src/shared/compiler/compiler-runtime-metrics/index.js', () => ({
   getPhase2PendingFiles: mocks.getPhase2PendingFiles
 }));
 
@@ -135,6 +140,26 @@ beforeEach(() => {
   });
   mocks.buildDataGatewayContract.mockReturnValue({ healthy: true, summary: 'data-gateway' });
   mocks.buildSurfaceAudit.mockReturnValue({ healthy: true, trustworthy: true, summary: 'surface-audit' });
+  mocks.buildCompilerDriftAssessment.mockReturnValue({
+    status: 'stable',
+    healthy: true,
+    trustworthy: true,
+    summary: {
+      total: 1,
+      fresh: 1,
+      partial: 0,
+      stale: 0,
+      missing: 0,
+      blocked: 0,
+      healthy: true,
+      trustworthy: true,
+      nextAction: 'ok',
+      primaryIssue: null
+    },
+    signals: [],
+    issues: [],
+    recommendations: []
+  });
   mocks.getPhase2PendingFiles.mockReturnValue(0);
 });
 
@@ -160,6 +185,7 @@ describe('compiler-diagnostics-snapshot', () => {
     expect(snapshot.analysisGeneration.generationId).toBe('analysis:status:test');
     expect(snapshot.canonicalAdoptions.custom).toBe(true);
     expect(snapshot.dataGatewayContract.summary).toBe('data-gateway');
+    expect(snapshot.driftAssessment.summary.trustworthy).toBe(true);
     expect(snapshot.surfaceAudit.trustworthy).toBe(true);
   });
 

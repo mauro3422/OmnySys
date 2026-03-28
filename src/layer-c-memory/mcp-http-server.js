@@ -89,6 +89,7 @@ export function buildHealthSnapshot({
 } = {}) {
   return {
     status: initError ? 'degraded' : (initialized ? 'healthy' : 'starting'),
+    ready: Boolean(initialized && !initError),
     service: 'omnysys-mcp-http',
     initialized: Boolean(initialized),
     projectPath,

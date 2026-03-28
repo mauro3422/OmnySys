@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { collectWatcherAlertReferencedSymbols, loadWatcherLiveFileSymbols } from './watcher-issue-storage-alerts.js';
 
-async function getCachedFileContents(absolutePath, fileContentsCache) {
+export async function getCachedFileContents(absolutePath, fileContentsCache) {
   if (fileContentsCache.has(absolutePath)) {
     return fileContentsCache.get(absolutePath);
   }

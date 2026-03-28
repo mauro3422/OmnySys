@@ -10,6 +10,18 @@ export async function tool_get_server_status() {
   
   const atoms = await loadAtoms();
   const systemMap = await loadSystemMap();
+
+  if (atoms.size === 0) {
+    console.log('\n⚠️  No se encontraron átomos en SQLite ni snapshots legacy.');
+    console.log('   Ejecuta un análisis o una sincronización para poblar .omnysysdata/.');
+    return {
+      atoms: 0,
+      files: Object.keys(systemMap.files || {}).length,
+      purposes: {},
+      deadCode: 0,
+      apiExports: 0
+    };
+  }
   
   // Contar propósitos
   const purposes = {};
@@ -24,7 +36,7 @@ export async function tool_get_server_status() {
   
   console.log('\n📊 DISTRIBUCIÓN POR PURPOSE:');
   for (const [purpose, count] of Object.entries(purposes).sort((a, b) => b[1] - a[1])) {
-    const pct = ((count / atoms.size) * 100).toFixed(1);
+    const pct = atoms.size > 0 ? ((count / atoms.size) * 100).toFixed(1) : '0.0';
     console.log(`   ${purpose.padEnd(15)} ${count.toString().padStart(5)} (${pct}%)`);
   }
   
@@ -32,7 +44,8 @@ export async function tool_get_server_status() {
   const deadAtoms = Array.from(atoms.values()).filter(a => 
     a.purpose === 'DEAD_CODE' && (!a.calledBy || a.calledBy.length === 0)
   );
-  console.log(`\n💀 DEAD CODE REAL: ${deadAtoms.length} (${((deadAtoms.length/atoms.size)*100).toFixed(2)}%)`);
+  const deadPct = atoms.size > 0 ? ((deadAtoms.length / atoms.size) * 100).toFixed(2) : '0.00';
+  console.log(`\n💀 DEAD CODE REAL: ${deadAtoms.length} (${deadPct}%)`);
   
   // API Surface
   const apiAtoms = Array.from(atoms.values()).filter(a => a.purpose === 'API_EXPORT');

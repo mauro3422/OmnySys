@@ -9,16 +9,20 @@ export function buildCompilerReadinessStatus({
   societiesCount = 0,
   runtimeSessions = 0,
   persistentActive = 0,
-  clientsWithDuplicates = 0
+  clientsWithDuplicates = 0,
+  sessionCountDrift = null
 } = {}) {
   const input = arguments[0] || {};
   const actionableDuplicateClients = input.actionableDuplicateClients ?? clientsWithDuplicates;
   const toleratedDuplicateClients = input.toleratedDuplicateClients ?? 0;
+  const hasSessionCountDrift = typeof input.sessionCountDrift === 'boolean'
+    ? input.sessionCountDrift
+    : (sessionCountDrift ?? (persistentActive === 0 ? runtimeSessions > 0 : runtimeSessions > persistentActive));
   const checks = {
     phase2Complete: phase2PendingFiles === 0,
     societiesReady: societiesCount > 0,
     dedupHealthy: actionableDuplicateClients === 0,
-    sessionCountsAligned: persistentActive >= runtimeSessions
+    sessionCountsAligned: !hasSessionCountDrift
   };
 
   const warnings = [];

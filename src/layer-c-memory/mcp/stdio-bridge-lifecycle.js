@@ -20,6 +20,8 @@ const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/h
 const AUTO_START = process.env.OMNYSYS_AUTO_START !== '0';
 const PROJECT_PATH = path.resolve(process.env.OMNYSYS_PROJECT_PATH || process.cwd());
 const DAEMON_PORT = String(DAEMON_URL.port || '9999');
+const DAEMON_READY_TIMEOUT_MS = Number(process.env.OMNYSYS_DAEMON_READY_TIMEOUT_MS || 120000);
+const DAEMON_READY_POLL_MS = Number(process.env.OMNYSYS_DAEMON_READY_POLL_MS || 1000);
 const START_LOCK_DIR = path.join(PROJECT_PATH, '.omnysysdata');
 const START_LOCK_PATH = path.join(START_LOCK_DIR, `daemon-start-${DAEMON_PORT}.lock`);
 const START_LOCK_STALE_MS = 30000;
@@ -34,7 +36,7 @@ export function log(message) {
     process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
 }
 
-async function checkDaemon() {
+async function readDaemonHealth() {
     const { default: http } = await import('http');
     return new Promise((resolve) => {
         const req = http.get(DAEMON_HEALTH, { timeout: 5000 }, (res) => {
@@ -45,22 +47,90 @@ async function checkDaemon() {
             res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
-                    resolve(
-                        json.service === 'omnysys-mcp' ||
-                        json.service === 'omnysys-mcp-http' ||
-                        typeof json.status !== 'undefined'
+                    const status = String(json?.status || 'unknown');
+                    const initialized = json?.initialized === true;
+                    const healthy = (
+                        (json?.service === 'omnysys-mcp' || json?.service === 'omnysys-mcp-http') &&
+                        status === 'healthy' &&
+                        initialized
                     );
+
+                    resolve({
+                        reachable: true,
+                        healthy,
+                        status,
+                        initialized,
+                        service: json?.service || null,
+                        error: null
+                    });
                 } catch {
-                    resolve(false);
+                    resolve({
+                        reachable: true,
+                        healthy: false,
+                        status: 'invalid-response',
+                        initialized: false,
+                        service: null,
+                        error: 'invalid JSON response'
+                    });
                 }
             });
         });
-        req.on('error', () => resolve(false));
+        req.on('error', (error) => resolve({
+            reachable: false,
+            healthy: false,
+            status: 'unreachable',
+            initialized: false,
+            service: null,
+            error: error.message
+        }));
         req.on('timeout', () => {
             req.destroy();
-            resolve(false);
+            resolve({
+                reachable: false,
+                healthy: false,
+                status: 'timeout',
+                initialized: false,
+                service: null,
+                error: 'timeout'
+            });
         });
     });
+}
+
+async function checkDaemon() {
+    return (await readDaemonHealth()).healthy;
+}
+
+export async function waitForDaemonHealthy({
+    timeoutMs = DAEMON_READY_TIMEOUT_MS,
+    pollMs = DAEMON_READY_POLL_MS,
+    label = 'daemon'
+} = {}) {
+    const deadline = Date.now() + timeoutMs;
+    let attempt = 0;
+    let lastStatus = null;
+
+    while (Date.now() < deadline) {
+        const health = await readDaemonHealth();
+        if (health.healthy) {
+            return health;
+        }
+
+        const statusLabel = health.reachable
+            ? `${health.status}${health.initialized ? '' : ', initialized=false'}`
+            : health.error || 'unreachable';
+
+        if (statusLabel !== lastStatus) {
+            log(`${label} not ready yet (${statusLabel}); waiting for healthy state...`);
+            lastStatus = statusLabel;
+        }
+
+        const delay = Math.min(pollMs + (attempt * 250), 5000);
+        await waitMs(delay);
+        attempt += 1;
+    }
+
+    return null;
 }
 
 async function resolveDaemonEntry() {
@@ -152,26 +222,32 @@ async function acquireStartLock() {
 }
 
 export async function waitForDaemonReady() {
-    let ready = await checkDaemon();
-    if (!ready && AUTO_START) {
-        ready = await startDaemon();
-    }
-
-    if (!ready) {
-        log('Waiting for daemon to initialize...');
-        for (let i = 0; i < 10; i++) {
-            ready = await checkDaemon();
-            if (ready) break;
-            log(`Waiting (${i + 1}/10)...`);
-            await waitMs(1000);
+    const initialHealth = await readDaemonHealth();
+    if (!initialHealth.healthy && AUTO_START) {
+        const started = await startDaemon();
+        if (!started) {
+            log('ERROR: Daemon auto-start failed');
+            log(`Health URL: ${DAEMON_HEALTH}`);
+            log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
+            process.exit(1);
         }
+        return;
     }
 
-    if (!ready) {
-        log('ERROR: Daemon not reachable');
-        log(`Health URL: ${DAEMON_HEALTH}`);
-        log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
-        process.exit(1);
+    if (!initialHealth.healthy) {
+        log('Waiting for daemon to reach healthy state...');
+        const health = await waitForDaemonHealthy({
+            timeoutMs: DAEMON_READY_TIMEOUT_MS,
+            pollMs: DAEMON_READY_POLL_MS,
+            label: 'daemon'
+        });
+
+        if (!health?.healthy) {
+            log('ERROR: Daemon not reachable');
+            log(`Health URL: ${DAEMON_HEALTH}`);
+            log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
+            process.exit(1);
+        }
     }
 }
 
@@ -183,7 +259,7 @@ export async function startDaemon() {
         return true;
     }
 
-    if (await waitForExistingOwner()) {
+    if (await waitForExistingOwner(DAEMON_READY_TIMEOUT_MS)) {
         return true;
     }
 
@@ -207,7 +283,7 @@ export async function startDaemon() {
             return true;
         }
 
-        if (await waitForExistingOwner()) {
+        if (await waitForExistingOwner(DAEMON_READY_TIMEOUT_MS)) {
             return true;
         }
 
@@ -237,16 +313,18 @@ export async function startDaemon() {
 
         daemonProcess.unref();
 
-        for (let i = 0; i < 20; i++) {
-            await waitMs(500);
-            const ready = await checkDaemon();
-            if (ready) {
-                log('Daemon started successfully');
-                return true;
-            }
+        const health = await waitForDaemonHealthy({
+            timeoutMs: DAEMON_READY_TIMEOUT_MS,
+            pollMs: DAEMON_READY_POLL_MS,
+            label: 'daemon startup'
+        });
+
+        if (health?.healthy) {
+            log('Daemon started successfully');
+            return true;
         }
 
-        log('ERROR: Daemon failed to start within 10 seconds');
+        log(`ERROR: Daemon failed to reach healthy state within ${Math.round(DAEMON_READY_TIMEOUT_MS / 1000)} seconds`);
         return false;
     } finally {
         await releaseStartLock(startLock);
@@ -301,112 +379,5 @@ export async function failBridgePendingRequests(state, reason) {
             reason,
             { interruptedMethod: request.method || 'unknown' }
         );
-    }
-}
-
-export async function sendBridgeInternalRequest(state, message, timeoutMs = 10000) {
-    return await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-            state.internalRequests.delete(message.id);
-            reject(new Error(`Internal MCP request timed out: ${message.method}`));
-        }, timeoutMs);
-
-        state.internalRequests.set(message.id, {
-            resolve,
-            reject,
-            timeout
-        });
-
-        state.httpTransport.send(message)
-            .then(() => {
-                if (state.httpTransport?._sessionId) {
-                    state.lastSessionId = state.httpTransport._sessionId;
-                }
-            })
-            .catch((error) => {
-                clearTimeout(timeout);
-                state.internalRequests.delete(message.id);
-                reject(error);
-            });
-    });
-}
-
-export async function replayBridgeSession(state) {
-    if (!state.cachedInitializeRequest?.params) {
-        log('No cached initialize request available. Bridge cannot auto-reinitialize this client session.');
-        return;
-    }
-
-    const internalId = `bridge-reinit-${Date.now()}`;
-    const initMessage = {
-        ...state.cachedInitializeRequest,
-        id: internalId
-    };
-
-    log('Replaying cached initialize request to rebuild MCP session...');
-    await sendBridgeInternalRequest(state, initMessage, 15000);
-
-    if (state.cachedInitializedNotification) {
-        try {
-            await state.httpTransport.send(state.cachedInitializedNotification);
-        } catch (error) {
-            log(`Failed to replay initialized notification: ${error.message}`);
-        }
-    }
-}
-
-export async function startBridgeRecovery(state, trigger, connectBridgeTransport) {
-    if (state.isReconnecting) {
-        return state.reconnectPromise;
-    }
-
-    state.isReconnecting = true;
-    await failBridgePendingRequests(
-        state,
-        'DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.'
-    );
-
-    state.reconnectPromise = (async () => {
-        log(`Starting bridge recovery (${trigger})...`);
-
-        let recovered = false;
-        for (let i = 0; i < 15; i++) {
-            recovered = await checkDaemon();
-            if (recovered) break;
-            log(`Waiting for daemon to restart (${i + 1}/15)...`);
-            await waitMs(1000);
-        }
-
-        if (!recovered) {
-            log('Daemon recovery failed. Shutting down bridge.');
-            state.stdioTransport.close().catch(() => {});
-            process.exit(1);
-        }
-
-        log('Daemon recovered. Reconnecting HTTP transport...');
-        try {
-            const previousSessionId = state.lastSessionId;
-            await connectBridgeTransport(state, { sessionId: previousSessionId });
-            try {
-                await replayBridgeSession(state);
-                log(`Bridge reconnected successfully${state.lastSessionId ? ` (session ${state.lastSessionId})` : ''}.`);
-            } catch (error) {
-                log(`Session replay failed with previous session ${previousSessionId || 'n/a'}: ${error.message}`);
-                state.lastSessionId = null;
-                await connectBridgeTransport(state, { sessionId: null });
-                await replayBridgeSession(state);
-                log(`Bridge reconnected successfully${state.lastSessionId ? ` (session ${state.lastSessionId})` : ''}.`);
-            }
-        } catch (error) {
-            log(`Reconnection failed: ${error.message}`);
-            process.exit(1);
-        }
-    })();
-
-    try {
-        await state.reconnectPromise;
-    } finally {
-        state.isReconnecting = false;
-        state.reconnectPromise = null;
     }
 }

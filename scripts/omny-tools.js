@@ -16,7 +16,7 @@ import {
   tool_get_cycles,
   tool_get_risk_files,
   tool_search_functions
-} from './commands/index.js';
+} from './omny-tools/commands/index.js';
 
 function printHelp() {
   console.log(`
