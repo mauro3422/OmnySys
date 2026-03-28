@@ -1,6 +1,6 @@
 import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
-import { buildPipelineOrphanReportPayload } from './pipeline-orphan-reporting-payload.js';
-import { emitPipelineOrphanFinding } from './pipeline-orphan-reporting-event.js';
+import { buildPipelineOrphanReportPayload } from './reporting-payload.js';
+import { emitPipelineOrphanFinding } from './reporting-event.js';
 
 export async function persistPipelineOrphanFinding({
     rootPath,

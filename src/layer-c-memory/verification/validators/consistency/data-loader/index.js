@@ -5,4 +5,4 @@
  * @version 1.0.0
  */
 
-export { DataLoader } from './data-loader.js';
+export { DataLoader } from './loader.js';

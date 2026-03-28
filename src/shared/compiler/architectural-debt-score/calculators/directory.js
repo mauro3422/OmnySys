@@ -5,6 +5,7 @@ import {
   buildFolderizationCandidateReport,
   buildFolderizationFamilyStateReportFromRepo,
   buildFolderizationMigrationPlanFromRepo,
+  buildFolderizationNamingReportFromRepo,
   findFolderizationCandidatesFromRepo
 } from '../../directory-structure-folderization.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
@@ -20,6 +21,11 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
     candidateCount: 0,
     topCandidates: []
   };
+  let folderizationNamingReport = {
+    familyCount: 0,
+    renameTargetCount: 0,
+    topFamilies: []
+  };
 
   try {
     const files = loadDistinctFilePaths(repo);
@@ -33,6 +39,7 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
       const folderizationMigrationPlan = buildFolderizationMigrationPlanFromRepo(repo, {
         focusCandidate: folderizationCandidates[0]?.files || []
       });
+      folderizationNamingReport = buildFolderizationNamingReportFromRepo(repo);
       folderizationCandidateCount = folderizationCandidates.length;
 
       for (const file of files) {
@@ -110,6 +117,30 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
           migrationPlan: topMigrationPlan
         });
       }
+
+      if (folderizationNamingReport.topFamilies.length > 0) {
+        const topNamingFamily = folderizationNamingReport.topFamilies[0];
+        const topRenameTarget = topNamingFamily.renameTargets[0] || null;
+        issues.push({
+          type: 'folderization_naming',
+          file: topRenameTarget?.from || topNamingFamily.barrelFile || topNamingFamily.directory,
+          severity: topNamingFamily.renameTargetCount >= 4 ? 'medium' : 'low',
+          familyRoot: topNamingFamily.familyRoot,
+          directory: topNamingFamily.directory,
+          renameTargetCount: topNamingFamily.renameTargetCount,
+          namingReport: topNamingFamily,
+          recommendation: getRecommendation({
+            type: 'folderization_naming',
+            filePath: topRenameTarget?.from || topNamingFamily.directory,
+            context: {
+              familyRoot: topNamingFamily.familyRoot,
+              directory: topNamingFamily.directory,
+              recommendedFolder: topNamingFamily.directory,
+              alreadyFolderized: true
+            }
+          }).message
+        });
+      }
     }
   } catch (err) {
     logger.error(`[calculateDirectoryStructureScore] Error analyzing directory structure: ${err.message}`);
@@ -126,7 +157,8 @@ export async function calculateDirectoryStructureScore(projectPath, repo, conven
       filesInWrongPlace,
       wrongPlaceRatio: Math.round(wrongPlaceRatio * 100 * 100) / 100,
       folderizationCandidateCount,
-      folderizationCandidateReport
+      folderizationCandidateReport,
+      folderizationNamingReport
     }
   };
 }

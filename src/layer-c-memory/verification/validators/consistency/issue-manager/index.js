@@ -1,2 +1,2 @@
-export { IssueManager } from './issue-manager.js';
+export { IssueManager } from './manager.js';
 export default {};

@@ -1,4 +1,4 @@
-import { buildTableCoverage } from './metadata-extraction-coverage-helpers.js';
+import { buildTableCoverage } from './helpers.js';
 
 const METADATA_SURFACE_TABLES = [
   {

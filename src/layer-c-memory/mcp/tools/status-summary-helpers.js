@@ -158,6 +158,11 @@ export function compactCompilerExplainabilitySummary(explainability) {
       migrationPlans: explainability.folderization.migrationPlans ? {
         candidateCount: explainability.folderization.migrationPlans.candidateCount,
         focusDecision: explainability.folderization.migrationPlans.focusCandidate?.decision || null
+      } : null,
+      naming: explainability.folderization.naming ? {
+        familyCount: explainability.folderization.naming.familyCount,
+        renameTargetCount: explainability.folderization.naming.renameTargetCount,
+        topFamilies: takeSample(explainability.folderization.naming.topFamilies || [], 3)
       } : null
     } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)

@@ -1,6 +1,6 @@
-import { collectMetadataCoverageCounts } from './metadata-extraction-coverage-report-counts.js';
-import { collectMetadataCoverageFields } from './metadata-extraction-coverage-report-fields.js';
-import { buildMetadataCoverageSummary } from './metadata-extraction-coverage-report-summary.js';
+import { collectMetadataCoverageCounts } from './report-counts.js';
+import { collectMetadataCoverageFields } from './report-fields.js';
+import { buildMetadataCoverageSummary } from './report-summary.js';
 
 export function buildMetadataCoverageReport(tables) {
   const counts = collectMetadataCoverageCounts(tables);

@@ -97,7 +97,7 @@ export {
 export {
   getMetadataExtractionCoverage,
   summarizeMetadataExtractionCoverage
-} from './metadata-extraction-coverage/metadata-extraction-coverage.js';
+} from './metadata-extraction-coverage/coverage.js';
 
 export {
   buildSurfaceFreshnessLedger,
@@ -230,6 +230,8 @@ export {
   buildFolderizationCandidateReport,
   buildFolderizationMigrationPlanFromRows,
   buildFolderizationMigrationPlanFromRepo,
+  buildFolderizationNamingReportFromRows,
+  buildFolderizationNamingReportFromRepo,
   loadFolderizationRows,
   normalizeFolderizationPath
 } from './directory-structure-folderization.js';

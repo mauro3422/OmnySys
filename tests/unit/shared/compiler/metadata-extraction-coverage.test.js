@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import {
   getMetadataExtractionCoverage,
   summarizeMetadataExtractionCoverage
-} from '../../../../src/shared/compiler/metadata-extraction-coverage.js';
+} from '../../../../src/shared/compiler/metadata-extraction-coverage/coverage.js';
 
 describe('metadata-extraction-coverage', () => {
   let db;

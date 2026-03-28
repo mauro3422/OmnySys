@@ -1,22 +1,22 @@
 export {
   collectMetadataCoverageTables
-} from './metadata-extraction-coverage-report-tables.js';
+} from './report-tables.js';
 
 export {
   collectMetadataCoverageCounts
-} from './metadata-extraction-coverage-report-counts.js';
+} from './report-counts.js';
 
 export {
   collectMetadataCoverageFields
-} from './metadata-extraction-coverage-report-fields.js';
+} from './report-fields.js';
 
 export {
   buildMetadataCoverageSummary
-} from './metadata-extraction-coverage-report-summary.js';
+} from './report-summary.js';
 
 export {
   buildMetadataCoverageReport,
-} from './metadata-extraction-coverage-report-assembly.js';
+} from './report-assembly.js';
 
 export function shouldRepairMetadataCoverage(initialCoverage) {
   return initialCoverage.healthy === false

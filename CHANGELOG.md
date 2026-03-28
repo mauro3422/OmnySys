@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.373 - Sprint 16: Folderized Naming Normalization and Rename Guidance](changelogs/v0.9.373.md)
 - [v0.9.372 - Sprint 16: Folderization Metrics in Status and Technical Debt](changelogs/v0.9.372.md)
 - [v0.9.371 - Sprint 16: Folderization Family State Reporting](changelogs/v0.9.371.md)
 - [v0.9.370 - Sprint 16: Folderization Evolution and Existing Family Hints](changelogs/v0.9.370.md)

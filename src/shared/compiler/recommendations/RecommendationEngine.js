@@ -27,6 +27,15 @@ const CANONICAL_TEMPLATES = {
             : 'Group related helpers into a dedicated folder with a thin barrel',
         strategy: 'folderization'
     }),
+    folderization_naming: (ctx) => ({
+        message: ctx.alreadyFolderized
+            ? `Shorten the member names inside ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`} so the folder context carries the family name.`
+            : `Name the folderized members under ${ctx.recommendedFolder || `${ctx.directory}/${ctx.familyRoot}`} with short role-based basenames.`,
+        action: ctx.alreadyFolderized
+            ? 'Normalize folderized filenames to short role-based names'
+            : 'Use short role-based basenames once the family is folderized',
+        strategy: 'folderization'
+    }),
     high_coupling: () => ({
         message: 'Consider splitting into smaller modules or using dependency injection',
         action: 'Reduce import count to improve modularity',

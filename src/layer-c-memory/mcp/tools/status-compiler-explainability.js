@@ -6,6 +6,7 @@ import {
   buildFolderizationCandidateReport,
   buildFolderizationFamilyStateReportFromRepo,
   buildFolderizationMigrationPlanFromRepo,
+  buildFolderizationNamingReportFromRepo,
   findFolderizationCandidatesFromRepo
 } from '../../../shared/compiler/directory-structure-folderization.js';
 
@@ -33,6 +34,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     const folderizationCandidateList = findFolderizationCandidatesFromRepo(repo);
     const folderizationFamilyState = buildFolderizationFamilyStateReportFromRepo(repo);
     const folderizationMigrationPlans = buildFolderizationMigrationPlanFromRepo(repo);
+    const folderizationNamingReport = buildFolderizationNamingReportFromRepo(repo);
     const folderizationCandidateReport = buildFolderizationCandidateReport(folderizationCandidateList);
 
     return {
@@ -55,7 +57,8 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       folderization: {
         candidateReport: folderizationCandidateReport,
         familyState: folderizationFamilyState,
-        migrationPlans: folderizationMigrationPlans
+        migrationPlans: folderizationMigrationPlans,
+        naming: folderizationNamingReport
       }
     };
   } catch (error) {

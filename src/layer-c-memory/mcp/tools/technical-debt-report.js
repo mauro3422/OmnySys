@@ -1,9 +1,9 @@
 /**
  * @fileoverview technical-debt-report.js
  *
- * Tool MCP para reporte automático de deuda técnica al conectar.
- * Ejecuta múltiples queries de duplicados, orphans y dead code
- * y consolida en un reporte unificado.
+ * MCP tool for automatic technical debt reporting at connect time.
+ * Executes multiple duplicate, orphan and dead code queries and
+ * consolidates them into a unified report.
  *
  * @module mcp/tools/technical-debt-report
  */
@@ -14,14 +14,15 @@ import {
     buildFolderizationCandidateReport,
     buildFolderizationFamilyStateReportFromRepo,
     buildFolderizationMigrationPlanFromRepo,
+    buildFolderizationNamingReportFromRepo,
     findFolderizationCandidatesFromRepo
 } from '../../../shared/compiler/directory-structure-folderization.js';
 
 /**
- * Ejecuta reporte completo de deuda técnica
- * @param {Object} args - Argumentos MCP
- * @param {Object} context - Contexto MCP
- * @returns {Promise<Object>} Reporte consolidado
+ * Executes the complete technical debt report.
+ * @param {Object} args - MCP arguments
+ * @param {Object} context - MCP context
+ * @returns {Promise<Object>} Consolidated report
  */
 export async function getTechnicalDebtReport(args, context) {
     const aggregateTool = new AggregateMetricsTool();
@@ -30,7 +31,7 @@ export async function getTechnicalDebtReport(args, context) {
         const projectPath = context?.projectPath || null;
         const repo = projectPath ? getRepository(projectPath) : null;
 
-        // Ejecutar todas las métricas en paralelo
+        // Execute all metrics in parallel
         const [
             duplicatesResult,
             conceptualResult,
@@ -53,8 +54,13 @@ export async function getTechnicalDebtReport(args, context) {
             focusCandidate: null,
             candidates: []
         };
+        const folderizationNamingReport = repo ? buildFolderizationNamingReportFromRepo(repo) : {
+            familyCount: 0,
+            renameTargetCount: 0,
+            topFamilies: []
+        };
 
-        // Consolidar resultados
+        // Consolidate results
         const report = {
             summary: {
                 structuralDuplicates: duplicatesResult.duplicates?.summary || {},
@@ -76,13 +82,15 @@ export async function getTechnicalDebtReport(args, context) {
                     candidates: folderizationCandidates.candidateCount || 0,
                     flatFamilies: folderizationFamilyState.stateCounts.flat || 0,
                     mixedFamilies: folderizationFamilyState.stateCounts.mixed || 0,
-                    alreadyFolderizedFamilies: folderizationFamilyState.stateCounts.already_folderized || 0
+                    alreadyFolderizedFamilies: folderizationFamilyState.stateCounts.already_folderized || 0,
+                    namingFamilies: folderizationNamingReport.familyCount || 0,
+                    namingTargets: folderizationNamingReport.renameTargetCount || 0
                 }
             },
             structural: {
                 totalGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
                 totalInstances: duplicatesResult.duplicates?.summary?.totalDuplicateInstances || 0,
-                topIssues: (duplicatesResult.remediation?.items || []).slice(0, 5).map(item => ({
+                topIssues: (duplicatesResult.remediation?.items || []).slice(0, 5).map((item) => ({
                     name: item.name || 'Unknown',
                     file: item.canonical?.file || item.file || 'Unknown',
                     groupSize: item.groupSize,
@@ -100,7 +108,7 @@ export async function getTechnicalDebtReport(args, context) {
                 highRiskGroups: conceptualResult.summary?.highRisk || 0,
                 noiseByClass: conceptualResult.summary?.noiseByClass || {},
                 chestDistribution: conceptualResult.summary?.chestDistribution || {},
-                topIssues: (conceptualResult.groups || []).slice(0, 5).map(group => ({
+                topIssues: (conceptualResult.groups || []).slice(0, 5).map((group) => ({
                     fingerprint: group.semanticFingerprint,
                     concept: group.concept,
                     implementationCount: group.implementationCount,
@@ -110,7 +118,7 @@ export async function getTechnicalDebtReport(args, context) {
             },
             pipelineOrphans: {
                 total: pipelineHealthResult.orphanPipelineFunctions?.length || 0,
-                items: (pipelineHealthResult.orphanPipelineFunctions || []).map(orphan => ({
+                items: (pipelineHealthResult.orphanPipelineFunctions || []).map((orphan) => ({
                     name: orphan.name,
                     file: orphan.file,
                     complexity: orphan.complexity,
@@ -121,7 +129,8 @@ export async function getTechnicalDebtReport(args, context) {
                 candidates: folderizationCandidates.topCandidates || [],
                 familyState: folderizationFamilyState,
                 migrationPlans: folderizationMigrationPlans.candidates || [],
-                focusPlan: folderizationMigrationPlans.focusCandidate || null
+                focusPlan: folderizationMigrationPlans.focusCandidate || null,
+                naming: folderizationNamingReport
             },
             debtScore: calculateDebtScore({
                 structuralGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
@@ -136,7 +145,8 @@ export async function getTechnicalDebtReport(args, context) {
                 conceptual: conceptualResult.groups || [],
                 orphans: pipelineHealthResult.orphanPipelineFunctions || [],
                 folderization: folderizationMigrationPlans.candidates || [],
-                folderizationFamilyState
+                folderizationFamilyState,
+                folderizationNaming: folderizationNamingReport
             }),
             timestamp: new Date().toISOString()
         };
@@ -158,7 +168,7 @@ export async function getTechnicalDebtReport(args, context) {
 }
 
 /**
- * Calcula score de deuda técnica (0-100)
+ * Calculates technical debt score (0-100)
  */
 function calculateDebtScore(metrics) {
     const {
@@ -170,7 +180,7 @@ function calculateDebtScore(metrics) {
         mixedFamilies = 0
     } = metrics;
 
-    // Pesos: structural=3x, conceptual=2x, highRisk=5x, orphans=4x
+    // Weights: structural=3x, conceptual=2x, highRisk=5x, orphans=4x
     const rawScore = (
         (structuralGroups * 3) +
         (conceptualGroups * 2) +
@@ -180,7 +190,7 @@ function calculateDebtScore(metrics) {
         (mixedFamilies * 3)
     );
 
-    // Normalizar a 0-100 (max esperado: 500)
+    // Normalize to 0-100 (expected max: 500)
     const normalizedScore = Math.min(100, Math.round((rawScore / 500) * 100));
 
     return {
@@ -198,11 +208,18 @@ function calculateDebtScore(metrics) {
 }
 
 /**
- * Genera acciones prioritarias basadas en los datos
+ * Generate priority actions based on the data.
  */
 function generatePriorityActions(data) {
     const actions = [];
-    const { structural, conceptual, orphans, folderization = [], folderizationFamilyState = null } = data;
+    const {
+        structural,
+        conceptual,
+        orphans,
+        folderization = [],
+        folderizationFamilyState = null,
+        folderizationNaming = null
+    } = data;
 
     // Top structural duplicates
     if (structural.length > 0) {
@@ -210,67 +227,81 @@ function generatePriorityActions(data) {
         actions.push({
             priority: 'high',
             type: 'structural_duplicate',
-            action: `Consolidar ${top.groupSize} duplicados de '${top.name}' en ${top.canonical?.file || top.file}`,
-            impact: `Reducir ${top.duplicateFiles} archivos duplicados`,
+            action: `Consolidate ${top.groupSize} duplicates of '${top.name}' into ${top.canonical?.file || top.file}`,
+            impact: `Reduce ${top.duplicateFiles} duplicate files`,
             urgencyScore: top.urgencyScore
         });
     }
 
     // High risk conceptual duplicates
-    const highRiskConceptual = conceptual.filter(g => g.risk === 'high').slice(0, 3);
-    highRiskConceptual.forEach(group => {
+    const highRiskConceptual = conceptual.filter((g) => g.risk === 'high').slice(0, 3);
+    highRiskConceptual.forEach((group) => {
         actions.push({
             priority: 'high',
             type: 'conceptual_duplicate',
-            action: `Estandarizar ${group.implementationCount} implementaciones de '${group.concept.verb}:${group.concept.chest}:${group.concept.domain}:${group.concept.entity}'`,
-            impact: `Reducir ${group.fileCount} archivos con lógica similar`,
+            action: `Standardize ${group.implementationCount} implementations of '${group.concept.verb}:${group.concept.chest}:${group.concept.domain}:${group.concept.entity}'`,
+            impact: `Reduce ${group.fileCount} files with similar logic`,
             urgencyScore: group.implementationCount
         });
     });
 
     // Pipeline orphans
-    orphans.forEach(orphan => {
+    orphans.forEach((orphan) => {
         actions.push({
             priority: 'medium',
             type: 'pipeline_orphan',
-            action: `Revisar '${orphan.name}' en ${orphan.file}`,
+            action: `Review '${orphan.name}' in ${orphan.file}`,
             impact: orphan.diagnosis,
             urgencyScore: orphan.complexity
         });
     });
 
     const folderizableFamilies = folderization
-        .filter(plan => plan?.decision === 'approve')
+        .filter((plan) => plan?.decision === 'approve')
         .slice(0, 5);
-    folderizableFamilies.forEach(plan => {
+    folderizableFamilies.forEach((plan) => {
         actions.push({
             priority: 'high',
             type: 'folderization_candidate',
-            action: `Folderizar ${plan.candidate?.familyRoot || 'family'} en ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
-            impact: `Requiere ${plan.moveTargets?.length || 0} movimientos y ${plan.importImpact?.rewriteCount || 0} reescrituras`,
+            action: `Folderize ${plan.candidate?.familyRoot || 'family'} into ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
+            impact: `Requires ${plan.moveTargets?.length || 0} moves and ${plan.importImpact?.rewriteCount || 0} rewrites`,
             urgencyScore: (plan.candidate?.confidence || 0) + (plan.importImpact?.rewriteCount || 0)
         });
     });
 
     const mixedFamilies = folderizationFamilyState?.topFamilies
-        ?.filter(family => family.migrationState === 'mixed')
+        ?.filter((family) => family.migrationState === 'mixed')
         ?.slice(0, 3) || [];
-    mixedFamilies.forEach(family => {
+    mixedFamilies.forEach((family) => {
         actions.push({
             priority: 'medium',
             type: 'folderization_mixed',
-            action: `Completar migración de ${family.familyRoot} en ${family.directory}`,
-            impact: `Estado mixto: ${family.rootFileCount} raíz / ${family.folderFileCount} folderizados`,
+            action: `Complete migration of ${family.familyRoot} in ${family.directory}`,
+            impact: `Mixed state: ${family.rootFileCount} root / ${family.folderFileCount} folderized`,
             urgencyScore: family.rootFileCount + family.folderFileCount
         });
     });
 
-    // Ordenar por urgencia
+    const namingFamilies = folderizationNaming?.topFamilies?.slice(0, 3) || [];
+    namingFamilies.forEach((family) => {
+        const topTarget = family.renameTargets?.[0] || null;
+        actions.push({
+            priority: 'medium',
+            type: 'folderization_naming',
+            action: `Simplify names for ${family.familyRoot} in ${family.directory}`,
+            impact: topTarget
+                ? `Rename ${family.renameTargetCount} files; example: ${topTarget.currentName} -> ${topTarget.recommendedName}`
+                : `Rename ${family.renameTargetCount} folderized files`,
+            urgencyScore: family.renameTargetCount * 2 + family.fileCount
+        });
+    });
+
+    // Order by urgency
     return actions.sort((a, b) => b.urgencyScore - a.urgencyScore).slice(0, 10);
 }
 
 /**
- * Export como MCP tool
+ * Export as MCP tool
  */
 export const technical_debt_report = async (args, context) => {
     return getTechnicalDebtReport(args, context);

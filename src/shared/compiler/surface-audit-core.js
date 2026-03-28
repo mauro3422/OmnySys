@@ -6,7 +6,7 @@
 
 import { summarizeAnalysisGeneration } from './analysis-generation.js';
 import { summarizeDataGatewayContract } from './data-gateway-contract.js';
-import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/metadata-extraction-coverage.js';
+import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import {
   compactSurfaceEntry,
   summarizeSurfaceMetrics

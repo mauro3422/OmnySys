@@ -45,7 +45,7 @@ vi.mock('../../../../src/shared/compiler/metadata-surface-parity.js', () => ({
   getMetadataSurfaceParity: mocks.getMetadataSurfaceParity
 }));
 
-vi.mock('../../../../src/shared/compiler/metadata-extraction-coverage.js', () => ({
+vi.mock('../../../../src/shared/compiler/metadata-extraction-coverage/coverage.js', () => ({
   getMetadataExtractionCoverage: mocks.getMetadataExtractionCoverage
 }));
 

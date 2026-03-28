@@ -7,7 +7,7 @@
  * @module shared/compiler/metadata-extraction-coverage
  */
 
-import { buildNoDatabaseCoverage } from './metadata-extraction-coverage-helpers.js';
+import { buildNoDatabaseCoverage } from './helpers.js';
 import { repairMetadataExtractionCoverage } from '../metadata-extraction-coverage-repair.js';
 import {
   buildMetadataCoverageReport,

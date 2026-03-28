@@ -22,3 +22,8 @@ export {
   buildFolderizationMigrationPlanFromRows,
   buildFolderizationMigrationPlanFromRepo
 } from './directory-structure-folderization-migration.js';
+
+export {
+  buildFolderizationNamingReportFromRows,
+  buildFolderizationNamingReportFromRepo
+} from './directory-structure-folderization-naming.js';

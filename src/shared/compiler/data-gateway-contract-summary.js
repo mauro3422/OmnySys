@@ -1,5 +1,5 @@
 import { summarizeAnalysisGeneration } from './analysis-generation.js';
-import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/metadata-extraction-coverage.js';
+import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import {
   buildSurfaceEntry,
   summarizeSurfaceEntries,
