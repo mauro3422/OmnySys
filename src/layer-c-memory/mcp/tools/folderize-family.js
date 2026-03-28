@@ -175,6 +175,17 @@ async function executeFolderizationPlan({
       context: moveContext
     });
 
+    if (!rewriteResult.success) {
+      return {
+        success: false,
+        mode: 'partial',
+        plan: focusPlan,
+        results,
+        rewrites: rewriteResult,
+        error: 'Folderization imports rewrite failed'
+      };
+    }
+
     const validations = validateAfterMove
       ? await validateMovedFamily(focusPlan, projectPath, moveContext)
       : [];

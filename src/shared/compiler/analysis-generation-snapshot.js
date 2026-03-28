@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { buildDerivedFeatureRegistry } from './derived-feature-registry.js';
+import { buildDerivedFeatureRegistry } from './registry.js';
 import { normalizeCount } from './analysis-generation-counts.js';
 import { buildGenerationDrift } from './analysis-generation-drift.js';
 

@@ -11,6 +11,7 @@ import { fix_imports } from '../../../layer-c-memory/mcp/tools/fix-imports.js';
 import { execute_solid_split } from '../../../layer-c-memory/mcp/tools/execute-solid-split.js';
 import { consolidate_conceptual_cluster } from '../../../layer-c-memory/mcp/tools/consolidate-conceptual-cluster.js';
 import { folderize_family } from '../../../layer-c-memory/mcp/tools/folderize-family.js';
+import { rename_folderized_family } from '../../../layer-c-memory/mcp/tools/rename-folderized-family.js';
 import { generate_tests } from '../../../layer-c-memory/mcp/tools/generate-tests/index.js';
 import { safe_edit, get_safe_edit_context } from '../../../layer-c-memory/mcp/tools/safe-edit/index.js';
 import { withFile } from '../helpers/FileProcessingHelper.js';
@@ -26,6 +27,7 @@ const ACTION_HANDLERS = {
   solid_split: async (args, context) => execute_solid_split(args, context),
   consolidate_cluster: async (args, context) => consolidate_conceptual_cluster(args, context),
   folderize_family: async (args, context) => folderize_family(args, context),
+  rename_folderized_family: async (args, context) => rename_folderized_family(args, context),
   generate_tests: async (args, context) => generate_tests(args, context),
   safe_edit: async (args, context) => safe_edit(args, context),
   get_edit_context: async (args, context) => get_safe_edit_context(args, context),

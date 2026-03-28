@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { AtomicMutationTool } from '#layer-c/mcp/core/shared/base-tools/atomic-mutation-tool.js';
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
+import { AtomicEditor } from '#core/atomic-editor/AtomicEditor.js';
 import { reindexFile } from './reindex.js';
 import {
     normalizeAtomicPath,
@@ -91,7 +92,7 @@ export class AtomicWriterTool extends AtomicMutationTool {
         }
 
         const mutationLogic = async () => {
-            const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
+            const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(() => new AtomicEditor(projectPath, orchestrator));
             const dirPath = path.dirname(preRes.absoluteFilePath);
 
             if (!fs.existsSync(dirPath)) {

@@ -23,13 +23,16 @@ const logger = createLogger('OmnySys:error:recovery');
 export async function clearCache(projectPath, stats) {
   try {
     const { UnifiedCacheManager } = await import('#core/cache/manager/index.js');
+    const safeProjectPath = typeof projectPath === 'string' && projectPath.trim()
+      ? projectPath
+      : process.cwd();
     // Instancia temporal solo para limpiar disco (no va por el singleton)
-    const tempCache = new UnifiedCacheManager(projectPath);
+    const tempCache = new UnifiedCacheManager(safeProjectPath);
     await tempCache.clear();
 
     // Invalidar singleton para que el próximo getCacheManager() re-inicialice
     const { invalidateCacheInstance } = await import('#core/cache/singleton.js');
-    invalidateCacheInstance(projectPath);
+    invalidateCacheInstance(safeProjectPath);
 
     logger.info('🗑️  Caché limpiado automáticamente (singleton invalidado)');
     stats.byAction.cache_clear = (stats.byAction.cache_clear || 0) + 1;

@@ -5,7 +5,7 @@
  * topology, risk and governance features without re-deriving them in every
  * consumer.
  *
- * @module shared/compiler/derived-feature-registry
+ * @module shared/compiler/registry
  */
 
 const DEFAULT_DERIVED_FEATURES = [

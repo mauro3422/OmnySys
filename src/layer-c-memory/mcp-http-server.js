@@ -28,8 +28,8 @@ const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
 const hasMaxOldSpace = process.env.NODE_OPTIONS && process.env.NODE_OPTIONS.includes('max-old-space-size');
 
 if (!hasMaxOldSpace && heapLimitMB < 7000) {
-  console.log(`\n[OmnySys:Boot] Deteccion de limite de RAM estricto (Current Heap: ${Math.round(heapLimitMB)} MB).`);
-  console.log('[OmnySys:Boot] Auto-configurando entorno a 8GB RAM para Turbo Parser...');
+  console.log(sanitizeLogText(`\n[OmnySys:Boot] Strict RAM limit detected (Current Heap: ${Math.round(heapLimitMB)} MB).`));
+  console.log(sanitizeLogText('[OmnySys:Boot] Auto-configuring environment to 8GB RAM for Turbo Parser...'));
 
   const env = { ...process.env };
   env.NODE_OPTIONS = `${env.NODE_OPTIONS || ''} --max-old-space-size=8192`.trim();
@@ -49,7 +49,7 @@ if (!hasMaxOldSpace && heapLimitMB < 7000) {
 import path from 'path';
 import express from 'express';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger, sanitizeLogText } from '../utils/logger.js';
 import { handleRuntimeRestart } from './mcp/restart-runtime.js';
 import { startHttpServer } from './mcp-http-listener.js';
 import {

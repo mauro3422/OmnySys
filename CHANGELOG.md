@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- [v0.9.377 - Sprint 16: Folderization Naming Split and Live-Row Drift Suppression](changelogs/v0.9.377.md)
 - [v0.9.376 - Sprint 16: Session Persistence Transparency in Runtime Status](changelogs/v0.9.376.md)
 - [v0.9.375 - Sprint 16: Folderization Barrel Repair and Session Status Quieting](changelogs/v0.9.375.md)
 - [v0.9.374 - Sprint 16: Repository Bridge, Runtime Health, and Durable SQLite Recovery](changelogs/v0.9.374.md)

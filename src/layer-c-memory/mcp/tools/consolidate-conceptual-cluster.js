@@ -1,5 +1,6 @@
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { getAtomicEditor } from '../../../core/atomic-editor/index.js';
+import { AtomicEditor } from '../../../core/atomic-editor/AtomicEditor.js';
 import { createLogger } from '../../../utils/logger.js';
 import { calculateRelativeImport } from '../../../utils/path-utils.js';
 
@@ -67,7 +68,7 @@ export async function consolidate_conceptual_cluster(args, context) {
 
     try {
         const repository = getRepository(projectPath);
-        const atomicEditor = getAtomicEditor(projectPath, orchestrator);
+        const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(() => new AtomicEditor(projectPath, orchestrator));
 
         const query = `
             SELECT id, name, file_path, atom_type, is_exported,

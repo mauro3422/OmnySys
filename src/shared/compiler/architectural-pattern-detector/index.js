@@ -15,10 +15,10 @@ export {
   detectArchitecturalPattern,
   detectAllArchitecturalPatterns,
   summarizeArchitecturalPatterns
-} from './architectural-pattern-detector-analysis.js';
+} from './analysis.js';
 
 export {
   detectHelperUtilityPattern,
   detectPolicyModulePattern,
   detectServiceLayerPattern,
-} from './architectural-pattern-detector-patterns.js';
+} from './patterns.js';

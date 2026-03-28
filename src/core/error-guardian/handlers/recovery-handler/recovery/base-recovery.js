@@ -36,7 +36,9 @@ export const RECOVERY_ACTIONS = {
  */
 export class RecoveryHandler {
   constructor(projectPath) {
-    this.projectPath = projectPath;
+    this.projectPath = typeof projectPath === 'string' && projectPath.trim()
+      ? projectPath
+      : process.cwd();
     this.stats = {
       totalRecoveries: 0,
       bySeverity: {},

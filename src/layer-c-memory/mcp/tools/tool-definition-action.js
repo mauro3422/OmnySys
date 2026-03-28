@@ -55,6 +55,19 @@ export const actionToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_rename_folderized_family',
+    description: 'Renombra una familia ya folderizada para normalizar basenames internos, reescribir imports y validar el resultado con snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizada dentro de la DB' },
+        execute: { type: 'boolean', default: false, description: 'Si es true, aplica los renombres. Si es false, solo devuelve el plan.' },
+        validateAfterMove: { type: 'boolean', default: true, description: 'Si es true, valida imports luego de renombrar la familia.' }
+      },
+      required: ['candidatePath']
+    }
+  },
+  {
     name: 'mcp_omnysystem_fix_imports',
     description: 'Resuelve automáticamente los imports rotos en un archivo buscando los símbolos en el grafo global del proyecto.',
     inputSchema: {

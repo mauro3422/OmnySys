@@ -19,9 +19,15 @@ const logger = createLogger('OmnySys:error:recovery');
  */
 export async function restartEssentialComponents(projectPath, stats) {
   // Reiniciar caché
-  await clearCache(projectPath, stats);
+  const safeProjectPath = typeof projectPath === 'string' && projectPath.trim()
+    ? projectPath
+    : process.cwd();
+  await clearCache(safeProjectPath, stats);
 
-  stats.byAction.component_restart = (stats.byAction.component_restart || 0) + 1;
+  if (stats && typeof stats === 'object') {
+    stats.byAction = stats.byAction || {};
+    stats.byAction.component_restart = (stats.byAction.component_restart || 0) + 1;
+  }
   logger.info('🔄 Componentes esenciales reiniciados');
 }
 
@@ -37,6 +43,9 @@ export async function isolateAffectedComponent(analysis, stats) {
   // Marcar como no disponible temporalmente
   // Prevenir llamadas futuras hasta que se arregle
   
-  stats.byAction.component_isolation = (stats.byAction.component_isolation || 0) + 1;
+  if (stats && typeof stats === 'object') {
+    stats.byAction = stats.byAction || {};
+    stats.byAction.component_isolation = (stats.byAction.component_isolation || 0) + 1;
+  }
   logger.info('🔒 Componente aislado. El resto del sistema sigue funcionando.');
 }

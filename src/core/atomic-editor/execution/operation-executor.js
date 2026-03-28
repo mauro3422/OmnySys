@@ -39,6 +39,7 @@ export async function executeOperation(operation, options) {
     emit,
     getModifiedContent
   } = options;
+  const safeEmit = typeof emit === 'function' ? emit : () => {};
 
   const skipValidation = options.skipValidation || false;
   const skipSafety = options.skipSafety || false;
@@ -77,7 +78,7 @@ export async function executeOperation(operation, options) {
         const syntax = await validators.syntax.validate(operation.filePath, modifiedContent);
         
         if (!syntax.valid) {
-          emit('atom:validation:failed', {
+          safeEmit('atom:validation:failed', {
             file: operation.filePath,
             error: syntax.error,
             line: syntax.line,
@@ -117,7 +118,7 @@ export async function executeOperation(operation, options) {
     };
 
   } catch (error) {
-    emit('atom:edit:failed', {
+    safeEmit('atom:edit:failed', {
       file: operation.filePath,
       operation: operation.type,
       error: error.message,

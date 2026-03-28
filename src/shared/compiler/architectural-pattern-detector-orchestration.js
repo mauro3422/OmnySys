@@ -2,10 +2,10 @@ import {
   detectHelperUtilityPattern,
   detectPolicyModulePattern,
   detectServiceLayerPattern
-} from './architectural-pattern-detector/architectural-pattern-detector-patterns.js';
+} from './architectural-pattern-detector/patterns.js';
 import { resolveArchitecturalRecommendation } from './architectural-recommendations.js';
-import { classifyOperationalRole } from './architectural-pattern-detector/architectural-pattern-detector-helpers.js';
-import { detectArchitecturalPattern } from './architectural-pattern-detector/architectural-pattern-detector-core.js';
+import { classifyOperationalRole } from './architectural-pattern-detector/helpers.js';
+import { detectArchitecturalPattern } from './architectural-pattern-detector/core.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:ArchitecturalPatternDetector');

@@ -10,6 +10,32 @@
 let notificationBridge = null;
 const recentLogs = [];
 const MAX_RECENT = 50;
+const FORCE_ASCII_LOGS = process.env.OMNYSYS_FORCE_ASCII_LOGS !== '0'
+  && (process.platform === 'win32' || process.env.OMNYSYS_FORCE_ASCII_LOGS === '1');
+
+const LOG_REPLACEMENTS = [
+  [/\u2192/g, '->'],
+  [/\u2190/g, '<-'],
+  [/[\u2014\u2013\u2212]/g, '-'],
+  [/\u2705|\u2714|\u2713/g, '[OK]'],
+  [/\u26A0\uFE0F?|\u26A0/g, '[WARN]']
+];
+
+export function sanitizeLogText(value = '') {
+  let text = String(value ?? '');
+
+  if (!FORCE_ASCII_LOGS) {
+    return text;
+  }
+
+  for (const [pattern, replacement] of LOG_REPLACEMENTS) {
+    text = text.replace(pattern, replacement);
+  }
+
+  return text
+    .normalize('NFKD')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+}
 
 export function setNotificationBridge(bridge) {
   notificationBridge = bridge;
@@ -40,10 +66,10 @@ export class Logger {
   _format(message, level) {
     // En modo user-friendly, solo mostrar el mensaje sin prefijos técnicos
     if (this.userFriendly) {
-      return message;
+      return sanitizeLogText(message);
     }
     // En modo debug, mostrar level y prefix
-    return `${level.toUpperCase()} ${this.prefix} ${message}`;
+    return `${level.toUpperCase()} ${this.prefix} ${sanitizeLogText(message)}`;
   }
 
   debug(message, ...args) {
@@ -93,7 +119,7 @@ export class Logger {
         notificationBridge.notifyError(fullMessage, this.name);
       }
       if (error instanceof Error && error.stack && process.env.LOG_LEVEL === 'debug') {
-        process.stderr.write(error.stack + '\n');
+        process.stderr.write(sanitizeLogText(error.stack) + '\n');
       }
     }
   }

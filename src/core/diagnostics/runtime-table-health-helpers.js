@@ -138,7 +138,15 @@ export function buildRuntimeHealthIssues(db) {
   const staleRiskRows = Number(liveRowSync?.summary?.staleRiskRows || 0);
   const staleRelationRows = Number(liveRowSync?.summary?.staleRelationRows || 0);
   const staleConnectionRows = Number(liveRowSync?.summary?.staleConnectionRows || 0);
-  if (staleAtomRows > 0 || staleFileRows > 0 || staleRiskRows > 0 || staleRelationRows > 0 || staleConnectionRows > 0) {
+  const phase2Pending = Number(liveRowSync?.phase2PendingFiles || 0);
+  const deferredRelationOnlyDrift = phase2Pending > 0
+    && staleAtomRows === 0
+    && staleFileRows === 0
+    && staleRiskRows === 0
+    && staleConnectionRows === 0
+    && staleRelationRows > 0;
+
+  if (!deferredRelationOnlyDrift && (staleAtomRows > 0 || staleFileRows > 0 || staleRiskRows > 0 || staleRelationRows > 0 || staleConnectionRows > 0)) {
     issues.push({
       issueType: `${ISSUE_TYPE_PREFIX}_live_row_drift`,
       severity: (staleAtomRows > 0 || staleFileRows > 0) ? 'high' : 'medium',
@@ -147,6 +155,7 @@ export function buildRuntimeHealthIssues(db) {
         source: 'runtime_table_health',
         category: 'live_row_sync',
         summary: liveRowSync.summary,
+        deferredRelationOnlyDrift,
         recommendedActions: liveRowSync.before?.recommendedActions || []
       }
     });

@@ -1,6 +1,7 @@
 import path from 'path';
 import { loadAtoms } from '#layer-c/storage/index.js';
 import { getAtomicEditor } from '#core/atomic-editor/index.js';
+import { AtomicEditor } from '#core/atomic-editor/AtomicEditor.js';
 import { extractExportsFromCode } from './exports.js';
 import {
     findCrossFileDuplicateExports,
@@ -35,7 +36,7 @@ export function buildCrossFileDuplicateWarnings(crossFileDuplicates = []) {
 
 export function createAtomicEditMutation(orchestrator, projectPath, filePath, oldString, newString, symbolName) {
     return async () => {
-        const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(projectPath, orchestrator);
+        const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(() => new AtomicEditor(projectPath, orchestrator));
         const editResult = await atomicEditor.edit(filePath, oldString, newString, { symbolName });
         if (!editResult.success) {
             return {

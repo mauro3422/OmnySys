@@ -24,6 +24,8 @@
 - Phase 2 parse-noise follow-up: the deep scan still reports unsupported-syntax parse failures in a few test fixtures. Those files are not runtime bugs, but they should be tracked so the analysis pipeline can distinguish fixtures from production surfaces.
 - Restart discipline follow-up: when a stale module is patched, prefer hot-reload plus `get_server_status()` verification first. Only restart the IDE if the daemon still reports stale tool modules after the proxy reload window.
 - Folderization smoke-test follow-up: every `move_file` or folderization pass should finish with a Node import smoke test on the new barrel, because stale relative imports inside the moved folder can survive the physical move and only show up when the barrel is loaded.
+- Live-row drift follow-up: `runtime_table_health_live_row_drift` is now suppressed when Phase 2 is still settling and only relation rows are stale. If it reappears after Phase 2 completes, inspect the orphan-relation cleanup path rather than treating it as a generic atom/file drift.
+- Folderization naming follow-up: the naming planner is now split into helper + wrapper modules. Keep an eye on future family growth so barrel selection and collision avoidance stay below the watcher size threshold.
 
 ## Consolidacion arquitectonica: grupos conceptuales accionables
 

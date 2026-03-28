@@ -48,11 +48,38 @@ function findImportLine(lines, importSource) {
   return lines.findIndex((line) => line.includes(`'${importSource}'`) || line.includes(`"${importSource}"`));
 }
 
+async function rewriteLineDirectly(absFilePath, code, oldLine, newLine, allowDirectFallback = false) {
+  if (!allowDirectFallback) {
+    return {
+      success: false,
+      reason: 'direct rewrite fallback disabled'
+    };
+  }
+
+  const updatedCode = code.replace(oldLine, newLine);
+
+  if (updatedCode === code) {
+    return {
+      success: false,
+      reason: 'direct rewrite produced no change'
+    };
+  }
+
+  await fs.writeFile(absFilePath, updatedCode, 'utf8');
+
+  return {
+    success: true,
+    fallback: true
+  };
+}
+
 async function rewriteImportsInFile(filePath, projectPath, moveMap, context = {}) {
   const absFilePath = path.resolve(projectPath, filePath);
-  const code = await fs.readFile(absFilePath, 'utf8');
+  let code = await fs.readFile(absFilePath, 'utf8');
   const importSources = extractImportsFromCode(code);
   const rewrites = [];
+  const allowDirectFallback = context?.allowUnsafeDirectRewriteFallback === true
+    || context?.allowDirectImportRewriteFallback === true;
 
   for (const importSource of importSources) {
     const resolvedImport = normalizeImportToAbsolute(importSource, filePath, projectPath);
@@ -99,12 +126,25 @@ async function rewriteImportsInFile(filePath, projectPath, moveMap, context = {}
     });
 
     if (!editResult?.success) {
+      const directRewrite = await rewriteLineDirectly(absFilePath, code, oldLine, newLine, allowDirectFallback);
+
+      if (directRewrite.success) {
+        code = code.replace(oldLine, newLine);
+        rewrites.push({
+          filePath,
+          importSource,
+          newImportSource,
+          status: 'rewritten_direct'
+        });
+        continue;
+      }
+
       rewrites.push({
         filePath,
         importSource,
         newImportSource,
         status: 'edit_failed',
-        reason: editResult?.message || 'atomic_edit failed'
+        reason: editResult?.message || directRewrite.reason || 'atomic_edit failed'
       });
       continue;
     }
@@ -115,6 +155,7 @@ async function rewriteImportsInFile(filePath, projectPath, moveMap, context = {}
       newImportSource,
       status: 'rewritten'
     });
+    code = code.replace(oldLine, newLine);
   }
 
   return rewrites;

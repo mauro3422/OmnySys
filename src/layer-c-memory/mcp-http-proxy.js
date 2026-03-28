@@ -36,6 +36,7 @@ import {
     removeDaemonOwnerLockSync,
     writeDaemonOwnerLockSync
 } from '../shared/compiler/index.js';
+import { sanitizeLogText } from '../utils/logger.js';
 import { isPortAcceptingConnections } from '../shared/utils/port-probe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +50,7 @@ fs.writeFileSync(logFile, ''); // Fresh log each session
 
 function log(msg) {
     const ts = new Date().toISOString().slice(11, 23);
-    const line = `[proxy] ${ts} ${msg}\n`;
+    const line = sanitizeLogText(`[proxy] ${ts} ${msg}\n`);
     fs.appendFileSync(logFile, line);
     process.stdout.write(line); // Also show in IDE task terminal
 }

@@ -19,7 +19,10 @@ const logger = createLogger('OmnySys:error:recovery');
  * @returns {Promise<void>}
  */
 export async function saveSystemState(projectPath, stats) {
-  const statePath = path.join(projectPath, '.omnysysdata', 'error-state.json');
+  const safeProjectPath = typeof projectPath === 'string' && projectPath.trim()
+    ? projectPath
+    : process.cwd();
+  const statePath = path.join(safeProjectPath, '.omnysysdata', 'error-state.json');
   const state = {
     timestamp: new Date().toISOString(),
     pid: process.pid,

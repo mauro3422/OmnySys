@@ -13,6 +13,7 @@ import { saveFileResult } from '#layer-a/pipeline/single-file-db.js';
 import { buildFileAnalysis, resolveFileImports } from '#layer-a/pipeline/single-file-utils.js';
 import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
 import { clearWatcherIssue } from '../../../../core/file-watcher/watcher-issue-persistence.js';
+import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
 const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
 const logger = createLogger('OmnySys:atomic:reindex');
@@ -82,6 +83,11 @@ export async function reindexFile(filePath, projectPath) {
     // A successful reindex should clear transient watcher runtime failures for
     // the same file, matching the success path used by the live file watcher.
     await clearWatcherIssue(projectPath, relativePath, 'watcher_runtime_error');
+
+    // Keep project-wide runtime-table health aligned with the freshly reindexed
+    // support tables. This prevents stale live-row drift alerts from surviving
+    // a successful atomic edit / move cycle.
+    await syncRuntimeTableHealthIssues(projectPath);
 
     // Invalidate cache for this file
     try {

@@ -5,6 +5,7 @@
 
 import { BaseMCPTool } from './base-tool.js';
 import { getAtomicEditor } from '../../../../../core/atomic-editor/index.js';
+import { AtomicEditor } from '../../../../../core/atomic-editor/AtomicEditor.js';
 
 export class AtomicMutationTool extends BaseMCPTool {
     constructor(toolName) {
@@ -22,7 +23,8 @@ export class AtomicMutationTool extends BaseMCPTool {
     async runInTransaction(args, mutationLogic, customValidator = null) {
         const { autoFix = false } = args;
         const projectPath = this.context.projectPath;
-        const atomicEditor = this.context.orchestrator?.atomicEditor || getAtomicEditor(projectPath, this.context.orchestrator);
+        const orchestrator = this.context.orchestrator || null;
+        const atomicEditor = orchestrator?.atomicEditor || getAtomicEditor(() => new AtomicEditor(projectPath, orchestrator));
 
         // Iniciar Transacción
         await atomicEditor.beginTransaction(this.name);

@@ -80,7 +80,7 @@ export {
   buildDerivedFeatureRegistry,
   summarizeDerivedFeatureRegistry,
   findDerivedFeatureDefinition
-} from './derived-feature-registry.js';
+} from './registry.js';
 
 export {
   buildAnalysisGenerationSnapshot,
