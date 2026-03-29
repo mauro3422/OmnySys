@@ -60,6 +60,36 @@ async function inspectDiskPresence(projectPath, filePath) {
   }
 }
 
+async function reindexSettlementTargets(projectPath, reindexTargets = []) {
+  const targets = collectUniquePaths(reindexTargets);
+  const results = [];
+
+  for (const filePath of targets) {
+    const disk = await inspectDiskPresence(projectPath, filePath);
+    if (!disk.exists) {
+      results.push({
+        filePath,
+        disk,
+        success: false,
+        skipped: true,
+        reason: 'file_missing'
+      });
+      continue;
+    }
+
+    const reindexResult = await reindexFile(filePath, projectPath);
+    results.push({
+      filePath,
+      disk,
+      success: !!reindexResult?.success,
+      skipped: false,
+      reindexResult
+    });
+  }
+
+  return results;
+}
+
 export function buildMutationSettlementSnapshot({
   reason = 'mutation',
   touchedFiles = [],
@@ -194,6 +224,7 @@ export async function settleMutationSnapshot({
 } = {}) {
   const validationTargets = collectUniquePaths(snapshot?.validationTargets || snapshot?.touchedFiles || [])
     .slice(0, maxValidationTargets);
+  const reindexResults = await reindexSettlementTargets(projectPath, snapshot?.reindexTargets || []);
 
   const validations = [];
   for (const filePath of validationTargets) {
@@ -220,9 +251,11 @@ export async function settleMutationSnapshot({
     success: true,
     settled: transientCount === 0,
     reason: snapshot?.reason || 'mutation',
+    reindexResults,
     validations,
     summary: {
       validationTargets: validationTargets.length,
+      reindexedCount: reindexResults.filter((entry) => entry.success).length,
       settledCount,
       transientCount,
       issueCount

@@ -4,7 +4,7 @@
  * @module shared/compiler/surface-audit-summary
  */
 
-import { compactSurfaceEntry, summarizeSurfaceMetrics } from './surface-audit-helpers.js';
+import { compactSurfaceEntry, summarizeSurfaceMetrics } from './index.js';
 
 export function summarizeSurfaceAudit(surfaceAudit = null) {
   if (!surfaceAudit || typeof surfaceAudit !== 'object') {

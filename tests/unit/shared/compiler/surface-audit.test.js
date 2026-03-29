@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDataGatewayContract } from '../../../../src/shared/compiler/data-gateway-contract.js';
-import { buildSurfaceAudit, summarizeSurfaceAudit } from '../../../../src/shared/compiler/surface-audit.js';
+import { buildSurfaceAudit, summarizeSurfaceAudit } from '../../../../src/shared/compiler/surface-audit/audit.js';
 
 describe('surface-audit', () => {
   it('summarizes the unified surface audit contract', () => {

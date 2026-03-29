@@ -4,13 +4,13 @@
  * @module shared/compiler/surface-audit-core
  */
 
-import { summarizeAnalysisGeneration } from './analysis-generation.js';
-import { summarizeDataGatewayContract } from './data-gateway-contract.js';
-import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
+import { summarizeAnalysisGeneration } from '../analysis-generation.js';
+import { summarizeDataGatewayContract } from '../data-gateway-contract.js';
+import { summarizeMetadataExtractionCoverage } from '../metadata-extraction-coverage/coverage.js';
 import {
   compactSurfaceEntry,
   summarizeSurfaceMetrics
-} from './surface-audit-helpers.js';
+} from './index.js';
 
 export function buildSurfaceAudit({
   analysisGeneration = null,

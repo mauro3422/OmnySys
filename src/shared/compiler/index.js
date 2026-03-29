@@ -92,7 +92,7 @@ export {
   buildSurfaceAudit,
   summarizeSurfaceAudit,
   summarizeSurfaceAuditForStatus
-} from './surface-audit.js';
+} from './surface-audit/audit.js';
 
 export {
   buildCompilerDriftAssessment,

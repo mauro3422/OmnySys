@@ -10,9 +10,9 @@
 
 export {
   buildSurfaceAudit
-} from './surface-audit-core.js';
+} from './core.js';
 
 export {
   summarizeSurfaceAudit,
   summarizeSurfaceAuditForStatus
-} from './surface-audit-summary.js';
+} from './summary.js';

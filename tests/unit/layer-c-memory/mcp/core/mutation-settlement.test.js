@@ -161,4 +161,51 @@ describe('mutation settlement', () => {
     expect(h.reindexFile).not.toHaveBeenCalled();
     expect(h.validateImports).toHaveBeenCalledTimes(1);
   });
+
+  it('reindexes explicit settlement targets before validating them', async () => {
+    const projectPath = tempDir;
+    const filePath = 'src/core/file-watcher/guards/example-reindex.js';
+    await fs.mkdir(path.join(tempDir, 'src/core/file-watcher/guards'), { recursive: true });
+    await fs.writeFile(path.join(tempDir, filePath), 'export const exampleReindex = true;\n');
+
+    h.getRepository.mockReturnValue({
+      initialized: true,
+      db: { open: true }
+    });
+
+    h.reindexFile.mockResolvedValue({ success: true });
+    h.validateImports.mockResolvedValue({
+      success: true,
+      file: filePath,
+      status: 'CLEAN',
+      brokenImports: [],
+      unusedImports: [],
+      circularDependencies: []
+    });
+
+    const result = await settleMutationSnapshot({
+      projectPath,
+      context: {},
+      snapshot: buildMutationSettlementSnapshot({
+        reason: 'test',
+        touchedFiles: [filePath],
+        validationTargets: [filePath],
+        reindexTargets: [filePath]
+      }),
+      retryOptions: {
+        maxRetries: 1,
+        baseDelayMs: 0,
+        maxDelayMs: 0
+      },
+      maxValidationTargets: 1
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.settled).toBe(true);
+    expect(result.summary.reindexedCount).toBe(1);
+    expect(result.reindexResults).toHaveLength(1);
+    expect(result.reindexResults[0].success).toBe(true);
+    expect(h.reindexFile).toHaveBeenCalledTimes(1);
+    expect(h.validateImports).toHaveBeenCalledTimes(1);
+  });
 });

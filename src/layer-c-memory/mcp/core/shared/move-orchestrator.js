@@ -5,7 +5,6 @@ import { getFileDependents } from '#layer-c/query/apis/file-api.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
 import { atomic_edit } from '../../tools/atomic-edit/index.js';
 import { extractModuleDependencySourcesFromCode } from '../../tools/atomic-edit/exports.js';
-import { reindexFile } from '../../tools/atomic-edit/reindex.js';
 import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/compiler-persistence.js';
 import { withMutationBatch } from './mutation-batch.js';
 import { settleMutationFiles } from './mutation-settlement.js';
@@ -154,8 +153,6 @@ export class MoveOrchestrator {
 
                 const selfRewrites = await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
 
-                await reindexFile(newPath, projectPath);
-
                 await Promise.allSettled([
                     removePersistedFileMetadata(projectPath, oldPath),
                     removePersistedAtomMetadata(projectPath, oldPath)
@@ -234,6 +231,7 @@ export class MoveOrchestrator {
                 reason: 'move_file',
                 touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || [])],
                 validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents],
+                reindexTargets: [newPath, ...(moveResult.updatedFiles || [])],
                 maxValidationTargets: 10
             });
 
