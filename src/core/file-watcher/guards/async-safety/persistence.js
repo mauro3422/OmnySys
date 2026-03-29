@@ -1,4 +1,4 @@
-import { clearWatcherIssue, persistWatcherIssue } from '../watcher-issue-persistence.js';
+import { clearWatcherIssue, persistWatcherIssue } from '../../watcher-issue-persistence.js';
 
 export async function clearPersistedAsyncSafetyIssues(rootPath, filePath) {
     await clearWatcherIssue(rootPath, filePath, 'runtime_async_safety_high');

@@ -245,6 +245,14 @@ export {
 } from './directory-structure-folderization.js';
 
 export {
+  buildFolderizedFamilyGroups,
+  buildFolderizedFamilySuggestion,
+  findBestFolderizedFamilyForPaths,
+  buildFolderizationNamingPlanFromRows,
+  buildFolderizationNamingPlanFromRepo
+} from './directory-structure-folderization-naming.js';
+
+export {
   normalizeDerivedRiskLevel
 } from './risk-level.js';
 

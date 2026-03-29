@@ -11,8 +11,8 @@ import { createLogger } from '../../../utils/logger.js';
 import { getErrorGuardian } from '../../../core/error-guardian/index.js';
 import { performServerShutdown } from './server-shutdown.js';
 import {
+  initializeHotReload,
   initializeRuntimeRestartState,
-  startHotReload
 } from './server-class-helpers.js';
 import { InitializationPipeline } from './initialization/pipeline.js';
 import {
@@ -66,7 +66,16 @@ export class OmnySysMCPServer extends EventEmitter {
         logger.info('\n' + '='.repeat(60));
         logger.info('✅ INITIALIZATION COMPLETE');
         logger.info('='.repeat(60) + '\n');
-        await startHotReload(this, logger);
+        const hotReloadEnabled = process.env.OMNYSYS_HOT_RELOAD !== 'false';
+        const result = initializeHotReload(this, logger, hotReloadEnabled);
+        if (!result.enabled || !this.hotReloadManager) {
+          logger.info('   Continuing without hot-reload...\n');
+        } else {
+          await this.hotReloadManager.start();
+          logger.info('🔥 Hot-reload enabled - System can self-improve');
+          logger.info(`   Runtime restart mode: ${this.runtimeRestartMode}`);
+          logger.info('   Watching for code changes in src/\n');
+        }
       } else {
         logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);
         if (result.error) {

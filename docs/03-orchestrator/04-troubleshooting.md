@@ -185,6 +185,72 @@ new Orchestrator(projectPath, {
 
 ---
 
+## 🚨 Problema 7: Codex se queda en `Reconnecting...` aunque el daemon responde
+
+### Síntomas
+- La GUI o el chat del cliente muestra `Reconnecting...`
+- `get_server_status()` no llega a ejecutarse desde la surface MCP del chat
+- El daemon local sigue respondiendo por `/health`
+- Un `initialize` directo al MCP HTTP devuelve `200 OK`
+- `tools/list` directo devuelve el catálogo completo
+
+### Diagnóstico
+
+```bash
+# 1) Verificar salud del daemon
+curl http://127.0.0.1:9999/health
+
+# 2) Verificar handshake directo MCP HTTP
+# initialize -> tools/list deben responder sin error
+
+# 3) Verificar el bridge stdio
+# El bridge debe responder initialize y tools/list sin reusar una session vieja
+```
+
+### Interpretación
+- Si `health` y `initialize/tools/list` directos funcionan, el problema no está en OmnySys.
+- Si la surface MCP del chat sigue reintentando, la causa probable está en la capa de cliente/app-server de Codex o en el puente stdio, no en el daemon HTTP.
+- Si el daemon loguea `MCP JSON PARSE`, revisar el body bruto y los headers antes de concluir que el backend está caído.
+
+### Causas comunes
+- Session expired reusada demasiado pronto
+- `notifications/initialized` reenviado antes de que la session quede establecida
+- Payload JSON truncado o mal formado en el cliente
+- Client discovery que se reinicia mientras el bridge sigue vivo
+- Crash de hot-reload por `emit` no protegido en `restart-coordinator.js` o
+  `reload-handler.js` después de separar el flujo de recuperación
+
+### Solucion
+
+1. Confirmar primero `GET /health`.
+2. Confirmar `initialize` y `tools/list` directos.
+3. Si esos dos pasos funcionan, tratar el bug como cliente/bridge, no como caída del daemon.
+4. Revisar `MCP JSON PARSE` con body y headers completos antes de tocar el runtime.
+5. Si el bridge stdio entra en loop, revisar primero el hot-reload manager y los
+   guards de `emit` antes de reiniciar el cliente que lo consume.
+6. Solo si `health` y MCP HTTP siguen sanos después de eso, reiniciar el
+   cliente/bridge y volver a probar una sola tool.
+
+### Nota operativa
+- No usar reinicios completos como diagnostico por defecto.
+- Si el runtime esta sano y el MCP HTTP responde, el siguiente punto a revisar es la entrega de tools del cliente, no la base de OmnySys.
+- Si el log muestra `Cannot read properties of undefined (reading 'emit')`,
+  el incidente suele estar en la capa de hot-reload, no en la session manager.
+
+### Fix recordado
+
+El incidente de 2026-03-29 quedó corregido con guards defensivos en:
+
+- `src/layer-c-memory/mcp/core/hot-reload-manager/restart-coordinator.js`
+- `src/layer-c-memory/mcp/core/hot-reload-manager/handlers/reload-handler.js`
+
+Y con regresión cubierta en:
+
+- `tests/unit/layer-c-memory/mcp/restart-coordinator.test.js`
+- `tests/unit/layer-c-memory/mcp/reload-handler.test.js`
+
+---
+
 ## 🛠️ Comandos Útiles de Debug
 
 ### Ver Estado Completo

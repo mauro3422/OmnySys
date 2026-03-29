@@ -23,6 +23,18 @@ const execPromise = util.promisify(exec);
 
 const logger = createLogger('OmnySys:hot-reload:handler');
 
+function emitServerEvent(server, eventName, payload) {
+  if (typeof server?.emit !== 'function') {
+    return;
+  }
+
+  try {
+    server.emit(eventName, payload);
+  } catch (error) {
+    logger.debug(`Failed to emit ${eventName}: ${error.message}`);
+  }
+}
+
 /**
  * Handles the hot-reload process
  * 
@@ -134,7 +146,7 @@ export class ReloadHandler {
    * @param {Error} error - Error that occurred
    */
   _handleError(filename, error) {
-    this.server.emit('hot-reload:error', {
+    emitServerEvent(this.server, 'hot-reload:error', {
       file: filename,
       error: error.message
     });
@@ -155,7 +167,7 @@ export class ReloadHandler {
    * @param {number} duration - Reload duration
    */
   _emitSuccess(filename, moduleInfo, duration) {
-    this.server.emit('hot-reload:completed', {
+    emitServerEvent(this.server, 'hot-reload:completed', {
       file: filename,
       type: moduleInfo?.type || 'generic',
       duration

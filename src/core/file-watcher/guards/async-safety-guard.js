@@ -1,4 +1,4 @@
-import { detectAsyncSafetyIssues as detectAsyncSafetyIssuesImpl } from './async-safety-core.js';
+import { detectAsyncSafetyIssues as detectAsyncSafetyIssuesImpl } from './async-safety/core.js';
 
 export const detectAsyncSafetyIssues = detectAsyncSafetyIssuesImpl;
 

@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a troubleshooting note for the case where Codex stays on `Reconnecting...` while the OmnySys daemon and direct MCP HTTP handshake are healthy.
+- Folderization now auto-normalizes foldered family filenames during the move step so canonical names and import rewrites happen in one pass.
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)

@@ -1,4 +1,4 @@
-import { persistAsyncSafetyIssues } from './async-safety-persistence.js';
+import { persistAsyncSafetyIssues } from './persistence.js';
 
 export async function reportAsyncSafetyIssues({
     rootPath,

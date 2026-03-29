@@ -5,8 +5,8 @@ import {
     shouldSkipAsyncSafetyFunction,
     hasAsyncNetworkPattern,
     hasAsyncTryCatch
-} from './async-safety-analysis.js';
-import { buildAsyncSafetyIssue, buildAsyncSafetyMetadataIssue } from './async-safety-issues.js';
+} from './async-safety/index.js';
+import { buildAsyncSafetyIssue, buildAsyncSafetyMetadataIssue } from './async-safety/issues.js';
 
 export function collectAsyncSafetyIssues(atoms = [], maxAsyncLines = 80, maxIssues = MAX_ISSUES_PER_FILE) {
     const issues = [];

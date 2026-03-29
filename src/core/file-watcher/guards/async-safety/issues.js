@@ -4,7 +4,7 @@ import {
     createIssueType,
     createStandardContext,
     formatAsyncSafetyMessage
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export function buildAsyncSafetyIssue({ metrics, listenerThreshold, reason }) {
     const severity = metrics.linesOfCode > listenerThreshold ? 'high' : 'medium';

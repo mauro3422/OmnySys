@@ -2,7 +2,7 @@
 
 **Status**: Draft temporal  
 **Scope**: startup, client bootstrap, reconnect, restart boundary  
-**Last verified**: 2026-03-23
+**Last verified**: 2026-03-29
 
 This note collects what we learned while tracing OmnySys startup and client
 connection paths. It is intentionally temporary. The runtime is still moving,
@@ -154,6 +154,55 @@ This is the right place to keep future lifecycle automation.
   for the user's workflow.
 - Some health/status surfaces still mix "bootstrap snapshot" with live runtime
   state.
+- A healthy daemon does not guarantee a healthy Codex chat surface. If `/health`
+  and direct MCP `initialize`/`tools/list` work but the chat still shows
+  `Reconnecting...`, the likely fault is the client/app-server bridge, not the
+  daemon.
+
+## Incident Note - Reconnecting Loop After Hot-Reload Split
+
+**Observed**: 2026-03-29
+**Symptoms**:
+
+- The IDE/chat surface stayed on `Reconnecting...` after the daemon had already
+  come back healthy.
+- The bridge logs showed repeated reconnect attempts after code changes in the
+  hot-reload manager.
+- The runtime emitted a crash trace with `Cannot read properties of undefined
+  (reading 'emit')` from the hot-reload path.
+
+**Root cause**:
+
+- The hot-reload coordinator and reload handler were emitting lifecycle events
+  with unguarded `server.emit(...)` calls.
+- After the split, some recovery paths could reach those emit sites while the
+  server object was only partially initialized.
+- That crash interrupted the hot-reload flow and made the client appear to be
+  stuck in a reconnect loop even though the daemon itself was still healthy.
+
+**Fix applied**:
+
+- Guarded lifecycle emissions in
+  `src/layer-c-memory/mcp/core/hot-reload-manager/restart-coordinator.js`.
+- Guarded the reload handler emissions in
+  `src/layer-c-memory/mcp/core/hot-reload-manager/handlers/reload-handler.js`.
+- Added regression coverage in:
+  - `tests/unit/layer-c-memory/mcp/restart-coordinator.test.js`
+  - `tests/unit/layer-c-memory/mcp/reload-handler.test.js`
+
+**Verification**:
+
+- `npm test -- --run tests/unit/layer-c-memory/mcp/restart-coordinator.test.js tests/unit/layer-c-memory/mcp/reload-handler.test.js`
+- `node --check` on the two hot-reload modules
+- MCP runtime status showed `runtimeCodeFresh: true` and `restartPending: false`
+  after the fix
+
+**Follow-up**:
+
+- Keep the reconnect surface documented as a transport symptom, not a daemon
+  outage, unless `/health` or direct MCP `initialize`/`tools/list` fail.
+- If the symptom returns, inspect hot-reload event emission first before
+  chasing session recovery or daemon restart code.
 
 ## Preferred Direction
 

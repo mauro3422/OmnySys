@@ -22,7 +22,7 @@ function ensureRestartState(server) {
 }
 
 function isProxyManaged(server) {
-  return process.env.OMNYSYS_PROXY_MODE === '1' && typeof process.send === 'function';
+  return server?.proxyManaged === true;
 }
 
 function getRuntimeRestartMode(server) {
@@ -34,11 +34,19 @@ function buildRestartFiles(server) {
 }
 
 function emitRestartNotice(server, eventName, file, files, reason) {
-  server.emit?.(eventName, {
-    file,
-    files,
-    reason
-  });
+  if (typeof server?.emit !== 'function') {
+    return;
+  }
+
+  try {
+    server.emit(eventName, {
+      file,
+      files,
+      reason
+    });
+  } catch (error) {
+    logger.debug(`Failed to emit ${eventName}: ${error.message}`);
+  }
 }
 
 function requestProxyManagedRestart(server, filename, reason, eventName) {
@@ -114,11 +122,17 @@ export function queueRuntimeRestart(server, { filename, reason, eventName = 'hot
     });
     logger.warn(`${reason || 'Runtime module'} changed - queued manual runtime restart: ${buildRestartFiles(server).join(', ')}`);
     emitRestartNotice(server, eventName, filename, buildRestartFiles(server), 'manual_runtime_restart_required');
-    server.emit?.('hot-reload:restart-lifecycle', {
-      file: filename,
-      reason,
-      lifecycle
-    });
+    if (typeof server?.emit === 'function') {
+      try {
+        server.emit('hot-reload:restart-lifecycle', {
+          file: filename,
+          reason,
+          lifecycle
+        });
+      } catch (error) {
+        logger.debug(`Failed to emit hot-reload:restart-lifecycle: ${error.message}`);
+      }
+    }
     return false;
   }
   return requestProxyManagedRestart(server, filename, reason, eventName);
