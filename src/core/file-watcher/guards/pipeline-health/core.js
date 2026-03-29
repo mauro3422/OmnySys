@@ -1,11 +1,11 @@
-import { createLogger } from '../../../utils/logger.js';
-import { clearPersistedPipelineHealthIssues, persistPipelineHealthIssues } from './pipeline-health-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearPersistedPipelineHealthIssues, persistPipelineHealthIssues } from './persistence.js';
 import {
     buildShadowVolumeHighIssue,
     buildShadowVolumeMediumIssue,
     buildSlowAnalysisIssue,
     buildZeroAtomsIssue
-} from './pipeline-health-issues.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:pipeline-health');
 

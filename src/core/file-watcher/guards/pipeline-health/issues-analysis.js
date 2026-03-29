@@ -2,7 +2,7 @@ import {
     IssueDomains,
     createIssueType,
     createStandardContext
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 const SHADOW_VOLUME_MEDIUM = 20;
 

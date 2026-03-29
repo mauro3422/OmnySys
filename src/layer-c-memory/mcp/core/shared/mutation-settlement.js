@@ -2,7 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getRepository } from '../../../storage/repository/repository-factory.js';
-import { RecoveryStrategies, reindexCompilerFile, validateCompilerImports } from '../../../../shared/compiler/index.js';
+import { RecoveryStrategies } from '../../../../shared/compiler/runtime-boundary-recovery.js';
+import { reindexCompilerFile, validateCompilerImports } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:mutation-settlement');
 

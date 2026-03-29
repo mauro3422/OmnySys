@@ -1,4 +1,4 @@
-import { clearWatcherIssue, persistWatcherIssue } from '../watcher-issue-persistence.js';
+import { clearWatcherIssue, persistWatcherIssue } from '../../watcher-issue-persistence.js';
 
 export async function clearPersistedPipelineHealthIssues(rootPath, filePath) {
     await clearWatcherIssue(rootPath, filePath, 'code_pipeline_health_high');
