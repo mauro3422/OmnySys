@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Simplified `runtime-boundary-recovery.js` to expose named recovery helpers alongside the `RecoveryStrategies` object so the static data-flow extractor stops tripping on the recovery surface.
 - Moved the bulk atom event/version persistence into the same SQLite transaction as the bulk atom save so the hottest write path stops paying autocommit overhead per atom.
 - Added a troubleshooting note for the case where Codex stays on `Reconnecting...` while the OmnySys daemon and direct MCP HTTP handshake are healthy.
 - Folderization now auto-normalizes foldered family filenames during the move step so canonical names and import rewrites happen in one pass.
