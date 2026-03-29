@@ -1,4 +1,4 @@
-import { detectIntegrityViolations as detectIntegrityViolationsImpl } from './integrity-guard-core.js';
+import { detectIntegrityViolations as detectIntegrityViolationsImpl } from './core.js';
 
 export const detectIntegrityViolations = detectIntegrityViolationsImpl;
 

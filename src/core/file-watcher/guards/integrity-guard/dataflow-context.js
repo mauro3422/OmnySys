@@ -1,9 +1,9 @@
-import { DataFlowAnalyzer } from '../../../layer-a-static/extractors/data-flow/core/data-flow-analyzer.js';
+import { DataFlowAnalyzer } from '../../../../layer-a-static/extractors/data-flow/core/data-flow-analyzer.js';
 import {
     classifyAtomOperationalRole,
     classifyFileOperationalRole,
     isLikelyToolWrapperAtom
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 
 function isLikelyInfrastructureLeafAtom(atom, isEmptyFlow) {
     if (!isEmptyFlow) {

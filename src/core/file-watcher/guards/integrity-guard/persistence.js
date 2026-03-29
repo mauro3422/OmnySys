@@ -1,5 +1,5 @@
-import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearWatcherIssueFamily } from '../../watcher-issue-persistence.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
 

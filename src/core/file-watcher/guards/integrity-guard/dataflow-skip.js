@@ -1,4 +1,4 @@
-import { isLikelyBoundaryContainerAtom } from '../../../shared/compiler/index.js';
+import { isLikelyBoundaryContainerAtom } from '../../../../shared/compiler/index.js';
 
 export function shouldSkipDataFlowViolation(atom, resolvedRole, inputsCount, outputsCount, transformationCount, isInfrastructureLeafAtom) {
     const isEmptyFlow = inputsCount === 0 && outputsCount === 0 && transformationCount === 0;

@@ -1,7 +1,7 @@
 import {
     createStandardContext,
     StandardThresholds
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 function buildLowCoherenceViolation(atom, analysis) {
     const severity = analysis.coherence < 0.1 ? 'high' : 'medium';

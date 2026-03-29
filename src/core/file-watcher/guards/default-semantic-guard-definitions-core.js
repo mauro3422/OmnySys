@@ -11,7 +11,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'atomic-integrity',
-    () => import('./integrity-guard.js'),
+    () => import('./integrity-guard/guard.js'),
     (mod) => mod.detectIntegrityViolations,
     'sem',
     '2.0.0',

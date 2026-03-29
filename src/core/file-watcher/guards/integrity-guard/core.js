@@ -1,9 +1,9 @@
-import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../watcher-issue-persistence.js';
-import { createLogger } from '../../../utils/logger.js';
-import { createIssueType, IssueDomains, isValidGuardTarget } from './guard-standards.js';
-import { analyzeAtomDataFlow } from './integrity-guard-dataflow.js';
-import { analyzeAtomNaming } from './integrity-guard-naming.js';
-import { clearIntegrityIssues } from './integrity-guard-persistence.js';
+import { persistWatcherIssue, clearWatcherIssue, clearWatcherIssueFamily } from '../../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { createIssueType, IssueDomains, isValidGuardTarget } from '../guard-standards.js';
+import { analyzeAtomDataFlow } from './index.js';
+import { analyzeAtomNaming } from '../integrity-guard-naming.js';
+import { clearIntegrityIssues } from './persistence.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:integrity');
 

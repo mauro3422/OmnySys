@@ -1,10 +1,10 @@
-import { getActionableUnusedInputs } from '../../../shared/compiler/index.js';
-import { getAtomDataFlowContext } from './integrity-guard-dataflow-context.js';
-import { shouldSkipDataFlowViolation } from './integrity-guard-dataflow-skip.js';
+import { getActionableUnusedInputs } from '../../../../shared/compiler/index.js';
+import { getAtomDataFlowContext } from './dataflow-context.js';
+import { shouldSkipDataFlowViolation } from './dataflow-skip.js';
 import {
     buildLowCoherenceViolation,
     buildUnusedInputsViolation
-} from './integrity-guard-dataflow-violations.js';
+} from './dataflow-violations.js';
 
 export function analyzeAtomDataFlow(atom) {
     const flowContext = getAtomDataFlowContext(atom);
