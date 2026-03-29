@@ -1,4 +1,4 @@
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
 
 export async function clearPersistedImpactWaveIssues(rootPath, filePath) {
     await clearWatcherIssue(rootPath, filePath, 'arch_impact_high');

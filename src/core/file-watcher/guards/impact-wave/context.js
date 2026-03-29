@@ -2,7 +2,7 @@ import {
     StandardSuggestions,
     StandardThresholds,
     createStandardContext
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export function buildImpactWaveIssueContext({
     severity,

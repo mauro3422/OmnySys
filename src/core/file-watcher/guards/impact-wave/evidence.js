@@ -1,10 +1,10 @@
-import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
-import { collectImpactWaveAtomChanges, collectImpactWaveRelatedFiles } from './impact-wave-changes.js';
-import { loadImpactWaveBrokenImports, loadImpactWaveBrokenCallers } from './impact-wave-validation.js';
-import { computeImpactWaveScore, summarizeImpactWave } from './impact-wave-scoring.js';
-import { buildImpactWaveIssueContext } from './impact-wave-context.js';
-import { clearPersistedImpactWaveIssues } from './impact-wave-persistence.js';
-import { isTestFilePath } from './impact-wave-helpers.js';
+import { countRequiredSignatureParams, extractRelatedFilePath } from '../../shared/atom-relation-utils.js';
+import { collectImpactWaveAtomChanges, collectImpactWaveRelatedFiles } from '../impact-wave-changes.js';
+import { loadImpactWaveBrokenImports, loadImpactWaveBrokenCallers } from './validation.js';
+import { computeImpactWaveScore, summarizeImpactWave } from '../impact-wave-scoring.js';
+import { buildImpactWaveIssueContext } from './context.js';
+import { clearPersistedImpactWaveIssues } from './persistence.js';
+import { isTestFilePath } from './helpers.js';
 
 export async function collectImpactWaveEvidence({
     rootPath,

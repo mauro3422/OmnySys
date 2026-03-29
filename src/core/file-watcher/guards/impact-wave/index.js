@@ -1,4 +1,4 @@
-import { detectImpactWave as detectImpactWaveImpl } from './impact-wave-core.js';
+import { detectImpactWave as detectImpactWaveImpl } from './core.js';
 
 export const detectImpactWave = detectImpactWaveImpl;
 

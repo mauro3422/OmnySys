@@ -5,7 +5,7 @@ export const impactGuardDefinitionsCore = [
     'impact-wave',
     async () => {
       const detectImpactWave = await loadGuardMember(
-        () => import('./impact-wave.js'),
+        () => import('./impact-wave/index.js'),
         (mod) => mod.detectImpactWave
       );
       return async (rootPath, filePath, context, options) => {

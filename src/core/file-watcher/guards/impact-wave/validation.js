@@ -1,4 +1,4 @@
-import { safeArray } from '../../../shared/compiler/index.js';
+import { safeArray } from '../../../../shared/compiler/index.js';
 
 export async function loadImpactWaveBrokenImports(fullPath, filePath, rootPath, validateImportsInEdit) {
     if (!fullPath) return [];

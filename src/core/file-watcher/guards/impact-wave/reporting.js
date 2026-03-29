@@ -1,6 +1,6 @@
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { createLogger } from '../../../utils/logger.js';
-import { IssueDomains, createIssueType } from './guard-standards.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { IssueDomains, createIssueType } from '../guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:impact');
 

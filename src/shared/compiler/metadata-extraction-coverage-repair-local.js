@@ -4,7 +4,7 @@
  * @module shared/compiler/metadata-extraction-coverage-repair-local
  */
 
-import { isTestFilePath } from '../../core/file-watcher/guards/impact-wave-helpers.js';
+import { isTestFilePath } from '../../core/file-watcher/guards/impact-wave/helpers.js';
 import { inferTestCallbackType } from '../../layer-a-static/pipeline/phases/atom-extraction/builders/metadata-builder.js';
 import { getTableColumns, hasColumn, normalizeDbPath } from './metadata-extraction-coverage-repair-shared.js';
 
