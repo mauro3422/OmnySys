@@ -7,7 +7,7 @@
 export {
   classifyContractSurface,
   evaluateContractCompatibility
-} from './contract-taxonomy-classification.js';
+} from '../contract-taxonomy-classification.js';
 
 export {
   summarizeContractTaxonomy

@@ -1,4 +1,4 @@
-import { classifyContractSurface } from './contract-taxonomy-classification.js';
+import { classifyContractSurface } from '../contract-taxonomy-classification.js';
 
 export function summarizeContractTaxonomyRows(rows = []) {
   const byFamily = {};

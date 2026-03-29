@@ -280,7 +280,7 @@ export {
   classifyContractSurface,
   evaluateContractCompatibility,
   summarizeContractTaxonomy
-} from './contract-taxonomy.js';
+} from './contract-taxonomy/index.js';
 
 export {
   COMPILER_TARGET_DIRS,

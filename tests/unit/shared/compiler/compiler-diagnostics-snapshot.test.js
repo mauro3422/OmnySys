@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getSystemMapPersistenceCoverage: vi.fn(),
   getMetadataSurfaceParity: vi.fn(),
   getMetadataExtractionCoverage: vi.fn(),
+  summarizeMetadataExtractionCoverage: vi.fn(),
   getSemanticSurfaceGranularity: vi.fn(),
   summarizeSemanticCanonicality: vi.fn(),
   getFileUniverseGranularity: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   getLiveFileTotal: vi.fn(),
   summarizeContractTaxonomy: vi.fn(),
   buildAnalysisGenerationSnapshot: vi.fn(),
+  summarizeAnalysisGeneration: vi.fn(),
   buildDataGatewayContract: vi.fn(),
   buildSurfaceAudit: vi.fn(),
   getPhase2PendingFiles: vi.fn()
@@ -47,7 +49,8 @@ vi.mock('../../../../src/shared/compiler/metadata-surface-parity.js', () => ({
 }));
 
 vi.mock('../../../../src/shared/compiler/metadata-extraction-coverage/coverage.js', () => ({
-  getMetadataExtractionCoverage: mocks.getMetadataExtractionCoverage
+  getMetadataExtractionCoverage: mocks.getMetadataExtractionCoverage,
+  summarizeMetadataExtractionCoverage: mocks.summarizeMetadataExtractionCoverage
 }));
 
 vi.mock('../../../../src/shared/compiler/semantic-surface-granularity.js', () => ({
@@ -75,19 +78,20 @@ vi.mock('../../../../src/shared/compiler/live-row-utils.js', () => ({
   getLiveFileTotal: mocks.getLiveFileTotal
 }));
 
-vi.mock('../../../../src/shared/compiler/contract-taxonomy.js', () => ({
+vi.mock('../../../../src/shared/compiler/contract-taxonomy/index.js', () => ({
   summarizeContractTaxonomy: mocks.summarizeContractTaxonomy
 }));
 
 vi.mock('../../../../src/shared/compiler/analysis-generation.js', () => ({
-  buildAnalysisGenerationSnapshot: mocks.buildAnalysisGenerationSnapshot
+  buildAnalysisGenerationSnapshot: mocks.buildAnalysisGenerationSnapshot,
+  summarizeAnalysisGeneration: mocks.summarizeAnalysisGeneration
 }));
 
 vi.mock('../../../../src/shared/compiler/data-gateway-contract.js', () => ({
   buildDataGatewayContract: mocks.buildDataGatewayContract
 }));
 
-vi.mock('../../../../src/shared/compiler/surface-audit.js', () => ({
+vi.mock('../../../../src/shared/compiler/surface-audit/audit.js', () => ({
   buildSurfaceAudit: mocks.buildSurfaceAudit
 }));
 
@@ -118,6 +122,13 @@ beforeEach(() => {
   mocks.getSystemMapPersistenceCoverage.mockReturnValue({ healthy: true, summary: 'system-map' });
   mocks.getMetadataSurfaceParity.mockReturnValue({ healthy: true, summary: 'parity' });
   mocks.getMetadataExtractionCoverage.mockReturnValue({ healthy: true, summary: 'metadata' });
+  mocks.summarizeMetadataExtractionCoverage.mockReturnValue({
+    totalTables: 1,
+    totalRows: 1,
+    totalFields: 1,
+    coveragePct: 100,
+    fieldCoveragePct: 100
+  });
   mocks.getSemanticSurfaceGranularity.mockReturnValue({ healthy: true, summary: 'semantic' });
   mocks.summarizeSemanticCanonicality.mockReturnValue({ healthy: true, summary: 'semantic canonicality' });
   mocks.getFileUniverseGranularity.mockReturnValue({ healthy: true, summary: 'universe' });
