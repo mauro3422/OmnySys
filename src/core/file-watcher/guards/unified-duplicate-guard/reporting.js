@@ -1,7 +1,7 @@
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { createLogger } from '../../../utils/logger.js';
-import { buildUnifiedDuplicateReportingPayload } from './unified-duplicate-guard-reporting-payload.js';
-import { emitUnifiedDuplicateFinding } from './unified-duplicate-guard-reporting-event.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { buildUnifiedDuplicateReportingPayload } from './reporting-payload.js';
+import { emitUnifiedDuplicateFinding } from './reporting-event.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate:persistence');
 

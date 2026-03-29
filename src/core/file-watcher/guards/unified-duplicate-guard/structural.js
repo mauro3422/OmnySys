@@ -1,4 +1,4 @@
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../../../utils/logger.js';
 import {
     getDuplicateKeySqlForMode,
     DUPLICATE_MODES
@@ -8,8 +8,8 @@ import {
     collectCandidateDnas,
     loadStructuralDuplicateRows,
     loadStructuralLocalAtoms
-} from './duplicate-structural-core.js';
-import { isLowSignalName } from './guard-standards.js';
+} from '../duplicate-structural-core.js';
+import { isLowSignalName } from '../guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate:structural');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;

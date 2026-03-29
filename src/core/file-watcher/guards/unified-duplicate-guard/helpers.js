@@ -1,10 +1,10 @@
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
 import {
     normalizeFilePath,
     loadPreviousFindings,
     buildDuplicateDebtHistory,
     coordinateDuplicateFindings
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 
 export async function clearUnifiedDuplicateIssues(rootPath, normalizedFilePath) {
     await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_unified_high');

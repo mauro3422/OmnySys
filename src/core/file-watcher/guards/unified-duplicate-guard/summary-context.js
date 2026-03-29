@@ -1,5 +1,5 @@
-import { buildDuplicateContext } from '../../../shared/compiler/index.js';
-import { createStandardContext, StandardSuggestions } from './guard-standards.js';
+import { buildDuplicateContext } from '../../../../shared/compiler/index.js';
+import { createStandardContext, StandardSuggestions } from '../guard-standards.js';
 
 export function buildUnifiedDuplicateSummaryContext({
     coordinated,

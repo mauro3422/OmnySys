@@ -1,7 +1,7 @@
-import { loadUnifiedPreviousFindings, buildUnifiedDebtHistory, coordinateUnifiedDuplicateFindings } from './unified-duplicate-guard-helpers.js';
-import { runStructuralDuplicateGuard } from './unified-duplicate-guard-structural.js';
-import { runConceptualDuplicateGuard } from './unified-duplicate-guard-conceptual.js';
-import { buildUnifiedDuplicateSummary } from './unified-duplicate-guard-summary.js';
+import { loadUnifiedPreviousFindings, buildUnifiedDebtHistory, coordinateUnifiedDuplicateFindings } from './helpers.js';
+import { runStructuralDuplicateGuard } from './structural.js';
+import { runConceptualDuplicateGuard } from './conceptual.js';
+import { buildUnifiedDuplicateSummary } from './summary.js';
 
 export async function executeUnifiedDuplicateRisk({
     rootPath,

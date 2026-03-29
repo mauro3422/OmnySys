@@ -1,4 +1,4 @@
-import { buildDuplicateRemediationPlan } from '../../../shared/compiler/index.js';
+import { buildDuplicateRemediationPlan } from '../../../../shared/compiler/index.js';
 
 export function buildUnifiedDuplicateRemediationPlan(allFindings, normalizedFilePath) {
     return buildDuplicateRemediationPlan(allFindings.map((finding) => ({

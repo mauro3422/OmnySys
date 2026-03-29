@@ -1,4 +1,4 @@
-import { executeUnifiedDuplicateRisk } from './unified-duplicate-guard-execution.js';
+import { executeUnifiedDuplicateRisk } from './execution.js';
 
 export async function coordinateUnifiedDuplicateRisk({
     rootPath,

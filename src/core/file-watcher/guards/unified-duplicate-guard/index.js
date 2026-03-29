@@ -1,5 +1,5 @@
 /**
- * @fileoverview unified-duplicate-guard.js
+ * @fileoverview unified-duplicate-guard/index.js
  *
  * Guard unificado que coordina deteccion de duplicados estructurales (DNA)
  * y conceptuales (semantic fingerprint) en una sola ejecucion.
@@ -13,14 +13,14 @@
  * @module core/file-watcher/guards/unified-duplicate-guard
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
 import {
     isCanonicalDuplicateSignalPolicyFile,
-} from '../../../shared/compiler/index.js';
-import { clearUnifiedDuplicateIssues, normalizeUnifiedDuplicateFilePath } from './unified-duplicate-guard-helpers.js';
-import { persistUnifiedFinding } from './unified-duplicate-guard-persistence.js';
-import { coordinateUnifiedDuplicateRisk } from './unified-duplicate-guard-coordinator.js';
+} from '../../../../shared/compiler/index.js';
+import { clearUnifiedDuplicateIssues, normalizeUnifiedDuplicateFilePath } from './helpers.js';
+import { persistUnifiedFinding } from './persistence.js';
+import { coordinateUnifiedDuplicateRisk } from './coordinator.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate');
 

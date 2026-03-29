@@ -35,7 +35,7 @@ export const impactGuardDefinitionsSemantic = [
   ),
   defineVersionedLazyGuard(
     'unified-duplicate-risk',
-    () => import('./unified-duplicate-guard.js'),
+    () => import('./unified-duplicate-guard/index.js'),
     (mod) => mod.detectUnifiedDuplicateRisk,
     'code',
     '1.0.0',

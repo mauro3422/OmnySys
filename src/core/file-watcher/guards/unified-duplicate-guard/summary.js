@@ -1,7 +1,7 @@
-import { createIssueType, IssueDomains } from './guard-standards.js';
-import { buildUnifiedDuplicateRemediationPlan } from './unified-duplicate-guard-summary-remediation.js';
-import { buildUnifiedDuplicateSummaryContext } from './unified-duplicate-guard-summary-context.js';
-import { resolveUnifiedDuplicateSeverity } from './unified-duplicate-guard-summary-severity.js';
+import { createIssueType, IssueDomains } from '../guard-standards.js';
+import { buildUnifiedDuplicateRemediationPlan } from './summary-remediation.js';
+import { buildUnifiedDuplicateSummaryContext } from './summary-context.js';
+import { resolveUnifiedDuplicateSeverity } from './summary-severity.js';
 
 export function buildUnifiedDuplicateSummary(rootPath, normalizedFilePath, coordinated, debtHistory) {
     const allFindings = [...coordinated.structural, ...coordinated.conceptual];
