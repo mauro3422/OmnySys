@@ -152,6 +152,8 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
         this._saveRelationRows(relationsToSave, now);
       }
 
+      this.eventHandler.handle(atoms, existingIds, now, Date.now(), normalizePath);
+
       if (trackSingleFileHash) {
         persistFileMetadata(this.db, firstFilePath, atoms, fileHash, now);
       } else {
@@ -161,7 +163,6 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       }
     });
 
-    this.eventHandler.handle(atoms, existingIds, now, Date.now(), normalizePath);
     this._logger.debug(`[BulkOrchestrator] Processed ${atoms.length} atoms`);
     return atoms;
   }

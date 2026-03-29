@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Moved the bulk atom event/version persistence into the same SQLite transaction as the bulk atom save so the hottest write path stops paying autocommit overhead per atom.
 - Added a troubleshooting note for the case where Codex stays on `Reconnecting...` while the OmnySys daemon and direct MCP HTTP handshake are healthy.
 - Folderization now auto-normalizes foldered family filenames during the move step so canonical names and import rewrites happen in one pass.
 - Completed the `async-safety` family cleanup by moving the remaining `collection` and `guard` bridges into the folderized family and fixing the compiler barrel export chain used by folderization analysis.
