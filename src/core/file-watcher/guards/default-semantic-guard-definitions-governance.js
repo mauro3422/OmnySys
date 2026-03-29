@@ -19,7 +19,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'event-leak',
-    () => import('./event-leak-guard.js'),
+    () => import('./event-leak/index.js'),
     (mod) => mod.detectEventLeaks,
     'runtime',
     '1.0.0',

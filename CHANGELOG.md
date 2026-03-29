@@ -13,6 +13,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Split the static pipeline analysis coordinator and worker logic into dedicated helpers so the incremental analysis path stays smaller and easier to maintain.
 - Folderized `contract-taxonomy` into its own compiler subfolder and updated the compiler barrel plus snapshot test mock to point at the new barrel path.
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
+- Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)
