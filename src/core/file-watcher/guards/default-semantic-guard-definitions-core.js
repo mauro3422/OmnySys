@@ -19,7 +19,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'async-safety',
-    () => import('./async-safety-guard.js'),
+    () => import('./async-safety/guard.js'),
     (mod) => mod.detectAsyncSafetyIssues,
     'runtime',
     '1.0.0',

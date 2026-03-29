@@ -5,6 +5,13 @@ import {
   loadFolderizationRowsForNaming
 } from './directory-structure-folderization-naming-helpers.js';
 
+export {
+  buildFolderizedFamilyGroups,
+  buildFolderizedFamilySuggestion,
+  findBestFolderizedFamilyForPaths,
+  loadFolderizationRowsForNaming
+};
+
 export function buildFolderizationNamingReportFromRows(rows = []) {
   const families = buildFolderizedFamilyGroups(rows)
     .map(buildFolderizedFamilySuggestion)

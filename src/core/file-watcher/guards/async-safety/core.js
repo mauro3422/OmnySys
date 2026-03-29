@@ -1,6 +1,6 @@
 import { createLogger } from '../../../../utils/logger.js';
 import { shouldSkipAsyncSafetyFile } from './index.js';
-import { collectAsyncSafetyIssues } from '../async-safety-collection.js';
+import { collectAsyncSafetyIssues } from './collection.js';
 import { reportAsyncSafetyIssues } from './reporting.js';
 import { clearPersistedAsyncSafetyIssues } from './persistence.js';
 
