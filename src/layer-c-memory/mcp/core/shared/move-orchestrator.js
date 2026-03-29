@@ -1,56 +1,20 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
-import { getFileDependents } from '#layer-c/query/apis/file-api.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
 import { atomic_edit } from '../../tools/atomic-edit/index.js';
 import { extractModuleDependencySourcesFromCode } from '../../tools/atomic-edit/exports.js';
-import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/compiler-persistence.js';
+import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/index.js';
 import { withMutationBatch } from './mutation-batch.js';
 import { settleMutationFiles } from './mutation-settlement.js';
+import {
+    collectMoveDependents,
+    findMatchingMoveImport,
+    findModuleSourceLineIndex,
+    waitForBackgroundIndexer
+} from './move-orchestrator-helpers.js';
 
 const logger = createLogger('OmnySys:move:orchestrator');
-
-function normalizeSnapshotPath(filePath = '') {
-    return String(filePath || '')
-        .trim()
-        .replace(/\\/g, '/')
-        .replace(/^\.\//, '')
-        .replace(/^\/+/, '');
-}
-
-function resolveDependentsFromSnapshot(oldPath, snapshot) {
-    if (!snapshot) {
-        return null;
-    }
-
-    const normalizedOldPath = normalizeSnapshotPath(oldPath);
-    const directMap = snapshot.dependentsBySourcePath;
-
-    if (directMap instanceof Map) {
-        const direct = directMap.get(normalizedOldPath) || directMap.get(oldPath);
-        if (Array.isArray(direct)) {
-            return direct;
-        }
-    }
-
-    if (typeof snapshot.getDependentsForPath === 'function') {
-        const resolved = snapshot.getDependentsForPath(normalizedOldPath);
-        if (Array.isArray(resolved)) {
-            return resolved;
-        }
-    }
-
-    if (Array.isArray(snapshot.dependents)) {
-        return snapshot.dependents;
-    }
-
-    return null;
-}
-
-function findModuleSourceLineIndex(code, moduleSource) {
-    return code.split('\n').findIndex((line) => line.includes(`'${moduleSource}'`) || line.includes(`"${moduleSource}"`));
-}
 
 async function rewriteMovedFileReferences(oldPath, newPath, projectPath, context = {}) {
     const absNew = path.resolve(projectPath, newPath);
@@ -104,136 +68,156 @@ async function rewriteMovedFileReferences(oldPath, newPath, projectPath, context
     return rewrites;
 }
 
+async function updateDependentFile(depPath, oldPath, newPath, projectPath, context = {}) {
+    const absDep = path.resolve(projectPath, depPath);
+    const code = await fs.readFile(absDep, 'utf-8');
+    const imports = extractModuleDependencySourcesFromCode(code);
+    const matchingImport = findMatchingMoveImport(imports, depPath, oldPath, projectPath);
+
+    if (!matchingImport) {
+        return {
+            file: depPath,
+            updated: false,
+            reason: 'matching_import_not_found'
+        };
+    }
+
+    const newImportStr = calculateRelativeImport(depPath, newPath, projectPath);
+    logger.info(`[MoveOrchestrator] Updating ${depPath}: "${matchingImport}" -> "${newImportStr}"`);
+
+    const lineIndex = findModuleSourceLineIndex(code, matchingImport);
+    if (lineIndex === -1) {
+        return {
+            file: depPath,
+            updated: false,
+            reason: 'import_line_not_found'
+        };
+    }
+
+    const lines = code.split('\n');
+    const oldLine = lines[lineIndex];
+    const newLine = oldLine.replace(matchingImport, newImportStr);
+    if (newLine === oldLine) {
+        return {
+            file: depPath,
+            updated: false,
+            reason: 'import_unchanged'
+        };
+    }
+
+    const editRes = await atomic_edit({
+        filePath: depPath,
+        oldString: oldLine,
+        newString: newLine
+    }, { ...context, projectPath });
+
+    if (!editRes.success) {
+        return {
+            file: depPath,
+            updated: false,
+            reason: editRes.message || 'atomic_edit_failed'
+        };
+    }
+
+    return {
+        file: depPath,
+        updated: true
+    };
+}
+
+async function updateMoveDependents(dependents, oldPath, newPath, projectPath, context = {}) {
+    const updatedFiles = [];
+    const failedUpdates = [];
+
+    for (const depPath of dependents) {
+        try {
+            const update = await updateDependentFile(depPath, oldPath, newPath, projectPath, context);
+            if (update.updated) {
+                updatedFiles.push(depPath);
+            } else if (update.reason !== 'matching_import_not_found') {
+                failedUpdates.push({ file: depPath, reason: update.reason || 'update_failed' });
+            }
+        } catch (err) {
+            logger.error(`[MoveOrchestrator] Failed to process dependent ${depPath}: ${err.message}`);
+            failedUpdates.push({ file: depPath, reason: err.message });
+        }
+    }
+
+    return {
+        updatedFiles,
+        failedUpdates
+    };
+}
+
+async function executeMoveMutation(oldPath, newPath, projectPath, context, dependents) {
+    const absOld = path.resolve(projectPath, oldPath);
+    const absNew = path.resolve(projectPath, newPath);
+    const mutationServer = context.server || context.orchestrator?.server || null;
+
+    return await withMutationBatch(mutationServer, {
+        reason: 'move_file',
+        files: [oldPath, newPath]
+    }, async () => {
+        await fs.mkdir(path.dirname(absNew), { recursive: true });
+        await fs.rename(absOld, absNew);
+        logger.info('[MoveOrchestrator] Physical move successful');
+
+        const selfRewrites = await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
+
+        await Promise.allSettled([
+            removePersistedFileMetadata(projectPath, oldPath),
+            removePersistedAtomMetadata(projectPath, oldPath)
+        ]);
+
+        const dependencyUpdates = await updateMoveDependents(dependents, oldPath, newPath, projectPath, context);
+
+        return {
+            success: true,
+            moved: { from: oldPath, to: newPath },
+            selfUpdated: selfRewrites.length > 0,
+            selfRewrites,
+            updatedFiles: dependencyUpdates.updatedFiles,
+            failedUpdates: dependencyUpdates.failedUpdates
+        };
+    });
+}
+
+async function settleMoveMutation(projectPath, context, oldPath, newPath, dependents, moveResult) {
+    return await settleMutationFiles({
+        projectPath,
+        context,
+        reason: 'move_file',
+        touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || [])],
+        validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents],
+        reindexTargets: [newPath, ...(moveResult.updatedFiles || [])],
+        maxValidationTargets: 10
+    });
+}
+
 export class MoveOrchestrator {
     /**
-     * Mueve un archivo y actualiza todas sus referencias globales de forma atómica
-     * @param {string} oldPath - Ruta actual relativa al proyecto
-     * @param {string} newPath - Nueva ruta relativa al proyecto
-     * @param {string} projectPath - Ruta raíz del proyecto
-     * @param {Object} context - Contexto del orquestador MCP
-     * @returns {Promise<Object>} Resultado de la operación
+     * Move a file and update dependent imports atomically.
+     * @param {string} oldPath - Current path relative to the project
+     * @param {string} newPath - New path relative to the project
+     * @param {string} projectPath - Project root path
+     * @param {Object} context - MCP orchestrator context
+     * @returns {Promise<Object>} Operation result
      */
     static async moveFile(oldPath, newPath, projectPath, context = {}) {
         logger.info(`[MoveOrchestrator] Starting move: ${oldPath} -> ${newPath}`);
-
-        // Sincronización: Esperar a que el indexador en background termine de procesar archivos recientes
-        const { orchestrator } = context;
-        if (orchestrator) {
-            logger.info(`[MoveOrchestrator] Sycnhronizing with background indexer...`);
-            let attempts = 0;
-            while (attempts < 50 && (orchestrator.queue?.size() > 0 || orchestrator.activeJobs > 0)) {
-                await new Promise((r) => setTimeout(r, 200));
-                attempts++;
-            }
-        }
+        await waitForBackgroundIndexer(context.orchestrator);
 
         const snapshot = context.folderizationSnapshot || context.analysisSnapshot || null;
-        const snapshotDependents = resolveDependentsFromSnapshot(oldPath, snapshot);
-
-        // 1. Obtener dependientes ANTES del movimiento. Preferimos la snapshot del momento
-        // para no depender de SQLite durante la mutación sensible.
-        const dependents = Array.isArray(snapshotDependents)
-            ? snapshotDependents
-            : await getFileDependents(projectPath, oldPath);
+        const dependents = await collectMoveDependents(oldPath, projectPath, snapshot);
         logger.info(`[MoveOrchestrator] Found ${dependents.length} dependent files to update`);
 
-        const absOld = path.resolve(projectPath, oldPath);
-        const absNew = path.resolve(projectPath, newPath);
-        const mutationServer = context.server || context.orchestrator?.server || null;
-
         try {
-            const moveResult = await withMutationBatch(mutationServer, {
-                reason: 'move_file',
-                files: [oldPath, newPath]
-            }, async () => {
-                // 2. Mover archivo físicamente
-                await fs.mkdir(path.dirname(absNew), { recursive: true });
-                await fs.rename(absOld, absNew);
-                logger.info(`[MoveOrchestrator] Physical move successful`);
-
-                const selfRewrites = await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
-
-                await Promise.allSettled([
-                    removePersistedFileMetadata(projectPath, oldPath),
-                    removePersistedAtomMetadata(projectPath, oldPath)
-                ]);
-
-                const results = {
-                    success: true,
-                    moved: { from: oldPath, to: newPath },
-                    selfUpdated: selfRewrites.length > 0,
-                    selfRewrites,
-                    updatedFiles: [],
-                    failedUpdates: []
-                };
-
-                // 4. Actualizar cada dependiente
-                for (const depPath of dependents) {
-                    try {
-                        const absDep = path.resolve(projectPath, depPath);
-                        const code = await fs.readFile(absDep, 'utf-8');
-                        const imports = extractModuleDependencySourcesFromCode(code);
-
-                        // Identificar el import exacto que apunta al archivo movido
-                        const matchingImport = imports.find((imp) => {
-                            const absResolved = normalizeImportToAbsolute(imp, depPath, projectPath);
-                            // Normalizamos para comparar sin importar extensión o slash final
-                            const normTarget = absOld.replace(/\.[jt]sx?$/, '').replace(/\\/g, '/');
-                            const normResolved = absResolved.replace(/\.[jt]sx?$/, '').replace(/\\/g, '/');
-                            return normResolved === normTarget;
-                        });
-
-                        if (matchingImport) {
-                            const newImportStr = calculateRelativeImport(depPath, newPath, projectPath);
-                            logger.info(`[MoveOrchestrator] Updating ${depPath}: "${matchingImport}" -> "${newImportStr}"`);
-
-                            // Localizar la línea exacta del import para el atomic_edit
-                            const lines = code.split('\n');
-                            const lineIndex = lines.findIndex((line) => line.includes(`'${matchingImport}'`) || line.includes(`"${matchingImport}"`));
-
-                            if (lineIndex !== -1) {
-                                const oldLine = lines[lineIndex];
-                                const newLine = oldLine.replace(matchingImport, newImportStr);
-
-                                // Aplicamos el cambio atómicamente
-                                const editRes = await atomic_edit({
-                                    filePath: depPath,
-                                    oldString: oldLine,
-                                    newString: newLine
-                                }, { ...context, projectPath });
-
-                                if (editRes.success) {
-                                    results.updatedFiles.push(depPath);
-                                } else {
-                                    results.failedUpdates.push({ file: depPath, reason: editRes.message });
-                                    logger.warn(`[MoveOrchestrator] Atomic edit failed for ${depPath}: ${editRes.message}`);
-                                }
-                            } else {
-                                results.failedUpdates.push({ file: depPath, reason: 'Import line not found by string match' });
-                            }
-                        }
-                    } catch (err) {
-                        logger.error(`[MoveOrchestrator] Failed to process dependent ${depPath}: ${err.message}`);
-                        results.failedUpdates.push({ file: depPath, reason: err.message });
-                    }
-                }
-
-                return results;
-            });
-
+            const moveResult = await executeMoveMutation(oldPath, newPath, projectPath, context, dependents);
             if (!moveResult?.success) {
                 return moveResult;
             }
 
-            const settlement = await settleMutationFiles({
-                projectPath,
-                context,
-                reason: 'move_file',
-                touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || [])],
-                validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents],
-                reindexTargets: [newPath, ...(moveResult.updatedFiles || [])],
-                maxValidationTargets: 10
-            });
+            const settlement = await settleMoveMutation(projectPath, context, oldPath, newPath, dependents, moveResult);
 
             return {
                 ...moveResult,

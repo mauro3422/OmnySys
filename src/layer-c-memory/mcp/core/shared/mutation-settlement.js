@@ -2,9 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getRepository } from '../../../storage/repository/repository-factory.js';
-import { RecoveryStrategies } from '../../../../shared/compiler/runtime-boundary-recovery.js';
-import { validate_imports } from '../../tools/validate-imports.js';
-import { reindexFile } from '../../tools/atomic-edit/reindex.js';
+import { RecoveryStrategies, reindexCompilerFile, validateCompilerImports } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:mutation-settlement');
 
@@ -77,7 +75,7 @@ async function reindexSettlementTargets(projectPath, reindexTargets = []) {
       continue;
     }
 
-    const reindexResult = await reindexFile(filePath, projectPath);
+    const reindexResult = await reindexCompilerFile(filePath, projectPath);
     results.push({
       filePath,
       disk,
@@ -148,7 +146,7 @@ async function settleMutationFile({
         throw error;
       }
 
-      const result = await validate_imports({
+      const result = await validateCompilerImports({
         filePath: normalizedFilePath,
         checkBroken: validationOptions.checkBroken ?? true,
         checkUnused: validationOptions.checkUnused ?? true,
@@ -165,7 +163,7 @@ async function settleMutationFile({
         retryState.transient = true;
 
         if (allowReindexOnTransient && disk.exists && !retryState.reindexed) {
-          const reindexResult = await reindexFile(normalizedFilePath, projectPath);
+          const reindexResult = await reindexCompilerFile(normalizedFilePath, projectPath);
           retryState.reindexed = !!reindexResult?.success;
           logger.debug(`[mutation-settlement] Reindexed transient target ${normalizedFilePath} -> ${reindexResult?.success ? 'ok' : 'failed'}`);
         }

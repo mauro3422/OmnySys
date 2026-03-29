@@ -305,6 +305,11 @@ export {
 } from './compiler-persistence.js';
 
 export {
+  validateCompilerImports,
+  reindexCompilerFile
+} from './mutation-settlement-bridge.js';
+
+export {
   isRuntimeLifecycleFile,
   isSameFileCycle,
   isIntentionalAlgorithmicCycle,
