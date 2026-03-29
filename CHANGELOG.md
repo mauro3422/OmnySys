@@ -9,6 +9,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Completed the `async-safety` family cleanup by moving the remaining `collection` and `guard` bridges into the folderized family and fixing the compiler barrel export chain used by folderization analysis.
 - Folderization settlement now reindexes final move targets before validation, so newly moved families are reconciled into the canonical compiler DB instead of being left as transient `DB_MISSING` paths.
 - Reduced hot-reload/debt noise by splitting `move-orchestrator` helpers, routing mutation settlement through the public compiler surface, and clearing the remaining watcher alerts on those paths.
+- Tightened MCP session routing, stdio bridge recovery, and repository bridge state handling so reconnect/replay flows stay consistent across daemon restarts.
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)

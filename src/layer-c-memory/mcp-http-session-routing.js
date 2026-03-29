@@ -1,5 +1,4 @@
 import { randomUUID } from 'crypto';
-import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
@@ -13,9 +12,10 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { applyPagination } from './mcp/core/pagination.js';
 import { compactRecentNotifications } from './mcp/core/recent-notifications.js';
+import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
 
-const SESSION_RECOVERY_ATTEMPTS = 5;
-const SESSION_RECOVERY_DELAY_MS = 100;
+const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
+const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
 
 export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
   const response = {
@@ -32,6 +32,10 @@ export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {
   }
 
   return response;
+}
+
+export function createConditionalJsonMiddleware(logger) {
+  return createConditionalJsonMiddlewareImpl(logger, buildJsonRpcErrorResponse);
 }
 
 export function buildServerForSession({ logger, getLiveToolDefinitions, executeMcpToolCall }) {
@@ -265,22 +269,4 @@ export async function handleMcpRequest(req, res, dependencies) {
       }));
     }
   }
-}
-
-export function createConditionalJsonMiddleware(logger) {
-  return (req, res, next) => {
-    if (req.headers['mcp-session-id']) {
-      return next();
-    }
-
-    express.json()(req, res, (err) => {
-      if (!err) return next();
-
-      logger.warn(`[MCP JSON PARSE] ${req.method} ${req.path}: ${err.message}`);
-      res.status(400).json(buildJsonRpcErrorResponse({
-        code: -32700,
-        message: 'Parse error: invalid JSON payload'
-      }));
-    });
-  };
 }

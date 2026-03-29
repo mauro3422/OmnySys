@@ -19,99 +19,38 @@ import {
     startBridgeRecovery,
     scheduleBridgeRecovery
 } from './mcp/stdio-bridge-recovery.js';
+import {
+    getDaemonUrl,
+    isRequestMessage,
+    isResponseMessage,
+    isSessionExpiredError,
+    normalizeBridgeInitializeMessage,
+    shouldTriggerRecovery,
+    waitForBridgeSessionId
+} from './mcp/stdio-bridge-helpers.js';
 
-const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
-const BRIDGE_CLIENT_ID = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
-const BRIDGE_CLIENT_NAME = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
-
-function isRequestMessage(message) {
-    return !!message &&
-        typeof message === 'object' &&
-        typeof message.method === 'string' &&
-        Object.prototype.hasOwnProperty.call(message, 'id');
-}
-
-function isResponseMessage(message) {
-    return !!message &&
-        typeof message === 'object' &&
-        !Object.prototype.hasOwnProperty.call(message, 'method') &&
-        Object.prototype.hasOwnProperty.call(message, 'id');
-}
-
-function shouldTriggerRecovery(error) {
-    const message = String(error?.message || error || '');
-    return /Server not initialized|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(message);
-}
-
-function canonicalizeClientInfo(clientInfo = {}) {
-    const base = clientInfo && typeof clientInfo === 'object' ? { ...clientInfo } : {};
-    const originalName = getTrimmedClientField(base, 'name');
-    const originalClientId = getTrimmedClientField(base, 'client_id');
-    const canonicalId = resolveCanonicalClientId(originalClientId, originalName);
-    const canonicalName = resolveCanonicalClientName(originalName, originalClientId, canonicalId);
-
-    return buildCanonicalClientInfo(base, canonicalName, canonicalId, originalName, originalClientId);
-}
-
-function getTrimmedClientField(clientInfo, field) {
-    const value = clientInfo?.[field];
-    return typeof value === 'string' ? value.trim() : '';
-}
-
-function resolveCanonicalClientId(originalClientId, originalName) {
-    return BRIDGE_CLIENT_ID || originalClientId || originalName || '';
-}
-
-function resolveCanonicalClientName(originalName, originalClientId, canonicalId) {
-    return BRIDGE_CLIENT_NAME || canonicalId || originalName || originalClientId || '';
-}
-
-function buildCanonicalClientInfo(base, canonicalName, canonicalId, originalName, originalClientId) {
-    const normalized = { ...base };
-    if (canonicalName) {
-        normalized.name = canonicalName;
-    }
-    if (canonicalId) {
-        normalized.client_id = canonicalId;
-    }
-
-    if (BRIDGE_CLIENT_ID && originalName && originalName !== canonicalName) {
-        normalized.original_name = originalName;
-    }
-    if (BRIDGE_CLIENT_ID && originalClientId && originalClientId !== canonicalId) {
-        normalized.original_client_id = originalClientId;
-    }
-
-    return normalized;
-}
-
-function normalizeBridgeInitializeMessage(message) {
-    if (!isRequestMessage(message) || message.method !== 'initialize') {
-        return message;
-    }
-
-    const params = message.params && typeof message.params === 'object'
-        ? { ...message.params }
-        : {};
-    params.clientInfo = canonicalizeClientInfo(params.clientInfo);
-
-    return {
-        ...message,
-        params
-    };
-}
+const DAEMON_URL = getDaemonUrl();
 
 async function connectBridgeTransport(state, options = {}) {
     const sessionId = Object.prototype.hasOwnProperty.call(options, 'sessionId')
         ? options.sessionId
         : state.lastSessionId;
+    const transportGeneration = (state.transportGeneration || 0) + 1;
+    state.transportGeneration = transportGeneration;
 
-    state.httpTransport = new StreamableHTTPClientTransport(
+    const transport = new StreamableHTTPClientTransport(
         DAEMON_URL,
         sessionId ? { sessionId } : undefined
     );
+    state.httpTransport = transport;
 
-    state.httpTransport.onmessage = async (message) => {
+    const isStaleTransport = () => state.httpTransport !== transport || state.transportGeneration !== transportGeneration;
+
+    transport.onmessage = async (message) => {
+        if (isStaleTransport()) {
+            return;
+        }
+
         try {
             if (isResponseMessage(message) && state.internalRequests.has(message.id)) {
                 const pending = state.internalRequests.get(message.id);
@@ -136,33 +75,25 @@ async function connectBridgeTransport(state, options = {}) {
         }
     };
 
-    state.httpTransport.onerror = (err) => log(`http error: ${err.message}`);
-    state.httpTransport.onclose = async () => {
+    transport.onerror = (err) => {
+        if (!isStaleTransport()) {
+            log(`http error: ${err.message}`);
+        }
+    };
+    transport.onclose = async () => {
+        if (isStaleTransport()) {
+            return;
+        }
+
         log('Daemon disconnected.');
         await startBridgeRecovery(state, 'transport closed', connectBridgeTransport);
     };
 
-    await state.httpTransport.start();
+    await transport.start();
 }
 
 async function handleBridgeStdioMessage(state, message) {
     const normalizedMessage = normalizeBridgeInitializeMessage(message);
-
-    if (state.isReconnecting) {
-        if (isRequestMessage(normalizedMessage)) {
-            log(`Rejecting request ${normalizedMessage.method} while daemon is restarting.`);
-            await sendBridgeRetryableError(
-                state,
-                normalizedMessage.id,
-                'DAEMON_RESTARTING: bridge is recovering. Retry this request in a moment.',
-                { interruptedMethod: normalizedMessage.method }
-            );
-            return;
-        }
-
-        log('Dropping notification while daemon is restarting.');
-        return;
-    }
 
     try {
         if (normalizedMessage?.method === 'initialize' && isRequestMessage(normalizedMessage)) {
@@ -174,8 +105,45 @@ async function handleBridgeStdioMessage(state, message) {
             state.cachedInitializedNotification = normalizedMessage;
         }
 
+        if (state.isReconnecting) {
+            if (isRequestMessage(normalizedMessage)) {
+                log(`Waiting for bridge recovery before forwarding ${normalizedMessage.method}.`);
+                const recoveryPromise = state.reconnectPromise;
+                if (recoveryPromise) {
+                    try {
+                        await recoveryPromise;
+                    } catch (error) {
+                        log(`Bridge recovery failed while waiting for ${normalizedMessage.method}: ${error.message}`);
+                    }
+                }
+            } else {
+                log('Dropping notification while daemon is restarting.');
+                return;
+            }
+        }
+
+        if (state.isReconnecting || !state.httpTransport) {
+            log(`Rejecting request ${normalizedMessage?.method || 'unknown'} while daemon is restarting.`);
+            if (isRequestMessage(normalizedMessage)) {
+                await sendBridgeRetryableError(
+                    state,
+                    normalizedMessage.id,
+                    'DAEMON_RESTARTING: bridge is recovering. Retry this request in a moment.',
+                    { interruptedMethod: normalizedMessage.method }
+                );
+            }
+            return;
+        }
+
         if (isRequestMessage(normalizedMessage)) {
             state.pendingRequests.set(normalizedMessage.id, normalizedMessage);
+        }
+
+        if (normalizedMessage?.method !== 'initialize') {
+            const sessionId = state.lastSessionId || state.httpTransport?._sessionId || await waitForBridgeSessionId(state);
+            if (sessionId) {
+                state.lastSessionId = sessionId;
+            }
         }
 
         await state.httpTransport.send(normalizedMessage);
@@ -183,6 +151,21 @@ async function handleBridgeStdioMessage(state, message) {
             state.lastSessionId = state.httpTransport._sessionId;
         }
     } catch (err) {
+        if (isSessionExpiredError(err)) {
+            state.lastSessionId = null;
+            const currentTransport = state.httpTransport;
+            state.httpTransport = null;
+            if (currentTransport) {
+                currentTransport.close().catch(() => {});
+            }
+            void startBridgeRecovery(
+                state,
+                'session expired',
+                connectBridgeTransport
+            );
+            return;
+        }
+
         if (shouldTriggerRecovery(err)) {
             void scheduleBridgeRecovery(
                 state,

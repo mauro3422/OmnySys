@@ -17,7 +17,7 @@ function waitMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function runBridgeRecovery(state, trigger, connectBridgeTransport) {
+async function runBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {
   log(`Starting bridge recovery (${trigger})...`);
 
   const health = await waitForDaemonHealthy({
@@ -34,7 +34,9 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport) {
 
   log('Daemon recovered. Reconnecting HTTP transport...');
   try {
-    const previousSessionId = state.lastSessionId;
+    const forceFreshSession = /SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(trigger)
+      || options.forceFreshSession === true;
+    const previousSessionId = forceFreshSession ? null : state.lastSessionId;
     await connectBridgeTransport(state, { sessionId: previousSessionId });
     try {
       await replayBridgeSession(state);
@@ -114,7 +116,7 @@ export async function startBridgeRecovery(state, trigger, connectBridgeTransport
     'DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.'
   );
 
-  state.reconnectPromise = runBridgeRecovery(state, trigger, connectBridgeTransport);
+  state.reconnectPromise = runBridgeRecovery(state, trigger, connectBridgeTransport, {});
 
   try {
     await state.reconnectPromise;
@@ -145,7 +147,7 @@ export async function scheduleBridgeRecovery(state, trigger, connectBridgeTransp
       await waitMs(backoffMs);
     }
 
-    return recoverFn(state, trigger, connectBridgeTransport);
+    return recoverFn(state, trigger, connectBridgeTransport, options);
   })();
 
   try {

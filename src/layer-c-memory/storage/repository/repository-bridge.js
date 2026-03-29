@@ -10,7 +10,6 @@
  * @module storage/repository/repository-bridge
  */
 
-import { resolve } from 'path';
 import { isMainThread } from 'worker_threads';
 import { createLogger } from '#utils/logger.js';
 import { RepositoryFactory } from './repository-factory.js';
@@ -19,23 +18,17 @@ import {
   isTransientDatabaseError,
   retryUntilAvailable
 } from './repository-bridge-utils.js';
+import {
+  bridgeState,
+  getProjectJournal,
+  normalizeProjectPath
+} from './repository-bridge-state.js';
 
 const logger = createLogger('OmnySys:Storage:RepositoryBridge');
-const bridgeState = {
-  journals: new Map(),
-  flushTimers: new Map()
-};
-
 export const REPOSITORY_MUTATION_DURABILITY = Object.freeze({
   DURABLE: 'durable',
   REBUILDABLE: 'rebuildable'
 });
-
-function normalizeProjectPath(projectPath) {
-  const raw = String(projectPath || '').trim();
-  if (!raw) return '__default__';
-  return resolve(raw).replace(/\\/g, '/');
-}
 
 async function retryMutationUntilAvailable(projectPath, mutation, retryOptions = {}) {
   const attempts = Math.max(1, retryOptions.maxRetries ?? 5);
@@ -82,16 +75,6 @@ async function retryMutationUntilAvailable(projectPath, mutation, retryOptions =
       error: error?.message || 'repository mutation retry exhausted'
     };
   }
-}
-
-function getProjectJournal(projectPath) {
-  const normalizedProjectPath = normalizeProjectPath(projectPath);
-  let journal = bridgeState.journals.get(normalizedProjectPath);
-  if (!journal) {
-    journal = new Map();
-    bridgeState.journals.set(normalizedProjectPath, journal);
-  }
-  return { normalizedProjectPath, journal };
 }
 
 function scheduleRepositoryFlush(projectPath, delayMs = 100) {

@@ -335,6 +335,7 @@ export function createBridgeState(stdioTransport) {
     return {
         stdioTransport,
         httpTransport: null,
+        transportGeneration: 0,
         isReconnecting: false,
         reconnectPromise: null,
         lastSessionId: null,
