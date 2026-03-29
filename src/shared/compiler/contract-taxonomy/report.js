@@ -1,11 +1,11 @@
 /**
  * @fileoverview Contract taxonomy reporting helpers.
  *
- * @module shared/compiler/contract-taxonomy-report
+ * @module shared/compiler/contract-taxonomy/report
  */
 
-import { loadContractTaxonomyRows } from './contract-taxonomy-query.js';
-import { summarizeContractTaxonomyRows } from './contract-taxonomy-summary-helpers.js';
+import { loadContractTaxonomyRows } from './query.js';
+import { summarizeContractTaxonomyRows } from './summary-helpers.js';
 
 export function summarizeContractTaxonomy(db) {
   if (!db) {

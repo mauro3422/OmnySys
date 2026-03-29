@@ -1,7 +1,7 @@
 /**
  * @fileoverview Contract surface classification helpers.
  *
- * @module shared/compiler/contract-taxonomy-classification
+ * @module shared/compiler/contract-taxonomy/classification
  */
 
 function normalizeFilePath(filePath = '') {
