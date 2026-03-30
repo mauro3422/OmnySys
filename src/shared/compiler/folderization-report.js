@@ -14,7 +14,8 @@ import {
 } from './directory-structure-folderization-migration.js';
 import {
   buildFolderizationNamingReportFromRepo,
-  buildFolderizationNamingReportFromRows
+  buildFolderizationNamingReportFromRows,
+  findBestFolderizedFamilyForPaths
 } from './directory-structure-folderization-naming.js';
 
 function normalizeFocusPaths(filePaths = []) {
@@ -29,6 +30,126 @@ function buildEmptyRecommendation() {
     action: 'Review folderization signals after more helpers are extracted',
     strategy: 'folderization',
     alternatives: []
+  };
+}
+
+function normalizeGuidancePath(value = '') {
+  const normalized = normalizeFolderizationPath(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.endsWith('.js')) {
+    const slashIndex = normalized.lastIndexOf('/');
+    return slashIndex > 0 ? normalized.slice(0, slashIndex) : normalized;
+  }
+
+  return normalized;
+}
+
+function splitPathSegments(path = '') {
+  return String(path || '')
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function getPathTailSegment(path = '') {
+  const segments = splitPathSegments(path);
+  return segments.length > 0 ? segments[segments.length - 1] : '';
+}
+
+function countSharedPrefixSegments(left = '', right = '') {
+  const leftSegments = splitPathSegments(left);
+  const rightSegments = splitPathSegments(right);
+  const limit = Math.min(leftSegments.length, rightSegments.length);
+  let shared = 0;
+
+  for (let index = 0; index < limit; index += 1) {
+    if (leftSegments[index] !== rightSegments[index]) {
+      break;
+    }
+    shared += 1;
+  }
+
+  return shared;
+}
+
+function scoreGuidanceFamily(family, anchorPath = '') {
+  if (!family?.directory) {
+    return 0;
+  }
+
+  const normalizedAnchor = normalizeGuidancePath(anchorPath);
+  if (!normalizedAnchor) {
+    return 0;
+  }
+
+  const normalizedDirectory = normalizeFolderizationPath(family.directory);
+  let score = 0;
+
+  if (normalizedAnchor === normalizedDirectory) {
+    score += 500;
+  } else if (normalizedAnchor.startsWith(`${normalizedDirectory}/`)) {
+    score += 400 + normalizedDirectory.length;
+  } else if (normalizedDirectory.startsWith(`${normalizedAnchor}/`)) {
+    score += 250 + normalizedAnchor.length;
+  } else {
+    score += countSharedPrefixSegments(normalizedAnchor, normalizedDirectory) * 50;
+  }
+
+  score += family.migrationState === 'already_folderized' ? 30 : 0;
+  score += family.migrationState === 'mixed' ? 18 : 0;
+  score += Math.min(20, Number(family.folderFileCount || 0) + Number(family.rootFileCount || 0));
+
+  return score;
+}
+
+function selectGuidanceFamily(familyState = {}, scopePath = null, focusPath = null) {
+  const families = Array.isArray(familyState?.topFamilies) ? familyState.topFamilies : [];
+  const anchorPaths = [focusPath, scopePath]
+    .map(normalizeGuidancePath)
+    .filter(Boolean);
+  const reusableFamilies = families.filter((family) => family.migrationState === 'already_folderized' || family.migrationState === 'mixed');
+  const candidateFamilies = reusableFamilies.length > 0 ? reusableFamilies : families;
+
+  if (candidateFamilies.length === 0) {
+    return {
+      family: null,
+      matchedBy: 'global',
+      scopePath: normalizeGuidancePath(scopePath),
+      focusPath: normalizeGuidancePath(focusPath),
+      selectionReason: 'No reusable family metadata is available'
+    };
+  }
+
+  const scoredFamilies = candidateFamilies.map((family) => {
+    const scores = anchorPaths.map((anchorPath) => scoreGuidanceFamily(family, anchorPath));
+    const bestAnchorScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+    return {
+      family,
+      score: bestAnchorScore,
+      hasScopedMatch: bestAnchorScore > 0,
+      scopeHits: scores.filter((score) => score > 0).length
+    };
+  }).sort((a, b) => b.score - a.score || b.scopeHits - a.scopeHits || (b.family.folderFileCount + b.family.rootFileCount) - (a.family.folderFileCount + a.family.rootFileCount) || a.family.familyRoot.localeCompare(b.family.familyRoot));
+
+  const selected = scoredFamilies[0] || null;
+  const selectedFamily = selected?.family || null;
+  const matchedBy = selected?.hasScopedMatch
+    ? (focusPath ? 'focusPath' : 'scopePath')
+    : 'global';
+  const selectionReason = selected?.hasScopedMatch
+    ? `Selected ${selectedFamily.directory}/${selectedFamily.familyRoot} from DB-backed family metadata`
+    : `Selected ${selectedFamily.directory}/${selectedFamily.familyRoot} from the strongest reusable family in the DB`;
+
+  return {
+    family: selectedFamily,
+    matchedBy,
+    scopePath: normalizeGuidancePath(scopePath),
+    focusPath: normalizeGuidancePath(focusPath),
+    selectionReason
   };
 }
 
@@ -74,6 +195,7 @@ function buildFolderizationSummary({
   migrationPlans,
   naming,
   namingPatterns,
+  creationGuidance,
   decision,
   recommendation
 }) {
@@ -85,36 +207,62 @@ function buildFolderizationSummary({
     namingFamilies: naming?.familyCount || 0,
     namingTargets: naming?.renameTargetCount || 0,
     namingPatternCounts: namingPatterns?.patternCounts || {},
+    guidanceScopePath: creationGuidance?.scopePath || null,
+    guidanceFocusPath: creationGuidance?.focusPath || null,
     focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
     recommendationStrategy: recommendation?.strategy || null
   };
 }
 
 function buildFolderizationCreationGuidance({
+  rows,
   familyState,
   namingPatterns,
-  naming
+  naming,
+  scopePath = null,
+  focusPath = null
 }) {
   const topFamilyPatterns = Array.isArray(namingPatterns?.topFamilyPatterns)
     ? namingPatterns.topFamilyPatterns.slice(0, 5)
     : [];
-  const preferredFamilies = Array.isArray(familyState?.topFamilies)
-    ? familyState.topFamilies
-        .filter((family) => family.migrationState === 'already_folderized' || family.migrationState === 'mixed')
-        .slice(0, 5)
-    : [];
-  const fallbackFamilies = preferredFamilies.length > 0
-    ? preferredFamilies
-    : Array.isArray(familyState?.topFamilies)
-      ? familyState.topFamilies.slice(0, 5)
-      : [];
-  const preferredFamily = fallbackFamilies[0] || null;
+  const folderizedScopeSuggestion = (scopePath || focusPath)
+    ? findBestFolderizedFamilyForPaths(rows || [], [focusPath, scopePath], { minFileCount: 1 })
+    : null;
+  const selectionAnchor = normalizeGuidancePath(focusPath || scopePath);
+  const selectionAnchorTail = getPathTailSegment(selectionAnchor || '');
+  const folderizedScopeMatchesAnchor = Boolean(folderizedScopeSuggestion)
+    && Boolean(selectionAnchorTail)
+    && (
+      folderizedScopeSuggestion.familyRoot === selectionAnchorTail
+      || getPathTailSegment(folderizedScopeSuggestion.directory) === selectionAnchorTail
+    );
+  const selection = folderizedScopeSuggestion
+    && folderizedScopeMatchesAnchor
+    ? {
+        family: folderizedScopeSuggestion,
+        matchedBy: focusPath ? 'focusPath' : 'scopePath',
+        scopePath: normalizeGuidancePath(scopePath),
+        focusPath: normalizeGuidancePath(focusPath),
+        selectionReason: `DB-backed folderized family match: reuse ${folderizedScopeSuggestion.directory}`
+      }
+    : selectGuidanceFamily(familyState, scopePath, focusPath);
+  const preferredFamily = selection.family || null;
   const preferredFolder = preferredFamily
-    ? `${preferredFamily.directory}/${preferredFamily.familyRoot}`
+    ? (folderizedScopeSuggestion ? preferredFamily.directory : `${preferredFamily.directory}/${preferredFamily.familyRoot}`)
     : null;
   const preferredRoleStems = Array.isArray(namingPatterns?.topRecommendedStems)
     ? namingPatterns.topRecommendedStems.slice(0, 5)
     : [];
+  const scopeContext = {
+    scopePath: selection.scopePath,
+    focusPath: selection.focusPath,
+    matchedBy: selection.matchedBy,
+    familyDomain: preferredFamily?.directory || null,
+    barrelPolicy: 'keep index.js as the barrel surface for folderized families',
+    helperPolicy: 'prefer role-only helper basenames inside the selected family',
+    collisionPolicy: 'append a family-specific suffix only when a role basename collides',
+    selectionReason: selection.selectionReason
+  };
 
   return {
     mode: preferredFamily?.migrationState === 'already_folderized'
@@ -122,13 +270,14 @@ function buildFolderizationCreationGuidance({
       : preferredFamily
         ? 'create_folderized_family'
         : 'role_pattern_guided',
+    ...scopeContext,
     preferredFolder,
     preferredFamilyRoot: preferredFamily?.familyRoot || null,
     preferredDirectory: preferredFamily?.directory || null,
     preferredRoleStems,
     familyExamples: topFamilyPatterns,
     guidance: preferredFolder
-      ? `Create the next file inside ${preferredFolder} using a short role basename such as ${preferredRoleStems[0]?.stem || (naming?.topFamilies?.[0]?.renameTargets?.[0]?.recommendedName || 'core.js')}.`
+      ? `${selection.selectionReason}. Create the next file inside ${preferredFolder} using a short role basename such as ${preferredRoleStems[0]?.stem || (naming?.topFamilies?.[0]?.renameTargets?.[0]?.recommendedName || 'core.js')}.`
       : 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.'
   };
 }
@@ -140,9 +289,19 @@ function buildFolderizationReport({
   migrationPlans,
   naming,
   namingPatterns,
+  scopePath,
+  focusPath,
   focusCandidate,
   existingFolderizedFamily
 }) {
+  const creationGuidance = buildFolderizationCreationGuidance({
+    rows,
+    familyState,
+    namingPatterns,
+    naming,
+    scopePath,
+    focusPath
+  });
   const recommendation = buildFolderizationRecommendation({
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || (candidateList.length > 0 ? 'review' : 'reject'),
     candidate: focusCandidate,
@@ -151,17 +310,13 @@ function buildFolderizationReport({
   });
 
   const candidateReport = buildFolderizationCandidateReport(candidateList);
-  const creationGuidance = buildFolderizationCreationGuidance({
-    familyState,
-    namingPatterns,
-    naming
-  });
   const summary = buildFolderizationSummary({
     candidateReport,
     familyState,
     migrationPlans,
     naming,
     namingPatterns,
+    creationGuidance,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     recommendation
   });
@@ -174,6 +329,8 @@ function buildFolderizationReport({
     naming,
     namingPatterns: namingPatterns || null,
     creationGuidance,
+    scopePath: creationGuidance.scopePath || null,
+    focusPath: creationGuidance.focusPath || null,
     focusCandidate: focusCandidate || null,
     existingFolderizedFamily: existingFolderizedFamily || null,
     recommendation,
@@ -191,7 +348,13 @@ export function buildFolderizationReportFromRows(rows = [], options = {}) {
     candidates: []
   };
   const naming = buildFolderizationNamingReportFromRows(rows);
-  const normalizedFocusPaths = normalizeFocusPaths(Array.isArray(options.filePaths) ? options.filePaths : []);
+  const normalizedScopePath = normalizeGuidancePath(options.scopePath || null);
+  const normalizedFocusPath = normalizeGuidancePath(options.focusPath || null);
+  const normalizedFocusPaths = [
+    ...normalizeFocusPaths(Array.isArray(options.filePaths) ? options.filePaths : []),
+    ...(normalizedFocusPath ? [normalizedFocusPath] : []),
+    ...(normalizedScopePath ? [normalizedScopePath] : [])
+  ];
   const focusCandidate = normalizedFocusPaths.length > 0
     ? findFolderizationCandidateForPaths(candidateList, normalizedFocusPaths)
     : candidateList[0] || null;
@@ -213,6 +376,8 @@ export function buildFolderizationReportFromRows(rows = [], options = {}) {
     migrationPlans,
     naming,
     namingPatterns: naming.patternSummary || null,
+    scopePath: options.scopePath || null,
+    focusPath: options.focusPath || null,
     focusCandidate,
     existingFolderizedFamily
   });
@@ -229,6 +394,14 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
       namingPatterns: { totalFamilies: 0, totalTargets: 0, patternCounts: {}, topFamilyPatterns: [], topRecommendedStems: [] },
       creationGuidance: {
         mode: 'role_pattern_guided',
+        scopePath: null,
+        focusPath: null,
+        matchedBy: 'global',
+        familyDomain: null,
+        barrelPolicy: 'keep index.js as the barrel surface for folderized families',
+        helperPolicy: 'prefer role-only helper basenames inside the selected family',
+        collisionPolicy: 'append a family-specific suffix only when a role basename collides',
+        selectionReason: 'No reusable family metadata is available',
         preferredFolder: null,
         preferredFamilyRoot: null,
         preferredDirectory: null,
@@ -236,6 +409,8 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         familyExamples: [],
         guidance: 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.'
       },
+      scopePath: null,
+      focusPath: null,
       focusCandidate: null,
       existingFolderizedFamily: null,
       recommendation: buildEmptyRecommendation(),
@@ -248,6 +423,8 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         namingFamilies: 0,
         namingTargets: 0,
         namingPatternCounts: {},
+        guidanceScopePath: null,
+        guidanceFocusPath: null,
         focusDecision: 'reject',
         recommendationStrategy: null
       }
@@ -258,6 +435,6 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
   return buildFolderizationReportFromRows(rows, options);
 }
 
-export function buildEmptyFolderizationReport() {
-  return buildFolderizationReportFromRepo(null);
+export function buildEmptyFolderizationReport(options = {}) {
+  return buildFolderizationReportFromRepo(null, options);
 }

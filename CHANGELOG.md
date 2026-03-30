@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added DB-first `scopePath` / `focusPath` folderization guidance so the system can prefer the nearest reusable family, distinguish helper and barrel policies, and stop selecting a far-away family when the local scope is clearer.
 - Added folderization creation guidance so the system can suggest where new code should land, which role stems to prefer, and which folderized family to reuse before creating another helper surface.
 - Added explicit `namingPatterns` visibility to folderization reporting and exposed a standalone `normalize_folderized_family_names` MCP action so basename cleanup can run independently of the folder move step.
 - Added explicit `namingDebt` visibility to compiler explainability and the technical debt report so already-folderized families with many rename targets no longer hide behind the generic folderization summary.

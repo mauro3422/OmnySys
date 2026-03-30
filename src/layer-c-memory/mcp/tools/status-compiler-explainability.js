@@ -4,7 +4,7 @@ import {
   buildFolderizationReportFromRepo
 } from '../../../shared/compiler/index.js';
 
-export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null) {
+export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
     const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
@@ -25,7 +25,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       }
     });
 
-    const folderizationReport = buildFolderizationReportFromRepo(repo);
+    const folderizationReport = buildFolderizationReportFromRepo(repo, folderizationOptions);
 
     return {
       policySummary,

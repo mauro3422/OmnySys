@@ -30,6 +30,10 @@ export async function getTechnicalDebtReport(args, context) {
 
     try {
         const projectPath = context?.projectPath || null;
+        const folderizationOptions = {
+            scopePath: args?.scopePath || null,
+            focusPath: args?.focusPath || null
+        };
         const repo = projectPath ? getRepository(projectPath) : null;
 
         // Execute all metrics in parallel
@@ -43,7 +47,9 @@ export async function getTechnicalDebtReport(args, context) {
             aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
         ]);
 
-        const folderizationReport = repo ? buildFolderizationReportFromRepo(repo) : buildEmptyFolderizationReport();
+        const folderizationReport = repo
+            ? buildFolderizationReportFromRepo(repo, folderizationOptions)
+            : buildEmptyFolderizationReport();
 
         // Consolidate results
         const report = {

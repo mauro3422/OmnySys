@@ -102,7 +102,11 @@ export async function get_server_status(args, context) {
       projectPath,
       notifications.watcherAlerts || [],
       status.sharedState || {},
-      status.watcher
+      status.watcher,
+      {
+        scopePath: args?.scopePath || null,
+        focusPath: args?.focusPath || null
+      }
     );
     status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
     status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);
