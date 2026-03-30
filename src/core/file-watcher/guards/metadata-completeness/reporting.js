@@ -1,10 +1,10 @@
-import { persistWatcherIssue } from '../watcher-issue-persistence.js';
+import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
 import {
     IssueDomains,
     createIssueType,
     createStandardContext,
     StandardSuggestions
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export async function persistMetadataCompletenessFinding({
     rootPath,

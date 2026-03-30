@@ -1,5 +1,5 @@
-import { summarizeDerivedScoreCoverage } from '../../../shared/compiler/index.js';
-import { evaluateGuardTargetTestability, isValidGuardTarget } from './guard-standards.js';
+import { summarizeDerivedScoreCoverage } from '../../../../shared/compiler/index.js';
+import { evaluateGuardTargetTestability, isValidGuardTarget } from '../guard-standards.js';
 
 export function loadMetadataCompletenessEvidence(atoms = [], filePath) {
     if (!Array.isArray(atoms) || atoms.length === 0) {

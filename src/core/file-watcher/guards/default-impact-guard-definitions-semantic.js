@@ -3,7 +3,7 @@ import { defineVersionedLazyGuard } from './guard-definition-factory.js';
 export const impactGuardDefinitionsSemantic = [
   defineVersionedLazyGuard(
     'semantic-coverage',
-    () => import('./semantic-coverage-guard.js'),
+    () => import('./semantic-coverage/index.js'),
     (mod) => mod.detectSemanticCoverage,
     'sem',
     '1.0.0',

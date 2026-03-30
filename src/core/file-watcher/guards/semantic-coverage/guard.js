@@ -2,10 +2,10 @@
  * Detects semantic patterns in code that are not reflected in extracted metadata.
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { loadSemanticCoverageEvidence } from './semantic-coverage-evidence.js';
-import { persistSemanticCoverageFinding } from './semantic-coverage-reporting.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { loadSemanticCoverageEvidence } from './evidence.js';
+import { persistSemanticCoverageFinding } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:semantic-coverage');
 

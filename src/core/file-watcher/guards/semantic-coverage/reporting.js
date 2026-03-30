@@ -1,5 +1,5 @@
-import { persistWatcherIssue } from '../watcher-issue-persistence.js';
-import { createIssueType, createStandardContext, IssueDomains, StandardSuggestions } from './guard-standards.js';
+import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
+import { createIssueType, createStandardContext, IssueDomains, StandardSuggestions } from '../guard-standards.js';
 
 export async function persistSemanticCoverageFinding({ rootPath, filePath, evidence, EventEmitterContext }) {
     const issueType = createIssueType(IssueDomains.SEM, 'coverage_gap', evidence.severity);

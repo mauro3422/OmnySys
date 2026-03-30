@@ -27,7 +27,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'metadata-completeness',
-    () => import('./metadata-completeness-guard.js'),
+    () => import('./metadata-completeness/index.js'),
     (mod) => mod.detectMetadataCompleteness,
     'code',
     '1.0.0',

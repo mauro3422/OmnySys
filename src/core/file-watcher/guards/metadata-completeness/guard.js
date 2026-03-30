@@ -2,10 +2,10 @@
  * Detects production atoms whose derived compiler metadata is still empty.
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { loadMetadataCompletenessEvidence } from './metadata-completeness-evidence.js';
-import { persistMetadataCompletenessFinding } from './metadata-completeness-reporting.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { loadMetadataCompletenessEvidence } from './evidence.js';
+import { persistMetadataCompletenessFinding } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:metadata-completeness');
 
