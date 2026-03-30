@@ -50,6 +50,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         familyState: folderizationReport.familyState,
         migrationPlans: folderizationReport.migrationPlans,
         naming: folderizationReport.naming,
+        namingPatterns: folderizationReport.namingPatterns,
         namingDebt: {
           familyCount: folderizationReport.naming?.familyCount || 0,
           renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,

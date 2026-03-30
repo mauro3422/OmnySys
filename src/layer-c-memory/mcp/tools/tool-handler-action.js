@@ -25,6 +25,7 @@ export const actionToolHandlers = {
   mcp_omnysystem_consolidate_conceptual_cluster: (args, ctx) => performAction('consolidate_cluster', args, ctx),
   mcp_omnysystem_folderize_family: (args, ctx) => performAction('folderize_family', args, ctx),
   mcp_omnysystem_rename_folderized_family: (args, ctx) => performAction('rename_folderized_family', args, ctx),
+  mcp_omnysystem_normalize_folderized_family_names: (args, ctx) => performAction('normalize_folderized_family_names', args, ctx),
   mcp_omnysystem_safe_edit: (args, ctx) => performAction('safe_edit', args, ctx),
   mcp_omnysystem_get_edit_context: (args, ctx) => performAction('get_edit_context', args, ctx),
   mcp_omnysystem_suggest_canonical_api: suggest_canonical_api,

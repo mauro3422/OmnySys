@@ -109,6 +109,7 @@ export async function getTechnicalDebtReport(args, context) {
                 migrationPlans: folderizationReport.migrationPlans?.candidates || [],
                 focusPlan: folderizationReport.migrationPlans?.focusCandidate || null,
                 naming: folderizationReport.naming,
+                namingPatterns: folderizationReport.namingPatterns,
                 namingDebt: {
                     familyCount: folderizationReport.naming?.familyCount || 0,
                     renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
@@ -128,7 +129,8 @@ export async function getTechnicalDebtReport(args, context) {
                 flatFamilies: folderizationReport.familyState.stateCounts.flat || 0,
                 mixedFamilies: folderizationReport.familyState.stateCounts.mixed || 0,
                 namingFamilies: folderizationReport.naming?.familyCount || 0,
-                namingTargets: folderizationReport.naming?.renameTargetCount || 0
+                namingTargets: folderizationReport.naming?.renameTargetCount || 0,
+                namingPatternFamilies: folderizationReport.namingPatterns?.totalFamilies || 0
             }),
             priorityActions: buildTechnicalDebtPriorityActions({
                 structural: duplicatesResult.remediation?.items || [],
@@ -136,7 +138,8 @@ export async function getTechnicalDebtReport(args, context) {
                 orphans: pipelineHealthResult.orphanPipelineFunctions || [],
                 folderization: folderizationReport.migrationPlans.candidates || [],
                 folderizationFamilyState: folderizationReport.familyState,
-                folderizationNaming: folderizationReport.naming
+                folderizationNaming: folderizationReport.naming,
+                folderizationNamingPatterns: folderizationReport.namingPatterns
             }),
             timestamp: new Date().toISOString()
         };

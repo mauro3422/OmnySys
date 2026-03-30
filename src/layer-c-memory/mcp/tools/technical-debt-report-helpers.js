@@ -64,7 +64,8 @@ export function buildTechnicalDebtPriorityActions(data) {
         orphans,
         folderization = [],
         folderizationFamilyState = null,
-        folderizationNaming = null
+        folderizationNaming = null,
+        folderizationNamingPatterns = null
     } = data;
 
     if (structural.length > 0) {
@@ -138,6 +139,24 @@ export function buildTechnicalDebtPriorityActions(data) {
             urgencyScore: family.renameTargetCount * 2 + family.fileCount
         });
     });
+
+    const namingPatternCounts = folderizationNamingPatterns?.patternCounts || {};
+    const namingPatternPriority = [
+        ['collision_avoidance', namingPatternCounts.collision_avoidance || 0],
+        ['rooted', namingPatternCounts.rooted || 0],
+        ['shortened', namingPatternCounts.shortened || 0]
+    ].filter(([, count]) => count > 0);
+
+    if (namingPatternPriority.length > 0) {
+        const [patternName, patternCount] = namingPatternPriority[0];
+        actions.push({
+            priority: patternName === 'collision_avoidance' ? 'high' : 'medium',
+            type: 'folderization_naming_pattern',
+            action: `Normalize ${patternCount} ${patternName.replace(/_/g, ' ')} naming target(s)`,
+            impact: `Pattern summary: ${Object.entries(namingPatternCounts).filter(([, count]) => count > 0).map(([name, count]) => `${name}:${count}`).join(', ')}`,
+            urgencyScore: patternCount * 3 + (patternName === 'collision_avoidance' ? 10 : 0)
+        });
+    }
 
     if (folderizationNaming?.renameTargetCount > 0) {
         actions.push({

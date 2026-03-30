@@ -195,6 +195,13 @@ export function compactCompilerExplainabilitySummary(explainability) {
         renameTargetCount: explainability.folderization.naming.renameTargetCount,
         topFamilies: takeSample(explainability.folderization.naming.topFamilies || [], 3)
       } : null,
+      namingPatterns: explainability.folderization.namingPatterns ? {
+        totalFamilies: explainability.folderization.namingPatterns.totalFamilies,
+        totalTargets: explainability.folderization.namingPatterns.totalTargets,
+        patternCounts: explainability.folderization.namingPatterns.patternCounts,
+        topFamilyPatterns: takeSample(explainability.folderization.namingPatterns.topFamilyPatterns || [], 3),
+        topRecommendedStems: takeSample(explainability.folderization.namingPatterns.topRecommendedStems || [], 5)
+      } : null,
       namingDebt: explainability.folderization.namingDebt ? {
         familyCount: explainability.folderization.namingDebt.familyCount,
         renameTargetCount: explainability.folderization.namingDebt.renameTargetCount,

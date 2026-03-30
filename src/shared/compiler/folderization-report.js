@@ -73,6 +73,7 @@ function buildFolderizationSummary({
   familyState,
   migrationPlans,
   naming,
+  namingPatterns,
   decision,
   recommendation
 }) {
@@ -83,6 +84,7 @@ function buildFolderizationSummary({
     alreadyFolderizedFamilies: familyState?.stateCounts?.already_folderized || 0,
     namingFamilies: naming?.familyCount || 0,
     namingTargets: naming?.renameTargetCount || 0,
+    namingPatternCounts: namingPatterns?.patternCounts || {},
     focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
     recommendationStrategy: recommendation?.strategy || null
   };
@@ -94,6 +96,7 @@ function buildFolderizationReport({
   familyState,
   migrationPlans,
   naming,
+  namingPatterns,
   focusCandidate,
   existingFolderizedFamily
 }) {
@@ -110,6 +113,7 @@ function buildFolderizationReport({
     familyState,
     migrationPlans,
     naming,
+    namingPatterns,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     recommendation
   });
@@ -120,6 +124,7 @@ function buildFolderizationReport({
     familyState,
     migrationPlans,
     naming,
+    namingPatterns: namingPatterns || null,
     focusCandidate: focusCandidate || null,
     existingFolderizedFamily: existingFolderizedFamily || null,
     recommendation,
@@ -158,6 +163,7 @@ export function buildFolderizationReportFromRows(rows = [], options = {}) {
     familyState,
     migrationPlans,
     naming,
+    namingPatterns: naming.patternSummary || null,
     focusCandidate,
     existingFolderizedFamily
   });
@@ -171,6 +177,7 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
       familyState: { totalFamilies: 0, stateCounts: { flat: 0, mixed: 0, already_folderized: 0 }, topFamilies: [] },
       migrationPlans: { candidateCount: 0, focusCandidate: null, candidates: [] },
       naming: { familyCount: 0, renameTargetCount: 0, topFamilies: [] },
+      namingPatterns: { totalFamilies: 0, totalTargets: 0, patternCounts: {}, topFamilyPatterns: [], topRecommendedStems: [] },
       focusCandidate: null,
       existingFolderizedFamily: null,
       recommendation: buildEmptyRecommendation(),
@@ -182,6 +189,7 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         alreadyFolderizedFamilies: 0,
         namingFamilies: 0,
         namingTargets: 0,
+        namingPatternCounts: {},
         focusDecision: 'reject',
         recommendationStrategy: null
       }

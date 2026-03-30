@@ -68,6 +68,19 @@ export const actionToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_normalize_folderized_family_names',
+    description: 'Normaliza los nombres internos de una familia ya folderizada sin moverla de carpeta. Útil como paso standalone o después de folderize_family para limpiar basenames largos, role roots y colisiones.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizada dentro de la DB' },
+        execute: { type: 'boolean', default: false, description: 'Si es true, aplica los renombres. Si es false, solo devuelve el plan.' },
+        validateAfterMove: { type: 'boolean', default: true, description: 'Si es true, valida imports luego de renombrar la familia.' }
+      },
+      required: ['candidatePath']
+    }
+  },
+  {
     name: 'mcp_omnysystem_fix_imports',
     description: 'Resuelve automáticamente los imports rotos en un archivo buscando los símbolos en el grafo global del proyecto.',
     inputSchema: {
