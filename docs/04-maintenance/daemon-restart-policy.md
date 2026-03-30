@@ -162,3 +162,33 @@ This policy is what makes the desired model viable:
 
 The only hard limit is uncontrolled concurrent writes and uncontrolled restarts.
 Those must stay behind the supervisor.
+
+## Reconnect Bug Guardrails
+
+The Codex VS Code reconnect bug is not only a session problem. During
+hot-reload, reindex, or worker replacement, the client can come back with a
+stale session and a degraded HTTP handshake at the same time.
+
+Supervisor policy must assume both classes of drift:
+
+- session reuse drift
+- HTTP transport compatibility drift
+
+Current server safeguards:
+
+- shared `eventStore` across HTTP transport instances
+- fresh-session recovery when replaying bridge initialization
+- active-session deduplication by `client_id`
+- JSON `POST` responses via `enableJsonResponse: true`
+- `Accept` header normalization before requests reach the MCP SDK transport
+
+Restart implication:
+
+- keeping the proxy alive is still the right model
+- but a healthy worker restart is not enough if the connector re-enters with a
+  partially degraded handshake
+- the supervisor should preserve the compatibility shim across restart classes
+  2 and 3, not only during cold boot
+- `clearCacheOnly` should not be treated as sufficient validation for HTTP
+  transport/router changes; those require a real worker reload before the live
+  endpoint behavior is considered updated

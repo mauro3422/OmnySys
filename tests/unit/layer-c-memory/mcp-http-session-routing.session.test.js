@@ -282,6 +282,7 @@ describe('handleMcpRequest', () => {
     expect(sessions.has('transport-session')).toBe(false);
 
     const transport = mocks.transportInstances[0];
+    expect(transport.config.enableJsonResponse).toBe(true);
     expect(transport.sessionId).toBe('transport-session');
 
     await transport.onclose();
@@ -356,9 +357,56 @@ describe('handleMcpRequest', () => {
     });
 
     expect(mocks.transportInstances).toHaveLength(2);
+    expect(mocks.transportInstances[0].config.enableJsonResponse).toBe(true);
+    expect(mocks.transportInstances[1].config.enableJsonResponse).toBe(true);
     expect(mocks.transportInstances[0].config.eventStore).toBeDefined();
     expect(mocks.transportInstances[0].config.eventStore).toBe(mocks.transportInstances[1].config.eventStore);
     expect(typeof mocks.transportInstances[0].config.eventStore.storeEvent).toBe('function');
+  });
+
+  it('normalizes degraded Accept headers before dispatching to the transport', async () => {
+    const logger = createLogger();
+    const sessions = new Map();
+    const sessionManager = createSessionManager({
+      reserveSession: vi.fn(() => ({
+        sessionId: 'transport-session',
+        reused: false,
+        source: 'new'
+      })),
+      saveSession: vi.fn(() => 'transport-session')
+    });
+    const buildSessionServer = createBuildSessionServer();
+    const req = {
+      headers: {
+        accept: 'application/json'
+      },
+      method: 'POST',
+      path: '/mcp',
+      body: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex'
+          }
+        },
+        id: 51
+      }
+    };
+    const res = createResponse();
+
+    mocks.isInitializeRequest.mockReturnValueOnce(true);
+
+    await handleMcpRequest(req, res, {
+      logger,
+      sessions,
+      buildSessionServer,
+      getSessionManager: vi.fn(async () => sessionManager)
+    });
+
+    const transport = mocks.transportInstances[0];
+    expect(req.headers.accept).toBe('application/json, text/event-stream');
+    expect(transport.handleRequest).toHaveBeenCalledWith(req, res, req.body);
   });
 });
 

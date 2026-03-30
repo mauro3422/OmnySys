@@ -294,3 +294,30 @@ Universe C: order.total=5000 → saveOrder → success
 **Última actualización**: 2026-02-25 (v0.9.61)  
 **Estado**: ✅ **100% Estático, 0% LLM**  
 **Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+
+---
+
+## Maintenance Note - 2026-03-30
+
+### Reconnecting bug in Codex VS Code connector
+
+Observed behavior:
+
+- the daemon can boot healthy and keep MCP sessions alive
+- the chat surface can still fall into `Reconnecting...`
+- the issue becomes more visible after hot-reload, reindex, or runtime refresh
+
+Server-side hardening applied:
+
+- shared resumable HTTP event store
+- stricter session deduplication and fresh-session replay
+- JSON `POST` responses for MCP HTTP transports
+- `Accept` header normalization before dispatch to the SDK transport
+
+Interpretation:
+
+- this bug is no longer treated as only a session-manager issue
+- it is a combined reconnect problem across session recovery and client HTTP
+  handshake compatibility
+- maintenance work in `docs/04-maintenance` should keep both dimensions in
+  scope

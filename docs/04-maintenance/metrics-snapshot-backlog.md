@@ -40,6 +40,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Phase 2 execution telemetry: `phase2TotalMs`, `phase2ThroughputItemsPerSec`, `phase2BacklogRemaining`, `phase2ParseFailureCount`, `phase2ParseFailureRate`
 - Tool-run telemetry: `totalRuns`, `repairedRuns`, `thrashingRuns`, `toolSuccessRate`, `repairYield`, `alertClearanceRate`, `errorClearanceRate`, `averageDurationMs`
 - MCP session/reconnect telemetry: `clientSyncState`, `clientSyncReason`, `transportReconnectAttempts`, `sessionRecoverySuccessRate`, `freshSessionResets`, `duplicateClientBuckets`
+- HTTP compatibility telemetry: `normalizedAcceptRequests`, `jsonPostResponses`, `compatHandshakeRepairs`, `compat406AvoidedCount`
 - Database drift telemetry: `dbSyncState`, `dbBusyCount`, `reconciliationCount`, `reconciliationStaleRows`, `calledByResolutionRate`, `orphanReconciliationDelta`
 
 ## Follow-Up Work
@@ -57,6 +58,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Persist causal tool-run telemetry so watcher alerts, errors, and fixes can be scored as a repair cycle instead of inferred only from point-in-time snapshots.
 - Persist pipeline phase timing telemetry so startup and reindex ms regressions can be scored and alerted like any other health drift.
 - Persist reconnect and session-drift telemetry so the system can tell the difference between a dead daemon, a stale client cache, and a loop triggered by session reuse.
+- Persist compatibility-shim telemetry so the system can tell when a reconnect was saved by request normalization instead of assuming the client was healthy.
 - Add a direct metric for `extractDataFlow` parse failures so malformed test/factory snippets stop being invisible performance debt.
 - Add an MVP readiness dashboard that explains why the system is or is not above the success threshold.
 
@@ -67,3 +69,16 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Prefer compact, reusable summary fields alongside a raw JSON payload.
 - Keep `scopePath` and `focusPath` normalized before writing or querying snapshots.
 - Use `mcp_tool_runs` as the source of truth for tool success/failure/repair metrics.
+
+## Reconnect Bug Note
+
+As of 2026-03-30 the reconnect investigation showed that daemon health can stay
+green while the Codex/VS Code connector still drifts on the HTTP handshake.
+Metrics must therefore separate:
+
+- session recovery quality
+- connector compatibility repairs
+- true daemon availability
+
+If those three signals are collapsed into one "healthy/unhealthy" bit, the
+system hides the exact bug class we have been chasing.

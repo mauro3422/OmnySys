@@ -322,6 +322,27 @@ shape.
 - The server now records the reconnect path as a session/transport issue, not
   as a daemon outage, when `/health` remains healthy.
 
+**Root-cause discovery details**:
+
+- The first compatibility patch looked correct in unit tests but still failed
+  live with `406 Not Acceptable` when the client sent only
+  `Accept: application/json`.
+- The reason was subtle: mutating `req.headers.accept` was not enough for the
+  live daemon path because the Node/Hono adapter used by the MCP SDK rebuilds
+  the runtime `Headers` object from `IncomingMessage.rawHeaders`.
+- The effective fix therefore had to normalize all relevant header surfaces on
+  the incoming request:
+  - `req.headers`
+  - `req.headersDistinct`
+  - `req.rawHeaders`
+- This is why the final compatibility shim updates the raw Node request before
+  `transport.handleRequest(...)` runs, instead of treating the Node headers bag
+  as the only source of truth.
+- It also explains why `clearCacheOnly` was not a sufficient validation path:
+  router/transport fixes must be validated after a real worker reload, because
+  the live endpoint behavior depends on the loaded HTTP adapter boundary, not
+  only on cache state.
+
 **Files involved**:
 
 - `src/layer-c-memory/mcp-http-session-routing.js`
@@ -487,3 +508,57 @@ This note should probably be replaced later by two separate docs:
 
 Until then, this file is the working summary of the current initialization
 and client ecosystem.
+
+## 2026-03-30 Compatibility Hardening
+
+We added a second server-side defense for the Codex VS Code reconnect bug. The
+session/event-store fixes were necessary, but they were not sufficient on their
+own when the client came back after hot-reload, reindex, or runtime refresh
+with degraded HTTP expectations.
+
+What changed in the server:
+
+- `src/layer-c-memory/mcp-http-session-routing.js` now creates each
+  `StreamableHTTPServerTransport` with `enableJsonResponse: true`.
+- The same router now normalizes degraded `Accept` headers before dispatching
+  to the MCP SDK:
+  - `POST /mcp` is upgraded to include both `application/json` and
+    `text/event-stream`
+  - `GET /mcp` is upgraded to include `text/event-stream`
+
+Why this matters:
+
+- The SDK transport is spec-strict and rejects `POST` requests with `406 Not
+  Acceptable` when the client does not advertise both content types.
+- In practice the Codex/VS Code connector can drift during reconnect windows
+  and behave as if it only wants JSON while the daemon is still healthy.
+- Returning JSON for regular `POST` request/response cycles is more compatible
+  with chat-style tool clients that do not need per-request SSE streams.
+
+Observed failure mode before the hardening:
+
+- `/health` was healthy
+- the daemon had valid sessions and the shared event store
+- but `initialize` or `tools/list` could still stall or fall back because the
+  connector never completed a clean tool handshake after reconnect
+
+Operational rule:
+
+- Treat `enableJsonResponse + Accept normalization` as part of the reconnect
+  defense, not as a cosmetic compatibility tweak.
+- Keep it enabled across hot-reload, worker restart, reindex, and bridge
+  recovery paths unless a future client proves it no longer needs the shim.
+
+Validation:
+
+- direct shell handshake to `http://127.0.0.1:9999/mcp`
+- unit coverage in `tests/unit/layer-c-memory/mcp-http-session-routing.test.js`
+- unit coverage in `tests/unit/layer-c-memory/mcp-http-session-routing.session.test.js`
+
+Important runtime note:
+
+- `clearCacheOnly` is not enough when the change lives in the HTTP routing
+  layer itself.
+- For transport compatibility changes such as `Accept` normalization or JSON
+  response mode, use a true worker/process restart so the live Express/Hono
+  request path picks up the new code.

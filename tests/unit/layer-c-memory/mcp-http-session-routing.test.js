@@ -14,7 +14,8 @@ vi.mock('express', () => ({
 
 import {
   buildJsonRpcErrorResponse,
-  createConditionalJsonMiddleware
+  createConditionalJsonMiddleware,
+  normalizeMcpRequestHeaders
 } from '../../../src/layer-c-memory/mcp-http-session-routing.js';
 import {
   createLogger,
@@ -80,5 +81,42 @@ describe('buildJsonRpcErrorResponse', () => {
       },
       id: 99
     });
+  });
+});
+
+describe('normalizeMcpRequestHeaders', () => {
+  it('adds missing MCP accept types for POST requests', () => {
+    const logger = createLogger();
+    const req = {
+      method: 'POST',
+      path: '/mcp',
+      headers: {
+        accept: 'application/json'
+      },
+      rawHeaders: ['Accept', 'application/json']
+    };
+
+    normalizeMcpRequestHeaders(req, logger);
+
+    expect(req.headers.accept).toBe('application/json, text/event-stream');
+    expect(req.rawHeaders).toEqual(['Accept', 'application/json, text/event-stream']);
+    expect(logger.debug).toHaveBeenCalledWith(
+      '[MCP COMPAT] Normalized Accept header for POST /mcp -> application/json, text/event-stream'
+    );
+  });
+
+  it('adds the SSE accept type for GET requests', () => {
+    const logger = createLogger();
+    const req = {
+      method: 'GET',
+      path: '/mcp',
+      headers: {
+        accept: '*/*'
+      }
+    };
+
+    normalizeMcpRequestHeaders(req, logger);
+
+    expect(req.headers.accept).toBe('*/*, text/event-stream');
   });
 });

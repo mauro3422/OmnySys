@@ -18,6 +18,8 @@ import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl 
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
 const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
+const MCP_POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'];
+const MCP_GET_ACCEPT_TYPES = ['text/event-stream'];
 const sharedEventStore = new InMemoryEventStore();
 
 const RESOURCE_URIS = {
@@ -56,6 +58,78 @@ export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {
 
 export function createConditionalJsonMiddleware(logger) {
   return createConditionalJsonMiddlewareImpl(logger, buildJsonRpcErrorResponse);
+}
+
+function mergeAcceptHeader(currentValue, requiredTypes) {
+  const normalized = String(currentValue || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const seen = new Set(normalized.map((value) => value.toLowerCase()));
+  for (const requiredType of requiredTypes) {
+    if (!seen.has(requiredType)) {
+      normalized.push(requiredType);
+      seen.add(requiredType);
+    }
+  }
+
+  return normalized.join(', ');
+}
+
+function applyNodeHeaderOverride(req, headerName, headerValue) {
+  if (!req?.headers) {
+    return;
+  }
+
+  const normalizedHeaderName = headerName.toLowerCase();
+  req.headers[normalizedHeaderName] = headerValue;
+
+  if (req.headersDistinct && typeof req.headersDistinct === 'object') {
+    req.headersDistinct[normalizedHeaderName] = [headerValue];
+  }
+
+  if (!Array.isArray(req.rawHeaders)) {
+    return;
+  }
+
+  let replaced = false;
+  for (let index = 0; index < req.rawHeaders.length; index += 2) {
+    if (String(req.rawHeaders[index] || '').toLowerCase() === normalizedHeaderName) {
+      req.rawHeaders[index + 1] = headerValue;
+      replaced = true;
+    }
+  }
+
+  if (!replaced) {
+    req.rawHeaders.push(headerName, headerValue);
+  }
+}
+
+export function normalizeMcpRequestHeaders(req, logger) {
+  if (!req?.headers) {
+    return;
+  }
+
+  const method = String(req.method || '').toUpperCase();
+  const requiredTypes = method === 'POST'
+    ? MCP_POST_ACCEPT_TYPES
+    : method === 'GET'
+      ? MCP_GET_ACCEPT_TYPES
+      : null;
+
+  if (!requiredTypes) {
+    return;
+  }
+
+  const headerName = Object.keys(req.headers).find((name) => name.toLowerCase() === 'accept') || 'accept';
+  const originalValue = req.headers[headerName];
+  const normalizedValue = mergeAcceptHeader(originalValue, requiredTypes);
+
+  if (normalizedValue && normalizedValue !== originalValue) {
+    applyNodeHeaderOverride(req, headerName, normalizedValue);
+    logger?.debug?.(`[MCP COMPAT] Normalized Accept header for ${method} ${req.path || '/mcp'} -> ${normalizedValue}`);
+  }
 }
 
 export function buildServerForSession({
@@ -316,6 +390,7 @@ export async function handleMcpRequest(req, res, dependencies) {
         let resolvedSessionId = sessionId;
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
+          enableJsonResponse: true,
           eventStore: sharedEventStore,
           onsessioninitialized: (recoveredId) => {
             resolvedSessionId = recoveredId;
@@ -364,6 +439,7 @@ export async function handleMcpRequest(req, res, dependencies) {
 
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => sessionIdToUse,
+        enableJsonResponse: true,
         eventStore: sharedEventStore,
         onsessioninitialized: (newSessionId) => {
           resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {});
@@ -403,6 +479,7 @@ export async function handleMcpRequest(req, res, dependencies) {
       return;
     }
 
+    normalizeMcpRequestHeaders(req, logger);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
     logger.error(`Error handling MCP request: ${error.message}`);
