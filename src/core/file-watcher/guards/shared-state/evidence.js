@@ -1,6 +1,6 @@
 import { clearPersistedSharedStateContentionIssues } from './index.js';
-import { getSharedStateContentionSummaryForAtoms, resolveHotSharedStateAtom } from './shared-state-summary.js';
-import { buildSharedStateContentionIssue, resolveSharedStateContentionSeverity } from './shared-state-issues.js';
+import { getSharedStateContentionSummaryForAtoms, resolveHotSharedStateAtom } from './summary.js';
+import { buildSharedStateContentionIssue, resolveSharedStateContentionSeverity } from './issues.js';
 
 export async function collectSharedStateContentionEvidence(rootPath, filePath, atoms = [], options = {}) {
     const {

@@ -1,4 +1,4 @@
-import { detectSharedStateContention as detectSharedStateContentionImpl } from './shared-state/shared-state-core.js';
+import { detectSharedStateContention as detectSharedStateContentionImpl } from './core.js';
 
 export const detectSharedStateContention = detectSharedStateContentionImpl;
 

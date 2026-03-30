@@ -1,6 +1,6 @@
 import { createLogger } from '../../../../utils/logger.js';
-import { collectSharedStateContentionEvidence } from './shared-state-evidence.js';
-import { reportSharedStateContentionIssue } from './shared-state-reporting.js';
+import { collectSharedStateContentionEvidence } from './evidence.js';
+import { reportSharedStateContentionIssue } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:shared-state');
 
@@ -16,3 +16,5 @@ export async function detectSharedStateContention(rootPath, filePath, EventEmitt
         return null;
     }
 }
+
+export default detectSharedStateContention;

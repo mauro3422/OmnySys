@@ -19,6 +19,7 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
   if (
     normalizedPath.endsWith('/guard-standards.js') ||
     normalizedPath.endsWith('/shared-state-guard.js') ||
+    normalizedPath.endsWith('/shared-state/guard.js') ||
     normalizedPath.endsWith('/duplicate-conceptual-core.js')
   ) {
     return [];

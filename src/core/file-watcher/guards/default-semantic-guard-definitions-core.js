@@ -3,7 +3,7 @@ import { defineVersionedLazyGuard } from './guard-definition-factory.js';
 export const semanticGuardDefinitionsCore = [
   defineVersionedLazyGuard(
     'shared-state',
-    () => import('./shared-state-guard.js'),
+    () => import('./shared-state/guard.js'),
     (mod) => mod.detectSharedStateContention,
     'sem',
     '2.0.0',
