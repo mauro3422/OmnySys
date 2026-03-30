@@ -94,6 +94,13 @@ export {
 } from './compiler-metrics-snapshot.js';
 
 export {
+  evaluateToolRunTelemetry,
+  persistToolRunTelemetry,
+  buildToolRunTelemetrySummary,
+  summarizeToolRunTelemetry
+} from './tool-run-telemetry.js';
+
+export {
   buildSurfaceAudit,
   summarizeSurfaceAudit,
   summarizeSurfaceAuditForStatus

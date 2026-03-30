@@ -5,6 +5,8 @@ All notable changes to this project are documented here as a release index. Deta
 ## Unreleased
 
 - Added a persisted compiler metrics snapshot layer with historical trend, velocity, and scope-aware comparisons, plus a new `mcp_omnysystem_get_metrics_snapshot` admin tool and bootstrap/status visibility.
+- Added causal tool-run telemetry so MCP tool calls now persist before/after snapshots, repair scores, and success-rate aggregates in a dedicated SQLite history table.
+- Added behavioral readiness metrics (`driftScore`, `stabilityScore`, `successScore`, `mvpReady`) to the compiler snapshot so the system can track an MVP success threshold over time.
 - Added a dedicated metrics snapshot backlog and linked it to the folderization/naming roadmap so health progress can be tracked across runs instead of only as point-in-time summaries.
 - Added scope-aware duplicate consolidation hints so architectural debt scoring can prefer the nearest DB-backed folderized family before falling back to a global duplicate hint.
 - Added DB-first `scopePath` / `focusPath` folderization guidance so the system can prefer the nearest reusable family, distinguish helper and barrel policies, and stop selecting a far-away family when the local scope is clearer.

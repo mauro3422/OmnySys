@@ -9,10 +9,12 @@
 
 import { createHash } from 'node:crypto';
 import { normalizeCount } from './contract-helpers.js';
+import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
 import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary } from './compiler-runtime-metrics/summary.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
+import { buildToolRunTelemetrySummary } from './tool-run-telemetry.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
 function normalizeSnapshotPath(value = '') {
@@ -23,6 +25,10 @@ function normalizeSnapshotPath(value = '') {
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clampScore(value, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function parseJson(value, fallback = null) {
@@ -131,6 +137,78 @@ function normalizeRecentErrors(recentErrors = null) {
   };
 }
 
+function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null) {
+  const driftSummary = summarizeCompilerDriftAssessment(driftAssessment);
+  const penalty =
+    (asNumber(current.issueCount, 0) * 1.25) +
+    (asNumber(current.structuralGroups, 0) * 4.5) +
+    (asNumber(current.conceptualGroups, 0) * 4) +
+    (asNumber(current.pipelineOrphans, 0) * 5) +
+    (asNumber(current.watcherAlertCount, 0) * 2) +
+    (asNumber(current.recentWarningCount, 0) * 1) +
+    (asNumber(current.recentErrorCount, 0) * 6) +
+    (asNumber(current.phase2PendingFiles, 0) * 0.5) +
+    (asNumber(current.namingDebt, 0) * 0.02) +
+    (asNumber(current.flatFamilies, 0) * 0.05);
+
+  const coverageBonus = clampScore(asNumber(current.liveCoverageRatio, 0) * 100, 0, 100) * 0.12;
+  const trustBonus = current.databaseTrustworthy ? 8 : 0;
+  const trendBonus = clampScore(asNumber(trend.progressScore, 0) / 4, -10, 10);
+  const driftPenalty = (driftSummary.blocked * 20) + (driftSummary.stale * 10) + (driftSummary.missing * 6) + (driftSummary.partial * 2);
+
+  const stabilityScore = clampScore(100 - penalty + coverageBonus + trustBonus + trendBonus, 0, 100);
+  const driftScore = clampScore(100 - driftPenalty, 0, 100);
+  const successScore = clampScore(
+    (asNumber(current.healthScore, 0) * 0.28) +
+    (stabilityScore * 0.27) +
+    (driftScore * 0.25) +
+    (clampScore(asNumber(current.liveCoverageRatio, 0) * 100, 0, 100) * 0.20),
+    0,
+    100
+  );
+  const successThreshold = 85;
+  const mvpReady = successScore >= successThreshold
+    && current.databaseTrustworthy === true
+    && current.recentErrorCount === 0
+    && current.structuralGroups === 0
+    && current.conceptualGroups === 0
+    && current.pipelineOrphans === 0
+    && current.watcherAlertCount === 0
+    && current.liveCoverageRatio >= 0.98
+    && driftSummary.status !== 'blocked';
+
+  const behaviorState = !current.databaseTrustworthy || current.recentErrorCount > 0 || driftSummary.status === 'blocked'
+    ? 'blocked'
+    : successScore >= successThreshold
+      ? 'ready'
+      : successScore >= 70
+        ? 'watchful'
+        : 'noisy';
+
+  const readinessReason = mvpReady
+    ? 'System satisfies the current MVP success threshold.'
+    : !current.databaseTrustworthy
+      ? 'Database trust is still insufficient for MVP readiness.'
+      : current.recentErrorCount > 0
+        ? 'Recent errors are still active.'
+        : driftSummary.status === 'blocked'
+          ? driftSummary.nextAction || 'Drift surfaces are blocked.'
+          : successScore < successThreshold
+            ? `Success score ${Math.round(successScore)} is below the ${successThreshold} threshold.`
+            : 'System is close, but one or more readiness conditions are not yet satisfied.';
+
+  return {
+    driftState: driftSummary.status || 'missing',
+    driftScore: Number(driftScore.toFixed(2)),
+    stabilityScore: Number(stabilityScore.toFixed(2)),
+    successScore: Number(successScore.toFixed(2)),
+    successThreshold,
+    mvpReady,
+    behaviorState,
+    readinessReason
+  };
+}
+
 function buildCurrentMetrics({
   projectPath,
   scopePath,
@@ -141,6 +219,8 @@ function buildCurrentMetrics({
   repo = null,
   watcherAlerts = [],
   recentErrors = null,
+  driftAssessment = null,
+  toolRunTelemetryWindowDays = 7,
   phase2PendingFiles = null,
   mcpSessionSummary = null
 } = {}) {
@@ -187,12 +267,42 @@ function buildCurrentMetrics({
   const databaseHealth = compilerExplainability?.databaseHealth || null;
   const fileUniverse = compilerExplainability?.fileUniverseGranularity || null;
   const analysisGeneration = compilerExplainability?.analysisGeneration || null;
+  const compilerDriftAssessment = driftAssessment || compilerExplainability?.driftAssessment || null;
   const notificationCounts = normalizeRecentErrors(recentErrors);
   const pendingFiles = phase2PendingFiles ?? (() => {
     try {
       return db ? getPhase2PendingFiles(db) : 0;
     } catch {
       return 0;
+    }
+  })();
+  const behavior = buildBehaviorScore({
+    healthScore: databaseHealth?.healthScore,
+    issueCount: issueSummary.total,
+    structuralGroups: buildStructuralDuplicateGroups(db),
+    conceptualGroups: conceptualSummary.actionableGroups,
+    pipelineOrphans: pipelineOrphans.orphanCount,
+    watcherAlertCount: Array.isArray(watcherAlerts) ? watcherAlerts.length : 0,
+    recentWarningCount: notificationCounts.warnings,
+    recentErrorCount: notificationCounts.errors,
+    phase2PendingFiles: pendingFiles,
+    namingDebt: asNumber(folderization?.namingDebt?.renameTargetCount, 0),
+    flatFamilies: asNumber(folderization?.familyState?.stateCounts?.flat, 0),
+    liveCoverageRatio: asNumber(fileUniverse?.liveCoverageRatio, 0),
+    databaseTrustworthy: Boolean(databaseHealth?.healthy)
+  }, {
+    progressScore: 0
+  }, compilerDriftAssessment);
+  const toolTelemetry = (() => {
+    try {
+      return db ? buildToolRunTelemetrySummary(db, {
+        projectPath,
+        scopePath,
+        focusPath,
+        windowDays: toolRunTelemetryWindowDays
+      }) : null;
+    } catch {
+      return null;
     }
   })();
 
@@ -228,11 +338,25 @@ function buildCurrentMetrics({
     phase2PendingFiles: asNumber(pendingFiles, 0),
     mcpSessionSummary: mcpSessionSummary || null,
     databaseTrustworthy: Boolean(databaseHealth?.healthy),
-    folderizationDecision: folderization?.decision || null
+    folderizationDecision: folderization?.decision || null,
+    driftState: behavior.driftState,
+    driftScore: behavior.driftScore,
+    stabilityScore: behavior.stabilityScore,
+    successScore: behavior.successScore,
+    successThreshold: behavior.successThreshold,
+    mvpReady: behavior.mvpReady,
+    behaviorState: behavior.behaviorState,
+    readinessReason: behavior.readinessReason,
+    toolTelemetry
   };
 
   current.summaryText = [
     `health=${current.healthScore}/${current.healthGrade}`,
+    `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
+    `behavior=${current.behaviorState}`,
+    current.toolTelemetry?.totalRuns > 0
+      ? `tools=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.totalRuns}`
+      : 'tools=0',
     `issues=${current.issueCount}`,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
@@ -256,6 +380,9 @@ function summarizeHistoryRow(row = null) {
     pipelineOrphans: asNumber(row.pipeline_orphans, 0),
     namingTargets: asNumber(row.naming_targets, 0),
     liveCoverageRatio: asNumber(row.live_coverage_ratio, 0),
+    successScore: asNumber(row.success_score, 0),
+    stabilityScore: asNumber(row.stability_score, 0),
+    driftScore: asNumber(row.drift_score, 0),
     summaryText: row.summary_text || null
   };
 }
@@ -274,6 +401,9 @@ function summarizeCurrentSnapshotRow(current = null) {
     pipelineOrphans: asNumber(current.pipelineOrphans, 0),
     namingTargets: asNumber(current.namingTargets, 0),
     liveCoverageRatio: asNumber(current.liveCoverageRatio, 0),
+    successScore: asNumber(current.successScore, 0),
+    stabilityScore: asNumber(current.stabilityScore, 0),
+    driftScore: asNumber(current.driftScore, 0),
     summaryText: current.summaryText || null
   };
 }
@@ -351,6 +481,8 @@ function buildCompilerMetricsTrend(current = null, history = null, compareDays =
       daysSinceBaseline: 0,
       progressScore: 0,
       velocityPerDay: 0,
+      improvingStreak: false,
+      behaviorTrend: 0,
       summary: 'No metrics snapshot available.',
       deltaSincePrevious: {},
       deltaSinceBaseline: {}
@@ -413,6 +545,18 @@ function buildCompilerMetricsTrend(current = null, history = null, compareDays =
 
   const progressScore = calculateProgressScore(deltaSinceBaseline, current, baseline);
   const velocityPerDay = daysSinceBaseline > 0 ? Number((progressScore / daysSinceBaseline).toFixed(2)) : progressScore;
+  const recentWindow = Array.isArray(history?.entries) ? history.entries.slice(0, 4) : [];
+  const improvingStreak = recentWindow.slice(0, 3).every((entry, index, array) => {
+    const next = array[index + 1];
+    if (!next) {
+      return true;
+    }
+    return asNumber(entry?.healthScore, 0) >= asNumber(next?.healthScore, 0)
+      && asNumber(entry?.issueCount, 0) <= asNumber(next?.issueCount, 0);
+  });
+  const behaviorTrend = recentWindow.length >= 2
+    ? (asNumber(recentWindow[0]?.healthScore, 0) - asNumber(recentWindow[recentWindow.length - 1]?.healthScore, 0))
+    : 0;
   const status = !baseline
     ? 'initial'
     : progressScore > 0
@@ -428,6 +572,8 @@ function buildCompilerMetricsTrend(current = null, history = null, compareDays =
     daysSinceBaseline,
     progressScore: Number(progressScore.toFixed(2)),
     velocityPerDay,
+    improvingStreak,
+    behaviorTrend: Number(behaviorTrend.toFixed(2)),
     summary: !baseline
       ? 'First metrics snapshot captured.'
       : buildTrendSummary(deltaSinceBaseline),
@@ -476,6 +622,14 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
       recent_warning_count,
       recent_error_count,
       phase2_pending_files,
+      drift_state,
+      drift_score,
+      stability_score,
+      success_score,
+      success_threshold,
+      mvp_ready,
+      behavior_state,
+      readiness_reason,
       snapshot_fingerprint,
       summary_text,
       payload_json,
@@ -510,6 +664,14 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
       @recent_warning_count,
       @recent_error_count,
       @phase2_pending_files,
+      @drift_state,
+      @drift_score,
+      @stability_score,
+      @success_score,
+      @success_threshold,
+      @mvp_ready,
+      @behavior_state,
+      @readiness_reason,
       @snapshot_fingerprint,
       @summary_text,
       @payload_json,
@@ -558,6 +720,14 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
     recent_warning_count: asNumber(current.recentWarningCount, 0),
     recent_error_count: asNumber(current.recentErrorCount, 0),
     phase2_pending_files: asNumber(current.phase2PendingFiles, 0),
+    drift_state: current.driftState || null,
+    drift_score: asNumber(current.driftScore, 0),
+    stability_score: asNumber(current.stabilityScore, 0),
+    success_score: asNumber(current.successScore, 0),
+    success_threshold: asNumber(current.successThreshold, 0),
+    mvp_ready: current.mvpReady === true ? 1 : 0,
+    behavior_state: current.behaviorState || null,
+    readiness_reason: current.readinessReason || null,
     snapshot_fingerprint: current.snapshotFingerprint || buildSnapshotFingerprint(snapshot),
     summary_text: snapshot.summary || current.summaryText || null,
     payload_json: JSON.stringify(payload),
@@ -581,6 +751,7 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     mcpSessionSummary = null,
     phase2PendingFiles = null,
     compareDays = 3,
+    toolRunTelemetryWindowDays = 7,
     historyLimit = 12,
     persist = true
   } = options;
@@ -595,6 +766,8 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     repo,
     watcherAlerts,
     recentErrors,
+    driftAssessment: compilerExplainability?.driftAssessment || null,
+    toolRunTelemetryWindowDays,
     phase2PendingFiles,
     mcpSessionSummary
   });
@@ -625,15 +798,20 @@ export function buildCompilerMetricsSnapshot(options = {}) {
       };
 
   const trend = buildCompilerMetricsTrend(current, history, compareDays);
+  const behavior = buildBehaviorScore(current, trend, compilerExplainability?.driftAssessment || null);
+  Object.assign(current, behavior);
   const summary = [
     `Health ${current.healthScore}/${current.healthGrade}`,
     trend.summary,
     `progress=${trend.progressScore}`,
     `velocity/day=${trend.velocityPerDay}`,
+    `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
+    `behavior=${current.behaviorState}`,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
     `coverage=${Math.round(current.liveCoverageRatio * 100)}%`
   ].join(' | ');
+  current.summaryText = summary;
 
   const currentHistoryEntry = summarizeCurrentSnapshotRow(current);
   const returnedHistory = {
@@ -706,13 +884,38 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       phase2PendingFiles: current.phase2PendingFiles || 0,
       mcpSessionSummary: current.mcpSessionSummary || null,
       databaseTrustworthy: current.databaseTrustworthy || false,
-      folderizationDecision: current.folderizationDecision || null
+      folderizationDecision: current.folderizationDecision || null,
+      driftState: current.driftState || null,
+      driftScore: current.driftScore || 0,
+      stabilityScore: current.stabilityScore || 0,
+      successScore: current.successScore || 0,
+      successThreshold: current.successThreshold || 0,
+      mvpReady: current.mvpReady || false,
+      behaviorState: current.behaviorState || null,
+      readinessReason: current.readinessReason || null,
+      toolTelemetry: current.toolTelemetry ? {
+        totalRuns: current.toolTelemetry.totalRuns || 0,
+        successfulRuns: current.toolTelemetry.successfulRuns || 0,
+        repairedRuns: current.toolTelemetry.repairedRuns || 0,
+        thrashingRuns: current.toolTelemetry.thrashingRuns || 0,
+        repairYield: current.toolTelemetry.repairYield || 0,
+        toolSuccessRate: current.toolTelemetry.toolSuccessRate || 0,
+        alertClearanceRate: current.toolTelemetry.alertClearanceRate || 0,
+        errorClearanceRate: current.toolTelemetry.errorClearanceRate || 0,
+        averageDurationMs: current.toolTelemetry.averageDurationMs || 0,
+        averageRepairScore: current.toolTelemetry.averageRepairScore || 0,
+        lastRunAt: current.toolTelemetry.lastRunAt || null,
+        lastSuccessfulRunAt: current.toolTelemetry.lastSuccessfulRunAt || null,
+        topTools: Array.isArray(current.toolTelemetry.topTools) ? current.toolTelemetry.topTools.slice(0, 5) : []
+      } : null
     },
     trend: {
       status: trend.status || 'missing',
       summary: trend.summary || null,
       progressScore: trend.progressScore || 0,
       velocityPerDay: trend.velocityPerDay || 0,
+      improvingStreak: trend.improvingStreak || false,
+      behaviorTrend: trend.behaviorTrend || 0,
       daysSincePrevious: trend.daysSincePrevious || 0,
       daysSinceBaseline: trend.daysSinceBaseline || 0,
       baselineCapturedAt: trend.baselineCapturedAt || null,

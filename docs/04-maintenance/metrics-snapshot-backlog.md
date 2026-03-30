@@ -13,6 +13,8 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - The snapshot should be scope-aware, so `scopePath` and `focusPath` can drive local comparisons instead of only global repo-wide summaries.
 - The snapshot should combine health, duplicates, folderization, naming debt, file coverage, graph coverage, watcher noise, and recent error counts.
 - The snapshot should be able to show whether the MCP/runtime actually improved after a fix, not just whether a single check passed.
+- Tool executions should be measured as causal repair events, so the system can track how often a watcher alert or runtime error was followed by a successful tool run that improved the snapshot.
+- The snapshot should expose a success threshold and a behavioral readiness score so the project can answer "is the MVP healthy enough?" instead of only "is it healthy today?".
 
 ## Metrics To Persist
 
@@ -27,6 +29,9 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - `watcherAlertCount`
 - `phase2PendingFiles`
 - `analysisGenerationId`
+- `driftState`, `driftScore`, `stabilityScore`, `successScore`, `successThreshold`, `mvpReady`
+- `behaviorState`, `readinessReason`
+- Tool-run telemetry: `totalRuns`, `repairedRuns`, `thrashingRuns`, `toolSuccessRate`, `repairYield`, `alertClearanceRate`, `errorClearanceRate`, `averageDurationMs`
 
 ## Follow-Up Work
 
@@ -35,6 +40,8 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Add dashboard formatting that highlights trend direction and velocity, not only current health.
 - Add a dedicated snapshot diff view for folderization, naming debt, duplicate pressure, and error resolution.
 - Make the snapshot tool support exporting a compact chart-friendly payload for external reporting.
+- Persist causal tool-run telemetry so watcher alerts, errors, and fixes can be scored as a repair cycle instead of inferred only from point-in-time snapshots.
+- Add an MVP readiness dashboard that explains why the system is or is not above the success threshold.
 
 ## Working Notes
 
@@ -42,3 +49,4 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Use the DB as the source of truth for historical comparisons.
 - Prefer compact, reusable summary fields alongside a raw JSON payload.
 - Keep `scopePath` and `focusPath` normalized before writing or querying snapshots.
+- Use `mcp_tool_runs` as the source of truth for tool success/failure/repair metrics.

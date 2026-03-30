@@ -439,6 +439,48 @@ export const TABLE_DEFINITIONS = {
     ]
   },
 
+  mcp_tool_runs: {
+    description: 'Historial persistente de ejecuciones de tools MCP para medir reparacion, drift y estabilidad',
+    addedIn: 'v3.1-metrics',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'project_path', type: 'TEXT', nullable: false, description: 'Proyecto donde se ejecuto la tool' },
+      { name: 'tool_name', type: 'TEXT', nullable: false, description: 'Nombre de la tool ejecutada' },
+      { name: 'scope_path', type: 'TEXT', nullable: true, description: 'Scope contextual del run' },
+      { name: 'focus_path', type: 'TEXT', nullable: true, description: 'Focus contextual del run' },
+      { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen del registro: mcp.tool' },
+      { name: 'started_at', type: 'TEXT', nullable: false, description: 'Timestamp de inicio' },
+      { name: 'ended_at', type: 'TEXT', nullable: false, description: 'Timestamp de fin' },
+      { name: 'duration_ms', type: 'REAL', default: 0, description: 'Duracion total del run' },
+      { name: 'success', type: 'BOOLEAN', default: 0, description: 'Si la tool termino sin error' },
+      { name: 'error_message', type: 'TEXT', nullable: true, description: 'Error principal si fallo' },
+      { name: 'before_watcher_alert_count', type: 'INTEGER', default: 0, description: 'Alertas watcher antes del run' },
+      { name: 'after_watcher_alert_count', type: 'INTEGER', default: 0, description: 'Alertas watcher despues del run' },
+      { name: 'before_recent_warning_count', type: 'INTEGER', default: 0, description: 'Warnings recientes antes del run' },
+      { name: 'after_recent_warning_count', type: 'INTEGER', default: 0, description: 'Warnings recientes despues del run' },
+      { name: 'before_recent_error_count', type: 'INTEGER', default: 0, description: 'Errores recientes antes del run' },
+      { name: 'after_recent_error_count', type: 'INTEGER', default: 0, description: 'Errores recientes despues del run' },
+      { name: 'alert_clearance', type: 'INTEGER', default: 0, description: 'Delta neto de alertas resueltas' },
+      { name: 'error_clearance', type: 'INTEGER', default: 0, description: 'Delta neto de errores resueltos' },
+      { name: 'warning_clearance', type: 'INTEGER', default: 0, description: 'Delta neto de warnings resueltos' },
+      { name: 'repair_status', type: 'TEXT', nullable: true, description: 'Estado: repaired, stable, thrashing, failed' },
+      { name: 'repair_score', type: 'REAL', default: 0, description: 'Score agregado de reparacion' },
+      { name: 'before_snapshot_json', type: 'TEXT', nullable: true, description: 'Snapshot compacto previo al run' },
+      { name: 'after_snapshot_json', type: 'TEXT', nullable: true, description: 'Snapshot compacto posterior al run' },
+      { name: 'before_notifications_json', type: 'TEXT', nullable: true, description: 'Notificaciones recientes previas' },
+      { name: 'after_notifications_json', type: 'TEXT', nullable: true, description: 'Notificaciones recientes posteriores' },
+      { name: 'delta_json', type: 'TEXT', nullable: true, description: 'Deltas entre snapshots' },
+      { name: 'snapshot_fingerprint', type: 'TEXT', nullable: false, description: 'Fingerprint estable del run' },
+      { name: 'args_json', type: 'TEXT', nullable: true, description: 'Args de la tool' }
+    ],
+    indexes: [
+      { name: 'idx_mcp_tool_runs_project_time', columns: ['project_path', 'started_at DESC'] },
+      { name: 'idx_mcp_tool_runs_tool_time', columns: ['project_path', 'tool_name', 'ended_at DESC'] },
+      { name: 'idx_mcp_tool_runs_scope', columns: ['project_path', 'scope_path', 'focus_path'] },
+      { name: 'idx_mcp_tool_runs_fingerprint', columns: ['snapshot_fingerprint'] }
+    ]
+  },
+
   compiler_scanned_files: {
     description: 'Registro de archivos escaneados por el compilador para validación de cobertura',
     addedIn: 'v0.9.110',
@@ -486,6 +528,14 @@ export const TABLE_DEFINITIONS = {
       { name: 'recent_warning_count', type: 'INTEGER', default: 0, description: 'Warnings recientes' },
       { name: 'recent_error_count', type: 'INTEGER', default: 0, description: 'Errores recientes' },
       { name: 'phase2_pending_files', type: 'INTEGER', default: 0, description: 'Archivos pendientes de Phase 2' },
+      { name: 'drift_state', type: 'TEXT', nullable: true, description: 'Estado agregado de drift/estabilidad' },
+      { name: 'drift_score', type: 'REAL', default: 0, description: 'Score de drift del snapshot' },
+      { name: 'stability_score', type: 'REAL', default: 0, description: 'Score de estabilidad operacional' },
+      { name: 'success_score', type: 'REAL', default: 0, description: 'Score agregado de éxito/MVP' },
+      { name: 'success_threshold', type: 'REAL', default: 0, description: 'Umbral de éxito objetivo' },
+      { name: 'mvp_ready', type: 'INTEGER', default: 0, description: 'Indicador de readiness MVP' },
+      { name: 'behavior_state', type: 'TEXT', nullable: true, description: 'Estado conductual del sistema' },
+      { name: 'readiness_reason', type: 'TEXT', nullable: true, description: 'Razón principal del estado de readiness' },
       { name: 'snapshot_fingerprint', type: 'TEXT', nullable: false, description: 'Fingerprint estable del snapshot' },
       { name: 'summary_text', type: 'TEXT', nullable: true, description: 'Resumen legible del snapshot' },
       { name: 'payload_json', type: 'TEXT', nullable: true, description: 'Payload completo del snapshot' },
