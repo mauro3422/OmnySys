@@ -12,7 +12,8 @@ import {
   buildTelemetryProvenance,
   summarizeSurfaceAuditForStatus,
   buildCompilerMetricsSnapshot,
-  buildCompilerHealthDashboard
+  buildCompilerHealthDashboard,
+  buildCompilerHealthPanel
 } from '../../../shared/compiler/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
@@ -136,6 +137,7 @@ export async function get_server_status(args, context) {
       watcherAlerts: compactNotifications.watcherAlerts || [],
       recentErrors
     });
+    status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
     const toolInventorySnapshot = buildInventorySnapshot({ includeSchemas: false });
     status.toolInventory = {
       snapshot: toolInventorySnapshot,

@@ -7,7 +7,8 @@ import {
   summarizeSurfaceAuditForStatus,
   summarizeCompilerDriftAssessment,
   summarizeCompilerMetricsSnapshot,
-  summarizeCompilerHealthDashboard
+  summarizeCompilerHealthDashboard,
+  summarizeCompilerHealthPanel
 } from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
@@ -340,6 +341,31 @@ export function compactCompilerHealthDashboardSummary(dashboard) {
     } : null,
     history: compact.history,
     summary: compact.summary
+  };
+}
+
+export function compactCompilerHealthPanelSummary(panel) {
+  const compact = summarizeCompilerHealthPanel(panel);
+  if (!compact) return null;
+
+  return {
+    projectPath: compact.projectPath,
+    scopePath: compact.scopePath,
+    focusPath: compact.focusPath,
+    snapshotKind: compact.snapshotKind,
+    captureSource: compact.captureSource,
+    capturedAt: compact.capturedAt,
+    status: compact.status,
+    headline: compact.headline,
+    now: compact.now,
+    trend: compact.trend,
+    tools: compact.tools,
+    topRegressors: takeSample(compact.topRegressors || [], 3),
+    topImprovements: takeSample(compact.topImprovements || [], 3),
+    topRecommendations: takeSample(compact.topRecommendations || [], 3),
+    nextAction: compact.nextAction,
+    summary: compact.summary,
+    oneLine: compact.oneLine
   };
 }
 

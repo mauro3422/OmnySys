@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildCompilerHealthDashboard,
-  summarizeCompilerHealthDashboard
+  buildCompilerHealthPanel,
+  summarizeCompilerHealthDashboard,
+  summarizeCompilerHealthPanel
 } from '../../../../src/shared/compiler/compiler-health-dashboard.js';
 
 describe('compiler-health-dashboard', () => {
@@ -140,5 +142,52 @@ describe('compiler-health-dashboard', () => {
     expect(compact.trend.velocityPerDay).toBe(1.5);
     expect(compact.regressors.length).toBeGreaterThan(0);
     expect(compact.recentErrors.errors).toBe(0);
+  });
+
+  it('builds a one-line health panel from the dashboard', () => {
+    const dashboard = buildCompilerHealthDashboard({
+      projectPath: 'C:/Dev/OmnySystem',
+      current: {
+        healthScore: 88,
+        healthGrade: 'A',
+        successScore: 84,
+        successThreshold: 85,
+        mvpReady: false,
+        behaviorState: 'watchful',
+        driftState: 'stable',
+        driftScore: 90,
+        stabilityScore: 86,
+        readinessReason: 'Success score 84 is below the 85 threshold.',
+        toolTelemetry: {
+          totalRuns: 4,
+          repairYield: 0.5,
+          toolSuccessRate: 0.75,
+          alertClearanceRate: 0.5,
+          errorClearanceRate: 0.5,
+          topTools: [{ toolName: 'mcp_omnysystem_get_health_snapshot', repairScore: 8 }]
+        },
+        summaryText: 'health=88/A | success=84/85'
+      },
+      trend: {
+        status: 'improving',
+        velocityPerDay: 2,
+        progressScore: 3,
+        improvingStreak: true,
+        behaviorTrend: 1,
+        summary: 'health +3'
+      }
+    }, null, {});
+
+    const panel = buildCompilerHealthPanel(dashboard);
+
+    expect(panel.headline).toContain('A 88/85');
+    expect(panel.oneLine).toContain('now=88/A');
+    expect(panel.topRegressors).toEqual([]);
+    expect(panel.topImprovements).toEqual([]);
+
+    const compact = summarizeCompilerHealthPanel(panel);
+    expect(compact.now.healthScore).toBe(88);
+    expect(compact.trend.velocityPerDay).toBe(2);
+    expect(compact.oneLine).toContain('ready=no');
   });
 });

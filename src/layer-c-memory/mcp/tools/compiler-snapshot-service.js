@@ -8,6 +8,7 @@ import { loadNotifications, buildRecentErrorsResponse } from './status-notificat
 import { loadCompilerExplainability } from './status-compiler-explainability.js';
 import {
   buildCompilerHealthDashboard,
+  buildCompilerHealthPanel,
   buildCompilerMetricsSnapshot,
   summarizeCompilerMetricsSnapshot
 } from '../../../shared/compiler/index.js';
@@ -57,6 +58,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     watcherAlerts: compactNotifications.watcherAlerts || [],
     recentErrors
   });
+  const healthPanel = buildCompilerHealthPanel(healthDashboard);
 
   return {
     success: true,
@@ -68,7 +70,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     compilerExplainability,
     snapshot,
     compactSnapshot,
-    healthDashboard
+    healthDashboard,
+    healthPanel
   };
 }
 

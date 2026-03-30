@@ -6,6 +6,7 @@ export {
   compactDatabaseHealth,
   compactCompilerExplainabilitySummary,
   compactCompilerHealthDashboardSummary,
+  compactCompilerHealthPanelSummary,
   compactCompilerMetricsSnapshotSummary,
   compactRepositoryDiagnostics,
   summarizeNodeVitals,

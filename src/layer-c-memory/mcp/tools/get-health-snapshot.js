@@ -31,10 +31,12 @@ export async function get_health_snapshot(args, context) {
       success: true,
       aggregationType: 'health_snapshot',
       dashboard: result.healthDashboard,
+      panel: result.healthPanel,
       snapshot: result.compactSnapshot,
       summary: result.snapshot.summary,
       history: result.snapshot.history,
       trend: result.snapshot.trend,
+      oneLine: result.healthPanel?.oneLine || null,
       compilerExplainability: result.compilerExplainability ? {
         databaseHealth: result.compilerExplainability.databaseHealth || null,
         folderization: result.compilerExplainability.folderization || null,

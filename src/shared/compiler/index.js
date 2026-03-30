@@ -95,7 +95,9 @@ export {
 
 export {
   buildCompilerHealthDashboard,
-  summarizeCompilerHealthDashboard
+  summarizeCompilerHealthDashboard,
+  buildCompilerHealthPanel,
+  summarizeCompilerHealthPanel
 } from './compiler-health-dashboard.js';
 
 export {

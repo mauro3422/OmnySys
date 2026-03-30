@@ -2,7 +2,7 @@
  * Final status summary assembly.
  */
 
-import { compactDatabaseHealth, compactCompilerExplainabilitySummary, compactCompilerHealthDashboardSummary, compactCompilerMetricsSnapshotSummary, compactRepositoryDiagnostics, summarizeNodeVitals, takeSample } from './status-summary-helpers.js';
+import { compactDatabaseHealth, compactCompilerExplainabilitySummary, compactCompilerHealthDashboardSummary, compactCompilerHealthPanelSummary, compactCompilerMetricsSnapshotSummary, compactRepositoryDiagnostics, summarizeNodeVitals, takeSample } from './status-summary-helpers.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 import { compactToolInventory } from './status-tool-inventory.js';
 import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
@@ -88,6 +88,7 @@ export function summarizeStatus(status, recentErrors) {
     compilerExplainability: compactCompilerExplainabilitySummary(status.compilerExplainability),
     metricsSnapshot: compactCompilerMetricsSnapshotSummary(status.metricsSnapshot),
     healthSnapshot: compactCompilerHealthDashboardSummary(status.healthSnapshot),
+    healthPanel: compactCompilerHealthPanelSummary(status.healthPanel),
     toolInventory: compactToolInventory(status.toolInventory),
     surfaceAudit: summarizeSurfaceAuditForStatus(status.surfaceAudit || status.compilerExplainability?.surfaceAudit),
     signalConfidence: status.signalConfidence || null,

@@ -300,7 +300,99 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
   };
 }
 
+export function buildCompilerHealthPanel(dashboard = null) {
+  const compact = summarizeCompilerHealthDashboard(dashboard);
+  if (!compact) {
+    return null;
+  }
+
+  const topRegressors = takeSample(compact.regressors || [], 3);
+  const topImprovements = takeSample(compact.improvements || [], 3);
+  const topRecommendations = takeSample(compact.recommendations || [], 3);
+  const now = compact.health || {};
+  const tools = compact.toolTelemetry || {};
+
+  return {
+    projectPath: compact.projectPath,
+    scopePath: compact.scopePath,
+    focusPath: compact.focusPath,
+    snapshotKind: compact.snapshotKind,
+    captureSource: compact.captureSource,
+    capturedAt: compact.capturedAt,
+    status: compact.status,
+    headline: `${now.healthGrade || 'F'} ${Math.round(now.healthScore || 0)}/${Math.round(now.successThreshold || 0)} ${now.mvpReady ? 'ready' : now.behaviorState || 'unknown'}`,
+    now: {
+      healthScore: now.healthScore || 0,
+      healthGrade: now.healthGrade || 'F',
+      successScore: now.successScore || 0,
+      successThreshold: now.successThreshold || 0,
+      mvpReady: now.mvpReady === true,
+      behaviorState: now.behaviorState || null,
+      driftState: now.driftState || null,
+      driftScore: now.driftScore || 0,
+      stabilityScore: now.stabilityScore || 0,
+      readinessReason: now.readinessReason || null
+    },
+    trend: compact.trend ? {
+      status: compact.trend.status,
+      progressScore: compact.trend.progressScore,
+      velocityPerDay: compact.trend.velocityPerDay,
+      improvingStreak: compact.trend.improvingStreak,
+      behaviorTrend: compact.trend.behaviorTrend,
+      summary: compact.trend.summary
+    } : null,
+    tools: tools ? {
+      totalRuns: tools.totalRuns || 0,
+      toolSuccessRate: tools.toolSuccessRate || 0,
+      repairYield: tools.repairYield || 0,
+      alertClearanceRate: tools.alertClearanceRate || 0,
+      errorClearanceRate: tools.errorClearanceRate || 0,
+      averageDurationMs: tools.averageDurationMs || 0,
+      topTools: takeSample(tools.topTools || [], 3)
+    } : null,
+    topRegressors,
+    topImprovements,
+    topRecommendations,
+    nextAction: topRecommendations[0]?.value || now.readinessReason || compact.summary || null,
+    summary: compact.summary || null,
+    oneLine: [
+      `now=${now.healthScore || 0}/${now.healthGrade || 'F'}`,
+      `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
+      `tools=${tools?.repairYield || 0}`,
+      `ready=${now.mvpReady ? 'yes' : 'no'}`
+    ].join(' | ')
+  };
+}
+
+export function summarizeCompilerHealthPanel(panel = null) {
+  if (!panel || typeof panel !== 'object') {
+    return null;
+  }
+
+  return {
+    projectPath: panel.projectPath || null,
+    scopePath: panel.scopePath || null,
+    focusPath: panel.focusPath || null,
+    snapshotKind: panel.snapshotKind || 'status',
+    captureSource: panel.captureSource || null,
+    capturedAt: panel.capturedAt || null,
+    status: panel.status || null,
+    headline: panel.headline || null,
+    now: panel.now || null,
+    trend: panel.trend || null,
+    tools: panel.tools || null,
+    topRegressors: takeSample(panel.topRegressors || [], 3),
+    topImprovements: takeSample(panel.topImprovements || [], 3),
+    topRecommendations: takeSample(panel.topRecommendations || [], 3),
+    nextAction: panel.nextAction || null,
+    summary: panel.summary || null,
+    oneLine: panel.oneLine || null
+  };
+}
+
 export default {
   buildCompilerHealthDashboard,
-  summarizeCompilerHealthDashboard
+  summarizeCompilerHealthDashboard,
+  buildCompilerHealthPanel,
+  summarizeCompilerHealthPanel
 };
