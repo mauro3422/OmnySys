@@ -11,7 +11,7 @@ import { createPositionalFinding } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 function importsDataGatewayContract(source = '') {
-  return /from\s+['"][^'"]*shared\/compiler\/(?:index\.js|data-gateway-contract\.js)['"]/.test(source);
+  return /from\s+['"][^'"]*shared\/compiler\/(?:index\.js|contract\.js)['"]/.test(source);
 }
 
 function touchesCanonicalGatewaySurfaces(source = '') {
@@ -20,13 +20,13 @@ function touchesCanonicalGatewaySurfaces(source = '') {
 
 function isCanonicalGatewayModule(normalizedPath = '') {
   return [
-    '/shared/compiler/data-gateway-contract.js',
-    '/shared/compiler/data-gateway-contract-helpers.js',
-    '/shared/compiler/compiler-diagnostics-snapshot.js',
+    '/shared/compiler/contract.js',
+    '/shared/compiler/contract-helpers.js',
+    '/shared/compiler/snapshot.js',
     '/shared/compiler/surface-audit.js',
     '/shared/compiler/compiler-contract-layer.js',
     '/shared/compiler/standardization-report.js',
-    '/shared/compiler/database-health.js',
+    '/shared/compiler/summary.js',
     '/shared/compiler/live-row-reconciliation.js',
     '/shared/compiler/metadata-extraction-coverage/coverage.js',
     '/shared/compiler/file-import-evidence.js',

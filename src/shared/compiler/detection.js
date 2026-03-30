@@ -1,12 +1,14 @@
-import {
-  collectManualPolicyFindingsForCompiler,
-  collectConformanceFindingsForCompiler,
-  buildCompilerPolicyImportMap
-} from './helpers.js';
+import { collectManualReuseFindings } from './reuse-findings.js';
+import { collectConformanceFindings } from './policy-conformance-rules.js';
+import { buildPolicyImportMap } from './reuse.js';
 import { isCompilerRuntimeFile } from './file-discovery.js';
 
 function normalizePathLocal(p) {
   return p ? p.replace(/\\/g, '/') : p;
+}
+
+function collectManualPolicyFindingsForCompiler(normalizedPath, source, imports) {
+  return collectManualReuseFindings(normalizedPath, source, imports);
 }
 
 export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
@@ -25,9 +27,9 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
     return [];
   }
 
-  const policyImports = buildCompilerPolicyImportMap(source);
+  const policyImports = buildPolicyImportMap(source);
   return [
     ...collectManualPolicyFindingsForCompiler(normalizedPath, source, policyImports),
-    ...collectConformanceFindingsForCompiler(normalizedPath, source)
+    ...collectConformanceFindings(normalizedPath, source)
   ];
 }

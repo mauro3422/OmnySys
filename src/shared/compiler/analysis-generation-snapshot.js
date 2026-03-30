@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { buildDerivedFeatureRegistry } from './registry.js';
-import { normalizeCount } from './analysis-generation-counts.js';
+import { normalizeCount } from './generation-counts.js';
 import { buildGenerationDrift } from './analysis-generation-drift.js';
 
 export function createGenerationFingerprint(payload) {

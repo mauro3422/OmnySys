@@ -8,12 +8,12 @@
  * @module shared/compiler/data-gateway-contract
  */
 
-import { buildSurfaceFreshnessLedger, summarizeSurfaceFreshnessLedger } from './data-gateway-contract-summary.js';
+import { buildSurfaceFreshnessLedger, summarizeSurfaceFreshnessLedger } from './contract-summary.js';
 
 export {
   buildSurfaceFreshnessLedger,
   summarizeSurfaceFreshnessLedger
-} from './data-gateway-contract-summary.js';
+} from './contract-summary.js';
 
 export function buildDataGatewayContract(options = {}) {
   return buildSurfaceFreshnessLedger(options);

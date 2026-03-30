@@ -1,4 +1,4 @@
-import { normalizeCount } from './analysis-generation-counts.js';
+import { normalizeCount } from './generation-counts.js';
 
 export function summarizeAnalysisGeneration(generation = null) {
   if (!generation) {

@@ -12,7 +12,7 @@ import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 
 function isCanonicalSummaryModule(normalizedPath = '') {
   return [
-    '/shared/compiler/compiler-diagnostics-snapshot.js',
+    '/shared/compiler/snapshot.js',
     '/shared/compiler/surface-audit.js',
     '/shared/compiler/status-summary.js',
     '/shared/compiler/status-compiler-explainability.js',

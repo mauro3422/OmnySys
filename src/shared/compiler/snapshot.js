@@ -9,11 +9,11 @@
 
 import { discoverProjectSourceFiles } from './file-discovery.js';
 import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
-import { collectCanonicalAdoptionEvidence } from './compiler-diagnostics-snapshot-evidence.js';
+import { collectCanonicalAdoptionEvidence } from './evidence.js';
 import {
   buildCompilerDiagnosticsSnapshotContracts,
   getCompilerDiagnosticsDatabaseSurfaces
-} from './compiler-diagnostics-snapshot-contracts.js';
+} from './contracts.js';
 
 async function buildCompilerDiagnosticsSnapshotPayload({
   projectPath,

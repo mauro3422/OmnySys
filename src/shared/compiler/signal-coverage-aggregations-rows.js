@@ -1,4 +1,4 @@
-import { DERIVED_SCORE_SIGNALS, summarizeFieldCoverageRow } from './signal-coverage-helpers.js';
+import { DERIVED_SCORE_SIGNALS, summarizeFieldCoverageRow } from './helpers.js';
 
 export function summarizePhysicsCoverageRow(row = {}) {
   const total = Number(row.total) || 0;

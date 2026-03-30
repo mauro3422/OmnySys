@@ -21,7 +21,7 @@ export {
 
 export {
   normalizeCount
-} from './data-gateway-contract-helpers.js';
+} from './contract-helpers.js';
 
 export {
   LANGUAGE_ADAPTER_CONTRACT,
@@ -64,7 +64,7 @@ export {
 
 export {
   loadCompilerDiagnosticsSnapshot
-} from './compiler-diagnostics-snapshot.js';
+} from './snapshot.js';
 
 export {
   classifyAtomOperationalRole,
@@ -86,7 +86,7 @@ export {
   buildAnalysisGenerationSnapshot,
   compareAnalysisGenerations,
   summarizeAnalysisGeneration
-} from './analysis-generation.js';
+} from './counts-generation.js';
 
 export {
   buildSurfaceAudit,
@@ -109,7 +109,7 @@ export {
   summarizeSurfaceFreshnessLedger,
   buildDataGatewayContract,
   summarizeDataGatewayContract
-} from './data-gateway-contract.js';
+} from './contract.js';
 
 export {
   buildTelemetryProvenance,
@@ -216,7 +216,7 @@ export {
 
 export {
   getDatabaseHealthSummary
-} from './database-health.js';
+} from './summary.js';
 
 export {
   getFileUniverseGranularity
@@ -355,7 +355,7 @@ export {
   summarizePhysicsCoverageRow,
   classifyFieldCoverage,
   collectPipelineFieldCoverageFindings
-} from './signal-coverage.js';
+} from './coverage.js';
 
 export {
   getLiveFileSetSql,

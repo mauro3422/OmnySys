@@ -17,7 +17,7 @@ import {
   buildSurfaceInventory
 } from './compiler-contract-layer-helpers.js';
 import { buildDerivedFeatureRegistry } from './registry.js';
-import { summarizeDataGatewayContract } from './data-gateway-contract.js';
+import { summarizeDataGatewayContract } from './contract.js';
 import { buildApiGovernance, buildInvariants } from './compiler-contract-layer-governance.js';
 
 export function buildCompilerContractLayer({

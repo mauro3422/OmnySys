@@ -1,4 +1,4 @@
-export { normalizeCount } from './analysis-generation-counts.js';
+export { normalizeCount } from './generation-counts.js';
 
 function normalizeText(value, fallback = '') {
   const text = String(value || '').trim();

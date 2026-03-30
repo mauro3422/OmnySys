@@ -21,7 +21,7 @@ function looksLikeCanonicalDiagnosticsBypass(normalizedPath, source = '') {
   }
 
   if (
-    normalizedPath.endsWith('/compiler-diagnostics-snapshot.js') ||
+    normalizedPath.endsWith('/snapshot.js') ||
     normalizedPath.startsWith('src/shared/compiler/')
   ) {
     return false;

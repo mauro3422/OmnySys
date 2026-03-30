@@ -2,7 +2,7 @@ import { getPipelineFieldCoverageContext } from './pipeline-health-context.js';
 import {
   PIPELINE_FIELD_COVERAGE_SIGNALS,
   classifyFieldCoverage
-} from './signal-coverage-helpers.js';
+} from './helpers.js';
 import { summarizeCentralityCoverageRow } from './signal-coverage-aggregations-rows.js';
 
 export function collectPipelineFieldCoverageFindings({ db, phase2PendingFiles = 0 } = {}) {

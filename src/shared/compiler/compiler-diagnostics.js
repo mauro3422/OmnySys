@@ -14,7 +14,7 @@ const CANONICAL_COMPILER_POLICY_SURFACES = new Set([
   'src/shared/compiler/duplicate-signal-policy.js',
   'src/shared/compiler/duplicate-utils.js',
   'src/shared/compiler/compiler-contract-layer.js',
-  'src/shared/compiler/compiler-diagnostics-snapshot.js'
+  'src/shared/compiler/snapshot.js'
 ]);
 
 function isCanonicalCompilerPolicySurface(filePath = '') {

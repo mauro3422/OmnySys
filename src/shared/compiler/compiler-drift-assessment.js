@@ -1,6 +1,6 @@
-import { normalizeCount } from './data-gateway-contract-helpers.js';
-import { summarizeAnalysisGeneration } from './analysis-generation.js';
-import { summarizeDataGatewayContract } from './data-gateway-contract.js';
+import { normalizeCount } from './contract-helpers.js';
+import { summarizeAnalysisGeneration } from './counts-generation.js';
+import { summarizeDataGatewayContract } from './contract.js';
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 
 const signal = (value) => value;

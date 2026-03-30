@@ -4,8 +4,8 @@
  * @module shared/compiler/surface-audit-core
  */
 
-import { summarizeAnalysisGeneration } from '../analysis-generation.js';
-import { summarizeDataGatewayContract } from '../data-gateway-contract.js';
+import { summarizeAnalysisGeneration } from '../counts-generation.js';
+import { summarizeDataGatewayContract } from '../contract.js';
 import { summarizeMetadataExtractionCoverage } from '../metadata-extraction-coverage/coverage.js';
 import {
   compactSurfaceEntry,

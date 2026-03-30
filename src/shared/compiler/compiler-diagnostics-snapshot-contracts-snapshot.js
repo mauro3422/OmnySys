@@ -1,8 +1,8 @@
 import { summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
-import { buildAnalysisGenerationSnapshot } from './analysis-generation.js';
+import { buildAnalysisGenerationSnapshot } from './counts-generation.js';
 import { buildCompilerDriftAssessment } from './compiler-drift-assessment.js';
-import { buildDataGatewayContract } from './data-gateway-contract.js';
+import { buildDataGatewayContract } from './contract.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer.js';
 import { buildSurfaceAudit } from './surface-audit/audit.js';

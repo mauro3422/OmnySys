@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Stabilized the `src/shared/compiler` rename wave by separating the policy-conformance summary surface into `policy-conformance-summary.js`, reconnecting `detection.js` to the canonical reuse imports, and keeping `summary.js` reserved for database-health reporting.
 - Clarified bootstrap dashboard duplicate reporting so `0 conceptual groups` now shows raw conceptual candidate counts when present, avoiding the appearance of a disconnected metric source during startup.
 - Folderized the `dead-code` guard family into `src/core/file-watcher/guards/dead-code` and moved the structural duplicate detection core into `src/core/file-watcher/guards/duplicate-structural` with a folder barrel.
 - Folderized `integrity-guard` into `src/core/file-watcher/guards/integrity-guard` and normalized the guard loader to import the new folderized wrapper.

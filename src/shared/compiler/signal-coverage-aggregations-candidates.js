@@ -5,7 +5,7 @@ import {
   getSharedStateCandidates,
   isProductionCandidate,
   getSignalValue
-} from './signal-coverage-helpers.js';
+} from './helpers.js';
 
 export function summarizeDerivedScoreCoverage(atoms = [], options = {}) {
   const { filePath = '' } = options;

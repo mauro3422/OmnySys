@@ -1,4 +1,4 @@
-export { normalizeCount } from './analysis-generation-counts.js';
+export { normalizeCount } from './generation-counts.js';
 export {
   createGenerationFingerprint,
   buildAnalysisGenerationSnapshot
@@ -9,4 +9,4 @@ export {
 } from './analysis-generation-drift.js';
 export {
   summarizeAnalysisGeneration
-} from './analysis-generation-summary.js';
+} from './generation-summary.js';

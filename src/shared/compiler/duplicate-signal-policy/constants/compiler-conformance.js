@@ -57,7 +57,7 @@ export const COMPILER_POLICY_ORCHESTRATION_FILE_MARKERS = [
     '/shared/compiler/duplicate-utils.js',
     '/shared/compiler/duplicate-debt.js',
     '/shared/compiler/duplicate-remediation.js',
-    '/shared/compiler/compiler-diagnostics-snapshot.js',
+    '/shared/compiler/snapshot.js',
     '/shared/compiler/compiler-contract-layer.js'
 ];
 

@@ -14,4 +14,4 @@ export {
 export {
   summarizeCompilerPolicyDrift,
   buildCompilerPolicyIssueSummary
-} from './summary.js';
+} from './policy-conformance-summary.js';

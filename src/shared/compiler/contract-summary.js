@@ -1,11 +1,11 @@
-import { summarizeAnalysisGeneration } from './analysis-generation.js';
+import { summarizeAnalysisGeneration } from './counts-generation.js';
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import {
   buildSurfaceEntry,
   summarizeSurfaceEntries,
   normalizeFileImportEvidenceSurface,
   normalizePersistedFileCoverageSurface
-} from './data-gateway-contract-helpers.js';
+} from './contract-helpers.js';
 
 export function buildSurfaceFreshnessLedger({
   analysisGeneration = null,

@@ -62,7 +62,7 @@ vi.mock('../../../../src/shared/compiler/file-universe-granularity.js', () => ({
   getFileUniverseGranularity: mocks.getFileUniverseGranularity
 }));
 
-vi.mock('../../../../src/shared/compiler/database-health.js', () => ({
+vi.mock('../../../../src/shared/compiler/summary.js', () => ({
   getDatabaseHealthSummary: mocks.getDatabaseHealthSummary
 }));
 
@@ -82,12 +82,12 @@ vi.mock('../../../../src/shared/compiler/contract-taxonomy/index.js', () => ({
   summarizeContractTaxonomy: mocks.summarizeContractTaxonomy
 }));
 
-vi.mock('../../../../src/shared/compiler/analysis-generation.js', () => ({
+vi.mock('../../../../src/shared/compiler/counts-generation.js', () => ({
   buildAnalysisGenerationSnapshot: mocks.buildAnalysisGenerationSnapshot,
   summarizeAnalysisGeneration: mocks.summarizeAnalysisGeneration
 }));
 
-vi.mock('../../../../src/shared/compiler/data-gateway-contract.js', () => ({
+vi.mock('../../../../src/shared/compiler/contract.js', () => ({
   buildDataGatewayContract: mocks.buildDataGatewayContract
 }));
 
@@ -103,7 +103,7 @@ vi.mock('../../../../src/shared/compiler/compiler-runtime-metrics/index.js', () 
   getPhase2PendingFiles: mocks.getPhase2PendingFiles
 }));
 
-import { loadCompilerDiagnosticsSnapshot } from '../../../../src/shared/compiler/compiler-diagnostics-snapshot.js';
+import { loadCompilerDiagnosticsSnapshot } from '../../../../src/shared/compiler/snapshot.js';
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -7,7 +7,7 @@ export {
   classifyFieldCoverage,
   getNetworkCandidates,
   getSharedStateCandidates
-} from './signal-coverage-helpers.js';
+} from './helpers.js';
 
 export {
   summarizeDerivedScoreCoverage,
@@ -19,4 +19,4 @@ export {
 
 export {
   detectSignalCoverageDrift
-} from './signal-coverage-detection.js';
+} from './drift.js';
