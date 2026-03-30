@@ -450,6 +450,52 @@ export const TABLE_DEFINITIONS = {
     indexes: [
       { name: 'idx_compiler_scanned_files_path', columns: ['path'] }
     ]
+  },
+
+  compiler_metrics_snapshots: {
+    description: 'Historial persistente de snapshots de métricas de salud y avance del compilador',
+    addedIn: 'v3.1-metrics',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'project_path', type: 'TEXT', nullable: false, description: 'Proyecto al que pertenece el snapshot' },
+      { name: 'snapshot_kind', type: 'TEXT', nullable: false, description: 'Tipo de snapshot: status, manual, dashboard, debt' },
+      { name: 'scope_path', type: 'TEXT', nullable: true, description: 'Scope consultado para la guía contextual' },
+      { name: 'focus_path', type: 'TEXT', nullable: true, description: 'Focus consultado para la guía contextual' },
+      { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen del snapshot: status.runtime, mcp.tool, dashboard' },
+      { name: 'analysis_generation_id', type: 'TEXT', nullable: true, description: 'ID de la generación de análisis al capturar' },
+      { name: 'captured_at', type: 'TEXT', nullable: false, description: 'Timestamp de captura' },
+      { name: 'health_score', type: 'REAL', default: 0, description: 'Score actual de salud' },
+      { name: 'health_grade', type: 'TEXT', nullable: true, description: 'Grade actual de salud' },
+      { name: 'issue_count', type: 'INTEGER', default: 0, description: 'Cantidad de issues visibles' },
+      { name: 'structural_groups', type: 'INTEGER', default: 0, description: 'Grupos de duplicados estructurales' },
+      { name: 'conceptual_groups', type: 'INTEGER', default: 0, description: 'Grupos de duplicados conceptuales accionables' },
+      { name: 'conceptual_raw_groups', type: 'INTEGER', default: 0, description: 'Grupos conceptuales crudos' },
+      { name: 'pipeline_orphans', type: 'INTEGER', default: 0, description: 'Orphaned pipeline atoms' },
+      { name: 'folderization_candidate_count', type: 'INTEGER', default: 0, description: 'Candidatos de folderización' },
+      { name: 'flat_families', type: 'INTEGER', default: 0, description: 'Familias planas' },
+      { name: 'mixed_families', type: 'INTEGER', default: 0, description: 'Familias mixtas' },
+      { name: 'already_folderized_families', type: 'INTEGER', default: 0, description: 'Familias ya folderizadas' },
+      { name: 'naming_families', type: 'INTEGER', default: 0, description: 'Familias con deuda de nombres' },
+      { name: 'naming_targets', type: 'INTEGER', default: 0, description: 'Targets de rename' },
+      { name: 'naming_debt', type: 'INTEGER', default: 0, description: 'Deuda de nombres' },
+      { name: 'live_coverage_ratio', type: 'REAL', default: 0, description: 'Cobertura live del universo de archivos' },
+      { name: 'zero_atom_file_count', type: 'INTEGER', default: 0, description: 'Archivos sin átomos' },
+      { name: 'call_links', type: 'INTEGER', default: 0, description: 'Links del call graph' },
+      { name: 'semantic_links', type: 'INTEGER', default: 0, description: 'Links semánticos' },
+      { name: 'watcher_alert_count', type: 'INTEGER', default: 0, description: 'Alertas del watcher' },
+      { name: 'recent_warning_count', type: 'INTEGER', default: 0, description: 'Warnings recientes' },
+      { name: 'recent_error_count', type: 'INTEGER', default: 0, description: 'Errores recientes' },
+      { name: 'phase2_pending_files', type: 'INTEGER', default: 0, description: 'Archivos pendientes de Phase 2' },
+      { name: 'snapshot_fingerprint', type: 'TEXT', nullable: false, description: 'Fingerprint estable del snapshot' },
+      { name: 'summary_text', type: 'TEXT', nullable: true, description: 'Resumen legible del snapshot' },
+      { name: 'payload_json', type: 'TEXT', nullable: true, description: 'Payload completo del snapshot' },
+      { name: 'trend_json', type: 'TEXT', nullable: true, description: 'Tendencia y velocidad frente a snapshots previos' }
+    ],
+    indexes: [
+      { name: 'idx_compiler_metrics_snapshots_project_kind_time', columns: ['project_path', 'snapshot_kind', 'captured_at DESC'] },
+      { name: 'idx_compiler_metrics_snapshots_scope', columns: ['project_path', 'scope_path', 'focus_path'] },
+      { name: 'idx_compiler_metrics_snapshots_fingerprint', columns: ['snapshot_fingerprint'] }
+    ]
   }
 };
 

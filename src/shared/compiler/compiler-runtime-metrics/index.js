@@ -11,6 +11,11 @@ export {
 } from '../compiler-runtime-metrics-db.js';
 
 export {
+  buildCompilerMetricsSnapshot,
+  summarizeCompilerMetricsSnapshot
+} from '../compiler-metrics-snapshot.js';
+
+export {
   getGraphCoverageSummary,
   getMcpSessionSummary,
   getIssueSummary,

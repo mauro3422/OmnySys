@@ -20,6 +20,22 @@ export const adminToolDefinitions = [
     inputSchema: { type: 'object', properties: {} }
   },
   {
+    name: 'mcp_omnysystem_get_metrics_snapshot',
+    description: 'Captura y persiste una snapshot canónica de métricas del sistema con tendencia histórica, velocidad de mejora y comparación por scope/focus.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scopePath: { type: 'string', description: 'Scope contextual para elegir la familia o dominio más cercano' },
+        focusPath: { type: 'string', description: 'Focus contextual para afinar la guía y la comparación' },
+        snapshotKind: { type: 'string', enum: ['manual', 'status', 'dashboard', 'debt'], default: 'manual', description: 'Tipo de snapshot a capturar' },
+        compareDays: { type: 'number', default: 3, description: 'Ventana en días para comparar tendencia' },
+        historyLimit: { type: 'number', default: 12, description: 'Cantidad máxima de snapshots devueltos en el history' },
+        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot en SQLite' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_get_tool_inventory_report',
     description: 'Returns a categorized report of the MCP tool catalog with consolidation recommendations.',
     inputSchema: {

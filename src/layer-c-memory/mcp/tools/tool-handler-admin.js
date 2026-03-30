@@ -1,5 +1,6 @@
 import { get_schema } from './get-schema.js';
 import { get_server_status, get_recent_errors } from './status.js';
+import { get_metrics_snapshot } from './get-metrics-snapshot.js';
 import { restart_server } from './restart-server.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
@@ -9,6 +10,7 @@ import { get_tool_inventory_report, list_tools } from './list-tools.js';
 export const adminToolHandlers = {
   mcp_omnysystem_get_schema: get_schema,
   mcp_omnysystem_get_server_status: get_server_status,
+  mcp_omnysystem_get_metrics_snapshot: get_metrics_snapshot,
   mcp_omnysystem_get_tool_inventory_report: get_tool_inventory_report,
   mcp_omnysystem_list_tools: list_tools,
   mcp_omnysystem_get_recent_errors: get_recent_errors,

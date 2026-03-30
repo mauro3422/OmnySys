@@ -5,7 +5,8 @@
 import {
   normalizeCount,
   summarizeSurfaceAuditForStatus,
-  summarizeCompilerDriftAssessment
+  summarizeCompilerDriftAssessment,
+  summarizeCompilerMetricsSnapshot
 } from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
@@ -227,6 +228,61 @@ export function compactCompilerExplainabilitySummary(explainability) {
       summary: explainability.folderization.summary || null
     } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)
+  };
+}
+
+export function compactCompilerMetricsSnapshotSummary(snapshot) {
+  const compact = summarizeCompilerMetricsSnapshot(snapshot);
+  if (!compact) return null;
+
+  return {
+    projectPath: compact.projectPath,
+    scopePath: compact.scopePath,
+    focusPath: compact.focusPath,
+    snapshotKind: compact.snapshotKind,
+    captureSource: compact.captureSource,
+    capturedAt: compact.capturedAt,
+    current: {
+      healthScore: compact.current?.healthScore,
+      healthGrade: compact.current?.healthGrade,
+      issueCount: compact.current?.issueCount,
+      structuralGroups: compact.current?.structuralGroups,
+      conceptualGroups: compact.current?.conceptualGroups,
+      conceptualRawGroups: compact.current?.conceptualRawGroups,
+      pipelineOrphans: compact.current?.pipelineOrphans,
+      folderizationCandidateCount: compact.current?.folderizationCandidateCount,
+      flatFamilies: compact.current?.flatFamilies,
+      mixedFamilies: compact.current?.mixedFamilies,
+      alreadyFolderizedFamilies: compact.current?.alreadyFolderizedFamilies,
+      namingFamilies: compact.current?.namingFamilies,
+      namingTargets: compact.current?.namingTargets,
+      namingDebt: compact.current?.namingDebt,
+      liveCoverageRatio: compact.current?.liveCoverageRatio,
+      zeroAtomFileCount: compact.current?.zeroAtomFileCount,
+      callLinks: compact.current?.callLinks,
+      semanticLinks: compact.current?.semanticLinks,
+      watcherAlertCount: compact.current?.watcherAlertCount,
+      recentWarningCount: compact.current?.recentWarningCount,
+      recentErrorCount: compact.current?.recentErrorCount,
+      phase2PendingFiles: compact.current?.phase2PendingFiles,
+      databaseTrustworthy: compact.current?.databaseTrustworthy,
+      folderizationDecision: compact.current?.folderizationDecision
+    },
+    trend: {
+      status: compact.trend?.status,
+      summary: compact.trend?.summary,
+      progressScore: compact.trend?.progressScore,
+      velocityPerDay: compact.trend?.velocityPerDay,
+      daysSinceBaseline: compact.trend?.daysSinceBaseline,
+      daysSincePrevious: compact.trend?.daysSincePrevious
+    },
+    history: {
+      total: compact.history?.total,
+      latestCapturedAt: compact.history?.latestCapturedAt,
+      previousCapturedAt: compact.history?.previousCapturedAt,
+      baselineCapturedAt: compact.history?.baselineCapturedAt
+    },
+    summary: compact.summary
   };
 }
 

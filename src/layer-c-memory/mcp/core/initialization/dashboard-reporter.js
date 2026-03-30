@@ -22,7 +22,8 @@ import {
   getPipelineOrphanSummary,
   getDeadCodePlausibilitySummary,
   ensureLiveRowSync,
-  loadCompilerDiagnosticsSnapshot
+  loadCompilerDiagnosticsSnapshot,
+  buildCompilerMetricsSnapshot
 } from '#shared/compiler/index.js';
 import { sessionManager } from '../session-manager.js';
 
@@ -107,6 +108,7 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     liveCoverageRatio: 0,
     liveRowSyncSummary: liveRowSync.summary,
     compilerDiagnostics,
+    metricsSnapshot: null,
     mcpSessionSummary: getMcpSessionSummary(sessionManager)
   };
 
@@ -120,6 +122,15 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     const fileUniverseSummary = metrics.compilerDiagnostics?.fileUniverseGranularity || {};
     metrics.zeroAtomFileCount = fileUniverseSummary.zeroAtomFileCount;
     metrics.liveCoverageRatio = fileUniverseSummary.liveCoverageRatio;
+    metrics.metricsSnapshot = buildCompilerMetricsSnapshot({
+      projectPath,
+      repo,
+      compilerExplainability: compilerDiagnostics,
+      watcherAlerts: [],
+      captureSource: 'dashboard.bootstrap',
+      snapshotKind: 'dashboard',
+      persist: false
+    });
     loadPhysicsMetrics(metrics, db);
   } catch (error) {
     logger.debug('Extended metrics fetch partially failed:', error.message);
@@ -263,6 +274,9 @@ function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, is
       ? `  Conceptual noise filtered: expected_repeat=${extendedMetrics.conceptualNoiseByClass.expected_repeat || 0}, low_signal=${extendedMetrics.conceptualNoiseByClass.low_signal || 0}`
       : null,
     `  Technical Debt: ${extendedMetrics.issueSummary}${extendedMetrics.orphans > 0 ? ` (+${extendedMetrics.orphans} orphans)` : ''}`,
+    extendedMetrics.metricsSnapshot
+      ? `  Metrics Snapshot: ${extendedMetrics.metricsSnapshot.summary}`
+      : null,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
     ...(isFinal
       ? ['  Final snapshot advisory: this is a bootstrap snapshot; use get_server_status() for the live runtime view.']

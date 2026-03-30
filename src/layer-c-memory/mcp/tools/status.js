@@ -10,10 +10,11 @@ import {
   getPhase2Status,
   getDatabaseHealthSummary,
   buildTelemetryProvenance,
-  summarizeSurfaceAuditForStatus
+  summarizeSurfaceAuditForStatus,
+  buildCompilerMetricsSnapshot
 } from '../../../shared/compiler/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
-import { getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
+import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
 import {
   attachCacheStatus,
   attachOrchestratorStatus,
@@ -47,6 +48,7 @@ export async function get_server_status(args, context) {
   logger.info('[Tool] get_server_status()');
   try {
     const { orchestrator, cache, projectPath, server } = context;
+    const repo = projectPath ? getRepository(projectPath) : null;
     const phase2Status = getPhase2Status(orchestrator);
     const phase2InProgress = !!phase2Status?.inProgress;
     const cachedMetadata = getCachedMetadata(server, cache);
@@ -117,6 +119,18 @@ export async function get_server_status(args, context) {
     }
 
     const recentErrors = buildRecentErrorsResponse(compactNotifications);
+    const metricsSnapshot = buildCompilerMetricsSnapshot({
+      projectPath,
+      repo,
+      compilerExplainability,
+      watcherAlerts: compactNotifications.watcherAlerts || [],
+      recentErrors,
+      scopePath: args?.scopePath || null,
+      focusPath: args?.focusPath || null,
+      captureSource: 'status.runtime',
+      snapshotKind: 'status'
+    });
+    status.metricsSnapshot = metricsSnapshot;
     const toolInventorySnapshot = buildInventorySnapshot({ includeSchemas: false });
     status.toolInventory = {
       snapshot: toolInventorySnapshot,

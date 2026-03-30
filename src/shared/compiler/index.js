@@ -89,6 +89,11 @@ export {
 } from './counts-generation.js';
 
 export {
+  buildCompilerMetricsSnapshot,
+  summarizeCompilerMetricsSnapshot
+} from './compiler-metrics-snapshot.js';
+
+export {
   buildSurfaceAudit,
   summarizeSurfaceAudit,
   summarizeSurfaceAuditForStatus

@@ -13,6 +13,7 @@ Status: open
 - The system still needs a DB-first reuse signal for helper surfaces and barrels, not just folder move candidates.
 - Naming normalization should recognize barrels, helpers, and short role stems as separate policy shapes instead of one flat rename bucket.
 - Cross-system duplication should be compared by family fingerprints, not only by file stem or raw folderization state.
+- Folderization health should feed a historical metrics snapshot so progress can be compared across runs instead of only being reported as a point-in-time state.
 
 ## Follow-Up Work
 
