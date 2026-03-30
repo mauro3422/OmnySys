@@ -23,7 +23,9 @@ import {
   getDeadCodePlausibilitySummary,
   ensureLiveRowSync,
   loadCompilerDiagnosticsSnapshot,
-  buildCompilerMetricsSnapshot
+  buildCompilerMetricsSnapshot,
+  buildCompilerHealthDashboard,
+  buildCompilerHealthPanel
 } from '#shared/compiler/index.js';
 import { sessionManager } from '../session-manager.js';
 
@@ -131,6 +133,11 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
       snapshotKind: 'dashboard',
       persist: false
     });
+    metrics.healthSnapshot = buildCompilerHealthDashboard(metrics.metricsSnapshot, compilerDiagnostics, {
+      watcherAlerts: [],
+      recentErrors: null
+    });
+    metrics.healthPanel = buildCompilerHealthPanel(metrics.healthSnapshot);
     loadPhysicsMetrics(metrics, db);
   } catch (error) {
     logger.debug('Extended metrics fetch partially failed:', error.message);
@@ -276,6 +283,9 @@ function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, is
     `  Technical Debt: ${extendedMetrics.issueSummary}${extendedMetrics.orphans > 0 ? ` (+${extendedMetrics.orphans} orphans)` : ''}`,
     extendedMetrics.metricsSnapshot
       ? `  Metrics Snapshot: ${extendedMetrics.metricsSnapshot.summary}`
+      : null,
+    extendedMetrics.healthPanel?.oneLine
+      ? `  Health Panel: ${extendedMetrics.healthPanel.oneLine}`
       : null,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
     ...(isFinal

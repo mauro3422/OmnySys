@@ -41,6 +41,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Add dashboard formatting that highlights trend direction and velocity, not only current health.
 - Add a compact health dashboard tool that returns the current state, regressions, improvements, repair telemetry, and readiness in one call.
 - Add a one-screen health panel tool that compresses the dashboard into status now, trend, top regressions, top improvements, and next action.
+- Surface the compact health panel in the bootstrap terminal summary so the startup log shows a single readable health line without oversaturating the output.
 - Add a dedicated snapshot diff view for folderization, naming debt, duplicate pressure, and error resolution.
 - Make the snapshot tool support exporting a compact chart-friendly payload for external reporting.
 - Persist causal tool-run telemetry so watcher alerts, errors, and fixes can be scored as a repair cycle instead of inferred only from point-in-time snapshots.

@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Surfaced the compact health panel one-liner in the bootstrap terminal summary so the startup log shows `health | trend | tools | ready` without dumping the full dashboard.
 - Added a one-screen `mcp_omnysystem_get_health_panel` tool and wired the compiler status surface to expose a compact panel with status now, trend, top regressions, top improvements, and next action.
 - Added a compact `mcp_omnysystem_get_health_snapshot` dashboard on top of the canonical metrics snapshot so one call can report current health, trend, repair telemetry, top regressors, and MVP readiness.
 - Added a persisted compiler metrics snapshot layer with historical trend, velocity, and scope-aware comparisons, plus a new `mcp_omnysystem_get_metrics_snapshot` admin tool and bootstrap/status visibility.
