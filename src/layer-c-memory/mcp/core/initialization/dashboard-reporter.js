@@ -88,6 +88,7 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     callableSummary: '',
     structuralGroups: 0,
     conceptualGroups: 0,
+    conceptualCandidates: 0,
     conceptualImplementations: 0,
     conceptualRawGroups: 0,
     conceptualRawImplementations: 0,
@@ -151,6 +152,7 @@ function loadStructuralDuplicateMetrics(metrics, db) {
 function loadConceptualDuplicateMetrics(metrics, repo) {
   const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
   metrics.conceptualGroups = conceptualSummary.actionableGroups;
+  metrics.conceptualCandidates = conceptualSummary.rawImplementations;
   metrics.conceptualImplementations = conceptualSummary.actionableImplementations;
   metrics.conceptualRawGroups = conceptualSummary.rawGroups;
   metrics.conceptualRawImplementations = conceptualSummary.rawImplementations;
@@ -251,7 +253,9 @@ function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, is
     `  Duplicates: ${extendedMetrics.structuralGroups} structural groups, ${extendedMetrics.conceptualGroups} conceptual actionable groups (${extendedMetrics.conceptualRawGroups} raw groups)` +
       (extendedMetrics.conceptualImplementations > 0
         ? ` | implementations=${extendedMetrics.conceptualImplementations} actionable (${extendedMetrics.conceptualRawImplementations} raw)`
-        : ''),
+        : extendedMetrics.conceptualCandidates > 0
+          ? ` | candidates=${extendedMetrics.conceptualCandidates}`
+          : ''),
     extendedMetrics.conceptualRawGroups > 0
       ? `  Conceptual Signal: actionable/raw ratio=${Math.round(extendedMetrics.conceptualActionableRatio * 100)}%`
       : null,

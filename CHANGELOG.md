@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Clarified bootstrap dashboard duplicate reporting so `0 conceptual groups` now shows raw conceptual candidate counts when present, avoiding the appearance of a disconnected metric source during startup.
 - Folderized `integrity-guard` into `src/core/file-watcher/guards/integrity-guard` and normalized the guard loader to import the new folderized wrapper.
 - Simplified `runtime-boundary-recovery.js` to expose named recovery helpers alongside the `RecoveryStrategies` object so the static data-flow extractor stops tripping on the recovery surface.
 - Moved the bulk atom event/version persistence into the same SQLite transaction as the bulk atom save so the hottest write path stops paying autocommit overhead per atom.
