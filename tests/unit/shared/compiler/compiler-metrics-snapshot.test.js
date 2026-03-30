@@ -190,6 +190,37 @@ describe('compiler-metrics-snapshot', () => {
         analysisGeneration: {
           generationId: 'analysis:status:test'
         },
+        metadataExtractionCoverage: {
+          healthy: true,
+          trustworthy: false,
+          primaryIssue: {
+            field: 'data_flow_json',
+            state: 'empty'
+          },
+          summary: {
+            coveragePct: 79,
+            fieldCoveragePct: 93
+          }
+        },
+        dataGatewayContract: {
+          summary: {
+            trustworthy: true,
+            primaryIssue: null
+          }
+        },
+        compilerContractLayer: {
+          summary: {
+            healthy: true
+          }
+        },
+        semanticCanonicality: {
+          healthy: true
+        },
+        surfaceAudit: {
+          summary: {
+            trustworthy: true
+          }
+        },
         folderization: {
           candidateReport: { candidateCount: 2 },
           familyState: {
@@ -245,24 +276,34 @@ describe('compiler-metrics-snapshot', () => {
     });
 
     expect(snapshot.current.healthScore).toBe(97);
+    expect(snapshot.current.globalHealthScore).toBeGreaterThan(80);
+    expect(snapshot.current.reliabilityScore).toBeGreaterThan(70);
     expect(snapshot.current.structuralGroups).toBe(4);
     expect(snapshot.current.conceptualGroups).toBe(2);
     expect(snapshot.current.activeAtomsDriftState).toBe('fresh');
     expect(snapshot.trend.status).toBe('improving');
     expect(snapshot.trend.progressScore).toBeGreaterThan(0);
     expect(snapshot.trend.summary).toContain('health');
-    expect(snapshot.summary).toContain('Health 97/A+');
+    expect(snapshot.summary).toContain('Health');
+    expect(snapshot.summary).toContain('db=97/A+');
+    expect(snapshot.summary).toContain('trust=');
     expect(snapshot.summary).toContain('dbsync=fresh');
     expect(snapshot.summary).toContain('clientsync=blocked');
     expect(snapshot.summary).toContain('progress=');
+    expect(snapshot.metricDictionary.global.score).toBe(snapshot.current.reliabilityScore);
+    expect(snapshot.metricDictionary.metrics.activeAtoms.sourceTables).toContain('atoms');
+    expect(snapshot.metricDictionary.metrics.callLinks.graphSurface).toBe('calls');
     expect(snapshot.history.latest.capturedAt).toBeTruthy();
     expect(snapshot.history.previous.capturedAt).toBe('2026-03-30T00:00:00.000Z');
     expect(snapshot.history.baseline.capturedAt).toBe('2026-03-27T00:00:00.000Z');
     expect(repo.insertCalls).toHaveLength(1);
 
     const compact = summarizeCompilerMetricsSnapshot(snapshot);
+    expect(compact.current.globalHealthScore).toBe(snapshot.current.globalHealthScore);
+    expect(compact.current.reliabilityScore).toBe(snapshot.current.reliabilityScore);
     expect(compact.current.healthGrade).toBe('A+');
     expect(compact.current.clientSyncState).toBe('blocked');
+    expect(compact.metricDictionary.metrics.metadataCoveragePct.value).toBe(79);
     expect(compact.trend.status).toBe('improving');
     expect(compact.history.total).toBeGreaterThanOrEqual(3);
   });

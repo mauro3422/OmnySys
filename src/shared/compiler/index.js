@@ -94,6 +94,12 @@ export {
 } from './compiler-metrics-snapshot.js';
 
 export {
+  buildCompilerLayerReliability,
+  buildCompilerMetricDictionary,
+  summarizeCompilerMetricDictionary
+} from './compiler-metric-dictionary.js';
+
+export {
   buildCompilerHealthDashboard,
   summarizeCompilerHealthDashboard,
   buildCompilerHealthPanel,

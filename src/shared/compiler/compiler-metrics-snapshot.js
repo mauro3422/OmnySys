@@ -10,6 +10,11 @@
 import { createHash } from 'node:crypto';
 import { normalizeCount } from './contract-helpers.js';
 import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
+import {
+  buildCompilerLayerReliability,
+  buildCompilerMetricDictionary,
+  summarizeCompilerMetricDictionary
+} from './compiler-metric-dictionary.js';
 import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary } from './compiler-runtime-metrics/summary.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from './pipeline-orphans.js';
@@ -30,6 +35,22 @@ function asNumber(value, fallback = 0) {
 
 function clampScore(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
+}
+
+function gradeFromScore(score = 0) {
+  if (score >= 97) return 'A+';
+  if (score >= 93) return 'A';
+  if (score >= 90) return 'A-';
+  if (score >= 87) return 'B+';
+  if (score >= 83) return 'B';
+  if (score >= 80) return 'B-';
+  if (score >= 77) return 'C+';
+  if (score >= 73) return 'C';
+  if (score >= 70) return 'C-';
+  if (score >= 67) return 'D+';
+  if (score >= 63) return 'D';
+  if (score >= 60) return 'D-';
+  return 'F';
 }
 
 function parseJson(value, fallback = null) {
@@ -494,6 +515,11 @@ function buildCurrentMetrics({
     namingDebt: asNumber(folderization?.namingDebt?.renameTargetCount, 0),
     liveCoverageRatio: asNumber(fileUniverse?.liveCoverageRatio, 0),
     zeroAtomFileCount: asNumber(fileUniverse?.zeroAtomFileCount, 0),
+    metadataCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
+    metadataFieldCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct, 0),
+    dataGatewayTrustworthy: compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true,
+    dataGatewayState: compilerExplainability?.dataGatewayContract?.summary?.primaryIssue?.state
+      || (compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true ? 'trustworthy' : 'needs_attention'),
     callLinks: asNumber(graphCoverage.callLinks, 0),
     semanticLinks: asNumber(graphCoverage.semanticLinks, 0),
     activeAtoms: asNumber(databaseHealth?.metrics?.activeAtoms, 0),
@@ -994,8 +1020,22 @@ export function buildCompilerMetricsSnapshot(options = {}) {
   });
   const behavior = buildBehaviorScore(current, trend, compilerExplainability?.driftAssessment || null);
   Object.assign(current, behavior);
+  const layerReliability = buildCompilerLayerReliability({ current, compilerExplainability });
+  const globalHealthScore = clampScore(
+    (asNumber(current.healthScore, 0) * 0.55) + (asNumber(layerReliability.global?.score, 0) * 0.45)
+  );
+  Object.assign(current, {
+    reliabilityScore: asNumber(layerReliability.global?.score, 0),
+    reliabilityGrade: layerReliability.global?.grade || gradeFromScore(layerReliability.global?.score),
+    reliabilityState: layerReliability.global?.state || null,
+    globalHealthScore: Number(globalHealthScore.toFixed(2)),
+    globalHealthGrade: gradeFromScore(globalHealthScore),
+    layerReliability
+  });
   const summary = [
-    `Health ${current.healthScore}/${current.healthGrade}`,
+    `Health ${Math.round(current.globalHealthScore)}/${current.globalHealthGrade}`,
+    `db=${current.healthScore}/${current.healthGrade}`,
+    `trust=${Math.round(current.reliabilityScore)}/${current.reliabilityGrade}`,
     trend.summary,
     `progress=${trend.progressScore}`,
     `velocity/day=${trend.velocityPerDay}`,
@@ -1028,6 +1068,13 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     current,
     trend,
     history: returnedHistory,
+    metricDictionary: summarizeCompilerMetricDictionary(
+      buildCompilerMetricDictionary({
+        current,
+        compilerExplainability,
+        reliability: layerReliability
+      })
+    ),
     summary
   };
 
@@ -1058,8 +1105,13 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
     captureSource: snapshot.captureSource || null,
     capturedAt: current.capturedAt || null,
     current: {
+      globalHealthScore: current.globalHealthScore || 0,
+      globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
       healthScore: current.healthScore || 0,
       healthGrade: current.healthGrade || 'F',
+      reliabilityScore: current.reliabilityScore || 0,
+      reliabilityGrade: current.reliabilityGrade || 'F',
+      reliabilityState: current.reliabilityState || null,
       issueCount: current.issueCount || 0,
       structuralGroups: current.structuralGroups || 0,
       conceptualGroups: current.conceptualGroups || 0,
@@ -1073,6 +1125,10 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       namingTargets: current.namingTargets || 0,
       namingDebt: current.namingDebt || 0,
       liveCoverageRatio: current.liveCoverageRatio || 0,
+      metadataCoveragePct: current.metadataCoveragePct || 0,
+      metadataFieldCoveragePct: current.metadataFieldCoveragePct || 0,
+      dataGatewayTrustworthy: current.dataGatewayTrustworthy || false,
+      dataGatewayState: current.dataGatewayState || null,
       activeAtoms: current.activeAtoms || 0,
       zeroAtomFileCount: current.zeroAtomFileCount || 0,
       callLinks: current.callLinks || 0,
@@ -1152,6 +1208,7 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       previous: snapshot.history?.previous || null,
       baseline: snapshot.history?.baseline || null
     },
+    metricDictionary: snapshot.metricDictionary || null,
     summary: snapshot.summary || null
   };
 }

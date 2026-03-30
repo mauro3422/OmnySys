@@ -245,8 +245,13 @@ export function compactCompilerMetricsSnapshotSummary(snapshot) {
     captureSource: compact.captureSource,
     capturedAt: compact.capturedAt,
     current: {
+      globalHealthScore: compact.current?.globalHealthScore,
+      globalHealthGrade: compact.current?.globalHealthGrade,
       healthScore: compact.current?.healthScore,
       healthGrade: compact.current?.healthGrade,
+      reliabilityScore: compact.current?.reliabilityScore,
+      reliabilityGrade: compact.current?.reliabilityGrade,
+      reliabilityState: compact.current?.reliabilityState,
       issueCount: compact.current?.issueCount,
       structuralGroups: compact.current?.structuralGroups,
       conceptualGroups: compact.current?.conceptualGroups,
@@ -260,6 +265,10 @@ export function compactCompilerMetricsSnapshotSummary(snapshot) {
       namingTargets: compact.current?.namingTargets,
       namingDebt: compact.current?.namingDebt,
       liveCoverageRatio: compact.current?.liveCoverageRatio,
+      metadataCoveragePct: compact.current?.metadataCoveragePct,
+      metadataFieldCoveragePct: compact.current?.metadataFieldCoveragePct,
+      dataGatewayTrustworthy: compact.current?.dataGatewayTrustworthy,
+      dataGatewayState: compact.current?.dataGatewayState,
       activeAtoms: compact.current?.activeAtoms,
       zeroAtomFileCount: compact.current?.zeroAtomFileCount,
       callLinks: compact.current?.callLinks,
@@ -350,6 +359,7 @@ export function compactCompilerMetricsSnapshotSummary(snapshot) {
       previousCapturedAt: compact.history?.previousCapturedAt,
       baselineCapturedAt: compact.history?.baselineCapturedAt
     },
+    metricDictionary: compact.metricDictionary,
     summary: compact.summary
   };
 }
@@ -378,6 +388,7 @@ export function compactCompilerHealthDashboardSummary(dashboard) {
       clientSyncSummary: compact.sessions.clientSyncSummary || null
     } : null,
     toolTelemetry: compact.toolTelemetry,
+    metricDictionary: compact.metricDictionary || null,
     regressors: takeSample(compact.regressors || [], 5),
     improvements: takeSample(compact.improvements || [], 5),
     recommendations: takeSample(compact.recommendations || [], 5),
@@ -410,6 +421,7 @@ export function compactCompilerHealthPanelSummary(panel) {
     trend: compact.trend,
     performance: compact.performance,
     tools: compact.tools,
+    metricDictionary: compact.metricDictionary || null,
     topRegressors: takeSample(compact.topRegressors || [], 3),
     topImprovements: takeSample(compact.topImprovements || [], 3),
     topRecommendations: takeSample(compact.topRecommendations || [], 3),

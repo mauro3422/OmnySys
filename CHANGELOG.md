@@ -4,6 +4,11 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a canonical metric dictionary so health and status surfaces can explain
+  visible metrics in terms of source-of-truth surfaces, SQLite tables, graph
+  layers, and caveats.
+- Added cross-layer reliability scoring and a composed `globalHealthScore` so
+  the executive summary no longer reflects database health alone.
 - Hardened the Codex/VS Code reconnect path by normalizing degraded MCP HTTP
   request headers all the way down to the raw Node request surfaces used by the
   live transport adapter, not only the parsed header bag.
@@ -53,6 +58,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
 - [v0.9.385 - Sprint 16: MCP Discovery Resources and Reconnect Auto-Heal](changelogs/v0.9.385.md)
 - [v0.9.386 - Sprint 16: Reconnect Compatibility Hardening and Metrics Trust Plan](changelogs/v0.9.386.md)
+- [v0.9.387 - Sprint 16: Metrics Dictionary and Cross-Layer Reliability](changelogs/v0.9.387.md)
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)

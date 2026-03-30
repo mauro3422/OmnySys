@@ -42,6 +42,7 @@ function normalizeSnapshot(snapshot = null) {
       snapshotKind: snapshot.snapshotKind || snapshot.current?.snapshotKind || 'status',
       captureSource: snapshot.captureSource || snapshot.current?.captureSource || null,
       capturedAt: snapshot.capturedAt || snapshot.current?.capturedAt || null,
+      metricDictionary: snapshot.metricDictionary || null,
       current: snapshot.current || {},
       trend: snapshot.trend || {},
       history: snapshot.history || {}
@@ -53,11 +54,12 @@ function normalizeSnapshot(snapshot = null) {
     scopePath: snapshot.scopePath || null,
     focusPath: snapshot.focusPath || null,
     snapshotKind: snapshot.snapshotKind || 'status',
-    captureSource: snapshot.captureSource || null,
-    capturedAt: snapshot.capturedAt || null,
-    current: snapshot,
-    trend: snapshot.trend || {},
-    history: snapshot.history || {}
+      captureSource: snapshot.captureSource || null,
+      capturedAt: snapshot.capturedAt || null,
+      metricDictionary: snapshot.metricDictionary || null,
+      current: snapshot,
+      trend: snapshot.trend || {},
+      history: snapshot.history || {}
   };
 }
 
@@ -177,8 +179,13 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
     capturedAt: normalized.capturedAt || current.capturedAt || null,
     status: current.mvpReady ? 'ready' : current.behaviorState || trend.status || 'unknown',
     health: {
+      globalHealthScore: asNumber(current.globalHealthScore, asNumber(current.healthScore, 0)),
+      globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
       healthScore: asNumber(current.healthScore, 0),
       healthGrade: current.healthGrade || 'F',
+      reliabilityScore: asNumber(current.reliabilityScore, 0),
+      reliabilityGrade: current.reliabilityGrade || 'F',
+      reliabilityState: current.reliabilityState || null,
       successScore: asNumber(current.successScore, 0),
       successThreshold: asNumber(current.successThreshold, 0),
       mvpReady: current.mvpReady === true,
@@ -227,6 +234,9 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       recentWarningCount: asNumber(current.recentWarningCount, 0),
       recentErrorCount: asNumber(current.recentErrorCount, 0),
       phase2PendingFiles: asNumber(current.phase2PendingFiles, 0),
+      metadataCoveragePct: asNumber(current.metadataCoveragePct, 0),
+      metadataFieldCoveragePct: asNumber(current.metadataFieldCoveragePct, 0),
+      dataGatewayTrustworthy: current.dataGatewayTrustworthy === true,
       pipelineTimingTelemetry
     },
     sessions: current.mcpSessionSummary ? {
@@ -237,6 +247,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       clientSyncSummary: current.mcpSessionSummary.clientSyncSummary || null
     } : null,
     toolTelemetry,
+    metricDictionary: normalized.metricDictionary || null,
     regressors,
     improvements,
     recommendations: buildRecommendations(normalized, compilerExplainability),
@@ -271,8 +282,13 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
     capturedAt: dashboard.capturedAt || null,
     status: dashboard.status || null,
     health: dashboard.health ? {
+      globalHealthScore: dashboard.health.globalHealthScore,
+      globalHealthGrade: dashboard.health.globalHealthGrade,
       healthScore: dashboard.health.healthScore,
       healthGrade: dashboard.health.healthGrade,
+      reliabilityScore: dashboard.health.reliabilityScore,
+      reliabilityGrade: dashboard.health.reliabilityGrade,
+      reliabilityState: dashboard.health.reliabilityState,
       successScore: dashboard.health.successScore,
       successThreshold: dashboard.health.successThreshold,
       mvpReady: dashboard.health.mvpReady,
@@ -330,7 +346,10 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       watcherAlertCount: dashboard.metrics.watcherAlertCount,
       recentWarningCount: dashboard.metrics.recentWarningCount,
       recentErrorCount: dashboard.metrics.recentErrorCount,
-      phase2PendingFiles: dashboard.metrics.phase2PendingFiles
+      phase2PendingFiles: dashboard.metrics.phase2PendingFiles,
+      metadataCoveragePct: dashboard.metrics.metadataCoveragePct,
+      metadataFieldCoveragePct: dashboard.metrics.metadataFieldCoveragePct,
+      dataGatewayTrustworthy: dashboard.metrics.dataGatewayTrustworthy
     } : null,
     sessions: dashboard.sessions ? {
       summary: dashboard.sessions.summary || null,
@@ -354,6 +373,7 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       lastSuccessfulRunAt: dashboard.toolTelemetry.lastSuccessfulRunAt,
       topTools: takeSample(dashboard.toolTelemetry.topTools || [], 5)
     } : null,
+    metricDictionary: dashboard.metricDictionary || null,
     pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry ? {
       projectPath: dashboard.pipelineTimingTelemetry.projectPath || null,
       runKind: dashboard.pipelineTimingTelemetry.runKind || 'pipeline',
@@ -403,10 +423,15 @@ export function buildCompilerHealthPanel(dashboard = null) {
     captureSource: compact.captureSource,
     capturedAt: compact.capturedAt,
     status: compact.status,
-    headline: `${now.healthGrade || 'F'} ${Math.round(now.healthScore || 0)}/${Math.round(now.successThreshold || 0)} ${now.mvpReady ? 'ready' : now.behaviorState || 'unknown'}`,
+    headline: `${now.globalHealthGrade || now.healthGrade || 'F'} ${Math.round(now.globalHealthScore || now.healthScore || 0)}/${Math.round(now.successThreshold || 0)} ${now.mvpReady ? 'ready' : now.behaviorState || 'unknown'}`,
     now: {
+      globalHealthScore: now.globalHealthScore || now.healthScore || 0,
+      globalHealthGrade: now.globalHealthGrade || now.healthGrade || 'F',
       healthScore: now.healthScore || 0,
       healthGrade: now.healthGrade || 'F',
+      reliabilityScore: now.reliabilityScore || 0,
+      reliabilityGrade: now.reliabilityGrade || 'F',
+      reliabilityState: now.reliabilityState || null,
       successScore: now.successScore || 0,
       successThreshold: now.successThreshold || 0,
       mvpReady: now.mvpReady === true,
@@ -453,10 +478,13 @@ export function buildCompilerHealthPanel(dashboard = null) {
     topRegressors,
     topImprovements,
     topRecommendations,
+    metricDictionary: compact.metricDictionary || null,
     nextAction: topRecommendations[0]?.value || now.clientSyncRecommendation || now.readinessReason || compact.summary || null,
     summary: compact.summary || null,
     oneLine: [
-      `now=${now.healthScore || 0}/${now.healthGrade || 'F'}`,
+      `now=${now.globalHealthScore || now.healthScore || 0}/${now.globalHealthGrade || now.healthGrade || 'F'}`,
+      `db=${now.healthScore || 0}/${now.healthGrade || 'F'}`,
+      `trust=${Math.round(now.reliabilityScore || 0)}/${now.reliabilityGrade || 'F'}`,
       `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
       `dbsync=${now.activeAtomsDriftState || 'missing'}`,
       now.clientSyncState && now.clientSyncState !== 'fresh'
@@ -489,6 +517,7 @@ export function summarizeCompilerHealthPanel(panel = null) {
     trend: panel.trend || null,
     performance: panel.performance || null,
     tools: panel.tools || null,
+    metricDictionary: panel.metricDictionary || null,
     topRegressors: takeSample(panel.topRegressors || [], 3),
     topImprovements: takeSample(panel.topImprovements || [], 3),
     topRecommendations: takeSample(panel.topRecommendations || [], 3),

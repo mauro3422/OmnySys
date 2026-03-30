@@ -17,9 +17,26 @@ describe('compiler-health-dashboard', () => {
         snapshotKind: 'dashboard',
         captureSource: 'test',
         capturedAt: '2026-03-30T01:38:18.819Z',
+        metricDictionary: {
+          global: {
+            score: 89,
+            grade: 'B+'
+          },
+          layers: {
+            runtime: { score: 82, grade: 'B-' }
+          },
+          metrics: {
+            globalHealthScore: { value: 93, sourceTables: ['atoms'] }
+          }
+        },
         current: {
+          globalHealthScore: 93,
+          globalHealthGrade: 'A',
           healthScore: 97,
           healthGrade: 'A+',
+          reliabilityScore: 89,
+          reliabilityGrade: 'B+',
+          reliabilityState: 'watchful',
           successScore: 91,
           successThreshold: 85,
           mvpReady: true,
@@ -40,6 +57,9 @@ describe('compiler-health-dashboard', () => {
           namingTargets: 18,
           namingDebt: 18,
           liveCoverageRatio: 0.99,
+          metadataCoveragePct: 79,
+          metadataFieldCoveragePct: 93,
+          dataGatewayTrustworthy: true,
           zeroAtomFileCount: 1,
           callLinks: 120,
           semanticLinks: 42,
@@ -132,12 +152,17 @@ describe('compiler-health-dashboard', () => {
 
     expect(dashboard.health.mvpReady).toBe(true);
     expect(dashboard.status).toBe('ready');
+    expect(dashboard.health.globalHealthScore).toBe(93);
+    expect(dashboard.health.reliabilityScore).toBe(89);
+    expect(dashboard.metricDictionary.global.grade).toBe('B+');
     expect(dashboard.regressors[0].metric).toBe('recentErrorCount');
     expect(dashboard.improvements[0].metric).toBe('healthScore');
     expect(dashboard.toolTelemetry.totalRuns).toBe(10);
     expect(dashboard.recommendations.length).toBeGreaterThan(0);
 
     const compact = summarizeCompilerHealthDashboard(dashboard);
+    expect(compact.health.globalHealthScore).toBe(93);
+    expect(compact.health.reliabilityGrade).toBe('B+');
     expect(compact.health.successScore).toBe(91);
     expect(compact.trend.velocityPerDay).toBe(1.5);
     expect(compact.regressors.length).toBeGreaterThan(0);
@@ -148,8 +173,13 @@ describe('compiler-health-dashboard', () => {
     const dashboard = buildCompilerHealthDashboard({
       projectPath: 'C:/Dev/OmnySystem',
       current: {
+        globalHealthScore: 81,
+        globalHealthGrade: 'B-',
         healthScore: 88,
         healthGrade: 'A',
+        reliabilityScore: 73,
+        reliabilityGrade: 'C',
+        reliabilityState: 'limited',
         successScore: 84,
         successThreshold: 85,
         mvpReady: false,
@@ -183,13 +213,16 @@ describe('compiler-health-dashboard', () => {
 
     const panel = buildCompilerHealthPanel(dashboard);
 
-    expect(panel.headline).toContain('A 88/85');
-    expect(panel.oneLine).toContain('now=88/A');
+    expect(panel.headline).toContain('B- 81/85');
+    expect(panel.oneLine).toContain('now=81/B-');
+    expect(panel.oneLine).toContain('db=88/A');
+    expect(panel.oneLine).toContain('trust=73/C');
     expect(panel.oneLine).toContain('clientsync=blocked');
     expect(panel.topRegressors).toEqual([]);
     expect(panel.topImprovements).toEqual([]);
 
     const compact = summarizeCompilerHealthPanel(panel);
+    expect(compact.now.globalHealthScore).toBe(81);
     expect(compact.now.healthScore).toBe(88);
     expect(compact.trend.velocityPerDay).toBe(2);
     expect(compact.oneLine).toContain('ready=no');
