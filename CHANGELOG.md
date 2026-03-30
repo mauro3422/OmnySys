@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added scope-aware duplicate consolidation hints so architectural debt scoring can prefer the nearest DB-backed folderized family before falling back to a global duplicate hint.
 - Added DB-first `scopePath` / `focusPath` folderization guidance so the system can prefer the nearest reusable family, distinguish helper and barrel policies, and stop selecting a far-away family when the local scope is clearer.
 - Added folderization creation guidance so the system can suggest where new code should land, which role stems to prefer, and which folderized family to reuse before creating another helper surface.
 - Added explicit `namingPatterns` visibility to folderization reporting and exposed a standalone `normalize_folderized_family_names` MCP action so basename cleanup can run independently of the folder move step.

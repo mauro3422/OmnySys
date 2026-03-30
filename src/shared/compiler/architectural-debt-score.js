@@ -24,14 +24,14 @@ import { analyzeDirectoryStructure } from './directory-structure-analyzer.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 
-export async function calculateArchitecturalDebtScore(projectPath, repo) {
+export async function calculateArchitecturalDebtScore(projectPath, repo, options = {}) {
   logger.info('[calculateArchitecturalDebtScore] Starting architectural debt analysis');
 
   const conventions = analyzeDirectoryStructure(projectPath, repo);
   const directoryScore = await calculateDirectoryStructureScore(projectPath, repo, conventions);
   const patternScore = await calculatePatternScore(projectPath, repo);
   const couplingScore = await calculateCouplingScore(projectPath, repo);
-  const duplicationScore = await calculateDuplicationScore(projectPath, repo);
+  const duplicationScore = await calculateDuplicationScore(projectPath, repo, options);
 
   const overallScore = Math.round(
     directoryScore.normalized * CATEGORY_WEIGHTS.directoryStructure +

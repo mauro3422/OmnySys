@@ -5,11 +5,50 @@ import {
   findFolderizationCandidateForPaths,
   findFolderizationCandidatesFromRepo
 } from '../../directory-structure-folderization.js';
+import { normalizeFolderizationPath } from '../../directory-structure-folderization-data.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 
-export async function calculateDuplicationScore(projectPath, repo) {
+function normalizeScopePaths(options = {}, files = []) {
+  return [
+    options.focusPath,
+    options.scopePath,
+    ...files
+  ]
+    .map((filePath) => normalizeFolderizationPath(filePath))
+    .filter(Boolean);
+}
+
+function buildScopeAwareFolderizationHint(repo, folderizationCandidates, files = [], options = {}) {
+  const scopePaths = normalizeScopePaths(options, files);
+
+  if (scopePaths.length > 0) {
+    const scopedFamily = findExistingFolderizedFamilyForPathsFromRepo(repo, scopePaths, { minFileCount: 1 });
+    if (scopedFamily) {
+      return {
+        ...scopedFamily,
+        recommendedFolder: scopedFamily.migrationState === 'already_folderized'
+          ? scopedFamily.directory
+          : scopedFamily.recommendedFolder
+      };
+    }
+  }
+
+  const scopedCandidate = scopePaths.length > 0
+    ? findFolderizationCandidateForPaths(folderizationCandidates, scopePaths)
+    : null;
+
+  if (scopedCandidate) {
+    return scopedCandidate;
+  }
+
+  return findFolderizationCandidateForPaths(folderizationCandidates, files)
+    || findExistingFolderizedFamilyForPathsFromRepo(repo, files)
+    || null;
+}
+
+export async function calculateDuplicationScore(projectPath, repo, options = {}) {
   const issues = [];
   let duplicateGroups = 0;
   let duplicateImplementations = 0;
@@ -23,8 +62,7 @@ export async function calculateDuplicationScore(projectPath, repo) {
 
       for (const duplicate of duplicates.slice(0, 20)) {
         const files = duplicate.files.split(',').map((filePath) => filePath.trim()).filter(Boolean);
-        const folderizationHint = findFolderizationCandidateForPaths(folderizationCandidates, files)
-          || findExistingFolderizedFamilyForPathsFromRepo(repo, files);
+        const folderizationHint = buildScopeAwareFolderizationHint(repo, folderizationCandidates, files, options);
 
         issues.push({
           type: 'conceptual_duplicate',
@@ -46,16 +84,16 @@ export async function calculateDuplicationScore(projectPath, repo) {
             type: 'conceptual_duplicate',
             filePath: files[0],
             context: {
-              instanceCount: duplicate.instanceCount,
-              folderizationHint: folderizationHint ? {
-                familyRoot: folderizationHint.familyRoot,
-                recommendedFolder: folderizationHint.recommendedFolder,
-                barrelFile: folderizationHint.barrelFile?.path || null,
-                confidence: folderizationHint.confidence,
-                fileCount: folderizationHint.fileCount,
-                migrationState: folderizationHint.migrationState || null,
-                alreadyFolderized: !!folderizationHint.alreadyFolderized,
-                familyEvolution: folderizationHint.familyEvolution || null
+            instanceCount: duplicate.instanceCount,
+            folderizationHint: folderizationHint ? {
+              familyRoot: folderizationHint.familyRoot,
+              recommendedFolder: folderizationHint.recommendedFolder,
+              barrelFile: folderizationHint.barrelFile?.path || folderizationHint.barrelFile || null,
+              confidence: folderizationHint.confidence,
+              fileCount: folderizationHint.fileCount,
+              migrationState: folderizationHint.migrationState || null,
+              alreadyFolderized: !!folderizationHint.alreadyFolderized,
+              familyEvolution: folderizationHint.familyEvolution || null
               } : null
             }
           }).message
