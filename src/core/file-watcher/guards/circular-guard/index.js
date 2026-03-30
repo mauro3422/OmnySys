@@ -1,5 +1,5 @@
-import { detectCircularDependencies as detectCircularDependenciesImpl } from './circular-guard-detection.js';
-import { detectCircularImportsForFile as detectCircularImportsForFileImpl } from './circular-guard-imports.js';
+import { detectCircularDependencies as detectCircularDependenciesImpl } from './detection.js';
+import { detectCircularImportsForFile as detectCircularImportsForFileImpl } from './imports.js';
 
 export const detectCircularDependencies = detectCircularDependenciesImpl;
 export const detectCircularImportsForFile = detectCircularImportsForFileImpl;

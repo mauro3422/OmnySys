@@ -11,11 +11,11 @@ import {
   clearWatcherIssue,
   clearWatcherIssueFamily,
   persistWatcherIssue
-} from '../watcher-issue-persistence.js';
+} from '../../watcher-issue-persistence.js';
 import {
   IssueDomains,
   createIssueType
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export async function persistCircularIssue(rootPath, filePath, severity, message, context) {
   try {

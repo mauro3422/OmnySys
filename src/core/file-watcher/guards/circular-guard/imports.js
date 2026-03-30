@@ -1,6 +1,6 @@
-import { createLogger } from '../../../utils/logger.js';
-import { prepareFileDependencyLookup } from './circular-repository.js';
-import { clearCircularIssues } from './circular-issue-service.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { prepareFileDependencyLookup } from './repository.js';
+import { clearCircularIssues } from './issue-service.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
@@ -70,7 +70,7 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
       }
     };
 
-    const { persistCircularIssue } = await import('./circular-issue-service.js');
+    const { persistCircularIssue } = await import('./issue-service.js');
     await persistCircularIssue(rootPath, filePath, 'high', `Circular dependency: ${cycleStr}`, context);
 
     EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound });

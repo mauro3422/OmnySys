@@ -1,4 +1,4 @@
-import { createStandardContext } from './guard-standards.js';
+import { createStandardContext } from '../guard-standards.js';
 
 export function buildCircularContext({
   severity,

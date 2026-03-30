@@ -1,4 +1,4 @@
-import { safeArray } from '../../../shared/compiler/index.js';
+import { safeArray } from '../../../../shared/compiler/index.js';
 
 export function buildCircularFileGraph(allFiles = []) {
     const fileGraph = {};

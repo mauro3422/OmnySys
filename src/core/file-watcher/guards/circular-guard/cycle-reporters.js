@@ -1,6 +1,6 @@
-import { createLogger } from '../../../utils/logger.js';
-import { buildCircularContext } from './circular-guard-context.js';
-import { persistCircularIssue, clearCircularIssues } from './circular-issue-service.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { buildCircularContext } from './context.js';
+import { persistCircularIssue, clearCircularIssues } from './issue-service.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 

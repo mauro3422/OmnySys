@@ -27,7 +27,7 @@ export const impactGuardDefinitionsCore = [
     'circular-dependencies',
     async () => {
       const detectCircularDependencies = await loadGuardMember(
-        () => import('./circular-guard.js'),
+        () => import('./circular-guard/index.js'),
         (mod) => mod.detectCircularDependencies
       );
       return async (rootPath, filePath) => {

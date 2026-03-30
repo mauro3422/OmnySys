@@ -7,7 +7,7 @@
  * @module core/file-watcher/guards/circular-repository
  */
 
-import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
+import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../../shared/compiler/index.js';
 
 export function getCircularFileImports(db) {
   if (!db) return [];

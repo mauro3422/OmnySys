@@ -1,6 +1,6 @@
-import { classifyCircularCycle } from '../../../shared/compiler/index.js';
-import { detectCycles } from '../../../layer-graph/algorithms/cycle-detector.js';
-import { getCircularCallRelations } from './circular-repository.js';
+import { classifyCircularCycle } from '../../../../shared/compiler/index.js';
+import { detectCycles } from '../../../../layer-graph/algorithms/cycle-detector.js';
+import { getCircularCallRelations } from './repository.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 
 export async function detectCircularAtomCycles({

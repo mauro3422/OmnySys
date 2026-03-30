@@ -1,5 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
-import { detectCircularDependencies } from '../guards/circular-guard.js';
+import { detectCircularDependencies } from '../guards/circular-guard/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers:core');
 

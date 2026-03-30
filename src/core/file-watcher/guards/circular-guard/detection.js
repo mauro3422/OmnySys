@@ -1,17 +1,17 @@
 import path from 'path';
-import { createLogger } from '../../../utils/logger.js';
-import { detectCycles } from '../../../layer-graph/algorithms/cycle-detector.js';
-import { normalizePath } from '../../../shared/utils/path-utils.js';
-import { clearCircularIssues } from './circular-issue-service.js';
-import { getCircularFileImports, getCircularLocalAtoms } from './circular-repository.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { detectCycles } from '../../../../layer-graph/algorithms/cycle-detector.js';
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
+import { clearCircularIssues } from './issue-service.js';
+import { getCircularFileImports, getCircularLocalAtoms } from './repository.js';
 import {
     persistModuleCycleIssue,
     persistLifecycleCycleIssue,
     persistFunctionalCycleIssue,
     isLikelyInfrastructureCycleAtom
-} from './circular-guard-persistence.js';
-import { buildCircularFileGraph } from './circular-guard-detection-file-graph.js';
-import { detectCircularAtomCycles } from './circular-guard-detection-atom-cycles.js';
+} from './persistence.js';
+import { buildCircularFileGraph } from './detection-file-graph.js';
+import { detectCircularAtomCycles } from './detection-atom-cycles.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
