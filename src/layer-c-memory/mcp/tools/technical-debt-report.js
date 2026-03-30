@@ -110,6 +110,7 @@ export async function getTechnicalDebtReport(args, context) {
                 focusPlan: folderizationReport.migrationPlans?.focusCandidate || null,
                 naming: folderizationReport.naming,
                 namingPatterns: folderizationReport.namingPatterns,
+                creationGuidance: folderizationReport.creationGuidance,
                 namingDebt: {
                     familyCount: folderizationReport.naming?.familyCount || 0,
                     renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
@@ -139,7 +140,8 @@ export async function getTechnicalDebtReport(args, context) {
                 folderization: folderizationReport.migrationPlans.candidates || [],
                 folderizationFamilyState: folderizationReport.familyState,
                 folderizationNaming: folderizationReport.naming,
-                folderizationNamingPatterns: folderizationReport.namingPatterns
+                folderizationNamingPatterns: folderizationReport.namingPatterns,
+                folderizationCreationGuidance: folderizationReport.creationGuidance
             }),
             timestamp: new Date().toISOString()
         };

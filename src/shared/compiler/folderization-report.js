@@ -90,6 +90,49 @@ function buildFolderizationSummary({
   };
 }
 
+function buildFolderizationCreationGuidance({
+  familyState,
+  namingPatterns,
+  naming
+}) {
+  const topFamilyPatterns = Array.isArray(namingPatterns?.topFamilyPatterns)
+    ? namingPatterns.topFamilyPatterns.slice(0, 5)
+    : [];
+  const preferredFamilies = Array.isArray(familyState?.topFamilies)
+    ? familyState.topFamilies
+        .filter((family) => family.migrationState === 'already_folderized' || family.migrationState === 'mixed')
+        .slice(0, 5)
+    : [];
+  const fallbackFamilies = preferredFamilies.length > 0
+    ? preferredFamilies
+    : Array.isArray(familyState?.topFamilies)
+      ? familyState.topFamilies.slice(0, 5)
+      : [];
+  const preferredFamily = fallbackFamilies[0] || null;
+  const preferredFolder = preferredFamily
+    ? `${preferredFamily.directory}/${preferredFamily.familyRoot}`
+    : null;
+  const preferredRoleStems = Array.isArray(namingPatterns?.topRecommendedStems)
+    ? namingPatterns.topRecommendedStems.slice(0, 5)
+    : [];
+
+  return {
+    mode: preferredFamily?.migrationState === 'already_folderized'
+      ? 'reuse_existing_family_folder'
+      : preferredFamily
+        ? 'create_folderized_family'
+        : 'role_pattern_guided',
+    preferredFolder,
+    preferredFamilyRoot: preferredFamily?.familyRoot || null,
+    preferredDirectory: preferredFamily?.directory || null,
+    preferredRoleStems,
+    familyExamples: topFamilyPatterns,
+    guidance: preferredFolder
+      ? `Create the next file inside ${preferredFolder} using a short role basename such as ${preferredRoleStems[0]?.stem || (naming?.topFamilies?.[0]?.renameTargets?.[0]?.recommendedName || 'core.js')}.`
+      : 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.'
+  };
+}
+
 function buildFolderizationReport({
   rows,
   candidateList,
@@ -108,6 +151,11 @@ function buildFolderizationReport({
   });
 
   const candidateReport = buildFolderizationCandidateReport(candidateList);
+  const creationGuidance = buildFolderizationCreationGuidance({
+    familyState,
+    namingPatterns,
+    naming
+  });
   const summary = buildFolderizationSummary({
     candidateReport,
     familyState,
@@ -125,6 +173,7 @@ function buildFolderizationReport({
     migrationPlans,
     naming,
     namingPatterns: namingPatterns || null,
+    creationGuidance,
     focusCandidate: focusCandidate || null,
     existingFolderizedFamily: existingFolderizedFamily || null,
     recommendation,
@@ -178,6 +227,15 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
       migrationPlans: { candidateCount: 0, focusCandidate: null, candidates: [] },
       naming: { familyCount: 0, renameTargetCount: 0, topFamilies: [] },
       namingPatterns: { totalFamilies: 0, totalTargets: 0, patternCounts: {}, topFamilyPatterns: [], topRecommendedStems: [] },
+      creationGuidance: {
+        mode: 'role_pattern_guided',
+        preferredFolder: null,
+        preferredFamilyRoot: null,
+        preferredDirectory: null,
+        preferredRoleStems: [],
+        familyExamples: [],
+        guidance: 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.'
+      },
       focusCandidate: null,
       existingFolderizedFamily: null,
       recommendation: buildEmptyRecommendation(),

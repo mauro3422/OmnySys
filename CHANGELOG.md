@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added folderization creation guidance so the system can suggest where new code should land, which role stems to prefer, and which folderized family to reuse before creating another helper surface.
 - Added explicit `namingPatterns` visibility to folderization reporting and exposed a standalone `normalize_folderized_family_names` MCP action so basename cleanup can run independently of the folder move step.
 - Added explicit `namingDebt` visibility to compiler explainability and the technical debt report so already-folderized families with many rename targets no longer hide behind the generic folderization summary.
 - Stabilized the `src/shared/compiler` rename wave by separating the policy-conformance summary surface into `policy-conformance-summary.js`, reconnecting `detection.js` to the canonical reuse imports, and keeping `summary.js` reserved for database-health reporting.

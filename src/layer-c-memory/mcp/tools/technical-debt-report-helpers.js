@@ -65,7 +65,8 @@ export function buildTechnicalDebtPriorityActions(data) {
         folderization = [],
         folderizationFamilyState = null,
         folderizationNaming = null,
-        folderizationNamingPatterns = null
+        folderizationNamingPatterns = null,
+        folderizationCreationGuidance = null
     } = data;
 
     if (structural.length > 0) {
@@ -165,6 +166,18 @@ export function buildTechnicalDebtPriorityActions(data) {
             action: `Reduce ${folderizationNaming.renameTargetCount} remaining naming target(s) across ${folderizationNaming.familyCount} folderized families`,
             impact: `Naming debt remains concentrated in already-folderized helper surfaces`,
             urgencyScore: folderizationNaming.renameTargetCount + folderizationNaming.familyCount
+        });
+    }
+
+    if (folderizationCreationGuidance?.guidance) {
+        actions.push({
+            priority: 'low',
+            type: 'folderization_creation_guidance',
+            action: folderizationCreationGuidance.guidance,
+            impact: folderizationCreationGuidance.preferredFolder
+                ? `Prefer ${folderizationCreationGuidance.preferredFolder} with stems like ${(folderizationCreationGuidance.preferredRoleStems || []).slice(0, 3).map((item) => item.stem).join(', ')}`
+                : 'Prefer folderized family directories and role-only basenames',
+            urgencyScore: (folderizationCreationGuidance.preferredRoleStems?.length || 0) + (folderizationCreationGuidance.familyExamples?.length || 0)
         });
     }
 
