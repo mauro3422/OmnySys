@@ -1,7 +1,7 @@
-import { loadStructuralLocalAtoms, loadStructuralDuplicateRows } from './duplicate-structural-core-query.js';
-import { collectCandidateDnas, buildStructuralFindings } from './duplicate-structural-core-findings.js';
-import { isLowSignalName } from './guard-standards.js';
-import { clearUnifiedDuplicateIssues } from './unified-duplicate-guard/helpers.js';
+import { loadStructuralLocalAtoms, loadStructuralDuplicateRows } from './query.js';
+import { collectCandidateDnas, buildStructuralFindings } from './findings.js';
+import { isLowSignalName } from '../guard-standards.js';
+import { clearUnifiedDuplicateIssues } from '../unified-duplicate-guard/helpers.js';
 
 export async function clearStructuralDuplicateIssues(rootPath, filePath) {
     await clearUnifiedDuplicateIssues(rootPath, filePath);

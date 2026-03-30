@@ -1,4 +1,4 @@
-import { generateAlternativeNames, shouldIgnoreStructuralDuplicateFinding } from '../../../shared/compiler/index.js';
+import { generateAlternativeNames, shouldIgnoreStructuralDuplicateFinding } from '../../../../shared/compiler/index.js';
 
 export function collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignalName) {
     return localAtoms

@@ -1,4 +1,4 @@
-import { clearWatcherIssue, persistWatcherIssue } from '../watcher-issue-persistence.js';
+import { clearWatcherIssue, persistWatcherIssue } from '../../watcher-issue-persistence.js';
 
 export async function clearPersistedDeadCodeIssues(rootPath, filePath) {
     await clearWatcherIssue(rootPath, filePath, 'code_dead_code_medium');

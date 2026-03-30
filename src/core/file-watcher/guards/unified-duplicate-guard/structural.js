@@ -8,7 +8,7 @@ import {
     collectCandidateDnas,
     loadStructuralDuplicateRows,
     loadStructuralLocalAtoms
-} from '../duplicate-structural-core.js';
+} from '../duplicate-structural/index.js';
 import { isLowSignalName } from '../guard-standards.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:unified-duplicate:structural');

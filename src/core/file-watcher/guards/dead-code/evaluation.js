@@ -1,4 +1,4 @@
-import { StandardSuggestions } from './guard-standards.js';
+import { StandardSuggestions } from '../guard-standards.js';
 
 export function evaluateDeadCodeAtom(atom, minLines) {
     const metrics = atom.metrics;

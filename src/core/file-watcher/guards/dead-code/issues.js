@@ -2,7 +2,7 @@ import {
     IssueDomains,
     createIssueType,
     createStandardContext
-} from './guard-standards.js';
+} from '../guard-standards.js';
 
 export function buildDeadCodeIssue(evaluation, minLines) {
     const issueType = createIssueType(IssueDomains.CODE, 'dead_code', evaluation.severity);

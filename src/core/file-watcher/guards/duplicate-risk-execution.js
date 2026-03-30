@@ -10,7 +10,7 @@ import {
 import { connectionManager } from '../../../layer-c-memory/storage/database/connection.js';
 import {
     clearStructuralDuplicateIssues
-} from './duplicate-structural-core.js';
+} from './duplicate-structural/index.js';
 import {
     runStructuralDuplicateDetection
 } from './duplicate-risk-detection.js';

@@ -27,7 +27,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'dead-code',
-    () => import('./dead-code-guard.js'),
+    () => import('./dead-code/guard.js'),
     (mod) => mod.detectDeadCode,
     'code',
     '1.0.0',

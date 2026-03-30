@@ -1,9 +1,9 @@
-import { createLogger } from '../../../utils/logger.js';
-import { extractAtomMetrics, isValidGuardTarget } from './guard-standards.js';
-import { buildDeadCodeRemediation, isSuspiciousDeadCodeAtom, normalizeDeadCodeAtom } from '../../../shared/compiler/index.js';
-import { evaluateDeadCodeAtom } from './dead-code-evaluation.js';
-import { buildDeadCodeIssue, buildDeadCodeEventPayload } from './dead-code-issues.js';
-import { clearPersistedDeadCodeIssues, persistDeadCodeIssues } from './dead-code-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { extractAtomMetrics, isValidGuardTarget } from '../guard-standards.js';
+import { buildDeadCodeRemediation, isSuspiciousDeadCodeAtom, normalizeDeadCodeAtom } from '../../../../shared/compiler/index.js';
+import { evaluateDeadCodeAtom } from './evaluation.js';
+import { buildDeadCodeIssue, buildDeadCodeEventPayload } from './issues.js';
+import { clearPersistedDeadCodeIssues, persistDeadCodeIssues } from './persistence.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:dead-code');
 

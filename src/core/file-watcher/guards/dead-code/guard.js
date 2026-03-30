@@ -1,4 +1,4 @@
-import { detectDeadCode as detectDeadCodeImpl } from './dead-code-core.js';
+import { detectDeadCode as detectDeadCodeImpl } from './core.js';
 
 export const detectDeadCode = detectDeadCodeImpl;
 

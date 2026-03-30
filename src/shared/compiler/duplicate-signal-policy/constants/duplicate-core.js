@@ -16,7 +16,7 @@ export const DUPLICATE_SIGNAL_POLICY_FILE_MARKER = '/shared/compiler/duplicate-s
 // DUPLICATE STRUCTURAL CORE
 // ============================================================================
 
-export const DUPLICATE_STRUCTURAL_CORE_FILE_MARKER = '/core/file-watcher/guards/duplicate-structural-core.js';
+export const DUPLICATE_STRUCTURAL_CORE_FILE_MARKER = '/core/file-watcher/guards/duplicate-structural/core.js';
 
 export const DUPLICATE_STRUCTURAL_CORE_HELPER_NAMES = new Set([
     'loadstructurallocalatoms',
