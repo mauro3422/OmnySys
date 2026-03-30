@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a compact `mcp_omnysystem_get_health_snapshot` dashboard on top of the canonical metrics snapshot so one call can report current health, trend, repair telemetry, top regressors, and MVP readiness.
 - Added a persisted compiler metrics snapshot layer with historical trend, velocity, and scope-aware comparisons, plus a new `mcp_omnysystem_get_metrics_snapshot` admin tool and bootstrap/status visibility.
 - Added causal tool-run telemetry so MCP tool calls now persist before/after snapshots, repair scores, and success-rate aggregates in a dedicated SQLite history table.
 - Added behavioral readiness metrics (`driftScore`, `stabilityScore`, `successScore`, `mvpReady`) to the compiler snapshot so the system can track an MVP success threshold over time.

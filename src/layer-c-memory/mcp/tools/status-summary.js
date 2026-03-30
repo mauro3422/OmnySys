@@ -5,6 +5,7 @@
 export {
   compactDatabaseHealth,
   compactCompilerExplainabilitySummary,
+  compactCompilerHealthDashboardSummary,
   compactCompilerMetricsSnapshotSummary,
   compactRepositoryDiagnostics,
   summarizeNodeVitals,

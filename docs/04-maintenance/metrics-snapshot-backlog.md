@@ -15,6 +15,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - The snapshot should be able to show whether the MCP/runtime actually improved after a fix, not just whether a single check passed.
 - Tool executions should be measured as causal repair events, so the system can track how often a watcher alert or runtime error was followed by a successful tool run that improved the snapshot.
 - The snapshot should expose a success threshold and a behavioral readiness score so the project can answer "is the MVP healthy enough?" instead of only "is it healthy today?".
+- A compact health dashboard should sit on top of the snapshot so one call can show current health, trend, tool success, top regressors, and MVP readiness.
 
 ## Metrics To Persist
 
@@ -38,6 +39,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Add a retention policy so old snapshots do not grow forever in SQLite.
 - Add a lightweight timeline query that returns the last N snapshots plus a three-day baseline comparison.
 - Add dashboard formatting that highlights trend direction and velocity, not only current health.
+- Add a compact health dashboard tool that returns the current state, regressions, improvements, repair telemetry, and readiness in one call.
 - Add a dedicated snapshot diff view for folderization, naming debt, duplicate pressure, and error resolution.
 - Make the snapshot tool support exporting a compact chart-friendly payload for external reporting.
 - Persist causal tool-run telemetry so watcher alerts, errors, and fixes can be scored as a repair cycle instead of inferred only from point-in-time snapshots.

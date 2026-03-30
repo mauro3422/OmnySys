@@ -94,6 +94,11 @@ export {
 } from './compiler-metrics-snapshot.js';
 
 export {
+  buildCompilerHealthDashboard,
+  summarizeCompilerHealthDashboard
+} from './compiler-health-dashboard.js';
+
+export {
   evaluateToolRunTelemetry,
   persistToolRunTelemetry,
   buildToolRunTelemetrySummary,

@@ -6,7 +6,8 @@ import {
   normalizeCount,
   summarizeSurfaceAuditForStatus,
   summarizeCompilerDriftAssessment,
-  summarizeCompilerMetricsSnapshot
+  summarizeCompilerMetricsSnapshot,
+  summarizeCompilerHealthDashboard
 } from '../../../shared/compiler/index.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
@@ -307,6 +308,37 @@ export function compactCompilerMetricsSnapshotSummary(snapshot) {
       previousCapturedAt: compact.history?.previousCapturedAt,
       baselineCapturedAt: compact.history?.baselineCapturedAt
     },
+    summary: compact.summary
+  };
+}
+
+export function compactCompilerHealthDashboardSummary(dashboard) {
+  const compact = summarizeCompilerHealthDashboard(dashboard);
+  if (!compact) return null;
+
+  return {
+    projectPath: compact.projectPath,
+    scopePath: compact.scopePath,
+    focusPath: compact.focusPath,
+    snapshotKind: compact.snapshotKind,
+    captureSource: compact.captureSource,
+    capturedAt: compact.capturedAt,
+    status: compact.status,
+    health: compact.health,
+    trend: compact.trend,
+    metrics: compact.metrics,
+    toolTelemetry: compact.toolTelemetry,
+    regressors: takeSample(compact.regressors || [], 5),
+    improvements: takeSample(compact.improvements || [], 5),
+    recommendations: takeSample(compact.recommendations || [], 5),
+    watcherAlerts: takeSample(compact.watcherAlerts || [], 5),
+    recentErrors: compact.recentErrors ? {
+      total: compact.recentErrors.total,
+      warnings: compact.recentErrors.warnings,
+      errors: compact.recentErrors.errors,
+      logs: takeSample(compact.recentErrors.logs || [], 3)
+    } : null,
+    history: compact.history,
     summary: compact.summary
   };
 }
